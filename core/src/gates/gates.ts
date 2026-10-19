@@ -12,6 +12,7 @@ export interface GateInput {
   call: Call
   effect: Effect | undefined // undeclared counts as leaving the world
   preview: string // what the card shows
+  detail?: string | null // and in full: the message as it will go
   restsOn?: string[]
   cannotUndo?: string | null
   ownEntries?: boolean // for a removal: whether what goes is the person's own
@@ -61,6 +62,7 @@ export function decide(world: World, input: GateInput): Verdict {
     kind: 'permission',
     gate,
     words: input.preview,
+    detail: input.detail ?? null,
     restsOn: input.restsOn ?? [],
     cannotUndo: input.cannotUndo ?? null,
     call: input.call,

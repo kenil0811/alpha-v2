@@ -3,14 +3,18 @@ import type { LiveEvent, ModuleSummary, Stream, TableView as TableData } from '@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, listen } from './api.ts'
 import { applyLive, Home, type Live } from './Home.tsx'
+import { Settings } from './Settings.tsx'
 import { TableView } from './TableView.tsx'
 import { cn } from './ui/cn.ts'
 
-type Place = { at: 'home' } | { at: 'table'; id: string }
+type Place = { at: 'home' } | { at: 'table'; id: string } | { at: 'settings'; open: string | null }
 
 function placeOf(hash: string): Place {
   const m = /^#\/table\/(.+)$/.exec(hash)
-  return m?.[1] ? { at: 'table', id: m[1] } : { at: 'home' }
+  if (m?.[1]) return { at: 'table', id: m[1] }
+  const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
+  if (s) return { at: 'settings', open: s[1] ?? null }
+  return { at: 'home' }
 }
 
 export function Rail({
@@ -52,7 +56,18 @@ export function Rail({
           ))}
         </div>
       ))}
-      <div className="mt-auto px-2 text-xs text-neutral-400">{name}</div>
+      <div className="mt-auto flex flex-col gap-1">
+        <a
+          href="#/settings"
+          className={cn(
+            'rounded-md px-2 py-1 hover:bg-neutral-100',
+            place.at === 'settings' && 'bg-neutral-200/60 text-neutral-900',
+          )}
+        >
+          Settings
+        </a>
+        <div className="px-2 text-xs text-neutral-400">{name}</div>
+      </div>
     </nav>
   )
 }
@@ -66,6 +81,7 @@ export function App() {
   const [busyTurn, setBusyTurn] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  const [version, setVersion] = useState(0)
   const placeRef = useRef(place)
   placeRef.current = place
 
@@ -108,7 +124,10 @@ export function App() {
   useEffect(
     () =>
       listen((e: LiveEvent) => {
-        if (e.type === 'lines') void refresh()
+        if (e.type === 'lines') {
+          void refresh()
+          setVersion((v) => v + 1)
+        }
         if (e.type === 'busy') setBusyTurn(e.turn)
         if (e.type === 'idle') {
           setBusyTurn(null)
@@ -130,6 +149,8 @@ export function App() {
         )}
         {place.at === 'home' ? (
           <Home stream={stream} live={live} busyTurn={busyTurn} />
+        ) : place.at === 'settings' ? (
+          <Settings open={place.open} version={version} />
         ) : table ? (
           <TableView data={table} />
         ) : (

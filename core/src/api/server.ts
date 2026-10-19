@@ -5,11 +5,14 @@ import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
 import { z } from 'zod'
+import { connectorOf, KNOWN } from '../connectors/service.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
+import type { Card } from '../world/cards.ts'
 import { type Provenance, Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
 import type {
   CardView,
+  ConnectorsView,
   Health,
   Me,
   ModuleSummary,
@@ -138,14 +141,29 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   app.get(
     '/api/modules',
     async (): Promise<ModuleSummary[]> =>
-      world.shape.modules().map((m) => ({
-        id: m.id,
-        name: m.name,
-        tables: world.shape
-          .tables(m.id)
-          .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
-      })),
+      world.shape
+        .modules()
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          tables: world.shape
+            .tables(m.id)
+            .filter((t) => !t.hidden)
+            .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
+        }))
+        .filter((m) => m.tables.length > 0),
   )
+
+  // In the sidebar or out of it (Settings › Connections).
+  app.post('/api/tables/:id/sidebar', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { shown } = z.object({ shown: z.boolean() }).parse(req.body)
+    const t = world.shape.setHidden(id, !shown, {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    return { id: t.id, hidden: t.hidden }
+  })
 
   app.get('/api/tables/:id', async (req, reply): Promise<TableView | undefined> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
@@ -188,6 +206,56 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       .type(f.mime)
       .header('content-disposition', `inline; filename="${encodeURIComponent(f.name)}"`)
       .send(world.files.bytes(hash))
+  })
+
+  app.get('/api/connectors', async (): Promise<ConnectorsView> => {
+    return {
+      connectors: KNOWN.map((c) => ({
+        name: c.manifest.name,
+        title: c.manifest.title,
+        auth: c.manifest.auth,
+        account: c.manifest.account,
+        ...(c.manifest.secret ? { secret: c.manifest.secret } : {}),
+      })),
+      connections: world.connections.list().map((k) => ({
+        id: k.id,
+        connector: k.connector,
+        title: connectorOf(k.connector).manifest.title,
+        account: k.account,
+        state: k.state,
+        health: k.health,
+        lastSyncAt: k.lastSyncAt,
+        tables: connectorOf(k.connector).tables.flatMap((spec) => {
+          const t = world.shape.table(spec.name)
+          return t ? [{ id: t.id, name: t.name, hidden: t.hidden }] : []
+        }),
+      })),
+    }
+  })
+
+  // The person connects in Alpha's own form: the secret goes to the Keychain, never the world.
+  app.post('/api/connections', async (req) => {
+    const b = z
+      .object({
+        connector: z.string(),
+        account: z.string().trim().min(1),
+        secret: z.string().optional(),
+      })
+      .parse(req.body)
+    const c = await engine.connect(user, b.connector, b.account, b.secret ?? null)
+    return { id: c.id, state: c.state }
+  })
+
+  app.delete('/api/connections/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    await engine.disconnect(user, id)
+    return { ok: true }
+  })
+
+  app.post('/api/connections/:id/sync', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    await engine.sync(user, id)
+    return { ok: true }
   })
 
   void app.register(websocket)
@@ -234,7 +302,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           const f = world.files.findFile(p.source.file)
           return {
             kind: 'looked_up',
-            words: `From ${f?.name ?? 'a file'}${p.source.sheet ? `, ${p.source.sheet}` : ''}${p.source.cell ? ` ${p.source.cell}` : ''}`,
+            words: `From ${f?.name ?? 'a file'}${p.source.page ? `, page ${p.source.page}` : ''}${p.source.sheet ? `, ${p.source.sheet}` : ''}${p.source.cell ? ` ${p.source.cell}` : ''}`,
             at,
             open: {
               file: f?.hash ?? p.source.file,
@@ -270,20 +338,16 @@ function deny(reply: FastifyReply, words: string) {
   return reply.code(403).send({ problem: words })
 }
 
-function cardView(c: {
-  id: string
-  kind: string
-  state: string
-  words: string
-  options: string[]
-  cannotUndo: string | null
-  answer: string | null
-}): CardView {
+function cardView(c: Card): CardView {
+  const input = (c.call?.input ?? {}) as { connector?: unknown }
   return {
     id: c.id,
     kind: c.kind,
     state: c.state,
     words: c.words,
+    detail: c.detail,
+    gate: c.gate,
+    connector: c.gate === 'sign_in' && typeof input.connector === 'string' ? input.connector : null,
     options: c.options,
     cannotUndo: c.cannotUndo,
     answer: c.answer,

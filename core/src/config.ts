@@ -20,6 +20,9 @@ const Limits = z.object({
   changed_lines: z.number().int().positive(),
   document_page_chunks: z.number().int().positive(),
   journey_step_minutes: z.number().positive(),
+  connector_retries: z.number().int().min(0),
+  health_fewer_rows_ratio: z.number().positive().max(1),
+  health_quiet_days: z.number().positive(),
 })
 
 export type ModelsConfig = z.infer<typeof Models>

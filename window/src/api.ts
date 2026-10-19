@@ -47,6 +47,7 @@ async function call<T>(
 export const api = {
   get: <T>(path: string) => call<T>('GET', path),
   post: <T>(path: string, body: unknown = {}) => call<T>('POST', path, body),
+  delete: <T>(path: string) => call<T>('DELETE', path),
   upload: (file: File) =>
     call<{ name: string; readable: boolean; pieces: number }>('POST', '/api/files', file, {
       'content-type': file.type || 'application/octet-stream',

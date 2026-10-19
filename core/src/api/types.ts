@@ -26,6 +26,9 @@ export interface CardView {
   kind: string
   state: string
   words: string
+  detail: string | null // the whole of it: the message as it will go
+  gate: string | null
+  connector: string | null // for a sign-in: which form to open
   options: string[]
   cannotUndo: string | null
   answer: string | null
@@ -78,6 +81,30 @@ export interface TableView {
   module: { id: string; name: string }
   fields: FieldView[]
   rows: RowView[]
+}
+
+export interface ConnectorView {
+  name: string
+  title: string
+  auth: 'secret' | 'oauth' | 'browser' | 'system'
+  account: { label: string; placeholder?: string }
+  secret?: { label: string; help: string; url?: string }
+}
+
+export interface ConnectionView {
+  id: string
+  connector: string
+  title: string
+  account: string
+  state: 'connected' | 'needs_sign_in' | 'broken' | 'paused'
+  health: string | null
+  lastSyncAt: string | null
+  tables: { id: string; name: string; hidden: boolean }[] // what it keeps, maybe out of the sidebar
+}
+
+export interface ConnectorsView {
+  connectors: ConnectorView[]
+  connections: ConnectionView[]
 }
 
 export type LiveEvent =

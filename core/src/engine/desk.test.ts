@@ -3,8 +3,10 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { MemorySecrets } from '@alpha/connector-sdk'
 import type { HookCallback, Options, Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ConnectorService } from '../connectors/service.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 import { Desk, type DeskEvent, type QueryFn } from './desk.ts'
@@ -93,12 +95,13 @@ function scripted(turn: Turn) {
   return { fn, seen }
 }
 
-function deskWith(turn: Turn) {
+function deskWith(turn: Turn, connectors?: ConnectorService) {
   const { fn, seen } = scripted(turn)
   const events: DeskEvent[] = []
   const waiters: (() => void)[] = []
   const desk = new Desk(world, user, {
     query: fn,
+    ...(connectors ? { connectors } : {}),
     emit: (e) => {
       events.push(e)
       if (e.type === 'idle') waiters.shift()?.()
@@ -218,6 +221,40 @@ describe('the desk', () => {
       'Stopped.',
       'still here',
     ])
+    desk.close()
+  })
+
+  it('waits on a card showing the whole email before a send, and saves a draft at once', async () => {
+    const connectors = new ConnectorService(world, { secrets: new MemorySecrets() })
+    const mail = { to: 'priya@harbor.example', subject: 'The CIM', body: 'Could you send it over?' }
+    const decisions: string[] = []
+    const { desk, idle } = deskWith(async (text, hooks) => {
+      for (const tool of ['gmail_draft', 'gmail_send']) {
+        const out = (await hooks.call('PreToolUse', {
+          tool_name: `mcp__connectors__${tool}`,
+          tool_use_id: `call_${decisions.length}`,
+          tool_input: mail,
+        })) as { hookSpecificOutput: { permissionDecision: string } }
+        decisions.push(`${tool}:${out.hookSpecificOutput.permissionDecision}`)
+      }
+      return [result(text)]
+    }, connectors)
+    let done = idle()
+    desk.say('draft and send Priya a note asking for the CIM')
+    await done
+    expect(decisions).toEqual(['gmail_draft:allow', 'gmail_send:deny'])
+    const [card] = world.cards.waiting(user.id)
+    expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”?')
+    expect(card?.detail).toBe(
+      'To: priya@harbor.example\nSubject: The CIM\n\nCould you send it over?',
+    )
+    expect(card?.gate).toBe('leaves_world')
+    done = idle()
+    desk.cardAnswered(
+      world.cards.answer(card?.id as string, 'Yes', { kind: 'person', id: user.id }),
+    )
+    await done
+    expect(decisions.slice(2)).toEqual(['gmail_draft:allow', 'gmail_send:allow'])
     desk.close()
   })
 })

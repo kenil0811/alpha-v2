@@ -14,6 +14,7 @@ import {
   query as sdkQuery,
 } from '@anthropic-ai/claude-agent-sdk'
 import { config } from '../config.ts'
+import { SERVER as CONNECTORS, type ConnectorService } from '../connectors/service.ts'
 import { decide } from '../gates/gates.ts'
 import type { Card } from '../world/cards.ts'
 import type { User, World } from '../world/world.ts'
@@ -33,6 +34,7 @@ export interface DeskOptions {
   query?: QueryFn
   emit?: (e: DeskEvent) => void
   granted?: string[] // folders the person granted, read-only
+  connectors?: ConnectorService
   // Alpha's words appended to Claude Code's own prompt (the design's choice), or alone: week 1
   // measures one against the other.
   prompt?: 'appended' | 'alone'
@@ -89,10 +91,12 @@ class Inbox implements AsyncIterable<SDKUserMessage> {
 }
 
 // A kept session is resumed only with the same tools (v1 crashed resuming one made on others).
-export const FINGERPRINT = createHash('sha256')
-  .update(TOOL_NAMES.join(','))
-  .digest('hex')
-  .slice(0, 16)
+export function fingerprint(connectorTools: string[]): string {
+  return createHash('sha256')
+    .update([...TOOL_NAMES, ...connectorTools].join(','))
+    .digest('hex')
+    .slice(0, 16)
+}
 
 export class Desk {
   private world: World
@@ -108,6 +112,7 @@ export class Desk {
   private emit: (e: DeskEvent) => void
   private granted: string[]
   private prompt: 'appended' | 'alone'
+  private connectors: ConnectorService | null
   private networkWaits: string[] = []
 
   constructor(world: World, user: User, options: DeskOptions = {}) {
@@ -116,8 +121,21 @@ export class Desk {
     this.query = options.query ?? (sdkQuery as QueryFn)
     this.emit = options.emit ?? (() => {})
     this.granted = options.granted ?? []
+    this.connectors = options.connectors ?? null
     this.prompt = options.prompt ?? 'appended'
     this.here = { current: { user, turn: null, said: null, message: null }, fromSubagent: false }
+  }
+
+  get fingerprint(): string {
+    return fingerprint(this.connectors?.names() ?? [])
+  }
+
+  // The folders the person granted changed: the next turn starts the session again (resumed),
+  // so its sandbox reads them.
+  setGranted(folders: string[]): void {
+    if (folders.join('\n') === this.granted.join('\n')) return
+    this.granted = folders
+    if (!this.running) this.close()
   }
 
   get busy(): boolean {
@@ -193,7 +211,7 @@ export class Desk {
 
   private open(): void {
     const kept = this.world.desk(this.user.id)
-    const resume = kept && kept.tools === FINGERPRINT ? kept.sessionId : undefined
+    const resume = kept && kept.tools === this.fingerprint ? kept.sessionId : undefined
     this.fresh = !resume
     this.box = new Inbox()
     this.q = this.query({ prompt: this.box, options: this.options(resume) })
@@ -223,10 +241,17 @@ export class Desk {
       settingSources: [],
       strictMcpConfig: true,
       tools: OWN_TOOLS,
-      allowedTools: [...TOOL_NAMES.map((t) => `mcp__${SERVER}__${t}`), ...OUTRIGHT],
+      allowedTools: [
+        ...TOOL_NAMES.map((t) => `mcp__${SERVER}__${t}`),
+        ...(this.connectors?.names() ?? []).map((t) => `mcp__${CONNECTORS}__${t}`),
+        ...OUTRIGHT,
+      ],
       permissionMode: 'default',
       canUseTool: this.canUseTool,
-      mcpServers: { [SERVER]: worldTools(this.world, this.here) },
+      mcpServers: {
+        [SERVER]: worldTools(this.world, this.here),
+        ...(this.connectors ? { [CONNECTORS]: this.connectors.server() } : {}),
+      },
       additionalDirectories: [modules, ...this.granted],
       sandbox: {
         enabled: true,
@@ -284,6 +309,13 @@ export class Desk {
     })
     if (this.running) this.running.doing = words
     this.emit({ type: 'live', turn: cur.turn ?? '', text: this.running?.reply ?? '', doing: words })
+    if (input.tool_name.startsWith(`mcp__${CONNECTORS}__`))
+      return this.gateConnector(
+        input.tool_name,
+        toolInput,
+        words,
+        input.agent_id ? null : cur.message,
+      )
     if (!isWorld) return {}
     this.here.fromSubagent = !!input.agent_id
     const effectOf = EFFECTS[name]
@@ -320,6 +352,44 @@ export class Desk {
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
         permissionDecision: 'deny',
+        permissionDecisionReason: verdict.reason,
+      },
+    }
+  }
+
+  // A connector tool's effect, declared by its connector, goes to the gates like any other.
+  private gateConnector(
+    toolName: string,
+    input: Record<string, unknown>,
+    words: string,
+    message: string | null,
+  ) {
+    const name = toolName.replace(`mcp__${CONNECTORS}__`, '')
+    const preview = this.connectors?.preview(name, input)
+    const cur = this.here.current
+    const verdict = decide(this.world, {
+      call: { tool: name, input },
+      effect: this.connectors?.effect(name, input),
+      preview: preview?.words ? `${preview.words}?` : `${words}?`,
+      ...(preview?.detail ? { detail: preview.detail } : {}),
+      cannotUndo: 'Once it has gone, it cannot be called back.',
+      message,
+      actor: { kind: 'alpha' },
+      user: this.user.id,
+      turn: cur.turn,
+    })
+    if (verdict.pass)
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse' as const,
+          permissionDecision: 'allow' as const,
+        },
+      }
+    this.emit({ type: 'lines' })
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse' as const,
+        permissionDecision: 'deny' as const,
         permissionDecisionReason: verdict.reason,
       },
     }
@@ -363,7 +433,14 @@ export class Desk {
     if (input.hook_event_name !== 'UserPromptSubmit') return {}
     const seen = this.world.desk(this.user.id)?.seenJournalId ?? 0
     const layers = [
-      this.fresh ? startLayer(this.world, this.user.id, this.world.deskDir(this.user.id)) : '',
+      this.fresh
+        ? startLayer(
+            this.world,
+            this.user.id,
+            this.world.deskDir(this.user.id),
+            this.connectors?.describe() ?? null,
+          )
+        : '',
       turnLayer(this.world, this.user.id, seen, this.here.current.message),
     ].filter(Boolean)
     this.fresh = false
@@ -381,7 +458,12 @@ export class Desk {
     return {
       hookSpecificOutput: {
         hookEventName: 'SessionStart',
-        additionalContext: startLayer(this.world, this.user.id, this.world.deskDir(this.user.id)),
+        additionalContext: startLayer(
+          this.world,
+          this.user.id,
+          this.world.deskDir(this.user.id),
+          this.connectors?.describe() ?? null,
+        ),
       },
     }
   }
@@ -457,7 +539,7 @@ export class Desk {
 
   private handle(m: SDKMessage): void {
     if (m.type === 'system' && m.subtype === 'init') {
-      this.world.keepDesk(this.user.id, m.session_id, FINGERPRINT, { kind: 'system' })
+      this.world.keepDesk(this.user.id, m.session_id, this.fingerprint, { kind: 'system' })
       return
     }
     if (m.type === 'rate_limit_event' && m.rate_limit_info.status === 'rejected') {

@@ -6,7 +6,8 @@ import { join } from 'node:path'
 import type { Effect } from '@alpha/connector-sdk'
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
-import { importRows, readDocument } from '../files/read.ts'
+import { KNOWN } from '../connectors/service.ts'
+import { importRows, readDocument } from '../files/documents.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../world/kinds.ts'
 import { findField, type Table } from '../world/shape.ts'
 import type { User, World } from '../world/world.ts'
@@ -85,6 +86,7 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   file: (i) => (i.action === 'import' ? 'write' : 'read'),
   ask: () => 'write',
   remember: () => 'write',
+  connect: () => 'sign_in',
 }
 
 function tableOf(world: World, name: string): Table {
@@ -345,6 +347,19 @@ export function worldTools(world: World, here: Here) {
             turn: here.current.turn,
           })
           return ok('Kept.')
+        }),
+      { alwaysLoad: true },
+    ),
+    tool(
+      'connect',
+      `Open the sign-in for one of the person's accounts or folders, when they want it connected: ${KNOWN.map((k) => `${k.manifest.name} (${k.manifest.title})`).join(', ')}. They sign in themselves in their window; Alpha never sees or types a password.`,
+      { connector: z.enum(KNOWN.map((k) => k.manifest.name) as [string, ...string[]]) },
+      async ({ connector }) =>
+        guard(() => {
+          const c = KNOWN.find((k) => k.manifest.name === connector)
+          return ok(
+            `The sign-in for ${c?.manifest.title ?? connector} is open in the person's window, under Settings › Connections. They type their own details there.`,
+          )
         }),
       { alwaysLoad: true },
     ),

@@ -10,7 +10,12 @@ function readWhole(file: string): string {
   return existsSync(file) ? readFileSync(file, 'utf8').trim() : ''
 }
 
-export function startLayer(world: World, userId: string, deskDir: string): string {
+export function startLayer(
+  world: World,
+  userId: string,
+  deskDir: string,
+  connections: string | null,
+): string {
   const parts: string[] = ['# Alpha: where things stand']
   const everyone = readWhole(instructionsFile(world, null))
   const mine = readWhole(instructionsFile(world, userId))
@@ -36,7 +41,7 @@ export function startLayer(world: World, userId: string, deskDir: string): strin
     parts.push('## Files')
     for (const d of docs) parts.push(`- ${d.title} (${d.kind}, ${d.chunks} pieces)`)
   }
-  parts.push('## Connections\nNone yet.')
+  parts.push(`## Connections\n${connections ?? 'None yet.'}`)
   parts.push(
     `## Folders\nYour own folder is ${deskDir}; module folders are under ${world.paths.modules}.`,
   )

@@ -7,7 +7,7 @@ const s = (v: unknown) => (typeof v === 'string' ? v : '')
 const short = (v: string, n = 80) => (v.length > n ? `${v.slice(0, n - 1)}…` : v)
 
 export function stepWords(tool: string, input: Input): string {
-  const name = tool.replace(/^mcp__alpha__/, '')
+  const name = tool.replace(/^mcp__(alpha|connectors)__/, '')
   switch (name) {
     case 'query':
       return 'Looked through the tables'
@@ -72,6 +72,20 @@ export function stepWords(tool: string, input: Input): string {
       return 'Looked for the right connection'
     case 'network':
       return `Let a script reach ${s(input.host)}`
+    case 'connect':
+      return `Connect ${s(input.connector)}`
+    case 'gmail_search':
+      return `Searched Gmail for “${short(s(input.query), 60)}”`
+    case 'gmail_read':
+      return 'Read an email'
+    case 'gmail_draft':
+      return `Saved a draft to ${s(input.to)}`
+    case 'gmail_send':
+      return `Send an email to ${s(input.to)}`
+    case 'calendar_events':
+      return 'Looked at the calendar'
+    case 'contacts_find':
+      return `Looked up “${short(s(input.words), 40)}” in contacts`
     default:
       return 'Worked on it'
   }

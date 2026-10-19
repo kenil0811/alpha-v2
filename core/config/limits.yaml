@@ -19,3 +19,12 @@ document_page_chunks: 200
 # How long a journey waits for one step's turn before calling it stuck: a journeys-runner
 # judgement, never met by the person.
 journey_step_minutes: 10
+
+# Attempts after the first, for a connector call that failed in passing (a dropped connection).
+connector_retries: 2
+
+# A sync that holds less than this share of last time's rows is suspect: said, not hidden.
+health_fewer_rows_ratio: 0.5
+
+# Nothing new from a connection for this many days is worth a line.
+health_quiet_days: 7

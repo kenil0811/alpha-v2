@@ -179,6 +179,9 @@ function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
     setBusy(true)
     try {
       await api.post(`/api/cards/${id}`, { answer: a })
+      // A sign-in's yes opens the form where the person signs in themselves.
+      if (card.gate === 'sign_in' && a === card.options[0])
+        window.location.hash = `#/settings${card.connector ? `?connect=${card.connector}` : ''}`
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That answer did not go in.')
       setBusy(false)
@@ -187,6 +190,11 @@ function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
   return (
     <div className="rounded-lg border border-neutral-200 px-4 py-3">
       <div className="text-neutral-900">{card.words}</div>
+      {card.detail && (
+        <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+          {card.detail}
+        </div>
+      )}
       {card.cannotUndo && <div className="mt-1 text-xs text-neutral-500">{card.cannotUndo}</div>}
       <div className="mt-3 flex flex-wrap gap-2">
         {card.options.map((o, i) => (
