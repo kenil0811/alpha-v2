@@ -1,0 +1,329 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { Refused } from './kinds.ts'
+import { World } from './world.ts'
+
+let home: string
+let world: World
+const alpha = { kind: 'alpha' as const }
+const person = { kind: 'person' as const, id: 'u_test' }
+
+beforeEach(async () => {
+  home = mkdtempSync(join(tmpdir(), 'alpha-world-'))
+  world = await World.open(join(home, 'tenants', 't_test'))
+})
+
+afterEach(() => {
+  world.close()
+  rmSync(home, { recursive: true, force: true })
+})
+
+function meals() {
+  const m = world.shape.makeModule('Food', { actor: alpha })
+  return world.shape.makeTable(
+    m.id,
+    'Meals',
+    [
+      { name: 'Food', kind: 'text' },
+      { name: 'Quantity', kind: 'number' },
+      { name: 'Meal', kind: 'choice', choices: ['breakfast', 'lunch', 'dinner'] },
+    ],
+    { actor: alpha },
+  )
+}
+
+function said(words: string) {
+  const owner = world.owner('Kenil')
+  const line = world.line({
+    actor: { kind: 'person', id: owner.id },
+    kind: 'said',
+    words,
+    user: owner.id,
+  })
+  return { message: line.id, user: owner.id }
+}
+
+describe('the world', () => {
+  it('makes its owner once', () => {
+    const a = world.owner('Kenil')
+    const b = world.owner('Someone else')
+    expect(b).toEqual(a)
+    expect(world.users()).toHaveLength(1)
+  })
+
+  it('reopens a world without running its migrations again', async () => {
+    meals()
+    world.close()
+    world = await World.open(join(home, 'tenants', 't_test'))
+    expect(world.shape.tables().map((t) => t.name)).toEqual(['Meals'])
+  })
+
+  it('makes a module as a directory with its manifest and notes', () => {
+    const t = meals()
+    expect(existsSync(join(t.module.dir, 'NOTES.md'))).toBe(true)
+    const manifest = readFileSync(join(t.module.dir, 'module.yaml'), 'utf8')
+    expect(manifest).toContain('name: Meals')
+    expect(manifest).toContain('kind: number')
+    const made = world.lines({ kinds: ['made'] }).map((l) => l.words)
+    expect(made).toEqual([
+      'Made the module Food.',
+      'Made the table Meals in Food, with Food, Quantity, Meal.',
+    ])
+  })
+
+  it('adds a row whose stated values point at the person’s words', () => {
+    const t = meals()
+    const s = said('log two eggs for breakfast')
+    const [id] = world.records.add(
+      t.id,
+      [
+        {
+          values: { Food: 'eggs', Quantity: 2, Meal: 'breakfast' },
+          provenance: { kind: 'stated' },
+        },
+      ],
+      { actor: alpha, said: s },
+    )
+    const rows = world.records.list(t.id)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.id).toBe(id)
+    expect(rows[0]?.values).toEqual({ food: 'eggs', quantity: 2, meal: 'breakfast' })
+    expect(rows[0]?.provenance.quantity?.kind).toBe('stated')
+    expect(rows[0]?.provenance.quantity?.source.message).toBe(s.message)
+    expect(world.lines({ kinds: ['wrote'] })[0]?.words).toBe(
+      'Added a row to Meals: Food eggs, Quantity 2, Meal breakfast.',
+    )
+  })
+
+  it('refuses a value without its provenance, or of the wrong kind', () => {
+    const t = meals()
+    const add = (values: Record<string, unknown>, provenance: object) =>
+      world.records.add(t.id, [{ values, provenance: provenance as never }], { actor: alpha })
+    expect(() => add({ Food: 'eggs' }, { kind: 'stated' })).toThrow(/person’s words/)
+    expect(() => add({ Food: 'eggs' }, { kind: 'estimated' })).toThrow(/rests on/)
+    expect(() => add({ Food: 'eggs' }, { kind: 'looked_up' })).toThrow(/where it was looked up/)
+    expect(() => add({ Quantity: 'two' }, { kind: 'assumed', basis: 'a guess' })).toThrow(
+      /takes a number/,
+    )
+    expect(() => add({ Meal: 'brunch' }, { kind: 'assumed', basis: 'a guess' })).toThrow(
+      /one of "breakfast"/,
+    )
+    expect(() => add({ Colour: 'red' }, { kind: 'assumed', basis: 'a guess' })).toThrow(
+      /no field called Colour/,
+    )
+    expect(world.records.list(t.id)).toHaveLength(0)
+  })
+
+  it('keeps a version per change, and a rename keeps the values', () => {
+    const t = meals()
+    const s = said('two eggs')
+    const [id] = world.records.add(
+      t.id,
+      [{ values: { Food: 'eggs', Quantity: 2 }, provenance: { kind: 'stated' } }],
+      {
+        actor: alpha,
+        said: s,
+      },
+    )
+    world.records.change(
+      t.id,
+      [{ id: id as string, values: { Quantity: 3 }, provenance: { kind: 'stated' } }],
+      {
+        actor: alpha,
+        said: s,
+      },
+    )
+    world.shape.rename({ table: 'Meals', field: 'Quantity' }, 'How many', { actor: alpha })
+    const row = world.records.list(t.id)[0]
+    expect(row?.version).toBe(2)
+    expect(row?.values).toEqual({ food: 'eggs', how_many: 3 })
+    const versions = world.db
+      .prepare('SELECT version FROM record_versions WHERE record_id = ?')
+      .all(id as string)
+    expect(versions).toEqual([{ version: 1 }])
+  })
+
+  it('removes rows with everything related, and the journal keeps what they were', () => {
+    const t = meals()
+    const s = said('two eggs')
+    const [id] = world.records.add(
+      t.id,
+      [{ values: { Food: 'eggs', Quantity: 2 }, provenance: { kind: 'stated' } }],
+      {
+        actor: alpha,
+        said: s,
+      },
+    )
+    world.records.change(
+      t.id,
+      [{ id: id as string, values: { Quantity: 3 }, provenance: { kind: 'stated' } }],
+      {
+        actor: alpha,
+        said: s,
+      },
+    )
+    expect(world.records.remove(t.id, [id as string], { actor: alpha })).toBe(1)
+    expect(world.records.list(t.id)).toHaveLength(0)
+    expect(world.db.prepare('SELECT count(*) AS n FROM record_versions').get()).toEqual({ n: 0 })
+    expect(world.search('eggs').filter((h) => h.what === 'record')).toHaveLength(0)
+    const removed = world.lines({ kinds: ['removed'] })[0]
+    expect(removed?.words).toBe('Removed a row from Meals: Food eggs, Quantity 3.')
+    expect(() => world.db.exec("UPDATE journal SET words = 'x'")).toThrow(/append-only/)
+    expect(() => world.db.exec('DELETE FROM journal')).toThrow(/never deleted/)
+  })
+
+  it('knows the person’s own entries from what the model made', () => {
+    const t = meals()
+    const [mine] = world.records.add(
+      t.id,
+      [{ values: { Food: 'eggs' }, provenance: { kind: 'stated' } }],
+      {
+        actor: alpha,
+        said: said('eggs'),
+      },
+    )
+    const [guess] = world.records.add(
+      t.id,
+      [{ values: { Food: 'toast' }, provenance: { kind: 'estimated', basis: 'usual breakfast' } }],
+      { actor: alpha },
+    )
+    expect(world.records.personsOwn([mine as string])).toBe(true)
+    expect(world.records.personsOwn([guess as string])).toBe(false)
+  })
+})
+
+describe('a looked-up value from a file', () => {
+  it('points at the file by its hash, and a file the world does not hold is refused', () => {
+    const t = meals()
+    const { file } = world.files.take(
+      new TextEncoder().encode('Food\neggs\n'),
+      'b.csv',
+      'text/csv',
+      {
+        actor: person,
+      },
+    )
+    const add = (name: string) =>
+      world.records.add(
+        t.id,
+        [
+          {
+            values: { Food: 'eggs' },
+            provenance: { kind: 'looked_up', source: { file: name, cell: 'A2' } },
+          },
+        ],
+        { actor: alpha },
+      )
+    add('b.csv')
+    expect(world.records.list(t.id)[0]?.provenance.food?.source.file).toBe(file.hash)
+    expect(() => add('missing.csv')).toThrow(/no file called missing.csv/)
+  })
+})
+
+describe('cards', () => {
+  const call = { tool: 'change', input: { table: 'Meals', remove: ['r_1'] } }
+
+  it('keeps one waiting card per identical call', () => {
+    const first = world.cards.open({
+      kind: 'permission',
+      words: 'Remove eggs?',
+      call,
+      actor: alpha,
+    })
+    const second = world.cards.open({
+      kind: 'permission',
+      words: 'Remove eggs?',
+      call,
+      actor: alpha,
+    })
+    expect(world.cards.get(first.id)?.state).toBe('withdrawn')
+    expect(world.cards.waiting().map((c) => c.id)).toEqual([second.id])
+  })
+
+  it('lets the call through once on a yes, never on an agent’s answer', () => {
+    const card = world.cards.open({ kind: 'permission', words: 'Remove eggs?', call, actor: alpha })
+    expect(() => world.cards.answer(card.id, 'Yes', { kind: 'agent', id: 'morning' })).toThrow(
+      Refused,
+    )
+    expect(world.cards.useYes(call)).toBeUndefined()
+    world.cards.answer(card.id, 'Yes', person)
+    expect(world.cards.get(card.id)?.state).toBe('yes')
+    const reordered = { tool: 'change', input: { remove: ['r_1'], table: 'Meals' } }
+    expect(world.cards.useYes(reordered)?.id).toBe(card.id)
+    expect(world.cards.useYes(call)).toBeUndefined()
+    expect(world.lines({ kinds: ['card_opened', 'card_closed'] }).map((l) => l.words)).toEqual([
+      'Remove eggs?',
+      'Yes: Remove eggs?',
+    ])
+  })
+
+  it('takes a no', () => {
+    const card = world.cards.open({ kind: 'permission', words: 'Remove eggs?', call, actor: alpha })
+    world.cards.answer(card.id, 'No', person)
+    expect(world.cards.get(card.id)?.state).toBe('no')
+    expect(world.cards.useYes(call)).toBeUndefined()
+  })
+})
+
+describe('files', () => {
+  it('keeps the same bytes once and reads a document with positions', () => {
+    const bytes = new TextEncoder().encode('date,food\n2026-10-19,eggs\n')
+    const a = world.files.take(bytes, 'meals.csv', 'text/csv', { actor: person })
+    const b = world.files.take(bytes, 'copy.csv', 'text/csv', { actor: person })
+    expect(a.isNew).toBe(true)
+    expect(b.isNew).toBe(false)
+    expect(b.file.hash).toBe(a.file.hash)
+    const doc = world.files.addDocument(
+      a.file.hash,
+      'meals.csv',
+      'sheet',
+      [
+        { position: { sheet: 'Sheet1', cell: 'B1' }, words: 'food' },
+        { position: { sheet: 'Sheet1', cell: 'B2' }, words: 'eggs' },
+      ],
+      { actor: alpha },
+    )
+    expect(doc.chunks).toBe(2)
+    const hit = world.search('eggs').find((h) => h.what === 'document')
+    expect(hit?.where).toContain('"cell":"B2"')
+  })
+})
+
+describe('the model’s SQL', () => {
+  it('reads a view per table and the journal, and nothing else', () => {
+    const t = meals()
+    world.records.add(
+      t.id,
+      [{ values: { Food: 'eggs', Quantity: 2 }, provenance: { kind: 'stated' } }],
+      {
+        actor: alpha,
+        said: said('two eggs'),
+      },
+    )
+    const r = world.sql.query('SELECT food, quantity FROM meals')
+    expect(r.rows).toEqual([{ food: 'eggs', quantity: 2 }])
+    expect(r.total).toBe(1)
+    expect(world.sql.query("SELECT count(*) AS n FROM journal WHERE kind = 'wrote'").rows).toEqual([
+      { n: 1 },
+    ])
+    expect(() => world.sql.query('SELECT * FROM records')).toThrow(/through its views only/)
+    expect(() => world.sql.query('SELECT * FROM main.cards')).toThrow(/through its views only/)
+    expect(() => world.sql.query("INSERT INTO meals (food) VALUES ('x')")).toThrow(Refused)
+    expect(() => world.sql.query('SELECT 1; DELETE FROM records')).toThrow(/One statement/)
+  })
+
+  it('follows the shape as it changes', () => {
+    const t = meals()
+    expect(world.sql.query('SELECT * FROM meals').columns).toEqual([
+      'id',
+      'added',
+      'food',
+      'quantity',
+      'meal',
+    ])
+    world.shape.addFields(t.id, [{ name: 'Cost', kind: 'money' }], { actor: alpha })
+    expect(world.sql.query('SELECT * FROM meals').columns).toContain('cost_currency')
+  })
+})
