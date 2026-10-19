@@ -1,0 +1,8 @@
+{
+  "from": "Priya Shah <priya@harborcapital.example>",
+  "to": "kenil@example.com",
+  "subject": "Re: Harbor deal: NDA attached",
+  "date": "2026-10-15T16:40:00.000Z",
+  "text": "Hi Kenil,\n\nThe NDA is attached. Once it's signed I can send the CIM for the St. Louis restoration business.\n\nBest,\nPriya",
+  "attachments": ["Harbor NDA.pdf"]
+}

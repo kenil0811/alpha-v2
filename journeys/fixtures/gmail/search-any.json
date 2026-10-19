@@ -1,0 +1,24 @@
+[
+  {
+    "id": "<deal-2@harbor.example>",
+    "thread": "t-harbor",
+    "from": "Priya Shah <priya@harborcapital.example>",
+    "fromAddress": "priya@harborcapital.example",
+    "to": "kenil@example.com",
+    "cc": "",
+    "subject": "Re: Harbor deal: NDA attached",
+    "date": "2026-10-15T16:40:00.000Z",
+    "labels": "Inbox"
+  },
+  {
+    "id": "<deal-1@harbor.example>",
+    "thread": "t-harbor",
+    "from": "Priya Shah <priya@harborcapital.example>",
+    "fromAddress": "priya@harborcapital.example",
+    "to": "kenil@example.com",
+    "cc": "",
+    "subject": "Harbor deal: restoration contractor in St. Louis",
+    "date": "2026-10-13T09:12:00.000Z",
+    "labels": "Inbox"
+  }
+]

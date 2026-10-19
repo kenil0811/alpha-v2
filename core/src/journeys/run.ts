@@ -2,13 +2,16 @@
 // run on a fresh tenant of its own with the real model. Checks read the world, not the model's
 // prose. The report goes in docs/journeys/.
 //   node src/journeys/run.ts <name> [--alone] [--keep]
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { config } from '../config.ts'
+import { ConnectorService } from '../connectors/service.ts'
 import { Engine } from '../engine/engine.ts'
+import { stillReading } from '../files/documents.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 
@@ -21,6 +24,17 @@ const Check = z.union([
   z.object({ permission_cards: z.number() }),
   z.object({ cards_waiting: z.number() }),
   z.object({ errors: z.number() }),
+  z.object({ documents: z.number() }),
+  z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
+  z.object({ reply_matches: z.string() }),
+  z.object({
+    card: z.object({
+      gate: z.string(),
+      words: z.string().optional(),
+      detail: z.string().optional(),
+    }),
+  }),
+  z.object({ connector_calls: z.object({ words: z.string(), count: z.number() }) }),
 ])
 type Check = z.infer<typeof Check>
 
@@ -32,6 +46,10 @@ const Journey = z.object({
     z.object({
       say: z.string().optional(),
       answer: z.object({ choice: z.string() }).optional(),
+      // a folder of files given to Alpha, copied from the repository so the journey owns it
+      folder: z.object({ from: z.string(), only: z.string().optional() }).optional(),
+      // an account connected on recorded answers (journeys/fixtures), never a real one
+      connect: z.object({ connector: z.string(), account: z.string() }).optional(),
       checks: z.array(Check).default([]),
     }),
   ),
@@ -101,6 +119,55 @@ function judge(world: World, user: User, check: Check): Outcome {
       saw: String(n),
     }
   }
+  if ('documents' in check) {
+    const docs = world.files.documents()
+    return {
+      check: `documents: ${check.documents}`,
+      ok: docs.length === check.documents,
+      saw: `${docs.length}: ${docs.map((d) => `${d.title} (${d.chunks})`).join('; ')}`,
+    }
+  }
+  if ('rows_in' in check) {
+    const t = world.shape.table(check.rows_in.table)
+    const n = t ? world.records.count(t.id) : -1
+    return {
+      check: `rows in ${check.rows_in.table}: ${check.rows_in.count}`,
+      ok: n === check.rows_in.count,
+      saw: t ? String(n) : 'no such table',
+    }
+  }
+  if ('reply_matches' in check) {
+    const reply = world.lines({ user: user.id, kinds: ['replied'] }).at(-1)?.words ?? ''
+    const re = new RegExp(check.reply_matches, 'i')
+    return {
+      check: `the reply matches /${check.reply_matches}/`,
+      ok: re.test(reply),
+      saw: reply.slice(0, 160),
+    }
+  }
+  if ('card' in check) {
+    const cards = world.cards.waiting(user.id).filter((c) => c.gate === check.card.gate)
+    const hit = cards.find(
+      (c) =>
+        (!check.card.words || new RegExp(check.card.words, 'i').test(c.words)) &&
+        (!check.card.detail || new RegExp(check.card.detail, 'i').test(c.detail ?? '')),
+    )
+    return {
+      check: `a ${check.card.gate} card waiting${check.card.detail ? ` showing /${check.card.detail}/` : ''}`,
+      ok: !!hit,
+      saw: cards.map((c) => `${c.words} | ${(c.detail ?? '').slice(0, 80)}`).join('; ') || 'none',
+    }
+  }
+  if ('connector_calls' in check) {
+    const n = world
+      .lines({ kinds: ['connector_call'] })
+      .filter((l) => l.words === check.connector_calls.words).length
+    return {
+      check: `“${check.connector_calls.words}” ${check.connector_calls.count} time(s)`,
+      ok: n === check.connector_calls.count,
+      saw: String(n),
+    }
+  }
   const n = world.lines({ kinds: ['error'] }).length
   return { check: `errors: ${check.errors}`, ok: n === check.errors, saw: String(n) }
 }
@@ -117,7 +184,11 @@ async function main() {
   rmSync(home, { recursive: true, force: true })
   const world = await World.open(join(home, 'tenants', 't_journey'))
   const user = world.owner('Kenil')
-  const engine = new Engine(world, { prompt })
+  const connectors = new ConnectorService(world, {
+    secrets: new MemorySecrets(),
+    fixtures: join(ROOT, 'journeys', 'fixtures'),
+  })
+  const engine = new Engine(world, { prompt, connectors })
   const limit = config.limits().journey_step_minutes * 60_000
   const idle = () =>
     new Promise<boolean>((resolve) => {
@@ -147,7 +218,7 @@ async function main() {
   const started = Date.now()
   for (const [i, step] of journey.steps.entries()) {
     const t0 = Date.now()
-    const done = idle()
+    const done = step.say || step.answer ? idle() : Promise.resolve(true)
     let what: string
     if (step.say) {
       what = `Said “${step.say}”`
@@ -157,7 +228,25 @@ async function main() {
       if (!card) throw new Error(`Step ${i + 1}: no card is waiting to answer.`)
       what = `Answered “${card.words}” with ${step.answer.choice}`
       engine.answer(user, card.id, step.answer.choice)
-    } else throw new Error(`Step ${i + 1} neither says nor answers.`)
+    } else if (step.folder) {
+      const dir = join(home, 'folder')
+      mkdirSync(dir, { recursive: true })
+      const from = resolve(ROOT, step.folder.from)
+      const names = readdirSync(from).filter(
+        (n) => !step.folder?.only || n.includes(step.folder.only),
+      )
+      for (const n of names) copyFileSync(join(from, n), join(dir, n))
+      what = `Gave Alpha a folder of ${names.length} file${names.length === 1 ? '' : 's'} from ${step.folder.from}`
+      await engine.connect(user, 'folder', dir, null)
+      await connectors.sync(world.connections.find('folder', dir)?.id ?? '')
+      await stillReading()
+    } else if (step.connect) {
+      what = `Connected ${step.connect.connector} for ${step.connect.account}, on recorded answers`
+      await engine.connect(user, step.connect.connector, step.connect.account, 'recorded')
+      await connectors.sync(
+        world.connections.find(step.connect.connector, step.connect.account)?.id ?? '',
+      )
+    } else throw new Error(`Step ${i + 1} neither says, answers, nor connects.`)
     const finished = await done
     const reply = world.lines({ user: user.id, kinds: ['replied', 'error'] }).at(-1)
     const steps = world
@@ -179,12 +268,14 @@ async function main() {
       )
       .join('; ')
     report.push(`## ${i + 1}. ${what}`, '')
-    report.push(
-      `${finished ? '' : '**The turn did not finish.** '}Reply (${((Date.now() - t0) / 1000).toFixed(1)} s): ${reply?.words ?? '(none)'}`,
-      '',
-    )
-    if (steps.length) report.push(`Steps: ${steps.map((s) => s.words).join('; ')}.`, '')
-    if (tokens) report.push(`Tokens so far in the session: ${tokens}.`, '')
+    if (step.say || step.answer) {
+      report.push(
+        `${finished ? '' : '**The turn did not finish.** '}Reply (${((Date.now() - t0) / 1000).toFixed(1)} s): ${reply?.words ?? '(none)'}`,
+        '',
+      )
+      if (steps.length) report.push(`Steps: ${steps.map((s) => s.words).join('; ')}.`, '')
+      if (tokens) report.push(`Tokens so far in the session: ${tokens}.`, '')
+    } else report.push(`Took ${((Date.now() - t0) / 1000).toFixed(1)} s.`, '')
     for (const check of step.checks) {
       const o = judge(world, user, check)
       passed &&= o.ok

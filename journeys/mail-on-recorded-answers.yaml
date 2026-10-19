@@ -1,0 +1,24 @@
+name: mail-on-recorded-answers
+title: Mail lands in a table, a question is answered from it, and a send waits on its card
+why: >
+  Avilo's first day, sentence 8 (design §16): a draft to a broker waits for her yes and goes.
+  Kenil, 19 Oct: a draft goes to no one, so it does not wait; a send does. On recorded answers
+  (journeys/fixtures/gmail), never a real account.
+steps:
+  - connect: { connector: gmail, account: avilo@example.com }
+    checks:
+      - rows_in: { table: Mail, count: 6 }
+  - say: who has emailed me about deals this week?
+    checks:
+      - reply_matches: 'Priya'
+      - reply_matches: 'Marco'
+      - permission_cards: 0
+  - say: draft a reply to Priya asking her to send the CIM once I sign the NDA, then send it
+    checks:
+      - card: { gate: leaves_world, words: 'priya@harborcapital\.example', detail: 'CIM' }
+      - connector_calls: { words: 'Gmail: send', count: 0 }
+  - answer: { choice: 'Yes' }
+    checks:
+      - connector_calls: { words: 'Gmail: send', count: 1 }
+      - cards_waiting: 0
+      - errors: 0
