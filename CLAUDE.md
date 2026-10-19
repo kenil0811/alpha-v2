@@ -17,7 +17,10 @@ Imports go one way (design §3). Internal packages are not built: Node runs thei
 directly, so use erasable syntax only (no enums, no namespaces, no parameter properties).
 
 Node 26 (`.nvmrc`) and pnpm 11. Commands: `pnpm install`, `pnpm check` (typecheck, lint,
-test), `pnpm format`, `pnpm dev:core` (needs `ALPHA_HOME`), `pnpm dev:window`.
+test), `pnpm format`, `pnpm start` (builds the window; the core serves it; needs `ALPHA_HOME`),
+`pnpm dev:core` with `pnpm dev:window` (Vite on the next port), `pnpm journey <name>`
+(`--alone`: Alpha's prompt without Claude Code's). The core prints the address to open, with
+the per-install token. Prompts, models and judgements live in `core/config/`, not in code.
 
 ## Rules
 

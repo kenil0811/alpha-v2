@@ -163,8 +163,8 @@ granted folders; a script's network by the module's allowlist, with one card for
 **What v1 learned about the SDK, kept:** a strict MCP config, so the person's own claude.ai
 connectors never join a session; no setting sources, so no user settings leak in; sessions kept
 apart by working directory; a session resumed only with the same tools (v1 crashed resuming
-one made on other tools); a gated call deferred on its card, so a yes can outlive the turn and
-a restart; a run that falls silent is ended, while a waiting card counts as alive.
+one made on other tools); a yes that outlives the turn and a restart (§7); a run that falls
+silent is ended, while a waiting card counts as alive.
 
 **The model.** An Opus-class model for every turn and run, named in one line of config; a
 small model only for eyes (a look at a rendered page) or a yes-or-no. Route: the tenant's own
@@ -230,8 +230,11 @@ Every tool and connector action declares its effect (read, write, remove, outwar
 before-call hook maps effects to gates; an undeclared effect counts as outward. The model's own
 web search and fetch are reads.
 
-A gate makes a card: a preview, what it rests on, and what cannot be undone. The call is
-deferred on the card, so it survives a restart. The person answers in the window or in words:
+A gate makes a card: a preview, what it rests on, and what cannot be undone. The call does not
+run: it is refused with words saying it waits on the card, and the card holds the exact call.
+The person's yes lets that same call through once when the model makes it again, so a yes
+survives the turn and a restart (Kenil, 19 Oct: the SDK's own defer failed for in-process tools
+in week 1's spike). The person answers in the window or in words:
 "go ahead" reaches the one waiting card, and with two the desk asks which. Many alike are
 batched on one card. A **standing permission** is a structured rule the model proposes when the
 person says "always", confirmed on a card, stored as a row, shown as a sentence, revoked in
