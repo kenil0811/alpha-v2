@@ -1,9 +1,18 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { App } from './App.tsx'
+import { Rail } from './App.tsx'
 
 describe('the window', () => {
-  it('draws Home with the core version', () => {
-    expect(renderToString(<App health={{ ok: true, version: '0.0.0' }} />)).toContain('Alpha 0.0.0')
+  it('lists the modules and their tables in the rail', () => {
+    const html = renderToString(
+      <Rail
+        modules={[{ id: 'm_1', name: 'Food', tables: [{ id: 't_1', name: 'Meals', rows: 1 }] }]}
+        place={{ at: 'home' }}
+        name="Kenil"
+      />,
+    )
+    expect(html).toContain('Food')
+    expect(html).toContain('href="#/table/t_1"')
+    expect(html).toContain('Meals')
   })
 })
