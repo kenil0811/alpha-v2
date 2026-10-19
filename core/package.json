@@ -1,0 +1,18 @@
+{
+  "name": "@alpha/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api": "./src/api/types.ts"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "dev": "node --watch src/main.ts"
+  },
+  "dependencies": {
+    "fastify": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
