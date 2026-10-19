@@ -1,0 +1,21 @@
+# Judgements, each with its why. None of these is a cap on the person's work.
+
+# Rows the model reads in one page of a query: enough to read whole, and it asks for the next
+# page with an offset.
+query_page_rows: 500
+
+# Hits a search returns: the best twenty are what a reader looks at.
+search_hits: 20
+
+# Lines in the matches hint on each message (design §6: three).
+hint_lines: 3
+
+# Lines of what changed elsewhere since the last turn here, newest first.
+changed_lines: 10
+
+# Chunks of a document a read returns at once; the model asks for more with an offset.
+document_page_chunks: 200
+
+# How long a journey waits for one step's turn before calling it stuck: a journeys-runner
+# judgement, never met by the person.
+journey_step_minutes: 10

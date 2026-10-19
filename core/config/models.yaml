@@ -1,0 +1,5 @@
+# The model for every desk turn and run, and the small one for eyes or a yes-or-no (design §5).
+desk: claude-opus-5-5
+eyes: claude-haiku-5-5
+# subscription: the person's own Claude sign-in on this Mac; key: the tenant's API key.
+route: subscription
