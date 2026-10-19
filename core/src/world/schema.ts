@@ -167,6 +167,37 @@ export const MIGRATIONS: string[] = [
     last_turn_at TEXT
   );
   `,
+  `
+  -- A connection: one account of one connector. It points at its secret and never holds it.
+  CREATE TABLE connections (
+    id TEXT PRIMARY KEY,
+    connector TEXT NOT NULL,
+    account TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('connected', 'needs_sign_in', 'broken', 'paused')),
+    health TEXT,
+    secret_ref TEXT,
+    cursor TEXT,
+    last_sync_at TEXT,
+    last_rows INTEGER,
+    last_new_at TEXT,
+    made_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (connector, account)
+  );
+
+  -- A row a connection lands keeps the item's own id, so the next sync changes it in place.
+  ALTER TABLE records ADD COLUMN item_key TEXT;
+  CREATE UNIQUE INDEX records_item ON records (table_id, item_key) WHERE item_key IS NOT NULL;
+
+  -- What a card shows in full: the message to be sent, the rows to be filed.
+  ALTER TABLE cards ADD COLUMN detail TEXT;
+  `,
+  `
+  -- A table out of the sidebar: what a connection keeps is Alpha's working memory, hidden until
+  -- the person shows it (Kenil, 19 Oct). The model reads it all the same.
+  ALTER TABLE tables ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
+  UPDATE tables SET hidden = 1 WHERE made_by LIKE 'connector:%';
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

@@ -36,6 +36,9 @@ export interface Source {
   record?: string
   inputs?: string[]
   formula?: string
+  connector?: string // a connection's item: the connector, the account, the item's own id
+  account?: string
+  item?: string
 }
 
 export interface Provenance {
@@ -73,11 +76,11 @@ export function provenanceFor(input: ProvenanceInput, said: Said | null, at: str
         )
       break
     case 'looked_up':
-      if (!source.url && !source.document && !source.file && !source.record)
+      if (!source.url && !source.document && !source.file && !source.record && !source.item)
         throw new Refused(
-          'A looked-up value needs where it was looked up: a link, a document, a file or a record.',
+          'A looked-up value needs where it was looked up: a link, a document, a file, a record or a connection’s item.',
         )
-      if (source.url && !source.fetched_at) source.fetched_at = at
+      if ((source.url || source.item) && !source.fetched_at) source.fetched_at = at
       break
     case 'computed':
       if (!source.inputs?.length && !source.formula)

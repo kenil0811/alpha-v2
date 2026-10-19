@@ -1,8 +1,10 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Refused } from './kinds.ts'
+import { MIGRATIONS } from './schema.ts'
 import { World } from './world.ts'
 
 let home: string
@@ -191,6 +193,64 @@ describe('the world', () => {
     )
     expect(world.records.personsOwn([mine as string])).toBe(true)
     expect(world.records.personsOwn([guess as string])).toBe(false)
+  })
+})
+
+describe('migrations', () => {
+  it('bring an older world up to date, backing it up first', async () => {
+    const dir = join(home, 'tenants', 't_old')
+    mkdirSync(dir, { recursive: true })
+    const db = new DatabaseSync(join(dir, 'world.sqlite'))
+    db.exec(MIGRATIONS[0] as string)
+    db.exec('PRAGMA user_version = 1')
+    db.close()
+    const old = await World.open(dir)
+    expect(old.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: MIGRATIONS.length })
+    expect(readdirSync(join(dir, 'backups'))).toEqual([
+      expect.stringMatching(/^world-.*-v1\.sqlite$/),
+    ])
+    expect(old.connections.list()).toEqual([])
+    old.close()
+  })
+})
+
+describe('rows a connection lands', () => {
+  it('come in by each item’s own id: new ones added, changed ones versioned, the same left', () => {
+    const t = meals()
+    const src = { connector: 'test', account: 'me' }
+    const ctx = { actor: { kind: 'connector' as const, id: 'test' } }
+    expect(
+      world.records.land(
+        t.id,
+        [
+          { key: 'a', values: { Food: 'eggs' } },
+          { key: 'b', values: { Food: 'toast' } },
+        ],
+        src,
+        ctx,
+      ),
+    ).toEqual({ added: 2, changed: 0, same: 0 })
+    expect(
+      world.records.land(
+        t.id,
+        [
+          { key: 'a', values: { Food: 'eggs' } },
+          { key: 'b', values: { Food: 'jam toast' } },
+        ],
+        src,
+        ctx,
+      ),
+    ).toEqual({ added: 0, changed: 1, same: 1 })
+    const rows = world.records.list(t.id)
+    expect(rows.map((r) => [r.values.food, r.version])).toEqual([
+      ['eggs', 1],
+      ['jam toast', 2],
+    ])
+    expect(rows[1]?.provenance.food).toMatchObject({
+      kind: 'looked_up',
+      source: { connector: 'test', account: 'me', item: 'b' },
+    })
+    expect(world.records.personsOwn(rows.map((r) => r.id))).toBe(false)
   })
 })
 

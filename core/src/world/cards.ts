@@ -16,6 +16,7 @@ export interface Call {
 export interface CardInput {
   kind: CardKind
   words: string
+  detail?: string | null // what the card shows in full: the message to be sent
   restsOn?: string[]
   cannotUndo?: string | null
   options?: string[]
@@ -34,6 +35,7 @@ export interface Card {
   state: CardState
   user: string | null
   words: string
+  detail: string | null
   restsOn: string[]
   cannotUndo: string | null
   options: string[]
@@ -54,6 +56,7 @@ interface CardRow {
   state: CardState
   user_id: string | null
   words: string
+  detail: string | null
   rests_on: string
   cannot_undo: string | null
   options: string
@@ -75,6 +78,7 @@ function toCard(r: CardRow): Card {
     state: r.state,
     user: r.user_id,
     words: r.words,
+    detail: r.detail,
     restsOn: parse(r.rests_on, []),
     cannotUndo: r.cannot_undo,
     options: parse(r.options, []),
@@ -129,13 +133,14 @@ export class Cards {
       const id = newId('c')
       run(
         this.db,
-        `INSERT INTO cards (id, kind, state, user_id, words, rests_on, cannot_undo, options, gate,
-           call_key, call, module_id, run_id, turn_id, created_at)
-         VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO cards (id, kind, state, user_id, words, detail, rests_on, cannot_undo, options,
+           gate, call_key, call, module_id, run_id, turn_id, created_at)
+         VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
         input.kind,
         input.user ?? null,
         input.words,
+        input.detail ?? null,
         json(input.restsOn ?? []),
         input.cannotUndo ?? null,
         json(input.options ?? (input.kind === 'permission' ? ['Yes', 'No'] : [])),

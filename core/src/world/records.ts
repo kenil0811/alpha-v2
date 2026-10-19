@@ -36,6 +36,27 @@ export interface RecordOut {
   updatedAt: string
 }
 
+export interface LandInput {
+  key: string // the item's own id at its source: a message id, an event id
+  values: Record<string, unknown> // by field name
+}
+
+export interface LandSource {
+  connector: string
+  account?: string
+  url?: string
+}
+
+export interface Landed {
+  added: number
+  changed: number
+  same: number
+}
+
+function sortKeys(o: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)))
+}
+
 export interface RecordCtx extends WriteCtx {
   said?: Said | null
 }
@@ -205,11 +226,106 @@ export class Records {
     })
   }
 
+  // What a connection brings in, by each item's own id: new items are added, changed ones change
+  // in place (their old values kept as a version), the same ones are left. One journal line.
+  land(
+    tableId: string,
+    items: LandInput[],
+    source: LandSource,
+    ctx: WriteCtx,
+    options: { existing?: boolean } = {},
+  ): Landed {
+    return tx(this.db, () => {
+      const table = this.mustTable(tableId)
+      const at = now()
+      const out: Landed = { added: 0, changed: 0, same: 0 }
+      for (const item of items) {
+        const { vals, prov } = this.prepare(
+          table,
+          item.values,
+          { kind: 'looked_up', source: { ...source, item: item.key } },
+          undefined,
+          null,
+          at,
+        )
+        const r = one<RecordRow>(
+          this.db,
+          'SELECT * FROM records WHERE table_id = ? AND item_key = ?',
+          table.id,
+          item.key,
+        )
+        if (!r && options.existing) continue
+        if (!r) {
+          const id = newId('r')
+          run(
+            this.db,
+            `INSERT INTO records (id, table_id, version, vals, provenance, made_by, created_at,
+               updated_at, item_key) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+            id,
+            table.id,
+            json(vals),
+            json(prov),
+            actorName(ctx.actor),
+            at,
+            at,
+            item.key,
+          )
+          this.index(table, id, vals)
+          out.added++
+          continue
+        }
+        const before = parse<Record<string, unknown>>(r.vals, {})
+        const merged = { ...before, ...vals }
+        if (JSON.stringify(sortKeys(merged)) === JSON.stringify(sortKeys(before))) {
+          out.same++
+          continue
+        }
+        run(
+          this.db,
+          'INSERT INTO record_versions (record_id, version, vals, provenance, replaced_at, replaced_by) VALUES (?, ?, ?, ?, ?, ?)',
+          r.id,
+          r.version,
+          r.vals,
+          r.provenance,
+          at,
+          actorName(ctx.actor),
+        )
+        const mergedProv = { ...parse<Record<string, Provenance>>(r.provenance, {}), ...prov }
+        run(
+          this.db,
+          'UPDATE records SET version = version + 1, vals = ?, provenance = ?, updated_at = ? WHERE id = ?',
+          json(merged),
+          json(mergedProv),
+          at,
+          r.id,
+        )
+        this.index(table, r.id, merged)
+        out.changed++
+      }
+      if (out.added || out.changed)
+        append(this.db, {
+          actor: ctx.actor,
+          kind: 'landed',
+          words: `${[
+            out.added ? `${out.added} new` : '',
+            out.changed ? `${out.changed} changed` : '',
+          ]
+            .filter(Boolean)
+            .join(' and ')} in ${table.name} from ${source.account ?? source.connector}.`,
+          data: { table: table.id, ...out, connector: source.connector, account: source.account },
+          user: ctx.user ?? null,
+          run: ctx.run ?? null,
+          module: table.module.id,
+        })
+      return out
+    })
+  }
+
   list(tableId: string): RecordOut[] {
     const table = this.mustTable(tableId)
     return all<RecordRow>(
       this.db,
-      'SELECT * FROM records WHERE table_id = ? ORDER BY created_at, id',
+      'SELECT * FROM records WHERE table_id = ? ORDER BY created_at, rowid',
       table.id,
     ).map((r) => this.out(table, r))
   }

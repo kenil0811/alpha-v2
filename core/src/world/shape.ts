@@ -28,6 +28,7 @@ export interface Table {
   module: Module
   name: string
   slug: string
+  hidden: boolean // out of the sidebar
   fields: Field[]
 }
 
@@ -160,9 +161,9 @@ export class Shape {
   }
 
   table(idOrName: string): Table | undefined {
-    const t = one<{ id: string; module_id: string; name: string; slug: string }>(
+    const t = one<{ id: string; module_id: string; name: string; slug: string; hidden: number }>(
       this.db,
-      'SELECT id, module_id, name, slug FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, hidden FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -190,10 +191,16 @@ export class Shape {
         relatesTo: o.relatesTo ?? null,
       }
     })
-    return { id: t.id, module, name: t.name, slug: t.slug, fields }
+    return { id: t.id, module, name: t.name, slug: t.slug, hidden: t.hidden === 1, fields }
   }
 
-  makeTable(moduleId: string, name: string, fields: FieldInput[], ctx: WriteCtx): Table {
+  makeTable(
+    moduleId: string,
+    name: string,
+    fields: FieldInput[],
+    ctx: WriteCtx,
+    options: { hidden?: boolean } = {},
+  ): Table {
     if (!name.trim()) throw new Refused('A table needs a name.')
     return tx(this.db, () => {
       const module = this.module(moduleId)
@@ -207,13 +214,14 @@ export class Shape {
       )
       run(
         this.db,
-        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden) VALUES (?, ?, ?, ?, ?, ?, ?)',
         id,
         module.id,
         name.trim(),
         slug,
         actorName(ctx.actor),
         now(),
+        options.hidden ? 1 : 0,
       )
       for (const f of fields) this.insertField(id, f)
       const table = this.table(id) as Table
@@ -308,6 +316,27 @@ export class Shape {
         run: ctx.run ?? null,
       })
       this.writeManifest(table.module)
+      return this.table(table.id) as Table
+    })
+  }
+
+  // In the sidebar or out of it; the person's choice, journaled.
+  setHidden(tableId: string, hidden: boolean, ctx: WriteCtx): Table {
+    return tx(this.db, () => {
+      const table = this.table(tableId)
+      if (!table) throw new Refused('That table is not there.')
+      if (table.hidden === hidden) return table
+      run(this.db, 'UPDATE tables SET hidden = ? WHERE id = ?', hidden ? 1 : 0, table.id)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'shaped',
+        words: hidden
+          ? `Took ${table.name} out of the sidebar.`
+          : `Put ${table.name} in the sidebar.`,
+        data: { table: table.id, hidden },
+        user: ctx.user ?? null,
+        module: table.module.id,
+      })
       return this.table(table.id) as Table
     })
   }

@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { join } from 'node:path'
 import { Cards } from './cards.ts'
+import { Connections } from './connections.ts'
 import { all, type Db, newId, now, one, openDb, run, tx } from './db.ts'
 import { Files } from './files.ts'
 import { type Actor, append, type Line, type LineInput, lastId, lines, read } from './journal.ts'
@@ -41,6 +42,7 @@ export interface TenantPaths {
   desks: string
   instructions: string
   backups: string
+  envs: string // per Mac, beside the tenants: Docling's environment
 }
 
 export function tenantPaths(dir: string): TenantPaths {
@@ -52,6 +54,7 @@ export function tenantPaths(dir: string): TenantPaths {
     desks: join(dir, 'desk'),
     instructions: join(dir, 'instructions'),
     backups: join(dir, 'backups'),
+    envs: join(dir, '..', '..', 'envs'),
   }
 }
 
@@ -60,6 +63,7 @@ export class World {
   readonly records: Records
   readonly cards: Cards
   readonly files: Files
+  readonly connections: Connections
   readonly db: Db
   readonly paths: TenantPaths
   readonly tenant: string
@@ -75,6 +79,7 @@ export class World {
     this.cards = new Cards(db)
     this.files = new Files(db, paths.files)
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
+    this.connections = new Connections(db)
   }
 
   static async open(dir: string, options: { pageRows?: number } = {}): Promise<World> {
