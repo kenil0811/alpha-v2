@@ -12,8 +12,10 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "dev:core": "pnpm --filter @alpha/core dev",
-    "dev:window": "pnpm --filter @alpha/window dev"
+    "dev:core": "ALPHA_DEV_WINDOW=1 pnpm --filter @alpha/core dev",
+    "dev:window": "pnpm --filter @alpha/window dev",
+    "journey": "pnpm --filter @alpha/core journey",
+    "start": "pnpm --filter @alpha/window build && pnpm --filter @alpha/core start"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

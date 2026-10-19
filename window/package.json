@@ -7,8 +7,14 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@tanstack/react-table": "catalog:",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "react-markdown": "catalog:",
+    "remark-gfm": "catalog:",
+    "tailwind-merge": "catalog:"
   },
   "devDependencies": {
     "@alpha/core": "workspace:*",

@@ -7,10 +7,18 @@
   },
   "scripts": {
     "start": "node src/main.ts",
-    "dev": "node --watch src/main.ts"
+    "dev": "node --watch src/main.ts",
+    "journey": "node src/journeys/run.ts"
   },
   "dependencies": {
-    "fastify": "catalog:"
+    "@alpha/connector-sdk": "workspace:*",
+    "@anthropic-ai/claude-agent-sdk": "catalog:",
+    "@fastify/static": "catalog:",
+    "@fastify/websocket": "catalog:",
+    "fastify": "catalog:",
+    "xlsx": "catalog:",
+    "yaml": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:"
