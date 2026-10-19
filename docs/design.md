@@ -438,8 +438,10 @@ per-client sub-modules, Outlook.
    prompt appended against alone. Then the world, the engine with the gates and
    the sandbox, the four context layers, the window with the stream and a table view, the files
    connector. Journey: "track what I eat", then "log two eggs", on a fresh tenant.
-2. **Week 2.** The connector SDK and Avilo's first connectors (§8). The Google app registered in
-   the background with only calendar and contacts scopes. The email to Anthropic.
+2. **Week 2.** The connector SDK and Avilo's first connectors (§8). The email to Anthropic. No
+   Google OAuth app for now (Kenil, 19 Oct): Avilo's Google calendar and contacts reach Alpha
+   through her Mac's own Calendar and Contacts, with her Google account added in macOS; Gmail
+   stays on an app password.
 3. **Weeks 3 to 5.** DealPilot (the listing key first), Accounting, Network, Task manager, each
    with its journeys and a real run. The platform grows only when a kit cannot be written
    without it.
