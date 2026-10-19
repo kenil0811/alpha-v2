@@ -1,4 +1,23 @@
 {
   "files": [],
-  "references": [{ "path": "core" }, { "path": "window" }, { "path": "connector-sdk" }]
+  "references": [
+    {
+      "path": "core"
+    },
+    {
+      "path": "window"
+    },
+    {
+      "path": "connector-sdk"
+    },
+    {
+      "path": "connectors/mac"
+    },
+    {
+      "path": "connectors/gmail"
+    },
+    {
+      "path": "connectors/files"
+    }
+  ]
 }

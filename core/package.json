@@ -11,12 +11,14 @@
     "journey": "node src/journeys/run.ts"
   },
   "dependencies": {
+    "@alpha/connector-files": "workspace:*",
+    "@alpha/connector-gmail": "workspace:*",
+    "@alpha/connector-mac": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@fastify/static": "catalog:",
     "@fastify/websocket": "catalog:",
     "fastify": "catalog:",
-    "xlsx": "catalog:",
     "yaml": "catalog:",
     "zod": "catalog:"
   },

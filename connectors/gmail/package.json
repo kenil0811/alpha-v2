@@ -1,0 +1,20 @@
+{
+  "name": "@alpha/connector-gmail",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@alpha/connector-sdk": "workspace:*",
+    "imapflow": "catalog:",
+    "mailparser": "catalog:",
+    "nodemailer": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/mailparser": "catalog:",
+    "@types/nodemailer": "catalog:"
+  }
+}

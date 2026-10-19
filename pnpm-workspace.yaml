@@ -13,13 +13,19 @@ catalog:
   "@fastify/websocket": 11.3.4
   "@tailwindcss/vite": 4.3.3
   "@tanstack/react-table": 9.3.1
+  "@types/mailparser": 3.9.0
   "@types/node": 26.6.5
+  "@types/nodemailer": 8.0.2
   "@types/react": 19.3.0
   "@types/react-dom": 19.3.0
   "@vitejs/plugin-react": 6.1.2
   class-variance-authority: 0.7.1
   clsx: 2.1.1
   fastify: 5.12.7
+  imapflow: 2.5.5
+  limiter: 4.1.0
+  mailparser: 3.9.46
+  nodemailer: 10.1.7
   react: 19.1.10
   react-dom: 19.1.10
   react-markdown: 10.1.0
