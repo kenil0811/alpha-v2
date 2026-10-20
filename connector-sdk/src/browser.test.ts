@@ -96,6 +96,17 @@ describe('the browser engine', () => {
     await e.close()
   }, 60_000)
 
+  it('reads only the hosts it is given, when it is given some', async () => {
+    const only = new BrowserEngine({
+      browsers: BROWSERS,
+      profiles,
+      pace: { minMs: 0, maxMs: 0 },
+      only: ['127.0.0.1'],
+    })
+    await expect(only.open('https://example.com/listings')).rejects.toThrow(/may read/)
+    await only.close()
+  })
+
   it('reads robots rules for every reader, the longest rule winning', () => {
     const robots =
       'User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nDisallow: /listings/\nAllow: /listings/public\n'
@@ -103,5 +114,22 @@ describe('the browser engine', () => {
     expect(robotsAllow(robots, '/listings/42')).toBe(false)
     expect(robotsAllow(robots, '/listings/public/42')).toBe(true)
     expect(robotsAllow('', '/anything')).toBe(true)
+  })
+
+  it('reads a wildcard and an end in robots rules as patterns, not as cut-off paths', () => {
+    const robots =
+      'User-agent: *\nAllow: /\nDisallow: /*_rsc=\nDisallow: *?lightbox=\nDisallow: /*.pdf$\n'
+    expect(robotsAllow(robots, '/listings')).toBe(true)
+    expect(robotsAllow(robots, '/listings?_rsc=1a2b')).toBe(false)
+    expect(robotsAllow(robots, '/gallery?lightbox=3')).toBe(false)
+    expect(robotsAllow(robots, '/brochure.pdf')).toBe(false)
+    expect(robotsAllow(robots, '/brochure.pdf?v=2')).toBe(true)
+  })
+
+  it('reads a group of several User-agent lines, and the groups after it apart', () => {
+    const robots =
+      'User-agent: Bingbot\nUser-agent: *\nDisallow: /private\n\nUser-agent: PetalBot\nDisallow: /\n'
+    expect(robotsAllow(robots, '/private/1')).toBe(false)
+    expect(robotsAllow(robots, '/listings')).toBe(true)
   })
 })

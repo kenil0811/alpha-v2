@@ -105,26 +105,42 @@ export function browserPath(browsersDir: string, kind: 'reading' | 'sign_in' = '
   return path
 }
 
-// What a site's robots rules say about a path, for every reader (User-agent *).
+// What a site's robots rules say about a path, for every reader (User-agent *), as RFC 9309 reads
+// them: a group is one or more User-agent lines and the rules after them; a rule matches from the
+// path's start, `*` standing for anything and a closing `$` for the end; the longest matching rule
+// wins, and Allow wins a tie.
 export function robotsAllow(robots: string, path: string): boolean {
-  let applies = false
   const disallow: string[] = []
   const allow: string[] = []
+  let agents: string[] = []
+  let inRules = false
   for (const raw of robots.split(/\r?\n/)) {
     const line = raw.replace(/#.*/, '').trim()
     const m = /^([A-Za-z-]+)\s*:\s*(.*)$/.exec(line)
     if (!m) continue
     const key = (m[1] as string).toLowerCase()
     const value = (m[2] as string).trim()
-    if (key === 'user-agent') applies = value === '*'
-    else if (applies && key === 'disallow' && value) disallow.push(value)
-    else if (applies && key === 'allow' && value) allow.push(value)
+    if (key === 'user-agent') {
+      // a User-agent line after rules starts the next group
+      if (inRules) agents = []
+      inRules = false
+      agents.push(value)
+    } else if (key !== 'sitemap') {
+      inRules = true
+      if (!value || !agents.includes('*')) continue
+      if (key === 'disallow') disallow.push(value)
+      else if (key === 'allow') allow.push(value)
+    }
   }
-  const longest = (rules: string[]) =>
-    Math.max(
-      -1,
-      ...rules.filter((r) => path.startsWith(r.replace(/\*.*$/, ''))).map((r) => r.length),
-    )
+  const matches = (rule: string) => {
+    const end = rule.endsWith('$')
+    const body = (end ? rule.slice(0, -1) : rule)
+      .split('*')
+      .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*')
+    return new RegExp(`^${body}${end ? '$' : ''}`).test(path)
+  }
+  const longest = (rules: string[]) => Math.max(-1, ...rules.filter(matches).map((r) => r.length))
   return longest(allow) >= longest(disallow)
 }
 
@@ -135,6 +151,7 @@ export class BrowserEngine {
   private lastLoad = new Map<string, number>()
   private robots = new Map<string, string>()
   private sleep: (ms: number) => Promise<void>
+  private only: string[] | null
 
   private browsers: string
 
@@ -143,11 +160,13 @@ export class BrowserEngine {
     profiles: string
     pace: Pace
     sleep?: (ms: number) => Promise<void>
+    only?: string[] // the only hosts it may read (a journey's made-up sites on this Mac)
   }) {
     this.browsers = options.browsers
     this.profiles = options.profiles
     this.pace = options.pace
     this.sleep = options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
+    this.only = options.only ?? null
   }
 
   // One profile per site: what the person signs in to stays with that site.
@@ -193,6 +212,8 @@ export class BrowserEngine {
 
   private async load(url: string): Promise<{ page: Page; status: number }> {
     const host = hostOf(url)
+    if (this.only && !this.only.includes(new URL(url).hostname))
+      throw new Problem(`${host} is not one of the sites this browser may read.`)
     const context = await this.context(host)
     const page = await context.newPage()
     await this.allowed(page, url)
@@ -279,8 +300,9 @@ export class BrowserEngine {
         for (const item of found) {
           if (spec.id) {
             const raw = item[spec.id.field] ?? ''
+            // with a pattern, a listing it does not find an ID in has none (never its whole text)
             const m = spec.id.pattern ? new RegExp(spec.id.pattern).exec(raw) : null
-            const id = m ? (m[1] ?? m[0]) : raw
+            const id = spec.id.pattern ? (m ? (m[1] ?? m[0]) : '') : raw
             if (id) item._id = id
           }
           const link = Object.values(item).find((v) => /^https?:\/\//.test(v))

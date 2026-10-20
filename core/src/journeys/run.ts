@@ -80,9 +80,12 @@ const Journey = z.object({
       connect: z.object({ connector: z.string(), account: z.string() }).optional(),
       // a made-up site served on this Mac from the repository; later steps say it as {site}
       site: z.object({ from: z.string() }).optional(),
-      // a kit installed from a folder, its agents on when the journey says so
+      // a kit installed from a folder, its agents on when the journey says so (all, or those named)
       kit: z
-        .object({ from: z.string(), agents: z.enum(['on', 'paused']).default('paused') })
+        .object({
+          from: z.string(),
+          agents: z.union([z.enum(['on', 'paused']), z.array(z.string())]).default('paused'),
+        })
         .optional(),
       // the scheduler's tick: agents whose time or change has come run now
       due: z.boolean().optional(),
@@ -330,6 +333,8 @@ async function main() {
     browsers: join(ROOT, '.data', 'browsers'),
     profiles: join(home, 'browser-profiles'),
     pace: { minMs: limits.browser_pace_min_ms, maxMs: limits.browser_pace_max_ms },
+    // journeys never read a real site: only the made-up ones served on this Mac
+    only: ['127.0.0.1', 'localhost'],
   })
   const runner = new AgentRunner(world, () => browser, { owner: user.id })
   const engine = new Engine(world, {
@@ -408,8 +413,15 @@ async function main() {
         actor: { kind: 'person', id: user.id },
         user: user.id,
       })
-      for (const a of agents(world, m.id)) setAgentState(world, a.id, step.kit.agents, user.id)
-      what = `Installed the kit ${step.kit.from}, its agents ${step.kit.agents}`
+      const on = step.kit.agents
+      for (const a of agents(world, m.id))
+        setAgentState(
+          world,
+          a.id,
+          Array.isArray(on) ? (on.includes(a.name) ? 'on' : 'paused') : on,
+          user.id,
+        )
+      what = `Installed the kit ${step.kit.from}, ${Array.isArray(on) ? `${on.join(', ')} on` : `its agents ${on}`}`
     } else throw new Error(`Step ${i + 1} neither says, answers, nor connects.`)
     const finished = await done
     const reply = world.lines({ user: user.id, kinds: ['replied', 'error'] }).at(-1)
