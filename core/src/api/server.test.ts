@@ -89,4 +89,67 @@ describe('the api over a world', () => {
     ])
     await a.close()
   })
+
+  it('sets a choice as the person’s own word, and shows a told line with its rows', async () => {
+    const user = world.owner('Kenil')
+    const m = world.shape.makeModule('Deals', { actor: { kind: 'alpha' } })
+    const t = world.shape.makeTable(
+      m.id,
+      'Deals',
+      [
+        { name: 'Name', kind: 'text' },
+        { name: 'Stage', kind: 'choice', choices: ['New', 'Passed'] },
+      ],
+      { actor: { kind: 'alpha' } },
+    )
+    world.records.land(
+      t.id,
+      [{ key: 'HP101', values: { Name: 'Harbor firm', Stage: 'New' } }],
+      { connector: 'agent:Reader' },
+      { actor: { kind: 'agent', id: 'Reader' } },
+    )
+    const [row] = world.records.list(t.id)
+    world.line({
+      actor: { kind: 'agent', id: 'Figures' },
+      kind: 'told',
+      words: 'Figures: 1 new deal fits your thesis.',
+      data: {
+        agent: 'Figures',
+        about: {
+          table: t.id,
+          rows: [row?.id],
+          choice: { field: 'Stage', value: 'Passed', label: 'Pass' },
+        },
+      },
+      user: user.id,
+    })
+    const a = app()
+    const told = () =>
+      (a.inject({ url: '/api/stream', headers: ok }) as Promise<{ json: () => Stream }>).then(
+        (r) => r.json().lines.find((l) => l.kind === 'told')?.data.about,
+      )
+    expect(await told()).toEqual({
+      table: t.id,
+      rows: [{ id: row?.id, name: 'Harbor firm', value: 'New' }],
+      choice: { field: 'Stage', value: 'Passed', label: 'Pass' },
+    })
+    const set = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${t.id}/rows/${row?.id}`,
+      headers: ok,
+      payload: { field: 'Stage', value: 'Passed' },
+    })
+    expect(set.statusCode).toBe(200)
+    expect(((await told()) as { rows: { value: string }[] }).rows[0]?.value).toBe('Passed')
+    const table = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
+    expect(table.rows[0]?.sources.stage?.words).toBe('You set it in your window')
+    const notChoice = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${t.id}/rows/${row?.id}`,
+      headers: ok,
+      payload: { field: 'Name', value: 'Other' },
+    })
+    expect(notChoice.statusCode).toBe(409)
+    await a.close()
+  })
 })

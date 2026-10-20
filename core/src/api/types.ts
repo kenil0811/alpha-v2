@@ -10,6 +10,13 @@ export interface Me {
   tenant: string
 }
 
+// A line about some rows (what a reader found): each can be opened, and one choice set on it.
+export interface AboutRows {
+  table: string
+  rows: { id: string; name: string; value: string | null }[]
+  choice: { field: string; value: string; label: string } | null
+}
+
 export interface StreamLine {
   id: number
   at: string
@@ -81,6 +88,7 @@ export interface TableView {
   module: { id: string; name: string }
   fields: FieldView[]
   rows: RowView[]
+  names: Record<string, string> // the rows its relations point at, by name
 }
 
 export interface ConnectorView {
@@ -105,6 +113,36 @@ export interface ConnectionView {
 export interface ConnectorsView {
   connectors: ConnectorView[]
   connections: ConnectionView[]
+}
+
+// An agent as Settings shows it: its trigger in words, on or paused.
+export interface AgentView {
+  id: string
+  name: string
+  state: 'on' | 'paused'
+  when: string
+  lastRunAt: string | null
+  running: boolean
+}
+
+// A module that does work on its own: from a kit or made in the desk.
+export interface WorkingModuleView {
+  id: string
+  name: string
+  kit: { name: string; version: string; source: string } | null
+  network: string[] // the sites its readers may read
+  agents: AgentView[]
+}
+
+export interface RunView {
+  id: string
+  agent: string | null
+  module: string | null
+  startedAt: string
+  endedAt: string | null
+  state: 'running' | 'ok' | 'failed' | 'stopped'
+  words: string | null
+  steps: { id: number; at: string; kind: string; words: string }[]
 }
 
 export type LiveEvent =

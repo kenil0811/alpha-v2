@@ -7,19 +7,26 @@ import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { connectorOf, KNOWN } from '../connectors/service.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
+import { agents, setAgentState, whenWords } from '../modules/agents.ts'
+import { install, installedKits, update } from '../modules/kits.ts'
+import { moduleNetwork } from '../modules/runs.ts'
 import type { Card } from '../world/cards.ts'
 import { type Provenance, Refused } from '../world/kinds.ts'
+import type { Table } from '../world/shape.ts'
 import type { User } from '../world/world.ts'
 import type {
+  AboutRows,
   CardView,
   ConnectorsView,
   Health,
   Me,
   ModuleSummary,
+  RunView,
   SourceView,
   Stream,
   StreamLine,
   TableView,
+  WorkingModuleView,
 } from './types.ts'
 
 export const VERSION = '0.1.0'
@@ -42,6 +49,8 @@ const STREAM_KINDS = [
   'removed',
   'filed',
   'remembered',
+  'kept',
+  'told',
 ]
 
 export interface ServerOptions {
@@ -106,7 +115,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           words: l.words,
           turn: l.turn,
           card: l.card,
-          data: shown(l.kind, l.data),
+          data: l.kind === 'told' ? { about: aboutRows(l.data.about) } : shown(l.kind, l.data),
         }),
       )
     return {
@@ -165,6 +174,39 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { id: t.id, hidden: t.hidden }
   })
 
+  // The person sets a choice on a row in the window (a board's column, a Home line's Pass): their
+  // own word, journaled, and the value's source.
+  app.post('/api/tables/:id/rows/:row', async (req) => {
+    const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
+    const { field, value } = z.object({ field: z.string(), value: z.string() }).parse(req.body)
+    const t = world.shape.table(id)
+    const f = t?.fields.find((x) => x.name === field)
+    if (!t || f?.kind !== 'choice') throw new Refused('Only a choice is set from here.')
+    const r = world.records.list(t.id).find((x) => x.id === row)
+    if (!r) throw new Refused(`${t.name} has no such row.`)
+    const line = world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'set',
+      words: `Set ${field} to ${value} on ${rowName(t, r.values)}`,
+      data: { table: t.id, row, field, value },
+      user: user.id,
+      module: t.module.id,
+    })
+    world.records.change(
+      t.id,
+      [
+        {
+          id: row,
+          values: { [field]: value },
+          provenance: { kind: 'stated', source: { message: line.id } },
+        },
+      ],
+      { actor: { kind: 'person', id: user.id }, user: user.id },
+    )
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { ok: true }
+  })
+
   app.get('/api/tables/:id', async (req, reply): Promise<TableView | undefined> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const t = world.shape.table(id)
@@ -187,6 +229,16 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           Object.entries(r.provenance).map(([k, p]) => [k, sourceView(p)]),
         ),
       })),
+      names: Object.fromEntries(
+        t.fields
+          .filter((f) => f.kind === 'relation' && f.relatesTo)
+          .flatMap((f) => {
+            const other = world.shape.table(f.relatesTo as string)
+            return other
+              ? world.records.list(other.id).map((r) => [r.id, rowName(other, r.values)])
+              : []
+          }),
+      ),
     }
   })
 
@@ -258,6 +310,106 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { ok: true }
   })
 
+  // Kits and agents (design §10, §11): what each module does on its own.
+  app.get('/api/working', async (): Promise<WorkingModuleView[]> => {
+    const kits = new Map(installedKits(world).map((k) => [k.module, k]))
+    const running = new Set(
+      (engine.hands?.runner.runs(200) ?? [])
+        .filter((r) => r.state === 'running')
+        .map((r) => r.agent),
+    )
+    return world.shape
+      .modules()
+      .map((m) => {
+        const k = kits.get(m.id)
+        return {
+          id: m.id,
+          name: m.name,
+          kit: k ? { name: k.kit, version: k.version, source: k.source } : null,
+          network: moduleNetwork(m),
+          agents: agents(world, m.id).map((a) => ({
+            id: a.id,
+            name: a.name,
+            state: a.state,
+            when: whenWords(a.trigger),
+            lastRunAt: a.lastRunAt,
+            running: running.has(a.id),
+          })),
+        }
+      })
+      .filter((m) => m.kit || m.agents.length)
+  })
+
+  // A kit is installed from a folder on this Mac, or updated from one by the ownership rule.
+  app.post('/api/kits', async (req) => {
+    const { folder } = z.object({ folder: z.string().trim().min(1) }).parse(req.body)
+    const m = await install(world, folder, {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { module: m.id }
+  })
+
+  app.post('/api/kits/:module/update', async (req) => {
+    const { module } = z.object({ module: z.string() }).parse(req.params)
+    const { folder } = z.object({ folder: z.string().trim().optional() }).parse(req.body ?? {})
+    const m = world.shape.module(module)
+    const k = installedKits(world).find((x) => x.module === m?.id)
+    if (!m || !k) throw new Refused('That module did not come from a kit.')
+    const report = await update(world, m.name, folder || k.source, {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return report
+  })
+
+  app.post('/api/agents/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { state } = z.object({ state: z.enum(['on', 'paused']) }).parse(req.body)
+    setAgentState(world, id, state, user.id)
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { ok: true }
+  })
+
+  // Run an agent now; its outcome reaches Activity, not this answer.
+  app.post('/api/agents/:id/run', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const runner = engine.hands?.runner
+    const a = agents(world).find((x) => x.id === id)
+    if (!runner || !a) throw new Refused('That agent is not there.')
+    void runner.runAgent(a, { user: user.id, turn: null }).catch(() => undefined)
+    return { ok: true }
+  })
+
+  app.get('/api/activity', async (): Promise<RunView[]> => {
+    const runner = engine.hands?.runner
+    if (!runner) return []
+    const names = new Map(agents(world).map((a) => [a.id, a.name]))
+    const modules = new Map(world.shape.modules().map((m) => [m.id, m.name]))
+    return runner.runs(50).map((r) => ({
+      id: r.id,
+      agent: r.agent ? (names.get(r.agent) ?? null) : null,
+      module: r.module ? (modules.get(r.module) ?? null) : null,
+      startedAt: r.startedAt,
+      endedAt: r.endedAt,
+      state: r.state,
+      words: r.words,
+      steps: world
+        .lines({
+          run: r.id,
+          kinds: ['run_step', 'told', 'landed', 'wrote', 'changed', 'card_opened'],
+        })
+        .map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words })),
+    }))
+  })
+
+  app.post('/api/runs/:id/stop', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    return { stopped: engine.hands?.runner.stop(id) ?? false }
+  })
+
   void app.register(websocket)
   void app.register(async (scope) => {
     scope.get('/ws', { websocket: true }, (socket) => {
@@ -281,12 +433,33 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   return app
 
+  function aboutRows(about: unknown): AboutRows | null {
+    const a = about as
+      | { table: string; rows: string[]; choice?: { field: string; value: string; label: string } }
+      | undefined
+    const t = a ? world.shape.table(a.table) : undefined
+    if (!a || !t) return null
+    const field = a.choice ? t.fields.find((f) => f.name === a.choice?.field) : undefined
+    const byId = new Map(world.records.list(t.id).map((r) => [r.id, r]))
+    return {
+      table: t.id,
+      rows: a.rows.flatMap((id) => {
+        const r = byId.get(id)
+        if (!r) return []
+        const v = field ? r.values[field.slug] : null
+        return [{ id, name: rowName(t, r.values), value: typeof v === 'string' ? v : null }]
+      }),
+      choice: a.choice ?? null,
+    }
+  }
+
   function sourceView(p: Provenance): SourceView {
     const at = p.at
     switch (p.kind) {
       case 'stated': {
-        const words =
-          p.source.message !== undefined ? world.lineById(p.source.message)?.words : null
+        const line = p.source.message !== undefined ? world.lineById(p.source.message) : null
+        if (line?.kind === 'set') return { kind: 'stated', words: 'You set it in your window', at }
+        const words = line?.words
         return {
           kind: 'stated',
           words: words
@@ -311,13 +484,23 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
             },
           }
         }
+        const by = p.source.connector?.startsWith('agent:')
+          ? `, read by ${p.source.connector.slice('agent:'.length)}`
+          : ''
         if (p.source.url)
           return {
             kind: 'looked_up',
-            words: `From ${URL.canParse(p.source.url) ? new URL(p.source.url).host : p.source.url}`,
+            words: `From ${URL.canParse(p.source.url) ? new URL(p.source.url).host : p.source.url}${by}`,
             at,
             open: { url: p.source.url },
           }
+        if (p.source.connector === 'kit')
+          return {
+            kind: 'looked_up',
+            words: `Set up by the kit ${p.source.account ?? ''}`.trim(),
+            at,
+          }
+        if (by) return { kind: 'looked_up', words: `Read by ${by.slice(', read by '.length)}`, at }
         return { kind: 'looked_up', words: 'Looked up', at }
       }
       case 'computed':
@@ -332,6 +515,14 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         return { kind: 'assumed', words: `Assumed: ${p.basis ?? ''}`.trim(), at }
     }
   }
+}
+
+// A row as a person names it: its first text value.
+function rowName(t: Table, values: Record<string, unknown>): string {
+  for (const f of t.fields)
+    if (f.kind === 'text' && typeof values[f.slug] === 'string' && values[f.slug])
+      return String(values[f.slug])
+  return 'a row'
 }
 
 function deny(reply: FastifyReply, words: string) {

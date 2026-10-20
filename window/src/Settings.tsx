@@ -1,8 +1,9 @@
-// Settings (design §14): connections and folders. Connecting is the person's own act here: what
+// Settings (design §14): connections, folders, and kits with their agents. Connecting is the person's own act here: what
 // they type goes to the Keychain, never to the model.
 import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { Kits } from './Kits.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 
@@ -67,6 +68,7 @@ export function Settings({ open, version }: { open: string | null; version: numb
           ))}
           <FolderForm onChange={load} startOpen={open === 'folder'} />
         </section>
+        <Kits version={version} />
       </div>
     </div>
   )

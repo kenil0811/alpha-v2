@@ -1,19 +1,25 @@
 // The window: Home (the stream) and a module's tables in a rail beside it (design §14).
 import type { LiveEvent, ModuleSummary, Stream, TableView as TableData } from '@alpha/core/api'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Activity } from './Activity.tsx'
 import { api, listen } from './api.ts'
 import { applyLive, Home, type Live } from './Home.tsx'
 import { Settings } from './Settings.tsx'
 import { TableView } from './TableView.tsx'
 import { cn } from './ui/cn.ts'
 
-type Place = { at: 'home' } | { at: 'table'; id: string } | { at: 'settings'; open: string | null }
+type Place =
+  | { at: 'home' }
+  | { at: 'activity' }
+  | { at: 'table'; id: string; row: string | null }
+  | { at: 'settings'; open: string | null }
 
 function placeOf(hash: string): Place {
-  const m = /^#\/table\/(.+)$/.exec(hash)
-  if (m?.[1]) return { at: 'table', id: m[1] }
+  const m = /^#\/table\/([^/]+)(?:\/([^/]+))?$/.exec(hash)
+  if (m?.[1]) return { at: 'table', id: m[1], row: m[2] ?? null }
   const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
   if (s) return { at: 'settings', open: s[1] ?? null }
+  if (hash === '#/activity') return { at: 'activity' }
   return { at: 'home' }
 }
 
@@ -37,6 +43,15 @@ export function Rail({
         )}
       >
         Home
+      </a>
+      <a
+        href="#/activity"
+        className={cn(
+          '-mt-3 rounded-md px-2 py-1 hover:bg-neutral-100',
+          place.at === 'activity' && 'bg-neutral-200/60 text-neutral-900',
+        )}
+      >
+        Activity
       </a>
       {modules.map((m) => (
         <div key={m.id} className="flex flex-col gap-0.5">
@@ -149,10 +164,12 @@ export function App() {
         )}
         {place.at === 'home' ? (
           <Home stream={stream} live={live} busyTurn={busyTurn} />
+        ) : place.at === 'activity' ? (
+          <Activity version={version} />
         ) : place.at === 'settings' ? (
           <Settings open={place.open} version={version} />
         ) : table ? (
-          <TableView data={table} />
+          <TableView data={table} row={place.at === 'table' ? place.row : null} />
         ) : (
           <p className="p-6 text-neutral-400">That table is not there.</p>
         )}

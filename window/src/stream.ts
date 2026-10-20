@@ -1,6 +1,6 @@
 // The stream as messages: the journal's lines grouped by turn (design §14). The person's sentence,
 // then Alpha's one message for the turn: its reply, its steps for "Show the work", its cards.
-import type { StreamLine } from '@alpha/core/api'
+import type { AboutRows, StreamLine } from '@alpha/core/api'
 
 export interface Step {
   id: number
@@ -21,8 +21,18 @@ export type Item =
       at: string
     }
   | { kind: 'note'; id: number; words: string; tone: 'plain' | 'warn' }
+  | { kind: 'told'; id: number; words: string; about: AboutRows | null; at: string }
 
-const RESULTS = new Set(['made', 'shaped', 'wrote', 'changed', 'removed', 'remembered', 'filed'])
+const RESULTS = new Set([
+  'made',
+  'shaped',
+  'wrote',
+  'changed',
+  'removed',
+  'remembered',
+  'filed',
+  'kept',
+])
 
 export function group(lines: StreamLine[]): Item[] {
   const items: Item[] = []
@@ -60,6 +70,11 @@ export function group(lines: StreamLine[]): Item[] {
       continue
     }
     if (!l.turn) {
+      if (l.kind === 'told') {
+        const about = (l.data.about as AboutRows | null | undefined) ?? null
+        items.push({ kind: 'told', id: l.id, words: l.words, about, at: l.at })
+        continue
+      }
       if (l.kind === 'filed' || l.kind === 'card_opened' || l.kind === 'error')
         items.push({
           kind: 'note',

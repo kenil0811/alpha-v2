@@ -1,6 +1,6 @@
 // Home is the stream (design §14): the person's sentences and Alpha's replies in order. Work shows
 // as one live message that becomes the outcome, with "Show the work" folded under it.
-import type { CardView, LiveEvent, Stream } from '@alpha/core/api'
+import type { AboutRows, CardView, LiveEvent, Stream } from '@alpha/core/api'
 import { type DragEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { group, type Item, type Step } from './stream.ts'
@@ -92,6 +92,51 @@ export function Home({
   )
 }
 
+// What an agent's run told the person: its words, and the rows it is about, each with Open and
+// the one choice it offers (a deal's Pass).
+function Told({ words, about }: { words: string; about: AboutRows | null }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const choose = async (row: string) => {
+    if (!about?.choice) return
+    setBusy(row)
+    await api
+      .post(`/api/tables/${about.table}/rows/${row}`, {
+        field: about.choice.field,
+        value: about.choice.value,
+      })
+      .catch(() => undefined)
+    setBusy(null)
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 px-4 py-3 text-sm">
+      <div className="text-neutral-800">{words}</div>
+      {about?.rows.map((r) => (
+        <div key={r.id} className="flex items-center justify-between gap-3">
+          <a
+            className="min-w-0 truncate underline-offset-4 hover:underline"
+            href={`#/table/${about.table}/${r.id}`}
+          >
+            {r.name}
+          </a>
+          {about.choice &&
+            (r.value === about.choice.value ? (
+              <span className="shrink-0 text-xs text-neutral-400">{about.choice.value}</span>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy === r.id}
+                onClick={() => choose(r.id)}
+              >
+                {about.choice.label}
+              </Button>
+            ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Entry({
   item,
   live,
@@ -109,6 +154,7 @@ function Entry({
         {item.words}
       </div>
     )
+  if (item.kind === 'told') return <Told words={item.words} about={item.about} />
   if (item.kind === 'note')
     return (
       <div
