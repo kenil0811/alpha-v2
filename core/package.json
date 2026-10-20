@@ -16,9 +16,12 @@
     "@alpha/connector-mac": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "catalog:",
+    "@anthropic-ai/sandbox-runtime": "catalog:",
     "@fastify/static": "catalog:",
     "@fastify/websocket": "catalog:",
+    "croner": "catalog:",
     "fastify": "catalog:",
+    "isomorphic-git": "catalog:",
     "yaml": "catalog:",
     "zod": "catalog:"
   },

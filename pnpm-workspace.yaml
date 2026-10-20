@@ -3,11 +3,11 @@ packages:
   - window
   - connector-sdk
   - connectors/*
-  - kits/*
 
 # One version of each dependency for every package.
 catalog:
   "@anthropic-ai/claude-agent-sdk": 0.3.302
+  "@anthropic-ai/sandbox-runtime": 0.0.80
   "@biomejs/biome": 2.5.15
   "@fastify/static": 10.1.6
   "@fastify/websocket": 11.3.4
@@ -20,12 +20,15 @@ catalog:
   "@types/react-dom": 19.3.0
   "@vitejs/plugin-react": 6.1.2
   class-variance-authority: 0.7.1
+  croner: 10.0.1
   clsx: 2.1.1
   fastify: 5.12.7
   imapflow: 2.5.5
+  isomorphic-git: 1.44.3
   limiter: 4.1.0
   mailparser: 3.9.46
   nodemailer: 10.1.7
+  playwright: 1.64.1
   react: 19.1.10
   react-dom: 19.1.10
   react-markdown: 10.1.0

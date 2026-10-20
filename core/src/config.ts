@@ -23,6 +23,8 @@ const Limits = z.object({
   connector_retries: z.number().int().min(0),
   health_fewer_rows_ratio: z.number().positive().max(1),
   health_quiet_days: z.number().positive(),
+  browser_pace_min_ms: z.number().int().min(0),
+  browser_pace_max_ms: z.number().int().min(0),
 })
 
 export type ModelsConfig = z.infer<typeof Models>

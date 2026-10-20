@@ -1,0 +1,15 @@
+# A made-up kit for the installer's tests: never a client's.
+name: Bakery
+version: 0.1.0
+tables:
+  - name: Orders
+    fields:
+      - { name: Item, kind: text }
+      - { name: Quantity, kind: number }
+      - { name: Supplier, kind: relation, relates_to: Suppliers }
+  - name: Suppliers
+    fields:
+      - { name: Name, kind: text }
+      - { name: Email, kind: email }
+network:
+  - example.com

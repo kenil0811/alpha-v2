@@ -28,3 +28,8 @@ health_fewer_rows_ratio: 0.5
 
 # Nothing new from a connection for this many days is worth a line.
 health_quiet_days: 7
+
+# The browser reads a site at a person's pace: a random wait in this range between two pages of
+# one site (design §8, the human-pace engine).
+browser_pace_min_ms: 4000
+browser_pace_max_ms: 9000

@@ -1,0 +1,6 @@
+Suppliers:
+  - key: mill
+    values: { Name: Mill & Co, Email: mill@example.com }
+    assumed: { Email: the address on the mill's invoices }
+  - key: dairy
+    values: { Name: Dairy Farm, Email: dairy@example.com }
