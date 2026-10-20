@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .tsbuild/
+.tsbuild-scripts/
 .data/
 *.tsbuildinfo
 .DS_Store

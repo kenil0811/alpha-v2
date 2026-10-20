@@ -8,6 +8,9 @@
       "path": "window"
     },
     {
+      "path": "window/scripts"
+    },
+    {
       "path": "connector-sdk"
     },
     {
