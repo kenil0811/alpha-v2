@@ -227,8 +227,9 @@ leaving the world, and a person's explicit ask to delete is their yes):
    or an agent made and nobody accepted can be removed in a line **(chosen)**.
 3. **A sign-in:** connecting an account, consenting, entering a credential. Alpha opens the
    sign-in for the person and never types a password. A site a reader meets behind a sign-in is a
-   card whose Sign in opens the site in a window of Alpha's browser; the person signs in there,
-   the site's session stays in its own profile, and the agent runs again when they close it.
+   card whose Sign in opens the site in the person's own Google Chrome, in a profile of its own
+   that nothing drives; the person signs in there, the site is read with Chrome on that profile
+   from then on, and the agent runs again when they quit it.
 
 Every tool and connector action declares its effect (read, write, remove, outward, sign-in). The
 before-call hook maps effects to gates; an undeclared effect counts as outward. The model's own

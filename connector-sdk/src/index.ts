@@ -1,6 +1,7 @@
 export {
   BrowserEngine,
   browserPath,
+  chromePath,
   type Extracted,
   type ExtractSpec,
   ensureBrowser,

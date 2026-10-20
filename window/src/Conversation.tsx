@@ -581,8 +581,8 @@ export function CardBox({
   const answer = async (a: string) => {
     setBusy(true)
     try {
-      // A site's sign-in opens the site in a window of Alpha's browser; the card is answered when
-      // the person closes it. A connection's opens the form where they sign in themselves.
+      // A site's sign-in opens the site in the person's own Google Chrome; the card is answered when
+      // they quit it. A connection's opens the form where they sign in themselves.
       if (card.site && a === card.options[0]) {
         await api.post(`/api/cards/${id}/sign-in`)
         setOpened(true)
@@ -650,8 +650,8 @@ export function CardBox({
       </div>
       {opened && (
         <div className="text-ink-2 text-sm">
-          A window with {card.site} is open on your Mac. Sign in there, then close it; the reader
-          runs again.
+          {card.site} is open in Google Chrome on your Mac. Sign in there, then quit that Chrome
+          with ⌘Q; the reader runs again.
         </div>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}

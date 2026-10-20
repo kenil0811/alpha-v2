@@ -14,10 +14,36 @@ const list = (page: number) => `<html><head><title>Firms for sale</title></head>
   ${page === 1 ? '<a class="next" href="/list?page=2">Next</a>' : ''}
 </body></html>`
 
+// An app's list: pages turned by a button, and each listing's address shown only on a click.
+const app = `<html><body><div id="rows"></div><button class="next">Next</button><script>
+  const pages = [[['A1', 'Tax practice A1'], ['B2', 'Payroll firm B2']], [['C3', 'Audit firm C3']]]
+  let at = 0
+  const show = () => {
+    document.getElementById('rows').innerHTML = pages[at]
+      .map(([id, name]) => '<div class="row" data-id="' + id + '"><span class="n">' + name + '</span></div>')
+      .join('')
+    for (const r of document.querySelectorAll('.row'))
+      r.onclick = () => { sessionStorage.setItem('at', String(at)); location.href = '/deal/' + r.dataset.id }
+    if (at === pages.length - 1) document.querySelector('.next').setAttribute('disabled', '')
+  }
+  at = Number(sessionStorage.getItem('at') ?? 0)
+  document.querySelector('.next').onclick = () => { at++; show() }
+  show()
+</script></body></html>`
+
 const PAGES: Record<string, [number, string]> = {
+  '/app': [200, app],
+  '/deal/A1': [200, '<html><body>A1</body></html>'],
+  '/deal/B2': [200, '<html><body>B2</body></html>'],
+  '/deal/C3': [200, '<html><body>C3</body></html>'],
   '/robots.txt': [200, 'User-agent: *\nDisallow: /private\n'],
   '/list': [200, list(1)],
   '/list?page=2': [200, list(2)],
+  '/sold': [
+    200,
+    `<html><body><div class="listing"><a class="t" href="/firm/IL301">Sold practice</a><span class="p">SOLD</span></div>
+    <a class="next" href="/list">Next</a></body></html>`,
+  ],
   '/check': [
     200,
     '<html><head><title>Just a moment</title></head><body>Verify you are human</body></html>',
@@ -27,6 +53,10 @@ const PAGES: Record<string, [number, string]> = {
     '<html><body><form><input type="email"><input type="password"></form></body></html>',
   ],
   '/busy': [429, '<html><body>Slow down</body></html>'],
+  '/with-header-login': [
+    200,
+    '<html><body><form style="display:none"><input type="password"></form><h1>Firms for sale</h1></body></html>',
+  ],
 }
 
 let server: Server
@@ -87,10 +117,43 @@ describe('the browser engine', () => {
     expect(waits).toHaveLength(1) // the second page waited its turn
   }, 60_000)
 
+  it('turns an app’s pages by its button, and clicks each new listing for its address', async () => {
+    const e = engine()
+    const out = await e.extract(`${base}/app`, {
+      list: '.row',
+      fields: { name: { css: '.n' }, ref: { css: ':scope', attr: 'data-id' } },
+      next: 'button.next',
+      id: { field: 'ref' },
+      open: { field: 'link' },
+      known: ['b2'],
+    })
+    await e.close()
+    expect(out.pages).toBe(2)
+    expect(out.items.map((i) => [i._id, i.name, i.link ?? null])).toEqual([
+      ['A1', 'Tax practice A1', `${base}/deal/A1`],
+      ['B2', 'Payroll firm B2', null], // known, so not opened
+      ['C3', 'Audit firm C3', `${base}/deal/C3`],
+    ])
+    expect(out.items[0]?._url).toBe(`${base}/deal/A1`)
+  }, 120_000)
+
+  it('stops at a page of only sold listings, when the site lists those last', async () => {
+    const e = engine()
+    const out = await e.extract(`${base}/sold`, {
+      list: '.listing',
+      fields: { title: { css: '.t' }, status: { css: '.p' } },
+      next: 'a.next',
+      stop: { field: 'status', words: ['Sold'] },
+    })
+    await e.close()
+    expect(out.pages).toBe(1)
+  }, 60_000)
+
   it('stops at a bot check, a sign-in and a rate limit, and keeps to robots rules', async () => {
     const e = engine()
     await expect(e.open(`${base}/check`)).rejects.toThrow(/asked whether a person is reading/)
     await expect(e.open(`${base}/portal`)).rejects.toThrow(/wants you to sign in/)
+    expect((await e.open(`${base}/with-header-login`)).text).toContain('Firms for sale')
     await expect(e.open(`${base}/busy`)).rejects.toThrow(/429/)
     await expect(e.open(`${base}/private/deals`)).rejects.toThrow(/robots rules/)
     await e.close()

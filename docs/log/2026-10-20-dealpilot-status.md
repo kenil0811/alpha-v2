@@ -66,3 +66,46 @@ Kenil, 16:04: his Alpha's world went to the Trash ("Alpha world 2026-10-20 17h")
 Kenil, 16:41, on Settings › Kits and agents: the agents fold under their module (the name opens
 them; the line under it says how many and how many are on), and the list of sites a module's
 readers may read is gone from the page and from `WorkingModuleView`.
+
+Kenil, 16:56: "dont use chrome for testing! it does not allow signins." Checked first that a
+cookie saved by his own Google Chrome on a profile of its own is read by Playwright's headless
+Chrome on that profile when the stand-in keychain is left out (`--use-mock-keychain`,
+`--password-store=basic`), and not with Playwright's defaults. On his "ok": `signIn` opens the
+site in the person's Google Chrome (`chromePath`), on Alpha's profile for that site, with nothing
+driving it, and ends when they quit it; the profile is marked, and a marked site is read with
+Chrome (`channel: 'chrome'`) from then on. The sign-in Chromium copy is gone (to the Trash from his
+Alpha's folder); no Chrome on the Mac refuses the Sign in plainly.
+
+Kumo's sign-in in Chrome held and the reader sees it signed in; its link, though, shows all 92,319
+active deals worldwide (the "1to5million" search filters nothing), ten a page, and the free plan
+hides the last 30 days: waiting on a saved search from Kenil. APS's sign-in is a PHP session
+cookie with no "remember me", gone when Chrome quits (kept `restore_on_startup` did not bring it
+back), so its reader reads the public listings page instead. A sign-in wall now counts only
+visible password fields: APS hides a login form in every page's header. Checking APS by hand
+without Alpha's pace met a 429; later reads go through the engine.
+
+Kenil, 17:15: Kumo's filter is the person's, never fixed in the kit; APS on its public page. The
+listing reader now reads the source's Link (the agent's `url` only while there is none), a
+`pages.pattern` page that links to no list pages is read as the list, a status word ending in `*`
+matches every status starting with it, and the SDK's `extract` takes `stop` (a page where every
+listing's field is one of its words is the last read: APS lists hundreds of sold practices after
+its open ones). APS reader (DealPilot 0.1.4): five US regions and virtual practices, 297 for sale
+(171 listed, 118 sale pending, 8 on hold), its sold history left out. Kumo's rows carry no link
+or ID (a deal's address appears only on a click) and its Next is a button: asked Kenil whether the
+reader should learn to click, or read only a search's first page.
+
+Kenil, 18:34: "we definitely need clicking for this and potentially many other web pages." The
+SDK's `extract` now turns a page by its Next button when the next control has no address
+(waiting for the list to change, stopping when it is disabled or repeats), and takes `open`
+({ field, css }): each listing not in `known` is clicked, at the site's pace, for the address it
+lands on (kept only where robots rules allow it), and the reader goes back to the list, stopping
+if the list does not come back. Tested on a made-up app (two pages by a button, a known listing
+not opened). Kumo's reader (DealPilot 0.1.4) reads two pages, twenty deals, each with its link, in
+151 s; it is keyed on the listing photo (the one mark before a click), and starts Off: Kumo keeps
+filters inside the app, so its link lists every active deal until the person saves a search.
+
+Kenil's saved Kumo search (31 deals across five pages, though Kumo says 50): keyed on the listing
+photo, 13 deals without one were lost, so Kumo deals are keyed on Kumo's own ID from the address
+each click opens (KUMO-QWMOGHV), and every deal is clicked on every read (31 in about four
+minutes). His Alpha updated to 0.1.4 from the folder; his saved search put in Kumo's Link and the
+source turned on; the APS and Kumo agents came paused.

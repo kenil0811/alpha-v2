@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type Cell, sheetBytes } from '@alpha/connector-files'
+import { chromePath } from '@alpha/connector-sdk'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
@@ -624,8 +625,9 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { ok: true }
   })
 
-  // A site's sign-in: its window opens on this Mac, the person signs in there themselves, and when
-  // they close it the card is answered and the agent that met the sign-in runs again.
+  // A site's sign-in: it opens in the person's own Google Chrome on this Mac, they sign in there
+  // themselves, and when they quit that Chrome the card is answered and the agent that met the
+  // sign-in runs again.
   app.post('/api/cards/:id/sign-in', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const card = world.cards.get(id)
@@ -634,6 +636,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       throw new Refused('That sign-in is not waiting.')
     const hands = engine.hands
     if (!hands) throw new Refused('Alpha has no browser here.')
+    if (!chromePath()) throw new Refused('Signing in to a site needs Google Chrome on this Mac.')
     const url = input.url
     void (async () => {
       await hands.browser().signIn(url)
