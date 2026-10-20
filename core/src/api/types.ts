@@ -79,6 +79,12 @@ export interface SourceView {
   open?: { file: string; cell?: string; sheet?: string } | { url: string } | { line: number }
 }
 
+// One value's history, newest first.
+export interface HistoryView {
+  value: unknown
+  source: SourceView | null
+}
+
 export interface RowView {
   id: string
   values: Record<string, unknown>

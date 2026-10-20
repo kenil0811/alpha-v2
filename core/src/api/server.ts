@@ -19,6 +19,7 @@ import type {
   CardView,
   ConnectorsView,
   Health,
+  HistoryView,
   Me,
   ModuleSummary,
   RunView,
@@ -188,20 +189,26 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { id: t.id, hidden: t.hidden }
   })
 
-  // The person sets a choice on a row in the window (a board's column, a Home line's Pass): their
-  // own word, journaled, and the value's source.
+  // The person sets a value in the window (a board's column, a Home line's Pass, Correct it in the
+  // source panel): their own word, journaled, and the value's source. The world checks its kind.
   app.post('/api/tables/:id/rows/:row', async (req) => {
     const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
-    const { field, value } = z.object({ field: z.string(), value: z.string() }).parse(req.body)
+    const { field, value } = z.object({ field: z.string(), value: z.unknown() }).parse(req.body)
     const t = world.shape.table(id)
     const f = t?.fields.find((x) => x.name === field)
-    if (!t || f?.kind !== 'choice') throw new Refused('Only a choice is set from here.')
+    if (!t || !f) throw new Refused('That field is not there.')
+    if (f.kind === 'relation' || f.kind === 'file' || f.kind === 'person')
+      throw new Refused(`${f.name} is set by asking Alpha, not from here.`)
     const r = world.records.list(t.id).find((x) => x.id === row)
     if (!r) throw new Refused(`${t.name} has no such row.`)
+    const said =
+      value && typeof value === 'object' && 'amount' in value
+        ? String((value as { amount: unknown }).amount)
+        : String(value)
     const line = world.line({
       actor: { kind: 'person', id: user.id },
       kind: 'set',
-      words: `Set ${field} to ${value} on ${rowName(t, r.values)}`,
+      words: `Set ${field} to ${said} on ${rowName(t, r.values)}`,
       data: { table: t.id, row, field, value },
       user: user.id,
       module: t.module.id,
@@ -219,6 +226,14 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     )
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
+  })
+
+  app.get('/api/tables/:id/rows/:row/history', async (req): Promise<HistoryView[]> => {
+    const { row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
+    const { field } = z.object({ field: z.string() }).parse(req.query)
+    return world.records
+      .history(row, field)
+      .map((h) => ({ value: h.value, source: h.provenance ? sourceView(h.provenance) : null }))
   })
 
   app.get('/api/tables/:id', async (req, reply): Promise<TableView | undefined> => {

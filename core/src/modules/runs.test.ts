@@ -123,6 +123,36 @@ describe('a script’s rows', () => {
   }, 60_000)
 })
 
+describe('a script’s figures', () => {
+  it('never write over a value the person said', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const runner = new AgentRunner(world, () => engine)
+    const suppliers = world.shape.table('Suppliers')?.id as string
+    const mill = world.records.list(suppliers)[0]?.id as string
+    world.records.change(
+      suppliers,
+      [
+        {
+          id: mill,
+          values: { Email: 'me@mill.example' },
+          provenance: { kind: 'stated', source: { message: 1 } },
+        },
+      ],
+      ctx,
+    )
+    writeFileSync(
+      join(m.dir, 'skills/figure.js'),
+      `export default async (alpha) => { const [r] = await alpha.rows.list('Suppliers'); await alpha.rows.compute('Suppliers', r.id, { Email: 'computed@mill.example', Name: 'Mill (computed)' }, { Email: 'x', Name: 'y' }) }`,
+    )
+    await runner.runScript(m, 'skills/figure.js', {}, 'Figure', null)
+    const after = world.records.list(suppliers)[0]
+    expect([after?.values.name, after?.values.email]).toEqual([
+      'Mill (computed)',
+      'me@mill.example',
+    ])
+  }, 60_000)
+})
+
 describe('triggers', () => {
   it('run an agent on a change in any of its tables, handing its script its input', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)

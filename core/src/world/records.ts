@@ -348,6 +348,34 @@ export class Records {
     return { table, record: this.out(table, r) }
   }
 
+  // One value's history, newest first: each value it held, with where it came from. A value
+  // that stayed the same across versions shows once, at the first time it was there.
+  history(id: string, slug: string): { value: unknown; provenance: Provenance | null }[] {
+    const r = one<RecordRow>(this.db, 'SELECT * FROM records WHERE id = ?', id)
+    if (!r) return []
+    const field = this.mustTable(r.table_id).fields.find((f) => f.slug === slug)?.id
+    if (!field) return []
+    const states = [
+      ...all<{ vals: string; provenance: string }>(
+        this.db,
+        'SELECT vals, provenance FROM record_versions WHERE record_id = ? ORDER BY version',
+        id,
+      ),
+      { vals: r.vals, provenance: r.provenance },
+    ].map((v) => ({
+      value: parse<Record<string, unknown>>(v.vals, {})[field],
+      provenance: parse<Record<string, Provenance>>(v.provenance, {})[field] ?? null,
+    }))
+    const out: typeof states = []
+    for (const s of states) {
+      if (s.value === undefined) continue
+      const last = out.at(-1)
+      if (last && JSON.stringify(last.value) === JSON.stringify(s.value)) continue
+      out.push(s)
+    }
+    return out.reverse()
+  }
+
   count(tableId: string): number {
     return Number(
       one<{ n: number }>(this.db, 'SELECT count(*) AS n FROM records WHERE table_id = ?', tableId)

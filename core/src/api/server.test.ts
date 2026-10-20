@@ -149,7 +149,61 @@ describe('the api over a world', () => {
       headers: ok,
       payload: { field: 'Name', value: 'Other' },
     })
-    expect(notChoice.statusCode).toBe(409)
+    expect(notChoice.statusCode).toBe(200)
+    await a.close()
+  })
+
+  it('corrects a value as the person’s word and shows the value’s history, newest first', async () => {
+    world.owner('Kenil')
+    const m = world.shape.makeModule('Deals', { actor: { kind: 'alpha' } })
+    const t = world.shape.makeTable(
+      m.id,
+      'Deals',
+      [
+        { name: 'Name', kind: 'text' },
+        { name: 'SDE', kind: 'money' },
+        { name: 'Sources', kind: 'relation', relatesTo: 'Deals' },
+      ],
+      { actor: { kind: 'alpha' } },
+    )
+    const src = { connector: 'agent:Reader' }
+    const ctx = { actor: { kind: 'agent' as const, id: 'Reader' } }
+    world.records.land(
+      t.id,
+      [{ key: 'A1', values: { Name: 'A firm', SDE: { amount: 300000, currency: 'USD' } } }],
+      src,
+      ctx,
+    )
+    world.records.land(
+      t.id,
+      [{ key: 'A1', values: { SDE: { amount: 320000, currency: 'USD' } } }],
+      src,
+      ctx,
+    )
+    const [row] = world.records.list(t.id)
+    const a = app()
+    const set = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${t.id}/rows/${row?.id}`,
+      headers: ok,
+      payload: { field: 'SDE', value: { amount: 310000, currency: 'USD' } },
+    })
+    expect(set.statusCode).toBe(200)
+    const history = (
+      await a.inject({ url: `/api/tables/${t.id}/rows/${row?.id}/history?field=sde`, headers: ok })
+    ).json() as { value: { amount: number }; source: { kind: string } }[]
+    expect(history.map((h) => [h.value.amount, h.source.kind])).toEqual([
+      [310000, 'stated'],
+      [320000, 'looked_up'],
+      [300000, 'looked_up'],
+    ])
+    const relation = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${t.id}/rows/${row?.id}`,
+      headers: ok,
+      payload: { field: 'Sources', value: [] },
+    })
+    expect(relation.statusCode).toBe(409)
     await a.close()
   })
 })

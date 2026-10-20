@@ -171,7 +171,7 @@ export class AgentRunner {
           {},
         )
         const stated = new Set(
-          t.fields.filter((f) => said[f.slug]?.kind === 'stated').map((f) => f.name),
+          t.fields.filter((f) => said[f.id]?.kind === 'stated').map((f) => f.name),
         )
         const values = Object.fromEntries(
           Object.entries((p.values ?? {}) as Record<string, unknown>).filter(

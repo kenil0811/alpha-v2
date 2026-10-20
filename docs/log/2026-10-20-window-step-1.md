@@ -1,4 +1,4 @@
-# 20 October 2026: the window redesign, steps 1 to 4 (Ledger's look, its parts, the shell, Home)
+# 20 October 2026: the window redesign, steps 1 to 5 (look, parts, shell, Home, tables)
 
 Kenil tested DealPilot on a test copy ("looks good!") and stages A and B were committed and
 pushed (alpha-v2 3937316..9cbabb6; alpha-avilo private at github.com/kenil0811/alpha-avilo). He
@@ -87,3 +87,25 @@ Step 3 committed and pushed (3b123b6). Home, as the mock's A:
 Tried in the test copy: a request that needed a new site put its card in the stream, "1" on
 Home in the rail and a Now chip; Not now folded it to its line, and the live message showed
 Stop while Alpha carried on.
+
+## Step 5: tables and the source panel (uncommitted, for Kenil's review)
+
+Step 4 committed and pushed (976a6b5).
+
+- **Core:** a value's history (`records.history`, newest first, a value kept across versions
+  shown once; `GET /api/tables/:id/rows/:row/history?field=`); the window may set any plain value
+  as the person's word (text, number, money, date, choice, email, link, phone), never a
+  relation, file or person. **A slip found and fixed:** the runner's "what the person said
+  stands" check for `rows.compute` read provenance by field slug where it is kept by field id,
+  so a script's figures could still write over a stated value; it now reads by id, with a test.
+- **Tables:** the title with its row count; a toolbar with Find (filters the rows) and Table ·
+  Board; the header and the name column sticky; amounts and numbers on the right in even
+  figures, "None given" in grey when not known; choices as pills; estimated and assumed values
+  italic with ≈ or ?; relations by name.
+- **The source panel (320px, right):** opens on any value and stays open along the row; the
+  value in serif and its row's name; the kind as a pill with when; why, in words; Open the page or
+  the file (at its cell); Correct it, saved as the person's word; the value's history.
+
+Tried in the test copy: Loan needed's history showed $1,080,000 then $960,000 after Kenil's 20%
+down payment; correcting a deal's SDE to $300,000 showed "You said", and the figures followed it
+within seconds (SDE after debt service −$23,844, Does not fit).
