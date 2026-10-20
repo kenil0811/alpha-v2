@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { api, listen } from './api.ts'
 import { applyLive, Home, type Live } from './Home.tsx'
+import { Parts } from './Parts.tsx'
 import { Settings } from './Settings.tsx'
 import { TableView } from './TableView.tsx'
 import { cn } from './ui/cn.ts'
@@ -11,6 +12,7 @@ import { cn } from './ui/cn.ts'
 type Place =
   | { at: 'home' }
   | { at: 'activity' }
+  | { at: 'parts' }
   | { at: 'table'; id: string; row: string | null }
   | { at: 'settings'; open: string | null }
 
@@ -20,6 +22,7 @@ function placeOf(hash: string): Place {
   const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
   if (s) return { at: 'settings', open: s[1] ?? null }
   if (hash === '#/activity') return { at: 'activity' }
+  if (hash === '#/parts') return { at: 'parts' }
   return { at: 'home' }
 }
 
@@ -164,6 +167,8 @@ export function App() {
         )}
         {place.at === 'home' ? (
           <Home stream={stream} live={live} busyTurn={busyTurn} />
+        ) : place.at === 'parts' ? (
+          <Parts />
         ) : place.at === 'activity' ? (
           <Activity version={version} />
         ) : place.at === 'settings' ? (

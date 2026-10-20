@@ -2,15 +2,28 @@
 // first two of the eight views). Every value opens to where it came from.
 import type { FieldView, RowView, SourceView, TableView as TableData } from '@alpha/core/api'
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api.ts'
+import { IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Select } from './ui/field.tsx'
+import { Pill, type Tone } from './ui/pill.tsx'
+import { Segmented } from './ui/segmented.tsx'
 
 const features = tableFeatures({})
 const helper = createColumnHelper<typeof features, RowView>()
 
+const KIND_TONE: Record<SourceView['kind'], Tone> = {
+  stated: 'accent',
+  looked_up: 'neutral',
+  computed: 'neutral',
+  estimated: 'warn',
+  assumed: 'warn',
+}
+
 const KIND_WORDS: Record<SourceView['kind'], string> = {
-  stated: 'Stated',
+  stated: 'You said',
   looked_up: 'Looked up',
   estimated: 'Estimated',
   assumed: 'Assumed',
@@ -98,21 +111,15 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
           <h1 className="text-xl text-ink">{data.name}</h1>
         </div>
         {groupBy && (
-          <div className="flex gap-1 text-base">
-            {(['table', 'board'] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                className={cn(
-                  'rounded-md px-2 py-0.5 text-ink-2 hover:bg-hover',
-                  view === v && 'bg-sunk text-ink',
-                )}
-                onClick={() => setView(v)}
-              >
-                {v === 'table' ? 'Table' : 'Board'}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="View"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'table', label: 'Table' },
+              { value: 'board', label: 'Board' },
+            ]}
+          />
         )}
       </div>
       <div className="flex-1 overflow-auto px-6 py-4">
@@ -209,8 +216,8 @@ function Board({ data, by }: { data: TableData; by: FieldView }) {
                     </div>
                   ) : null
                 })}
-                <select
-                  className="mt-1 rounded-md border border-line bg-surface px-1 py-0.5 text-sm text-ink-2"
+                <Select
+                  className="mt-1 h-6.5 text-sm"
                   value={choice}
                   disabled={busy === r.id}
                   aria-label={`Move to another ${by.name.toLowerCase()}`}
@@ -222,7 +229,7 @@ function Board({ data, by }: { data: TableData; by: FieldView }) {
                       {c}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             ))}
           </div>
@@ -245,14 +252,19 @@ function SourcePanel({
     <div className="border-t border-line bg-sunk px-6 py-3 text-base">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-sm text-ink-3">
-            {field.name}: {value} · {KIND_WORDS[source.kind]} ·{' '}
-            {new Date(source.at).toLocaleString(undefined, {
-              day: 'numeric',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+          <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
+            <span>
+              {field.name}: {value}
+            </span>
+            <Pill tone={KIND_TONE[source.kind]}>{KIND_WORDS[source.kind]}</Pill>
+            <span>
+              {new Date(source.at).toLocaleString(undefined, {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
           </div>
           <div className="mt-1 text-ink">{source.words}</div>
           {open && 'file' in open && (
@@ -276,9 +288,9 @@ function SourcePanel({
             </a>
           )}
         </div>
-        <button type="button" className="text-sm text-ink-3 hover:text-ink-2" onClick={onClose}>
-          Close
-        </button>
+        <IconButton label="Close" onClick={onClose}>
+          <X className="size-4" />
+        </IconButton>
       </div>
     </div>
   )

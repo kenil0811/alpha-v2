@@ -1,27 +1,27 @@
-// Settings (design §14): connections, folders, and kits with their agents. Connecting is the person's own act here: what
-// they type goes to the Keychain, never to the model.
+// Settings (design §14): connections, folders, and kits with their agents. Connecting is the
+// person's own act here: what they type goes to the Keychain, never to the model.
 import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'
-import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { CalendarDays, Folder, Mail, UserRound } from 'lucide-react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { Kits } from './Kits.tsx'
+import { Kits, when } from './Kits.tsx'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
+import { Field } from './ui/field.tsx'
+import { List, Row, Tile } from './ui/list.tsx'
+import { Pill, type Tone } from './ui/pill.tsx'
+import { Section } from './ui/section.tsx'
 
-const STATE: Record<ConnectionView['state'], string> = {
-  connected: 'Connected',
-  needs_sign_in: 'Needs you to sign in again',
-  broken: 'Not working',
-  paused: 'Paused',
+const STATE: Record<ConnectionView['state'], [string, Tone]> = {
+  connected: ['Connected', 'good'],
+  needs_sign_in: ['Needs you to sign in again', 'warn'],
+  broken: ['Not working', 'bad'],
+  paused: ['Paused', 'neutral'],
 }
 
-function when(at: string | null): string {
-  if (!at) return 'not yet'
-  return new Date(at).toLocaleString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+const ICONS: Record<string, ReactNode> = {
+  gmail: <Mail className="size-4" />,
+  calendar: <CalendarDays className="size-4" />,
+  contacts: <UserRound className="size-4" />,
 }
 
 export function Settings({ open, version }: { open: string | null; version: number }) {
@@ -43,31 +43,37 @@ export function Settings({ open, version }: { open: string | null; version: numb
   const folders = view.connections.filter((c) => c.connector === 'folder')
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-8">
-        <h1 className="text-xl text-ink">Settings</h1>
-        <section className="flex flex-col gap-3">
-          <h2 className="text-base text-ink-2">Connections</h2>
-          {accounts.map((c) => (
-            <ConnectorRow
-              key={c.name}
-              connector={c}
-              connections={view.connections.filter((k) => k.connector === c.name)}
-              startOpen={open === c.name}
-              onChange={load}
-            />
-          ))}
-        </section>
-        <section className="flex flex-col gap-3">
-          <h2 className="text-base text-ink-2">Folders</h2>
-          <p className="text-base text-ink-2">
-            What you put in a folder here is kept and read, as if you dropped it in. Alpha reads
-            these folders and never writes to them.
-          </p>
-          {folders.map((k) => (
-            <ConnectionLine key={k.id} connection={k} onChange={load} />
-          ))}
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-8 py-7">
+        <h1 className="text-2xl text-ink">Settings</h1>
+        <Section
+          title="Connections"
+          about="Your accounts, read by Alpha; what you type stays in the Keychain."
+        >
+          <List>
+            {accounts.map((c) => (
+              <ConnectorRow
+                key={c.name}
+                connector={c}
+                connections={view.connections.filter((k) => k.connector === c.name)}
+                startOpen={open === c.name}
+                onChange={load}
+              />
+            ))}
+          </List>
+        </Section>
+        <Section
+          title="Folders"
+          about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
+        >
+          {folders.length > 0 && (
+            <List>
+              {folders.map((k) => (
+                <ConnectionLine key={k.id} connection={k} onChange={load} />
+              ))}
+            </List>
+          )}
           <FolderForm onChange={load} startOpen={open === 'folder'} />
-        </section>
+        </Section>
         <Kits version={version} />
       </div>
     </div>
@@ -77,9 +83,11 @@ export function Settings({ open, version }: { open: string | null; version: numb
 function ConnectionLine({
   connection: k,
   onChange,
+  indent,
 }: {
   connection: ConnectionView
   onChange: () => void
+  indent?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const act = async (fn: () => Promise<unknown>) => {
@@ -88,53 +96,64 @@ function ConnectionLine({
     setBusy(false)
     onChange()
   }
+  const [state, tone] = STATE[k.state]
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-line px-4 py-3">
-      <div className="min-w-0">
-        <div className="truncate text-ink">{k.account}</div>
-        <div className={cn('text-sm', k.state === 'connected' ? 'text-ink-2' : 'text-warn')}>
-          {STATE[k.state]} · last read {when(k.lastSyncAt)}
-        </div>
-        {k.health && <div className="mt-1 text-sm text-warn">{k.health}</div>}
-        {k.tables.map((t) => (
-          <div key={t.id} className="mt-1 text-sm text-ink-2">
-            Kept in{' '}
-            <a className="underline" href={`#/table/${t.id}`}>
-              {t.name}
-            </a>
-            {' · '}
-            <button
-              type="button"
-              className="underline"
-              disabled={busy}
-              onClick={() =>
-                act(() => api.post(`/api/tables/${t.id}/sidebar`, { shown: t.hidden }))
-              }
-            >
-              {t.hidden ? 'Show in the sidebar' : 'Take out of the sidebar'}
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="flex shrink-0 gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy}
-          onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
-        >
-          Read now
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={busy}
-          onClick={() => act(() => api.delete(`/api/connections/${k.id}`))}
-        >
-          Disconnect
-        </Button>
-      </div>
-    </div>
+    <Row
+      indent={indent}
+      lead={
+        indent ? undefined : (
+          <Tile>
+            <Folder className="size-4" />
+          </Tile>
+        )
+      }
+      title={k.account}
+      sub={
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>Last read {when(k.lastSyncAt)}</span>
+          {k.tables.map((t) => (
+            <span key={t.id}>
+              Kept in{' '}
+              <a className="text-accent underline underline-offset-3" href={`#/table/${t.id}`}>
+                {t.name}
+              </a>
+              {' · '}
+              <button
+                type="button"
+                className="underline underline-offset-3"
+                disabled={busy}
+                onClick={() =>
+                  act(() => api.post(`/api/tables/${t.id}/sidebar`, { shown: t.hidden }))
+                }
+              >
+                {t.hidden ? 'Show in the sidebar' : 'Take out of the sidebar'}
+              </button>
+            </span>
+          ))}
+          {k.health && <span className="text-warn">{k.health}</span>}
+        </span>
+      }
+      actions={
+        <>
+          <Pill tone={tone}>{state}</Pill>
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
+          >
+            Read now
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => act(() => api.delete(`/api/connections/${k.id}`))}
+          >
+            Disconnect
+          </Button>
+        </>
+      }
+    />
   )
 }
 
@@ -178,76 +197,89 @@ function ConnectorRow({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-ink">{c.title}</span>
-        {!open && (connections.length === 0 || !system) && (
-          <Button
-            size="sm"
-            variant={connections.length ? 'ghost' : 'outline'}
-            onClick={() => setOpen(true)}
-          >
-            {connections.length ? 'Add another' : 'Connect'}
-          </Button>
+    <>
+      <Row
+        lead={<Tile>{ICONS[c.name] ?? <Folder className="size-4" />}</Tile>}
+        title={c.title}
+        sub={connections.length ? undefined : 'Not connected'}
+        actions={
+          !open &&
+          (connections.length === 0 || !system) && (
+            <Button
+              size="sm"
+              variant={connections.length ? 'ghost' : 'default'}
+              onClick={() => setOpen(true)}
+            >
+              {connections.length ? 'Add another' : 'Connect'}
+            </Button>
+          )
+        }
+      >
+        {open && (
+          <form onSubmit={submit} className="flex flex-col gap-3 px-4 pb-4 pl-15">
+            {system ? (
+              <p className="text-ink-2 text-md">
+                Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only
+                reads it.
+              </p>
+            ) : (
+              <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-account`}>
+                <span className="text-ink-2">{c.account.label}</span>
+                <Field
+                  id={`${c.name}-account`}
+                  value={account}
+                  placeholder={c.account.placeholder}
+                  onChange={(e) => setAccount(e.target.value)}
+                  autoComplete="username"
+                />
+              </label>
+            )}
+            {c.secret && (
+              <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
+                <span className="text-ink-2">{c.secret.label}</span>
+                <Field
+                  id={`${c.name}-secret`}
+                  type="password"
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                  autoComplete="off"
+                />
+                <span className="text-ink-3 text-sm">
+                  {c.secret.help}{' '}
+                  {c.secret.url && (
+                    <a
+                      className="text-accent underline underline-offset-3"
+                      href={c.secret.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Make one
+                    </a>
+                  )}
+                </span>
+              </label>
+            )}
+            {problem && <div className="text-bad text-md">{problem}</div>}
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                size="sm"
+                variant="primary"
+                disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}
+              >
+                {busy ? 'Connecting…' : 'Connect'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
         )}
-      </div>
+      </Row>
       {connections.map((k) => (
-        <ConnectionLine key={k.id} connection={k} onChange={onChange} />
+        <ConnectionLine key={k.id} connection={k} onChange={onChange} indent />
       ))}
-      {open && (
-        <form
-          onSubmit={submit}
-          className="flex flex-col gap-2 rounded-lg border border-line px-4 py-3"
-        >
-          {system ? (
-            <p className="text-base text-ink-2">
-              Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only
-              reads it.
-            </p>
-          ) : (
-            <label className="flex flex-col gap-1 text-base">
-              <span className="text-ink-2">{c.account.label}</span>
-              <input
-                className="rounded-md border border-line px-2 py-1.5 outline-none focus:border-accent-line"
-                value={account}
-                placeholder={c.account.placeholder}
-                onChange={(e) => setAccount(e.target.value)}
-                autoComplete="username"
-              />
-            </label>
-          )}
-          {c.secret && (
-            <label className="flex flex-col gap-1 text-base">
-              <span className="text-ink-2">{c.secret.label}</span>
-              <input
-                type="password"
-                className="rounded-md border border-line px-2 py-1.5 outline-none focus:border-accent-line"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                autoComplete="off"
-              />
-              <span className="text-sm text-ink-2">
-                {c.secret.help}{' '}
-                {c.secret.url && (
-                  <a className="underline" href={c.secret.url} target="_blank" rel="noreferrer">
-                    Make one
-                  </a>
-                )}
-              </span>
-            </label>
-          )}
-          {problem && <div className="text-base text-bad">{problem}</div>}
-          <div className="flex gap-2">
-            <Button size="sm" disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}>
-              {busy ? 'Connecting…' : 'Connect'}
-            </Button>
-            <Button size="sm" variant="ghost" type="button" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
-    </div>
+    </>
   )
 }
 
@@ -272,19 +304,18 @@ function FolderForm({ onChange, startOpen }: { onChange: () => void; startOpen: 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
       <div className="flex gap-2">
-        <input
-          className="flex-1 rounded-md border border-line px-2 py-1.5 text-base outline-none focus:border-accent-line"
+        <Field
+          className="flex-1"
           value={path}
-          // biome-ignore lint/a11y/noAutofocus: opened from a card asking for it
           autoFocus={startOpen}
           placeholder="/Users/you/Documents/Exports"
           onChange={(e) => setPath(e.target.value)}
         />
-        <Button size="sm" variant="outline" disabled={busy || !path.trim()}>
+        <Button type="submit" disabled={busy || !path.trim()}>
           Add folder
         </Button>
       </div>
-      {problem && <div className="text-base text-bad">{problem}</div>}
+      {problem && <div className="text-bad text-md">{problem}</div>}
     </form>
   )
 }

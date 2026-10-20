@@ -1,10 +1,15 @@
 // Settings › Kits and agents (design §10, §11): what each module does on its own, the sites its
 // readers may read, and its agents, each on or paused. A kit is installed from a folder.
 import type { AgentView, WorkingModuleView } from '@alpha/core/api'
+import { Bot, Package } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
+import { Field } from './ui/field.tsx'
+import { List, Row, Tile } from './ui/list.tsx'
+import { Pill } from './ui/pill.tsx'
+import { Section } from './ui/section.tsx'
+import { Switch } from './ui/switch.tsx'
 
 export function when(at: string | null): string {
   if (!at) return 'not yet'
@@ -31,20 +36,21 @@ export function Kits({ version }: { version: number }) {
   }, [load, version])
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-base text-ink-2">Kits and agents</h2>
-      {problem && <div className="text-base text-bad">{problem}</div>}
+    <Section
+      title="Kits and agents"
+      about="What each module does on its own; a kit brings its tables, readers and agents."
+    >
+      {problem && <div className="text-bad text-md">{problem}</div>}
       {modules?.length === 0 && (
-        <p className="text-base text-ink-2">
-          Nothing runs on its own yet. A kit brings its tables, readers and agents; agents made in a
-          conversation show here too.
+        <p className="text-ink-2 text-md">
+          Nothing runs on its own yet. Agents made in a conversation show here too.
         </p>
       )}
       {modules?.map((m) => (
         <ModuleWork key={m.id} module={m} onChange={load} />
       ))}
       <KitForm onChange={load} />
-    </section>
+    </Section>
   )
 }
 
@@ -72,40 +78,43 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
     }
   }
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-line px-4 py-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-ink">{m.name}</div>
-          <div className="text-sm text-ink-2">
-            {m.kit ? `From the kit ${m.kit.name} ${m.kit.version}` : 'Made in a conversation'}
-          </div>
-          {m.network.length > 0 && (
-            <details className="text-sm text-ink-2">
-              <summary className="cursor-pointer">
-                Its readers may read{' '}
-                {m.network.length === 1 ? m.network[0] : `${m.network.length} sites`}
-              </summary>
-              <div className="mt-1 leading-5">{m.network.join(', ')}</div>
-            </details>
-          )}
-        </div>
-        {m.kit && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="shrink-0 whitespace-nowrap"
-            disabled={busy}
-            onClick={updateKit}
-          >
-            Update from its folder
-          </Button>
-        )}
-      </div>
-      {said && <div className="text-sm text-ink-2">{said}</div>}
+    <List>
+      <Row
+        lead={
+          <Tile>
+            <Package className="size-4" />
+          </Tile>
+        }
+        title={m.name}
+        sub={
+          <>
+            <span>
+              {m.kit ? `From the kit ${m.kit.name} ${m.kit.version}` : 'Made in a conversation'}
+            </span>
+            {m.network.length > 0 && (
+              <details>
+                <summary className="cursor-pointer">
+                  Its readers may read{' '}
+                  {m.network.length === 1 ? m.network[0] : `${m.network.length} sites`}
+                </summary>
+                <div className="mt-1 leading-5">{m.network.join(', ')}</div>
+              </details>
+            )}
+            {said && <div className="text-ink-2">{said}</div>}
+          </>
+        }
+        actions={
+          m.kit && (
+            <Button size="sm" variant="ghost" disabled={busy} onClick={updateKit}>
+              Update from its folder
+            </Button>
+          )
+        }
+      />
       {m.agents.map((a) => (
         <AgentLine key={a.id} agent={a} onChange={onChange} />
       ))}
-    </div>
+    </List>
   )
 }
 
@@ -118,38 +127,32 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
     onChange()
   }
   return (
-    <div className="flex items-center justify-between gap-4 border-t border-hair pt-2">
-      <div className="min-w-0">
-        <div className="text-base text-ink">{a.name}</div>
-        <div className={cn('text-sm', a.state === 'on' ? 'text-ink-2' : 'text-ink-3')}>
-          {a.state === 'on' ? `Runs ${a.when}` : `Paused · would run ${a.when}`} · last ran{' '}
-          {when(a.lastRunAt)}
-          {a.running ? ' · running now' : ''}
-        </div>
-      </div>
-      <div className="flex shrink-0 gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy || a.running}
-          onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
-        >
-          Run now
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={busy}
-          onClick={() =>
-            act(() =>
-              api.post(`/api/agents/${a.id}`, { state: a.state === 'on' ? 'paused' : 'on' }),
-            )
-          }
-        >
-          {a.state === 'on' ? 'Pause' : 'Turn on'}
-        </Button>
-      </div>
-    </div>
+    <Row
+      indent
+      lead={<Bot className="size-4 text-ink-3" />}
+      title={a.name}
+      sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
+      actions={
+        <>
+          {a.running && <Pill tone="accent">Running</Pill>}
+          <Button
+            size="sm"
+            disabled={busy || a.running}
+            onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
+          >
+            Run now
+          </Button>
+          <Switch
+            checked={a.state === 'on'}
+            label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
+            disabled={busy}
+            onChange={(on) =>
+              act(() => api.post(`/api/agents/${a.id}`, { state: on ? 'on' : 'paused' }))
+            }
+          />
+        </>
+      }
+    />
   )
 }
 
@@ -174,17 +177,17 @@ function KitForm({ onChange }: { onChange: () => void }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
       <div className="flex gap-2">
-        <input
-          className="flex-1 rounded-md border border-line px-2 py-1.5 text-base outline-none focus:border-accent-line"
+        <Field
+          className="flex-1"
           value={folder}
           placeholder="The kit's folder, like /Users/you/dev/alpha-avilo/dealpilot"
           onChange={(e) => setFolder(e.target.value)}
         />
-        <Button size="sm" variant="outline" disabled={busy || !folder.trim()}>
+        <Button type="submit" disabled={busy || !folder.trim()}>
           {busy ? 'Installing…' : 'Install kit'}
         </Button>
       </div>
-      {problem && <div className="text-base text-bad">{problem}</div>}
+      {problem && <div className="text-bad text-md">{problem}</div>}
     </form>
   )
 }

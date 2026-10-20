@@ -29,6 +29,7 @@ catalog:
   imapflow: 2.5.5
   isomorphic-git: 1.44.3
   limiter: 4.1.0
+  lucide-react: 1.59.0
   mailparser: 3.9.46
   nodemailer: 10.1.7
   playwright: 1.64.1

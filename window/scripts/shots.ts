@@ -45,6 +45,7 @@ const screens: { name: string; hash: string; board?: boolean }[] = [
   { name: 'home', hash: '#/' },
   { name: 'activity', hash: '#/activity' },
   { name: 'settings', hash: '#/settings' },
+  { name: 'parts', hash: '#/parts' },
 ]
 for (const t of modules.flatMap((m) => m.tables)) {
   const slug = t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
