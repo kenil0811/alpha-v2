@@ -225,7 +225,7 @@ function KitForm({ onChange }: { onChange: () => void }) {
         <Field
           className="flex-1"
           value={folder}
-          placeholder="The kit's folder, like /Users/you/dev/alpha-avilo/dealpilot"
+          placeholder="The kit's folder, like /Users/you/dev/kits/deals"
           onChange={(e) => setFolder(e.target.value)}
         />
         <Button type="submit" disabled={busy || !folder.trim()}>

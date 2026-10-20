@@ -34,7 +34,7 @@ beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'alpha-pages-'))
   return World.open(join(home, 'tenants', 't_test')).then((w) => {
     world = w
-    m = world.shape.makeModule('DealPilot', alpha)
+    m = world.shape.makeModule('Listings', alpha)
     deals = world.shape.makeTable(
       m.id,
       'Deals',

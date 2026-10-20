@@ -42,7 +42,7 @@ export function Parts() {
               <Pill tone="bad">Didn't finish</Pill>
               <Pill tone="accent">You said</Pill>
               <Pill tone="faint">No model</Pill>
-              <Topic>DealPilot</Topic>
+              <Topic>Deals</Topic>
               <Label>Leaves your world</Label>
               <Kbd>⌘K</Kbd>
             </div>

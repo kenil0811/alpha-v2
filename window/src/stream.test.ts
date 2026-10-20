@@ -83,9 +83,9 @@ describe('the stream', () => {
 
   it('shows a card an agent’s run opened as a card, with its module', () => {
     n = 0
-    const deals = { id: 'm_1', name: 'DealPilot' }
+    const deals = { id: 'm_1', name: 'Listings' }
     const items = group([
-      line('card_opened', 'Let DealPilot read example.com?', {
+      line('card_opened', 'Let Listings read example.com?', {
         actor: 'agent',
         card: 'c_9',
         module: deals,

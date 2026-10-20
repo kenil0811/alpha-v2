@@ -2,7 +2,7 @@
 // run on a fresh tenant of its own with the real model. Checks read the world, not the model's
 // prose. The report goes in docs/journeys/.
 //   node src/journeys/run.ts <name> [--alone] [--keep] [--from <folder of journeys>]
-// A client's journeys live in the client's own repository (--from ../alpha-avilo/journeys); their
+// A client's journeys live in the client's own repository (--from ../<client>/journeys); their
 // paths are then from that repository's root, and their reports go in its docs/journeys/.
 import {
   copyFileSync,
