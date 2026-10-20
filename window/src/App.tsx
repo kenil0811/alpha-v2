@@ -33,13 +33,13 @@ export function Rail({
   name: string
 }) {
   return (
-    <nav className="flex w-56 shrink-0 flex-col gap-4 border-r border-neutral-200 bg-neutral-50 px-3 py-4 text-sm">
-      <div className="px-2 text-neutral-900">Alpha</div>
+    <nav className="flex w-56 shrink-0 flex-col gap-4 border-r border-rail-line bg-rail px-3 py-4 text-base text-rail-ink-2">
+      <div className="px-2 text-ink">Alpha</div>
       <a
         href="#/"
         className={cn(
-          'rounded-md px-2 py-1 hover:bg-neutral-100',
-          place.at === 'home' && 'bg-neutral-200/60 text-neutral-900',
+          'rounded-md px-2 py-1 hover:bg-rail-hover',
+          place.at === 'home' && 'bg-rail-sel text-rail-ink shadow-btn',
         )}
       >
         Home
@@ -47,26 +47,26 @@ export function Rail({
       <a
         href="#/activity"
         className={cn(
-          '-mt-3 rounded-md px-2 py-1 hover:bg-neutral-100',
-          place.at === 'activity' && 'bg-neutral-200/60 text-neutral-900',
+          '-mt-3 rounded-md px-2 py-1 hover:bg-rail-hover',
+          place.at === 'activity' && 'bg-rail-sel text-rail-ink shadow-btn',
         )}
       >
         Activity
       </a>
       {modules.map((m) => (
         <div key={m.id} className="flex flex-col gap-0.5">
-          <div className="px-2 text-xs text-neutral-400">{m.name}</div>
+          <div className="px-2 text-sm text-ink-3">{m.name}</div>
           {m.tables.map((t) => (
             <a
               key={t.id}
               href={`#/table/${t.id}`}
               className={cn(
-                'flex justify-between rounded-md px-2 py-1 hover:bg-neutral-100',
-                place.at === 'table' && place.id === t.id && 'bg-neutral-200/60 text-neutral-900',
+                'flex justify-between rounded-md px-2 py-1 hover:bg-rail-hover',
+                place.at === 'table' && place.id === t.id && 'bg-rail-sel text-rail-ink shadow-btn',
               )}
             >
               <span>{t.name}</span>
-              <span className="text-neutral-400">{t.rows}</span>
+              <span className="text-ink-3">{t.rows}</span>
             </a>
           ))}
         </div>
@@ -75,13 +75,13 @@ export function Rail({
         <a
           href="#/settings"
           className={cn(
-            'rounded-md px-2 py-1 hover:bg-neutral-100',
-            place.at === 'settings' && 'bg-neutral-200/60 text-neutral-900',
+            'rounded-md px-2 py-1 hover:bg-rail-hover',
+            place.at === 'settings' && 'bg-rail-sel text-rail-ink shadow-btn',
           )}
         >
           Settings
         </a>
-        <div className="px-2 text-xs text-neutral-400">{name}</div>
+        <div className="px-2 text-sm text-ink-3">{name}</div>
       </div>
     </nav>
   )
@@ -154,11 +154,11 @@ export function App() {
   )
 
   return (
-    <div className="flex h-screen bg-white text-[15px] text-neutral-800">
+    <div className="flex h-screen bg-canvas text-base text-ink">
       <Rail modules={modules} place={place} name={name} />
       <main className="min-w-0 flex-1">
         {problem && (
-          <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-sm text-amber-800">
+          <div className="border-b border-line bg-warn-soft px-6 py-2 text-base text-warn">
             {problem}
           </div>
         )}
@@ -169,9 +169,9 @@ export function App() {
         ) : place.at === 'settings' ? (
           <Settings open={place.open} version={version} />
         ) : table ? (
-          <TableView data={table} row={place.at === 'table' ? place.row : null} />
+          <TableView key={table.id} data={table} row={place.at === 'table' ? place.row : null} />
         ) : (
-          <p className="p-6 text-neutral-400">That table is not there.</p>
+          <p className="p-6 text-ink-3">That table is not there.</p>
         )}
       </main>
     </div>

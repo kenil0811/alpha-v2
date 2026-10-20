@@ -32,10 +32,10 @@ export function Kits({ version }: { version: number }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm text-neutral-500">Kits and agents</h2>
-      {problem && <div className="text-sm text-red-600">{problem}</div>}
+      <h2 className="text-base text-ink-2">Kits and agents</h2>
+      {problem && <div className="text-base text-bad">{problem}</div>}
       {modules?.length === 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-base text-ink-2">
           Nothing runs on its own yet. A kit brings its tables, readers and agents; agents made in a
           conversation show here too.
         </p>
@@ -72,15 +72,15 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
     }
   }
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 px-4 py-3">
+    <div className="flex flex-col gap-2 rounded-lg border border-line px-4 py-3">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-neutral-900">{m.name}</div>
-          <div className="text-xs text-neutral-500">
+          <div className="text-ink">{m.name}</div>
+          <div className="text-sm text-ink-2">
             {m.kit ? `From the kit ${m.kit.name} ${m.kit.version}` : 'Made in a conversation'}
           </div>
           {m.network.length > 0 && (
-            <details className="text-xs text-neutral-500">
+            <details className="text-sm text-ink-2">
               <summary className="cursor-pointer">
                 Its readers may read{' '}
                 {m.network.length === 1 ? m.network[0] : `${m.network.length} sites`}
@@ -101,7 +101,7 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
           </Button>
         )}
       </div>
-      {said && <div className="text-xs text-neutral-600">{said}</div>}
+      {said && <div className="text-sm text-ink-2">{said}</div>}
       {m.agents.map((a) => (
         <AgentLine key={a.id} agent={a} onChange={onChange} />
       ))}
@@ -118,10 +118,10 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
     onChange()
   }
   return (
-    <div className="flex items-center justify-between gap-4 border-t border-neutral-100 pt-2">
+    <div className="flex items-center justify-between gap-4 border-t border-hair pt-2">
       <div className="min-w-0">
-        <div className="text-sm text-neutral-800">{a.name}</div>
-        <div className={cn('text-xs', a.state === 'on' ? 'text-neutral-500' : 'text-neutral-400')}>
+        <div className="text-base text-ink">{a.name}</div>
+        <div className={cn('text-sm', a.state === 'on' ? 'text-ink-2' : 'text-ink-3')}>
           {a.state === 'on' ? `Runs ${a.when}` : `Paused · would run ${a.when}`} · last ran{' '}
           {when(a.lastRunAt)}
           {a.running ? ' · running now' : ''}
@@ -175,7 +175,7 @@ function KitForm({ onChange }: { onChange: () => void }) {
     <form onSubmit={submit} className="flex flex-col gap-2">
       <div className="flex gap-2">
         <input
-          className="flex-1 rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-neutral-400"
+          className="flex-1 rounded-md border border-line px-2 py-1.5 text-base outline-none focus:border-accent-line"
           value={folder}
           placeholder="The kit's folder, like /Users/you/dev/alpha-avilo/dealpilot"
           onChange={(e) => setFolder(e.target.value)}
@@ -184,7 +184,7 @@ function KitForm({ onChange }: { onChange: () => void }) {
           {busy ? 'Installing…' : 'Install kit'}
         </Button>
       </div>
-      {problem && <div className="text-sm text-red-600">{problem}</div>}
+      {problem && <div className="text-base text-bad">{problem}</div>}
     </form>
   )
 }

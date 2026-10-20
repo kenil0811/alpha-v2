@@ -57,9 +57,7 @@ export function Home({
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-2xl flex-col gap-5 px-6 py-8">
           {items.length === 0 && (
-            <p className="pt-24 text-center text-neutral-400">
-              Say what you want kept, tracked or done.
-            </p>
+            <p className="pt-24 text-center text-ink-3">Say what you want kept, tracked or done.</p>
           )}
           {items.map((item) => (
             <Entry
@@ -76,7 +74,7 @@ export function Home({
       {problem && (
         <button
           type="button"
-          className="mx-auto mb-2 text-sm text-red-600"
+          className="mx-auto mb-2 text-base text-bad"
           onClick={() => setProblem(null)}
         >
           {problem}
@@ -84,7 +82,7 @@ export function Home({
       )}
       <Composer busy={busyTurn !== null} onProblem={setProblem} />
       {dragging && (
-        <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-xl border border-dashed border-neutral-400 bg-white/80 text-neutral-500">
+        <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-xl border border-dashed border-accent-line bg-surface/80 text-ink-2">
           Drop to keep it in Alpha
         </div>
       )}
@@ -108,8 +106,8 @@ function Told({ words, about }: { words: string; about: AboutRows | null }) {
     setBusy(null)
   }
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 px-4 py-3 text-sm">
-      <div className="text-neutral-800">{words}</div>
+    <div className="flex flex-col gap-2 rounded-lg border border-line px-4 py-3 text-base">
+      <div className="text-ink">{words}</div>
       {about?.rows.map((r) => (
         <div key={r.id} className="flex items-center justify-between gap-3">
           <a
@@ -120,7 +118,7 @@ function Told({ words, about }: { words: string; about: AboutRows | null }) {
           </a>
           {about.choice &&
             (r.value === about.choice.value ? (
-              <span className="shrink-0 text-xs text-neutral-400">{about.choice.value}</span>
+              <span className="shrink-0 text-sm text-ink-3">{about.choice.value}</span>
             ) : (
               <Button
                 size="sm"
@@ -150,19 +148,14 @@ function Entry({
 }) {
   if (item.kind === 'said')
     return (
-      <div className="self-end max-w-[85%] whitespace-pre-wrap rounded-2xl bg-neutral-100 px-4 py-2 text-neutral-900">
+      <div className="self-end max-w-[85%] whitespace-pre-wrap rounded-2xl bg-sunk px-4 py-2 text-ink">
         {item.words}
       </div>
     )
   if (item.kind === 'told') return <Told words={item.words} about={item.about} />
   if (item.kind === 'note')
     return (
-      <div
-        className={cn(
-          'text-center text-xs',
-          item.tone === 'warn' ? 'text-amber-700' : 'text-neutral-400',
-        )}
-      >
+      <div className={cn('text-center text-sm', item.tone === 'warn' ? 'text-warn' : 'text-ink-3')}>
         {item.words}
       </div>
     )
@@ -170,15 +163,15 @@ function Entry({
   return (
     <div className="flex flex-col gap-2">
       {text ? (
-        <div className={cn(item.error && 'text-red-700')}>
+        <div className={cn(item.error && 'text-bad')}>
           <Words text={text} />
         </div>
       ) : working ? (
-        <div className="text-neutral-400">Working on it…</div>
+        <div className="text-ink-3">Working on it…</div>
       ) : null}
       {working && live?.doing && (
-        <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <span className="size-1.5 animate-pulse rounded-full bg-neutral-400" />
+        <div className="flex items-center gap-2 text-sm text-ink-2">
+          <span className="size-1.5 animate-pulse rounded-full bg-ink-3" />
           {live.doing}
         </div>
       )}
@@ -192,20 +185,20 @@ function Entry({
 
 function Work({ steps }: { steps: Step[] }) {
   return (
-    <details className="group text-xs text-neutral-500">
-      <summary className="cursor-pointer select-none list-none hover:text-neutral-800">
+    <details className="group text-sm text-ink-2">
+      <summary className="cursor-pointer select-none list-none hover:text-ink">
         <span className="group-open:hidden">Show the work</span>
         <span className="hidden group-open:inline">Hide the work</span>
       </summary>
-      <ol className="mt-2 flex flex-col gap-1.5 border-l border-neutral-200 pl-3">
+      <ol className="mt-2 flex flex-col gap-1.5 border-l border-line pl-3">
         {steps.map((s) => (
           <li key={s.id}>
-            <span className={cn(s.ok === false && 'text-red-600')}>
+            <span className={cn(s.ok === false && 'text-bad')}>
               {s.ok === false ? 'Did not work: ' : ''}
               {s.words}
             </span>
             {s.results.map((r) => (
-              <div key={r} className="text-neutral-400">
+              <div key={r} className="text-ink-3">
                 {r}
               </div>
             ))}
@@ -234,14 +227,14 @@ function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
     }
   }
   return (
-    <div className="rounded-lg border border-neutral-200 px-4 py-3">
-      <div className="text-neutral-900">{card.words}</div>
+    <div className="rounded-lg border border-line px-4 py-3">
+      <div className="text-ink">{card.words}</div>
       {card.detail && (
-        <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+        <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-sunk px-3 py-2 text-base text-ink-2">
           {card.detail}
         </div>
       )}
-      {card.cannotUndo && <div className="mt-1 text-xs text-neutral-500">{card.cannotUndo}</div>}
+      {card.cannotUndo && <div className="mt-1 text-sm text-ink-2">{card.cannotUndo}</div>}
       <div className="mt-3 flex flex-wrap gap-2">
         {card.options.map((o, i) => (
           <Button
@@ -263,7 +256,7 @@ function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
             }}
           >
             <input
-              className="flex-1 rounded-md border border-neutral-200 px-2 py-1 text-sm outline-none focus:border-neutral-400"
+              className="flex-1 rounded-md border border-line px-2 py-1 text-base outline-none focus:border-accent-line"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               placeholder="Your answer"
@@ -274,7 +267,7 @@ function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
           </form>
         )}
       </div>
-      {problem && <div className="mt-2 text-xs text-red-600">{problem}</div>}
+      {problem && <div className="mt-2 text-sm text-bad">{problem}</div>}
     </div>
   )
 }
@@ -300,12 +293,12 @@ function Composer({ busy, onProblem }: { busy: boolean; onProblem: (p: string) =
     }
   }
   return (
-    <div className="border-t border-neutral-200 bg-white">
+    <div className="border-t border-line bg-surface">
       <div className="mx-auto flex max-w-2xl items-end gap-2 px-6 py-3">
         <button
           type="button"
           title="Add a file"
-          className="mb-1 rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="mb-1 rounded-md p-1.5 text-ink-3 hover:bg-hover hover:text-ink-2"
           onClick={() => file.current?.click()}
         >
           <svg
@@ -336,7 +329,7 @@ function Composer({ busy, onProblem }: { busy: boolean; onProblem: (p: string) =
           onChange={(e) => setWords(e.target.value)}
           onKeyDown={key}
           placeholder="Message Alpha"
-          className="max-h-40 min-h-9 flex-1 resize-none rounded-lg border border-neutral-200 px-3 py-2 outline-none focus:border-neutral-400"
+          className="max-h-40 min-h-9 flex-1 resize-none rounded-lg border border-line px-3 py-2 outline-none focus:border-accent-line"
         />
         {busy && (
           <Button variant="outline" onClick={() => api.post('/api/stop')}>

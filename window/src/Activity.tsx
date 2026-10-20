@@ -27,35 +27,30 @@ export function Activity({ version }: { version: number }) {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-2xl flex-col gap-3 px-6 py-8">
-        <h1 className="text-lg text-neutral-900">Activity</h1>
+        <h1 className="text-xl text-ink">Activity</h1>
         {runs?.length === 0 && (
-          <p className="text-sm text-neutral-500">
+          <p className="text-base text-ink-2">
             Nothing has run on its own yet. Agents and readers show their runs here.
           </p>
         )}
         {runs?.map((r) => (
-          <div key={r.id} className="rounded-lg border border-neutral-200 px-4 py-3">
+          <div key={r.id} className="rounded-lg border border-line px-4 py-3">
             <div className="flex items-start justify-between gap-4">
               <button
                 type="button"
                 className="min-w-0 text-left"
                 onClick={() => setOpen(open === r.id ? null : r.id)}
               >
-                <div className="text-neutral-900">
+                <div className="text-ink">
                   {r.agent ?? 'A try'}
-                  {r.module ? <span className="text-neutral-400"> · {r.module}</span> : null}
+                  {r.module ? <span className="text-ink-3"> · {r.module}</span> : null}
                 </div>
-                <div
-                  className={cn(
-                    'text-xs',
-                    r.state === 'failed' ? 'text-amber-700' : 'text-neutral-500',
-                  )}
-                >
+                <div className={cn('text-sm', r.state === 'failed' ? 'text-warn' : 'text-ink-2')}>
                   {STATE[r.state]} · {when(r.startedAt)}
                   {r.steps.length ? ` · ${r.steps.length} steps` : ''}
                 </div>
                 {r.words && r.state !== 'running' && (
-                  <div className="mt-1 text-sm text-neutral-700">{r.words}</div>
+                  <div className="mt-1 text-base text-ink-2">{r.words}</div>
                 )}
               </button>
               {r.state === 'running' && (
@@ -69,17 +64,17 @@ export function Activity({ version }: { version: number }) {
               )}
             </div>
             {open === r.id && r.steps.length > 0 && (
-              <ol className="mt-2 flex flex-col gap-1 border-t border-neutral-100 pt-2 text-sm">
+              <ol className="mt-2 flex flex-col gap-1 border-t border-hair pt-2 text-base">
                 {r.steps.map((s) => (
                   <li key={s.id} className="flex gap-3">
-                    <span className="shrink-0 text-xs leading-5 text-neutral-400">
+                    <span className="shrink-0 text-sm leading-5 text-ink-3">
                       {new Date(s.at).toLocaleTimeString(undefined, {
                         hour: '2-digit',
                         minute: '2-digit',
                         second: '2-digit',
                       })}
                     </span>
-                    <span className={cn(s.kind === 'told' && 'text-neutral-900')}>{s.words}</span>
+                    <span className={cn(s.kind === 'told' && 'text-ink')}>{s.words}</span>
                   </li>
                 ))}
               </ol>

@@ -38,15 +38,15 @@ export function Settings({ open, version }: { open: string | null; version: numb
     if (version >= 0) load()
   }, [load, version])
 
-  if (!view) return <p className="p-6 text-neutral-400">{problem ?? 'Loading…'}</p>
+  if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
   const accounts = view.connectors.filter((c) => c.name !== 'folder')
   const folders = view.connections.filter((c) => c.connector === 'folder')
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-8">
-        <h1 className="text-lg text-neutral-900">Settings</h1>
+        <h1 className="text-xl text-ink">Settings</h1>
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm text-neutral-500">Connections</h2>
+          <h2 className="text-base text-ink-2">Connections</h2>
           {accounts.map((c) => (
             <ConnectorRow
               key={c.name}
@@ -58,8 +58,8 @@ export function Settings({ open, version }: { open: string | null; version: numb
           ))}
         </section>
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm text-neutral-500">Folders</h2>
-          <p className="text-sm text-neutral-500">
+          <h2 className="text-base text-ink-2">Folders</h2>
+          <p className="text-base text-ink-2">
             What you put in a folder here is kept and read, as if you dropped it in. Alpha reads
             these folders and never writes to them.
           </p>
@@ -89,17 +89,15 @@ function ConnectionLine({
     onChange()
   }
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-neutral-200 px-4 py-3">
+    <div className="flex items-start justify-between gap-4 rounded-lg border border-line px-4 py-3">
       <div className="min-w-0">
-        <div className="truncate text-neutral-900">{k.account}</div>
-        <div
-          className={cn('text-xs', k.state === 'connected' ? 'text-neutral-500' : 'text-amber-700')}
-        >
+        <div className="truncate text-ink">{k.account}</div>
+        <div className={cn('text-sm', k.state === 'connected' ? 'text-ink-2' : 'text-warn')}>
           {STATE[k.state]} · last read {when(k.lastSyncAt)}
         </div>
-        {k.health && <div className="mt-1 text-xs text-amber-700">{k.health}</div>}
+        {k.health && <div className="mt-1 text-sm text-warn">{k.health}</div>}
         {k.tables.map((t) => (
-          <div key={t.id} className="mt-1 text-xs text-neutral-500">
+          <div key={t.id} className="mt-1 text-sm text-ink-2">
             Kept in{' '}
             <a className="underline" href={`#/table/${t.id}`}>
               {t.name}
@@ -182,7 +180,7 @@ function ConnectorRow({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-neutral-900">{c.title}</span>
+        <span className="text-ink">{c.title}</span>
         {!open && (connections.length === 0 || !system) && (
           <Button
             size="sm"
@@ -199,18 +197,18 @@ function ConnectorRow({
       {open && (
         <form
           onSubmit={submit}
-          className="flex flex-col gap-2 rounded-lg border border-neutral-200 px-4 py-3"
+          className="flex flex-col gap-2 rounded-lg border border-line px-4 py-3"
         >
           {system ? (
-            <p className="text-sm text-neutral-600">
+            <p className="text-base text-ink-2">
               Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only
               reads it.
             </p>
           ) : (
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-neutral-500">{c.account.label}</span>
+            <label className="flex flex-col gap-1 text-base">
+              <span className="text-ink-2">{c.account.label}</span>
               <input
-                className="rounded-md border border-neutral-200 px-2 py-1.5 outline-none focus:border-neutral-400"
+                className="rounded-md border border-line px-2 py-1.5 outline-none focus:border-accent-line"
                 value={account}
                 placeholder={c.account.placeholder}
                 onChange={(e) => setAccount(e.target.value)}
@@ -219,16 +217,16 @@ function ConnectorRow({
             </label>
           )}
           {c.secret && (
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-neutral-500">{c.secret.label}</span>
+            <label className="flex flex-col gap-1 text-base">
+              <span className="text-ink-2">{c.secret.label}</span>
               <input
                 type="password"
-                className="rounded-md border border-neutral-200 px-2 py-1.5 outline-none focus:border-neutral-400"
+                className="rounded-md border border-line px-2 py-1.5 outline-none focus:border-accent-line"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
                 autoComplete="off"
               />
-              <span className="text-xs text-neutral-500">
+              <span className="text-sm text-ink-2">
                 {c.secret.help}{' '}
                 {c.secret.url && (
                   <a className="underline" href={c.secret.url} target="_blank" rel="noreferrer">
@@ -238,7 +236,7 @@ function ConnectorRow({
               </span>
             </label>
           )}
-          {problem && <div className="text-sm text-red-600">{problem}</div>}
+          {problem && <div className="text-base text-bad">{problem}</div>}
           <div className="flex gap-2">
             <Button size="sm" disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}>
               {busy ? 'Connecting…' : 'Connect'}
@@ -275,7 +273,7 @@ function FolderForm({ onChange, startOpen }: { onChange: () => void; startOpen: 
     <form onSubmit={submit} className="flex flex-col gap-2">
       <div className="flex gap-2">
         <input
-          className="flex-1 rounded-md border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-neutral-400"
+          className="flex-1 rounded-md border border-line px-2 py-1.5 text-base outline-none focus:border-accent-line"
           value={path}
           // biome-ignore lint/a11y/noAutofocus: opened from a card asking for it
           autoFocus={startOpen}
@@ -286,7 +284,7 @@ function FolderForm({ onChange, startOpen }: { onChange: () => void; startOpen: 
           Add folder
         </Button>
       </div>
-      {problem && <div className="text-sm text-red-600">{problem}</div>}
+      {problem && <div className="text-base text-bad">{problem}</div>}
     </form>
   )
 }

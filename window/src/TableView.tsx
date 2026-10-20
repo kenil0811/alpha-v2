@@ -73,9 +73,9 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
                   title={value.length > 40 ? value : undefined}
                   className={cn(
                     'block w-full max-w-64 truncate text-left',
-                    source && 'hover:underline decoration-neutral-300 underline-offset-4',
+                    source && 'hover:underline decoration-line underline-offset-4',
                     (source?.kind === 'estimated' || source?.kind === 'assumed') &&
-                      'text-neutral-500 italic',
+                      'text-ink-2 italic',
                   )}
                   onClick={() => source && setPicked({ field: f, source, value })}
                 >
@@ -92,20 +92,20 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-end justify-between border-b border-neutral-200 px-6 py-4">
+      <div className="flex items-end justify-between border-b border-line px-6 py-4">
         <div>
-          <div className="text-xs text-neutral-400">{data.module.name}</div>
-          <h1 className="text-lg text-neutral-900">{data.name}</h1>
+          <div className="text-sm text-ink-3">{data.module.name}</div>
+          <h1 className="text-xl text-ink">{data.name}</h1>
         </div>
         {groupBy && (
-          <div className="flex gap-1 text-sm">
+          <div className="flex gap-1 text-base">
             {(['table', 'board'] as const).map((v) => (
               <button
                 key={v}
                 type="button"
                 className={cn(
-                  'rounded-md px-2 py-0.5 text-neutral-500 hover:bg-neutral-100',
-                  view === v && 'bg-neutral-200/60 text-neutral-900',
+                  'rounded-md px-2 py-0.5 text-ink-2 hover:bg-hover',
+                  view === v && 'bg-sunk text-ink',
                 )}
                 onClick={() => setView(v)}
               >
@@ -117,18 +117,18 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
       </div>
       <div className="flex-1 overflow-auto px-6 py-4">
         {data.rows.length === 0 ? (
-          <p className="text-neutral-400">No rows yet.</p>
+          <p className="text-ink-3">No rows yet.</p>
         ) : view === 'board' && groupBy ? (
           <Board data={data} by={groupBy} />
         ) : (
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-base">
             <thead>
               {table.getHeaderGroups().map((g) => (
                 <tr key={g.id}>
                   {g.headers.map((h) => (
                     <th
                       key={h.id}
-                      className="whitespace-nowrap border-b border-neutral-200 px-2 py-1.5 text-left font-normal text-neutral-500"
+                      className="whitespace-nowrap border-b border-line px-2 py-1.5 text-left font-normal text-ink-2"
                     >
                       {h.isPlaceholder ? null : <table.FlexRender header={h} />}
                     </th>
@@ -142,12 +142,12 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
                   key={row.id}
                   id={`row-${row.original.id}`}
                   className={cn(
-                    'hover:bg-neutral-50',
-                    row.original.id === openRow && 'bg-amber-50 hover:bg-amber-50',
+                    'hover:bg-sunk',
+                    row.original.id === openRow && 'bg-warn-soft hover:bg-warn-soft',
                   )}
                 >
                   {row.getAllCells().map((cell) => (
-                    <td key={cell.id} className="border-b border-neutral-100 px-2 py-1.5 align-top">
+                    <td key={cell.id} className="border-b border-hair px-2 py-1.5 align-top">
                       <table.FlexRender cell={cell} />
                     </td>
                   ))}
@@ -188,29 +188,29 @@ function Board({ data, by }: { data: TableData; by: FieldView }) {
         if (choice === '' && rows.length === 0) return null
         return (
           <div key={choice || 'none'} className="flex w-56 shrink-0 flex-col gap-2">
-            <div className="flex justify-between px-1 text-xs text-neutral-500">
+            <div className="flex justify-between px-1 text-sm text-ink-2">
               <span>{choice || `No ${by.name.toLowerCase()}`}</span>
-              <span className="text-neutral-400">{rows.length}</span>
+              <span className="text-ink-3">{rows.length}</span>
             </div>
             {rows.map((r) => (
               <div
                 key={r.id}
                 id={`row-${r.id}`}
-                className="flex flex-col gap-1 rounded-lg border border-neutral-200 px-3 py-2 text-sm"
+                className="flex flex-col gap-1 rounded-lg border border-line px-3 py-2 text-base"
               >
-                <div className="text-neutral-900">
+                <div className="text-ink">
                   {name ? show(name, r.values[name.slug]) || 'Untitled' : 'Untitled'}
                 </div>
                 {cardFields(r).map((f) => {
                   const v = show(f, r.values[f.slug], data.names)
                   return v ? (
-                    <div key={f.id} className="text-xs text-neutral-500">
+                    <div key={f.id} className="text-sm text-ink-2">
                       {f.name}: {v}
                     </div>
                   ) : null
                 })}
                 <select
-                  className="mt-1 rounded-md border border-neutral-200 bg-white px-1 py-0.5 text-xs text-neutral-600"
+                  className="mt-1 rounded-md border border-line bg-surface px-1 py-0.5 text-sm text-ink-2"
                   value={choice}
                   disabled={busy === r.id}
                   aria-label={`Move to another ${by.name.toLowerCase()}`}
@@ -242,10 +242,10 @@ function SourcePanel({
   const { field, source, value } = picked
   const open = source.open
   return (
-    <div className="border-t border-neutral-200 bg-neutral-50 px-6 py-3 text-sm">
+    <div className="border-t border-line bg-sunk px-6 py-3 text-base">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-xs text-neutral-400">
+          <div className="text-sm text-ink-3">
             {field.name}: {value} · {KIND_WORDS[source.kind]} ·{' '}
             {new Date(source.at).toLocaleString(undefined, {
               day: 'numeric',
@@ -254,10 +254,10 @@ function SourcePanel({
               minute: '2-digit',
             })}
           </div>
-          <div className="mt-1 text-neutral-800">{source.words}</div>
+          <div className="mt-1 text-ink">{source.words}</div>
           {open && 'file' in open && (
             <a
-              className="mt-1 inline-block text-xs underline"
+              className="mt-1 inline-block text-sm underline"
               href={api.fileUrl(open.file)}
               target="_blank"
               rel="noreferrer"
@@ -267,7 +267,7 @@ function SourcePanel({
           )}
           {open && 'url' in open && (
             <a
-              className="mt-1 inline-block text-xs underline"
+              className="mt-1 inline-block text-sm underline"
               href={open.url}
               target="_blank"
               rel="noreferrer"
@@ -276,11 +276,7 @@ function SourcePanel({
             </a>
           )}
         </div>
-        <button
-          type="button"
-          className="text-xs text-neutral-400 hover:text-neutral-700"
-          onClick={onClose}
-        >
+        <button type="button" className="text-sm text-ink-3 hover:text-ink-2" onClick={onClose}>
           Close
         </button>
       </div>
