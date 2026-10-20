@@ -1,16 +1,19 @@
 // The window (design §14): the rail, a bar over each screen, and the screen: Home (the stream),
-// Activity, Settings or a module's table.
+// Activity, Settings or a module (its tables, conversation, agents and notes). On a module's
+// screen, Ask (⌘J) opens its conversation on the right.
 import type { LiveEvent, ModuleSummary, Stream, TableView as TableData } from '@alpha/core/api'
 import { Activity as ActivityIcon, Briefcase, House, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { api, listen } from './api.ts'
 import { applyLive, Home, type Live } from './Home.tsx'
+import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
 import { Settings } from './Settings.tsx'
 import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
+import { SidePanel } from './ui/side-panel.tsx'
 
 function placeOf(hash: string): Place {
   const m = /^#\/table\/([^/]+)(?:\/([^/]+))?$/.exec(hash)
@@ -19,6 +22,13 @@ function placeOf(hash: string): Place {
   if (s) return { at: 'settings', open: s[1] ?? null }
   if (hash === '#/activity') return { at: 'activity' }
   if (hash === '#/parts') return { at: 'parts' }
+  const mod = /^#\/module\/([^/]+)(?:\/(conversation|agents))?$/.exec(hash)
+  if (mod?.[1])
+    return {
+      at: 'module',
+      id: mod[1],
+      tab: (mod[2] as 'conversation' | 'agents' | undefined) ?? null,
+    }
   return { at: 'home' }
 }
 
@@ -35,6 +45,29 @@ export function App() {
   const [finding, setFinding] = useState(false)
   // a topic chip's lens: Home keeps to one module until it is cleared
   const [lens, setLens] = useState<Module>(null)
+  // Ask (⌘J): the module's conversation on the right, on its screen
+  const [asking, setAsking] = useState(false)
+  const moduleHere: Module =
+    place.at === 'module'
+      ? (modules.find((m) => m.id === place.id) ?? null)
+      : place.at === 'table' && table
+        ? table.module
+        : null
+  const moduleRef = useRef(moduleHere)
+  moduleRef.current = moduleHere
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j' && moduleRef.current) {
+        e.preventDefault()
+        setAsking((a) => !a)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  useEffect(() => {
+    if (!moduleHere) setAsking(false)
+  }, [moduleHere])
 
   // ⌘K opens Find anywhere
   useEffect(() => {
@@ -116,7 +149,15 @@ export function App() {
                 icon: <Briefcase className={icon} />,
                 parts: table ? [table.module.name, table.name] : ['…'],
               }
-            : { icon: <House className={icon} />, parts: ['Home'] }
+            : place.at === 'module'
+              ? {
+                  icon: <Briefcase className={icon} />,
+                  parts: [
+                    moduleHere?.name ?? '…',
+                    place.tab === 'agents' ? 'Agents and notes' : 'Conversation',
+                  ],
+                }
+              : { icon: <House className={icon} />, parts: ['Home'] }
 
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
@@ -134,6 +175,12 @@ export function App() {
           onFind={() => setFinding(true)}
           lens={place.at === 'home' ? lens : null}
           onClearLens={() => setLens(null)}
+          ask={
+            moduleHere && !(place.at === 'module' && place.tab === 'conversation')
+              ? moduleHere
+              : null
+          }
+          onAsk={() => setAsking((a) => !a)}
         />
         {problem && (
           <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
@@ -149,8 +196,54 @@ export function App() {
             <Activity version={version} />
           ) : place.at === 'settings' ? (
             <Settings open={place.open} version={version} />
-          ) : table ? (
-            <TableView key={table.id} data={table} row={place.row} />
+          ) : place.at === 'module' || table ? (
+            <div className="flex h-full min-h-0">
+              <div className="min-w-0 flex-1">
+                <ModuleScreen
+                  moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                  tab={
+                    place.at === 'table'
+                      ? { kind: 'table', id: place.id }
+                      : place.tab
+                        ? { kind: place.tab }
+                        : null
+                  }
+                  version={version}
+                  table={table}
+                  renderTable={(t) => (
+                    <TableView
+                      key={t.id}
+                      data={t}
+                      row={place.at === 'table' ? place.row : null}
+                      quiet={asking}
+                    />
+                  )}
+                  conversation={
+                    <Home
+                      stream={stream}
+                      live={live}
+                      busyTurn={busyTurn}
+                      lens={moduleHere}
+                      onLens={() => undefined}
+                      from={moduleHere}
+                    />
+                  }
+                />
+              </div>
+              {asking && moduleHere && (
+                <SidePanel title={`Ask about ${moduleHere.name}`} onClose={() => setAsking(false)}>
+                  <Home
+                    stream={stream}
+                    live={live}
+                    busyTurn={busyTurn}
+                    lens={moduleHere}
+                    onLens={() => undefined}
+                    from={moduleHere}
+                    compact
+                  />
+                </SidePanel>
+              )}
+            </div>
           ) : (
             <p className="p-6 text-ink-3">That table is not there.</p>
           )}

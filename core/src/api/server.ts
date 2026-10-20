@@ -1,6 +1,7 @@
 // The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
@@ -26,6 +27,7 @@ import type {
   Me,
   ModelView,
   ModuleSummary,
+  ModuleView,
   RunView,
   SourceView,
   Stream,
@@ -146,8 +148,11 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   })
 
   app.post('/api/say', async (req) => {
-    const { words } = z.object({ words: z.string().trim().min(1) }).parse(req.body)
-    return { turn: engine.say(user, words) }
+    const { words, from } = z
+      .object({ words: z.string().trim().min(1), from: z.string().optional() })
+      .parse(req.body)
+    const m = from ? world.shape.module(from) : undefined
+    return { turn: engine.say(user, words, m ? { id: m.id, name: m.name } : null) }
   })
 
   app.post('/api/stop', async () => {
@@ -414,6 +419,38 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (!runner || !a) throw new Refused('That agent is not there.')
     void runner.runAgent(a, { user: user.id, turn: null }).catch(() => undefined)
     return { ok: true }
+  })
+
+  app.get('/api/modules/:id', async (req, reply): Promise<ModuleView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const m = world.shape.module(id)
+    if (!m) return reply.code(404).send({ problem: 'That module is not there.' })
+    const k = installedKits(world).find((x) => x.module === m.id)
+    const running = new Set(
+      (engine.hands?.runner.runs(200) ?? [])
+        .filter((r) => r.state === 'running')
+        .map((r) => r.agent),
+    )
+    const notes = join(m.dir, 'NOTES.md')
+    return {
+      id: m.id,
+      name: m.name,
+      kit: k ? { name: k.kit, version: k.version } : null,
+      agents: agents(world, m.id).map((a) => ({
+        id: a.id,
+        name: a.name,
+        state: a.state,
+        when: whenWords(a.trigger),
+        lastRunAt: a.lastRunAt,
+        running: running.has(a.id),
+      })),
+      sites: moduleNetwork(m).length,
+      notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
+      tables: world.shape
+        .tables(m.id)
+        .filter((t) => !t.hidden)
+        .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
+    }
   })
 
   // What Alpha remembers, each line removable by the person (the instructions files, design §6).

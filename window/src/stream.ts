@@ -87,7 +87,8 @@ export function group(lines: StreamLine[]): Item[] {
   for (const l of lines) {
     if (l.kind === 'said') {
       items.push({ kind: 'said', id: l.id, words: l.words, at: l.at })
-      alpha(String(l.id), l.at)
+      // asked from a module (Ask, ⌘J): the turn belongs to it
+      alpha(String(l.id), l.at).module = l.module
       continue
     }
     if (l.kind === 'noticed') {

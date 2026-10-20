@@ -21,6 +21,7 @@ export interface TurnContext {
   turn: string | null
   said: Said | null
   message: string | null
+  from?: { id: string; name: string } | null // the module the person asked from (Ask, ⌘J)
 }
 
 export interface Here {

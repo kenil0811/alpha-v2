@@ -79,7 +79,15 @@ function show(field: FieldView, value: unknown, names: Record<string, string> = 
   return String(value)
 }
 
-export function TableView({ data, row: openRow }: { data: TableData; row?: string | null }) {
+export function TableView({
+  data,
+  row: openRow,
+  quiet = false,
+}: {
+  data: TableData
+  row?: string | null
+  quiet?: boolean // the Ask panel is open: the source panel gives way to it
+}) {
   const [picked, setPicked] = useState<{ row: string; field: string } | null>(
     openRow ? { row: openRow, field: data.fields[0]?.slug ?? '' } : null,
   )
@@ -169,14 +177,6 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-3 px-7 pt-5">
-          <h1 className="text-2xl text-ink">{data.name}</h1>
-          <span className="text-ink-3 text-sm">
-            {rows.length === data.rows.length
-              ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-              : `${rows.length} of ${data.rows.length}`}
-          </span>
-        </div>
         <div className="flex flex-wrap items-center gap-2 px-7 pt-3.5 pb-3">
           <label className="flex h-7.5 w-46 items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
             <Search className="size-3.25 shrink-0" />
@@ -188,6 +188,11 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
               className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
             />
           </label>
+          <span className="text-ink-3 text-sm">
+            {rows.length === data.rows.length
+              ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
+              : `${rows.length} of ${data.rows.length}`}
+          </span>
           <span className="flex-1" />
           {groupBy && (
             <Segmented
@@ -259,7 +264,7 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
           </div>
         )}
       </div>
-      {pickedRow && pickedField && (
+      {!quiet && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
           row={pickedRow}

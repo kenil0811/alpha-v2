@@ -61,6 +61,7 @@ interface Turn {
   text: string // what is sent to the session
   said: { message: number; user: string } | null
   message: string | null // the person's own words, when the turn is on their message
+  from?: { id: string; name: string } | null // the module they asked from
 }
 
 class Inbox implements AsyncIterable<SDKUserMessage> {
@@ -145,13 +146,15 @@ export class Desk {
     return this.running !== null
   }
 
-  // The person's sentence: journaled at once, answered in order.
-  say(words: string): string {
+  // The person's sentence: journaled at once, answered in order. Asked from a module (Ask, ⌘J),
+  // the line carries the module and the turn's context says so.
+  say(words: string, from: { id: string; name: string } | null = null): string {
     const line = this.world.line({
       actor: { kind: 'person', id: this.user.id },
       kind: 'said',
       words,
       user: this.user.id,
+      module: from?.id ?? null,
     })
     const turn = String(line.id)
     this.queue.push({
@@ -159,6 +162,7 @@ export class Desk {
       text: words,
       said: { message: line.id, user: this.user.id },
       message: words,
+      from,
     })
     this.emit({ type: 'lines' })
     this.pump()
@@ -207,7 +211,13 @@ export class Desk {
     const next = this.queue.shift() as Turn
     if (!this.q) this.open()
     this.running = { ...next, reply: '', doing: null }
-    this.here.current = { user: this.user, turn: next.turn, said: next.said, message: next.message }
+    this.here.current = {
+      user: this.user,
+      turn: next.turn,
+      said: next.said,
+      message: next.message,
+      from: next.from ?? null,
+    }
     this.emit({ type: 'busy', turn: next.turn })
     this.box?.push(next.text)
   }
@@ -444,7 +454,13 @@ export class Desk {
             this.connectors?.describe() ?? null,
           )
         : '',
-      turnLayer(this.world, this.user.id, seen, this.here.current.message),
+      turnLayer(
+        this.world,
+        this.user.id,
+        seen,
+        this.here.current.message,
+        this.here.current.from ?? null,
+      ),
     ].filter(Boolean)
     this.fresh = false
     return {

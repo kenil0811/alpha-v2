@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   House,
+  MessageSquare,
   Search,
   SlidersHorizontal,
   Table2,
@@ -23,6 +24,7 @@ export type Place =
   | { at: 'activity' }
   | { at: 'parts' }
   | { at: 'table'; id: string; row: string | null }
+  | { at: 'module'; id: string; tab: 'conversation' | 'agents' | null }
   | { at: 'settings'; open: string | null }
 
 function Nav({
@@ -134,20 +136,27 @@ export function Rail({
           const open = !closed.has(m.id)
           return (
             <div key={m.id}>
-              <button
-                type="button"
-                aria-expanded={open}
-                onClick={() => toggle(m.id)}
-                className="flex h-7.5 w-full items-center gap-2.25 rounded-md px-2 text-left text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink"
-              >
-                <Briefcase className="size-4 shrink-0 text-rail-ink-3" />
-                <span className="min-w-0 flex-1 truncate">{m.name}</span>
-                {open ? (
-                  <ChevronDown className="size-3.25 text-rail-ink-3" />
-                ) : (
-                  <ChevronRight className="size-3.25 text-rail-ink-3" />
-                )}
-              </button>
+              <div className="flex items-center">
+                <Nav
+                  href={`#/module/${m.id}`}
+                  icon={<Briefcase className="size-4" />}
+                  label={m.name}
+                  current={place.at === 'module' && place.id === m.id}
+                />
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-label={open ? `Fold ${m.name}` : `Unfold ${m.name}`}
+                  onClick={() => toggle(m.id)}
+                  className="-ml-7 grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:text-rail-ink"
+                >
+                  {open ? (
+                    <ChevronDown className="size-3.25" />
+                  ) : (
+                    <ChevronRight className="size-3.25" />
+                  )}
+                </button>
+              </div>
               {open && (
                 <div className="flex flex-col pl-4">
                   {m.tables.map((t) => (
@@ -198,11 +207,15 @@ export function Bar({
   onFind,
   lens,
   onClearLens,
+  ask,
+  onAsk,
 }: {
   crumb: Crumb
   onFind: () => void
   lens: { id: string; name: string } | null
   onClearLens: () => void
+  ask: { id: string; name: string } | null // on a module's screen: Ask about it
+  onAsk: () => void
 }) {
   const last = crumb.parts.at(-1) ?? ''
   return (
@@ -232,6 +245,17 @@ export function Bar({
         </span>
       )}
       <span className="flex-1" />
+      {ask && (
+        <button
+          type="button"
+          onClick={onAsk}
+          className="flex h-7.5 items-center gap-2 rounded-md px-2.5 text-ink-2 text-md transition-colors hover:bg-hover hover:text-ink"
+        >
+          <MessageSquare className="size-3.5 shrink-0" />
+          Ask about {ask.name}
+          <Kbd>⌘J</Kbd>
+        </button>
+      )}
       <button
         type="button"
         onClick={onFind}

@@ -40,13 +40,18 @@ if (!existsSync(webkit.executablePath())) {
 // The screens: Home, Activity, Settings, every table, and a board for each table with a choice.
 const modules = (await (
   await fetch(`${url.origin}/api/modules`, { headers: { 'x-alpha-token': token } })
-).json()) as { tables: { id: string; name: string }[] }[]
+).json()) as { id: string; name: string; tables: { id: string; name: string }[] }[]
 const screens: { name: string; hash: string; board?: boolean }[] = [
   { name: 'home', hash: '#/' },
   { name: 'activity', hash: '#/activity' },
   { name: 'settings', hash: '#/settings' },
   { name: 'parts', hash: '#/parts' },
 ]
+for (const m of modules) {
+  const slug = m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  screens.push({ name: `module-${slug}-conversation`, hash: `#/module/${m.id}/conversation` })
+  screens.push({ name: `module-${slug}-agents`, hash: `#/module/${m.id}/agents` })
+}
 for (const t of modules.flatMap((m) => m.tables)) {
   const slug = t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
   screens.push({ name: `table-${slug}`, hash: `#/table/${t.id}` })
@@ -72,7 +77,9 @@ for (const size of SIZES)
       await page.waitForSelector('nav')
       // a table's title comes once its rows are in
       if (s.hash.startsWith('#/table'))
-        await page.waitForSelector('main h1', { timeout: 10_000 }).catch(() => undefined)
+        await page
+          .waitForSelector('main table, main [role=tablist] ~ div p', { timeout: 10_000 })
+          .catch(() => undefined)
       if (s.board) {
         const board = page.getByRole('button', { name: 'Board', exact: true })
         if (!(await board.count())) continue // a table with no choice to group by has no board

@@ -56,12 +56,16 @@ export function Home({
   busyTurn,
   lens,
   onLens,
+  from = null,
+  compact = false,
 }: {
   stream: Stream | null
   live: Live
   busyTurn: string | null
   lens: Module
   onLens: (m: Module) => void
+  from?: Module // asked from a module's screen or its Ask panel
+  compact?: boolean // in the Ask panel: narrow, no Now strip
 }) {
   const all = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
@@ -117,7 +121,12 @@ export function Home({
       onDrop={drop}
     >
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-196 flex-col gap-5 px-8 pt-7 pb-5">
+        <div
+          className={cn(
+            'mx-auto flex flex-col gap-5',
+            compact ? 'px-4 pt-4 pb-3 text-md' : 'max-w-196 px-8 pt-7 pb-5',
+          )}
+        >
           {items.length === 0 && (
             <p className="pt-24 text-center text-ink-3">
               {lens
@@ -155,9 +164,21 @@ export function Home({
           {problem}
         </button>
       )}
-      <div className="mx-auto flex w-full max-w-196 flex-col gap-2 px-8 pt-1.5 pb-4">
-        <Now stream={stream} />
-        <Composer words={words} setWords={setWords} area={composer} onProblem={setProblem} />
+      <div
+        className={cn(
+          'mx-auto flex w-full flex-col gap-2',
+          compact ? 'px-3 pt-1 pb-3' : 'max-w-196 px-8 pt-1.5 pb-4',
+        )}
+      >
+        {!compact && <Now stream={stream} />}
+        <Composer
+          words={words}
+          setWords={setWords}
+          area={composer}
+          onProblem={setProblem}
+          from={from}
+          compact={compact}
+        />
       </div>
       {dragging && (
         <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-xl border border-accent-line border-dashed bg-surface/80 text-ink-2">
@@ -579,11 +600,15 @@ function Composer({
   setWords,
   area,
   onProblem,
+  from,
+  compact,
 }: {
   words: string
   setWords: (w: string) => void
   area: RefObject<HTMLTextAreaElement | null>
   onProblem: (p: string) => void
+  from: Module
+  compact: boolean
 }) {
   const file = useRef<HTMLInputElement>(null)
   const send = async () => {
@@ -591,7 +616,7 @@ function Composer({
     if (!w) return
     setWords('')
     try {
-      await api.post('/api/say', { words: w })
+      await api.post('/api/say', { words: w, ...(from ? { from: from.id } : {}) })
     } catch (err) {
       setWords(w)
       onProblem(err instanceof Problem ? err.message : 'That did not reach Alpha.')
@@ -611,8 +636,8 @@ function Composer({
         value={words}
         onChange={(e) => setWords(e.target.value)}
         onKeyDown={key}
-        placeholder="Message Alpha"
-        aria-label="Message Alpha"
+        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha'}
+        aria-label={from ? `Ask about ${from.name}` : 'Message Alpha'}
         className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
       />
       <div className="flex items-center gap-2">
@@ -631,7 +656,7 @@ function Composer({
           }}
         />
         <span className="ml-auto text-ink-3 text-xs">
-          Return to send · Shift-Return for a new line
+          {compact ? '' : 'Return to send · Shift-Return for a new line'}
         </span>
         <button
           type="button"

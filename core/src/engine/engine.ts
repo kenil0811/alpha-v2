@@ -79,8 +79,8 @@ export class Engine {
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
   }
 
-  say(user: User, words: string): string {
-    return this.desk(user).say(words)
+  say(user: User, words: string, from: { id: string; name: string } | null = null): string {
+    return this.desk(user).say(words, from)
   }
 
   stop(user: User): Promise<void> {

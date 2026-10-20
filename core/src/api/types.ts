@@ -143,6 +143,17 @@ export interface WorkingModuleView {
   agents: AgentView[]
 }
 
+// A module's head and its parts, for its screen.
+export interface ModuleView {
+  id: string
+  name: string
+  kit: { name: string; version: string } | null
+  agents: AgentView[]
+  sites: number // how many sites its readers may read
+  notes: string // NOTES.md, as written
+  tables: TableSummary[]
+}
+
 // What Alpha remembers: the standing instructions the person gave, for them or for everyone.
 export interface InstructionView {
   for: 'me' | 'everyone'

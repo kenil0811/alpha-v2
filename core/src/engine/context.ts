@@ -53,9 +53,11 @@ export function turnLayer(
   userId: string,
   seenId: number,
   message: string | null,
+  from: { id: string; name: string } | null = null,
 ): string {
   const limits = config.limits()
   const parts: string[] = []
+  if (from) parts.push(`Asked from the ${from.name} module.`)
   const now = new Date()
   parts.push(
     `Now: ${now.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`,

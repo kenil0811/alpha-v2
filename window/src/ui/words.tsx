@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm'
 
 export function Words({ text }: { text: string }) {
   return (
-    <div className="flex flex-col gap-3 leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-sunk [&_code]:px-1 [&_code]:text-md [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:font-medium [&_ul]:list-disc [&_ul]:pl-5">
+    <div className="flex flex-col gap-3 leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-sunk [&_code]:px-1 [&_code]:text-md [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:font-medium [&_h1]:font-serif [&_h1]:text-xl [&_h2]:font-medium [&_h2]:font-serif [&_h2]:text-lg [&_h3]:font-semibold [&_strong]:font-medium [&_ul]:list-disc [&_ul]:pl-5">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{

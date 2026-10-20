@@ -1,4 +1,4 @@
-# 20 October 2026: the window redesign, steps 1 to 7 (look, parts, shell, Home, tables, Activity, Settings)
+# 20 October 2026: the window redesign, steps 1 to 8 (look, parts, shell, Home, tables, Activity, Settings, modules)
 
 Kenil tested DealPilot on a test copy ("looks good!") and stages A and B were committed and
 pushed (alpha-v2 3937316..9cbabb6; alpha-avilo private at github.com/kenil0811/alpha-avilo). He
@@ -141,3 +141,26 @@ Connections, Folders, Kits and agents (as before, on the parts), and three new s
 - **Appearance:** Match Mac · Light · Dark, kept in this browser and put on `<html>` as
   `data-theme` (the Mac shell keeps it in week 6); a switch for connection tables in the sidebar
   (all of them at once; each connection's own link stays).
+
+## Step 8: module screens and Ask (uncommitted, for Kenil's review)
+
+Step 7 committed and pushed (7ffe5c9).
+
+- **Core:** a module's head (`GET /api/modules/:id`: its kit and version, its agents, how many
+  sites its readers may read, its NOTES.md, its tables with counts); a message may say which
+  module it was asked from (`from`): the said line carries the module, so the turn shows through
+  that module's lens, and Alpha's per-turn context says "Asked from the DealPilot module."
+- **A module screen:** its head (from the kit, agents on, sites it reads) and one row of tabs: its
+  tables with their counts, Conversation (Home through the module's lens, asking from it), and
+  Agents and notes (each agent as a switch; the notes Alpha reads, rendered). The rail's module
+  row opens it (its first table); the chevron folds it. A table's own title gave way to the
+  module's head.
+- **Ask (⌘J)** on a module's screen, or "Ask about DealPilot" in the bar: the module's
+  conversation in the right panel, answered in the same stream as Home; the source panel gives
+  way to it. Tried: asked "How many deals fit right now?" from the panel; the line carried
+  DealPilot and the answer came back in the panel.
+- **Kit pages wait for pages** (design §13), which v2 does not have yet; they join the tabs then,
+  in a frame with the tokens and fonts inlined.
+
+Screenshots: the thread reached its 24 attached files, so shots go into the thread as links to the
+project's files.
