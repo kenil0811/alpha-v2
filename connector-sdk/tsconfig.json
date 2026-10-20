@@ -3,7 +3,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": ".tsbuild",
-    "types": ["node"]
+    "types": ["node"],
+    "lib": ["es2024", "dom"]
   },
   "include": ["src"]
 }

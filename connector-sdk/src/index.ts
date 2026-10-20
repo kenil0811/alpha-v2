@@ -1,4 +1,14 @@
 export {
+  BrowserEngine,
+  browserPath,
+  type Extracted,
+  type ExtractSpec,
+  ensureBrowser,
+  type Pace,
+  robotsAllow,
+  type Snapshot,
+} from './browser.ts'
+export {
   type AuthKind,
   type Call,
   type Connector,
