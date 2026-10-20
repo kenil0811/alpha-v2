@@ -1,34 +1,87 @@
-// Home is the stream (design §14): the person's sentences and Alpha's replies in order. Work shows
-// as one live message that becomes the outcome, with "Show the work" folded under it.
+// Home is the stream (design §14, Ledger): the person's words in bubbles; Alpha's replies under a
+// meta line with the module's topic chip and the time; agents' reports as boxes of rows; cards
+// inline, folding to one line once answered. Work shows as one live message, with Stop, that
+// becomes the outcome. A topic chip is a lens: the stream keeps to that module. Above the
+// composer, the Now strip: what is running and what waits on the person, three at most.
 import type { AboutRows, CardView, LiveEvent, Stream } from '@alpha/core/api'
-import { ArrowUp, ChevronRight, Paperclip, TriangleAlert } from 'lucide-react'
-import { type DragEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ArrowUp,
+  Bot,
+  Check,
+  ChevronRight,
+  KeyRound,
+  Paperclip,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
+import {
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { api, Problem } from './api.ts'
-import { group, type Item, type Step } from './stream.ts'
+import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
+import { Topic } from './ui/pill.tsx'
 import { Words } from './ui/words.tsx'
 
 export interface Live {
   [turn: string]: { text: string; doing: string | null }
 }
 
+const clock = (at: string) =>
+  new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+
+function dayOf(at: string): string {
+  const d = new Date(at)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
 export function Home({
   stream,
   live,
   busyTurn,
+  lens,
+  onLens,
 }: {
   stream: Stream | null
   live: Live
   busyTurn: string | null
+  lens: Module
+  onLens: (m: Module) => void
 }) {
-  const items = useMemo(() => group(stream?.lines ?? []), [stream])
+  const all = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
+  // through a lens, a sentence stays when the turn it began does
+  const items = useMemo(() => {
+    if (!lens) return all
+    const kept = new Set(
+      all
+        .filter((i) => i.kind === 'alpha' && i.module?.id === lens.id)
+        .map((i) => i.kind === 'alpha' && i.turn),
+    )
+    return all.filter((i) =>
+      i.kind === 'said' ? kept.has(String(i.id)) : moduleOfItem(i)?.id === lens.id,
+    )
+  }, [all, lens])
   const end = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [words, setWords] = useState('')
+  const composer = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
@@ -45,7 +98,13 @@ export function Home({
       }
     }
   }
+  // "Change something" on a card: the composer, started with the card's words
+  const changeCard = (card: CardView) => {
+    setWords(`About “${card.words.replace(/\?$/, '')}”: `)
+    composer.current?.focus()
+  }
 
+  let lastDay = ''
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a drop target for files; the paperclip is the keyboard way
     <div
@@ -58,37 +117,288 @@ export function Home({
       onDrop={drop}
     >
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-196 flex-col gap-5 px-8 py-7">
+        <div className="mx-auto flex max-w-196 flex-col gap-5 px-8 pt-7 pb-5">
           {items.length === 0 && (
-            <p className="pt-24 text-center text-ink-3">Say what you want kept, tracked or done.</p>
+            <p className="pt-24 text-center text-ink-3">
+              {lens
+                ? `Nothing about ${lens.name} yet.`
+                : 'Say what you want kept, tracked or done.'}
+            </p>
           )}
-          {items.map((item) => (
-            <Entry
-              key={item.kind === 'alpha' ? `a${item.turn}` : `${item.kind}${item.id}`}
-              item={item}
-              live={item.kind === 'alpha' ? live[item.turn] : undefined}
-              working={item.kind === 'alpha' && busyTurn === item.turn}
-              cards={cards}
-            />
-          ))}
+          {items.map((item) => {
+            const day = dayOf(item.at)
+            const line = day !== lastDay
+            lastDay = day
+            return (
+              <div key={keyOf(item)} className="flex flex-col gap-5">
+                {line && <DayLine day={day} />}
+                <Entry
+                  item={item}
+                  live={item.kind === 'alpha' ? live[item.turn] : undefined}
+                  working={item.kind === 'alpha' && busyTurn === item.turn}
+                  cards={cards}
+                  onLens={onLens}
+                  onChangeCard={changeCard}
+                />
+              </div>
+            )
+          })}
           <div ref={end} />
         </div>
       </div>
       {problem && (
         <button
           type="button"
-          className="mx-auto mb-2 text-base text-bad"
+          className="mx-auto mb-2 text-bad text-md"
           onClick={() => setProblem(null)}
         >
           {problem}
         </button>
       )}
-      <Composer busy={busyTurn !== null} onProblem={setProblem} />
+      <div className="mx-auto flex w-full max-w-196 flex-col gap-2 px-8 pt-1.5 pb-4">
+        <Now stream={stream} />
+        <Composer words={words} setWords={setWords} area={composer} onProblem={setProblem} />
+      </div>
       {dragging && (
-        <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-xl border border-dashed border-accent-line bg-surface/80 text-ink-2">
+        <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-xl border border-accent-line border-dashed bg-surface/80 text-ink-2">
           Drop to keep it in Alpha
         </div>
       )}
+    </div>
+  )
+}
+
+const keyOf = (i: Item) =>
+  i.kind === 'alpha' ? `a${i.turn}` : i.kind === 'card' ? `c${i.id}` : `${i.kind}${i.id}`
+
+function DayLine({ day }: { day: string }) {
+  return (
+    <div className="flex items-center gap-3 font-semibold text-ink-3 text-xs uppercase tracking-label">
+      <span className="h-px flex-1 bg-hair" />
+      {day}
+      <span className="h-px flex-1 bg-hair" />
+    </div>
+  )
+}
+
+// The mark beside Alpha's name, or an agent's.
+function Mark({ agent }: { agent?: boolean | undefined }) {
+  return agent ? (
+    <span className="grid size-5 shrink-0 place-items-center rounded-sm border border-line bg-sunk text-ink-2">
+      <Bot className="size-3" />
+    </span>
+  ) : (
+    <span className="grid size-5 shrink-0 place-items-center rounded-sm bg-ink font-semibold font-serif text-canvas text-sm leading-none">
+      A
+    </span>
+  )
+}
+
+function Meta({
+  who,
+  agent,
+  module,
+  at,
+  onLens,
+}: {
+  who: string
+  agent?: boolean | undefined
+  module: Module
+  at: string
+  onLens: (m: Module) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 text-ink-3 text-sm">
+      <Mark agent={agent} />
+      <span className="font-semibold text-ink text-md">{who}</span>
+      {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
+      <span>{clock(at)}</span>
+    </div>
+  )
+}
+
+// A closing line is "Yes: the card's words" or "Chose Add: …": said as the person's answer, then
+// the card's words on what is left of the line.
+function saidOf(words: string): string {
+  const head = words.split(': ')[0] ?? ''
+  if (head === 'Yes') return 'You said yes'
+  if (head === 'No') return 'You said not now'
+  if (head === 'Withdrawn') return 'Withdrawn'
+  if (head.startsWith('Chose ')) return `You chose ${head.slice(6)}`
+  if (head.startsWith('Answered ')) return `You answered ${head.slice(9)}`
+  return head
+}
+const restOf = (words: string) => words.split(': ').slice(1).join(': ')
+
+// A card once answered: one line, where the card was.
+function AnsweredLine({ answered }: { answered: Answered }) {
+  const no = answered.state === 'no' || answered.state === 'withdrawn'
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 rounded-md px-3 py-2.25 text-md',
+        no ? 'bg-sunk text-ink-2' : 'bg-good-soft text-good',
+      )}
+    >
+      {no ? <X className="size-4 shrink-0" /> : <Check className="size-4 shrink-0" />}
+      <span className="shrink-0 font-medium">{saidOf(answered.words)}</span>
+      <span className="min-w-0 flex-1 truncate opacity-80">{restOf(answered.words)}</span>
+      <span className="shrink-0 text-sm opacity-80">{clock(answered.at)}</span>
+    </div>
+  )
+}
+
+function Entry({
+  item,
+  live,
+  working,
+  cards,
+  onLens,
+  onChangeCard,
+}: {
+  item: Item
+  live: Live[string] | undefined
+  working: boolean
+  cards: Map<string, CardView>
+  onLens: (m: Module) => void
+  onChangeCard: (c: CardView) => void
+}) {
+  if (item.kind === 'said')
+    return (
+      <div className="max-w-3/4 self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-sunk px-3.5 py-2.25 text-ink">
+        {item.words}
+      </div>
+    )
+  if (item.kind === 'note')
+    return (
+      <div className={cn('text-center text-sm', item.tone === 'warn' ? 'text-warn' : 'text-ink-3')}>
+        {item.words}
+      </div>
+    )
+  if (item.kind === 'told') {
+    const who = item.agent ?? 'An agent'
+    const words = item.words.startsWith(`${who}: `) ? item.words.slice(who.length + 2) : item.words
+    return (
+      <div className="flex flex-col gap-2.25">
+        <Meta who={who} agent module={item.module} at={item.at} onLens={onLens} />
+        <Told words={words} about={item.about} />
+      </div>
+    )
+  }
+  if (item.kind === 'card') {
+    const card = cards.get(item.id)
+    if (!card && !item.answered) return null
+    return (
+      <div className="flex flex-col gap-2.25" id={`card-${item.id}`}>
+        <Meta who="Alpha" module={item.module} at={item.at} onLens={onLens} />
+        {card ? (
+          <CardBox id={item.id} card={card} onChange={onChangeCard} />
+        ) : item.answered ? (
+          <AnsweredLine answered={item.answered} />
+        ) : null}
+      </div>
+    )
+  }
+  const text = item.reply ?? item.error ?? live?.text ?? ''
+  if (!text && !working && !item.cards.length && !item.steps.length) return null
+  return (
+    <div className="flex flex-col gap-2.25">
+      <Meta who="Alpha" module={item.module} at={item.at} onLens={onLens} />
+      {text && (
+        <div className={cn('max-w-prose', item.error && 'text-bad')}>
+          <Words text={text} />
+        </div>
+      )}
+      {working && (
+        <div className="flex items-center gap-2.25 text-ink-2 text-md">
+          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+          <span className="min-w-0 flex-1 truncate">{live?.doing ?? 'Working on it…'}</span>
+          <Button size="sm" variant="ghost" onClick={() => api.post('/api/stop')}>
+            Stop
+          </Button>
+        </div>
+      )}
+      {item.cards.map((id) => {
+        const card = cards.get(id)
+        const answered = item.answered[id]
+        return (
+          <div key={id} id={`card-${id}`}>
+            {card ? (
+              <CardBox id={id} card={card} onChange={onChangeCard} />
+            ) : answered ? (
+              <AnsweredLine answered={answered} />
+            ) : null}
+          </div>
+        )
+      })}
+      {item.steps.length > 0 && <Work steps={item.steps} />}
+    </div>
+  )
+}
+
+// What runs now and what waits on the person: three chips at most, each going where it is.
+function Now({ stream }: { stream: Stream | null }) {
+  if (!stream) return null
+  const chips: { key: string; need: boolean; icon: ReactNode; words: string; go: () => void }[] = []
+  for (const r of stream.running)
+    chips.push({
+      key: `r${r.id}`,
+      need: false,
+      icon: (
+        <span className="size-2.75 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+      ),
+      words: `${r.name} is running`,
+      go: () => {
+        window.location.hash = '#/activity'
+      },
+    })
+  for (const c of stream.cards)
+    chips.push({
+      key: `c${c.id}`,
+      need: true,
+      icon: <TriangleAlert className="size-3.25" />,
+      words: c.words.length > 48 ? `${c.words.slice(0, 47)}…` : c.words,
+      go: () => {
+        const el = document.getElementById(`card-${c.id}`)
+        el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        el?.animate(
+          [{ boxShadow: '0 0 0 4px var(--accent-line)' }, { boxShadow: '0 0 0 0 transparent' }],
+          { duration: 1400 },
+        )
+      },
+    })
+  for (const a of stream.attention)
+    chips.push({
+      key: `s${a.connector}`,
+      need: true,
+      icon: <KeyRound className="size-3.25" />,
+      words: `${a.title} needs you to sign in`,
+      go: () => {
+        window.location.hash = `#/settings?connect=${a.connector}`
+      },
+    })
+  if (!chips.length) return null
+  // what needs the person comes before what is running
+  const shown = [...chips.filter((c) => c.need), ...chips.filter((c) => !c.need)].slice(0, 3)
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="mr-0.5 font-semibold text-ink-3 text-xs uppercase tracking-label">Now</span>
+      {shown.map((c) => (
+        <button
+          key={c.key}
+          type="button"
+          onClick={c.go}
+          className={cn(
+            'inline-flex h-6.5 max-w-80 items-center gap-1.75 rounded-full border px-2.5 text-sm transition-colors',
+            c.need
+              ? 'border-transparent bg-warn-soft text-warn'
+              : 'border-line bg-surface text-ink-2 hover:border-accent-line hover:text-ink',
+          )}
+        >
+          <span className="shrink-0">{c.icon}</span>
+          <span className="truncate">{c.words}</span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -145,54 +455,6 @@ function Told({ words, about }: { words: string; about: AboutRows | null }) {
   )
 }
 
-function Entry({
-  item,
-  live,
-  working,
-  cards,
-}: {
-  item: Item
-  live: Live[string] | undefined
-  working: boolean
-  cards: Map<string, CardView>
-}) {
-  if (item.kind === 'said')
-    return (
-      <div className="self-end max-w-[85%] whitespace-pre-wrap rounded-2xl bg-sunk px-4 py-2 text-ink">
-        {item.words}
-      </div>
-    )
-  if (item.kind === 'told') return <Told words={item.words} about={item.about} />
-  if (item.kind === 'note')
-    return (
-      <div className={cn('text-center text-sm', item.tone === 'warn' ? 'text-warn' : 'text-ink-3')}>
-        {item.words}
-      </div>
-    )
-  const text = item.reply ?? item.error ?? live?.text ?? ''
-  return (
-    <div className="flex flex-col gap-2">
-      {text ? (
-        <div className={cn(item.error && 'text-bad')}>
-          <Words text={text} />
-        </div>
-      ) : working ? (
-        <div className="text-ink-3">Working on it…</div>
-      ) : null}
-      {working && live?.doing && (
-        <div className="flex items-center gap-2 text-sm text-ink-2">
-          <span className="size-1.5 animate-pulse rounded-full bg-ink-3" />
-          {live.doing}
-        </div>
-      )}
-      {item.cards.map((id) => (
-        <CardBox key={id} id={id} card={cards.get(id)} />
-      ))}
-      {item.steps.length > 0 && <Work steps={item.steps} />}
-    </div>
-  )
-}
-
 function Work({ steps }: { steps: Step[] }) {
   return (
     <details className="group text-ink-3 text-sm">
@@ -227,11 +489,21 @@ const GATE: Record<string, string> = {
   sign_in: 'Sign-in',
 }
 
-function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
+// How an option reads on its button: a plain No is Not now.
+const optionWords = (o: string) => (o === 'No' ? 'Not now' : o)
+
+function CardBox({
+  id,
+  card,
+  onChange,
+}: {
+  id: string
+  card: CardView
+  onChange: (c: CardView) => void
+}) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
-  if (!card) return null // answered: its note says how
   const answer = async (a: string) => {
     setBusy(true)
     try {
@@ -269,9 +541,14 @@ function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
             disabled={busy}
             onClick={() => answer(o)}
           >
-            {o}
+            {optionWords(o)}
           </Button>
         ))}
+        {card.kind === 'permission' && (
+          <Button variant="ghost" disabled={busy} onClick={() => onChange(card)}>
+            Change something
+          </Button>
+        )}
         {card.options.length === 0 && (
           <form
             className="flex w-full gap-2"
@@ -297,8 +574,17 @@ function CardBox({ id, card }: { id: string; card: CardView | undefined }) {
   )
 }
 
-function Composer({ busy, onProblem }: { busy: boolean; onProblem: (p: string) => void }) {
-  const [words, setWords] = useState('')
+function Composer({
+  words,
+  setWords,
+  area,
+  onProblem,
+}: {
+  words: string
+  setWords: (w: string) => void
+  area: RefObject<HTMLTextAreaElement | null>
+  onProblem: (p: string) => void
+}) {
   const file = useRef<HTMLInputElement>(null)
   const send = async () => {
     const w = words.trim()
@@ -318,50 +604,45 @@ function Composer({ busy, onProblem }: { busy: boolean; onProblem: (p: string) =
     }
   }
   return (
-    <div className="mx-auto w-full max-w-196 px-8 pt-1.5 pb-4">
-      <div className="flex flex-col gap-1 rounded-lg border border-line bg-surface py-2.5 pr-2 pl-3.5 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
-        <textarea
-          rows={1}
-          value={words}
-          onChange={(e) => setWords(e.target.value)}
-          onKeyDown={key}
-          placeholder="Message Alpha"
-          className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
+    <div className="flex flex-col gap-1 rounded-lg border border-line bg-surface py-2.5 pr-2 pl-3.5 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
+      <textarea
+        ref={area}
+        rows={1}
+        value={words}
+        onChange={(e) => setWords(e.target.value)}
+        onKeyDown={key}
+        placeholder="Message Alpha"
+        aria-label="Message Alpha"
+        className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
+      />
+      <div className="flex items-center gap-2">
+        <IconButton label="Add a file" onClick={() => file.current?.click()}>
+          <Paperclip className="size-4" />
+        </IconButton>
+        <input
+          ref={file}
+          type="file"
+          multiple
+          hidden
+          onChange={async (e) => {
+            for (const f of Array.from(e.target.files ?? []))
+              await api.upload(f).catch(() => onProblem('That file did not go in.'))
+            e.target.value = ''
+          }}
         />
-        <div className="flex items-center gap-2">
-          <IconButton label="Add a file" onClick={() => file.current?.click()}>
-            <Paperclip className="size-4" />
-          </IconButton>
-          <input
-            ref={file}
-            type="file"
-            multiple
-            hidden
-            onChange={async (e) => {
-              for (const f of Array.from(e.target.files ?? []))
-                await api.upload(f).catch(() => onProblem('That file did not go in.'))
-              e.target.value = ''
-            }}
-          />
-          <span className="ml-auto text-ink-3 text-xs">
-            Return to send · Shift-Return for a new line
-          </span>
-          {busy && (
-            <Button size="sm" onClick={() => api.post('/api/stop')}>
-              Stop
-            </Button>
-          )}
-          <button
-            type="button"
-            aria-label="Send"
-            title="Send"
-            onClick={send}
-            disabled={!words.trim()}
-            className="grid size-7.5 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity disabled:opacity-35"
-          >
-            <ArrowUp className="size-4" />
-          </button>
-        </div>
+        <span className="ml-auto text-ink-3 text-xs">
+          Return to send · Shift-Return for a new line
+        </span>
+        <button
+          type="button"
+          aria-label="Send"
+          title="Send"
+          onClick={send}
+          disabled={!words.trim()}
+          className="grid size-7.5 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity disabled:opacity-35"
+        >
+          <ArrowUp className="size-4" />
+        </button>
       </div>
     </div>
   )

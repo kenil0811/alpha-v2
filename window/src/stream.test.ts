@@ -12,6 +12,7 @@ const line = (kind: string, words: string, more: Partial<StreamLine> = {}): Stre
   words,
   turn: null,
   card: null,
+  module: null,
   data: {},
   ...more,
 })
@@ -48,19 +49,48 @@ describe('the stream', () => {
         { id: 5, words: 'Asked: Which meal?', ok: true, results: [] },
       ],
       cards: ['c_1'],
+      answered: {},
       at,
+      module: null,
     })
   })
 
-  it('shows a turn of Alpha’s own after a note, and a closed card as a note', () => {
+  it('puts a card’s answer where the card was, and a turn of Alpha’s own after a note', () => {
     n = 0
+    const said = line('said', 'remove the eggs', { actor: 'person' })
+    const turn = String(said.id)
     const noticed = line('noticed', 'Carrying on after your yes.', { actor: 'system' })
     const items = group([
-      line('card_closed', 'Yes: Remove a row from Meals?', { actor: 'person' }),
+      said,
+      line('card_opened', 'Remove a row from Meals?', { turn, card: 'c_1' }),
+      line('replied', 'That waits for your yes.', { turn }),
+      line('card_closed', 'Yes: Remove a row from Meals?', {
+        actor: 'person',
+        turn,
+        card: 'c_1',
+        data: { state: 'yes' },
+      }),
       noticed,
       line('replied', 'Removed it.', { turn: `n${noticed.id}` }),
     ])
-    expect(items.map((i) => i.kind)).toEqual(['note', 'note', 'alpha'])
-    expect(items[2]).toMatchObject({ reply: 'Removed it.' })
+    expect(items.map((i) => i.kind)).toEqual(['said', 'alpha', 'note', 'alpha'])
+    expect(items[1]).toMatchObject({
+      cards: ['c_1'],
+      answered: { c_1: { words: 'Yes: Remove a row from Meals?', state: 'yes' } },
+    })
+    expect(items[3]).toMatchObject({ reply: 'Removed it.' })
+  })
+
+  it('shows a card an agent’s run opened as a card, with its module', () => {
+    n = 0
+    const deals = { id: 'm_1', name: 'DealPilot' }
+    const items = group([
+      line('card_opened', 'Let DealPilot read example.com?', {
+        actor: 'agent',
+        card: 'c_9',
+        module: deals,
+      }),
+    ])
+    expect(items).toEqual([{ kind: 'card', id: 'c_9', at, module: deals, answered: null }])
   })
 })

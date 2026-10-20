@@ -25,6 +25,7 @@ export interface StreamLine {
   words: string
   turn: string | null
   card: string | null
+  module: { id: string; name: string } | null // the module it belongs to, for topic chips
   data: Record<string, unknown>
 }
 
@@ -45,7 +46,8 @@ export interface Stream {
   lines: StreamLine[]
   cards: CardView[]
   busy: boolean
-  running: number // agents' runs going now
+  running: { id: string; name: string }[] // agents' runs going now
+  attention: { connector: string; title: string }[] // connections that need the person to sign in
   lastId: number
 }
 

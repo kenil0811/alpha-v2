@@ -115,14 +115,27 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           words: l.words,
           turn: l.turn,
           card: l.card,
-          data: l.kind === 'told' ? { about: aboutRows(l.data.about) } : shown(l.kind, l.data),
+          module: moduleOf(l.module),
+          data:
+            l.kind === 'told'
+              ? { about: aboutRows(l.data.about), agent: l.data.agent ?? null }
+              : shown(l.kind, l.data),
         }),
       )
     return {
       lines,
       cards: world.cards.waiting(user.id).map(cardView),
       busy: engine.busy(user),
-      running: (engine.hands?.runner.runs(50) ?? []).filter((r) => r.state === 'running').length,
+      running: (engine.hands?.runner.runs(50) ?? [])
+        .filter((r) => r.state === 'running')
+        .map((r) => ({
+          id: r.id,
+          name: (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try',
+        })),
+      attention: world.connections
+        .list()
+        .filter((k) => k.state === 'needs_sign_in')
+        .map((k) => ({ connector: k.connector, title: connectorOf(k.connector).manifest.title })),
       lastId: world.lastLineId(),
     }
   })
@@ -434,6 +447,11 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   return app
 
+  function moduleOf(id: string | null): { id: string; name: string } | null {
+    const m = id ? world.shape.module(id) : undefined
+    return m ? { id: m.id, name: m.name } : null
+  }
+
   function aboutRows(about: unknown): AboutRows | null {
     const a = about as
       | { table: string; rows: string[]; choice?: { field: string; value: string; label: string } }
@@ -550,7 +568,7 @@ function cardView(c: Card): CardView {
 function shown(kind: string, data: Record<string, unknown>): Record<string, unknown> {
   if (kind === 'call') return { call: data.call }
   if (kind === 'called') return { call: data.call, ok: data.ok }
-  if (kind === 'card_closed') return { state: data.state }
+  if (kind === 'card_closed') return { state: data.state, answer: data.answer ?? null }
   if (kind === 'made' || kind === 'wrote' || kind === 'shaped') return { table: data.table ?? null }
   return {}
 }

@@ -9,6 +9,7 @@ import { applyLive, Home, type Live } from './Home.tsx'
 import { Parts } from './Parts.tsx'
 import { Settings } from './Settings.tsx'
 import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
+import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 
 function placeOf(hash: string): Place {
@@ -32,6 +33,8 @@ export function App() {
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [finding, setFinding] = useState(false)
+  // a topic chip's lens: Home keeps to one module until it is cleared
+  const [lens, setLens] = useState<Module>(null)
 
   // ⌘K opens Find anywhere
   useEffect(() => {
@@ -122,11 +125,16 @@ export function App() {
         place={place}
         name={name}
         waiting={stream?.cards.length ?? 0}
-        running={stream?.running ?? 0}
+        running={stream?.running.length ?? 0}
         online={!problem}
       />
       <main className="flex min-w-0 flex-1 flex-col">
-        <Bar crumb={crumb} onFind={() => setFinding(true)} />
+        <Bar
+          crumb={crumb}
+          onFind={() => setFinding(true)}
+          lens={place.at === 'home' ? lens : null}
+          onClearLens={() => setLens(null)}
+        />
         {problem && (
           <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
             {problem}
@@ -134,7 +142,7 @@ export function App() {
         )}
         <div className="min-h-0 flex-1">
           {place.at === 'home' ? (
-            <Home stream={stream} live={live} busyTurn={busyTurn} />
+            <Home stream={stream} live={live} busyTurn={busyTurn} lens={lens} onLens={setLens} />
           ) : place.at === 'parts' ? (
             <Parts />
           ) : place.at === 'activity' ? (

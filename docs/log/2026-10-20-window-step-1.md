@@ -1,4 +1,4 @@
-# 20 October 2026: the window redesign, steps 1 to 3 (Ledger's look, its parts, the shell)
+# 20 October 2026: the window redesign, steps 1 to 4 (Ledger's look, its parts, the shell, Home)
 
 Kenil tested DealPilot on a test copy ("looks good!") and stages A and B were committed and
 pushed (alpha-v2 3937316..9cbabb6; alpha-avilo private at github.com/kenil0811/alpha-avilo). He
@@ -63,3 +63,27 @@ Step 2 committed and pushed (34948a7). The shell (`window/src/Shell.tsx`), as th
   opens one. Checked by hand: "dea" opens Deals.
 
 Ask (⌘J) waits for step 8, where the module's Conversation panel it opens comes.
+
+## Step 4: Home (uncommitted, for Kenil's review)
+
+Step 3 committed and pushed (3b123b6). Home, as the mock's A:
+
+- **Core:** every stream line carries its module (id and name); the stream lists the runs going
+  now (`running`) and the connections waiting on a sign-in (`attention`); a card's closing line
+  carries its answer.
+- **Messages:** the person's words in a bubble on the right; Alpha's reply under a meta line
+  (the mark, "Alpha", the module's topic chip, the time); an agent's report as a box of rows
+  under its own meta line; day lines (Today, Yesterday, the date); notes centred and quiet.
+- **The live message** says what Alpha is doing, with Stop (moved from the composer).
+- **Cards:** the gate named in the head, "Not now" for a plain No, and "Change something",
+  which starts the composer with the card's words. Answered, a card folds to one line where it
+  was ("You said yes", "You chose Add", the card's words cut to fit). A card an agent's run
+  opens outside a turn now shows as a card, not only as a note.
+- **The Now strip** above the composer: what waits on the person first (a card: scrolls to it
+  and flashes; a sign-in: Settings at that connection), then what is running (opens Activity);
+  three at most.
+- **Lenses:** a topic chip keeps Home to its module; the bar shows "Only DealPilot ×".
+
+Tried in the test copy: a request that needed a new site put its card in the stream, "1" on
+Home in the rail and a Now chip; Not now folded it to its line, and the live message showed
+Stop while Alpha carried on.

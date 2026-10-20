@@ -12,6 +12,7 @@ import {
   Search,
   SlidersHorizontal,
   Table2,
+  X,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from './ui/cn.ts'
@@ -192,7 +193,17 @@ export interface Crumb {
   parts: string[]
 }
 
-export function Bar({ crumb, onFind }: { crumb: Crumb; onFind: () => void }) {
+export function Bar({
+  crumb,
+  onFind,
+  lens,
+  onClearLens,
+}: {
+  crumb: Crumb
+  onFind: () => void
+  lens: { id: string; name: string } | null
+  onClearLens: () => void
+}) {
   const last = crumb.parts.at(-1) ?? ''
   return (
     <div className="flex h-12 shrink-0 items-center gap-2.5 border-hair border-b bg-canvas pr-3.5 pl-6">
@@ -206,6 +217,20 @@ export function Bar({ crumb, onFind }: { crumb: Crumb; onFind: () => void }) {
         ))}
         <b className="truncate font-semibold text-ink">{last}</b>
       </div>
+      {lens && (
+        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
+          Only {lens.name}
+          <button
+            type="button"
+            aria-label={`Show all, not only ${lens.name}`}
+            title="Show all"
+            onClick={onClearLens}
+            className="grid size-5 place-items-center rounded-full hover:bg-accent-line/40"
+          >
+            <X className="size-3.25" />
+          </button>
+        </span>
+      )}
       <span className="flex-1" />
       <button
         type="button"
