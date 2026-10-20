@@ -198,6 +198,55 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE tables ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
   UPDATE tables SET hidden = 1 WHERE made_by LIKE 'connector:%';
   `,
+  `
+  -- A kit installed as a module: which kit, which version, from where (design §10).
+  CREATE TABLE kits (
+    module_id TEXT PRIMARY KEY REFERENCES modules (id),
+    kit TEXT NOT NULL,
+    version TEXT NOT NULL,
+    source TEXT NOT NULL,
+    installed_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  -- The ownership rule: each installed file's and setup row's hash as installed, so an update
+  -- replaces what nobody changed and keeps what the person (or Alpha) changed.
+  CREATE TABLE module_files (
+    module_id TEXT NOT NULL REFERENCES modules (id),
+    path TEXT NOT NULL,
+    installed_hash TEXT NOT NULL,
+    PRIMARY KEY (module_id, path)
+  );
+  CREATE TABLE kit_rows (
+    record_id TEXT PRIMARY KEY REFERENCES records (id),
+    installed_hash TEXT NOT NULL
+  );
+
+  -- Agents: the file in the module is the agent; this row is its state and its trigger as read.
+  CREATE TABLE agents (
+    id TEXT PRIMARY KEY,
+    module_id TEXT NOT NULL REFERENCES modules (id),
+    name TEXT NOT NULL,
+    file TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('on', 'paused')),
+    trigger TEXT NOT NULL,
+    runs TEXT NOT NULL,
+    cursor TEXT,
+    last_run_at TEXT,
+    UNIQUE (module_id, name)
+  );
+  -- A run serves its agent and reports to Activity (design §11).
+  CREATE TABLE runs (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT REFERENCES agents (id),
+    module_id TEXT REFERENCES modules (id),
+    started_at TEXT NOT NULL,
+    ended_at TEXT,
+    state TEXT NOT NULL CHECK (state IN ('running', 'ok', 'failed', 'stopped')),
+    words TEXT,
+    data TEXT NOT NULL DEFAULT '{}'
+  );
+  CREATE INDEX runs_agent ON runs (agent_id, started_at);
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

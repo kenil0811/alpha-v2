@@ -1,8 +1,8 @@
 // Modules, tables and fields (design §4, §10). A module is also a directory: module.yaml mirrors
 // its tables from the world on every change, and NOTES.md is the module's notes.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { stringify } from 'yaml'
+import { parse as parseYaml, stringify } from 'yaml'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { type Actor, append } from './journal.ts'
 import { FIELD_KINDS, type FieldKind, Refused } from './kinds.ts'
@@ -412,11 +412,17 @@ export class Shape {
     )
   }
 
-  // module.yaml mirrors the module's tables from the world; the world is the truth.
-  private writeManifest(m: Module): void {
+  // module.yaml mirrors the module's tables from the world; everything else in it (a kit's
+  // version, its network allowlist) is kept as it is.
+  writeManifest(m: Module): void {
     mkdirSync(m.dir, { recursive: true })
+    const file = join(m.dir, 'module.yaml')
+    const kept = existsSync(file)
+      ? ((parseYaml(readFileSync(file, 'utf8')) ?? {}) as Record<string, unknown>)
+      : {}
     const manifest = {
       name: m.name,
+      ...kept,
       tables: this.tables(m.id).map((t) => ({
         name: t.name,
         fields: t.fields.map((f) => ({
@@ -426,9 +432,9 @@ export class Shape {
           ...(f.relatesTo ? { relates_to: this.table(f.relatesTo)?.name } : {}),
         })),
       })),
-      network: [],
+      network: Array.isArray(kept.network) ? kept.network : [],
     }
-    writeFileSync(join(m.dir, 'module.yaml'), stringify(manifest))
+    writeFileSync(file, stringify(manifest))
   }
 }
 

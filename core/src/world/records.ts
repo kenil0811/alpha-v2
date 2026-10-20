@@ -39,6 +39,7 @@ export interface RecordOut {
 export interface LandInput {
   key: string // the item's own id at its source: a message id, an event id
   values: Record<string, unknown> // by field name
+  url?: string // the page it was read from, when there is one
 }
 
 export interface LandSource {
@@ -243,7 +244,10 @@ export class Records {
         const { vals, prov } = this.prepare(
           table,
           item.values,
-          { kind: 'looked_up', source: { ...source, item: item.key } },
+          {
+            kind: 'looked_up',
+            source: { ...source, item: item.key, ...(item.url ? { url: item.url } : {}) },
+          },
           undefined,
           null,
           at,
@@ -275,6 +279,13 @@ export class Records {
           continue
         }
         const before = parse<Record<string, unknown>>(r.vals, {})
+        const beforeProv = parse<Record<string, Provenance>>(r.provenance, {})
+        // What the person said stands: a connection or a reader never writes over it.
+        for (const k of Object.keys(vals))
+          if (beforeProv[k]?.kind === 'stated') {
+            delete vals[k]
+            delete prov[k]
+          }
         const merged = { ...before, ...vals }
         if (JSON.stringify(sortKeys(merged)) === JSON.stringify(sortKeys(before))) {
           out.same++
@@ -290,7 +301,7 @@ export class Records {
           at,
           actorName(ctx.actor),
         )
-        const mergedProv = { ...parse<Record<string, Provenance>>(r.provenance, {}), ...prov }
+        const mergedProv = { ...beforeProv, ...prov }
         run(
           this.db,
           'UPDATE records SET version = version + 1, vals = ?, provenance = ?, updated_at = ? WHERE id = ?',

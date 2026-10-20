@@ -252,6 +252,33 @@ describe('rows a connection lands', () => {
     })
     expect(world.records.personsOwn(rows.map((r) => r.id))).toBe(false)
   })
+
+  it('never write over what the person said', () => {
+    const t = meals()
+    const src = { connector: 'test', account: 'me' }
+    const ctx = { actor: { kind: 'connector' as const, id: 'test' } }
+    world.records.land(t.id, [{ key: 'a', values: { Food: 'eggs', Quantity: 2 } }], src, ctx)
+    const [row] = world.records.list(t.id)
+    world.records.change(
+      t.id,
+      [{ id: row?.id as string, values: { Quantity: 3 }, provenance: { kind: 'stated' } }],
+      { actor: person, said: said('it was three eggs') },
+    )
+    expect(
+      world.records.land(t.id, [{ key: 'a', values: { Food: 'eggs', Quantity: 2 } }], src, ctx),
+    ).toEqual({ added: 0, changed: 0, same: 1 })
+    expect(
+      world.records.land(
+        t.id,
+        [{ key: 'a', values: { Food: 'duck eggs', Quantity: 2 } }],
+        src,
+        ctx,
+      ),
+    ).toEqual({ added: 0, changed: 1, same: 0 })
+    const after = world.records.list(t.id)[0]
+    expect([after?.values.food, after?.values.quantity]).toEqual(['duck eggs', 3])
+    expect(after?.provenance.quantity?.kind).toBe('stated')
+  })
 })
 
 describe('a looked-up value from a file', () => {

@@ -102,6 +102,7 @@ export function lines(
   where: {
     user?: string
     turn?: string
+    run?: string
     kinds?: string[]
     after?: number
     before?: number
@@ -117,6 +118,10 @@ export function lines(
   if (where.turn !== undefined) {
     conds.push('turn_id = ?')
     params.push(where.turn)
+  }
+  if (where.run !== undefined) {
+    conds.push('run_id = ?')
+    params.push(where.run)
   }
   if (where.kinds?.length) {
     conds.push(`kind IN (${where.kinds.map(() => '?').join(', ')})`)

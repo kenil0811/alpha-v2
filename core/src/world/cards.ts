@@ -239,13 +239,15 @@ export class Cards {
       id,
     )
     const said =
-      state === 'yes'
-        ? 'Yes'
-        : state === 'no'
-          ? 'No'
-          : state === 'withdrawn'
-            ? 'Withdrawn'
-            : `Answered "${answer}"`
+      card.kind === 'question' && answer
+        ? `Chose ${answer}`
+        : state === 'yes'
+          ? 'Yes'
+          : state === 'no'
+            ? 'No'
+            : state === 'withdrawn'
+              ? 'Withdrawn'
+              : `Answered "${answer}"`
     append(this.db, {
       actor: by,
       kind: 'card_closed',
