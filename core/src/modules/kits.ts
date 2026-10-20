@@ -137,9 +137,29 @@ function shapeTables(world: World, module: Module, manifest: KitManifest, ctx: W
       (f) => !t.fields.some((x) => x.name.toLowerCase() === f.name.toLowerCase()),
     )
     if (missing.length) world.shape.addFields(t.id, missing, ctx)
-    // a choice's colours come with the kit's version of it
-    for (const f of spec.fields)
-      if (f.kind === 'choice' && f.tones) world.shape.setTones(t.id, f.name, f.tones)
+    for (const f of spec.fields) {
+      if (f.kind !== 'choice') continue
+      // a newer version's new choices go in where the kit has them, after the choice before them;
+      // none is taken away
+      const was = world.shape
+        .table(t.id)
+        ?.fields.find((x) => x.name.toLowerCase() === f.name.toLowerCase())
+      const kit = f.choices ?? []
+      if (was && kit.some((c) => !was.choices.includes(c))) {
+        const merged = [...was.choices]
+        kit.forEach((c, i) => {
+          if (merged.includes(c)) return
+          const after = kit
+            .slice(0, i)
+            .reverse()
+            .find((k) => merged.includes(k))
+          merged.splice(after ? merged.indexOf(after) + 1 : 0, 0, c)
+        })
+        world.shape.setChoices(t.id, was.name, merged, ctx)
+      }
+      // a choice's colours come with the kit's version of it
+      if (f.tones) world.shape.setTones(t.id, f.name, f.tones)
+    }
   }
 }
 

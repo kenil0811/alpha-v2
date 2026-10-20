@@ -44,7 +44,8 @@ export interface CardView {
   words: string
   detail: string | null // the whole of it: the message as it will go
   gate: string | null
-  connector: string | null // for a sign-in: which form to open
+  connector: string | null // for a connection's sign-in: which form to open
+  site: string | null // for a site's sign-in: the site, opened in a window of Alpha's browser
   options: string[]
   cannotUndo: string | null
   answer: string | null
@@ -230,7 +231,6 @@ export interface WorkingModuleView {
   id: string
   name: string
   kit: { name: string; version: string; source: string } | null
-  network: string[] // the sites its readers may read
   agents: AgentView[]
 }
 

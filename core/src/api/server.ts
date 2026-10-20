@@ -578,7 +578,6 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           id: m.id,
           name: m.name,
           kit: k ? { name: k.kit, version: k.version, source: k.source } : null,
-          network: moduleNetwork(m),
           agents: agents(world, m.id).map((a) => ({
             id: a.id,
             name: a.name,
@@ -623,6 +622,39 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     setAgentState(world, id, state, user.id)
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
+  })
+
+  // A site's sign-in: its window opens on this Mac, the person signs in there themselves, and when
+  // they close it the card is answered and the agent that met the sign-in runs again.
+  app.post('/api/cards/:id/sign-in', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const card = world.cards.get(id)
+    const input = (card?.call?.input ?? {}) as { url?: string; agent?: string | null }
+    if (card?.state !== 'waiting' || card.call?.tool !== 'site_sign_in' || !input.url)
+      throw new Refused('That sign-in is not waiting.')
+    const hands = engine.hands
+    if (!hands) throw new Refused('Alpha has no browser here.')
+    const url = input.url
+    void (async () => {
+      await hands.browser().signIn(url)
+      world.cards.answer(id, 'Sign in', { kind: 'person', id: user.id })
+      const agent = agents(world).find((a) => a.id === input.agent)
+      if (agent) await hands.runner.runAgent(agent, { user: user.id, turn: null })
+      engine.events.emit('event', { type: 'lines', user: user.id })
+    })().catch(() => undefined)
+    return { opened: true }
+  })
+
+  // Every agent of a module on, or paused, at once (a kit's readers start paused).
+  app.post('/api/modules/:id/agents', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { state } = z.object({ state: z.enum(['on', 'paused']) }).parse(req.body)
+    const m = world.shape.module(id)
+    if (!m) throw new Refused('That module is not there.')
+    const list = agents(world, m.id)
+    for (const a of list) setAgentState(world, a.id, state, user.id)
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { changed: list.length }
   })
 
   // Run an agent now; its outcome reaches Activity, not this answer.
@@ -963,7 +995,7 @@ function savedView(v: View): SavedView {
 }
 
 function cardView(c: Card): CardView {
-  const input = (c.call?.input ?? {}) as { connector?: unknown }
+  const input = (c.call?.input ?? {}) as { connector?: unknown; host?: unknown }
   return {
     id: c.id,
     kind: c.kind,
@@ -972,6 +1004,10 @@ function cardView(c: Card): CardView {
     detail: c.detail,
     gate: c.gate,
     connector: c.gate === 'sign_in' && typeof input.connector === 'string' ? input.connector : null,
+    site:
+      c.gate === 'sign_in' && c.call?.tool === 'site_sign_in' && typeof input.host === 'string'
+        ? input.host
+        : null,
     options: c.options,
     cannotUndo: c.cannotUndo,
     answer: c.answer,

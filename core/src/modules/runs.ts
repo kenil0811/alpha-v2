@@ -113,7 +113,51 @@ export class AgentRunner {
     })
   }
 
-  private api(module: Module, label: string, runId: string, who: RunFor) {
+  // A site that wants the person to sign in: a card with Sign in, which opens the site in a window
+  // of Alpha's browser where they sign in themselves; then the agent runs again (api: sign-in).
+  private wantsSignIn(
+    module: Module,
+    url: string,
+    label: string,
+    runId: string,
+    agentId: string | null,
+    who: RunFor,
+  ): void {
+    const host = new URL(url).host.toLowerCase()
+    this.world.cards.open({
+      kind: 'permission',
+      gate: 'sign_in',
+      words: `${host} wants you to sign in`,
+      detail: `${label} could not read ${host} without your sign-in. Sign in opens the site in a window of Alpha's browser; you type your login there yourself, Alpha never sees it, and the reader reads as you from then on.`,
+      restsOn: [`a run of ${label}`],
+      options: ['Sign in', 'Not now'],
+      call: { tool: 'site_sign_in', input: { host, url, agent: agentId } },
+      actor: { kind: 'agent', id: runId },
+      user: who.user ?? this.owner,
+      module: module.id,
+      run: runId,
+    })
+  }
+
+  private async browse<T>(
+    module: Module,
+    url: string,
+    label: string,
+    runId: string,
+    agentId: string | null,
+    who: RunFor,
+    read: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await read()
+    } catch (err) {
+      if ((err as { kind?: string }).kind === 'sign_in')
+        this.wantsSignIn(module, url, label, runId, agentId, who)
+      throw err
+    }
+  }
+
+  private api(module: Module, label: string, runId: string, who: RunFor, agentId: string | null) {
     const actor = { kind: 'agent' as const, id: label }
     const ctx = { actor, run: runId }
     const tableOf = (name: unknown): Table => {
@@ -218,11 +262,15 @@ export class AgentRunner {
       },
       'browser.open': async (p: Record<string, unknown>) => {
         this.reach(module, String(p.url), runId, who)
-        return this.engine().open(String(p.url))
+        return this.browse(module, String(p.url), label, runId, agentId, who, () =>
+          this.engine().open(String(p.url)),
+        )
       },
       'browser.extract': async (p: Record<string, unknown>) => {
         this.reach(module, String(p.url), runId, who)
-        return this.engine().extract(String(p.url), p.spec as ExtractSpec)
+        return this.browse(module, String(p.url), label, runId, agentId, who, () =>
+          this.engine().extract(String(p.url), p.spec as ExtractSpec),
+        )
       },
       // What is worth the person's attention: a line in their stream (Home).
       tell: async (p: Record<string, unknown>) => {
@@ -322,7 +370,7 @@ export class AgentRunner {
         script: path,
         moduleDir: module.dir,
         input,
-        api: this.api(module, label, runId, who),
+        api: this.api(module, label, runId, who, agentId),
         signal: stop.signal,
       })
     } finally {

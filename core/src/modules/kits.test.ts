@@ -58,6 +58,35 @@ describe('installing a kit', () => {
 })
 
 describe('updating a kit', () => {
+  it('puts a newer version’s choices where the kit has them, taking none away', async () => {
+    const withKind = (dir: string, version: string, choices: string) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace(
+            '      - { name: Email, kind: email }',
+            `      - { name: Email, kind: email }\n      - { name: Kind, kind: choice, choices: [${choices}] }`,
+          ),
+      )
+    const first = join(home, 'kit-0.1.0')
+    cpSync(KIT, first, { recursive: true })
+    withKind(first, '0.1.0', 'Flour, Milk')
+    await install(world, first, ctx)
+    const suppliers = world.shape.table('Suppliers')?.id as string
+    world.shape.setChoices(suppliers, 'Kind', ['Flour', 'Milk', 'Butter'], ctx)
+    const next = join(home, 'kit-0.2.0')
+    cpSync(KIT, next, { recursive: true })
+    withKind(next, '0.2.0', 'Flour, Eggs')
+    await update(world, 'Bakery', next, ctx)
+    expect(world.shape.table(suppliers)?.fields.find((f) => f.name === 'Kind')?.choices).toEqual([
+      'Flour',
+      'Eggs',
+      'Milk',
+      'Butter',
+    ])
+  })
+
   it('brings its views, and on update replaces only the ones nobody changed', async () => {
     const withViews = (dir: string, version: string, big: number) =>
       writeFileSync(

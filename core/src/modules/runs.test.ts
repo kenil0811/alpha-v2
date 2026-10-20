@@ -101,6 +101,44 @@ describe('a run', () => {
   }, 60_000)
 })
 
+describe('a site that wants a sign-in', () => {
+  it('fails the run and puts a Sign in card in front of the person, once per agent', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const wants = {
+      open: async () => ({}),
+      extract: async () => {
+        throw Object.assign(
+          new Error('example.com wants you to sign in before it shows this page.'),
+          {
+            kind: 'sign_in',
+          },
+        )
+      },
+    } as unknown as BrowserEngine
+    const owner = world.owner('Kenil')
+    const agent = agents(world, m.id)[0]?.id as string
+    const runner = new AgentRunner(world, () => wants, { owner: owner.id })
+    for (let i = 0; i < 2; i++) {
+      const out = await runner.runScript(
+        m,
+        'skills/read/run.js',
+        { url: 'https://example.com/members' },
+        'Reader',
+        agent,
+      )
+      expect(out.state).toBe('failed')
+    }
+    const cards = world.cards.waiting(owner.id)
+    expect(cards.map((c) => [c.gate, c.words, c.options])).toEqual([
+      ['sign_in', 'example.com wants you to sign in', ['Sign in', 'Not now']],
+    ])
+    expect(cards[0]?.call).toEqual({
+      tool: 'site_sign_in',
+      input: { host: 'example.com', url: 'https://example.com/members', agent },
+    })
+  })
+})
+
 describe('a script’s rows', () => {
   it('reads rows with their values by field name, and lands a url only as a web link', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)

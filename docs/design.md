@@ -226,7 +226,9 @@ leaving the world, and a person's explicit ask to delete is their yes):
    background work, or one whose words aren't in the message, waits on a card. What the model
    or an agent made and nobody accepted can be removed in a line **(chosen)**.
 3. **A sign-in:** connecting an account, consenting, entering a credential. Alpha opens the
-   sign-in for the person and never types a password.
+   sign-in for the person and never types a password. A site a reader meets behind a sign-in is a
+   card whose Sign in opens the site in a window of Alpha's browser; the person signs in there,
+   the site's session stays in its own profile, and the agent runs again when they close it.
 
 Every tool and connector action declares its effect (read, write, remove, outward, sign-in). The
 before-call hook maps effects to gates; an undeclared effect counts as outward. The model's own
@@ -311,7 +313,8 @@ the core hands each script a small API when it runs it. When a second client ask
 generic part moves to a shared kits repository then. Install makes the tables empty and the agents
 paused; a setup row may mark a value assumed, with what it rests on (a thesis's financing). **The ownership rule:** on update, what was installed and is untouched is replaced; what
 the person changed is theirs and kept; nothing is deleted. It is judged by each file's and each
-setup row's hash. A kit's Python scripts run in a per-kit environment that Alpha makes with a
+setup row's hash. Tables and fields are only added; a choice field gains a newer version's new
+choices where the kit has them. A kit's Python scripts run in a per-kit environment that Alpha makes with a
 bundled `uv` at install, never the Mac's own Python. Kits update by content hash, the app by
 release.
 

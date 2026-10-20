@@ -577,11 +577,18 @@ export function CardBox({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
+  const [opened, setOpened] = useState(false)
   const answer = async (a: string) => {
     setBusy(true)
     try {
+      // A site's sign-in opens the site in a window of Alpha's browser; the card is answered when
+      // the person closes it. A connection's opens the form where they sign in themselves.
+      if (card.site && a === card.options[0]) {
+        await api.post(`/api/cards/${id}/sign-in`)
+        setOpened(true)
+        return
+      }
       await api.post(`/api/cards/${id}`, { answer: a })
-      // A sign-in's yes opens the form where the person signs in themselves.
       if (card.gate === 'sign_in' && a === card.options[0])
         window.location.hash = `#/settings${card.connector ? `?connect=${card.connector}` : ''}`
     } catch (err) {
@@ -641,6 +648,12 @@ export function CardBox({
           </form>
         )}
       </div>
+      {opened && (
+        <div className="text-ink-2 text-sm">
+          A window with {card.site} is open on your Mac. Sign in there, then close it; the reader
+          runs again.
+        </div>
+      )}
       {problem && <div className="text-bad text-sm">{problem}</div>}
     </Card>
   )

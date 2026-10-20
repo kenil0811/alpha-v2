@@ -5,7 +5,7 @@ import type { ModuleView, TableView as TableData } from '@alpha/core/api'
 import { Bot, Briefcase } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { when } from './Kits.tsx'
+import { AllAgents, when } from './Kits.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -137,7 +137,12 @@ function AgentsAndNotes({ m, onChange }: { m: ModuleView; onChange: () => void }
     <div className="@container h-full overflow-y-auto">
       <div className="grid max-w-page items-start gap-6 px-7 py-6 @min-[960px]:grid-cols-2">
         <section className="flex flex-col gap-2.5">
-          <h2 className="font-medium font-serif text-ink text-xl">Agents</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="flex-1 font-medium font-serif text-ink text-xl">Agents</h2>
+            {m.agents.length > 1 && (
+              <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+            )}
+          </div>
           {m.agents.length === 0 ? (
             <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
           ) : (

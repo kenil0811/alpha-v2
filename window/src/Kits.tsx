@@ -1,7 +1,7 @@
-// Settings › Kits and agents (design §10, §11): what each module does on its own, the sites its
-// readers may read, and its agents, each on or paused. A kit is installed from a folder.
+// Settings › Kits and agents (design §10, §11): what each module does on its own, and its agents,
+// each on or paused, folded under the module until opened. A kit is installed from a folder.
 import type { AgentView, WorkingModuleView } from '@alpha/core/api'
-import { Bot, Package } from 'lucide-react'
+import { Bot, ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
@@ -57,6 +57,9 @@ export function Kits({ version }: { version: number }) {
 function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChange: () => void }) {
   const [busy, setBusy] = useState(false)
   const [said, setSaid] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  const on = m.agents.filter((a) => a.state === 'on').length
+  const Fold = open ? ChevronDown : ChevronRight
   const updateKit = async () => {
     setBusy(true)
     setSaid(null)
@@ -85,36 +88,78 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
             <Package className="size-4" />
           </Tile>
         }
-        title={m.name}
+        title={
+          m.agents.length ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpen(!open)}
+              className="flex items-center gap-1.5 text-left"
+            >
+              {m.name}
+              <Fold className="size-4 text-ink-3" />
+            </button>
+          ) : (
+            m.name
+          )
+        }
         sub={
           <>
             <span>
               {m.kit ? `From the kit ${m.kit.name} ${m.kit.version}` : 'Made in a conversation'}
+              {m.agents.length > 0 &&
+                ` · ${m.agents.length === 1 ? 'one agent' : `${m.agents.length} agents`}, ${
+                  on === m.agents.length ? (on === 1 ? 'on' : 'all on') : on ? `${on} on` : 'paused'
+                }`}
             </span>
-            {m.network.length > 0 && (
-              <details>
-                <summary className="cursor-pointer">
-                  Its readers may read{' '}
-                  {m.network.length === 1 ? m.network[0] : `${m.network.length} sites`}
-                </summary>
-                <div className="mt-1 leading-5">{m.network.join(', ')}</div>
-              </details>
-            )}
             {said && <div className="text-ink-2">{said}</div>}
           </>
         }
         actions={
-          m.kit && (
-            <Button size="sm" variant="ghost" disabled={busy} onClick={updateKit}>
-              Update from its folder
-            </Button>
-          )
+          <>
+            {m.agents.length > 1 && (
+              <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+            )}
+            {m.kit && (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={updateKit}>
+                Update from its folder
+              </Button>
+            )}
+          </>
         }
       />
-      {m.agents.map((a) => (
-        <AgentLine key={a.id} agent={a} onChange={onChange} />
-      ))}
+      {open && m.agents.map((a) => <AgentLine key={a.id} agent={a} onChange={onChange} />)}
     </List>
+  )
+}
+
+// Every agent of a module on at once, or all paused once they are all on.
+export function AllAgents({
+  moduleId,
+  agents,
+  onChange,
+}: {
+  moduleId: string
+  agents: AgentView[]
+  onChange: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const allOn = agents.every((a) => a.state === 'on')
+  return (
+    <Button
+      size="sm"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true)
+        await api
+          .post(`/api/modules/${moduleId}/agents`, { state: allOn ? 'paused' : 'on' })
+          .catch(() => undefined)
+        setBusy(false)
+        onChange()
+      }}
+    >
+      {allOn ? 'Pause all' : 'Turn on all'}
+    </Button>
   )
 }
 
