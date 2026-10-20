@@ -38,13 +38,21 @@ export interface RecordOut {
 
 export interface LandInput {
   key: string // the item's own id at its source: a message id, an event id
+  row?: string // or a row already in the table, by its id: what a document says about it
   values: Record<string, unknown> // by field name
   url?: string // the page it was read from, when there is one
   // by field name, the place in a document a value was read from (its file, sheet and cell, or
   // page and line), so the value opens there
   places?: Record<
     string,
-    { file: string; sheet?: string; cell?: string; page?: number; line?: number }
+    {
+      file: string
+      sheet?: string
+      cell?: string
+      page?: number
+      line?: number
+      box?: [number, number, number, number]
+    }
   >
 }
 
@@ -217,6 +225,7 @@ export class Records {
         gone.push({ id, values: parse(r.vals, {}) })
         run(this.db, 'DELETE FROM record_versions WHERE record_id = ?', id)
         run(this.db, 'DELETE FROM records_fts WHERE record_id = ?', id)
+        run(this.db, 'DELETE FROM row_files WHERE record_id = ?', id)
         run(this.db, 'DELETE FROM records WHERE id = ?', id)
       }
       append(this.db, {
@@ -260,12 +269,20 @@ export class Records {
             )
           : undefined
         const { vals, prov } = this.prepare(table, item.values, row, perField, null, at)
-        const r = one<RecordRow>(
-          this.db,
-          'SELECT * FROM records WHERE table_id = ? AND item_key = ?',
-          table.id,
-          item.key,
-        )
+        const r = item.row
+          ? one<RecordRow>(
+              this.db,
+              'SELECT * FROM records WHERE table_id = ? AND id = ?',
+              table.id,
+              item.row,
+            )
+          : one<RecordRow>(
+              this.db,
+              'SELECT * FROM records WHERE table_id = ? AND item_key = ?',
+              table.id,
+              item.key,
+            )
+        if (!r && item.row) throw new Refused(`${table.name} has no row ${item.row}.`)
         if (!r && options.existing) continue
         if (!r) {
           const id = newId('r')
@@ -288,9 +305,11 @@ export class Records {
         }
         const before = parse<Record<string, unknown>>(r.vals, {})
         const beforeProv = parse<Record<string, Provenance>>(r.provenance, {})
-        // What the person said stands: a connection or a reader never writes over it.
+        // What the person said stands: a connection or a reader never writes over it. Nor over a
+        // figure a script worked out (a deal's staff counted from its census): what the
+        // documents give stands over what a page says.
         for (const k of Object.keys(vals))
-          if (beforeProv[k]?.kind === 'stated') {
+          if (beforeProv[k]?.kind === 'stated' || beforeProv[k]?.kind === 'computed') {
             delete vals[k]
             delete prov[k]
           }

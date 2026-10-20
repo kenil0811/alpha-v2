@@ -35,6 +35,8 @@ const Manifest = z.object({
       z.object({
         name: z.string(),
         fields: z.array(Field),
+        // the kinds of document its rows take (a deal's teaser, CIM, NDA), filed on a row
+        documents: z.array(z.string().min(1)).optional(),
         // saved views by field name: name, default, then the view (world/views.ts ViewConfig)
         views: z
           .array(z.looseObject({ name: z.string(), default: z.boolean().optional() }))
@@ -161,6 +163,12 @@ function shapeTables(world: World, module: Module, manifest: KitManifest, ctx: W
       }
       // a choice's colours come with the kit's version of it
       if (f.tones) world.shape.setTones(t.id, f.name, f.tones)
+    }
+    // the kinds of document its rows take: a newer version's new kinds join them, none goes
+    if (spec.documents?.length) {
+      const was = world.shape.table(t.id)?.documents ?? []
+      const kinds = [...was, ...spec.documents.filter((k) => !was.includes(k))]
+      if (kinds.length !== was.length) world.shape.setDocuments(t.id, kinds, ctx)
     }
   }
 }
@@ -356,6 +364,10 @@ export async function update(
   await commitAll(module.dir, 'Before the kit update')
   const kitName = `${manifest.name} ${manifest.version}`
   const kitCtx: WriteCtx = { ...ctx, actor: { kind: 'system', id: `kit:${manifest.name}` } }
+  // the files are copied only once the tables and setup rows have gone in, so an update that
+  // fails there (a table name another module has) leaves the folder as it was, and the next try
+  // sees no change of the person's where there is none
+  const copies: string[] = []
   const report: UpdateReport = tx(world.db, () => {
     const out: UpdateReport = { replaced: [], kept: [], added: [], rowsLanded: 0, rowsKept: 0 }
     for (const f of files) {
@@ -385,8 +397,7 @@ export async function update(
         if (fresh === installed.installed_hash) continue
         out.replaced.push(f)
       }
-      mkdirSync(dirname(target), { recursive: true })
-      copyFileSync(join(kitDir, f), target)
+      copies.push(f)
       run(
         world.db,
         'INSERT OR REPLACE INTO module_files (module_id, path, installed_hash) VALUES (?, ?, ?)',
@@ -416,6 +427,10 @@ export async function update(
       now(),
       module.id,
     )
+    for (const f of copies) {
+      mkdirSync(dirname(join(module.dir, f)), { recursive: true })
+      copyFileSync(join(kitDir, f), join(module.dir, f))
+    }
     syncAgents(world, module, 'paused')
     world.line({
       actor: ctx.actor,

@@ -1,6 +1,6 @@
 // Files by hash beside the world, and documents with chunks and positions (design §4).
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
@@ -45,6 +45,10 @@ export class Files {
     this.dir = dir
   }
 
+  hashOf(bytes: Uint8Array): string {
+    return createHash('sha256').update(bytes).digest('hex')
+  }
+
   path(hash: string): string {
     return join(this.dir, hash.slice(0, 2), hash)
   }
@@ -83,6 +87,31 @@ export class Files {
         run: ctx.run ?? null,
       })
       return { file: this.file(hash) as FileOut, isNew: true }
+    })
+  }
+
+  // A file kept for a look and not wanted (an attachment declined): gone with its bytes, when
+  // nothing holds it (no document read from it, no row it sits on). The journal says it was here.
+  removeUnheld(hash: string, why: string, ctx: WriteCtx): boolean {
+    return tx(this.db, () => {
+      const f = this.file(hash)
+      if (!f) return false
+      const held =
+        one(this.db, 'SELECT 1 FROM documents WHERE file_hash = ?', hash) ??
+        one(this.db, 'SELECT 1 FROM row_files WHERE file_hash = ?', hash)
+      if (held) return false
+      run(this.db, 'DELETE FROM files WHERE hash = ?', hash)
+      rmSync(this.path(hash), { force: true })
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'removed',
+        words: `Let go of ${f.name}: ${why}`,
+        data: { file: hash, name: f.name },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        run: ctx.run ?? null,
+      })
+      return true
     })
   }
 

@@ -7,12 +7,13 @@ import { join } from 'node:path'
 import { Cards } from './cards.ts'
 import { Connections } from './connections.ts'
 import { all, type Db, newId, now, one, openDb, run, tx } from './db.ts'
-import { Files } from './files.ts'
+import { type FileOut, Files } from './files.ts'
 import { type Actor, append, type Line, type LineInput, lastId, lines, read } from './journal.ts'
+import { Refused } from './kinds.ts'
 import { ModelSql } from './modelsql.ts'
 import { Records } from './records.ts'
 import { migrate } from './schema.ts'
-import { Shape } from './shape.ts'
+import { actorName, rowName, Shape, type WriteCtx } from './shape.ts'
 import { Views } from './views.ts'
 
 export interface User {
@@ -26,6 +27,17 @@ export interface DeskSession {
   sessionId: string
   tools: string
   seenJournalId: number
+}
+
+// A file on a row: a deal's CIM, a client's export.
+export interface RowFile {
+  file: FileOut
+  record: string
+  table: string
+  kind: string | null
+  placedBy: string
+  placedAt: string
+  document: string | null // its document when it has been read
 }
 
 export interface Hit {
@@ -239,12 +251,142 @@ export class World {
     )
   }
 
+  // A file put on a row, with its kind (one the row's table takes, when it names them). The same
+  // file on the same row again only changes its kind. Journaled as filed, so the agents waiting
+  // on a filing read it with the rows it sits on.
+  placeFile(hash: string, recordId: string, kind: string | null, ctx: WriteCtx): RowFile {
+    return tx(this.db, () => {
+      const file = this.files.file(hash)
+      if (!file) throw new Refused('That file is not there.')
+      const rec = this.records.get(recordId)
+      if (!rec) throw new Refused('That row is not there.')
+      const { table, record } = rec
+      const k = kind?.trim() || null
+      if (k && table.documents?.length && !table.documents.includes(k))
+        throw new Refused(
+          `${table.name}'s rows take ${table.documents.join(', ')}; ${k} is not one of them.`,
+        )
+      const known = one<{ kind: string | null }>(
+        this.db,
+        'SELECT kind FROM row_files WHERE record_id = ? AND file_hash = ?',
+        record.id,
+        hash,
+      )
+      if (known && known.kind === k) return this.rowFile(record.id, hash) as RowFile
+      if (known)
+        run(
+          this.db,
+          'UPDATE row_files SET kind = ? WHERE record_id = ? AND file_hash = ?',
+          k,
+          record.id,
+          hash,
+        )
+      else
+        run(
+          this.db,
+          'INSERT INTO row_files (record_id, file_hash, kind, placed_by, placed_at) VALUES (?, ?, ?, ?, ?)',
+          record.id,
+          hash,
+          k,
+          actorName(ctx.actor),
+          now(),
+        )
+      const name = rowName(table, record.values)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'filed',
+        words: known
+          ? `${file.name} on ${name} is ${k ? `a ${k}` : 'of no kind named'} now.`
+          : `Filed ${file.name} on ${name} in ${table.name}${k ? `, as a ${k}` : ''}.`,
+        data: {
+          file: hash,
+          record: record.id,
+          table: table.id,
+          kind: k,
+          document: this.files.document(hash)?.id ?? null,
+        },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        run: ctx.run ?? null,
+        module: table.module.id,
+      })
+      return this.rowFile(record.id, hash) as RowFile
+    })
+  }
+
+  // A file taken off a row: the file stays in the world, and the journal says it was there.
+  unplaceFile(hash: string, recordId: string, ctx: WriteCtx): void {
+    tx(this.db, () => {
+      const on = this.rowFile(recordId, hash)
+      if (!on) throw new Refused('That file is not on that row.')
+      const rec = this.records.get(recordId)
+      run(this.db, 'DELETE FROM row_files WHERE record_id = ? AND file_hash = ?', recordId, hash)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'filed',
+        words: `Took ${on.file.name} off ${rec ? rowName(rec.table, rec.record.values) : 'a row'}.`,
+        data: { file: hash, record: recordId, table: on.table, off: true },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        run: ctx.run ?? null,
+        module: rec?.table.module.id ?? null,
+      })
+    })
+  }
+
+  private rowFile(recordId: string, hash: string): RowFile | undefined {
+    return this.rowFilesWhere('rf.record_id = ? AND rf.file_hash = ?', recordId, hash)[0]
+  }
+
+  // The files on a row, newest first; or the rows a file sits on.
+  rowFiles(recordId: string): RowFile[] {
+    return this.rowFilesWhere('rf.record_id = ?', recordId)
+  }
+
+  rowsOfFile(hash: string): RowFile[] {
+    return this.rowFilesWhere('rf.file_hash = ?', hash)
+  }
+
+  private rowFilesWhere(where: string, ...args: string[]): RowFile[] {
+    return all<{
+      record_id: string
+      file_hash: string
+      kind: string | null
+      placed_by: string
+      placed_at: string
+      table_id: string
+      document: string | null
+    }>(
+      this.db,
+      `SELECT rf.record_id, rf.file_hash, rf.kind, rf.placed_by, rf.placed_at, r.table_id,
+         d.id AS document
+       FROM row_files rf JOIN records r ON r.id = rf.record_id
+       LEFT JOIN documents d ON d.file_hash = rf.file_hash
+       WHERE ${where} ORDER BY rf.placed_at DESC`,
+      ...args,
+    ).map((r) => ({
+      file: this.files.file(r.file_hash) as FileOut,
+      record: r.record_id,
+      table: r.table_id,
+      kind: r.kind,
+      placedBy: r.placed_by,
+      placedAt: r.placed_at,
+      document: r.document,
+    }))
+  }
+
   // Modules and tables with their row counts: the map in the start layer.
   map(): {
     module: string
     within: string | null // the module it sits inside
     notes: string
-    tables: { name: string; view: string; rows: number; fields: string[] }[]
+    tables: {
+      name: string
+      view: string
+      rows: number
+      fields: string[]
+      documents: string[] | null
+    }[]
   }[] {
     const modules = this.shape.modules()
     return modules.map((m) => ({
@@ -256,6 +398,7 @@ export class World {
         view: t.slug,
         rows: this.records.count(t.id),
         fields: t.fields.map((f) => `${f.name} (${f.kind})`),
+        documents: t.documents,
       })),
     }))
   }

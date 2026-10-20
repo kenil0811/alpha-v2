@@ -279,6 +279,37 @@ describe('rows a connection lands', () => {
     expect([after?.values.food, after?.values.quantity]).toEqual(['duck eggs', 3])
     expect(after?.provenance.quantity?.kind).toBe('stated')
   })
+
+  it('never write over a figure a script worked out, and land on a known row by its id', () => {
+    const t = meals()
+    const src = { connector: 'test', account: 'me' }
+    const ctx = { actor: { kind: 'connector' as const, id: 'test' } }
+    world.records.land(t.id, [{ key: 'a', values: { Food: 'eggs', Quantity: 2 } }], src, ctx)
+    const [row] = world.records.list(t.id)
+    world.records.change(
+      t.id,
+      [
+        {
+          id: row?.id as string,
+          values: { Quantity: 4 },
+          provenance: { kind: 'computed', source: { formula: 'counted from the receipt' } },
+        },
+      ],
+      { actor: { kind: 'agent', id: 'Figures' } },
+    )
+    world.records.land(t.id, [{ key: 'a', values: { Quantity: 2 } }], src, ctx)
+    expect(world.records.list(t.id)[0]?.values.quantity).toBe(4)
+    world.records.land(
+      t.id,
+      [{ key: 'receipt', row: row?.id as string, values: { Meal: 'lunch' } }],
+      src,
+      ctx,
+    )
+    expect(world.records.list(t.id).map((r) => r.values.meal)).toEqual(['lunch'])
+    expect(() =>
+      world.records.land(t.id, [{ key: 'x', row: 'r_none', values: { Meal: 'lunch' } }], src, ctx),
+    ).toThrow(/Meals has no row r_none/)
+  })
 })
 
 describe('a looked-up value from a file', () => {
@@ -375,6 +406,63 @@ describe('files', () => {
     expect(doc.chunks).toBe(2)
     const hit = world.search('eggs').find((h) => h.what === 'document')
     expect(hit?.where).toContain('"cell":"B2"')
+  })
+})
+
+describe('files on rows', () => {
+  function deals() {
+    const m = world.shape.makeModule('Deals desk', { actor: alpha })
+    const t = world.shape.makeTable(m.id, 'Deals', [{ name: 'Name', kind: 'text' }], {
+      actor: alpha,
+    })
+    world.shape.setDocuments(t.id, ['Teaser', 'CIM'], { actor: { kind: 'system' } })
+    const [row] = world.records.add(
+      t.id,
+      [{ values: { Name: 'Harbor Books' }, provenance: { kind: 'stated', source: {} } }],
+      { actor: person, said: said('add Harbor Books') },
+    )
+    const { file } = world.files.take(
+      new TextEncoder().encode('%PDF cim'),
+      'Harbor CIM.pdf',
+      'application/pdf',
+      {
+        actor: person,
+      },
+    )
+    return { m, t, row: row as string, file }
+  }
+
+  it('puts a file on a row as a kind its table takes, and journals it as filed', () => {
+    const { m, t, row, file } = deals()
+    expect(() => world.placeFile(file.hash, row, 'Lease', { actor: person })).toThrow(
+      /Deals's rows take Teaser, CIM; Lease is not one of them/,
+    )
+    const on = world.placeFile(file.hash, row, 'CIM', { actor: person })
+    expect([on.kind, on.table, on.file.name]).toEqual(['CIM', t.id, 'Harbor CIM.pdf'])
+    world.placeFile(file.hash, row, 'Teaser', { actor: person })
+    expect(world.rowFiles(row).map((f) => f.kind)).toEqual(['Teaser'])
+    expect(world.rowsOfFile(file.hash).map((f) => f.record)).toEqual([row])
+    expect(
+      world
+        .lines({ kinds: ['filed'] })
+        .map((l) => l.words)
+        .slice(-2),
+    ).toEqual([
+      'Filed Harbor CIM.pdf on Harbor Books in Deals, as a CIM.',
+      'Harbor CIM.pdf on Harbor Books is a Teaser now.',
+    ])
+    expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('documents:\n      - Teaser')
+  })
+
+  it('takes a file off a row, and a row removed takes its files off; the file stays', () => {
+    const { t, row, file } = deals()
+    world.placeFile(file.hash, row, 'CIM', { actor: person })
+    world.unplaceFile(file.hash, row, { actor: person })
+    expect(world.rowFiles(row)).toEqual([])
+    world.placeFile(file.hash, row, null, { actor: person })
+    world.records.remove(t.id, [row], { actor: person })
+    expect(world.rowsOfFile(file.hash)).toEqual([])
+    expect(world.files.file(file.hash)?.name).toBe('Harbor CIM.pdf')
   })
 })
 

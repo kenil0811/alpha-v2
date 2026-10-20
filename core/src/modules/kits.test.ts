@@ -87,6 +87,51 @@ describe('updating a kit', () => {
     ])
   })
 
+  it('names the documents a table’s rows take, and a newer version adds kinds', async () => {
+    const withDocs = (dir: string, version: string, kinds: string) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace('  - name: Orders\n', `  - name: Orders\n    documents: [${kinds}]\n`),
+      )
+    const first = join(home, 'kit-docs-1')
+    cpSync(KIT, first, { recursive: true })
+    withDocs(first, '0.1.0', 'Invoice')
+    const m = await install(world, first, ctx)
+    expect(world.shape.table('Orders')?.documents).toEqual(['Invoice'])
+    const next = join(home, 'kit-docs-2')
+    cpSync(KIT, next, { recursive: true })
+    withDocs(next, '0.2.0', 'Invoice, Receipt')
+    await update(world, 'Bakery', next, ctx)
+    expect(world.shape.table('Orders')?.documents).toEqual(['Invoice', 'Receipt'])
+    expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('documents:')
+  })
+
+  it('leaves the folder as it was when an update fails, so a later one brings its files', async () => {
+    const m = await install(world, KIT, ctx)
+    const other = world.shape.makeModule('Shop', ctx)
+    world.shape.makeTable(other.id, 'Deliveries', [{ name: 'Day', kind: 'date' }], ctx)
+    const next = join(home, 'kit-clash')
+    cpSync(KIT, next, { recursive: true })
+    writeFileSync(join(next, 'NOTES.md'), '# Bakery\nNewer notes.\n')
+    writeFileSync(
+      join(next, 'module.yaml'),
+      `${readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('version: 0.1.0', 'version: 0.2.0').replace('network:', '  - name: Deliveries\n    fields:\n      - { name: Day, kind: date }\nnetwork:')}`,
+    )
+    await expect(update(world, 'Bakery', next, ctx)).rejects.toThrow(
+      /There is already a table called Deliveries in Shop/,
+    )
+    expect(readFileSync(join(m.dir, 'NOTES.md'), 'utf8')).not.toContain('Newer notes')
+    writeFileSync(
+      join(next, 'module.yaml'),
+      readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('version: 0.1.0', 'version: 0.2.0'),
+    )
+    const report = await update(world, 'Bakery', next, ctx)
+    expect(report.replaced).toEqual(['NOTES.md'])
+    expect(readFileSync(join(m.dir, 'NOTES.md'), 'utf8')).toContain('Newer notes')
+  })
+
   it('brings its views, and on update replaces only the ones nobody changed', async () => {
     const withViews = (dir: string, version: string, big: number) =>
       writeFileSync(

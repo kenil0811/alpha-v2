@@ -42,6 +42,7 @@ export interface Table {
   slug: string
   hidden: boolean // out of the sidebar
   fields: Field[]
+  documents: string[] | null // the kinds of document its rows take, as its kit names them
 }
 
 export interface FieldInput {
@@ -83,6 +84,7 @@ const RESERVED = new Set([
   'files',
   'documents',
   'chunks',
+  'row_files',
   'desk_sessions',
   'meta',
   'select',
@@ -246,9 +248,16 @@ export class Shape {
   }
 
   table(idOrName: string): Table | undefined {
-    const t = one<{ id: string; module_id: string; name: string; slug: string; hidden: number }>(
+    const t = one<{
+      id: string
+      module_id: string
+      name: string
+      slug: string
+      hidden: number
+      documents: string | null
+    }>(
       this.db,
-      'SELECT id, module_id, name, slug, hidden FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, hidden, documents FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -280,7 +289,15 @@ export class Shape {
         relatesTo: o.relatesTo ?? null,
       }
     })
-    return { id: t.id, module, name: t.name, slug: t.slug, hidden: t.hidden === 1, fields }
+    return {
+      id: t.id,
+      module,
+      name: t.name,
+      slug: t.slug,
+      hidden: t.hidden === 1,
+      fields,
+      documents: t.documents ? parse<string[]>(t.documents, []) : null,
+    }
   }
 
   makeTable(
@@ -431,6 +448,36 @@ export class Shape {
     this.writeManifest(table.module)
   }
 
+  // The kinds of document a table's rows take (a deal's teaser, CIM, NDA), or none named.
+  setDocuments(tableId: string, kinds: string[] | null, ctx: WriteCtx): Table {
+    return tx(this.db, () => {
+      const table = this.table(tableId)
+      if (!table) throw new Refused('That table is not there.')
+      const clean = kinds ? [...new Set(kinds.map((k) => k.trim()).filter(Boolean))] : null
+      if (JSON.stringify(clean) === JSON.stringify(table.documents)) return table
+      run(
+        this.db,
+        'UPDATE tables SET documents = ? WHERE id = ?',
+        clean ? json(clean) : null,
+        table.id,
+      )
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'shaped',
+        words: clean?.length
+          ? `${table.name}'s rows take these documents: ${clean.join(', ')}.`
+          : `${table.name}'s rows take documents of any kind.`,
+        data: { table: table.id, documents: clean },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+      })
+      this.writeManifest(table.module)
+      return this.table(table.id) as Table
+    })
+  }
+
   // In the sidebar or out of it; the person's choice, journaled.
   setHidden(tableId: string, hidden: boolean, ctx: WriteCtx): Table {
     return tx(this.db, () => {
@@ -470,6 +517,11 @@ export class Shape {
         table.id,
       )
       run(this.db, 'DELETE FROM records_fts WHERE table_id = ?', table.id)
+      run(
+        this.db,
+        'DELETE FROM row_files WHERE record_id IN (SELECT id FROM records WHERE table_id = ?)',
+        table.id,
+      )
       run(this.db, 'DELETE FROM records WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM views WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
@@ -566,6 +618,7 @@ export class Shape {
           ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
           ...(f.relatesTo ? { relates_to: this.table(f.relatesTo)?.name } : {}),
         })),
+        ...(t.documents ? { documents: t.documents } : {}),
         ...this.viewsOf(t),
       })),
       network: Array.isArray(kept.network) ? kept.network : [],
@@ -598,6 +651,14 @@ export function findField(table: Table, nameOrSlug: string): Field {
       `${table.name} has no field called ${nameOrSlug}; it has ${table.fields.map((x) => x.name).join(', ') || 'none yet'}.`,
     )
   return f
+}
+
+// A row as a person names it: its first text value.
+export function rowName(t: Table, values: Record<string, unknown>): string {
+  for (const f of t.fields)
+    if (f.kind === 'text' && typeof values[f.slug] === 'string' && values[f.slug])
+      return String(values[f.slug])
+  return 'a row'
 }
 
 export function actorName(a: Actor): string {

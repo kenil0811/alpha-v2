@@ -277,6 +277,20 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE modules ADD COLUMN parent_id TEXT REFERENCES modules (id);
   ALTER TABLE modules ADD COLUMN placed_by TEXT CHECK (placed_by IN ('kit', 'person', 'alpha'));
   `,
+  // 8: a file on a row (a deal's CIM, a client's export), with its kind and who put it there; and
+  // the kinds of document a table's rows take, as its kit names them (Kenil, 20 Oct).
+  `
+  CREATE TABLE row_files (
+    record_id TEXT NOT NULL REFERENCES records (id),
+    file_hash TEXT NOT NULL REFERENCES files (hash),
+    kind TEXT,
+    placed_by TEXT NOT NULL,
+    placed_at TEXT NOT NULL,
+    PRIMARY KEY (record_id, file_hash)
+  );
+  CREATE INDEX row_files_file ON row_files (file_hash);
+  ALTER TABLE tables ADD COLUMN documents TEXT;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.
