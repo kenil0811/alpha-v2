@@ -319,6 +319,14 @@ choices where the kit has them. A kit's Python scripts run in a per-kit environm
 bundled `uv` at install, never the Mac's own Python. Kits update by content hash, the app by
 release.
 
+**A module may sit inside another** (Kenil, 20 Oct): a parent holds its modules as well as any
+tables and pages of its own, to any depth, never inside itself or one of its own. A kit's
+`module.yaml` may say `within: <module>`; install puts it there and makes that module, empty, when
+there is none. The person moves a module from the rail and the model with `shape`'s
+`place_module`; whoever placed it last is kept, and a kit's place gives way to the person's or
+Alpha's on every update. A module's `module.yaml` says where it sits. A parent's lens takes in
+the modules inside it.
+
 ## 11. Agents, triggers, runs
 
 An **agent** is a file `agents/<name>.md`: front matter (triggers, what it may touch, model)
@@ -381,6 +389,13 @@ needs the person, three chips at most; on a wide window a column beside it shows
 waits, what runs and what is next. A module's Conversation tab shows it through the module's
 lens, and Ask (⌘J) opens it on the right of any other screen. Permissions and questions land
 inline with their buttons.
+
+**The rail is module names only** (Kenil, 20 Oct): Home, Conversation, Activity, then each module
+by name with the modules inside it folded under it, and a menu to move one into another; its
+pages and tables are its screen's tabs. A module holding others opens on an Overview of them. The
+rail folds to a strip of icons (⌘\), and the Ask panel drags wider, to two thirds of the window,
+or expands to half of it, or opens as the full Conversation. How the person left them is kept per
+person in the world, like the theme.
 
 **The other screens:** a Module (the same stream filtered to it; tables in eight views: table,
 list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and agents as text;
