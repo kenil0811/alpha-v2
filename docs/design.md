@@ -368,6 +368,14 @@ files; activity), People, Activity, Settings (connections, folders, kits, model 
 a firm). On a Mac, the companion: a small always-on-top window with a message box. Plain words,
 no tool names, no ids. The avatar rig and looks are ported from v1 as they are.
 
+**The look is Ledger** (Kenil, 20 Oct; the proposal and mock are in the project's
+`design/window-proposal.md`): slate neutrals and one slate-blue accent, Geist with Source Serif 4
+titles, seven text sizes, light and dark; the tokens are `window/src/app.css`, the parts are in
+`window/src/ui/`, and `window/src/look.test.ts` fails any colour or size that is not a token.
+`pnpm shots` takes every screen in light and dark. A module's screen has its tables, its
+Conversation and its Agents and notes as tabs; Ask (⌘J) opens the module's conversation on the
+right, and a message asked there carries the module.
+
 Built so far: a table opens as a table or, when it has a choice to group by, a board; a choice set
 in the window (a board's column, a Home line's Pass) is the person's word, journaled, and the
 value's source.
