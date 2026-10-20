@@ -1,7 +1,7 @@
 # 20 October 2026: the window redesign, steps 1 to 8 (look, parts, shell, Home, tables, Activity, Settings, modules)
 
-Kenil tested DealPilot on a test copy ("looks good!") and stages A and B were committed and
-pushed (alpha-v2 3937316..9cbabb6; alpha-avilo private at github.com/kenil0811/alpha-avilo). He
+Kenil tested the deal search kit on a test copy ("looks good!") and stages A and B were committed and
+pushed (alpha-v2 3937316..9cbabb6; the client's private repository on GitHub). He
 picked direction A, "Ledger", for the window (the design thread's proposal and mock) and said yes
 to step 1 of its order of work.
 
@@ -25,11 +25,11 @@ to step 1 of its order of work.
 
 ## Seen
 
-36 shots of the test copy, which Kenil had used: he added POE Advisors, a real source, and its
+36 shots of the test copy, which Kenil had used: he added a broker's site, a real source, and its
 46 listings came in. Light and dark both read; tables, the board, Settings and Activity keep
 their layout in the new palette and type.
 
-Noticed in his run, for DealPilot later: some POE listings say Acquisition Pending or On Hold on
+Noticed in his run, for the deal search kit later: some of a broker's listings say Acquisition Pending or On Hold on
 the site and are kept as Listed, since the reader does not read a listing's status yet.
 
 ## Step 2: the parts (uncommitted, for Kenil's review)
@@ -58,7 +58,7 @@ Step 2 committed and pushed (34948a7). The shell (`window/src/Shell.tsx`), as th
   while an agent's run is going (the stream now says how many: `running`); Modules as a tree,
   each module folding, its tables with their row counts; Settings and "Alpha is running" (or
   "not answering") at the foot.
-- **The bar, 48px, over every screen:** crumbs (Home; DealPilot › Deals) and Find.
+- **The bar, 48px, over every screen:** crumbs (Home; Deals module › Deals) and Find.
 - **Find, ⌘K:** every screen and table by name, those starting with the words first; Return
   opens one. Checked by hand: "dea" opens Deals.
 
@@ -82,7 +82,7 @@ Step 3 committed and pushed (3b123b6). Home, as the mock's A:
 - **The Now strip** above the composer: what waits on the person first (a card: scrolls to it
   and flashes; a sign-in: Settings at that connection), then what is running (opens Activity);
   three at most.
-- **Lenses:** a topic chip keeps Home to its module; the bar shows "Only DealPilot ×".
+- **Lenses:** a topic chip keeps Home to its module; the bar shows "Only Deals module ×".
 
 Tried in the test copy: a request that needed a new site put its card in the stream, "1" on
 Home in the rail and a Now chip; Not now folded it to its line, and the live message showed
@@ -149,16 +149,16 @@ Step 7 committed and pushed (7ffe5c9).
 - **Core:** a module's head (`GET /api/modules/:id`: its kit and version, its agents, how many
   sites its readers may read, its NOTES.md, its tables with counts); a message may say which
   module it was asked from (`from`): the said line carries the module, so the turn shows through
-  that module's lens, and Alpha's per-turn context says "Asked from the DealPilot module."
+  that module's lens, and Alpha's per-turn context says "Asked from the deal search module."
 - **A module screen:** its head (from the kit, agents on, sites it reads) and one row of tabs: its
   tables with their counts, Conversation (Home through the module's lens, asking from it), and
   Agents and notes (each agent as a switch; the notes Alpha reads, rendered). The rail's module
   row opens it (its first table); the chevron folds it. A table's own title gave way to the
   module's head.
-- **Ask (⌘J)** on a module's screen, or "Ask about DealPilot" in the bar: the module's
+- **Ask (⌘J)** on a module's screen, or "Ask about <module>" in the bar: the module's
   conversation in the right panel, answered in the same stream as Home; the source panel gives
   way to it. Tried: asked "How many deals fit right now?" from the panel; the line carried
-  DealPilot and the answer came back in the panel.
+  the deal search kit and the answer came back in the panel.
 - **Kit pages wait for pages** (design §13), which v2 does not have yet; they join the tabs then,
   in a frame with the tokens and fonts inlined.
 
@@ -168,7 +168,7 @@ project's files.
 ## Step 9: closing the gaps (uncommitted, for Kenil's review)
 
 Step 8 committed and pushed (87c64d4). Kenil asked whether the window matched the agreed design;
-it did not, and he took the order: the buildable gaps first, then DealPilot's listing status,
+it did not, and he took the order: the buildable gaps first, then the deal search's listing status,
 pages, Accounting, Always, People.
 
 - **Cards say what they do.** A gate card's buttons name the act and its way out: Send it / Not
@@ -187,7 +187,7 @@ pages, Accounting, Always, People.
 - **Settings:** a connection that needs signing in again says so with a Sign in button;
   Appearance is kept by Alpha per person (a `preferences` table, migration 5), so it follows the
   person to the Mac shell and another browser.
-- **DealPilot 0.1.1** (alpha-avilo): Fit is a choice with tones; Figures writes a note for each
+- **The deal search kit** (in the client's repository): Fit is a choice with tones; Figures writes a note for each
   figure (margin, multiples, Loan needed, Debt service, SDE after debt service) and for Fit (each
   gate passed, failed or not known).
   The test copy was updated from the folder; Figures refigured all 48 deals with notes.

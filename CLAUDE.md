@@ -26,8 +26,8 @@ the per-install token. Prompts, models and judgements live in `core/config/`, no
 - A failure becomes a journey before it becomes a change.
 - A rule for the model is a wall in code, or it is not written.
 - Nothing is built for a client who has not asked.
-- Nothing client-specific in this repository: a client's kits live in their own private repository
-  (Avilo's: `../alpha-avilo`), installed from a folder.
+- Nothing client-specific in this repository: a client's kits, journeys, data and notes live in
+  their own private repository beside it, installed from a folder.
 - Every change is proposed to Kenil in writing before it is built, built in the design's shape,
   looked at in the app, and committed after his review. The design changes only on his yes.
 - One short dated entry in `docs/log/` per session.

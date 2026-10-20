@@ -22,14 +22,13 @@ every client: the world, the engine, the window. Three owners:
   reminders, watches, and any ad hoc request. It never builds or patches a connector.
 - **The user owns their data and their customisations**, protected by the kit ownership rule.
 
-**First client: Avilo**, one person on a Mac, personal Gmail, four projects (Network, Task
-manager, Accounting, DealPilot). The requirements are `../requirements/AB-four-projects-scope.md`
-and the fit analysis `../requirements/alpha-fit-four-projects.md`; QuickBooks by exports only,
-no API. She gets all four as kits and uses Alpha as a whole.
+**First client:** one person on a Mac, personal Gmail, four projects, QuickBooks by exports only,
+no API. They get all four as kits and use Alpha as a whole; the requirements and the fit
+analysis live in the client's own repository.
 
 **Second client: Dell Disability Lawyers**, several users on Windows, Microsoft 365, a Total
 Office case system on MySQL with a read-only database user available; their documents are
-`~/Downloads/Dell_Disability_*.docx`. Dell comes after Avilo, on the hosted shape, intake first.
+`~/Downloads/Dell_Disability_*.docx`. Dell comes after the first client, on the hosted shape, intake first.
 
 ## Decisions, fixed
 
@@ -53,12 +52,12 @@ Office case system on MySQL with a read-only database user available; their docu
    Anthropic's own flow (Alpha never sees or stores the token; one subscription, one person;
    the key route is a one-line switch in Settings). Dell on keys. The engine must understand a
    subscription's rate-limit window: say so plainly, journal it, resume when it opens. Before
-   Avilo's build ships, one email to Anthropic describing exactly this shape.
+   the first client's build ships, one email to Anthropic describing exactly this shape.
 7. **Auth kinds**, three, in the connector SDK: app password or API key; OAuth with our own
    app; browser profile. Secrets in the Mac keychain or an encrypted store with a server key,
    never in the world file.
 8. **Process.** One design document (`docs/design.md`), written first from this brief, frozen
-   until Avilo has used the result. Three rules: a failure becomes a journey before it becomes
+   until the first client has used the result. Three rules: a failure becomes a journey before it becomes
    a change; a rule for the model is a wall in code or it is not written; nothing is built for
    a client who has not asked. A short dated log in `docs/log/`. No decisions table. A short
    `CLAUDE.md`. Every change proposed to Kenil in writing before it is built, built in the
@@ -184,28 +183,14 @@ Office case system on MySQL with a read-only database user available; their docu
     pre-pack, the Haiku router, the workflow page, the interview, work items and their cards,
     the map, Intelligence, voice, the Codex route, the kits channel, every behavioural rule.
 
-## Avilo's scope against v1
+## The first client's scope against v1
 
-Everything in `../requirements/alpha-fit-four-projects.md` is in v1 except: the fx formula
-panel (formulas are a kit script writing every value with its inputs as provenance; an
-overridden value keeps the computed one with Reset); the map of deals; direct QuickBooks, Gusto
-and Ramp; per-client sub-modules (one Accounting module with a Client field); Outlook for her.
-Fix the deal tracker's unstable match key before DealPilot is built; merge by listing id depends
-on it. Copy the reference dashboard's look, not its arithmetic (two of its formulas are wrong).
+Kept in the client's own repository, with the fit analysis.
 
-## Acceptance: Avilo's first day, on a fresh tenant, for real in her window
+## Acceptance
 
-1. Four kits installed, tables empty, agents paused.
-2. She drops the six exports in the folder; the report appears; every number opens to its cell.
-3. The deal tracker reads its sources on schedule; she adds one by pasting a URL.
-4. Her LinkedIn and her mail become people; duplicates offered on one card.
-5. A question across deals and people answered with its sources.
-6. "Every Friday remind me which deals went quiet" fires.
-7. She adds a column, changes a view, draws a chart, by talking.
-8. A draft to a broker waits for her yes and goes.
-
-Each is a journey on a fresh tenant with the real model; her own run is the acceptance. The
-rows of the fit document are the journeys for the kits.
+The first client's first day, on a fresh tenant, for real in their window, as journeys kept in
+the client's repository; their own run is the acceptance.
 
 ## Order of work
 
@@ -217,11 +202,9 @@ rows of the fit document are the journeys for the kits.
    files connector; journey "track what I eat, log two eggs" on a fresh tenant.
 2. **Week 2.** The connector SDK and the first connectors; the Google app registered in the
    background; the email to Anthropic about the subscription shape.
-3. **Weeks 3 to 5.** Kits in order, each with its journeys and a real run: DealPilot (the
-   match key first), Accounting (formulas as a kit script, the report as a page, PDF), Network
-   (people for real), Task manager (views over the tasks primitive). The platform grows only
-   when a kit cannot be written without it.
-4. **Week 6.** The Mac shell with the companion, Watson and Morning, signing, her key or
-   sign-in, her first run with Kenil present, the feedback report.
+3. **Weeks 3 to 5.** The first client's kits in order, each with its journeys and a real run. The
+   platform grows only when a kit cannot be written without it.
+4. **Week 6.** The Mac shell with the companion, Watson and Morning, signing, the person's key
+   or sign-in, their first run with Kenil present, the feedback report.
 
 Then Dell: the hosted shape, Graph and SQL connectors, the Total Office mirror, the intake kit.

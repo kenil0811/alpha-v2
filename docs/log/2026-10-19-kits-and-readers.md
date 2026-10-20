@@ -1,11 +1,11 @@
-# 19 October 2026: kits, readers and runs (DealPilot, stage A)
+# 19 October 2026: kits, readers and runs (the deal search kit, stage A)
 
-Kenil said yes to the DealPilot plan's four choices: listings land straight in Deals with a Home
+Kenil said yes to the deal search plan's four choices: listings land straight in Deals with a Home
 line for the ones that fit; the sources and thesis come from the Platforms CSV and the scope; Alpha
 writes each source's reader when it is added; the Funnel waits for pages. And one rule: **nothing
-client-specific in alpha-v2**. A client's kits live in their own private repository (Avilo's:
-`alpha-avilo`), installed from a folder (design §10, `CLAUDE.md`). Stage A is the generic part,
-built here; stage B is the DealPilot kit itself, in `alpha-avilo`.
+client-specific in alpha-v2**. A client's kits live in their own private repository,
+installed from a folder (design §10, `CLAUDE.md`). Stage A is the generic part,
+built here; stage B is the deal search kit itself, in the client's repository.
 
 ## What was built (uncommitted, for Kenil's review)
 
@@ -49,11 +49,11 @@ kept the reader and its agent, and its try stopped on the card for the site; aft
 ran, failed once on `extract`'s shape (the tool's notes now say it returns `{ pages, items }`),
 fixed its script and read all three firms. That flow is now the journey `a-reader-for-a-list`.
 
-## Stage B: the DealPilot kit (in alpha-avilo), and what it needed here
+## Stage B: the deal search kit (in the client's repository), and what it needed here
 
-Kenil, 22:32 UTC: alpha-avilo is a separate private repository holding only Avilo's kits and
-journeys, no alpha-v2 code. It is made at `../alpha-avilo` and goes to GitHub after his review.
-The two Avilo journeys and their reports moved there.
+Kenil, 22:32 UTC: the client's repository is a separate private one holding only the client's kits and
+journeys, no alpha-v2 code. It is made beside alpha-v2 and goes to GitHub after his review.
+The client's two journeys and their reports moved there.
 
 What the kit needed from the platform, each generic:
 
@@ -70,7 +70,7 @@ What the kit needed from the platform, each generic:
 - The journeys runner: `--from` a client's folder, a `kit` step, a `site` step, a `due` tick, and
   checks on questions, a row's field and what was told.
 
-The first DealPilot journey run failed usefully: the model read only the list (so staff and
+The first the deal search kit journey run failed usefully: the model read only the list (so staff and
 bookkeeping share were unknown and nothing fitted), could not cite the Add card as the source of
 On (so it marked it assumed after seven tries), and a deal two brokers list flipped its name
 between them on each read. Fixed in the kit's notes, the platform (cards citable) and the reader
@@ -81,7 +81,7 @@ opens to its formula and the financing shows as assumed.
 
 ## Left
 
-- Kenil's review of both stages; then commits here and alpha-avilo's first commit and push.
+- Kenil's review of both stages; then commits here and the client repository's first commit and push.
 - A real source, on Kenil's word: the readers have only read made-up sites.
 - The Funnel waits for pages; CIM economics, call guides, the deal analyst and the 18 tracker
   deals wait for the full workbook, as agreed.

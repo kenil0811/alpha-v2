@@ -38,4 +38,4 @@ This is Kenil's to do in his own Google account; Alpha never signs in to the con
    and the scope justifications above.
 
 Google says sensitive-scope verification usually takes from a few days to a few weeks. Nothing in
-Alpha uses this app until it is verified; Avilo's calendar and contacts come from her Mac.
+Alpha uses this app until it is verified; the first client's calendar and contacts come from their Mac.

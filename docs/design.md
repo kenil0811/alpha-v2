@@ -1,7 +1,7 @@
 # Alpha v2: the design
 
 *Agreed with Kenil on 19 October 2026, written from `BRIEF.md`. This document replaces the
-brief as the reference and stays frozen until Avilo has used the result. A change after that is
+brief as the reference and stays frozen until the first client has used the result. A change after that is
 proposed in writing, agreed, made here, and noted in `docs/log/`.*
 
 Where the brief already decided something, this says it once and adds the shape. Where the
@@ -20,9 +20,9 @@ personalises. The runtime is the same for every client.
   reminders, watches and ad hoc requests. It never builds or patches a connector.
 - **The user owns their data and customisations**, protected by the kit ownership rule (§10).
 
-First client: **Avilo** (one person, Mac, personal Gmail; four kits: DealPilot, Accounting,
-Network, Task manager). Second: **Dell Disability Lawyers** (several Windows users, Microsoft
-365, Total Office on MySQL), hosted, after Avilo.
+First client: one person on a Mac with personal Gmail and four kits, which live in the client's
+own repository with their requirements. Second: **Dell Disability Lawyers** (several Windows
+users, Microsoft 365, Total Office on MySQL), hosted, after the first.
 
 ## 2. The shape
 
@@ -174,7 +174,7 @@ API key, or, for one person on their own Mac, their own subscription signed in t
 Anthropic's own flow. Alpha never sees or stores that token, and on that route never moves
 Claude Code's config home (v1 found the sign-in lives there). Switching to a key is one line in
 Settings. When a subscription's usage window closes, the desk says so plainly with the time it
-reopens, journals it, and resumes then. Dell runs on keys. Before Avilo's build ships, one
+reopens, journals it, and resumes then. Dell runs on keys. Before the first client's build ships, one
 email to Anthropic describes this shape exactly.
 
 ## 6. Context, four layers
@@ -279,12 +279,12 @@ connectors/gmail/
 The adapter underneath is pluggable: an Activepieces piece, a remote or local MCP server, a
 browser session, a SQL mapping.
 
-**Order (chosen):** for Avilo, in week 2 and as her kits need them: Gmail by IMAP and SMTP with
+**Order (chosen):** for the first client, in week 2 and as their kits need them: Gmail by IMAP and SMTP with
 an app password; the Mac's calendar and contacts (a small signed native helper, since Node
-cannot reach EventKit; iCal and vCard on a server); LinkedIn in the browser (her
-`Connections.csv` once, then only what is new); files with positions (Docling for PDFs, SheetJS
+cannot reach EventKit; iCal and vCard on a server); LinkedIn in the browser (the
+person's `Connections.csv` once, then only what is new); files with positions (Docling for PDFs, SheetJS
 for sheets); a watched folder. Outlook by Graph and the generic read-only SQL connector come
-with Dell, who has asked for them; Avilo hasn't.
+with Dell, who has asked for them; the first client hasn't.
 
 ## 9. Skills
 
@@ -305,11 +305,11 @@ network allowlist, what it reaches outside itself), `NOTES.md`, `pages/`, `skill
 `files/`, kept as a git repository. The model may make a module when a request needs a home,
 and says so.
 
-A **kit** is that directory with no person's rows, carrying setup rows (DealPilot's sources and
-thesis, Accounting's accounts and benchmarks). **Kits live outside this repository** (Kenil, 19
+A **kit** is that directory with no person's rows, carrying setup rows (a deal search's sources
+and thesis, a report's accounts and benchmarks). **Kits live outside this repository** (Kenil, 19
 Oct): alpha-v2 holds only what is generic (the platform, connectors, the kit format and its
-installer, generic skills); a client's kits live in that client's own private repository (Avilo's
-in `alpha-avilo`) and are installed from a folder. A kit's scripts import nothing of alpha-v2:
+installer, generic skills); a client's kits live in that client's own private repository and are
+installed from a folder. A kit's scripts import nothing of alpha-v2:
 the core hands each script a small API when it runs it. When a second client asks for a kit, its
 generic part moves to a shared kits repository then. Install makes the tables empty and the agents
 paused; a setup row may mark a value assumed, with what it rests on (a thesis's financing). **The ownership rule:** on update, what was installed and is untouched is replaced; what
@@ -335,7 +335,7 @@ a brief the model writes. Tokens and duration are recorded on every run as facts
 agents** shows each module's agents, on or paused, with Run now. An agent may wait on a change in
 several tables, and hands its script an input (one listing reader serves every source, each
 source's agent giving it the page). A change runs the agents waiting on it soon after, not at the
-next tick. For DealPilot's new fits (Kenil, 19 Oct), a run's line on Home names its rows, each
+next tick. For a deal search's new fits (Kenil, 19 Oct), a run's line on Home names its rows, each
 with Open and one choice set in a click (Pass).
 
 **Built-ins, quiet:** **Watson** notices after turns, consolidates while the Mac is idle, and
@@ -436,24 +436,13 @@ checks on the world (tables made, rows landed, a card waiting, a value's source)
 read the world, not the model's prose; a judge is used only where nothing else can tell.
 Journeys that would act in a real account run against fixtures, or on Kenil's word; a site is a
 made-up one served on the Mac. A client's journeys live in the client's own repository and run
-with `pnpm journey <name> --from ../alpha-avilo/journeys`.
+with `pnpm journey <name> --from ../<client>/journeys`.
 
 **Tests** (Vitest) never call the model and never touch a real tenant. A failure becomes a
 journey before it becomes a change.
 
-**Acceptance:** Avilo's first day on a fresh tenant, for real in her window, as eight journeys:
-
-1. Four kits installed, tables empty, agents paused.
-2. She drops the six exports in the folder; the report appears; every number opens to its cell.
-3. The deal tracker reads its sources on schedule; she adds one by pasting a URL.
-4. Her LinkedIn and her mail become people; duplicates offered on one card.
-5. A question across deals and people answered with its sources.
-6. "Every Friday remind me which deals went quiet" fires.
-7. She adds a column, changes a view, draws a chart, by talking.
-8. A draft to a broker waits for her yes and goes.
-
-Her own run is the acceptance. The rows of `../requirements/alpha-fit-four-projects.md` are the
-journeys for the kits.
+**Acceptance:** the first client's first day on a fresh tenant, for real in their window, as
+journeys kept in the client's own repository. Their own run is the acceptance.
 
 ## 17. Ported from v1, and left behind
 
@@ -466,25 +455,10 @@ Left behind: the five agents as characters, the pre-pack, the Haiku router, the 
 the interview, work items and their cards, the map, Intelligence, voice, the Codex route, the
 kits channel, every behavioural prompt rule.
 
-## 18. Avilo's kits against the platform
+## 18. A client's kits against the platform
 
-Each kit is proposed on its own before it is built; this only checks the platform can carry
-them.
-
-- **DealPilot:** Sources (setup rows: her 20 sites, two seeded off), Deals keyed on each
-  source's own listing ID (v1's tracker showed one listing as New and Gone in one run; this is
-  fixed first), Theses (her thesis as setup rows), Funnel as a page. A reader skill per source,
-  model-free on its schedule; multiples and debt service computed by a kit script.
-- **Accounting:** one module with a Client field. The six QuickBooks exports read cell by cell,
-  mapped to accounts, computed by a kit script writing every value with its inputs (an
-  overridden value keeps the computed one, with Reset). The report as a page and a PDF, with the
-  reference dashboard's look and correct arithmetic (its days-cash and COGS are wrong).
-- **Network:** people from Gmail headers, calendar attendees, the Mac's contacts and LinkedIn;
-  circles as her own choice field; last contact and the last 90 days in plain numbers.
-- **Task manager:** views over the tasks primitive.
-
-Outside the brief for Avilo: the fx panel, the map of deals, direct QuickBooks, Gusto and Ramp,
-per-client sub-modules, Outlook.
+Each kit is proposed on its own before it is built, and checked against the platform in the
+client's own repository, where its fit analysis lives.
 
 ## 19. Order of work
 
@@ -498,15 +472,14 @@ per-client sub-modules, Outlook.
    prompt appended against alone. Then the world, the engine with the gates and
    the sandbox, the four context layers, the window with the stream and a table view, the files
    connector. Journey: "track what I eat", then "log two eggs", on a fresh tenant.
-2. **Week 2.** The connector SDK and Avilo's first connectors (§8). The email to Anthropic. No
-   Google OAuth app for now (Kenil, 19 Oct): Avilo's Google calendar and contacts reach Alpha
-   through her Mac's own Calendar and Contacts, with her Google account added in macOS; Gmail
-   stays on an app password.
-3. **Weeks 3 to 5.** DealPilot (the listing key first), Accounting, Network, Task manager, each
-   with its journeys and a real run. The platform grows only when a kit cannot be written
-   without it.
-4. **Week 6.** The Mac shell and companion, Watson and Morning, signing, her key or sign-in, her
-   first run with Kenil present, the feedback report.
+2. **Week 2.** The connector SDK and the first client's connectors (§8). The email to Anthropic.
+   No Google OAuth app for now (Kenil, 19 Oct): the client's Google calendar and contacts reach
+   Alpha through their Mac's own Calendar and Contacts, with their Google account added in macOS;
+   Gmail stays on an app password.
+3. **Weeks 3 to 5.** The first client's kits, each with its journeys and a real run. The platform
+   grows only when a kit cannot be written without it.
+4. **Week 6.** The Mac shell and companion, Watson and Morning, signing, the person's key or
+   sign-in, their first run with Kenil present, the feedback report.
 
 Then Dell: the hosted shape, Graph and SQL connectors, the Total Office mirror, the intake kit.
 

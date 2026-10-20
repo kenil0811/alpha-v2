@@ -6,7 +6,7 @@ Fresh tenant, model claude-opus-5-5, Alpha's prompt appended to Claude Code’s.
 **Passed** in 22 s.
 
 
-## 1. Connected gmail for avilo@example.com, on recorded answers
+## 1. Connected gmail for owner@example.com, on recorded answers
 
 Took 0.0 s.
 
@@ -19,11 +19,11 @@ Reply (7.9 s): Today is Monday, so "this week" has barely started. I've taken it
 - **Priya Shah (Harbor Capital)** sent two emails in the same thread:
   - 13 Oct: "Harbor deal: restoration contractor in St. Louis"
   - 15 Oct: "Re: Harbor deal: NDA attached"
-- **Marco Ruiz (Sunbelt)**, 18 Oct: "Water damage business, $2.1M revenue". Priya was copied.
+- **Marco Ruiz (the brokerage)**, 18 Oct: "Water damage business, $2.1M revenue". Priya was copied.
 
 Probably not what you meant, but close:
-- **BizBuySell Alerts**, 16 Oct: "3 new listings match your search". This is an automatic listing alert, not a person.
-- **Dana Lee (Lee CPA)**, 17 Oct: "June close for RestoPros". This looks like bookkeeping, not a deal.
+- **ListingsHub Alerts**, 16 Oct: "3 new listings match your search". This is an automatic listing alert, not a person.
+- **Dana Lee (Lee CPA)**, 17 Oct: "June close for Lakeside Builders". This looks like bookkeeping, not a deal.
 
 I haven't opened the emails themselves. I can read Priya's NDA email or Marco's listing and summarize them.
 
@@ -78,7 +78,7 @@ Mail: From (text), From address (email), To (text), Cc (text), Subject (text), D
 
 - from_table "Priya Shah <priya@harborcapital.example>" [looked_up], from_address "priya@harborcapital.example" [looked_up], to "kenil@example.com" [looked_up], cc "" [looked_up], subject "Harbor deal: restoration contractor in St. Louis" [looked_up], date "2026-10-13T09:12:00.000Z" [looked_up], labels "Inbox" [looked_up], thread "t-harbor" [looked_up], message_id "<deal-1@harbor.example>" [looked_up]
 - from_table "Priya Shah <priya@harborcapital.example>" [looked_up], from_address "priya@harborcapital.example" [looked_up], to "kenil@example.com" [looked_up], cc "" [looked_up], subject "Re: Harbor deal: NDA attached" [looked_up], date "2026-10-15T16:40:00.000Z" [looked_up], labels "Inbox" [looked_up], thread "t-harbor" [looked_up], message_id "<deal-2@harbor.example>" [looked_up]
-- from_table "BizBuySell Alerts <alerts@bizbuysell.example>" [looked_up], from_address "alerts@bizbuysell.example" [looked_up], to "kenil@example.com" [looked_up], cc "" [looked_up], subject "3 new listings match your search" [looked_up], date "2026-10-16T06:00:00.000Z" [looked_up], labels "Updates" [looked_up], thread "t-bbs" [looked_up], message_id "<intro@bizbuysell.example>" [looked_up]
-- from_table "Dana Lee <dana@leecpa.example>" [looked_up], from_address "dana@leecpa.example" [looked_up], to "kenil@example.com" [looked_up], cc "" [looked_up], subject "June close for RestoPros" [looked_up], date "2026-10-17T11:05:00.000Z" [looked_up], labels "Inbox" [looked_up], thread "t-cpa" [looked_up], message_id "<cpa@avilo.example>" [looked_up]
-- from_table "Marco Ruiz <marco@sunbelt.example>" [looked_up], from_address "marco@sunbelt.example" [looked_up], to "kenil@example.com" [looked_up], cc "Priya Shah <priya@harborcapital.example>" [looked_up], subject "Water damage business, $2.1M revenue" [looked_up], date "2026-10-18T14:22:00.000Z" [looked_up], labels "Inbox" [looked_up], thread "t-sunbelt" [looked_up], message_id "<broker-2@sunbelt.example>" [looked_up]
+- from_table "ListingsHub Alerts <alerts@listingshub.example>" [looked_up], from_address "alerts@listingshub.example" [looked_up], to "kenil@example.com" [looked_up], cc "" [looked_up], subject "3 new listings match your search" [looked_up], date "2026-10-16T06:00:00.000Z" [looked_up], labels "Updates" [looked_up], thread "t-bbs" [looked_up], message_id "<intro@listingshub.example>" [looked_up]
+- from_table "Dana Lee <dana@leecpa.example>" [looked_up], from_address "dana@leecpa.example" [looked_up], to "kenil@example.com" [looked_up], cc "" [looked_up], subject "June close for Lakeside Builders" [looked_up], date "2026-10-17T11:05:00.000Z" [looked_up], labels "Inbox" [looked_up], thread "t-cpa" [looked_up], message_id "<cpa@firm.example>" [looked_up]
+- from_table "Marco Ruiz <marco@brokerage.example>" [looked_up], from_address "marco@brokerage.example" [looked_up], to "kenil@example.com" [looked_up], cc "Priya Shah <priya@harborcapital.example>" [looked_up], subject "Water damage business, $2.1M revenue" [looked_up], date "2026-10-18T14:22:00.000Z" [looked_up], labels "Inbox" [looked_up], thread "t-brokerage" [looked_up], message_id "<broker-2@brokerage.example>" [looked_up]
 - from_table "Restoration Weekly <news@example.org>" [looked_up], from_address "news@example.org" [looked_up], to "kenil@example.com" [looked_up], cc "" [looked_up], subject "This week in restoration" [looked_up], date "2026-10-19T07:00:00.000Z" [looked_up], labels "Promotions" [looked_up], thread "t-news" [looked_up], message_id "<news@example.org>" [looked_up]
