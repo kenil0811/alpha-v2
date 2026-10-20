@@ -1,0 +1,301 @@
+/* Alpha's page kit: the look of a page's blocks, from the window's variables only. The light
+   values here are what a printed page uses; in the window, the window sends its own. */
+:root {
+  --canvas: #fcfcfd;
+  --surface: #ffffff;
+  --sunk: #f2f4f7;
+  --hover: #eceff3;
+  --ink: #16202b;
+  --ink-2: #4b5664;
+  --ink-3: #67717e;
+  --line: #e0e4e9;
+  --hair: #edf0f3;
+  --accent: #35618b;
+  --accent-soft: #e7eef6;
+  --accent-line: #bdd0e3;
+  --good: #3b7550;
+  --good-soft: #e6f0e8;
+  --warn: #8f5d1b;
+  --warn-soft: #f7eedf;
+  --bad: #ad3d36;
+  --bad-soft: #f8e6e4;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+html,
+body {
+  margin: 0;
+  background: var(--canvas);
+}
+body {
+  font-family: "Geist Variable", -apple-system, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+.ak-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 28px 28px;
+  max-width: 1200px;
+}
+.ak-heading h2 {
+  margin: 6px 0 0;
+  font-family: "Source Serif 4 Variable", Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.ak-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.ak-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ak-text {
+  margin: 0;
+  color: var(--ink-2);
+  max-width: 72ch;
+}
+.ak-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.ak-heading .ak-note {
+  margin-top: 2px;
+}
+.ak-empty {
+  margin: 0;
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.ak-problem p {
+  margin: 0;
+  color: var(--bad);
+  font-size: 13px;
+}
+.ak-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.ak-stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.ak-stat__label {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+.ak-stat__value {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.ak-stat__of {
+  color: var(--ink-3);
+  font-weight: 400;
+  font-size: 15px;
+}
+.ak-change {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.ak-change.ak-up span:first-child {
+  color: var(--good);
+}
+.ak-change.ak-down span:first-child {
+  color: var(--warn);
+}
+.ak-grid {
+  display: grid;
+  gap: 16px;
+}
+.ak-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.ak-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ak-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.ak-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+line.ak-grid {
+  stroke: var(--hair);
+  stroke-width: 0.75;
+}
+line.ak-axis {
+  stroke: var(--line);
+  stroke-width: 0.75;
+}
+.ak-line {
+  fill: none;
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.ak-tick {
+  font-size: 11px;
+  fill: var(--ink-3);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.ak-tick--l {
+  text-anchor: end;
+}
+.ak-tick--x {
+  text-anchor: middle;
+}
+.ak-tick--target {
+  text-anchor: end;
+  fill: var(--ink-2);
+}
+.ak-target {
+  stroke: var(--ink-3);
+  stroke-width: 0.75;
+  stroke-dasharray: 3 4;
+}
+.ak-scroll {
+  overflow-x: auto;
+}
+.ak-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ak-table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.ak-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--hair);
+  color: var(--ink);
+}
+.ak-table tr:last-child td {
+  border-bottom: 0;
+}
+.ak-table .ak-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ak-tone-good {
+  color: var(--good);
+}
+.ak-tone-warn {
+  color: var(--warn);
+}
+.ak-tone-bad {
+  color: var(--bad);
+}
+td.ak-tone-good {
+  background: var(--good-soft);
+}
+td.ak-tone-warn {
+  background: var(--warn-soft);
+}
+td.ak-tone-bad {
+  background: var(--bad-soft);
+}
+.ak-list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: var(--ink-2);
+}
+.ak-list li + li {
+  margin-top: 4px;
+}
+.ak-open {
+  cursor: pointer;
+}
+.ak-open:hover,
+.ak-open:focus-visible {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-line);
+  text-underline-offset: 3px;
+  outline: none;
+}
+.ak-stat.ak-open:hover {
+  text-decoration: none;
+  border-color: var(--accent-line);
+}
+.ak-choosers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+.ak-chooser {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.ak-chooser select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 4px 8px;
+}
+@media print {
+  html,
+  body {
+    background: #ffffff;
+  }
+  .ak-page {
+    padding: 0;
+    max-width: none;
+  }
+  .ak-card,
+  .ak-stat {
+    break-inside: avoid;
+  }
+  .ak-scroll {
+    overflow: visible;
+  }
+}

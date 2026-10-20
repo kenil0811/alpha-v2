@@ -1,11 +1,13 @@
 // A module's screen (design §14, Ledger): its head (the kit it came from, its agents, the sites its
-// readers may read) and one row of tabs: its tables with their counts, its Conversation (Home
-// through the module's lens) and its Agents and notes. Pages join the tabs when pages come.
+// readers may read) and one row of tabs: its pages (design §13), its tables with their counts, its
+// Conversation (Home through the module's lens) and its Agents and notes. It opens on its front
+// page, else its first table.
 import type { ModuleView, TableView as TableData } from '@alpha/core/api'
-import { Bot, Briefcase } from 'lucide-react'
+import { Bot, Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { AllAgents, when } from './Kits.tsx'
+import { PageView } from './PageView.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -13,6 +15,7 @@ import { Switch } from './ui/switch.tsx'
 import { Words } from './ui/words.tsx'
 
 export type ModuleTab =
+  | { kind: 'page'; name: string }
   | { kind: 'table'; id: string }
   | { kind: 'conversation' }
   | { kind: 'agents' }
@@ -40,14 +43,21 @@ export function ModuleScreen({
     if (version >= 0) load()
   }, [load, version])
 
-  // with no tab named, the first table, else the conversation
+  // with no tab named, the front page, else the first table, else the conversation
+  const front = m?.pages.find((p) => p.front)
   const current: ModuleTab =
-    tab ?? (m?.tables[0] ? { kind: 'table', id: m.tables[0].id } : { kind: 'conversation' })
+    tab ??
+    (front
+      ? { kind: 'page', name: front.name }
+      : m?.tables[0]
+        ? { kind: 'table', id: m.tables[0].id }
+        : { kind: 'conversation' })
   // the module's own address opens its first table, as that table's address
-  const firstTable = !tab ? m?.tables[0]?.id : undefined
+  const firstTable = !tab && m && !front ? m.tables[0]?.id : undefined
   useEffect(() => {
     if (firstTable) window.location.replace(`#/table/${firstTable}`)
   }, [firstTable])
+  const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
   const on = m?.agents.filter((a) => a.state === 'on').length ?? 0
   const about = m
@@ -81,6 +91,18 @@ export function ModuleScreen({
         role="tablist"
         className="mt-4 flex shrink-0 gap-0.5 overflow-x-auto border-line border-b px-5"
       >
+        {m?.pages.map((p) => (
+          <a
+            key={p.name}
+            role="tab"
+            aria-selected={current.kind === 'page' && current.name === p.name}
+            href={`#/module/${moduleId}/page/${p.name}`}
+            className={tabClass(current.kind === 'page' && current.name === p.name)}
+          >
+            <LayoutDashboard className="size-3.5 text-ink-3" />
+            {p.title}
+          </a>
+        ))}
         {m?.tables.map((t) => (
           <a
             key={t.id}
@@ -111,7 +133,13 @@ export function ModuleScreen({
         </a>
       </div>
       <div className="min-h-0 flex-1">
-        {current.kind === 'conversation' ? (
+        {current.kind === 'page' ? (
+          m && page ? (
+            <PageView key={page.name} m={m} page={page} />
+          ) : (
+            <p className="p-7 text-ink-3">{m ? 'That page is not there.' : 'Loading…'}</p>
+          )
+        ) : current.kind === 'conversation' ? (
           conversation
         ) : current.kind === 'agents' ? (
           m && <AgentsAndNotes m={m} onChange={load} />

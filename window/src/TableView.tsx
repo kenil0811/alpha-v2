@@ -59,10 +59,12 @@ function stored(key: string): Working | null {
 export function TableView({
   data,
   row: openRow,
+  only = null,
   quiet = false,
 }: {
   data: TableData
   row?: string | null
+  only?: string[] | null // the rows a page opened: only these, until Show all
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
 }) {
   const key = `alpha.table.${data.id}`
@@ -97,11 +99,15 @@ export function TableView({
 
   const fields = data.fields
   const shown = columns(fields, config)
+  const base = useMemo(
+    () => (only ? data.rows.filter((r) => only.includes(r.id)) : data.rows),
+    [data.rows, only],
+  )
   const rows = useMemo(
     () =>
       sortRows(
         applyFilters(
-          applySearch(data.rows, fields, config.search, data.names),
+          applySearch(base, fields, config.search, data.names),
           fields,
           config.filters,
           data.names,
@@ -110,7 +116,7 @@ export function TableView({
         config.sorts,
         data.names,
       ),
-    [data.rows, data.names, fields, config.search, config.filters, config.sorts],
+    [base, data.names, fields, config.search, config.filters, config.sorts],
   )
   const choices = fields.filter((f) => f.kind === 'choice' && f.choices.length)
   // a board's columns: the view's group when it is a choice, else Stage, else the first choice
@@ -233,6 +239,16 @@ export function TableView({
             })
           }
         />
+        {only && (
+          <div className="flex items-center gap-2 border-line border-b bg-accent-soft px-7 py-2 text-md text-ink-2">
+            <span className="flex-1">
+              Showing {base.length} of {data.rows.length} rows, the ones a page counted.
+            </span>
+            <a href={`#/table/${data.id}`} className="font-medium text-accent hover:underline">
+              Show all
+            </a>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 px-7 pt-3 pb-3">
           {tickedRows.length > 0 ? (
             <TickedBar

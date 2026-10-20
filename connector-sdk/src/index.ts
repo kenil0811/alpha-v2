@@ -6,6 +6,7 @@ export {
   type ExtractSpec,
   ensureBrowser,
   type Pace,
+  renderPage,
   robotsAllow,
   type Snapshot,
 } from './browser.ts'

@@ -15,6 +15,7 @@ import { instructionsFile } from '../engine/tools.ts'
 import { agents, nextRun, setAgentState, whenWords } from '../modules/agents.ts'
 import { install, installedKits, update } from '../modules/kits.ts'
 import { moduleNetwork } from '../modules/runs.ts'
+import { pageAnswer, pageDocument, pagesOf, printPage } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
 import { findField, type Table } from '../world/shape.ts'
@@ -73,6 +74,7 @@ export interface ServerOptions {
   token?: string
   ports?: number[] // the core's and the dev window's
   windowDir?: string // the built window, served at / when it is there
+  browsers?: string // where the core's own browser is kept, for printing pages
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -217,6 +219,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         .map((m) => ({
           id: m.id,
           name: m.name,
+          pages: pagesOf(m),
           tables: world.shape
             .tables(m.id)
             .filter((t) => !t.hidden)
@@ -695,11 +698,47 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       })),
       sites: moduleNetwork(m).length,
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
+      pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
         .filter((t) => !t.hidden)
         .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
     }
+  })
+
+  // A module's page (design §13): the document its frame shows, the answers to what it asks (its
+  // module's rows, read-only), and the page printed to a PDF with the choices the window had.
+  const pageModule = (id: string) => {
+    const m = world.shape.module(id)
+    if (!m) throw new Refused('That module is not there.')
+    return m
+  }
+  app.get('/api/modules/:id/pages/:name', async (req) => {
+    const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
+    const m = pageModule(id)
+    const page = pagesOf(m).find((p) => p.name === name)
+    if (!page) throw new Refused(`${m.name} has no page called ${name}.`)
+    return { ...page, html: pageDocument(m, name) }
+  })
+  app.post('/api/modules/:id/pages/:name/ask', async (req) => {
+    const { id } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
+    const { op, args } = z
+      .object({ op: z.string(), args: z.record(z.string(), z.unknown()).default({}) })
+      .parse(req.body)
+    return { value: pageAnswer(world, pageModule(id), op, args) }
+  })
+  app.post('/api/modules/:id/pages/:name/pdf', async (req, reply) => {
+    const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
+    const { inputs } = z
+      .object({ inputs: z.record(z.string(), z.string()).default({}) })
+      .parse(req.body ?? {})
+    if (!options.browsers) throw new Refused('Alpha has no browser here to print with.')
+    const pdf = await printPage(world, pageModule(id), name, {
+      browsers: options.browsers,
+      inputs,
+      as: 'pdf',
+    })
+    return reply.type('application/pdf').send(pdf)
   })
 
   // What Alpha remembers, each line removable by the person (the instructions files, design §6).

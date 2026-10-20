@@ -71,7 +71,15 @@ export interface TableSummary {
 export interface ModuleSummary {
   id: string
   name: string
+  pages: PageSummary[]
   tables: TableSummary[]
+}
+
+// A module's page (design §13): the file's name, its title, and whether the module opens on it.
+export interface PageSummary {
+  name: string
+  title: string
+  front: boolean
 }
 
 export interface FieldView {
@@ -242,6 +250,7 @@ export interface ModuleView {
   agents: AgentView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written
+  pages: PageSummary[]
   tables: TableSummary[]
 }
 

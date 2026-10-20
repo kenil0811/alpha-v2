@@ -26,6 +26,7 @@ import { stillReading } from '../files/documents.ts'
 import { agents, setAgentState } from '../modules/agents.ts'
 import { install } from '../modules/kits.ts'
 import { AgentRunner } from '../modules/runs.ts'
+import { printPage } from '../pages/pages.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 
@@ -63,6 +64,8 @@ const Check = z.union([
     }),
   }),
   z.object({ told: z.object({ matches: z.string(), rows: z.number().optional() }) }),
+  // a module's page, drawn with its data: its words match
+  z.object({ page: z.object({ module: z.string(), name: z.string(), matches: z.string() }) }),
 ])
 type Check = z.infer<typeof Check>
 
@@ -100,7 +103,23 @@ interface Outcome {
   saw: string
 }
 
-function judge(world: World, user: User, check: Check): Outcome {
+async function judge(world: World, user: User, check: Check): Promise<Outcome> {
+  if ('page' in check) {
+    const m = world.shape.module(check.page.module)
+    const words = m
+      ? (
+          await printPage(world, m, check.page.name, {
+            browsers: join(ROOT, '.data', 'browsers'),
+            as: 'text',
+          })
+        ).toString()
+      : 'no such module'
+    return {
+      check: `the page ${check.page.name} shows /${check.page.matches}/`,
+      ok: new RegExp(check.page.matches).test(words),
+      saw: words.replace(/\s+/g, ' ').slice(0, 600),
+    }
+  }
   const tables = world.shape.tables()
   if ('tables' in check)
     return {
@@ -340,7 +359,7 @@ async function main() {
   const engine = new Engine(world, {
     prompt,
     connectors,
-    hands: { browser: () => browser, runner },
+    hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers') },
   })
   let site: { server: Server; url: string } | null = null
   const limit = config.limits().journey_step_minutes * 60_000
@@ -453,7 +472,7 @@ async function main() {
       if (tokens) report.push(`Tokens so far in the session: ${tokens}.`, '')
     } else report.push(`Took ${((Date.now() - t0) / 1000).toFixed(1)} s.`, '')
     for (const check of step.checks) {
-      const o = judge(world, user, check)
+      const o = await judge(world, user, check)
       passed &&= o.ok
       report.push(`- ${o.ok ? 'pass' : '**FAIL**'}: ${o.check} (saw ${o.saw})`)
     }

@@ -6,7 +6,9 @@ describe('the window', () => {
   it('lists the modules and their tables in the rail, with what waits and Alpha’s state', () => {
     const html = renderToString(
       <Rail
-        modules={[{ id: 'm_1', name: 'Food', tables: [{ id: 't_1', name: 'Meals', rows: 1 }] }]}
+        modules={[
+          { id: 'm_1', name: 'Food', pages: [], tables: [{ id: 't_1', name: 'Meals', rows: 1 }] },
+        ]}
         place={{ at: 'home' }}
         name="Kenil"
         waiting={2}

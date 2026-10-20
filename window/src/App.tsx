@@ -25,19 +25,26 @@ import { applyTheme } from './theme.ts'
 import { SidePanel } from './ui/side-panel.tsx'
 
 function placeOf(hash: string): Place {
-  const m = /^#\/table\/([^/]+)(?:\/([^/]+))?$/.exec(hash)
-  if (m?.[1]) return { at: 'table', id: m[1], row: m[2] ?? null }
+  const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?only=([^&]*))?$/.exec(hash)
+  if (m?.[1])
+    return {
+      at: 'table',
+      id: m[1],
+      row: m[2] ?? null,
+      only: m[3] ? m[3].split(',').filter(Boolean).map(decodeURIComponent) : null,
+    }
   const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
   if (s) return { at: 'settings', open: s[1] ?? null }
   if (hash === '#/activity') return { at: 'activity' }
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
-  const mod = /^#\/module\/([^/]+)(?:\/(conversation|agents))?$/.exec(hash)
+  const mod = /^#\/module\/([^/]+)(?:\/(conversation|agents|page\/([\w-]+)))?$/.exec(hash)
   if (mod?.[1])
     return {
       at: 'module',
       id: mod[1],
-      tab: (mod[2] as 'conversation' | 'agents' | undefined) ?? null,
+      tab: mod[2] === 'conversation' || mod[2] === 'agents' ? mod[2] : null,
+      page: mod[3] ?? null,
     }
   return { at: 'home' }
 }
@@ -174,7 +181,14 @@ export function App() {
                     icon: <Briefcase className={icon} />,
                     parts: [
                       moduleHere?.name ?? '…',
-                      place.tab === 'agents' ? 'Agents and notes' : 'Conversation',
+                      place.tab === 'agents'
+                        ? 'Agents and notes'
+                        : place.tab === 'conversation'
+                          ? 'Conversation'
+                          : (modules
+                              .find((x) => x.id === place.id)
+                              ?.pages.find((p) => (place.page ? p.name === place.page : p.front))
+                              ?.title ?? '…'),
                     ],
                   }
                 : { icon: <House className={icon} />, parts: ['Home'] }
@@ -229,7 +243,9 @@ export function App() {
                     ? { kind: 'table', id: place.id }
                     : place.tab
                       ? { kind: place.tab }
-                      : null
+                      : place.page
+                        ? { kind: 'page', name: place.page }
+                        : null
                 }
                 version={version}
                 table={table}
@@ -238,6 +254,7 @@ export function App() {
                     key={t.id}
                     data={t}
                     row={place.at === 'table' ? place.row : null}
+                    only={place.at === 'table' ? place.only : null}
                     quiet={asking}
                   />
                 )}

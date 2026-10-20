@@ -106,6 +106,53 @@ export function browserPath(browsersDir: string): string {
   return path
 }
 
+// A page of Alpha's own drawn with no window to show it in (a module's page printed to a PDF, or
+// looked at as a picture): the headless browser with the network shut, `ask` answering the page's
+// questions for data, and the page saying when it has drawn itself (`window.alphaReady`).
+export async function renderPage(
+  browsersDir: string,
+  html: string,
+  opts: {
+    ask: (question: string) => Promise<string>
+    as: 'pdf' | 'png' | 'text' // text: the words it drew, for a journey to check
+    landscape?: boolean // a wide page (a table of many weeks) prints across the paper
+  },
+): Promise<Buffer> {
+  await ensureBrowser(browsersDir)
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: browserPath(browsersDir),
+  })
+  try {
+    // laid out at the width it prints at: A4 less its margins, at 96 dots an inch
+    const context = await browser.newContext({
+      viewport: { width: opts.landscape ? 1032 : 703, height: 900 },
+      offline: true,
+    })
+    const page = await context.newPage()
+    await page.exposeFunction('alphaAsk', opts.ask)
+    await page.setContent(html, { waitUntil: 'load' })
+    await page.waitForFunction(
+      () => (window as { alphaReady?: boolean }).alphaReady === true,
+      null,
+      {
+        timeout: 30_000,
+      },
+    )
+    if (opts.as === 'text') return Buffer.from(await page.locator('body').innerText())
+    return opts.as === 'pdf'
+      ? await page.pdf({
+          format: 'A4',
+          landscape: opts.landscape ?? false,
+          printBackground: true,
+          margin: { top: '14mm', bottom: '14mm', left: '12mm', right: '12mm' },
+        })
+      : await page.screenshot({ fullPage: true })
+  } finally {
+    await browser.close()
+  }
+}
+
 // The person's own Google Chrome. A site they sign in to opens there, with nothing driving it, so
 // sites that turn automated browsers away from their sign-in (Google's, say) let them in; that
 // site is read with Chrome afterwards, on the same profile, since only Chrome can open what Chrome

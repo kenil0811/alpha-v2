@@ -11,6 +11,7 @@ import { importRows, readDocument } from '../files/documents.ts'
 import { agents } from '../modules/agents.ts'
 import { keep } from '../modules/keep.ts'
 import type { AgentRunner } from '../modules/runs.ts'
+import { pagesOf, printPage } from '../pages/pages.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../world/kinds.ts'
 import { findField, type Table } from '../world/shape.ts'
 import { namedConfig, ViewConfig } from '../world/views.ts'
@@ -34,6 +35,7 @@ export interface Here {
 export interface Hands {
   browser: () => BrowserEngine
   runner: AgentRunner
+  browsers?: string // where the core's own browser is kept, to look at a module's page
 }
 
 export const SERVER = 'alpha'
@@ -67,7 +69,10 @@ const Field = z.object({
   relates_to: z.string().optional(),
 })
 
-type Result = { content: { type: 'text'; text: string }[]; isError?: boolean }
+type Result = {
+  content: ({ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string })[]
+  isError?: boolean
+}
 
 function ok(value: unknown): Result {
   return {
@@ -100,6 +105,14 @@ async function guardAsync(fn: () => Promise<Result>): Promise<Result> {
     return { content: [{ type: 'text', text: msg }], isError: true }
   }
 }
+
+// What a page is (design §13), for the model that draws one.
+const PAGE = [
+  'A page (pages/<name>.html): a <title>, <meta name="alpha-front"> when the module should open on it, <meta name="alpha-print" content="landscape"> when it is wide, then a <script> that calls alpha.page(async () => [ ...blocks ]).',
+  'Inside it: await alpha.rows(table) gives the module’s rows as { id, values by field name, kinds }; await alpha.history(table, field) gives each row’s values of that field, oldest first, as { row, changes: [{ value, at }] }; alpha.input(name, { options }) offers a chooser and returns its value; alpha.open({ table, rows: [ids] }) or alpha.open({ table, row }) opens rows in the window; alpha.fmt(value, unit) writes a number, date or money as the window does.',
+  'Blocks: { heading, note? }, a string or { text }, { stats: [{ label, value, unit?, of?, change?: { value, unit?, label?, better? }, tone?, open? }] }, { chart: { title?, kind: line | bar, rows, x, series: [{ field, label?, unit? }], target?: { value, label? } } }, { table: { title?, note?, columns: [{ field, label?, unit? }], rows } } where a cell may be { value, of?, tone?, open? }, { list: { title?, items: [{ text, tone?, open? }] } }, { card: { title?, text } }, { grid: { columns?, blocks } }. tone is good, warn or bad.',
+  'A page reads its own module’s tables only and writes nothing; it reaches nothing outside its frame. Alpha’s look is the kit’s: no colours, fonts or line weights of your own. Look at it (look with module and page) before you say it is done.',
+].join('\n')
 
 const SCRIPT = [
   'A script is JavaScript: `export default async (alpha) => { … return { words } }`. It has no network and writes only in its module folder; it reaches the world through alpha:',
@@ -466,11 +479,32 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
     ),
     tool(
       'look',
-      'Open a web page the way a person sees it: drawn by a browser, at a person’s pace, keeping to the site’s robots rules; it stops at a sign-in or a bot check and says so. Without css: its title, text and links. With css: how many elements match and the first few as HTML, to write or check a reader’s extraction.',
-      { url: z.string(), css: z.string().optional() },
-      async ({ url, css }) =>
+      'Open a web page the way a person sees it: drawn by a browser, at a person’s pace, keeping to the site’s robots rules; it stops at a sign-in or a bot check and says so. Without css: its title, text and links. With css: how many elements match and the first few as HTML, to write or check a reader’s extraction. With module and page instead of url: a picture of that module’s page as the person will see it, drawn with its data, to look at before saying it is done.',
+      {
+        url: z.string().optional(),
+        css: z.string().optional(),
+        module: z.string().optional(),
+        page: z.string().optional(),
+      },
+      async ({ url, css, module: moduleName, page: pageName }) =>
         guardAsync(async () => {
           if (!hands) throw new Refused('Pages are not set up in this core.')
+          if (moduleName && pageName) {
+            const m = world.shape.module(moduleName)
+            if (!m) throw new Refused(`There is no module called ${moduleName}.`)
+            const name = pageName.replace(/^pages\//, '').replace(/\.html$/, '')
+            if (!pagesOf(m).some((p) => p.name === name))
+              throw new Refused(`${m.name} has no page called ${name}: keep it first.`)
+            if (!hands.browsers) throw new Refused('Alpha has no browser here to draw pages with.')
+            const png = await printPage(world, m, name, { browsers: hands.browsers, as: 'png' })
+            return {
+              content: [
+                { type: 'text', text: `${m.name}'s page ${name}, as the person will see it:` },
+                { type: 'image', data: png.toString('base64'), mimeType: 'image/png' },
+              ],
+            }
+          }
+          if (!url) throw new Refused('Give a url, or a module and its page.')
           const engine = hands.browser()
           if (css) return ok(await engine.inspect(url, css))
           const page = await engine.open(url)
@@ -488,6 +522,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
       [
         'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), an agent (agents/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
         'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" } or { changes: <table> }) and `runs: { script: <path in the module> }`, then its brief. Keep its script first. An agent kept here is on.',
+        PAGE,
         SCRIPT,
       ].join('\n'),
       { module: z.string(), path: z.string(), content: z.string().optional() },

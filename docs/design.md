@@ -353,11 +353,16 @@ unchanged yeses, the card offers Always (a standing permission for that agent an
 
 ## 13. Pages
 
-Files in the module, rendered in a sandboxed frame with no network, the kit's blocks (stat,
-chart, table, card, text, grid) as the default look, and read-only data. A page may post an
-action, which runs through the gates, and may ask the window to open a record or a cell. A page
-can be downloaded as a PDF (Accounting's report). The look judgement is a note, never a block.
-Nothing restricts a custom page the person asks for.
+Files in the module (`pages/<name>.html`; `<meta name="alpha-front">` makes it the module's
+first tab, `<meta name="alpha-print" content="landscape">` prints it across the paper), rendered
+in a sandboxed frame with no network under Alpha's content policy, the kit's blocks (heading,
+text, stats, chart, table, list, card, grid) as the default look, and read-only data: the page
+asks its own module's rows and a field's history through the window, and offers choosers (a
+month, a client). A page may post an action, which runs through the gates (not built until a page
+needs one), and may ask the window to open rows, a row or a value's source. The core prints a
+page with the same data to a PDF (Accounting's report), or to a picture the model looks at before
+it says a page is done. The look judgement is a note, never a block. Nothing restricts a custom
+page the person asks for.
 
 ## 14. The window
 

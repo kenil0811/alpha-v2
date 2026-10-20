@@ -62,7 +62,10 @@ const runner = new AgentRunner(world, browserEngine, {
   owner: user.id,
   notify: () => engine.events.emit('event', { type: 'lines', user: user.id }),
 })
-const engine = new Engine(world, { connectors, hands: { browser: browserEngine, runner } })
+const engine = new Engine(world, {
+  connectors,
+  hands: { browser: browserEngine, runner, browsers: join(home, 'browsers') },
+})
 const scheduler = new Scheduler(world, [
   { run: (now) => connectors.syncDue(now) },
   { run: (now) => runner.runDue(now) },
@@ -86,6 +89,7 @@ const app = buildServer({
   user,
   token,
   ports: [port, windowPort],
+  browsers: join(home, 'browsers'),
   ...(served ? { windowDir } : {}),
 })
 await app.listen({ host: '127.0.0.1', port })

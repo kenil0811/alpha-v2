@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   House,
+  LayoutDashboard,
   MessageSquare,
   Search,
   SlidersHorizontal,
@@ -25,8 +26,8 @@ export type Place =
   | { at: 'conversation' }
   | { at: 'activity' }
   | { at: 'parts' }
-  | { at: 'table'; id: string; row: string | null }
-  | { at: 'module'; id: string; tab: 'conversation' | 'agents' | null }
+  | { at: 'table'; id: string; row: string | null; only: string[] | null }
+  | { at: 'module'; id: string; tab: 'conversation' | 'agents' | null; page: string | null }
   | { at: 'settings'; open: string | null }
 
 function Nav({
@@ -167,6 +168,16 @@ export function Rail({
               </div>
               {open && (
                 <div className="flex flex-col pl-4">
+                  {m.pages.map((pg) => (
+                    <Nav
+                      key={pg.name}
+                      small
+                      href={`#/module/${m.id}/page/${pg.name}`}
+                      icon={<LayoutDashboard className="size-4" />}
+                      label={pg.title}
+                      current={place.at === 'module' && place.id === m.id && place.page === pg.name}
+                    />
+                  ))}
                   {m.tables.map((t) => (
                     <Nav
                       key={t.id}

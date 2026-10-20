@@ -19,6 +19,8 @@
     "@anthropic-ai/sandbox-runtime": "catalog:",
     "@fastify/static": "catalog:",
     "@fastify/websocket": "catalog:",
+    "@fontsource-variable/geist": "catalog:",
+    "@fontsource-variable/source-serif-4": "catalog:",
     "croner": "catalog:",
     "fastify": "catalog:",
     "isomorphic-git": "catalog:",
