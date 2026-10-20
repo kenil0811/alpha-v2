@@ -106,7 +106,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone). A record keeps a version per change. Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. |
 | People and companies | Hard keys (email, E.164 phone, profile URL, domain) merge at once. Soft matches are proposals on a card, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. |
 | Facts | Two time axes: when true, when recorded. Corrected by a newer fact, never edited. |
-| Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. |
+| Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. A file sits on the rows it belongs to (a deal's CIM, a client's export) with its kind, one its table names when its kit names them (Kenil, 20 Oct). |
 | Tasks | Title, state, anchor (a module, table, record, field or page), owner (a person or an agent), due, repeat, parent, made by, run. |
 | Cards | Every question, permission and review as a durable row with one state (waiting, yes, no, answered, withdrawn, allowed), opened and closed with a journal line. |
 | Views | A table's saved views (kind, filters with all or any, sorts in levels, group, columns, totals, colours), shared by the firm, kept by field id, mirrored by name in module.yaml; a kit's own until someone changes them. |
@@ -143,7 +143,7 @@ detail stays in the journal. No router, no work items, no cards for sessions.
 | `write` | add rows, each value with its provenance |
 | `change` | change or remove rows (removing the person's own entries asks, unless they asked for it) |
 | `shape` | make or change tables, fields and views |
-| `file` | take in a file or document (read with positions), import a sheet into a table |
+| `file` | take in a file or document (read with positions), import a sheet into a table, put it on the row it belongs to or take it off |
 | `remember` | facts, tasks and standing instructions |
 | `ask` | a question card |
 | `tell` | a line in the person's stream (an agent's run uses it for what is worth telling; a script's is `alpha.tell`) |
@@ -295,8 +295,12 @@ only the extraction. Model-written scripts are JavaScript run by the core's Node
 sandbox; Python stays inside kits. A script imports nothing of Alpha's: the core hands it `alpha`
 (rows by field name, the browser engine, `tell`, `log`) over its process's pipes, so the network,
 the world and the gates stay with the core; a row it lands keeps the web page it was read from as
-its source. Doc repairs a skill by editing it; every version is a commit
-in the module's directory.
+its source. **A judgement point** (Kenil, 20 Oct): a script hands the model a document and the
+values it wants (single values and lists of rows, each with its kind), and gets each back with the
+page or cell it was read from; a wall in code keeps a value only when it is found in the piece it
+cites, so a value nobody can point to comes back as not given. The instructions are in
+`core/config/reading.md`, and the tokens go on the run. Doc repairs a skill by editing it; every
+version is a commit in the module's directory.
 
 ## 10. Modules and kits
 
@@ -342,7 +346,8 @@ a brief the model writes. Tokens and duration are recorded on every run as facts
 **Activity** lists every run with its steps, and stops one that is running; **Settings › Kits and
 agents** shows each module's agents, on or paused, with Run now. An agent may wait on a change in
 several tables, and hands its script an input (one listing reader serves every source, each
-source's agent giving it the page). A change runs the agents waiting on it soon after, not at the
+source's agent giving it the page); an agent waiting on a filing is handed the documents filed or
+put on a row since it last looked, with their rows. A change runs the agents waiting on it soon after, not at the
 next tick. For a deal search's new fits (Kenil, 19 Oct), a run's line on Home names its rows, each
 with Open and one choice set in a click (Pass).
 
@@ -356,7 +361,13 @@ characters.
 
 As in §4. What an agent pulls in from outside lands as a staged batch on one card and is filed
 on the yes, with the card in each value's provenance; what a person types or drops is filed at
-once. A No carries one of a few reasons, put in front of the drafter's next run. After three
+once. **Files that come by mail** (Kenil, 20 Oct): for each email with attachments after intake
+began, the model proposes each file's row among the rows of tables that take documents (only rows
+the email or file names) and its kind; a card per file shows the email, the file's first page,
+what it is, how sure and why, and the rows to pick from. File it puts it on the row and reads it,
+Replace takes the row's file of that kind off, Keep it in Alpha files it on no row, Decline takes a
+reason and lets the file go. The same file again asks nothing; inline images and invites are
+skipped. A No carries one of a few reasons, put in front of the drafter's next run. After three
 unchanged yeses, the card offers Always (a standing permission for that agent and place).
 
 ## 13. Pages
@@ -411,6 +422,10 @@ titles, seven text sizes, light and dark; the tokens are `window/src/app.css`, t
 Conversation and its Agents and notes as tabs; on its screens Ask (⌘J) opens the module's
 conversation on the right, and a message asked there carries the module. Pages other than the stream and tables fill
 the window up to 1200px; the stream's text is 720px, and a table in a reply may run to 960px.
+
+A value read from a document opens the document at its place: a sheet with the cell marked, a
+PDF's page drawn with the piece's box marked, a text with its line. A row's panel lists the files on
+it with their kinds and takes a dropped file (Kenil, 20 Oct).
 
 Built so far: a table opens as a table or, when it has a choice to group by, a board; a choice set
 in the window (a board's column, a Home line's Pass) is the person's word, journaled, and the
