@@ -188,6 +188,47 @@ describe('a script’s figures', () => {
       'Mill (computed)',
       'me@mill.example',
     ])
+    // what the script works out is kept beside the person's own, for Reset
+    expect(after?.provenance.email?.beside).toMatchObject({
+      value: 'computed@mill.example',
+      formula: 'x',
+    })
+  }, 60_000)
+
+  it('read a filed document’s cells, and land values that cite their cell', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const runner = new AgentRunner(world, () => engine)
+    const { file } = world.files.take(new TextEncoder().encode('b'), 'prices.xlsx', 'x', ctx)
+    world.files.addDocument(
+      file.hash,
+      'prices.xlsx',
+      'sheet',
+      [
+        { position: { sheet: 'Sheet1', cell: 'A2', row: 2 }, words: 'Rye Mill' },
+        { position: { sheet: 'Sheet1', cell: 'B2', row: 2 }, words: '1,250.50' },
+      ],
+      ctx,
+    )
+    writeFileSync(
+      join(m.dir, 'skills/prices.js'),
+      `export default async (alpha) => {
+        const [doc] = await alpha.documents.list()
+        const cells = await alpha.documents.read(doc.file)
+        const name = cells.find((c) => c.cell === 'A2')
+        await alpha.rows.land('Suppliers', [{ key: 'rye', values: { Name: name.words }, places: { Name: { file: doc.file, sheet: name.sheet, cell: name.cell } } }])
+        return cells.map((c) => c.cell + '=' + c.words)
+      }`,
+    )
+    const out = await runner.runScript(m, 'skills/prices.js', {}, 'Prices', null)
+    expect(out.result).toEqual(['A2=Rye Mill', 'B2=1,250.50'])
+    const rye = world.records
+      .list(world.shape.table('Suppliers')?.id as string)
+      .find((r) => r.values.name === 'Rye Mill')
+    expect(rye?.provenance.name?.source).toMatchObject({
+      file: file.hash,
+      sheet: 'Sheet1',
+      cell: 'A2',
+    })
   }, 60_000)
 })
 
@@ -218,6 +259,29 @@ describe('triggers', () => {
       data: string
     }
     expect(data.data).toContain('"say":"hi"')
+  }, 60_000)
+
+  it('run an agent when a document is filed', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const runner = new AgentRunner(world, () => engine)
+    writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async () => null')
+    writeFileSync(
+      join(m.dir, 'agents/filer.md'),
+      '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: skills/echo.js }\n---\nReads what is filed.\n',
+    )
+    syncAgents(world, m, 'on')
+    await runner.runDue()
+    expect(runner.runs()).toHaveLength(0)
+    const { file } = world.files.take(new TextEncoder().encode('a'), 'june.xlsx', 'x', ctx)
+    world.files.addDocument(
+      file.hash,
+      'june.xlsx',
+      'sheet',
+      [{ position: { cell: 'A1' }, words: 'x' }],
+      ctx,
+    )
+    await runner.runDue()
+    expect(runner.runs().map((r) => r.words)).toEqual(['Filer finished.'])
   }, 60_000)
 
   it('run an agent that is on when its time comes, and never one that is paused', async () => {

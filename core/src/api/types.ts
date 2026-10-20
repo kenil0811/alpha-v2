@@ -98,6 +98,8 @@ export interface SourceView {
   at: string
   open?: { file: string; cell?: string; sheet?: string } | { url: string } | { line: number }
   note?: string // a computed value's sum with its numbers, or each check it made
+  // beside a value the person typed over: what Alpha works it out as now, which Reset brings back
+  beside?: { value: unknown; words: string; note?: string }
 }
 
 // One value's history, newest first.

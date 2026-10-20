@@ -47,6 +47,9 @@ export interface Provenance {
   source: Source
   basis?: string // the words behind an estimate or an assumption
   at: string
+  // a value the person typed over a computed one: what the script works it out as now, kept
+  // beside theirs, so they can see it and go back to it
+  beside?: { value: unknown; formula?: string; note?: string; at: string }
 }
 
 export interface ProvenanceInput {

@@ -40,6 +40,12 @@ export interface LandInput {
   key: string // the item's own id at its source: a message id, an event id
   values: Record<string, unknown> // by field name
   url?: string // the page it was read from, when there is one
+  // by field name, the place in a document a value was read from (its file, sheet and cell, or
+  // page and line), so the value opens there
+  places?: Record<
+    string,
+    { file: string; sheet?: string; cell?: string; page?: number; line?: number }
+  >
 }
 
 export interface LandSource {
@@ -241,17 +247,19 @@ export class Records {
       const at = now()
       const out: Landed = { added: 0, changed: 0, same: 0 }
       for (const item of items) {
-        const { vals, prov } = this.prepare(
-          table,
-          item.values,
-          {
-            kind: 'looked_up',
-            source: { ...source, item: item.key, ...(item.url ? { url: item.url } : {}) },
-          },
-          undefined,
-          null,
-          at,
-        )
+        const row = {
+          kind: 'looked_up' as const,
+          source: { ...source, item: item.key, ...(item.url ? { url: item.url } : {}) },
+        }
+        const perField = item.places
+          ? Object.fromEntries(
+              Object.entries(item.places).map(([name, place]) => [
+                name,
+                { ...row, source: { ...row.source, ...place } },
+              ]),
+            )
+          : undefined
+        const { vals, prov } = this.prepare(table, item.values, row, perField, null, at)
         const r = one<RecordRow>(
           this.db,
           'SELECT * FROM records WHERE table_id = ? AND item_key = ?',
@@ -374,6 +382,42 @@ export class Records {
       out.push(s)
     }
     return out.reverse()
+  }
+
+  // What a script works a value out as, kept beside the person's own (design §12: an overridden
+  // value keeps the computed one, with Reset). Only beside a value the person stated; it changes
+  // neither the value nor its version.
+  keepBeside(
+    tableId: string,
+    id: string,
+    beside: Record<string, { value: unknown; formula?: string; note?: string }>,
+  ): void {
+    const table = this.mustTable(tableId)
+    const r = one<RecordRow>(
+      this.db,
+      'SELECT * FROM records WHERE id = ? AND table_id = ?',
+      id,
+      table.id,
+    )
+    if (!r) return
+    const prov = parse<Record<string, Provenance>>(r.provenance, {})
+    let changed = false
+    for (const [name, b] of Object.entries(beside)) {
+      const f = findField(table, name)
+      const p = prov[f.id]
+      if (p?.kind !== 'stated') continue
+      const value = checkValue(f.kind, f.name, b.value, f.choices)
+      if (JSON.stringify(p.beside?.value) === JSON.stringify(value) && p.beside?.note === b.note)
+        continue
+      p.beside = {
+        value,
+        ...(b.formula ? { formula: b.formula } : {}),
+        ...(b.note ? { note: b.note } : {}),
+        at: now(),
+      }
+      changed = true
+    }
+    if (changed) run(this.db, 'UPDATE records SET provenance = ? WHERE id = ?', json(prov), id)
   }
 
   count(tableId: string): number {

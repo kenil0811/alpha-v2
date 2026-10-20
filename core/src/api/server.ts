@@ -263,6 +263,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       user: user.id,
       module: t.module.id,
     })
+    // typing over a figure a script worked out keeps that figure beside theirs, with Reset
+    const was = r.provenance[f.slug]
     world.records.change(
       t.id,
       [
@@ -274,6 +276,14 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       ],
       { actor: { kind: 'person', id: user.id }, user: user.id },
     )
+    if (was?.kind === 'computed' && r.values[f.slug] !== undefined)
+      world.records.keepBeside(t.id, row, {
+        [f.name]: {
+          value: r.values[f.slug],
+          ...(was.source.formula ? { formula: was.source.formula } : {}),
+          ...(was.source.note ? { note: was.source.note } : {}),
+        },
+      })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
   })
@@ -706,6 +716,45 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     }
   })
 
+  // Reset: a value the person typed over goes back to what Alpha works it out as, kept beside it.
+  app.post('/api/tables/:id/rows/:row/reset', async (req) => {
+    const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
+    const { field } = z.object({ field: z.string() }).parse(req.body)
+    const t = world.shape.table(id)
+    const f = t?.fields.find((x) => x.name === field || x.slug === field)
+    if (!t || !f) throw new Refused('That field is not there.')
+    const r = world.records.list(t.id).find((x) => x.id === row)
+    const beside = r?.provenance[f.slug]?.beside
+    if (!r || !beside) throw new Refused(`${f.name} has no figure of Alpha's to go back to.`)
+    world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'set',
+      words: `Reset ${f.name} to Alpha's figure on ${rowName(t, r.values)}`,
+      data: { table: t.id, row, field: f.name },
+      user: user.id,
+      module: t.module.id,
+    })
+    world.records.change(
+      t.id,
+      [
+        {
+          id: row,
+          values: { [f.name]: beside.value },
+          provenance: {
+            kind: 'computed',
+            source: {
+              formula: beside.formula ?? 'Alpha’s figure',
+              ...(beside.note ? { note: beside.note } : {}),
+            },
+          },
+        },
+      ],
+      { actor: { kind: 'person', id: user.id }, user: user.id },
+    )
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { ok: true }
+  })
+
   // A module's page (design §13): the document its frame shows, the answers to what it asks (its
   // module's rows, read-only), and the page printed to a PDF with the choices the window had.
   const pageModule = (id: string) => {
@@ -960,7 +1009,17 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     switch (p.kind) {
       case 'stated': {
         const line = p.source.message !== undefined ? world.lineById(p.source.message) : null
-        if (line?.kind === 'set') return { kind: 'stated', words: 'You set it in your window', at }
+        const beside = p.beside
+          ? {
+              beside: {
+                value: p.beside.value,
+                words: `Alpha works it out${p.beside.formula ? ` with ${p.beside.formula}` : ''}`,
+                ...(p.beside.note ? { note: p.beside.note } : {}),
+              },
+            }
+          : {}
+        if (line?.kind === 'set')
+          return { kind: 'stated', words: 'You set it in your window', at, ...beside }
         const words = line?.words
         return {
           kind: 'stated',
@@ -970,6 +1029,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
               ? 'You accepted it on a card'
               : 'You said it',
           at,
+          ...beside,
         }
       }
       case 'looked_up': {

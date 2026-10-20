@@ -44,6 +44,9 @@
       for (const [name, value] of Object.entries(m.vars ?? {})) root.style.setProperty(name, value)
       root.dataset.theme = m.dark ? 'dark' : 'light'
       draw()
+    } else if (m.alpha === 'refresh') {
+      // the module's rows changed: the page asks again
+      run()
     }
   })
 
@@ -119,6 +122,7 @@
     history: (table, field) => ask('history', { table, field }),
     input,
     open: (target) => post({ alpha: 'open', target }),
+    say: (words) => post({ alpha: 'say', words }),
     page: (fn) => {
       if (!maker) watch()
       maker = fn

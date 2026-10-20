@@ -197,6 +197,7 @@ export class AgentRunner {
           key: string
           values: Record<string, unknown>
           url?: string
+          places?: Record<string, { file: string; sheet?: string; cell?: string }>
         }[]
         for (const i of items)
           if (i.url !== undefined && !/^https?:\/\//.test(String(i.url)))
@@ -209,6 +210,20 @@ export class AgentRunner {
           { connector: `agent:${label}`, account: module.name },
           ctx,
         )
+      },
+      // the documents filed in the world, and one's cells or lines with their places
+      'documents.list': async () =>
+        this.world.files.documents().map((d) => ({
+          file: d.fileHash,
+          name: this.world.files.file(d.fileHash)?.name ?? d.title,
+          title: d.title,
+          kind: d.kind,
+          pieces: d.chunks,
+        })),
+      'documents.read': async (p: Record<string, unknown>) => {
+        const d = this.world.files.document(String(p.file))
+        if (!d) throw new Refused('That document is not filed, or not read yet.')
+        return this.world.files.chunks(d.id).map((c) => ({ ...c.position, words: c.words }))
       },
       'rows.compute': async (p: Record<string, unknown>) => {
         const t = tableOf(p.table)
@@ -225,14 +240,25 @@ export class AgentRunner {
         const stated = new Set(
           t.fields.filter((f) => said[f.id]?.kind === 'stated').map((f) => f.name),
         )
-        const values = Object.fromEntries(
-          Object.entries((p.values ?? {}) as Record<string, unknown>).filter(
-            ([k]) => !stated.has(k),
-          ),
-        )
-        if (!Object.keys(values).length) return null
+        const given = (p.values ?? {}) as Record<string, unknown>
+        const values = Object.fromEntries(Object.entries(given).filter(([k]) => !stated.has(k)))
         const formula = (p.formula ?? {}) as Record<string, string>
         const notes = (p.notes ?? {}) as Record<string, string>
+        // what the script works out for a value the person typed over is kept beside theirs
+        const beside = Object.fromEntries(
+          Object.entries(given)
+            .filter(([k]) => stated.has(k))
+            .map(([k, v]) => [
+              k,
+              {
+                value: v,
+                ...(formula[k] ? { formula: formula[k] } : {}),
+                ...(notes[k] ? { note: String(notes[k]) } : {}),
+              },
+            ]),
+        )
+        if (Object.keys(beside).length) this.world.records.keepBeside(t.id, String(p.id), beside)
+        if (!Object.keys(values).length) return null
         const perField = Object.fromEntries(
           Object.keys(values).map((k) => [
             k,
@@ -464,6 +490,20 @@ export class AgentRunner {
     if ('cron' in t) {
       const next = new Cron(t.cron).nextRun(new Date(last || nowMs - 60_000))
       return !!next && next.getTime() <= nowMs
+    }
+    if ('filed' in t) {
+      // a document read since the agent last looked
+      const seen = Number(a.cursor ?? 0)
+      const filed = this.world
+        .lines({ after: seen, kinds: ['filed'] })
+        .some((l) => (l.data as { document?: string }).document)
+      exec(
+        this.world.db,
+        'UPDATE agents SET cursor = ? WHERE id = ?',
+        String(this.world.lastLineId()),
+        a.id,
+      )
+      return filed
     }
     const tables = new Set(
       (Array.isArray(t.changes) ? t.changes : [t.changes])

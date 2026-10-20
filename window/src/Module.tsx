@@ -135,7 +135,7 @@ export function ModuleScreen({
       <div className="min-h-0 flex-1">
         {current.kind === 'page' ? (
           m && page ? (
-            <PageView key={page.name} m={m} page={page} />
+            <PageView key={page.name} m={m} page={page} version={version} />
           ) : (
             <p className="p-7 text-ink-3">{m ? 'That page is not there.' : 'Loading…'}</p>
           )

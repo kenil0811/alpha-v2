@@ -43,13 +43,22 @@ type Target = { table?: string; rows?: string[]; row?: string; field?: string }
 function openTarget(m: ModuleView, target: Target) {
   const t = m.tables.find((x) => x.name.toLowerCase() === String(target.table ?? '').toLowerCase())
   if (!t) return
-  if (target.row) window.location.hash = `#/table/${t.id}/${target.row}`
+  if (target.row)
+    window.location.hash = `#/table/${t.id}/${target.row}${target.field ? `?field=${encodeURIComponent(target.field)}` : ''}`
   else if (Array.isArray(target.rows))
     window.location.hash = `#/table/${t.id}?only=${target.rows.map(encodeURIComponent).join(',')}`
   else window.location.hash = `#/table/${t.id}`
 }
 
-export function PageView({ m, page }: { m: ModuleView; page: PageSummary }) {
+export function PageView({
+  m,
+  page,
+  version,
+}: {
+  m: ModuleView
+  page: PageSummary
+  version: number // a change in the world: the page asks again
+}) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [html, setHtml] = useState<string | null>(null)
   const [height, setHeight] = useState(480)
@@ -68,6 +77,9 @@ export function PageView({ m, page }: { m: ModuleView; page: PageSummary }) {
   }, [base])
 
   const send = () => frame.current?.contentWindow?.postMessage({ alpha: 'theme', ...look() }, '*')
+  useEffect(() => {
+    if (version >= 0) frame.current?.contentWindow?.postMessage({ alpha: 'refresh' }, '*')
+  }, [version])
 
   useEffect(() => {
     const onMessage = async (e: MessageEvent) => {
@@ -81,6 +93,7 @@ export function PageView({ m, page }: { m: ModuleView; page: PageSummary }) {
         height?: number
         target?: Target
         values?: Record<string, string>
+        words?: string
       }
       if (msg.alpha === 'ask') {
         try {
@@ -99,6 +112,9 @@ export function PageView({ m, page }: { m: ModuleView; page: PageSummary }) {
         openTarget(m, msg.target)
       } else if (msg.alpha === 'inputs' && msg.values) {
         inputs.current = msg.values
+      } else if (msg.alpha === 'say' && msg.words) {
+        // a page's button asks Alpha in the person's words, in the module's conversation
+        await api.post('/api/say', { words: msg.words, from: m.id }).catch(() => undefined)
       }
     }
     window.addEventListener('message', onMessage)

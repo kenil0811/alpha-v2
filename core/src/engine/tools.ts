@@ -110,14 +110,15 @@ async function guardAsync(fn: () => Promise<Result>): Promise<Result> {
 const PAGE = [
   'A page (pages/<name>.html): a <title>, <meta name="alpha-front"> when the module should open on it, <meta name="alpha-print" content="landscape"> when it is wide, then a <script> that calls alpha.page(async () => [ ...blocks ]).',
   'Inside it: await alpha.rows(table) gives the module’s rows as { id, values by field name, kinds }; await alpha.history(table, field) gives each row’s values of that field, oldest first, as { row, changes: [{ value, at }] }; alpha.input(name, { options }) offers a chooser and returns its value; alpha.open({ table, rows: [ids] }) or alpha.open({ table, row }) opens rows in the window; alpha.fmt(value, unit) writes a number, date or money as the window does.',
-  'Blocks: { heading, note? }, a string or { text }, { stats: [{ label, value, unit?, of?, change?: { value, unit?, label?, better? }, tone?, open? }] }, { chart: { title?, kind: line | bar, rows, x, series: [{ field, label?, unit? }], target?: { value, label? } } }, { table: { title?, note?, columns: [{ field, label?, unit? }], rows } } where a cell may be { value, of?, tone?, open? }, { list: { title?, items: [{ text, tone?, open? }] } }, { card: { title?, text } }, { grid: { columns?, blocks } }. tone is good, warn or bad.',
+  'Blocks: { heading, note? }, a string or { text }, { stats: [{ label, value, unit?, of?, change?: { value, unit?, label?, better? }, tone?, open? }] }, { chart: { title?, kind: line | bar, rows, x, series: [{ field, label?, unit? }], target?: { value, label? } } }, { table: { title?, note?, columns: [{ field, label?, unit? }], rows } } where a cell may be { value, of?, tone?, open? }, { list: { title?, items: [{ text, tone?, open? }] } }, { card: { title?, text } }, { grid: { columns?, blocks } }, { button: { label, says } } (asks Alpha in the person’s words). tone is good, warn or bad. A chart series may carry kind (bar or line) and axis: right, to set a line on its own axis over bars.',
   'A page reads its own module’s tables only and writes nothing; it reaches nothing outside its frame. Alpha’s look is the kit’s: no colours, fonts or line weights of your own. Look at it (look with module and page) before you say it is done.',
 ].join('\n')
 
 const SCRIPT = [
   'A script is JavaScript: `export default async (alpha) => { … return { words } }`. It has no network and writes only in its module folder; it reaches the world through alpha:',
-  'alpha.input; alpha.rows.list(table) (each row: id, key, values by field name, notes of its computed values); alpha.rows.land(table, [{ key, values, url }]) (a row per key, added or changed; values by field name; url only for the web page a row was read from);',
-  'alpha.rows.compute(table, id, values, formula, notes) (values with the formula each came from, and per field a note: the sum with its numbers, or each check); alpha.browser.open(url) (title, text, links, html);',
+  'alpha.input; alpha.rows.list(table) (each row: id, key, values by field name, notes of its computed values); alpha.rows.land(table, [{ key, values, url, places }]) (a row per key, added or changed; values by field name; url only for the web page a row was read from; places by field name: { file, sheet, cell } or { file, page, line }, the document place a value was read from, so it opens there);',
+  'alpha.documents.list() (the documents filed: file (its hash), name, title, kind sheet or text or pdf, pieces); alpha.documents.read(file) (its cells or lines, each with sheet, cell and row, or page and line, and its words);',
+  'alpha.rows.compute(table, id, values, formula, notes) (values with the formula each came from, and per field a note: the sum with its numbers, or each check; a value the person typed over keeps theirs, and the figure is kept beside it for Reset); alpha.browser.open(url) (title, text, links, html);',
   'alpha.browser.extract(url, { list, fields: { name: { css, attr } }, next, id: { field, pattern }, pages }) (every page of a list by its next link, or at most `pages`; returns { pages, items }, each item its fields with _id and _url; a failure carries kind sign_in or blocked);',
   'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity).',
 ].join('\n')
@@ -521,7 +522,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
       'keep',
       [
         'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), an agent (agents/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
-        'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" } or { changes: <table> }) and `runs: { script: <path in the module> }`, then its brief. Keep its script first. An agent kept here is on.',
+        'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed) and `runs: { script: <path in the module> }`, then its brief. Keep its script first. An agent kept here is on.',
         PAGE,
         SCRIPT,
       ].join('\n'),

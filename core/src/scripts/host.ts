@@ -42,6 +42,11 @@ const alpha = {
       notes?: Record<string, string>, // the sum with its numbers, or each check, per field
     ) => call('rows.compute', { table, id, values, formula, ...(notes ? { notes } : {}) }),
   },
+  // the documents filed (each with its file's hash), and one's cells or lines with their places
+  documents: {
+    list: () => call('documents.list', {}),
+    read: (file: string) => call('documents.read', { file }),
+  },
   browser: {
     open: (url: string) => call('browser.open', { url }),
     extract: (url: string, spec: unknown) => call('browser.extract', { url, spec }),

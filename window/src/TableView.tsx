@@ -60,11 +60,13 @@ export function TableView({
   data,
   row: openRow,
   only = null,
+  field: openField = null,
   quiet = false,
 }: {
   data: TableData
   row?: string | null
   only?: string[] | null // the rows a page opened: only these, until Show all
+  field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
 }) {
   const key = `alpha.table.${data.id}`
@@ -90,7 +92,15 @@ export function TableView({
   const dirty = differs(config, saved)
   const [problem, setProblem] = useState<string | null>(null)
   const [picked, setPicked] = useState<{ row: string; field: string } | null>(
-    openRow ? { row: openRow, field: data.fields[0]?.slug ?? '' } : null,
+    openRow
+      ? {
+          row: openRow,
+          field:
+            data.fields.find((f) => f.name === openField || f.slug === openField)?.slug ??
+            data.fields[0]?.slug ??
+            '',
+        }
+      : null,
   )
   const [adding, setAdding] = useState(false)
   const [ticked, setTicked] = useState<Set<string>>(new Set())

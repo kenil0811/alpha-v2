@@ -358,8 +358,9 @@ first tab, `<meta name="alpha-print" content="landscape">` prints it across the 
 in a sandboxed frame with no network under Alpha's content policy, the kit's blocks (heading,
 text, stats, chart, table, list, card, grid) as the default look, and read-only data: the page
 asks its own module's rows and a field's history through the window, and offers choosers (a
-month, a client). A page may post an action, which runs through the gates (not built until a page
-needs one), and may ask the window to open rows, a row or a value's source. The core prints a
+month, a client). A page's button may ask Alpha, in the person's words, in the module's
+conversation; anything that writes then runs through the gates as any request does. A page may
+ask the window to open rows, a row or a value's source, and redraws when the world changes. The core prints a
 page with the same data to a PDF (Accounting's report), or to a picture the model looks at before
 it says a page is done. The look judgement is a note, never a block. Nothing restricts a custom
 page the person asks for.

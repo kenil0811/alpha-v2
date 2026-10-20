@@ -10,7 +10,7 @@ import { SidePanel } from '../ui/side-panel.tsx'
 import { CORRECTABLE, KIND_TONE, KIND_WORDS, MARK, show, when } from './values.ts'
 
 // The source panel: one value, where it came from, and its history; Correct it makes the value
-// the person's own word.
+// the person's own word. A value they typed over keeps Alpha's figure beside it, with Reset.
 export function SourcePanel({
   tableId,
   row,
@@ -31,6 +31,15 @@ export function SourcePanel({
   const text = show(field, value, names)
   const [history, setHistory] = useState<HistoryView[]>([])
   const [correcting, setCorrecting] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const reset = async () => {
+    setProblem(null)
+    try {
+      await api.post(`/api/tables/${tableId}/rows/${row.id}/reset`, { field: field.name })
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That was not reset.')
+    }
+  }
   useEffect(() => {
     setCorrecting(false)
     api
@@ -67,6 +76,27 @@ export function SourcePanel({
             {source.note && (
               <div className="whitespace-pre-wrap rounded-md bg-sunk px-3 py-2.5 font-mono text-ink text-sm tabular-nums leading-relaxed">
                 {source.note}
+              </div>
+            )}
+            {source.beside && (
+              <div className="flex flex-col gap-2 rounded-md border border-line px-3 py-2.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="flex-1 text-ink-2 text-sm">{source.beside.words}</span>
+                  <span className="font-medium text-ink tabular-nums">
+                    {show(field, source.beside.value, names)}
+                  </span>
+                </div>
+                {source.beside.note && (
+                  <div className="whitespace-pre-wrap font-mono text-ink-3 text-sm tabular-nums">
+                    {source.beside.note}
+                  </div>
+                )}
+                <div>
+                  <Button size="sm" onClick={reset}>
+                    Reset to Alpha's figure
+                  </Button>
+                </div>
+                {problem && <div className="text-bad text-sm">{problem}</div>}
               </div>
             )}
           </>

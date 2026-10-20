@@ -26,7 +26,7 @@ export type Place =
   | { at: 'conversation' }
   | { at: 'activity' }
   | { at: 'parts' }
-  | { at: 'table'; id: string; row: string | null; only: string[] | null }
+  | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
   | { at: 'module'; id: string; tab: 'conversation' | 'agents' | null; page: string | null }
   | { at: 'settings'; open: string | null }
 

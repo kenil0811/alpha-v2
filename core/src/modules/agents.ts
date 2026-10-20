@@ -21,6 +21,7 @@ export const Trigger = z.union([
   }),
   z.object({ cron: z.string() }),
   z.object({ changes: z.union([z.string(), z.array(z.string())]) }), // a row added or changed in a table
+  z.object({ filed: z.literal(true) }), // a document filed and read (an export dropped, say)
 ])
 export type Trigger = z.infer<typeof Trigger>
 
@@ -28,6 +29,7 @@ export type Trigger = z.infer<typeof Trigger>
 export function whenWords(t: Trigger): string {
   if ('every' in t) return `every ${t.every}${t.at ? ` at ${t.at}` : ''}`
   if ('cron' in t) return `on the schedule ${t.cron}`
+  if ('filed' in t) return 'when a document is filed'
   const tables = Array.isArray(t.changes) ? t.changes : [t.changes]
   return `when ${tables.join(' or ')} change${tables.length === 1 ? 's' : ''}`
 }

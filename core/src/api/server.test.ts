@@ -236,6 +236,56 @@ describe('the api over a world', () => {
     expect(relation.statusCode).toBe(409)
     await a.close()
   })
+  it('keeps Alpha’s figure beside a value the person types over, and resets to it', async () => {
+    const m = world.shape.makeModule('Books', { actor: { kind: 'alpha' } })
+    const t = world.shape.makeTable(
+      m.id,
+      'Months',
+      [
+        { name: 'Month', kind: 'text' },
+        { name: 'Days cash', kind: 'number' },
+      ],
+      { actor: { kind: 'alpha' } },
+    )
+    const [id] = world.records.add(
+      t.id,
+      [
+        {
+          values: { Month: 'June', 'Days cash': 54 },
+          provenance: {
+            kind: 'computed',
+            source: { formula: 'cash ÷ (costs ÷ 30)', note: '40 ÷ (22 ÷ 30) = 54' },
+          },
+        },
+      ],
+      { actor: { kind: 'alpha' } },
+    )
+    const a = app()
+    const edit = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${t.id}/rows/${id}`,
+      headers: ok,
+      payload: { field: 'Days cash', value: 60 },
+    })
+    expect(edit.statusCode).toBe(200)
+    const after = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
+    const source = after.rows[0]?.sources.days_cash
+    expect(after.rows[0]?.values.days_cash).toBe(60)
+    expect(source?.kind).toBe('stated')
+    expect(source?.beside).toMatchObject({ value: 54, note: '40 ÷ (22 ÷ 30) = 54' })
+    const reset = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${t.id}/rows/${id}/reset`,
+      headers: ok,
+      payload: { field: 'Days cash' },
+    })
+    expect(reset.statusCode).toBe(200)
+    const back = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
+    expect(back.rows[0]?.values.days_cash).toBe(54)
+    expect(back.rows[0]?.sources.days_cash?.kind).toBe('computed')
+    await a.close()
+  })
+
   it('saves views, takes many rows at once, removes ticked ones, adds a field and exports', async () => {
     const m = world.shape.makeModule('Deals desk', { actor: { kind: 'alpha' } })
     const t = world.shape.makeTable(

@@ -25,14 +25,19 @@ import { applyTheme } from './theme.ts'
 import { SidePanel } from './ui/side-panel.tsx'
 
 function placeOf(hash: string): Place {
-  const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?only=([^&]*))?$/.exec(hash)
-  if (m?.[1])
+  const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?$/.exec(hash)
+  if (m?.[1]) {
+    // ?only=<rows> (the rows a page counted), ?field=<name> (that value's panel)
+    const query = new URLSearchParams(m[3] ?? '')
+    const only = query.get('only')
     return {
       at: 'table',
       id: m[1],
       row: m[2] ?? null,
-      only: m[3] ? m[3].split(',').filter(Boolean).map(decodeURIComponent) : null,
+      only: only ? only.split(',').filter(Boolean) : null,
+      field: query.get('field'),
     }
+  }
   const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
   if (s) return { at: 'settings', open: s[1] ?? null }
   if (hash === '#/activity') return { at: 'activity' }
@@ -255,6 +260,7 @@ export function App() {
                     data={t}
                     row={place.at === 'table' ? place.row : null}
                     only={place.at === 'table' ? place.only : null}
+                    field={place.at === 'table' ? place.field : null}
                     quiet={asking}
                   />
                 )}

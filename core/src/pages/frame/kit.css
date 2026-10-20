@@ -299,3 +299,24 @@ td.ak-tone-bad {
     overflow: visible;
   }
 }
+.ak-actions {
+  display: flex;
+  gap: 8px;
+}
+.ak-button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.ak-button:hover {
+  background: var(--hover);
+}
+.ak-button:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
