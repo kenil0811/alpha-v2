@@ -60,6 +60,26 @@ export interface CardView {
   answer: string | null
   restsOn: string[] // what the card rests on, in words
   module: string | null // the module it belongs to, for a lens
+  filing?: FilingView | null // a file from the mail: where it is proposed to go
+}
+
+// A file that came by mail, waiting to be filed: the email, what the file is, the place the model
+// proposed and how sure, and the rows the email or the file names, to pick another.
+export interface FilingView {
+  file: string
+  name: string
+  mime: string
+  from: string
+  subject: string
+  date: string
+  about: string
+  sure: 'sure' | 'likely' | 'unsure'
+  why: string
+  table: string | null
+  row: string | null
+  kind: string | null
+  already: string[] // the row's files of that kind already, which File it keeps and Replace takes off
+  places: { table: string; name: string; kinds: string[]; rows: { id: string; name: string }[] }[]
 }
 
 export interface Stream {
@@ -106,10 +126,44 @@ export interface SourceView {
   kind: 'stated' | 'looked_up' | 'estimated' | 'assumed' | 'computed'
   words: string
   at: string
-  open?: { file: string; cell?: string; sheet?: string } | { url: string } | { line: number }
+  open?:
+    | {
+        file: string
+        cell?: string
+        sheet?: string
+        page?: number
+        box?: [number, number, number, number] // in points, counted up from the page's foot
+        line?: number
+      }
+    | { url: string }
+    | { line: number }
   note?: string // a computed value's sum with its numbers, or each check it made
   // beside a value the person typed over: what Alpha works it out as now, which Reset brings back
   beside?: { value: unknown; words: string; note?: string }
+}
+
+// A document as the window shows it at a value's place: a sheet's cells, a PDF's pages (drawn by
+// /api/files/:hash/page/:n), or a text's lines.
+export interface FileView {
+  hash: string
+  name: string
+  mime: string
+  kind: 'sheet' | 'pdf' | 'text' | 'kept' | 'reading'
+  sheets?: { name: string; cells: { cell: string; row: number; col: number; words: string }[] }[]
+  pages?: number
+  lines?: { line: number; words: string }[]
+}
+
+// A file on a row: a deal's CIM, a client's export.
+export interface RowFileView {
+  hash: string
+  name: string
+  size: number
+  mime: string
+  kind: string | null
+  by: string // who put it there, in words
+  at: string
+  read: 'read' | 'reading' | 'kept' // read with its places, being read, or kept as it is
 }
 
 // One value's history, newest first.
@@ -129,6 +183,7 @@ export interface TableView {
   name: string
   module: { id: string; name: string }
   fields: FieldView[]
+  documents: string[] | null // the kinds of document its rows take, when it names them
   rows: RowView[]
   names: Record<string, string> // the rows its relations point at, by name
   views: SavedView[]

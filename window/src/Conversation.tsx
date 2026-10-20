@@ -25,6 +25,7 @@ import {
 } from 'react'
 import { api, Problem } from './api.ts'
 import { Beside } from './Beside.tsx'
+import { FilingCard } from './FilingCard.tsx'
 import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
@@ -553,6 +554,7 @@ const GATE: Record<string, string> = {
   leaves_world: 'Leaves your world',
   deletes_own: 'Removes your entries',
   sign_in: 'Sign-in',
+  filing: 'A file from your mail',
 }
 
 // Scrolls the stream to a card and flashes it.
@@ -581,6 +583,7 @@ export function CardBox({
   const [problem, setProblem] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
   const [opened, setOpened] = useState(false)
+  if (card.filing) return <FilingCard card={card} filing={card.filing} />
   const answer = async (a: string) => {
     setBusy(true)
     try {

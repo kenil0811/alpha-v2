@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
+import type { FilePlace } from './FileView.tsx'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Kbd } from './ui/pill.tsx'
@@ -38,6 +39,7 @@ export type Place =
       page: string | null
     }
   | { at: 'settings'; open: string | null }
+  | { at: 'file'; place: FilePlace }
 
 function Nav({
   href,

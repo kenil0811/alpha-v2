@@ -54,6 +54,15 @@ export const api = {
       'content-type': file.type || 'application/octet-stream',
       'x-file-name': encodeURIComponent(file.name),
     }),
+  // a file dropped on a row: kept there at once
+  uploadTo: <T>(path: string, file: File) =>
+    call<T>('POST', path, file, {
+      'content-type': file.type || 'application/octet-stream',
+      'x-file-name': encodeURIComponent(file.name),
+    }),
+  // a core address the browser opens itself (a picture, a download), with the token
+  tokened: (path: string) =>
+    `${path}${path.includes('?') ? '&' : '?'}t=${encodeURIComponent(token())}`,
   fileUrl: (hash: string) => `/api/files/${hash}?t=${encodeURIComponent(token())}`,
   // a file the core makes (an export), saved by the browser under the name given
   download: async (path: string, body: unknown, name: string) => {

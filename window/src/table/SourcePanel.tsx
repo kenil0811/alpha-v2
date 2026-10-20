@@ -2,6 +2,7 @@ import type { FieldView, HistoryView, RowView } from '@alpha/core/api'
 import { ExternalLink, FileText } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, Problem } from '../api.ts'
+import { fileHref } from '../FileView.tsx'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Field, Select } from '../ui/field.tsx'
@@ -111,12 +112,13 @@ export function SourcePanel({
             </Button>
           )}
           {open && 'file' in open && (
-            <Button
-              size="sm"
-              onClick={() => window.open(api.fileUrl(open.file), '_blank', 'noreferrer')}
-            >
+            <Button size="sm" onClick={() => window.location.assign(fileHref(open))}>
               <FileText className="size-3.25" />
-              Open the file{open.cell ? ` at ${open.cell}` : ''}
+              {open.cell
+                ? `See it at ${open.cell}`
+                : open.page
+                  ? `See it on page ${open.page}`
+                  : 'See it in the file'}
             </Button>
           )}
           {CORRECTABLE.has(field.kind) && !correcting && (

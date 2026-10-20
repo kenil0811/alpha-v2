@@ -1,8 +1,8 @@
 // The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type Cell, sheetBytes } from '@alpha/connector-files'
+import { type Cell, renderPage, sheetBytes } from '@alpha/connector-files'
 import { chromePath } from '@alpha/connector-sdk'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
@@ -12,19 +12,21 @@ import { config } from '../config.ts'
 import { connectorOf, KNOWN } from '../connectors/service.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
 import { instructionsFile } from '../engine/tools.ts'
+import { stillBeingRead } from '../files/documents.ts'
 import { agents, nextRun, setAgentState, whenWords } from '../modules/agents.ts'
 import { install, installedKits, update } from '../modules/kits.ts'
 import { moduleNetwork } from '../modules/runs.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
-import { findField, type Table } from '../world/shape.ts'
+import { findField, rowName } from '../world/shape.ts'
 import type { View } from '../world/views.ts'
 import type { User } from '../world/world.ts'
 import type {
   AboutRows,
   CardView,
   ConnectorsView,
+  FileView,
   FoundRow,
   Health,
   HistoryView,
@@ -34,6 +36,7 @@ import type {
   ModelView,
   ModuleSummary,
   ModuleView,
+  RowFileView,
   RunView,
   SavedView,
   SourceView,
@@ -204,7 +207,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       )
     return {
       lines,
-      cards: world.cards.waiting(user.id).map(cardView),
+      cards: world.cards.waiting(user.id).map(cardOut),
       busy: engine.busy(user),
       running: (engine.hands?.runner.runs(50) ?? [])
         .filter((r) => r.state === 'running')
@@ -234,11 +237,43 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { ok: true }
   })
 
+  // A card as the window shows it; a file from the mail with its place and the rows to pick.
+  const cardOut = (c: Card): CardView => ({
+    ...cardView(c),
+    filing: engine.hands?.intake?.view(c) ?? null,
+  })
+  // A file from the mail: filed on the row the person settled on, as its kind (Replace takes the
+  // row's other file of that kind off), or declined with their reason.
+  app.post('/api/cards/:id/file', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const body = z
+      .object({
+        row: z.string().nullable(),
+        kind: z.string().nullable(),
+        replace: z.boolean().optional(),
+      })
+      .parse(req.body)
+    const intake = engine.hands?.intake
+    if (!intake) throw new Refused('Files from the mail are not on here.')
+    const out = intake.file(id, body, user)
+    live()
+    return cardOut(out)
+  })
+  app.post('/api/cards/:id/decline', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { reason } = z.object({ reason: z.string().max(400).default('') }).parse(req.body ?? {})
+    const intake = engine.hands?.intake
+    if (!intake) throw new Refused('Files from the mail are not on here.')
+    const out = intake.decline(id, reason.trim(), user)
+    live()
+    return cardOut(out)
+  })
+
   app.post('/api/cards/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { answer } = z.object({ answer: z.string().min(1) }).parse(req.body)
     try {
-      return cardView(engine.answer(user, id, answer))
+      return cardOut(engine.answer(user, id, answer))
     } catch (err) {
       if (err instanceof Refused) return reply.code(409).send({ problem: err.message })
       throw err
@@ -534,6 +569,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       id: t.id,
       name: t.name,
       module: { id: t.module.id, name: t.module.name },
+      documents: t.documents,
       fields: t.fields.map((f) => ({
         id: f.id,
         name: f.name,
@@ -569,6 +605,122 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const body = req.body as Buffer
     const out = engine.drop(user, new Uint8Array(body), name, mime)
     return { name: out.file.name, readable: out.readable, pieces: out.document?.chunks ?? 0 }
+  })
+
+  // A row's files, and a file dropped on a row: filed there at once, as the person's.
+  const person = { kind: 'person' as const, id: user.id }
+  const live = () => engine.events.emit('event', { type: 'lines', user: user.id })
+  const byWords = (madeBy: string): string => {
+    const [kind, id] = madeBy.split(/:(.*)/s)
+    if (kind === 'person') return id === user.id ? 'You' : (world.user(id ?? '')?.name ?? 'Someone')
+    if (kind === 'agent' || kind === 'connector') return id ?? kind
+    if (kind === 'system') return 'Its kit'
+    return 'Alpha'
+  }
+  const rowOf = (params: unknown) => {
+    const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(params)
+    const t = world.shape.table(id)
+    const rec = world.records.get(row)
+    if (!t || rec?.table.id !== t.id) throw new Refused('That row is not there.')
+    return rec
+  }
+  const rowFiles = (record: string): RowFileView[] =>
+    world.rowFiles(record).map((f) => ({
+      hash: f.file.hash,
+      name: f.file.name,
+      size: f.file.size,
+      mime: f.file.mime,
+      kind: f.kind,
+      by: byWords(f.placedBy),
+      at: f.placedAt,
+      read: f.document ? 'read' : stillBeingRead(f.file.hash) ? 'reading' : 'kept',
+    }))
+  app.get(
+    '/api/tables/:id/rows/:row/files',
+    async (req): Promise<RowFileView[]> => rowFiles(rowOf(req.params).record.id),
+  )
+  app.post('/api/tables/:id/rows/:row/files', async (req): Promise<RowFileView[]> => {
+    const rec = rowOf(req.params)
+    const name = decodeURIComponent(String(req.headers['x-file-name'] ?? 'file'))
+    const mime = String(req.headers['content-type'] ?? 'application/octet-stream')
+    const kind = req.headers['x-file-kind']
+      ? decodeURIComponent(String(req.headers['x-file-kind']))
+      : null
+    const out = engine.drop(user, new Uint8Array(req.body as Buffer), name, mime)
+    world.placeFile(out.file.hash, rec.record.id, kind, { actor: person, user: user.id })
+    live()
+    return rowFiles(rec.record.id)
+  })
+  app.post('/api/tables/:id/rows/:row/files/:hash', async (req): Promise<RowFileView[]> => {
+    const rec = rowOf(req.params)
+    const { hash } = z.object({ hash: z.string() }).parse(req.params)
+    const { kind, off } = z
+      .object({ kind: z.string().nullable().optional(), off: z.boolean().optional() })
+      .parse(req.body ?? {})
+    if (off) world.unplaceFile(hash, rec.record.id, { actor: person, user: user.id })
+    else world.placeFile(hash, rec.record.id, kind ?? null, { actor: person, user: user.id })
+    live()
+    return rowFiles(rec.record.id)
+  })
+
+  // A document as the window shows it at a value's place, and a PDF's page drawn.
+  app.get('/api/files/:hash/view', async (req, reply): Promise<FileView | undefined> => {
+    const { hash } = z.object({ hash: z.string() }).parse(req.params)
+    const f = world.files.file(hash)
+    if (!f) return reply.code(404).send({ problem: 'That file is not there.' })
+    const doc = world.files.document(hash)
+    const base = { hash, name: f.name, mime: f.mime }
+    if (!doc) return { ...base, kind: stillBeingRead(hash) ? 'reading' : 'kept' }
+    const chunks = world.files.chunks(doc.id)
+    if (doc.kind === 'sheet') {
+      const sheets = new Map<string, NonNullable<FileView['sheets']>[number]['cells']>()
+      for (const c of chunks) {
+        const sheet = c.position.sheet ?? 'Sheet'
+        const cell = c.position.cell ?? ''
+        if (!sheets.has(sheet)) sheets.set(sheet, [])
+        sheets.get(sheet)?.push({
+          cell,
+          row: c.position.row ?? Number(cell.replace(/^[A-Z]+/, '')),
+          col: columnOf(cell),
+          words: c.words,
+        })
+      }
+      return {
+        ...base,
+        kind: 'sheet',
+        sheets: [...sheets].map(([name, cells]) => ({ name, cells })),
+      }
+    }
+    if (doc.kind === 'pdf')
+      return {
+        ...base,
+        kind: 'pdf',
+        pages: Math.max(1, ...chunks.map((c) => c.position.page ?? 1)),
+      }
+    return {
+      ...base,
+      kind: 'text',
+      lines: chunks.map((c, i) => ({ line: c.position.line ?? i + 1, words: c.words })),
+    }
+  })
+  app.get('/api/files/:hash/page/:n', async (req, reply) => {
+    const { hash, n } = z
+      .object({ hash: z.string(), n: z.coerce.number().int().min(1) })
+      .parse(req.params)
+    const f = world.files.file(hash)
+    if (!f || !(f.mime === 'application/pdf' || /\.pdf$/i.test(f.name)))
+      return reply.code(404).send({ problem: 'That is not a PDF.' })
+    const dir = join(world.paths.dir, 'cache', 'pages')
+    const png = join(dir, `${hash}-${n}.png`)
+    if (!existsSync(png)) {
+      const page = await renderPage(world.files.path(hash), n, world.paths.envs)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(png, page.png)
+    }
+    return reply
+      .type('image/png')
+      .header('cache-control', 'private, max-age=86400')
+      .send(readFileSync(png))
   })
 
   app.get('/api/files/:hash', async (req, reply) => {
@@ -992,7 +1144,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         ms: r.endedAt ? Date.parse(r.endedAt) - Date.parse(r.startedAt) : null,
         state: r.state,
         words: r.words,
-        tokens: null, // agents' scripts run without the model
+        tokens: r.tokens, // a script's own work uses none; a document read by the model does
         quiet: r.state === 'ok' && !steps.some((st) => CHANGES.has(st.kind)),
         steps,
       }
@@ -1106,6 +1258,9 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
               file: f?.hash ?? p.source.file,
               ...(p.source.cell ? { cell: p.source.cell } : {}),
               ...(p.source.sheet ? { sheet: p.source.sheet } : {}),
+              ...(p.source.page ? { page: p.source.page } : {}),
+              ...(p.source.box ? { box: p.source.box } : {}),
+              ...(p.source.line ? { line: p.source.line } : {}),
             },
           }
         }
@@ -1144,11 +1299,11 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 }
 
 // A row as a person names it: its first text value.
-function rowName(t: Table, values: Record<string, unknown>): string {
-  for (const f of t.fields)
-    if (f.kind === 'text' && typeof values[f.slug] === 'string' && values[f.slug])
-      return String(values[f.slug])
-  return 'a row'
+// A cell's column as a number: A is 1, Z 26, AA 27.
+function columnOf(cell: string): number {
+  let n = 0
+  for (const ch of cell.replace(/\d+$/, '')) n = n * 26 + (ch.charCodeAt(0) - 64)
+  return n
 }
 
 function deny(reply: FastifyReply, words: string) {

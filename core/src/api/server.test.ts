@@ -340,6 +340,59 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('files a dropped file on a row at once, sets its kind and takes it off', async () => {
+    const alpha = { actor: { kind: 'alpha' as const } }
+    const m = world.shape.makeModule('Desk', alpha)
+    const t = world.shape.makeTable(m.id, 'Jobs', [{ name: 'Name', kind: 'text' }], alpha)
+    world.shape.setDocuments(t.id, ['Brief', 'Invoice'], alpha)
+    const [row] = world.records.add(
+      t.id,
+      [{ values: { Name: 'Shop fit' }, provenance: { kind: 'assumed', basis: 'a test' } }],
+      alpha,
+    )
+    const a = app()
+    const path = `/api/tables/${t.id}/rows/${row}/files`
+    const dropped = await a.inject({
+      method: 'POST',
+      url: path,
+      headers: {
+        ...ok,
+        'content-type': 'text/csv',
+        'x-file-name': 'brief.csv',
+        'x-file-kind': 'Brief',
+      },
+      payload: 'name,size\nshelf,2\n',
+    })
+    expect(dropped.statusCode).toBe(200)
+    const [f] = dropped.json()
+    expect([f.name, f.kind, f.by, f.read]).toEqual(['brief.csv', 'Brief', 'You', 'read'])
+    const table = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
+    expect(table.documents).toEqual(['Brief', 'Invoice'])
+    const wrong = await a.inject({
+      method: 'POST',
+      url: `${path}/${f.hash}`,
+      headers: ok,
+      payload: { kind: 'Lease' },
+    })
+    expect(wrong.statusCode).toBe(409)
+    const kind = await a.inject({
+      method: 'POST',
+      url: `${path}/${f.hash}`,
+      headers: ok,
+      payload: { kind: 'Invoice' },
+    })
+    expect(kind.json()[0].kind).toBe('Invoice')
+    const off = await a.inject({
+      method: 'POST',
+      url: `${path}/${f.hash}`,
+      headers: ok,
+      payload: { off: true },
+    })
+    expect(off.json()).toEqual([])
+    expect(world.files.file(f.hash)?.name).toBe('brief.csv')
+    await a.close()
+  })
+
   it('saves views, takes many rows at once, removes ticked ones, adds a field and exports', async () => {
     const m = world.shape.makeModule('Deals desk', { actor: { kind: 'alpha' } })
     const t = world.shape.makeTable(

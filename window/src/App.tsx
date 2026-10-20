@@ -13,6 +13,7 @@ import type {
 import {
   Activity as ActivityIcon,
   Briefcase,
+  FileText,
   House,
   MessageSquare,
   SlidersHorizontal,
@@ -21,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { api, listen } from './api.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
+import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
@@ -44,6 +46,25 @@ function placeOf(hash: string): Place {
       row: m[2] ?? null,
       only: only ? only.split(',').filter(Boolean) : null,
       field: query.get('field'),
+    }
+  }
+  const f = /^#\/file\/([0-9a-f]{16,})(?:\?(.*))?$/.exec(hash)
+  if (f?.[1]) {
+    const q = new URLSearchParams(f[2] ?? '')
+    const box = q.get('box')?.split(',').map(Number)
+    return {
+      at: 'file',
+      place: {
+        hash: f[1],
+        sheet: q.get('sheet'),
+        cell: q.get('cell'),
+        page: q.get('page') ? Number(q.get('page')) : null,
+        box:
+          box?.length === 4 && box.every(Number.isFinite)
+            ? (box as [number, number, number, number])
+            : null,
+        line: q.get('line') ? Number(q.get('line')) : null,
+      },
     }
   }
   const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
@@ -71,6 +92,7 @@ export function App() {
   const [live, setLive] = useState<Live>({})
   const [busyTurn, setBusyTurn] = useState<string | null>(null)
   const [name, setName] = useState('')
+  const [fileName, setFileName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [finding, setFinding] = useState(false)
@@ -204,31 +226,34 @@ export function App() {
           ? { icon: <SlidersHorizontal className={icon} />, parts: ['Settings'] }
           : place.at === 'parts'
             ? { parts: ['Parts'] }
-            : place.at === 'table'
-              ? {
-                  icon: <Briefcase className={icon} />,
-                  parts: table ? [...above, table.module.name, table.name] : ['…'],
-                }
-              : place.at === 'module'
+            : place.at === 'file'
+              ? { icon: <FileText className={icon} />, parts: ['Documents', fileName || '…'] }
+              : place.at === 'table'
                 ? {
                     icon: <Briefcase className={icon} />,
-                    parts: [
-                      ...above,
-                      moduleHere?.name ?? '…',
-                      place.tab === 'agents'
-                        ? 'Agents and notes'
-                        : place.tab === 'conversation'
-                          ? 'Conversation'
-                          : place.tab === 'overview' ||
-                              (!place.page && modules.some((x) => x.parent === place.id))
-                            ? 'Overview'
-                            : (modules
-                                .find((x) => x.id === place.id)
-                                ?.pages.find((p) => (place.page ? p.name === place.page : p.front))
-                                ?.title ?? '…'),
-                    ],
+                    parts: table ? [...above, table.module.name, table.name] : ['…'],
                   }
-                : { icon: <House className={icon} />, parts: ['Home'] }
+                : place.at === 'module'
+                  ? {
+                      icon: <Briefcase className={icon} />,
+                      parts: [
+                        ...above,
+                        moduleHere?.name ?? '…',
+                        place.tab === 'agents'
+                          ? 'Agents and notes'
+                          : place.tab === 'conversation'
+                            ? 'Conversation'
+                            : place.tab === 'overview' ||
+                                (!place.page && modules.some((x) => x.parent === place.id))
+                              ? 'Overview'
+                              : (modules
+                                  .find((x) => x.id === place.id)
+                                  ?.pages.find((p) =>
+                                    place.page ? p.name === place.page : p.front,
+                                  )?.title ?? '…'),
+                      ],
+                    }
+                  : { icon: <House className={icon} />, parts: ['Home'] }
 
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
@@ -271,6 +296,8 @@ export function App() {
               />
             ) : place.at === 'parts' ? (
               <Parts />
+            ) : place.at === 'file' ? (
+              <FileView place={place.place} onName={setFileName} />
             ) : place.at === 'activity' ? (
               <Activity version={version} />
             ) : place.at === 'settings' ? (

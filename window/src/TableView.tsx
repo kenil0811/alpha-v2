@@ -416,6 +416,8 @@ export function TableView({
       )}
       {!adding && !quiet && openedRow && (
         <RowPanel
+          tableId={data.id}
+          kinds={data.documents}
           row={openedRow}
           fields={shown}
           names={data.names}
