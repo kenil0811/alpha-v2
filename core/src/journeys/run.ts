@@ -1,17 +1,31 @@
 // The journeys runner (design §16): a journey is a YAML file of steps and checks on the world,
 // run on a fresh tenant of its own with the real model. Checks read the world, not the model's
 // prose. The report goes in docs/journeys/.
-//   node src/journeys/run.ts <name> [--alone] [--keep]
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+//   node src/journeys/run.ts <name> [--alone] [--keep] [--from <folder of journeys>]
+// A client's journeys live in the client's own repository (--from ../alpha-avilo/journeys); their
+// paths are then from that repository's root, and their reports go in its docs/journeys/.
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { createServer, type Server } from 'node:http'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { MemorySecrets } from '@alpha/connector-sdk'
+import { join, normalize, resolve } from 'node:path'
+import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { config } from '../config.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import { Engine } from '../engine/engine.ts'
 import { stillReading } from '../files/documents.ts'
+import { agents, setAgentState } from '../modules/agents.ts'
+import { install } from '../modules/kits.ts'
+import { AgentRunner } from '../modules/runs.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 
@@ -35,6 +49,20 @@ const Check = z.union([
     }),
   }),
   z.object({ connector_calls: z.object({ words: z.string(), count: z.number() }) }),
+  z.object({ agents_on: z.number() }),
+  z.object({ last_run: z.enum(['ok', 'failed', 'stopped']) }),
+  z.object({ looked_up_from: z.object({ table: z.string(), url: z.string() }) }),
+  z.object({ question: z.object({ words: z.string().optional(), options: z.string() }) }),
+  z.object({
+    field: z.object({
+      table: z.string(),
+      key: z.string(), // the row's own key, as a connection or a reader landed it
+      field: z.string(),
+      equals: z.string().optional(),
+      count: z.number().optional(), // a relation's rows
+    }),
+  }),
+  z.object({ told: z.object({ matches: z.string(), rows: z.number().optional() }) }),
 ])
 type Check = z.infer<typeof Check>
 
@@ -50,6 +78,14 @@ const Journey = z.object({
       folder: z.object({ from: z.string(), only: z.string().optional() }).optional(),
       // an account connected on recorded answers (journeys/fixtures), never a real one
       connect: z.object({ connector: z.string(), account: z.string() }).optional(),
+      // a made-up site served on this Mac from the repository; later steps say it as {site}
+      site: z.object({ from: z.string() }).optional(),
+      // a kit installed from a folder, its agents on when the journey says so
+      kit: z
+        .object({ from: z.string(), agents: z.enum(['on', 'paused']).default('paused') })
+        .optional(),
+      // the scheduler's tick: agents whose time or change has come run now
+      due: z.boolean().optional(),
       checks: z.array(Check).default([]),
     }),
   ),
@@ -168,8 +204,105 @@ function judge(world: World, user: User, check: Check): Outcome {
       saw: String(n),
     }
   }
+  if ('agents_on' in check) {
+    const n = agents(world).filter((a) => a.state === 'on').length
+    return { check: `agents on: ${check.agents_on}`, ok: n === check.agents_on, saw: String(n) }
+  }
+  if ('last_run' in check) {
+    const r = world.db
+      .prepare('SELECT state, words FROM runs ORDER BY started_at DESC, rowid DESC LIMIT 1')
+      .get() as { state: string; words: string } | undefined
+    return {
+      check: `the last run ended ${check.last_run}`,
+      ok: r?.state === check.last_run,
+      saw: r ? `${r.state}: ${r.words}` : 'no run',
+    }
+  }
+  if ('looked_up_from' in check) {
+    const t = world.shape.table(check.looked_up_from.table)
+    const rows = t ? world.records.list(t.id) : []
+    const off = rows.filter(
+      (r) =>
+        !Object.values(r.provenance).some(
+          (p) => p?.kind === 'looked_up' && p.source.url?.includes(check.looked_up_from.url),
+        ),
+    )
+    return {
+      check: `every row in ${check.looked_up_from.table} looked up from a page with ${check.looked_up_from.url}`,
+      ok: rows.length > 0 && off.length === 0,
+      saw: `${rows.length - off.length} of ${rows.length}`,
+    }
+  }
+  if ('question' in check) {
+    const q = check.question
+    const cards = world.cards
+      .waiting(user.id)
+      .filter((c) => c.kind === 'question' && c.options.includes(q.options))
+      .filter((c) => !q.words || new RegExp(q.words, 'i').test(c.words))
+    return {
+      check: `a question waiting with the option ${q.options}`,
+      ok: cards.length > 0,
+      saw: world.cards
+        .waiting(user.id)
+        .map((c) => `${c.words} [${c.options.join(' / ')}]`)
+        .join(' | '),
+    }
+  }
+  if ('field' in check) {
+    const f = check.field
+    const t = world.shape.table(f.table)
+    const row = t
+      ? (world.db
+          .prepare('SELECT id FROM records WHERE table_id = ? AND item_key = ?')
+          .get(t.id, f.key) as { id: string } | undefined)
+      : undefined
+    const slug = t?.fields.find((x) => x.name === f.field)?.slug ?? ''
+    const value =
+      t && row ? world.records.list(t.id).find((r) => r.id === row.id)?.values[slug] : undefined
+    const ok =
+      f.equals !== undefined
+        ? value === f.equals
+        : f.count !== undefined
+          ? Array.isArray(value) && value.length === f.count
+          : value !== undefined
+    return {
+      check: `${f.field} of ${f.key} in ${f.table} ${f.equals !== undefined ? `is ${f.equals}` : `has ${f.count}`}`,
+      ok,
+      saw: JSON.stringify(value ?? null),
+    }
+  }
+  if ('told' in check) {
+    const told = world.lines({ user: user.id, kinds: ['told'] })
+    const re = new RegExp(check.told.matches, 'i')
+    const n = told.filter((l) => re.test(l.words)).length
+    return {
+      check: `told /${check.told.matches}/${check.told.rows !== undefined ? ` ${check.told.rows} time(s)` : ''}`,
+      ok: check.told.rows !== undefined ? n === check.told.rows : n > 0,
+      saw: told.map((l) => l.words).join(' | ') || 'nothing told',
+    }
+  }
   const n = world.lines({ kinds: ['error'] }).length
   return { check: `errors: ${check.errors}`, ok: n === check.errors, saw: String(n) }
+}
+
+// A folder served on loopback, for a journey's made-up site.
+function serve(dir: string): Promise<{ server: Server; url: string }> {
+  const server = createServer((req, res) => {
+    const path = normalize(decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/'))
+    const file = join(dir, path)
+    if (!file.startsWith(dir) || !existsSync(file) || path.endsWith('/')) {
+      res.writeHead(404).end('Not found')
+      return
+    }
+    res.writeHead(200, { 'content-type': file.endsWith('.txt') ? 'text/plain' : 'text/html' })
+    res.end(readFileSync(file))
+  })
+  return new Promise((r) =>
+    server.listen(0, '127.0.0.1', () => {
+      const a = server.address()
+      r({ server, url: `http://127.0.0.1:${typeof a === 'object' && a ? a.port : 0}` })
+    }),
+  )
 }
 
 async function main() {
@@ -177,7 +310,10 @@ async function main() {
   const name = args.find((a) => !a.startsWith('--'))
   if (!name) throw new Error('Name a journey: node src/journeys/run.ts track-what-i-eat')
   const prompt = args.includes('--alone') ? 'alone' : 'appended'
-  const journey = Journey.parse(parse(readFileSync(join(ROOT, 'journeys', `${name}.yaml`), 'utf8')))
+  const fromAt = args.indexOf('--from')
+  const journeys = fromAt >= 0 ? resolve(ROOT, args[fromAt + 1] ?? '') : join(ROOT, 'journeys')
+  const base = fromAt >= 0 ? resolve(journeys, '..') : ROOT
+  const journey = Journey.parse(parse(readFileSync(join(journeys, `${name}.yaml`), 'utf8')))
   const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '')
   // Outside $TMPDIR, so the sandbox is as it is for the person.
   const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${prompt}`)
@@ -188,7 +324,20 @@ async function main() {
     secrets: new MemorySecrets(),
     fixtures: join(ROOT, 'journeys', 'fixtures'),
   })
-  const engine = new Engine(world, { prompt, connectors })
+  // The browser Alpha reads with, kept with the repository's test data so it is set up once.
+  const limits = config.limits()
+  const browser = new BrowserEngine({
+    browsers: join(ROOT, '.data', 'browsers'),
+    profiles: join(home, 'browser-profiles'),
+    pace: { minMs: limits.browser_pace_min_ms, maxMs: limits.browser_pace_max_ms },
+  })
+  const runner = new AgentRunner(world, () => browser, { owner: user.id })
+  const engine = new Engine(world, {
+    prompt,
+    connectors,
+    hands: { browser: () => browser, runner },
+  })
+  let site: { server: Server; url: string } | null = null
   const limit = config.limits().journey_step_minutes * 60_000
   const idle = () =>
     new Promise<boolean>((resolve) => {
@@ -221,8 +370,9 @@ async function main() {
     const done = step.say || step.answer ? idle() : Promise.resolve(true)
     let what: string
     if (step.say) {
-      what = `Said “${step.say}”`
-      engine.say(user, step.say)
+      const words = site ? step.say.replaceAll('{site}', site.url) : step.say
+      what = `Said “${words}”`
+      engine.say(user, words)
     } else if (step.answer) {
       const card = world.cards.waiting(user.id)[0]
       if (!card) throw new Error(`Step ${i + 1}: no card is waiting to answer.`)
@@ -231,7 +381,7 @@ async function main() {
     } else if (step.folder) {
       const dir = join(home, 'folder')
       mkdirSync(dir, { recursive: true })
-      const from = resolve(ROOT, step.folder.from)
+      const from = resolve(base, step.folder.from)
       const names = readdirSync(from).filter(
         (n) => !step.folder?.only || n.includes(step.folder.only),
       )
@@ -246,6 +396,20 @@ async function main() {
       await connectors.sync(
         world.connections.find(step.connect.connector, step.connect.account)?.id ?? '',
       )
+    } else if (step.site) {
+      site = await serve(resolve(base, step.site.from))
+      what = `Served the made-up site ${step.site.from} at ${site.url}`
+    } else if (step.due) {
+      await runner.runDue(Date.now())
+      const ran = runner.runs(5).filter((r) => r.startedAt >= new Date(t0).toISOString())
+      what = `The scheduler's tick: ${ran.map((r) => r.words).join('; ') || 'nothing was due'}`
+    } else if (step.kit) {
+      const m = await install(world, resolve(base, step.kit.from), {
+        actor: { kind: 'person', id: user.id },
+        user: user.id,
+      })
+      for (const a of agents(world, m.id)) setAgentState(world, a.id, step.kit.agents, user.id)
+      what = `Installed the kit ${step.kit.from}, its agents ${step.kit.agents}`
     } else throw new Error(`Step ${i + 1} neither says, answers, nor connects.`)
     const finished = await done
     const reply = world.lines({ user: user.id, kinds: ['replied', 'error'] }).at(-1)
@@ -305,10 +469,12 @@ async function main() {
       )
     report.push('')
   }
-  const out = join(ROOT, 'docs', 'journeys', `${stamp}-${name}-${prompt}.md`)
-  mkdirSync(join(ROOT, 'docs', 'journeys'), { recursive: true })
+  const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${prompt}.md`)
+  mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
   writeFileSync(out, `${report.join('\n').trim()}\n`)
   engine.close()
+  await browser.close()
+  site?.server.close()
   world.close()
   if (!args.includes('--keep')) rmSync(home, { recursive: true, force: true })
   console.log(`${passed ? 'passed' : 'FAILED'}: ${out}`)

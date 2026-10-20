@@ -1,0 +1,23 @@
+name: a-reader-for-a-list
+title: 'A list on a site becomes a reader that runs every day: one card for the site, then every page read'
+why: >
+  DealPilot's readers, generically (design §9, §11): Alpha looks at a list the way a person sees
+  it, keeps a reader and its agent in a module, and tries it. The site waits on one card; after
+  the yes the reader reads both pages into a table, each row keeping its page as its source. The
+  site is a made-up one served on this Mac, never a real one.
+steps:
+  - site: { from: journeys/fixtures/sites/firms }
+  - say: >-
+      Firms for sale are listed at {site}/list.html. Keep a reader that brings each one into a
+      table Firms with its email, every day at 9, and try it now.
+    checks:
+      - card: { gate: leaves_world, words: 'read 127\.0\.0\.1' }
+      - agents_on: 1
+      - errors: 0
+  - answer: { choice: 'Yes' }
+    checks:
+      - rows_in: { table: Firms, count: 3 }
+      - looked_up_from: { table: Firms, url: '/firm/' }
+      - last_run: ok
+      - cards_waiting: 0
+      - errors: 0
