@@ -1,15 +1,24 @@
 // Settings (design §14): connections, folders, and kits with their agents. Connecting is the
 // person's own act here: what they type goes to the Keychain, never to the model.
-import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'
-import { CalendarDays, Folder, Mail, UserRound } from 'lucide-react'
+import type {
+  ConnectionView,
+  ConnectorsView,
+  ConnectorView,
+  InstructionView,
+  ModelView,
+} from '@alpha/core/api'
+import { BookmarkCheck, CalendarDays, Folder, Mail, Sparkles, UserRound } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Kits, when } from './Kits.tsx'
+import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
+import { Segmented } from './ui/segmented.tsx'
+import { Switch } from './ui/switch.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   connected: ['Connected', 'good'],
@@ -23,6 +32,16 @@ const ICONS: Record<string, ReactNode> = {
   calendar: <CalendarDays className="size-4" />,
   contacts: <UserRound className="size-4" />,
 }
+
+// The page's sections, in its index.
+const SECTIONS = [
+  ['connections', 'Connections'],
+  ['folders', 'Folders'],
+  ['kits', 'Kits and agents'],
+  ['remembered', 'Remembered'],
+  ['model', 'Model'],
+  ['appearance', 'Appearance'],
+] as const
 
 export function Settings({ open, version }: { open: string | null; version: number }) {
   const [view, setView] = useState<ConnectorsView | null>(null)
@@ -41,42 +60,206 @@ export function Settings({ open, version }: { open: string | null; version: numb
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
   const accounts = view.connectors.filter((c) => c.name !== 'folder')
   const folders = view.connections.filter((c) => c.connector === 'folder')
+  const go = (id: string) =>
+    document
+      .getElementById(`settings-${id}`)
+      ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-8 py-7">
-        <h1 className="text-2xl text-ink">Settings</h1>
-        <Section
-          title="Connections"
-          about="Your accounts, read by Alpha; what you type stays in the Keychain."
-        >
-          <List>
-            {accounts.map((c) => (
-              <ConnectorRow
-                key={c.name}
-                connector={c}
-                connections={view.connections.filter((k) => k.connector === c.name)}
-                startOpen={open === c.name}
-                onChange={load}
-              />
-            ))}
-          </List>
-        </Section>
-        <Section
-          title="Folders"
-          about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
-        >
-          {folders.length > 0 && (
-            <List>
-              {folders.map((k) => (
-                <ConnectionLine key={k.id} connection={k} onChange={load} />
-              ))}
-            </List>
-          )}
-          <FolderForm onChange={load} startOpen={open === 'folder'} />
-        </Section>
-        <Kits version={version} />
+      <div className="mx-auto grid max-w-245 grid-cols-[10.5rem_1fr] gap-7 px-8 pt-7 pb-12">
+        <nav className="sticky top-0 flex flex-col gap-px self-start pt-15.5">
+          {SECTIONS.map(([id, name]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => go(id)}
+              className="h-7 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink"
+            >
+              {name}
+            </button>
+          ))}
+        </nav>
+        <div className="flex min-w-0 flex-col gap-8">
+          <h1 className="text-2xl text-ink">Settings</h1>
+          <div id="settings-connections" className="scroll-mt-4">
+            <Section
+              title="Connections"
+              about="Your accounts, read by Alpha; what you type stays in the Keychain."
+            >
+              <List>
+                {accounts.map((c) => (
+                  <ConnectorRow
+                    key={c.name}
+                    connector={c}
+                    connections={view.connections.filter((k) => k.connector === c.name)}
+                    startOpen={open === c.name}
+                    onChange={load}
+                  />
+                ))}
+              </List>
+            </Section>
+          </div>
+          <div id="settings-folders" className="scroll-mt-4">
+            <Section
+              title="Folders"
+              about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
+            >
+              {folders.length > 0 && (
+                <List>
+                  {folders.map((k) => (
+                    <ConnectionLine key={k.id} connection={k} onChange={load} />
+                  ))}
+                </List>
+              )}
+              <FolderForm onChange={load} startOpen={open === 'folder'} />
+            </Section>
+          </div>
+          <div id="settings-kits" className="scroll-mt-4">
+            <Kits version={version} />
+          </div>
+          <div id="settings-remembered" className="scroll-mt-4">
+            <Remembered version={version} />
+          </div>
+          <div id="settings-model" className="scroll-mt-4">
+            <ModelSection />
+          </div>
+          <div id="settings-appearance" className="scroll-mt-4">
+            <Appearance view={view} onChange={load} />
+          </div>
+        </div>
       </div>
     </div>
+  )
+}
+
+// What Alpha remembers: the standing instructions the person gave, each one removable.
+function Remembered({ version }: { version: number }) {
+  const [lines, setLines] = useState<InstructionView[] | null>(null)
+  const load = useCallback(() => {
+    api.get<InstructionView[]>('/api/instructions').then(setLines, () => setLines([]))
+  }, [])
+  useEffect(() => {
+    if (version >= 0) load()
+  }, [load, version])
+  const forget = (l: InstructionView) =>
+    api.post('/api/instructions/remove', { for: l.for, words: l.words }).then(load, load)
+  return (
+    <Section
+      title="What Alpha remembers"
+      about="How you asked things to be done from now on; tell Alpha in a sentence to add one."
+    >
+      {lines?.length === 0 && (
+        <p className="text-ink-2 text-md">Nothing yet. Say “from now on…” and it is kept here.</p>
+      )}
+      {lines && lines.length > 0 && (
+        <List>
+          {lines.map((l) => (
+            <Row
+              key={`${l.for}${l.words}`}
+              lead={
+                <Tile>
+                  <BookmarkCheck className="size-4" />
+                </Tile>
+              }
+              title={<span className="whitespace-normal font-normal">{l.words}</span>}
+              sub={l.for === 'me' ? 'For you' : 'For everyone here'}
+              actions={
+                <Button size="sm" variant="warn" onClick={() => forget(l)}>
+                  Forget
+                </Button>
+              }
+            />
+          ))}
+        </List>
+      )}
+    </Section>
+  )
+}
+
+const MODEL_NAMES: Record<string, string> = {
+  'claude-opus-5-5': 'Claude Opus 5.5',
+  'claude-sonnet-5-5': 'Claude Sonnet 5.5',
+  'claude-haiku-5-5': 'Claude Haiku 5.5',
+}
+
+function ModelSection() {
+  const [model, setModel] = useState<ModelView | null>(null)
+  useEffect(() => {
+    api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
+  }, [])
+  return (
+    <Section title="Model" about="What Alpha thinks with, and how it reaches it.">
+      {model && (
+        <List>
+          <Row
+            lead={
+              <Tile>
+                <Sparkles className="size-4" />
+              </Tile>
+            }
+            title={MODEL_NAMES[model.desk] ?? model.desk}
+            sub={
+              model.route === 'subscription'
+                ? 'Through your own Claude sign-in on this Mac'
+                : 'Through your API key, kept in the Keychain'
+            }
+          />
+        </List>
+      )}
+    </Section>
+  )
+}
+
+function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => void }) {
+  const [theme, setTheme] = useState<Theme>(savedTheme)
+  const tables = view.connections.flatMap((k) => k.tables)
+  const shown = tables.some((t) => !t.hidden)
+  const [busy, setBusy] = useState(false)
+  const showTables = async (on: boolean) => {
+    setBusy(true)
+    for (const t of tables)
+      await api.post(`/api/tables/${t.id}/sidebar`, { shown: on }).catch(() => undefined)
+    setBusy(false)
+    onChange()
+  }
+  return (
+    <Section title="Appearance">
+      <List>
+        <Row
+          title="Look"
+          sub="Match Mac follows your Mac's light or dark setting."
+          actions={
+            <Segmented
+              label="Look"
+              value={theme}
+              onChange={(t) => {
+                setTheme(t)
+                applyTheme(t)
+              }}
+              options={[
+                { value: 'mac', label: 'Match Mac' },
+                { value: 'light', label: 'Light' },
+                { value: 'dark', label: 'Dark' },
+              ]}
+            />
+          }
+        />
+        {tables.length > 0 && (
+          <Row
+            title="Connection tables in the sidebar"
+            sub="Mail, events and contacts that connections keep, shown with your own tables."
+            actions={
+              <Switch
+                checked={shown}
+                disabled={busy}
+                label="Connection tables in the sidebar"
+                onChange={showTables}
+              />
+            }
+          />
+        )}
+      </List>
+    </Section>
   )
 }
 

@@ -1,12 +1,14 @@
 // The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
 import { z } from 'zod'
+import { config } from '../config.ts'
 import { connectorOf, KNOWN } from '../connectors/service.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
+import { instructionsFile } from '../engine/tools.ts'
 import { agents, setAgentState, whenWords } from '../modules/agents.ts'
 import { install, installedKits, update } from '../modules/kits.ts'
 import { moduleNetwork } from '../modules/runs.ts'
@@ -20,7 +22,9 @@ import type {
   ConnectorsView,
   Health,
   HistoryView,
+  InstructionView,
   Me,
+  ModelView,
   ModuleSummary,
   RunView,
   SourceView,
@@ -410,6 +414,49 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (!runner || !a) throw new Refused('That agent is not there.')
     void runner.runAgent(a, { user: user.id, turn: null }).catch(() => undefined)
     return { ok: true }
+  })
+
+  // What Alpha remembers, each line removable by the person (the instructions files, design §6).
+  const instructionLines = (who: 'me' | 'everyone') => {
+    const file = instructionsFile(world, who === 'me' ? user.id : null)
+    return existsSync(file)
+      ? readFileSync(file, 'utf8')
+          .split('\n')
+          .filter((l) => l.startsWith('- '))
+          .map((l) => l.slice(2).trim())
+      : []
+  }
+
+  app.get(
+    '/api/instructions',
+    async (): Promise<InstructionView[]> => [
+      ...instructionLines('me').map((words) => ({ for: 'me' as const, words })),
+      ...instructionLines('everyone').map((words) => ({ for: 'everyone' as const, words })),
+    ],
+  )
+
+  app.post('/api/instructions/remove', async (req) => {
+    const b = z.object({ for: z.enum(['me', 'everyone']), words: z.string() }).parse(req.body)
+    const file = instructionsFile(world, b.for === 'me' ? user.id : null)
+    if (!existsSync(file)) throw new Refused('There is nothing remembered there.')
+    const lines = readFileSync(file, 'utf8').split('\n')
+    const at = lines.findIndex((l) => l.startsWith('- ') && l.slice(2).trim() === b.words)
+    if (at < 0) throw new Refused('That is not remembered.')
+    lines.splice(at, 1)
+    writeFileSync(file, lines.join('\n'))
+    world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'forgot',
+      words: `Will no longer remember: ${b.words}`,
+      data: { for: b.for },
+      user: user.id,
+    })
+    return { ok: true }
+  })
+
+  app.get('/api/model', async (): Promise<ModelView> => {
+    const m = config.models()
+    return { desk: m.desk, route: m.route }
   })
 
   // Activity: agents' runs and connections' reads, newest first. A run that ended having changed

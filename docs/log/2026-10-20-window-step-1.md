@@ -1,4 +1,4 @@
-# 20 October 2026: the window redesign, steps 1 to 6 (look, parts, shell, Home, tables, Activity)
+# 20 October 2026: the window redesign, steps 1 to 7 (look, parts, shell, Home, tables, Activity, Settings)
 
 Kenil tested DealPilot on a test copy ("looks good!") and stages A and B were committed and
 pushed (alpha-v2 3937316..9cbabb6; alpha-avilo private at github.com/kenil0811/alpha-avilo). He
@@ -127,3 +127,17 @@ Step 5 committed and pushed (4a62cec).
 were the Terminal panel's approval of each command typed into it. Restarts now go through
 `.data/restart.sh mine|test` (not in git: it names this Mac's paths), which starts the core in
 its own session, so it outlives Claude's.
+
+## Step 7: Settings (uncommitted, for Kenil's review)
+
+Step 6 committed and pushed (847ed02). Settings is one page with an index on the left:
+Connections, Folders, Kits and agents (as before, on the parts), and three new sections:
+
+- **What Alpha remembers:** the standing instructions the person gave (`remember`), for them or
+  for everyone, each with Forget (journaled as `forgot`). The proposal's "Standing permissions"
+  waits for Always, which v2 does not have yet.
+- **Model:** the model Alpha runs on and its route, read from `core/config/models.yaml`; shown,
+  not a setting.
+- **Appearance:** Match Mac · Light · Dark, kept in this browser and put on `<html>` as
+  `data-theme` (the Mac shell keeps it in week 6); a switch for connection tables in the sidebar
+  (all of them at once; each connection's own link stays).

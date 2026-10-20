@@ -153,6 +153,36 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('shows what Alpha remembers and forgets a line the person removes', async () => {
+    const user = world.owner('Kenil')
+    const { appendFileSync } = await import('node:fs')
+    const { instructionsFile } = await import('../engine/tools.ts')
+    appendFileSync(
+      instructionsFile(world, user.id),
+      '# Standing instructions\n\n- Call me Kenil\n- Money in USD\n',
+    )
+    const a = app()
+    const before = (await a.inject({ url: '/api/instructions', headers: ok })).json()
+    expect(before).toEqual([
+      { for: 'me', words: 'Call me Kenil' },
+      { for: 'me', words: 'Money in USD' },
+    ])
+    const gone = await a.inject({
+      method: 'POST',
+      url: '/api/instructions/remove',
+      headers: ok,
+      payload: { for: 'me', words: 'Call me Kenil' },
+    })
+    expect(gone.statusCode).toBe(200)
+    expect((await a.inject({ url: '/api/instructions', headers: ok })).json()).toEqual([
+      { for: 'me', words: 'Money in USD' },
+    ])
+    expect(world.lines({ kinds: ['forgot'] })[0]?.words).toBe(
+      'Will no longer remember: Call me Kenil',
+    )
+    await a.close()
+  })
+
   it('corrects a value as the person’s word and shows the value’s history, newest first', async () => {
     world.owner('Kenil')
     const m = world.shape.makeModule('Deals', { actor: { kind: 'alpha' } })

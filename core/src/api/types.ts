@@ -143,6 +143,18 @@ export interface WorkingModuleView {
   agents: AgentView[]
 }
 
+// What Alpha remembers: the standing instructions the person gave, for them or for everyone.
+export interface InstructionView {
+  for: 'me' | 'everyone'
+  words: string
+}
+
+// The model Alpha runs on and how it reaches it, as Settings shows it.
+export interface ModelView {
+  desk: string
+  route: 'subscription' | 'key'
+}
+
 // A run in Activity: an agent's or a reader's, or a connection reading its account.
 export interface RunView {
   id: string
