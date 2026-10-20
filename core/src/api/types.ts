@@ -143,14 +143,18 @@ export interface WorkingModuleView {
   agents: AgentView[]
 }
 
+// A run in Activity: an agent's or a reader's, or a connection reading its account.
 export interface RunView {
   id: string
-  agent: string | null
+  kind: 'run' | 'read'
+  name: string
   module: string | null
   startedAt: string
-  endedAt: string | null
+  ms: number | null // how long it took, once it ended
   state: 'running' | 'ok' | 'failed' | 'stopped'
   words: string | null
+  tokens: number | null // null: no model was used
+  quiet: boolean // it ended and changed nothing
   steps: { id: number; at: string; kind: string; words: string }[]
 }
 

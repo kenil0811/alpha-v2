@@ -412,26 +412,47 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { ok: true }
   })
 
+  // Activity: agents' runs and connections' reads, newest first. A run that ended having changed
+  // nothing is quiet, so the window can fold it.
   app.get('/api/activity', async (): Promise<RunView[]> => {
-    const runner = engine.hands?.runner
-    if (!runner) return []
     const names = new Map(agents(world).map((a) => [a.id, a.name]))
     const modules = new Map(world.shape.modules().map((m) => [m.id, m.name]))
-    return runner.runs(50).map((r) => ({
-      id: r.id,
-      agent: r.agent ? (names.get(r.agent) ?? null) : null,
-      module: r.module ? (modules.get(r.module) ?? null) : null,
-      startedAt: r.startedAt,
-      endedAt: r.endedAt,
-      state: r.state,
-      words: r.words,
-      steps: world
+    const CHANGES = new Set(['landed', 'wrote', 'changed', 'removed', 'told', 'card_opened'])
+    const runs: RunView[] = (engine.hands?.runner.runs(100) ?? []).map((r) => {
+      const steps = world
         .lines({
           run: r.id,
-          kinds: ['run_step', 'told', 'landed', 'wrote', 'changed', 'card_opened'],
+          kinds: ['run_step', 'told', 'landed', 'wrote', 'changed', 'removed', 'card_opened'],
         })
-        .map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words })),
+        .map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words }))
+      return {
+        id: r.id,
+        kind: 'run',
+        name: (r.agent && names.get(r.agent)) || 'A try',
+        module: r.module ? (modules.get(r.module) ?? null) : null,
+        startedAt: r.startedAt,
+        ms: r.endedAt ? Date.parse(r.endedAt) - Date.parse(r.startedAt) : null,
+        state: r.state,
+        words: r.words,
+        tokens: null, // agents' scripts run without the model
+        quiet: r.state === 'ok' && !steps.some((st) => CHANGES.has(st.kind)),
+        steps,
+      }
+    })
+    const reads: RunView[] = world.lines({ kinds: ['connection_read'], limit: 200 }).map((l) => ({
+      id: `read-${l.id}`,
+      kind: 'read',
+      name: String(l.data.name ?? 'A connection'),
+      module: null,
+      startedAt: new Date(Date.parse(l.at) - Number(l.data.ms ?? 0)).toISOString(),
+      ms: Number(l.data.ms ?? 0),
+      state: l.data.state === 'failed' ? 'failed' : 'ok',
+      words: l.words,
+      tokens: null,
+      quiet: l.data.quiet === true,
+      steps: [],
     }))
+    return [...runs, ...reads].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 200)
   })
 
   app.post('/api/runs/:id/stop', async (req) => {

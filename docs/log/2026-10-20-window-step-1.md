@@ -1,4 +1,4 @@
-# 20 October 2026: the window redesign, steps 1 to 5 (look, parts, shell, Home, tables)
+# 20 October 2026: the window redesign, steps 1 to 6 (look, parts, shell, Home, tables, Activity)
 
 Kenil tested DealPilot on a test copy ("looks good!") and stages A and B were committed and
 pushed (alpha-v2 3937316..9cbabb6; alpha-avilo private at github.com/kenil0811/alpha-avilo). He
@@ -109,3 +109,21 @@ Step 4 committed and pushed (976a6b5).
 Tried in the test copy: Loan needed's history showed $1,080,000 then $960,000 after Kenil's 20%
 down payment; correcting a deal's SDE to $300,000 showed "You said", and the figures followed it
 within seconds (SDE after debt service −$23,844, Does not fit).
+
+## Step 6: Activity (uncommitted, for Kenil's review)
+
+Step 5 committed and pushed (4a62cec).
+
+- **Core:** each connection's read is now a journal line (`connection_read`: how long it took,
+  whether it brought anything, or why it failed), so Activity holds connections' reads beside
+  agents' runs. Each run says how long it took, whether the model was used (agents' scripts run
+  without it: "No model"), and whether it changed nothing (quiet).
+- **Activity:** one list by day (Today, Yesterday, the date); a run's time in mono, its name and
+  module tag, its state when it is not Done, one line of what happened, how long it took and
+  "No model"; it opens to its steps with times; runs that changed nothing fold into one line per
+  name and day ("Gmail read 9 times with nothing new"); All · Didn't finish.
+
+**Restarts without asking** (Kenil, 10:34: "do not ask again for restarting alpha"): the prompts
+were the Terminal panel's approval of each command typed into it. Restarts now go through
+`.data/restart.sh mine|test` (not in git: it names this Mac's paths), which starts the core in
+its own session, so it outlives Claude's.

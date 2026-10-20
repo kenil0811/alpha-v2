@@ -193,6 +193,15 @@ export class ConnectorService {
     if (!conn || conn.state === 'paused') return
     const c = connectorOf(conn.connector)
     if (!c.sync) return
+    const started = Date.now()
+    // each read is a line for Activity: how long it took and whether it brought anything
+    const read = (state: 'ok' | 'failed', words: string, quiet: boolean) =>
+      this.world.line({
+        actor: { kind: 'connector', id: c.manifest.name },
+        kind: 'connection_read',
+        words,
+        data: { connection: id, name: c.manifest.title, ms: Date.now() - started, state, quiet },
+      })
     try {
       this.tables(c)
       const result = await c.sync(this.call(c, conn))
@@ -212,8 +221,20 @@ export class ConnectorService {
       this.world.connections.synced(id, result.rows, result.sawNew, health, {
         actor: { kind: 'connector', id: c.manifest.name },
       })
+      read(
+        'ok',
+        result.sawNew
+          ? `Read ${conn.account}: something new.`
+          : `Read ${conn.account}: nothing new.`,
+        !result.sawNew,
+      )
     } catch (err) {
       this.fail(c, conn, err)
+      read(
+        'failed',
+        `Could not read ${conn.account}: ${err instanceof Error ? err.message : String(err)}`,
+        false,
+      )
     }
   }
 

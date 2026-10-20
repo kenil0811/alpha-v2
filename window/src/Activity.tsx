@@ -1,13 +1,15 @@
-// Activity (design §11): every run of an agent or a reader, newest first, with its steps folded
-// under it. A running one can be stopped. (Step 6 of the redesign groups them by day.)
+// Activity (design §11, Ledger): every run of an agent or a reader and every read of a
+// connection, newest first, in one list by day. A run shows its time, name, module, state, one
+// line of what happened, how long it took and whether the model was used; it opens to its steps.
+// Runs that changed nothing fold into one line per name and day. A running one can be stopped.
 import type { RunView } from '@alpha/core/api'
+import { ChevronRight } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { when } from './Kits.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { List, Row } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
+import { Segmented } from './ui/segmented.tsx'
 
 const STATE: Record<RunView['state'], [string, Tone]> = {
   running: ['Running', 'accent'],
@@ -20,9 +22,48 @@ const STATE: Record<RunView['state'], [string, Tone]> = {
 const time = (at: string) =>
   new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
 
+function took(ms: number | null): string {
+  if (ms === null) return ''
+  if (ms < 1000) return 'under a second'
+  const s = Math.round(ms / 1000)
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`
+}
+
+function dayOf(at: string): string {
+  const d = new Date(at)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+type Line = { kind: 'run'; run: RunView } | { kind: 'quiet'; latest: RunView; more: number }
+
+// A day's runs, with the quiet ones of each name folded into one line where the latest was.
+function fold(runs: RunView[]): Line[] {
+  const quiet = new Map<string, RunView[]>()
+  for (const r of runs) if (r.quiet) quiet.set(r.name, [...(quiet.get(r.name) ?? []), r])
+  const out: Line[] = []
+  const shown = new Set<string>()
+  for (const r of runs) {
+    if (!r.quiet) out.push({ kind: 'run', run: r })
+    else if (!shown.has(r.name)) {
+      shown.add(r.name)
+      const all = quiet.get(r.name) ?? [r]
+      out.push(
+        all.length === 1 ? { kind: 'run', run: r } : { kind: 'quiet', latest: r, more: all.length },
+      )
+    }
+  }
+  return out
+}
+
 export function Activity({ version }: { version: number }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
+  const [only, setOnly] = useState<'all' | 'failed'>('all')
   const load = useCallback(() => {
     api.get<RunView[]>('/api/activity').then(setRuns, () => setRuns([]))
   }, [])
@@ -30,83 +71,152 @@ export function Activity({ version }: { version: number }) {
     if (version >= 0) load()
   }, [load, version])
 
+  const shown = (runs ?? []).filter((r) => only === 'all' || r.state === 'failed')
+  const days: [string, RunView[]][] = []
+  for (const r of shown) {
+    const d = dayOf(r.startedAt)
+    const last = days.at(-1)
+    if (last && last[0] === d) last[1].push(r)
+    else days.push([d, [r]])
+  }
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-215 flex-col gap-4 px-8 py-7">
-        <h1 className="text-2xl text-ink">Activity</h1>
-        {runs?.length === 0 && (
-          <p className="text-ink-2 text-md">
-            Nothing has run on its own yet. Agents and readers show their runs here.
+      <div className="mx-auto flex max-w-215 flex-col px-8 pt-7 pb-10">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl text-ink">Activity</h1>
+          <span className="flex-1" />
+          <Segmented
+            label="Show"
+            value={only}
+            onChange={setOnly}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'failed', label: "Didn't finish" },
+            ]}
+          />
+        </div>
+        {runs && shown.length === 0 && (
+          <p className="mt-4 text-ink-2 text-md">
+            {only === 'failed'
+              ? 'Everything that ran finished.'
+              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here.'}
           </p>
         )}
-        {runs && runs.length > 0 && (
-          <List>
-            {runs.map((r) => {
-              const [state, tone] = STATE[r.state]
-              return (
-                <Row
-                  key={r.id}
-                  className="cursor-pointer hover:bg-hover"
-                  lead={
-                    <span className="w-12 shrink-0 font-mono text-ink-3 text-sm">
-                      {time(r.startedAt)}
+        {days.map(([day, list]) => (
+          <section key={day}>
+            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-xs uppercase tracking-label">
+              {day}
+            </div>
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {fold(list).map((l) =>
+                l.kind === 'quiet' ? (
+                  <div
+                    key={`q${l.latest.id}`}
+                    className="flex items-center gap-3.5 border-hair border-t bg-canvas px-4 py-2.5 text-ink-3 text-sm first:border-t-0"
+                  >
+                    <span className="w-12 shrink-0 font-mono">{time(l.latest.startedAt)}</span>
+                    <span>
+                      {l.latest.name} {l.latest.kind === 'read' ? 'read' : 'ran'} {l.more} times
+                      with nothing new
                     </span>
-                  }
-                  title={
-                    <button
-                      type="button"
-                      className="text-left"
-                      onClick={() => setOpen(open === r.id ? null : r.id)}
-                    >
-                      {r.agent ?? 'A try'}
-                      {r.module && <span className="font-normal text-ink-3"> · {r.module}</span>}
-                    </button>
-                  }
-                  sub={
-                    <span className={cn(r.state === 'failed' && 'text-warn')}>
-                      {r.words && r.state !== 'running' ? r.words : when(r.startedAt)}
-                      {r.steps.length ? ` · ${r.steps.length} steps` : ''}
-                    </span>
-                  }
-                  actions={
-                    <>
-                      <Pill tone={tone}>{state}</Pill>
-                      {r.state === 'running' && (
-                        <Button
-                          size="sm"
-                          onClick={() => api.post(`/api/runs/${r.id}/stop`).then(load, load)}
-                        >
-                          Stop
-                        </Button>
-                      )}
-                    </>
-                  }
-                >
-                  {open === r.id && r.steps.length > 0 && (
-                    <ol className="mx-4 mb-3 ml-19 flex flex-col gap-1.5 border-line border-t border-dashed pt-2.5">
-                      {r.steps.map((s) => (
-                        <li
-                          key={s.id}
-                          className="grid grid-cols-[4rem_1fr] gap-2.5 text-ink-2 text-md"
-                        >
-                          <span className="pt-0.5 font-mono text-ink-3 text-xs">
-                            {new Date(s.at).toLocaleTimeString(undefined, {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit',
-                            })}
-                          </span>
-                          <span className={cn(s.kind === 'told' && 'text-ink')}>{s.words}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </Row>
-              )
-            })}
-          </List>
-        )}
+                  </div>
+                ) : (
+                  <RunRow
+                    key={l.run.id}
+                    run={l.run}
+                    open={open === l.run.id}
+                    onOpen={() => setOpen(open === l.run.id ? null : l.run.id)}
+                    onStop={() => api.post(`/api/runs/${l.run.id}/stop`).then(load, load)}
+                  />
+                ),
+              )}
+            </div>
+          </section>
+        ))}
       </div>
+    </div>
+  )
+}
+
+function RunRow({
+  run: r,
+  open,
+  onOpen,
+  onStop,
+}: {
+  run: RunView
+  open: boolean
+  onOpen: () => void
+  onStop: () => void
+}) {
+  const [state, tone] = STATE[r.state]
+  const words = r.words?.startsWith(`${r.name}: `) ? r.words.slice(r.name.length + 2) : r.words
+  return (
+    <div className="border-hair border-t first:border-t-0">
+      <div className="grid grid-cols-[3rem_1fr_auto] items-start gap-3.5 px-4 py-3 hover:bg-hover">
+        <span className="pt-0.5 font-mono text-ink-3 text-sm">{time(r.startedAt)}</span>
+        <button
+          type="button"
+          className="min-w-0 text-left"
+          onClick={onOpen}
+          disabled={!r.steps.length}
+        >
+          <span className="flex flex-wrap items-center gap-2">
+            <b className="font-semibold text-base text-ink">{r.name}</b>
+            {r.module && (
+              <span className="rounded-sm border border-line px-1.5 text-ink-3 text-xs leading-4.5">
+                {r.module}
+              </span>
+            )}
+            {r.state !== 'ok' && <Pill tone={tone}>{state}</Pill>}
+            {r.steps.length > 0 && (
+              <ChevronRight
+                className={cn('size-3.5 text-ink-3 transition-transform', open && 'rotate-90')}
+              />
+            )}
+          </span>
+          {words && r.state !== 'running' && (
+            <span
+              className={cn(
+                'mt-0.75 block text-md',
+                r.state === 'failed' ? 'text-warn' : 'text-ink-2',
+              )}
+            >
+              {words}
+            </span>
+          )}
+        </button>
+        <div className="flex flex-col items-end gap-0.5 text-ink-3 text-sm tabular-nums">
+          {r.state === 'running' ? (
+            <Button size="sm" onClick={onStop}>
+              Stop
+            </Button>
+          ) : (
+            <>
+              <span>{took(r.ms)}</span>
+              <span>{r.tokens === null ? 'No model' : `${r.tokens.toLocaleString()} tokens`}</span>
+            </>
+          )}
+        </div>
+      </div>
+      {open && r.steps.length > 0 && (
+        <ol className="mx-4 mb-3 ml-20.5 flex flex-col gap-1.25 border-line border-t border-dashed pt-2.5">
+          {r.steps.map((s) => (
+            <li key={s.id} className="grid grid-cols-[4rem_1fr] gap-2.5 text-ink-2 text-md">
+              <span className="pt-0.5 font-mono text-ink-3 text-xs">
+                {new Date(s.at).toLocaleTimeString(undefined, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false,
+                })}
+              </span>
+              <span className={cn(s.kind === 'told' && 'text-ink')}>{s.words}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   )
 }
