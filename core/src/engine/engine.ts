@@ -36,6 +36,10 @@ export class Engine {
     return this.options.connectors ?? null
   }
 
+  get hands() {
+    return this.options.hands ?? null
+  }
+
   // The folders the person granted are the watched-folder connections: read, never written.
   folders(): string[] {
     return [

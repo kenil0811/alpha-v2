@@ -3,11 +3,14 @@
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Effect } from '@alpha/connector-sdk'
+import { type BrowserEngine, type Effect, Problem } from '@alpha/connector-sdk'
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { KNOWN } from '../connectors/service.ts'
 import { importRows, readDocument } from '../files/documents.ts'
+import { agents } from '../modules/agents.ts'
+import { keep } from '../modules/keep.ts'
+import type { AgentRunner } from '../modules/runs.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../world/kinds.ts'
 import { findField, type Table } from '../world/shape.ts'
 import type { User, World } from '../world/world.ts'
@@ -23,6 +26,12 @@ export interface TurnContext {
 export interface Here {
   current: TurnContext
   fromSubagent: boolean
+}
+
+// What reaches past the world's tables: the browser engine and the runner of module scripts.
+export interface Hands {
+  browser: () => BrowserEngine
+  runner: AgentRunner
 }
 
 export const SERVER = 'alpha'
@@ -41,6 +50,7 @@ const Provenance = z.object({
       record: z.string(),
       inputs: z.array(z.string()),
       formula: z.string(),
+      card: z.string(), // for a stated value: the card the person answered
     })
     .partial()
     .optional(),
@@ -76,6 +86,26 @@ function guard(fn: () => Result): Result {
   }
 }
 
+async function guardAsync(fn: () => Promise<Result>): Promise<Result> {
+  try {
+    return await fn()
+  } catch (err) {
+    const msg =
+      err instanceof Refused || err instanceof Problem
+        ? err.message
+        : `Something went wrong: ${err instanceof Error ? err.message : String(err)}`
+    return { content: [{ type: 'text', text: msg }], isError: true }
+  }
+}
+
+const SCRIPT = [
+  'A script is JavaScript: `export default async (alpha) => { … return { words } }`. It has no network and writes only in its module folder; it reaches the world through alpha:',
+  'alpha.input; alpha.rows.list(table) (each row: id, key, values by field name); alpha.rows.land(table, [{ key, values, url }]) (a row per key, added or changed; values by field name; url only for the web page a row was read from);',
+  'alpha.rows.compute(table, id, values, formula) (values with the formula each came from); alpha.browser.open(url) (title, text, links, html);',
+  'alpha.browser.extract(url, { list, fields: { name: { css, attr } }, next, id: { field, pattern }, pages }) (every page of a list by its next link, or at most `pages`; returns { pages, items }, each item its fields with _id and _url; a failure carries kind sign_in or blocked);',
+  'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity).',
+].join('\n')
+
 // The effect of a call, by tool and input: the gates read it.
 export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect> = {
   query: () => 'read',
@@ -87,6 +117,28 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   ask: () => 'write',
   remember: () => 'write',
   connect: () => 'sign_in',
+  look: () => 'read',
+  keep: () => 'write',
+  run: () => 'write',
+}
+
+// A stated value that cites a card rests on the person's answer to it: a wall, so a card that is
+// waiting, or one the person said no to, is never cited as their word.
+function cardsCited(
+  world: World,
+  rows: {
+    provenance: z.infer<typeof Provenance>
+    per_field?: Record<string, z.infer<typeof Provenance>> | undefined
+  }[],
+): void {
+  for (const r of rows)
+    for (const p of [r.provenance, ...Object.values(r.per_field ?? {})]) {
+      const id = p.kind === 'stated' ? p.source?.card : undefined
+      if (!id) continue
+      const card = world.cards.get(id)
+      if (!card || (card.state !== 'yes' && card.state !== 'answered'))
+        throw new Refused(`Card ${id} has no answer from the person to rest a value on.`)
+    }
 }
 
 function tableOf(world: World, name: string): Table {
@@ -100,7 +152,7 @@ function tableOf(world: World, name: string): Table {
   return t
 }
 
-export function worldTools(world: World, here: Here) {
+export function worldTools(world: World, here: Here, hands?: Hands) {
   const ctx = () => ({
     actor: { kind: 'alpha' as const },
     user: here.current.user.id,
@@ -196,7 +248,7 @@ export function worldTools(world: World, here: Here) {
     ),
     tool(
       'write',
-      'Add rows to a table. Values are keyed by field name. Every row carries the provenance of its values: kind is stated (the person said it), looked_up (with source: url, document and page, file with sheet and cell, or record), computed (source.inputs or source.formula), estimated or assumed (with basis, a few words on what it rests on). per_field gives a field its own provenance. Money is {"amount": 12.5, "currency": "USD"}; a date is like 2026-10-19.',
+      'Add rows to a table. Values are keyed by field name. Every row carries the provenance of its values: kind is stated (the person said it, or answered it on a card: source.card), looked_up (with source: url, document and page, file with sheet and cell, or record), computed (source.inputs or source.formula), estimated or assumed (with basis, a few words on what it rests on). per_field gives a field its own provenance. Money is {"amount": 12.5, "currency": "USD"}; a date is like 2026-10-19.',
       {
         table: z.string(),
         rows: z.array(
@@ -210,6 +262,7 @@ export function worldTools(world: World, here: Here) {
       async ({ table, rows }) =>
         guard(() => {
           const t = tableOf(world, table)
+          cardsCited(world, rows)
           const ids = world.records.add(
             t.id,
             rows.map((r) => ({
@@ -248,6 +301,7 @@ export function worldTools(world: World, here: Here) {
           const t = tableOf(world, table)
           const said: string[] = []
           if (rows?.length) {
+            cardsCited(world, rows)
             world.records.change(t.id, rows as never, ctx())
             said.push(`Changed ${rows.length} row${rows.length === 1 ? '' : 's'} in ${t.name}.`)
           }
@@ -362,6 +416,79 @@ export function worldTools(world: World, here: Here) {
           )
         }),
       { alwaysLoad: true },
+    ),
+    tool(
+      'look',
+      'Open a web page the way a person sees it: drawn by a browser, at a person’s pace, keeping to the site’s robots rules; it stops at a sign-in or a bot check and says so. Without css: its title, text and links. With css: how many elements match and the first few as HTML, to write or check a reader’s extraction.',
+      { url: z.string(), css: z.string().optional() },
+      async ({ url, css }) =>
+        guardAsync(async () => {
+          if (!hands) throw new Refused('Pages are not set up in this core.')
+          const engine = hands.browser()
+          if (css) return ok(await engine.inspect(url, css))
+          const page = await engine.open(url)
+          return ok({
+            url: page.url,
+            status: page.status,
+            title: page.title,
+            text: page.text.slice(0, 20_000),
+            links: page.links.slice(0, 150),
+          })
+        }),
+    ),
+    tool(
+      'keep',
+      [
+        'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), an agent (agents/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
+        'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" } or { changes: <table> }) and `runs: { script: <path in the module> }`, then its brief. Keep its script first. An agent kept here is on.',
+        SCRIPT,
+      ].join('\n'),
+      { module: z.string(), path: z.string(), content: z.string().optional() },
+      async (a) =>
+        guardAsync(async () => {
+          const module = world.shape.module(a.module) ?? world.shape.makeModule(a.module, ctx())
+          return ok(await keep(world, module, a.path, a.content, ctx()))
+        }),
+    ),
+    tool(
+      'run',
+      'Run a module’s agent, or one of its scripts with an input, now: to try a reader before it runs on its own. Its steps go to Activity and its outcome comes back here. A site not on the module’s list waits on the person’s yes on a card.',
+      {
+        module: z.string(),
+        agent: z.string().optional(),
+        script: z.string().optional(),
+        input: z.record(z.string(), z.unknown()).optional(),
+      },
+      async (a) =>
+        guardAsync(async () => {
+          if (!hands) throw new Refused('Runs are not set up in this core.')
+          const module = world.shape.module(a.module)
+          if (!module) throw new Refused(`There is no module called ${a.module}.`)
+          const who = { user: here.current.user.id, turn: here.current.turn }
+          let out: Awaited<ReturnType<AgentRunner['runScript']>>
+          if (a.agent) {
+            const agent = agents(world, module.id).find(
+              (x) => x.name.toLowerCase() === a.agent?.toLowerCase(),
+            )
+            if (!agent) throw new Refused(`${module.name} has no agent called ${a.agent}.`)
+            out = await hands.runner.runAgent(agent, who)
+          } else if (a.script) {
+            out = await hands.runner.runScript(
+              module,
+              a.script,
+              a.input ?? {},
+              `A try of ${a.script}`,
+              null,
+              who,
+            )
+          } else throw new Refused('Give the agent or the script to run.')
+          const result = JSON.stringify(out.result ?? null)
+          return ok({
+            state: out.state,
+            words: out.words,
+            result: result.length > 8000 ? `${result.slice(0, 8000)}…` : JSON.parse(result),
+          })
+        }),
     ),
   ]
   return createSdkMcpServer({ name: SERVER, version: '0.1.0', alwaysLoad: true, tools })

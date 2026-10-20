@@ -19,7 +19,7 @@ import { decide } from '../gates/gates.ts'
 import type { Card } from '../world/cards.ts'
 import type { User, World } from '../world/world.ts'
 import { startLayer, turnLayer } from './context.ts'
-import { EFFECTS, type Here, SERVER, TOOL_NAMES, worldTools } from './tools.ts'
+import { EFFECTS, type Hands, type Here, SERVER, TOOL_NAMES, worldTools } from './tools.ts'
 import { stepWords } from './words.ts'
 
 export type DeskEvent =
@@ -35,6 +35,7 @@ export interface DeskOptions {
   emit?: (e: DeskEvent) => void
   granted?: string[] // folders the person granted, read-only
   connectors?: ConnectorService
+  hands?: Hands
   // Alpha's words appended to Claude Code's own prompt (the design's choice), or alone: week 1
   // measures one against the other.
   prompt?: 'appended' | 'alone'
@@ -113,6 +114,7 @@ export class Desk {
   private granted: string[]
   private prompt: 'appended' | 'alone'
   private connectors: ConnectorService | null
+  private hands: Hands | undefined
   private networkWaits: string[] = []
 
   constructor(world: World, user: User, options: DeskOptions = {}) {
@@ -122,6 +124,7 @@ export class Desk {
     this.emit = options.emit ?? (() => {})
     this.granted = options.granted ?? []
     this.connectors = options.connectors ?? null
+    this.hands = options.hands
     this.prompt = options.prompt ?? 'appended'
     this.here = { current: { user, turn: null, said: null, message: null }, fromSubagent: false }
   }
@@ -249,7 +252,7 @@ export class Desk {
       permissionMode: 'default',
       canUseTool: this.canUseTool,
       mcpServers: {
-        [SERVER]: worldTools(this.world, this.here),
+        [SERVER]: worldTools(this.world, this.here, this.hands),
         ...(this.connectors ? { [CONNECTORS]: this.connectors.server() } : {}),
       },
       additionalDirectories: [modules, ...this.granted],

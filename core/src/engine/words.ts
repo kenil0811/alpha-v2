@@ -72,6 +72,24 @@ export function stepWords(tool: string, input: Input): string {
       return 'Looked for the right connection'
     case 'network':
       return `Let a script reach ${s(input.host)}`
+    case 'look': {
+      const url = s(input.url)
+      return `Looked at ${URL.canParse(url) ? new URL(url).host : 'a page'}`
+    }
+    case 'keep': {
+      const [place, name] = s(input.path).split('/')
+      const what =
+        place === 'agents'
+          ? `the agent ${(name ?? '').replace(/\.md$/, '')}`
+          : place === 'skills'
+            ? `the skill ${name ?? ''}`
+            : place === 'pages'
+              ? `the page ${name ?? ''}`
+              : basename(s(input.path))
+      return `Kept ${what} in ${s(input.module)}`
+    }
+    case 'run':
+      return `Ran ${s(input.agent) || basename(s(input.script))} to try it`
     case 'connect':
       return `Connect ${s(input.connector)}`
     case 'gmail_search':
