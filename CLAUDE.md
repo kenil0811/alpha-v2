@@ -10,7 +10,6 @@ the design first, then the newest entries in `docs/log/`.
 - `core/`: the service (world, engine, gates, scheduler, api, journeys runner)
 - `window/`: the web app the core serves
 - `connector-sdk/` and `connectors/<name>/`: the connectors
-- `kits/<name>/`: the shipped kits, one module directory each
 - `journeys/`: journeys as YAML; their reports go in `docs/journeys/`
 
 Imports go one way (design §3). Internal packages are not built: Node runs their TypeScript
@@ -27,6 +26,8 @@ the per-install token. Prompts, models and judgements live in `core/config/`, no
 - A failure becomes a journey before it becomes a change.
 - A rule for the model is a wall in code, or it is not written.
 - Nothing is built for a client who has not asked.
+- Nothing client-specific in this repository: a client's kits live in their own private repository
+  (Avilo's: `../alpha-avilo`), installed from a folder.
 - Every change is proposed to Kenil in writing before it is built, built in the design's shape,
   looked at in the app, and committed after his review. The design changes only on his yes.
 - One short dated entry in `docs/log/` per session.
