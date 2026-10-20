@@ -1,1 +1,236 @@
+/*
+  The window's look, direction A "Ledger" (Kenil, 20 Oct 2026): the proposal is in the project's
+  design/window-proposal.md, the mock is the "Alpha v2 Window" artifact.
+
+  The fonts are bundled (Fontsource); the window never fetches one. Kit pages get these same
+  variables, and the fonts inlined, inside their frame.
+
+  Theme: data-theme="light" or "dark" on <html> picks one; without it the Mac's setting decides
+  (prefers-color-scheme). Settings › Appearance sets it when that screen comes (step 7).
+*/
 @import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/source-serif-4";
+
+:root {
+  /* the rail */
+  --rail: #f2f4f7;
+  --rail-ink: #16202b;
+  --rail-ink-2: #4b5664;
+  --rail-ink-3: #6b7582;
+  --rail-hover: #e6e9ee;
+  --rail-sel: #ffffff;
+  --rail-line: #e0e4e9;
+
+  /* surfaces, back to front */
+  --canvas: #fcfcfd;
+  --surface: #ffffff;
+  --sunk: #f2f4f7;
+  --hover: #eceff3;
+
+  /* ink and lines; neutrals lean toward the accent */
+  --ink: #16202b;
+  --ink-2: #4b5664;
+  --ink-3: #67717e;
+  --line: #e0e4e9;
+  --hair: #edf0f3;
+
+  /* the one accent */
+  --accent: #35618b;
+  --accent-ink: #ffffff;
+  --accent-soft: #e7eef6;
+  --accent-line: #bdd0e3;
+
+  /* states only: done or fits, waits on you or unsure, didn't finish */
+  --good: #3b7550;
+  --good-soft: #e6f0e8;
+  --warn: #8f5d1b;
+  --warn-soft: #f7eedf;
+  --bad: #ad3d36;
+  --bad-soft: #f8e6e4;
+
+  /* a document's page as Alpha read it: paper stays paper in both themes */
+  --paper: #ffffff;
+  --paper-ink: #272c33;
+  --paper-mute: #8b929b;
+  --paper-rule: #e7e7e7;
+  --paper-box: #b7791f;
+  --mark: #fbe7a6;
+
+  --elev-pop: 0 1px 2px rgb(22 32 43 / 0.06), 0 8px 22px rgb(22 32 43 / 0.09);
+  --elev-btn: 0 1px 2px rgb(22 32 43 / 0.1);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --rail: #0f1419;
+    --rail-ink: #e6ebf0;
+    --rail-ink-2: #b2bcc7;
+    --rail-ink-3: #83909d;
+    --rail-hover: #1a2129;
+    --rail-sel: #1f2730;
+    --rail-line: #232b34;
+    --canvas: #13181e;
+    --surface: #171d24;
+    --sunk: #1c232b;
+    --hover: #212932;
+    --ink: #e6ebf0;
+    --ink-2: #b2bcc7;
+    --ink-3: #8a95a1;
+    --line: #29313b;
+    --hair: #1f262e;
+    --accent: #86aed4;
+    --accent-ink: #0d1217;
+    --accent-soft: #1c2c3c;
+    --accent-line: #36526d;
+    --good: #8cc29c;
+    --good-soft: #182a1f;
+    --warn: #dfb27a;
+    --warn-soft: #32271a;
+    --bad: #e78a83;
+    --bad-soft: #38201f;
+    --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
+    --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --rail: #0f1419;
+  --rail-ink: #e6ebf0;
+  --rail-ink-2: #b2bcc7;
+  --rail-ink-3: #83909d;
+  --rail-hover: #1a2129;
+  --rail-sel: #1f2730;
+  --rail-line: #232b34;
+  --canvas: #13181e;
+  --surface: #171d24;
+  --sunk: #1c232b;
+  --hover: #212932;
+  --ink: #e6ebf0;
+  --ink-2: #b2bcc7;
+  --ink-3: #8a95a1;
+  --line: #29313b;
+  --hair: #1f262e;
+  --accent: #86aed4;
+  --accent-ink: #0d1217;
+  --accent-soft: #1c2c3c;
+  --accent-line: #36526d;
+  --good: #8cc29c;
+  --good-soft: #182a1f;
+  --warn: #dfb27a;
+  --warn-soft: #32271a;
+  --bad: #e78a83;
+  --bad-soft: #38201f;
+  --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
+  --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
+/*
+  Tailwind reads the tokens through @theme inline, so classes follow the theme:
+  bg-surface, bg-sunk, text-ink-2, border-line, bg-accent-soft, text-warn …
+  Tailwind's own palette and sizes are switched off: bg-neutral-400 draws nothing, and text-sm is now 12px.
+  Arbitrary values like text-[15px] still compile: a test fails any of them, as alpha-brain's size test did.
+*/
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-rail: var(--rail);
+  --color-rail-ink: var(--rail-ink);
+  --color-rail-ink-2: var(--rail-ink-2);
+  --color-rail-ink-3: var(--rail-ink-3);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-sel: var(--rail-sel);
+  --color-rail-line: var(--rail-line);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunk: var(--sunk);
+  --color-hover: var(--hover);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-hair: var(--hair);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-mute: var(--paper-mute);
+  --color-paper-rule: var(--paper-rule);
+  --color-paper-box: var(--paper-box);
+  --color-mark: var(--mark);
+
+  --font-*: initial;
+  --font-sans:
+    "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* seven sizes and no others; text-sm is 12px here, not Tailwind's 14px */
+  --text-*: initial;
+  --text-xs: 11px;
+  --text-xs--line-height: 16px;
+  --text-sm: 12px;
+  --text-sm--line-height: 16px;
+  --text-md: 13px;
+  --text-md--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 22px;
+  --text-lg: 16px;
+  --text-lg--line-height: 22px;
+  --text-xl: 20px;
+  --text-xl--line-height: 26px;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 30px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-pop: var(--elev-pop);
+  --shadow-btn: var(--elev-btn);
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Source Serif 4 is for page titles and big numbers only */
+  h1 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion wins over every utility */
+      animation: none !important;
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion wins over every utility */
+      transition: none !important;
+    }
+  }
+}

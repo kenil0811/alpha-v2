@@ -7,6 +7,9 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "catalog:",
+    "@fontsource-variable/geist-mono": "catalog:",
+    "@fontsource-variable/source-serif-4": "catalog:",
     "@tanstack/react-table": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
@@ -19,9 +22,11 @@
   "devDependencies": {
     "@alpha/core": "workspace:*",
     "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "playwright": "catalog:",
     "tailwindcss": "catalog:",
     "vite": "catalog:"
   }
