@@ -271,6 +271,12 @@ export const MIGRATIONS: string[] = [
   );
   CREATE UNIQUE INDEX views_name ON views (table_id, lower(name));
   `,
+  // 7: a module inside another (Kenil, 20 Oct), and who put it there: a kit's place gives way to
+  // the person's or Alpha's.
+  `
+  ALTER TABLE modules ADD COLUMN parent_id TEXT REFERENCES modules (id);
+  ALTER TABLE modules ADD COLUMN placed_by TEXT CHECK (placed_by IN ('kit', 'person', 'alpha'));
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

@@ -195,7 +195,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
     tool(
       'shape',
       [
-        'Make or change tables. Actions:',
+        'Make or change tables, and place modules. Actions:',
         'make_table: a table with its fields, in a module (made if it is not there yet); give module, table, fields.',
         'add_fields: give table and fields.',
         'rename: give table, and field if it is a field, and to.',
@@ -203,6 +203,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
         'remove_table: give table; if it holds the person’s own entries and they asked for it, asked_in quotes their words asking.',
         'save_view: a saved view of a table, shared by everyone, shown as a tab over it; give table, field (the view’s name; to renames it), view and default (true to open the table on it). A change names only what changes. Fields by name. view.kind: table, board, list, gallery, calendar, timeline, chart, form; filters { match: all or any, rules: [{ field, op, value, value2, values }] }: ops for text is, is_not, contains, not_contains, starts, ends; for numbers and money eq, ne, gt, lt, between (value, value2); for dates before, after, between, today, this_week, next_days (value: days); for a choice in (values); for any empty, not_empty. sorts [{ field, dir: asc or desc }] in order; group (a choice, text or date field); by (the date a calendar or timeline is laid on; a chart’s bars are by group, else by the months of by); measure (a number a chart adds up; none counts rows); hidden and order (fields); widths { field: px }; totals { field: sum, avg, min, max, count, empty, filled, unique, earliest, latest }; colours { tint: a choice whose colours tint rows, when: [{ field, op: gt, lt, eq, before or after, value, tone: good, warn, bad or accent }] }.',
         'remove_view: give table and field (the view’s name).',
+        'place_module: put a module inside another; give module and within (the module it goes inside; leave within out for the top level). A module never goes inside itself or one of its own.',
         `Field kinds: ${FIELD_KINDS.join(', ')}. A relation names the table it relates_to.`,
       ].join('\n'),
       {
@@ -214,9 +215,11 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
           'remove_table',
           'save_view',
           'remove_view',
+          'place_module',
         ]),
         module: z.string().optional(),
-        table: z.string(),
+        within: z.string().optional(),
+        table: z.string().optional(),
         fields: z.array(Field).optional(),
         field: z.string().optional(),
         to: z.string().optional(),
@@ -234,12 +237,20 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
             ...(f.choices ? { choices: f.choices } : {}),
             ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
           }))
+          if (a.action === 'place_module') {
+            if (!a.module) throw new Refused('place_module needs module.')
+            const m = world.shape.place(a.module, a.within?.trim() || null, c)
+            const parent = m.parent ? world.shape.module(m.parent) : undefined
+            return ok(`${m.name} is ${parent ? `inside ${parent.name}` : 'at the top level'}.`)
+          }
+          const table = a.table
+          if (!table) throw new Refused(`${a.action} needs table.`)
           switch (a.action) {
             case 'make_table': {
-              const moduleName = a.module?.trim() || a.table
+              const moduleName = a.module?.trim() || table
               const existing = world.shape.module(moduleName)
               const module = existing ?? world.shape.makeModule(moduleName, c)
-              const t = world.shape.makeTable(module.id, a.table, fields, c)
+              const t = world.shape.makeTable(module.id, table, fields, c)
               return ok(
                 `${existing ? '' : `Made the module ${module.name}. `}Made the table ${t.name} (view ${t.slug}) with ${
                   t.fields.map((f) => `${f.name} (${f.kind})`).join(', ') || 'no fields yet'
@@ -247,7 +258,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
               )
             }
             case 'add_fields': {
-              const t = world.shape.addFields(tableOf(world, a.table).id, fields, c)
+              const t = world.shape.addFields(tableOf(world, table).id, fields, c)
               return ok(
                 `${t.name} now has ${t.fields.map((f) => `${f.name} (${f.kind})`).join(', ')}.`,
               )
@@ -255,7 +266,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
             case 'rename': {
               if (!a.to) throw new Refused('rename needs to.')
               const t = world.shape.rename(
-                { table: tableOf(world, a.table).id, ...(a.field ? { field: a.field } : {}) },
+                { table: tableOf(world, table).id, ...(a.field ? { field: a.field } : {}) },
                 a.to,
                 c,
               )
@@ -263,17 +274,17 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
             }
             case 'set_choices': {
               if (!a.field || !a.choices) throw new Refused('set_choices needs field and choices.')
-              world.shape.setChoices(tableOf(world, a.table).id, a.field, a.choices, c)
+              world.shape.setChoices(tableOf(world, table).id, a.field, a.choices, c)
               return ok(`${a.field} now offers ${a.choices.join(', ')}.`)
             }
             case 'remove_table': {
-              const t = tableOf(world, a.table)
+              const t = tableOf(world, table)
               world.shape.removeTable(t.id, c)
               return ok(`Removed the table ${t.name}.`)
             }
             case 'save_view': {
               if (!a.field) throw new Refused('save_view needs field: the view’s name.')
-              const t = tableOf(world, a.table)
+              const t = tableOf(world, table)
               const was = world.views
                 .list(t.id)
                 .find((v) => v.name.toLowerCase() === a.field?.toLowerCase())
@@ -293,7 +304,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
               )
             }
             case 'remove_view': {
-              const t = tableOf(world, a.table)
+              const t = tableOf(world, table)
               const views = world.views.list(t.id)
               const v = views.find((x) => x.name.toLowerCase() === a.field?.toLowerCase())
               if (!v)

@@ -60,6 +60,60 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('shows modules inside modules, places one as the person’s word, and keeps the layout', async () => {
+    const alpha = { actor: { kind: 'alpha' as const } }
+    const shops = world.shape.makeModule('Shops', alpha)
+    const bakery = world.shape.makeModule('Bakery', alpha)
+    world.shape.makeTable(bakery.id, 'Orders', [{ name: 'Item', kind: 'text' }], alpha)
+    world.shape.makeModule('Empty', alpha)
+    const a = app()
+    const list = async () =>
+      (await a.inject({ url: '/api/modules', headers: ok })).json() as {
+        name: string
+        parent: string | null
+      }[]
+    // a module with nothing in sight stays out, until a module inside it has something
+    expect((await list()).map((m) => [m.name, m.parent])).toEqual([['Bakery', null]])
+    const placed = await a.inject({
+      method: 'POST',
+      url: `/api/modules/${bakery.id}/place`,
+      headers: ok,
+      payload: { within: shops.id },
+    })
+    expect(placed.json()).toEqual({ id: bakery.id, parent: shops.id })
+    expect(world.shape.placedBy(bakery.id)).toBe('person')
+    expect((await list()).map((m) => [m.name, m.parent])).toEqual([
+      ['Shops', null],
+      ['Bakery', shops.id],
+    ])
+    const view = (await a.inject({ url: `/api/modules/${shops.id}`, headers: ok })).json()
+    expect(view.modules.map((m: { name: string }) => m.name)).toEqual(['Bakery'])
+    const loop = await a.inject({
+      method: 'POST',
+      url: `/api/modules/${shops.id}/place`,
+      headers: ok,
+      payload: { within: bakery.id },
+    })
+    expect(loop.statusCode).toBe(409)
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
+      railFolded: false,
+      folded: [],
+      panel: null,
+    })
+    await a.inject({
+      method: 'POST',
+      url: '/api/layout',
+      headers: ok,
+      payload: { railFolded: true, folded: [shops.id], panel: 560 },
+    })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
+      railFolded: true,
+      folded: [shops.id],
+      panel: 560,
+    })
+    await a.close()
+  })
+
   it('shows a table with each value’s source in words', async () => {
     const user = world.owner('Kenil')
     const m = world.shape.makeModule('Food', { actor: { kind: 'alpha' } })

@@ -242,11 +242,14 @@ export class World {
   // Modules and tables with their row counts: the map in the start layer.
   map(): {
     module: string
+    within: string | null // the module it sits inside
     notes: string
     tables: { name: string; view: string; rows: number; fields: string[] }[]
   }[] {
-    return this.shape.modules().map((m) => ({
+    const modules = this.shape.modules()
+    return modules.map((m) => ({
       module: m.name,
+      within: modules.find((p) => p.id === m.parent)?.name ?? null,
       notes: join(m.dir, 'NOTES.md'),
       tables: this.shape.tables(m.id).map((t) => ({
         name: t.name,

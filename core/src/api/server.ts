@@ -29,6 +29,7 @@ import type {
   Health,
   HistoryView,
   InstructionView,
+  Layout,
   Me,
   ModelView,
   ModuleSummary,
@@ -101,13 +102,46 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   app.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => done(null, body))
 
+  const layoutOf = (): Layout => {
+    const folded = world.preference(user.id, 'rail_folded_modules')
+    const panel = Number(world.preference(user.id, 'panel_width'))
+    return {
+      railFolded: world.preference(user.id, 'rail_folded') === 'yes',
+      folded: folded ? (JSON.parse(folded) as string[]) : [],
+      panel: Number.isFinite(panel) && panel > 0 ? panel : null,
+    }
+  }
+
   app.get('/api/me', async (): Promise<Me> => {
     const theme = world.preference(user.id, 'theme')
     return {
       user: { id: user.id, name: user.name },
       tenant: world.tenant,
       theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
+      layout: layoutOf(),
     }
+  })
+
+  // How the person left the window: the rail, its folds, the side conversation's width.
+  app.post('/api/layout', async (req): Promise<Layout> => {
+    const given = z
+      .object({
+        railFolded: z.boolean().optional(),
+        folded: z.array(z.string()).optional(),
+        panel: z.number().int().positive().nullable().optional(),
+      })
+      .parse(req.body)
+    if (given.railFolded !== undefined)
+      world.setPreference(user.id, 'rail_folded', given.railFolded ? 'yes' : null)
+    if (given.folded !== undefined)
+      world.setPreference(
+        user.id,
+        'rail_folded_modules',
+        given.folded.length ? JSON.stringify(given.folded) : null,
+      )
+    if (given.panel !== undefined)
+      world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
+    return layoutOf()
   })
 
   app.post('/api/appearance', async (req) => {
@@ -211,22 +245,43 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     }
   })
 
-  app.get(
-    '/api/modules',
-    async (): Promise<ModuleSummary[]> =>
-      world.shape
-        .modules()
-        .map((m) => ({
-          id: m.id,
-          name: m.name,
-          pages: pagesOf(m),
-          tables: world.shape
-            .tables(m.id)
-            .filter((t) => !t.hidden)
-            .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
-        }))
-        .filter((m) => m.tables.length > 0),
-  )
+  // The modules the window shows: each with a page or a table in sight, and the modules they sit
+  // inside (a module only of a connection's hidden tables stays out).
+  const summaries = (): ModuleSummary[] => {
+    const all = world.shape.modules().map((m) => ({
+      id: m.id,
+      name: m.name,
+      parent: m.parent,
+      pages: pagesOf(m),
+      tables: world.shape
+        .tables(m.id)
+        .filter((t) => !t.hidden)
+        .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
+    }))
+    const shown = new Set<string>()
+    for (const m of all) {
+      if (!m.tables.length && !m.pages.length) continue
+      for (let p: ModuleSummary | undefined = m; p && !shown.has(p.id); ) {
+        shown.add(p.id)
+        p = all.find((x) => x.id === p?.parent)
+      }
+    }
+    return all.filter((m) => shown.has(m.id))
+  }
+
+  app.get('/api/modules', async (): Promise<ModuleSummary[]> => summaries())
+
+  // A module inside another, or at the top level: the person's word, kept over a kit's.
+  app.post('/api/modules/:id/place', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { within } = z.object({ within: z.string().nullable() }).parse(req.body)
+    const m = world.shape.place(id, within, {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { id: m.id, parent: m.parent }
+  })
 
   // In the sidebar or out of it (Settings › Connections).
   app.post('/api/tables/:id/sidebar', async (req) => {
@@ -708,11 +763,19 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       })),
       sites: moduleNetwork(m).length,
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
+      parent: m.parent,
       pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
         .filter((t) => !t.hidden)
         .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
+      modules: summaries()
+        .filter((c) => c.parent === m.id)
+        .map((c) => ({
+          ...c,
+          kit: installedKits(world).find((x) => x.module === c.id)?.kit ?? null,
+          agents: agents(world, c.id).filter((a) => a.state === 'on').length,
+        })),
     }
   })
 

@@ -199,3 +199,60 @@ describe('updating a kit', () => {
     ])
   })
 })
+
+describe('a module inside another', () => {
+  const kitWithin = (version: string, within: string | null) => {
+    const dir = join(home, `kit-${version}`)
+    cpSync(KIT, dir, { recursive: true })
+    const yaml = readFileSync(join(KIT, 'module.yaml'), 'utf8').replace(
+      'version: 0.1.0',
+      `version: ${version}${within ? `\nwithin: ${within}` : ''}`,
+    )
+    writeFileSync(join(dir, 'module.yaml'), yaml)
+    return dir
+  }
+
+  it('goes inside the module its kit names, made empty when there is none', async () => {
+    const m = await install(world, kitWithin('0.1.0', 'Shops'), ctx)
+    const shops = world.shape.module('Shops')
+    expect(shops && world.shape.tables(shops.id)).toEqual([])
+    expect(world.shape.module(m.id)?.parent).toBe(shops?.id)
+    expect(world.shape.placedBy(m.id)).toBe('kit')
+    expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('within: Shops')
+    expect(world.lines({ kinds: ['shaped'] }).map((l) => l.words)).toContain(
+      'Put Bakery inside Shops.',
+    )
+  })
+
+  it('keeps where the person put it over the kit’s place on update', async () => {
+    const m = await install(world, kitWithin('0.1.0', 'Shops'), ctx)
+    world.shape.makeModule('Kitchen', ctx)
+    world.shape.place(m.id, 'Kitchen', ctx)
+    await update(world, 'Bakery', kitWithin('0.2.0', 'Shops'), ctx)
+    expect(world.shape.module(m.id)?.parent).toBe(world.shape.module('Kitchen')?.id)
+    expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('within: Kitchen')
+  })
+
+  it('moves an untouched module where a newer kit says', async () => {
+    const m = await install(world, kitWithin('0.1.0', null), ctx)
+    expect(world.shape.module(m.id)?.parent).toBeNull()
+    await update(world, 'Bakery', kitWithin('0.2.0', 'Shops'), ctx)
+    expect(world.shape.module(m.id)?.parent).toBe(world.shape.module('Shops')?.id)
+  })
+
+  it('never sits inside itself or one of its own modules', async () => {
+    const a = world.shape.makeModule('A', ctx)
+    const b = world.shape.makeModule('B', ctx)
+    const c = world.shape.makeModule('C', ctx)
+    world.shape.place(b.id, a.id, ctx)
+    world.shape.place(c.id, b.id, ctx)
+    expect(() => world.shape.place(a.id, a.id, ctx)).toThrow(/inside itself/)
+    expect(() => world.shape.place(a.id, c.id, ctx)).toThrow(/C is inside A/)
+    expect(world.shape.within(a.id)).toEqual([a.id, b.id, c.id])
+    world.shape.place(c.id, null, ctx)
+    expect(world.shape.module(c.id)?.parent).toBeNull()
+    expect(world.lines({ kinds: ['shaped'] }).at(-1)?.words).toBe(
+      'Moved C out of B, to the top level.',
+    )
+  })
+})

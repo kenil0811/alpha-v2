@@ -13,7 +13,13 @@ export interface Module {
   name: string
   slug: string
   dir: string
+  parent: string | null // the module it sits inside, or none at the top level
 }
+
+// Who put a module where it is: a kit's place gives way to the person's or Alpha's on update.
+export type PlacedBy = 'kit' | 'person' | 'alpha'
+
+type ModuleRow = { id: string; name: string; slug: string; parent_id: string | null }
 
 export interface Field {
   id: string
@@ -103,22 +109,94 @@ export class Shape {
     this.modulesDir = modulesDir
   }
 
+  private asModule(m: ModuleRow): Module {
+    return {
+      id: m.id,
+      name: m.name,
+      slug: m.slug,
+      dir: join(this.modulesDir, m.slug),
+      parent: m.parent_id,
+    }
+  }
+
   modules(): Module[] {
-    return all<{ id: string; name: string; slug: string }>(
+    return all<ModuleRow>(
       this.db,
-      'SELECT id, name, slug FROM modules ORDER BY created_at',
-    ).map((m) => ({ ...m, dir: join(this.modulesDir, m.slug) }))
+      'SELECT id, name, slug, parent_id FROM modules ORDER BY created_at',
+    ).map((m) => this.asModule(m))
   }
 
   module(idOrName: string): Module | undefined {
-    const m = one<{ id: string; name: string; slug: string }>(
+    const m = one<ModuleRow>(
       this.db,
-      'SELECT id, name, slug FROM modules WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, name, slug, parent_id FROM modules WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
     )
-    return m ? { ...m, dir: join(this.modulesDir, m.slug) } : undefined
+    return m ? this.asModule(m) : undefined
+  }
+
+  placedBy(moduleId: string): PlacedBy | null {
+    return (
+      one<{ placed_by: PlacedBy | null }>(
+        this.db,
+        'SELECT placed_by FROM modules WHERE id = ?',
+        moduleId,
+      )?.placed_by ?? null
+    )
+  }
+
+  // A module inside another, or at the top level (within: null). Never inside itself or inside one
+  // of its own modules. Who placed it is kept from the actor: a kit, the person or Alpha.
+  place(moduleId: string, within: string | null, ctx: WriteCtx): Module {
+    return tx(this.db, () => {
+      const m = this.module(moduleId)
+      if (!m) throw new Refused('That module is not there.')
+      const parent = within ? this.module(within) : null
+      if (within && !parent) throw new Refused(`There is no module called ${within}.`)
+      if (parent?.id === m.id) throw new Refused(`${m.name} cannot sit inside itself.`)
+      for (let p = parent; p?.parent; p = this.module(p.parent) ?? null)
+        if (p.parent === m.id)
+          throw new Refused(
+            `${parent?.name} is inside ${m.name}, so ${m.name} cannot sit inside it.`,
+          )
+      const by: PlacedBy =
+        ctx.actor.kind === 'person' ? 'person' : ctx.actor.kind === 'system' ? 'kit' : 'alpha'
+      const was = m.parent ? this.module(m.parent) : undefined
+      run(
+        this.db,
+        'UPDATE modules SET parent_id = ?, placed_by = ? WHERE id = ?',
+        parent?.id ?? null,
+        by,
+        m.id,
+      )
+      if ((was?.id ?? null) !== (parent?.id ?? null))
+        append(this.db, {
+          actor: ctx.actor,
+          kind: 'shaped',
+          words: parent
+            ? `Put ${m.name} inside ${parent.name}.`
+            : `Moved ${m.name} out of ${was?.name}, to the top level.`,
+          data: { module: m.id, within: parent?.id ?? null, was: was?.id ?? null },
+          user: ctx.user ?? null,
+          turn: ctx.turn ?? null,
+          module: m.id,
+          run: ctx.run ?? null,
+        })
+      const placed = this.module(m.id) as Module
+      this.writeManifest(placed)
+      return placed
+    })
+  }
+
+  // A module and every module inside it, at any depth.
+  within(moduleId: string): string[] {
+    const all = this.modules()
+    const out = [moduleId]
+    for (let i = 0; i < out.length; i++)
+      for (const m of all) if (m.parent === out[i] && !out.includes(m.id)) out.push(m.id)
+    return out
   }
 
   makeModule(name: string, ctx: WriteCtx): Module {
@@ -149,7 +227,7 @@ export class Shape {
         module: id,
         run: ctx.run ?? null,
       })
-      const m = { id, name: name.trim(), slug, dir: join(this.modulesDir, slug) }
+      const m = { id, name: name.trim(), slug, dir: join(this.modulesDir, slug), parent: null }
       mkdirSync(m.dir, { recursive: true })
       const notes = join(m.dir, 'NOTES.md')
       if (!existsSync(notes)) writeFileSync(notes, `# ${m.name}\n`)
@@ -472,9 +550,13 @@ export class Shape {
     const kept = existsSync(file)
       ? ((parseYaml(readFileSync(file, 'utf8')) ?? {}) as Record<string, unknown>)
       : {}
+    // where it sits, by the other module's name, so the folder says it too
+    const { within: _within, ...rest } = kept
+    const parent = m.parent ? this.module(m.parent) : undefined
     const manifest = {
       name: m.name,
-      ...kept,
+      ...(parent ? { within: parent.name } : {}),
+      ...rest,
       tables: this.tables(m.id).map((t) => ({
         name: t.name,
         fields: t.fields.map((f) => ({

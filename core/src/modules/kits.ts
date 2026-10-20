@@ -28,6 +28,8 @@ const Manifest = z.object({
   name: z.string().min(1),
   version: z.string().min(1),
   description: z.string().optional(),
+  // the module it sits inside, by name; made empty when there is none (Kenil, 20 Oct)
+  within: z.string().min(1).optional(),
   tables: z
     .array(
       z.object({
@@ -252,6 +254,17 @@ function landSetup(
   return { landed, kept }
 }
 
+// Where the kit puts its module: inside the module it names, made empty when there is none. On
+// update the kit's place stands only while nobody else has placed the module.
+function placeModule(world: World, module: Module, within: string | undefined, ctx: WriteCtx) {
+  const by = world.shape.placedBy(module.id)
+  if (by === 'person' || by === 'alpha') return
+  if (!within && by !== 'kit') return
+  const parent = within ? (world.shape.module(within) ?? world.shape.makeModule(within, ctx)) : null
+  if ((parent?.id ?? null) !== module.parent || by !== 'kit')
+    world.shape.place(module.id, parent?.id ?? null, ctx)
+}
+
 function currentRowHash(world: World, recordId: string): string | null {
   const r = one<{ vals: string }>(world.db, 'SELECT vals FROM records WHERE id = ?', recordId)
   return r ? rowHash(JSON.parse(r.vals)) : null
@@ -284,6 +297,7 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
       )
     }
     copyFileSync(join(kitDir, 'module.yaml'), join(m.dir, 'module.yaml'))
+    placeModule(world, m, manifest.within, kitCtx)
     shapeTables(world, m, manifest, kitCtx)
     shapeViews(world, manifest, kitCtx)
     const rows = landSetup(world, setup, kitName, kitCtx, () => true)
@@ -308,7 +322,7 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
     })
     return m
   })
-  world.shape.writeManifest(module)
+  world.shape.writeManifest(world.shape.module(module.id) as Module)
   await commitAll(module.dir, `Installed ${kitName}`)
   return module
 }
@@ -381,6 +395,7 @@ export async function update(
         fresh,
       )
     }
+    placeModule(world, module, manifest.within, kitCtx)
     shapeTables(world, module, manifest, kitCtx)
     shapeViews(world, manifest, kitCtx)
     const rows = landSetup(world, setup, kitName, kitCtx, (recordId) => {
@@ -412,7 +427,7 @@ export async function update(
     })
     return out
   })
-  world.shape.writeManifest(module)
+  world.shape.writeManifest(world.shape.module(module.id) as Module)
   await commitAll(module.dir, `Updated ${kitName}`)
   return report
 }

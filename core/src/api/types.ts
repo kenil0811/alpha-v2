@@ -9,6 +9,15 @@ export interface Me {
   user: { id: string; name: string }
   tenant: string
   theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
+  layout: Layout
+}
+
+// How the person left the window: the rail folded to icons or not, the modules folded in it, and
+// the side conversation's width (none: its usual 320px). Kept by Alpha, per person.
+export interface Layout {
+  railFolded: boolean
+  folded: string[]
+  panel: number | null
 }
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
@@ -71,6 +80,7 @@ export interface TableSummary {
 export interface ModuleSummary {
   id: string
   name: string
+  parent: string | null // the module it sits inside
   pages: PageSummary[]
   tables: TableSummary[]
 }
@@ -252,8 +262,10 @@ export interface ModuleView {
   agents: AgentView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written
+  parent: string | null
   pages: PageSummary[]
   tables: TableSummary[]
+  modules: (ModuleSummary & { kit: string | null; agents: number })[] // the modules inside it
 }
 
 // What Alpha remembers: the standing instructions the person gave, for them or for everyone.

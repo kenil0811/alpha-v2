@@ -28,7 +28,7 @@ export function startLayer(
   parts.push('## Modules and tables')
   if (!map.length) parts.push('None yet.')
   for (const m of map) {
-    parts.push(`### ${m.module}`)
+    parts.push(`### ${m.module}${m.within ? ` (inside ${m.within})` : ''}`)
     const notes = readWhole(m.notes)
     if (notes && notes.split('\n').length > 1) parts.push(`Notes:\n${notes}`)
     for (const t of m.tables)
