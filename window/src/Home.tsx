@@ -3,7 +3,14 @@
 // inline, folding to one line once answered. Work shows as one live message, with Stop, that
 // becomes the outcome. A topic chip is a lens: the stream keeps to that module. Above the
 // composer, the Now strip: what is running and what waits on the person, three at most.
-import type { AboutRows, CardView, LiveEvent, Stream } from '@alpha/core/api'
+import type {
+  AboutRows,
+  CardView,
+  ConnectorsView,
+  LiveEvent,
+  Stream,
+  WorkingModuleView,
+} from '@alpha/core/api'
 import {
   ArrowUp,
   Bot,
@@ -30,7 +37,7 @@ import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
-import { Topic } from './ui/pill.tsx'
+import { Label, Topic } from './ui/pill.tsx'
 import { Words } from './ui/words.tsx'
 
 export interface Live {
@@ -127,13 +134,21 @@ export function Home({
             compact ? 'px-4 pt-4 pb-3 text-md' : 'max-w-196 px-8 pt-7 pb-5',
           )}
         >
-          {items.length === 0 && (
-            <p className="pt-24 text-center text-ink-3">
-              {lens
-                ? `Nothing about ${lens.name} yet.`
-                : 'Say what you want kept, tracked or done.'}
-            </p>
-          )}
+          {items.length === 0 &&
+            (lens || compact ? (
+              <p className="pt-24 text-center text-ink-3">
+                {lens
+                  ? `Nothing about ${lens.name} yet.`
+                  : 'Say what you want kept, tracked or done.'}
+              </p>
+            ) : (
+              <Welcome
+                onTry={(w) => {
+                  setWords(w)
+                  composer.current?.focus()
+                }}
+              />
+            ))}
           {items.map((item) => {
             const day = dayOf(item.at)
             const line = day !== lastDay
@@ -264,7 +279,9 @@ function AnsweredLine({ answered }: { answered: Answered }) {
       {no ? <X className="size-4 shrink-0" /> : <Check className="size-4 shrink-0" />}
       <span className="shrink-0 font-medium">{saidOf(answered.words)}</span>
       <span className="min-w-0 flex-1 truncate opacity-80">{restOf(answered.words)}</span>
-      <span className="shrink-0 text-sm opacity-80">{clock(answered.at)}</span>
+      <span className="shrink-0 text-sm opacity-80">
+        {answered.done ? `Done at ${clock(answered.done)}` : clock(answered.at)}
+      </span>
     </div>
   )
 }
@@ -510,6 +527,130 @@ const GATE: Record<string, string> = {
   sign_in: 'Sign-in',
 }
 
+// What a card would send, as it will go: a message's head (From, To, Subject…) laid out, then its
+// body. Anything without such a head is shown as written.
+export function Preview({ detail }: { detail: string }) {
+  const [head, ...rest] = detail.split('\n\n')
+  const lines = (head ?? '').split('\n')
+  const fields = lines.map((l) => /^([A-Z][A-Za-z-]{0,12}):\s(.*)$/.exec(l))
+  if (!fields.length || fields.some((f) => !f))
+    return (
+      <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
+        {detail}
+      </div>
+    )
+  return (
+    <div className="rounded-md border border-hair bg-canvas text-md">
+      <dl className="grid grid-cols-[3.75rem_1fr] gap-x-2.5 gap-y-0.75 border-hair border-b px-3 py-2.5">
+        {fields.map((f) =>
+          f ? (
+            <div key={f[1]} className="contents">
+              <dt className="text-ink-3">{f[1]}</dt>
+              <dd className="min-w-0 break-words text-ink">{f[2]}</dd>
+            </div>
+          ) : null,
+        )}
+      </dl>
+      {rest.length > 0 && (
+        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap px-3 py-2.5 text-ink leading-relaxed">
+          {rest.join('\n\n')}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// First open: the composer first, a few ways to start, and three setup rows, none of which
+// stands in the way of talking.
+function Welcome({ onTry }: { onTry: (words: string) => void }) {
+  const [view, setView] = useState<{ gmail: boolean; folder: boolean; kit: boolean } | null>(null)
+  useEffect(() => {
+    Promise.all([
+      api.get<ConnectorsView>('/api/connectors'),
+      api.get<WorkingModuleView[]>('/api/working'),
+    ]).then(
+      ([c, w]) =>
+        setView({
+          gmail: c.connections.some((k) => k.connector === 'gmail'),
+          folder: c.connections.some((k) => k.connector === 'folder'),
+          kit: w.some((m) => m.kit),
+        }),
+      () => setView(null),
+    )
+  }, [])
+  const TRIES = [
+    'Track something for me',
+    'Read the files in a folder',
+    'Watch a website’s listings',
+    'Who emailed me this week?',
+  ]
+  const setup = [
+    {
+      done: view?.gmail,
+      words: 'Connect Gmail',
+      sub: 'So Alpha can read and draft your mail',
+      href: '#/settings?connect=gmail',
+    },
+    {
+      done: view?.folder,
+      words: 'Add a folder',
+      sub: 'Exports and documents, read where they are',
+      href: '#/settings?connect=folder',
+    },
+    {
+      done: view?.kit,
+      words: 'Install a kit',
+      sub: 'A module made for your work, like DealPilot',
+      href: '#/settings',
+    },
+  ]
+  return (
+    <div className="flex flex-col gap-4.5 pt-12">
+      <h1 className="text-2xl text-ink">What should Alpha keep for you?</h1>
+      <p className="max-w-prose text-ink-2">
+        Say it in a sentence below. Alpha makes the tables, reads what you point it at, and asks
+        before anything leaves your Mac.
+      </p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Label className="mr-1">Or start with</Label>
+        {TRIES.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onTry(t)}
+            className="h-7 rounded-full border border-line bg-surface px-2.75 text-ink-2 text-sm transition-colors hover:border-accent-line hover:text-accent"
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+        {setup.map((s) => (
+          <a
+            key={s.words}
+            href={s.href}
+            className="flex items-center gap-3 border-hair border-t px-4 py-3 first:border-t-0 hover:bg-hover"
+          >
+            <span
+              className={cn(
+                'grid size-5 shrink-0 place-items-center rounded-full border',
+                s.done ? 'border-good bg-good text-surface' : 'border-line',
+              )}
+            >
+              {s.done && <Check className="size-3" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-medium text-ink">{s.words}</span>
+              <span className="block text-ink-3 text-sm">{s.sub}</span>
+            </span>
+            <ChevronRight className="size-4 text-ink-3" />
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // How an option reads on its button: a plain No is Not now.
 const optionWords = (o: string) => (o === 'No' ? 'Not now' : o)
 
@@ -543,10 +684,9 @@ function CardBox({
       waits="Waits for you"
     >
       <div className="font-medium text-ink text-lg">{card.words}</div>
-      {card.detail && (
-        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
-          {card.detail}
-        </div>
+      {card.detail && <Preview detail={card.detail} />}
+      {card.restsOn.length > 0 && (
+        <div className="text-ink-3 text-sm">Rests on {card.restsOn.join(' and ')}</div>
       )}
       {card.cannotUndo && (
         <div className="flex items-center gap-1.5 text-sm text-warn">

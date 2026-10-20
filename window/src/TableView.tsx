@@ -10,7 +10,7 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table'
-import { ExternalLink, FileText, Search } from 'lucide-react'
+import { ExternalLink, FileText, ListFilter, Plus, Search, X } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
@@ -37,6 +37,14 @@ const KIND_WORDS: Record<SourceView['kind'], string> = {
   estimated: 'Estimated',
   assumed: 'Assumed',
   computed: 'Computed',
+}
+
+// A choice that is a state shows as a dot in its colour, with its words.
+const DOT: Record<string, string> = {
+  good: 'bg-good',
+  warn: 'bg-warn',
+  bad: 'bg-bad',
+  accent: 'bg-accent',
 }
 
 // The marks on a value Alpha is not sure of: ≈ estimated, ? assumed.
@@ -92,6 +100,9 @@ export function TableView({
     openRow ? { row: openRow, field: data.fields[0]?.slug ?? '' } : null,
   )
   const [words, setWords] = useState('')
+  // filters: a choice field set to one of its choices, each a chip with ×
+  const [filters, setFilters] = useState<{ field: string; value: string }[]>([])
+  const [adding, setAdding] = useState(false)
   // the board groups by Stage when there is one, else by the first choice
   const groupBy =
     data.fields.find((f) => f.kind === 'choice' && f.name === 'Stage') ??
@@ -104,15 +115,23 @@ export function TableView({
   const w = words.trim().toLowerCase()
   const rows = useMemo(
     () =>
-      w
-        ? data.rows.filter((r) =>
+      data.rows
+        .filter(
+          (r) =>
+            !w ||
             data.fields.some((f) =>
               show(f, r.values[f.slug], data.names).toLowerCase().includes(w),
             ),
-          )
-        : data.rows,
-    [data, w],
+        )
+        .filter((r) =>
+          filters.every((fl) => {
+            const f = data.fields.find((x) => x.name === fl.field)
+            return f && r.values[f.slug] === fl.value
+          }),
+        ),
+    [data, w, filters],
   )
+  const choiceFields = data.fields.filter((f) => f.kind === 'choice' && f.choices.length)
   const first = data.fields[0]?.slug
   const columns = useMemo(
     () =>
@@ -143,6 +162,11 @@ export function TableView({
                     NUMERIC.has(f.kind) ? (
                       <span className="text-ink-3">None given</span>
                     ) : null
+                  ) : f.kind === 'choice' && f.tones[text] ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={cn('size-1.75 rounded-full', DOT[f.tones[text]])} />
+                      {text}
+                    </span>
                   ) : f.kind === 'choice' ? (
                     <Pill>{text}</Pill>
                   ) : (
@@ -188,6 +212,30 @@ export function TableView({
               className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
             />
           </label>
+          {filters.map((fl) => (
+            <span
+              key={`${fl.field}${fl.value}`}
+              className="inline-flex h-7.5 items-center gap-1 rounded-md border border-accent-line bg-accent-soft pr-1 pl-2.5 text-accent text-md"
+            >
+              {fl.field}: {fl.value}
+              <button
+                type="button"
+                aria-label={`Remove the filter ${fl.field}: ${fl.value}`}
+                onClick={() => setFilters((fs) => fs.filter((x) => x !== fl))}
+                className="grid size-5 place-items-center rounded-sm hover:bg-accent-line/40"
+              >
+                <X className="size-3.25" />
+              </button>
+            </span>
+          ))}
+          {choiceFields.length > 0 && (
+            <FilterButton
+              fields={choiceFields}
+              onPick={(field, value) =>
+                setFilters((fs) => [...fs.filter((x) => x.field !== field), { field, value }])
+              }
+            />
+          )}
           <span className="text-ink-3 text-sm">
             {rows.length === data.rows.length
               ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
@@ -205,6 +253,10 @@ export function TableView({
               ]}
             />
           )}
+          <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
+            <Plus className="size-3.25" />
+            Add a row
+          </Button>
         </div>
         {data.rows.length === 0 ? (
           <p className="px-7 text-ink-3">No rows yet.</p>
@@ -264,7 +316,15 @@ export function TableView({
           </div>
         )}
       </div>
-      {!quiet && pickedRow && pickedField && (
+      {adding && !quiet && (
+        <AddRow
+          tableId={data.id}
+          name={data.name}
+          fields={data.fields.filter((f) => CORRECTABLE.has(f.kind))}
+          onClose={() => setAdding(false)}
+        />
+      )}
+      {!adding && !quiet && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
           row={pickedRow}
@@ -405,6 +465,11 @@ function SourcePanel({
               <span className="text-ink-3 text-sm">{when(source.at)}</span>
             </div>
             <p className="text-ink text-md leading-relaxed">{source.words}</p>
+            {source.note && (
+              <div className="whitespace-pre-wrap rounded-md bg-sunk px-3 py-2.5 font-mono text-ink text-sm tabular-nums leading-relaxed">
+                {source.note}
+              </div>
+            )}
           </>
         ) : (
           <p className="text-ink-3 text-md">Nothing is kept here yet.</p>
@@ -545,5 +610,129 @@ function Correct({
         </Button>
       </div>
     </form>
+  )
+}
+
+// + Filter: a choice field, then one of its choices.
+function FilterButton({
+  fields,
+  onPick,
+}: {
+  fields: FieldView[]
+  onPick: (field: string, value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [field, setField] = useState<FieldView | null>(null)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((o) => !o)
+          setField(null)
+        }}
+        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line border-dashed px-2.5 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+      >
+        <ListFilter className="size-3.25" />
+        Filter
+      </button>
+      {open && (
+        <div className="absolute top-8.5 left-0 z-30 min-w-48 overflow-hidden rounded-md border border-line bg-surface p-1 shadow-pop">
+          {(field ? field.choices : fields.map((f) => f.name)).map((o) => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => {
+                if (!field) setField(fields.find((f) => f.name === o) ?? null)
+                else {
+                  onPick(field.name, o)
+                  setOpen(false)
+                }
+              }}
+              className="flex h-7.5 w-full items-center rounded-sm px-2.5 text-left text-ink text-md hover:bg-hover"
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Add a row: the person's own values, each saved as theirs.
+function AddRow({
+  tableId,
+  name,
+  fields,
+  onClose,
+}: {
+  tableId: string
+  name: string
+  fields: FieldView[]
+  onClose: () => void
+}) {
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [problem, setProblem] = useState<string | null>(null)
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setProblem(null)
+    const read: Record<string, unknown> = {}
+    for (const f of fields) {
+      const t = (values[f.name] ?? '').trim()
+      if (!t) continue
+      const n = Number(t.replace(/[$,\s]/g, ''))
+      if ((f.kind === 'money' || f.kind === 'number') && Number.isNaN(n)) {
+        setProblem(`${f.name} is not a number.`)
+        return
+      }
+      read[f.name] =
+        f.kind === 'money' ? { amount: n, currency: 'USD' } : f.kind === 'number' ? n : t
+    }
+    try {
+      await api.post(`/api/tables/${tableId}/rows`, { values: read })
+      onClose()
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That row was not added.')
+    }
+  }
+  return (
+    <SidePanel title={`Add a row to ${name}`} onClose={onClose}>
+      <form onSubmit={save} className="flex flex-col gap-3 p-4.5">
+        {fields.map((f) => (
+          <label key={f.id} className="flex flex-col gap-1 text-md" htmlFor={`add-${f.id}`}>
+            <span className="text-ink-2">{f.name}</span>
+            {f.kind === 'choice' ? (
+              <Select
+                id={`add-${f.id}`}
+                value={values[f.name] ?? ''}
+                onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+              >
+                <option value="" />
+                {f.choices.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </Select>
+            ) : (
+              <Field
+                id={`add-${f.id}`}
+                type={f.kind === 'date' ? 'date' : 'text'}
+                value={values[f.name] ?? ''}
+                onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+              />
+            )}
+          </label>
+        ))}
+        {problem && <div className="text-bad text-sm">{problem}</div>}
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" variant="primary">
+            Add it
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </SidePanel>
   )
 }

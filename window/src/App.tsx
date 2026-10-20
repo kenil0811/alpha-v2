@@ -1,7 +1,7 @@
 // The window (design §14): the rail, a bar over each screen, and the screen: Home (the stream),
 // Activity, Settings or a module (its tables, conversation, agents and notes). On a module's
 // screen, Ask (⌘J) opens its conversation on the right.
-import type { LiveEvent, ModuleSummary, Stream, TableView as TableData } from '@alpha/core/api'
+import type { LiveEvent, Me, ModuleSummary, Stream, TableView as TableData } from '@alpha/core/api'
 import { Activity as ActivityIcon, Briefcase, House, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
@@ -13,6 +13,7 @@ import { Settings } from './Settings.tsx'
 import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
+import { applyTheme } from './theme.ts'
 import { SidePanel } from './ui/side-panel.tsx'
 
 function placeOf(hash: string): Place {
@@ -107,8 +108,12 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    api.get<{ user: { name: string } }>('/api/me').then(
-      (me) => setName(me.user.name),
+    api.get<Me>('/api/me').then(
+      (me) => {
+        setName(me.user.name)
+        // the look Alpha keeps for this person wins over this browser's copy
+        applyTheme(me.theme)
+      },
       () => undefined,
     )
   }, [])

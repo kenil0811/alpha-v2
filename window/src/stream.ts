@@ -18,6 +18,7 @@ export interface Answered {
   words: string
   state: string
   at: string
+  done: string | null // when the yes went ahead
 }
 
 export type Item =
@@ -102,8 +103,18 @@ export function group(lines: StreamLine[]): Item[] {
     }
     if (l.kind === 'card_closed') {
       if (l.card)
-        closed.set(l.card, { words: l.words, state: String(l.data.state ?? ''), at: l.at })
+        closed.set(l.card, {
+          words: l.words,
+          state: String(l.data.state ?? ''),
+          at: l.at,
+          done: closed.get(l.card)?.done ?? null,
+        })
       else items.push({ kind: 'note', id: l.id, words: l.words, tone: 'plain', at: l.at })
+      continue
+    }
+    if (l.kind === 'card_used') {
+      const c = l.card ? closed.get(l.card) : undefined
+      if (c && l.card) closed.set(l.card, { ...c, done: l.at })
       continue
     }
     if (!l.turn) {

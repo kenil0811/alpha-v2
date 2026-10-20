@@ -164,3 +164,33 @@ Step 7 committed and pushed (7ffe5c9).
 
 Screenshots: the thread reached its 24 attached files, so shots go into the thread as links to the
 project's files.
+
+## Step 9: closing the gaps (uncommitted, for Kenil's review)
+
+Step 8 committed and pushed (87c64d4). Kenil asked whether the window matched the agreed design;
+it did not, and he took the order: the buildable gaps first, then DealPilot's listing status,
+pages, Accounting, Always, People.
+
+- **Cards say what they do.** A gate card's buttons name the act and its way out: Send it / Not
+  now for mail (the connector's preview gives the words), Go ahead, Remove them, Sign in, Let it
+  read for a reader's new site. A plain "Yes" or "No" still answers. The card shows what it rests
+  on (the person's message, or the run that asked), the mail as To and Subject over its body,
+  and, once the call went through, "Done at" with a journal line (`card_used`).
+- **First open:** with nothing in the world, Home asks what Alpha should keep, offers four
+  sentences to start from and three setup rows (Gmail, a folder, a kit), each ticked when done.
+- **Tables:** a choice may give each choice a tone (good, warn, bad, accent), shown as a dot and
+  its words; a kit sets tones in `module.yaml`. Filter by a choice's value, as chips. Add a row
+  in the side panel; each value is the person's, journaled. A computed value may carry a note
+  (the figuring, line by line), shown in the source panel; `rows.compute` takes notes and
+  `rows.list` returns them, so a script can tell when only the note changed.
+- **Find (⌘K)** finds rows too, by their words, after screens and tables.
+- **Settings:** a connection that needs signing in again says so with a Sign in button;
+  Appearance is kept by Alpha per person (a `preferences` table, migration 5), so it follows the
+  person to the Mac shell and another browser.
+- **DealPilot 0.1.1** (alpha-avilo): Fit is a choice with tones; Figures writes a note for each
+  figure (margin, multiples, Loan needed, Debt service, SDE after debt service) and for Fit (each
+  gate passed, failed or not known).
+  The test copy was updated from the folder; Figures refigured all 48 deals with notes.
+
+Checked: 70 tests pass; 48 standard shots plus close-ups (`.data/shots/step-9`) in WebKit,
+light and dark; the first open on a fresh core (port 4720, since stopped).

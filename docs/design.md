@@ -379,6 +379,9 @@ right, and a message asked there carries the module.
 Built so far: a table opens as a table or, when it has a choice to group by, a board; a choice set
 in the window (a board's column, a Home line's Pass) is the person's word, journaled, and the
 value's source.
+A choice may give its choices tones, drawn as a dot; a table filters by a choice's value; a row
+added in the window is the person's; a computed value may carry its figuring as a note. Find (⌘K)
+finds rows too. Appearance is kept per person in the world.
 
 On a Mac the core listens on loopback and the shell passes it a per-install token. Hosted, the
 window signs in with better-auth.

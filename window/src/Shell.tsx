@@ -2,7 +2,7 @@
 // has the mark, Home with a badge for what waits on the person, Activity, the modules as a tree
 // of their tables, Settings and Alpha's state at its foot. Its top 48px is left for the Mac's
 // window buttons when the window has a shell of its own.
-import type { ModuleSummary } from '@alpha/core/api'
+import type { FoundRow, ModuleSummary } from '@alpha/core/api'
 import {
   Activity,
   Briefcase,
@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { api } from './api.ts'
 import { cn } from './ui/cn.ts'
 import { Kbd } from './ui/pill.tsx'
 
@@ -287,12 +288,29 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
     [modules],
   )
   const w = words.trim().toLowerCase()
+  // rows whose words match, from the core, a moment after typing stops
+  const [rows, setRows] = useState<FoundRow[]>([])
+  useEffect(() => {
+    if (w.length < 2) {
+      setRows([])
+      return
+    }
+    const t = setTimeout(() => {
+      api
+        .get<FoundRow[]>(`/api/find?words=${encodeURIComponent(w)}`)
+        .then(setRows, () => setRows([]))
+    }, 180)
+    return () => clearTimeout(t)
+  }, [w])
   // a name that starts with the words first, then one that holds them, then its module's
   const score = (p: { label: string; hint: string }) => {
     const l = p.label.toLowerCase()
     return l.startsWith(w) ? 0 : l.includes(w) ? 1 : p.hint.toLowerCase().includes(w) ? 2 : 3
   }
-  const found = w ? places.filter((p) => score(p) < 3).sort((a, b) => score(a) - score(b)) : places
+  const found = [
+    ...(w ? places.filter((p) => score(p) < 3).sort((a, b) => score(a) - score(b)) : places),
+    ...rows,
+  ]
   const go = (href: string | undefined) => {
     if (href) window.location.hash = href
     onClose()
@@ -312,7 +330,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
           <input
             ref={input}
             value={words}
-            placeholder="Find a screen or a table"
+            placeholder="Find a screen, a table or a row"
             aria-label="Find"
             className="h-11 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
             onChange={(e) => {

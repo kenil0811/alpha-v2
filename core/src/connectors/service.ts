@@ -36,6 +36,7 @@ export interface ServiceOptions {
 export interface Preview {
   words: string
   detail?: string
+  yes?: string // the card's yes in its own words (Send it)
 }
 
 export function connectorOf(name: string): Connector {

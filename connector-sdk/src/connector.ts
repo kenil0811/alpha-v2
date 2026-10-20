@@ -75,7 +75,7 @@ export interface Tool<S extends z.ZodRawShape = z.ZodRawShape> {
   input: S
   effect: Effect | ((input: z.infer<z.ZodObject<S>>) => Effect)
   // What a card shows when the call waits on one: a line, and the whole of it.
-  preview?: (input: z.infer<z.ZodObject<S>>) => { words: string; detail?: string }
+  preview?: (input: z.infer<z.ZodObject<S>>) => { words: string; detail?: string; yes?: string }
   run: (c: Call, input: z.infer<z.ZodObject<S>>) => Promise<unknown>
 }
 

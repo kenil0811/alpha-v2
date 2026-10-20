@@ -235,6 +235,7 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
               onChange={(t) => {
                 setTheme(t)
                 applyTheme(t)
+                void api.post('/api/appearance', { theme: t }).catch(() => undefined)
               }}
               options={[
                 { value: 'mac', label: 'Match Mac' },
@@ -319,13 +320,25 @@ function ConnectionLine({
       actions={
         <>
           <Pill tone={tone}>{state}</Pill>
-          <Button
-            size="sm"
-            disabled={busy}
-            onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
-          >
-            Read now
-          </Button>
+          {k.state === 'needs_sign_in' ? (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                window.location.hash = `#/settings?connect=${k.connector}`
+              }}
+            >
+              Sign in
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
+            >
+              Read now
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"

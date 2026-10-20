@@ -122,6 +122,31 @@ export class World {
     return one<User>(this.db, 'SELECT id, name, role FROM users WHERE id = ?', id)
   }
 
+  // A person's preference in the window (their Appearance): theirs, kept with them.
+  preference(user: string, key: string): string | null {
+    return (
+      one<{ value: string }>(
+        this.db,
+        'SELECT value FROM preferences WHERE user_id = ? AND key = ?',
+        user,
+        key,
+      )?.value ?? null
+    )
+  }
+
+  setPreference(user: string, key: string, value: string | null): void {
+    if (value === null)
+      run(this.db, 'DELETE FROM preferences WHERE user_id = ? AND key = ?', user, key)
+    else
+      run(
+        this.db,
+        'INSERT INTO preferences (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value',
+        user,
+        key,
+        value,
+      )
+  }
+
   // The first start makes the owner; a single person on their own Mac is that owner.
   owner(name?: string): User {
     return tx(this.db, () => {

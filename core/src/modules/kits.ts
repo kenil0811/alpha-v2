@@ -10,7 +10,7 @@ import { parse } from 'yaml'
 import { z } from 'zod'
 import { all, now, one, run, tx } from '../world/db.ts'
 import { FIELD_KINDS, Refused } from '../world/kinds.ts'
-import type { FieldInput, Module, WriteCtx } from '../world/shape.ts'
+import { type FieldInput, type Module, TONES, type WriteCtx } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 import { syncAgents } from './agents.ts'
 import { commitAll } from './git.ts'
@@ -19,6 +19,7 @@ const Field = z.object({
   name: z.string(),
   kind: z.enum(FIELD_KINDS),
   choices: z.array(z.string()).optional(),
+  tones: z.record(z.string(), z.enum(TONES)).optional(),
   relates_to: z.string().optional(),
 })
 
@@ -103,6 +104,7 @@ function fieldsOf(spec: KitManifest['tables'][number], withRelations: boolean): 
       name: f.name,
       kind: f.kind,
       ...(f.choices ? { choices: f.choices } : {}),
+      ...(f.tones ? { tones: f.tones } : {}),
       ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
     }))
 }
@@ -123,6 +125,9 @@ function shapeTables(world: World, module: Module, manifest: KitManifest, ctx: W
       (f) => !t.fields.some((x) => x.name.toLowerCase() === f.name.toLowerCase()),
     )
     if (missing.length) world.shape.addFields(t.id, missing, ctx)
+    // a choice's colours come with the kit's version of it
+    for (const f of spec.fields)
+      if (f.kind === 'choice' && f.tones) world.shape.setTones(t.id, f.name, f.tones)
   }
 }
 

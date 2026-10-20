@@ -76,7 +76,7 @@ describe('the stream', () => {
     expect(items.map((i) => i.kind)).toEqual(['said', 'alpha', 'note', 'alpha'])
     expect(items[1]).toMatchObject({
       cards: ['c_1'],
-      answered: { c_1: { words: 'Yes: Remove a row from Meals?', state: 'yes' } },
+      answered: { c_1: { words: 'Yes: Remove a row from Meals?', state: 'yes', done: null } },
     })
     expect(items[3]).toMatchObject({ reply: 'Removed it.' })
   })

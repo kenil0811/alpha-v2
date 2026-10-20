@@ -51,6 +51,7 @@ const Provenance = z.object({
       record: z.string(),
       inputs: z.array(z.string()),
       formula: z.string(),
+      note: z.string(), // for a computed value: the sum with its numbers
       card: z.string(), // for a stated value: the card the person answered
     })
     .partial()
@@ -101,8 +102,8 @@ async function guardAsync(fn: () => Promise<Result>): Promise<Result> {
 
 const SCRIPT = [
   'A script is JavaScript: `export default async (alpha) => { … return { words } }`. It has no network and writes only in its module folder; it reaches the world through alpha:',
-  'alpha.input; alpha.rows.list(table) (each row: id, key, values by field name); alpha.rows.land(table, [{ key, values, url }]) (a row per key, added or changed; values by field name; url only for the web page a row was read from);',
-  'alpha.rows.compute(table, id, values, formula) (values with the formula each came from); alpha.browser.open(url) (title, text, links, html);',
+  'alpha.input; alpha.rows.list(table) (each row: id, key, values by field name, notes of its computed values); alpha.rows.land(table, [{ key, values, url }]) (a row per key, added or changed; values by field name; url only for the web page a row was read from);',
+  'alpha.rows.compute(table, id, values, formula, notes) (values with the formula each came from, and per field a note: the sum with its numbers, or each check); alpha.browser.open(url) (title, text, links, html);',
   'alpha.browser.extract(url, { list, fields: { name: { css, attr } }, next, id: { field, pattern }, pages }) (every page of a list by its next link, or at most `pages`; returns { pages, items }, each item its fields with _id and _url; a failure carries kind sign_in or blocked);',
   'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity).',
 ].join('\n')

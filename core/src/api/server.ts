@@ -21,6 +21,7 @@ import type {
   AboutRows,
   CardView,
   ConnectorsView,
+  FoundRow,
   Health,
   HistoryView,
   InstructionView,
@@ -47,6 +48,7 @@ const STREAM_KINDS = [
   'noticed',
   'card_opened',
   'card_closed',
+  'card_used',
   'call',
   'called',
   'made',
@@ -92,10 +94,40 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   app.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => done(null, body))
 
-  app.get(
-    '/api/me',
-    async (): Promise<Me> => ({ user: { id: user.id, name: user.name }, tenant: world.tenant }),
-  )
+  app.get('/api/me', async (): Promise<Me> => {
+    const theme = world.preference(user.id, 'theme')
+    return {
+      user: { id: user.id, name: user.name },
+      tenant: world.tenant,
+      theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
+    }
+  })
+
+  app.post('/api/appearance', async (req) => {
+    const { theme } = z.object({ theme: z.enum(['mac', 'light', 'dark']) }).parse(req.body)
+    world.setPreference(user.id, 'theme', theme === 'mac' ? null : theme)
+    return { ok: true }
+  })
+
+  // Find (⌘K): rows by their words, each opening where it is.
+  app.get('/api/find', async (req): Promise<FoundRow[]> => {
+    const { words } = z.object({ words: z.string().trim().min(1) }).parse(req.query)
+    return world
+      .search(words, 12)
+      .filter((h) => h.what === 'record')
+      .flatMap((h) => {
+        const rec = world.records.get(h.id)
+        if (!rec || rec.table.hidden) return []
+        return [
+          {
+            label: rowName(rec.table, rec.record.values),
+            hint: rec.table.name,
+            href: `#/table/${rec.table.id}/${h.id}`,
+          },
+        ]
+      })
+      .slice(0, 8)
+  })
 
   app.get('/api/stream', async (req): Promise<Stream> => {
     const q = z
@@ -237,6 +269,33 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { ok: true }
   })
 
+  // The person adds a row in the window: each value theirs, the line saying so its source.
+  app.post('/api/tables/:id/rows', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { values } = z.object({ values: z.record(z.string(), z.unknown()) }).parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    const given = Object.fromEntries(
+      Object.entries(values).filter(([, v]) => v !== '' && v !== null && v !== undefined),
+    )
+    if (!Object.keys(given).length) throw new Refused('Give the row at least one value.')
+    const line = world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'set',
+      words: `Added a row to ${t.name}`,
+      data: { table: t.id, values: given },
+      user: user.id,
+      module: t.module.id,
+    })
+    const [row] = world.records.add(
+      t.id,
+      [{ values: given, provenance: { kind: 'stated', source: { message: line.id } } }],
+      { actor: { kind: 'person', id: user.id }, user: user.id },
+    )
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { id: row }
+  })
+
   app.get('/api/tables/:id/rows/:row/history', async (req): Promise<HistoryView[]> => {
     const { row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
     const { field } = z.object({ field: z.string() }).parse(req.query)
@@ -259,6 +318,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         slug: f.slug,
         kind: f.kind,
         choices: f.choices,
+        tones: f.tones,
       })),
       rows: world.records.list(t.id).map((r) => ({
         id: r.id,
@@ -647,6 +707,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           kind: 'computed',
           words: p.source.formula ? `Computed: ${p.source.formula}` : 'Computed from other values',
           at,
+          ...(p.source.note ? { note: p.source.note } : {}),
         }
       case 'estimated':
         return { kind: 'estimated', words: `Estimated: ${p.basis ?? ''}`.trim(), at }
@@ -681,6 +742,7 @@ function cardView(c: Card): CardView {
     options: c.options,
     cannotUndo: c.cannotUndo,
     answer: c.answer,
+    restsOn: c.restsOn,
   }
 }
 

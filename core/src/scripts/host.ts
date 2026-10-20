@@ -39,7 +39,8 @@ const alpha = {
       id: string,
       values: Record<string, unknown>,
       formula: Record<string, string>,
-    ) => call('rows.compute', { table, id, values, formula }),
+      notes?: Record<string, string>, // the sum with its numbers, or each check, per field
+    ) => call('rows.compute', { table, id, values, formula, ...(notes ? { notes } : {}) }),
   },
   browser: {
     open: (url: string) => call('browser.open', { url }),

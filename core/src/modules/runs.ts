@@ -90,6 +90,8 @@ export class AgentRunner {
       call: { tool: 'network', input: { module: module.id, host } },
       effect: 'outward',
       preview: `Let ${module.name} read ${host}?`,
+      yes: 'Let it read',
+      restsOn: [`a run of ${module.name}’s reader`],
       detail: `${module.name}'s readers would open pages on ${host} at a person's pace, keeping to its robots rules.`,
       cannotUndo: 'What a reader asks a site for leaves your world.',
       actor: { kind: 'agent', id: runId },
@@ -137,6 +139,12 @@ export class AgentRunner {
           values: Object.fromEntries(
             Object.entries(r.values).map(([k, v]) => [names.get(k) ?? k, v]),
           ),
+          // a computed value's note as it was written, so a script can tell when its sum changed
+          notes: Object.fromEntries(
+            Object.entries(r.provenance)
+              .filter(([, pv]) => pv.kind === 'computed' && pv.source.note)
+              .map(([k, pv]) => [names.get(k) ?? k, pv.source.note]),
+          ),
         }))
       },
       'rows.land': async (p: Record<string, unknown>) => {
@@ -180,12 +188,17 @@ export class AgentRunner {
         )
         if (!Object.keys(values).length) return null
         const formula = (p.formula ?? {}) as Record<string, string>
+        const notes = (p.notes ?? {}) as Record<string, string>
         const perField = Object.fromEntries(
           Object.keys(values).map((k) => [
             k,
             {
               kind: 'computed' as const,
-              source: { formula: formula[k] ?? `${label}`, inputs: [] },
+              source: {
+                formula: formula[k] ?? `${label}`,
+                inputs: [],
+                ...(notes[k] ? { note: String(notes[k]) } : {}),
+              },
             },
           ]),
         )

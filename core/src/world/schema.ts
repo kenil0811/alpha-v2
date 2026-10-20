@@ -247,6 +247,15 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX runs_agent ON runs (agent_id, started_at);
   `,
+  // 5: a person's own preferences in the window (Appearance), kept by Alpha, not the browser.
+  `
+  CREATE TABLE preferences (
+    user_id TEXT NOT NULL REFERENCES users (id),
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (user_id, key)
+  );
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

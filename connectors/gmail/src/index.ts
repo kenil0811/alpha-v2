@@ -201,6 +201,7 @@ function compose(
 const preview = (m: { to: string; cc?: string | undefined; subject: string; body: string }) => ({
   words: `Send an email to ${m.to}: “${m.subject}”`,
   detail: `To: ${m.to}${m.cc ? `\nCc: ${m.cc}` : ''}\nSubject: ${m.subject}\n\n${m.body}`,
+  yes: 'Send it',
 })
 
 export const gmail: Connector = {

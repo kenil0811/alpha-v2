@@ -13,6 +13,7 @@ export interface GateInput {
   effect: Effect | undefined // undeclared counts as leaving the world
   preview: string // what the card shows
   detail?: string | null // and in full: the message as it will go
+  yes?: string // the yes in the card's own words (Send it); else by its gate
   restsOn?: string[]
   cannotUndo?: string | null
   ownEntries?: boolean // for a removal: whether what goes is the person's own
@@ -29,6 +30,13 @@ export type Verdict = { pass: true; card?: Card } | { pass: false; card: Card; r
 // What the model reads when a gated call did not run.
 export const WAITS =
   "Not done yet: this waits for the person's yes on a card in their window. You will be told when they answer."
+
+// The yes on a card, in words that say what happens.
+const YES: Record<GateName, string> = {
+  leaves_world: 'Go ahead',
+  deletes_own: 'Remove them',
+  sign_in: 'Sign in',
+}
 
 export function gateOf(input: GateInput): GateName | null {
   switch (input.effect) {
@@ -61,6 +69,7 @@ export function decide(world: World, input: GateInput): Verdict {
   const card = world.cards.open({
     kind: 'permission',
     gate,
+    options: [input.yes ?? YES[gate], 'Not now'],
     words: input.preview,
     detail: input.detail ?? null,
     restsOn: input.restsOn ?? [],

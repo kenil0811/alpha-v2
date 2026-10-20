@@ -2,6 +2,7 @@
 // light and dark before a screen uses it: the shots take this page too.
 import { Bot, Mail } from 'lucide-react'
 import { useState } from 'react'
+import { Preview } from './Home.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { Field, Select } from './ui/field.tsx'
@@ -94,12 +95,18 @@ export function Parts() {
           <Section title="A card">
             <Card label="Leaves your world" waits="Waits for you">
               <div className="font-medium text-ink text-lg">Send the reply to the broker?</div>
-              <div className="rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
-                To: broker@example.com — Thanks, please send the CIM once the NDA is signed.
+              <Preview
+                detail={
+                  'To: broker@example.com\nSubject: The CIM\n\nThanks, please send the CIM once the NDA is signed.'
+                }
+              />
+              <div className="text-ink-3 text-sm">
+                Rests on your message: “ask the broker for the CIM”
               </div>
               <div className="flex gap-2">
                 <Button variant="primary">Send it</Button>
                 <Button>Not now</Button>
+                <Button variant="ghost">Change something</Button>
               </div>
             </Card>
           </Section>

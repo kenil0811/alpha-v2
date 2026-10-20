@@ -8,6 +8,14 @@ export interface Health {
 export interface Me {
   user: { id: string; name: string }
   tenant: string
+  theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
+}
+
+// What Find (⌘K) found beyond screens and tables: rows, by their words.
+export interface FoundRow {
+  label: string
+  hint: string // its table
+  href: string
 }
 
 // A line about some rows (what a reader found): each can be opened, and one choice set on it.
@@ -40,6 +48,7 @@ export interface CardView {
   options: string[]
   cannotUndo: string | null
   answer: string | null
+  restsOn: string[] // what the card rests on, in words
 }
 
 export interface Stream {
@@ -69,6 +78,7 @@ export interface FieldView {
   slug: string
   kind: string
   choices: string[]
+  tones: Record<string, 'good' | 'warn' | 'bad' | 'accent'> // a choice's colour, where it is a state
 }
 
 // Where a value came from, in words the person reads, with what to open.
@@ -77,6 +87,7 @@ export interface SourceView {
   words: string
   at: string
   open?: { file: string; cell?: string; sheet?: string } | { url: string } | { line: number }
+  note?: string // a computed value's sum with its numbers, or each check it made
 }
 
 // One value's history, newest first.

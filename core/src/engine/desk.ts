@@ -345,7 +345,7 @@ export class Desk {
       call: { tool: name, input: toolInput },
       effect: effectOf ? effectOf(toolInput) : undefined,
       preview: `${words}?`,
-      restsOn: [],
+      restsOn: !input.agent_id && cur.message ? [`your message: “${cur.message}”`] : [],
       cannotUndo:
         remove.length || removingTable
           ? 'Removed rows are gone from the table; Activity keeps that they were there.'
@@ -383,8 +383,10 @@ export class Desk {
     const verdict = decide(this.world, {
       call: { tool: name, input },
       effect: this.connectors?.effect(name, input),
+      restsOn: message ? [`your message: “${message}”`] : [],
       preview: preview?.words ? `${preview.words}?` : `${words}?`,
       ...(preview?.detail ? { detail: preview.detail } : {}),
+      ...(preview?.yes ? { yes: preview.yes } : {}),
       cannotUndo: 'Once it has gone, it cannot be called back.',
       message,
       actor: { kind: 'alpha' },
@@ -498,6 +500,7 @@ export class Desk {
         call: { tool: 'network', input: { host } },
         effect: 'outward',
         preview: `${stepWords('network', { host })}?`,
+        yes: 'Let it',
         restsOn: [],
         cannotUndo: 'What a script sends to that site leaves your world.',
         actor: { kind: 'alpha' },

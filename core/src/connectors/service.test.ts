@@ -146,6 +146,7 @@ describe('a Gmail connection on recorded answers', () => {
     expect(svc.preview('gmail_send', m)).toEqual({
       words: 'Send an email to priya@harbor.example: “The CIM”',
       detail: 'To: priya@harbor.example\nSubject: The CIM\n\nCould you send it over?',
+      yes: 'Send it',
     })
     expect(svc.names()).toContain('gmail_send')
     expect(connectorOf('calendar').manifest.auth).toBe('system')

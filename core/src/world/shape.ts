@@ -20,8 +20,13 @@ export interface Field {
   slug: string
   kind: FieldKind
   choices: string[]
+  tones: Record<string, Tone> // a choice's colour where it means a state (Fits, Does not fit)
   relatesTo: string | null
 }
+
+// The colours a choice may take: the window's state colours, nothing else.
+export type Tone = 'good' | 'warn' | 'bad' | 'accent'
+export const TONES = ['good', 'warn', 'bad', 'accent'] as const
 
 export interface Table {
   id: string
@@ -36,6 +41,7 @@ export interface FieldInput {
   name: string
   kind: FieldKind
   choices?: string[]
+  tones?: Record<string, Tone>
   relatesTo?: string // a table, for a relation
 }
 
@@ -181,13 +187,17 @@ export class Shape {
       'SELECT id, name, slug, kind, options FROM fields WHERE table_id = ? ORDER BY position',
       t.id,
     ).map((f) => {
-      const o = parse<{ choices?: string[]; relatesTo?: string }>(f.options, {})
+      const o = parse<{ choices?: string[]; tones?: Record<string, Tone>; relatesTo?: string }>(
+        f.options,
+        {},
+      )
       return {
         id: f.id,
         name: f.name,
         slug: f.slug,
         kind: f.kind,
         choices: o.choices ?? [],
+        tones: o.tones ?? {},
         relatesTo: o.relatesTo ?? null,
       }
     })
@@ -304,7 +314,12 @@ export class Shape {
       if (!table) throw new Refused('That table is not there.')
       const f = findField(table, field)
       if (f.kind !== 'choice') throw new Refused(`${f.name} is not a choice field.`)
-      run(this.db, 'UPDATE fields SET options = ? WHERE id = ?', json({ choices }), f.id)
+      run(
+        this.db,
+        'UPDATE fields SET options = ? WHERE id = ?',
+        json({ choices, ...(Object.keys(f.tones).length ? { tones: f.tones } : {}) }),
+        f.id,
+      )
       append(this.db, {
         actor: ctx.actor,
         kind: 'shaped',
@@ -318,6 +333,23 @@ export class Shape {
       this.writeManifest(table.module)
       return this.table(table.id) as Table
     })
+  }
+
+  // The colours of a choice field's choices (a kit's: Fits in green). Only the state colours.
+  setTones(tableId: string, field: string, tones: Record<string, Tone>): void {
+    const table = this.table(tableId)
+    if (!table) throw new Refused('That table is not there.')
+    const f = findField(table, field)
+    if (f.kind !== 'choice') throw new Refused(`${f.name} is not a choice field.`)
+    for (const t of Object.values(tones))
+      if (!TONES.includes(t)) throw new Refused(`${t} is not one of ${TONES.join(', ')}.`)
+    run(
+      this.db,
+      'UPDATE fields SET options = ? WHERE id = ?',
+      json({ choices: f.choices, ...(Object.keys(tones).length ? { tones } : {}) }),
+      f.id,
+    )
+    this.writeManifest(table.module)
   }
 
   // In the sidebar or out of it; the person's choice, journaled.
@@ -397,6 +429,7 @@ export class Shape {
     )
     const options = {
       ...(f.choices?.length ? { choices: f.choices } : {}),
+      ...(f.tones && Object.keys(f.tones).length ? { tones: f.tones } : {}),
       ...(f.relatesTo ? { relatesTo: (this.table(f.relatesTo) as Table).id } : {}),
     }
     run(
@@ -429,6 +462,7 @@ export class Shape {
           name: f.name,
           kind: f.kind,
           ...(f.choices.length ? { choices: f.choices } : {}),
+          ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
           ...(f.relatesTo ? { relates_to: this.table(f.relatesTo)?.name } : {}),
         })),
       })),

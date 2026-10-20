@@ -36,6 +36,7 @@ export interface Source {
   record?: string
   inputs?: string[]
   formula?: string
+  note?: string // for a computed value: the sum with its numbers, or each check it made
   connector?: string // a connection's item: the connector, the account, the item's own id
   account?: string
   item?: string

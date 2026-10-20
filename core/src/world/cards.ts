@@ -188,13 +188,12 @@ export class Cards {
       if (!card) throw new Refused('That card is not there.')
       if (card.state !== 'waiting') throw new Refused('That card has already been answered.')
       const yesNo = card.kind === 'permission' || card.options.length === 2
-      const state: CardState = yesNo
-        ? answer === (card.options[0] ?? 'Yes')
-          ? 'yes'
-          : answer === (card.options[1] ?? 'No')
-            ? 'no'
-            : 'answered'
-        : 'answered'
+      // a permission's yes is in its own words (Send it); a plain Yes or No still answers it
+      const isYes =
+        answer === (card.options[0] ?? 'Yes') || (card.kind === 'permission' && answer === 'Yes')
+      const isNo =
+        answer === (card.options[1] ?? 'No') || (card.kind === 'permission' && answer === 'No')
+      const state: CardState = yesNo ? (isYes ? 'yes' : isNo ? 'no' : 'answered') : 'answered'
       this.close(id, state, answer, by, null)
       return this.get(id) as Card
     })
@@ -217,6 +216,16 @@ export class Cards {
       )
       if (!r) return undefined
       run(this.db, 'UPDATE cards SET used_at = ? WHERE id = ?', now(), r.id)
+      append(this.db, {
+        actor: { kind: 'system' },
+        kind: 'card_used',
+        words: `Went ahead: ${r.words}`,
+        data: { card: r.id },
+        user: r.user_id,
+        turn: r.turn_id,
+        module: r.module_id,
+        card: r.id,
+      })
       return toCard({ ...r, used_at: now() })
     })
   }
