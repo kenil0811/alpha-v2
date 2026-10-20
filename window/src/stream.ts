@@ -11,7 +11,8 @@ export interface Step {
   results: string[] // what the step did in the world
 }
 
-export type Module = { id: string; name: string } | null
+// ids: the modules a lens takes in, the module and those inside it (none: only the module)
+export type Module = { id: string; name: string; ids?: string[] } | null
 
 // A card's answer, as its closing line says it.
 export interface Answered {

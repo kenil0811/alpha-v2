@@ -1,12 +1,14 @@
 // A module's screen (design §14, Ledger): its head (the kit it came from, its agents, the sites its
-// readers may read) and one row of tabs: its pages (design §13), its tables with their counts, its
-// Conversation (Home through the module's lens) and its Agents and notes. It opens on its front
-// page, else its first table.
+// readers may read) and one row of tabs: an Overview of the modules inside it when it holds any,
+// its pages (design §13), its tables with their counts, its Conversation (Home through the
+// module's lens, with the modules inside it) and its Agents and notes. A module holding others
+// opens on its Overview, else on its front page, else its first table.
 import type { ModuleView, TableView as TableData } from '@alpha/core/api'
 import { Bot, Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { AllAgents, when } from './Kits.tsx'
+import { ModuleCard } from './ModuleCard.tsx'
 import { PageView } from './PageView.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row } from './ui/list.tsx'
@@ -15,6 +17,7 @@ import { Switch } from './ui/switch.tsx'
 import { Words } from './ui/words.tsx'
 
 export type ModuleTab =
+  | { kind: 'overview' }
   | { kind: 'page'; name: string }
   | { kind: 'table'; id: string }
   | { kind: 'conversation' }
@@ -43,17 +46,21 @@ export function ModuleScreen({
     if (version >= 0) load()
   }, [load, version])
 
-  // with no tab named, the front page, else the first table, else the conversation
+  // with no tab named, the Overview of the modules inside, else the front page, else the first
+  // table, else the conversation
   const front = m?.pages.find((p) => p.front)
+  const holds = (m?.modules.length ?? 0) > 0
   const current: ModuleTab =
     tab ??
-    (front
-      ? { kind: 'page', name: front.name }
-      : m?.tables[0]
-        ? { kind: 'table', id: m.tables[0].id }
-        : { kind: 'conversation' })
+    (holds
+      ? { kind: 'overview' }
+      : front
+        ? { kind: 'page', name: front.name }
+        : m?.tables[0]
+          ? { kind: 'table', id: m.tables[0].id }
+          : { kind: 'conversation' })
   // the module's own address opens its first table, as that table's address
-  const firstTable = !tab && m && !front ? m.tables[0]?.id : undefined
+  const firstTable = !tab && m && !front && !holds ? m.tables[0]?.id : undefined
   useEffect(() => {
     if (firstTable) window.location.replace(`#/table/${firstTable}`)
   }, [firstTable])
@@ -62,8 +69,15 @@ export function ModuleScreen({
   const on = m?.agents.filter((a) => a.state === 'on').length ?? 0
   const about = m
     ? [
-        m.kit ? `From the ${m.kit.name} kit ${m.kit.version}` : 'Made in a conversation',
+        m.kit
+          ? `From the ${m.kit.name} kit ${m.kit.version}`
+          : m.modules.length && !m.tables.length
+            ? ''
+            : 'Made in a conversation',
         m.agents.length ? `${on} agent${on === 1 ? '' : 's'} on` : '',
+        m.modules.length
+          ? `${m.modules.length} module${m.modules.length === 1 ? '' : 's'} inside`
+          : '',
         m.sites ? `reads ${m.sites} site${m.sites === 1 ? '' : 's'}` : '',
       ]
         .filter(Boolean)
@@ -91,6 +105,16 @@ export function ModuleScreen({
         role="tablist"
         className="mt-4 flex shrink-0 gap-0.5 overflow-x-auto border-line border-b px-5"
       >
+        {holds && (
+          <a
+            role="tab"
+            aria-selected={current.kind === 'overview'}
+            href={`#/module/${moduleId}/overview`}
+            className={tabClass(current.kind === 'overview')}
+          >
+            Overview
+          </a>
+        )}
         {m?.pages.map((p) => (
           <a
             key={p.name}
@@ -133,7 +157,9 @@ export function ModuleScreen({
         </a>
       </div>
       <div className="min-h-0 flex-1">
-        {current.kind === 'page' ? (
+        {current.kind === 'overview' ? (
+          m && <Overview m={m} />
+        ) : current.kind === 'page' ? (
           m && page ? (
             <PageView key={page.name} m={m} page={page} version={version} />
           ) : (
@@ -148,6 +174,33 @@ export function ModuleScreen({
         ) : (
           <p className="p-7 text-ink-3">Loading…</p>
         )}
+      </div>
+    </div>
+  )
+}
+
+// The modules inside this one, each as a card with its pages and tables.
+function Overview({ m }: { m: ModuleView }) {
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="grid max-w-page items-start gap-3 px-7 py-6 md:grid-cols-2">
+        {m.modules.map((c) => (
+          <ModuleCard
+            key={c.id}
+            id={c.id}
+            name={c.name}
+            sub={
+              [
+                c.kit ? `From the ${c.kit} kit` : 'Made in a conversation',
+                c.agents ? `${c.agents} agent${c.agents === 1 ? '' : 's'} on` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ') || ''
+            }
+            pages={c.pages}
+            tables={c.tables}
+          />
+        ))}
       </div>
     </div>
   )

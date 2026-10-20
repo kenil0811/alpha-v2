@@ -2,7 +2,14 @@
 // things), the Conversation, Activity, Settings or a module (its tables, conversation, agents and
 // notes). Ask (⌘J) opens the conversation on the right of any other screen, through the module's
 // lens on a module's screen.
-import type { LiveEvent, Me, ModuleSummary, Stream, TableView as TableData } from '@alpha/core/api'
+import type {
+  Layout,
+  LiveEvent,
+  Me,
+  ModuleSummary,
+  Stream,
+  TableView as TableData,
+} from '@alpha/core/api'
 import {
   Activity as ActivityIcon,
   Briefcase,
@@ -10,7 +17,7 @@ import {
   MessageSquare,
   SlidersHorizontal,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { api, listen } from './api.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
@@ -22,6 +29,7 @@ import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { applyTheme } from './theme.ts'
+import { ancestors, inside } from './tree.ts'
 import { SidePanel } from './ui/side-panel.tsx'
 
 function placeOf(hash: string): Place {
@@ -43,12 +51,13 @@ function placeOf(hash: string): Place {
   if (hash === '#/activity') return { at: 'activity' }
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
-  const mod = /^#\/module\/([^/]+)(?:\/(conversation|agents|page\/([\w-]+)))?$/.exec(hash)
+  const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)))?$/.exec(hash)
   if (mod?.[1])
     return {
       at: 'module',
       id: mod[1],
-      tab: mod[2] === 'conversation' || mod[2] === 'agents' ? mod[2] : null,
+      tab:
+        mod[2] === 'overview' || mod[2] === 'conversation' || mod[2] === 'agents' ? mod[2] : null,
       page: mod[3] ?? null,
     }
   return { at: 'home' }
@@ -69,12 +78,24 @@ export function App() {
   const [lens, setLens] = useState<Module>(null)
   // Ask (⌘J): the conversation on the right of any screen but the conversation's own
   const [asking, setAsking] = useState(false)
-  const moduleHere: Module =
+  // how the person left the window: the rail, its folds, the side conversation's width
+  const [layout, setLayout] = useState<Layout>({ railFolded: false, folded: [], panel: null })
+  const changeLayout = useCallback((change: Partial<Layout>) => {
+    setLayout((l) => ({ ...l, ...change }))
+    api.post('/api/layout', change).catch(() => undefined)
+  }, [])
+  const placed: Module =
     place.at === 'module'
       ? (modules.find((m) => m.id === place.id) ?? null)
       : place.at === 'table' && table
         ? table.module
         : null
+  // a module's lens takes in the modules inside it
+  const moduleHere: Module = useMemo(
+    () => placed && { id: placed.id, name: placed.name, ids: inside(modules, placed.id) },
+    [placed?.id, placed?.name, modules, placed],
+  )
+  const above = moduleHere ? ancestors(modules, moduleHere.id).map((m) => m.name) : []
   const askable = !(
     place.at === 'conversation' ||
     (place.at === 'module' && place.tab === 'conversation')
@@ -95,17 +116,23 @@ export function App() {
     if (!askable) setAsking(false)
   }, [askable])
 
-  // ⌘K opens Find anywhere
+  // ⌘K opens Find anywhere; ⌘\ folds the rail or opens it
+  const foldedRef = useRef(layout.railFolded)
+  foldedRef.current = layout.railFolded
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setFinding((f) => !f)
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault()
+        changeLayout({ railFolded: !foldedRef.current })
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [changeLayout])
   const placeRef = useRef(place)
   placeRef.current = place
 
@@ -138,6 +165,7 @@ export function App() {
         setName(me.user.name)
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
+        setLayout(me.layout)
       },
       () => undefined,
     )
@@ -179,21 +207,25 @@ export function App() {
             : place.at === 'table'
               ? {
                   icon: <Briefcase className={icon} />,
-                  parts: table ? [table.module.name, table.name] : ['…'],
+                  parts: table ? [...above, table.module.name, table.name] : ['…'],
                 }
               : place.at === 'module'
                 ? {
                     icon: <Briefcase className={icon} />,
                     parts: [
+                      ...above,
                       moduleHere?.name ?? '…',
                       place.tab === 'agents'
                         ? 'Agents and notes'
                         : place.tab === 'conversation'
                           ? 'Conversation'
-                          : (modules
-                              .find((x) => x.id === place.id)
-                              ?.pages.find((p) => (place.page ? p.name === place.page : p.front))
-                              ?.title ?? '…'),
+                          : place.tab === 'overview' ||
+                              (!place.page && modules.some((x) => x.parent === place.id))
+                            ? 'Overview'
+                            : (modules
+                                .find((x) => x.id === place.id)
+                                ?.pages.find((p) => (place.page ? p.name === place.page : p.front))
+                                ?.title ?? '…'),
                     ],
                   }
                 : { icon: <House className={icon} />, parts: ['Home'] }
@@ -203,6 +235,9 @@ export function App() {
       <Rail
         modules={modules}
         place={place}
+        here={moduleHere?.id ?? null}
+        layout={layout}
+        onLayout={changeLayout}
         name={name}
         waiting={stream?.cards.length ?? 0}
         running={stream?.running.length ?? 0}
@@ -283,6 +318,9 @@ export function App() {
             <SidePanel
               title={moduleHere ? `Ask about ${moduleHere.name}` : 'Ask Alpha'}
               onClose={() => setAsking(false)}
+              width={layout.panel}
+              onWidth={(panel) => changeLayout({ panel })}
+              full={moduleHere ? `#/module/${moduleHere.id}/conversation` : '#/conversation'}
             >
               <Conversation
                 stream={stream}

@@ -11,11 +11,13 @@ import type {
   TodayView,
   WorkingModuleView,
 } from '@alpha/core/api'
-import { ArrowUp, Bot, Briefcase, Check, ChevronRight, KeyRound } from 'lucide-react'
+import { ArrowUp, Bot, Check, ChevronRight, KeyRound } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
+import { ModuleCard } from './ModuleCard.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
+import { childrenOf, tops } from './tree.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Group, Line, Quiet } from './ui/groups.tsx'
@@ -197,51 +199,49 @@ export function Home({
 
               <Group title="Your modules">
                 {modules.length === 0 && <Quiet>None yet. Ask Alpha to keep something.</Quiet>}
-                {modules.map((m) => {
-                  const w = working.find((x) => x.id === m.id)
-                  const on = w?.agents.filter((a) => a.state === 'on').length ?? 0
-                  return (
-                    <div key={m.id} className="rounded-lg border border-line bg-surface px-4 py-3">
-                      <a href={`#/module/${m.id}`} className="flex items-center gap-2.5">
-                        <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
-                          <Briefcase className="size-3.75" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-medium text-base text-ink">{m.name}</span>
-                          <span className="block text-ink-3 text-sm">
-                            {[
-                              w?.kit ? `From the ${w.kit.name} kit` : '',
-                              w?.agents.length ? `${on} agent${on === 1 ? '' : 's'} on` : '',
-                            ]
-                              .filter(Boolean)
-                              .join(' · ') || 'Made in a conversation'}
-                          </span>
-                        </span>
-                        <ChevronRight className="size-4 text-ink-3" />
-                      </a>
-                      {m.tables.length > 0 && (
-                        <div className="mt-2.5 flex flex-wrap gap-1.5 pl-9.5">
-                          {m.tables.map((t) => (
-                            <a
-                              key={t.id}
-                              href={`#/table/${t.id}`}
-                              className="inline-flex h-6.5 items-center gap-1.5 rounded-md border border-line px-2 text-ink-2 text-sm hover:border-accent-line hover:text-ink"
-                            >
-                              {t.name}
-                              <span className="text-ink-3 tabular-nums">{t.rows}</span>
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                {tops(modules).map((m) => (
+                  <HomeModule key={m.id} m={m} modules={modules} working={working} />
+                ))}
               </Group>
             </div>
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+// A module on Home, with the modules inside it in its card.
+function HomeModule({
+  m,
+  modules,
+  working,
+}: {
+  m: ModuleSummary
+  modules: ModuleSummary[]
+  working: WorkingModuleView[]
+}) {
+  const w = working.find((x) => x.id === m.id)
+  const on = w?.agents.filter((a) => a.state === 'on').length ?? 0
+  const kids = childrenOf(modules, m.id)
+  return (
+    <ModuleCard
+      id={m.id}
+      name={m.name}
+      sub={
+        [
+          w?.kit ? `From the ${w.kit.name} kit` : '',
+          w?.agents.length ? `${on} agent${on === 1 ? '' : 's'} on` : '',
+          kids.length ? `${kids.length} module${kids.length === 1 ? '' : 's'} inside` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ') || 'Made in a conversation'
+      }
+      tables={m.tables}
+    >
+      {kids.length > 0 &&
+        kids.map((c) => <HomeModule key={c.id} m={c} modules={modules} working={working} />)}
+    </ModuleCard>
   )
 }
 

@@ -1,25 +1,29 @@
 // The shell (design §14, Ledger): the rail on the left and a 48px bar over every screen. The rail
-// has the mark, Home with a badge for what waits on the person, Conversation, Activity, the modules as a tree
-// of their tables, Settings and Alpha's state at its foot. Its top 48px is left for the Mac's
+// has the mark, Home with a badge for what waits on the person, Conversation, Activity, the modules
+// by name, each with the modules inside it (Kenil, 20 Oct: module names only), Settings and
+// Alpha's state at its foot; it folds to a strip of icons. Its top 48px is left for the Mac's
 // window buttons when the window has a shell of its own.
-import type { FoundRow, ModuleSummary } from '@alpha/core/api'
+import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
-  Activity,
+  Activity as ActivityIcon,
   Briefcase,
   ChevronDown,
   ChevronRight,
+  Ellipsis,
   House,
-  LayoutDashboard,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   SlidersHorizontal,
-  Table2,
   X,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
+import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Kbd } from './ui/pill.tsx'
+import { MenuItem, MenuLine, Popover } from './ui/popover.tsx'
 
 export type Place =
   | { at: 'home' }
@@ -27,7 +31,12 @@ export type Place =
   | { at: 'activity' }
   | { at: 'parts' }
   | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
-  | { at: 'module'; id: string; tab: 'conversation' | 'agents' | null; page: string | null }
+  | {
+      at: 'module'
+      id: string
+      tab: 'overview' | 'conversation' | 'agents' | null
+      page: string | null
+    }
   | { at: 'settings'; open: string | null }
 
 function Nav({
@@ -69,48 +78,65 @@ export function Rail({
   waiting,
   running,
   online,
+  here,
+  layout,
+  onLayout,
 }: {
   modules: ModuleSummary[]
   place: Place
+  here: string | null // the module whose screen or table is open
   name: string
   waiting: number
   running: number
   online: boolean
+  layout: Layout
+  onLayout: (change: Partial<Layout>) => void
 }) {
-  const [closed, setClosed] = useState<Set<string>>(new Set())
-  const toggle = (id: string) =>
-    setClosed((c) => {
-      const n = new Set(c)
-      if (n.has(id)) n.delete(id)
-      else n.add(id)
-      return n
+  if (layout.railFolded)
+    return (
+      <Strip
+        modules={modules}
+        place={place}
+        here={here}
+        waiting={waiting}
+        running={running}
+        online={online}
+        onOpen={() => onLayout({ railFolded: false })}
+      />
+    )
+  const fold = (id: string) =>
+    onLayout({
+      folded: layout.folded.includes(id)
+        ? layout.folded.filter((x) => x !== id)
+        : [...layout.folded, id],
     })
   return (
     <nav className="flex w-54 shrink-0 flex-col overflow-hidden border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink">
       <div className="h-12 shrink-0" aria-hidden="true" />
-      <div className="flex items-center gap-2.5 px-1.5 pb-3.5">
-        <span className="grid size-7 shrink-0 place-items-center rounded-md bg-ink font-semibold font-serif text-canvas text-lg leading-none">
-          A
-        </span>
-        <span className="min-w-0">
+      <div className="flex items-center gap-2.5 pb-3.5 pl-1.5">
+        <Mark />
+        <span className="min-w-0 flex-1">
           <span className="block font-semibold text-base leading-tight">Alpha</span>
           <span className="block truncate text-rail-ink-3 text-xs">
             {name ? `${name} · on this Mac` : 'On this Mac'}
           </span>
         </span>
+        <button
+          type="button"
+          aria-label="Fold the rail"
+          title={'Fold the rail (⌘\\)'}
+          onClick={() => onLayout({ railFolded: true })}
+          className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+        >
+          <PanelLeftClose className="size-4" />
+        </button>
       </div>
       <Nav
         href="#/"
         icon={<House className="size-4" />}
         label="Home"
         current={place.at === 'home'}
-        extra={
-          waiting > 0 && (
-            <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
-              {waiting}
-            </span>
-          )
-        }
+        extra={waiting > 0 && <Badge n={waiting} />}
       />
       <Nav
         href="#/conversation"
@@ -120,17 +146,10 @@ export function Rail({
       />
       <Nav
         href="#/activity"
-        icon={<Activity className="size-4" />}
+        icon={<ActivityIcon className="size-4" />}
         label="Activity"
         current={place.at === 'activity'}
-        extra={
-          running > 0 && (
-            <span
-              title={`${running} running`}
-              className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent"
-            />
-          )
-        }
+        extra={running > 0 && <Spinner running={running} />}
       />
       <div className="px-2 pt-4 pb-1 font-semibold text-rail-ink-3 text-xs uppercase tracking-label">
         Modules
@@ -141,63 +160,16 @@ export function Rail({
             Modules appear here as you ask for them.
           </div>
         )}
-        {modules.map((m) => {
-          const open = !closed.has(m.id)
-          return (
-            <div key={m.id}>
-              <div className="flex items-center">
-                <Nav
-                  href={`#/module/${m.id}`}
-                  icon={<Briefcase className="size-4" />}
-                  label={m.name}
-                  current={place.at === 'module' && place.id === m.id}
-                />
-                <button
-                  type="button"
-                  aria-expanded={open}
-                  aria-label={open ? `Fold ${m.name}` : `Unfold ${m.name}`}
-                  onClick={() => toggle(m.id)}
-                  className="-ml-7 grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:text-rail-ink"
-                >
-                  {open ? (
-                    <ChevronDown className="size-3.25" />
-                  ) : (
-                    <ChevronRight className="size-3.25" />
-                  )}
-                </button>
-              </div>
-              {open && (
-                <div className="flex flex-col pl-4">
-                  {m.pages.map((pg) => (
-                    <Nav
-                      key={pg.name}
-                      small
-                      href={`#/module/${m.id}/page/${pg.name}`}
-                      icon={<LayoutDashboard className="size-4" />}
-                      label={pg.title}
-                      current={place.at === 'module' && place.id === m.id && place.page === pg.name}
-                    />
-                  ))}
-                  {m.tables.map((t) => (
-                    <Nav
-                      key={t.id}
-                      small
-                      href={`#/table/${t.id}`}
-                      icon={<Table2 className="size-4" />}
-                      label={t.name}
-                      current={place.at === 'table' && place.id === t.id}
-                      extra={
-                        <span className="shrink-0 text-rail-ink-3 text-xs tabular-nums">
-                          {t.rows}
-                        </span>
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {tops(modules).map((m) => (
+          <ModuleItem
+            key={m.id}
+            m={m}
+            modules={modules}
+            here={here}
+            folded={layout.folded}
+            onFold={fold}
+          />
+        ))}
       </div>
       <div className="flex flex-col gap-0.5 pt-2">
         <Nav
@@ -211,6 +183,274 @@ export function Rail({
           {online ? 'Alpha is running' : 'Alpha is not answering'}
         </div>
       </div>
+    </nav>
+  )
+}
+
+function Mark() {
+  return (
+    <span className="grid size-7 shrink-0 place-items-center rounded-md bg-ink font-semibold font-serif text-canvas text-lg leading-none">
+      A
+    </span>
+  )
+}
+
+function Badge({ n }: { n: number }) {
+  return (
+    <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
+      {n}
+    </span>
+  )
+}
+
+function Spinner({ running }: { running: number }) {
+  return (
+    <span
+      title={`${running} running`}
+      className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent"
+    />
+  )
+}
+
+// A module in the rail: its name only (its pages and tables are its screen's tabs), the modules
+// inside it under it, and a menu to move it into another.
+function ModuleItem({
+  m,
+  modules,
+  here,
+  folded,
+  onFold,
+}: {
+  m: ModuleSummary
+  modules: ModuleSummary[]
+  here: string | null
+  folded: string[]
+  onFold: (id: string) => void
+}) {
+  const kids = childrenOf(modules, m.id)
+  const open = !folded.includes(m.id)
+  return (
+    <div>
+      <div className="group/item relative flex items-center">
+        <Nav
+          href={`#/module/${m.id}`}
+          icon={<Briefcase className="size-4" />}
+          label={m.name}
+          current={here === m.id}
+          extra={<span className="w-11 shrink-0" />}
+        />
+        <span className="absolute right-0.5 flex items-center">
+          <MoveMenu m={m} modules={modules} />
+          {kids.length > 0 ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-label={open ? `Fold ${m.name}` : `Unfold ${m.name}`}
+              onClick={() => onFold(m.id)}
+              className="grid size-6 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:text-rail-ink"
+            >
+              {open ? (
+                <ChevronDown className="size-3.25" />
+              ) : (
+                <ChevronRight className="size-3.25" />
+              )}
+            </button>
+          ) : (
+            <span className="size-6 shrink-0" />
+          )}
+        </span>
+      </div>
+      {open && kids.length > 0 && (
+        <div className="flex flex-col pl-4">
+          {kids.map((c) => (
+            <ModuleItem
+              key={c.id}
+              m={c}
+              modules={modules}
+              here={here}
+              folded={folded}
+              onFold={onFold}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Move into…: every other module it may sit inside (never itself or one of its own), or the top.
+function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }) {
+  const [open, setOpen] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const anchor = useRef<HTMLButtonElement>(null)
+  const own = new Set(inside(modules, m.id))
+  const move = async (within: string | null) => {
+    try {
+      await api.post(`/api/modules/${m.id}/place`, { within })
+      setOpen(false)
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : 'That did not move.')
+    }
+  }
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-label={`Move ${m.name}`}
+        title={`Move ${m.name}`}
+        onClick={() => {
+          setProblem(null)
+          setOpen((o) => !o)
+        }}
+        className={cn(
+          'grid size-6 shrink-0 place-items-center rounded-md text-rail-ink-3 opacity-0 hover:text-rail-ink focus-visible:opacity-100 group-hover/item:opacity-100',
+          open && 'opacity-100',
+        )}
+      >
+        <Ellipsis className="size-3.5" />
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
+        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs uppercase tracking-label">
+          Move {m.name} into
+        </div>
+        {flat(modules)
+          .filter(({ module }) => !own.has(module.id))
+          .map(({ module, depth }) => (
+            <MenuItem
+              key={module.id}
+              checked={m.parent === module.id}
+              onClick={() => move(module.id)}
+            >
+              <span className={cn(depth === 1 && 'pl-3', depth > 1 && 'pl-6')}>{module.name}</span>
+            </MenuItem>
+          ))}
+        <MenuLine />
+        <MenuItem checked={!m.parent} onClick={() => move(null)}>
+          Top level
+        </MenuItem>
+        {problem && <p className="max-w-60 px-2.5 py-1.5 text-bad text-sm">{problem}</p>}
+      </Popover>
+    </>
+  )
+}
+
+// A module's two letters in the folded rail: the first of its first two words, else its first two.
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/)
+  return words.length > 1
+    ? `${words[0]?.[0] ?? ''}${words[1]?.[0] ?? ''}`.toUpperCase()
+    : `${name.slice(0, 1).toUpperCase()}${name.slice(1, 2)}`
+}
+
+// The rail folded to a strip of icons: the same places, each named when hovered.
+function Strip({
+  modules,
+  place,
+  here,
+  waiting,
+  running,
+  online,
+  onOpen,
+}: {
+  modules: ModuleSummary[]
+  place: Place
+  here: string | null
+  waiting: number
+  running: number
+  online: boolean
+  onOpen: () => void
+}) {
+  // a module inside another lights the one at the top that holds it
+  const top = here ? (ancestors(modules, here)[0]?.id ?? here) : null
+  const icon = (
+    href: string,
+    label: string,
+    current: boolean,
+    child: ReactNode,
+    extra?: ReactNode,
+  ) => (
+    <a
+      key={href}
+      href={href}
+      aria-label={label}
+      title={label}
+      aria-current={current ? 'page' : undefined}
+      className={cn(
+        'relative grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+        current && 'bg-rail-sel text-accent shadow-btn',
+      )}
+    >
+      {child}
+      {extra}
+    </a>
+  )
+  return (
+    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+      <div className="h-12 shrink-0" aria-hidden="true" />
+      <Mark />
+      <button
+        type="button"
+        aria-label="Open the rail"
+        title={'Open the rail (⌘\\)'}
+        onClick={onOpen}
+        className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+      >
+        <PanelLeftOpen className="size-4" />
+      </button>
+      {icon(
+        '#/',
+        waiting ? `Home, ${waiting} waiting for you` : 'Home',
+        place.at === 'home',
+        <House className="size-4" />,
+        waiting > 0 && (
+          <span
+            className="absolute top-1 right-1 size-2 rounded-full bg-accent"
+            aria-hidden="true"
+          />
+        ),
+      )}
+      {icon(
+        '#/conversation',
+        'Conversation',
+        place.at === 'conversation',
+        <MessageSquare className="size-4" />,
+      )}
+      {icon(
+        '#/activity',
+        running ? `Activity, ${running} running` : 'Activity',
+        place.at === 'activity',
+        <ActivityIcon className="size-4" />,
+        running > 0 && (
+          <span
+            className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
+            aria-hidden="true"
+          />
+        ),
+      )}
+      <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+        {tops(modules).map((m) =>
+          icon(
+            `#/module/${m.id}`,
+            m.name,
+            top === m.id,
+            <span className="grid h-6 min-w-6 place-items-center rounded-sm bg-rail-hover px-0.5 font-semibold text-rail-ink-2 text-xs">
+              {initials(m.name)}
+            </span>,
+          ),
+        )}
+      </div>
+      {icon(
+        '#/settings',
+        'Settings',
+        place.at === 'settings',
+        <SlidersHorizontal className="size-4" />,
+      )}
+      <span
+        title={online ? 'Alpha is running' : 'Alpha is not answering'}
+        className={cn('mt-1.5 size-1.75 shrink-0 rounded-full', online ? 'bg-good' : 'bg-warn')}
+      />
     </nav>
   )
 }
@@ -300,6 +540,11 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       { label: 'Conversation', hint: '', href: '#/conversation' },
       { label: 'Activity', hint: '', href: '#/activity' },
       { label: 'Settings', hint: '', href: '#/settings' },
+      ...modules.map((m) => ({
+        label: m.name,
+        hint: modules.find((p) => p.id === m.parent)?.name ?? 'Module',
+        href: `#/module/${m.id}`,
+      })),
       ...modules.flatMap((m) =>
         m.tables.map((t) => ({ label: t.name, hint: m.name, href: `#/table/${t.id}` })),
       ),

@@ -1,25 +1,92 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { Rail } from './Shell.tsx'
+import { ancestors, flat, inside } from './tree.ts'
+
+const modules = [
+  { id: 'm_1', name: 'Shops', parent: null, pages: [], tables: [] },
+  {
+    id: 'm_2',
+    name: 'Bakery',
+    parent: 'm_1',
+    pages: [],
+    tables: [{ id: 't_1', name: 'Orders', rows: 1 }],
+  },
+  {
+    id: 'm_3',
+    name: 'Food',
+    parent: null,
+    pages: [],
+    tables: [{ id: 't_2', name: 'Meals', rows: 1 }],
+  },
+]
+const open = { railFolded: false, folded: [], panel: null }
 
 describe('the window', () => {
-  it('lists the modules and their tables in the rail, with what waits and Alpha’s state', () => {
+  it('lists the modules by name in the rail, inside one another, with what waits and Alpha’s state', () => {
     const html = renderToString(
       <Rail
-        modules={[
-          { id: 'm_1', name: 'Food', pages: [], tables: [{ id: 't_1', name: 'Meals', rows: 1 }] },
-        ]}
+        modules={modules}
         place={{ at: 'home' }}
+        here={null}
         name="Kenil"
         waiting={2}
         running={0}
         online
+        layout={open}
+        onLayout={() => undefined}
       />,
     )
-    expect(html).toContain('Food')
-    expect(html).toContain('href="#/table/t_1"')
-    expect(html).toContain('Meals')
+    expect(html).toContain('href="#/module/m_1"')
+    expect(html).toContain('href="#/module/m_2"')
+    expect(html).toContain('Fold Shops')
+    expect(html).not.toContain('Orders')
+    expect(html).not.toContain('Meals')
     expect(html).toContain('>2<')
     expect(html).toContain('Alpha is running')
+  })
+
+  it('folds a module’s modules away, and the rail to a strip of icons', () => {
+    const folded = renderToString(
+      <Rail
+        modules={modules}
+        place={{ at: 'home' }}
+        here={null}
+        name="Kenil"
+        waiting={0}
+        running={0}
+        online
+        layout={{ ...open, folded: ['m_1'] }}
+        onLayout={() => undefined}
+      />,
+    )
+    expect(folded).toContain('Unfold Shops')
+    expect(folded).not.toContain('href="#/module/m_2"')
+    const strip = renderToString(
+      <Rail
+        modules={modules}
+        place={{ at: 'home' }}
+        here="m_2"
+        name="Kenil"
+        waiting={0}
+        running={0}
+        online
+        layout={{ ...open, railFolded: true }}
+        onLayout={() => undefined}
+      />,
+    )
+    expect(strip).toContain('Open the rail')
+    expect(strip).toContain('aria-label="Shops"')
+    expect(strip).not.toContain('aria-label="Bakery"')
+  })
+
+  it('reads the tree from each module’s parent', () => {
+    expect(flat(modules).map((x) => [x.module.name, x.depth])).toEqual([
+      ['Shops', 0],
+      ['Bakery', 1],
+      ['Food', 0],
+    ])
+    expect(inside(modules, 'm_1')).toEqual(['m_1', 'm_2'])
+    expect(ancestors(modules, 'm_2').map((m) => m.name)).toEqual(['Shops'])
   })
 })

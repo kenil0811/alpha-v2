@@ -29,7 +29,8 @@ export function Beside({
   useEffect(() => {
     if (last !== undefined) load()
   }, [load, last])
-  const inLens = (module: string | null) => !lens || module === lens.id
+  const inLens = (module: string | null) =>
+    !lens || (module !== null && (lens.ids ?? [lens.id]).includes(module))
   const cards = (stream?.cards ?? []).filter((c) => inLens(c.module))
   const signIns = lens ? [] : (stream?.attention ?? [])
   const running = (stream?.running ?? []).filter((r) => inLens(r.module))

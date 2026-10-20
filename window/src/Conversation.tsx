@@ -72,14 +72,17 @@ export function Conversation({
   // through a lens, a sentence stays when the turn it began does
   const items = useMemo(() => {
     if (!lens) return all
+    const ids = new Set(lens.ids ?? [lens.id])
     const kept = new Set(
       all
-        .filter((i) => i.kind === 'alpha' && i.module?.id === lens.id)
+        .filter((i) => i.kind === 'alpha' && i.module && ids.has(i.module.id))
         .map((i) => i.kind === 'alpha' && i.turn),
     )
-    return all.filter((i) =>
-      i.kind === 'said' ? kept.has(String(i.id)) : moduleOfItem(i)?.id === lens.id,
-    )
+    return all.filter((i) => {
+      if (i.kind === 'said') return kept.has(String(i.id))
+      const m = moduleOfItem(i)
+      return !!m && ids.has(m.id)
+    })
   }, [all, lens])
   const end = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)

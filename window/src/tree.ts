@@ -1,0 +1,46 @@
+// Modules inside modules (design §10): the tree the rail, Home, the bar and the lens read from the
+// flat list the core gives, each module naming the one it sits inside.
+import type { ModuleSummary } from '@alpha/core/api'
+
+type Placed = Pick<ModuleSummary, 'id' | 'name' | 'parent'>
+
+// The modules at the top: those inside none, or inside one the window does not show.
+export function tops<M extends Placed>(modules: M[]): M[] {
+  return modules.filter((m) => !m.parent || !modules.some((p) => p.id === m.parent))
+}
+
+export function childrenOf<M extends Placed>(modules: M[], id: string): M[] {
+  return modules.filter((m) => m.parent === id)
+}
+
+// A module and every module inside it, at any depth.
+export function inside(modules: Placed[], id: string): string[] {
+  const out = [id]
+  for (let i = 0; i < out.length; i++)
+    for (const m of modules) if (m.parent === out[i] && !out.includes(m.id)) out.push(m.id)
+  return out
+}
+
+// The modules a module sits inside, outermost first.
+export function ancestors<M extends Placed>(modules: M[], id: string): M[] {
+  const out: M[] = []
+  let at = modules.find((m) => m.id === id)?.parent
+  while (at && !out.some((m) => m.id === at)) {
+    const p = modules.find((m) => m.id === at)
+    if (!p) break
+    out.unshift(p)
+    at = p.parent
+  }
+  return out
+}
+
+// The tree in reading order, each module with how deep it sits.
+export function flat<M extends Placed>(modules: M[]): { module: M; depth: number }[] {
+  const out: { module: M; depth: number }[] = []
+  const walk = (m: M, depth: number) => {
+    out.push({ module: m, depth })
+    for (const c of childrenOf(modules, m.id)) walk(c, depth + 1)
+  }
+  for (const m of tops(modules)) walk(m, 0)
+  return out
+}
