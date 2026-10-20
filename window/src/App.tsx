@@ -1,20 +1,15 @@
-// The window: Home (the stream) and a module's tables in a rail beside it (design §14).
+// The window (design §14): the rail, a bar over each screen, and the screen: Home (the stream),
+// Activity, Settings or a module's table.
 import type { LiveEvent, ModuleSummary, Stream, TableView as TableData } from '@alpha/core/api'
+import { Activity as ActivityIcon, Briefcase, House, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { api, listen } from './api.ts'
 import { applyLive, Home, type Live } from './Home.tsx'
 import { Parts } from './Parts.tsx'
 import { Settings } from './Settings.tsx'
+import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
-import { cn } from './ui/cn.ts'
-
-type Place =
-  | { at: 'home' }
-  | { at: 'activity' }
-  | { at: 'parts' }
-  | { at: 'table'; id: string; row: string | null }
-  | { at: 'settings'; open: string | null }
 
 function placeOf(hash: string): Place {
   const m = /^#\/table\/([^/]+)(?:\/([^/]+))?$/.exec(hash)
@@ -24,70 +19,6 @@ function placeOf(hash: string): Place {
   if (hash === '#/activity') return { at: 'activity' }
   if (hash === '#/parts') return { at: 'parts' }
   return { at: 'home' }
-}
-
-export function Rail({
-  modules,
-  place,
-  name,
-}: {
-  modules: ModuleSummary[]
-  place: Place
-  name: string
-}) {
-  return (
-    <nav className="flex w-56 shrink-0 flex-col gap-4 border-r border-rail-line bg-rail px-3 py-4 text-base text-rail-ink-2">
-      <div className="px-2 text-ink">Alpha</div>
-      <a
-        href="#/"
-        className={cn(
-          'rounded-md px-2 py-1 hover:bg-rail-hover',
-          place.at === 'home' && 'bg-rail-sel text-rail-ink shadow-btn',
-        )}
-      >
-        Home
-      </a>
-      <a
-        href="#/activity"
-        className={cn(
-          '-mt-3 rounded-md px-2 py-1 hover:bg-rail-hover',
-          place.at === 'activity' && 'bg-rail-sel text-rail-ink shadow-btn',
-        )}
-      >
-        Activity
-      </a>
-      {modules.map((m) => (
-        <div key={m.id} className="flex flex-col gap-0.5">
-          <div className="px-2 text-sm text-ink-3">{m.name}</div>
-          {m.tables.map((t) => (
-            <a
-              key={t.id}
-              href={`#/table/${t.id}`}
-              className={cn(
-                'flex justify-between rounded-md px-2 py-1 hover:bg-rail-hover',
-                place.at === 'table' && place.id === t.id && 'bg-rail-sel text-rail-ink shadow-btn',
-              )}
-            >
-              <span>{t.name}</span>
-              <span className="text-ink-3">{t.rows}</span>
-            </a>
-          ))}
-        </div>
-      ))}
-      <div className="mt-auto flex flex-col gap-1">
-        <a
-          href="#/settings"
-          className={cn(
-            'rounded-md px-2 py-1 hover:bg-rail-hover',
-            place.at === 'settings' && 'bg-rail-sel text-rail-ink shadow-btn',
-          )}
-        >
-          Settings
-        </a>
-        <div className="px-2 text-sm text-ink-3">{name}</div>
-      </div>
-    </nav>
-  )
 }
 
 export function App() {
@@ -100,6 +31,19 @@ export function App() {
   const [name, setName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
+  const [finding, setFinding] = useState(false)
+
+  // ⌘K opens Find anywhere
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setFinding((f) => !f)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const placeRef = useRef(place)
   placeRef.current = place
 
@@ -156,29 +100,55 @@ export function App() {
     [refresh],
   )
 
+  const icon = 'size-3.25'
+  const crumb: Crumb =
+    place.at === 'activity'
+      ? { icon: <ActivityIcon className={icon} />, parts: ['Activity'] }
+      : place.at === 'settings'
+        ? { icon: <SlidersHorizontal className={icon} />, parts: ['Settings'] }
+        : place.at === 'parts'
+          ? { parts: ['Parts'] }
+          : place.at === 'table'
+            ? {
+                icon: <Briefcase className={icon} />,
+                parts: table ? [table.module.name, table.name] : ['…'],
+              }
+            : { icon: <House className={icon} />, parts: ['Home'] }
+
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
-      <Rail modules={modules} place={place} name={name} />
-      <main className="min-w-0 flex-1">
+      <Rail
+        modules={modules}
+        place={place}
+        name={name}
+        waiting={stream?.cards.length ?? 0}
+        running={stream?.running ?? 0}
+        online={!problem}
+      />
+      <main className="flex min-w-0 flex-1 flex-col">
+        <Bar crumb={crumb} onFind={() => setFinding(true)} />
         {problem && (
-          <div className="border-b border-line bg-warn-soft px-6 py-2 text-base text-warn">
+          <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
             {problem}
           </div>
         )}
-        {place.at === 'home' ? (
-          <Home stream={stream} live={live} busyTurn={busyTurn} />
-        ) : place.at === 'parts' ? (
-          <Parts />
-        ) : place.at === 'activity' ? (
-          <Activity version={version} />
-        ) : place.at === 'settings' ? (
-          <Settings open={place.open} version={version} />
-        ) : table ? (
-          <TableView key={table.id} data={table} row={place.at === 'table' ? place.row : null} />
-        ) : (
-          <p className="p-6 text-ink-3">That table is not there.</p>
-        )}
+        <div className="min-h-0 flex-1">
+          {place.at === 'home' ? (
+            <Home stream={stream} live={live} busyTurn={busyTurn} />
+          ) : place.at === 'parts' ? (
+            <Parts />
+          ) : place.at === 'activity' ? (
+            <Activity version={version} />
+          ) : place.at === 'settings' ? (
+            <Settings open={place.open} version={version} />
+          ) : table ? (
+            <TableView key={table.id} data={table} row={place.row} />
+          ) : (
+            <p className="p-6 text-ink-3">That table is not there.</p>
+          )}
+        </div>
       </main>
+      {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
     </div>
   )
 }

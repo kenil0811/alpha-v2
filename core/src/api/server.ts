@@ -122,6 +122,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       lines,
       cards: world.cards.waiting(user.id).map(cardView),
       busy: engine.busy(user),
+      running: (engine.hands?.runner.runs(50) ?? []).filter((r) => r.state === 'running').length,
       lastId: world.lastLineId(),
     }
   })

@@ -105,10 +105,9 @@ export function TableView({ data, row: openRow }: { data: TableData; row?: strin
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-end justify-between border-b border-line px-6 py-4">
+      <div className="flex items-center justify-between gap-4 px-7 pt-5 pb-3">
         <div>
-          <div className="text-sm text-ink-3">{data.module.name}</div>
-          <h1 className="text-xl text-ink">{data.name}</h1>
+          <h1 className="text-2xl text-ink">{data.name}</h1>
         </div>
         {groupBy && (
           <Segmented

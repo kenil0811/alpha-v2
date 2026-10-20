@@ -70,6 +70,9 @@ for (const size of SIZES)
       await page.goto('about:blank')
       await page.goto(`${base}${s.hash}`)
       await page.waitForSelector('nav')
+      // a table's title comes once its rows are in
+      if (s.hash.startsWith('#/table'))
+        await page.waitForSelector('main h1', { timeout: 10_000 }).catch(() => undefined)
       if (s.board) {
         const board = page.getByRole('button', { name: 'Board', exact: true })
         if (!(await board.count())) continue // a table with no choice to group by has no board

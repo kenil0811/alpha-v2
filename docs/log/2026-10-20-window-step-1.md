@@ -1,4 +1,4 @@
-# 20 October 2026: the window redesign, steps 1 and 2 (Ledger's look and its parts)
+# 20 October 2026: the window redesign, steps 1 to 3 (Ledger's look, its parts, the shell)
 
 Kenil tested DealPilot on a test copy ("looks good!") and stages A and B were committed and
 pushed (alpha-v2 3937316..9cbabb6; alpha-avilo private at github.com/kenil0811/alpha-avilo). He
@@ -48,3 +48,18 @@ pills, 24-hour times), tables (Table · Board as a segmented control, a value's 
 Layout is otherwise as it was: the shell, Home's anatomy, the source panel's place and Activity
 by day are steps 3 to 6. A Parts page (`#/parts`, not in the rail) shows every part, and the
 shots take it, so a part is seen in light and dark before a screen uses it.
+
+## Step 3: the shell (uncommitted, for Kenil's review)
+
+Step 2 committed and pushed (34948a7). The shell (`window/src/Shell.tsx`), as the mock's A:
+
+- **The rail, 216px:** its top 48px left for the Mac's window buttons; the mark and "Kenil · on
+  this Mac"; Home with a badge counting the cards waiting on the person; Activity with a spinner
+  while an agent's run is going (the stream now says how many: `running`); Modules as a tree,
+  each module folding, its tables with their row counts; Settings and "Alpha is running" (or
+  "not answering") at the foot.
+- **The bar, 48px, over every screen:** crumbs (Home; DealPilot › Deals) and Find.
+- **Find, ⌘K:** every screen and table by name, those starting with the words first; Return
+  opens one. Checked by hand: "dea" opens Deals.
+
+Ask (⌘J) waits for step 8, where the module's Conversation panel it opens comes.

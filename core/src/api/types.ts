@@ -45,6 +45,7 @@ export interface Stream {
   lines: StreamLine[]
   cards: CardView[]
   busy: boolean
+  running: number // agents' runs going now
   lastId: number
 }
 
