@@ -56,4 +56,6 @@ export const config = {
   limits: (dir?: string) => load('limits.yaml', yamlOf(Limits, 'limits.yaml'), dir),
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
+  // how the model reads a document into the values a kit names
+  reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
 }

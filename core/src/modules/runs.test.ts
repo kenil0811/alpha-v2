@@ -1,5 +1,5 @@
 // Runs of a made-up kit's agents, with a stand-in for the browser engine: never a real site.
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
@@ -296,6 +296,71 @@ describe('triggers', () => {
     await runner.runDue(at8.getTime())
     expect(runner.runs()).toHaveLength(1)
     await runner.runDue(at8.getTime() + 60_000)
+    expect(runner.runs()).toHaveLength(1)
+  }, 60_000)
+})
+
+describe('an agent woken by a filing', () => {
+  it('is handed the documents filed or put on a row, with their rows, and can place one', async () => {
+    const kit = join(home, 'filing-kit')
+    mkdirSync(join(kit, 'agents'), { recursive: true })
+    mkdirSync(join(kit, 'skills', 'file'), { recursive: true })
+    writeFileSync(
+      join(kit, 'module.yaml'),
+      'name: Desk\nversion: 0.1.0\ntables:\n  - name: Jobs\n    documents: [Brief, Invoice]\n    fields:\n      - { name: Name, kind: text }\n',
+    )
+    writeFileSync(
+      join(kit, 'agents', 'filer.md'),
+      '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: skills/file/run.js }\ntouches: [Jobs]\n---\nFiles briefs.\n',
+    )
+    writeFileSync(
+      join(kit, 'skills', 'file', 'run.js'),
+      `export default async function (alpha) {
+  const filed = alpha.input.filed ?? []
+  const [job] = await alpha.rows.list('Jobs')
+  for (const f of filed) if (!f.rows.length) await alpha.documents.place(f.file, 'Jobs', job.id, 'Brief')
+  return { filed: filed.map((f) => [f.name, f.rows.map((r) => r.kind)]), listed: (await alpha.documents.list()).map((d) => d.rows.length) }
+}
+`,
+    )
+    const m = await install(world, kit, ctx)
+    const [filer] = agents(world, m.id)
+    setAgentState(world, filer?.id as string, 'on', 'u_1')
+    const jobs = world.shape.table('Jobs')?.id as string
+    world.records.add(
+      jobs,
+      [{ values: { Name: 'Shop fit' }, provenance: { kind: 'assumed', basis: 'a test' } }],
+      {
+        ...ctx,
+        said: null,
+      },
+    )
+    const runner = new AgentRunner(world, () => engine)
+    await runner.runDue()
+    const bytes = new TextEncoder().encode('name,size\nshelf,2\n')
+    const { file } = world.files.take(bytes, 'brief.csv', 'text/csv', ctx)
+    world.files.addDocument(
+      file.hash,
+      'brief.csv',
+      'sheet',
+      [{ position: { sheet: 'S', cell: 'A1' }, words: 'name' }],
+      ctx,
+    )
+    await runner.runDue()
+    const [last] = runner.runs()
+    const result = JSON.parse(
+      String(
+        (
+          world.db.prepare('SELECT data FROM runs WHERE id = ?').get(last?.id as string) as {
+            data: string
+          }
+        ).data,
+      ),
+    ).result
+    expect(result).toEqual({ filed: [['brief.csv', []]], listed: [1] })
+    expect(world.rowsOfFile(file.hash).map((r) => r.kind)).toEqual(['Brief'])
+    // its own placing does not wake it again
+    await runner.runDue()
     expect(runner.runs()).toHaveLength(1)
   }, 60_000)
 })

@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import type { BrowserEngine, ExtractSpec } from '@alpha/connector-sdk'
 import { Cron } from 'croner'
 import { parse, stringify } from 'yaml'
+import { type Ask, askModel, inReadingOrder, type ReadSpec, readInto } from '../files/reading.ts'
 import { decide } from '../gates/gates.ts'
 import { runScript, type ScriptRun } from '../scripts/run.ts'
 import { all, run as exec, parse as fromJson, json, newId, now, one } from '../world/db.ts'
@@ -37,9 +38,20 @@ export interface RunRow {
   endedAt: string | null
   state: 'running' | 'ok' | 'failed' | 'stopped'
   words: string | null
+  tokens: number | null // the model's, when the run asked it to read something
 }
 
 const CHANGE_KINDS = ['wrote', 'changed', 'landed', 'removed']
+
+// What a filing hands the agents waiting on one: each document read or put on a row since they
+// last looked, with the rows it sits on.
+export interface Filed {
+  file: string
+  name: string
+  document: string
+  kind: string // sheet, pdf, text
+  rows: { table: string; row: string; kind: string | null }[]
+}
 
 export function moduleNetwork(module: Module): string[] {
   const file = join(module.dir, 'module.yaml')
@@ -64,16 +76,19 @@ export class AgentRunner {
   private running = new Map<string, AbortController>()
   private notify: () => void
   private owner: string | null
+  private ask: Ask
+  private tokens = new Map<string, number>() // a run's model tokens, while it runs
 
   constructor(
     world: World,
     engine: () => BrowserEngine,
-    options: { notify?: () => void; owner?: string | null } = {},
+    options: { notify?: () => void; owner?: string | null; ask?: Ask } = {},
   ) {
     this.world = world
     this.engine = engine
     this.notify = options.notify ?? (() => {})
     this.owner = options.owner ?? null
+    this.ask = options.ask ?? askModel(world.paths.dir)
   }
 
   // Sites a module's scripts may read: its list, or a yes on a card for that site (gate 1), which
@@ -195,9 +210,20 @@ export class AgentRunner {
         const t = tableOf(p.table)
         const items = (Array.isArray(p.items) ? p.items : []) as {
           key: string
+          row?: string // a row already there, by its id
           values: Record<string, unknown>
           url?: string
-          places?: Record<string, { file: string; sheet?: string; cell?: string }>
+          places?: Record<
+            string,
+            {
+              file: string
+              sheet?: string
+              cell?: string
+              page?: number
+              line?: number
+              box?: [number, number, number, number]
+            }
+          >
         }[]
         for (const i of items)
           if (i.url !== undefined && !/^https?:\/\//.test(String(i.url)))
@@ -211,7 +237,8 @@ export class AgentRunner {
           ctx,
         )
       },
-      // the documents filed in the world, and one's cells or lines with their places
+      // the documents filed in the world, each with the rows it sits on, and one's cells or
+      // lines with their places
       'documents.list': async () =>
         this.world.files.documents().map((d) => ({
           file: d.fileHash,
@@ -219,7 +246,52 @@ export class AgentRunner {
           title: d.title,
           kind: d.kind,
           pieces: d.chunks,
+          rows: this.world.rowsOfFile(d.fileHash).map((r) => ({
+            table: this.world.shape.table(r.table)?.name ?? r.table,
+            row: r.record,
+            kind: r.kind,
+          })),
         })),
+      // a filed document put on a row of the module's own tables (the deal it is about)
+      'documents.place': async (p: Record<string, unknown>) => {
+        const t = tableOf(p.table)
+        if (!this.world.shape.within(module.id).includes(t.module.id))
+          throw new Refused(`${t.name} is not one of ${module.name}'s tables.`)
+        const rec = this.world.records.get(String(p.row))
+        if (rec?.table.id !== t.id) throw new Refused(`${t.name} has no row ${String(p.row)}.`)
+        const placed = this.world.placeFile(
+          String(p.file),
+          rec.record.id,
+          p.kind ? String(p.kind) : null,
+          ctx,
+        )
+        this.notify()
+        return { file: placed.file.hash, row: placed.record, kind: placed.kind }
+      },
+      // the model reads a document into the values the script names, each with the place it
+      // was read from; what is not found where it is cited comes back as not given
+      'documents.extract': async (p: Record<string, unknown>) => {
+        const d = this.world.files.document(String(p.file))
+        if (!d) throw new Refused('That document is not filed, or not read yet.')
+        const chunks = this.world.files.chunks(d.id)
+        const pieces = d.kind === 'pdf' ? inReadingOrder(chunks) : chunks
+        const name = this.world.files.file(d.fileHash)?.name ?? d.title
+        const out = await readInto(p.spec as ReadSpec, pieces, this.ask)
+        this.tokens.set(runId, (this.tokens.get(runId) ?? 0) + out.tokens)
+        const found =
+          Object.values(out.values).filter(Boolean).length +
+          Object.values(out.lists).reduce((n, l) => n + l.length, 0)
+        this.world.line({
+          actor,
+          kind: 'run_step',
+          words: `Read ${name}: ${found} found${out.dropped.length ? `; ${out.dropped.length} left out, not found where cited` : ''}.`,
+          data: { file: d.fileHash, dropped: out.dropped, tokens: out.tokens },
+          run: runId,
+          module: module.id,
+        })
+        this.notify()
+        return { values: out.values, lists: out.lists, dropped: out.dropped }
+      },
       'documents.read': async (p: Record<string, unknown>) => {
         const d = this.world.files.document(String(p.file))
         if (!d) throw new Refused('That document is not filed, or not read yet.')
@@ -415,13 +487,15 @@ export class AgentRunner {
           : said
             ? `${label}: ${said}`
             : `${label} finished.`
+    const tokens = this.tokens.get(runId) ?? null
+    this.tokens.delete(runId)
     exec(
       this.world.db,
       'UPDATE runs SET ended_at = ?, state = ?, words = ?, data = ? WHERE id = ?',
       now(),
       state,
       words,
-      json({ result: out.result, stderr: out.stderr.slice(-4000) }),
+      json({ result: out.result, stderr: out.stderr.slice(-4000), tokens }),
       runId,
     )
     if (agentId)
@@ -438,13 +512,13 @@ export class AgentRunner {
     return { id: runId, state, words, result: out.result }
   }
 
-  async runAgent(agent: Agent, who?: RunFor): Promise<RunOutcome> {
+  async runAgent(agent: Agent, who?: RunFor, given: object = {}): Promise<RunOutcome> {
     const module = this.world.shape.module(agent.module)
     if (!module) throw new Refused('That agent’s module is not there.')
     return this.runScript(
       module,
       agent.runs.script,
-      agent.runs.input ?? {},
+      { ...(agent.runs.input ?? {}), ...given },
       agent.name,
       agent.id,
       who,
@@ -463,8 +537,9 @@ export class AgentRunner {
       if (a.state !== 'on') continue
       if (one(this.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
         continue
-      if (!this.due(a, nowMs)) continue
-      await this.runAgent(a).catch(() => undefined)
+      const given = this.due(a, nowMs)
+      if (!given) continue
+      await this.runAgent(a, undefined, given).catch(() => undefined)
       // the run counts at the tick's time, the clock its next one is judged by
       exec(
         this.world.db,
@@ -475,7 +550,13 @@ export class AgentRunner {
     }
   }
 
-  private due(a: Agent, nowMs: number): boolean {
+  // Whether an agent is due, and what its trigger hands it when it is (a filing's documents).
+  private due(a: Agent, nowMs: number): false | { filed?: Filed[] } {
+    const is = this.isDue(a, nowMs)
+    return is === true ? {} : is
+  }
+
+  private isDue(a: Agent, nowMs: number): boolean | { filed: Filed[] } {
     const last = a.lastRunAt ? Date.parse(a.lastRunAt) : 0
     const t = a.trigger
     if ('every' in t) {
@@ -492,18 +573,37 @@ export class AgentRunner {
       return !!next && next.getTime() <= nowMs
     }
     if ('filed' in t) {
-      // a document read since the agent last looked
+      // a document read, or put on a row, since the agent last looked (not by the agent itself)
       const seen = Number(a.cursor ?? 0)
-      const filed = this.world
-        .lines({ after: seen, kinds: ['filed'] })
-        .some((l) => (l.data as { document?: string }).document)
+      const files = new Set<string>()
+      for (const l of this.world.lines({ after: seen, kinds: ['filed'] })) {
+        const d = l.data as { file?: string; document?: string; record?: string; off?: boolean }
+        if (l.actor.kind === 'agent' && l.actor.id === a.name) continue
+        if (d.file && (d.document || (d.record && !d.off))) files.add(d.file)
+      }
       exec(
         this.world.db,
         'UPDATE agents SET cursor = ? WHERE id = ?',
         String(this.world.lastLineId()),
         a.id,
       )
-      return filed
+      const filed: Filed[] = []
+      for (const hash of files) {
+        const doc = this.world.files.document(hash)
+        if (!doc) continue // a PDF still being read comes when it is read
+        filed.push({
+          file: hash,
+          name: this.world.files.file(hash)?.name ?? doc.title,
+          document: doc.id,
+          kind: doc.kind,
+          rows: this.world.rowsOfFile(hash).map((r) => ({
+            table: this.world.shape.table(r.table)?.name ?? r.table,
+            row: r.record,
+            kind: r.kind,
+          })),
+        })
+      }
+      return filed.length ? { filed } : false
     }
     const tables = new Set(
       (Array.isArray(t.changes) ? t.changes : [t.changes])
@@ -533,6 +633,7 @@ export class AgentRunner {
       ended_at: string | null
       state: RunRow['state']
       words: string | null
+      data: string
     }>(this.world.db, 'SELECT * FROM runs ORDER BY started_at DESC LIMIT ?', limit).map((r) => ({
       id: r.id,
       agent: r.agent_id,
@@ -541,6 +642,7 @@ export class AgentRunner {
       endedAt: r.ended_at,
       state: r.state,
       words: r.words,
+      tokens: fromJson<{ tokens?: number | null }>(r.data, {}).tokens ?? null,
     }))
   }
 }

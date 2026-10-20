@@ -33,13 +33,20 @@ export function startLayer(
     if (notes && notes.split('\n').length > 1) parts.push(`Notes:\n${notes}`)
     for (const t of m.tables)
       parts.push(
-        `- ${t.name} (view ${t.view}), ${t.rows} row${t.rows === 1 ? '' : 's'}: ${t.fields.join(', ') || 'no fields'}`,
+        `- ${t.name} (view ${t.view}), ${t.rows} row${t.rows === 1 ? '' : 's'}: ${t.fields.join(', ') || 'no fields'}${t.documents?.length ? `; its rows take documents: ${t.documents.join(', ')}` : ''}`,
       )
   }
   const docs = world.files.documents()
   if (docs.length) {
     parts.push('## Files')
-    for (const d of docs) parts.push(`- ${d.title} (${d.kind}, ${d.chunks} pieces)`)
+    for (const d of docs) {
+      const on = world
+        .rowsOfFile(d.fileHash)
+        .map((r) => `${world.shape.table(r.table)?.name ?? 'a table'} row ${r.record}`)
+      parts.push(
+        `- ${d.title} (${d.kind}, ${d.chunks} pieces${on.length ? `; on ${on.join(', ')}` : ''})`,
+      )
+    }
   }
   parts.push(`## Connections\n${connections ?? 'None yet.'}`)
   parts.push(

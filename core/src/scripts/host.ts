@@ -42,10 +42,16 @@ const alpha = {
       notes?: Record<string, string>, // the sum with its numbers, or each check, per field
     ) => call('rows.compute', { table, id, values, formula, ...(notes ? { notes } : {}) }),
   },
-  // the documents filed (each with its file's hash), and one's cells or lines with their places
+  // the documents filed (each with its file's hash and the rows it sits on), one's cells or lines
+  // with their places, and a document put on a row of the module's own tables
   documents: {
     list: () => call('documents.list', {}),
     read: (file: string) => call('documents.read', { file }),
+    place: (file: string, table: string, row: string, kind?: string) =>
+      call('documents.place', { file, table, row, ...(kind ? { kind } : {}) }),
+    // the model reads it into what the script names; each value comes with the place it was read
+    // from, and one not found where it is cited comes back as null
+    extract: (file: string, spec: unknown) => call('documents.extract', { file, spec }),
   },
   browser: {
     open: (url: string) => call('browser.open', { url }),

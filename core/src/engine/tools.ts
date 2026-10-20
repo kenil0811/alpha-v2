@@ -8,6 +8,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { KNOWN } from '../connectors/service.ts'
 import { importRows, readDocument } from '../files/documents.ts'
+import type { Intake } from '../files/intake.ts'
 import { agents } from '../modules/agents.ts'
 import { keep } from '../modules/keep.ts'
 import type { AgentRunner } from '../modules/runs.ts'
@@ -36,6 +37,7 @@ export interface Hands {
   browser: () => BrowserEngine
   runner: AgentRunner
   browsers?: string // where the core's own browser is kept, to look at a module's page
+  intake?: Intake // files that come by mail, proposed for filing
 }
 
 export const SERVER = 'alpha'
@@ -117,7 +119,7 @@ const PAGE = [
 const SCRIPT = [
   'A script is JavaScript: `export default async (alpha) => { … return { words } }`. It has no network and writes only in its module folder; it reaches the world through alpha:',
   'alpha.input; alpha.rows.list(table) (each row: id, key, values by field name, notes of its computed values); alpha.rows.land(table, [{ key, values, url, places }]) (a row per key, added or changed; values by field name; url only for the web page a row was read from; places by field name: { file, sheet, cell } or { file, page, line }, the document place a value was read from, so it opens there);',
-  'alpha.documents.list() (the documents filed: file (its hash), name, title, kind sheet or text or pdf, pieces); alpha.documents.read(file) (its cells or lines, each with sheet, cell and row, or page and line, and its words);',
+  'alpha.documents.list() (the documents filed: file (its hash), name, title, kind sheet or text or pdf, pieces, and rows: the rows it sits on, each table, row and kind); alpha.documents.read(file) (its cells or lines, each with sheet, cell and row, or page and line, and its words); alpha.documents.place(file, table, row, kind) (a filed document put on a row of the module’s own tables, as one of the kinds that table takes); alpha.documents.extract(file, { about, values: { name: { kind, choices, about } }, lists: { name: { about, fields } } }) (the model reads the document into those values, kind text, number, money, percent, date or choice; each comes back as { value, place } with the place it was read from, ready for rows.land’s places, or null when it is not found where it is cited; and dropped, why each left out was left out); an agent woken by a filing gets alpha.input.filed: the documents filed or placed since it last looked, each with file, name, kind and rows;',
   'alpha.rows.compute(table, id, values, formula, notes) (values with the formula each came from, and per field a note: the sum with its numbers, or each check; a value the person typed over keeps theirs, and the figure is kept beside it for Reset); alpha.browser.open(url) (title, text, links, html);',
   'alpha.browser.extract(url, { list, fields: { name: { css, attr } }, next, id: { field, pattern }, pages }) (every page of a list by its next link, or at most `pages`; returns { pages, items }, each item its fields with _id and _url; a failure carries kind sign_in or blocked);',
   'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity).',
@@ -130,7 +132,7 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   shape: (i) => (i.action === 'remove_table' ? 'remove' : 'write'),
   write: () => 'write',
   change: (i) => (Array.isArray(i.remove) && i.remove.length ? 'remove' : 'write'),
-  file: (i) => (i.action === 'import' ? 'write' : 'read'),
+  file: (i) => (i.action === 'read' ? 'read' : 'write'),
   ask: () => 'write',
   remember: () => 'write',
   connect: () => 'sign_in',
@@ -388,20 +390,36 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
     ),
     tool(
       'file',
-      'Files the person dropped in. read: a file’s contents with each piece’s place (sheet and cell, or line), from offset. import: a sheet’s rows into a table, with columns mapping each header to a field; every value keeps its cell as its source.',
+      'Files the person dropped in. read: a file’s contents with each piece’s place (sheet and cell, or line), from offset. import: a sheet’s rows into a table, with columns mapping each header to a field; every value keeps its cell as its source. place: put the file on the row it belongs to (a deal’s CIM on that deal), by table and row id, with kind one of the kinds that table’s rows take when it names them; the module’s readers then read it there. off: take it off that row; the file stays.',
       {
-        action: z.enum(['read', 'import']),
+        action: z.enum(['read', 'import', 'place', 'off']),
         file: z.string(),
         offset: z.number().int().optional(),
         table: z.string().optional(),
         columns: z.record(z.string(), z.string()).optional(),
         sheet: z.string().optional(),
+        row: z.string().optional(),
+        kind: z.string().optional(),
       },
       async (a) =>
         guard(() => {
           const f = world.files.findFile(a.file)
           if (!f) throw new Refused(`There is no file called ${a.file}.`)
           if (a.action === 'read') return ok(readDocument(world, f.hash, a.offset ?? 0))
+          if (a.action === 'place' || a.action === 'off') {
+            if (!a.table || !a.row) throw new Refused(`${a.action} needs table and row.`)
+            const t = tableOf(world, a.table)
+            const rec = world.records.get(a.row)
+            if (rec?.table.id !== t.id) throw new Refused(`${t.name} has no row ${a.row}.`)
+            if (a.action === 'off') {
+              world.unplaceFile(f.hash, a.row, ctx())
+              return ok(`Took ${f.name} off that row.`)
+            }
+            const on = world.placeFile(f.hash, a.row, a.kind ?? null, ctx())
+            return ok(
+              `Filed ${f.name} on that row of ${t.name}${on.kind ? `, as a ${on.kind}` : ''}.`,
+            )
+          }
           if (!a.table || !a.columns) throw new Refused('import needs table and columns.')
           const t = tableOf(world, a.table)
           for (const field of Object.values(a.columns)) findField(t, field)

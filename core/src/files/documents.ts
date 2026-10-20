@@ -58,6 +58,11 @@ export function takeIn(world: World, bytes: Uint8Array, name: string, mime: stri
   return { file, document, readable: read.kind !== 'kept', reading: null }
 }
 
+// Whether a PDF is being read now.
+export function stillBeingRead(hash: string): boolean {
+  return reading.has(hash)
+}
+
 // For journeys and tests: what is still being read.
 export function stillReading(): Promise<void> {
   return Promise.all([...reading.values()]).then(() => undefined)
