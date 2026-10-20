@@ -11,6 +11,7 @@ import {
   type Effect,
   type Fixtures,
   type Host,
+  type ItemFile,
   judgeHealth,
   makeCall,
   Problem,
@@ -276,6 +277,34 @@ export class ConnectorService {
         `${c.manifest.title} is connected for ${conns.map((k) => k.account).join(' and ')}: say which account.`,
       )
     return conn
+  }
+
+  // The connections whose items carry files (an email's attachments), and an item's files.
+  fileSources(): { connection: string; title: string; table: string; field: string }[] {
+    return this.world.connections
+      .list()
+      .filter((k) => k.state === 'connected')
+      .flatMap((k) => {
+        const c = connectorOf(k.connector)
+        return c.files
+          ? [
+              {
+                connection: k.id,
+                title: c.manifest.title,
+                table: c.files.table,
+                field: c.files.field,
+              },
+            ]
+          : []
+      })
+  }
+
+  async fetchFiles(connection: string, item: string): Promise<ItemFile[]> {
+    const conn = this.world.connections.get(connection)
+    if (!conn) throw new Refused('That connection is not there.')
+    const c = connectorOf(conn.connector)
+    if (!c.files) throw new Refused(`${c.manifest.title} carries no files.`)
+    return c.files.fetch(this.call(c, conn), item)
   }
 
   effect(name: string, input: Record<string, unknown>): Effect | undefined {

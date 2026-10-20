@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
 import { type Connector, Problem } from '@alpha/connector-sdk'
 
-export { doclingEnv, readPdf } from './pdf.ts'
+export { doclingEnv, peekPdf, readPdf, renderPage } from './pdf.ts'
 export { type Piece, type Position, type Readable, readBytes } from './read.ts'
 export { type Cell, sheetBytes } from './write.ts'
 

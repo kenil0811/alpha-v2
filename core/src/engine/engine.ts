@@ -1,6 +1,7 @@
 // The engine as the api and the journeys runner see it: one desk per user over one world.
 import { EventEmitter } from 'node:events'
 import { takeIn } from '../files/documents.ts'
+import { FILING, type Filing } from '../files/intake.ts'
 import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
 import type { User, World } from '../world/world.ts'
@@ -88,6 +89,18 @@ export class Engine {
   }
 
   answer(user: User, cardId: string, answer: string): Card {
+    // a file from the mail: a yes files it where it was proposed, a no lets it go
+    const intake = this.options.hands?.intake
+    const waiting = this.world.cards.get(cardId)
+    if (intake && waiting?.call?.tool === FILING) {
+      const f = waiting.call.input as Filing
+      const no = answer === 'Decline' || answer === 'No' || answer === 'Not now'
+      const out = no
+        ? intake.decline(cardId, '', user)
+        : intake.file(cardId, { row: f.row, kind: f.kind }, user)
+      this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
+      return out
+    }
     const card = this.world.cards.answer(cardId, answer, { kind: 'person', id: user.id })
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
     this.desk(user).cardAnswered(card)

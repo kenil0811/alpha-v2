@@ -8,6 +8,8 @@ import { buildServer } from './api/server.ts'
 import { config } from './config.ts'
 import { ConnectorService } from './connectors/service.ts'
 import { Engine } from './engine/engine.ts'
+import { Intake } from './files/intake.ts'
+import { askModel } from './files/reading.ts'
 import { AgentRunner } from './modules/runs.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { tenantDir, World } from './world/world.ts'
@@ -62,12 +64,24 @@ const runner = new AgentRunner(world, browserEngine, {
   owner: user.id,
   notify: () => engine.events.emit('event', { type: 'lines', user: user.id }),
 })
+// Files that come by mail, proposed for filing on a card each.
+const intake = new Intake(
+  world,
+  { sources: () => connectors.fileSources(), fetch: (c, item) => connectors.fetchFiles(c, item) },
+  askModel(world.paths.dir),
+  user,
+)
 const engine = new Engine(world, {
   connectors,
-  hands: { browser: browserEngine, runner, browsers: join(home, 'browsers') },
+  hands: { browser: browserEngine, runner, browsers: join(home, 'browsers'), intake },
 })
 const scheduler = new Scheduler(world, [
   { run: (now) => connectors.syncDue(now) },
+  {
+    run: async () => {
+      if (await intake.due()) engine.events.emit('event', { type: 'lines', user: user.id })
+    },
+  },
   { run: (now) => runner.runDue(now) },
 ])
 scheduler.start()

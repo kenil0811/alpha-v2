@@ -84,6 +84,14 @@ export interface SyncResult {
   sawNew: boolean
 }
 
+// A file an item carries: an email's attachment. inline: shown in the body (a logo, a signature).
+export interface ItemFile {
+  name: string
+  mime: string
+  bytes: Uint8Array
+  inline: boolean
+}
+
 export interface Connector {
   manifest: Manifest
   guide: string // what the model reads about it
@@ -93,6 +101,9 @@ export interface Connector {
   tools: Record<string, Tool<any>>
   check?: (c: Call) => Promise<void> // the account works; throws in plain words when it does not
   sync?: (c: Call) => Promise<SyncResult>
+  // The files an item carries, fetched when the core needs them (an email's attachments); field
+  // is the item's field that names them, so the core knows which items carry any.
+  files?: { table: string; field: string; fetch: (c: Call, item: string) => Promise<ItemFile[]> }
 }
 
 export function defineTool<S extends z.ZodRawShape>(t: Tool<S>): Tool<S> {

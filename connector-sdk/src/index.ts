@@ -18,6 +18,7 @@ export {
   type FieldKind,
   type Host,
   type Item,
+  type ItemFile,
   type Landed,
   type Manifest,
   Problem,

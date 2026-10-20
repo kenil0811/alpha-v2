@@ -2,7 +2,7 @@
 // PDF comes (about 1.6 GB with its models: Kenil's yes, 19 Oct). Each table cell keeps its table,
 // row, column, page and box; other text its page and box.
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Problem } from '@alpha/connector-sdk'
@@ -10,6 +10,8 @@ import type { Piece } from './read.ts'
 
 const DOCLING = 'docling==2.140.0'
 const SCRIPT = new URL('../py/read_pdf.py', import.meta.url).pathname
+const RENDER = new URL('../py/render_page.py', import.meta.url).pathname
+const PEEK = new URL('../py/peek_pdf.py', import.meta.url).pathname
 
 function run(cmd: string, args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) =>
@@ -72,4 +74,38 @@ export async function readPdf(
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+}
+
+// One page drawn as a PNG, with the page's size in points: a piece's box (in points, counted up
+// from the bottom of the page) is marked on it by the window.
+export async function renderPage(
+  file: string,
+  page: number,
+  envs: string,
+): Promise<{ png: Buffer; pages: number; width: number; height: number }> {
+  const python = await doclingEnv(envs)
+  const dir = mkdtempSync(join(tmpdir(), 'alpha-page-'))
+  try {
+    const out = join(dir, 'page.png')
+    const size = JSON.parse(
+      (await run(python, ['-I', RENDER, file, String(page), out, '2'], 120_000))
+        .trim()
+        .split('\n')
+        .at(-1) ?? '{}',
+    ) as { pages: number; width: number; height: number }
+    return { png: readFileSync(out), ...size }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+// The words of a PDF's first pages, for a look at what it is before it is read in full.
+export async function peekPdf(
+  file: string,
+  envs: string,
+  pages = 2,
+): Promise<{ pages: number; words: string[] }> {
+  const python = await doclingEnv(envs)
+  const out = await run(python, ['-I', PEEK, file, String(pages)], 120_000)
+  return JSON.parse(out.trim().split('\n').at(-1) ?? '{}') as { pages: number; words: string[] }
 }

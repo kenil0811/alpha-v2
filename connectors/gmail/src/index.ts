@@ -336,6 +336,44 @@ export const gmail: Connector = {
   check: async (c) => {
     await c.call('check', {}, () => withImap(c, async (client) => mailbox(client, '\\All')))
   },
+  // A message's attachments, by its Message ID: read only, never marked read or moved.
+  files: {
+    table: 'Mail',
+    field: 'Attachments',
+    fetch: async (c, item) => {
+      const files = await c.call('files', { message: item }, () =>
+        withImap(c, async (client) => {
+          const lock = await client.getMailboxLock(await mailbox(client, '\\All'))
+          try {
+            const id = item.replace(/^<|>$/g, '')
+            const uids =
+              (await client.search({ header: { 'message-id': id } }, { uid: true })) || []
+            const uid = uids.at(-1)
+            if (!uid) throw new Problem('That message is not in this Gmail account.', 'gone')
+            const m = await client.fetchOne(String(uid), { source: true }, { uid: true })
+            const source = m ? m.source : undefined
+            if (!source) throw new Problem('That message could not be read.')
+            const parsed = await simpleParser(source)
+            // as text, so a recorded answer is plain JSON
+            return parsed.attachments.map((a) => ({
+              name: a.filename ?? 'unnamed',
+              mime: a.contentType,
+              base64: a.content.toString('base64'),
+              inline: a.contentDisposition === 'inline' || !!a.related,
+            }))
+          } finally {
+            lock.release()
+          }
+        }),
+      )
+      return files.map((f) => ({
+        name: f.name,
+        mime: f.mime,
+        bytes: new Uint8Array(Buffer.from(f.base64, 'base64')),
+        inline: f.inline,
+      }))
+    },
+  },
   // First the last 90 days; then what came after the last message seen, and the unread and
   // starred marks that changed since (IMAP's CONDSTORE). The cursor is the shape, the mailbox's
   // UID validity, the last UID landed and the mailbox's mod-sequence.
