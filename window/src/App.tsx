@@ -1,12 +1,20 @@
-// The window (design §14): the rail, a bar over each screen, and the screen: Home (the stream),
-// Activity, Settings or a module (its tables, conversation, agents and notes). On a module's
-// screen, Ask (⌘J) opens its conversation on the right.
+// The window (design §14): the rail, a bar over each screen, and the screen: Home (the important
+// things), the Conversation, Activity, Settings or a module (its tables, conversation, agents and
+// notes). Ask (⌘J) opens the conversation on the right of any other screen, through the module's
+// lens on a module's screen.
 import type { LiveEvent, Me, ModuleSummary, Stream, TableView as TableData } from '@alpha/core/api'
-import { Activity as ActivityIcon, Briefcase, House, SlidersHorizontal } from 'lucide-react'
+import {
+  Activity as ActivityIcon,
+  Briefcase,
+  House,
+  MessageSquare,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { api, listen } from './api.ts'
-import { applyLive, Home, type Live } from './Home.tsx'
+import { applyLive, Conversation, type Live } from './Conversation.tsx'
+import { Home } from './Home.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
 import { Settings } from './Settings.tsx'
@@ -22,6 +30,7 @@ function placeOf(hash: string): Place {
   const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
   if (s) return { at: 'settings', open: s[1] ?? null }
   if (hash === '#/activity') return { at: 'activity' }
+  if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
   const mod = /^#\/module\/([^/]+)(?:\/(conversation|agents))?$/.exec(hash)
   if (mod?.[1])
@@ -44,9 +53,9 @@ export function App() {
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [finding, setFinding] = useState(false)
-  // a topic chip's lens: Home keeps to one module until it is cleared
+  // a topic chip's lens: the conversation keeps to one module until it is cleared
   const [lens, setLens] = useState<Module>(null)
-  // Ask (⌘J): the module's conversation on the right, on its screen
+  // Ask (⌘J): the conversation on the right of any screen but the conversation's own
   const [asking, setAsking] = useState(false)
   const moduleHere: Module =
     place.at === 'module'
@@ -54,11 +63,15 @@ export function App() {
       : place.at === 'table' && table
         ? table.module
         : null
-  const moduleRef = useRef(moduleHere)
-  moduleRef.current = moduleHere
+  const askable = !(
+    place.at === 'conversation' ||
+    (place.at === 'module' && place.tab === 'conversation')
+  )
+  const askableRef = useRef(askable)
+  askableRef.current = askable
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j' && moduleRef.current) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j' && askableRef.current) {
         e.preventDefault()
         setAsking((a) => !a)
       }
@@ -67,8 +80,8 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   useEffect(() => {
-    if (!moduleHere) setAsking(false)
-  }, [moduleHere])
+    if (!askable) setAsking(false)
+  }, [askable])
 
   // ⌘K opens Find anywhere
   useEffect(() => {
@@ -145,24 +158,26 @@ export function App() {
   const crumb: Crumb =
     place.at === 'activity'
       ? { icon: <ActivityIcon className={icon} />, parts: ['Activity'] }
-      : place.at === 'settings'
-        ? { icon: <SlidersHorizontal className={icon} />, parts: ['Settings'] }
-        : place.at === 'parts'
-          ? { parts: ['Parts'] }
-          : place.at === 'table'
-            ? {
-                icon: <Briefcase className={icon} />,
-                parts: table ? [table.module.name, table.name] : ['…'],
-              }
-            : place.at === 'module'
+      : place.at === 'conversation'
+        ? { icon: <MessageSquare className={icon} />, parts: ['Conversation'] }
+        : place.at === 'settings'
+          ? { icon: <SlidersHorizontal className={icon} />, parts: ['Settings'] }
+          : place.at === 'parts'
+            ? { parts: ['Parts'] }
+            : place.at === 'table'
               ? {
                   icon: <Briefcase className={icon} />,
-                  parts: [
-                    moduleHere?.name ?? '…',
-                    place.tab === 'agents' ? 'Agents and notes' : 'Conversation',
-                  ],
+                  parts: table ? [table.module.name, table.name] : ['…'],
                 }
-              : { icon: <House className={icon} />, parts: ['Home'] }
+              : place.at === 'module'
+                ? {
+                    icon: <Briefcase className={icon} />,
+                    parts: [
+                      moduleHere?.name ?? '…',
+                      place.tab === 'agents' ? 'Agents and notes' : 'Conversation',
+                    ],
+                  }
+                : { icon: <House className={icon} />, parts: ['Home'] }
 
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
@@ -178,13 +193,9 @@ export function App() {
         <Bar
           crumb={crumb}
           onFind={() => setFinding(true)}
-          lens={place.at === 'home' ? lens : null}
+          lens={place.at === 'conversation' ? lens : null}
           onClearLens={() => setLens(null)}
-          ask={
-            moduleHere && !(place.at === 'module' && place.tab === 'conversation')
-              ? moduleHere
-              : null
-          }
+          ask={askable ? { name: moduleHere?.name ?? '' } : null}
           onAsk={() => setAsking((a) => !a)}
         />
         {problem && (
@@ -192,65 +203,74 @@ export function App() {
             {problem}
           </div>
         )}
-        <div className="min-h-0 flex-1">
-          {place.at === 'home' ? (
-            <Home stream={stream} live={live} busyTurn={busyTurn} lens={lens} onLens={setLens} />
-          ) : place.at === 'parts' ? (
-            <Parts />
-          ) : place.at === 'activity' ? (
-            <Activity version={version} />
-          ) : place.at === 'settings' ? (
-            <Settings open={place.open} version={version} />
-          ) : place.at === 'module' || table ? (
-            <div className="flex h-full min-h-0">
-              <div className="min-w-0 flex-1">
-                <ModuleScreen
-                  moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
-                  tab={
-                    place.at === 'table'
-                      ? { kind: 'table', id: place.id }
-                      : place.tab
-                        ? { kind: place.tab }
-                        : null
-                  }
-                  version={version}
-                  table={table}
-                  renderTable={(t) => (
-                    <TableView
-                      key={t.id}
-                      data={t}
-                      row={place.at === 'table' ? place.row : null}
-                      quiet={asking}
-                    />
-                  )}
-                  conversation={
-                    <Home
-                      stream={stream}
-                      live={live}
-                      busyTurn={busyTurn}
-                      lens={moduleHere}
-                      onLens={() => undefined}
-                      from={moduleHere}
-                    />
-                  }
-                />
-              </div>
-              {asking && moduleHere && (
-                <SidePanel title={`Ask about ${moduleHere.name}`} onClose={() => setAsking(false)}>
-                  <Home
+        <div className="flex min-h-0 flex-1">
+          <div className="min-w-0 flex-1">
+            {place.at === 'home' ? (
+              <Home stream={stream} modules={modules} name={name} onAsked={() => setAsking(true)} />
+            ) : place.at === 'conversation' ? (
+              <Conversation
+                stream={stream}
+                live={live}
+                busyTurn={busyTurn}
+                lens={lens}
+                onLens={setLens}
+              />
+            ) : place.at === 'parts' ? (
+              <Parts />
+            ) : place.at === 'activity' ? (
+              <Activity version={version} />
+            ) : place.at === 'settings' ? (
+              <Settings open={place.open} version={version} />
+            ) : place.at === 'module' || table ? (
+              <ModuleScreen
+                moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                tab={
+                  place.at === 'table'
+                    ? { kind: 'table', id: place.id }
+                    : place.tab
+                      ? { kind: place.tab }
+                      : null
+                }
+                version={version}
+                table={table}
+                renderTable={(t) => (
+                  <TableView
+                    key={t.id}
+                    data={t}
+                    row={place.at === 'table' ? place.row : null}
+                    quiet={asking}
+                  />
+                )}
+                conversation={
+                  <Conversation
                     stream={stream}
                     live={live}
                     busyTurn={busyTurn}
                     lens={moduleHere}
                     onLens={() => undefined}
                     from={moduleHere}
-                    compact
                   />
-                </SidePanel>
-              )}
-            </div>
-          ) : (
-            <p className="p-6 text-ink-3">That table is not there.</p>
+                }
+              />
+            ) : (
+              <p className="p-6 text-ink-3">That table is not there.</p>
+            )}
+          </div>
+          {asking && askable && (
+            <SidePanel
+              title={moduleHere ? `Ask about ${moduleHere.name}` : 'Ask Alpha'}
+              onClose={() => setAsking(false)}
+            >
+              <Conversation
+                stream={stream}
+                live={live}
+                busyTurn={busyTurn}
+                lens={moduleHere}
+                onLens={() => undefined}
+                from={moduleHere}
+                compact
+              />
+            </SidePanel>
           )}
         </div>
       </main>

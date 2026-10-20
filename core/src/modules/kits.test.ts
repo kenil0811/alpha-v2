@@ -58,6 +58,46 @@ describe('installing a kit', () => {
 })
 
 describe('updating a kit', () => {
+  it('brings its views, and on update replaces only the ones nobody changed', async () => {
+    const withViews = (dir: string, version: string, big: number) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace(
+            '      - { name: Supplier, kind: relation, relates_to: Suppliers }',
+            `      - { name: Supplier, kind: relation, relates_to: Suppliers }\n    views:\n      - { name: Big, default: true, filters: { rules: [{ field: Quantity, op: gt, value: ${big} }] } }\n      - { name: Mine, sorts: [{ field: Item, dir: asc }] }`,
+          ),
+      )
+    const first = join(home, 'kit-0.1.0')
+    cpSync(KIT, first, { recursive: true })
+    withViews(first, '0.1.0', 10)
+    await install(world, first, ctx)
+    const orders = world.shape.table('Orders')?.id as string
+    expect(world.views.list(orders).map((v) => [v.name, v.madeBy, v.isDefault])).toEqual([
+      ['Big', 'kit', true],
+      ['Mine', 'kit', false],
+    ])
+    // the person changes Mine; the kit's next version changes both
+    const mine = world.views.list(orders).find((v) => v.name === 'Mine')
+    world.views.save(
+      {
+        table: orders,
+        id: mine?.id as string,
+        name: 'Mine',
+        config: { sorts: [{ field: 'Item', dir: 'desc' }] },
+      },
+      ctx,
+    )
+    const next = join(home, 'kit-0.2.0')
+    cpSync(KIT, next, { recursive: true })
+    withViews(next, '0.2.0', 50)
+    await update(world, 'Bakery', next, ctx)
+    const [big, kept] = world.views.list(orders)
+    expect(big?.config.filters.rules[0]?.value).toBe(50)
+    expect(kept?.config.sorts[0]?.dir).toBe('desc')
+  })
+
   it('replaces what nobody changed, keeps what the person changed, and deletes nothing', async () => {
     const m = await install(world, KIT, ctx)
     // the person changes a skill's words and one supplier

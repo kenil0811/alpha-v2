@@ -6,6 +6,7 @@ import { parse as parseYaml, stringify } from 'yaml'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { type Actor, append } from './journal.ts'
 import { FIELD_KINDS, type FieldKind, Refused } from './kinds.ts'
+import { namedConfig, ViewConfig } from './views.ts'
 
 export interface Module {
   id: string
@@ -392,6 +393,7 @@ export class Shape {
       )
       run(this.db, 'DELETE FROM records_fts WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM records WHERE table_id = ?', table.id)
+      run(this.db, 'DELETE FROM views WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM tables WHERE id = ?', table.id)
       append(this.db, {
@@ -447,6 +449,23 @@ export class Shape {
 
   // module.yaml mirrors the module's tables from the world; everything else in it (a kit's
   // version, its network allowlist) is kept as it is.
+  // A table's saved views as module.yaml keeps them: by field name, so the module stays portable.
+  private viewsOf(t: Table): { views?: unknown[] } {
+    const rows = all<{ name: string; config: string; is_default: number }>(
+      this.db,
+      'SELECT name, config, is_default FROM views WHERE table_id = ? ORDER BY created_at',
+      t.id,
+    )
+    if (!rows.length) return {}
+    return {
+      views: rows.map((v) => ({
+        name: v.name,
+        ...(v.is_default ? { default: true } : {}),
+        ...given(namedConfig(t, ViewConfig.parse(parse(v.config, {})))),
+      })),
+    }
+  }
+
   writeManifest(m: Module): void {
     mkdirSync(m.dir, { recursive: true })
     const file = join(m.dir, 'module.yaml')
@@ -465,11 +484,24 @@ export class Shape {
           ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
           ...(f.relatesTo ? { relates_to: this.table(f.relatesTo)?.name } : {}),
         })),
+        ...this.viewsOf(t),
       })),
       network: Array.isArray(kept.network) ? kept.network : [],
     }
     writeFileSync(file, stringify(manifest))
   }
+}
+
+// Only the parts of a view that say something, so module.yaml stays short to read.
+function given(c: ViewConfig): Partial<ViewConfig> {
+  const plain = ViewConfig.parse({})
+  return Object.fromEntries(
+    Object.entries(c).filter(
+      ([k, v]) =>
+        JSON.stringify(v) !== JSON.stringify(plain[k as keyof ViewConfig]) &&
+        !(k === 'filters' && !c.filters.rules.length),
+    ),
+  )
 }
 
 export function findField(table: Table, nameOrSlug: string): Field {

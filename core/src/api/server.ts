@@ -2,6 +2,7 @@
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { type Cell, sheetBytes } from '@alpha/connector-files'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
@@ -10,12 +11,13 @@ import { config } from '../config.ts'
 import { connectorOf, KNOWN } from '../connectors/service.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
 import { instructionsFile } from '../engine/tools.ts'
-import { agents, setAgentState, whenWords } from '../modules/agents.ts'
+import { agents, nextRun, setAgentState, whenWords } from '../modules/agents.ts'
 import { install, installedKits, update } from '../modules/kits.ts'
 import { moduleNetwork } from '../modules/runs.ts'
 import type { Card } from '../world/cards.ts'
-import { type Provenance, Refused } from '../world/kinds.ts'
-import type { Table } from '../world/shape.ts'
+import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
+import { findField, type Table } from '../world/shape.ts'
+import type { View } from '../world/views.ts'
 import type { User } from '../world/world.ts'
 import type {
   AboutRows,
@@ -30,10 +32,12 @@ import type {
   ModuleSummary,
   ModuleView,
   RunView,
+  SavedView,
   SourceView,
   Stream,
   StreamLine,
   TableView,
+  TodayView,
   WorkingModuleView,
 } from './types.ts'
 
@@ -170,6 +174,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         .map((r) => ({
           id: r.id,
           name: (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try',
+          module: r.module,
         })),
       attention: world.connections
         .list()
@@ -296,6 +301,154 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { id: row }
   })
 
+  // Many rows at once from the window: a paste, or a field set on ticked rows. Each value is the
+  // person's word, with one line as its source; what is set by asking Alpha is refused.
+  app.post('/api/tables/:id/rows/many', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const Values = z.record(z.string(), z.unknown())
+    const body = z
+      .object({
+        set: z.array(z.object({ row: z.string(), values: Values })).default([]),
+        add: z.array(z.object({ values: Values })).default([]),
+      })
+      .parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    if (!body.set.length && !body.add.length) throw new Refused('There is nothing to put in.')
+    for (const v of [...body.set, ...body.add])
+      for (const name of Object.keys(v.values)) {
+        const f = findField(t, name)
+        if (f.kind === 'relation' || f.kind === 'file' || f.kind === 'person')
+          throw new Refused(`${f.name} is set by asking Alpha, not from here.`)
+      }
+    const words = [
+      body.set.length
+        ? `set values on ${body.set.length} row${body.set.length === 1 ? '' : 's'}`
+        : '',
+      body.add.length ? `added ${body.add.length} row${body.add.length === 1 ? '' : 's'}` : '',
+    ]
+      .filter(Boolean)
+      .join(' and ')
+    const line = world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'set',
+      words: `In ${t.name}, ${words}`,
+      data: { table: t.id, set: body.set, add: body.add },
+      user: user.id,
+      module: t.module.id,
+    })
+    const ctx = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
+    const provenance = { kind: 'stated' as const, source: { message: line.id } }
+    if (body.set.length)
+      world.records.change(
+        t.id,
+        body.set.map((s) => ({ id: s.row, values: s.values, provenance })),
+        ctx,
+      )
+    const added = body.add.length
+      ? world.records.add(
+          t.id,
+          body.add.map((a) => ({ values: a.values, provenance })),
+          ctx,
+        )
+      : []
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { changed: body.set.length, added: added.length }
+  })
+
+  // The person removes rows they ticked, having said yes in the window; the journal keeps them.
+  app.post('/api/tables/:id/rows/remove', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { rows } = z.object({ rows: z.array(z.string()).min(1) }).parse(req.body)
+    const removed = world.records.remove(id, rows, {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { removed }
+  })
+
+  // The person adds a field from the table's header.
+  app.post('/api/tables/:id/fields', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const f = z
+      .object({
+        name: z.string().trim().min(1),
+        kind: z.enum(FIELD_KINDS),
+        choices: z.array(z.string().trim().min(1)).optional(),
+        relatesTo: z.string().optional(),
+      })
+      .parse(req.body)
+    world.shape.addFields(
+      id,
+      [
+        {
+          name: f.name,
+          kind: f.kind,
+          ...(f.choices ? { choices: f.choices } : {}),
+          ...(f.relatesTo ? { relatesTo: f.relatesTo } : {}),
+        },
+      ],
+      { actor: { kind: 'person', id: user.id }, user: user.id },
+    )
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { ok: true }
+  })
+
+  // Export: exactly the rows and columns the person was looking at, as CSV or Excel.
+  app.post('/api/tables/:id/export', async (req, reply) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const body = z
+      .object({
+        rows: z.array(z.string()),
+        fields: z.array(z.string()),
+        as: z.enum(['csv', 'xlsx']),
+      })
+      .parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    const fields = body.fields.map((f) => findField(t, f))
+    const byId = new Map(world.records.list(t.id).map((r) => [r.id, r]))
+    const names = new Map<string, string>()
+    for (const f of fields)
+      if (f.kind === 'relation' && f.relatesTo) {
+        const other = world.shape.table(f.relatesTo)
+        if (other)
+          for (const r of world.records.list(other.id)) names.set(r.id, rowName(other, r.values))
+      }
+    const cell = (kind: string, v: unknown): Cell => {
+      if (v === null || v === undefined) return null
+      if (kind === 'money' && typeof v === 'object') return (v as { amount: number }).amount
+      if (kind === 'number') return Number(v)
+      if (kind === 'relation')
+        return (Array.isArray(v) ? v : [v]).map((x) => names.get(String(x)) ?? '').join(', ')
+      if (Array.isArray(v)) return v.join(', ')
+      return String(v)
+    }
+    const rows = body.rows
+      .map((r) => byId.get(r))
+      .filter((r) => !!r)
+      .map((r) => fields.map((f) => cell(f.kind, r.values[f.slug])))
+    const bytes = sheetBytes(
+      t.name,
+      fields.map((f) => f.name),
+      rows,
+      body.as,
+    )
+    return reply
+      .header(
+        'content-type',
+        body.as === 'csv'
+          ? 'text/csv; charset=utf-8'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      )
+      .header(
+        'content-disposition',
+        `attachment; filename="${encodeURIComponent(t.name)}.${body.as}"`,
+      )
+      .send(Buffer.from(bytes))
+  })
+
   app.get('/api/tables/:id/rows/:row/history', async (req): Promise<HistoryView[]> => {
     const { row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
     const { field } = z.object({ field: z.string() }).parse(req.query)
@@ -320,6 +473,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         choices: f.choices,
         tones: f.tones,
       })),
+      views: world.views.list(t.id).map(savedView),
       rows: world.records.list(t.id).map((r) => ({
         id: r.id,
         values: r.values,
@@ -556,9 +710,82 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { desk: m.desk, route: m.route }
   })
 
+  // Saved views: the person makes, saves, renames, makes default and removes them.
+  const ViewBody = z.object({
+    name: z.string(),
+    config: z.unknown(),
+    isDefault: z.boolean().optional(),
+  })
+  app.post('/api/tables/:id/views', async (req): Promise<SavedView> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const body = ViewBody.parse(req.body)
+    return savedView(
+      world.views.save(
+        { table: id, ...body },
+        { actor: { kind: 'person', id: user.id }, user: user.id },
+      ),
+    )
+  })
+  app.put('/api/views/:id', async (req, reply): Promise<SavedView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const v = world.views.get(id)
+    if (!v) return reply.code(404).send({ problem: 'That view is not there.' })
+    const body = ViewBody.partial().parse(req.body)
+    return savedView(
+      world.views.save(
+        {
+          table: v.table,
+          id,
+          name: body.name ?? v.name,
+          config: body.config ?? v.config,
+          ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {}),
+        },
+        { actor: { kind: 'person', id: user.id }, user: user.id },
+      ),
+    )
+  })
+  app.delete('/api/views/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    world.views.remove(id, { actor: { kind: 'person', id: user.id }, user: user.id })
+    return { ok: true }
+  })
+
+  app.get('/api/activity', async (): Promise<RunView[]> => activity())
+
+  // Today: what changed since the person last cleared it, and each clock agent's next run.
+  app.get('/api/today', async (): Promise<TodayView> => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    // never cleared yet: since the start of today
+    const since = world.preference(user.id, 'seen_at') ?? start.toISOString()
+    const changed = activity()
+      .filter(
+        (r) => r.startedAt > since && r.state !== 'running' && (!r.quiet || r.state === 'failed'),
+      )
+      .map((r) => ({ ...r, steps: [] }))
+    const now = Date.now()
+    const modules = new Map(world.shape.modules().map((m) => [m.id, m.name]))
+    const coming = agents(world)
+      .filter((a) => a.state === 'on')
+      .flatMap((a) => {
+        const next = nextRun(a.trigger, a.lastRunAt, now)
+        if (!next) return []
+        const moduleName = modules.get(a.module) ?? ''
+        return [{ agent: a.id, name: a.name, module: a.module, moduleName, at: next.toISOString() }]
+      })
+      .sort((a, b) => a.at.localeCompare(b.at))
+    return { since, changed, coming }
+  })
+
+  // The person cleared what changed: Today's list starts again from now.
+  app.post('/api/today/seen', async () => {
+    world.setPreference(user.id, 'seen_at', new Date().toISOString())
+    return { ok: true }
+  })
+
   // Activity: agents' runs and connections' reads, newest first. A run that ended having changed
   // nothing is quiet, so the window can fold it.
-  app.get('/api/activity', async (): Promise<RunView[]> => {
+  const activity = (): RunView[] => {
     const names = new Map(agents(world).map((a) => [a.id, a.name]))
     const modules = new Map(world.shape.modules().map((m) => [m.id, m.name]))
     const CHANGES = new Set(['landed', 'wrote', 'changed', 'removed', 'told', 'card_opened'])
@@ -574,6 +801,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         kind: 'run',
         name: (r.agent && names.get(r.agent)) || 'A try',
         module: r.module ? (modules.get(r.module) ?? null) : null,
+        moduleId: r.module,
         startedAt: r.startedAt,
         ms: r.endedAt ? Date.parse(r.endedAt) - Date.parse(r.startedAt) : null,
         state: r.state,
@@ -588,6 +816,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       kind: 'read',
       name: String(l.data.name ?? 'A connection'),
       module: null,
+      moduleId: null,
       startedAt: new Date(Date.parse(l.at) - Number(l.data.ms ?? 0)).toISOString(),
       ms: Number(l.data.ms ?? 0),
       state: l.data.state === 'failed' ? 'failed' : 'ok',
@@ -597,7 +826,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       steps: [],
     }))
     return [...runs, ...reads].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 200)
-  })
+  }
 
   app.post('/api/runs/:id/stop', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
@@ -729,6 +958,10 @@ function deny(reply: FastifyReply, words: string) {
   return reply.code(403).send({ problem: words })
 }
 
+function savedView(v: View): SavedView {
+  return { id: v.id, name: v.name, config: v.config, isDefault: v.isDefault, madeBy: v.madeBy }
+}
+
 function cardView(c: Card): CardView {
   const input = (c.call?.input ?? {}) as { connector?: unknown }
   return {
@@ -743,6 +976,7 @@ function cardView(c: Card): CardView {
     cannotUndo: c.cannotUndo,
     answer: c.answer,
     restsOn: c.restsOn,
+    module: c.module,
   }
 }
 

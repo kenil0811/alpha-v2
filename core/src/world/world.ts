@@ -13,6 +13,7 @@ import { ModelSql } from './modelsql.ts'
 import { Records } from './records.ts'
 import { migrate } from './schema.ts'
 import { Shape } from './shape.ts'
+import { Views } from './views.ts'
 
 export interface User {
   id: string
@@ -62,6 +63,7 @@ export class World {
   readonly shape: Shape
   readonly records: Records
   readonly cards: Cards
+  readonly views: Views
   readonly files: Files
   readonly connections: Connections
   readonly db: Db
@@ -77,6 +79,7 @@ export class World {
     this.pageRows = pageRows
     this.shape = new Shape(db, paths.modules)
     this.cards = new Cards(db)
+    this.views = new Views(db, this.shape)
     this.files = new Files(db, paths.files)
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
     this.connections = new Connections(db)

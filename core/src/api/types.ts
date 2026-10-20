@@ -49,13 +49,14 @@ export interface CardView {
   cannotUndo: string | null
   answer: string | null
   restsOn: string[] // what the card rests on, in words
+  module: string | null // the module it belongs to, for a lens
 }
 
 export interface Stream {
   lines: StreamLine[]
   cards: CardView[]
   busy: boolean
-  running: { id: string; name: string }[] // agents' runs going now
+  running: { id: string; name: string; module: string | null }[] // agents' runs going now
   attention: { connector: string; title: string }[] // connections that need the person to sign in
   lastId: number
 }
@@ -109,6 +110,85 @@ export interface TableView {
   fields: FieldView[]
   rows: RowView[]
   names: Record<string, string> // the rows its relations point at, by name
+  views: SavedView[]
+}
+
+// A saved view (world/views.ts), its fields by id.
+export type ViewKind =
+  | 'table'
+  | 'board'
+  | 'list'
+  | 'gallery'
+  | 'calendar'
+  | 'timeline'
+  | 'chart'
+  | 'form'
+export type FilterOp =
+  | 'is'
+  | 'is_not'
+  | 'contains'
+  | 'not_contains'
+  | 'starts'
+  | 'ends'
+  | 'eq'
+  | 'ne'
+  | 'gt'
+  | 'lt'
+  | 'between'
+  | 'before'
+  | 'after'
+  | 'today'
+  | 'this_week'
+  | 'next_days'
+  | 'in'
+  | 'empty'
+  | 'not_empty'
+export type TotalOp =
+  | 'sum'
+  | 'avg'
+  | 'min'
+  | 'max'
+  | 'count'
+  | 'empty'
+  | 'filled'
+  | 'unique'
+  | 'earliest'
+  | 'latest'
+export interface FilterRule {
+  field: string
+  op: FilterOp
+  value?: string | number | null | undefined
+  value2?: string | number | null | undefined
+  values?: string[] | undefined
+}
+export interface ViewConfig {
+  kind: ViewKind
+  search: string
+  filters: { match: 'all' | 'any'; rules: FilterRule[] }
+  sorts: { field: string; dir: 'asc' | 'desc' }[]
+  group: string | null
+  by: string | null
+  measure: string | null
+  hidden: string[]
+  order: string[]
+  widths: Record<string, number>
+  totals: Record<string, TotalOp>
+  colours: {
+    tint: string | null
+    when: {
+      field: string
+      op: 'gt' | 'lt' | 'eq' | 'before' | 'after'
+      value: string | number | null
+      tone: 'good' | 'warn' | 'bad' | 'accent'
+    }[]
+  }
+}
+export interface SavedView {
+  id: string
+  name: string
+  config: ViewConfig
+  isDefault: boolean
+  madeBy: 'person' | 'alpha' | 'kit'
 }
 
 export interface ConnectorView {
@@ -182,7 +262,8 @@ export interface RunView {
   id: string
   kind: 'run' | 'read'
   name: string
-  module: string | null
+  module: string | null // its name
+  moduleId: string | null
   startedAt: string
   ms: number | null // how long it took, once it ended
   state: 'running' | 'ok' | 'failed' | 'stopped'
@@ -190,6 +271,14 @@ export interface RunView {
   tokens: number | null // null: no model was used
   quiet: boolean // it ended and changed nothing
   steps: { id: number; at: string; kind: string; words: string }[]
+}
+
+// Today, beside the stream on a wide window: what changed since the person last cleared it, and
+// what is coming up. What needs them and what is running come with the stream.
+export interface TodayView {
+  since: string // when they last cleared it, or the start of today
+  changed: RunView[] // runs and reads that ended having changed something, or did not finish
+  coming: { agent: string; name: string; module: string; moduleName: string; at: string }[]
 }
 
 export type LiveEvent =

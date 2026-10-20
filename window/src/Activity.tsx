@@ -82,7 +82,7 @@ export function Activity({ version }: { version: number }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-215 flex-col px-8 pt-7 pb-10">
+      <div className="mx-auto flex max-w-page flex-col px-8 pt-7 pb-10">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl text-ink">Activity</h1>
           <span className="flex-1" />
@@ -154,7 +154,7 @@ function RunRow({
   const words = r.words?.startsWith(`${r.name}: `) ? r.words.slice(r.name.length + 2) : r.words
   return (
     <div className="border-hair border-t first:border-t-0">
-      <div className="grid grid-cols-[3rem_1fr_auto] items-start gap-3.5 px-4 py-3 hover:bg-hover">
+      <div className="grid grid-cols-[48px_1fr_auto] items-start gap-3.5 px-4 py-3 hover:bg-hover">
         <span className="pt-0.5 font-mono text-ink-3 text-sm">{time(r.startedAt)}</span>
         <button
           type="button"
@@ -203,7 +203,7 @@ function RunRow({
       {open && r.steps.length > 0 && (
         <ol className="mx-4 mb-3 ml-20.5 flex flex-col gap-1.25 border-line border-t border-dashed pt-2.5">
           {r.steps.map((s) => (
-            <li key={s.id} className="grid grid-cols-[4rem_1fr] gap-2.5 text-ink-2 text-md">
+            <li key={s.id} className="grid grid-cols-[64px_1fr] gap-2.5 text-ink-2 text-md">
               <span className="pt-0.5 font-mono text-ink-3 text-xs">
                 {new Date(s.at).toLocaleTimeString(undefined, {
                   hour: '2-digit',

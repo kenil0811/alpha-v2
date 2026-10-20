@@ -256,6 +256,21 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (user_id, key)
   );
   `,
+  // 6: a table's saved views, shared by the firm; a kit's keep the kit's hash until changed.
+  `
+  CREATE TABLE views (
+    id TEXT PRIMARY KEY,
+    table_id TEXT NOT NULL REFERENCES tables (id),
+    name TEXT NOT NULL,
+    config TEXT NOT NULL DEFAULT '{}',
+    is_default INTEGER NOT NULL DEFAULT 0,
+    made_by TEXT NOT NULL CHECK (made_by IN ('person', 'alpha', 'kit')),
+    kit_hash TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX views_name ON views (table_id, lower(name));
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

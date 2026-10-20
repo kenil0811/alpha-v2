@@ -236,4 +236,71 @@ describe('the api over a world', () => {
     expect(relation.statusCode).toBe(409)
     await a.close()
   })
+  it('saves views, takes many rows at once, removes ticked ones, adds a field and exports', async () => {
+    const m = world.shape.makeModule('Deals desk', { actor: { kind: 'alpha' } })
+    const t = world.shape.makeTable(
+      m.id,
+      'Deals',
+      [
+        { name: 'Name', kind: 'text' },
+        { name: 'Price', kind: 'money' },
+      ],
+      { actor: { kind: 'alpha' } },
+    )
+    const a = app()
+    const post = (url: string, payload: unknown) =>
+      a.inject({ method: 'POST', url, headers: ok, payload: payload as object })
+    const view = await post(`/api/tables/${t.id}/views`, {
+      name: 'Dear',
+      config: { sorts: [{ field: 'Price', dir: 'desc' }] },
+    })
+    expect(view.statusCode).toBe(200)
+    const renamed = await a.inject({
+      method: 'PUT',
+      url: `/api/views/${view.json().id}`,
+      headers: ok,
+      payload: { name: 'Pricey', isDefault: true },
+    })
+    expect(renamed.json()).toMatchObject({ name: 'Pricey', isDefault: true })
+
+    const many = await post(`/api/tables/${t.id}/rows/many`, {
+      add: [
+        { values: { Name: 'Payroll firm', Price: { amount: 1200000, currency: 'USD' } } },
+        { values: { Name: 'Tax shop' } },
+      ],
+    })
+    expect(many.json()).toEqual({ changed: 0, added: 2 })
+    const rows = world.records.list(t.id)
+    expect(rows[1]?.provenance.name?.kind).toBe('stated')
+    await post(`/api/tables/${t.id}/rows/many`, {
+      set: [{ row: rows[1]?.id, values: { Price: { amount: 300000, currency: 'USD' } } }],
+    })
+    expect(world.records.list(t.id)[1]?.values.price).toEqual({ amount: 300000, currency: 'USD' })
+
+    const csv = await post(`/api/tables/${t.id}/export`, {
+      rows: rows.map((r) => r.id),
+      fields: ['Name', 'Price'],
+      as: 'csv',
+    })
+    expect(csv.headers['content-type']).toContain('text/csv')
+    expect(csv.body.trim().split('\n')).toEqual([
+      'Name,Price',
+      'Payroll firm,1200000',
+      'Tax shop,300000',
+    ])
+
+    await post(`/api/tables/${t.id}/fields`, {
+      name: 'Stage',
+      kind: 'choice',
+      choices: ['New', 'Passed'],
+    })
+    expect(world.shape.table(t.id)?.fields.map((f) => f.name)).toEqual(['Name', 'Price', 'Stage'])
+
+    const removed = await post(`/api/tables/${t.id}/rows/remove`, { rows: [rows[0]?.id] })
+    expect(removed.json()).toEqual({ removed: 1 })
+    const shown = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
+    expect(shown.rows.length).toBe(1)
+    expect(shown.views.map((v) => v.name)).toEqual(['Pricey'])
+    await a.close()
+  })
 })

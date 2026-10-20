@@ -13,6 +13,7 @@ import { keep } from '../modules/keep.ts'
 import type { AgentRunner } from '../modules/runs.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../world/kinds.ts'
 import { findField, type Table } from '../world/shape.ts'
+import { namedConfig, ViewConfig } from '../world/views.ts'
 import type { User, World } from '../world/world.ts'
 
 // Where the desk is: whose turn, on which of their messages. Set by the desk before each turn.
@@ -186,10 +187,20 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
         'rename: give table, and field if it is a field, and to.',
         'set_choices: give table, field and choices.',
         'remove_table: give table; if it holds the person’s own entries and they asked for it, asked_in quotes their words asking.',
+        'save_view: a saved view of a table, shared by everyone, shown as a tab over it; give table, field (the view’s name; to renames it), view and default (true to open the table on it). A change names only what changes. Fields by name. view.kind: table, board, list, gallery, calendar, timeline, chart, form; filters { match: all or any, rules: [{ field, op, value, value2, values }] }: ops for text is, is_not, contains, not_contains, starts, ends; for numbers and money eq, ne, gt, lt, between (value, value2); for dates before, after, between, today, this_week, next_days (value: days); for a choice in (values); for any empty, not_empty. sorts [{ field, dir: asc or desc }] in order; group (a choice, text or date field); by (the date a calendar or timeline is laid on; a chart’s bars are by group, else by the months of by); measure (a number a chart adds up; none counts rows); hidden and order (fields); widths { field: px }; totals { field: sum, avg, min, max, count, empty, filled, unique, earliest, latest }; colours { tint: a choice whose colours tint rows, when: [{ field, op: gt, lt, eq, before or after, value, tone: good, warn, bad or accent }] }.',
+        'remove_view: give table and field (the view’s name).',
         `Field kinds: ${FIELD_KINDS.join(', ')}. A relation names the table it relates_to.`,
       ].join('\n'),
       {
-        action: z.enum(['make_table', 'add_fields', 'rename', 'set_choices', 'remove_table']),
+        action: z.enum([
+          'make_table',
+          'add_fields',
+          'rename',
+          'set_choices',
+          'remove_table',
+          'save_view',
+          'remove_view',
+        ]),
         module: z.string().optional(),
         table: z.string(),
         fields: z.array(Field).optional(),
@@ -197,6 +208,8 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
         to: z.string().optional(),
         choices: z.array(z.string()).optional(),
         asked_in: z.string().optional(),
+        view: ViewConfig.partial().optional(),
+        default: z.boolean().optional(),
       },
       async (a) =>
         guard(() => {
@@ -243,6 +256,38 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
               const t = tableOf(world, a.table)
               world.shape.removeTable(t.id, c)
               return ok(`Removed the table ${t.name}.`)
+            }
+            case 'save_view': {
+              if (!a.field) throw new Refused('save_view needs field: the view’s name.')
+              const t = tableOf(world, a.table)
+              const was = world.views
+                .list(t.id)
+                .find((v) => v.name.toLowerCase() === a.field?.toLowerCase())
+              const v = world.views.save(
+                {
+                  table: t.id,
+                  ...(was ? { id: was.id } : {}),
+                  name: a.to ?? a.field,
+                  // a change names only what changes; the rest stays as it was
+                  config: { ...(was ? namedConfig(t, was.config) : {}), ...(a.view ?? {}) },
+                  ...(a.default !== undefined ? { isDefault: a.default } : {}),
+                },
+                c,
+              )
+              return ok(
+                `${was ? 'Saved' : 'Made'} the view ${v.name} on ${t.name}${v.isDefault ? ', which the table opens on' : ''}.`,
+              )
+            }
+            case 'remove_view': {
+              const t = tableOf(world, a.table)
+              const views = world.views.list(t.id)
+              const v = views.find((x) => x.name.toLowerCase() === a.field?.toLowerCase())
+              if (!v)
+                throw new Refused(
+                  `${t.name} has no view called ${a.field}; it has ${views.map((x) => x.name).join(', ') || 'none'}.`,
+                )
+              world.views.remove(v.id, c)
+              return ok(`Removed the view ${v.name} from ${t.name}.`)
             }
           }
         }),

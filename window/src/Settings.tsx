@@ -13,6 +13,7 @@ import { api, Problem } from './api.ts'
 import { Kits, when } from './Kits.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Button } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
@@ -66,7 +67,7 @@ export function Settings({ open, version }: { open: string | null; version: numb
       ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto grid max-w-245 grid-cols-[10.5rem_1fr] gap-7 px-8 pt-7 pb-12">
+      <div className="mx-auto grid max-w-page grid-cols-[170px_1fr] gap-7 px-8 pt-7 pb-12">
         <nav className="sticky top-0 flex flex-col gap-px self-start pt-15.5">
           {SECTIONS.map(([id, name]) => (
             <button
@@ -86,9 +87,9 @@ export function Settings({ open, version }: { open: string | null; version: numb
               title="Connections"
               about="Your accounts, read by Alpha; what you type stays in the Keychain."
             >
-              <List>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
                 {accounts.map((c) => (
-                  <ConnectorRow
+                  <ConnectorTile
                     key={c.name}
                     connector={c}
                     connections={view.connections.filter((k) => k.connector === c.name)}
@@ -96,7 +97,7 @@ export function Settings({ open, version }: { open: string | null; version: numb
                     onChange={load}
                   />
                 ))}
-              </List>
+              </div>
             </Section>
           </div>
           <div id="settings-folders" className="scroll-mt-4">
@@ -264,14 +265,15 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
   )
 }
 
+// A connection: a row in the folders' list, or a block in its connector's tile.
 function ConnectionLine({
   connection: k,
   onChange,
-  indent,
+  inTile,
 }: {
   connection: ConnectionView
   onChange: () => void
-  indent?: boolean
+  inTile?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const act = async (fn: () => Promise<unknown>) => {
@@ -281,79 +283,92 @@ function ConnectionLine({
     onChange()
   }
   const [state, tone] = STATE[k.state]
+  const about = (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span>Last read {when(k.lastSyncAt)}</span>
+      {k.tables.map((t) => (
+        <span key={t.id}>
+          Kept in{' '}
+          <a className="text-accent underline underline-offset-3" href={`#/table/${t.id}`}>
+            {t.name}
+          </a>
+          {' · '}
+          <button
+            type="button"
+            className="underline underline-offset-3"
+            disabled={busy}
+            onClick={() => act(() => api.post(`/api/tables/${t.id}/sidebar`, { shown: t.hidden }))}
+          >
+            {t.hidden ? 'Show in the sidebar' : 'Take out of the sidebar'}
+          </button>
+        </span>
+      ))}
+      {k.health && <span className="text-warn">{k.health}</span>}
+    </span>
+  )
+  const buttons = (
+    <>
+      {k.state === 'needs_sign_in' ? (
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={() => {
+            window.location.hash = `#/settings?connect=${k.connector}`
+          }}
+        >
+          Sign in
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
+        >
+          Read now
+        </Button>
+      )}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        onClick={() => act(() => api.delete(`/api/connections/${k.id}`))}
+      >
+        Disconnect
+      </Button>
+    </>
+  )
+  if (inTile)
+    return (
+      <div className="flex flex-col gap-2 border-hair border-t pt-3">
+        <div className="flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate font-medium text-ink">{k.account}</span>
+          <Pill tone={tone}>{state}</Pill>
+        </div>
+        <div className="text-ink-3 text-sm">{about}</div>
+        <div className="flex flex-wrap gap-2">{buttons}</div>
+      </div>
+    )
   return (
     <Row
-      indent={indent}
       lead={
-        indent ? undefined : (
-          <Tile>
-            <Folder className="size-4" />
-          </Tile>
-        )
+        <Tile>
+          <Folder className="size-4" />
+        </Tile>
       }
       title={k.account}
-      sub={
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>Last read {when(k.lastSyncAt)}</span>
-          {k.tables.map((t) => (
-            <span key={t.id}>
-              Kept in{' '}
-              <a className="text-accent underline underline-offset-3" href={`#/table/${t.id}`}>
-                {t.name}
-              </a>
-              {' · '}
-              <button
-                type="button"
-                className="underline underline-offset-3"
-                disabled={busy}
-                onClick={() =>
-                  act(() => api.post(`/api/tables/${t.id}/sidebar`, { shown: t.hidden }))
-                }
-              >
-                {t.hidden ? 'Show in the sidebar' : 'Take out of the sidebar'}
-              </button>
-            </span>
-          ))}
-          {k.health && <span className="text-warn">{k.health}</span>}
-        </span>
-      }
+      sub={about}
       actions={
         <>
           <Pill tone={tone}>{state}</Pill>
-          {k.state === 'needs_sign_in' ? (
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => {
-                window.location.hash = `#/settings?connect=${k.connector}`
-              }}
-            >
-              Sign in
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              disabled={busy}
-              onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
-            >
-              Read now
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => act(() => api.delete(`/api/connections/${k.id}`))}
-          >
-            Disconnect
-          </Button>
+          {buttons}
         </>
       }
     />
   )
 }
 
-function ConnectorRow({
+// A connector as a tile: its accounts, each with its state and buttons, or Connect.
+function ConnectorTile({
   connector: c,
   connections,
   startOpen,
@@ -393,89 +408,92 @@ function ConnectorRow({
   }
 
   return (
-    <>
-      <Row
-        lead={<Tile>{ICONS[c.name] ?? <Folder className="size-4" />}</Tile>}
-        title={c.title}
-        sub={connections.length ? undefined : 'Not connected'}
-        actions={
-          !open &&
-          (connections.length === 0 || !system) && (
-            <Button
-              size="sm"
-              variant={connections.length ? 'ghost' : 'default'}
-              onClick={() => setOpen(true)}
-            >
-              {connections.length ? 'Add another' : 'Connect'}
-            </Button>
-          )
-        }
-      >
-        {open && (
-          <form onSubmit={submit} className="flex flex-col gap-3 px-4 pb-4 pl-15">
-            {system ? (
-              <p className="text-ink-2 text-md">
-                Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only
-                reads it.
-              </p>
-            ) : (
-              <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-account`}>
-                <span className="text-ink-2">{c.account.label}</span>
-                <Field
-                  id={`${c.name}-account`}
-                  value={account}
-                  placeholder={c.account.placeholder}
-                  onChange={(e) => setAccount(e.target.value)}
-                  autoComplete="username"
-                />
-              </label>
-            )}
-            {c.secret && (
-              <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
-                <span className="text-ink-2">{c.secret.label}</span>
-                <Field
-                  id={`${c.name}-secret`}
-                  type="password"
-                  value={secret}
-                  onChange={(e) => setSecret(e.target.value)}
-                  autoComplete="off"
-                />
-                <span className="text-ink-3 text-sm">
-                  {c.secret.help}{' '}
-                  {c.secret.url && (
-                    <a
-                      className="text-accent underline underline-offset-3"
-                      href={c.secret.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Make one
-                    </a>
-                  )}
-                </span>
-              </label>
-            )}
-            {problem && <div className="text-bad text-md">{problem}</div>}
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                size="sm"
-                variant="primary"
-                disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}
-              >
-                {busy ? 'Connecting…' : 'Connect'}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-            </div>
-          </form>
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-lg border border-line bg-surface p-4',
+        open && 'col-span-full',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <Tile>{ICONS[c.name] ?? <Folder className="size-4" />}</Tile>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-base text-ink">{c.title}</div>
+          {connections.length === 0 && <div className="text-ink-3 text-sm">Not connected</div>}
+        </div>
+        {!open && (connections.length === 0 || !system) && (
+          <Button
+            size="sm"
+            variant={connections.length ? 'ghost' : 'default'}
+            onClick={() => setOpen(true)}
+          >
+            {connections.length ? 'Add another' : 'Connect'}
+          </Button>
         )}
-      </Row>
+      </div>
+      {open && (
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          {system ? (
+            <p className="text-ink-2 text-md">
+              Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only
+              reads it.
+            </p>
+          ) : (
+            <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-account`}>
+              <span className="text-ink-2">{c.account.label}</span>
+              <Field
+                id={`${c.name}-account`}
+                value={account}
+                placeholder={c.account.placeholder}
+                onChange={(e) => setAccount(e.target.value)}
+                autoComplete="username"
+              />
+            </label>
+          )}
+          {c.secret && (
+            <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
+              <span className="text-ink-2">{c.secret.label}</span>
+              <Field
+                id={`${c.name}-secret`}
+                type="password"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                autoComplete="off"
+              />
+              <span className="text-ink-3 text-sm">
+                {c.secret.help}{' '}
+                {c.secret.url && (
+                  <a
+                    className="text-accent underline underline-offset-3"
+                    href={c.secret.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Make one
+                  </a>
+                )}
+              </span>
+            </label>
+          )}
+          {problem && <div className="text-bad text-md">{problem}</div>}
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}
+            >
+              {busy ? 'Connecting…' : 'Connect'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
       {connections.map((k) => (
-        <ConnectionLine key={k.id} connection={k} onChange={onChange} indent />
+        <ConnectionLine key={k.id} connection={k} onChange={onChange} inTile />
       ))}
-    </>
+    </div>
   )
 }
 

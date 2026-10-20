@@ -1,5 +1,5 @@
 // The shell (design §14, Ledger): the rail on the left and a 48px bar over every screen. The rail
-// has the mark, Home with a badge for what waits on the person, Activity, the modules as a tree
+// has the mark, Home with a badge for what waits on the person, Conversation, Activity, the modules as a tree
 // of their tables, Settings and Alpha's state at its foot. Its top 48px is left for the Mac's
 // window buttons when the window has a shell of its own.
 import type { FoundRow, ModuleSummary } from '@alpha/core/api'
@@ -22,6 +22,7 @@ import { Kbd } from './ui/pill.tsx'
 
 export type Place =
   | { at: 'home' }
+  | { at: 'conversation' }
   | { at: 'activity' }
   | { at: 'parts' }
   | { at: 'table'; id: string; row: string | null }
@@ -109,6 +110,12 @@ export function Rail({
             </span>
           )
         }
+      />
+      <Nav
+        href="#/conversation"
+        icon={<MessageSquare className="size-4" />}
+        label="Conversation"
+        current={place.at === 'conversation'}
       />
       <Nav
         href="#/activity"
@@ -215,7 +222,7 @@ export function Bar({
   onFind: () => void
   lens: { id: string; name: string } | null
   onClearLens: () => void
-  ask: { id: string; name: string } | null // on a module's screen: Ask about it
+  ask: { name: string } | null // Ask Alpha, or Ask about a module on its screen; none where the conversation is
   onAsk: () => void
 }) {
   const last = crumb.parts.at(-1) ?? ''
@@ -253,7 +260,7 @@ export function Bar({
           className="flex h-7.5 items-center gap-2 rounded-md px-2.5 text-ink-2 text-md transition-colors hover:bg-hover hover:text-ink"
         >
           <MessageSquare className="size-3.5 shrink-0" />
-          Ask about {ask.name}
+          {ask.name ? `Ask about ${ask.name}` : 'Ask Alpha'}
           <Kbd>⌘J</Kbd>
         </button>
       )}
@@ -279,6 +286,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
   const places = useMemo(
     () => [
       { label: 'Home', hint: '', href: '#/' },
+      { label: 'Conversation', hint: '', href: '#/conversation' },
       { label: 'Activity', hint: '', href: '#/activity' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.flatMap((m) =>
@@ -322,7 +330,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: stops a click inside from closing it */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: the field takes the keys */}
       <div
-        className="h-fit w-full max-w-lg overflow-hidden rounded-lg border border-line bg-surface shadow-pop"
+        className="h-fit w-full max-w-140 overflow-hidden rounded-lg border border-line bg-surface shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-hair border-b px-3.5">

@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { all, now, one, run, tx } from '../world/db.ts'
 import { FIELD_KINDS, Refused } from '../world/kinds.ts'
 import { type FieldInput, type Module, TONES, type WriteCtx } from '../world/shape.ts'
+import { hashOf, resolveConfig } from '../world/views.ts'
 import type { World } from '../world/world.ts'
 import { syncAgents } from './agents.ts'
 import { commitAll } from './git.ts'
@@ -27,7 +28,18 @@ const Manifest = z.object({
   name: z.string().min(1),
   version: z.string().min(1),
   description: z.string().optional(),
-  tables: z.array(z.object({ name: z.string(), fields: z.array(Field) })).default([]),
+  tables: z
+    .array(
+      z.object({
+        name: z.string(),
+        fields: z.array(Field),
+        // saved views by field name: name, default, then the view (world/views.ts ViewConfig)
+        views: z
+          .array(z.looseObject({ name: z.string(), default: z.boolean().optional() }))
+          .default([]),
+      }),
+    )
+    .default([]),
   network: z.array(z.string()).default([]),
 })
 
@@ -128,6 +140,27 @@ function shapeTables(world: World, module: Module, manifest: KitManifest, ctx: W
     // a choice's colours come with the kit's version of it
     for (const f of spec.fields)
       if (f.kind === 'choice' && f.tones) world.shape.setTones(t.id, f.name, f.tones)
+  }
+}
+
+// A kit's views: made when the table has none by that name; on update, replaced while nobody has
+// changed the kit's version (its hash is still there), else left as theirs.
+function shapeViews(world: World, manifest: KitManifest, ctx: WriteCtx): void {
+  for (const spec of manifest.tables) {
+    const t = world.shape.table(spec.name)
+    if (!t) continue
+    for (const { name, default: isDefault, ...given } of spec.views) {
+      const config = resolveConfig(t, given)
+      const hash = hashOf(config)
+      const was = world.views.list(t.id).find((v) => v.name.toLowerCase() === name.toLowerCase())
+      if (!was)
+        world.views.save(
+          { table: t.id, name, config, isDefault: !!isDefault, madeBy: 'kit', kitHash: hash },
+          ctx,
+        )
+      else if (was.kitHash && was.kitHash !== hash)
+        world.views.save({ table: t.id, id: was.id, name, config, kitHash: hash }, ctx)
+    }
   }
 }
 
@@ -232,6 +265,7 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
     }
     copyFileSync(join(kitDir, 'module.yaml'), join(m.dir, 'module.yaml'))
     shapeTables(world, m, manifest, kitCtx)
+    shapeViews(world, manifest, kitCtx)
     const rows = landSetup(world, setup, kitName, kitCtx, () => true)
     run(
       world.db,
@@ -328,6 +362,7 @@ export async function update(
       )
     }
     shapeTables(world, module, manifest, kitCtx)
+    shapeViews(world, manifest, kitCtx)
     const rows = landSetup(world, setup, kitName, kitCtx, (recordId) => {
       const installed = one<{ installed_hash: string }>(
         world.db,

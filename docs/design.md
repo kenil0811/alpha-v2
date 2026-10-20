@@ -109,6 +109,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. |
 | Tasks | Title, state, anchor (a module, table, record, field or page), owner (a person or an agent), due, repeat, parent, made by, run. |
 | Cards | Every question, permission and review as a durable row with one state (waiting, yes, no, answered, withdrawn, allowed), opened and closed with a journal line. |
+| Views | A table's saved views (kind, filters with all or any, sorts in levels, group, columns, totals, colours), shared by the firm, kept by field id, mirrored by name in module.yaml; a kit's own until someone changes them. |
 | Agents, triggers, runs | §11. |
 | Modules, skills index | What is installed and from which kit version, with each file's hash. |
 | Users, roles, connections | Two roles (owner, member). A connection names its connector, account, auth kind, state and health, and points at a secret it never holds. |
@@ -356,11 +357,20 @@ Nothing restricts a custom page the person asks for.
 
 ## 14. The window
 
-**One stream and lenses.** Home is the stream: the person's sentences and Alpha's replies in
-order. Work shows as one live message that updates in place and becomes the outcome, with a
-"Show the work" fold built from the journal. Each message carries a topic chip that filters the
-stream. Above the composer, a "Now" strip shows what is in flight and what needs the person,
-three chips at most. Permissions and questions land inline with their buttons.
+**Home is the important things** (Kenil, 20 Oct: "Home should be about all important things, the
+space in home is very precious"): one line to ask Alpha, whose answer opens on the right; what
+needs the person, with each card answered right there; what changed since they last looked (kept
+until they clear it); what is running; each agent's next run; and their modules with their tables.
+No conversation on Home.
+
+**One conversation, and lenses.** The conversation has its own place in the rail: the person's
+sentences and Alpha's replies in order. Work shows as one live message that updates in place and
+becomes the outcome, with a "Show the work" fold built from the journal. Each message carries a
+topic chip that filters it. Above the composer, a "Now" strip shows what is in flight and what
+needs the person, three chips at most; on a wide window a column beside it shows instead what
+waits, what runs and what is next. A module's Conversation tab shows it through the module's
+lens, and Ask (⌘J) opens it on the right of any other screen. Permissions and questions land
+inline with their buttons.
 
 **The other screens:** a Module (the same stream filtered to it; tables in eight views: table,
 list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and agents as text;
@@ -373,15 +383,23 @@ no tool names, no ids. The avatar rig and looks are ported from v1 as they are.
 titles, seven text sizes, light and dark; the tokens are `window/src/app.css`, the parts are in
 `window/src/ui/`, and `window/src/look.test.ts` fails any colour or size that is not a token.
 `pnpm shots` takes every screen in light and dark. A module's screen has its tables, its
-Conversation and its Agents and notes as tabs; Ask (⌘J) opens the module's conversation on the
-right, and a message asked there carries the module.
+Conversation and its Agents and notes as tabs; on its screens Ask (⌘J) opens the module's
+conversation on the right, and a message asked there carries the module. Pages other than the stream and tables fill
+the window up to 1200px; the stream's text is 720px, and a table in a reply may run to 960px.
 
 Built so far: a table opens as a table or, when it has a choice to group by, a board; a choice set
 in the window (a board's column, a Home line's Pass) is the person's word, journaled, and the
 value's source.
 A choice may give its choices tones, drawn as a dot; a table filters by a choice's value; a row
 added in the window is the person's; a computed value may carry its figuring as a note. Find (⌘K)
-finds rows too. Appearance is kept per person in the world.
+finds rows too. Appearance is kept per person in the world. Tables have v1's tools (Kenil, 20 Oct):
+saved views as tabs, a menu in each column (sort, filter, group, total, colour, move, hide), sorts
+in levels by shift-click, one level of groups with totals, resizable columns, one scrolling list,
+values changed in place as the person's word, ticked rows set or removed, a pasted block filling
+across and down, Export to CSV or Excel, a field added from the header, and a row opened whole. All
+eight views are built: table, board, list, gallery, calendar and timeline (on a date), chart (bars
+by a group or a date's months, counting rows or adding up a number; a bar's click shows its rows),
+and form (a row at a time, or a new one).
 
 On a Mac the core listens on loopback and the shell passes it a per-install token. Hosted, the
 window signs in with better-auth.

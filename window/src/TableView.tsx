@@ -1,90 +1,59 @@
-// A table in its table view, and as a board when it has a choice to group by (design §14: the
-// first two of the eight views; Ledger's look). Every value opens to where it came from in the
-// source panel on the right, which stays open while the person clicks along a row: its kind,
-// why, the page or formula, Correct it, and the value's history.
+// A table (design §14; step 10 brings v1's views): its saved views as tabs, a toolbar saying what
+// the open view does (find, filters, sorts, group, columns), and the rows as a table or a board.
+// Every value opens to where it came from in the source panel on the right, which stays open
+// while the person clicks along a row. What the person changes and has not saved stays while they
+// open a row and come back, in this browser; a saved view is shared by everyone.
 import type {
   FieldView,
-  HistoryView,
+  FilterRule,
   RowView,
-  SourceView,
+  SavedView,
   TableView as TableData,
+  ViewConfig,
 } from '@alpha/core/api'
-import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table'
-import { ExternalLink, FileText, ListFilter, Plus, Search, X } from 'lucide-react'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { Download, Plus, Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { AddRow } from './table/AddRow.tsx'
+import { Board } from './table/Board.tsx'
+import { setRule } from './table/edits.ts'
+import {
+  applyFilters,
+  applySearch,
+  BLANK,
+  columns,
+  complete,
+  differs,
+  sortRows,
+} from './table/engine.ts'
+import { Grid, type PastePlan } from './table/Grid.tsx'
+import { KindPicker } from './table/KindPicker.tsx'
+import { PasteBar, TickedBar } from './table/Many.tsx'
+import { RowPanel } from './table/RowPanel.tsx'
+import { SourcePanel } from './table/SourcePanel.tsx'
+import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
+import { ViewTabs } from './table/ViewTabs.tsx'
+import { CORRECTABLE, show } from './table/values.ts'
+import { CalendarView } from './table/views/CalendarView.tsx'
+import { GalleryView, ListView } from './table/views/Cards.tsx'
+import { ChartView } from './table/views/ChartView.tsx'
+import { FormView } from './table/views/FormView.tsx'
+import { TimelineView } from './table/views/TimelineView.tsx'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
-import { Field, Select } from './ui/field.tsx'
-import { Pill, type Tone } from './ui/pill.tsx'
-import { Segmented } from './ui/segmented.tsx'
-import { SidePanel } from './ui/side-panel.tsx'
+import { MenuItem, Popover } from './ui/popover.tsx'
 
-const features = tableFeatures({})
-const helper = createColumnHelper<typeof features, RowView>()
-
-const KIND_TONE: Record<SourceView['kind'], Tone> = {
-  stated: 'accent',
-  looked_up: 'neutral',
-  computed: 'neutral',
-  estimated: 'warn',
-  assumed: 'warn',
+interface Working {
+  view: string | null
+  config: ViewConfig
 }
 
-const KIND_WORDS: Record<SourceView['kind'], string> = {
-  stated: 'You said',
-  looked_up: 'Looked up',
-  estimated: 'Estimated',
-  assumed: 'Assumed',
-  computed: 'Computed',
-}
-
-// A choice that is a state shows as a dot in its colour, with its words.
-const DOT: Record<string, string> = {
-  good: 'bg-good',
-  warn: 'bg-warn',
-  bad: 'bg-bad',
-  accent: 'bg-accent',
-}
-
-// The marks on a value Alpha is not sure of: ≈ estimated, ? assumed.
-const MARK: Partial<Record<SourceView['kind'], string>> = { estimated: '≈', assumed: '?' }
-
-const NUMERIC = new Set(['money', 'number'])
-// What can be corrected in the panel; a relation, a file or a person is changed by asking Alpha.
-const CORRECTABLE = new Set(['text', 'number', 'money', 'date', 'choice', 'email', 'link', 'phone'])
-
-const when = (at: string) =>
-  new Date(at).toLocaleString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-
-function show(field: FieldView, value: unknown, names: Record<string, string> = {}): string {
-  if (value === null || value === undefined) return ''
-  if (field.kind === 'relation')
-    return (Array.isArray(value) ? value : [value]).map((id) => names[String(id)] ?? '…').join(', ')
-  if (field.kind === 'money' && typeof value === 'object') {
-    const m = value as { amount: number; currency: string }
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: m.currency,
-      currencyDisplay: 'narrowSymbol',
-      ...(Number.isInteger(m.amount) ? { maximumFractionDigits: 0 } : {}),
-    }).format(m.amount)
+function stored(key: string): Working | null {
+  try {
+    const s = sessionStorage.getItem(key)
+    return s ? (JSON.parse(s) as Working) : null
+  } catch {
+    return null
   }
-  if (field.kind === 'date' && typeof value === 'string' && !Number.isNaN(Date.parse(value)))
-    return new Date(value).toLocaleString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      // a date with its time shows the time, in the person's own zone
-      ...(/T\d{2}:\d{2}/.test(value) ? { hour: '2-digit', minute: '2-digit' } : {}),
-    })
-  if (Array.isArray(value)) return value.join(', ')
-  return String(value)
 }
 
 export function TableView({
@@ -96,224 +65,319 @@ export function TableView({
   row?: string | null
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
 }) {
+  const key = `alpha.table.${data.id}`
+  const [views, setViews] = useState<SavedView[]>(data.views)
+  useEffect(() => setViews(data.views), [data.views])
+  const [viewId, setViewId] = useState<string | null>(() => {
+    const was = stored(key)
+    if (was && (was.view === null || data.views.some((v) => v.id === was.view))) return was.view
+    return data.views.find((v) => v.isDefault)?.id ?? null
+  })
+  const saved = complete(views.find((v) => v.id === viewId)?.config ?? BLANK)
+  const [config, setConfig] = useState<ViewConfig>(() => {
+    const was = stored(key)
+    return was && was.view === viewId ? complete(was.config) : saved
+  })
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(key, JSON.stringify({ view: viewId, config }))
+    } catch {
+      // a private window keeps nothing; the view still works
+    }
+  }, [key, viewId, config])
+  const dirty = differs(config, saved)
+  const [problem, setProblem] = useState<string | null>(null)
   const [picked, setPicked] = useState<{ row: string; field: string } | null>(
     openRow ? { row: openRow, field: data.fields[0]?.slug ?? '' } : null,
   )
-  const [words, setWords] = useState('')
-  // filters: a choice field set to one of its choices, each a chip with ×
-  const [filters, setFilters] = useState<{ field: string; value: string }[]>([])
   const [adding, setAdding] = useState(false)
-  // the board groups by Stage when there is one, else by the first choice
-  const groupBy =
-    data.fields.find((f) => f.kind === 'choice' && f.name === 'Stage') ??
-    data.fields.find((f) => f.kind === 'choice')
-  const [view, setView] = useState<'table' | 'board'>('table')
-  useEffect(() => {
-    if (openRow) document.getElementById(`row-${openRow}`)?.scrollIntoView({ block: 'center' })
-  }, [openRow])
+  const [ticked, setTicked] = useState<Set<string>>(new Set())
+  const [pasting, setPasting] = useState<PastePlan | null>(null)
+  const [opened, setOpened] = useState<string | null>(null)
 
-  const w = words.trim().toLowerCase()
+  const fields = data.fields
+  const shown = columns(fields, config)
   const rows = useMemo(
     () =>
-      data.rows
-        .filter(
-          (r) =>
-            !w ||
-            data.fields.some((f) =>
-              show(f, r.values[f.slug], data.names).toLowerCase().includes(w),
-            ),
-        )
-        .filter((r) =>
-          filters.every((fl) => {
-            const f = data.fields.find((x) => x.name === fl.field)
-            return f && r.values[f.slug] === fl.value
-          }),
+      sortRows(
+        applyFilters(
+          applySearch(data.rows, fields, config.search, data.names),
+          fields,
+          config.filters,
+          data.names,
         ),
-    [data, w, filters],
-  )
-  const choiceFields = data.fields.filter((f) => f.kind === 'choice' && f.choices.length)
-  const first = data.fields[0]?.slug
-  const columns = useMemo(
-    () =>
-      helper.columns(
-        data.fields.map((f) =>
-          helper.display({
-            id: f.slug,
-            header: () => f.name,
-            cell: ({ row }) => {
-              const r = row.original
-              const value = r.values[f.slug]
-              const source = r.sources[f.slug]
-              const text = show(f, value, data.names)
-              const mark = source ? MARK[source.kind] : undefined
-              const empty = value === null || value === undefined || text === ''
-              const sel = picked?.row === r.id && picked.field === f.slug
-              return (
-                <button
-                  type="button"
-                  onClick={() => setPicked({ row: r.id, field: f.slug })}
-                  className={cn(
-                    'group flex h-9.5 w-full items-center gap-0.75 px-2.5 text-left tabular-nums',
-                    NUMERIC.has(f.kind) && 'justify-end',
-                    sel && 'bg-accent-soft ring-2 ring-accent ring-inset',
-                  )}
-                >
-                  {empty ? (
-                    NUMERIC.has(f.kind) ? (
-                      <span className="text-ink-3">None given</span>
-                    ) : null
-                  ) : f.kind === 'choice' && f.tones[text] ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className={cn('size-1.75 rounded-full', DOT[f.tones[text]])} />
-                      {text}
-                    </span>
-                  ) : f.kind === 'choice' ? (
-                    <Pill>{text}</Pill>
-                  ) : (
-                    <span
-                      className={cn(
-                        'truncate decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
-                        f.slug === first ? 'max-w-58 font-medium' : 'max-w-64',
-                        mark && 'text-ink-2 italic',
-                      )}
-                      title={text.length > 40 ? text : undefined}
-                    >
-                      {text}
-                    </span>
-                  )}
-                  {mark && !empty && (
-                    <span className="self-start pt-2 font-bold text-warn text-xs leading-none">
-                      {mark}
-                    </span>
-                  )}
-                </button>
-              )
-            },
-          }),
-        ),
+        fields,
+        config.sorts,
+        data.names,
       ),
-    [data.fields, data.names, picked, first],
+    [data.rows, data.names, fields, config.search, config.filters, config.sorts],
   )
-  const table = useTable({ features, columns, data: rows })
+  const choices = fields.filter((f) => f.kind === 'choice' && f.choices.length)
+  // a board's columns: the view's group when it is a choice, else Stage, else the first choice
+  const boardBy =
+    choices.find((f) => f.id === config.group) ??
+    choices.find((f) => f.name === 'Stage') ??
+    choices[0]
+
+  const act = async (fn: () => Promise<void>) => {
+    setProblem(null)
+    try {
+      await fn()
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That was not saved.')
+    }
+  }
+  const pick = (id: string | null) => {
+    setViewId(id)
+    setConfig(complete(views.find((v) => v.id === id)?.config ?? BLANK))
+    setProblem(null)
+  }
+  const replace = (v: SavedView) =>
+    setViews((vs) =>
+      vs.map((x) =>
+        x.id === v.id ? v : v.isDefault && x.isDefault ? { ...x, isDefault: false } : x,
+      ),
+    )
+  // what the person changes in the table is their word; a refusal shows in the views' line
+  const write = async (fn: () => Promise<unknown>) => {
+    setProblem(null)
+    try {
+      await fn()
+      return true
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That was not saved.')
+      return false
+    }
+  }
+  const edit = (row: RowView, field: FieldView, value: unknown) =>
+    write(() => api.post(`/api/tables/${data.id}/rows/${row.id}`, { field: field.name, value }))
+  const tickedRows = data.rows.filter((r) => ticked.has(r.id))
+  const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
+  const openRowPanel = (id: string) => {
+    setOpened(id)
+    setPicked(null)
+    setAdding(false)
+  }
+  const first = data.fields[0]
+  const openedRow = opened ? data.rows.find((r) => r.id === opened) : undefined
   const pickedRow = picked ? data.rows.find((r) => r.id === picked.row) : undefined
   const pickedField = picked ? data.fields.find((f) => f.slug === picked.field) : undefined
 
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-center gap-2 px-7 pt-3.5 pb-3">
-          <label className="flex h-7.5 w-46 items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-            <Search className="size-3.25 shrink-0" />
-            <input
-              value={words}
-              onChange={(e) => setWords(e.target.value)}
-              placeholder={`Find in ${data.name}`}
-              aria-label={`Find in ${data.name}`}
-              className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-            />
-          </label>
-          {filters.map((fl) => (
-            <span
-              key={`${fl.field}${fl.value}`}
-              className="inline-flex h-7.5 items-center gap-1 rounded-md border border-accent-line bg-accent-soft pr-1 pl-2.5 text-accent text-md"
-            >
-              {fl.field}: {fl.value}
-              <button
-                type="button"
-                aria-label={`Remove the filter ${fl.field}: ${fl.value}`}
-                onClick={() => setFilters((fs) => fs.filter((x) => x !== fl))}
-                className="grid size-5 place-items-center rounded-sm hover:bg-accent-line/40"
-              >
-                <X className="size-3.25" />
-              </button>
-            </span>
-          ))}
-          {choiceFields.length > 0 && (
-            <FilterButton
-              fields={choiceFields}
-              onPick={(field, value) =>
-                setFilters((fs) => [...fs.filter((x) => x.field !== field), { field, value }])
+        <ViewTabs
+          right={
+            <>
+              {config.kind !== 'board' && (
+                <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
+              )}
+              <Export
+                onExport={(as) =>
+                  write(() =>
+                    api.download(
+                      `/api/tables/${data.id}/export`,
+                      { rows: rows.map((r) => r.id), fields: shown.map((f) => f.id), as },
+                      `${data.name}.${as}`,
+                    ),
+                  )
+                }
+              />
+              <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
+              <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
+                <Plus className="size-3.25" />
+                Add a row
+              </Button>
+            </>
+          }
+          views={views}
+          current={viewId}
+          dirty={dirty}
+          problem={problem}
+          onPick={pick}
+          onReset={() => setConfig(saved)}
+          onSave={() =>
+            act(async () => {
+              if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
+            })
+          }
+          onSaveAs={(name) =>
+            act(async () => {
+              const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
+                name,
+                config,
+              })
+              setViews((vs) => [...vs, v])
+              setViewId(v.id)
+              setConfig(complete(v.config))
+            })
+          }
+          onRename={(name) =>
+            act(async () => {
+              if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
+            })
+          }
+          onDefault={(on) =>
+            act(async () => {
+              if (viewId)
+                replace(await api.put<SavedView>(`/api/views/${viewId}`, { isDefault: on }))
+            })
+          }
+          onRemove={() =>
+            act(async () => {
+              if (!viewId) return
+              await api.delete(`/api/views/${viewId}`)
+              setViews((vs) => vs.filter((v) => v.id !== viewId))
+              setViewId(null)
+              setConfig(BLANK)
+            })
+          }
+        />
+        <div className="flex flex-wrap items-center gap-2 px-7 pt-3 pb-3">
+          {tickedRows.length > 0 ? (
+            <TickedBar
+              rows={tickedRows}
+              fields={fields}
+              onClear={() => setTicked(new Set())}
+              onSet={(field, value) =>
+                write(() =>
+                  api.post(`/api/tables/${data.id}/rows/many`, {
+                    set: tickedRows.map((r) => ({ row: r.id, values: { [field.name]: value } })),
+                  }),
+                )
               }
+              onRemove={async () => {
+                const ok = await write(() =>
+                  api.post(`/api/tables/${data.id}/rows/remove`, {
+                    rows: tickedRows.map((r) => r.id),
+                  }),
+                )
+                if (ok) setTicked(new Set())
+                return ok
+              }}
             />
+          ) : (
+            <>
+              <label className="flex h-7.5 w-46 items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                <Search className="size-3.25 shrink-0" />
+                <input
+                  value={config.search}
+                  onChange={(e) => setConfig({ ...config, search: e.target.value })}
+                  placeholder={`Find in ${data.name}`}
+                  aria-label={`Find in ${data.name}`}
+                  className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+                />
+              </label>
+              <Chips
+                fields={fields}
+                config={config}
+                rows={data.rows}
+                names={data.names}
+                onConfig={setConfig}
+              />
+              <AddFilter
+                fields={fields}
+                config={config}
+                rows={data.rows}
+                names={data.names}
+                onConfig={setConfig}
+              />
+            </>
           )}
           <span className="text-ink-3 text-sm">
             {rows.length === data.rows.length
               ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
               : `${rows.length} of ${data.rows.length}`}
           </span>
-          <span className="flex-1" />
-          {groupBy && (
-            <Segmented
-              label="View"
-              value={view}
-              onChange={setView}
-              options={[
-                { value: 'table', label: 'Table' },
-                { value: 'board', label: 'Board' },
-              ]}
-            />
-          )}
-          <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
-            <Plus className="size-3.25" />
-            Add a row
-          </Button>
         </div>
         {data.rows.length === 0 ? (
           <p className="px-7 text-ink-3">No rows yet.</p>
-        ) : view === 'board' && groupBy ? (
+        ) : config.kind === 'board' && boardBy ? (
           <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
-            <Board data={{ ...data, rows }} by={groupBy} />
+            <Board data={{ ...data, rows }} by={boardBy} />
           </div>
+        ) : config.kind === 'form' ? (
+          <FormView
+            rows={rows}
+            fields={shown}
+            names={data.names}
+            onSave={(row, values) =>
+              write(() =>
+                api.post(
+                  `/api/tables/${data.id}/rows/many`,
+                  row ? { set: [{ row: row.id, values }] } : { add: [{ values }] },
+                ),
+              )
+            }
+          />
+        ) : rows.length === 0 ? (
+          <p className="px-7 text-ink-3">No rows meet this view’s filters.</p>
+        ) : config.kind === 'list' ? (
+          <ListView
+            rows={rows}
+            fields={shown}
+            group={fields.find((f) => f.id === config.group)}
+            names={data.names}
+            onOpen={openRowPanel}
+          />
+        ) : config.kind === 'gallery' ? (
+          <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
+        ) : config.kind === 'calendar' && dateBy ? (
+          <CalendarView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+        ) : config.kind === 'timeline' && dateBy ? (
+          <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+        ) : config.kind === 'chart' ? (
+          <ChartView
+            rows={rows}
+            group={fields.find((f) => f.id === config.group) ?? (dateBy ? undefined : boardBy)}
+            by={dateBy}
+            measure={fields.find((f) => f.id === config.measure)}
+            names={data.names}
+            onBar={(field, key) =>
+              setConfig(setRule({ ...config, kind: 'table' }, barRule(field, key)))
+            }
+          />
         ) : (
-          <div className="mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface">
-            <table className="w-max min-w-full border-separate border-spacing-0 text-md">
-              <thead>
-                {table.getHeaderGroups().map((g) => (
-                  <tr key={g.id}>
-                    {g.headers.map((h, i) => {
-                      const f = data.fields[i]
-                      return (
-                        <th
-                          key={h.id}
-                          className={cn(
-                            'sticky top-0 z-10 h-9 whitespace-nowrap border-line border-b bg-surface px-2.5 font-medium text-ink-3 text-sm',
-                            f && NUMERIC.has(f.kind) ? 'text-right' : 'text-left',
-                            i === 0 && 'left-0 z-20 shadow-[inset_-1px_0_0_var(--hair)]',
-                          )}
-                        >
-                          {h.isPlaceholder ? null : <table.FlexRender header={h} />}
-                        </th>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    id={`row-${row.original.id}`}
-                    className={cn(
-                      'group/row',
-                      row.original.id === openRow && '[&>td]:bg-accent-soft',
-                    )}
-                  >
-                    {row.getAllCells().map((cell, i) => (
-                      <td
-                        key={cell.id}
-                        className={cn(
-                          'whitespace-nowrap border-hair border-b bg-surface p-0 group-last/row:border-b-0 group-hover/row:bg-hover',
-                          i === 0 && 'sticky left-0 z-1 shadow-[inset_-1px_0_0_var(--hair)]',
-                        )}
-                      >
-                        <table.FlexRender cell={cell} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {pasting && (
+              <PasteBar
+                plan={pasting}
+                onNo={() => setPasting(null)}
+                onYes={async () => {
+                  const plan = pasting
+                  setPasting(null)
+                  await write(() =>
+                    api.post(`/api/tables/${data.id}/rows/many`, { set: plan.set, add: plan.add }),
+                  )
+                }}
+              />
+            )}
+            <Grid
+              tableId={data.id}
+              rows={rows}
+              allRows={data.rows}
+              fields={fields}
+              shown={shown}
+              config={config}
+              names={data.names}
+              picked={picked}
+              openRow={openRow ?? null}
+              ticked={ticked}
+              onPick={(p) => {
+                setPicked(p)
+                setOpened(null)
+              }}
+              onConfig={setConfig}
+              onTick={setTicked}
+              onEdit={edit}
+              onOpen={(id) => {
+                setOpened(id)
+                setPicked(null)
+                setAdding(false)
+              }}
+              onPaste={setPasting}
+            />
+          </>
         )}
       </div>
       {adding && !quiet && (
@@ -324,14 +388,25 @@ export function TableView({
           onClose={() => setAdding(false)}
         />
       )}
-      {!adding && !quiet && pickedRow && pickedField && (
+      {!adding && !quiet && openedRow && (
+        <RowPanel
+          row={openedRow}
+          fields={shown}
+          names={data.names}
+          title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
+          onField={(slug) => {
+            setPicked({ row: openedRow.id, field: slug })
+            setOpened(null)
+          }}
+          onClose={() => setOpened(null)}
+        />
+      )}
+      {!adding && !quiet && !openedRow && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
           row={pickedRow}
           field={pickedField}
-          rowName={
-            first ? show(data.fields[0] as FieldView, pickedRow.values[first], data.names) : ''
-          }
+          rowName={first ? show(first, pickedRow.values[first.slug], data.names) : ''}
           names={data.names}
           onClose={() => setPicked(null)}
         />
@@ -340,399 +415,51 @@ export function TableView({
   )
 }
 
-// The board: a column per choice, each row a card with its name and a few of its values, moved
-// by setting its choice (the person's own word).
-function Board({ data, by }: { data: TableData; by: FieldView }) {
-  const [busy, setBusy] = useState<string | null>(null)
-  const name = data.fields.find((f) => f.kind === 'text')
-  // on a card: up to two amounts, then up to two other choices, each only when it has a value
-  const others = data.fields.filter((f) => f !== name && f !== by)
-  const cardFields = (r: RowView) => [
-    ...others.filter((f) => f.kind === 'money' && r.values[f.slug] != null).slice(0, 2),
-    ...others.filter((f) => f.kind === 'choice' && r.values[f.slug] != null).slice(0, 2),
-  ]
-  const move = async (row: string, value: string) => {
-    setBusy(row)
-    await api
-      .post(`/api/tables/${data.id}/rows/${row}`, { field: by.name, value })
-      .catch(() => undefined)
-    setBusy(null)
-  }
-  const columns = [...by.choices, '']
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {columns.map((choice) => {
-        const rows = data.rows.filter((r) => (r.values[by.slug] ?? '') === choice)
-        if (choice === '' && rows.length === 0) return null
-        return (
-          <div key={choice || 'none'} className="flex w-56 shrink-0 flex-col gap-2">
-            <div className="flex justify-between px-1 text-sm text-ink-2">
-              <span>{choice || `No ${by.name.toLowerCase()}`}</span>
-              <span className="text-ink-3">{rows.length}</span>
-            </div>
-            {rows.map((r) => (
-              <div
-                key={r.id}
-                id={`row-${r.id}`}
-                className="flex flex-col gap-1 rounded-lg border border-line px-3 py-2 text-base"
-              >
-                <div className="text-ink">
-                  {name ? show(name, r.values[name.slug]) || 'Untitled' : 'Untitled'}
-                </div>
-                {cardFields(r).map((f) => {
-                  const v = show(f, r.values[f.slug], data.names)
-                  return v ? (
-                    <div key={f.id} className="text-sm text-ink-2">
-                      {f.name}: {v}
-                    </div>
-                  ) : null
-                })}
-                <Select
-                  className="mt-1 h-6.5 text-sm"
-                  value={choice}
-                  disabled={busy === r.id}
-                  aria-label={`Move to another ${by.name.toLowerCase()}`}
-                  onChange={(e) => move(r.id, e.target.value)}
-                >
-                  {choice === '' && <option value="">Move to…</option>}
-                  {by.choices.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            ))}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// The source panel: one value, where it came from, and its history; Correct it makes the value
-// the person's own word.
-function SourcePanel({
-  tableId,
-  row,
-  field,
-  rowName,
-  names,
-  onClose,
-}: {
-  tableId: string
-  row: RowView
-  field: FieldView
-  rowName: string
-  names: Record<string, string>
-  onClose: () => void
-}) {
-  const value = row.values[field.slug]
-  const source = row.sources[field.slug]
-  const text = show(field, value, names)
-  const [history, setHistory] = useState<HistoryView[]>([])
-  const [correcting, setCorrecting] = useState(false)
-  useEffect(() => {
-    setCorrecting(false)
-    api
-      .get<HistoryView[]>(`/api/tables/${tableId}/rows/${row.id}/history?field=${field.slug}`)
-      .then(setHistory, () => setHistory([]))
-  }, [tableId, row.id, field.slug, row.values[field.slug]])
-  const open = source?.open
-  return (
-    <SidePanel title={field.name} onClose={onClose}>
-      <div className="flex flex-col gap-3.5 p-4.5">
-        <div>
-          <div
-            className={cn(
-              'flex items-start gap-1 font-medium font-serif text-ink tabular-nums',
-              text.length > 18 ? 'text-xl' : 'text-2xl',
-            )}
-          >
-            <span className="min-w-0 break-words">{text || 'None given'}</span>
-            {source && MARK[source.kind] && (
-              <span className="pt-1 font-bold font-sans text-sm text-warn">
-                {MARK[source.kind]}
-              </span>
-            )}
-          </div>
-          {rowName && <div className="mt-1 truncate text-ink-3 text-sm">{rowName}</div>}
-        </div>
-        {source ? (
-          <>
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone={KIND_TONE[source.kind]}>{KIND_WORDS[source.kind]}</Pill>
-              <span className="text-ink-3 text-sm">{when(source.at)}</span>
-            </div>
-            <p className="text-ink text-md leading-relaxed">{source.words}</p>
-            {source.note && (
-              <div className="whitespace-pre-wrap rounded-md bg-sunk px-3 py-2.5 font-mono text-ink text-sm tabular-nums leading-relaxed">
-                {source.note}
-              </div>
-            )}
-          </>
-        ) : (
-          <p className="text-ink-3 text-md">Nothing is kept here yet.</p>
-        )}
-        <div className="flex flex-wrap gap-1.5">
-          {open && 'url' in open && (
-            <Button size="sm" onClick={() => window.open(open.url, '_blank', 'noreferrer')}>
-              <ExternalLink className="size-3.25" />
-              Open the page
-            </Button>
-          )}
-          {open && 'file' in open && (
-            <Button
-              size="sm"
-              onClick={() => window.open(api.fileUrl(open.file), '_blank', 'noreferrer')}
-            >
-              <FileText className="size-3.25" />
-              Open the file{open.cell ? ` at ${open.cell}` : ''}
-            </Button>
-          )}
-          {CORRECTABLE.has(field.kind) && !correcting && (
-            <Button size="sm" variant="ghost" onClick={() => setCorrecting(true)}>
-              Correct it
-            </Button>
-          )}
-        </div>
-        {correcting && (
-          <Correct
-            tableId={tableId}
-            rowId={row.id}
-            field={field}
-            value={value}
-            onDone={() => setCorrecting(false)}
-          />
-        )}
-        {history.length > 1 && (
-          <div>
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">History</div>
-            <ol className="mt-1.5">
-              {history.map((h, i) => (
-                <li
-                  key={i}
-                  className="grid grid-cols-[5.25rem_1fr] gap-x-2.5 gap-y-0.5 border-hair border-t py-2 text-sm"
-                >
-                  <span className="row-span-2 text-ink-3 tabular-nums">
-                    {h.source ? when(h.source.at) : ''}
-                  </span>
-                  <span className="font-medium text-ink tabular-nums">
-                    {show(field, h.value, names)}
-                  </span>
-                  <span className="text-ink-3">
-                    {h.source ? KIND_WORDS[h.source.kind] : ''}
-                    {i === 0 ? ' · now' : ''}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-      </div>
-    </SidePanel>
-  )
-}
-
-// Correct it: the value as the person types it, read for its kind, saved as their word.
-function Correct({
-  tableId,
-  rowId,
-  field,
-  value,
-  onDone,
-}: {
-  tableId: string
-  rowId: string
-  field: FieldView
-  value: unknown
-  onDone: () => void
-}) {
-  const start =
-    field.kind === 'money' && value && typeof value === 'object'
-      ? String((value as { amount: number }).amount)
-      : value === null || value === undefined
-        ? ''
-        : String(value)
-  const [typed, setTyped] = useState(start)
-  const [problem, setProblem] = useState<string | null>(null)
-  const save = async (e: FormEvent) => {
-    e.preventDefault()
-    setProblem(null)
-    const t = typed.trim()
-    const amount = Number(t.replace(/[$,\s]/g, ''))
-    const read =
-      field.kind === 'money'
-        ? {
-            amount,
-            currency:
-              (value && typeof value === 'object' && (value as { currency?: string }).currency) ||
-              'USD',
-          }
-        : field.kind === 'number'
-          ? amount
-          : t
-    if ((field.kind === 'money' || field.kind === 'number') && Number.isNaN(amount)) {
-      setProblem('That is not a number.')
-      return
-    }
-    try {
-      await api.post(`/api/tables/${tableId}/rows/${rowId}`, { field: field.name, value: read })
-      onDone()
-    } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That was not saved.')
-    }
-  }
-  return (
-    <form onSubmit={save} className="flex flex-col gap-2">
-      {field.kind === 'choice' ? (
-        <Select value={typed} onChange={(e) => setTyped(e.target.value)} aria-label={field.name}>
-          {field.choices.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </Select>
-      ) : (
-        <Field
-          autoFocus
-          value={typed}
-          aria-label={field.name}
-          type={field.kind === 'date' ? 'date' : 'text'}
-          onChange={(e) => setTyped(e.target.value)}
-        />
-      )}
-      {problem && <div className="text-bad text-sm">{problem}</div>}
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" variant="primary">
-          Save as yours
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onDone}>
-          Cancel
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-// + Filter: a choice field, then one of its choices.
-function FilterButton({
-  fields,
-  onPick,
-}: {
-  fields: FieldView[]
-  onPick: (field: string, value: string) => void
-}) {
+// Export: exactly the rows and columns shown, as an Excel or a CSV file.
+function Export({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
   const [open, setOpen] = useState(false)
-  const [field, setField] = useState<FieldView | null>(null)
+  const anchor = useRef<HTMLButtonElement>(null)
   return (
-    <div className="relative">
+    <>
       <button
+        ref={anchor}
         type="button"
-        onClick={() => {
-          setOpen((o) => !o)
-          setField(null)
-        }}
-        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line border-dashed px-2.5 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-7.5 items-center gap-1.5 rounded-md px-2.5 text-ink-2 text-md hover:bg-hover hover:text-ink"
       >
-        <ListFilter className="size-3.25" />
-        Filter
+        <Download className="size-3.5" />
+        Export
       </button>
-      {open && (
-        <div className="absolute top-8.5 left-0 z-30 min-w-48 overflow-hidden rounded-md border border-line bg-surface p-1 shadow-pop">
-          {(field ? field.choices : fields.map((f) => f.name)).map((o) => (
-            <button
-              key={o}
-              type="button"
-              onClick={() => {
-                if (!field) setField(fields.find((f) => f.name === o) ?? null)
-                else {
-                  onPick(field.name, o)
-                  setOpen(false)
-                }
-              }}
-              className="flex h-7.5 w-full items-center rounded-sm px-2.5 text-left text-ink text-md hover:bg-hover"
-            >
-              {o}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <MenuItem
+          onClick={() => {
+            setOpen(false)
+            onExport('xlsx')
+          }}
+        >
+          Excel, as shown
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setOpen(false)
+            onExport('csv')
+          }}
+        >
+          CSV, as shown
+        </MenuItem>
+      </Popover>
+    </>
   )
 }
 
-// Add a row: the person's own values, each saved as theirs.
-function AddRow({
-  tableId,
-  name,
-  fields,
-  onClose,
-}: {
-  tableId: string
-  name: string
-  fields: FieldView[]
-  onClose: () => void
-}) {
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [problem, setProblem] = useState<string | null>(null)
-  const save = async (e: FormEvent) => {
-    e.preventDefault()
-    setProblem(null)
-    const read: Record<string, unknown> = {}
-    for (const f of fields) {
-      const t = (values[f.name] ?? '').trim()
-      if (!t) continue
-      const n = Number(t.replace(/[$,\s]/g, ''))
-      if ((f.kind === 'money' || f.kind === 'number') && Number.isNaN(n)) {
-        setProblem(`${f.name} is not a number.`)
-        return
-      }
-      read[f.name] =
-        f.kind === 'money' ? { amount: n, currency: 'USD' } : f.kind === 'number' ? n : t
-    }
-    try {
-      await api.post(`/api/tables/${tableId}/rows`, { values: read })
-      onClose()
-    } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That row was not added.')
-    }
+// A chart bar's rows as a filter: its choice, its words, its month, or no value.
+function barRule(field: FieldView, key: string): FilterRule {
+  if (key === '') return { field: field.id, op: 'empty' }
+  if (field.kind === 'choice') return { field: field.id, op: 'in', values: [key] }
+  if (field.kind === 'date') {
+    const [y, m] = key.split('-').map(Number)
+    const last = new Date(y ?? 1970, m ?? 1, 0).getDate()
+    return { field: field.id, op: 'between', value: `${key}-01`, value2: `${key}-${last}` }
   }
-  return (
-    <SidePanel title={`Add a row to ${name}`} onClose={onClose}>
-      <form onSubmit={save} className="flex flex-col gap-3 p-4.5">
-        {fields.map((f) => (
-          <label key={f.id} className="flex flex-col gap-1 text-md" htmlFor={`add-${f.id}`}>
-            <span className="text-ink-2">{f.name}</span>
-            {f.kind === 'choice' ? (
-              <Select
-                id={`add-${f.id}`}
-                value={values[f.name] ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
-              >
-                <option value="" />
-                {f.choices.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </Select>
-            ) : (
-              <Field
-                id={`add-${f.id}`}
-                type={f.kind === 'date' ? 'date' : 'text'}
-                value={values[f.name] ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
-              />
-            )}
-          </label>
-        ))}
-        {problem && <div className="text-bad text-sm">{problem}</div>}
-        <div className="flex gap-2">
-          <Button type="submit" size="sm" variant="primary">
-            Add it
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </SidePanel>
-  )
+  return { field: field.id, op: 'is', value: key }
 }

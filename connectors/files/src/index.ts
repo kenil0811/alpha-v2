@@ -7,6 +7,7 @@ import { type Connector, Problem } from '@alpha/connector-sdk'
 
 export { doclingEnv, readPdf } from './pdf.ts'
 export { type Piece, type Position, type Readable, readBytes } from './read.ts'
+export { type Cell, sheetBytes } from './write.ts'
 
 const MIME: Record<string, string> = {
   '.csv': 'text/csv',

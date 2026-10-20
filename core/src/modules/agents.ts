@@ -3,6 +3,7 @@
 // state (on or paused) and its trigger as read; the file stays the truth.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { Cron } from 'croner'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { all, json, newId, run } from '../world/db.ts'
@@ -29,6 +30,29 @@ export function whenWords(t: Trigger): string {
   if ('cron' in t) return `on the schedule ${t.cron}`
   const tables = Array.isArray(t.changes) ? t.changes : [t.changes]
   return `when ${tables.join(' or ')} change${tables.length === 1 ? 's' : ''}`
+}
+
+// When a trigger on the clock next fires, after its last run; a trigger on changes has no time.
+// The same rule as the runner's (runs.ts `due`): a day's run is due once its hour has passed.
+export function nextRun(t: Trigger, lastRunAt: string | null, nowMs: number): Date | null {
+  const last = lastRunAt ? Date.parse(lastRunAt) : 0
+  if ('every' in t) {
+    if (t.every === 'hour') return new Date(Math.max(nowMs, last + 3_600_000))
+    const days = t.every === 'week' ? 7 : 1
+    const gap = (days - 1) * 86_400_000 + 3_600_000
+    const [h, m] = (t.at ?? '00:00').split(':').map(Number)
+    const recent = new Date(nowMs)
+    recent.setHours(h ?? 0, m ?? 0, 0, 0)
+    if (recent.getTime() > nowMs) recent.setDate(recent.getDate() - 1)
+    if (last < recent.getTime() && nowMs - last >= gap) return new Date(nowMs) // due now
+    const earliest = Math.max(nowMs, last + gap)
+    const at = new Date(earliest)
+    at.setHours(h ?? 0, m ?? 0, 0, 0)
+    if (at.getTime() < earliest) at.setDate(at.getDate() + 1)
+    return at
+  }
+  if ('cron' in t) return new Cron(t.cron).nextRun(new Date(Math.max(nowMs, last))) ?? null
+  return null
 }
 
 // The script it runs, and what it is handed as `alpha.input` (a reader's page and settings).

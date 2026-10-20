@@ -47,6 +47,7 @@ async function call<T>(
 export const api = {
   get: <T>(path: string) => call<T>('GET', path),
   post: <T>(path: string, body: unknown = {}) => call<T>('POST', path, body),
+  put: <T>(path: string, body: unknown = {}) => call<T>('PUT', path, body),
   delete: <T>(path: string) => call<T>('DELETE', path),
   upload: (file: File) =>
     call<{ name: string; readable: boolean; pieces: number }>('POST', '/api/files', file, {
@@ -54,6 +55,24 @@ export const api = {
       'x-file-name': encodeURIComponent(file.name),
     }),
   fileUrl: (hash: string) => `/api/files/${hash}?t=${encodeURIComponent(token())}`,
+  // a file the core makes (an export), saved by the browser under the name given
+  download: async (path: string, body: unknown, name: string) => {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'x-alpha-token': token(), 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { problem?: string }
+      throw new Problem(data.problem ?? 'The core did not answer.')
+    }
+    const url = URL.createObjectURL(await res.blob())
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  },
 }
 
 // Live events from the core; reconnects when the core comes back.

@@ -1,7 +1,7 @@
 // The window's buttons (Ledger): a plain one, the primary in the accent, a ghost, and an icon button.
 // Weight and spacing live here, never in a screen.
 import { cva, type VariantProps } from 'class-variance-authority'
-import type { ButtonHTMLAttributes } from 'react'
+import type { ComponentProps } from 'react'
 import { cn } from './cn.ts'
 
 const button = cva(
@@ -29,7 +29,7 @@ export function Button({
   size,
   type = 'button',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof button>) {
+}: ComponentProps<'button'> & VariantProps<typeof button>) {
   return <button type={type} className={cn(button({ variant, size }), className)} {...props} />
 }
 
@@ -39,7 +39,7 @@ export function IconButton({
   className,
   type = 'button',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+}: ComponentProps<'button'> & { label: string }) {
   return (
     <button
       type={type}

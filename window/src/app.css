@@ -199,12 +199,30 @@
   /* labels: 11px uppercase with this tracking; nothing else is uppercase */
   --tracking-label: 0.06em;
 
+  /* one step of spacing is 4px, as in the mock; the root's 14px text would make it 3.5px */
+  --spacing: 4px;
+
+  /* the frame's widths: the stream (720px of text in 32px gutters), a wide table in it, a page */
+  --container-stream: 784px;
+  --container-wide: 960px;
+  --container-page: 1200px;
+
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
 
   --shadow-pop: var(--elev-pop);
   --shadow-btn: var(--elev-btn);
+}
+
+/*
+  A table in the stream that does not fit the text's width runs wider, up to --container-wide,
+  centred on the text. It needs an @container around the stream.
+*/
+@utility wide {
+  --wide: max(100%, min(100cqw - 64px, var(--container-wide)));
+  width: var(--wide);
+  margin-inline: calc((100% - var(--wide)) / 2);
 }
 
 @layer base {

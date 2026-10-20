@@ -134,8 +134,8 @@ function AgentsAndNotes({ m, onChange }: { m: ModuleView; onChange: () => void }
     onChange()
   }
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-7 py-6">
+    <div className="@container h-full overflow-y-auto">
+      <div className="grid max-w-page items-start gap-6 px-7 py-6 @min-[960px]:grid-cols-2">
         <section className="flex flex-col gap-2.5">
           <h2 className="font-medium font-serif text-ink text-xl">Agents</h2>
           {m.agents.length === 0 ? (
