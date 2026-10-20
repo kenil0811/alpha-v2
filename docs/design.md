@@ -52,7 +52,6 @@ alpha-v2/
   window/           the web app the core serves
   connector-sdk/    what every connector is built on
   connectors/<name>/   one package per connector
-  kits/<name>/      one module directory per kit (Python inside, in its own environment)
   journeys/         journeys as YAML; reports in docs/journeys/
   shell/            the Tauri Mac shell (week 6; not made at step 0)
 ```
@@ -104,7 +103,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | Part | What it holds |
 |---|---|
 | Journal | Append-only lines: when, actor (a person, Alpha, an agent, a connector, the system), source, kind, words, data, and the module, run and card it belongs to. Full-text search. Triggers refuse any update or delete. |
-| Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone). A record keeps a version per change. Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. |
+| Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone). A record keeps a version per change. Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. |
 | People and companies | Hard keys (email, E.164 phone, profile URL, domain) merge at once. Soft matches are proposals on a card, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. |
 | Facts | Two time axes: when true, when recorded. Corrected by a newer fact, never edited. |
 | Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. |
@@ -146,8 +145,10 @@ detail stays in the journal. No router, no work items, no cards for sessions.
 | `file` | take in a file or document (read with positions), import a sheet into a table |
 | `remember` | facts, tasks and standing instructions |
 | `ask` | a question card |
-| `tell` | a line in the person's stream (an agent's run uses it for what is worth telling) |
-| `keep` | save a page, skill, agent or view in a module |
+| `tell` | a line in the person's stream (an agent's run uses it for what is worth telling; a script's is `alpha.tell`) |
+| `keep` | save a page, skill, agent or view in a module, as a commit; an agent kept here starts on |
+| `look` | open a page as a person sees it, through the browser engine; with a selector, what it finds |
+| `run` | run a module's agent or script now, to try it; a new site waits on its card |
 
 - Connector tools, a few at a time, found through the SDK's tool search.
 - Skills from the module directory.
@@ -287,7 +288,10 @@ Agent Skills directories (`skills/<name>/SKILL.md`), model-written or shipped in
 form in the front matter: by reading, or by script. A site reader is a skill whose script calls
 the connector SDK's browser engine, so pacing and health come from the SDK and the model writes
 only the extraction. Model-written scripts are JavaScript run by the core's Node under the
-sandbox; Python stays inside kits. Doc repairs a skill by editing it; every version is a commit
+sandbox; Python stays inside kits. A script imports nothing of Alpha's: the core hands it `alpha`
+(rows by field name, the browser engine, `tell`, `log`) over its process's pipes, so the network,
+the world and the gates stay with the core; a row it lands keeps the web page it was read from as
+its source. Doc repairs a skill by editing it; every version is a commit
 in the module's directory.
 
 ## 10. Modules and kits
@@ -298,8 +302,13 @@ network allowlist, what it reaches outside itself), `NOTES.md`, `pages/`, `skill
 and says so.
 
 A **kit** is that directory with no person's rows, carrying setup rows (DealPilot's sources and
-thesis, Accounting's accounts and benchmarks). Install makes the tables empty and the agents
-paused. **The ownership rule:** on update, what was installed and is untouched is replaced; what
+thesis, Accounting's accounts and benchmarks). **Kits live outside this repository** (Kenil, 19
+Oct): alpha-v2 holds only what is generic (the platform, connectors, the kit format and its
+installer, generic skills); a client's kits live in that client's own private repository (Avilo's
+in `alpha-avilo`) and are installed from a folder. A kit's scripts import nothing of alpha-v2:
+the core hands each script a small API when it runs it. When a second client asks for a kit, its
+generic part moves to a shared kits repository then. Install makes the tables empty and the agents
+paused; a setup row may mark a value assumed, with what it rests on (a thesis's financing). **The ownership rule:** on update, what was installed and is untouched is replaced; what
 the person changed is theirs and kept; nothing is deleted. It is judged by each file's and each
 setup row's hash. A kit's Python scripts run in a per-kit environment that Alpha makes with a
 bundled `uv` at install, never the Mac's own Python. Kits update by content hash, the app by
@@ -317,6 +326,12 @@ A **run** is a session that serves a task and reports to Activity. It reaches th
 stream only as a card, or when a standing instruction lets it in. A shipped agent's steps are
 kit scripts (XState for stages) with the model at marked judgement points; a user-made agent is
 a brief the model writes. Tokens and duration are recorded on every run as facts, not a budget.
+**Activity** lists every run with its steps, and stops one that is running; **Settings › Kits and
+agents** shows each module's agents, on or paused, with Run now. An agent may wait on a change in
+several tables, and hands its script an input (one listing reader serves every source, each
+source's agent giving it the page). A change runs the agents waiting on it soon after, not at the
+next tick. For DealPilot's new fits (Kenil, 19 Oct), a run's line on Home names its rows, each
+with Open and one choice set in a click (Pass).
 
 **Built-ins, quiet:** **Watson** notices after turns, consolidates while the Mac is idle, and
 shows a folded line under a reply. **Doc** repairs skills and readers. **Morning** is all of
@@ -353,6 +368,10 @@ files; activity), People, Activity, Settings (connections, folders, kits, model 
 a firm). On a Mac, the companion: a small always-on-top window with a message box. Plain words,
 no tool names, no ids. The avatar rig and looks are ported from v1 as they are.
 
+Built so far: a table opens as a table or, when it has a choice to group by, a board; a choice set
+in the window (a board's column, a Home line's Pass) is the person's word, journaled, and the
+value's source.
+
 On a Mac the core listens on loopback and the shell passes it a per-install token. Hosted, the
 window signs in with better-auth.
 
@@ -376,7 +395,9 @@ A **journey** is a YAML file of steps (say, drop a file, seed, run an agent, ans
 checks on the world (tables made, rows landed, a card waiting, a value's source), run on a
 **fresh tenant of its own** with the real model, its report kept in `docs/journeys/`. Checks
 read the world, not the model's prose; a judge is used only where nothing else can tell.
-Journeys that would act in a real account run against fixtures, or on Kenil's word.
+Journeys that would act in a real account run against fixtures, or on Kenil's word; a site is a
+made-up one served on the Mac. A client's journeys live in the client's own repository and run
+with `pnpm journey <name> --from ../alpha-avilo/journeys`.
 
 **Tests** (Vitest) never call the model and never touch a real tenant. A failure becomes a
 journey before it becomes a change.
