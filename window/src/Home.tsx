@@ -12,15 +12,13 @@ import type {
   TodayView,
   WorkingModuleView,
 } from '@alpha/core/api'
-import { ArrowUp, Bot, Check, ChevronRight, KeyRound } from 'lucide-react'
+import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
-import { ModuleCard } from './ModuleCard.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
-import { childrenOf, tops } from './tree.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Group, Line, Quiet } from './ui/groups.tsx'
@@ -63,6 +61,7 @@ export function Home({
   const cards = stream?.cards ?? []
   const signIns = stream?.attention ?? []
   const running = stream?.running ?? []
+  const reading = stream?.reading ?? []
   const changed = today?.changed ?? []
   const coming = today?.coming ?? []
   // a card that waits is never hidden behind the welcome
@@ -92,6 +91,13 @@ export function Home({
           </div>
           <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
         </div>
+
+        {stream?.settingUp && (
+          <p className="flex items-center gap-2 text-ink-2 text-md">
+            <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
+            Setting up {stream.settingUp}; Alpha works meanwhile, and they appear as they go in.
+          </p>
+        )}
 
         {setup && unready(setup) && (
           <Group
@@ -203,9 +209,21 @@ export function Home({
                 )}
               </Group>
 
-              {running.length > 0 && (
+              {(running.length > 0 || reading.length > 0) && (
                 <Group title="Running">
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                    {reading.map((r) => (
+                      <div
+                        key={r.connection}
+                        className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
+                      >
+                        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+                        <span className="min-w-0 flex-1 truncate text-ink">
+                          Reading {r.title}
+                          <span className="text-ink-3"> · {r.account}</span>
+                        </span>
+                      </div>
+                    ))}
                     {running.map((r) => (
                       <div
                         key={r.id}

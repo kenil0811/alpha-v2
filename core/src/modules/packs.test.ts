@@ -77,5 +77,9 @@ describe('kit packs', () => {
     const words = await installPack(world, pack(next, join(home, 'out')), kits, ctx)
     expect(words).toBe('Updated Bakery to 0.2.0: 1 files new or replaced, 0 of your changes kept.')
     expect(existsSync(join(kits, 'bakery', '0.2.0', 'NOTES.md'))).toBe(true)
+    // the same kit again (every install refills the inbox) is nothing to do
+    expect(await installPack(world, pack(next, join(home, 'again')), kits, ctx)).toBe(
+      'Bakery 0.2.0 is already there.',
+    )
   })
 })

@@ -330,7 +330,7 @@ export function App() {
         onLayout={changeLayout}
         name={name}
         waiting={stream?.cards.length ?? 0}
-        running={stream?.running.length ?? 0}
+        running={(stream?.running.length ?? 0) + (stream?.reading.length ?? 0)}
         tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
         online={!problem}
       />

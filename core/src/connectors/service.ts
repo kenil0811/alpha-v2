@@ -201,6 +201,23 @@ export class ConnectorService {
 
   // One sync of one connection at a time: a second ask waits for the one running. A failure says
   // what the person can do.
+  // The connections being read right now, for Home's Running list (a read shows in Activity
+  // only once it ends, and a long one would look like nothing happening).
+  reading(): { connection: string; title: string; account: string }[] {
+    return [...this.running.keys()].flatMap((id) => {
+      const conn = this.world.connections.get(id)
+      return conn
+        ? [
+            {
+              connection: id,
+              title: connectorOf(conn.connector).manifest.title,
+              account: conn.account,
+            },
+          ]
+        : []
+    })
+  }
+
   sync(id: string): Promise<void> {
     const running = this.running.get(id)
     if (running) return running
@@ -250,6 +267,7 @@ export class ConnectorService {
         !result.sawNew,
       )
     } catch (err) {
+      this.tried.set(id, Date.now())
       this.fail(c, conn, err)
       read(
         'failed',
@@ -259,13 +277,17 @@ export class ConnectorService {
     }
   }
 
-  // What is due, by each connector's own rhythm.
+  // What is due, by each connector's own rhythm. A read that failed waits before its next try
+  // (its own rhythm, or half an hour, whichever is shorter), not the next minute's tick.
+  private tried = new Map<string, number>()
   async syncDue(now = Date.now()): Promise<void> {
     for (const conn of this.world.connections.list()) {
       const every = connectorOf(conn.connector).manifest.syncEveryMinutes
       if (!every || conn.state === 'paused' || conn.state === 'needs_sign_in') continue
       const last = conn.lastSyncAt ? Date.parse(conn.lastSyncAt) : 0
-      if (now - last >= every * 60_000) await this.sync(conn.id)
+      const tried = this.tried.get(conn.id) ?? 0
+      const again = Math.min(every, 30) * 60_000
+      if (now - last >= every * 60_000 && now - tried >= again) await this.sync(conn.id)
     }
   }
 

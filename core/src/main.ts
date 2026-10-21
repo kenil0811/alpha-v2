@@ -68,15 +68,8 @@ const port = Number(process.env.ALPHA_PORT ?? 4700)
 const windowPort = port + 1
 const world = await World.open(tenantDir(home))
 const user = world.owner(process.env.ALPHA_OWNER)
-// kit packs dropped in Alpha's kits/inbox (the install puts a client's there) go in at start
-for (const said of await installInbox(world, join(home, 'kits'), {
-  actor: { kind: 'system' },
-  user: user.id,
-}))
-  console.log(said)
-// Alpha's own modules (Network), installed or brought up to date at every start
-for (const said of await keepDefaults(world, { actor: { kind: 'system' }, user: user.id }))
-  console.log(said)
+// what the core is still setting up once it listens: the window says so meanwhile
+const kitsNow = { now: null as string | null }
 // Alpha's helper on the Mac (the Keychain, Calendar, Contacts). The shipped app carries it built
 // and signed (ALPHA_HELPER_APP); in development it is built when its source changed. Without it no
 // password is kept, and connecting an account says why, rather than keeping it in memory only.
@@ -209,6 +202,7 @@ if (process.env.ALPHA_PREPARE_READERS === '1') setup.prepare()
 setup.holdAwake()
 const app = buildServer({
   shell,
+  kits: kitsNow,
   engine,
   user,
   token,
@@ -219,6 +213,25 @@ const app = buildServer({
 })
 try {
   await app.listen({ host: '127.0.0.1', port })
+  // the kits go in once the core answers, not before (a first start on a slow Mac took minutes):
+  // kit packs dropped in kits/inbox (the install puts a client's there), then Alpha's own modules
+  // (Network), installed or brought up to date at every start
+  void (async () => {
+    const ctx = { actor: { kind: 'system' as const }, user: user.id }
+    kitsNow.now = 'your kits'
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    try {
+      for (const said of await installInbox(world, join(home, 'kits'), ctx)) console.log(said)
+      kitsNow.now = "Alpha's own modules"
+      for (const said of await keepDefaults(world, ctx)) console.log(said)
+    } catch (err) {
+      console.error(
+        `Setting up the kits did not finish: ${err instanceof Error ? err.message : err}`,
+      )
+    }
+    kitsNow.now = null
+    engine.events.emit('event', { type: 'lines', user: user.id })
+  })()
 } catch (err) {
   console.error(
     (err as { code?: string }).code === 'EADDRINUSE'

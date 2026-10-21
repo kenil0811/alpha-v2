@@ -97,6 +97,7 @@ export interface ServerOptions {
   browsers?: string // where the core's own browser is kept, for printing pages
   setup?: Setup // what this Mac still needs: Claude's sign-in, connections, the readers' downloads
   shell?: { seen: number } // when Alpha's Mac app last asked for notices: it shows them, not the core
+  kits?: { now: string | null } // what the core is still setting up after it started listening
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -262,6 +263,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           inBrowser: connectorOf(k.connector).manifest.auth === 'browser',
         })),
       tasks: world.tasks.counts(),
+      reading: engine.connectors?.reading() ?? [],
+      settingUp: options.kits?.now ?? null,
       lastId: world.lastLineId(),
     }
   })

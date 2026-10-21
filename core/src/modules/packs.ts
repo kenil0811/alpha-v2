@@ -113,7 +113,10 @@ export async function installPack(
 ): Promise<string> {
   const { name, version, dir } = unpack(file, kitsDir)
   const m = world.shape.module(name)
-  const fromKit = m && one(world.db, 'SELECT 1 FROM kits WHERE module_id = ?', m.id)
+  const fromKit =
+    m && one<{ version: string }>(world.db, 'SELECT version FROM kits WHERE module_id = ?', m.id)
+  // the same kit again (every install refills the inbox): nothing to do
+  if (m && fromKit && fromKit.version === version) return `${name} ${version} is already there.`
   if (m && fromKit) {
     const r = await update(world, name, dir, ctx)
     return `Updated ${name} to ${version}: ${r.replaced.length + r.added.length} files new or replaced, ${r.kept.length} of your changes kept.`
