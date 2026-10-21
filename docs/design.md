@@ -451,8 +451,20 @@ person in the world, like the theme.
 **The other screens:** a Module (the same stream filtered to it; tables in eight views: table,
 list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and agents as text;
 files; activity), People, Activity, Settings (connections, folders, kits, model route, users for
-a firm). On a Mac, the companion: a small always-on-top window with a message box. Plain words,
-no tool names, no ids. The avatar rig and looks are ported from v1 as they are.
+a firm). Plain words, no tool names, no ids.
+
+**On a Mac** (Kenil's plan, 21 Oct): Alpha's own window over the running core, with no browser
+bars and an icon in the Dock; a mark in the menu bar with a dot when something needs the person
+(Open Alpha, what needs you, Show or Hide the companion, Activity, Settings, Quit); and
+notifications from Alpha for reminders and for cards that need the person (cards only when
+Alpha's window is not in front), a click opening their place. **The companion** is a small
+see-through window that stays on top in a corner: a face that says quiet, working or needs you
+(its antenna light), a bubble for the one thing that needs the person (a reminder with Done and
+Open, a card's two plain choices, else Open in Alpha), and a box to type to Alpha, answered there
+in the one conversation; ⌃⌥A opens it from anywhere; it is where it was left on that display,
+and clicks beside it reach what is behind. Its face is a simple stand-in until Alpha's character
+is chosen (Kenil, 21 Oct: "a cute simple companion look, not an A"); v1's animals stay behind.
+The app opens quietly at login: the face and the mark, no window.
 
 **People** (Kenil, 21 Oct): everyone, and every company, with how many messages and meetings in
 the last 90 days, the last one and who wrote first; a page each with how to reach them, where they
@@ -501,8 +513,11 @@ window signs in with better-auth.
 
 ## 15. Deployment, security, observability
 
-**Mac:** a login item runs the core with its own Node; the Tauri shell shows the two windows;
-Developer ID signing and notarization (needs an Apple Developer account before week 6).
+**Mac:** a login item runs the core with its own Node; the Tauri shell (`mac/`) attaches to it
+and never starts a core of its own, shows the two windows, and opens quietly at login from a
+second login item. Signed ad hoc, or with the self-signed "Alpha Code Signing" certificate once
+it is made (Kenil, 21 Oct: later); Developer ID signing and notarization need an Apple Developer
+account.
 **Server:** one container per tenant group, one volume, backups off-box, TLS, the tenant's key
 in the secret store.
 

@@ -18,7 +18,8 @@
     "start": "pnpm --filter @alpha/window build && pnpm --filter @alpha/core start",
     "shots": "node window/scripts/shots.ts",
     "kit": "node core/src/kit.ts",
-    "release": "node scripts/release.ts"
+    "release": "node scripts/release.ts",
+    "mac": "cd mac && PATH=/usr/bin:$PATH cargo tauri build"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

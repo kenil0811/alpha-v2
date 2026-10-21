@@ -8,7 +8,9 @@
       "!**/.tsbuild",
       "!.data",
       "!docs",
-      "!BRIEF.md"
+      "!BRIEF.md",
+      "!mac/target",
+      "!mac/gen"
     ]
   },
   "formatter": {

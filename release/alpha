@@ -10,6 +10,8 @@ DOMAIN="gui/$(id -u)"
 DATA="$HOME/Library/Application Support/Alpha"
 LOGS="$HOME/Library/Logs/Alpha"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+APP_PLIST="$HOME/Library/LaunchAgents/io.github.kenil0811.alpha.app.plist"
+BUNDLE="$(cd "$APP/../../.." && pwd)"                # …/Alpha.app
 PORT="${ALPHA_PORT:-4700}"
 export ALPHA_HOME="$DATA" ALPHA_LOG_DIR="$LOGS"
 CLAUDE="$(find "$APP/node_modules/.pnpm" -path '*claude-agent-sdk-darwin-arm64*' -name claude -type f 2>/dev/null | head -1)"
@@ -47,7 +49,7 @@ case "$1" in
     ;;
   open)
     answering || start
-    open "http://127.0.0.1:$PORT/?t=$(token)"
+    open "$BUNDLE"
     ;;
   start) start; say "Alpha is running." ;;
   stop) stop; say "Alpha is stopped; it starts again at login, or with alpha start." ;;
@@ -98,7 +100,8 @@ case "$1" in
     ;;
   uninstall)
     stop
-    rm -f "$PLIST"
+    osascript -e 'tell application id "io.github.kenil0811.alpha" to quit' >/dev/null 2>&1 || true
+    rm -f "$PLIST" "$APP_PLIST"
     while security delete-generic-password -s Alpha >/dev/null 2>&1; do :; done
     tccutil reset Calendar io.github.kenil0811.alpha.helper >/dev/null 2>&1 || true
     tccutil reset AddressBook io.github.kenil0811.alpha.helper >/dev/null 2>&1 || true

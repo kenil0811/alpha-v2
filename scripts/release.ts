@@ -38,7 +38,7 @@ const clientAt = args.indexOf('--client')
 const client = clientAt >= 0 ? args[clientAt + 1] : undefined
 const sha = (cmd: string[]) => execFileSync('git', cmd, { cwd: ROOT }).toString().trim()
 const version =
-  args.find((a, i) => !a.startsWith('--') && i !== clientAt + 1) ??
+  args.find((a, i) => !a.startsWith('--') && (clientAt < 0 || i !== clientAt + 1)) ??
   `0.1.0-${sha(['rev-parse', '--short', 'HEAD'])}`
 
 const say = (words: string) => console.log(`· ${words}`)
@@ -88,10 +88,29 @@ for (const f of files.filter(Boolean)) {
 }
 if (!workingTree) run('sh', ['-c', `git archive HEAD | tar -x -C "${build}"`], ROOT)
 
-// 2. The window, built with the development packages in the build copy.
+// 2. The window, built with the development packages in the build copy; then the Mac app around
+// it (mac/: its window, the menu bar mark, notifications and the companion), which the payload
+// goes inside. macOS's own xattr first: another on the PATH breaks the bundler.
 say('Building the window')
 run('pnpm', ['install', '--frozen-lockfile', '--prefer-offline'], build)
 run('pnpm', ['--filter', '@alpha/window', 'build'], build)
+say('Building the Mac app')
+const appVersion = version.replace(/-.*$/, '')
+run(
+  'cargo',
+  ['tauri', 'build', '--config', JSON.stringify({ version: appVersion })],
+  join(build, 'mac'),
+  {
+    ...process.env,
+    PATH: `/usr/bin:${process.env.PATH ?? ''}`,
+    CARGO_TARGET_DIR: join(CACHE, 'mac-target'),
+  },
+)
+mkdirSync(out, { recursive: true })
+cpSync(join(CACHE, 'mac-target', 'release', 'bundle', 'macos', 'Alpha.app'), appDir, {
+  recursive: true,
+  verbatimSymlinks: true,
+})
 
 // 3. The payload: the code, the built window, and the production packages only.
 say('Staging the payload')
@@ -145,9 +164,6 @@ run('sh', [join(app, 'connector-sdk', 'helper', 'build.sh'), join(app, 'helper')
 mkdirSync(join(app, 'bin'), { recursive: true })
 copyFileSync(join(ROOT, 'release', 'alpha'), join(app, 'bin', 'alpha'))
 chmodSync(join(app, 'bin', 'alpha'), 0o755)
-mkdirSync(join(appDir, 'Contents', 'MacOS'), { recursive: true })
-copyFileSync(join(ROOT, 'release', 'launcher'), join(appDir, 'Contents', 'MacOS', 'Alpha'))
-chmodSync(join(appDir, 'Contents', 'MacOS', 'Alpha'), 0o755)
 writeFileSync(join(app, 'VERSION'), `${version}\n`)
 const manifest: string[] = []
 const walk = (dir: string) => {
@@ -161,24 +177,15 @@ const walk = (dir: string) => {
 }
 walk(app)
 writeFileSync(join(app, 'MANIFEST'), `${manifest.join('\n')}\n`)
-writeFileSync(
-  join(appDir, 'Contents', 'Info.plist'),
-  `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleIdentifier</key><string>io.github.kenil0811.alpha</string>
-  <key>CFBundleName</key><string>Alpha</string>
-  <key>CFBundleDisplayName</key><string>Alpha</string>
-  <key>CFBundleExecutable</key><string>Alpha</string>
-  <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>${version.replace(/-.*$/, '')}</string>
-  <key>CFBundleVersion</key><string>${version}</string>
-  <key>LSMinimumSystemVersion</key><string>14.0</string>
-</dict>
-</plist>
-`,
-)
+// the app's seal, again over everything now inside it: with the constant certificate when this
+// Mac has it, else ad hoc (the helper inside keeps its own signature)
+const identity = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'])
+  .toString()
+  .includes('"Alpha Code Signing"')
+  ? 'Alpha Code Signing'
+  : '-'
+run('codesign', ['--force', '--sign', identity, appDir], ROOT)
+run('codesign', ['--verify', appDir], ROOT)
 
 // 7. The smoke test: the core from the staged app, with an empty home and macOS's own PATH only,
 // answering, serving the window, installing a made-up kit and running its agent in the sandbox.

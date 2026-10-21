@@ -13,6 +13,8 @@ DOMAIN="gui/$(id -u)"
 DATA="$HOME/Library/Application Support/Alpha"
 LOGS="$HOME/Library/Logs/Alpha"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+APP_LABEL=io.github.kenil0811.alpha.app
+APP_PLIST="$HOME/Library/LaunchAgents/$APP_LABEL.plist"
 APP=/Applications/Alpha.app
 PAY="$APP/Contents/Resources/app"
 say() { printf '\n%s\n' "$*"; }
@@ -39,6 +41,7 @@ if [ -d "$APP" ]; then
   mkdir -p "$DATA/updates/$stamp"
   "$PAY/runtime/node" "$PAY/core/src/cli.ts" backup "$DATA/updates/$stamp/worlds" >/dev/null
   "$PAY/bin/alpha" stop >/dev/null 2>&1 || true
+  osascript -e 'tell application id "io.github.kenil0811.alpha" to quit' >/dev/null 2>&1 || true
   rm -rf "$DATA/previous"
   mkdir -p "$DATA/previous"
   mv "$APP" "$DATA/previous/Alpha.app"
@@ -86,6 +89,28 @@ PLIST
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$PLIST"
 
+# Alpha's app opens at login too, quietly: no window, only its face in the corner and its mark in
+# the menu bar (the person hides the face from the menu bar if they want it gone).
+cat > "$APP_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$APP_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/open</string>
+    <string>-g</string>
+    <string>$APP</string>
+    <string>--args</string>
+    <string>--quietly</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+</dict>
+</plist>
+PLIST
+
 say "Starting Alpha. macOS may say \"Background item added\": that is Alpha starting at login."
 i=0
 until curl -s -o /dev/null -m 2 "http://127.0.0.1:4700/api/health"; do
@@ -112,9 +137,9 @@ if [ -n "$CLAUDE" ] && ! "$CLAUDE" auth status 2>/dev/null | grep -q '"loggedIn"
   "$CLAUDE" auth login || say "Claude's sign-in did not finish; run it later with: \"$PAY/bin/alpha\" signin"
 fi
 
-open "http://127.0.0.1:4700/?t=$(cat "$DATA/token")"
+open "$APP"
 if [ -n "$updating" ]; then
-  say "Alpha is updated to $new and open in your browser. Your data and settings are as they were."
+  say "Alpha is updated to $new and open. Your data and settings are as they were."
 else
-  say "Alpha is installed and open in your browser. Bookmark the page with Cmd-D. You can close Terminal."
+  say "Alpha is installed and open in its own window; its face sits in a corner of your screen, and its mark in the menu bar. macOS asks once whether Alpha may send notifications. You can close Terminal."
 fi

@@ -22,8 +22,9 @@ The steps to install Alpha from the file Kenil sends you.
    own sign-in: a browser page opens, you sign in with your Claude account, and you come back to
    Terminal. It never asks for your Mac password. When macOS says "Background item added", that
    is Alpha starting at login.
-5. Your browser opens Alpha (Safari, unless you chose another). Bookmark the page with ⌘D. You
-   can close Terminal.
+5. Alpha opens in its own window. Its face sits in a corner of your screen and its mark in the
+   menu bar. macOS asks once whether Alpha may send notifications: choose Allow. You can close
+   Terminal.
 
 ## First open
 
@@ -47,8 +48,11 @@ The steps to install Alpha from the file Kenil sends you.
 
 ## Every day
 
-- Open Alpha from your bookmark, or from Alpha in Applications. Closing the browser doesn't stop
-  Alpha.
+- Alpha opens by itself when you log in: its face in the corner, its mark in the menu bar. Click
+  the face to type to Alpha, or press ⌃⌥A from anywhere. Open the window from the mark, from the
+  Dock or from Alpha in Applications. Closing the window doesn't stop Alpha.
+- Reminders and what needs you come as notifications from Alpha; click one to open it. Hide the
+  face from the menu bar if you don't want it.
 - While the Mac is plugged in, Alpha keeps it from sleeping; the screen still turns off. On
   battery, or with the lid closed, the Mac sleeps, and Alpha catches up once when it wakes and
   notes it in Activity.
