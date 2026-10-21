@@ -41,6 +41,7 @@ export class ModelSql {
         table: 'the journal',
         columns: ['id', 'at', 'actor', 'kind', 'words', 'module'],
       },
+      ...PEOPLE_VIEWS,
     ]
   }
 
@@ -123,6 +124,10 @@ export class ModelSql {
       'CREATE TEMP VIEW journal AS SELECT id, at, actor_kind AS actor, kind, words, module_id AS module FROM main.journal',
     )
     this.views.add('journal')
+    for (const [name, sql] of PEOPLE_SQL) {
+      this.db.exec(`CREATE TEMP VIEW ${name} AS ${sql}`)
+      this.views.add(name)
+    }
     this.signature = signature
   }
 }
@@ -130,3 +135,82 @@ export class ModelSql {
 function columnsOf(t: Table): string[] {
   return t.fields.flatMap((f) => (f.kind === 'money' ? [f.slug, `${f.slug}_currency`] : [f.slug]))
 }
+
+// People and companies as the model reads them (design §4): each as one, through merges.
+const PEOPLE_VIEWS = [
+  {
+    view: 'people',
+    table: 'people',
+    columns: ['id', 'name', 'emails', 'phones', 'profile', 'companies', 'added'],
+  },
+  { view: 'companies', table: 'companies', columns: ['id', 'name', 'domains', 'people', 'added'] },
+  {
+    view: 'people_at',
+    table: 'who works where, ended ones kept',
+    columns: ['person', 'person_name', 'company', 'company_name', 'title', 'since', 'ended'],
+  },
+  {
+    view: 'exchanges',
+    table:
+      "each message or meeting with someone (started_by: you or them; row and view: the message's or event's row)",
+    columns: ['person', 'name', 'channel', 'at', 'started_by', 'address', 'row', 'view'],
+  },
+]
+
+const keyList = (key: string) =>
+  `(SELECT group_concat(k.value, ', ') FROM main.people_keys k JOIN people_up u ON u.id = k.person_id
+    WHERE u.root = p.id AND k.key = '${key}')`
+
+const PEOPLE_SQL: [string, string][] = [
+  [
+    'people_up',
+    `WITH RECURSIVE up (id, root) AS (
+       SELECT id, id FROM main.people WHERE merged_into IS NULL
+       UNION ALL SELECT x.id, up.root FROM main.people x JOIN up ON x.merged_into = up.id
+     ) SELECT id, root FROM up`,
+  ],
+  [
+    'people_at_lines',
+    `SELECT a.root AS person, b.root AS company, l.title, min(l.started_at) AS since,
+       CASE WHEN sum(l.ended_at IS NULL) > 0 THEN NULL ELSE max(l.ended_at) END AS ended
+     FROM main.people_links l JOIN people_up a ON a.id = l.person_id
+       JOIN people_up b ON b.id = l.company_id
+     GROUP BY a.root, b.root, l.title`,
+  ],
+  [
+    'people_at',
+    // a line with no title says nothing a titled line at the same company doesn't
+    `SELECT g.person, pp.name AS person_name, g.company, cc.name AS company_name, g.title, g.since,
+       g.ended
+     FROM people_at_lines g JOIN main.people pp ON pp.id = g.person
+       JOIN main.people cc ON cc.id = g.company
+     WHERE g.title IS NOT NULL OR NOT EXISTS (
+       SELECT 1 FROM people_at_lines h
+       WHERE h.person = g.person AND h.company = g.company AND h.title IS NOT NULL)`,
+  ],
+  [
+    'people',
+    `SELECT p.id, p.name, ${keyList('email')} AS emails, ${keyList('phone')} AS phones,
+       ${keyList('profile')} AS profile,
+       (SELECT group_concat(DISTINCT w.company_name) FROM people_at w
+         WHERE w.person = p.id AND w.ended IS NULL) AS companies,
+       p.created_at AS added
+     FROM main.people p WHERE p.merged_into IS NULL AND p.kind = 'person'`,
+  ],
+  [
+    'companies',
+    `SELECT p.id, p.name, ${keyList('domain')} AS domains,
+       (SELECT count(DISTINCT w.person) FROM people_at w WHERE w.company = p.id AND w.ended IS NULL)
+         AS people,
+       p.created_at AS added
+     FROM main.people p WHERE p.merged_into IS NULL AND p.kind = 'company'`,
+  ],
+  [
+    'exchanges',
+    `SELECT u.root AS person, p.name, e.channel, e.at, e.started_by, e.value AS address,
+       e.record_id AS row, t.slug AS view
+     FROM main.exchanges e JOIN main.people_keys k ON k.key = e.key AND k.value = e.value
+       JOIN people_up u ON u.id = k.person_id JOIN main.people p ON p.id = u.root
+       JOIN main.records r ON r.id = e.record_id JOIN main.tables t ON t.id = r.table_id`,
+  ],
+]

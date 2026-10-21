@@ -11,6 +11,7 @@ import { type FileOut, Files } from './files.ts'
 import { type Actor, append, type Line, type LineInput, lastId, lines, read } from './journal.ts'
 import { Refused } from './kinds.ts'
 import { ModelSql } from './modelsql.ts'
+import { People } from './people.ts'
 import { Permissions } from './permissions.ts'
 import { Records } from './records.ts'
 import { migrate } from './schema.ts'
@@ -80,6 +81,7 @@ export class World {
   readonly files: Files
   readonly connections: Connections
   readonly permissions: Permissions
+  readonly people: People
   readonly db: Db
   readonly paths: TenantPaths
   readonly tenant: string
@@ -98,6 +100,10 @@ export class World {
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
     this.connections = new Connections(db)
     this.permissions = new Permissions(db)
+    this.people = new People(db, this.shape, this.cards)
+    this.records.watch = this.people
+    this.records.personOf = (said) => this.people.ref(said)
+    this.shape.onGone = (ids) => this.people.gone(ids)
   }
 
   static async open(dir: string, options: { pageRows?: number } = {}): Promise<World> {
@@ -107,7 +113,10 @@ export class World {
     const db = openDb(paths.world)
     await migrate(db, paths.world, paths.backups)
     const tenant = dir.split('/').filter(Boolean).pop() as string
-    return new World(db, paths, tenant, options.pageRows ?? 500)
+    const world = new World(db, paths, tenant, options.pageRows ?? 500)
+    // people read again when this Alpha reads them by newer rules
+    world.people.keepRules({ actor: { kind: 'system' } })
+    return world
   }
 
   get sql(): ModelSql {

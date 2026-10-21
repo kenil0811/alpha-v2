@@ -29,6 +29,7 @@ catalog:
   fastify: 5.12.7
   imapflow: 2.5.5
   isomorphic-git: 1.44.3
+  libphonenumber-js: 1.13.15
   limiter: 4.1.0
   lucide-react: 1.59.0
   mailparser: 3.9.46

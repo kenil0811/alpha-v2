@@ -311,6 +311,80 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX permissions_action ON permissions (action, revoked_at);
   `,
+  // 10: people and companies (design §4), derived from the rows that name them and the person's
+  // word. A merged one keeps its row, pointing at the one it joined, so Unmerge gives it back.
+  `
+  CREATE TABLE people (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('person', 'company')),
+    name TEXT NOT NULL,
+    rank INTEGER NOT NULL,
+    merged_into TEXT REFERENCES people (id),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX people_kind ON people (kind, merged_into);
+  CREATE INDEX people_merged ON people (merged_into);
+  -- A key is one person's or company's: the one whose row first gave it.
+  CREATE TABLE people_keys (
+    key TEXT NOT NULL CHECK (key IN ('email', 'phone', 'profile', 'domain', 'company')),
+    value TEXT NOT NULL,
+    person_id TEXT NOT NULL REFERENCES people (id),
+    PRIMARY KEY (key, value)
+  );
+  CREATE INDEX people_keys_person ON people_keys (person_id);
+  -- What each row said of someone (a contact card, a message's recipient), or the person's own
+  -- word (record 'person'): removing the row takes away only what it alone brought.
+  CREATE TABLE people_sources (
+    person_id TEXT NOT NULL REFERENCES people (id),
+    record_id TEXT NOT NULL,
+    table_id TEXT,
+    said TEXT NOT NULL,
+    at TEXT NOT NULL,
+    PRIMARY KEY (record_id, person_id)
+  );
+  CREATE INDEX people_sources_person ON people_sources (person_id);
+  -- Someone at a company, as a row said, with their title; one that ends keeps its dates.
+  CREATE TABLE people_links (
+    id TEXT PRIMARY KEY,
+    person_id TEXT NOT NULL REFERENCES people (id),
+    company_id TEXT NOT NULL REFERENCES people (id),
+    title TEXT,
+    record_id TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    ended_at TEXT
+  );
+  CREATE INDEX people_links_person ON people_links (person_id, ended_at);
+  CREATE INDEX people_links_company ON people_links (company_id, ended_at);
+  CREATE INDEX people_links_record ON people_links (record_id);
+  -- Two who may be one, for the person to decide; a decided pair is never proposed again.
+  CREATE TABLE people_pairs (
+    id TEXT PRIMARY KEY,
+    a TEXT NOT NULL REFERENCES people (id),
+    b TEXT NOT NULL REFERENCES people (id),
+    why TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('found', 'proposed', 'merged', 'apart', 'withdrawn')),
+    card_id TEXT,
+    created_at TEXT NOT NULL,
+    decided_at TEXT,
+    UNIQUE (a, b)
+  );
+  CREATE INDEX people_pairs_state ON people_pairs (state, card_id);
+  -- A message or meeting with someone, by the address it reached them at, so it counts for
+  -- whoever holds that address, through merges and unmerges.
+  CREATE TABLE exchanges (
+    record_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    at TEXT NOT NULL,
+    started_by TEXT CHECK (started_by IN ('you', 'them')),
+    PRIMARY KEY (record_id, key, value)
+  );
+  CREATE INDEX exchanges_key ON exchanges (key, value, at);
+  -- How a table's rows name people: a row that is a person, or an exchange with people.
+  ALTER TABLE tables ADD COLUMN people TEXT;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

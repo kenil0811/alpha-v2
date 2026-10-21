@@ -48,6 +48,11 @@ export function startLayer(
       )
     }
   }
+  const people = world.people.count()
+  const companies = world.people.count('company')
+  parts.push(
+    `## People\n${people} people and ${companies} companies, each one however many rows name them, gathered from the rows of tables that name people (contacts, the people the person writes to, small meetings). Read them in the views people, companies, people_at and exchanges. Merging or parting people is the person's, on their card or their page.`,
+  )
   parts.push(`## Connections\n${connections ?? 'None yet.'}`)
   parts.push(
     `## Folders\nYour own folder is ${deskDir}; module folders are under ${world.paths.modules}.`,

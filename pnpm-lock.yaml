@@ -75,6 +75,9 @@ catalogs:
     isomorphic-git:
       specifier: 1.44.3
       version: 1.44.3
+    libphonenumber-js:
+      specifier: 1.13.15
+      version: 1.13.15
     limiter:
       specifier: 4.1.0
       version: 4.1.0
@@ -255,6 +258,9 @@ importers:
       isomorphic-git:
         specifier: 'catalog:'
         version: 1.44.3
+      libphonenumber-js:
+        specifier: 'catalog:'
+        version: 1.13.15
       yaml:
         specifier: 'catalog:'
         version: 2.9.1
@@ -1531,6 +1537,9 @@ packages:
   libmime@5.5.1:
     resolution: {integrity: sha512-VdthsjEKxO6r0lLEysXkJSYy8A3MoMUF2jc+YCEdHsg5ywBZjxdnj01XSWhocpGToZnniq+aKMkCGdtW3R8HOg==}
     engines: {node: '>=20.0.0'}
+
+  libphonenumber-js@1.13.15:
+    resolution: {integrity: sha512-AHdhEQeDFEJ4GKDAQ9AwxChy+v2kUILUB3TGQRpkXMkWePjXTU/WQEzWVQoIx/Gz8fE73Wr5SEuZCy2vk8jrMQ==}
 
   libqp@3.0.1:
     resolution: {integrity: sha512-7QZxpPX25pga1WiMueduWxmrHMVBFrZPH6ZUaozGYa/H98JH6NVBSET3qVw+4NxzoraIW7rJ81YxSU9IalvCpg==}
@@ -3559,6 +3568,8 @@ snapshots:
       iconv-lite: 0.7.3
       libbase64: 1.4.1
       libqp: 3.0.1
+
+  libphonenumber-js@1.13.15: {}
 
   libqp@3.0.1: {}
 

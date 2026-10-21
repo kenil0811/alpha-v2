@@ -43,7 +43,35 @@ export interface Table {
   hidden: boolean // out of the sidebar
   fields: Field[]
   documents: string[] | null // the kinds of document its rows take, as its kit names them
+  people: PeopleMap | null // how its rows name people
 }
+
+// How a table's rows name people (design §4), by its fields' names: each row is a person (a
+// contact card, a LinkedIn connection), or an exchange with people (a message, a meeting), whose
+// fields hold addresses as a message writes them: Name <address>, another@address.
+export type PeopleMap =
+  | {
+      each: 'person'
+      name?: string // none: their name comes from wherever else they are known
+      emails?: string
+      phones?: string
+      profile?: string
+      company?: string
+      title?: string
+      you?: { field: string; is: string } // the person's own card: Is you is yes
+    }
+  | {
+      each: 'exchange'
+      channel: string // mail, meeting
+      at: string
+      from?: string // who wrote it
+      to?: string[] // whom it went to
+      with?: string[] // everyone at it: a meeting's attendees
+      sent?: { field: string; is: string } // the person's own: Direction is sent
+      by?: string // who started it: a meeting's organizer
+      about?: string // what it was about: a message's subject, a meeting's title
+      you?: string // the person's own address in it
+    }
 
 export interface FieldInput {
   name: string
@@ -86,6 +114,13 @@ const RESERVED = new Set([
   'chunks',
   'row_files',
   'permissions',
+  'people',
+  'companies',
+  'people_keys',
+  'people_sources',
+  'people_links',
+  'people_pairs',
+  'exchanges',
   'desk_sessions',
   'meta',
   'select',
@@ -106,6 +141,8 @@ function freeSlug(base: string, taken: (slug: string) => boolean): string {
 export class Shape {
   private db: Db
   private modulesDir: string
+  // Told the rows a removed table took with it, before they go: the people they named.
+  onGone: ((ids: string[]) => void) | null = null
 
   constructor(db: Db, modulesDir: string) {
     this.db = db
@@ -256,9 +293,10 @@ export class Shape {
       slug: string
       hidden: number
       documents: string | null
+      people: string | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, hidden, documents FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, hidden, documents, people FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -298,6 +336,7 @@ export class Shape {
       hidden: t.hidden === 1,
       fields,
       documents: t.documents ? parse<string[]>(t.documents, []) : null,
+      people: t.people ? parse<PeopleMap | null>(t.people, null) : null,
     }
   }
 
@@ -479,6 +518,59 @@ export class Shape {
     })
   }
 
+  // How a table's rows name people, by its fields' names; a field it names must be there. The
+  // people the rows name are derived again by the caller (People.mapTable).
+  setPeople(tableId: string, map: PeopleMap | null, ctx: WriteCtx): Table {
+    return tx(this.db, () => {
+      const table = this.table(tableId)
+      if (!table) throw new Refused('That table is not there.')
+      if (map) {
+        const named =
+          map.each === 'person'
+            ? [
+                map.name,
+                map.emails,
+                map.phones,
+                map.profile,
+                map.company,
+                map.title,
+                map.you?.field,
+              ]
+            : [
+                map.at,
+                map.from,
+                ...(map.to ?? []),
+                ...(map.with ?? []),
+                map.sent?.field,
+                map.by,
+                map.you,
+                map.about,
+              ]
+        for (const n of named.filter((x): x is string => !!x)) findField(table, n)
+        if (map.each === 'exchange' && !map.from && !map.with?.length)
+          throw new Refused('An exchange names who wrote it (from) or who was at it (with).')
+      }
+      if (JSON.stringify(map) === JSON.stringify(table.people)) return table
+      run(this.db, 'UPDATE tables SET people = ? WHERE id = ?', map ? json(map) : null, table.id)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'shaped',
+        words: !map
+          ? `${table.name}'s rows name no one now.`
+          : map.each === 'person'
+            ? `Each row of ${table.name} is a person.`
+            : `Each row of ${table.name} is a ${map.channel} with people.`,
+        data: { table: table.id, people: map },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+      })
+      this.writeManifest(table.module)
+      return this.table(table.id) as Table
+    })
+  }
+
   // In the sidebar or out of it; the person's choice, journaled.
   setHidden(tableId: string, hidden: boolean, ctx: WriteCtx): Table {
     return tx(this.db, () => {
@@ -511,6 +603,11 @@ export class Shape {
           'SELECT count(*) AS n FROM records WHERE table_id = ?',
           table.id,
         )?.n ?? 0,
+      )
+      this.onGone?.(
+        all<{ id: string }>(this.db, 'SELECT id FROM records WHERE table_id = ?', table.id).map(
+          (r) => r.id,
+        ),
       )
       run(
         this.db,
@@ -620,6 +717,7 @@ export class Shape {
           ...(f.relatesTo ? { relates_to: this.table(f.relatesTo)?.name } : {}),
         })),
         ...(t.documents ? { documents: t.documents } : {}),
+        ...(t.people ? { people: t.people } : {}),
         ...this.viewsOf(t),
       })),
       network: Array.isArray(kept.network) ? kept.network : [],

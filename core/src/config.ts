@@ -26,6 +26,13 @@ const Limits = z.object({
   browser_pace_max_ms: z.number().int().min(0),
 })
 
+const People = z.object({
+  mail_services: z.array(z.string().min(1)),
+  second_levels: z.array(z.string().min(1)),
+  meeting_most_people: z.number().int().min(2),
+  contact_days: z.number().int().positive(),
+})
+
 export type ModelsConfig = z.infer<typeof Models>
 export type LimitsConfig = z.infer<typeof Limits>
 
@@ -53,6 +60,7 @@ function yamlOf<S extends z.ZodType>(schema: S, name: string) {
 export const config = {
   models: (dir?: string) => load('models.yaml', yamlOf(Models, 'models.yaml'), dir),
   limits: (dir?: string) => load('limits.yaml', yamlOf(Limits, 'limits.yaml'), dir),
+  people: (dir?: string) => load('people.yaml', yamlOf(People, 'people.yaml'), dir),
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
   // how the model reads a document into the values a kit names

@@ -86,9 +86,18 @@ interface RecordRow {
   updated_at: string
 }
 
+// Who hears about rows written and removed, in the same transaction: the people they name.
+export interface RowWatch {
+  rows(table: Table, ids: string[], ctx: WriteCtx): void
+  gone(ids: string[]): void
+}
+
 export class Records {
   private db: Db
   private shape: Shape
+  watch: RowWatch | null = null
+  // A person field holds one of the person's people: their id, an address or a name only one has.
+  personOf: ((said: string) => string) | null = null
 
   // A looked-up value's file must be one the world holds: named, it becomes its hash.
   private fileOf: (nameOrHash: string) => string | undefined
@@ -144,6 +153,7 @@ export class Records {
         module: table.module.id,
         run: ctx.run ?? null,
       })
+      this.watch?.rows(table, ids, ctx)
       return ids
     })
   }
@@ -205,6 +215,11 @@ export class Records {
         module: table.module.id,
         run: ctx.run ?? null,
       })
+      this.watch?.rows(
+        table,
+        changes.map((c) => c.id),
+        ctx,
+      )
     })
   }
 
@@ -223,6 +238,7 @@ export class Records {
         )
         if (!r) throw new Refused(`${table.name} has no row ${id}.`)
         gone.push({ id, values: parse(r.vals, {}) })
+        this.watch?.gone([id])
         run(this.db, 'DELETE FROM record_versions WHERE record_id = ?', id)
         run(this.db, 'DELETE FROM records_fts WHERE record_id = ?', id)
         run(this.db, 'DELETE FROM row_files WHERE record_id = ?', id)
@@ -255,6 +271,7 @@ export class Records {
       const table = this.mustTable(tableId)
       const at = now()
       const out: Landed = { added: 0, changed: 0, same: 0 }
+      const touched: string[] = []
       for (const item of items) {
         const row = {
           kind: 'looked_up' as const,
@@ -300,6 +317,7 @@ export class Records {
             item.key,
           )
           this.index(table, id, vals)
+          touched.push(id)
           out.added++
           continue
         }
@@ -338,6 +356,7 @@ export class Records {
           r.id,
         )
         this.index(table, r.id, merged)
+        touched.push(r.id)
         out.changed++
       }
       if (out.added || out.changed)
@@ -355,6 +374,7 @@ export class Records {
           run: ctx.run ?? null,
           module: table.module.id,
         })
+      this.watch?.rows(table, touched, ctx)
       return out
     })
   }
@@ -481,6 +501,8 @@ export class Records {
     for (const [name, value] of Object.entries(values)) {
       const f = findField(table, name)
       vals[f.id] = checkValue(f.kind, f.name, value, f.choices)
+      if (f.kind === 'person' && typeof vals[f.id] === 'string' && this.personOf)
+        vals[f.id] = this.personOf(vals[f.id] as string)
       const own = perField
         ? Object.entries(perField).find(([k]) => findField(table, k).id === f.id)?.[1]
         : undefined

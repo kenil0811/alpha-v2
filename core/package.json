@@ -24,6 +24,7 @@
     "croner": "catalog:",
     "fastify": "catalog:",
     "isomorphic-git": "catalog:",
+    "libphonenumber-js": "catalog:",
     "yaml": "catalog:",
     "zod": "catalog:"
   },
