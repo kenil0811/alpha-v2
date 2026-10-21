@@ -241,9 +241,13 @@ The person's yes lets that same call through once when the model makes it again,
 survives the turn and a restart (Kenil, 19 Oct: the SDK's own defer failed for in-process tools
 in week 1's spike). The person answers in the window or in words:
 "go ahead" reaches the one waiting card, and with two the desk asks which. Many alike are
-batched on one card. A **standing permission** is a structured rule the model proposes when the
-person says "always", confirmed on a card, stored as a row, shown as a sentence, revoked in
-Settings. Everything else is done and said in a line.
+batched on one card. A **standing permission** is a yes given once for one agent's one kind of
+thing (Kenil, 20 Oct): a card offers Always only after three yeses in a row for exactly that, each
+unchanged, and it is confirmed in a second step, stored as a row, shown as a sentence, counted when
+used, and revoked in Settings › Standing permissions. Code holds the wall: only the person grants
+one, only where the yeses earned it. One may let an email go without asking only when it is one
+agent's one kind of message (DealPilot's CIM requests); each thing it lets through is a line on
+Home. Everything else is done and said in a line.
 
 **Cards that are not gates:** the model's questions, reviews of what an agent pulls in (§12),
 soft matches, and Morning's suggestions.
