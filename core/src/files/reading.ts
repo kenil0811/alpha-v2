@@ -266,7 +266,11 @@ export type Ask = (
 
 // The model, once, with no tools: the instructions from core/config, the document's pieces and
 // what the kit wants, answered in the schema.
-export function askModel(cwd: string, route: () => Record<string, string> = () => ({})): Ask {
+export function askModel(
+  cwd: string,
+  route: () => Record<string, string> = () => ({}),
+  system: () => string = () => config.reading(),
+): Ask {
   return async (prompt, schema) => {
     const options: Options = {
       model: config.models().desk,
@@ -288,7 +292,7 @@ export function askModel(cwd: string, route: () => Record<string, string> = () =
       tools: [],
       permissionMode: 'default',
       canUseTool: async () => ({ behavior: 'deny', message: 'Reading a document uses no tools.' }),
-      systemPrompt: { type: 'custom', prompt: config.reading(), snapshot: false },
+      systemPrompt: { type: 'custom', prompt: system(), snapshot: false },
       outputFormat: { type: 'json_schema', schema },
       persistSession: false,
     }
@@ -307,7 +311,7 @@ export function askModel(cwd: string, route: () => Record<string, string> = () =
     }
     if (answer === null)
       throw new Refused(
-        `The document could not be read into values${failed ? ` (${failed.replace(/_/g, ' ')})` : ''}.`,
+        `The model gave no answer in the shape asked${failed ? ` (${failed.replace(/_/g, ' ')})` : ''}.`,
       )
     return { answer, tokens }
   }

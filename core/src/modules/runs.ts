@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import type { BrowserEngine, ExtractSpec } from '@alpha/connector-sdk'
 import { Cron } from 'croner'
 import { parse, stringify } from 'yaml'
+import { config } from '../config.ts'
 import { type Ask, askModel, inReadingOrder, type ReadSpec, readInto } from '../files/reading.ts'
 import { decide } from '../gates/gates.ts'
 import { runScript, type ScriptRun } from '../scripts/run.ts'
@@ -16,6 +17,8 @@ import type { Module, Table } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 import { type Agent, agents } from './agents.ts'
 import type { Drafts } from './drafts.ts'
+import { type JudgeSpec, judge } from './judging.ts'
+import { Reviews } from './reviews.ts'
 
 export interface RunOutcome {
   id: string
@@ -78,19 +81,29 @@ export class AgentRunner {
   private notify: () => void
   private owner: string | null
   private ask: Ask
+  private judgeAsk: Ask
   private tokens = new Map<string, number>() // a run's model tokens, while it runs
   drafts: Drafts | null = null // an agent's drafts, sent from the person's mail on their yes
+  readonly reviews: Reviews // rows an agent puts to the person, on a card
 
   constructor(
     world: World,
     engine: () => BrowserEngine,
-    options: { notify?: () => void; owner?: string | null; ask?: Ask } = {},
+    options: {
+      notify?: () => void
+      owner?: string | null
+      ask?: Ask // the model reading a document
+      judge?: Ask // the model sorting items into the person's groups
+    } = {},
   ) {
     this.world = world
     this.engine = engine
     this.notify = options.notify ?? (() => {})
     this.owner = options.owner ?? null
     this.ask = options.ask ?? askModel(world.paths.dir)
+    this.judgeAsk =
+      options.judge ?? options.ask ?? askModel(world.paths.dir, undefined, () => config.judging())
+    this.reviews = new Reviews(world, this.owner)
   }
 
   // Sites a module's scripts may read: its list, or a yes on a card for that site (gate 1), which
@@ -197,6 +210,7 @@ export class AgentRunner {
         return this.world.records.list(t.id).map((r) => ({
           id: r.id,
           key: keys.get(r.id) ?? null,
+          updatedAt: r.updatedAt,
           values: Object.fromEntries(
             Object.entries(r.values).map(([k, v]) => [names.get(k) ?? k, v]),
           ),
@@ -293,6 +307,59 @@ export class AgentRunner {
         })
         this.notify()
         return { values: out.values, lists: out.lists, dropped: out.dropped }
+      },
+      // the person's people (or companies), each with how to reach them, where they work, the
+      // plain numbers of their contact, and the rows of the person's modules that name them
+      'people.list': async (p: Record<string, unknown>) => {
+        const kind = p.kind === 'company' ? 'company' : 'person'
+        const named = this.world.people.namings()
+        const born = new Map(
+          all<{ id: string; created_at: string }>(
+            this.world.db,
+            'SELECT id, created_at FROM people WHERE merged_into IS NULL',
+          ).map((r) => [r.id, r.created_at]),
+        )
+        return this.world.people.list(kind).map((x) => ({
+          ...x,
+          since: born.get(x.id) ?? null,
+          named: named.get(x.id) ?? [],
+        }))
+      },
+      // the model sorts items into the groups the person named, each with why; nothing is kept
+      // from it until the script lands rows the person then decides
+      judge: async (p: Record<string, unknown>) => {
+        const out = await judge(p as unknown as JudgeSpec, this.judgeAsk)
+        this.tokens.set(runId, (this.tokens.get(runId) ?? 0) + out.tokens)
+        const sorted = out.judged.filter((j) => j.group).length
+        this.world.line({
+          actor,
+          kind: 'run_step',
+          words: `Sorted ${out.judged.length} into the groups given: ${sorted} placed.`,
+          data: { tokens: out.tokens },
+          run: runId,
+          module: module.id,
+        })
+        this.notify()
+        return out.judged
+      },
+      // rows of the module's own tables put to the person on one card, with the choices given
+      review: async (p: Record<string, unknown>) => {
+        const t = tableOf(p.table)
+        if (!this.world.shape.within(module.id).includes(t.module.id))
+          throw new Refused(`${t.name} is not one of ${module.name}'s tables.`)
+        const card = this.reviews.open(
+          {
+            words: String(p.words ?? '').trim() || `Rows of ${t.name} for you to decide`,
+            table: t,
+            field: String(p.field ?? ''),
+            choices: Array.isArray(p.choices) ? p.choices.map(String) : [],
+            rows: Array.isArray(p.rows) ? p.rows.map(String) : [],
+            note: p.note ? String(p.note) : null,
+          },
+          { agent: label, module: module.id, run: runId },
+        )
+        this.notify()
+        return { card: card.id }
       },
       // an email drafted for the person's yes (or sent at once under a standing permission)
       'draft.email': async (p: Record<string, unknown>) => {
@@ -548,7 +615,13 @@ export class AgentRunner {
     return this.runScript(
       module,
       agent.runs.script,
-      { ...(agent.runs.input ?? {}), ...given, ...(decided.length ? { decided } : {}) },
+      {
+        ...(agent.runs.input ?? {}),
+        ...given,
+        ...(decided.length ? { decided } : {}),
+        // when it last ran, so it can look at what is new since
+        lastRun: agent.lastRunAt,
+      },
       agent.name,
       agent.id,
       who,

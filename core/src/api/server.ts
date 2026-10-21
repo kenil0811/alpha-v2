@@ -24,7 +24,7 @@ import type { Setup } from '../setup.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
 import { phoneWords } from '../world/phones.ts'
-import { findField, rowName } from '../world/shape.ts'
+import { findField } from '../world/shape.ts'
 import type { View } from '../world/views.ts'
 import type { User } from '../world/world.ts'
 import type {
@@ -184,7 +184,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           if (!rec || rec.table.hidden) return []
           return [
             {
-              label: rowName(rec.table, rec.record.values),
+              label: world.rowName(rec.table, rec.record.values),
               hint: rec.table.name,
               href: `#/table/${rec.table.id}/${h.id}`,
             },
@@ -264,6 +264,20 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     filing: engine.hands?.intake?.view(c) ?? null,
     draft: engine.hands?.drafts?.view(c) ?? null,
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
+    review: engine.hands?.runner?.reviews.view(c) ?? null,
+  })
+  // An agent's rows on a card: the person's choice on some, or on every one not yet decided.
+  app.post('/api/cards/:id/rows', async (req): Promise<CardView | null> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { rows, value } = z
+      .object({ rows: z.union([z.array(z.string()).min(1), z.literal('rest')]), value: z.string() })
+      .parse(req.body)
+    const reviews = engine.hands?.runner?.reviews
+    if (!reviews) throw new Refused('Agents are not set up in this core.')
+    reviews.choose(id, rows, value, asPerson)
+    live()
+    const c = world.cards.get(id)
+    return c ? cardOut(c) : null
   })
   // An agent's draft: sent as it is or as the person changed it (with Always when offered), or
   // held with a reason.
@@ -420,7 +434,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
               {
                 table: rec.table.name,
                 module: rec.table.module.name,
-                name: rowName(rec.table, rec.record.values),
+                name: world.rowName(rec.table, rec.record.values),
                 field: r.field,
                 href: `#/table/${r.table}/${r.record}`,
               },
@@ -553,7 +567,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const line = world.line({
       actor: { kind: 'person', id: user.id },
       kind: 'set',
-      words: `Set ${field} to ${said} on ${rowName(t, r.values)}`,
+      words: `Set ${field} to ${said} on ${world.rowName(t, r.values)}`,
       data: { table: t.id, row, field, value },
       user: user.id,
       module: t.module.id,
@@ -723,7 +737,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       if (f.kind === 'relation' && f.relatesTo) {
         const other = world.shape.table(f.relatesTo)
         if (other)
-          for (const r of world.records.list(other.id)) names.set(r.id, rowName(other, r.values))
+          for (const r of world.records.list(other.id))
+            names.set(r.id, world.rowName(other, r.values))
       }
     const people = world.people.names(
       fields
@@ -805,7 +820,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
             .flatMap((f) => {
               const other = world.shape.table(f.relatesTo as string)
               return other
-                ? world.records.list(other.id).map((r) => [r.id, rowName(other, r.values)])
+                ? world.records.list(other.id).map((r) => [r.id, world.rowName(other, r.values)])
                 : []
             }),
         ),
@@ -1183,7 +1198,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     world.line({
       actor: { kind: 'person', id: user.id },
       kind: 'set',
-      words: `Reset ${f.name} to Alpha's figure on ${rowName(t, r.values)}`,
+      words: `Reset ${f.name} to Alpha's figure on ${world.rowName(t, r.values)}`,
       data: { table: t.id, row, field: f.name },
       user: user.id,
       module: t.module.id,
@@ -1479,7 +1494,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         const r = byId.get(id)
         if (!r) return []
         const v = field ? r.values[field.slug] : null
-        return [{ id, name: rowName(t, r.values), value: typeof v === 'string' ? v : null }]
+        return [{ id, name: world.rowName(t, r.values), value: typeof v === 'string' ? v : null }]
       }),
       choice: a.choice ?? null,
     }

@@ -8,7 +8,6 @@ import type { Card } from '../world/cards.ts'
 import { all, parse } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Covered, Permission } from '../world/permissions.ts'
-import { rowName } from '../world/shape.ts'
 import type { User, World } from '../world/world.ts'
 
 export const DRAFT = 'agent_draft'
@@ -92,7 +91,7 @@ export class Drafts {
   private aboutWords(d: Draft): string {
     if (!d.about) return ''
     const rec = this.world.records.get(d.about.row)
-    return rec ? ` for ${rowName(rec.table, rec.record.values)}` : ''
+    return rec ? ` for ${this.world.rowName(rec.table, rec.record.values)}` : ''
   }
 
   // A draft from a run: sent at once when a standing permission covers it, else on a card. One
@@ -287,7 +286,11 @@ export class Drafts {
       note: d.note,
       about:
         rec && d.about
-          ? { table: d.about.table, row: d.about.row, name: rowName(rec.table, rec.record.values) }
+          ? {
+              table: d.about.table,
+              row: d.about.row,
+              name: this.world.rowName(rec.table, rec.record.values),
+            }
           : null,
       reasons: REASONS,
       always:

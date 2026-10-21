@@ -15,7 +15,7 @@ import { People } from './people.ts'
 import { Permissions } from './permissions.ts'
 import { Records } from './records.ts'
 import { migrate } from './schema.ts'
-import { actorName, rowName, Shape, type WriteCtx } from './shape.ts'
+import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape.ts'
 import { Views } from './views.ts'
 
 export interface User {
@@ -385,6 +385,18 @@ export class World {
       placedAt: r.placed_at,
       document: r.document,
     }))
+  }
+
+  // A row as the person names it: its first text, or the person its first person field holds
+  // when that comes first (a circle's member is the person, not why they are there).
+  rowName(t: Table, values: Record<string, unknown>): string {
+    for (const f of t.fields) {
+      const v = values[f.slug]
+      if (typeof v !== 'string' || !v) continue
+      if (f.kind === 'person') return this.people.names([v])[v] ?? v
+      if (f.kind === 'text') return v
+    }
+    return rowName(t, values)
   }
 
   // Modules and tables with their row counts: the map in the start layer.

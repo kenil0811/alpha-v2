@@ -26,6 +26,7 @@ import { stillReading } from '../files/documents.ts'
 import { agents, setAgentState } from '../modules/agents.ts'
 import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits.ts'
+import { REVIEW } from '../modules/reviews.ts'
 import { AgentRunner } from '../modules/runs.ts'
 import { printPage } from '../pages/pages.ts'
 import type { User } from '../world/world.ts'
@@ -94,6 +95,8 @@ const Journey = z.object({
         .optional(),
       // the scheduler's tick: agents whose time or change has come run now
       due: z.boolean().optional(),
+      // every waiting card of an agent's rows decided: each row not yet decided takes this choice
+      review: z.object({ choice: z.string(), words: z.string().optional() }).optional(),
       checks: z.array(Check).default([]),
     }),
   ),
@@ -421,6 +424,18 @@ async function main() {
           ? drafts.send(card.id, null, user, true)
           : engine.answerDraft(user, card.id, step.answer.choice))
       else engine.answer(user, card.id, step.answer.choice)
+    } else if (step.review) {
+      const review = step.review
+      const cards = world.cards
+        .waiting(user.id)
+        .filter((c) => c.call?.tool === REVIEW && (!review.words || c.words.includes(review.words)))
+      if (!cards.length) throw new Error(`Step ${i + 1}: no card of rows is waiting.`)
+      for (const c of cards)
+        runner.reviews.choose(c.id, 'rest', review.choice, {
+          actor: { kind: 'person', id: user.id },
+          user: user.id,
+        })
+      what = `Decided ${cards.length} card${cards.length === 1 ? '' : 's'} of rows: ${review.choice} for every row`
     } else if (step.folder) {
       const dir = join(home, 'folder')
       mkdirSync(dir, { recursive: true })

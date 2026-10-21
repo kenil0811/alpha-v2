@@ -67,6 +67,25 @@ const alpha = {
     },
   ) => call('tell', { words, ...(about ? { about } : {}) }),
   log: (words: string) => call('log', { words }),
+  // the person's people (or companies): how to reach them, where they work, their contact in plain
+  // numbers, since when Alpha knows them, and the rows of the person's modules that name them
+  people: {
+    list: (kind?: 'person' | 'company') => call('people.list', kind ? { kind } : {}),
+  },
+  // the model sorts items into the groups the person named, each with why, or none
+  judge: (spec: {
+    groups: { name: string; about: string }[]
+    items: { id: string; facts: string }[]
+  }) => call('judge', spec),
+  // rows of the module's own tables put to the person on one card: a choice each, or one for all
+  review: (r: {
+    words: string
+    table: string
+    rows: string[]
+    field: string
+    choices: string[]
+    note?: string
+  }) => call('review', r),
   // an email for the person's yes, on a card (sent at once when a standing permission covers its
   // kind); one address, never a blast
   draft: {

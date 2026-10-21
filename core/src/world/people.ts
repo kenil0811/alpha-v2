@@ -86,6 +86,7 @@ export interface PersonLine {
   emails: string[]
   phones: string[]
   companies: string[]
+  titles: string[] // their titles now, as rows give them
   domains: string[]
   last: string | null
   count: number
@@ -1628,6 +1629,46 @@ export class People {
     return out
   }
 
+  // For everyone at once: the rows of the person's modules that name them (a person field, or an
+  // email field holding one of their addresses), counted by table and field.
+  namings(): Map<string, { table: string; field: string; rows: number }[]> {
+    const owner = new Map<string, string>()
+    for (const k of all<{ value: string; person_id: string }>(
+      this.db,
+      "SELECT value, person_id FROM people_keys WHERE key = 'email'",
+    ))
+      owner.set(k.value, this.root(k.person_id))
+    const out = new Map<string, Map<string, { table: string; field: string; rows: number }>>()
+    for (const t of this.shape.tables()) {
+      if (t.hidden) continue
+      for (const f of t.fields) {
+        if (f.kind !== 'person' && f.kind !== 'email') continue
+        for (const r of all<{ v: string | null }>(
+          this.db,
+          'SELECT json_extract(vals, ?) AS v FROM records WHERE table_id = ?',
+          `$."${f.id}"`,
+          t.id,
+        )) {
+          if (!r.v) continue
+          const who =
+            f.kind === 'person'
+              ? this.row(r.v)
+                ? this.root(r.v)
+                : undefined
+              : owner.get(r.v.trim().toLowerCase())
+          if (!who) continue
+          const mine = out.get(who) ?? new Map()
+          const key = `${t.name}\u0000${f.name}`
+          const seen = mine.get(key) ?? { table: t.name, field: f.name, rows: 0 }
+          seen.rows++
+          mine.set(key, seen)
+          out.set(who, mine)
+        }
+      }
+    }
+    return new Map([...out].map(([k, v]) => [k, [...v.values()]]))
+  }
+
   // The names of people a person field holds, for showing.
   names(ids: string[]): Record<string, string> {
     const out: Record<string, string> = {}
@@ -1700,6 +1741,7 @@ export class People {
       phones: string | null
       domains: string | null
       companies: string | null
+      titles: string | null
       last: string | null
       count: number | null
       first: string | null
@@ -1732,21 +1774,27 @@ export class People {
          ) WHERE n = 1
        ),
        links AS MATERIALIZED (
-         SELECT DISTINCT a.root AS person, b.root AS company FROM people_links l
+         SELECT DISTINCT a.root AS person, b.root AS company, l.title FROM people_links l
            JOIN up a ON a.id = l.person_id JOIN up b ON b.id = l.company_id
          WHERE l.ended_at IS NULL
        ),
        works AS (
-         SELECT links.person AS root, group_concat(c.name, char(31)) AS companies
-         FROM links JOIN people c ON c.id = links.company GROUP BY links.person
+         SELECT person AS root, group_concat(name, char(31)) AS companies FROM (
+           SELECT DISTINCT links.person, c.name FROM links JOIN people c ON c.id = links.company
+         ) GROUP BY person
        ),
-       staff AS (SELECT company AS root, count(*) AS n FROM links GROUP BY company)
-       SELECT p.id, p.name, kagg.emails, kagg.phones, kagg.domains, works.companies,
+       titled AS (
+         SELECT person AS root, group_concat(title, char(31)) AS titles FROM (
+           SELECT DISTINCT person, title FROM links WHERE title IS NOT NULL
+         ) GROUP BY person
+       ),
+       staff AS (SELECT company AS root, count(DISTINCT person) AS n FROM links GROUP BY company)
+       SELECT p.id, p.name, kagg.emails, kagg.phones, kagg.domains, works.companies, titled.titles,
          eagg.last, eagg.count, efirst.started_by AS first, staff.n AS people
        FROM people p
          LEFT JOIN kagg ON kagg.root = p.id LEFT JOIN eagg ON eagg.root = p.id
          LEFT JOIN efirst ON efirst.root = p.id LEFT JOIN works ON works.root = p.id
-         LEFT JOIN staff ON staff.root = p.id
+         LEFT JOIN titled ON titled.root = p.id LEFT JOIN staff ON staff.root = p.id
        WHERE p.merged_into IS NULL AND p.kind = ?`,
       until,
       since,
@@ -1759,7 +1807,7 @@ export class People {
       .filter(
         (r) =>
           !w ||
-          [r.name, r.emails, r.phones, r.companies, r.domains].some((x) =>
+          [r.name, r.emails, r.phones, r.companies, r.titles, r.domains].some((x) =>
             (x ?? '').toLowerCase().includes(w),
           ),
       )
@@ -1770,6 +1818,7 @@ export class People {
         emails: split(r.emails),
         phones: split(r.phones),
         companies: split(r.companies),
+        titles: split(r.titles),
         domains: split(r.domains),
         last: r.last,
         count: Number(r.count ?? 0),

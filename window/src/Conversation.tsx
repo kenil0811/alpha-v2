@@ -28,6 +28,7 @@ import { Beside } from './Beside.tsx'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
 import { MatchCard } from './MatchCard.tsx'
+import { ReviewCard } from './ReviewCard.tsx'
 import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
@@ -558,6 +559,7 @@ const GATE: Record<string, string> = {
   sign_in: 'Sign-in',
   filing: 'A file from your mail',
   match: 'Maybe the same',
+  rows: 'For you to decide',
 }
 
 // Scrolls the stream to a card and flashes it.
@@ -589,6 +591,7 @@ export function CardBox({
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
+  if (card.review) return <ReviewCard card={card} review={card.review} />
   const answer = async (a: string) => {
     setBusy(true)
     try {

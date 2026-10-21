@@ -63,6 +63,16 @@ export interface CardView {
   filing?: FilingView | null // a file from the mail: where it is proposed to go
   draft?: DraftView | null // an agent's email for the person's yes
   match?: MatchView | null // people or companies that may be one, side by side
+  review?: ReviewView | null // rows an agent puts to the person, a choice on each
+}
+
+// Rows an agent puts to the person on one card: each with why, and the choices it offers.
+export interface ReviewView {
+  table: string
+  field: string
+  choices: string[] // the first is the usual yes
+  rows: { id: string; name: string; note: string | null; value: string | null }[]
+  open: number // rows not yet decided
 }
 
 // One side of a pair on a match card: enough to tell the two apart.

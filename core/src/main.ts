@@ -117,6 +117,11 @@ const browserEngine = () => {
 const runner = new AgentRunner(world, browserEngine, {
   owner: user.id,
   ask,
+  judge: askModel(
+    world.paths.dir,
+    () => route.env(),
+    () => config.judging(),
+  ),
   notify: () => engine.events.emit('event', { type: 'lines', user: user.id }),
 })
 // Files that come by mail, proposed for filing on a card each.

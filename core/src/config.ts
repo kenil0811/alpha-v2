@@ -65,4 +65,6 @@ export const config = {
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
   // how the model reads a document into the values a kit names
   reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
+  // how the model sorts a person's items into the groups they named
+  judging: (dir?: string) => load('judging.md', (t) => t.trim(), dir),
 }
