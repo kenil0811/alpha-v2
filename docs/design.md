@@ -265,7 +265,15 @@ value it lands; a health judgement ("fewer rows than last time", "nothing new fo
 three auth kinds (app password or API key; OAuth with our own app; a browser profile) and the
 secret store (the Mac keychain, or an encrypted file under a server key); fixture recording and
 replay; and the human-pace browser engine: one Playwright profile per account, delays, a stop
-on any friction page (a login wall, a CAPTCHA, a rate-limit page), never stealth.
+on any friction page (a login wall, a CAPTCHA, a rate-limit page), never stealth. It reads what a
+site's robots rules allow, except a site **read as the person** (Kenil, 21 Oct): one they signed
+in to themselves in Chrome, through a connection they made, read as they would read it (LinkedIn
+asks that no page be read automatically; reading the person's own connections is their choice).
+Every check page still stops it, and nothing is ever written to such a site.
+
+**LinkedIn** is a connector of Alpha's own (Kenil, 21 Oct): the person signs in in Chrome, and
+their connections page is read once a day, scrolled at a person's pace, newest first, stopping at
+the first screen of connections already kept; each connection is one of their people.
 
 **A connector is a package:**
 
@@ -300,12 +308,16 @@ form in the front matter: by reading, or by script. A site reader is a skill who
 the connector SDK's browser engine, so pacing and health come from the SDK and the model writes
 only the extraction. Model-written scripts are JavaScript run by the core's Node under the
 sandbox; Python stays inside kits. A script imports nothing of Alpha's: the core hands it `alpha`
-(rows by field name, the browser engine, `tell`, `log`) over its process's pipes, so the network,
+(rows by field name, the person's people with their contact numbers, the browser engine, `tell`,
+`log`) over its process's pipes, so the network,
 the world and the gates stay with the core; a row it lands keeps the web page it was read from as
 its source. **A judgement point** (Kenil, 20 Oct): a script hands the model a document and the
 values it wants (single values and lists of rows, each with its kind), and gets each back with the
 page or cell it was read from; a wall in code keeps a value only when it is found in the piece it
-cites, so a value nobody can point to comes back as not given. The instructions are in
+cites, so a value nobody can point to comes back as not given. A second (Kenil, 21 Oct): a script
+hands the model items with what is known of each and the groups the person named, in their words,
+and gets each item's group or none with why (config/judging.md); an answer naming a group or an
+item not asked is dropped, and nothing it says is kept until the person decides. The instructions are in
 `core/config/reading.md`, and the tokens go on the run. Doc repairs a skill by editing it; every
 version is a commit in the module's directory.
 
@@ -320,7 +332,9 @@ A **kit** is that directory with no person's rows, carrying setup rows (a deal s
 and thesis, a report's accounts and benchmarks). **Kits live outside this repository** (Kenil, 19
 Oct): alpha-v2 holds only what is generic (the platform, connectors, the kit format and its
 installer, generic skills); a client's kits live in that client's own private repository and are
-installed from a folder. A kit's scripts import nothing of alpha-v2:
+installed from a folder. **Alpha's own modules** (Kenil, 21 Oct) are the exception: generic kits
+every client gets, in `core/kits` (Network first), installed at start where missing and updated
+where a newer version ships, their agents on. A kit's scripts import nothing of alpha-v2:
 the core hands each script a small API when it runs it. When a second client asks for a kit, its
 generic part moves to a shared kits repository then. Install makes the tables empty and the agents
 paused; a setup row may mark a value assumed, with what it rests on (a thesis's financing). **The ownership rule:** on update, what was installed and is untouched is replaced; what
@@ -376,6 +390,10 @@ Replace takes the row's file of that kind off, Keep it in Alpha files it on no r
 reason and lets the file go. The same file again asks nothing; inline images and invites are
 skipped. A No carries one of a few reasons, put in front of the drafter's next run. After three
 unchanged yeses, the card offers Always (a standing permission for that agent and place).
+**Rows put to the person** (Kenil, 21 Oct): an agent's script puts rows of its module's own tables
+on one card, each with why and the few choices of one choice field it offers (In or Left out;
+Draft a note or Not now), with one button for all; each choice is the person's word on that row,
+so no later run writes over it, and the card closes when every row has one.
 
 ## 13. Pages
 
