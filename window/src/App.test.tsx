@@ -32,6 +32,7 @@ describe('the window', () => {
         name="Kenil"
         waiting={2}
         running={0}
+        tasksDue={0}
         online
         layout={open}
         onLayout={() => undefined}
@@ -55,6 +56,7 @@ describe('the window', () => {
         name="Kenil"
         waiting={0}
         running={0}
+        tasksDue={0}
         online
         layout={{ ...open, folded: ['m_1'] }}
         onLayout={() => undefined}
@@ -70,6 +72,7 @@ describe('the window', () => {
         name="Kenil"
         waiting={0}
         running={0}
+        tasksDue={0}
         online
         layout={{ ...open, railFolded: true }}
         onLayout={() => undefined}

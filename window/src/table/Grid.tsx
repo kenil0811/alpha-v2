@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   Filter,
+  ListChecks,
   PanelRightOpen,
   Plus,
 } from 'lucide-react'
@@ -66,6 +67,7 @@ export function Grid({
   shown,
   config,
   names,
+  tasks,
   picked,
   openRow,
   ticked,
@@ -83,6 +85,7 @@ export function Grid({
   shown: FieldView[]
   config: ViewConfig
   names: Record<string, string>
+  tasks: Record<string, number> // open tasks on each row
   picked: { row: string; field: string } | null
   openRow: string | null
   ticked: Set<string>
@@ -312,6 +315,7 @@ export function Grid({
                           row={r}
                           names={names}
                           first={i === 0}
+                          tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
                           onPick={() => pick(here)}
@@ -498,6 +502,7 @@ function Cell({
   row: r,
   names,
   first,
+  tasks,
   tone,
   selected,
   onPick,
@@ -508,6 +513,7 @@ function Cell({
   row: RowView
   names: Record<string, string>
   first: boolean
+  tasks: number
   tone: string | null
   selected: boolean
   onPick: () => void
@@ -571,6 +577,15 @@ function Cell({
         )}
         {mark && !empty && (
           <span className="self-start pt-2 font-bold text-warn text-xs leading-none">{mark}</span>
+        )}
+        {tasks > 0 && (
+          <span
+            title={tasks === 1 ? '1 open task' : `${tasks} open tasks`}
+            className="ml-auto flex shrink-0 items-center gap-0.5 pl-1.5 text-ink-3 text-xs"
+          >
+            <ListChecks className="size-3" />
+            {tasks}
+          </span>
         )}
       </button>
       {onOpen && (

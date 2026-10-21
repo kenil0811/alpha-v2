@@ -8,6 +8,7 @@ import type {
   ConnectorsView,
   ModuleSummary,
   Stream,
+  TasksView,
   TodayView,
   WorkingModuleView,
 } from '@alpha/core/api'
@@ -17,6 +18,7 @@ import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
 import { ModuleCard } from './ModuleCard.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
+import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
 import { childrenOf, tops } from './tree.ts'
 import { Button } from './ui/button.tsx'
@@ -44,12 +46,14 @@ export function Home({
   const [today, setToday] = useState<TodayView | null>(null)
   const [setup, reloadSetup] = useSetup()
   const [working, setWorking] = useState<WorkingModuleView[]>([])
+  const [tasks, setTasks] = useState<TasksView | null>(null)
   const [words, setWords] = useState('')
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
   const load = useCallback(() => {
     api.get<TodayView>('/api/today').then(setToday, () => undefined)
     api.get<WorkingModuleView[]>('/api/working').then(setWorking, () => undefined)
+    api.get<TasksView>('/api/tasks?list=today').then(setTasks, () => undefined)
   }, [])
   // a new journal line is the cue to look again
   useEffect(() => {
@@ -179,6 +183,26 @@ export function Home({
             </div>
 
             <div className="flex min-w-0 flex-col gap-7">
+              <Group
+                title="Today's tasks"
+                count={tasks?.lines.filter((t) => t.overdue).length}
+                action={
+                  <a
+                    className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+                    href="#/tasks"
+                  >
+                    All tasks
+                  </a>
+                }
+              >
+                {tasks && tasks.lines.length === 0 && (
+                  <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
+                )}
+                {tasks && tasks.lines.length > 0 && (
+                  <TaskList lines={tasks.lines} onChange={load} />
+                )}
+              </Group>
+
               {running.length > 0 && (
                 <Group title="Running">
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">

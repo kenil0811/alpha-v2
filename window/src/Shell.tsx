@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Ellipsis,
   House,
+  ListChecks,
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
@@ -42,6 +43,11 @@ export type Place =
   | { at: 'settings'; open: string | null }
   | { at: 'file'; place: FilePlace }
   | { at: 'people'; kind: 'person' | 'company'; id: string | null }
+  | {
+      at: 'tasks'
+      list: 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
+      id: string | null
+    }
 
 function Nav({
   href,
@@ -81,6 +87,7 @@ export function Rail({
   name,
   waiting,
   running,
+  tasksDue,
   online,
   here,
   layout,
@@ -92,6 +99,7 @@ export function Rail({
   name: string
   waiting: number
   running: number
+  tasksDue: number // tasks due today or overdue
   online: boolean
   layout: Layout
   onLayout: (change: Partial<Layout>) => void
@@ -104,6 +112,7 @@ export function Rail({
         here={here}
         waiting={waiting}
         running={running}
+        tasksDue={tasksDue}
         online={online}
         onOpen={() => onLayout({ railFolded: false })}
       />
@@ -147,6 +156,13 @@ export function Rail({
         icon={<MessageSquare className="size-4" />}
         label="Conversation"
         current={place.at === 'conversation'}
+      />
+      <Nav
+        href="#/tasks"
+        icon={<ListChecks className="size-4" />}
+        label="Tasks"
+        current={place.at === 'tasks'}
+        extra={tasksDue > 0 && <Badge n={tasksDue} />}
       />
       <Nav
         href="#/people"
@@ -360,6 +376,7 @@ function Strip({
   here,
   waiting,
   running,
+  tasksDue,
   online,
   onOpen,
 }: {
@@ -368,6 +385,7 @@ function Strip({
   here: string | null
   waiting: number
   running: number
+  tasksDue: number
   online: boolean
   onOpen: () => void
 }) {
@@ -426,6 +444,12 @@ function Strip({
         place.at === 'conversation',
         <MessageSquare className="size-4" />,
       )}
+      {icon(
+        '#/tasks',
+        tasksDue ? `Tasks, ${tasksDue} due` : 'Tasks',
+        place.at === 'tasks',
+        <ListChecks className="size-4" />,
+      )}
       {icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       {icon(
         '#/activity',
@@ -466,10 +490,10 @@ function Strip({
   )
 }
 
-// Where a screen sits, for the bar: a few words, the last in bold.
+// Where a screen sits, for the bar: a few words, the last in bold; each before it opens its place.
 export interface Crumb {
   icon?: ReactNode
-  parts: string[]
+  parts: { label: string; href?: string | undefined }[]
 }
 
 export function Bar({
@@ -487,14 +511,20 @@ export function Bar({
   ask: { name: string } | null // Ask Alpha, or Ask about a module on its screen; none where the conversation is
   onAsk: () => void
 }) {
-  const last = crumb.parts.at(-1) ?? ''
+  const last = crumb.parts.at(-1)?.label ?? ''
   return (
     <div className="flex h-12 shrink-0 items-center gap-2.5 border-hair border-b bg-canvas pr-3.5 pl-6">
       <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-ink-3 text-md">
         {crumb.icon && <span className="shrink-0">{crumb.icon}</span>}
         {crumb.parts.slice(0, -1).map((p) => (
-          <span key={p} className="flex items-center gap-1.5">
-            <span>{p}</span>
+          <span key={`${p.label}${p.href ?? ''}`} className="flex items-center gap-1.5">
+            {p.href ? (
+              <a href={p.href} className="rounded-sm hover:text-ink hover:underline">
+                {p.label}
+              </a>
+            ) : (
+              <span>{p.label}</span>
+            )}
             <ChevronRight className="size-3.25" />
           </span>
         ))}
@@ -549,6 +579,8 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
     () => [
       { label: 'Home', hint: '', href: '#/' },
       { label: 'Conversation', hint: '', href: '#/conversation' },
+      { label: 'Tasks', hint: '', href: '#/tasks' },
+      { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
       { label: 'People', hint: '', href: '#/people' },
       { label: 'Companies', hint: 'People', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },

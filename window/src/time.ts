@@ -25,3 +25,22 @@ export function sinceWords(since: string): string {
   if (d.toDateString() === new Date().toDateString()) return `Since you cleared it at ${clock(d)}`
   return `Since you cleared it ${dayWords(since)}`
 }
+
+// A due as a person says it: Today, Tomorrow, Fri 24 Oct, with its time when it has one.
+export function dueWords(due: string): string {
+  const d = new Date(due.includes('T') ? due : `${due}T12:00:00`)
+  const days = Math.round(
+    (new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000,
+  )
+  const day =
+    days === 0
+      ? 'Today'
+      : days === 1
+        ? 'Tomorrow'
+        : days === -1
+          ? 'Yesterday'
+          : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+  return due.includes('T')
+    ? `${day}, ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}`
+    : day
+}

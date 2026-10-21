@@ -1,11 +1,12 @@
 // A row opened: every field with its value and mark, each opening to where it came from, the
 // pages and files its values were read from, and the documents on it (a deal's CIM), which a file
 // dropped on the panel joins at once.
-import type { FieldView, RowFileView, RowView } from '@alpha/core/api'
+import type { FieldView, RowFileView, RowView, TasksView } from '@alpha/core/api'
 import { ExternalLink, FileText, Paperclip, X } from 'lucide-react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
+import { NewTask, TaskList } from '../Tasks.tsx'
 import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
@@ -34,12 +35,16 @@ export function RowPanel({
 }) {
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
   const [files, setFiles] = useState<RowFileView[]>([])
+  const [tasks, setTasks] = useState<TasksView | null>(null)
+  const loadTasks = () =>
+    api.get<TasksView>(`/api/tasks?row=${row.id}`).then(setTasks, () => setTasks(null))
   const [problem, setProblem] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
   // the row comes again whenever the world changes: its files are asked again with it
   useEffect(() => {
     if (row.id) api.get<RowFileView[]>(path).then(setFiles, () => setFiles([]))
+    if (row.id) void loadTasks()
   }, [path, row])
   const act = (p: Promise<RowFileView[]>) =>
     p.then(
@@ -145,6 +150,22 @@ export function RowPanel({
             </div>
           </div>
         )}
+        <div className="flex flex-col gap-2 p-4.5">
+          <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+            Tasks
+            {tasks?.lines.length
+              ? ` · ${tasks.lines.filter((t) => t.state !== 'done' && t.state !== 'dropped').length} open`
+              : ''}
+          </div>
+          {tasks && tasks.lines.length > 0 && (
+            <TaskList lines={tasks.lines} onChange={() => void loadTasks()} />
+          )}
+          <NewTask
+            on={{ row: row.id }}
+            placeholder="Add a task on this row"
+            onAdded={() => void loadTasks()}
+          />
+        </div>
         <div className="flex flex-col gap-2 p-4.5">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">

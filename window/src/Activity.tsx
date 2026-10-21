@@ -139,7 +139,7 @@ export function Activity({ version }: { version: number }) {
   )
 }
 
-function RunRow({
+export function RunRow({
   run: r,
   open,
   onOpen,

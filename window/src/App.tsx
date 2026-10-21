@@ -15,6 +15,7 @@ import {
   Briefcase,
   FileText,
   House,
+  ListChecks,
   MessageSquare,
   SlidersHorizontal,
   Users,
@@ -32,6 +33,8 @@ import { Settings } from './Settings.tsx'
 import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
+import { Tasks } from './Tasks.tsx'
+import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
 import { SidePanel } from './ui/side-panel.tsx'
@@ -72,6 +75,22 @@ function placeOf(hash: string): Place {
   const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
   if (s) return { at: 'settings', open: s[1] ?? null }
   if (hash === '#/activity') return { at: 'activity' }
+  const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+))?$/.exec(hash)
+  if (tk)
+    return {
+      at: 'tasks',
+      list:
+        (tk[2] as
+          | 'today'
+          | 'week'
+          | 'overdue'
+          | 'waiting'
+          | 'agents'
+          | 'open'
+          | 'done'
+          | undefined) ?? 'today',
+      id: tk[1] ?? null,
+    }
   const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
   if (hash === '#/conversation') return { at: 'conversation' }
@@ -98,6 +117,7 @@ export function App() {
   const [name, setName] = useState('')
   const [fileName, setFileName] = useState('')
   const [personName, setPersonName] = useState('')
+  const [taskName, setTaskName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [finding, setFinding] = useState(false)
@@ -122,7 +142,10 @@ export function App() {
     () => placed && { id: placed.id, name: placed.name, ids: inside(modules, placed.id) },
     [placed?.id, placed?.name, modules, placed],
   )
-  const above = moduleHere ? ancestors(modules, moduleHere.id).map((m) => m.name) : []
+  // the modules a screen's module sits inside, each opening its own screen
+  const above = moduleHere
+    ? ancestors(modules, moduleHere.id).map((m) => ({ label: m.name, href: `#/module/${m.id}` }))
+    : []
   const askable = !(
     place.at === 'conversation' ||
     (place.at === 'module' && place.tab === 'conversation')
@@ -222,52 +245,80 @@ export function App() {
   )
 
   const icon = 'size-3.25'
+  const at = (label: string, href?: string) => ({ label, href })
   const crumb: Crumb =
     place.at === 'activity'
-      ? { icon: <ActivityIcon className={icon} />, parts: ['Activity'] }
-      : place.at === 'people'
+      ? { icon: <ActivityIcon className={icon} />, parts: [at('Activity')] }
+      : place.at === 'tasks'
         ? {
-            icon: <Users className={icon} />,
-            parts: place.id
-              ? ['People', personName || '…']
-              : place.kind === 'company'
-                ? ['People', 'Companies']
-                : ['People'],
+            icon: <ListChecks className={icon} />,
+            parts: place.id ? [at('Tasks', '#/tasks'), at(taskName || '…')] : [at('Tasks')],
           }
-        : place.at === 'conversation'
-          ? { icon: <MessageSquare className={icon} />, parts: ['Conversation'] }
-          : place.at === 'settings'
-            ? { icon: <SlidersHorizontal className={icon} />, parts: ['Settings'] }
-            : place.at === 'parts'
-              ? { parts: ['Parts'] }
-              : place.at === 'file'
-                ? { icon: <FileText className={icon} />, parts: ['Documents', fileName || '…'] }
-                : place.at === 'table'
+        : place.at === 'people'
+          ? {
+              icon: <Users className={icon} />,
+              parts: place.id
+                ? [at('People', '#/people'), at(personName || '…')]
+                : place.kind === 'company'
+                  ? [at('People', '#/people'), at('Companies')]
+                  : [at('People')],
+            }
+          : place.at === 'conversation'
+            ? { icon: <MessageSquare className={icon} />, parts: [at('Conversation')] }
+            : place.at === 'settings'
+              ? { icon: <SlidersHorizontal className={icon} />, parts: [at('Settings')] }
+              : place.at === 'parts'
+                ? { parts: [at('Parts')] }
+                : place.at === 'file'
                   ? {
-                      icon: <Briefcase className={icon} />,
-                      parts: table ? [...above, table.module.name, table.name] : ['…'],
+                      icon: <FileText className={icon} />,
+                      parts: [at('Documents'), at(fileName || '…')],
                     }
-                  : place.at === 'module'
+                  : place.at === 'table'
                     ? {
                         icon: <Briefcase className={icon} />,
-                        parts: [
-                          ...above,
-                          moduleHere?.name ?? '…',
-                          place.tab === 'agents'
-                            ? 'Agents and notes'
-                            : place.tab === 'conversation'
-                              ? 'Conversation'
-                              : place.tab === 'overview' ||
-                                  (!place.page && modules.some((x) => x.parent === place.id))
-                                ? 'Overview'
-                                : (modules
-                                    .find((x) => x.id === place.id)
-                                    ?.pages.find((p) =>
-                                      place.page ? p.name === place.page : p.front,
-                                    )?.title ?? '…'),
-                        ],
+                        parts: table
+                          ? [
+                              ...above,
+                              at(table.module.name, `#/module/${table.module.id}`),
+                              // with a row open, the table's name closes it
+                              place.row ? at(table.name, `#/table/${table.id}`) : at(table.name),
+                              ...(place.row
+                                ? [
+                                    at(
+                                      (() => {
+                                        const r = table.rows.find((x) => x.id === place.row)
+                                        return r ? titleOf(table.fields, r) : '…'
+                                      })(),
+                                    ),
+                                  ]
+                                : []),
+                            ]
+                          : [at('…')],
                       }
-                    : { icon: <House className={icon} />, parts: ['Home'] }
+                    : place.at === 'module'
+                      ? {
+                          icon: <Briefcase className={icon} />,
+                          parts: [
+                            ...above,
+                            at(moduleHere?.name ?? '…', `#/module/${place.id}`),
+                            at(
+                              place.tab === 'agents'
+                                ? 'Agents and notes'
+                                : place.tab === 'conversation'
+                                  ? 'Conversation'
+                                  : place.tab === 'overview' ||
+                                      (!place.page && modules.some((x) => x.parent === place.id))
+                                    ? 'Overview'
+                                    : (modules
+                                        .find((x) => x.id === place.id)
+                                        ?.pages.find((p) =>
+                                          place.page ? p.name === place.page : p.front,
+                                        )?.title ?? '…'),
+                            ),
+                          ],
+                        }
+                      : { icon: <House className={icon} />, parts: [at('Home')] }
 
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
@@ -280,6 +331,7 @@ export function App() {
         name={name}
         waiting={stream?.cards.length ?? 0}
         running={stream?.running.length ?? 0}
+        tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
         online={!problem}
       />
       <main className="flex min-w-0 flex-1 flex-col">
@@ -314,6 +366,8 @@ export function App() {
               <FileView place={place.place} onName={setFileName} />
             ) : place.at === 'activity' ? (
               <Activity version={version} />
+            ) : place.at === 'tasks' ? (
+              <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
             ) : place.at === 'people' ? (
               <People kind={place.kind} id={place.id} version={version} onName={setPersonName} />
             ) : place.at === 'settings' ? (

@@ -28,6 +28,7 @@ import { Beside } from './Beside.tsx'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
 import { MatchCard } from './MatchCard.tsx'
+import { ProposedCard } from './ProposedCard.tsx'
 import { ReviewCard } from './ReviewCard.tsx'
 import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
 import { Button, IconButton } from './ui/button.tsx'
@@ -592,6 +593,7 @@ export function CardBox({
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
   if (card.review) return <ReviewCard card={card} review={card.review} />
+  if (card.proposed) return <ProposedCard card={card} proposed={card.proposed} />
   const answer = async (a: string) => {
     setBusy(true)
     try {

@@ -106,6 +106,13 @@ export function TableView({
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)
+  // the open tasks on each row, drawn beside its name
+  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    api
+      .get<Record<string, number>>(`/api/tables/${data.id}/tasks`)
+      .then(setTaskCounts, () => setTaskCounts({}))
+  }, [data])
 
   const fields = data.fields
   const shown = columns(fields, config)
@@ -386,6 +393,7 @@ export function TableView({
               shown={shown}
               config={config}
               names={data.names}
+              tasks={taskCounts}
               picked={picked}
               openRow={openRow ?? null}
               ticked={ticked}
