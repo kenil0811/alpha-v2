@@ -1,0 +1,125 @@
+#!/bin/sh
+# The alpha command (packaging, piece 3): Alpha's own controls on this Mac, from Terminal.
+#   alpha status | open | start | stop | restart | logs | backup | restore <dir> | update <file>
+#         rollback | report | signin | uninstall [--remove-data]
+set -e
+APP="$(cd "$(dirname "$0")/.." && pwd)"           # …/Alpha.app/Contents/Resources/app
+NODE="$APP/runtime/node"
+LABEL=io.github.kenil0811.alpha.core
+DOMAIN="gui/$(id -u)"
+DATA="$HOME/Library/Application Support/Alpha"
+LOGS="$HOME/Library/Logs/Alpha"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+PORT="${ALPHA_PORT:-4700}"
+export ALPHA_HOME="$DATA" ALPHA_LOG_DIR="$LOGS"
+CLAUDE="$(find "$APP/node_modules/.pnpm" -path '*claude-agent-sdk-darwin-arm64*' -name claude -type f 2>/dev/null | head -1)"
+
+say() { printf '%s\n' "$*"; }
+answering() { curl -s -o /dev/null -m 2 "http://127.0.0.1:$PORT/api/health"; }
+loaded() { launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; }
+token() { cat "$DATA/token" 2>/dev/null; }
+
+start() {
+  if ! [ -f "$PLIST" ]; then say "Alpha's login item is not there: run install.sh again."; exit 1; fi
+  if loaded; then launchctl kickstart "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+  else launchctl bootstrap "$DOMAIN" "$PLIST"; fi
+  i=0
+  until answering; do
+    i=$((i + 1))
+    if [ "$i" -gt 60 ]; then say "Alpha did not start within a minute. Its log: $LOGS/core.log"; exit 1; fi
+    sleep 1
+  done
+}
+
+stop() {
+  if loaded; then launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true; fi
+  i=0
+  while answering; do i=$((i + 1)); [ "$i" -gt 30 ] && break; sleep 1; done
+}
+
+case "$1" in
+  status)
+    say "Alpha $(cat "$APP/VERSION" 2>/dev/null) in $(dirname "$(dirname "$(dirname "$APP")")")"
+    if answering; then say "Running, on http://127.0.0.1:$PORT"; else say "Not running."; fi
+    if loaded; then say "Starts at login."; else say "Does not start at login: run install.sh again."; fi
+    say "Data: $DATA ($(du -sh "$DATA" 2>/dev/null | cut -f1))"
+    say "Log: $LOGS/core.log"
+    ;;
+  open)
+    answering || start
+    open "http://127.0.0.1:$PORT/?t=$(token)"
+    ;;
+  start) start; say "Alpha is running." ;;
+  stop) stop; say "Alpha is stopped; it starts again at login, or with alpha start." ;;
+  restart) stop; start; say "Alpha is running again." ;;
+  logs) tail -n 200 -f "$LOGS/core.log" ;;
+  backup)
+    dir="$DATA/backups/$(date +%Y-%m-%d-%H%M%S)"
+    "$NODE" "$APP/core/src/cli.ts" backup "$dir"
+    ;;
+  restore)
+    [ -d "$2" ] || { say "Say which backup folder, like $DATA/backups/2026-10-21-090000"; exit 1; }
+    stop
+    "$NODE" "$APP/core/src/cli.ts" restore "$2"
+    start
+    say "Alpha is running on the restored data."
+    ;;
+  update)
+    [ -f "$2" ] || { say "Say which Alpha file, like ~/Downloads/Alpha-0.3.1-avilo.tar.gz"; exit 1; }
+    tmp="$(mktemp -d)"
+    tar -xzf "$2" -C "$tmp"
+    sh "$(find "$tmp" -maxdepth 2 -name install.sh | head -1)"
+    ;;
+  rollback)
+    prev="$DATA/previous/Alpha.app"
+    [ -d "$prev" ] || { say "There is no earlier Alpha to go back to."; exit 1; }
+    last="$(ls -d "$DATA"/updates/*/ 2>/dev/null | tail -1)"
+    stop
+    rm -rf "$DATA/previous/Alpha.new.app"
+    mv /Applications/Alpha.app "$DATA/previous/Alpha.new.app"
+    mv "$prev" /Applications/Alpha.app
+    if [ -n "$last" ] && [ -d "$last/worlds" ]; then
+      "/Applications/Alpha.app/Contents/Resources/app/runtime/node" \
+        "/Applications/Alpha.app/Contents/Resources/app/core/src/cli.ts" restore "$last/worlds"
+    fi
+    "/Applications/Alpha.app/Contents/Resources/app/bin/alpha" start
+    say "Back on Alpha $(cat /Applications/Alpha.app/Contents/Resources/app/VERSION), with the data from before the update."
+    ;;
+  report)
+    out="$HOME/Desktop/Alpha report $(date "+%Y-%m-%d %H.%M").txt"
+    "$NODE" "$APP/core/src/cli.ts" report "$out" >/dev/null
+    say "The report is on your Desktop: $(basename "$out"). Send it to Kenil."
+    ;;
+  signin)
+    [ -n "$CLAUDE" ] || { say "Claude Code is not in this copy of Alpha."; exit 1; }
+    say "Claude's own sign-in opens in your browser: sign in with your Claude account there."
+    "$CLAUDE" auth login
+    "$CLAUDE" auth status | grep -q '"loggedIn": true' && say "Signed in to Claude."
+    ;;
+  uninstall)
+    stop
+    rm -f "$PLIST"
+    while security delete-generic-password -s Alpha >/dev/null 2>&1; do :; done
+    tccutil reset Calendar io.github.kenil0811.alpha.helper >/dev/null 2>&1 || true
+    tccutil reset AddressBook io.github.kenil0811.alpha.helper >/dev/null 2>&1 || true
+    rm -rf "$LOGS"
+    if [ "$2" = "--remove-data" ]; then
+      printf 'Type remove to move all of Alpha'"'"'s data to the Trash: '
+      read -r answer
+      if [ "$answer" = remove ]; then
+        mv "$DATA" "$HOME/.Trash/Alpha data $(date "+%Y-%m-%d %H.%M")"
+        say "Alpha's data is in the Trash."
+      else
+        say "Kept Alpha's data in $DATA."
+      fi
+    else
+      say "Kept Alpha's data in $DATA."
+    fi
+    rm -rf /Applications/Alpha.app
+    say "Alpha is uninstalled."
+    ;;
+  *)
+    say "alpha status | open | start | stop | restart | logs | backup | restore <dir> | update <file> | rollback | report | signin | uninstall [--remove-data]"
+    exit 1
+    ;;
+esac

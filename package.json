@@ -16,7 +16,9 @@
     "dev:window": "pnpm --filter @alpha/window dev",
     "journey": "pnpm --filter @alpha/core journey",
     "start": "pnpm --filter @alpha/window build && pnpm --filter @alpha/core start",
-    "shots": "node window/scripts/shots.ts"
+    "shots": "node window/scripts/shots.ts",
+    "kit": "node core/src/kit.ts",
+    "release": "node scripts/release.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
