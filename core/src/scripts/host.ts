@@ -67,6 +67,21 @@ const alpha = {
     },
   ) => call('tell', { words, ...(about ? { about } : {}) }),
   log: (words: string) => call('log', { words }),
+  // an email for the person's yes, on a card (sent at once when a standing permission covers its
+  // kind); one address, never a blast
+  draft: {
+    email: (d: {
+      to: string
+      cc?: string
+      subject: string
+      body: string
+      kind: string
+      key?: string
+      about?: { table: string; row: string }
+      note?: string
+      connector?: string
+    }) => call('draft.email', d),
+  },
 }
 
 try {

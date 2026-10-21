@@ -171,6 +171,50 @@ describe('files that come by mail', () => {
     expect(world.rowsOfFile(hash)).toEqual([])
   })
 
+  it('offers Always after three filed as proposed, then files that sender’s kind on that row without a card', async () => {
+    const files: Record<string, ItemFile[]> = {}
+    for (const n of [1, 2, 3, 4, 5])
+      files[`m${n}`] = [
+        { ...cim, name: `CIM ${n}.csv`, bytes: csv(`practice,month\nHarbor Books,${n}\n`) },
+      ]
+    const s = setUp(files, (prompt) => ({
+      files: [
+        {
+          file: 0,
+          about: 'An update for Harbor Books.',
+          table: 'Deals',
+          row: /- (r_\w+) \(Name: Harbor Books\)/.exec(prompt)?.[1] ?? null,
+          kind: 'CIM',
+          sure: 'sure',
+          why: 'It names Harbor Books.',
+        },
+      ],
+    }))
+    await s.intake.due()
+    for (const n of [1, 2, 3, 4]) {
+      s.arrives(`m${n}`, `Harbor Books ${n}`, `CIM ${n}.csv`)
+      await s.intake.due()
+      const [card] = world.cards.waiting()
+      const view = s.intake.view(card as never)
+      if (n < 4) {
+        expect(view?.always).toBeNull()
+        s.intake.file(card?.id as string, { row: s.harbor, kind: 'CIM' }, s.owner)
+      } else {
+        expect(view?.always).toBe(
+          'Always file what @harbor.example sends as a CIM on Harbor Books, without asking',
+        )
+        s.intake.file(card?.id as string, { row: s.harbor, kind: 'CIM', always: true }, s.owner)
+      }
+    }
+    s.arrives('m5', 'Harbor Books 5', 'CIM 5.csv')
+    expect(await s.intake.due()).toBe(0)
+    expect(world.cards.waiting()).toEqual([])
+    expect(world.rowFiles(s.harbor).map((f) => f.file.name)).toContain('CIM 5.csv')
+    expect(world.lines({ kinds: ['told'] }).at(-1)?.words).toBe(
+      'Filed CIM 5.csv from Priya <priya@harbor.example> on Harbor Books (your standing permission).',
+    )
+  })
+
   it('lets a declined file go, with the reason kept', async () => {
     const teaser: ItemFile = { ...cim, name: 'teaser.csv', bytes: csv('a,b\n1,2\n') }
     const s = setUp({ m1: [teaser] }, () => ({ files: [] }))

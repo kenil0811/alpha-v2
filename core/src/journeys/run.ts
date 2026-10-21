@@ -24,6 +24,7 @@ import { ConnectorService } from '../connectors/service.ts'
 import { Engine } from '../engine/engine.ts'
 import { stillReading } from '../files/documents.ts'
 import { agents, setAgentState } from '../modules/agents.ts'
+import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits.ts'
 import { AgentRunner } from '../modules/runs.ts'
 import { printPage } from '../pages/pages.ts'
@@ -76,7 +77,8 @@ const Journey = z.object({
   steps: z.array(
     z.object({
       say: z.string().optional(),
-      answer: z.object({ choice: z.string() }).optional(),
+      // the first waiting card answered; an agent's draft can be sent with Always when offered
+      answer: z.object({ choice: z.string(), always: z.boolean().optional() }).optional(),
       // a folder of files given to Alpha, copied from the repository so the journey owns it
       folder: z.object({ from: z.string(), only: z.string().optional() }).optional(),
       // an account connected on recorded answers (journeys/fixtures), never a real one
@@ -356,10 +358,20 @@ async function main() {
     only: ['127.0.0.1', 'localhost'],
   })
   const runner = new AgentRunner(world, () => browser, { owner: user.id })
+  const drafts = new Drafts(
+    world,
+    { send: (connector, message) => connectors.runTool(connector, 'send', { ...message }) },
+    user,
+    (agent, module) => {
+      const a = agents(world, module).find((x) => x.name === agent)
+      if (a) void runner.runAgent(a).catch(() => undefined)
+    },
+  )
+  runner.drafts = drafts
   const engine = new Engine(world, {
     prompt,
     connectors,
-    hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers') },
+    hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
   })
   let site: { server: Server; url: string } | null = null
   const limit = config.limits().journey_step_minutes * 60_000
@@ -391,7 +403,10 @@ async function main() {
   const started = Date.now()
   for (const [i, step] of journey.steps.entries()) {
     const t0 = Date.now()
-    const done = step.say || step.answer ? idle() : Promise.resolve(true)
+    // a said sentence and an answered question start a desk turn; an agent's draft answered does not
+    const first = step.answer ? world.cards.waiting(user.id)[0] : undefined
+    const turns = !!step.say || (!!step.answer && first?.call?.tool !== DRAFT)
+    const done = turns ? idle() : Promise.resolve(true)
     let what: string
     if (step.say) {
       const words = site ? step.say.replaceAll('{site}', site.url) : step.say
@@ -400,8 +415,12 @@ async function main() {
     } else if (step.answer) {
       const card = world.cards.waiting(user.id)[0]
       if (!card) throw new Error(`Step ${i + 1}: no card is waiting to answer.`)
-      what = `Answered “${card.words}” with ${step.answer.choice}`
-      engine.answer(user, card.id, step.answer.choice)
+      what = `Answered “${card.words}” with ${step.answer.choice}${step.answer.always ? ', and always' : ''}`
+      if (card.call?.tool === DRAFT)
+        await (step.answer.always
+          ? drafts.send(card.id, null, user, true)
+          : engine.answerDraft(user, card.id, step.answer.choice))
+      else engine.answer(user, card.id, step.answer.choice)
     } else if (step.folder) {
       const dir = join(home, 'folder')
       mkdirSync(dir, { recursive: true })

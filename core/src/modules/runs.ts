@@ -15,6 +15,7 @@ import { Refused } from '../world/kinds.ts'
 import type { Module, Table } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 import { type Agent, agents } from './agents.ts'
+import type { Drafts } from './drafts.ts'
 
 export interface RunOutcome {
   id: string
@@ -78,6 +79,7 @@ export class AgentRunner {
   private owner: string | null
   private ask: Ask
   private tokens = new Map<string, number>() // a run's model tokens, while it runs
+  drafts: Drafts | null = null // an agent's drafts, sent from the person's mail on their yes
 
   constructor(
     world: World,
@@ -291,6 +293,32 @@ export class AgentRunner {
         })
         this.notify()
         return { values: out.values, lists: out.lists, dropped: out.dropped }
+      },
+      // an email drafted for the person's yes (or sent at once under a standing permission)
+      'draft.email': async (p: Record<string, unknown>) => {
+        if (!this.drafts) throw new Refused('Drafts are not set up in this core.')
+        const about = p.about as { table?: unknown; row?: unknown } | undefined
+        const t = about ? tableOf(about.table) : null
+        const out = await this.drafts.propose(
+          {
+            agent: label,
+            module: module.id,
+            kind: String(p.kind ?? 'email'),
+            key: p.key ? String(p.key) : null,
+            connector: String(p.connector ?? 'gmail'),
+            message: {
+              to: String(p.to ?? ''),
+              ...(p.cc ? { cc: String(p.cc) } : {}),
+              subject: String(p.subject ?? ''),
+              body: String(p.body ?? ''),
+            },
+            about: t && about ? { table: t.id, row: String(about.row) } : null,
+            note: p.note ? String(p.note) : null,
+          },
+          runId,
+        )
+        this.notify()
+        return out
       },
       'documents.read': async (p: Record<string, unknown>) => {
         const d = this.world.files.document(String(p.file))
@@ -515,10 +543,12 @@ export class AgentRunner {
   async runAgent(agent: Agent, who?: RunFor, given: object = {}): Promise<RunOutcome> {
     const module = this.world.shape.module(agent.module)
     if (!module) throw new Refused('That agent’s module is not there.')
+    // what became of its drafts since its last run
+    const decided = this.drafts?.outcomes(agent.name, module.id, agent.lastRunAt) ?? []
     return this.runScript(
       module,
       agent.runs.script,
-      { ...(agent.runs.input ?? {}), ...given },
+      { ...(agent.runs.input ?? {}), ...given, ...(decided.length ? { decided } : {}) },
       agent.name,
       agent.id,
       who,

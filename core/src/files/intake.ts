@@ -10,6 +10,7 @@ import type { ItemFile } from '@alpha/connector-sdk'
 import type { Card } from '../world/cards.ts'
 import { all, one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
+import type { Covered, Permission } from '../world/permissions.ts'
 import { rowName, type Table } from '../world/shape.ts'
 import type { User, World } from '../world/world.ts'
 import { takeIn } from './documents.ts'
@@ -338,30 +339,81 @@ export class Intake {
       sure: Filing['sure']
       why: string
     }[]
-    return looks.map((l, i) => {
-      const a = got.find((g) => g.file === i)
-      // the wall: a row only of that table's named rows, a kind only one that table takes
-      const choice = choices.find((c) => c.table.name === a?.table)
-      const row = choice && a?.row && choice.rows.includes(a.row) ? a.row : null
-      const kind = choice && a?.kind && choice.table.documents?.includes(a.kind) ? a.kind : null
-      const filing: Filing = {
-        file: l.hash,
-        name: l.f.name,
-        mime: l.f.mime,
-        connection: s.connection,
-        item,
-        from: mail.from,
-        subject: mail.subject,
-        date: mail.date,
-        about: a?.about ?? '',
-        sure: row ? (a?.sure ?? 'unsure') : 'unsure',
-        why: a?.why ?? '',
-        table: choice?.table.id ?? choices[0]?.table.id ?? null,
-        row,
-        kind,
-        choices: choices.map((c) => ({ table: c.table.id, rows: c.rows })),
-      }
-      return this.card(filing)
+    return looks
+      .map((l, i) => {
+        const a = got.find((g) => g.file === i)
+        // the wall: a row only of that table's named rows, a kind only one that table takes
+        const choice = choices.find((c) => c.table.name === a?.table)
+        const row = choice && a?.row && choice.rows.includes(a.row) ? a.row : null
+        const kind = choice && a?.kind && choice.table.documents?.includes(a.kind) ? a.kind : null
+        const filing: Filing = {
+          file: l.hash,
+          name: l.f.name,
+          mime: l.f.mime,
+          connection: s.connection,
+          item,
+          from: mail.from,
+          subject: mail.subject,
+          date: mail.date,
+          about: a?.about ?? '',
+          sure: row ? (a?.sure ?? 'unsure') : 'unsure',
+          why: a?.why ?? '',
+          table: choice?.table.id ?? choices[0]?.table.id ?? null,
+          row,
+          kind,
+          choices: choices.map((c) => ({ table: c.table.id, rows: c.rows })),
+        }
+        // a standing permission for this sender, row and kind files it without a card
+        const covered = this.covered(filing, row, kind)
+        const p =
+          covered && filing.sure !== 'unsure' ? this.world.permissions.covering(covered) : undefined
+        if (p && row) {
+          this.fileUnder(filing, row, kind, p)
+          return null
+        }
+        return this.card(filing)
+      })
+      .filter((c): c is Card => !!c)
+  }
+
+  // What a standing permission for a file from the mail covers: its sender's domain, the row and
+  // the kind.
+  covered(f: Filing, row: string | null, kind: string | null): Covered | null {
+    const domain = f.from.match(/@([\w.-]+)/)?.[1]?.toLowerCase()
+    const rec = row ? this.world.records.get(row) : undefined
+    if (!domain || !rec || !kind) return null
+    return {
+      action: 'file_from_mail',
+      agent: null,
+      module: rec.table.module.id,
+      place: { from: domain, row: rec.record.id, kind },
+    }
+  }
+
+  private sentence(c: Covered): string {
+    const rec = this.world.records.get(c.place.row as string)
+    const where = rec ? rowName(rec.table, rec.record.values) : 'its row'
+    return `Always file what @${c.place.from} sends as a ${c.place.kind} on ${where}, without asking`
+  }
+
+  private fileUnder(f: Filing, row: string, kind: string | null, p: Permission): void {
+    const ctx = { actor: { kind: 'person' as const, id: this.owner.id }, user: this.owner.id }
+    const rec = this.world.records.get(row)
+    const where = rec ? rowName(rec.table, rec.record.values) : 'its row'
+    this.world.placeFile(f.file, row, kind, ctx)
+    takeIn(this.world, this.world.files.bytes(f.file), f.name, f.mime, ctx)
+    this.world.permissions.used(
+      p,
+      `Filed ${f.name} on ${where} under your standing permission.`,
+      ctx,
+    )
+    this.world.line({
+      actor: { kind: 'system' },
+      kind: 'told',
+      words: `Filed ${f.name} from ${f.from} on ${where} (your standing permission).`,
+      data: { agent: 'Mail', about: { table: rec?.table.id ?? '', rows: [row] } },
+      user: this.owner.id,
+      module: rec?.table.module.id ?? null,
     })
   }
 
@@ -388,7 +440,12 @@ export class Intake {
   // kind off it. With no row (a new client's first export), it is kept in Alpha and read.
   file(
     cardId: string,
-    choice: { row: string | null; kind: string | null; replace?: boolean | undefined },
+    choice: {
+      row: string | null
+      kind: string | null
+      replace?: boolean | undefined
+      always?: boolean | undefined
+    },
     who: User,
   ): Card {
     const card = this.world.cards.get(cardId)
@@ -396,6 +453,10 @@ export class Intake {
     if (card.state !== 'waiting') throw new Refused('That card has already been answered.')
     const f = card.call.input as Filing
     const ctx = { actor: { kind: 'person' as const, id: who.id }, user: who.id }
+    const changed = (choice.row ?? null) !== f.row || (choice.kind ?? null) !== f.kind
+    const proposed = this.covered(f, f.row, f.kind)
+    if (choice.always && (changed || !proposed || !this.world.permissions.offers(proposed)))
+      throw new Refused('Always is offered only for a file filed as proposed, after three like it.')
     if (choice.row) {
       const row = choice.row
       const rec = this.world.records.get(row)
@@ -407,7 +468,12 @@ export class Intake {
       this.world.placeFile(f.file, row, choice.kind, ctx)
     }
     takeIn(this.world, this.world.files.bytes(f.file), f.name, f.mime, ctx)
-    return this.world.cards.answer(cardId, 'File it', ctx.actor)
+    const out = this.world.cards.answer(cardId, 'File it', ctx.actor)
+    const filed = this.covered(f, choice.row, choice.kind)
+    if (filed) this.world.permissions.decided(filed, { yes: true, changed, card: cardId }, ctx)
+    if (choice.always && proposed)
+      this.world.permissions.grant(proposed, this.sentence(proposed), { ...ctx, card: cardId })
+    return out
   }
 
   // The person's no, with their reason: the file goes, unless something else holds it.
@@ -417,6 +483,9 @@ export class Intake {
     const f = card.call.input as Filing
     const ctx = { actor: { kind: 'person' as const, id: who.id }, user: who.id }
     const out = this.world.cards.answer(cardId, 'Decline', ctx.actor)
+    const proposed = this.covered(f, f.row, f.kind)
+    if (proposed)
+      this.world.permissions.decided(proposed, { yes: false, changed: false, card: cardId }, ctx)
     this.world.line({
       actor: ctx.actor,
       kind: 'intake',
@@ -443,7 +512,12 @@ export class Intake {
           .filter((x) => f.kind && x.kind === f.kind && x.file.hash !== f.file)
           .map((x) => x.file.name)
       : []
+    const proposed = this.covered(f, f.row, f.kind)
     return {
+      always:
+        card.state === 'waiting' && proposed && this.world.permissions.offers(proposed)
+          ? this.sentence(proposed)
+          : null,
       file: f.file,
       name: f.name,
       mime: f.mime,

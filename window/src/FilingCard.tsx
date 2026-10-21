@@ -28,6 +28,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
   const [looking, setLooking] = useState(false)
   const [words, setWords] = useState('')
   const [declining, setDeclining] = useState(false)
+  const [always, setAlways] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -169,7 +170,27 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
           That row has a {filing.kind} already: {filing.already.join(', ')}.
         </div>
       )}
-      {declining ? (
+      {always && filing.always ? (
+        <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
+          <div className="text-ink text-md">{filing.always}?</div>
+          <div className="text-ink-3 text-sm">
+            This one is filed now, and the next ones without a card, each shown on Home. Revoke it
+            any time in Settings › Standing permissions.
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() => act('file', { row, kind: kind || null, always: true })}
+            >
+              File it, and always
+            </Button>
+            <Button variant="ghost" onClick={() => setAlways(false)}>
+              Back
+            </Button>
+          </div>
+        </div>
+      ) : declining ? (
         <form
           className="flex flex-col gap-2"
           onSubmit={(e) => {
@@ -228,6 +249,11 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
           <Button disabled={busy} onClick={() => setDeclining(true)}>
             Decline
           </Button>
+          {filing.always && !changed && (
+            <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
+              Always…
+            </Button>
+          )}
         </div>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}

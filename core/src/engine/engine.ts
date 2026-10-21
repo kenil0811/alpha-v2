@@ -88,6 +88,18 @@ export class Engine {
     return this.desk(user).stop()
   }
 
+  // An agent's draft answered in words or with the card's own buttons: sent as drafted, or held.
+  async answerDraft(user: User, cardId: string, answer: string): Promise<Card> {
+    const drafts = this.options.hands?.drafts
+    if (!drafts) throw new Refused('Drafts are not set up in this core.')
+    const out =
+      answer === 'Not now' || answer === 'No'
+        ? drafts.hold(cardId, 'Something else', '', user)
+        : await drafts.send(cardId, null, user)
+    this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
+    return out
+  }
+
   answer(user: User, cardId: string, answer: string): Card {
     // a file from the mail: a yes files it where it was proposed, a no lets it go
     const intake = this.options.hands?.intake

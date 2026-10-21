@@ -8,8 +8,9 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { KNOWN } from '../connectors/service.ts'
 import { importRows, readDocument } from '../files/documents.ts'
-import type { Intake } from '../files/intake.ts'
+import { FILING, type Filing, type Intake } from '../files/intake.ts'
 import { agents } from '../modules/agents.ts'
+import { DRAFT, type Drafts } from '../modules/drafts.ts'
 import { keep } from '../modules/keep.ts'
 import type { AgentRunner } from '../modules/runs.ts'
 import { pagesOf, printPage } from '../pages/pages.ts'
@@ -38,6 +39,7 @@ export interface Hands {
   runner: AgentRunner
   browsers?: string // where the core's own browser is kept, to look at a module's page
   intake?: Intake // files that come by mail, proposed for filing
+  drafts?: Drafts // agents' drafts, sent from the person's mail on their yes
 }
 
 export const SERVER = 'alpha'
@@ -122,7 +124,8 @@ const SCRIPT = [
   'alpha.documents.list() (the documents filed: file (its hash), name, title, kind sheet or text or pdf, pieces, and rows: the rows it sits on, each table, row and kind); alpha.documents.read(file) (its cells or lines, each with sheet, cell and row, or page and line, and its words); alpha.documents.place(file, table, row, kind) (a filed document put on a row of the module’s own tables, as one of the kinds that table takes); alpha.documents.extract(file, { about, values: { name: { kind, choices, about } }, lists: { name: { about, fields } } }) (the model reads the document into those values, kind text, number, money, percent, date or choice; each comes back as { value, place } with the place it was read from, ready for rows.land’s places, or null when it is not found where it is cited; and dropped, why each left out was left out); an agent woken by a filing gets alpha.input.filed: the documents filed or placed since it last looked, each with file, name, kind and rows;',
   'alpha.rows.compute(table, id, values, formula, notes) (values with the formula each came from, and per field a note: the sum with its numbers, or each check; a value the person typed over keeps theirs, and the figure is kept beside it for Reset); alpha.browser.open(url) (title, text, links, html);',
   'alpha.browser.extract(url, { list, fields: { name: { css, attr } }, next, id: { field, pattern }, pages }) (every page of a list by its next link, or at most `pages`; returns { pages, items }, each item its fields with _id and _url; a failure carries kind sign_in or blocked);',
-  'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity).',
+  'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity);',
+  'alpha.draft.email({ to, cc, subject, body, kind, key, about: { table, row }, note }) (an email to one address for the person’s yes, on a card; a newer draft with the same key replaces the waiting one; sent at once only when the person gave a standing permission for that agent’s kind; an agent’s next run gets alpha.input.decided: what became of each draft, sent or not and why).',
 ].join('\n')
 
 // The effect of a call, by tool and input: the gates read it.
@@ -438,7 +441,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
         words: z.string().optional(),
       },
       async (a) =>
-        guard(() => {
+        guardAsync(async () => {
           const here_ = here.current
           if (a.answer_card) {
             // A wall: only the desk, in its turn on the person's message, with their words in it.
@@ -455,6 +458,21 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
             const choice = a.choice ?? ''
             if (card.options.length && !card.options.includes(choice))
               throw new Refused(`The choices on that card are ${card.options.join(', ')}.`)
+            // an agent's draft is sent or held, a file from the mail filed or declined, as drafted
+            const no = choice === card.options[1]
+            if (card.call?.tool === DRAFT && hands?.drafts) {
+              const done = no
+                ? hands.drafts.hold(card.id, 'Something else', words, here_.user)
+                : await hands.drafts.send(card.id, null, here_.user)
+              return ok(`The card is answered: ${done.state}.`)
+            }
+            if (card.call?.tool === FILING && hands?.intake) {
+              const f = card.call.input as Filing
+              const done = no
+                ? hands.intake.decline(card.id, words, here_.user)
+                : hands.intake.file(card.id, { row: f.row, kind: f.kind }, here_.user)
+              return ok(`The card is answered: ${done.state}.`)
+            }
             const done = world.cards.answer(card.id, choice, { kind: 'person', id: here_.user.id })
             return ok(`The card is answered: ${done.state}.`)
           }

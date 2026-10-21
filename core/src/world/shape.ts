@@ -85,6 +85,7 @@ const RESERVED = new Set([
   'documents',
   'chunks',
   'row_files',
+  'permissions',
   'desk_sessions',
   'meta',
   'select',

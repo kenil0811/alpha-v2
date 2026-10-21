@@ -279,6 +279,15 @@ export class ConnectorService {
     return conn
   }
 
+  // A connector's tool run by the core itself, on the person's yes already given (an agent's draft
+  // sent from its card): the gate is behind it, so it runs as asked.
+  async runTool(connector: string, name: string, input: Record<string, unknown>): Promise<unknown> {
+    const c = connectorOf(connector)
+    const spec = c.tools[name]
+    if (!spec) throw new Refused(`${c.manifest.title} has no ${name}.`)
+    return spec.run(this.call(c, this.connectionFor(c)), input as never)
+  }
+
   // The connections whose items carry files (an email's attachments), and an item's files.
   fileSources(): { connection: string; title: string; table: string; field: string }[] {
     return this.world.connections

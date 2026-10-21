@@ -291,6 +291,26 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX row_files_file ON row_files (file_hash);
   ALTER TABLE tables ADD COLUMN documents TEXT;
   `,
+  // 9: standing permissions (design §7): a yes given once for one agent's one kind of thing, shown
+  // as a sentence, used and counted, revoked in Settings (Kenil, 20 Oct).
+  `
+  CREATE TABLE permissions (
+    id TEXT PRIMARY KEY,
+    sentence TEXT NOT NULL,
+    action TEXT NOT NULL,
+    agent TEXT,
+    module_id TEXT,
+    place TEXT NOT NULL,
+    granted_by TEXT NOT NULL,
+    granted_at TEXT NOT NULL,
+    card_id TEXT,
+    uses INTEGER NOT NULL DEFAULT 0,
+    last_used_at TEXT,
+    revoked_at TEXT,
+    revoked_by TEXT
+  );
+  CREATE INDEX permissions_action ON permissions (action, revoked_at);
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

@@ -25,6 +25,7 @@ import {
 } from 'react'
 import { api, Problem } from './api.ts'
 import { Beside } from './Beside.tsx'
+import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
 import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
 import { Button, IconButton } from './ui/button.tsx'
@@ -584,6 +585,7 @@ export function CardBox({
   const [typed, setTyped] = useState('')
   const [opened, setOpened] = useState(false)
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
+  if (card.draft) return <DraftCard card={card} draft={card.draft} />
   const answer = async (a: string) => {
     setBusy(true)
     try {

@@ -11,6 +11,7 @@ import { type FileOut, Files } from './files.ts'
 import { type Actor, append, type Line, type LineInput, lastId, lines, read } from './journal.ts'
 import { Refused } from './kinds.ts'
 import { ModelSql } from './modelsql.ts'
+import { Permissions } from './permissions.ts'
 import { Records } from './records.ts'
 import { migrate } from './schema.ts'
 import { actorName, rowName, Shape, type WriteCtx } from './shape.ts'
@@ -78,6 +79,7 @@ export class World {
   readonly views: Views
   readonly files: Files
   readonly connections: Connections
+  readonly permissions: Permissions
   readonly db: Db
   readonly paths: TenantPaths
   readonly tenant: string
@@ -95,6 +97,7 @@ export class World {
     this.files = new Files(db, paths.files)
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
     this.connections = new Connections(db)
+    this.permissions = new Permissions(db)
   }
 
   static async open(dir: string, options: { pageRows?: number } = {}): Promise<World> {
