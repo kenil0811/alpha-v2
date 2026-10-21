@@ -59,8 +59,10 @@ export function ModuleScreen({
         : m?.tables[0]
           ? { kind: 'table', id: m.tables[0].id }
           : { kind: 'conversation' })
-  // the module's own address opens its first table, as that table's address
-  const firstTable = !tab && m && !front && !holds ? m.tables[0]?.id : undefined
+  // the module's own address opens its first table, as that table's address; only once this
+  // module's own data is here (the last module's, still shown, would send it back there)
+  const firstTable =
+    !tab && m && m.id === moduleId && !front && !holds ? m.tables[0]?.id : undefined
   useEffect(() => {
     if (firstTable) window.location.replace(`#/table/${firstTable}`)
   }, [firstTable])

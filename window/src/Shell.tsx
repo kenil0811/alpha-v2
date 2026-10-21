@@ -125,7 +125,8 @@ export function Rail({
     })
   return (
     <nav className="flex w-54 shrink-0 flex-col overflow-hidden border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink">
-      <div className="h-12 shrink-0" aria-hidden="true" />
+      {/* room for the Mac window's traffic lights; in Alpha's own window it moves the window */}
+      <div className="h-12 shrink-0" aria-hidden="true" data-tauri-drag-region />
       <div className="flex items-center gap-2.5 pb-3.5 pl-1.5">
         <Mark />
         <span className="min-w-0 flex-1">
@@ -415,7 +416,8 @@ function Strip({
   )
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
-      <div className="h-12 shrink-0" aria-hidden="true" />
+      {/* room for the Mac window's traffic lights; in Alpha's own window it moves the window */}
+      <div className="h-12 shrink-0" aria-hidden="true" data-tauri-drag-region />
       <Mark />
       <button
         type="button"
@@ -513,7 +515,10 @@ export function Bar({
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2.5 border-hair border-b bg-canvas pr-3.5 pl-6">
+    <div
+      data-tauri-drag-region
+      className="flex h-12 shrink-0 items-center gap-2.5 border-hair border-b bg-canvas pr-3.5 pl-6"
+    >
       <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-ink-3 text-md">
         {crumb.icon && <span className="shrink-0">{crumb.icon}</span>}
         {crumb.parts.slice(0, -1).map((p) => (
@@ -544,7 +549,7 @@ export function Bar({
           </button>
         </span>
       )}
-      <span className="flex-1" />
+      <span className="flex-1" data-tauri-drag-region />
       {ask && (
         <button
           type="button"

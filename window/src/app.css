@@ -58,6 +58,15 @@
   --paper-box: #b7791f;
   --mark: #fbe7a6;
 
+  /* the companion's face, the same in both themes: it sits on the desktop, not on Alpha */
+  --face: #7fa6cc;
+  --face-ink: #16202b;
+  --face-shine: #ffffff;
+  --face-cheek: #f2a0a8;
+  --face-quiet: #aab4bf;
+  --face-busy: #5b9bd5;
+  --face-needs: #f0a92e;
+
   --elev-pop: 0 1px 2px rgb(22 32 43 / 0.06), 0 8px 22px rgb(22 32 43 / 0.09);
   --elev-btn: 0 1px 2px rgb(22 32 43 / 0.1);
 
@@ -235,6 +244,21 @@
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }
+  /* the companion's window shows the desktop through everything it does not draw */
+  html.companion,
+  html.companion body {
+    background: transparent;
+  }
+  /* the companion's face: a blink now and then, the light breathing while Alpha works */
+  .face-blink {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: face-blink 6s infinite;
+  }
+  .face-pulse {
+    animation: face-pulse 1.4s ease-in-out infinite;
+  }
+
   /* Source Serif 4 is for page titles and big numbers only */
   h1 {
     font-family: var(--font-serif);
@@ -253,5 +277,22 @@
       /* biome-ignore lint/complexity/noImportantStyles: reduced motion wins over every utility */
       transition: none !important;
     }
+  }
+}
+
+@keyframes face-blink {
+  0%,
+  95%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes face-pulse {
+  50% {
+    opacity: 0.45;
   }
 }
