@@ -104,7 +104,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 |---|---|
 | Journal | Append-only lines: when, actor (a person, Alpha, an agent, a connector, the system), source, kind, words, data, and the module, run and card it belongs to. Full-text search. Triggers refuse any update or delete. |
 | Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone). A record keeps a version per change. Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. |
-| People and companies | Hard keys (email, E.164 phone, profile URL, domain) merge at once. Soft matches are proposals on a card, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. |
+| People and companies | Derived from the rows of tables that say how their rows name people (a row that is a person: a contact card, a source's contact, a deal's broker; a row that is an exchange: a message, a meeting) and from the person's own word. Hard keys (email, E.164 phone, profile URL, domain, company name) merge at once: a key belongs to the one whose row first gave it, and a row naming two holders never merges them. From mail, only those the person writes to become people; from meetings, those at meetings of up to twenty (Kenil, 21 Oct). Companies come from work domains and company names, with when someone was there kept. Messages and meetings count by address for whoever holds it now: plain numbers, never a score. Soft matches (the same full name, or the same name at the same company) are proposals on one card per batch, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. Removing a row takes only what it alone brought. A person field holds one of the person's people. |
 | Facts | Two time axes: when true, when recorded. Corrected by a newer fact, never edited. |
 | Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. A file sits on the rows it belongs to (a deal's CIM, a client's export) with its kind, one its table names when its kit names them (Kenil, 20 Oct). |
 | Tasks | Title, state, anchor (a module, table, record, field or page), owner (a person or an agent), due, repeat, parent, made by, run. |
@@ -280,6 +280,9 @@ connectors/gmail/
   fixtures/  test/
 ```
 
+A connector's table, and a kit's, says how its rows name people (each row a person, or an exchange
+with people, by its fields' names), and the world keeps its people from them (§4).
+
 The adapter underneath is pluggable: an Activepieces piece, a remote or local MCP server, a
 browser session, a SQL mapping.
 
@@ -417,6 +420,12 @@ list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and 
 files; activity), People, Activity, Settings (connections, folders, kits, model route, users for
 a firm). On a Mac, the companion: a small always-on-top window with a message box. Plain words,
 no tool names, no ids. The avatar rig and looks are ported from v1 as they are.
+
+**People** (Kenil, 21 Oct): everyone, and every company, with how many messages and meetings in
+the last 90 days, the last one and who wrote first; a page each with how to reach them, where they
+work now and before, the mail and meetings with them newest first (each opening its row), the
+rows of the person's modules that name them, where Alpha knows them from, and the ones merged into
+them with Unmerge. Likely matches wait on a card in Needs you, side by side, Merge or Keep apart.
 
 **The look is Ledger** (Kenil, 20 Oct; the proposal and mock are in the project's
 `design/window-proposal.md`): slate neutrals and one slate-blue accent, Geist with Source Serif 4
