@@ -107,7 +107,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | People and companies | Derived from the rows of tables that say how their rows name people (a row that is a person: a contact card, a source's contact, a deal's broker; a row that is an exchange: a message, a meeting) and from the person's own word. Hard keys (email, E.164 phone, profile URL, domain, company name) merge at once: a key belongs to the one whose row first gave it, and a row naming two holders never merges them. From mail, only those the person writes to become people; from meetings, those at meetings of up to twenty (Kenil, 21 Oct). Companies come from work domains and company names, with when someone was there kept. Messages and meetings count by address for whoever holds it now: plain numbers, never a score. Soft matches (the same full name, or the same name at the same company) are proposals on one card per batch, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. Removing a row takes only what it alone brought. A person field holds one of the person's people. |
 | Facts | Two time axes: when true, when recorded. Corrected by a newer fact, never edited. |
 | Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. A file sits on the rows it belongs to (a deal's CIM, a client's export) with its kind, one its table names when its kit names them (Kenil, 20 Oct). |
-| Tasks | Title, state, anchor (a module, table, record, field or page), owner (a person or an agent), due, repeat, parent, made by, run. |
+| Tasks | Title, state (To do, In progress, Waiting, Done, Dropped), anchor (a module, table, record, field or page) and what else it touches (rows, people, files), owner (the person, Alpha, or an agent that takes tasks), due and reminder, repeat in words (each occurrence its own task), priority (High, Normal, Low), parent, made by, and the runs that served it (Kenil's plan, 21 Oct). |
 | Cards | Every question, permission and review as a durable row with one state (waiting, yes, no, answered, withdrawn, allowed), opened and closed with a journal line. |
 | Views | A table's saved views (kind, filters with all or any, sorts in levels, group, columns, totals, colours), shared by the firm, kept by field id, mirrored by name in module.yaml; a kit's own until someone changes them. |
 | Agents, triggers, runs | §11. |
@@ -372,6 +372,16 @@ put on a row since it last looked, with their rows. A change runs the agents wai
 next tick. For a deal search's new fits (Kenil, 19 Oct), a run's line on Home names its rows, each
 with Open and one choice set in a click (Pass).
 
+**Agents on tasks** (Kenil's plan, 21 Oct): an agent whose file says `tasks: true` takes the tasks
+given to it; with no trigger it is on call for them only (Q92). Giving a task never starts it;
+Start, on its page or in words, runs the agent with the task as its input, and the run serves that
+task. Only the run's word makes it Done, with what it did (Q93); a run may say what it waits for
+instead. One that ends saying neither leaves the task Waiting, saying so; a stopped one puts it back
+in To do; one whose cards wait leaves it Waiting for your yes, and its agent runs on it again once
+every card is decided, handed what came of them. Only runs serving a task show on it: an agent's
+runs on its own trigger stay in Activity. Tasks an agent proposes come on one card, each ticked, and
+none is kept before the yes.
+
 **Built-ins, quiet:** **Watson** notices after turns, consolidates while the Mac is idle, and
 shows a folded line under a reply. **Doc** repairs skills and readers. **Morning** is all of
 Alpha's proactiveness: at first open, what is due, what changed, what went quiet, and one or two
@@ -380,7 +390,12 @@ characters.
 
 ## 12. Tasks and cards
 
-As in §4. What an agent pulls in from outside lands as a staged batch on one card and is filed
+As in §4. **Tasks** (Kenil's plan, 21 Oct) are one list of all work. Alpha keeps them with one
+tool: it places each on what the person's words name (the rows, people and files, or the module
+they asked from) and says where in a line, so they can change it; an open task on the same place
+with most of the same words comes back to offer one. A reminder comes once at its time, as a Mac
+notification and a line on Home; a repeating task makes its next when it is done or dropped, or its
+day has passed. The model reads them in the view `tasks`; removing the person's own asks first. What an agent pulls in from outside lands as a staged batch on one card and is filed
 on the yes, with the card in each value's provenance; what a person types or drops is filed at
 once. **Files that come by mail** (Kenil, 20 Oct): for each email with attachments after intake
 began, the model proposes each file's row among the rows of tables that take documents (only rows
@@ -426,7 +441,7 @@ waits, what runs and what is next. A module's Conversation tab shows it through 
 lens, and Ask (⌘J) opens it on the right of any other screen. Permissions and questions land
 inline with their buttons.
 
-**The rail is module names only** (Kenil, 20 Oct): Home, Conversation, Activity, then each module
+**The rail is module names only** (Kenil, 20 Oct): Home, Conversation, Tasks, People, Activity, then each module
 by name with the modules inside it folded under it, and a menu to move one into another; its
 pages and tables are its screen's tabs. A module holding others opens on an Overview of them. The
 rail folds to a strip of icons (⌘\), and the Ask panel drags wider, to two thirds of the window,
@@ -444,6 +459,15 @@ the last 90 days, the last one and who wrote first; a page each with how to reac
 work now and before, the mail and meetings with them newest first (each opening its row), the
 rows of the person's modules that name them, where Alpha knows them from, and the ones merged into
 them with Unmerge. Likely matches wait on a card in Needs you, side by side, Merge or Keep apart.
+
+**Tasks** (Kenil, 21 Oct): Tasks in the rail with today's and overdue counted; saved lists (Today,
+This week, Overdue, Waiting for you, Agents, All open, Done) in four views: a list, by place (a
+tree of module, table and row), a board by state to drag between, and a calendar; New task at the
+top. A task's page: its state, due, reminder, repeat, priority, owner, where it sits (with Take
+off), notes, a checklist of the tasks beneath it, the place's values and the other tasks there,
+what it touches, its agent with Start, the run with Stop and earlier runs, the cards its runs put
+to the person, and its history. A row's panel has its tasks with Add a task, and a row with open
+tasks shows their count beside its name; Home has Today's tasks; Find (⌘K) has Tasks and New task.
 
 **The look is Ledger** (Kenil, 20 Oct; the proposal and mock are in the project's
 `design/window-proposal.md`): slate neutrals and one slate-blue accent, Geist with Source Serif 4

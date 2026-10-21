@@ -1,0 +1,31 @@
+name: tasks-by-chat
+title: 'Tasks: said in a sentence, each put on the row it concerns, with a reminder and a repeat'
+why: >
+  The Task manager plan (Kenil's yes, 21 Oct), step 1: Alpha keeps tasks with its task tool,
+  placing each on the place it concerns and saying where; a reminder and a repeat are read from
+  the person's words. A made-up firm's clients, on a fresh tenant.
+steps:
+  - say: >
+      Make a table Clients with a Name and a City, and add Acme Plumbing in Denver and Riverside
+      Dental in Boulder.
+    checks:
+      - rows_in: { table: Clients, count: 2 }
+  - say: >
+      Remind me to send Acme Plumbing their June report next Friday at 10am. Also add a task to
+      call Riverside Dental about their overdue invoice, high priority, and a task to review all
+      clients every Monday starting next Monday.
+    checks:
+      - query: { sql: "SELECT title FROM tasks", count: 3 }
+      - query:
+          sql: "SELECT t.title FROM tasks t JOIN clients c ON c.id = t.row WHERE c.name = 'Acme Plumbing' AND t.remind_at IS NOT NULL"
+          count: 1
+      - query:
+          sql: "SELECT t.title FROM tasks t JOIN clients c ON c.id = t.row WHERE c.name = 'Riverside Dental' AND t.priority = 'high'"
+          count: 1
+      - query: { sql: "SELECT title FROM tasks WHERE repeat IS NOT NULL AND due IS NOT NULL", count: 1 }
+      - reply_matches: 'Acme Plumbing|Riverside Dental'
+      - errors: 0
+  - say: The Riverside call is done.
+    checks:
+      - query: { sql: "SELECT title FROM tasks WHERE state = 'Done'", count: 1 }
+      - errors: 0

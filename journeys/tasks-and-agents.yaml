@@ -1,0 +1,65 @@
+name: tasks-and-agents
+title: 'Tasks: ten said at once and placed, what is open on a part of the tree, and an agent finishing one'
+why: >
+  The Task manager plan (Kenil's yes, 21 Oct), its closing journey, adapted from his scope §6.4:
+  ten tasks made by chat without saying where, at least eight placed where they belong, "what's
+  open in …" answered from the right part of the tree, and an agent that takes tasks, made by
+  chat, started on one and finishing it with what it did. A made-up firm, on a fresh tenant.
+steps:
+  - say: >
+      In a module called Firm, make two tables. Clients, with a Name and a City: Acme Plumbing in
+      Denver, Riverside Dental in Boulder and Hilltop Bakery in Golden. Deals, with a Name and an
+      Asking price in dollars: Coastal HVAC at 1,200,000 and Fresno CPA practice at 800,000.
+    checks:
+      - rows_in: { table: Clients, count: 3 }
+      - rows_in: { table: Deals, count: 2 }
+  - say: |
+      My list for the next while:
+      send Acme Plumbing their June report;
+      chase Riverside Dental's overdue invoice;
+      ask the Coastal HVAC broker for three years of P&L;
+      book a site visit at the Fresno CPA practice;
+      renew Hilltop Bakery's contract;
+      read the Coastal HVAC CIM;
+      call Acme Plumbing about their new office;
+      get the Fresno CPA practice's client list;
+      buy printer paper;
+      thank Riverside Dental for the referral.
+    checks:
+      - query: { sql: "SELECT title FROM tasks", count: 10 }
+      - query:
+          sql: >
+            SELECT n FROM (SELECT count(*) AS n FROM tasks t
+              LEFT JOIN clients c ON c.id = t.row LEFT JOIN deals d ON d.id = t.row
+              WHERE (c.name = 'Acme Plumbing' AND (t.title LIKE '%June report%' OR t.title LIKE '%office%'))
+                 OR (c.name = 'Riverside Dental' AND (t.title LIKE '%invoice%' OR t.title LIKE '%referral%'))
+                 OR (c.name = 'Hilltop Bakery' AND t.title LIKE '%contract%')
+                 OR (d.name = 'Coastal HVAC' AND (t.title LIKE '%P&L%' OR t.title LIKE '%CIM%'))
+                 OR (d.name = 'Fresno CPA practice' AND (t.title LIKE '%visit%' OR t.title LIKE '%client list%')))
+            WHERE n >= 8
+          count: 1
+      - errors: 0
+  - say: What's open in Deals?
+    checks:
+      - reply_matches: '^(?=[\s\S]*P&L)(?=[\s\S]*CIM)(?=[\s\S]*client list)(?![\s\S]*June report)(?![\s\S]*invoice)'
+      - errors: 0
+  - say: >
+      Make me an agent in Firm called Deal Clerk that takes tasks: for a task on a deal, it reads
+      that deal's asking price and finishes the task saying the price it saw.
+    checks:
+      - agents_on: 1
+      - errors: 0
+  - say: Give the Coastal HVAC P&L task to Deal Clerk and start it.
+    checks:
+      - query:
+          sql: "SELECT title FROM tasks WHERE owner = 'Deal Clerk' AND state = 'Done' AND title LIKE '%P&L%'"
+          count: 1
+      - query:
+          sql: "SELECT words FROM journal WHERE kind = 'task' AND words LIKE 'Deal Clerk finished%'"
+          matches: '1,200,000|1200000|1\.2'
+      # started once: Alpha wrote the agent right the first time, with no probing runs
+      - query:
+          sql: "SELECT words FROM journal WHERE kind = 'task' AND words LIKE 'Deal Clerk started on%'"
+          count: 1
+      - last_run: ok
+      - errors: 0
