@@ -29,7 +29,13 @@ function check(module: Module, rel: string, text: string): string | null {
     const a = parseAgent(text, rel)
     if (!existsSync(join(module.dir, a.runs.script)))
       throw new Refused(`${a.name} runs ${a.runs.script}, which is not kept yet: keep it first.`)
-    return `${a.name} is on, ${whenWords(a.trigger)}`
+    // a wall: an agent that takes tasks says when one is done, or no task of its could ever be
+    if (a.tasks && !readFileSync(join(module.dir, a.runs.script), 'utf8').includes('task.done'))
+      throw new Refused(
+        `${a.name} takes tasks, but ${a.runs.script} never calls alpha.task.done(words): only that makes a task Done, with what was done (a returned done: true does nothing). Its task is alpha.input.task: place.row is the row's id, values that row's values by field name.`,
+      )
+    if (!a.trigger) return `${a.name} is on call for the tasks given to it`
+    return `${a.name} is on, ${whenWords(a.trigger)}${a.tasks ? ', and takes tasks' : ''}`
   }
   if (/^skills\/[^/]+\/SKILL\.md$/.test(rel)) {
     const m = /^---\n([\s\S]*?)\n---/.exec(text)

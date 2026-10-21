@@ -139,6 +139,31 @@ function columnsOf(t: Table): string[] {
 // People and companies as the model reads them (design §4): each as one, through merges.
 const PEOPLE_VIEWS = [
   {
+    view: 'tasks',
+    table: 'tasks: one list of all work, each on the place it concerns',
+    columns: [
+      'id',
+      'title',
+      'state',
+      'due',
+      'remind_at',
+      'repeat',
+      'priority',
+      'owner',
+      'module',
+      'table_name',
+      'row',
+      'field',
+      'page',
+      'parent',
+      'notes',
+      'touches',
+      'made_by',
+      'added',
+      'done_at',
+    ],
+  },
+  {
     view: 'people',
     table: 'people',
     columns: ['id', 'name', 'emails', 'phones', 'profile', 'companies', 'added'],
@@ -162,6 +187,25 @@ const keyList = (key: string) =>
     WHERE u.root = p.id AND k.key = '${key}')`
 
 const PEOPLE_SQL: [string, string][] = [
+  [
+    'tasks',
+    `SELECT k.id, k.title,
+       CASE k.state WHEN 'todo' THEN 'To do' WHEN 'doing' THEN 'In progress' WHEN 'waiting' THEN 'Waiting'
+         WHEN 'done' THEN 'Done' ELSE 'Dropped' END AS state,
+       k.due, k.remind_at, k.repeat, k.priority,
+       CASE k.owner_kind WHEN 'alpha' THEN 'Alpha'
+         WHEN 'agent' THEN (SELECT a.name FROM main.agents a WHERE a.id = k.owner_id)
+         ELSE 'the person' END AS owner,
+       (SELECT m.name FROM main.modules m WHERE m.id = k.module_id) AS module,
+       (SELECT t.name FROM main.tables t WHERE t.id = k.table_id) AS table_name,
+       k.record_id AS row,
+       (SELECT f.name FROM main.fields f WHERE f.id = k.field_id) AS field,
+       k.page, k.parent_id AS parent, k.notes,
+       (SELECT group_concat(r.kind || ':' || r.ref, ', ') FROM main.task_refs r WHERE r.task_id = k.id)
+         AS touches,
+       k.made_by, k.created_at AS added, k.done_at
+     FROM main.tasks k`,
+  ],
   [
     'people_up',
     `WITH RECURSIVE up (id, root) AS (

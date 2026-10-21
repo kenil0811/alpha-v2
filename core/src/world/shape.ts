@@ -121,6 +121,8 @@ const RESERVED = new Set([
   'people_links',
   'people_pairs',
   'exchanges',
+  'tasks',
+  'task_refs',
   'desk_sessions',
   'meta',
   'select',

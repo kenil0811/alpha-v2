@@ -101,6 +101,22 @@ const alpha = {
       connector?: string
     }) => call('draft.email', d),
   },
+  // a run started on a task says what became of it; any run may propose tasks for the person's yes
+  task: {
+    done: (words: string) => call('task.done', { words }),
+    wait: (words: string) => call('task.wait', { words }),
+    propose: (
+      tasks: {
+        title: string
+        notes?: string
+        due?: string
+        priority?: 'high' | 'normal' | 'low'
+        on?: { table?: string; row?: string; field?: string; page?: string }
+        owner?: 'person' | 'agent'
+      }[],
+      words?: string,
+    ) => call('task.propose', { tasks, ...(words ? { words } : {}) }),
+  },
 }
 
 try {

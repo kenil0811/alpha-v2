@@ -385,6 +385,56 @@ export const MIGRATIONS: string[] = [
   -- How a table's rows name people: a row that is a person, or an exchange with people.
   ALTER TABLE tables ADD COLUMN people TEXT;
   `,
+  // 11: tasks (Kenil's plan, 21 Oct): one list of all work, each on the place it concerns.
+  `
+  CREATE TABLE tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('todo', 'doing', 'waiting', 'done', 'dropped')),
+    notes TEXT,
+    due TEXT,
+    remind_at TEXT,
+    reminded_at TEXT,
+    repeat TEXT,
+    repeat_rule TEXT,
+    repeat_next TEXT,
+    priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('high', 'normal', 'low')),
+    owner_kind TEXT NOT NULL DEFAULT 'person' CHECK (owner_kind IN ('person', 'alpha', 'agent')),
+    owner_id TEXT,
+    parent_id TEXT REFERENCES tasks (id),
+    module_id TEXT,
+    table_id TEXT,
+    record_id TEXT,
+    field_id TEXT,
+    page TEXT,
+    placed_by TEXT,
+    placed_why TEXT,
+    made_by TEXT NOT NULL,
+    run_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    done_at TEXT
+  );
+  CREATE INDEX tasks_state ON tasks (state, due);
+  CREATE INDEX tasks_place ON tasks (module_id, table_id, record_id);
+  CREATE INDEX tasks_parent ON tasks (parent_id);
+  -- What else a task touches: rows, people, files.
+  CREATE TABLE task_refs (
+    task_id TEXT NOT NULL REFERENCES tasks (id),
+    kind TEXT NOT NULL CHECK (kind IN ('row', 'person', 'file')),
+    ref TEXT NOT NULL,
+    PRIMARY KEY (task_id, kind, ref)
+  );
+  CREATE INDEX task_refs_ref ON task_refs (kind, ref);
+  -- A run serves the task it works on.
+  ALTER TABLE runs ADD COLUMN task_id TEXT;
+  `,
+  // 12: agents on tasks: an agent that takes the tasks given to it (on call, it may have no
+  // trigger), and the runs serving a task found by it.
+  `
+  ALTER TABLE agents ADD COLUMN tasks INTEGER NOT NULL DEFAULT 0;
+  CREATE INDEX runs_task ON runs (task_id, started_at);
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

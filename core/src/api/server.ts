@@ -19,13 +19,14 @@ import { agents, nextRun, setAgentState, whenWords } from '../modules/agents.ts'
 import { DRAFT } from '../modules/drafts.ts'
 import { install, installedKits, update } from '../modules/kits.ts'
 import { installPack } from '../modules/packs.ts'
-import { moduleNetwork } from '../modules/runs.ts'
+import { moduleNetwork, PROPOSE_TASKS, type RunRow } from '../modules/runs.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../pages/pages.ts'
 import type { Setup } from '../setup.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
 import { phoneWords } from '../world/phones.ts'
 import { findField } from '../world/shape.ts'
+import type { Task } from '../world/tasks.ts'
 import type { View } from '../world/views.ts'
 import type { User } from '../world/world.ts'
 import type {
@@ -53,6 +54,9 @@ import type {
   Stream,
   StreamLine,
   TableView,
+  TaskLineView,
+  TasksView,
+  TaskView,
   TodayView,
   WorkingModuleView,
 } from './types.ts'
@@ -80,6 +84,7 @@ const STREAM_KINDS = [
   'remembered',
   'kept',
   'told',
+  'reminder',
 ]
 
 export interface ServerOptions {
@@ -254,6 +259,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           connection: k.id,
           inBrowser: connectorOf(k.connector).manifest.auth === 'browser',
         })),
+      tasks: world.tasks.counts(),
       lastId: world.lastLineId(),
     }
   })
@@ -278,6 +284,17 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     draft: engine.hands?.drafts?.view(c) ?? null,
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
     review: engine.hands?.runner?.reviews.view(c) ?? null,
+    proposed: engine.hands?.runner?.proposedView(c) ?? null,
+  })
+  // An agent's proposed tasks: those the person kept are added (by their place in the card).
+  app.post('/api/cards/:id/tasks', async (req): Promise<CardView | null> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { take } = z.object({ take: z.array(z.number().int().min(0)) }).parse(req.body)
+    const runner = engine.hands?.runner
+    if (!runner) throw new Refused('Agents are not set up in this core.')
+    const out = runner.adopt(id, take, user.id)
+    live()
+    return cardOut(out)
   })
   // An agent's rows on a card: the person's choice on some, or on every one not yet decided.
   app.post('/api/cards/:id/rows', async (req): Promise<CardView | null> => {
@@ -383,8 +400,14 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { answer } = z.object({ answer: z.string().min(1) }).parse(req.body)
     try {
-      if (world.cards.get(id)?.call?.tool === DRAFT)
-        return cardOut(await engine.answerDraft(user, id, answer))
+      const c = world.cards.get(id)
+      if (c?.call?.tool === DRAFT) return cardOut(await engine.answerDraft(user, id, answer))
+      // a yes on proposed tasks adds them all; the card's own list keeps some
+      if (c?.call?.tool === PROPOSE_TASKS && answer === c.options[0] && engine.hands?.runner) {
+        const out = engine.hands.runner.adopt(id, 'all', user.id)
+        live()
+        return cardOut(out)
+      }
       return cardOut(engine.answer(user, id, answer))
     } catch (err) {
       if (err instanceof Refused) return reply.code(409).send({ problem: err.message })
@@ -510,6 +533,341 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     live()
     const c = world.cards.get(id)
     return c ? cardOut(c) : null
+  })
+
+  // Tasks (Kenil's plan, 21 Oct): the saved lists, a task's page, and the person's own word on
+  // them: added, changed, moved, done, removed.
+  const today = () => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const inDays = (n: number) => {
+    const d = new Date(Date.now() + n * 86_400_000)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const placeOf = (p: Task['place']) => {
+    const rowName = (table: string, row: string) => {
+      const t = world.shape.table(table)
+      const r = world.records.get(row)
+      return t && r ? world.rowName(t, r.record.values) : 'a row'
+    }
+    const words = world.tasks.placeWords(p, rowName)
+    const href =
+      p.row && p.table
+        ? `#/table/${p.table}/${p.row}`
+        : p.table
+          ? `#/table/${p.table}`
+          : p.module && p.page
+            ? `#/module/${p.module}/page/${p.page}`
+            : p.module
+              ? `#/module/${p.module}`
+              : null
+    return { words, path: words === 'nowhere yet' ? [] : words.split(' › '), href }
+  }
+  // the tasks a card waits on the person for: about the task, or from a run serving it
+  const waitingCards = () =>
+    new Set([
+      ...world.cards
+        .waiting()
+        .map((c) => (c.call?.input as { task?: string } | undefined)?.task)
+        .filter((x): x is string => !!x),
+      ...world.cards.waitingTasks(),
+    ])
+  const workingOn = () =>
+    new Set(
+      (engine.hands?.runner.runs(50) ?? [])
+        .filter((r) => r.state === 'running' && r.task)
+        .map((r) => r.task as string),
+    )
+  const lineOf = (t: Task, waiting: Set<string>, working = workingOn()): TaskLineView => {
+    const kids = world.tasks.children(t.id)
+    return {
+      id: t.id,
+      title: t.title,
+      state: t.state,
+      due: t.due,
+      overdue:
+        !!t.due && ['todo', 'doing', 'waiting'].includes(t.state) && t.due.slice(0, 10) < today(),
+      remindAt: t.remindAt,
+      repeat: t.repeat,
+      priority: t.priority,
+      owner: world.tasks.ownerWords(t),
+      ownerKind: t.owner.kind,
+      place: placeOf(t.place),
+      parent: t.parent,
+      children: kids.length,
+      childrenDone: kids.filter((k) => k.state === 'done').length,
+      waitingForYou: waiting.has(t.id),
+      working: working.has(t.id),
+    }
+  }
+  const LISTS: Record<string, () => Task[]> = {
+    today: () => world.tasks.list({ open: true, dueBy: today() }),
+    week: () => world.tasks.list({ open: true, dueBy: inDays(7) }),
+    overdue: () => world.tasks.list({ open: true, dueBy: inDays(-1) }),
+    waiting: () => {
+      const w = waitingCards()
+      return world.tasks.list({ open: true }).filter((t) => t.state === 'waiting' || w.has(t.id))
+    },
+    // the tasks given to agents, the ones they work on now first
+    agents: () => {
+      const w = workingOn()
+      return world.tasks
+        .list({ open: true, owner: { kind: 'agent' } })
+        .sort((a, b) => Number(w.has(b.id)) - Number(w.has(a.id)))
+    },
+    open: () => world.tasks.list({ open: true }),
+    done: () =>
+      world.tasks
+        .list()
+        .filter((t) => t.state === 'done' || t.state === 'dropped')
+        .sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''))
+        .slice(0, 200),
+  }
+  app.get('/api/tasks', async (req): Promise<TasksView> => {
+    const q = z
+      .object({
+        list: z.string().default('open'),
+        module: z.string().optional(),
+        table: z.string().optional(),
+        row: z.string().optional(),
+      })
+      .parse(req.query)
+    const waiting = waitingCards()
+    const on =
+      q.module || q.table || q.row
+        ? {
+            module: q.module ?? null,
+            table: q.table ?? null,
+            row: q.row ?? null,
+            field: null,
+            page: null,
+          }
+        : null
+    const tasks = on ? world.tasks.list({ on }) : (LISTS[q.list] ?? (LISTS.open as () => Task[]))()
+    const working = workingOn()
+    return {
+      list: q.list,
+      lines: tasks.map((t) => lineOf(t, waiting, working)),
+      counts: Object.fromEntries(
+        Object.entries(LISTS).map(([k, f]) => [k, k === 'done' ? 0 : f().length]),
+      ),
+    }
+  })
+
+  const taskOut = (id: string): TaskView | undefined => {
+    const t = world.tasks.get(id)
+    if (!t) return undefined
+    const waiting = waitingCards()
+    const row = t.place.row ? world.records.get(t.place.row) : undefined
+    const values = row
+      ? row.table.fields.flatMap((f) => {
+          const v = row.record.values[f.slug]
+          if (v === null || v === undefined || v === '') return []
+          const words =
+            typeof v === 'object' && v && 'amount' in (v as object)
+              ? `${(v as { amount: number }).amount.toLocaleString()} ${(v as { currency: string }).currency}`
+              : f.kind === 'person'
+                ? (world.people.names([String(v)])[String(v)] ?? String(v))
+                : Array.isArray(v)
+                  ? v.join(', ')
+                  : String(v)
+          return [{ field: f.name, value: words }]
+        })
+      : []
+    const parent = t.parent ? world.tasks.get(t.parent) : undefined
+    // who can own it: the person, Alpha, and the agents that take tasks
+    const all = agents(world)
+    const owners = [
+      { kind: 'person' as const, id: user.id, name: 'You' },
+      { kind: 'alpha' as const, id: null, name: 'Alpha' },
+      ...all
+        .filter((a) => a.tasks || a.id === t.owner.id)
+        .map((a) => ({ kind: 'agent' as const, id: a.id, name: a.name })),
+    ]
+    const agent = t.owner.kind === 'agent' ? all.find((a) => a.id === t.owner.id) : undefined
+    const runner = engine.hands?.runner
+    const cards = world.cards.ofTask(t.id)
+    return {
+      ...lineOf(t, waiting),
+      notes: t.notes,
+      remindedAt: t.remindedAt,
+      madeBy: t.madeBy.startsWith('person')
+        ? 'You'
+        : t.madeBy.startsWith('agent:')
+          ? t.madeBy.slice(6)
+          : 'Alpha',
+      placedBy: t.placedBy,
+      placedWhy: t.placedWhy,
+      createdAt: t.createdAt,
+      doneAt: t.doneAt,
+      parentTitle: parent?.title ?? null,
+      subtasks: world.tasks.children(t.id).map((k) => lineOf(k, waiting)),
+      touches: t.refs.map((r) => {
+        if (r.kind === 'person')
+          return {
+            kind: r.kind,
+            name: world.people.names([r.ref])[r.ref] ?? r.ref,
+            href: `#/people/${r.ref}`,
+          }
+        if (r.kind === 'row') {
+          const rec = world.records.get(r.ref)
+          return {
+            kind: r.kind,
+            name: rec ? world.rowName(rec.table, rec.record.values) : 'a row no longer there',
+            href: rec ? `#/table/${rec.table.id}/${r.ref}` : null,
+          }
+        }
+        return {
+          kind: r.kind,
+          name: world.files.file(r.ref)?.name ?? r.ref,
+          href: `#/file/${r.ref}`,
+        }
+      }),
+      context: {
+        values,
+        siblings:
+          t.place.module || t.place.table
+            ? world.tasks
+                .list({ open: true, on: { ...t.place, field: null } })
+                .filter((x) => x.id !== t.id && x.parent !== t.id)
+                .slice(0, 20)
+                .map((x) => lineOf(x, waiting))
+            : [],
+      },
+      history: world
+        .lines({ kinds: ['task', 'reminder'] })
+        .filter((l) => (l.data as { task?: string; tasks?: string[] }).task === t.id)
+        .slice(-40)
+        .reverse()
+        .map((l) => ({ at: l.at, words: l.words })),
+      owners,
+      agent: agent
+        ? {
+            name: agent.name,
+            on: agent.state === 'on',
+            takes: agent.tasks,
+            said:
+              world
+                .lines({ kinds: ['task'] })
+                .filter(
+                  (l) =>
+                    (l.data as { task?: string }).task === t.id &&
+                    l.actor.kind === 'agent' &&
+                    !l.words.startsWith(`${agent.name} started on`),
+                )
+                .at(-1)?.words ?? null,
+            runs: (runner?.runsOf(t.id) ?? [])
+              .reverse()
+              .sort((a, b) => Number(b.state === 'running') - Number(a.state === 'running'))
+              .map(runOut),
+          }
+        : null,
+      cards: [
+        ...cards.filter((c) => c.state === 'waiting'),
+        ...cards.filter((c) => c.state !== 'waiting').reverse(),
+      ].map(cardOut),
+    }
+  }
+
+  // Start the agent a task is given to on it; its run goes on after this answers.
+  app.post('/api/tasks/:id/start', async (req): Promise<TaskView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const runner = engine.hands?.runner
+    if (!runner) throw new Refused('Agents are not set up in this core.')
+    runner.startTask(id, { user: user.id, turn: null }).run.catch(() => undefined)
+    live()
+    return taskOut(id)
+  })
+
+  app.get('/api/tasks/:id', async (req, reply): Promise<TaskView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const t = taskOut(id)
+    if (!t) return reply.code(404).send({ problem: 'That task is not there.' })
+    return t
+  })
+
+  const TaskBody = z.object({
+    title: z.string().optional(),
+    notes: z.string().nullable().optional(),
+    due: z.string().nullable().optional(),
+    remindAt: z.string().nullable().optional(),
+    repeat: z.string().nullable().optional(),
+    priority: z.enum(['high', 'normal', 'low']).optional(),
+    owner: z
+      .object({ kind: z.enum(['person', 'alpha', 'agent']), id: z.string().nullable().optional() })
+      .optional(),
+    parent: z.string().nullable().optional(),
+    on: z
+      .object({
+        module: z.string().optional(),
+        table: z.string().optional(),
+        row: z.string().optional(),
+        field: z.string().optional(),
+        page: z.string().optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  // only what was sent: a field left out is left as it is
+  const given = <T extends object>(o: T) =>
+    Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T
+
+  app.post('/api/tasks', async (req): Promise<TaskView | undefined> => {
+    const b = TaskBody.parse(req.body)
+    const t = world.tasks.add(
+      { ...given(b), title: b.title ?? '', ...(b.on ? { placedBy: 'person' } : {}) } as Parameters<
+        typeof world.tasks.add
+      >[0],
+      asPerson,
+    )
+    live()
+    return taskOut(t.id)
+  })
+
+  app.post('/api/tasks/:id', async (req): Promise<TaskView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const b = TaskBody.parse(req.body)
+    world.tasks.change(
+      id,
+      {
+        ...given(b),
+        ...(b.on !== undefined ? { placedBy: 'person', placedWhy: null } : {}),
+      } as Parameters<typeof world.tasks.change>[1],
+      asPerson,
+    )
+    live()
+    return taskOut(id)
+  })
+
+  app.post('/api/tasks/:id/state', async (req): Promise<TaskView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { state } = z
+      .object({ state: z.enum(['todo', 'doing', 'waiting', 'done', 'dropped']) })
+      .parse(req.body)
+    world.tasks.setState(id, state, asPerson)
+    live()
+    return taskOut(id)
+  })
+
+  // the person's own removal, from their window: their word is the ask
+  app.delete('/api/tasks/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const n = world.tasks.remove([id], asPerson)
+    live()
+    return { removed: n }
+  })
+
+  // open tasks per row of a table, for the counts beside its rows
+  app.get('/api/tables/:id/tasks', async (req): Promise<Record<string, number>> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const counts: Record<string, number> = {}
+    for (const t of world.tasks.list({
+      open: true,
+      on: { module: null, table: id, row: null, field: null, page: null },
+    }))
+      if (t.place.row) counts[t.place.row] = (counts[t.place.row] ?? 0) + 1
+    return counts
   })
 
   // The modules the window shows: each with a page or a table in sight, and the modules they sit
@@ -1439,32 +1797,31 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   // Activity: agents' runs and connections' reads, newest first. A run that ended having changed
   // nothing is quiet, so the window can fold it.
-  const activity = (): RunView[] => {
-    const names = new Map(agents(world).map((a) => [a.id, a.name]))
-    const modules = new Map(world.shape.modules().map((m) => [m.id, m.name]))
+  function runOut(r: RunRow): RunView {
     const CHANGES = new Set(['landed', 'wrote', 'changed', 'removed', 'told', 'card_opened'])
-    const runs: RunView[] = (engine.hands?.runner.runs(100) ?? []).map((r) => {
-      const steps = world
-        .lines({
-          run: r.id,
-          kinds: ['run_step', 'told', 'landed', 'wrote', 'changed', 'removed', 'card_opened'],
-        })
-        .map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words }))
-      return {
-        id: r.id,
-        kind: 'run',
-        name: (r.agent && names.get(r.agent)) || 'A try',
-        module: r.module ? (modules.get(r.module) ?? null) : null,
-        moduleId: r.module,
-        startedAt: r.startedAt,
-        ms: r.endedAt ? Date.parse(r.endedAt) - Date.parse(r.startedAt) : null,
-        state: r.state,
-        words: r.words,
-        tokens: r.tokens, // a script's own work uses none; a document read by the model does
-        quiet: r.state === 'ok' && !steps.some((st) => CHANGES.has(st.kind)),
-        steps,
-      }
-    })
+    const steps = world
+      .lines({
+        run: r.id,
+        kinds: ['run_step', 'told', 'landed', 'wrote', 'changed', 'removed', 'card_opened', 'task'],
+      })
+      .map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words }))
+    return {
+      id: r.id,
+      kind: 'run',
+      name: (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try',
+      module: r.module ? (world.shape.module(r.module)?.name ?? null) : null,
+      moduleId: r.module,
+      startedAt: r.startedAt,
+      ms: r.endedAt ? Date.parse(r.endedAt) - Date.parse(r.startedAt) : null,
+      state: r.state,
+      words: r.words,
+      tokens: r.tokens, // a script's own work uses none; a document read by the model does
+      quiet: r.state === 'ok' && !steps.some((st) => CHANGES.has(st.kind)),
+      steps,
+    }
+  }
+  const activity = (): RunView[] => {
+    const runs: RunView[] = (engine.hands?.runner.runs(100) ?? []).map(runOut)
     const reads: RunView[] = world.lines({ kinds: ['connection_read'], limit: 200 }).map((l) => ({
       id: `read-${l.id}`,
       kind: 'read',

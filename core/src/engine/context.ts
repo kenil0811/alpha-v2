@@ -53,6 +53,10 @@ export function startLayer(
   parts.push(
     `## People\n${people} people and ${companies} companies, each one however many rows name them, gathered from the rows of tables that name people (contacts, the people the person writes to, small meetings). Read them in the views people, companies, people_at and exchanges. Merging or parting people is the person's, on their card or their page.`,
   )
+  const tasks = world.tasks.counts()
+  parts.push(
+    `## Tasks\n${tasks.open} open, ${tasks.overdue} overdue, ${tasks.today} due today. Keep them with the task tool and read them in the view tasks; each sits on the place it concerns.`,
+  )
   parts.push(`## Connections\n${connections ?? 'None yet.'}`)
   parts.push(
     `## Folders\nYour own folder is ${deskDir}; module folders are under ${world.paths.modules}.`,

@@ -341,11 +341,18 @@ export class Desk {
     const removingTable = name === 'shape' && toolInput.action === 'remove_table'
     const tableName = typeof toolInput.table === 'string' ? toolInput.table : ''
     const table = tableName ? this.world.shape.table(tableName) : undefined
+    const removingTasks =
+      name === 'task' && toolInput.action === 'remove'
+        ? ((toolInput.ids as string[] | undefined) ??
+          (typeof toolInput.id === 'string' ? [toolInput.id] : []))
+        : []
     const ownEntries = remove.length
       ? this.world.records.personsOwn(remove)
       : removingTable && table
         ? this.world.records.personsOwn(this.world.records.list(table.id).map((r) => r.id))
-        : false
+        : removingTasks.length
+          ? this.world.tasks.personsOwn(removingTasks)
+          : false
     const verdict = decide(this.world, {
       call: { tool: name, input: toolInput },
       effect: effectOf ? effectOf(toolInput) : undefined,
@@ -354,7 +361,9 @@ export class Desk {
       cannotUndo:
         remove.length || removingTable
           ? 'Removed rows are gone from the table; Activity keeps that they were there.'
-          : null,
+          : removingTasks.length
+            ? 'Removed tasks are gone with the tasks beneath them; Activity keeps that they were there.'
+            : null,
       ownEntries,
       askedIn: typeof toolInput.asked_in === 'string' ? toolInput.asked_in : null,
       message: input.agent_id ? null : cur.message,

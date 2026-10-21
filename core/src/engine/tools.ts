@@ -12,10 +12,11 @@ import { FILING, type Filing, type Intake } from '../files/intake.ts'
 import { agents } from '../modules/agents.ts'
 import { DRAFT, type Drafts } from '../modules/drafts.ts'
 import { keep } from '../modules/keep.ts'
-import type { AgentRunner } from '../modules/runs.ts'
+import { type AgentRunner, PROPOSE_TASKS } from '../modules/runs.ts'
 import { pagesOf, printPage } from '../pages/pages.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../world/kinds.ts'
 import { findField, type Table } from '../world/shape.ts'
+import { PRIORITIES, type Task } from '../world/tasks.ts'
 import { namedConfig, ViewConfig } from '../world/views.ts'
 import type { User, World } from '../world/world.ts'
 
@@ -126,6 +127,7 @@ const SCRIPT = [
   'alpha.browser.extract(url, { list, fields: { name: { css, attr } }, next, id: { field, pattern }, pages }) (every page of a list by its next link, or at most `pages`; returns { pages, items }, each item its fields with _id and _url; a failure carries kind sign_in or blocked);',
   'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity);',
   'alpha.draft.email({ to, cc, subject, body, kind, key, about: { table, row }, note }) (an email to one address for the person’s yes, on a card; a newer draft with the same key replaces the waiting one; sent at once only when the person gave a standing permission for that agent’s kind; an agent’s next run gets alpha.input.decided: what became of each draft, sent or not and why).',
+  'An agent whose file says tasks: true takes the tasks given to it (with no trigger, it runs only for them). A run started on a task gets alpha.input.task: id, title, notes, due, priority, place (words, module, table, row, field, page), values (that row’s, by field name), touches, before (what earlier runs on it said) and cards (what came of the cards they opened). It ends with alpha.task.done(words) (what it did: only this makes the task Done) or alpha.task.wait(words) (what it waits for); a run that opened cards waits for the person’s yes, and runs again once they are all decided. A try of the script with a made-up alpha.input.task changes no task: what done or wait would say comes back as a step. alpha.task.propose([{ title, notes, due, priority, on: { table, row, field }, owner: person or agent }], words) (tasks it thinks need doing, on one card for the person’s yes).',
 ].join('\n')
 
 // The effect of a call, by tool and input: the gates read it.
@@ -138,6 +140,7 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   file: (i) => (i.action === 'read' ? 'read' : 'write'),
   ask: () => 'write',
   remember: () => 'write',
+  task: (i) => (i.action === 'remove' ? 'remove' : i.action === 'find' ? 'read' : 'write'),
   connect: () => 'sign_in',
   look: () => 'read',
   keep: () => 'write',
@@ -473,6 +476,10 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
                 : hands.intake.file(card.id, { row: f.row, kind: f.kind }, here_.user)
               return ok(`The card is answered: ${done.state}.`)
             }
+            if (card.call?.tool === PROPOSE_TASKS && hands?.runner && !no) {
+              const done = hands.runner.adopt(card.id, 'all', here_.user.id)
+              return ok(`The card is answered: ${done.state}; its tasks are added.`)
+            }
             const done = world.cards.answer(card.id, choice, { kind: 'person', id: here_.user.id })
             return ok(`The card is answered: ${done.state}.`)
           }
@@ -509,6 +516,176 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
             turn: here.current.turn,
           })
           return ok('Kept.')
+        }),
+      { alwaysLoad: true },
+    ),
+    tool(
+      'task',
+      [
+        "Keep the person's tasks: one list of all work, each on the place it concerns. Read them in the view tasks.",
+        'add: a task with its title, on the place it concerns: on { module, table, row, field, page } (find the row first with query or search). Without on it sits on the module the person asked from, or nowhere yet. Then say in a line where you put it, so they can change it. touches: other rows ({ kind: row, ref: <row id> }), people ({ kind: person, ref: <id in view people> }) or files ({ kind: file, ref: <hash> }) it is about. An open task on the same place with most of the same words comes back as similar: offer to keep one.',
+        "due: a day (2026-10-24) or a moment (2026-10-24T10:00:00, the person's time unless it says its zone); remind_at: when to remind them (a Mac notification and a line on Home); repeat: every day, every weekday, every Monday, every 2 weeks, monthly, on the 1st of each month (each occurrence its own task, the next made when one is done); priority: high, normal or low; owner: me (the person), alpha, or the name of an agent that takes tasks (its file says tasks: true); parent: the task it sits under.",
+        'change (and on, to move it), start, wait, done, drop, reopen: one task by its id. Giving a task to an agent never starts it: start does, when the person says so, and runs the agent on it; its run says when it is done. remove: tasks by their ids (with the ones beneath), with asked_in: the person’s words asking for it, when they did. find: open tasks, by words and place.',
+      ].join('\n'),
+      {
+        action: z.enum([
+          'add',
+          'change',
+          'start',
+          'wait',
+          'done',
+          'drop',
+          'reopen',
+          'remove',
+          'find',
+        ]),
+        id: z.string().optional(),
+        ids: z.array(z.string()).optional(),
+        title: z.string().optional(),
+        notes: z.string().nullable().optional(),
+        due: z.string().nullable().optional(),
+        remind_at: z.string().nullable().optional(),
+        repeat: z.string().nullable().optional(),
+        priority: z.enum(PRIORITIES).optional(),
+        owner: z.string().optional(),
+        parent: z.string().nullable().optional(),
+        on: z
+          .object({
+            module: z.string().optional(),
+            table: z.string().optional(),
+            row: z.string().optional(),
+            field: z.string().optional(),
+            page: z.string().optional(),
+          })
+          .nullable()
+          .optional(),
+        touches: z
+          .array(z.object({ kind: z.enum(['row', 'person', 'file']), ref: z.string() }))
+          .optional(),
+        words: z.string().optional(),
+        asked_in: z.string().optional(),
+      },
+      async (a) =>
+        guard(() => {
+          const c = ctx()
+          const owner = (o: string) => {
+            if (/^(me|you|the person|person)$/i.test(o.trim()))
+              return { kind: 'person' as const, id: here.current.user.id }
+            if (/^alpha$/i.test(o.trim())) return { kind: 'alpha' as const, id: null }
+            const agent = agents(world).find((x) => x.name.toLowerCase() === o.trim().toLowerCase())
+            if (!agent)
+              throw new Refused(
+                `There is no agent called ${o}; the owner is me, alpha or an agent's name.`,
+              )
+            return { kind: 'agent' as const, id: agent.id }
+          }
+          const shown = (t: Task) => ({
+            id: t.id,
+            title: t.title,
+            state: t.state,
+            due: t.due,
+            on: world.tasks.placeWords(t.place, (table, row) =>
+              world.rowName(
+                world.shape.table(table) as Table,
+                world.records.get(row)?.record.values ?? {},
+              ),
+            ),
+          })
+          const one = () => {
+            if (!a.id) throw new Refused('Give the task by its id.')
+            return a.id
+          }
+          switch (a.action) {
+            case 'add': {
+              const from = here.current.from
+              const on = a.on ?? (from ? { module: from.id } : null)
+              const placeOf = on ? world.tasks.resolvePlace(on) : null
+              const similar = placeOf && a.title ? world.tasks.similar(a.title, placeOf) : []
+              const t = world.tasks.add(
+                {
+                  title: a.title ?? '',
+                  notes: a.notes ?? null,
+                  due: a.due ?? null,
+                  remindAt: a.remind_at ?? null,
+                  repeat: a.repeat ?? null,
+                  ...(a.priority ? { priority: a.priority } : {}),
+                  ...(a.owner !== undefined ? { owner: owner(a.owner) } : {}),
+                  parent: a.parent ?? null,
+                  on,
+                  refs: a.touches ?? [],
+                  placedBy: a.on ? 'alpha' : from ? 'asked from' : null,
+                },
+                c,
+              )
+              return ok({
+                task: shown(t),
+                ...(similar.length ? { similar: similar.map(shown) } : {}),
+              })
+            }
+            case 'change': {
+              const t = world.tasks.change(
+                one(),
+                {
+                  ...(a.title !== undefined ? { title: a.title } : {}),
+                  ...(a.notes !== undefined ? { notes: a.notes } : {}),
+                  ...(a.due !== undefined ? { due: a.due } : {}),
+                  ...(a.remind_at !== undefined ? { remindAt: a.remind_at } : {}),
+                  ...(a.repeat !== undefined ? { repeat: a.repeat } : {}),
+                  ...(a.priority ? { priority: a.priority } : {}),
+                  ...(a.owner !== undefined ? { owner: owner(a.owner) } : {}),
+                  ...(a.parent !== undefined ? { parent: a.parent } : {}),
+                  ...(a.on !== undefined ? { on: a.on, placedBy: 'alpha' } : {}),
+                  ...(a.touches !== undefined ? { refs: a.touches } : {}),
+                },
+                c,
+              )
+              return ok({ task: shown(t) })
+            }
+            case 'start': {
+              const t = world.tasks.get(one())
+              if (t?.owner.kind === 'agent') {
+                if (!hands?.runner) throw new Refused('Agents are not set up in this core.')
+                hands.runner
+                  .startTask(t.id, { user: here.current.user.id, turn: here.current.turn })
+                  .run.catch(() => undefined)
+                return ok(
+                  `Started ${world.tasks.ownerWords(t)} on it; its steps go to the task's page and Activity, and its run says when it is done.`,
+                )
+              }
+              return ok({ task: shown(world.tasks.setState(one(), 'doing', c)) })
+            }
+            case 'wait':
+            case 'done':
+            case 'drop':
+            case 'reopen': {
+              const state = {
+                wait: 'waiting',
+                done: 'done',
+                drop: 'dropped',
+                reopen: 'todo',
+              } as const
+              const t = world.tasks.setState(one(), state[a.action], c)
+              return ok({ task: shown(t) })
+            }
+            case 'remove': {
+              const ids = a.ids ?? (a.id ? [a.id] : [])
+              if (!ids.length) throw new Refused('Give the tasks to remove by their ids.')
+              return ok(`Removed ${world.tasks.remove(ids, c)} task(s).`)
+            }
+            case 'find': {
+              const on = a.on ? world.tasks.resolvePlace(a.on) : undefined
+              return ok(
+                world.tasks
+                  .list({
+                    open: true,
+                    ...(on ? { on } : {}),
+                    ...(a.words ? { words: a.words } : {}),
+                  })
+                  .slice(0, 100)
+                  .map(shown),
+              )
+            }
+          }
         }),
       { alwaysLoad: true },
     ),
@@ -569,7 +746,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
       'keep',
       [
         'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), an agent (agents/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
-        'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed) and `runs: { script: <path in the module> }`, then its brief. Keep its script first. An agent kept here is on.',
+        'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed), `tasks: true` when it takes the tasks given to it (then the trigger may be left out: it runs only for them; its script reads the task from alpha.input.task, whose place.row is the row’s id and values that row’s values by field name, and ends with alpha.task.done(words) or alpha.task.wait(words)), and `runs: { script: <path in the module> }`, then its brief: what it does, and for an agent that takes tasks, which tasks. Keep its script first. An agent kept here is on.',
         PAGE,
         SCRIPT,
       ].join('\n'),

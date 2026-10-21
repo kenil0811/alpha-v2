@@ -43,6 +43,14 @@ const Check = z.union([
   z.object({ errors: z.number() }),
   z.object({ documents: z.number() }),
   z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
+  // what the model's own views say: how many rows a query gives, or words its rows hold
+  z.object({
+    query: z.object({
+      sql: z.string(),
+      count: z.number().optional(),
+      matches: z.string().optional(),
+    }),
+  }),
   z.object({ reply_matches: z.string() }),
   z.object({
     card: z.object({
@@ -197,6 +205,25 @@ async function judge(world: World, user: User, check: Check): Promise<Outcome> {
       check: `rows in ${check.rows_in.table}: ${check.rows_in.count}`,
       ok: n === check.rows_in.count,
       saw: t ? String(n) : 'no such table',
+    }
+  }
+  if ('query' in check) {
+    const q = check.query
+    let rows: Record<string, unknown>[] = []
+    let problem = ''
+    try {
+      rows = world.sql.query(q.sql).rows
+    } catch (err) {
+      problem = err instanceof Error ? err.message : String(err)
+    }
+    const text = JSON.stringify(rows)
+    return {
+      check: `${q.sql}${q.count !== undefined ? ` gives ${q.count}` : ''}${q.matches ? ` showing /${q.matches}/` : ''}`,
+      ok:
+        !problem &&
+        (q.count === undefined || rows.length === q.count) &&
+        (!q.matches || new RegExp(q.matches, 'i').test(text)),
+      saw: problem || text.slice(0, 400),
     }
   }
   if ('reply_matches' in check) {
@@ -477,6 +504,13 @@ async function main() {
       what = `Installed the kit ${step.kit.from}, ${Array.isArray(on) ? `${on.join(', ')} on` : `its agents ${on}`}`
     } else throw new Error(`Step ${i + 1} neither says, answers, nor connects.`)
     const finished = await done
+    // an agent's run the turn started (on a task, say) ends before the world is judged
+    for (
+      let w = 0;
+      w < 300 && world.db.prepare("SELECT 1 FROM runs WHERE state = 'running'").get();
+      w++
+    )
+      await new Promise((ok) => setTimeout(ok, 200))
     const reply = world.lines({ user: user.id, kinds: ['replied', 'error'] }).at(-1)
     const steps = world
       .lines({ user: user.id, kinds: ['call'] })

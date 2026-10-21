@@ -11,9 +11,11 @@ import { config } from '../config.ts'
 import { type Ask, askModel, inReadingOrder, type ReadSpec, readInto } from '../files/reading.ts'
 import { decide } from '../gates/gates.ts'
 import { runScript, type ScriptRun } from '../scripts/run.ts'
+import type { Card } from '../world/cards.ts'
 import { all, run as exec, parse as fromJson, json, newId, now, one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Module, Table } from '../world/shape.ts'
+import type { Task, TaskInput } from '../world/tasks.ts'
 import type { World } from '../world/world.ts'
 import { type Agent, agents } from './agents.ts'
 import type { Drafts } from './drafts.ts'
@@ -28,11 +30,24 @@ export interface RunOutcome {
 }
 
 // Who a run serves: the person, and the desk's turn when the desk started it, so a card it
-// opens shows in that turn.
+// opens shows in that turn; and the task it works on, when it was started on one.
 export interface RunFor {
   user: string | null
   turn: string | null
+  task?: string | null
 }
+
+// A task an agent proposes, as it would be added on the person's yes.
+export interface ProposedTask {
+  title: string
+  notes: string | null
+  due: string | null
+  priority: 'high' | 'normal' | 'low'
+  on: { table?: string; row?: string; field?: string; page?: string; module?: string } | null
+  owner: 'person' | 'agent' // the agent's own: it takes it, and works on it when started
+}
+
+export const PROPOSE_TASKS = 'propose_tasks'
 
 export interface RunRow {
   id: string
@@ -43,6 +58,7 @@ export interface RunRow {
   state: 'running' | 'ok' | 'failed' | 'stopped'
   words: string | null
   tokens: number | null // the model's, when the run asked it to read something
+  task: string | null // the task it served
 }
 
 const CHANGE_KINDS = ['wrote', 'changed', 'landed', 'removed']
@@ -512,6 +528,90 @@ export class AgentRunner {
         this.notify()
         return null
       },
+      // A run started on a task says what became of it: done, with what it did, or what it
+      // waits for. Only its run settles an agent's task (Q93): one that ends without saying waits.
+      // A try on a made-up task (no task behind the run) changes none: what it would say is a step.
+      'task.done': async (p: Record<string, unknown>) => {
+        const words = String(p.words ?? '').trim()
+        if (!words) throw new Refused('task.done needs words: what was done.')
+        const t = this.serving(who)
+        if (t)
+          this.world.tasks.setState(t.id, 'done', ctx, `${label} finished “${t.title}”: ${words}`)
+        else
+          this.world.line({
+            actor,
+            kind: 'run_step',
+            words: `Would finish the task: ${words}`,
+            run: runId,
+            module: module.id,
+          })
+        this.notify()
+        return null
+      },
+      'task.wait': async (p: Record<string, unknown>) => {
+        const words = String(p.words ?? '').trim()
+        if (!words) throw new Refused('task.wait needs words: what it waits for.')
+        const t = this.serving(who)
+        if (t)
+          this.world.tasks.setState(
+            t.id,
+            'waiting',
+            ctx,
+            `${label} waits on “${t.title}”: ${words}`,
+          )
+        else
+          this.world.line({
+            actor,
+            kind: 'run_step',
+            words: `Would leave the task waiting: ${words}`,
+            run: runId,
+            module: module.id,
+          })
+        this.notify()
+        return null
+      },
+      // Tasks the agent thinks need doing, on one card for the person's yes; none is kept before.
+      'task.propose': async (p: Record<string, unknown>) => {
+        const items = Array.isArray(p.tasks) ? (p.tasks as Record<string, unknown>[]) : []
+        if (!items.length)
+          throw new Refused(
+            'task.propose needs tasks: [{ title, notes, due, priority, on: { table, row, field }, owner }].',
+          )
+        const tasks: ProposedTask[] = items.map((i) => {
+          const on = (i.on ?? null) as ProposedTask['on']
+          const owner = i.owner === 'agent' ? 'agent' : 'person'
+          const priority = (['high', 'low'].includes(String(i.priority)) ? i.priority : 'normal') as
+            | 'high'
+            | 'normal'
+            | 'low'
+          const out: ProposedTask = {
+            title: String(i.title ?? '').trim(),
+            notes: i.notes ? String(i.notes) : null,
+            due: i.due ? String(i.due) : null,
+            priority,
+            on: on ? { module: module.id, ...on } : null,
+            owner,
+          }
+          this.world.tasks.check(this.asInput(out, agentId))
+          return out
+        })
+        const n = tasks.length
+        const card = this.world.cards.open({
+          kind: 'suggestion',
+          words:
+            String(p.words ?? '').trim() ||
+            `${label} proposes ${n === 1 ? 'a task' : `${n} tasks`}`,
+          restsOn: [`a run of ${label}`],
+          options: ['Add them', 'Not now'],
+          call: { tool: PROPOSE_TASKS, input: { agent: agentId, label, tasks } },
+          actor,
+          user: who.user ?? this.owner,
+          module: module.id,
+          run: runId,
+        })
+        this.notify()
+        return { card: card.id }
+      },
       log: async (p: Record<string, unknown>) => {
         this.world.line({
           actor,
@@ -541,11 +641,12 @@ export class AgentRunner {
     const runId = newId('n')
     exec(
       this.world.db,
-      "INSERT INTO runs (id, agent_id, module_id, started_at, state) VALUES (?, ?, ?, ?, 'running')",
+      "INSERT INTO runs (id, agent_id, module_id, started_at, state, task_id) VALUES (?, ?, ?, ?, 'running', ?)",
       runId,
       agentId,
       module.id,
       now(),
+      who.task ?? null,
     )
     this.world.line({
       actor: { kind: 'agent', id: label },
@@ -599,12 +700,227 @@ export class AgentRunner {
       actor: { kind: 'agent', id: label },
       kind: 'run_ended',
       words,
-      data: { state },
+      data: { state, ...(who.task ? { task: who.task } : {}) },
       run: runId,
       module: module.id,
     })
+    if (who.task) this.settle(who.task, state, words, label, runId)
     this.notify()
     return { id: runId, state, words, result: out.result }
+  }
+
+  // ---- agents on tasks (Kenil's plan, 21 Oct) ----------------------------------------------
+
+  // The task a run serves; none on a try of a script with a made-up task.
+  private serving(who: RunFor): Task | null {
+    if (!who.task) return null
+    const t = this.world.tasks.get(who.task)
+    if (!t) throw new Refused('The task this run serves is not there any more.')
+    return t
+  }
+
+  private asInput(p: ProposedTask, agentId: string | null): TaskInput {
+    return {
+      title: p.title,
+      notes: p.notes,
+      due: p.due,
+      priority: p.priority,
+      on: p.on,
+      ...(p.owner === 'agent' && agentId ? { owner: { kind: 'agent' as const, id: agentId } } : {}),
+    }
+  }
+
+  // What became of a task when the run serving it ended, unless the run said so itself: stopped,
+  // it is back in To do; with a card waiting, it waits for the person's yes; otherwise it waits,
+  // saying the run ended without saying it was done.
+  private settle(
+    task: string,
+    state: RunOutcome['state'],
+    words: string,
+    label: string,
+    runId: string,
+  ): void {
+    const t = this.world.tasks.get(task)
+    if (!t || t.state === 'done' || t.state === 'dropped') return
+    const ctx = { actor: { kind: 'agent' as const, id: label }, run: runId }
+    const cards = this.world.cards.ofTask(task).filter((c) => c.state === 'waiting').length
+    if (state === 'stopped')
+      this.world.tasks.setState(task, 'todo', ctx, `${label} was stopped; “${t.title}” is To do.`)
+    else if (cards)
+      this.world.tasks.setState(
+        task,
+        'waiting',
+        ctx,
+        `“${t.title}” waits for your yes on ${cards === 1 ? 'a card' : `${cards} cards`} from ${label}.`,
+      )
+    else if (t.state === 'waiting')
+      return // the run said what it waits for
+    else
+      this.world.tasks.setState(
+        task,
+        'waiting',
+        ctx,
+        state === 'failed'
+          ? `${words.replace(/\.$/, '')}. “${t.title}” waits.`
+          : `${label} ended without saying “${t.title}” was done; it waits.`,
+      )
+  }
+
+  // What a run on a task is handed as alpha.input.task: the task, where it sits and that row's
+  // values by field name, what it touches, and what came of earlier runs on it and their cards.
+  private taskInput(t: Task) {
+    const w = this.world
+    const rowName = (table: string, row: string) => {
+      const tb = w.shape.table(table)
+      const r = w.records.get(row)
+      return tb && r ? w.rowName(tb, r.record.values) : 'a row'
+    }
+    const table = t.place.table ? w.shape.table(t.place.table) : undefined
+    const rec = t.place.row ? w.records.get(t.place.row) : undefined
+    const names = new Map((table?.fields ?? []).map((f) => [f.slug, f.name]))
+    return {
+      id: t.id,
+      title: t.title,
+      notes: t.notes,
+      due: t.due,
+      priority: t.priority,
+      place: {
+        words: w.tasks.placeWords(t.place, rowName),
+        module: t.place.module ? (w.shape.module(t.place.module)?.name ?? null) : null,
+        table: table?.name ?? null,
+        row: t.place.row,
+        field: table?.fields.find((f) => f.id === t.place.field)?.name ?? null,
+        page: t.place.page,
+      },
+      values: rec
+        ? Object.fromEntries(
+            Object.entries(rec.record.values).map(([k, v]) => [names.get(k) ?? k, v]),
+          )
+        : null,
+      touches: t.refs,
+      before: this.runsOf(t.id)
+        .filter((r) => r.state !== 'running')
+        .map((r) => ({ at: r.endedAt, state: r.state, words: r.words })),
+      cards: this.world.cards.ofTask(t.id).map((c) => ({
+        words: c.words,
+        state: c.state,
+        answer: c.answer,
+        decidedAt: c.decidedAt,
+      })),
+    }
+  }
+
+  // Start the agent a task is given to on that task. Giving a task never starts it; Start does.
+  // One run of an agent at a time; the run goes on after this returns.
+  startTask(id: string, who: RunFor): { run: Promise<RunOutcome> } {
+    const t = this.world.tasks.get(id)
+    if (!t) throw new Refused('That task is not there.')
+    if (t.state === 'done' || t.state === 'dropped')
+      throw new Refused(
+        `“${t.title}” is ${t.state === 'done' ? 'done' : 'dropped'}; reopen it first.`,
+      )
+    if (t.owner.kind !== 'agent' || !t.owner.id)
+      throw new Refused(`“${t.title}” is not given to an agent; give it to one first.`)
+    const a = agents(this.world).find((x) => x.id === t.owner.id)
+    if (!a) throw new Refused('The agent it is given to is not there any more.')
+    if (!a.tasks) throw new Refused(`${a.name} does not take tasks.`)
+    if (a.state !== 'on') throw new Refused(`${a.name} is paused; turn it on in Settings first.`)
+    if (one(this.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
+      throw new Refused(`${a.name} is busy with another run; start it again when that one ends.`)
+    this.world.tasks.setState(
+      id,
+      'doing',
+      { actor: { kind: 'agent', id: a.name }, user: who.user },
+      `${a.name} started on “${t.title}”.`,
+    )
+    const run = this.runAgent(a, { ...who, task: id }, { task: this.taskInput(t) })
+    return { run }
+  }
+
+  // A task waiting on cards its agent's run opened goes on once the person has decided them all:
+  // its agent runs on it again, handed what came of them.
+  private resumeTasks(): void {
+    for (const t of this.world.tasks.list({ open: true, owner: { kind: 'agent' } })) {
+      if (t.state !== 'waiting') continue
+      const last = this.runsOf(t.id).at(-1)
+      if (!last?.endedAt || last.state === 'running') continue
+      const cards: Card[] = this.world.cards.ofTask(t.id)
+      if (cards.some((c) => c.state === 'waiting')) continue
+      if (!cards.some((c) => c.decidedAt && c.decidedAt > (last.endedAt as string))) continue
+      try {
+        this.startTask(t.id, { user: this.owner, turn: null }).run.catch(() => undefined)
+      } catch {
+        // paused, busy or gone: it goes on at a later tick, or waits for the person
+      }
+    }
+  }
+
+  // A proposal card as the window shows it: each task as it would be added, where and for whom.
+  proposedView(card: Card): {
+    agent: string
+    tasks: {
+      title: string
+      notes: string | null
+      due: string | null
+      priority: 'high' | 'normal' | 'low'
+      place: string
+      owner: string
+    }[]
+  } | null {
+    if (card.call?.tool !== PROPOSE_TASKS) return null
+    const p = card.call.input as { label: string; tasks: ProposedTask[] }
+    const w = this.world
+    const rowName = (table: string, row: string) => {
+      const tb = w.shape.table(table)
+      const r = w.records.get(row)
+      return tb && r ? w.rowName(tb, r.record.values) : 'a row'
+    }
+    const where = (on: ProposedTask['on']) => {
+      try {
+        return on ? w.tasks.placeWords(w.tasks.resolvePlace(on), rowName) : 'nowhere yet'
+      } catch {
+        return 'a place no longer there'
+      }
+    }
+    return {
+      agent: p.label,
+      tasks: p.tasks.map((t) => ({
+        title: t.title,
+        notes: t.notes,
+        due: t.due,
+        priority: t.priority,
+        place: where(t.on),
+        owner: t.owner === 'agent' ? p.label : 'You',
+      })),
+    }
+  }
+
+  // The person's yes on an agent's proposed tasks: those they kept are added, made by the agent
+  // on their word; the card closes with how many.
+  adopt(cardId: string, take: number[] | 'all', user: string): Card {
+    const card = this.world.cards.get(cardId)
+    if (card?.call?.tool !== PROPOSE_TASKS) throw new Refused('That card proposes no tasks.')
+    if (card.state !== 'waiting') throw new Refused('That card has already been answered.')
+    const p = card.call.input as { agent: string | null; label: string; tasks: ProposedTask[] }
+    const picked = take === 'all' ? p.tasks.map((_, i) => i) : take.filter((i) => p.tasks[i])
+    const ctx = { actor: { kind: 'agent' as const, id: p.label }, user, run: card.run }
+    for (const i of picked)
+      this.world.tasks.add(this.asInput(p.tasks[i] as ProposedTask, p.agent), ctx)
+    const n = p.tasks.length
+    return this.world.cards.answer(
+      cardId,
+      picked.length ? 'Add them' : 'Not now',
+      { kind: 'person', id: user },
+      picked.length && picked.length < n ? `Added ${picked.length} of ${n}` : undefined,
+    )
+  }
+
+  runsOf(task: string): RunRow[] {
+    return all<RunRowDb>(
+      this.world.db,
+      'SELECT * FROM runs WHERE task_id = ? ORDER BY started_at',
+      task,
+    ).map(toRun)
   }
 
   async runAgent(agent: Agent, who?: RunFor, given: object = {}): Promise<RunOutcome> {
@@ -634,10 +950,12 @@ export class AgentRunner {
     return !!c
   }
 
-  // What is due by each agent's trigger. One run of an agent at a time.
+  // What is due by each agent's trigger, and tasks whose cards are all decided. One run of an
+  // agent at a time.
   async runDue(nowMs = Date.now()): Promise<void> {
+    this.resumeTasks()
     for (const a of agents(this.world)) {
-      if (a.state !== 'on') continue
+      if (a.state !== 'on' || !a.trigger) continue
       if (one(this.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
         continue
       const given = this.due(a, nowMs)
@@ -662,6 +980,7 @@ export class AgentRunner {
   private isDue(a: Agent, nowMs: number): boolean | { filed: Filed[] } {
     const last = a.lastRunAt ? Date.parse(a.lastRunAt) : 0
     const t = a.trigger
+    if (!t) return false
     if ('every' in t) {
       if (t.every === 'hour') return nowMs - last >= 3_600_000
       const days = t.every === 'week' ? 7 : 1
@@ -728,24 +1047,36 @@ export class AgentRunner {
   }
 
   runs(limit = 50): RunRow[] {
-    return all<{
-      id: string
-      agent_id: string | null
-      module_id: string | null
-      started_at: string
-      ended_at: string | null
-      state: RunRow['state']
-      words: string | null
-      data: string
-    }>(this.world.db, 'SELECT * FROM runs ORDER BY started_at DESC LIMIT ?', limit).map((r) => ({
-      id: r.id,
-      agent: r.agent_id,
-      module: r.module_id,
-      startedAt: r.started_at,
-      endedAt: r.ended_at,
-      state: r.state,
-      words: r.words,
-      tokens: fromJson<{ tokens?: number | null }>(r.data, {}).tokens ?? null,
-    }))
+    return all<RunRowDb>(
+      this.world.db,
+      'SELECT * FROM runs ORDER BY started_at DESC LIMIT ?',
+      limit,
+    ).map(toRun)
+  }
+}
+
+interface RunRowDb {
+  id: string
+  agent_id: string | null
+  module_id: string | null
+  started_at: string
+  ended_at: string | null
+  state: RunRow['state']
+  words: string | null
+  data: string
+  task_id: string | null
+}
+
+function toRun(r: RunRowDb): RunRow {
+  return {
+    id: r.id,
+    agent: r.agent_id,
+    module: r.module_id,
+    startedAt: r.started_at,
+    endedAt: r.ended_at,
+    state: r.state,
+    words: r.words,
+    tokens: fromJson<{ tokens?: number | null }>(r.data, {}).tokens ?? null,
+    task: r.task_id,
   }
 }

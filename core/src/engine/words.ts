@@ -47,6 +47,29 @@ export function stepWords(tool: string, input: Input): string {
       return input.answer_card
         ? 'Answered the card on your words'
         : `Asked: ${short(s(input.question))}`
+    case 'task': {
+      const title = typeof input.title === 'string' ? `: ${input.title}` : ''
+      switch (input.action) {
+        case 'add':
+          return `Added a task${title}`
+        case 'change':
+          return 'Changed a task'
+        case 'start':
+          return 'Started a task'
+        case 'wait':
+          return 'Set a task waiting'
+        case 'done':
+          return 'Marked a task done'
+        case 'drop':
+          return 'Dropped a task'
+        case 'reopen':
+          return 'Opened a task again'
+        case 'remove':
+          return 'Removed tasks'
+        default:
+          return 'Looked at the tasks'
+      }
+    }
     case 'remember':
       return `Remembered: ${short(s(input.instruction))}`
     case 'Bash':

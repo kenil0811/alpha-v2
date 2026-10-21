@@ -16,6 +16,7 @@ import { Permissions } from './permissions.ts'
 import { Records } from './records.ts'
 import { migrate } from './schema.ts'
 import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape.ts'
+import { Tasks } from './tasks.ts'
 import { Views } from './views.ts'
 
 export interface User {
@@ -82,6 +83,7 @@ export class World {
   readonly connections: Connections
   readonly permissions: Permissions
   readonly people: People
+  readonly tasks: Tasks
   readonly db: Db
   readonly paths: TenantPaths
   readonly tenant: string
@@ -103,6 +105,7 @@ export class World {
     this.people = new People(db, this.shape, this.cards)
     this.records.watch = this.people
     this.records.personOf = (said) => this.people.ref(said)
+    this.tasks = new Tasks(db, this.shape, (id) => this.user(id)?.name ?? null)
     this.shape.onGone = (ids) => this.people.gone(ids)
   }
 

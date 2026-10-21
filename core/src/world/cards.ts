@@ -46,6 +46,7 @@ export interface Card {
   decidedAt: string | null
   usedAt: string | null
   module: string | null
+  run: string | null // the run that opened it, and through it the task it serves
   turn: string | null
   createdAt: string
 }
@@ -67,6 +68,7 @@ interface CardRow {
   decided_at: string | null
   used_at: string | null
   module_id: string | null
+  run_id: string | null
   turn_id: string | null
   created_at: string
 }
@@ -89,6 +91,7 @@ function toCard(r: CardRow): Card {
     decidedAt: r.decided_at,
     usedAt: r.used_at,
     module: r.module_id,
+    run: r.run_id,
     turn: r.turn_id,
     createdAt: r.created_at,
   }
@@ -180,8 +183,29 @@ export class Cards {
     ).map(toCard)
   }
 
+  // The cards the runs serving a task opened, oldest first.
+  ofTask(task: string): Card[] {
+    return all<CardRow>(
+      this.db,
+      'SELECT c.* FROM cards c JOIN runs r ON r.id = c.run_id WHERE r.task_id = ? ORDER BY c.created_at',
+      task,
+    ).map(toCard)
+  }
+
+  // The tasks a card waits on the person for, from the runs serving them.
+  waitingTasks(): Set<string> {
+    return new Set(
+      all<{ task_id: string }>(
+        this.db,
+        `SELECT DISTINCT r.task_id FROM cards c JOIN runs r ON r.id = c.run_id
+         WHERE c.state = 'waiting' AND r.task_id IS NOT NULL`,
+      ).map((r) => r.task_id),
+    )
+  }
+
   // A person's answer. Only a person answers a card: an agent never can (design §7, a wall).
-  answer(id: string, answer: string, by: Actor): Card {
+  // `said` keeps the answer in fuller words than its option (Added 1 of 2).
+  answer(id: string, answer: string, by: Actor, said?: string): Card {
     if (by.kind !== 'person') throw new Refused('Only the person can answer a card.')
     return tx(this.db, () => {
       const card = this.get(id)
@@ -194,7 +218,7 @@ export class Cards {
       const isNo =
         answer === (card.options[1] ?? 'No') || (card.kind === 'permission' && answer === 'No')
       const state: CardState = yesNo ? (isYes ? 'yes' : isNo ? 'no' : 'answered') : 'answered'
-      this.close(id, state, answer, by, null)
+      this.close(id, state, said ?? answer, by, null)
       return this.get(id) as Card
     })
   }

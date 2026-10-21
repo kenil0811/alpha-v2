@@ -1,5 +1,5 @@
 // The core: one process, listening on loopback (design §2, §3).
-import { execFileSync } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -160,6 +160,23 @@ const scheduler = new Scheduler(world, [
     },
   },
   { run: (now) => runner.runDue(now) },
+  // tasks' reminders as they come due (a Mac notification and a line on Home), and repeats made
+  {
+    run: async (now) => {
+      let said = false
+      world.tasks.tick(now, { actor: { kind: 'system' }, user: user.id }, (t) => {
+        said = true
+        if (process.platform !== 'darwin') return
+        const q = (s: string) => s.replace(/["\\]/g, '\\$&')
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', `display notification "${q(t.title)}" with title "Alpha" subtitle "Reminder"`],
+          () => undefined,
+        )
+      })
+      if (said) engine.events.emit('event', { type: 'lines', user: user.id })
+    },
+  },
   // the world backed up once a day, the last 7 days and 4 weeks kept
   {
     run: async () => {

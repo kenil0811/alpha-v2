@@ -1,6 +1,7 @@
 // Agents (design §11): an agent is a file `agents/<name>.md` in its module, with front matter
-// (its trigger, what it runs, what it may touch) and its brief. The world keeps each agent's
-// state (on or paused) and its trigger as read; the file stays the truth.
+// (its trigger, what it runs, what it may touch, whether it takes tasks) and its brief. The world
+// keeps each agent's state (on or paused) and its trigger as read; the file stays the truth. An
+// agent that takes tasks is on call for the tasks given to it, and needs no trigger (Q92).
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Cron } from 'croner'
@@ -25,8 +26,9 @@ export const Trigger = z.union([
 ])
 export type Trigger = z.infer<typeof Trigger>
 
-// A trigger as the person reads it.
-export function whenWords(t: Trigger): string {
+// A trigger as the person reads it; an agent with none runs only for the tasks given to it.
+export function whenWords(t: Trigger | null): string {
+  if (!t) return 'when given a task'
   if ('every' in t) return `every ${t.every}${t.at ? ` at ${t.at}` : ''}`
   if ('cron' in t) return `on the schedule ${t.cron}`
   if ('filed' in t) return 'when a document is filed'
@@ -36,7 +38,8 @@ export function whenWords(t: Trigger): string {
 
 // When a trigger on the clock next fires, after its last run; a trigger on changes has no time.
 // The same rule as the runner's (runs.ts `due`): a day's run is due once its hour has passed.
-export function nextRun(t: Trigger, lastRunAt: string | null, nowMs: number): Date | null {
+export function nextRun(t: Trigger | null, lastRunAt: string | null, nowMs: number): Date | null {
+  if (!t) return null
   const last = lastRunAt ? Date.parse(lastRunAt) : 0
   if ('every' in t) {
     if (t.every === 'hour') return new Date(Math.max(nowMs, last + 3_600_000))
@@ -64,12 +67,17 @@ export const Runs = z.object({
 })
 export type Runs = z.infer<typeof Runs>
 
-const Front = z.object({
-  name: z.string().optional(),
-  trigger: Trigger,
-  runs: Runs,
-  touches: z.array(z.string()).default([]),
-})
+const Front = z
+  .object({
+    name: z.string().optional(),
+    trigger: Trigger.optional(),
+    runs: Runs,
+    touches: z.array(z.string()).default([]),
+    tasks: z.boolean().default(false), // takes the tasks given to it: alpha.input.task
+  })
+  .refine((f) => f.trigger || f.tasks, {
+    message: 'An agent needs a trigger, or tasks: true to be on call for the tasks given to it.',
+  })
 
 export interface Agent {
   id: string
@@ -77,7 +85,8 @@ export interface Agent {
   name: string
   file: string
   state: 'on' | 'paused'
-  trigger: Trigger
+  trigger: Trigger | null // none: on call for tasks only
+  tasks: boolean // takes the tasks given to it
   runs: Runs
   cursor: string | null
   lastRunAt: string | null
@@ -85,7 +94,8 @@ export interface Agent {
 
 export interface AgentFile {
   name: string
-  trigger: Trigger
+  trigger: Trigger | null
+  tasks: boolean
   runs: Runs
   touches: string[]
   brief: string
@@ -104,7 +114,8 @@ export function parseAgent(text: string, file: string): AgentFile {
   const name = front.data.name ?? (file.split('/').pop() as string).replace(/\.md$/, '')
   return {
     name,
-    trigger: front.data.trigger,
+    trigger: front.data.trigger ?? null,
+    tasks: front.data.tasks,
     runs: front.data.runs,
     touches: front.data.touches,
     brief: (m[2] as string).trim(),
@@ -129,16 +140,17 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
     if (known)
       run(
         world.db,
-        'UPDATE agents SET file = ?, trigger = ?, runs = ? WHERE id = ?',
+        'UPDATE agents SET file = ?, trigger = ?, runs = ?, tasks = ? WHERE id = ?',
         `agents/${f}`,
         json(a.trigger),
         json(a.runs),
+        a.tasks ? 1 : 0,
         known.id,
       )
     else
       run(
         world.db,
-        'INSERT INTO agents (id, module_id, name, file, state, trigger, runs) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO agents (id, module_id, name, file, state, trigger, runs, tasks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         newId('a'),
         module.id,
         a.name,
@@ -146,6 +158,7 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
         state,
         json(a.trigger),
         json(a.runs),
+        a.tasks ? 1 : 0,
       )
   }
   for (const a of all<{ id: string; name: string }>(
@@ -165,6 +178,7 @@ interface AgentRow {
   state: 'on' | 'paused'
   trigger: string
   runs: string
+  tasks: number
   cursor: string | null
   last_run_at: string | null
 }
@@ -180,7 +194,8 @@ export function agents(world: World, moduleId?: string): Agent[] {
     name: r.name,
     file: r.file,
     state: r.state,
-    trigger: JSON.parse(r.trigger) as Trigger,
+    trigger: JSON.parse(r.trigger) as Trigger | null,
+    tasks: r.tasks === 1,
     runs: JSON.parse(r.runs) as Runs,
     cursor: r.cursor,
     lastRunAt: r.last_run_at,

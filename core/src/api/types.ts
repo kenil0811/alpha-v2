@@ -65,6 +65,20 @@ export interface CardView {
   draft?: DraftView | null // an agent's email for the person's yes
   match?: MatchView | null // people or companies that may be one, side by side
   review?: ReviewView | null // rows an agent puts to the person, a choice on each
+  proposed?: ProposedView | null // tasks an agent proposes, for the person's yes
+}
+
+// Tasks an agent proposes on one card: each as it would be added, where and for whom.
+export interface ProposedView {
+  agent: string
+  tasks: {
+    title: string
+    notes: string | null
+    due: string | null
+    priority: 'high' | 'normal' | 'low'
+    place: string // in words
+    owner: string // You, or the agent's name
+  }[]
 }
 
 // Rows an agent puts to the person on one card: each with why, and the choices it offers.
@@ -228,6 +242,7 @@ export interface Stream {
   running: { id: string; name: string; module: string | null }[] // agents' runs going now
   // connections that need the person to sign in; one read as them signs in in Chrome
   attention: { connector: string; title: string; connection: string; inBrowser: boolean }[]
+  tasks: { open: number; overdue: number; today: number } // for the rail's badge
   lastId: number
 }
 
@@ -506,3 +521,60 @@ export type LiveEvent =
   | { type: 'live'; turn: string; text: string; doing: string | null }
   | { type: 'busy'; turn: string }
   | { type: 'idle' }
+
+// A task as a list shows it: its state, due, priority, owner and where it sits.
+export interface TaskLineView {
+  id: string
+  title: string
+  state: 'todo' | 'doing' | 'waiting' | 'done' | 'dropped'
+  due: string | null
+  overdue: boolean
+  remindAt: string | null
+  repeat: string | null
+  priority: 'high' | 'normal' | 'low'
+  owner: string // in words: You, Alpha, an agent's name
+  ownerKind: 'person' | 'alpha' | 'agent'
+  place: { words: string; path: string[]; href: string | null }
+  parent: string | null
+  children: number
+  childrenDone: number
+  waitingForYou: boolean // a card about it waits on the person
+  working: boolean // its agent is working on it now
+}
+
+export interface TasksView {
+  list: string
+  lines: TaskLineView[]
+  counts: Record<string, number> // per saved list
+}
+
+// A task's page.
+export interface TaskView extends TaskLineView {
+  notes: string | null
+  remindedAt: string | null
+  madeBy: string
+  placedBy: string | null
+  placedWhy: string | null
+  createdAt: string
+  doneAt: string | null
+  parentTitle: string | null
+  children: number
+  subtasks: TaskLineView[]
+  touches: { kind: 'row' | 'person' | 'file'; name: string; href: string | null }[]
+  // where it sits, as it is now: the row's values, and the other open tasks there
+  context: {
+    values: { field: string; value: string }[]
+    siblings: TaskLineView[]
+  }
+  history: { at: string; words: string }[]
+  owners: { kind: 'person' | 'alpha' | 'agent'; id: string | null; name: string }[]
+  // the agent it is given to, and its runs on it, newest first (the one working now first)
+  agent: {
+    name: string
+    on: boolean
+    takes: boolean
+    said: string | null // what its runs last said of the task: done with what, or what it waits for
+    runs: RunView[]
+  } | null
+  cards: CardView[] // what its runs put to the person: waiting first, then the decided
+}
