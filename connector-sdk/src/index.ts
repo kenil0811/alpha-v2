@@ -35,4 +35,4 @@ export {
   judgeHealth,
   makeCall,
 } from './runtime.ts'
-export { MacKeychain, MemorySecrets, type SecretStore } from './secrets.ts'
+export { MacKeychain, MemorySecrets, NoSecrets, type SecretStore } from './secrets.ts'

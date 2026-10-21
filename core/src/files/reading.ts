@@ -266,7 +266,7 @@ export type Ask = (
 
 // The model, once, with no tools: the instructions from core/config, the document's pieces and
 // what the kit wants, answered in the schema.
-export function askModel(cwd: string): Ask {
+export function askModel(cwd: string, route: () => Record<string, string> = () => ({})): Ask {
   return async (prompt, schema) => {
     const options: Options = {
       model: config.models().desk,
@@ -279,6 +279,8 @@ export function askModel(cwd: string): Ask {
         TMPDIR: process.env.TMPDIR ?? '/tmp',
         ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
         CLAUDE_AGENT_SDK_CLIENT_APP: 'alpha/0.1.0',
+        DISABLE_AUTOUPDATER: '1',
+        ...route(),
       },
       settingSources: [],
       strictMcpConfig: true,

@@ -41,6 +41,16 @@ export class Engine {
     return this.options.hands ?? null
   }
 
+  get route() {
+    return this.options.route ?? null
+  }
+
+  // A new route reaches the next session: the open ones close and start again on it.
+  rerouted(): void {
+    for (const d of this.desks.values()) d.close()
+    this.desks.clear()
+  }
+
   // The folders the person granted are the watched-folder connections: read, never written.
   folders(): string[] {
     return [

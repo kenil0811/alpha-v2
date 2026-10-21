@@ -10,7 +10,6 @@ const DIR = join(import.meta.dirname, '..', 'config')
 const Models = z.object({
   desk: z.string().min(1),
   eyes: z.string().min(1),
-  route: z.enum(['subscription', 'key']),
 })
 
 const Limits = z.object({

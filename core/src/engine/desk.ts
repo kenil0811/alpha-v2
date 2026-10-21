@@ -19,6 +19,7 @@ import { decide } from '../gates/gates.ts'
 import type { Card } from '../world/cards.ts'
 import type { User, World } from '../world/world.ts'
 import { startLayer, turnLayer } from './context.ts'
+import type { ModelRoute } from './route.ts'
 import { EFFECTS, type Hands, type Here, SERVER, TOOL_NAMES, worldTools } from './tools.ts'
 import { stepWords } from './words.ts'
 
@@ -36,6 +37,7 @@ export interface DeskOptions {
   granted?: string[] // folders the person granted, read-only
   connectors?: ConnectorService
   hands?: Hands
+  route?: ModelRoute // how this install reaches Claude: the person's subscription or a key
   // Alpha's words appended to Claude Code's own prompt (the design's choice), or alone: week 1
   // measures one against the other.
   prompt?: 'appended' | 'alone'
@@ -116,6 +118,7 @@ export class Desk {
   private prompt: 'appended' | 'alone'
   private connectors: ConnectorService | null
   private hands: Hands | undefined
+  private route: ModelRoute | undefined
   private networkWaits: string[] = []
 
   constructor(world: World, user: User, options: DeskOptions = {}) {
@@ -126,6 +129,7 @@ export class Desk {
     this.granted = options.granted ?? []
     this.connectors = options.connectors ?? null
     this.hands = options.hands
+    this.route = options.route
     this.prompt = options.prompt ?? 'appended'
     this.here = { current: { user, turn: null, said: null, message: null }, fromSubagent: false }
   }
@@ -246,6 +250,7 @@ export class Desk {
       ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
       ENABLE_TOOL_SEARCH: 'true',
       CLAUDE_AGENT_SDK_CLIENT_APP: 'alpha/0.1.0',
+      ...(this.route?.env() ?? { DISABLE_AUTOUPDATER: '1' }),
     }
     return {
       model: models.desk,

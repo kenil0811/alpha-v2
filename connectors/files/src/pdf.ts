@@ -13,12 +13,24 @@ const SCRIPT = new URL('../py/read_pdf.py', import.meta.url).pathname
 const RENDER = new URL('../py/render_page.py', import.meta.url).pathname
 const PEEK = new URL('../py/peek_pdf.py', import.meta.url).pathname
 
-function run(cmd: string, args: string[], timeoutMs: number): Promise<string> {
+// Everything uv and Docling write stays in Alpha's own folder (envs): the Python uv fetches, its
+// cache and Docling's models, never ~/.local, ~/.cache or a Python of the Mac's own.
+function envOf(envs: string): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    UV_PYTHON_INSTALL_DIR: join(envs, 'python'),
+    UV_PYTHON_PREFERENCE: 'only-managed',
+    UV_CACHE_DIR: join(envs, 'uv-cache'),
+    HF_HOME: join(envs, 'huggingface'),
+  }
+}
+
+function run(cmd: string, args: string[], timeoutMs: number, envs: string): Promise<string> {
   return new Promise((resolve, reject) =>
     execFile(
       cmd,
       args,
-      { maxBuffer: 256 * 1024 * 1024, timeout: timeoutMs },
+      { maxBuffer: 256 * 1024 * 1024, timeout: timeoutMs, env: envOf(envs) },
       (err, stdout, stderr) =>
         err ? reject(new Error(`${err.message}\n${stderr.slice(-2000)}`)) : resolve(stdout),
     ),
@@ -46,8 +58,8 @@ export function doclingEnv(envs: string): Promise<string> {
   if (existsSync(join(dir, '.ready'))) return Promise.resolve(python)
   making ??= (async () => {
     mkdirSync(envs, { recursive: true })
-    await run(uv(), ['venv', '--quiet', '--python', '3.12', dir], 600_000)
-    await run(uv(), ['pip', 'install', '--quiet', '--python', python, DOCLING], 1_800_000)
+    await run(uv(), ['venv', '--quiet', '--python', '3.12', dir], 600_000, envs)
+    await run(uv(), ['pip', 'install', '--quiet', '--python', python, DOCLING], 1_800_000, envs)
     writeFileSync(join(dir, '.ready'), DOCLING)
     return python
   })().finally(() => {
@@ -65,7 +77,7 @@ export async function readPdf(
   try {
     const file = join(dir, 'in.pdf')
     writeFileSync(file, bytes)
-    const out = await run(python, ['-I', SCRIPT, file], 900_000)
+    const out = await run(python, ['-I', SCRIPT, file], 900_000, envs)
     const parsed = JSON.parse(out.trim().split('\n').at(-1) ?? '{}') as {
       pages: number
       pieces: Piece[]
@@ -88,7 +100,7 @@ export async function renderPage(
   try {
     const out = join(dir, 'page.png')
     const size = JSON.parse(
-      (await run(python, ['-I', RENDER, file, String(page), out, '2'], 120_000))
+      (await run(python, ['-I', RENDER, file, String(page), out, '2'], 120_000, envs))
         .trim()
         .split('\n')
         .at(-1) ?? '{}',
@@ -106,6 +118,6 @@ export async function peekPdf(
   pages = 2,
 ): Promise<{ pages: number; words: string[] }> {
   const python = await doclingEnv(envs)
-  const out = await run(python, ['-I', PEEK, file, String(pages)], 120_000)
+  const out = await run(python, ['-I', PEEK, file, String(pages)], 120_000, envs)
   return JSON.parse(out.trim().split('\n').at(-1) ?? '{}') as { pages: number; words: string[] }
 }

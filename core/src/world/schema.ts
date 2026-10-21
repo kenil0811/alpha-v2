@@ -318,6 +318,11 @@ export async function migrate(db: Db, file: string, backups: string): Promise<nu
   const current = Number(
     one<{ user_version: number }>(db, 'PRAGMA user_version')?.user_version ?? 0,
   )
+  // a world a newer Alpha made is never opened by an older one: its shape would be misread
+  if (current > MIGRATIONS.length)
+    throw new Error(
+      `This world was made by a newer Alpha (its shape is version ${current}; this Alpha knows up to ${MIGRATIONS.length}). Install the newer Alpha again, or roll back its data too.`,
+    )
   if (current >= MIGRATIONS.length) return current
   if (current > 0 && existsSync(file)) {
     mkdirSync(backups, { recursive: true })

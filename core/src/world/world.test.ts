@@ -214,6 +214,17 @@ describe('migrations', () => {
   })
 })
 
+describe('a world from a newer Alpha', () => {
+  it('is refused, never opened and misread', async () => {
+    world.db.exec(`PRAGMA user_version = ${MIGRATIONS.length + 1}`)
+    world.close()
+    await expect(World.open(join(home, 'tenants', 't_test'))).rejects.toThrow(
+      /made by a newer Alpha/,
+    )
+    world = await World.open(join(home, 'tenants', 't_other'))
+  })
+})
+
 describe('rows a connection lands', () => {
   it('come in by each item’s own id: new ones added, changed ones versioned, the same left', () => {
     const t = meals()

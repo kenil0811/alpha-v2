@@ -1,5 +1,6 @@
 // The secret store (design §8): secrets live in the Mac's Keychain, through Alpha's helper, and
 // never in the world. A connection holds only the reference.
+import { Problem } from './connector.ts'
 import { runHelper } from './helper.ts'
 
 export interface SecretStore {
@@ -29,6 +30,26 @@ export class MacKeychain implements SecretStore {
   async delete(ref: string): Promise<void> {
     await runHelper(this.helper, ['keychain', 'delete', SERVICE, ref])
   }
+}
+
+// When the helper is not there: no secret is kept anywhere, and asking to keep one says why, so a
+// password is never held in memory and lost at the next start without a word.
+export class NoSecrets implements SecretStore {
+  private why: string
+
+  constructor(why: string) {
+    this.why = why
+  }
+
+  async get() {
+    return null
+  }
+
+  async set(): Promise<void> {
+    throw new Problem(this.why)
+  }
+
+  async delete() {}
 }
 
 // For tests: never the Keychain.
