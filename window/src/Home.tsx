@@ -16,6 +16,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
 import { ModuleCard } from './ModuleCard.tsx'
+import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
 import { childrenOf, tops } from './tree.ts'
 import { Button } from './ui/button.tsx'
@@ -41,6 +42,7 @@ export function Home({
   onAsked: () => void // the answer opens on the right
 }) {
   const [today, setToday] = useState<TodayView | null>(null)
+  const [setup, reloadSetup] = useSetup()
   const [working, setWorking] = useState<WorkingModuleView[]>([])
   const [words, setWords] = useState('')
   const ask = useRef<HTMLInputElement>(null)
@@ -81,6 +83,15 @@ export function Home({
           </div>
           <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
         </div>
+
+        {setup && unready(setup) && (
+          <Group
+            title="Getting this Mac ready"
+            sub="Alpha works meanwhile; these finish setting it up"
+          >
+            <SetupList view={setup} onChange={reloadSetup} />
+          </Group>
+        )}
 
         {firstOpen ? (
           <Welcome

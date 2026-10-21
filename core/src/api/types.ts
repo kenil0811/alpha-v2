@@ -61,6 +61,44 @@ export interface CardView {
   restsOn: string[] // what the card rests on, in words
   module: string | null // the module it belongs to, for a lens
   filing?: FilingView | null // a file from the mail: where it is proposed to go
+  draft?: DraftView | null // an agent's email for the person's yes
+}
+
+// An agent's draft on its card: the email to change, what it is about, the reasons a Not now picks
+// from, and Always when three unchanged sends of its kind have earned it.
+export interface DraftView {
+  agent: string
+  kind: string
+  message: { to: string; cc?: string; subject: string; body: string }
+  note: string | null
+  about: { table: string; row: string; name: string } | null
+  reasons: string[]
+  always: string | null // the standing permission's sentence, when offered
+}
+
+// What this Mac still needs, for the first open and Settings › This Mac.
+export interface SetupView {
+  claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
+  route: 'subscription' | 'key'
+  connected: { gmail: boolean; calendar: boolean; contacts: boolean }
+  chrome: boolean // Google Chrome, for sites the person signs in to
+  keepAwake: boolean | null // the Mac kept from sleeping while plugged in; none where it can't be
+  readers: {
+    browser: 'ready' | 'preparing' | 'not yet' | 'failed' // the reading browser
+    documents: 'ready' | 'preparing' | 'not yet' | 'failed' // the document reader
+    problem: string | null
+  }
+}
+
+// A standing permission as Settings lists it.
+export interface PermissionView {
+  id: string
+  sentence: string
+  grantedBy: string
+  grantedAt: string
+  uses: number
+  lastUsedAt: string | null
+  revokedAt: string | null
 }
 
 // A file that came by mail, waiting to be filed: the email, what the file is, the place the model
@@ -79,6 +117,7 @@ export interface FilingView {
   row: string | null
   kind: string | null
   already: string[] // the row's files of that kind already, which File it keeps and Replace takes off
+  always: string | null // the standing permission's sentence, when offered
   places: { table: string; name: string; kinds: string[]; rows: { id: string; name: string }[] }[]
 }
 
@@ -332,7 +371,8 @@ export interface InstructionView {
 // The model Alpha runs on and how it reaches it, as Settings shows it.
 export interface ModelView {
   desk: string
-  route: 'subscription' | 'key'
+  route: 'subscription' | 'key' // the person's own Claude subscription, or the firm's API key
+  hasKey: boolean // a key is kept in the Keychain
 }
 
 // A run in Activity: an agent's or a reader's, or a connection reading its account.

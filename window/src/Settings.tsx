@@ -6,11 +6,21 @@ import type {
   ConnectorView,
   InstructionView,
   ModelView,
+  PermissionView,
 } from '@alpha/core/api'
-import { BookmarkCheck, CalendarDays, Folder, Mail, Sparkles, UserRound } from 'lucide-react'
+import {
+  BookmarkCheck,
+  CalendarDays,
+  Folder,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+} from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Kits, when } from './Kits.tsx'
+import { SetupList, useSetup } from './SetupPanel.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -36,10 +46,12 @@ const ICONS: Record<string, ReactNode> = {
 
 // The page's sections, in its index.
 const SECTIONS = [
+  ['mac', 'This Mac'],
   ['connections', 'Connections'],
   ['folders', 'Folders'],
   ['kits', 'Kits and agents'],
   ['remembered', 'Remembered'],
+  ['permissions', 'Standing permissions'],
   ['model', 'Model'],
   ['appearance', 'Appearance'],
 ] as const
@@ -121,6 +133,12 @@ export function Settings({ open, version }: { open: string | null; version: numb
           <div id="settings-remembered" className="scroll-mt-4">
             <Remembered version={version} />
           </div>
+          <div id="settings-mac" className="scroll-mt-4">
+            <ThisMac />
+          </div>
+          <div id="settings-permissions" className="scroll-mt-4">
+            <Standing version={version} />
+          </div>
           <div id="settings-model" className="scroll-mt-4">
             <ModelSection />
           </div>
@@ -177,17 +195,117 @@ function Remembered({ version }: { version: number }) {
   )
 }
 
+// This Mac: Claude's sign-in, the readers' downloads, the connections, Chrome.
+function ThisMac() {
+  const [view, reload] = useSetup()
+  return (
+    <Section title="This Mac" about="What Alpha needs on this Mac, and whether it has it.">
+      {view ? (
+        <SetupList view={view} onChange={reload} />
+      ) : (
+        <p className="text-ink-2 text-md">This core does not say.</p>
+      )}
+    </Section>
+  )
+}
+
+// Standing permissions (design §7): each as its sentence, who gave it and how often it has been
+// used, with Revoke; a revoked one stays listed, greyed, as history.
+function Standing({ version }: { version: number }) {
+  const [list, setList] = useState<PermissionView[] | null>(null)
+  const [asking, setAsking] = useState<string | null>(null)
+  const load = useCallback(() => {
+    api.get<PermissionView[]>('/api/permissions').then(setList, () => setList([]))
+  }, [])
+  useEffect(() => {
+    if (version >= 0) load()
+  }, [load, version])
+  const revoke = (id: string) =>
+    api.post(`/api/permissions/${id}/revoke`).then(() => {
+      setAsking(null)
+      load()
+    }, load)
+  return (
+    <Section
+      title="Standing permissions"
+      about="What Alpha does without asking, because you said Always on a card. Revoke one and it asks again."
+    >
+      {list?.length === 0 && (
+        <p className="text-ink-2 text-md">
+          None yet. After three yeses in a row for the same thing, its card offers Always.
+        </p>
+      )}
+      {list && list.length > 0 && (
+        <List>
+          {list.map((p) => (
+            <Row
+              key={p.id}
+              lead={
+                <Tile>
+                  <ShieldCheck className="size-4" />
+                </Tile>
+              }
+              title={
+                <span
+                  className={cn(
+                    'whitespace-normal font-normal',
+                    p.revokedAt && 'text-ink-3 line-through',
+                  )}
+                >
+                  {p.sentence}
+                </span>
+              }
+              sub={`${p.grantedBy}, ${when(p.grantedAt)} · used ${p.uses === 1 ? 'once' : `${p.uses} times`}${p.revokedAt ? ` · revoked ${when(p.revokedAt)}` : ''}`}
+              actions={
+                p.revokedAt ? null : asking === p.id ? (
+                  <span className="flex gap-1.5">
+                    <Button size="sm" variant="warn" onClick={() => revoke(p.id)}>
+                      Revoke it
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setAsking(null)}>
+                      Keep it
+                    </Button>
+                  </span>
+                ) : (
+                  <Button size="sm" variant="warn" onClick={() => setAsking(p.id)}>
+                    Revoke
+                  </Button>
+                )
+              }
+            />
+          ))}
+        </List>
+      )}
+    </Section>
+  )
+}
+
 const MODEL_NAMES: Record<string, string> = {
   'claude-opus-5-5': 'Claude Opus 5.5',
   'claude-sonnet-5-5': 'Claude Sonnet 5.5',
   'claude-haiku-5-5': 'Claude Haiku 5.5',
 }
 
+// The route (design §5): the person's own Claude subscription, signed in with Claude's own sign-in
+// on this Mac, or the firm's API key, kept in the Keychain. The choice is this install's.
 function ModelSection() {
   const [model, setModel] = useState<ModelView | null>(null)
+  const [key, setKey] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
   useEffect(() => {
     api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
   }, [])
+  const choose = (route: 'subscription' | 'key', given?: string) =>
+    api.post<ModelView>('/api/model', { route, ...(given ? { key: given } : {}) }).then(
+      (m) => {
+        setModel(m)
+        setKey('')
+        setAsking(false)
+        setProblem(null)
+      },
+      (err: unknown) => setProblem(err instanceof Problem ? err.message : 'That did not go in.'),
+    )
   return (
     <Section title="Model" about="What Alpha thinks with, and how it reaches it.">
       {model && (
@@ -201,12 +319,45 @@ function ModelSection() {
             title={MODEL_NAMES[model.desk] ?? model.desk}
             sub={
               model.route === 'subscription'
-                ? 'Through your own Claude sign-in on this Mac'
-                : 'Through your API key, kept in the Keychain'
+                ? 'Through your own Claude subscription, signed in on this Mac'
+                : 'Through the API key kept in the Keychain'
+            }
+            actions={
+              model.route === 'subscription' ? (
+                <Button size="sm" variant="ghost" onClick={() => setAsking(!asking)}>
+                  Use an API key
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => choose('subscription')}>
+                  Use my subscription
+                </Button>
+              )
             }
           />
         </List>
       )}
+      {asking && (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void choose('key', key)
+          }}
+        >
+          <Field
+            className="flex-1"
+            type="password"
+            autoComplete="off"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder={model?.hasKey ? 'The key kept in the Keychain, or a new one' : 'sk-ant-…'}
+          />
+          <Button type="submit" variant="primary" disabled={!key.trim() && !model?.hasKey}>
+            Use it
+          </Button>
+        </form>
+      )}
+      {problem && <p className="text-bad text-sm">{problem}</p>}
     </Section>
   )
 }

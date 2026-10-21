@@ -2,7 +2,7 @@
 // each on or paused, folded under the module until opened. A kit is installed from a folder.
 import type { AgentView, WorkingModuleView } from '@alpha/core/api'
 import { Bot, ChevronDown, ChevronRight, Package } from 'lucide-react'
-import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
@@ -205,6 +205,23 @@ function KitForm({ onChange }: { onChange: () => void }) {
   const [folder, setFolder] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [said, setSaid] = useState<string | null>(null)
+  const picker = useRef<HTMLInputElement>(null)
+  // a kit pack sent as a file: installed, or its kit updated (what the person changed stays)
+  const fromFile = async (file: File | undefined) => {
+    if (!file) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      const out = await api.uploadTo<{ words: string }>('/api/kits/pack', file)
+      setSaid(out.words)
+      onChange()
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That kit was not installed.')
+    } finally {
+      setBusy(false)
+    }
+  }
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
@@ -231,7 +248,21 @@ function KitForm({ onChange }: { onChange: () => void }) {
         <Button type="submit" disabled={busy || !folder.trim()}>
           {busy ? 'Installing…' : 'Install kit'}
         </Button>
+        <Button variant="ghost" disabled={busy} onClick={() => picker.current?.click()}>
+          Install or update from a file
+        </Button>
+        <input
+          ref={picker}
+          type="file"
+          accept=".alphakit"
+          className="hidden"
+          onChange={(e) => {
+            void fromFile(e.target.files?.[0])
+            e.target.value = ''
+          }}
+        />
       </div>
+      {said && <div className="text-ink-2 text-md">{said}</div>}
       {problem && <div className="text-bad text-md">{problem}</div>}
     </form>
   )

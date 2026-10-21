@@ -1,6 +1,7 @@
 // The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Cell, renderPage, sheetBytes } from '@alpha/connector-files'
 import { chromePath } from '@alpha/connector-sdk'
@@ -14,9 +15,12 @@ import type { Engine, EngineEvent } from '../engine/engine.ts'
 import { instructionsFile } from '../engine/tools.ts'
 import { stillBeingRead } from '../files/documents.ts'
 import { agents, nextRun, setAgentState, whenWords } from '../modules/agents.ts'
+import { DRAFT } from '../modules/drafts.ts'
 import { install, installedKits, update } from '../modules/kits.ts'
+import { installPack } from '../modules/packs.ts'
 import { moduleNetwork } from '../modules/runs.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../pages/pages.ts'
+import type { Setup } from '../setup.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
 import { findField, rowName } from '../world/shape.ts'
@@ -36,9 +40,11 @@ import type {
   ModelView,
   ModuleSummary,
   ModuleView,
+  PermissionView,
   RowFileView,
   RunView,
   SavedView,
+  SetupView,
   SourceView,
   Stream,
   StreamLine,
@@ -79,6 +85,7 @@ export interface ServerOptions {
   ports?: number[] // the core's and the dev window's
   windowDir?: string // the built window, served at / when it is there
   browsers?: string // where the core's own browser is kept, for printing pages
+  setup?: Setup // what this Mac still needs: Claude's sign-in, connections, the readers' downloads
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -241,6 +248,66 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   const cardOut = (c: Card): CardView => ({
     ...cardView(c),
     filing: engine.hands?.intake?.view(c) ?? null,
+    draft: engine.hands?.drafts?.view(c) ?? null,
+  })
+  // An agent's draft: sent as it is or as the person changed it (with Always when offered), or
+  // held with a reason.
+  app.post('/api/cards/:id/send', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const body = z
+      .object({
+        message: z
+          .object({
+            to: z.string(),
+            cc: z.string().optional(),
+            subject: z.string(),
+            body: z.string(),
+          })
+          .nullable()
+          .optional(),
+        always: z.boolean().optional(),
+      })
+      .parse(req.body ?? {})
+    const drafts = engine.hands?.drafts
+    if (!drafts) throw new Refused('Drafts are not set up in this core.')
+    const m = body.message
+    const message = m
+      ? { to: m.to, subject: m.subject, body: m.body, ...(m.cc ? { cc: m.cc } : {}) }
+      : null
+    const out = await drafts.send(id, message, user, body.always ?? false)
+    live()
+    return cardOut(out)
+  })
+  app.post('/api/cards/:id/hold', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { reason, words } = z
+      .object({ reason: z.string(), words: z.string().max(400).default('') })
+      .parse(req.body ?? {})
+    const drafts = engine.hands?.drafts
+    if (!drafts) throw new Refused('Drafts are not set up in this core.')
+    const out = drafts.hold(id, reason, words, user)
+    live()
+    return cardOut(out)
+  })
+  // Standing permissions, as Settings lists them, and Revoke.
+  app.get(
+    '/api/permissions',
+    async (): Promise<PermissionView[]> =>
+      world.permissions.list().map((p) => ({
+        id: p.id,
+        sentence: p.sentence,
+        grantedBy: byWords(p.grantedBy),
+        grantedAt: p.grantedAt,
+        uses: p.uses,
+        lastUsedAt: p.lastUsedAt,
+        revokedAt: p.revokedAt,
+      })),
+  )
+  app.post('/api/permissions/:id/revoke', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    world.permissions.revoke(id, { actor: person, user: user.id })
+    live()
+    return { ok: true }
   })
   // A file from the mail: filed on the row the person settled on, as its kind (Replace takes the
   // row's other file of that kind off), or declined with their reason.
@@ -251,6 +318,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         row: z.string().nullable(),
         kind: z.string().nullable(),
         replace: z.boolean().optional(),
+        always: z.boolean().optional(),
       })
       .parse(req.body)
     const intake = engine.hands?.intake
@@ -273,6 +341,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { answer } = z.object({ answer: z.string().min(1) }).parse(req.body)
     try {
+      if (world.cards.get(id)?.call?.tool === DRAFT)
+        return cardOut(await engine.answerDraft(user, id, answer))
       return cardOut(engine.answer(user, id, answer))
     } catch (err) {
       if (err instanceof Refused) return reply.code(409).send({ problem: err.message })
@@ -823,6 +893,24 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { module: m.id }
   })
 
+  // A kit pack sent as a file: kept unpacked in Alpha's folder, then installed, or its kit updated.
+  app.post('/api/kits/pack', async (req) => {
+    const name = decodeURIComponent(String(req.headers['x-file-name'] ?? 'kit.alphakit'))
+    const dir = mkdtempSync(join(tmpdir(), 'alpha-kit-'))
+    try {
+      const file = join(dir, name.replace(/[^\w.-]/g, '_'))
+      writeFileSync(file, req.body as Buffer)
+      const words = await installPack(world, file, join(world.paths.dir, '..', '..', 'kits'), {
+        actor: person,
+        user: user.id,
+      })
+      live()
+      return { words }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   app.post('/api/kits/:module/update', async (req) => {
     const { module } = z.object({ module: z.string() }).parse(req.params)
     const { folder } = z.object({ folder: z.string().trim().optional() }).parse(req.body ?? {})
@@ -1043,9 +1131,36 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { ok: true }
   })
 
-  app.get('/api/model', async (): Promise<ModelView> => {
-    const m = config.models()
-    return { desk: m.desk, route: m.route }
+  const modelView = (): ModelView => ({
+    desk: config.models().desk,
+    route: engine.route?.name ?? 'subscription',
+    hasKey: engine.route?.hasKey ?? false,
+  })
+  app.get('/api/model', async (): Promise<ModelView> => modelView())
+  // This Mac's setup, for the first open and Settings, and the readers' downloads started on asking.
+  app.get(
+    '/api/setup',
+    async (): Promise<SetupView | null> => (options.setup ? options.setup.view() : null),
+  )
+  app.post('/api/setup/prepare', async () => {
+    options.setup?.prepare()
+    return { ok: true }
+  })
+  app.post('/api/setup/awake', async (req) => {
+    const { on } = z.object({ on: z.boolean() }).parse(req.body)
+    options.setup?.setKeepAwake(on)
+    return { ok: true }
+  })
+  // The route, the person's choice: their own subscription, or an API key kept in the Keychain.
+  app.post('/api/model', async (req): Promise<ModelView> => {
+    const { route, key } = z
+      .object({ route: z.enum(['subscription', 'key']), key: z.string().max(400).optional() })
+      .parse(req.body)
+    if (!engine.route) throw new Refused('The route is not set up in this core.')
+    await engine.route.set(route, key ?? null, user.id)
+    engine.rerouted()
+    live()
+    return modelView()
   })
 
   // Saved views: the person makes, saves, renames, makes default and removes them.
