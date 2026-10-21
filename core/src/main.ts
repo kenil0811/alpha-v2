@@ -152,6 +152,8 @@ const engine = new Engine(world, {
   route,
   hands: { browser: browserEngine, runner, browsers: join(home, 'browsers'), intake, drafts },
 })
+// when Alpha's Mac app last asked for notices
+const shell = { seen: 0 }
 const scheduler = new Scheduler(world, [
   { run: (now) => connectors.syncDue(now) },
   {
@@ -166,7 +168,9 @@ const scheduler = new Scheduler(world, [
       let said = false
       world.tasks.tick(now, { actor: { kind: 'system' }, user: user.id }, (t) => {
         said = true
-        if (process.platform !== 'darwin') return
+        // Alpha's Mac app shows it when it is running (it asked for notices lately); else macOS's
+        // own script runner does
+        if (process.platform !== 'darwin' || Date.now() - shell.seen < 30_000) return
         const q = (s: string) => s.replace(/["\\]/g, '\\$&')
         execFile(
           '/usr/bin/osascript',
@@ -204,6 +208,7 @@ const setup = new Setup(home, world, route)
 if (process.env.ALPHA_PREPARE_READERS === '1') setup.prepare()
 setup.holdAwake()
 const app = buildServer({
+  shell,
   engine,
   user,
   token,

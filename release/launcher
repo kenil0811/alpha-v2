@@ -1,3 +1,0 @@
-#!/bin/sh
-# Alpha.app's own program: starts Alpha if it had stopped, and opens its window in the browser.
-exec "$(cd "$(dirname "$0")/.." && pwd)/Resources/app/bin/alpha" open

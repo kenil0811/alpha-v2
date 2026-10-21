@@ -38,6 +38,41 @@ describe('the api over a world', () => {
 
   const app = () => buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700, 4701] })
 
+  it('gives the Mac app the reminders and cards since it last asked, each with its place', async () => {
+    const shell = { seen: 0 }
+    const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700], shell })
+    const ask = async (after?: number) =>
+      (
+        await a.inject({
+          url: `/api/notices${after === undefined ? '' : `?after=${after}`}`,
+          headers: ok,
+        })
+      ).json() as { last: number; notices: { title: string; body: string; open: string }[] }
+    const start = await ask()
+    expect(start.notices).toEqual([]) // nothing old comes back
+    expect(shell.seen).toBeGreaterThan(0)
+    const me = world.owner('Kenil')
+    const person = { actor: { kind: 'person' as const, id: me.id }, user: me.id }
+    const t = world.tasks.add(
+      { title: 'Call Sam', remindAt: new Date(Date.now() - 1000).toISOString() },
+      person,
+    )
+    world.tasks.tick(Date.now(), { actor: { kind: 'system' }, user: me.id }, () => undefined)
+    world.cards.open({
+      kind: 'question',
+      words: 'Which deal first?',
+      actor: { kind: 'alpha' },
+      user: me.id,
+    })
+    const next = await ask(start.last)
+    expect(next.notices.map((n) => [n.title, n.body, n.open])).toEqual([
+      ['Reminder', 'Call Sam', `#/tasks/${t.id}`],
+      ['Needs you', 'Which deal first?', '#/'],
+    ])
+    expect((await ask(next.last)).notices).toEqual([])
+    await a.close()
+  })
+
   it('turns away a request without the token, from another host or from another page', async () => {
     const a = app()
     expect(

@@ -1,0 +1,21 @@
+[package]
+name = "alpha-mac"
+version = "0.1.0"
+description = "Alpha on the Mac: its own window and a mark in the menu bar, over the core the login item runs."
+edition = "2021"
+rust-version = "1.98"
+
+[build-dependencies]
+tauri-build = { version = "=2.6.3", features = [] }
+
+[dependencies]
+tauri = { version = "=2.11.6", features = ["tray-icon", "image-png", "macos-private-api"] }
+serde_json = "1"
+tauri-plugin-window-state = "2"
+tauri-plugin-opener = "2"
+ureq = "2"
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSError", "NSObject"] }
+objc2-user-notifications = { version = "0.3", features = ["UNUserNotificationCenter", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationResponse", "UNNotificationSound", "UNNotificationTrigger", "block2"] }
+tauri-plugin-global-shortcut = "2"

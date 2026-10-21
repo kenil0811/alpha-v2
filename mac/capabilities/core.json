@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "core-window",
+  "description": "The core's own pages in Alpha's windows: the window moves by its bars, and the companion moves, sizes itself and opens the window.",
+  "windows": ["main", "companion"],
+  "remote": {
+    "urls": ["http://127.0.0.1:*"]
+  },
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "allow-show-main",
+    "allow-companion-layout",
+    "allow-companion-hot"
+  ]
+}

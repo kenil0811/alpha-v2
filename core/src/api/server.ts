@@ -95,6 +95,7 @@ export interface ServerOptions {
   windowDir?: string // the built window, served at / when it is there
   browsers?: string // where the core's own browser is kept, for printing pages
   setup?: Setup // what this Mac still needs: Claude's sign-in, connections, the readers' downloads
+  shell?: { seen: number } // when Alpha's Mac app last asked for notices: it shows them, not the core
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -769,6 +770,52 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       ].map(cardOut),
     }
   }
+
+  // the task a run served, when it served one
+  const taskOfRun = (run: string): string | null =>
+    (engine.hands?.runner.runs(200) ?? []).find((r) => r.id === run)?.task ?? null
+  // What Alpha's Mac app shows as notifications (Kenil's plan, 21 Oct): reminders that came and
+  // cards that began waiting on the person since the app last asked, each with the place a click
+  // opens. Asked first with no cursor, it gives only where to start, so nothing old comes back.
+  app.get('/api/notices', async (req) => {
+    const { after } = z.object({ after: z.coerce.number().optional() }).parse(req.query)
+    if (options.shell) options.shell.seen = Date.now()
+    const last = world.lastLineId()
+    if (after === undefined) return { last, notices: [] }
+    const notices: {
+      id: string
+      title: string
+      subtitle: string | null
+      body: string
+      open: string
+    }[] = []
+    for (const l of world.lines({ after, kinds: ['reminder', 'card_opened'] })) {
+      if (l.kind === 'reminder') {
+        const t = world.tasks.get(String((l.data as { task?: string }).task ?? ''))
+        if (!t) continue
+        const place = placeOf(t.place).words
+        notices.push({
+          id: `line-${l.id}`,
+          title: 'Reminder',
+          subtitle: place === 'nowhere yet' ? null : place,
+          body: t.title,
+          open: `#/tasks/${t.id}`,
+        })
+        continue
+      }
+      const c = world.cards.get(String((l.data as { card?: string }).card ?? l.card ?? ''))
+      if (c?.state !== 'waiting' || (c.user && c.user !== user.id)) continue
+      const task = c.run ? taskOfRun(c.run) : null
+      notices.push({
+        id: `card-${c.id}`,
+        title: 'Needs you',
+        subtitle: c.module ? (world.shape.module(c.module)?.name ?? null) : null,
+        body: c.words,
+        open: task ? `#/tasks/${task}` : '#/',
+      })
+    }
+    return { last, notices }
+  })
 
   // Start the agent a task is given to on it; its run goes on after this answers.
   app.post('/api/tasks/:id/start', async (req): Promise<TaskView | undefined> => {
