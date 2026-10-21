@@ -1,0 +1,549 @@
+// People (design §4, §14, Ledger): everyone Alpha knows, however many rows name them, each with
+// their company and plain numbers (how many messages and meetings lately, the last, who wrote
+// first), never a score; companies the same way. A page each: how to reach them, where they work
+// now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
+// and the mail and meetings with them, newest first, each opening its row.
+import type { PeopleView, PersonLineView, PersonView } from '@alpha/core/api'
+import { CalendarDays, ChevronRight, Mail, Pencil, Search } from 'lucide-react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { api, Problem } from './api.ts'
+import { Button } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
+import { Field } from './ui/field.tsx'
+import { Section } from './ui/section.tsx'
+import { Segmented } from './ui/segmented.tsx'
+
+const date = (at: string) =>
+  new Date(at).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    ...(new Date(at).getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}),
+  })
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+
+// "12 emails and 2 meetings in 90 days"
+function channelWords(channels: { channel: string; count: number }[], days: number): string {
+  if (!channels.length) return `Nothing in ${days} days`
+  const said = channels.map((c) =>
+    c.channel === 'mail'
+      ? plural(c.count, 'email')
+      : c.channel === 'meeting'
+        ? plural(c.count, 'meeting')
+        : `${c.count} ${c.channel}`,
+  )
+  return `${said.length > 1 ? `${said.slice(0, -1).join(', ')} and ${said.at(-1)}` : said[0]} in ${days} days`
+}
+
+const firstWords = (first: 'you' | 'them' | null) =>
+  first === 'you' ? 'you wrote first' : first === 'them' ? 'they wrote first' : null
+
+function initials(name: string): string {
+  const words = name
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+  return ((words[0]?.[0] ?? '') + (words.length > 1 ? (words.at(-1)?.[0] ?? '') : '')).toUpperCase()
+}
+
+function Face({ name, company, big }: { name: string; company?: boolean; big?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'grid shrink-0 place-items-center bg-sunk font-semibold text-ink-2',
+        company ? 'rounded-md' : 'rounded-full',
+        big ? 'size-12 text-lg' : 'size-8 text-xs',
+      )}
+    >
+      {initials(name) || '?'}
+    </span>
+  )
+}
+
+export function People({
+  kind,
+  id,
+  version,
+  onName,
+}: {
+  kind: 'person' | 'company'
+  id: string | null
+  version: number
+  onName: (name: string) => void
+}) {
+  return id ? (
+    <PersonPage id={id} version={version} onName={onName} />
+  ) : (
+    <PeopleList kind={kind} version={version} />
+  )
+}
+
+function PeopleList({ kind, version }: { kind: 'person' | 'company'; version: number }) {
+  const [view, setView] = useState<PeopleView | null>(null)
+  const [words, setWords] = useState('')
+  const load = useCallback(() => {
+    api
+      .get<PeopleView>(`/api/people?kind=${kind}&words=${encodeURIComponent(words.trim())}`)
+      .then(setView, () => setView(null))
+  }, [kind, words])
+  useEffect(() => {
+    if (version >= 0) {
+      const t = setTimeout(load, words ? 150 : 0)
+      return () => clearTimeout(t)
+    }
+  }, [load, version, words])
+
+  const lines = view?.lines ?? []
+  const none = view && view.people + view.companies === 0
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto flex max-w-page flex-col gap-4 px-8 pt-7 pb-10">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl text-ink">People</h1>
+          <Segmented
+            label="Show"
+            value={kind}
+            onChange={(k) => {
+              window.location.hash = k === 'company' ? '#/people?companies' : '#/people'
+            }}
+            options={[
+              { value: 'person', label: view ? `People · ${view.people}` : 'People' },
+              { value: 'company', label: view ? `Companies · ${view.companies}` : 'Companies' },
+            ]}
+          />
+          <span className="flex-1" />
+          <div className="relative flex items-center">
+            <Search className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
+            <Field
+              aria-label={kind === 'company' ? 'Find a company' : 'Find someone'}
+              placeholder={kind === 'company' ? 'Find a company' : 'Find someone'}
+              className="w-64 pl-8"
+              value={words}
+              onChange={(e) => setWords(e.target.value)}
+            />
+          </div>
+        </div>
+        {view && !none && (
+          <p className="text-ink-3 text-sm">
+            From {view.sources.join(', ') || 'your rows'}; numbers are the last {view.days} days.
+          </p>
+        )}
+        {none && (
+          <p className="text-ink-2 text-md">
+            No one yet. People come from your contacts, the people you write to and your small
+            meetings, once Contacts, Calendar or Gmail is connected in{' '}
+            <a className="text-accent hover:underline" href="#/settings">
+              Settings
+            </a>
+            .
+          </p>
+        )}
+        {view && !none && lines.length === 0 && (
+          <p className="text-ink-2 text-md">No one matches “{words.trim()}”.</p>
+        )}
+        {lines.length > 0 && (
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            {lines.map((p) => (
+              <PersonRow key={p.id} p={p} days={view?.days ?? 90} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PersonRow({ p, days }: { p: PersonLineView; days: number }) {
+  const company = p.kind === 'company'
+  const sub = company
+    ? [p.domains.join(', '), p.people ? plural(p.people, 'person', 'people') : ''].filter(Boolean)
+    : [p.companies.join(', '), p.emails[0] ?? p.phones[0] ?? ''].filter(Boolean)
+  return (
+    <a
+      href={`#/people/${p.id}`}
+      className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+    >
+      <Face name={p.name} company={company} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-base text-ink">{p.name}</span>
+        {sub.length > 0 && (
+          <span className="block truncate text-ink-3 text-sm">{sub.join(' · ')}</span>
+        )}
+      </span>
+      {!company && (
+        <span className="flex shrink-0 flex-col items-end text-ink-3 text-sm tabular-nums">
+          <span className={p.count ? 'text-ink-2' : undefined}>
+            {p.count ? `${p.count} in ${days} days` : `None in ${days} days`}
+          </span>
+          <span>
+            {p.last ? `Last ${date(p.last)}` : 'No messages or meetings'}
+            {p.count > 0 && firstWords(p.first) ? ` · ${firstWords(p.first)}` : ''}
+          </span>
+        </span>
+      )}
+      <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+    </a>
+  )
+}
+
+function PersonPage({
+  id,
+  version,
+  onName,
+}: {
+  id: string
+  version: number
+  onName: (name: string) => void
+}) {
+  const [p, setP] = useState<PersonView | null>(null)
+  const [missing, setMissing] = useState(false)
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const [mine, setMine] = useState(false)
+  const load = useCallback(() => {
+    api.get<PersonView>(`/api/people/${id}`).then(
+      (v) => {
+        // a merged one opens as the one it joined
+        if (v.id !== id) window.location.replace(`#/people/${v.id}`)
+        setP(v)
+        setMissing(false)
+        onName(v.name)
+      },
+      () => setMissing(true),
+    )
+  }, [id, onName])
+  useEffect(() => {
+    if (version >= 0) load()
+  }, [load, version])
+
+  const act = async (path: string, body?: unknown) => {
+    setProblem(null)
+    try {
+      const v = await api.post<PersonView>(`/api/people/${path}`, body)
+      setP(v)
+      onName(v.name)
+      if (v.id !== id) window.location.hash = `#/people/${v.id}`
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That did not go through.')
+    }
+  }
+
+  if (missing)
+    return (
+      <p className="p-8 text-ink-2 text-md">
+        They are not in your people any more.{' '}
+        <a className="text-accent hover:underline" href="#/people">
+          All people
+        </a>
+      </p>
+    )
+  if (!p) return null
+  const company = p.kind === 'company'
+  const now = p.companies.filter((c) => !c.ended)
+  const contact = [
+    channelWords(p.contact.channels, p.contact.days),
+    p.contact.last ? `last on ${date(p.contact.last)}` : '',
+    p.contact.count ? (firstWords(p.contact.first) ?? '') : '',
+  ].filter(Boolean)
+  const upcoming = p.history.filter((h) => h.at > new Date().toISOString())
+  const past = p.history.filter((h) => h.at <= new Date().toISOString())
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-7 pb-10">
+        <div className="flex items-center gap-4">
+          <Face name={p.name} company={company} big />
+          <div className="min-w-0 flex-1">
+            {naming ? (
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (name.trim() && name.trim() !== p.name)
+                    void act(`${p.id}/name`, { name: name.trim() })
+                  setNaming(false)
+                }}
+              >
+                <Field
+                  aria-label="Their name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-80"
+                  autoFocus
+                />
+                <Button type="submit" size="sm" variant="primary">
+                  Keep
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setNaming(false)}>
+                  Cancel
+                </Button>
+              </form>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="truncate font-serif text-2xl text-ink">{p.name}</h1>
+                <button
+                  type="button"
+                  title="Change the name"
+                  aria-label="Change the name"
+                  className="grid size-6 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink"
+                  onClick={() => {
+                    setName(p.name)
+                    setNaming(true)
+                  }}
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+              </div>
+            )}
+            <div className="text-ink-2 text-md">
+              {company
+                ? [p.domains.join(', '), plural(p.people.length, 'person', 'people')]
+                    .filter(Boolean)
+                    .join(' · ')
+                : now.map((c) => (c.title ? `${c.title}, ${c.name}` : c.name)).join(' · ') ||
+                  'No company known'}
+            </div>
+          </div>
+        </div>
+        {problem && <p className="text-bad text-sm">{problem}</p>}
+        {!company && p.emails.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
+            {mine ? (
+              <>
+                <span>
+                  {p.emails.join(', ')} will be known as your own, and {p.name} leaves People.
+                </span>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={async () => {
+                    try {
+                      await api.post(`/api/people/${p.id}/you`)
+                      window.location.hash = '#/people'
+                    } catch (err) {
+                      setProblem(err instanceof Problem ? err.message : 'That did not go through.')
+                    }
+                  }}
+                >
+                  Yes, that's me
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setMine(false)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="underline underline-offset-3 hover:text-ink"
+                onClick={() => setMine(true)}
+              >
+                This is you
+              </button>
+            )}
+          </div>
+        )}
+        {!company && (
+          <div className="rounded-lg border border-line bg-surface px-4 py-3 text-ink-2 text-md">
+            {contact.join(' · ')}
+          </div>
+        )}
+
+        {(p.emails.length > 0 || p.phones.length > 0 || p.profile) && (
+          <Section title="How to reach them">
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {p.emails.map((e) => (
+                <Detail key={e} label="Email">
+                  <a className="text-ink hover:underline" href={`mailto:${e}`}>
+                    {e}
+                  </a>
+                </Detail>
+              ))}
+              {p.phones.map((n) => (
+                <Detail key={n} label="Phone">
+                  {n}
+                </Detail>
+              ))}
+              {p.profile && (
+                <Detail label="Profile">
+                  <a
+                    className="text-ink hover:underline"
+                    href={`https://${p.profile}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {p.profile}
+                  </a>
+                </Detail>
+              )}
+            </div>
+          </Section>
+        )}
+
+        {!company && p.companies.length > 0 && (
+          <Section title="Works at" about="As your rows say; an earlier one is kept with its dates">
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {p.companies.map((c) => (
+                <a
+                  key={`${c.id}${c.title ?? ''}`}
+                  href={`#/people/${c.id}`}
+                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+                >
+                  <Face name={c.name} company />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-base text-ink">{c.name}</span>
+                    {c.title && <span className="block text-ink-3 text-sm">{c.title}</span>}
+                  </span>
+                  <span className="text-ink-3 text-sm">
+                    {c.ended ? `Before ${date(c.ended)}` : 'Now'}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {company && p.people.length > 0 && (
+          <Section title="People there">
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {p.people.map((m) => (
+                <a
+                  key={m.id}
+                  href={`#/people/${m.id}`}
+                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+                >
+                  <Face name={m.name} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-base text-ink">{m.name}</span>
+                    {m.title && <span className="block text-ink-3 text-sm">{m.title}</span>}
+                  </span>
+                  <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {p.rows.length > 0 && (
+          <Section title="In your modules" about="Rows that name them, by a person or an address">
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {p.rows.map((r) => (
+                <a
+                  key={r.href}
+                  href={r.href}
+                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-base text-ink">{r.name}</span>
+                    <span className="block truncate text-ink-3 text-sm">
+                      {r.module} · {r.table} · {r.field}
+                    </span>
+                  </span>
+                  <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {upcoming.length > 0 && (
+          <Section title="Coming up">
+            <History lines={upcoming.slice().reverse()} />
+          </Section>
+        )}
+        {!company && (
+          <Section title="Mail and meetings" about="Newest first; each opens its row">
+            {past.length ? (
+              <History lines={past} />
+            ) : (
+              <p className="text-ink-3 text-md">None in what Alpha has read.</p>
+            )}
+          </Section>
+        )}
+
+        <Section title="Where Alpha knows them from">
+          <div className="flex flex-wrap gap-2">
+            {p.from.map((f) => (
+              <span
+                key={f.name}
+                className="rounded-md border border-line bg-surface px-2.5 py-1 text-ink-2 text-sm"
+              >
+                {f.name}
+                {f.count > 1 ? ` · ${f.count} rows` : ''}
+              </span>
+            ))}
+            {p.from.length === 0 && (
+              <span className="text-ink-3 text-sm">Only what merged into this one</span>
+            )}
+          </div>
+        </Section>
+
+        {p.merged.length > 0 && (
+          <Section
+            title="Merged into this one"
+            about="Unmerge gives one back its own addresses and rows, kept apart from then on"
+          >
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {p.merged.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0"
+                >
+                  <Face name={m.name} company={company} />
+                  <span className="min-w-0 flex-1 truncate text-base text-ink">{m.name}</span>
+                  <Button size="sm" onClick={() => act(`${m.id}/unmerge`)}>
+                    Unmerge
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Detail({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 border-hair border-t px-4 py-2.5 text-md first:border-t-0">
+      <span className="w-16 shrink-0 text-ink-3 text-sm">{label}</span>
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+    </div>
+  )
+}
+
+function History({ lines }: { lines: PersonView['history'] }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      {lines.map((h) => (
+        <a
+          key={h.href}
+          href={h.href}
+          className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+        >
+          <span className="w-16 shrink-0 text-ink-3 text-sm tabular-nums">{date(h.at)}</span>
+          {h.channel === 'meeting' ? (
+            <CalendarDays className="size-3.5 shrink-0 text-ink-3" />
+          ) : (
+            <Mail className="size-3.5 shrink-0 text-ink-3" />
+          )}
+          <span className="min-w-0 flex-1 truncate text-base text-ink">
+            {h.about ?? (h.channel === 'meeting' ? 'A meeting' : 'A message')}
+          </span>
+          {h.by && (
+            <span className="shrink-0 text-ink-3 text-sm">
+              {h.channel === 'meeting'
+                ? h.by === 'you'
+                  ? 'You asked'
+                  : 'They asked'
+                : h.by === 'you'
+                  ? 'You wrote'
+                  : 'They wrote'}
+            </span>
+          )}
+        </a>
+      ))}
+    </div>
+  )
+}

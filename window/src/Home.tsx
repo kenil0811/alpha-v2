@@ -61,7 +61,12 @@ export function Home({
   const running = stream?.running ?? []
   const changed = today?.changed ?? []
   const coming = today?.coming ?? []
-  const firstOpen = stream !== null && modules.length === 0 && stream.lines.length === 0
+  // a card that waits is never hidden behind the welcome
+  const firstOpen =
+    stream !== null &&
+    modules.length === 0 &&
+    stream.lines.length === 0 &&
+    cards.length + signIns.length === 0
   const changeCard = (card: CardView) => {
     setWords(`About “${card.words.replace(/\?$/, '')}”: `)
     ask.current?.focus()

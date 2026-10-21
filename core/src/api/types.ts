@@ -62,6 +62,95 @@ export interface CardView {
   module: string | null // the module it belongs to, for a lens
   filing?: FilingView | null // a file from the mail: where it is proposed to go
   draft?: DraftView | null // an agent's email for the person's yes
+  match?: MatchView | null // people or companies that may be one, side by side
+}
+
+// One side of a pair on a match card: enough to tell the two apart.
+export interface SideView {
+  id: string
+  kind: 'person' | 'company'
+  name: string
+  emails: string[]
+  phones: string[]
+  profile: string | null
+  companies: string[]
+  from: string[] // the tables it came from
+  last: string | null
+  count: number
+}
+
+export interface MatchView {
+  pairs: {
+    id: string
+    why: string
+    state: 'found' | 'proposed' | 'merged' | 'apart' | 'withdrawn'
+    a: SideView // the one known longer, which a merge keeps
+    b: SideView
+  }[]
+  open: number
+  samePlace: number // undecided pairs with the same name and company
+}
+
+// Someone, or a company, as the People list shows them.
+export interface PersonLineView {
+  id: string
+  kind: 'person' | 'company'
+  name: string
+  emails: string[]
+  phones: string[]
+  companies: string[]
+  domains: string[]
+  last: string | null // the last message or meeting
+  count: number // messages and meetings in the last days
+  first: 'you' | 'them' | null // who wrote first in those days
+  people: number // a company's
+}
+
+export interface PeopleView {
+  kind: 'person' | 'company'
+  days: number
+  lines: PersonLineView[]
+  people: number
+  companies: number
+  sources: string[] // the tables people come from; none until a connection is read
+}
+
+// A person's or company's page.
+export interface PersonView {
+  id: string
+  kind: 'person' | 'company'
+  name: string
+  emails: string[]
+  phones: string[]
+  profile: string | null
+  domains: string[]
+  merged: { id: string; name: string }[] // each can be unmerged
+  companies: {
+    id: string
+    name: string
+    title: string | null
+    since: string
+    ended: string | null
+  }[]
+  people: { id: string; name: string; title: string | null }[] // a company's, now
+  from: { table: string | null; name: string; count: number }[] // where Alpha knows them from
+  contact: {
+    days: number
+    last: string | null
+    count: number
+    channels: { channel: string; count: number }[]
+    first: 'you' | 'them' | null
+  }
+  // the rows of the person's modules that name them: a person field, or an address of theirs
+  rows: { table: string; module: string; name: string; field: string; href: string }[]
+  history: {
+    at: string
+    channel: string
+    by: 'you' | 'them' | null
+    about: string | null
+    href: string // its row
+  }[]
+  createdAt: string
 }
 
 // An agent's draft on its card: the email to change, what it is about, the reasons a Not now picks
@@ -224,7 +313,7 @@ export interface TableView {
   fields: FieldView[]
   documents: string[] | null // the kinds of document its rows take, when it names them
   rows: RowView[]
-  names: Record<string, string> // the rows its relations point at, by name
+  names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
 }
 

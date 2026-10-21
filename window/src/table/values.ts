@@ -81,6 +81,8 @@ export function show(field: FieldView, value: unknown, names: Record<string, str
   if (value === null || value === undefined) return ''
   if (field.kind === 'relation')
     return (Array.isArray(value) ? value : [value]).map((id) => names[String(id)] ?? '…').join(', ')
+  // a person field holds one of the person's people, shown by name (an older value as written)
+  if (field.kind === 'person') return names[String(value)] ?? String(value)
   if (field.kind === 'money' && typeof value === 'object') {
     const m = value as { amount: number; currency: string }
     return money(m.amount, m.currency)

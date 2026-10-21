@@ -23,6 +23,7 @@ import { pageAnswer, pageDocument, pagesOf, printPage } from '../pages/pages.ts'
 import type { Setup } from '../setup.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
+import { phoneWords } from '../world/phones.ts'
 import { findField, rowName } from '../world/shape.ts'
 import type { View } from '../world/views.ts'
 import type { User } from '../world/world.ts'
@@ -40,7 +41,9 @@ import type {
   ModelView,
   ModuleSummary,
   ModuleView,
+  PeopleView,
   PermissionView,
+  PersonView,
   RowFileView,
   RunView,
   SavedView,
@@ -163,21 +166,32 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   // Find (⌘K): rows by their words, each opening where it is.
   app.get('/api/find', async (req): Promise<FoundRow[]> => {
     const { words } = z.object({ words: z.string().trim().min(1) }).parse(req.query)
-    return world
-      .search(words, 12)
-      .filter((h) => h.what === 'record')
-      .flatMap((h) => {
-        const rec = world.records.get(h.id)
-        if (!rec || rec.table.hidden) return []
-        return [
-          {
-            label: rowName(rec.table, rec.record.values),
-            hint: rec.table.name,
-            href: `#/table/${rec.table.id}/${h.id}`,
-          },
-        ]
-      })
-      .slice(0, 8)
+    const people: FoundRow[] = [
+      ...world.people.list('person', words).slice(0, 5),
+      ...world.people.list('company', words).slice(0, 3),
+    ].map((p) => ({
+      label: p.name,
+      hint: p.kind === 'company' ? 'Company' : (p.companies[0] ?? p.emails[0] ?? 'Person'),
+      href: `#/people/${p.id}`,
+    }))
+    return [
+      ...people,
+      ...world
+        .search(words, 12)
+        .filter((h) => h.what === 'record')
+        .flatMap((h) => {
+          const rec = world.records.get(h.id)
+          if (!rec || rec.table.hidden) return []
+          return [
+            {
+              label: rowName(rec.table, rec.record.values),
+              hint: rec.table.name,
+              href: `#/table/${rec.table.id}/${h.id}`,
+            },
+          ]
+        })
+        .slice(0, 8),
+    ]
   })
 
   app.get('/api/stream', async (req): Promise<Stream> => {
@@ -249,6 +263,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     ...cardView(c),
     filing: engine.hands?.intake?.view(c) ?? null,
     draft: engine.hands?.drafts?.view(c) ?? null,
+    match: c.kind === 'match' ? world.people.matchView(c.id) : null,
   })
   // An agent's draft: sent as it is or as the person changed it (with Always when offered), or
   // held with a reason.
@@ -348,6 +363,126 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       if (err instanceof Refused) return reply.code(409).send({ problem: err.message })
       throw err
     }
+  })
+
+  // People (design §4, §14): everyone or every company, a page each, and the person's word on
+  // them: a name, Unmerge, and each pair of a match card merged or kept apart.
+  const asPerson = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
+  app.get('/api/people', async (req): Promise<PeopleView> => {
+    const { kind, words } = z
+      .object({
+        kind: z.enum(['person', 'company']).default('person'),
+        words: z.string().default(''),
+      })
+      .parse(req.query)
+    return {
+      kind,
+      days: config.people().contact_days,
+      lines: world.people
+        .list(kind, words)
+        .map((p) => ({ ...p, phones: p.phones.map(phoneWords) })),
+      people: world.people.count('person'),
+      companies: world.people.count('company'),
+      sources: world.shape
+        .tables()
+        .filter((t) => t.people)
+        .map((t) => t.name),
+    }
+  })
+
+  const personOut = (id: string): PersonView | undefined => {
+    const p = world.people.get(id)
+    if (!p) return undefined
+    const from = new Map<string, { table: string | null; name: string; count: number }>()
+    for (const s of p.sources) {
+      const name = s.table ? (world.shape.table(s.table)?.name ?? 'A table') : 'You'
+      const seen = from.get(name) ?? { table: s.table, name, count: 0 }
+      seen.count++
+      from.set(name, seen)
+    }
+    return {
+      id: p.id,
+      kind: p.kind,
+      name: p.name,
+      emails: p.keys.email ?? [],
+      phones: (p.keys.phone ?? []).map(phoneWords),
+      profile: p.keys.profile?.[0] ?? null,
+      domains: p.keys.domain ?? [],
+      merged: p.merged,
+      companies: p.companies,
+      people: p.people,
+      from: [...from.values()],
+      contact: p.contact,
+      rows: world.people.rowsNaming(p.id).flatMap((r) => {
+        const rec = world.records.get(r.record)
+        return rec
+          ? [
+              {
+                table: rec.table.name,
+                module: rec.table.module.name,
+                name: rowName(rec.table, rec.record.values),
+                field: r.field,
+                href: `#/table/${r.table}/${r.record}`,
+              },
+            ]
+          : []
+      }),
+      history: world.people.history(p.id).map((h) => ({
+        at: h.at,
+        channel: h.channel,
+        by: h.by,
+        about: h.about,
+        href: `#/table/${h.table}/${h.record}`,
+      })),
+      createdAt: p.createdAt,
+    }
+  }
+
+  app.get('/api/people/:id', async (req, reply): Promise<PersonView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const p = personOut(id)
+    if (!p) return reply.code(404).send({ problem: 'That one is not there.' })
+    return p
+  })
+
+  app.post('/api/people/:id/name', async (req): Promise<PersonView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { name } = z.object({ name: z.string().trim().min(1) }).parse(req.body)
+    world.people.name(id, name, asPerson)
+    live()
+    return personOut(id)
+  })
+
+  app.post('/api/people/:id/unmerge', async (req): Promise<PersonView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const alone = world.people.unmerge(id, asPerson)
+    live()
+    return personOut(alone.id)
+  })
+
+  app.post('/api/people/:id/you', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const emails = world.people.isYou(id, asPerson)
+    live()
+    return { emails }
+  })
+
+  app.post('/api/people/pairs/:id', async (req): Promise<CardView | null> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { merge } = z.object({ merge: z.boolean() }).parse(req.body)
+    world.people.decidePair(id, merge, asPerson)
+    live()
+    const card = world.people.pairs().find((p) => p.id === id)?.card
+    const c = card ? world.cards.get(card) : undefined
+    return c ? cardOut(c) : null
+  })
+
+  app.post('/api/cards/:id/merge-same', async (req): Promise<CardView | null> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    world.people.mergeSamePlace(id, asPerson)
+    live()
+    const c = world.cards.get(id)
+    return c ? cardOut(c) : null
   })
 
   // The modules the window shows: each with a page or a table in sight, and the modules they sit
@@ -590,8 +725,15 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         if (other)
           for (const r of world.records.list(other.id)) names.set(r.id, rowName(other, r.values))
       }
+    const people = world.people.names(
+      fields
+        .filter((f) => f.kind === 'person')
+        .flatMap((f) => [...byId.values()].map((r) => r.values[f.slug]))
+        .filter((v): v is string => typeof v === 'string'),
+    )
     const cell = (kind: string, v: unknown): Cell => {
       if (v === null || v === undefined) return null
+      if (kind === 'person') return people[String(v)] ?? String(v)
       if (kind === 'money' && typeof v === 'object') return (v as { amount: number }).amount
       if (kind === 'number') return Number(v)
       if (kind === 'relation')
@@ -656,16 +798,25 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           Object.entries(r.provenance).map(([k, p]) => [k, sourceView(p)]),
         ),
       })),
-      names: Object.fromEntries(
-        t.fields
-          .filter((f) => f.kind === 'relation' && f.relatesTo)
-          .flatMap((f) => {
-            const other = world.shape.table(f.relatesTo as string)
-            return other
-              ? world.records.list(other.id).map((r) => [r.id, rowName(other, r.values)])
-              : []
-          }),
-      ),
+      names: {
+        ...Object.fromEntries(
+          t.fields
+            .filter((f) => f.kind === 'relation' && f.relatesTo)
+            .flatMap((f) => {
+              const other = world.shape.table(f.relatesTo as string)
+              return other
+                ? world.records.list(other.id).map((r) => [r.id, rowName(other, r.values)])
+                : []
+            }),
+        ),
+        // the people its person fields hold, by name
+        ...world.people.names(
+          t.fields
+            .filter((f) => f.kind === 'person')
+            .flatMap((f) => world.records.list(t.id).map((r) => r.values[f.slug]))
+            .filter((v): v is string => typeof v === 'string'),
+        ),
+      },
     }
   })
 

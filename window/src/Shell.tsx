@@ -1,5 +1,5 @@
 // The shell (design §14, Ledger): the rail on the left and a 48px bar over every screen. The rail
-// has the mark, Home with a badge for what waits on the person, Conversation, Activity, the modules
+// has the mark, Home with a badge for what waits on the person, Conversation, People, Activity, the modules
 // by name, each with the modules inside it (Kenil, 20 Oct: module names only), Settings and
 // Alpha's state at its foot; it folds to a strip of icons. Its top 48px is left for the Mac's
 // window buttons when the window has a shell of its own.
@@ -16,6 +16,7 @@ import {
   PanelLeftOpen,
   Search,
   SlidersHorizontal,
+  Users,
   X,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
@@ -40,6 +41,7 @@ export type Place =
     }
   | { at: 'settings'; open: string | null }
   | { at: 'file'; place: FilePlace }
+  | { at: 'people'; kind: 'person' | 'company'; id: string | null }
 
 function Nav({
   href,
@@ -145,6 +147,12 @@ export function Rail({
         icon={<MessageSquare className="size-4" />}
         label="Conversation"
         current={place.at === 'conversation'}
+      />
+      <Nav
+        href="#/people"
+        icon={<Users className="size-4" />}
+        label="People"
+        current={place.at === 'people'}
       />
       <Nav
         href="#/activity"
@@ -418,6 +426,7 @@ function Strip({
         place.at === 'conversation',
         <MessageSquare className="size-4" />,
       )}
+      {icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       {icon(
         '#/activity',
         running ? `Activity, ${running} running` : 'Activity',
@@ -540,6 +549,8 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
     () => [
       { label: 'Home', hint: '', href: '#/' },
       { label: 'Conversation', hint: '', href: '#/conversation' },
+      { label: 'People', hint: '', href: '#/people' },
+      { label: 'Companies', hint: 'People', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
