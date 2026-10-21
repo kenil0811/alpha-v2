@@ -21,6 +21,7 @@ export {
   type ItemFile,
   type Landed,
   type Manifest,
+  type PeopleMap,
   Problem,
   type SyncResult,
   type TableSpec,

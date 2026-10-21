@@ -10,7 +10,13 @@ import { parse } from 'yaml'
 import { z } from 'zod'
 import { all, now, one, run, tx } from '../world/db.ts'
 import { FIELD_KINDS, Refused } from '../world/kinds.ts'
-import { type FieldInput, type Module, TONES, type WriteCtx } from '../world/shape.ts'
+import {
+  type FieldInput,
+  type Module,
+  type PeopleMap,
+  TONES,
+  type WriteCtx,
+} from '../world/shape.ts'
 import { hashOf, resolveConfig } from '../world/views.ts'
 import type { World } from '../world/world.ts'
 import { syncAgents } from './agents.ts'
@@ -37,6 +43,33 @@ const Manifest = z.object({
         fields: z.array(Field),
         // the kinds of document its rows take (a deal's teaser, CIM, NDA), filed on a row
         documents: z.array(z.string().min(1)).optional(),
+        // how its rows name people, by its fields' names (world/shape.ts PeopleMap)
+        people: z
+          .union([
+            z.object({
+              each: z.literal('person'),
+              name: z.string().optional(),
+              emails: z.string().optional(),
+              phones: z.string().optional(),
+              profile: z.string().optional(),
+              company: z.string().optional(),
+              title: z.string().optional(),
+              you: z.object({ field: z.string(), is: z.string() }).optional(),
+            }),
+            z.object({
+              each: z.literal('exchange'),
+              channel: z.string(),
+              at: z.string(),
+              from: z.string().optional(),
+              to: z.array(z.string()).optional(),
+              with: z.array(z.string()).optional(),
+              sent: z.object({ field: z.string(), is: z.string() }).optional(),
+              by: z.string().optional(),
+              about: z.string().optional(),
+              you: z.string().optional(),
+            }),
+          ])
+          .optional(),
         // saved views by field name: name, default, then the view (world/views.ts ViewConfig)
         views: z
           .array(z.looseObject({ name: z.string(), default: z.boolean().optional() }))
@@ -170,6 +203,8 @@ function shapeTables(world: World, module: Module, manifest: KitManifest, ctx: W
       const kinds = [...was, ...spec.documents.filter((k) => !was.includes(k))]
       if (kinds.length !== was.length) world.shape.setDocuments(t.id, kinds, ctx)
     }
+    // how its rows name people, as the kit says; its rows are read for them again when it changes
+    if (spec.people) world.people.mapTable(t.id, spec.people as PeopleMap, ctx)
   }
 }
 

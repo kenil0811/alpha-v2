@@ -240,6 +240,16 @@ export const gmail: Connector = {
         { name: 'Unread', kind: 'choice', choices: ['yes', 'no'] },
         { name: 'Starred', kind: 'choice', choices: ['yes', 'no'] },
       ],
+      // those the person writes to become their people; every message counts as contact
+      people: {
+        each: 'exchange',
+        channel: 'mail',
+        at: 'Date',
+        from: 'From',
+        to: ['To', 'Cc'],
+        sent: { field: 'Direction', is: 'sent' },
+        about: 'Subject',
+      },
     },
   ],
   tools: {

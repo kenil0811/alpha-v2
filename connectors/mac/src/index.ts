@@ -11,6 +11,12 @@ function helper(): string {
   return app
 }
 
+interface Attendee {
+  name: string
+  email: string
+  me?: boolean // the person themselves
+}
+
 interface Event {
   id: string
   title: string
@@ -19,7 +25,8 @@ interface Event {
   allDay: boolean
   location: string
   calendar: string
-  attendees: { name: string; email: string }[]
+  attendees: Attendee[]
+  organizer?: Partial<Attendee>
 }
 
 interface Contact {
@@ -27,8 +34,11 @@ interface Contact {
   given: string
   family: string
   company: string
+  title?: string
+  me?: boolean // the person's own card
   emails: string[]
   phones: string[]
+  links?: string[]
 }
 
 const DAY = 86_400_000
@@ -55,9 +65,17 @@ async function contacts(c: Call): Promise<Contact[]> {
   })
 }
 
-const who = (a: { name: string; email: string }) =>
-  a.name && a.email ? `${a.name} <${a.email}>` : a.name || a.email
+const who = (a: Partial<Attendee>) =>
+  a.name && a.email ? `${a.name} <${a.email}>` : a.name || a.email || ''
 const nameOf = (p: Contact) => [p.given, p.family].filter(Boolean).join(' ') || p.company
+// A LinkedIn profile among a card's links, the one profile link people keep in Contacts.
+const profileOf = (p: Contact) => (p.links ?? []).find((l) => /linkedin\.com\/in\//i.test(l)) ?? ''
+// The person's own addresses in an event: the attendee or organizer the Mac says is them.
+const yours = (e: Event) =>
+  [...e.attendees, ...(e.organizer ? [e.organizer] : [])]
+    .filter((a) => a.me && a.email)
+    .map((a) => a.email)
+    .join(', ')
 
 export const calendar: Connector = {
   manifest: {
@@ -81,7 +99,18 @@ export const calendar: Connector = {
         { name: 'Location', kind: 'text' },
         { name: 'Calendar', kind: 'text' },
         { name: 'Attendees', kind: 'text' },
+        { name: 'Organizer', kind: 'text' },
+        { name: 'Your address', kind: 'text' },
       ],
+      people: {
+        each: 'exchange',
+        channel: 'meeting',
+        at: 'Starts',
+        with: ['Attendees'],
+        by: 'Organizer',
+        you: 'Your address',
+        about: 'Title',
+      },
     },
   ],
   tools: {
@@ -119,6 +148,8 @@ export const calendar: Connector = {
           Location: e.location,
           Calendar: e.calendar,
           Attendees: e.attendees.map(who).join(', '),
+          Organizer: e.organizer ? who(e.organizer) : '',
+          'Your address': yours(e),
         },
       })),
     )
@@ -145,7 +176,20 @@ export const contactsConnector: Connector = {
         { name: 'Company', kind: 'text' },
         { name: 'Emails', kind: 'text' },
         { name: 'Phones', kind: 'text' },
+        { name: 'Title', kind: 'text' },
+        { name: 'Profile', kind: 'text' },
+        { name: 'Is you', kind: 'choice', choices: ['yes', 'no'] },
       ],
+      people: {
+        each: 'person',
+        name: 'Name',
+        company: 'Company',
+        title: 'Title',
+        emails: 'Emails',
+        phones: 'Phones',
+        profile: 'Profile',
+        you: { field: 'Is you', is: 'yes' },
+      },
     },
   ],
   tools: {
@@ -180,6 +224,9 @@ export const contactsConnector: Connector = {
           Company: p.company,
           Emails: p.emails.join(', '),
           Phones: p.phones.join(', '),
+          Title: p.title ?? '',
+          Profile: profileOf(p),
+          'Is you': p.me ? 'yes' : 'no',
         },
       })),
     )

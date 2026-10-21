@@ -63,8 +63,13 @@ case "calendar":
       "start": iso.string(from: e.startDate), "end": iso.string(from: e.endDate),
       "allDay": e.isAllDay, "location": e.location ?? "", "calendar": e.calendar.title,
       "attendees": (e.attendees ?? []).map { a in
-        ["name": a.name ?? "", "email": a.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")]
+        ["name": a.name ?? "", "email": a.url.absoluteString.replacingOccurrences(of: "mailto:", with: ""),
+         "me": a.isCurrentUser]
       },
+      "organizer": e.organizer.map { o in
+        ["name": o.name ?? "", "email": o.url.absoluteString.replacingOccurrences(of: "mailto:", with: ""),
+         "me": o.isCurrentUser]
+      } ?? [:],
     ]
   }
   out(["ok": true, "events": events])
@@ -77,13 +82,18 @@ case "contacts":
   sem.wait()
   guard granted else { fail("contacts access is not granted", 2) }
   let keys = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactOrganizationNameKey,
-              CNContactEmailAddressesKey, CNContactPhoneNumbersKey, CNContactIdentifierKey] as [CNKeyDescriptor]
+              CNContactJobTitleKey, CNContactEmailAddressesKey, CNContactPhoneNumbersKey,
+              CNContactSocialProfilesKey, CNContactUrlAddressesKey, CNContactIdentifierKey] as [CNKeyDescriptor]
+  // the person's own card, so they are never one of their contacts
+  let me = (try? store.unifiedMeContactWithKeys(toFetch: [CNContactIdentifierKey as CNKeyDescriptor]))?.identifier
   var people: [[String: Any]] = []
   try? store.enumerateContacts(with: CNContactFetchRequest(keysToFetch: keys)) { c, _ in
     people.append([
       "id": c.identifier, "given": c.givenName, "family": c.familyName, "company": c.organizationName,
+      "title": c.jobTitle, "me": c.identifier == me,
       "emails": c.emailAddresses.map { $0.value as String },
       "phones": c.phoneNumbers.map { $0.value.stringValue },
+      "links": c.socialProfiles.map { $0.value.urlString } + c.urlAddresses.map { $0.value as String },
     ])
   }
   out(["ok": true, "contacts": people])

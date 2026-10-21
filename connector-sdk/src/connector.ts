@@ -35,9 +35,36 @@ export type FieldKind =
   | 'email'
   | 'phone'
 
+// How a table's rows name people, by its fields' names (the core's people read them): each row
+// is a person, or an exchange with people whose fields hold addresses as a message writes them.
+export type PeopleMap =
+  | {
+      each: 'person'
+      name?: string // none: their name comes from wherever else they are known
+      emails?: string
+      phones?: string
+      profile?: string
+      company?: string
+      title?: string
+      you?: { field: string; is: string } // the person's own card
+    }
+  | {
+      each: 'exchange'
+      channel: string
+      at: string
+      from?: string
+      to?: string[]
+      with?: string[]
+      sent?: { field: string; is: string }
+      by?: string // who started it: a meeting's organizer
+      about?: string // what it was about: a message's subject, a meeting's title
+      you?: string // the person's own address in it
+    }
+
 export interface TableSpec {
   name: string
   fields: { name: string; kind: FieldKind; choices?: string[] }[]
+  people?: PeopleMap
 }
 
 export interface Item {

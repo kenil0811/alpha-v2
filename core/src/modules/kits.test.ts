@@ -108,6 +108,27 @@ describe('updating a kit', () => {
     expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('documents:')
   })
 
+  it('says how a table’s rows name people, and its setup rows become people', async () => {
+    const dir = join(home, 'kit-people')
+    cpSync(KIT, dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      readFileSync(join(KIT, 'module.yaml'), 'utf8').replace(
+        '  - name: Suppliers\n',
+        '  - name: Suppliers\n    people: { each: person, name: Name, emails: Email }\n',
+      ),
+    )
+    const m = await install(world, dir, ctx)
+    expect(world.shape.table('Suppliers')?.people).toEqual({
+      each: 'person',
+      name: 'Name',
+      emails: 'Email',
+    })
+    const mill = world.people.byKey('email', 'mill@example.com') as string
+    expect(world.people.get(mill)?.name).toBe('Mill & Co')
+    expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('people:')
+  })
+
   it('leaves the folder as it was when an update fails, so a later one brings its files', async () => {
     const m = await install(world, KIT, ctx)
     const other = world.shape.makeModule('Shop', ctx)

@@ -77,27 +77,26 @@ export class ConnectorService {
   }
 
   // The module and tables a connector's items land in, made when it is first connected, and
-  // any field a newer version adds.
+  // any field a newer version adds; and how their rows name people, read again when that changes.
   tables(c: Connector): Table[] {
     const actor = { kind: 'connector' as const, id: c.manifest.name }
     if (!c.tables.length) return []
     const module =
       this.world.shape.module(c.module) ?? this.world.shape.makeModule(c.module, { actor })
     return c.tables.map((spec) => {
-      const t = this.world.shape.table(spec.name)
+      const found = this.world.shape.table(spec.name)
       // Alpha's working memory, out of the sidebar until the person shows it (Kenil, 19 Oct).
-      if (!t)
-        return this.world.shape.makeTable(
-          module.id,
-          spec.name,
-          spec.fields,
-          { actor },
-          { hidden: true },
-        )
-      const missing = spec.fields.filter(
-        (f) => !t.fields.some((x) => x.name.toLowerCase() === f.name.toLowerCase()),
-      )
-      return missing.length ? this.world.shape.addFields(t.id, missing, { actor }) : t
+      const missing = found
+        ? spec.fields.filter(
+            (f) => !found.fields.some((x) => x.name.toLowerCase() === f.name.toLowerCase()),
+          )
+        : []
+      const t = !found
+        ? this.world.shape.makeTable(module.id, spec.name, spec.fields, { actor }, { hidden: true })
+        : missing.length
+          ? this.world.shape.addFields(found.id, missing, { actor })
+          : found
+      return this.world.people.mapTable(t.id, spec.people ?? null, { actor })
     })
   }
 
