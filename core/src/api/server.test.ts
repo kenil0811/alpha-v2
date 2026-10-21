@@ -123,6 +123,7 @@ describe('the api over a world', () => {
     ])
     const view = (await a.inject({ url: `/api/modules/${shops.id}`, headers: ok })).json()
     expect(view.modules.map((m: { name: string }) => m.name)).toEqual(['Bakery'])
+    expect(view.modules[0]).toMatchObject({ kit: null, agents: 0, running: 0, needs: 0, tasks: 0 })
     const loop = await a.inject({
       method: 'POST',
       url: `/api/modules/${shops.id}/place`,

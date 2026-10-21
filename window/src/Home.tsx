@@ -43,14 +43,13 @@ export function Home({
 }) {
   const [today, setToday] = useState<TodayView | null>(null)
   const [setup, reloadSetup] = useSetup()
-  const [working, setWorking] = useState<WorkingModuleView[]>([])
   const [tasks, setTasks] = useState<TasksView | null>(null)
   const [words, setWords] = useState('')
+  const [allComing, setAllComing] = useState(false)
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
   const load = useCallback(() => {
     api.get<TodayView>('/api/today').then(setToday, () => undefined)
-    api.get<WorkingModuleView[]>('/api/working').then(setWorking, () => undefined)
     api.get<TasksView>('/api/tasks?list=today').then(setTasks, () => undefined)
   }, [])
   // a new journal line is the cue to look again
@@ -248,68 +247,40 @@ export function Home({
                 {today && coming.length === 0 && <Quiet>No agent runs on the clock.</Quiet>}
                 {coming.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {coming.map((c) => (
-                      <a
-                        key={c.agent}
-                        href={`#/module/${c.module}/agents`}
-                        className="flex items-baseline gap-2 border-hair border-t px-4 py-2.5 text-md first:border-t-0 hover:bg-hover"
+                    {/* opened out, the rows scroll inside their box, not the whole screen (Kenil,
+                        21 Oct) */}
+                    <div className={allComing ? 'max-h-80 overflow-y-auto' : undefined}>
+                      {(allComing ? coming : coming.slice(0, 3)).map((c) => (
+                        <a
+                          key={c.agent}
+                          href={`#/module/${c.module}/agents`}
+                          className="flex items-baseline gap-2 border-hair border-t px-4 py-2.5 text-md first:border-t-0 hover:bg-hover"
+                        >
+                          <span className="min-w-0 flex-1 truncate text-ink">
+                            {c.name}
+                            <span className="text-ink-3"> · {c.moduleName}</span>
+                          </span>
+                          <span className="shrink-0 text-ink-3 text-sm">{dayWords(c.at)}</span>
+                        </a>
+                      ))}
+                    </div>
+                    {coming.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setAllComing((a) => !a)}
+                        className="w-full border-hair border-t px-4 py-2 text-left text-accent text-sm hover:bg-hover"
                       >
-                        <span className="min-w-0 flex-1 truncate text-ink">
-                          {c.name}
-                          <span className="text-ink-3"> · {c.moduleName}</span>
-                        </span>
-                        <span className="shrink-0 text-ink-3 text-sm">{dayWords(c.at)}</span>
-                      </a>
-                    ))}
+                        {allComing ? 'Fewer' : `${coming.length - 3} more`}
+                      </button>
+                    )}
                   </div>
                 )}
-              </Group>
-
-              <Group title="Your modules">
-                {modules.length === 0 && <Quiet>None yet. Ask Alpha to keep something.</Quiet>}
-                {tops(modules).map((m) => (
-                  <HomeModule key={m.id} m={m} modules={modules} working={working} />
-                ))}
               </Group>
             </div>
           </div>
         )}
       </div>
     </div>
-  )
-}
-
-// A module on Home, with the modules inside it in its card.
-function HomeModule({
-  m,
-  modules,
-  working,
-}: {
-  m: ModuleSummary
-  modules: ModuleSummary[]
-  working: WorkingModuleView[]
-}) {
-  const w = working.find((x) => x.id === m.id)
-  const on = w?.agents.filter((a) => a.state === 'on').length ?? 0
-  const kids = childrenOf(modules, m.id)
-  return (
-    <ModuleCard
-      id={m.id}
-      name={m.name}
-      sub={
-        [
-          w?.kit ? `From the ${w.kit.name} kit` : '',
-          w?.agents.length ? `${on} agent${on === 1 ? '' : 's'} on` : '',
-          kids.length ? `${kids.length} module${kids.length === 1 ? '' : 's'} inside` : '',
-        ]
-          .filter(Boolean)
-          .join(' · ') || 'Made in a conversation'
-      }
-      tables={m.tables}
-    >
-      {kids.length > 0 &&
-        kids.map((c) => <HomeModule key={c.id} m={c} modules={modules} working={working} />)}
-    </ModuleCard>
   )
 }
 

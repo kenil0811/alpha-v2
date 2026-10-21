@@ -1,17 +1,17 @@
 // A module's screen (design §14, Ledger): its head (the kit it came from, its agents, the sites its
-// readers may read) and one row of tabs: an Overview of the modules inside it when it holds any,
-// its pages (design §13), its tables with their counts, its Conversation (Home through the
-// module's lens, with the modules inside it) and its Agents and notes. A module holding others
-// opens on its Overview, else on its front page, else its first table.
+// readers may read) and one row of tabs: an Overview of the modules inside it when it holds any
+// (a plain list: each one's name, where it comes from and what goes on in it right now; Kenil,
+// 21 Oct), its pages (design §13), its tables with their counts, its Conversation (Home through
+// the module's lens, with the modules inside it) and its Agents and notes. A module holding
+// others opens on its Overview, else on its front page, else its first table.
 import type { ModuleView, TableView as TableData } from '@alpha/core/api'
 import { Bot, Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { AllAgents, when } from './Kits.tsx'
-import { ModuleCard } from './ModuleCard.tsx'
 import { PageView } from './PageView.tsx'
 import { cn } from './ui/cn.ts'
-import { List, Row } from './ui/list.tsx'
+import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Words } from './ui/words.tsx'
@@ -181,28 +181,53 @@ export function ModuleScreen({
   )
 }
 
-// The modules inside this one, each as a card with its pages and tables.
+// The modules inside this one, a row each: its name, where it comes from, and what goes on in
+// it right now (agents on and running, open tasks); what waits on the person stands out.
 function Overview({ m }: { m: ModuleView }) {
   return (
     <div className="h-full overflow-y-auto">
-      <div className="grid max-w-page items-start gap-3 px-7 py-6 md:grid-cols-2">
-        {m.modules.map((c) => (
-          <ModuleCard
-            key={c.id}
-            id={c.id}
-            name={c.name}
-            sub={
-              [
-                c.kit ? `From the ${c.kit} kit` : 'Made in a conversation',
-                c.agents ? `${c.agents} agent${c.agents === 1 ? '' : 's'} on` : '',
-              ]
-                .filter(Boolean)
-                .join(' · ') || ''
-            }
-            pages={c.pages}
-            tables={c.tables}
-          />
-        ))}
+      <div className="max-w-page px-7 py-6">
+        <List>
+          {m.modules.map((c) => {
+            const quiet = !c.agents && !c.running && !c.needs && !c.tasks
+            const sub = [
+              c.kit ? `From the ${c.kit} kit` : 'Made in a conversation',
+              c.agents
+                ? `${c.agents} agent${c.agents === 1 ? '' : 's'} on${c.running ? `, ${c.running} running` : ''}`
+                : c.running
+                  ? `${c.running} running`
+                  : '',
+              c.tasks ? `${c.tasks} open task${c.tasks === 1 ? '' : 's'}` : '',
+              quiet ? 'Quiet right now' : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')
+            return (
+              <Row
+                key={c.id}
+                className="relative hover:bg-canvas"
+                lead={
+                  <Tile>
+                    <Briefcase className="size-4" />
+                  </Tile>
+                }
+                title={
+                  <a href={`#/module/${c.id}`} className="after:absolute after:inset-0">
+                    {c.name}
+                  </a>
+                }
+                sub={sub}
+                actions={
+                  c.needs > 0 && (
+                    <Pill tone="warn">
+                      {c.needs} need{c.needs === 1 ? 's' : ''} you
+                    </Pill>
+                  )
+                }
+              />
+            )
+          })}
+        </List>
       </div>
     </div>
   )

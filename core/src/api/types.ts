@@ -479,7 +479,17 @@ export interface ModuleView {
   parent: string | null
   pages: PageSummary[]
   tables: TableSummary[]
-  modules: (ModuleSummary & { kit: string | null; agents: number })[] // the modules inside it
+  modules: InsideModuleView[] // the modules inside it
+}
+
+// A module inside another, as the parent's Overview lists it: where it comes from and what goes
+// on in it right now, counting the modules inside it too.
+export interface InsideModuleView extends ModuleSummary {
+  kit: string | null
+  agents: number // on
+  running: number
+  needs: number // cards waiting on the person
+  tasks: number // open
 }
 
 // What Alpha remembers: the standing instructions the person gave, for them or for everyone.

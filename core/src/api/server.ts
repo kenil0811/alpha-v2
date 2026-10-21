@@ -1605,6 +1605,10 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         .map((r) => r.agent),
     )
     const notes = join(m.dir, 'NOTES.md')
+    const everyModule = world.shape.modules()
+    const everyAgent = agents(world)
+    const waiting = world.cards.waiting(user.id)
+    const openTasks = world.tasks.list({ open: true })
     return {
       id: m.id,
       name: m.name,
@@ -1627,11 +1631,27 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
       modules: summaries()
         .filter((c) => c.parent === m.id)
-        .map((c) => ({
-          ...c,
-          kit: installedKits(world).find((x) => x.module === c.id)?.kit ?? null,
-          agents: agents(world, c.id).filter((a) => a.state === 'on').length,
-        })),
+        .map((c) => {
+          // what goes on in it counts what sits inside it too
+          const within = new Set([c.id])
+          for (let grew = true; grew; ) {
+            grew = false
+            for (const x of everyModule)
+              if (x.parent && within.has(x.parent) && !within.has(x.id)) {
+                within.add(x.id)
+                grew = true
+              }
+          }
+          const its = everyAgent.filter((a) => within.has(a.module))
+          return {
+            ...c,
+            kit: installedKits(world).find((x) => x.module === c.id)?.kit ?? null,
+            agents: its.filter((a) => a.state === 'on').length,
+            running: its.filter((a) => running.has(a.id)).length,
+            needs: waiting.filter((x) => x.module && within.has(x.module)).length,
+            tasks: openTasks.filter((t) => t.place.module && within.has(t.place.module)).length,
+          }
+        }),
     }
   })
 

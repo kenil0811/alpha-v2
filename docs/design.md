@@ -443,7 +443,9 @@ inline with their buttons.
 
 **The rail is module names only** (Kenil, 20 Oct): Home, Conversation, Tasks, People, Activity, then each module
 by name with the modules inside it folded under it, and a menu to move one into another; its
-pages and tables are its screen's tabs. A module holding others opens on an Overview of them. The
+pages and tables are its screen's tabs. A module holding others opens on an Overview of them: a
+plain list, a row per module with its name, where it comes from and what goes on in it right now
+(agents on and running, open tasks, what waits on the person), nothing of its tables. The
 rail folds to a strip of icons (⌘\), and the Ask panel drags wider, to two thirds of the window,
 or expands to half of it, or opens as the full Conversation. How the person left them is kept per
 person in the world, like the theme.
