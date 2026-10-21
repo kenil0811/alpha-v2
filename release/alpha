@@ -17,7 +17,7 @@ export ALPHA_HOME="$DATA" ALPHA_LOG_DIR="$LOGS"
 CLAUDE="$(find "$APP/node_modules/.pnpm" -path '*claude-agent-sdk-darwin-arm64*' -name claude -type f 2>/dev/null | head -1)"
 
 say() { printf '%s\n' "$*"; }
-answering() { curl -s -o /dev/null -m 2 "http://127.0.0.1:$PORT/api/health"; }
+answering() { curl -s -o /dev/null -m 10 "http://127.0.0.1:$PORT/api/health"; }
 loaded() { launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; }
 token() { cat "$DATA/token" 2>/dev/null; }
 
@@ -67,10 +67,21 @@ case "$1" in
     say "Alpha is running on the restored data."
     ;;
   update)
-    [ -f "$2" ] || { say "Say which Alpha file, like ~/Downloads/Alpha-0.3.1-avilo.tar.gz"; exit 1; }
-    tmp="$(mktemp -d)"
-    tar -xzf "$2" -C "$tmp"
-    sh "$(find "$tmp" -maxdepth 2 -name install.sh | head -1)"
+    [ -f "$2" ] || { say "Say which Alpha file, like ~/Downloads/Alpha-0.4.3-avilo.dmg"; exit 1; }
+    case "$2" in
+      *.dmg)
+        mnt="$(mktemp -d)"
+        hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mnt" "$2"
+        sh "$mnt/Alpha.app/Contents/Resources/app/install.sh" || status=$?
+        hdiutil detach -quiet "$mnt" || true
+        exit "${status:-0}"
+        ;;
+      *)
+        tmp="$(mktemp -d)"
+        tar -xzf "$2" -C "$tmp"
+        sh "$(find "$tmp" -maxdepth 2 -name install.sh | head -1)"
+        ;;
+    esac
     ;;
   rollback)
     prev="$DATA/previous/Alpha.app"
@@ -103,8 +114,11 @@ case "$1" in
     osascript -e 'tell application id "io.github.kenil0811.alpha" to quit' >/dev/null 2>&1 || true
     rm -f "$PLIST" "$APP_PLIST"
     while security delete-generic-password -s Alpha >/dev/null 2>&1; do :; done
-    tccutil reset Calendar io.github.kenil0811.alpha.helper >/dev/null 2>&1 || true
-    tccutil reset AddressBook io.github.kenil0811.alpha.helper >/dev/null 2>&1 || true
+    for id in io.github.kenil0811.alpha io.github.kenil0811.alpha.helper; do
+      tccutil reset Calendar "$id" >/dev/null 2>&1 || true
+      tccutil reset AddressBook "$id" >/dev/null 2>&1 || true
+      tccutil reset Notifications "$id" >/dev/null 2>&1 || true
+    done
     rm -rf "$LOGS"
     if [ "$2" = "--remove-data" ]; then
       printf 'Type remove to move all of Alpha'"'"'s data to the Trash: '

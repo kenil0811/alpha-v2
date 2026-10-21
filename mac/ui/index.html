@@ -9,16 +9,34 @@
       html, body { height: 100%; margin: 0; }
       body { display: grid; place-items: center; background: var(--canvas); color: var(--ink);
         font: 15px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; -webkit-user-select: none; }
-      main { text-align: center; }
-      h1 { font: 600 22px/1.3 Georgia, serif; margin: 0 0 6px; }
+      main { text-align: center; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+      h1 { font: 600 22px/1.3 Georgia, serif; margin: 0; }
       p { margin: 0; color: var(--ink-3); }
+      button { font: inherit; height: 32px; padding: 0 16px; border-radius: 7px; border: 1px solid var(--ink-3); background: transparent; color: var(--ink); cursor: pointer; margin-top: 10px; }
+      .hidden { display: none; }
     </style>
   </head>
   <body data-tauri-drag-region>
     <main data-tauri-drag-region>
       <h1>Alpha is starting</h1>
       <p>This window opens Alpha as soon as it answers.</p>
-      <p>If it stays here, open Terminal and type: alpha start</p>
+      <p id="late" class="hidden">It has not answered for a while.</p>
+      <button id="start" class="hidden" type="button">Start Alpha</button>
     </main>
+    <script>
+      // after a while with no answer: the core started again from here, never from Terminal
+      setTimeout(() => {
+        document.getElementById('late').classList.remove('hidden')
+        document.getElementById('start').classList.remove('hidden')
+      }, 30000)
+      document.getElementById('start').onclick = () => {
+        const b = document.getElementById('start')
+        b.disabled = true
+        b.textContent = 'Starting…'
+        window.__TAURI_INTERNALS__.invoke('start_core').then((ok) => {
+          b.textContent = ok ? 'Started; waiting for it to answer' : 'Alpha is not installed on this Mac'
+        })
+      }
+    </script>
   </body>
 </html>

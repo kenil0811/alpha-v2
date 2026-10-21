@@ -56,7 +56,8 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
           ? 'Through the API key kept in the Keychain'
           : 'On your own Claude subscription; Alpha never sees your sign-in'
         : (view.claude.problem ??
-          'In Terminal, run alpha signin and sign in with your Claude account in the page that opens.'),
+          'Sign in opens a page in your browser; sign in with your Claude account there.'),
+      act: view.claude.signedIn ? null : <SignIn onChange={onChange} />,
     },
     {
       done: view.readers.browser === 'ready',
@@ -148,5 +149,32 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         </div>
       )}
     </div>
+  )
+}
+
+// Claude's own sign-in, started from here: the browser opens, and the line turns green once the
+// person has signed in there (asked again every few seconds for a while).
+function SignIn({ onChange }: { onChange: () => void }) {
+  const [waiting, setWaiting] = useState(false)
+  useEffect(() => {
+    if (!waiting) return
+    let n = 0
+    const t = setInterval(() => {
+      onChange()
+      if (++n > 60) setWaiting(false)
+    }, 3000)
+    return () => clearInterval(t)
+  }, [waiting, onChange])
+  return (
+    <button
+      type="button"
+      disabled={waiting}
+      onClick={() => {
+        setWaiting(true)
+        api.post('/api/setup/signin').catch(() => setWaiting(false))
+      }}
+    >
+      {waiting ? 'Waiting for the browser…' : 'Sign in'}
+    </button>
   )
 }

@@ -6,7 +6,7 @@
 // for crawlers; every check page still stops it.
 // Readers (skills) call it through the core, so pacing and health come from here and a reader
 // writes only its extraction.
-import { execFile, spawn } from 'node:child_process'
+import { execFile, execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
@@ -205,6 +205,16 @@ export function robotsAllow(robots: string, path: string): boolean {
   return longest(allow) >= longest(disallow)
 }
 
+// Whether Google Chrome itself is running on this Mac (its windows, not Alpha's reading).
+function chromeRunning(): boolean {
+  try {
+    execFileSync('/usr/bin/pgrep', ['-xq', 'Google Chrome'], { stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+}
+
 export class BrowserEngine {
   private profiles: string
   private pace: Pace
@@ -244,11 +254,27 @@ export class BrowserEngine {
           )
         // Chrome keeps its saved sign-ins locked with the Mac's keychain; Playwright's stand-in
         // keychain would leave them unreadable
-        c = await chromium.launchPersistentContext(dir, {
-          channel: 'chrome',
-          headless: true,
-          ignoreDefaultArgs: ['--use-mock-keychain', '--password-store=basic'],
-        })
+        const launch = () =>
+          chromium.launchPersistentContext(dir, {
+            channel: 'chrome',
+            headless: true,
+            ignoreDefaultArgs: ['--use-mock-keychain', '--password-store=basic'],
+          })
+        try {
+          c = await launch()
+        } catch (err) {
+          // the profile is held: by the Chrome window the person signed in with and left open,
+          // or by a lock an earlier Chrome left behind when it was stopped short
+          if (!/ProcessSingleton|SingletonLock/.test(String(err))) throw err
+          if (chromeRunning())
+            throw new Problem(
+              `Google Chrome is open with ${host}'s sign-in. Quit Chrome (⌘Q); Alpha reads ${host} on its next run.`,
+              'blocked',
+            )
+          for (const f of ['SingletonLock', 'SingletonSocket', 'SingletonCookie'])
+            rmSync(join(dir, f), { force: true })
+          c = await launch()
+        }
       } else {
         await ensureBrowser(this.browsers)
         c = await chromium.launchPersistentContext(dir, {

@@ -19,3 +19,4 @@ block2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSString", "NSError", "NSObject"] }
 objc2-user-notifications = { version = "0.3", features = ["UNUserNotificationCenter", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationResponse", "UNNotificationSound", "UNNotificationTrigger", "block2"] }
 tauri-plugin-global-shortcut = "2"
+serde = { version = "1", features = ["derive"] }

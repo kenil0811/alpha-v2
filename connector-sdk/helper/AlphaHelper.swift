@@ -47,11 +47,15 @@ case "keychain":
 
 case "calendar":
   let store = EKEventStore()
+  // macOS asks the person once; after a no, only System Settings turns it on, and the words say so
+  let before = EKEventStore.authorizationStatus(for: .event)
   let sem = DispatchSemaphore(value: 0)
   var granted = false
   store.requestFullAccessToEvents { ok, _ in granted = ok; sem.signal() }
   sem.wait()
-  guard granted else { fail("calendar access is not granted", 2) }
+  guard granted else {
+    fail(before == .notDetermined ? "calendar access was not given" : "calendar access is off", 2)
+  }
   let iso = ISO8601DateFormatter()
   let from = args.count > 1 ? iso.date(from: args[1]) ?? Date() : Date()
   let to = args.count > 2 ? iso.date(from: args[2]) ?? from.addingTimeInterval(86400 * 7) : from.addingTimeInterval(86400 * 7)
@@ -76,11 +80,14 @@ case "calendar":
 
 case "contacts":
   let store = CNContactStore()
+  let before = CNContactStore.authorizationStatus(for: .contacts)
   let sem = DispatchSemaphore(value: 0)
   var granted = false
   store.requestAccess(for: .contacts) { ok, _ in granted = ok; sem.signal() }
   sem.wait()
-  guard granted else { fail("contacts access is not granted", 2) }
+  guard granted else {
+    fail(before == .notDetermined ? "contacts access was not given" : "contacts access is off", 2)
+  }
   let keys = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactOrganizationNameKey,
               CNContactJobTitleKey, CNContactEmailAddressesKey, CNContactPhoneNumbersKey,
               CNContactSocialProfilesKey, CNContactUrlAddressesKey, CNContactIdentifierKey] as [CNKeyDescriptor]

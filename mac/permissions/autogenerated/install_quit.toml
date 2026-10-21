@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-install-quit"
+description = "Enables the install_quit command without any pre-configured scope."
+commands.allow = ["install_quit"]
+
+[[permission]]
+identifier = "deny-install-quit"
+description = "Denies the install_quit command without any pre-configured scope."
+commands.deny = ["install_quit"]

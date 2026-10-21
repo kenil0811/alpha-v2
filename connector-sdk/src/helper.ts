@@ -77,12 +77,19 @@ function parseAnswer(text: string): unknown {
   }
   if (answer.ok === false) {
     const words = answer.problem ?? 'It did not work.'
-    throw new Problem(
-      words.includes('not granted')
-        ? `${words}: allow Alpha in System Settings › Privacy & Security.`
-        : words,
-      words.includes('not granted') ? 'sign_in' : 'other',
-    )
+    // macOS lists the asker as Alpha (the helper lives inside Alpha.app, so Alpha is the
+    // subject); after a no, only its switch there turns it on
+    const access = /^(calendar|contacts) access (was not given|is off)$/.exec(words)
+    if (access) {
+      const what = access[1] === 'calendar' ? 'Calendars' : 'Contacts'
+      throw new Problem(
+        access[2] === 'is off'
+          ? `${what} is off for Alpha in System Settings › Privacy & Security › ${what}. Turn it on there, then Read now.`
+          : `macOS asked whether Alpha may read your ${what.toLowerCase()}, and it was not allowed. Turn it on in System Settings › Privacy & Security › ${what}, then Read now.`,
+        'sign_in',
+      )
+    }
+    throw new Problem(words, 'other')
   }
   return answer
 }

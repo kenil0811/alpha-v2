@@ -1,11 +1,15 @@
 #!/bin/sh
-# Installs Alpha on this Mac, or updates it (packaging, piece 3). Run from the unpacked Alpha folder:
-#   sh install.sh
+# Installs Alpha on this Mac, or updates it (packaging, piece 3; Kenil's ask of 21 Oct: no
+# Terminal). Three ways in, the same steps:
+#   Alpha.app itself, on its first open (--from-app <bundle>): the window shows these lines
+#   sh /Volumes/Alpha/Alpha.app/Contents/Resources/app/install.sh   (from the disk image)
+#   sh install.sh                                                     (an unpacked Alpha folder)
 # It checks the Mac, clears macOS's download mark from Alpha's own files only, puts Alpha.app in
-# Applications (no administrator password), hands over the kits that came with it, sets Alpha to
-# start at login, starts it, runs Claude's own sign-in when this Mac is not signed in, and opens
-# Alpha. Updating, it backs up the data first, keeps the old Alpha one step back, and puts it back
-# if the new one does not start.
+# Applications when it is not there yet (no administrator password), hands over the kits that came
+# with it, sets Alpha and its core to start at login, and starts the core. Updating, it backs up
+# the data first, keeps the old Alpha one step back, and puts it back if the new one does not
+# start. From Terminal it also runs Claude's own sign-in and opens Alpha; from the app, Alpha's
+# window does both.
 set -e
 here="$(cd "$(dirname "$0")" && pwd)"
 LABEL=io.github.kenil0811.alpha.core
@@ -17,8 +21,27 @@ APP_LABEL=io.github.kenil0811.alpha.app
 APP_PLIST="$HOME/Library/LaunchAgents/$APP_LABEL.plist"
 APP=/Applications/Alpha.app
 PAY="$APP/Contents/Resources/app"
+# the core's own tools (backup, restore) find the data by these
+export ALPHA_HOME="$DATA" ALPHA_LOG_DIR="$LOGS"
 say() { printf '\n%s\n' "$*"; }
 fail() { printf '\n%s\n' "$*"; exit 1; }
+
+# Where the new Alpha is: the app that runs this, the app this script sits inside, or the one
+# beside it in an unpacked folder.
+from_app=""
+if [ "$1" = "--from-app" ]; then
+  from_app=1
+  SRC="$(cd "$2" && pwd)"
+else
+  case "$here" in
+    */Alpha.app/Contents/Resources/app) SRC="$(cd "$here/../../.." && pwd)" ;;
+    *) SRC="$here/Alpha.app" ;;
+  esac
+fi
+[ -d "$SRC/Contents/Resources/app" ] || fail "Run install.sh from the Alpha folder it came in, beside Alpha.app."
+new="$(cat "$SRC/Contents/Resources/app/VERSION")"
+in_place=""
+[ "$SRC" = "$APP" ] && in_place=1
 
 # The Mac: Apple silicon, macOS 14 or newer, room for Alpha and what reading needs.
 [ "$(uname -m)" = arm64 ] || fail "Alpha needs a Mac with Apple silicon (M1 or later)."
@@ -26,36 +49,69 @@ version="$(sw_vers -productVersion)"
 [ "${version%%.*}" -ge 14 ] || fail "Alpha needs macOS 14 Sonoma or newer; this Mac has $version."
 free="$(df -k "$HOME" | awk 'NR==2 {print $4}')"
 [ "$free" -gt 3000000 ] || fail "Alpha needs about 3 GB free on this Mac; it has $((free / 1000000)) GB."
-[ -d "$here/Alpha.app" ] || fail "Run install.sh from the Alpha folder it came in, beside Alpha.app."
-new="$(cat "$here/Alpha.app/Contents/Resources/app/VERSION")"
+# A shared or network drive cannot carry the links inside Alpha's packages (a virtual machine's
+# shared folder, a file server): the folder has to be on this Mac first.
+vol="$(df -P "$SRC" | awk 'NR==2 {print $1}')"
+if mount | grep -F "$vol on " | grep -Eiq 'virtiofs|smbfs|afpfs|nfs|webdav|fuse'; then
+  fail "The Alpha folder is on a shared or network drive. Copy it to this Mac's Desktop first, then run install.sh from there."
+fi
 
 # macOS marks downloaded files; Alpha's own are not notarized yet (Step A), so the mark comes off
 # them, and only them.
-xattr -dr com.apple.quarantine "$here" 2>/dev/null || true
+xattr -dr com.apple.quarantine "$SRC" 2>/dev/null || true
+[ -n "$from_app" ] || xattr -dr com.apple.quarantine "$here" 2>/dev/null || true
 
 updating=""
-if [ -d "$APP" ]; then
-  updating="$(cat "$PAY/VERSION" 2>/dev/null || echo 'an earlier version')"
+# an earlier install that never finished (no runtime or manifest inside: the manifest is the
+# last file a release writes) is set aside, never deleted
+if [ -z "$in_place" ] && [ -d "$APP" ] && { ! [ -x "$PAY/runtime/node" ] || ! [ -f "$PAY/MANIFEST" ]; }; then
+  say "Setting aside an Alpha that was not installed whole."
+  launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  mkdir -p "$DATA/previous"
+  rm -rf "$DATA/previous/Alpha.partial.app"
+  mv "$APP" "$DATA/previous/Alpha.partial.app"
+fi
+if [ -f "$PLIST" ] || { [ -d "$APP" ] && [ -z "$in_place" ]; }; then
+  updating="$(cat "$DATA/version" 2>/dev/null || echo 'an earlier version')"
+  if [ "$updating" = "$new" ] && [ -n "$in_place" ]; then
+    say "Alpha $new is already installed."
+    exit 0
+  fi
   say "Updating Alpha $updating to $new. Backing up your data first."
   stamp="$(date +%Y-%m-%d-%H%M%S)"
   mkdir -p "$DATA/updates/$stamp"
-  "$PAY/runtime/node" "$PAY/core/src/cli.ts" backup "$DATA/updates/$stamp/worlds" >/dev/null
-  "$PAY/bin/alpha" stop >/dev/null 2>&1 || true
-  osascript -e 'tell application id "io.github.kenil0811.alpha" to quit' >/dev/null 2>&1 || true
-  rm -rf "$DATA/previous"
-  mkdir -p "$DATA/previous"
-  mv "$APP" "$DATA/previous/Alpha.app"
+  backup_with="$PAY/runtime/node"
+  [ -x "$backup_with" ] || backup_with="$SRC/Contents/Resources/app/runtime/node"
+  "$backup_with" "$(dirname "$backup_with")/../core/src/cli.ts" backup "$DATA/updates/$stamp/worlds" >/dev/null 2>&1 || true
+  launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  i=0
+  while curl -s -o /dev/null -m 2 "http://127.0.0.1:4700/api/health"; do i=$((i + 1)); [ "$i" -gt 30 ] && break; sleep 1; done
+  if [ -z "$in_place" ] && [ -d "$APP" ]; then
+    rm -rf "$DATA/previous"
+    mkdir -p "$DATA/previous"
+    mv "$APP" "$DATA/previous/Alpha.app"
+  fi
 else
   say "Installing Alpha $new."
 fi
 
-ditto "$here/Alpha.app" "$APP"
+if [ -z "$in_place" ]; then
+  say "Putting Alpha in Applications."
+  ditto "$SRC" "$APP"
+fi
+# The copy is on this Mac now: the download mark comes off it here, where it can. With the mark
+# on, macOS refuses to run the core at all (launchd: OS_REASON_CODESIGNING), and nothing says so.
+xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
+if xattr -p com.apple.quarantine "$PAY/runtime/node" >/dev/null 2>&1; then
+  fail "macOS's download mark could not be taken off Alpha's files, so it would not be allowed to run. Send Kenil a note."
+fi
 mkdir -p "$DATA/kits/inbox" "$LOGS" "$HOME/Library/LaunchAgents"
-for k in "$here"/kits/*.alphakit; do
+for k in "$APP/Contents/Resources/kits"/*.alphakit "$here"/kits/*.alphakit; do
   [ -f "$k" ] && cp "$k" "$DATA/kits/inbox/"
 done
+printf '%s\n' "$new" > "$DATA/version"
 
-# Alpha starts at login, with its own Node, helper and uv, and only macOS's own PATH.
+# Alpha's core starts at login, with its own Node, helper and uv, and only macOS's own PATH.
 cat > "$PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -88,6 +144,9 @@ cat > "$PLIST" <<PLIST
 PLIST
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$PLIST"
+# launchd sometimes pends a start-at-load ("domain in on-demand-only mode") and never spawns;
+# an explicit demand starts it whatever the mode
+launchctl kickstart "$DOMAIN/$LABEL" 2>/dev/null || true
 
 # Alpha's app opens at login too, quietly: no window, only its face in the corner and its mark in
 # the menu bar (the person hides the face from the menu bar if they want it gone).
@@ -111,24 +170,33 @@ cat > "$APP_PLIST" <<PLIST
 </plist>
 PLIST
 
-say "Starting Alpha. macOS may say \"Background item added\": that is Alpha starting at login."
+say "Starting Alpha. Its first start sets up your kits and can take a few minutes. macOS may say \"Background item added\": that is Alpha starting at login."
 i=0
-until curl -s -o /dev/null -m 2 "http://127.0.0.1:4700/api/health"; do
+until curl -s -o /dev/null -m 10 "http://127.0.0.1:4700/api/health"; do
   i=$((i + 1))
-  if [ "$i" -gt 90 ]; then
+  [ $((i % 30)) -eq 0 ] && say "Still starting ($((i / 60)) min)."
+  if [ "$i" -gt 600 ]; then
     if [ -n "$updating" ] && [ -d "$DATA/previous/Alpha.app" ]; then
       say "The new Alpha did not start, so the earlier one is back. Its log: $LOGS/core.log"
       launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
       rm -rf "$APP"
       mv "$DATA/previous/Alpha.app" "$APP"
-      "$PAY/runtime/node" "$PAY/core/src/cli.ts" restore "$DATA/updates/$stamp/worlds" >/dev/null
+      xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
+      "$PAY/runtime/node" "$PAY/core/src/cli.ts" restore "$DATA/updates/$stamp/worlds" >/dev/null 2>&1 || true
+      cat "$PAY/VERSION" > "$DATA/version" 2>/dev/null || rm -f "$DATA/version"
       launchctl bootstrap "$DOMAIN" "$PLIST"
+      launchctl kickstart "$DOMAIN/$LABEL" 2>/dev/null || true
       exit 1
     fi
     fail "Alpha did not start. Its log is $LOGS/core.log; send Kenil a report with: \"$PAY/bin/alpha\" report"
   fi
   sleep 1
 done
+
+if [ -n "$from_app" ]; then
+  say "Alpha $new is ready."
+  exit 0
+fi
 
 # Claude, on this person's own subscription: Claude's own sign-in, when this Mac is not signed in.
 CLAUDE="$(find "$PAY/node_modules/.pnpm" -path '*claude-agent-sdk-darwin-arm64*' -name claude -type f | head -1)"

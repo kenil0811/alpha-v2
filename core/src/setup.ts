@@ -115,6 +115,28 @@ export class Setup {
     this.holdAwake()
   }
 
+  // Claude's own sign-in, started from the window: it opens the person's browser and finishes
+  // there by itself; Alpha only watches the status change. Started once at a time.
+  private signingIn: ReturnType<typeof execFile> | null = null
+  signIn(): boolean {
+    const bin = claudeBinary()
+    if (!bin || this.signingIn) return false
+    const child = execFile(
+      bin,
+      ['auth', 'login'],
+      {
+        timeout: 5 * 60_000,
+        env: { ...process.env, ...(this.route?.env() ?? {}) },
+      },
+      () => {
+        this.signingIn = null
+      },
+    )
+    child.stdin?.end()
+    this.signingIn = child
+    return true
+  }
+
   private claude(): Promise<SetupView['claude']> {
     const bin = claudeBinary()
     if (!bin)

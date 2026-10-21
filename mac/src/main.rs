@@ -19,6 +19,7 @@ use tauri::{
 use tauri_plugin_opener::OpenerExt;
 
 mod companion;
+mod install;
 mod notify;
 
 const TRAY: &[u8] = include_bytes!("../icons/tray.png");
@@ -66,11 +67,36 @@ impl Core {
         url.host_str() == Some("127.0.0.1") && url.port() == Some(self.port)
     }
 
+    // a slow Mac answers late while the core sets up: the wait is generous
     fn answering(&self) -> bool {
         ureq::get(&format!("{}/api/health", self.origin()))
-            .timeout(Duration::from_secs(2))
+            .timeout(Duration::from_secs(8))
             .call()
             .is_ok()
+    }
+
+    /// The core's login item started again (or for the first time), when this Mac has one.
+    fn start(&self) -> bool {
+        let home = std::env::var("HOME").unwrap_or_default();
+        let plist = format!("{home}/Library/LaunchAgents/io.github.kenil0811.alpha.core.plist");
+        if !std::path::Path::new(&plist).exists() {
+            return false;
+        }
+        let uid = std::process::Command::new("/usr/bin/id")
+            .arg("-u")
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_default();
+        let label = format!("gui/{uid}/io.github.kenil0811.alpha.core");
+        let _ = std::process::Command::new("/bin/launchctl").args(["bootout", &label]).status();
+        let loaded = std::process::Command::new("/bin/launchctl")
+            .args(["bootstrap", &format!("gui/{uid}"), &plist])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        // launchd may pend a start-at-load ("on-demand-only mode"); a demand starts it anyway
+        let _ = std::process::Command::new("/bin/launchctl").args(["kickstart", &label]).status();
+        loaded
     }
 
     /// The reminders and cards since `after` (none the first time: only where to start), and
@@ -121,6 +147,28 @@ struct Mark {
 #[tauri::command]
 fn show_main(app: AppHandle, core: tauri::State<'_, Core>, hash: String) {
     show(&app, &core, Some(&hash));
+}
+
+/// The Install window's commands: what this install is, run it, and Not now.
+#[tauri::command]
+fn install_plan(app: AppHandle) -> install::Plan {
+    install::plan(&app)
+}
+
+#[tauri::command]
+fn install(app: AppHandle) {
+    install::run(app);
+}
+
+#[tauri::command]
+fn install_quit(app: AppHandle) {
+    app.exit(0);
+}
+
+/// The starting page's Start Alpha: the core's login item, started again.
+#[tauri::command]
+fn start_core(core: tauri::State<'_, Core>) -> bool {
+    core.start()
 }
 
 #[tauri::command]
@@ -354,9 +402,23 @@ fn main() {
         )
         .manage(core.clone())
         .manage(companion::Hot::default())
-        .invoke_handler(tauri::generate_handler![show_main, companion_layout, companion_hot])
+        .invoke_handler(tauri::generate_handler![
+            show_main,
+            companion_layout,
+            companion_hot,
+            install_plan,
+            install,
+            install_quit,
+            start_core
+        ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            // a released Alpha not installed on this Mac yet, or newer than the one that is:
+            // the Install window, and nothing else until it is done
+            if install::wanted(&handle) {
+                install::window(&handle)?;
+                return Ok(());
+            }
             build_window(&handle, &started)?;
             let (clicked, at) = (handle.clone(), started.clone());
             notify::start(move |place| show(&clicked, &at, Some(&place)));

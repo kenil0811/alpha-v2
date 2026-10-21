@@ -440,6 +440,7 @@ export interface ConnectionView {
   health: string | null
   lastSyncAt: string | null
   tables: { id: string; name: string; hidden: boolean }[] // what it keeps, maybe out of the sidebar
+  settings: 'contacts' | 'calendars' | null // the System Settings pane that turns Alpha Helper on
 }
 
 export interface ConnectorsView {

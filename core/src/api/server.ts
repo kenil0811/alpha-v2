@@ -1,5 +1,6 @@
 // The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
+import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -1405,6 +1406,12 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         state: k.state,
         health: k.health,
         lastSyncAt: k.lastSyncAt,
+        settings:
+          k.state === 'needs_sign_in' && k.connector === 'contacts'
+            ? 'contacts'
+            : k.state === 'needs_sign_in' && k.connector === 'calendar'
+              ? 'calendars'
+              : null,
         tables: connectorOf(k.connector).tables.flatMap((spec) => {
           const t = world.shape.table(spec.name)
           return t ? [{ id: t.id, name: t.name, hidden: t.hidden }] : []
@@ -1748,6 +1755,21 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     '/api/setup',
     async (): Promise<SetupView | null> => (options.setup ? options.setup.view() : null),
   )
+  app.post('/api/setup/signin', async () => ({ started: options.setup?.signIn() ?? false }))
+  // System Settings opened at the pane where the person turns Alpha Helper on (Contacts or
+  // Calendars): the one switch macOS keeps outside Alpha after a no.
+  app.post('/api/setup/settings', async (req) => {
+    const { pane } = z.object({ pane: z.enum(['contacts', 'calendars']) }).parse(req.body)
+    if (process.platform === 'darwin')
+      execFile(
+        '/usr/bin/open',
+        [
+          `x-apple.systempreferences:com.apple.preference.security?Privacy_${pane === 'contacts' ? 'Contacts' : 'Calendars'}`,
+        ],
+        () => undefined,
+      )
+    return { ok: true }
+  })
   app.post('/api/setup/prepare', async () => {
     options.setup?.prepare()
     return { ok: true }

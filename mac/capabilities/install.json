@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "install-window",
+  "description": "The shell's own Install window: what this install is, run it, close.",
+  "windows": ["install"],
+  "permissions": ["core:default", "allow-install-plan", "allow-install", "allow-install-quit"]
+}

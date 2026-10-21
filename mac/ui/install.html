@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Alpha</title>
+    <style>
+      :root { color-scheme: light dark; --canvas: #fcfcfd; --surface: #ffffff; --ink: #16202b; --ink-2: #4b5664; --ink-3: #6b7785; --line: #e0e4e9; --accent: #35618b; --bad: #ad3d36; }
+      @media (prefers-color-scheme: dark) { :root { --canvas: #13181e; --surface: #171d24; --ink: #e6ebf0; --ink-2: #b6c0ca; --ink-3: #8b97a4; --line: #2a333d; --accent: #86aed4; --bad: #e08a84; } }
+      html, body { height: 100%; margin: 0; }
+      body { display: flex; flex-direction: column; background: var(--canvas); color: var(--ink);
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; -webkit-user-select: none; }
+      header { height: 48px; flex: none; }
+      main { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 0 36px 28px; }
+      h1 { font: 500 24px/1.3 Georgia, serif; margin: 0; }
+      p { margin: 0; color: var(--ink-2); max-width: 46em; }
+      .row { display: flex; gap: 10px; align-items: center; }
+      button { font: inherit; height: 32px; padding: 0 16px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      pre { flex: 1; min-height: 120px; margin: 0; padding: 12px 14px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-2); font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; -webkit-user-select: text; }
+      .problem { color: var(--bad); }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <header data-tauri-drag-region></header>
+    <main>
+      <h1 id="title">Install Alpha</h1>
+      <p id="words">Alpha will be put in Applications, keep its data in your Library, and start when you log in. Nothing leaves this Mac.</p>
+      <div class="row">
+        <button id="go" class="primary" type="button">Install</button>
+        <button id="quit" type="button">Not now</button>
+        <span id="state"></span>
+      </div>
+      <pre id="log" class="hidden"></pre>
+    </main>
+    <script>
+      const inv = (cmd, args) => window.__TAURI_INTERNALS__.invoke(cmd, args)
+      const $ = (id) => document.getElementById(id)
+      // what this install is: fresh, or an update from the version installed
+      inv('install_plan').then((p) => {
+        if (p.from) {
+          $('title').textContent = `Update Alpha ${p.from} to ${p.to}`
+          $('words').textContent = 'Your data and settings stay as they are; they are backed up first.'
+          $('go').textContent = 'Update'
+        } else {
+          $('title').textContent = `Install Alpha ${p.to}`
+        }
+      })
+      // the installer's lines, as it goes
+      window.addLine = (line) => {
+        const log = $('log')
+        log.classList.remove('hidden')
+        log.textContent += `${line}\n`
+        log.scrollTop = log.scrollHeight
+      }
+      window.installEnded = (ok, words) => {
+        $('state').textContent = words
+        $('state').className = ok ? '' : 'problem'
+        $('go').disabled = ok
+        $('quit').disabled = false
+        $('quit').textContent = ok ? 'Close' : 'Not now'
+      }
+      $('go').onclick = () => {
+        $('go').disabled = true
+        $('quit').disabled = true
+        $('state').textContent = 'Installing…'
+        inv('install')
+      }
+      $('quit').onclick = () => inv('install_quit')
+    </script>
+  </body>
+</html>

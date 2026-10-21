@@ -22,6 +22,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -274,10 +275,11 @@ if (!readFileSync(join(smoke, 'report.txt'), 'utf8').includes('module Bakery'))
 core.kill('SIGTERM')
 await new Promise((r) => setTimeout(r, 1500))
 rmSync(smoke, { recursive: true, force: true })
-// 8. The folder a person unpacks: the app, install.sh, its steps, and the client's kits.
-copyFileSync(join(ROOT, 'release', 'install.sh'), join(out, 'install.sh'))
-chmodSync(join(out, 'install.sh'), 0o755)
-copyFileSync(join(ROOT, 'release', 'INSTALL.md'), join(out, 'INSTALL.md'))
+// 8. The disk image a person opens: the app (install.sh and the client's kits inside it, so the
+// app installs itself on first open), a link to Applications to drag it onto, and the steps.
+copyFileSync(join(ROOT, 'release', 'install.sh'), join(app, 'install.sh'))
+chmodSync(join(app, 'install.sh'), 0o755)
+copyFileSync(join(ROOT, 'release', 'INSTALL.md'), join(out, 'Read me.md'))
 let clientName = ''
 if (client) {
   const repo = join(process.env.INIT_CWD ?? ROOT, client)
@@ -285,14 +287,23 @@ if (client) {
   clientName = /^name:\s*(\S+)/m.exec(bundle)?.[1] ?? ''
   const kits = [...bundle.matchAll(/^\s*-\s*(\S+)\s*$/gm)].map((m) => m[1] as string)
   if (!clientName || !kits.length) throw new Error(`${client}/bundle.yaml names no client or kits.`)
-  for (const k of kits) say(`Packed ${relative(out, pack(join(repo, k), join(out, 'kits')))}`)
+  const kitsDir = join(appDir, 'Contents', 'Resources', 'kits')
+  for (const k of kits) say(`Packed ${relative(appDir, pack(join(repo, k), kitsDir))}`)
 }
+// the app's seal again, over install.sh and the kits now inside it
+run('codesign', ['--force', '--sign', identity, appDir], ROOT)
+symlinkSync('/Applications', join(out, 'Applications'))
 const file = join(
   ROOT,
   '.data',
   'release',
-  `Alpha-${version}${clientName ? `-${clientName}` : ''}.tar.gz`,
+  `Alpha-${version}${clientName ? `-${clientName}` : ''}.dmg`,
 )
-run('tar', ['-czf', file, '-C', release, 'Alpha'], ROOT)
+rmSync(file, { force: true })
+run(
+  'hdiutil',
+  ['create', '-volname', 'Alpha', '-srcfolder', out, '-ov', '-format', 'UDZO', '-quiet', file],
+  ROOT,
+)
 const size = execFileSync('du', ['-sh', file]).toString().split('\t')[0]
 say(`Alpha ${version} passed its smoke test and is ready to send: ${file} (${size})`)

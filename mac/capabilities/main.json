@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-own-page",
+  "description": "The shell's own starting page in Alpha's window: Start Alpha.",
+  "windows": ["main"],
+  "permissions": ["core:default", "allow-start-core"]
+}

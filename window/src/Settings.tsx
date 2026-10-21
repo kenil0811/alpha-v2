@@ -461,7 +461,26 @@ function ConnectionLine({
   )
   const buttons = (
     <>
-      {k.state === 'needs_sign_in' ? (
+      {k.settings ? (
+        // the one switch macOS keeps outside Alpha: System Settings opened at its pane
+        <>
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy}
+            onClick={() => act(() => api.post('/api/setup/settings', { pane: k.settings }))}
+          >
+            Open System Settings
+          </Button>
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
+          >
+            Read now
+          </Button>
+        </>
+      ) : k.state === 'needs_sign_in' ? (
         <Button
           size="sm"
           variant="primary"
@@ -642,7 +661,23 @@ function ConnectorTile({
               </span>
             </label>
           )}
-          {problem && <div className="text-bad text-md">{problem}</div>}
+          {problem && (
+            <div className="flex flex-wrap items-center gap-2 text-bad text-md">
+              <span>{problem}</span>
+              {system && problem.includes('System Settings') && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    api.post('/api/setup/settings', {
+                      pane: c.name === 'calendar' ? 'calendars' : 'contacts',
+                    })
+                  }
+                >
+                  Open System Settings
+                </Button>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
             <Button
               type="submit"

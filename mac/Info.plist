@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Alpha's helper lives inside this app, so macOS takes Alpha itself as the one asking for
+       Calendar and Contacts; without these words on Alpha it refuses the ask without a prompt. -->
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Alpha reads your calendar so it knows your meetings and who was in them.</string>
+  <key>NSCalendarsUsageDescription</key>
+  <string>Alpha reads your calendar so it knows your meetings and who was in them.</string>
+  <key>NSContactsUsageDescription</key>
+  <string>Alpha reads your contacts so it knows the people you deal with.</string>
+  <key>NSUserNotificationsUsageDescription</key>
+  <string>Alpha tells you about reminders and what needs you.</string>
+</dict>
+</plist>
