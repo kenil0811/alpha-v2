@@ -118,8 +118,18 @@ export function Home({
                     key={a.connector}
                     icon={<KeyRound className="size-3.5 text-warn" />}
                     head="Sign-in"
-                    words={`${a.title} needs you to sign in again`}
-                    href={`#/settings?connect=${a.connector}`}
+                    words={
+                      a.inBrowser
+                        ? `${a.title} needs you to sign in: it opens in Chrome`
+                        : `${a.title} needs you to sign in again`
+                    }
+                    {...(a.inBrowser
+                      ? {
+                          onClick: () => {
+                            void api.post(`/api/connections/${a.connection}/sign-in`)
+                          },
+                        }
+                      : { href: `#/settings?connect=${a.connector}` })}
                   />
                 ))}
               </Group>

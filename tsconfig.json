@@ -17,6 +17,9 @@
       "path": "connectors/mac"
     },
     {
+      "path": "connectors/linkedin"
+    },
+    {
       "path": "connectors/gmail"
     },
     {

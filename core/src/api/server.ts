@@ -1,5 +1,6 @@
 // The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -93,7 +94,14 @@ export interface ServerOptions {
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
   const app = Fastify({ bodyLimit: 200 * 1024 * 1024 })
-  app.get('/api/health', async (): Promise<Health> => ({ ok: true, version: VERSION }))
+  // the window it serves, by its index (whose asset names change with every build)
+  const build = (() => {
+    const index = options.windowDir ? join(options.windowDir, 'index.html') : null
+    return index && existsSync(index)
+      ? createHash('sha256').update(readFileSync(index)).digest('hex').slice(0, 12)
+      : null
+  })()
+  app.get('/api/health', async (): Promise<Health> => ({ ok: true, version: VERSION, build }))
 
   const { engine, user, token } = options
   if (!engine || !user) return app
@@ -240,7 +248,12 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       attention: world.connections
         .list()
         .filter((k) => k.state === 'needs_sign_in')
-        .map((k) => ({ connector: k.connector, title: connectorOf(k.connector).manifest.title })),
+        .map((k) => ({
+          connector: k.connector,
+          title: connectorOf(k.connector).manifest.title,
+          connection: k.id,
+          inBrowser: connectorOf(k.connector).manifest.auth === 'browser',
+        })),
       lastId: world.lastLineId(),
     }
   })
@@ -983,6 +996,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         connector: k.connector,
         title: connectorOf(k.connector).manifest.title,
         account: k.account,
+        inBrowser: connectorOf(k.connector).manifest.auth === 'browser',
         state: k.state,
         health: k.health,
         lastSyncAt: k.lastSyncAt,
@@ -1011,6 +1025,27 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     await engine.disconnect(user, id)
     return { ok: true }
+  })
+
+  // A connection read as the person (LinkedIn): its site opens in its own window of Google Chrome,
+  // where they sign in themselves; when they quit it, the connection is read.
+  app.post('/api/connections/:id/sign-in', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const conn = world.connections.get(id)
+    if (!conn) throw new Refused('That connection is not there.')
+    const c = connectorOf(conn.connector)
+    const url = c.manifest.signIn
+    if (c.manifest.auth !== 'browser' || !url)
+      throw new Refused(`${c.manifest.title} is not signed in to in a browser.`)
+    const hands = engine.hands
+    if (!hands) throw new Refused('Alpha has no browser here.')
+    if (!chromePath()) throw new Refused('Signing in to a site needs Google Chrome on this Mac.')
+    void (async () => {
+      await hands.browser().signIn(url)
+      await engine.sync(user, id).catch(() => undefined)
+      live()
+    })().catch(() => undefined)
+    return { opened: true }
   })
 
   app.post('/api/connections/:id/sync', async (req) => {

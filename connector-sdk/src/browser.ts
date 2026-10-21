@@ -1,6 +1,9 @@
 // The human-pace browser engine (design §8): pages read the way a person would see them, at a
 // person's pace, one profile per site. It stops at any login wall, CAPTCHA or rate-limit page and
-// says so; it never tries to get around one, and it reads only what a site's robots rules allow.
+// says so; it never tries to get around one, and it reads only what a site's robots rules allow,
+// except a site read as the person (Kenil, 21 Oct): one they signed in to themselves, in its own
+// Chrome profile, through a connection they made, read as they would read it. Robots rules are
+// for crawlers; every check page still stops it.
 // Readers (skills) call it through the core, so pacing and health come from here and a reader
 // writes only its extraction.
 import { execFile, spawn } from 'node:child_process'
@@ -287,13 +290,24 @@ export class BrowserEngine {
       )
   }
 
-  private async load(url: string): Promise<{ page: Page; status: number }> {
+  // Whether the person signed in to this site themselves, in its own Chrome profile.
+  signedIn(url: string): boolean {
+    return existsSync(join(this.profileOf(hostOf(url)), SIGNED_IN))
+  }
+
+  private async load(
+    url: string,
+    options: { asPerson?: boolean } = {},
+  ): Promise<{ page: Page; status: number }> {
     const host = hostOf(url)
     if (this.only && !this.only.includes(new URL(url).hostname))
       throw new Problem(`${host} is not one of the sites this browser may read.`)
+    // read as the person only on a site they signed in to themselves
+    if (options.asPerson && !this.signedIn(url))
+      throw new Problem(`${host} needs you to sign in first, in Google Chrome.`, 'sign_in')
     const context = await this.context(host)
     const page = await context.newPage()
-    await this.allowed(page, url)
+    if (!options.asPerson) await this.allowed(page, url)
     await this.waitTurn(host)
     const res = await page.goto(url, { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined)
@@ -323,8 +337,8 @@ export class BrowserEngine {
     return { page, status }
   }
 
-  async open(url: string): Promise<Snapshot> {
-    const { page, status } = await this.load(url)
+  async open(url: string, options: { asPerson?: boolean } = {}): Promise<Snapshot> {
+    const { page, status } = await this.load(url, options)
     try {
       const links = await page.$$eval('a[href]', (as) =>
         as.map((a) => ({
@@ -493,6 +507,125 @@ export class BrowserEngine {
           `${host}'s list did not come back after opening a listing; Alpha stopped.`,
         )
     }
+  }
+
+  // A list that grows as it is scrolled (a site's connections, say), read as the person: each
+  // link whose path matches, with its own words and the words of its card (the largest part of the
+  // page around it that holds no other such link). Scrolled at a person's pace by bringing the last
+  // link into view (a list may scroll inside the page), pressing a "show more" button when there is
+  // one, until it stops growing, or a round finds only links already known (the newest first).
+  async scrollLinks(
+    url: string,
+    options: { pattern: string; known?: string[]; asPerson?: boolean; rounds?: number },
+  ): Promise<{
+    url: string
+    rounds: number
+    ended: 'end' | 'known' | 'rounds'
+    links: { href: string; text: string; card: string }[]
+  }> {
+    const host = hostOf(url)
+    const known = new Set(options.known ?? [])
+    const found = new Map<string, { href: string; text: string; card: string }>()
+    const { page } = await this.load(url, options)
+    let rounds = 0
+    let still = 0
+    let ended: 'end' | 'known' | 'rounds' = 'rounds'
+    try {
+      for (; rounds < (options.rounds ?? 400); rounds++) {
+        const now = await page.$$eval(
+          'a[href]',
+          (as, [pattern, seen]) => {
+            const re = new RegExp(pattern)
+            const done = new Set(seen)
+            const pathOf = (a: Element) => {
+              try {
+                const u = new URL((a as HTMLAnchorElement).href)
+                return re.test(u.pathname) ? `${u.origin}${u.pathname}` : null
+              } catch {
+                return null
+              }
+            }
+            const others = (el: Element, href: string) =>
+              [...el.querySelectorAll('a[href]')].some((x) => {
+                const p = pathOf(x)
+                return p !== null && p !== href
+              })
+            return as.flatMap((a) => {
+              const href = pathOf(a)
+              // a link already read with its card is not read again
+              if (!href || done.has(href)) return []
+              let card: Element = a
+              while (card.parentElement && !others(card.parentElement, href))
+                card = card.parentElement
+              return [
+                {
+                  href,
+                  text: ((a as HTMLElement).innerText ?? '').trim(),
+                  card: ((card as HTMLElement).innerText ?? '').trim(),
+                },
+              ]
+            })
+          },
+          [options.pattern, [...found.values()].filter((f) => f.card).map((f) => f.href)] as const,
+        )
+        let fresh = 0
+        let unknown = 0
+        for (const l of now) {
+          const was = found.get(l.href)
+          if (!was) {
+            fresh++
+            if (!known.has(l.href)) unknown++
+          }
+          if (!was || l.text.length > was.text.length || l.card.length > was.card.length)
+            found.set(l.href, {
+              href: l.href,
+              text: l.text.length > (was?.text.length ?? -1) ? l.text : (was?.text ?? ''),
+              card: l.card.length > (was?.card.length ?? -1) ? l.card : (was?.card ?? ''),
+            })
+        }
+        // the newest come first: a round of only known links means the rest is known too
+        if (known.size && fresh > 0 && unknown === 0) {
+          ended = 'known'
+          break
+        }
+        still = fresh ? 0 : still + 1
+        if (still >= 3) {
+          ended = 'end'
+          break
+        }
+        const text = await page
+          .locator('body')
+          .innerText()
+          .catch(() => '')
+        if (FRICTION.test(`${await page.title()} ${text.slice(0, 3000)}`))
+          throw new Problem(
+            `${host} asked whether a person is reading; Alpha stopped there.`,
+            'blocked',
+          )
+        await this.waitTurn(host)
+        const more = page.getByRole('button', { name: /show more|load more|see more/i }).last()
+        if (await more.isVisible().catch(() => false)) await more.click().catch(() => undefined)
+        // the last link brought into view scrolls whatever holds the list; the page too
+        await page
+          .evaluate((pattern) => {
+            const re = new RegExp(pattern)
+            const links = [...document.querySelectorAll('a[href]')].filter((a) => {
+              try {
+                return re.test(new URL((a as HTMLAnchorElement).href).pathname)
+              } catch {
+                return false
+              }
+            })
+            links.at(-1)?.scrollIntoView({ block: 'end' })
+            window.scrollTo(0, document.body.scrollHeight)
+          }, options.pattern)
+          .catch(() => undefined)
+        await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined)
+      }
+    } finally {
+      await page.close()
+    }
+    return { url, rounds, ended, links: [...found.values()] }
   }
 
   // What a CSS selector finds on a page: how many, and the first few as HTML, so a reader's

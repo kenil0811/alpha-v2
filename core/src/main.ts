@@ -100,7 +100,8 @@ if (process.platform === 'darwin') {
       )
     }
 }
-const connectors = new ConnectorService(world, { secrets })
+// the browser is made on first use (below): LinkedIn reads with it, as the person
+const connectors = new ConnectorService(world, { secrets, browser: () => browserEngine() })
 // How this install reaches Claude: the person's subscription, or a key kept in the Keychain.
 const route = new ModelRoute(world, secrets, home)
 await route.load()

@@ -13,6 +13,7 @@ import {
   CalendarDays,
   Folder,
   Mail,
+  Network,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -42,6 +43,7 @@ const ICONS: Record<string, ReactNode> = {
   gmail: <Mail className="size-4" />,
   calendar: <CalendarDays className="size-4" />,
   contacts: <UserRound className="size-4" />,
+  linkedin: <Network className="size-4" />,
 }
 
 // The page's sections, in its index.
@@ -464,10 +466,12 @@ function ConnectionLine({
           size="sm"
           variant="primary"
           onClick={() => {
-            window.location.hash = `#/settings?connect=${k.connector}`
+            // a site read as the person opens in Chrome; a password goes in Alpha's own form
+            if (k.inBrowser) void act(() => api.post(`/api/connections/${k.id}/sign-in`))
+            else window.location.hash = `#/settings?connect=${k.connector}`
           }}
         >
-          Sign in
+          {k.inBrowser ? 'Sign in with Chrome' : 'Sign in'}
         </Button>
       ) : (
         <Button
@@ -531,8 +535,11 @@ function ConnectorTile({
   onChange: () => void
 }) {
   const system = c.auth === 'system'
+  const inBrowser = c.auth === 'browser'
   const [open, setOpen] = useState(startOpen)
-  const [account, setAccount] = useState(system ? 'This Mac' : '')
+  const [account, setAccount] = useState(
+    system ? 'This Mac' : inBrowser ? (c.account.placeholder ?? c.name) : '',
+  )
   const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -543,11 +550,14 @@ function ConnectorTile({
     setBusy(true)
     setProblem(null)
     try {
-      await api.post('/api/connections', {
+      const made = await api.post<{ id: string; state: string }>('/api/connections', {
         connector: c.name,
         account,
         ...(c.secret ? { secret } : {}),
       })
+      // a site read as the person: they sign in themselves, in its own window of Chrome
+      if (inBrowser && made.state === 'needs_sign_in')
+        await api.post(`/api/connections/${made.id}/sign-in`)
       setSecret('')
       setOpen(false)
       onChange()
@@ -587,6 +597,13 @@ function ConnectorTile({
             <p className="text-ink-2 text-md">
               Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only
               reads it.
+            </p>
+          ) : inBrowser ? (
+            <p className="text-ink-2 text-md">
+              {c.title} opens in its own window of Google Chrome: sign in there yourself, then quit
+              that Chrome. Alpha then reads your connections the way you would, slowly, once a day,
+              and stops at any check page. It never writes to {c.title}. {c.title} asks that its
+              pages not be read automatically; reading them is your choice.
             </p>
           ) : (
             <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-account`}>
@@ -633,7 +650,7 @@ function ConnectorTile({
               variant="primary"
               disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}
             >
-              {busy ? 'Connecting…' : 'Connect'}
+              {busy ? 'Connecting…' : inBrowser ? 'Sign in with Chrome' : 'Connect'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
               Cancel

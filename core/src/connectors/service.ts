@@ -4,8 +4,10 @@
 import { createHash } from 'node:crypto'
 import { folder } from '@alpha/connector-files'
 import { gmail } from '@alpha/connector-gmail'
+import { linkedin } from '@alpha/connector-linkedin'
 import { calendar, contactsConnector } from '@alpha/connector-mac'
 import {
+  type BrowserEngine,
   type Call,
   type Connector,
   type Effect,
@@ -22,16 +24,18 @@ import { z } from 'zod'
 import { config } from '../config.ts'
 import { takeIn } from '../files/documents.ts'
 import type { Connection } from '../world/connections.ts'
+import { all } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 
-export const KNOWN: Connector[] = [gmail, calendar, contactsConnector, folder]
+export const KNOWN: Connector[] = [gmail, calendar, contactsConnector, linkedin, folder]
 export const SERVER = 'connectors'
 
 export interface ServiceOptions {
   secrets: SecretStore
   fixtures?: string // a directory of recorded answers, one folder per connector: never a real account
+  browser?: () => BrowserEngine // the human-pace browser, for a site the person signs in to
 }
 
 export interface Preview {
@@ -118,6 +122,17 @@ export class ConnectorService {
           options,
         )
       },
+      ...(this.options.browser ? { browser: this.options.browser } : {}),
+      keys: (tableName) => {
+        const t = this.world.shape.table(tableName)
+        return t
+          ? all<{ item_key: string }>(
+              this.world.db,
+              'SELECT item_key FROM records WHERE table_id = ? AND item_key IS NOT NULL',
+              t.id,
+            ).map((r) => r.item_key)
+          : []
+      },
       keepFile: (name, bytes, mime) => {
         const known = this.world.files.file(hashOf(bytes))
         takeIn(this.world, bytes, name, mime, { actor })
@@ -162,6 +177,11 @@ export class ConnectorService {
       await c.check?.(this.call(c, conn))
     } catch (err) {
       this.fail(c, conn, err)
+      // a site the person signs in to is connected waiting on their sign-in, in Chrome
+      if (c.manifest.auth === 'browser' && err instanceof Problem && err.kind === 'sign_in') {
+        this.tables(c)
+        return this.world.connections.get(conn.id) as Connection
+      }
       throw err instanceof Problem ? new Refused(err.message) : err
     }
     this.tables(c)

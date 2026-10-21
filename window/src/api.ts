@@ -84,6 +84,18 @@ export const api = {
   },
 }
 
+// A core back with a newer window (Alpha restarted after a change): this page reloads, so it
+// never shows the old one's screens against the new core.
+let build: string | null | undefined
+async function sameBuild(): Promise<void> {
+  const h = await fetch('/api/health')
+    .then((r) => r.json() as Promise<{ build?: string | null }>)
+    .catch(() => null)
+  if (!h) return
+  if (build === undefined) build = h.build ?? null
+  else if (h.build && h.build !== build) window.location.reload()
+}
+
 // Live events from the core; reconnects when the core comes back.
 export function listen(on: (e: LiveEvent) => void): () => void {
   let ws: WebSocket | null = null
@@ -93,7 +105,10 @@ export function listen(on: (e: LiveEvent) => void): () => void {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
     ws = new WebSocket(`${proto}://${window.location.host}/ws?t=${encodeURIComponent(token())}`)
     ws.onmessage = (m) => on(JSON.parse(String(m.data)) as LiveEvent)
-    ws.onopen = () => on({ type: 'lines' })
+    ws.onopen = () => {
+      on({ type: 'lines' })
+      void sameBuild()
+    }
     ws.onclose = () => {
       if (!closed) retry = setTimeout(open, 1500)
     }

@@ -12,7 +12,7 @@ describe('the api', () => {
     const app = buildServer()
     const res = await app.inject({ method: 'GET', url: '/api/health' })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ ok: true, version: VERSION })
+    expect(res.json()).toEqual({ ok: true, version: VERSION, build: null })
     await app.close()
   })
 })

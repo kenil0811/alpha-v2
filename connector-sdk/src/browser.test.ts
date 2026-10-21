@@ -31,8 +31,25 @@ const app = `<html><body><div id="rows"></div><button class="next">Next</button>
   show()
 </script></body></html>`
 
+// A list that grows: the newest first, four more each time it is scrolled to its end or its
+// Show more button is pressed, twelve in all.
+const growing = `<html><body><ul id="people"></ul><button id="more">Show more results</button><script>
+  let shown = 0
+  const add = () => {
+    const ul = document.getElementById('people')
+    for (let i = shown; i < Math.min(shown + 4, 12); i++)
+      ul.insertAdjacentHTML('beforeend', '<li><a href="/in/p' + i + '/"><img alt=""></a><div><a href="/in/p' + i + '/?mini=1">Person ' + i + '</a><p>Broker at Firm ' + i + '</p><time>Connected on October ' + (i + 1) + ', 2026</time></div><button>Message</button></li>')
+    shown = Math.min(shown + 4, 12)
+    document.body.style.height = (shown * 400 + 2000) + 'px'
+  }
+  add()
+  document.getElementById('more').onclick = add
+  addEventListener('scroll', () => { if (innerHeight + scrollY >= document.body.scrollHeight - 50) add() })
+</script></body></html>`
+
 const PAGES: Record<string, [number, string]> = {
   '/app': [200, app],
+  '/people': [200, growing],
   '/deal/A1': [200, '<html><body>A1</body></html>'],
   '/deal/B2': [200, '<html><body>B2</body></html>'],
   '/deal/C3': [200, '<html><body>C3</body></html>'],
@@ -156,6 +173,31 @@ describe('the browser engine', () => {
     expect((await e.open(`${base}/with-header-login`)).text).toContain('Firms for sale')
     await expect(e.open(`${base}/busy`)).rejects.toThrow(/429/)
     await expect(e.open(`${base}/private/deals`)).rejects.toThrow(/robots rules/)
+    await e.close()
+  }, 60_000)
+
+  it('scrolls a growing list to its end, and stops at what it knows', async () => {
+    const e = engine()
+    const all = await e.scrollLinks(`${base}/people`, { pattern: '^/in/[^/]+/?$' })
+    expect(all.links.map((l) => l.href)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `${base}/in/p${i}/`),
+    )
+    expect(all.links[0]?.card).toMatch(/Person 0\s+Broker at Firm 0\s+Connected on October 1, 2026/)
+    const fresh = await e.scrollLinks(`${base}/people`, {
+      pattern: '^/in/[^/]+/?$',
+      known: all.links.slice(0, 8).map((l) => l.href),
+    })
+    await e.close()
+    // the first screen held only known ones: nothing further is read
+    expect(fresh.rounds).toBe(0)
+  }, 60_000)
+
+  it('reads as the person only a site they signed in to themselves', async () => {
+    const e = engine()
+    expect(e.signedIn(`${base}/people`)).toBe(false)
+    await expect(e.open(`${base}/people`, { asPerson: true })).rejects.toMatchObject({
+      kind: 'sign_in',
+    })
     await e.close()
   }, 60_000)
 

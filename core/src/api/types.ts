@@ -3,6 +3,7 @@
 export interface Health {
   ok: true
   version: string
+  build: string | null // the window this core serves: a window on another build reloads
 }
 
 export interface Me {
@@ -225,7 +226,8 @@ export interface Stream {
   cards: CardView[]
   busy: boolean
   running: { id: string; name: string; module: string | null }[] // agents' runs going now
-  attention: { connector: string; title: string }[] // connections that need the person to sign in
+  // connections that need the person to sign in; one read as them signs in in Chrome
+  attention: { connector: string; title: string; connection: string; inBrowser: boolean }[]
   lastId: number
 }
 
@@ -418,6 +420,7 @@ export interface ConnectionView {
   connector: string
   title: string
   account: string
+  inBrowser: boolean // signed in to in Google Chrome, and read as the person
   state: 'connected' | 'needs_sign_in' | 'broken' | 'paused'
   health: string | null
   lastSyncAt: string | null

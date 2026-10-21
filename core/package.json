@@ -13,6 +13,7 @@
   "dependencies": {
     "@alpha/connector-files": "workspace:*",
     "@alpha/connector-gmail": "workspace:*",
+    "@alpha/connector-linkedin": "workspace:*",
     "@alpha/connector-mac": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "catalog:",

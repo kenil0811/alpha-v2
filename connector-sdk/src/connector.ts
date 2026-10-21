@@ -2,6 +2,7 @@
 // the core's gates read, a check that the account works, and a sync that lands what is new.
 // A connector imports only this SDK; the core gives it a Host.
 import type { z } from 'zod'
+import type { BrowserEngine } from './browser.ts'
 import type { Effect } from './effects.ts'
 
 // secret: an app password or API key the person types in Alpha's own form, never the model.
@@ -20,6 +21,8 @@ export interface Manifest {
   pace: { perMinute: number; perDay?: number }
   // How often its sync runs, when it has one.
   syncEveryMinutes?: number
+  // browser: where the person signs in themselves, in Google Chrome
+  signIn?: string
 }
 
 export type FieldKind =
@@ -88,6 +91,10 @@ export interface Host {
   land(table: string, items: Item[], options?: { existing?: boolean }): Landed
   // A file kept and read into a document, as if the person had dropped it in.
   keepFile?: (name: string, bytes: Uint8Array, mime: string) => { isNew: boolean }
+  // The human-pace browser, for a site the person signed in to (auth: browser).
+  browser?: () => BrowserEngine
+  // The item keys a table keeps already (a read that stops at what it knows).
+  keys?: (table: string) => string[]
   journal(words: string, data?: Record<string, unknown>): void
 }
 
