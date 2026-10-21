@@ -13,6 +13,7 @@ import { Intake } from './files/intake.ts'
 import { askModel } from './files/reading.ts'
 import { logToFile } from './log.ts'
 import { agents } from './modules/agents.ts'
+import { keepDefaults } from './modules/defaults.ts'
 import { Drafts } from './modules/drafts.ts'
 import { installInbox } from './modules/packs.ts'
 import { AgentRunner } from './modules/runs.ts'
@@ -72,6 +73,9 @@ for (const said of await installInbox(world, join(home, 'kits'), {
   actor: { kind: 'system' },
   user: user.id,
 }))
+  console.log(said)
+// Alpha's own modules (Network), installed or brought up to date at every start
+for (const said of await keepDefaults(world, { actor: { kind: 'system' }, user: user.id }))
   console.log(said)
 // Alpha's helper on the Mac (the Keychain, Calendar, Contacts). The shipped app carries it built
 // and signed (ALPHA_HELPER_APP); in development it is built when its source changed. Without it no

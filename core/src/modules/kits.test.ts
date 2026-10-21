@@ -322,3 +322,31 @@ describe('a module inside another', () => {
     )
   })
 })
+
+describe('Alpha’s own modules', () => {
+  it('installs each shipped kit once with its agents on, and updates it when a newer one ships', async () => {
+    const { keepDefaults, newer } = await import('./defaults.ts')
+    const dir = join(home, 'defaults')
+    cpSync(KIT, join(dir, 'bakery'), { recursive: true })
+    const system = { actor: { kind: 'system' as const } }
+    expect(await keepDefaults(world, system, dir)).toEqual(["Installed Bakery 0.1.0, Alpha's own."])
+    const m = world.shape.module('Bakery')
+    expect(m).toBeTruthy()
+    const { agents } = await import('./agents.ts')
+    expect(agents(world, m?.id).every((a) => a.state === 'on')).toBe(true)
+    expect(await keepDefaults(world, system, dir)).toEqual([])
+    writeFileSync(
+      join(dir, 'bakery', 'module.yaml'),
+      readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('version: 0.1.0', 'version: 0.10.0'),
+    )
+    expect(await keepDefaults(world, system, dir)).toEqual([
+      "Updated Bakery to 0.10.0, Alpha's own.",
+    ])
+    expect(installedKits(world)[0]?.version).toBe('0.10.0')
+    expect([newer('0.10.0', '0.9.1'), newer('0.2.0', '0.2.0'), newer('1.0', '0.9.9')]).toEqual([
+      true,
+      false,
+      true,
+    ])
+  })
+})

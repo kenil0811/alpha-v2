@@ -1,0 +1,69 @@
+# Circles to start from, from the kinds of people most firms keep (the agreed scope's examples):
+# the person renames, changes or removes any of them, adds their own in a sentence, and says who
+# belongs in each in their own words. How often to keep in touch is assumed until they say.
+Circles:
+  - key: clients
+    values:
+      Name: Clients
+      Who belongs: >-
+        People and businesses the person works for or sells to, and the people who work there.
+      Keep warm: 'Yes'
+      Every (days): 30
+    assumed: { Every (days): a starting point until you say how often }
+  - key: team
+    values:
+      Name: Team
+      Who belongs: >-
+        People the person works with day to day: colleagues, staff, partners and contractors.
+      Keep warm: 'No'
+  - key: advisers
+    values:
+      Name: Advisers
+      Who belongs: >-
+        Accountants, lawyers, brokers, bankers and others who advise the person or their
+        business.
+      Keep warm: 'Yes'
+      Every (days): 60
+    assumed: { Every (days): a starting point until you say how often }
+  - key: investors
+    values:
+      Name: Investors and lenders
+      Who belongs: Investors, lenders and anyone who funds the person or their business.
+      Keep warm: 'Yes'
+      Every (days): 60
+    assumed: { Every (days): a starting point until you say how often }
+  - key: vendors
+    values:
+      Name: Vendors
+      Who belongs: Suppliers and service providers the person or their business buys from.
+      Keep warm: 'No'
+  - key: friends
+    values:
+      Name: Friends and family
+      Who belongs: Friends and family.
+      Keep warm: 'No'
+# How close someone is, worked out from their messages and meetings: the first rule, by Order,
+# whose numbers they meet. A blank number asks nothing. Anyone with contact who meets none is Quiet.
+Closeness rules:
+  - key: close
+    values: { Closeness: Close, At least in 90 days: 6, Last within (days): 14, Order: 1 }
+    assumed: { At least in 90 days: a starting point until you say, Last within (days): a starting point until you say }
+  - key: in-touch
+    values: { Closeness: In touch, At least in 90 days: 1, Last within (days): 45, Order: 2 }
+    assumed: { Last within (days): a starting point until you say }
+  - key: drifting
+    values: { Closeness: Drifting, Last within (days): 90, Order: 3 }
+    assumed: { Last within (days): a starting point until you say }
+# The note a follow-up is drafted from: {first} is their first name, {company} where they work
+# (or "your end" when that is not known). The person changes the words; Alpha only fills them in.
+Notes:
+  - key: follow-up
+    values:
+      Kind: Follow-up
+      Subject: Catching up
+      Body: |-
+        Hi {first},
+
+        It has been a while. How are things at {company}? It would be good to catch up soon.
+
+        Best,

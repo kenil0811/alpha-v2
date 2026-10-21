@@ -1,0 +1,73 @@
+# Alpha's own Network (Kenil, 21 Oct: a default module for every client), installed at start.
+name: Network
+version: 0.2.1
+description: >
+  Who the person knows, in circles they name: who belongs in each, proposed for their yes; how
+  close each one is, by rules they can read and change; and who is going quiet in the circles
+  they keep warm, with a note drafted for their yes.
+tables:
+  - name: Circles
+    fields:
+      - { name: Name, kind: text }
+      - { name: Who belongs, kind: text }
+      - { name: Keep warm, kind: choice, choices: ['Yes', 'No'] }
+      - { name: Every (days), kind: number }
+  - name: Members
+    fields:
+      - { name: Person, kind: person }
+      - { name: Circle, kind: relation, relates_to: Circles }
+      - name: State
+        kind: choice
+        choices: [Proposed, In, Left out]
+        tones: { Proposed: warn, In: good }
+      - { name: Why, kind: text }
+      - { name: Proposed on, kind: date }
+    views:
+      - { name: In circles, default: true, filters: { rules: [{ field: State, op: is, value: In }] } }
+      - { name: Proposed, filters: { rules: [{ field: State, op: is, value: Proposed }] } }
+      - { name: By state, kind: board, group: State }
+  - name: Closeness
+    fields:
+      - { name: Person, kind: person }
+      - { name: Circles, kind: text }
+      - name: Closeness
+        kind: choice
+        choices: [Close, In touch, Drifting, Quiet, No contact yet]
+        tones: { Close: good, In touch: good, Drifting: warn, Quiet: bad }
+      - { name: Last contact, kind: date }
+      - { name: In 90 days, kind: number }
+      - { name: Wrote first, kind: choice, choices: ['You', 'They'] }
+  - name: Closeness rules
+    fields:
+      - name: Closeness
+        kind: choice
+        choices: [Close, In touch, Drifting, Quiet]
+      - { name: At least in 90 days, kind: number }
+      - { name: Last within (days), kind: number }
+      - { name: Order, kind: number }
+  - name: Follow-ups
+    fields:
+      - { name: Person, kind: person }
+      - { name: Due since, kind: date }
+      - { name: Why, kind: text }
+      - { name: Answer, kind: choice, choices: [Draft a note, Not now] }
+      - name: Note
+        kind: choice
+        choices: [Waiting for you, Sent, Not sent, Needs an address]
+        tones: { Waiting for you: warn, Sent: good, Needs an address: warn }
+  - name: Notes
+    fields:
+      - { name: Kind, kind: choice, choices: [Follow-up] }
+      - { name: Subject, kind: text }
+      - { name: Body, kind: text }
+  - name: LinkedIn
+    # each connection is one of the person's people, at their company, by their profile link
+    people: { each: person, name: Name, profile: Profile, emails: Email, company: Company, title: Position }
+    fields:
+      - { name: Name, kind: text }
+      - { name: Profile, kind: link }
+      - { name: Email, kind: email }
+      - { name: Company, kind: text }
+      - { name: Position, kind: text }
+      - { name: Connected on, kind: date }
+network: []

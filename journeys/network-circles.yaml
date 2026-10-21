@@ -1,0 +1,30 @@
+name: network-circles
+title: 'Network: LinkedIn connections become people, circles are proposed for a yes, and a follow-up note waits on a card'
+why: >
+  The People and Network plan (21 Oct), part 2; Network is Alpha's own since Kenil's word the same day. The person's LinkedIn export (made-up connections)
+  becomes people; the Circles agent proposes who belongs in each circle from what is known of them,
+  on one card per circle, and nothing is in a circle until the person says; the Closeness agent
+  keeps how close each one is and, in the circles kept warm, puts follow-ups on one card; a note
+  the person says to draft waits on its own card. Recorded mail, never a real account.
+steps:
+  - kit: { from: core/kits/network, agents: [Circles, Closeness, LinkedIn export] }
+  - connect: { connector: gmail, account: owner@example.com }
+  - folder: { from: journeys/fixtures/linkedin }
+    checks:
+      - documents: 1
+  - due: true
+    checks:
+      - rows_in: { table: LinkedIn, count: 8 }
+  - due: true
+    checks:
+      - card: { gate: rows, words: 'look like Advisers' }
+      - rows_in: { table: Closeness, count: 0 }
+  - review: { choice: In }
+  - due: true
+    checks:
+      - card: { gate: rows, words: 'going quiet' }
+  - review: { choice: Draft a note, words: going quiet }
+  - due: true
+    checks:
+      - card: { gate: leaves_world, detail: 'Hi Sam' }
+      - errors: 0
