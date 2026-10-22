@@ -106,3 +106,94 @@ real tables, "switch now, no spike", his yes on the step plan
   whole-table load is the one thing that grows with the table (6.6 s at 200,000), so paging is
   the next thing a big table needs. The real-tables fixture at 200,000 rows is 464 MB: 40
   columns of words and numbers plus a provenance row per row and the full-text index.
+
+## Step 2, the contracts (his yes 21:00 UTC; plan https://claude.ai/artifact/8PuzCxnS9V9p23PaHPc4Dx)
+
+- **Sub-step 1, one schema for the kit API** (`kit-sdk/`, a workspace package beside
+  connector-sdk): `CALLS`, one entry per call with its dotted name, its signature as a script
+  writes it, the positional names the host maps to its input (or one object), a Zod schema of
+  the input (loose, so a skill's extra keys pass), its answer in words, what it does, its effect
+  and the version it came in; plus `API_VERSION`, `API_VERSIONS_SERVED`, `NODE_MAJOR`, the field,
+  provenance, trigger and card kinds (`world/kinds.ts` re-exports the first two). From it:
+  `shape()` builds the `alpha` object in `scripts/host.ts` at run time (the hand-written mirror
+  is gone), `guide()` is the model's SCRIPT text in `engine/tools.ts`, `reference()` is
+  `docs/kit-api.md` (`pnpm kit-api`). The dispatcher in `scripts/run.ts` checks a call's input
+  against its schema and refuses a wrong one in plain words ("alpha.rows.list was given table:
+  …"). `modules/api.test.ts`: the core's call table equals the schema, the page equals
+  `reference()`, a wrong input is refused. 202 tests.
+- **Sub-step 2, what a kit says** (kit-sdk `manifest.ts`, `agent.ts`, `check.ts`): module.yaml
+  and setup.yaml are read by the kit API's schema (moved out of `kits.ts`), with `api`, `uses`
+  (a kit by name with `min`, or a connector by name, each with `tables`), `maintainer`, a
+  field's `key`, and `history` (renamed, removed); an agent's front matter is schema v1
+  (`description`, a trigger or a list, `touches`, `effects`, `needs`, `input`, `budget` with
+  defaults 15 min and 24 runs a day). `checkKit(dir)` says what is wrong in sentences (api not
+  served, a relation or a trigger or `touches` on a table that is neither the kit's nor in
+  `uses`, an effect that is no gated call, a script not in the kit, an agent with no brief, a
+  `uses` kit missing or too old); install and update refuse on them; `pnpm kit check <dir>`
+  prints them; a missing `api` is taken as 1 for now and said in the install's words.
+  Migration 16: `kits.api`, `kits.maintainer`, `agents.description`. A trigger list is due by
+  any of its triggers, the journal cursor read once and moved once (`isDueBy`); `whenWords` and
+  `nextRun` take a list. `pnpm kit-api` also writes `docs/kit-schemas/module.yaml.json` and
+  `agent.json` (`z.toJSONSchema`), a test keeps them current. Network says `api: 1` and
+  `uses` the connectors' tables its agents run on (the checker found that), its agents a
+  description; Network 0.2.2 so his Alpha takes it. Settings › Kits shows the API and the
+  maintainer on a kit's row and the description under an agent. 206 tests.
+- **Sub-step 3, the walls** (`runs.ts`): an agent's run reads its file again (`fileOf`) and
+  keeps to it where each call lands (`Walls`: touches, reads, effects). `rows.land`,
+  `rows.compute`, `documents.place` and `review` on a table outside `touches` are refused;
+  `rows.list` on a table that is neither the module's (with the modules inside it) nor in its
+  kit's `uses` is refused; `browser.open`, `browser.extract` and `draft.email` outside `effects`
+  are refused before any card (a file with no `effects` key is an older one and is allowed);
+  every refusal is a run step "Refused: …" in Activity. A task proposal is not a write and is
+  not bound by touches (the tasks-agents test showed why: a counter proposes a task on a
+  supplier's row). `needs`: an agent whose connector is not connected does not run, its run
+  row says "did not run: it needs Gmail connected", Settings shows it as a pill. Budget: the
+  minutes kill the script and the run says "stopped at N minutes, its budget"; the runs count
+  over a rolling day and a run past them is skipped with one line a day. `walls.test.ts`
+  covers each. 212 tests.
+- **Sub-step 4, stable keys, tombstones, yours-now, the maintainer** (migration 17:
+  `fields.key`, `fields.hidden`, `tombstones`, `kit_changes`). A kit field is matched on its key
+  (`fieldsOf` carries `key ?? name`; a field from before keys is keyed by its name once); a
+  declared rename (`history.renamed`) renames in place, the key following the kit's field;
+  a declared removal (`history.removed`) hides the field (`shape.hideField`): its column and
+  rows stay, `hiddenFields` counts them, `removeHiddenField` is the person's "Remove its rows".
+  What the person removes is a tombstone (a field, a table, a kit's setup row in
+  `records.remove`, a kit's view in `views.remove`), and an update leaves it removed; the
+  kit's setup rows for a removed table are skipped. `yours(world, module)` lists the changed and
+  removed files, the changed setup rows, the person's views and fields, and the hidden fields
+  with their rows; `takeBack` brings the kit's file, row or view back from the folder it was
+  installed from. The desk's `shape` tool on a kit someone else maintains opens a card instead
+  (`maintainedKit`, `describeShape`, `applyShape` factored out): "Ask Avilo" drafts an email to
+  the maintainer's address (a draft card, or a note when drafts are not set up), "Do it now
+  anyway" applies it and counts it in `kit_changes`, shown on the kit's row as "N changes of
+  yours the maintainer has not seen". Settings › Kits: a Yours section under an open kit with
+  "Take the kit's version back" and "Remove its rows". Tests in kits.test and server.test.
+  216 tests.
+- **Sub-step 5, the offline runner** (`modules/kittest.ts`, `pnpm kit test <dir> [--record]`):
+  a case is `tests/<name>.yaml` in the kit (the agent or script, its input, rows to seed, the
+  pages a browser call gets by url, the model's recorded answers keyed by a hash of prompt and
+  schema, what to expect: the run's state, its words as a regular expression, its result, rows
+  by table matched on the fields given). The case runs on a fresh world with the kit installed,
+  the recorded hosts on its list, a browser that answers from the recordings and an `ask` that
+  replays or, with `--record`, asks the model once and writes the answers into the case. Any
+  "Refused:" step fails the case. The test kit has `count` and `read`; `kittest.test.ts`
+  covers a pass and a failing case's words. The rule went into design §9. 218 tests. Network's
+  own cases wait on recorded answers for its judgements (sub-step 6 or after).
+- **Sub-step 6, Avilo's kits** (alpha-avilo, private): DealPilot 0.5.0 and Accounting 0.3.0 say
+  `api: 1` and `maintainer: Kenil`; every agent a `description` and its `effects` (the sixteen
+  readers `browser.extract` and `browser.open`, Outreach `draft.email` with
+  `needs: { connectors: [gmail] }`, the rest none); `pnpm kit check` passes on both. Installed
+  into Kenil's Alpha through the inbox (packs) and the update route; `update()` now records a
+  kit's api and maintainer too; 201 fields keyed, 24 agents described. Design §10 and §11 carry
+  the contracts. The source journey runs on the real model after.
+- **From DealPilot's source journey** (real model, 22 Oct night): every check passed but one: a
+  deal two brokers list kept one source, since step 1 made a relation one row unless the kit
+  says `many: true` and DealPilot's Sources on a deal is a list. DealPilot 0.5.1 says so;
+  `Shape.setMany` turns an existing relation into a list on a kit update (its junction table
+  made, each row's pointer its first entry, the column gone), and the installer calls it when
+  the kit's newer version says many; tested. Kenil's own world already had it as a list, since
+  migration 13 made it so where arrays were. 219 tests.
+- **DealPilot's source journey passes** on the real model (26 checks, 209 s) with DealPilot 0.5.1
+  on the contracts: two sources added by chat, the deal both list carrying both, Figures
+  refiguring, the theses as the kit ships them (the journey's count was stale since 0.4: 10,
+  not 8). Reports in alpha-avilo/docs/journeys.

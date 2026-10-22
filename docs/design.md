@@ -321,6 +321,15 @@ item not asked is dropped, and nothing it says is kept until the person decides.
 `core/config/reading.md`, and the tokens go on the run. Doc repairs a skill by editing it; every
 version is a commit in the module's directory.
 
+**The rule** (decision 9, 22 Oct): a skill is deterministic: the same rows and files in, the same
+rows out. The model is called only through the named calls (`judge`, `review`, the document
+reader), each with a schema for its answer and each journaled with its inputs and answer, so a
+run can be replayed; an agent's brief is for the model's judgement, not for control flow.
+`pnpm kit test <dir>` runs a kit's cases (`tests/*.yaml`: the agent or script, the rows to seed,
+the pages a browser call gets, the model's recorded answers, what to expect) against a fixture
+world without the model, and fails on any refusal by a wall; `--record` runs the model once and
+keeps its answers. Journeys stay the end-to-end test with the real model.
+
 ## 10. Modules and kits
 
 A **module** is a directory: `module.yaml` (tables, views, pages, agents, skills, setup rows,
@@ -351,6 +360,22 @@ there is none. The person moves a module from the rail and the model with `shape
 `place_module`; whoever placed it last is kept, and a kit's place gives way to the person's or
 Alpha's on every update. A module's `module.yaml` says where it sits. A parent's lens takes in
 the modules inside it.
+
+**The contracts** (Stage 1, step 2; decisions 5, 8, 3 and 3b, 22 Oct): the kit API is one schema in
+`kit-sdk/` (every call on `alpha` with its input, answer, effect and the version it came in; the
+field, provenance, trigger and card kinds; the module.yaml, setup.yaml and agent schemas), from
+which the host object, the model's guide and `docs/kit-api.md` are generated and a test holds
+the core to. A kit says `api: 1`; core serves `1`; `uses:` names the kits (with `min`) or
+connectors whose tables it reads, relates to or triggers on, checked at install; `maintainer:`
+says whose kit it is to keep. A kit field has a stable `key` (its name at install when the kit
+gives none), so an update matches on it; `history.renamed` renames in place, `history.removed`
+hides a field with its rows kept; what the person removed (a field, a table, a setup row, a
+kit's view) is a tombstone and stays removed. Settings › Kits shows what is the person's now
+(changed files, rows, views, fields; the fields a kit no longer uses) with the kit's version back,
+and on a maintained kit a shape change from the desk goes on a card: ask the maintainer (a
+drafted email), or do it now and count it as a change of the person's they have not seen.
+`pnpm kit check <dir>` says what is wrong with a kit before anything installs; `pnpm kit test
+<dir>` runs its cases without the model (§9).
 
 ## 11. Agents, triggers, runs
 
@@ -387,6 +412,15 @@ shows a folded line under a reply. **Doc** repairs skills and readers. **Morning
 Alpha's proactiveness: at first open, what is due, what changed, what went quiet, and one or two
 suggestions with Take and Not now, as a card on Home and a line in the companion. No other
 characters.
+
+**Schema v1** (decision 6, 22 Oct): an agent's front matter is `name`, `description`, a `trigger`
+or a list of them, `runs`, `tasks`, `touches` (the tables it may write: a wall), `effects` (the
+gated calls it may make, such as `draft.email` or `browser.open`; any other is refused before a
+card; a file that names none is an older one, allowed), `needs` (connectors and tables it depends
+on; unmet, it does not run and Settings says what), `input` (its settings with defaults) and
+`budget` (minutes a run, runs a day; 15 and 24 unless said; past them a run is stopped or
+skipped, and says so). Reads are its module's tables and its kit's `uses`. Every refusal is a step
+of the run in Activity.
 
 ## 12. Tasks and cards
 
