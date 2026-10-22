@@ -19,6 +19,7 @@
     "shots": "node window/scripts/shots.ts",
     "kit": "node core/src/kit.ts",
     "release": "node scripts/release.ts",
+    "fixture": "node scripts/fixture.ts",
     "mac": "cd mac && PATH=/usr/bin:$PATH cargo tauri build"
   },
   "devDependencies": {
