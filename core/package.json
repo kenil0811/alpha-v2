@@ -12,13 +12,11 @@
   },
   "dependencies": {
     "@alpha/connector-files": "workspace:*",
-    "@alpha/connector-gmail": "workspace:*",
-    "@alpha/connector-linkedin": "workspace:*",
-    "@alpha/connector-mac": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
     "@alpha/kit-sdk": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@anthropic-ai/sandbox-runtime": "catalog:",
+    "@anthropic-ai/sdk": "catalog:",
     "@fastify/static": "catalog:",
     "@fastify/websocket": "catalog:",
     "@fontsource-variable/geist": "catalog:",
@@ -31,6 +29,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@alpha/connector-gmail": "workspace:*",
+    "@alpha/connector-mac": "workspace:*"
   }
 }

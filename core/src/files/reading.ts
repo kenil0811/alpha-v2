@@ -3,9 +3,6 @@
 // staff census); the model reads the document's pieces and answers each value with the pieces it
 // read it from. A wall in code keeps a value only when it is found in the pieces it cites, so
 // nothing is filed from nowhere: whatever fails comes back as not given, with the reason kept.
-import { realpathSync } from 'node:fs'
-import { type Options, query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
-import { config } from '../config.ts'
 import type { Position } from '../world/files.ts'
 import { Refused } from '../world/kinds.ts'
 
@@ -263,59 +260,6 @@ export type Ask = (
   prompt: string,
   schema: Record<string, unknown>,
 ) => Promise<{ answer: unknown; tokens: number }>
-
-// The model, once, with no tools: the instructions from core/config, the document's pieces and
-// what the kit wants, answered in the schema.
-export function askModel(
-  cwd: string,
-  route: () => Record<string, string> = () => ({}),
-  system: () => string = () => config.reading(),
-): Ask {
-  return async (prompt, schema) => {
-    const options: Options = {
-      model: config.models().desk,
-      cwd: realpathSync(cwd),
-      env: {
-        HOME: process.env.HOME ?? '',
-        USER: process.env.USER ?? '',
-        PATH: process.env.PATH ?? '/usr/bin:/bin:/usr/sbin:/sbin',
-        LANG: process.env.LANG ?? 'en_US.UTF-8',
-        TMPDIR: process.env.TMPDIR ?? '/tmp',
-        ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
-        CLAUDE_AGENT_SDK_CLIENT_APP: 'alpha/0.1.0',
-        DISABLE_AUTOUPDATER: '1',
-        ...route(),
-      },
-      settingSources: [],
-      strictMcpConfig: true,
-      mcpServers: {},
-      tools: [],
-      permissionMode: 'default',
-      canUseTool: async () => ({ behavior: 'deny', message: 'Reading a document uses no tools.' }),
-      systemPrompt: { type: 'custom', prompt: system(), snapshot: false },
-      outputFormat: { type: 'json_schema', schema },
-      persistSession: false,
-    }
-    let answer: unknown = null
-    let tokens = 0
-    let failed: string | null = null
-    for await (const m of query({ prompt, options }) as AsyncIterable<SDKMessage>) {
-      if (m.type !== 'result') continue
-      tokens =
-        (m.usage.input_tokens ?? 0) +
-        (m.usage.output_tokens ?? 0) +
-        (m.usage.cache_read_input_tokens ?? 0) +
-        (m.usage.cache_creation_input_tokens ?? 0)
-      if (m.subtype === 'success') answer = m.structured_output ?? null
-      else failed = m.subtype
-    }
-    if (answer === null)
-      throw new Refused(
-        `The model gave no answer in the shape asked${failed ? ` (${failed.replace(/_/g, ' ')})` : ''}.`,
-      )
-    return { answer, tokens }
-  }
-}
 
 // One document read into what the kit wants.
 export async function readInto(spec: ReadSpec, pieces: Piece[], ask: Ask): Promise<ReadOut> {

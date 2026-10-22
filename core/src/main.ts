@@ -6,11 +6,14 @@ import { join } from 'node:path'
 import { BrowserEngine, MacKeychain, NoSecrets, type SecretStore } from '@alpha/connector-sdk'
 import { buildServer } from './api/server.ts'
 import { config } from './config.ts'
+import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
+import { ClaudeApiProvider } from './engine/claudeapi.ts'
+import { ClaudeCodeProvider } from './engine/claudecode.ts'
 import { Engine } from './engine/engine.ts'
 import { ModelRoute } from './engine/route.ts'
 import { Intake } from './files/intake.ts'
-import { askModel } from './files/reading.ts'
+import type { Ask } from './files/reading.ts'
 import { logToFile } from './log.ts'
 import { agents } from './modules/agents.ts'
 import { keepDefaults } from './modules/defaults.ts'
@@ -93,12 +96,53 @@ if (process.platform === 'darwin') {
       )
     }
 }
-// the browser is made on first use (below): LinkedIn reads with it, as the person
-const connectors = new ConnectorService(world, { secrets, browser: () => browserEngine() })
+// The connectors: the standard set the release ships, then every folder under Alpha's own
+// connectors/ (added from Settings); a folder that does not load is said on Home and left out.
+const connectorsDir = join(home, 'connectors')
+const standard = await loadSet(STANDARD_DIR)
+const added = await loadSet(
+  connectorsDir,
+  standard.connectors.map((c) => c.manifest.name),
+)
+// the browser is made on first use (below): a site read as the person is read with it
+const connectors = new ConnectorService(world, {
+  secrets,
+  browser: () => browserEngine(),
+  known: [...standard.connectors, ...added.connectors],
+})
+for (const f of [...standard.failed, ...added.failed]) {
+  const words = `The connector in ${f.folder} did not load: ${f.why}`
+  console.error(words)
+  world.line({
+    actor: { kind: 'system' },
+    kind: 'connector_load',
+    words,
+    data: { folder: f.folder },
+  })
+}
 // How this install reaches Claude: the person's subscription, or a key kept in the Keychain.
 const route = new ModelRoute(world, secrets, home)
 await route.load()
-const ask = askModel(world.paths.dir, () => route.env())
+// The model as a provider (decision 11): Claude Code through the Agent SDK on the person's
+// subscription or with the key, or the key through Anthropic's SDK and Alpha's own loop; the
+// route chosen in Settings picks one when a session opens, and for each one-question ask.
+const claudeCode = new ClaudeCodeProvider({ route, askDir: world.paths.dir })
+const claudeApi = new ClaudeApiProvider(world, { key: () => route.apiKey, userId: user.id })
+const provider = () => (route.name === 'api' ? claudeApi : claudeCode)
+const providers = [
+  {
+    route: 'subscription' as const,
+    title: 'Claude Code on your subscription',
+    provider: claudeCode,
+  },
+  { route: 'key' as const, title: 'Claude Code with an API key', provider: claudeCode },
+  {
+    route: 'api' as const,
+    title: "Claude with an API key, on Alpha's own loop",
+    provider: claudeApi,
+  },
+]
+const ask: Ask = (prompt, schema) => provider().ask(config.reading(), prompt, schema)
 // The browser starts on first use: its own copy is set up in Alpha's folder then.
 let browser: BrowserEngine | null = null
 const browserEngine = () => {
@@ -115,11 +159,7 @@ const browserEngine = () => {
 const runner = new AgentRunner(world, browserEngine, {
   owner: user.id,
   ask,
-  judge: askModel(
-    world.paths.dir,
-    () => route.env(),
-    () => config.judging(),
-  ),
+  judge: (prompt, schema) => provider().ask(config.judging(), prompt, schema),
   notify: () => engine.events.emit('event', { type: 'lines', user: user.id }),
 })
 // Files that come by mail, proposed for filing on a card each.
@@ -143,6 +183,8 @@ runner.drafts = drafts
 const engine = new Engine(world, {
   connectors,
   route,
+  provider,
+  providers,
   hands: { browser: browserEngine, runner, browsers: join(home, 'browsers'), intake, drafts },
 })
 // when Alpha's Mac app last asked for notices
@@ -197,7 +239,7 @@ engine.events.on('event', (e: { type: string }) => {
 const windowDir = join(import.meta.dirname, '..', '..', 'window', 'dist')
 const served = process.env.ALPHA_DEV_WINDOW !== '1' && existsSync(join(windowDir, 'index.html'))
 // What this Mac still needs; the installed app's login item starts the readers' downloads.
-const setup = new Setup(home, world, route)
+const setup = new Setup(home, world, route, connectors)
 if (process.env.ALPHA_PREPARE_READERS === '1') setup.prepare()
 setup.holdAwake()
 const app = buildServer({
@@ -209,6 +251,8 @@ const app = buildServer({
   setup,
   ports: [port, windowPort],
   browsers: join(home, 'browsers'),
+  connectorsDir,
+  failedConnectors: [...standard.failed, ...added.failed],
   ...(served ? { windowDir } : {}),
 })
 try {

@@ -1,13 +1,14 @@
-// The world tools, served in process (design §5). Each declares its effect, which the before-call
-// hook maps to the gates; each writes through the world, which journals and checks provenance.
+// The world tools (design §5), as entries of the tool registry (decision 11): the Agent SDK
+// serves them in process, and Alpha's own loop calls them directly. Each declares its effect,
+// which the gate adapter maps to the gates; each writes through the world, which journals and
+// checks provenance.
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type BrowserEngine, type Effect, Problem } from '@alpha/connector-sdk'
 import { guide } from '@alpha/kit-sdk'
-import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
-import { KNOWN } from '../connectors/service.ts'
+import type { ConnectorService } from '../connectors/service.ts'
 import { importRows, readDocument } from '../files/documents.ts'
 import { FILING, type Filing, type Intake } from '../files/intake.ts'
 import { agents } from '../modules/agents.ts'
@@ -21,6 +22,7 @@ import { findField, type Table, type WriteCtx } from '../world/shape.ts'
 import { PRIORITIES, type Task } from '../world/tasks.ts'
 import { namedConfig, ViewConfig } from '../world/views.ts'
 import type { User, World } from '../world/world.ts'
+import { entry, type ToolEntry, type ToolResult } from './registry.ts'
 
 // Where the desk is: whose turn, on which of their messages. Set by the desk before each turn.
 export interface TurnContext {
@@ -76,10 +78,16 @@ const Field = z.object({
   relates_to: z.string().optional(),
 })
 
-type Result = {
-  content: ({ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string })[]
-  isError?: boolean
-}
+type Result = ToolResult
+
+// One of Alpha's own tools, an entry under its server.
+const tool = <S extends z.ZodRawShape>(
+  name: string,
+  description: string,
+  input: S,
+  handler: (input: z.infer<z.ZodObject<S>>) => Promise<Result>,
+  extras: { alwaysLoad?: boolean } = {},
+): ToolEntry => entry(SERVER, name, description, input, handler, extras)
 
 function ok(value: unknown): Result {
   return {
@@ -319,7 +327,12 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
   }
 }
 
-export function worldTools(world: World, here: Here, hands?: Hands) {
+export function worldTools(
+  world: World,
+  here: Here,
+  hands?: Hands,
+  connectors?: ConnectorService,
+): ToolEntry[] {
   const ctx = () => ({
     actor: { kind: 'alpha' as const },
     user: here.current.user.id,
@@ -748,13 +761,14 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
     ),
     tool(
       'connect',
-      `Open the sign-in for one of the person's accounts or folders, when they want it connected: ${KNOWN.map((k) => `${k.manifest.name} (${k.manifest.title})`).join(', ')}. They sign in themselves in their window; Alpha never sees or types a password.`,
-      { connector: z.enum(KNOWN.map((k) => k.manifest.name) as [string, ...string[]]) },
+      `Open the sign-in for one of the person's accounts or folders, when they want it connected: ${(connectors?.known() ?? []).map((k) => `${k.manifest.name} (${k.manifest.title})`).join(', ') || 'none is loaded in this core'}. They sign in themselves in their window; Alpha never sees or types a password.`,
+      { connector: z.string() },
       async ({ connector }) =>
         guard(() => {
-          const c = KNOWN.find((k) => k.manifest.name === connector)
+          if (!connectors) throw new Refused('Connectors are not set up in this core.')
+          const c = connectors.connector(connector)
           return ok(
-            `The sign-in for ${c?.manifest.title ?? connector} is open in the person's window, under Settings › Connections. They type their own details there.`,
+            `The sign-in for ${c.manifest.title} is open in the person's window, under Settings › Connections. They type their own details there.`,
           )
         }),
       { alwaysLoad: true },
@@ -855,7 +869,7 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
         }),
     ),
   ]
-  return createSdkMcpServer({ name: SERVER, version: '0.1.0', alwaysLoad: true, tools })
+  return tools
 }
 
 export function instructionsFile(world: World, user: string | null): string {

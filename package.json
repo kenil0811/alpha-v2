@@ -21,7 +21,8 @@
     "release": "node scripts/release.ts",
     "fixture": "node scripts/fixture.ts",
     "kit-api": "node scripts/kit-api.ts",
-    "mac": "cd mac && PATH=/usr/bin:$PATH cargo tauri build"
+    "mac": "cd mac && PATH=/usr/bin:$PATH cargo tauri build",
+    "connector": "node core/src/connector.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

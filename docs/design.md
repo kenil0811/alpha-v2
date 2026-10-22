@@ -125,10 +125,24 @@ tenant's world, one stream per user over the shared world. No admin screens unti
 ## 5. The engine
 
 **The desk.** Each user has one long-lived desk session: the only session that speaks to them.
-It runs on the Claude Agent SDK (TypeScript) with the unmodified Claude Code. Longer work runs
-as the SDK's background subagents with their own context; the desk sends follow-ups to running
-work itself and reports each outcome into the one stream in its own words, as a paragraph. The
-detail stays in the journal. No router, no work items, no cards for sessions.
+It speaks to the model through a **provider** (decision 11, 22 Oct): one interface (`engine/provider.ts`)
+that gives a desk session (words in; text, tool calls and the result out as they stream;
+interrupt; resume) and `ask` (one question answered in a schema, for the document reader and
+judging), and says its route and what it can do (a shell, files beyond the world, the web,
+background work, structured answers). Two providers today: **ClaudeCode**, the Claude Agent SDK
+(TypeScript) with the unmodified Claude Code, on the person's subscription or the firm's key,
+whose shell, files, web and background subagents stay with it under its sandbox; and
+**ClaudeApi**, the Messages API by key through Anthropic's SDK, driving **Alpha's own loop**
+(`engine/loop.ts`): the context, every tool's schema and the person's words sent, the text
+streamed, each tool call run through the gate adapter and the registry, the session's messages
+kept in the world (`desk_messages`). The own loop has the world's tools and the connectors, no
+shell, no files beyond the world, no web and no subagents; the prompt leaves those out. Later
+providers (OpenAI by key, a local model through an OpenAI-compatible endpoint) are the same loop
+with another client. The person picks the route in Settings › Model, each provider with what it
+can do in a line; the model names live in `core/config/models.yaml`. Longer work runs as the
+route's background subagents where it has them; the desk sends follow-ups to running work itself
+and reports each outcome into the one stream in its own words, as a paragraph. The detail stays
+in the journal. No router, no work items, no cards for sessions.
 
 **Agents.** One session per agent, resumed across its runs (§11).
 
@@ -151,12 +165,20 @@ detail stays in the journal. No router, no work items, no cards for sessions.
 | `look` | open a page as a person sees it, through the browser engine; with a selector, what it finds |
 | `run` | run a module's agent or script now, to try it; a new site waits on its card |
 
-- Connector tools, a few at a time, found through the SDK's tool search.
+- Connector tools, one server per connector (`mcp__gmail__send`), found through the SDK's tool
+  search on the Claude Code route, sent whole on the own loop.
 - Skills from the module directory.
 
-**Hooks, in code.** Before a call: the gate (§7) and the journal line. After a call: the journal
-line, and on writes the provenance check. At session start and before compaction: the context
-layers (§6). On the person's message: the per-turn layer.
+**The tool registry** (`engine/registry.ts`): the world's tools and every connector's, each one
+entry (server, name, description, input shape, effect through its table or connector, handler).
+The SDK's in-process servers are built from the entries; Alpha's own loop calls the handlers.
+
+**The gate adapter** (`engine/gate.ts`): `Gatekeeper.before` is the one place a call is journaled
+and put to the gates (§7), `after` the one place it is said done; `network` is the sandbox's ask.
+The SDK's hooks call it, and so does the own loop, so the walls hold on every route. Before a
+call: the gate and the journal line. After a call: the journal line, and on writes the
+provenance check. At session start and before compaction: the context layers (§6). On the
+person's message: the per-turn layer.
 
 **Sandbox.** Claude Code's own sandbox (Seatbelt on macOS, bubblewrap on Linux, Anthropic's
 sandbox-runtime). Writes inside the module's directory and nothing else; reads where the person
@@ -169,13 +191,16 @@ one made on other tools); a yes that outlives the turn and a restart (§7); a ru
 silent is ended, while a waiting card counts as alive.
 
 **The model.** An Opus-class model for every turn and run, named in one line of config; a
-small model only for eyes (a look at a rendered page) or a yes-or-no. Route: the tenant's own
-API key, or, for one person on their own Mac, their own subscription signed in through
-Anthropic's own flow. Alpha never sees or stores that token, and on that route never moves
-Claude Code's config home (v1 found the sign-in lives there). Switching to a key is one line in
-Settings. When a subscription's usage window closes, the desk says so plainly with the time it
-reopens, journals it, and resumes then. Dell runs on keys. Before the first client's build ships, one
-email to Anthropic describes this shape exactly.
+small model only for eyes (a look at a rendered page) or a yes-or-no. Three routes: the person's
+own subscription signed in through Anthropic's own flow (Claude Code; Alpha never sees or stores
+that token, and on that route never moves Claude Code's config home, where v1 found the sign-in
+lives); the firm's API key handed to Claude Code, with its files in Alpha's own folder; and the
+same key through Anthropic's SDK on Alpha's own loop. The key is kept in the Keychain. The
+subscription route stays on the unmodified Claude Code through the SDK: that is the case
+Anthropic's legal page carves out, and the only way a subscription reaches the model. When a
+usage window closes, the desk says so plainly with the time it reopens, journals it, and resumes
+then. Dell runs on keys. Before the first client's build ships, one email to Anthropic describes
+this shape exactly.
 
 ## 6. Context, four layers
 
@@ -275,17 +300,31 @@ Every check page still stops it, and nothing is ever written to such a site.
 their connections page is read once a day, scrolled at a person's pace, newest first, stopping at
 the first screen of connections already kept; each connection is one of their people.
 
-**A connector is a package:**
+**A connector is a plugin** (decision 10, 22 Oct): a folder with a `package.json` whose entry
+exports `connector` (or `connectors`, several from one helper), written against the SDK and
+carrying its own packages inside. The core names no connector. It loads two sets at start: the
+standard set, the packages under the repository's `connectors/` that the release ships; and the
+added set, every folder under Alpha's own `connectors/` beside the kits. A folder that does not
+load is said on Home and left out. The manifest describes everything the window and the first
+open need: its auth kind (a secret typed in Alpha's form, OAuth, a browser the person signs in to,
+the Mac asking itself with its System Settings pane named, or a path on this Mac), its icon, its
+first-open step, a warning the person reads before connecting; each tool its effect, a preview
+for the card and its words for Activity. The model sees one server per connector. `pnpm connector
+check` says what is wrong with a folder; `pnpm connector pack` makes the `.alphaconnector` file it
+travels as (its packages as real files; the SDK and zod linked to the core's own copies on
+unpacking, so one of each runs); Settings › Connections adds one from a folder or a file without
+a restart, offers the packs that came with the release, and removes an added one with nothing
+connected. LinkedIn is such a pack (`connectors-extra/`), not loaded until added, its warning in
+front.
 
 ```
 connectors/gmail/
-  manifest.ts   name, auth kind, scopes, limits
-  reads.ts      what it reads
-  actions.ts    what it does, each declaring its effect
-  events.ts     polls or webhooks that write journal lines
-  sync.ts       landing into world tables, with provenance
+  package.json  its entry exports `connector`
+  src/index.ts  the manifest (name, auth kind, icon, setup, pace, when it syncs), its tables
+                and how their rows name people, its tools each with effect, preview and words,
+                check, sync, the files an item carries
   GUIDE.md      what the model reads about it
-  fixtures/  test/
+  fixtures/  tests
 ```
 
 A connector's table, and a kit's, says how its rows name people (each row a person, or an exchange

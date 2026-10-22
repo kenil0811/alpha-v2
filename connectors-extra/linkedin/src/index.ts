@@ -62,7 +62,10 @@ export const linkedin: Connector = {
     name: 'linkedin',
     title: 'LinkedIn',
     auth: 'browser',
+    icon: 'network',
     account: { label: 'Your LinkedIn', placeholder: 'linkedin.com' },
+    warning:
+      'LinkedIn opens in its own window of Google Chrome: sign in there yourself, then quit that Chrome. Alpha then reads your connections the way you would, slowly, once a day, and stops at any check page. It never writes to LinkedIn. LinkedIn asks that its pages not be read automatically; reading them is your choice.',
     pace: { perMinute: 6 },
     syncEveryMinutes: 24 * 60,
     signIn: `${SITE}/login`,
@@ -116,3 +119,6 @@ export const linkedin: Connector = {
     return { rows: kept.length + landed.added, sawNew: landed.added > 0 }
   },
 }
+
+// What a folder of this connector exports for Alpha to load.
+export const connector = linkedin

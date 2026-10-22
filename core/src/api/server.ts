@@ -6,14 +6,21 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Cell, renderPage, sheetBytes } from '@alpha/connector-files'
-import { chromePath } from '@alpha/connector-sdk'
+import { type Connector, chromePath } from '@alpha/connector-sdk'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { config } from '../config.ts'
-import { connectorOf, KNOWN } from '../connectors/service.ts'
+import {
+  addFolder,
+  available,
+  loadConnector,
+  removeFolder,
+  unpack,
+} from '../connectors/discover.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
+import type { Capabilities } from '../engine/provider.ts'
 import {
   applyShape,
   describeShape,
@@ -120,6 +127,8 @@ export interface ServerOptions {
   setup?: Setup // what this Mac still needs: Claude's sign-in, connections, the readers' downloads
   shell?: { seen: number } // when Alpha's Mac app last asked for notices: it shows them, not the core
   kits?: { now: string | null } // what the core is still setting up after it started listening
+  connectorsDir?: string // Alpha's own connectors/: the added set, and the available packs
+  failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -136,6 +145,11 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   const { engine, user, token } = options
   if (!engine || !user) return app
   const world = engine.world
+  // a connection's connector, as the loaded set describes it
+  const connectorOf = (name: string) => {
+    if (!engine.connectors) throw new Refused('Connectors are not set up in this core.')
+    return engine.connectors.connector(name)
+  }
   const hosts = new Set((options.ports ?? []).flatMap((p) => [`127.0.0.1:${p}`, `localhost:${p}`]))
 
   app.addHook('onRequest', async (req, reply) => {
@@ -280,9 +294,9 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         .filter((k) => k.state === 'needs_sign_in')
         .map((k) => ({
           connector: k.connector,
-          title: connectorOf(k.connector).manifest.title,
+          title: engine.connectors?.find(k.connector)?.manifest.title ?? k.connector,
           connection: k.id,
-          inBrowser: connectorOf(k.connector).manifest.auth === 'browser',
+          inBrowser: engine.connectors?.find(k.connector)?.manifest.auth === 'browser',
         })),
       tasks: world.tasks.counts(),
       reading: engine.connectors?.reading() ?? [],
@@ -459,7 +473,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
               module: m.id,
               kind: 'request to the maintainer',
               key: null,
-              connector: 'gmail',
+              connector: null,
               message: {
                 to: kit.maintainer.address,
                 subject: `A change to ${kit.kit} asked from Alpha`,
@@ -1480,34 +1494,128 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
     return {
-      connectors: KNOWN.map((c) => ({
+      connectors: (engine.connectors?.known() ?? []).map((c) => ({
         name: c.manifest.name,
         title: c.manifest.title,
         auth: c.manifest.auth,
+        icon: c.manifest.icon ?? 'plug',
         account: c.manifest.account,
         ...(c.manifest.secret ? { secret: c.manifest.secret } : {}),
+        ...(c.manifest.system ? { system: c.manifest.system } : {}),
+        ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
+        ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
       })),
-      connections: world.connections.list().map((k) => ({
-        id: k.id,
-        connector: k.connector,
-        title: connectorOf(k.connector).manifest.title,
-        account: k.account,
-        inBrowser: connectorOf(k.connector).manifest.auth === 'browser',
-        state: k.state,
-        health: k.health,
-        lastSyncAt: k.lastSyncAt,
-        settings:
-          k.state === 'needs_sign_in' && k.connector === 'contacts'
-            ? 'contacts'
-            : k.state === 'needs_sign_in' && k.connector === 'calendar'
-              ? 'calendars'
-              : null,
-        tables: connectorOf(k.connector).tables.flatMap((spec) => {
-          const t = world.shape.table(spec.name)
-          return t ? [{ id: t.id, name: t.name, hidden: t.hidden }] : []
-        }),
-      })),
+      connections: world.connections.list().map((k) => {
+        const c = engine.connectors?.find(k.connector)
+        return {
+          id: k.id,
+          connector: k.connector,
+          title: c?.manifest.title ?? k.connector,
+          account: k.account,
+          inBrowser: c?.manifest.auth === 'browser',
+          loaded: !!c,
+          state: k.state,
+          health: c
+            ? k.health
+            : 'Its connector is not loaded: add it below, and this connection reads again.',
+          lastSyncAt: k.lastSyncAt,
+          settings: k.state === 'needs_sign_in' ? (c?.manifest.system?.pane ?? null) : null,
+          tables: (c?.tables ?? []).flatMap((spec) => {
+            const t = world.shape.table(spec.name)
+            return t ? [{ id: t.id, name: t.name, hidden: t.hidden }] : []
+          }),
+        }
+      }),
+      available: options.connectorsDir ? available(options.connectorsDir) : [],
+      added: options.connectorsDir
+        ? (engine.connectors?.known() ?? [])
+            .filter((c) => existsSync(join(options.connectorsDir ?? '', c.manifest.name)))
+            .map((c) => c.manifest.name)
+        : [],
+      failed: options.failedConnectors ?? [],
     }
+  })
+
+  // A connector added without a restart (decision 10): from a folder, from a pack sent as a
+  // file, or one of the packs that came with the release; it lands in Alpha's own connectors/
+  // and joins the loaded set, with a journal line. Removed again when nothing is connected
+  // through it; its folder goes with it.
+  const addConnector = async (
+    fn: () => Promise<{ name: string; dir: string }> | { name: string; dir: string },
+  ) => {
+    const service = engine.connectors
+    if (!service || !options.connectorsDir)
+      throw new Refused('Connectors cannot be added in this core.')
+    const { name, dir } = await fn()
+    let loaded: Connector[]
+    try {
+      loaded = await loadConnector(
+        dir,
+        service.known().map((c) => c.manifest.name),
+      )
+    } catch (err) {
+      rmSync(dir, { recursive: true, force: true })
+      throw new Refused(
+        `That is not a connector Alpha can load: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+    for (const c of loaded) service.add(c)
+    const titles = loaded.map((c) => c.manifest.title).join(' and ')
+    world.line({
+      actor: person,
+      kind: 'connector_added',
+      words: `Added the connector ${titles}.`,
+      data: { name, connectors: loaded.map((c) => c.manifest.name) },
+      user: user.id,
+    })
+    live()
+    return { name, title: titles }
+  }
+  app.post('/api/connectors', async (req) => {
+    const { folder } = z.object({ folder: z.string().trim().min(1) }).parse(req.body)
+    return addConnector(() => addFolder(folder, options.connectorsDir ?? ''))
+  })
+  app.post('/api/connectors/pack', async (req) => {
+    const name = decodeURIComponent(
+      String(req.headers['x-file-name'] ?? 'connector.alphaconnector'),
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'alpha-connector-'))
+    try {
+      const file = join(dir, name.replace(/[^\w.-]/g, '_'))
+      writeFileSync(file, req.body as Buffer)
+      return await addConnector(() => unpack(file, options.connectorsDir ?? ''))
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+  app.post('/api/connectors/available', async (req) => {
+    const { name } = z.object({ name: z.string() }).parse(req.body)
+    const found = (options.connectorsDir ? available(options.connectorsDir) : []).find(
+      (p) => p.name === name,
+    )
+    if (!found) throw new Refused('That pack is not among the ones that came with Alpha.')
+    return addConnector(() => unpack(found.file, options.connectorsDir ?? ''))
+  })
+  app.delete('/api/connectors/:name', async (req) => {
+    const { name } = z.object({ name: z.string() }).parse(req.params)
+    const service = engine.connectors
+    if (!service || !options.connectorsDir)
+      throw new Refused('Connectors cannot be removed in this core.')
+    if (!existsSync(join(options.connectorsDir, name)))
+      throw new Refused(
+        'Only a connector that was added can be removed; the ones Alpha ships stay.',
+      )
+    const c = service.drop(name)
+    removeFolder(options.connectorsDir, name)
+    world.line({
+      actor: person,
+      kind: 'connector_removed',
+      words: `Removed the connector ${c.manifest.title}.`,
+      data: { name },
+      user: user.id,
+    })
+    live()
+    return { ok: true }
   })
 
   // The person connects in Alpha's own form: the secret goes to the Keychain, never the world.
@@ -1896,11 +2004,53 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return { ok: true }
   })
 
-  const modelView = (): ModelView => ({
-    desk: config.models().desk,
-    route: engine.route?.name ?? 'subscription',
-    hasKey: engine.route?.hasKey ?? false,
-  })
+  // What each provider can do, in a line, and what it cannot that another can.
+  const canWords = (can: Capabilities) =>
+    [
+      'the world, your connections and documents',
+      can.shell ? 'a shell on this Mac' : '',
+      can.files ? 'files in its own folder and the modules' : '',
+      can.web ? 'the web' : '',
+      can.subagents ? 'background work' : '',
+    ]
+      .filter(Boolean)
+      .join('; ')
+  const cannotWords = (can: Capabilities, others: Capabilities[]) => {
+    const missing = (['shell', 'files', 'web', 'subagents'] as const)
+      .filter((k) => !can[k] && others.some((o) => o[k]))
+      .map((k) =>
+        k === 'shell'
+          ? 'no shell'
+          : k === 'files'
+            ? 'no files beyond the world'
+            : k === 'web'
+              ? 'no web'
+              : 'no background work',
+      )
+    if (!missing.length) return null
+    const words = missing.join(', ')
+    return `${words[0]?.toUpperCase()}${words.slice(1)}: the others have them.`
+  }
+  const modelView = (): ModelView => {
+    const route = engine.route?.name ?? 'subscription'
+    const all = engine.providers
+    return {
+      desk: config.models().desk,
+      route,
+      hasKey: engine.route?.hasKey ?? false,
+      providers: all.map((p) => ({
+        route: p.route,
+        title: p.title,
+        can: canWords(p.provider.can),
+        cannot: cannotWords(
+          p.provider.can,
+          all.filter((o) => o !== p).map((o) => o.provider.can),
+        ),
+        needsKey: p.route !== 'subscription',
+        chosen: p.route === route,
+      })),
+    }
+  }
   app.get('/api/model', async (): Promise<ModelView> => modelView())
   // This Mac's setup, for the first open and Settings, and the readers' downloads started on asking.
   app.get(
@@ -1908,16 +2058,16 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     async (): Promise<SetupView | null> => (options.setup ? options.setup.view() : null),
   )
   app.post('/api/setup/signin', async () => ({ started: options.setup?.signIn() ?? false }))
-  // System Settings opened at the pane where the person turns Alpha Helper on (Contacts or
-  // Calendars): the one switch macOS keeps outside Alpha after a no.
+  // System Settings opened at the pane where the person turns Alpha on (Contacts, Calendars: a
+  // connector names its pane): the one switch macOS keeps outside Alpha after a no.
   app.post('/api/setup/settings', async (req) => {
-    const { pane } = z.object({ pane: z.enum(['contacts', 'calendars']) }).parse(req.body)
+    const { pane } = z.object({ pane: z.string() }).parse(req.body)
+    const known = (engine.connectors?.known() ?? []).some((c) => c.manifest.system?.pane === pane)
+    if (!known) throw new Refused('No connection needs that pane of System Settings.')
     if (process.platform === 'darwin')
       execFile(
         '/usr/bin/open',
-        [
-          `x-apple.systempreferences:com.apple.preference.security?Privacy_${pane === 'contacts' ? 'Contacts' : 'Calendars'}`,
-        ],
+        [`x-apple.systempreferences:com.apple.preference.security?Privacy_${pane}`],
         () => undefined,
       )
     return { ok: true }
@@ -1934,7 +2084,10 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   // The route, the person's choice: their own subscription, or an API key kept in the Keychain.
   app.post('/api/model', async (req): Promise<ModelView> => {
     const { route, key } = z
-      .object({ route: z.enum(['subscription', 'key']), key: z.string().max(400).optional() })
+      .object({
+        route: z.enum(['subscription', 'key', 'api']),
+        key: z.string().max(400).optional(),
+      })
       .parse(req.body)
     if (!engine.route) throw new Refused('The route is not set up in this core.')
     await engine.route.set(route, key ?? null, user.id)

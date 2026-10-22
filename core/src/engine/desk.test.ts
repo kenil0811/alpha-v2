@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { MemorySecrets } from '@alpha/connector-sdk'
 import type { HookCallback, Options, Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
@@ -225,13 +226,16 @@ describe('the desk', () => {
   })
 
   it('waits on a card showing the whole email before a send, and saves a draft at once', async () => {
-    const connectors = new ConnectorService(world, { secrets: new MemorySecrets() })
+    const connectors = new ConnectorService(world, {
+      secrets: new MemorySecrets(),
+      known: (await loadSet(STANDARD_DIR)).connectors,
+    })
     const mail = { to: 'priya@harbor.example', subject: 'The CIM', body: 'Could you send it over?' }
     const decisions: string[] = []
     const { desk, idle } = deskWith(async (text, hooks) => {
-      for (const tool of ['gmail_draft', 'gmail_send']) {
+      for (const tool of ['draft', 'send']) {
         const out = (await hooks.call('PreToolUse', {
-          tool_name: `mcp__connectors__${tool}`,
+          tool_name: `mcp__gmail__${tool}`,
           tool_use_id: `call_${decisions.length}`,
           tool_input: mail,
         })) as { hookSpecificOutput: { permissionDecision: string } }
@@ -242,7 +246,7 @@ describe('the desk', () => {
     let done = idle()
     desk.say('draft and send Priya a note asking for the CIM')
     await done
-    expect(decisions).toEqual(['gmail_draft:allow', 'gmail_send:deny'])
+    expect(decisions).toEqual(['draft:allow', 'send:deny'])
     const [card] = world.cards.waiting(user.id)
     expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”?')
     expect(card?.detail).toBe(
@@ -254,7 +258,7 @@ describe('the desk', () => {
       world.cards.answer(card?.id as string, 'Yes', { kind: 'person', id: user.id }),
     )
     await done
-    expect(decisions.slice(2)).toEqual(['gmail_draft:allow', 'gmail_send:allow'])
+    expect(decisions.slice(2)).toEqual(['draft:allow', 'send:allow'])
     desk.close()
   })
 })

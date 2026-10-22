@@ -198,6 +198,8 @@ function compose(
   }
 }
 
+const short = (v: string, n = 80) => (v.length > n ? `${v.slice(0, n - 1)}…` : v)
+
 const preview = (m: { to: string; cc?: string | undefined; subject: string; body: string }) => ({
   words: `Send an email to ${m.to}: “${m.subject}”`,
   detail: `To: ${m.to}${m.cc ? `\nCc: ${m.cc}` : ''}\nSubject: ${m.subject}\n\n${m.body}`,
@@ -209,6 +211,8 @@ export const gmail: Connector = {
     name: 'gmail',
     title: 'Gmail',
     auth: 'secret',
+    icon: 'mail',
+    setup: { sub: 'So Alpha can read your mail and send what you say yes to' },
     account: { label: 'Gmail address', placeholder: 'you@gmail.com' },
     secret: {
       label: 'App password',
@@ -258,6 +262,7 @@ export const gmail: Connector = {
         'Search the person’s Gmail with Gmail’s own search words (from:, to:, subject:, after:2026/10/01, has:attachment, a phrase). Returns the headers of the newest matches.',
       input: { query: z.string(), limit: z.number().int().positive().optional() },
       effect: 'read',
+      words: ({ query }) => `Searched Gmail for “${short(query, 60)}”`,
       run: async (c, { query, limit }) =>
         c.call('search', { query, limit }, () =>
           withImap(c, async (client) => {
@@ -277,6 +282,7 @@ export const gmail: Connector = {
         'Read one message in full: its text and the names of its attachments. message is its Message ID.',
       input: { message: z.string() },
       effect: 'read',
+      words: () => 'Read an email',
       run: async (c, { message }) =>
         c.call('read', { message }, () =>
           withImap(c, async (client) => {
@@ -316,6 +322,7 @@ export const gmail: Connector = {
         'Save a draft in the person’s Gmail Drafts, for them to send themselves. It goes to no one.',
       input: Message,
       effect: 'write',
+      words: (m) => `Saved a draft to ${m.to}`,
       run: async (c, m) =>
         c.call('draft', { to: m.to, subject: m.subject }, () =>
           withImap(c, async (client) => {
@@ -330,6 +337,7 @@ export const gmail: Connector = {
       input: Message,
       effect: 'outward',
       preview,
+      words: (m) => `Send an email to ${m.to}`,
       run: async (c, m) =>
         c.call('send', { to: m.to, subject: m.subject }, async () => {
           const transport = nodemailer.createTransport({
@@ -470,3 +478,6 @@ export const gmail: Connector = {
     return { rows: out.total, sawNew: landed.added > 0 }
   },
 }
+
+// What a folder of this connector exports for Alpha to load.
+export const connector = gmail

@@ -475,6 +475,18 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     seen_at TEXT
   );
   `,
+  // 18: the messages of a desk session on Alpha's own loop (decision 11), kept so the session
+  // resumes with them; a route that keeps its own session (Claude Code) writes none.
+  `
+  CREATE TABLE desk_messages (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users (id),
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    at TEXT NOT NULL
+  );
+  CREATE INDEX idx_desk_messages_user ON desk_messages (user_id, id);
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

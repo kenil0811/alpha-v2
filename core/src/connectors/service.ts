@@ -1,15 +1,14 @@
-// Connectors in the core (design §8): the known connectors, their connections in the world, the
+// Connectors in the core (design §8): the loaded connectors, their connections in the world, the
 // Host each connection gets, its syncs, and its tools served to the desk a few at a time through
-// tool search. Every tool's effect goes to the gates before it runs.
+// tool search, one MCP server per connector. Every tool's effect goes to the gates before it
+// runs. The core names no connector: each describes itself in its manifest, and the service
+// answers for the set it was given (decision 10).
 import { createHash } from 'node:crypto'
-import { folder } from '@alpha/connector-files'
-import { gmail } from '@alpha/connector-gmail'
-import { linkedin } from '@alpha/connector-linkedin'
-import { calendar, contactsConnector } from '@alpha/connector-mac'
 import {
   type BrowserEngine,
   type Call,
   type Connector,
+  checkConnector,
   type Effect,
   type Fixtures,
   type Host,
@@ -18,23 +17,32 @@ import {
   makeCall,
   Problem,
   type SecretStore,
+  type Tool,
 } from '@alpha/connector-sdk'
-import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { config } from '../config.ts'
+import { entry, Registry, type ToolEntry } from '../engine/registry.ts'
 import { takeIn } from '../files/documents.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 
-export const KNOWN: Connector[] = [gmail, calendar, contactsConnector, linkedin, folder]
-export const SERVER = 'connectors'
-
 export interface ServiceOptions {
   secrets: SecretStore
   fixtures?: string // a directory of recorded answers, one folder per connector: never a real account
   browser?: () => BrowserEngine // the human-pace browser, for a site the person signs in to
+  known?: Connector[] // the loaded set (discover.ts); none when not given
+}
+
+// The name a tool has for the model, and back.
+export function mcpName(connector: string, tool: string): string {
+  return `mcp__${connector}__${tool}`
+}
+
+export function splitMcpName(name: string): { connector: string; tool: string } | null {
+  const m = /^mcp__([^_].*?)__(.+)$/.exec(name)
+  return m?.[1] && m[2] ? { connector: m[1], tool: m[2] } : null
 }
 
 export interface Preview {
@@ -43,25 +51,69 @@ export interface Preview {
   yes?: string // the card's yes in its own words (Send it)
 }
 
-export function connectorOf(name: string): Connector {
-  const c = KNOWN.find((k) => k.manifest.name === name)
-  if (!c) throw new Refused(`Alpha has no connector called ${name}.`)
-  return c
-}
-
-// A connector tool as the model sees it: connector_tool.
-export function toolName(c: Connector, t: string): string {
-  return `${c.manifest.name}_${t}`
+// The gate's name for a tool: what a card and a standing permission are keyed by.
+export function gateKey(connector: string, tool: string): string {
+  return `${connector}_${tool}`
 }
 
 export class ConnectorService {
   private world: World
   private options: ServiceOptions
   private running = new Map<string, Promise<void>>()
+  private readonly set: Connector[] = []
 
   constructor(world: World, options: ServiceOptions) {
     this.world = world
     this.options = options
+    for (const c of options.known ?? []) this.add(c)
+  }
+
+  // A connector joins the loaded set (at start, or added from Settings without a restart): the
+  // SDK's check first, so a wrong one never gets in.
+  add(c: Connector): void {
+    const problems = checkConnector(
+      c,
+      this.set.map((k) => k.manifest.name),
+    )
+    if (problems.length) throw new Refused(problems.join(' '))
+    this.set.push(c)
+  }
+
+  // A connector leaves the loaded set, when nothing is connected through it.
+  drop(name: string): Connector {
+    const at = this.set.findIndex((k) => k.manifest.name === name)
+    if (at < 0) throw new Refused(`Alpha has no connector called ${name}.`)
+    if (this.world.connections.list().some((k) => k.connector === name))
+      throw new Refused(`${this.set[at]?.manifest.title} is connected: disconnect it first.`)
+    return this.set.splice(at, 1)[0] as Connector
+  }
+
+  // The loaded connectors, as they describe themselves.
+  known(): Connector[] {
+    return this.set
+  }
+
+  find(name: string): Connector | undefined {
+    return this.set.find((k) => k.manifest.name === name)
+  }
+
+  connector(name: string): Connector {
+    const c = this.find(name)
+    if (!c) throw new Refused(`Alpha has no connector called ${name}: it is not loaded.`)
+    return c
+  }
+
+  // The tool a model-facing name stands for, when it is a connector's.
+  private toolOf(name: string): { c: Connector; tool: string; spec: Tool } | null {
+    const parts = splitMcpName(name)
+    if (!parts) return null
+    const c = this.set.find((k) => k.manifest.name === parts.connector)
+    const spec = c?.tools[parts.tool]
+    return c && spec ? { c, tool: parts.tool, spec } : null
+  }
+
+  isTool(name: string): boolean {
+    return this.toolOf(name) !== null
   }
 
   private judgements() {
@@ -157,7 +209,7 @@ export class ConnectorService {
     secret: string | null,
     user: string,
   ): Promise<Connection> {
-    const c = connectorOf(name)
+    const c = this.connector(name)
     if (c.manifest.auth === 'secret' && !secret?.trim())
       throw new Refused(`${c.manifest.title} needs its ${c.manifest.secret?.label ?? 'password'}.`)
     const ref = c.manifest.auth === 'secret' ? `${name}:${account.trim().toLowerCase()}` : null
@@ -186,7 +238,7 @@ export class ConnectorService {
     const conn = this.world.connections.get(id)
     if (!conn) throw new Refused('That connection is not there.')
     if (conn.secretRef) await this.options.secrets.delete(conn.secretRef)
-    this.world.connections.remove(id, connectorOf(conn.connector).manifest.title, {
+    this.world.connections.remove(id, this.find(conn.connector)?.manifest.title ?? conn.connector, {
       actor: { kind: 'person', id: user },
       user,
     })
@@ -203,7 +255,7 @@ export class ConnectorService {
         ? [
             {
               connection: id,
-              title: connectorOf(conn.connector).manifest.title,
+              title: this.find(conn.connector)?.manifest.title ?? conn.connector,
               account: conn.account,
             },
           ]
@@ -222,8 +274,8 @@ export class ConnectorService {
   private async syncOnce(id: string): Promise<void> {
     const conn = this.world.connections.get(id)
     if (!conn || conn.state === 'paused') return
-    const c = connectorOf(conn.connector)
-    if (!c.sync) return
+    const c = this.find(conn.connector)
+    if (!c?.sync) return
     const started = Date.now()
     // each read is a line for Activity: how long it took and whether it brought anything
     const read = (state: 'ok' | 'failed', words: string, quiet: boolean) =>
@@ -275,7 +327,7 @@ export class ConnectorService {
   private tried = new Map<string, number>()
   async syncDue(now = Date.now()): Promise<void> {
     for (const conn of this.world.connections.list()) {
-      const every = connectorOf(conn.connector).manifest.syncEveryMinutes
+      const every = this.find(conn.connector)?.manifest.syncEveryMinutes
       if (!every || conn.state === 'paused' || conn.state === 'needs_sign_in') continue
       const last = conn.lastSyncAt ? Date.parse(conn.lastSyncAt) : 0
       const tried = this.tried.get(conn.id) ?? 0
@@ -296,6 +348,15 @@ export class ConnectorService {
     )
   }
 
+  // The person's mail: the connected connector that sends (a draft goes from it when none is
+  // named). None when nothing connected sends.
+  mailer(): string | undefined {
+    const connected = this.world.connections.list().filter((k) => k.state === 'connected')
+    return this.set.find(
+      (c) => c.tools.send && connected.some((k) => k.connector === c.manifest.name),
+    )?.manifest.name
+  }
+
   // Which connection a tool call is for: the one account, or the one named.
   private connectionFor(c: Connector, account?: string): Connection {
     const conns = this.world.connections.list().filter((k) => k.connector === c.manifest.name)
@@ -314,9 +375,19 @@ export class ConnectorService {
   }
 
   // A connector's tool run by the core itself, on the person's yes already given (an agent's draft
-  // sent from its card): the gate is behind it, so it runs as asked.
-  async runTool(connector: string, name: string, input: Record<string, unknown>): Promise<unknown> {
-    const c = connectorOf(connector)
+  // sent from its card): the gate is behind it, so it runs as asked. No connector named: the
+  // person's mail, whichever connected connector sends.
+  async runTool(
+    connector: string | null,
+    name: string,
+    input: Record<string, unknown>,
+  ): Promise<unknown> {
+    const named = connector ?? this.mailer()
+    if (!named)
+      throw new Refused(
+        'Nothing connected sends mail: the person connects their mail in Settings › Connections.',
+      )
+    const c = this.connector(named)
     const spec = c.tools[name]
     if (!spec) throw new Refused(`${c.manifest.title} has no ${name}.`)
     return spec.run(this.call(c, this.connectionFor(c)), input as never)
@@ -328,8 +399,8 @@ export class ConnectorService {
       .list()
       .filter((k) => k.state === 'connected')
       .flatMap((k) => {
-        const c = connectorOf(k.connector)
-        return c.files
+        const c = this.find(k.connector)
+        return c?.files
           ? [
               {
                 connection: k.id,
@@ -345,37 +416,52 @@ export class ConnectorService {
   async fetchFiles(connection: string, item: string): Promise<ItemFile[]> {
     const conn = this.world.connections.get(connection)
     if (!conn) throw new Refused('That connection is not there.')
-    const c = connectorOf(conn.connector)
+    const c = this.connector(conn.connector)
     if (!c.files) throw new Refused(`${c.manifest.title} carries no files.`)
     return c.files.fetch(this.call(c, conn), item)
   }
 
+  // What a tool's connector says of a call, by the tool's model-facing name: its effect for the
+  // gates, what a card shows, the step's words in Activity, and the gate's key for it.
   effect(name: string, input: Record<string, unknown>): Effect | undefined {
-    for (const c of KNOWN)
-      for (const [t, spec] of Object.entries(c.tools))
-        if (toolName(c, t) === name)
-          return typeof spec.effect === 'function' ? spec.effect(input as never) : spec.effect
-    return undefined
+    const t = this.toolOf(name)
+    if (!t) return undefined
+    return typeof t.spec.effect === 'function' ? t.spec.effect(input as never) : t.spec.effect
   }
 
   preview(name: string, input: Record<string, unknown>): Preview | undefined {
-    for (const c of KNOWN)
-      for (const [t, spec] of Object.entries(c.tools))
-        if (toolName(c, t) === name && spec.preview) return spec.preview(input as never)
-    return undefined
+    const t = this.toolOf(name)
+    return t?.spec.preview ? t.spec.preview(input as never) : undefined
   }
 
-  // Every known connector's tools, always, so the desk's tools never change when an account is
+  words(name: string, input: Record<string, unknown>): string | undefined {
+    const t = this.toolOf(name)
+    if (!t) return undefined
+    return t.spec.words ? t.spec.words(input as never) : `Reached ${t.c.manifest.title}`
+  }
+
+  keyOf(name: string): string | undefined {
+    const t = this.toolOf(name)
+    return t ? gateKey(t.c.manifest.name, t.tool) : undefined
+  }
+
+  // Every loaded connector's tools, always, so the desk's tools never change when an account is
   // connected (a session is resumed only with the same tools). They load through tool search.
-  names(): string[] {
-    return KNOWN.flatMap((c) => Object.keys(c.tools).map((t) => toolName(c, t))).sort()
+  toolNames(): string[] {
+    return this.set
+      .flatMap((c) => Object.keys(c.tools).map((t) => mcpName(c.manifest.name, t)))
+      .sort()
   }
 
-  server() {
-    const tools = KNOWN.flatMap((c) =>
+  // Every connector's tools as entries of the tool registry (decision 11), each under its
+  // connector's server: the model sees mcp__<connector>__<tool>, and what Gmail can do is
+  // Gmail's list.
+  entries(): ToolEntry[] {
+    return this.set.flatMap((c) =>
       Object.entries(c.tools).map(([t, spec]) =>
-        tool(
-          toolName(c, t),
+        entry(
+          c.manifest.name,
+          t,
           `${c.manifest.title}: ${spec.description}`,
           { ...spec.input, account: z.string().optional() },
           async (input: Record<string, unknown>) => {
@@ -395,7 +481,11 @@ export class ConnectorService {
         ),
       ),
     )
-    return createSdkMcpServer({ name: SERVER, version: '0.1.0', tools })
+  }
+
+  // One MCP server per connector, named after it, from the same entries.
+  servers() {
+    return new Registry(this.entries()).servers()
   }
 
   // What the start layer says about connections.
@@ -405,7 +495,9 @@ export class ConnectorService {
       return 'None yet. The person connects accounts and folders in Settings › Connections.'
     return conns
       .map((k) => {
-        const c = connectorOf(k.connector)
+        const c = this.find(k.connector)
+        if (!c)
+          return `### ${k.connector}: ${k.account} (its connector is not loaded; the person adds it in Settings › Connections)`
         const state =
           k.state === 'connected'
             ? 'connected'

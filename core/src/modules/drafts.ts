@@ -24,7 +24,7 @@ export interface Draft {
   module: string
   kind: string // the kind of message, in the kit's words: CIM request
   key: string | null // one waiting draft per agent and key (a deal): a newer one replaces it
-  connector: string // the person's mail it goes from
+  connector: string | null // the connector it goes from; none: the person's mail, whichever sends
   message: Message
   about: { table: string; row: string } | null
   note: string | null // where the address came from, and the like
@@ -53,7 +53,7 @@ export const REASONS = [
 ]
 
 export interface Sender {
-  send(connector: string, message: Message): Promise<unknown>
+  send(connector: string | null, message: Message): Promise<unknown>
 }
 
 const ONE_ADDRESS = /^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/

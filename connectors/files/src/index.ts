@@ -43,7 +43,8 @@ export const folder: Connector = {
   manifest: {
     name: 'folder',
     title: 'Folder',
-    auth: 'system',
+    auth: 'path',
+    icon: 'folder',
     account: { label: 'Folder', placeholder: '/Users/you/Documents/Exports' },
     pace: { perMinute: 120 },
     syncEveryMinutes: 1,
@@ -80,3 +81,6 @@ export const folder: Connector = {
     return { rows: files.length, sawNew: fresh }
   },
 }
+
+// What a folder of this connector exports for Alpha to load.
+export const connector = folder

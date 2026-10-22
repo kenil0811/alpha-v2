@@ -41,6 +41,10 @@ export class Engine {
     return this.options.hands ?? null
   }
 
+  get providers() {
+    return this.options.providers ?? []
+  }
+
   get route() {
     return this.options.route ?? null
   }
@@ -51,13 +55,15 @@ export class Engine {
     this.desks.clear()
   }
 
-  // The folders the person granted are the watched-folder connections: read, never written.
+  // The folders the person granted are the connections to a place on this Mac (a watched
+  // folder: a connector of the path kind): read, never written.
   folders(): string[] {
+    const service = this.options.connectors
     return [
       ...(this.options.granted ?? []),
       ...this.world.connections
         .list()
-        .filter((c) => c.connector === 'folder')
+        .filter((c) => service?.find(c.connector)?.manifest.auth === 'path')
         .map((c) => c.account),
     ]
   }

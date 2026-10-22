@@ -10,13 +10,16 @@ export {
   robotsAllow,
   type Snapshot,
 } from './browser.ts'
+export { checkConnector, isConnector, NAME, RESERVED_NAMES } from './check.ts'
 export {
   type AuthKind,
   type Call,
   type Connector,
   defineTool,
+  FIELD_KINDS,
   type FieldKind,
   type Host,
+  type Icon,
   type Item,
   type ItemFile,
   type Landed,

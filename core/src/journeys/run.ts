@@ -20,6 +20,7 @@ import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { config } from '../config.ts'
+import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import { Engine } from '../engine/engine.ts'
 import { stillReading } from '../files/documents.ts'
@@ -373,6 +374,7 @@ async function main() {
   const connectors = new ConnectorService(world, {
     secrets: new MemorySecrets(),
     fixtures: join(ROOT, 'journeys', 'fixtures'),
+    known: (await loadSet(STANDARD_DIR)).connectors,
   })
   // The browser Alpha reads with, kept with the repository's test data so it is set up once.
   const limits = config.limits()
@@ -468,8 +470,11 @@ async function main() {
       )
       for (const n of names) copyFileSync(join(from, n), join(dir, n))
       what = `Gave Alpha a folder of ${names.length} file${names.length === 1 ? '' : 's'} from ${step.folder.from}`
-      await engine.connect(user, 'folder', dir, null)
-      await connectors.sync(world.connections.find('folder', dir)?.id ?? '')
+      // the connector that takes a place on this Mac, whatever it is called
+      const place = connectors.known().find((c) => c.manifest.auth === 'path')?.manifest.name
+      if (!place) throw new Error('No loaded connector takes a folder.')
+      await engine.connect(user, place, dir, null)
+      await connectors.sync(world.connections.find(place, dir)?.id ?? '')
       await stillReading()
     } else if (step.connect) {
       what = `Connected ${step.connect.connector} for ${step.connect.account}, on recorded answers`

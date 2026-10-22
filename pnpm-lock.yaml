@@ -12,6 +12,9 @@ catalogs:
     '@anthropic-ai/sandbox-runtime':
       specifier: 0.0.80
       version: 0.0.80
+    '@anthropic-ai/sdk':
+      specifier: 1.1.0
+      version: 1.1.0
     '@biomejs/biome':
       specifier: 2.5.15
       version: 2.5.15
@@ -170,6 +173,16 @@ importers:
         specifier: 'catalog:'
         version: 26.6.5
 
+  connectors-extra/linkedin:
+    dependencies:
+      '@alpha/connector-sdk':
+        specifier: workspace:*
+        version: link:../../connector-sdk
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.5
+
   connectors/files:
     dependencies:
       '@alpha/connector-sdk':
@@ -211,16 +224,6 @@ importers:
         specifier: 'catalog:'
         version: 8.0.2
 
-  connectors/linkedin:
-    dependencies:
-      '@alpha/connector-sdk':
-        specifier: workspace:*
-        version: link:../../connector-sdk
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.5
-
   connectors/mac:
     dependencies:
       '@alpha/connector-sdk':
@@ -239,15 +242,6 @@ importers:
       '@alpha/connector-files':
         specifier: workspace:*
         version: link:../connectors/files
-      '@alpha/connector-gmail':
-        specifier: workspace:*
-        version: link:../connectors/gmail
-      '@alpha/connector-linkedin':
-        specifier: workspace:*
-        version: link:../connectors/linkedin
-      '@alpha/connector-mac':
-        specifier: workspace:*
-        version: link:../connectors/mac
       '@alpha/connector-sdk':
         specifier: workspace:*
         version: link:../connector-sdk
@@ -256,10 +250,13 @@ importers:
         version: link:../kit-sdk
       '@anthropic-ai/claude-agent-sdk':
         specifier: 'catalog:'
-        version: 0.3.302(@anthropic-ai/sdk@0.135.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.32.1(zod@4.6.7))(zod@4.6.7)
+        version: 0.3.302(@anthropic-ai/sdk@1.1.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.32.1(zod@4.6.7))(zod@4.6.7)
       '@anthropic-ai/sandbox-runtime':
         specifier: 'catalog:'
         version: 0.0.80
+      '@anthropic-ai/sdk':
+        specifier: 'catalog:'
+        version: 1.1.0(zod@4.6.7)
       '@fastify/static':
         specifier: 'catalog:'
         version: 10.1.6
@@ -291,6 +288,12 @@ importers:
         specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
+      '@alpha/connector-gmail':
+        specifier: workspace:*
+        version: link:../connectors/gmail
+      '@alpha/connector-mac':
+        specifier: workspace:*
+        version: link:../connectors/mac
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.5
@@ -437,8 +440,8 @@ packages:
     engines: {node: '>=22.12.0'}
     hasBin: true
 
-  '@anthropic-ai/sdk@0.135.0':
-    resolution: {integrity: sha512-WWrdL57JhU5KoynpTjt9GXK6k7ud9nPw2uw/Trn+oBXh6s0KpjhAccWZm2Qxw08ARYG1UDQj5iC+JO42j1rt/g==}
+  '@anthropic-ai/sdk@1.1.0':
+    resolution: {integrity: sha512-Op/fKMsfVwFCfObc87leLOFlORE0RjOvLzRzPCWWLI7Ww6bobpKR6YmYC8ZYgulRh+m2a/3/61VUXoWHFtCXIw==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -2560,9 +2563,9 @@ snapshots:
   '@anthropic-ai/claude-agent-sdk-win32-x64@0.3.302':
     optional: true
 
-  '@anthropic-ai/claude-agent-sdk@0.3.302(@anthropic-ai/sdk@0.135.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.32.1(zod@4.6.7))(zod@4.6.7)':
+  '@anthropic-ai/claude-agent-sdk@0.3.302(@anthropic-ai/sdk@1.1.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.32.1(zod@4.6.7))(zod@4.6.7)':
     dependencies:
-      '@anthropic-ai/sdk': 0.135.0(zod@4.6.7)
+      '@anthropic-ai/sdk': 1.1.0(zod@4.6.7)
       '@modelcontextprotocol/sdk': 1.32.1(zod@4.6.7)
       zod: 4.6.7
     optionalDependencies:
@@ -2582,7 +2585,7 @@ snapshots:
       node-forge: 1.4.0
       zod: 3.25.76
 
-  '@anthropic-ai/sdk@0.135.0(zod@4.6.7)':
+  '@anthropic-ai/sdk@1.1.0(zod@4.6.7)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       json-schema-to-ts: 3.1.1

@@ -1,15 +1,16 @@
 // How this install reaches Claude (design §5): the person's own subscription, signed in through
 // Claude Code's own sign-in on this Mac (Alpha never sees that token and leaves ~/.claude where it
-// is), or the firm's API key, kept in the Keychain and handed to each session, with Claude Code's
-// files in Alpha's own folder. Chosen per install in Settings and kept in the world. Claude Code
-// never updates itself: the app ships the one it was tested with.
+// is); the firm's API key handed to Claude Code, with its files in Alpha's own folder; or the
+// same key through Anthropic's SDK and Alpha's own loop (decision 11). Chosen per install in
+// Settings and kept in the world. Claude Code never updates itself: the app ships the one it was
+// tested with.
 import { join } from 'node:path'
 import type { SecretStore } from '@alpha/connector-sdk'
 import { one, run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
 
-export type RouteName = 'subscription' | 'key'
+export type RouteName = 'subscription' | 'key' | 'api'
 
 const KEY_REF = 'anthropic:api-key'
 
@@ -31,11 +32,16 @@ export class ModelRoute {
       this.world.db,
       "SELECT value FROM meta WHERE key = 'model_route'",
     )
-    return v?.value === 'key' ? 'key' : 'subscription'
+    return v?.value === 'key' ? 'key' : v?.value === 'api' ? 'api' : 'subscription'
   }
 
   get hasKey(): boolean {
     return !!this.key
+  }
+
+  // The key itself, for the route that calls the API from Alpha's own code.
+  get apiKey(): string | null {
+    return this.key
   }
 
   // The key read from the Keychain once at start, so a session's start never waits on it.
@@ -44,7 +50,7 @@ export class ModelRoute {
   }
 
   async set(name: RouteName, key: string | null, by: string): Promise<void> {
-    if (name === 'key') {
+    if (name === 'key' || name === 'api') {
       const given = key?.trim()
       if (given) {
         if (!/^sk-ant-[\w-]{20,}$/.test(given))
@@ -64,8 +70,10 @@ export class ModelRoute {
       kind: 'shaped',
       words:
         name === 'key'
-          ? 'Alpha now reaches Claude with the API key kept in the Keychain.'
-          : 'Alpha now reaches Claude on your own Claude subscription.',
+          ? 'Alpha now reaches Claude with the API key kept in the Keychain, through Claude Code.'
+          : name === 'api'
+            ? "Alpha now reaches Claude with the API key kept in the Keychain, through Alpha's own loop."
+            : 'Alpha now reaches Claude on your own Claude subscription.',
       data: { route: name },
       user: by,
     })

@@ -27,6 +27,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
+import { pack as packConnector } from '../core/src/connectors/discover.ts'
 import { pack } from '../core/src/modules/packs.ts'
 
 const ROOT = join(import.meta.dirname, '..')
@@ -290,7 +291,18 @@ if (client) {
   const kitsDir = join(appDir, 'Contents', 'Resources', 'kits')
   for (const k of kits) say(`Packed ${relative(appDir, pack(join(repo, k), kitsDir))}`)
 }
-// the app's seal again, over install.sh and the kits now inside it
+// the connectors that come with Alpha but are not loaded until the person adds one (LinkedIn):
+// connectors-extra/*, each packed beside the kits; install.sh puts them in Alpha's
+// connectors/available, where Settings › Connections offers them
+const extra = join(ROOT, 'connectors-extra')
+if (existsSync(extra))
+  for (const name of readdirSync(extra).sort()) {
+    const dir = join(extra, name)
+    if (!existsSync(join(dir, 'package.json'))) continue
+    const file = await packConnector(dir, join(appDir, 'Contents', 'Resources', 'connectors'))
+    say(`Packed ${relative(appDir, file)}`)
+  }
+// the app's seal again, over install.sh, the kits and the connector packs now inside it
 run('codesign', ['--force', '--sign', identity, appDir], ROOT)
 symlinkSync('/Applications', join(out, 'Applications'))
 const file = join(

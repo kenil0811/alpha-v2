@@ -24,6 +24,7 @@ const Limits = z.object({
   health_quiet_days: z.number().positive(),
   browser_pace_min_ms: z.number().int().min(0),
   browser_pace_max_ms: z.number().int().min(0),
+  loop_rounds_per_turn: z.number().int().positive(),
 })
 
 const People = z.object({

@@ -9,6 +9,7 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { doclingEnv } from '@alpha/connector-files'
 import { chromePath, ensureBrowser } from '@alpha/connector-sdk'
+import type { ConnectorService } from './connectors/service.ts'
 import type { ModelRoute } from './engine/route.ts'
 import { one, run } from './world/db.ts'
 import type { World } from './world/world.ts'
@@ -17,8 +18,9 @@ export type Readiness = 'ready' | 'preparing' | 'not yet' | 'failed'
 
 export interface SetupView {
   claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
-  route: 'subscription' | 'key'
-  connected: { gmail: boolean; calendar: boolean; contacts: boolean }
+  route: 'subscription' | 'key' | 'api'
+  // Each connector that asks for a place on the first open, as it describes itself.
+  steps: { connector: string; title: string; sub: string; done: boolean }[]
   chrome: boolean
   keepAwake: boolean | null
   readers: { browser: Readiness; documents: Readiness; problem: string | null }
@@ -42,15 +44,22 @@ export class Setup {
   private home: string
   private world: World
   private route: ModelRoute | null
+  private connectors: ConnectorService | null
   private browser: Readiness
   private documents: Readiness
   private problem: string | null = null
   private awake: ChildProcess | null = null
 
-  constructor(home: string, world: World, route: ModelRoute | null) {
+  constructor(
+    home: string,
+    world: World,
+    route: ModelRoute | null,
+    connectors: ConnectorService | null = null,
+  ) {
     this.home = home
     this.world = world
     this.route = route
+    this.connectors = connectors
     this.browser = existsSync(join(home, 'browsers', '.chromium-headless-shell-ready'))
       ? 'ready'
       : 'not yet'
@@ -187,11 +196,18 @@ export class Setup {
     return {
       claude: await this.claude(),
       route: this.route?.name ?? 'subscription',
-      connected: {
-        gmail: kinds.has('gmail'),
-        calendar: kinds.has('calendar'),
-        contacts: kinds.has('contacts'),
-      },
+      steps: (this.connectors?.known() ?? []).flatMap((c) =>
+        c.manifest.setup
+          ? [
+              {
+                connector: c.manifest.name,
+                title: c.manifest.title,
+                sub: c.manifest.setup.sub,
+                done: kinds.has(c.manifest.name),
+              },
+            ]
+          : [],
+      ),
       chrome: !!chromePath(),
       keepAwake: process.env.ALPHA_KEEP_AWAKE === '1' ? this.keepAwake : null,
       readers: { browser: this.browser, documents: this.documents, problem: this.problem },

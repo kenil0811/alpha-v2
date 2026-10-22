@@ -20,9 +20,6 @@
       "path": "../connectors/mac"
     },
     {
-      "path": "../connectors/linkedin"
-    },
-    {
       "path": "../kit-sdk"
     }
   ]

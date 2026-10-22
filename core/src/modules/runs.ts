@@ -10,7 +10,8 @@ import { Manifest, type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { parse, stringify } from 'yaml'
 import { config } from '../config.ts'
-import { type Ask, askModel, inReadingOrder, type ReadSpec, readInto } from '../files/reading.ts'
+import { askModel } from '../engine/ask.ts'
+import { type Ask, inReadingOrder, type ReadSpec, readInto } from '../files/reading.ts'
 import { decide } from '../gates/gates.ts'
 import { runScript, type ScriptRun } from '../scripts/run.ts'
 import type { Card } from '../world/cards.ts'
@@ -449,7 +450,7 @@ export class AgentRunner {
             module: module.id,
             kind: String(p.kind ?? 'email'),
             key: p.key ? String(p.key) : null,
-            connector: String(p.connector ?? 'gmail'),
+            connector: p.connector ? String(p.connector) : null,
             message: {
               to: String(p.to ?? ''),
               ...(p.cc ? { cc: String(p.cc) } : {}),

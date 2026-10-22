@@ -14,11 +14,12 @@ import {
   Folder,
   Mail,
   Network,
+  Plug,
   ShieldCheck,
   Sparkles,
   UserRound,
 } from 'lucide-react'
-import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Kits, when } from './Kits.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
@@ -39,11 +40,14 @@ const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   paused: ['Paused', 'neutral'],
 }
 
-const ICONS: Record<string, ReactNode> = {
-  gmail: <Mail className="size-4" />,
+// The pictures a connector can ask for (its manifest's icon).
+const ICONS: Record<ConnectorView['icon'], ReactNode> = {
+  mail: <Mail className="size-4" />,
   calendar: <CalendarDays className="size-4" />,
-  contacts: <UserRound className="size-4" />,
-  linkedin: <Network className="size-4" />,
+  people: <UserRound className="size-4" />,
+  network: <Network className="size-4" />,
+  folder: <Folder className="size-4" />,
+  plug: <Plug className="size-4" />,
 }
 
 // The page's sections, in its index.
@@ -73,8 +77,13 @@ export function Settings({ open, version }: { open: string | null; version: numb
   }, [load, version])
 
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
-  const accounts = view.connectors.filter((c) => c.name !== 'folder')
-  const folders = view.connections.filter((c) => c.connector === 'folder')
+  // a connector that names a place on this Mac (a folder) is a list under Folders; every other
+  // is a tile under Connections
+  const accounts = view.connectors.filter((c) => c.auth !== 'path')
+  const places = view.connectors.filter((c) => c.auth === 'path')
+  const folders = view.connections.filter((k) => places.some((c) => c.name === k.connector))
+  // a connection whose connector is not loaded (its pack not added yet): shown, waiting
+  const orphans = view.connections.filter((k) => !k.loaded)
   const go = (id: string) =>
     document
       .getElementById(`settings-${id}`)
@@ -108,10 +117,24 @@ export function Settings({ open, version }: { open: string | null; version: numb
                     connector={c}
                     connections={view.connections.filter((k) => k.connector === c.name)}
                     startOpen={open === c.name}
+                    added={view.added.includes(c.name)}
                     onChange={load}
                   />
                 ))}
               </div>
+              {orphans.length > 0 && (
+                <List>
+                  {orphans.map((k) => (
+                    <ConnectionLine key={k.id} connection={k} onChange={load} />
+                  ))}
+                </List>
+              )}
+              {view.failed.map((f) => (
+                <div key={f.folder} className="text-bad text-md">
+                  The connector in {f.folder} did not load: {f.why}
+                </div>
+              ))}
+              <AddConnector view={view} onChange={load} />
             </Section>
           </div>
           <div id="settings-folders" className="scroll-mt-4">
@@ -126,7 +149,14 @@ export function Settings({ open, version }: { open: string | null; version: numb
                   ))}
                 </List>
               )}
-              <FolderForm onChange={load} startOpen={open === 'folder'} />
+              {places.map((c) => (
+                <FolderForm
+                  key={c.name}
+                  connector={c}
+                  onChange={load}
+                  startOpen={open === c.name}
+                />
+              ))}
             </Section>
           </div>
           <div id="settings-kits" className="scroll-mt-4">
@@ -293,49 +323,61 @@ const MODEL_NAMES: Record<string, string> = {
 function ModelSection() {
   const [model, setModel] = useState<ModelView | null>(null)
   const [key, setKey] = useState('')
-  const [asking, setAsking] = useState(false)
+  const [asking, setAsking] = useState<'key' | 'api' | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   useEffect(() => {
     api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
   }, [])
-  const choose = (route: 'subscription' | 'key', given?: string) =>
+  const choose = (route: 'subscription' | 'key' | 'api', given?: string) =>
     api.post<ModelView>('/api/model', { route, ...(given ? { key: given } : {}) }).then(
       (m) => {
         setModel(m)
         setKey('')
-        setAsking(false)
+        setAsking(null)
         setProblem(null)
       },
       (err: unknown) => setProblem(err instanceof Problem ? err.message : 'That did not go in.'),
     )
   return (
-    <Section title="Model" about="What Alpha thinks with, and how it reaches it.">
+    <Section
+      title="Model"
+      about={`What Alpha thinks with (${model ? (MODEL_NAMES[model.desk] ?? model.desk) : '…'}), and how it reaches it. Each way says what it can do; the key stays in the Keychain.`}
+    >
       {model && (
         <List>
-          <Row
-            lead={
-              <Tile>
-                <Sparkles className="size-4" />
-              </Tile>
-            }
-            title={MODEL_NAMES[model.desk] ?? model.desk}
-            sub={
-              model.route === 'subscription'
-                ? 'Through your own Claude subscription, signed in on this Mac'
-                : 'Through the API key kept in the Keychain'
-            }
-            actions={
-              model.route === 'subscription' ? (
-                <Button size="sm" variant="ghost" onClick={() => setAsking(!asking)}>
-                  Use an API key
-                </Button>
-              ) : (
-                <Button size="sm" variant="ghost" onClick={() => choose('subscription')}>
-                  Use my subscription
-                </Button>
-              )
-            }
-          />
+          {model.providers.map((p) => (
+            <Row
+              key={p.route}
+              lead={
+                <Tile>
+                  <Sparkles className="size-4" />
+                </Tile>
+              }
+              title={p.title}
+              sub={
+                <>
+                  <div>{p.can}</div>
+                  {p.cannot && <div className="text-warn">{p.cannot}</div>}
+                </>
+              }
+              actions={
+                p.chosen ? (
+                  <Pill tone="good">In use</Pill>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      if (p.route === 'subscription' || model.hasKey) void choose(p.route)
+                      else setAsking(p.route)
+                    }}
+                  >
+                    Use this
+                  </Button>
+                )
+              }
+            />
+          ))}
         </List>
       )}
       {asking && (
@@ -343,7 +385,7 @@ function ModelSection() {
           className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault()
-            void choose('key', key)
+            void choose(asking, key)
           }}
         >
           <Field
@@ -357,7 +399,19 @@ function ModelSection() {
           <Button type="submit" variant="primary" disabled={!key.trim() && !model?.hasKey}>
             Use it
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => setAsking(null)}>
+            Cancel
+          </Button>
         </form>
+      )}
+      {model?.hasKey && model.route !== 'subscription' && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setAsking(model.route === 'api' ? 'api' : 'key')}
+        >
+          Change the key
+        </Button>
       )}
       {problem && <p className="text-bad text-sm">{problem}</p>}
     </Section>
@@ -546,18 +600,24 @@ function ConnectorTile({
   connector: c,
   connections,
   startOpen,
+  added,
   onChange,
 }: {
   connector: ConnectorView
   connections: ConnectionView[]
   startOpen: boolean
+  added: boolean // loaded from Alpha's own connectors/: it can be removed again
   onChange: () => void
 }) {
   const system = c.auth === 'system'
   const inBrowser = c.auth === 'browser'
   const [open, setOpen] = useState(startOpen)
   const [account, setAccount] = useState(
-    system ? 'This Mac' : inBrowser ? (c.account.placeholder ?? c.name) : '',
+    system
+      ? (c.account.placeholder ?? c.account.label)
+      : inBrowser
+        ? (c.account.placeholder ?? c.name)
+        : '',
   )
   const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
@@ -595,7 +655,7 @@ function ConnectorTile({
       )}
     >
       <div className="flex items-center gap-3">
-        <Tile>{ICONS[c.name] ?? <Folder className="size-4" />}</Tile>
+        <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-base text-ink">{c.title}</div>
           {connections.length === 0 && <div className="text-ink-3 text-sm">Not connected</div>}
@@ -609,6 +669,23 @@ function ConnectorTile({
             {connections.length ? 'Add another' : 'Connect'}
           </Button>
         )}
+        {!open && added && connections.length === 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={async () => {
+              if (!window.confirm(`Remove the connector ${c.title}? Its folder goes with it.`))
+                return
+              setBusy(true)
+              await api.delete(`/api/connectors/${c.name}`).catch(() => undefined)
+              setBusy(false)
+              onChange()
+            }}
+          >
+            Remove
+          </Button>
+        )}
       </div>
       {open && (
         <form onSubmit={submit} className="flex flex-col gap-3">
@@ -619,10 +696,8 @@ function ConnectorTile({
             </p>
           ) : inBrowser ? (
             <p className="text-ink-2 text-md">
-              {c.title} opens in its own window of Google Chrome: sign in there yourself, then quit
-              that Chrome. Alpha then reads your connections the way you would, slowly, once a day,
-              and stops at any check page. It never writes to {c.title}. {c.title} asks that its
-              pages not be read automatically; reading them is your choice.
+              {c.warning ??
+                `${c.title} opens in its own window of Google Chrome: sign in there yourself, then quit that Chrome. Alpha reads it as you would and never writes to it.`}
             </p>
           ) : (
             <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-account`}>
@@ -664,14 +739,10 @@ function ConnectorTile({
           {problem && (
             <div className="flex flex-wrap items-center gap-2 text-bad text-md">
               <span>{problem}</span>
-              {system && problem.includes('System Settings') && (
+              {c.system && problem.includes('System Settings') && (
                 <Button
                   size="sm"
-                  onClick={() =>
-                    api.post('/api/setup/settings', {
-                      pane: c.name === 'calendar' ? 'calendars' : 'contacts',
-                    })
-                  }
+                  onClick={() => api.post('/api/setup/settings', { pane: c.system?.pane })}
                 >
                   Open System Settings
                 </Button>
@@ -700,7 +771,108 @@ function ConnectorTile({
   )
 }
 
-function FolderForm({ onChange, startOpen }: { onChange: () => void; startOpen: boolean }) {
+// A connector added without a restart: from a folder, from a pack sent as a file, or one of the
+// packs that came with Alpha (LinkedIn), with its warning shown before the first connection.
+function AddConnector({ view, onChange }: { view: ConnectorsView; onChange: () => void }) {
+  const [folder, setFolder] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const [said, setSaid] = useState<string | null>(null)
+  const picker = useRef<HTMLInputElement>(null)
+  const loaded = new Set(view.connectors.map((c) => c.name))
+  const offered = view.available.filter((p) => !loaded.has(p.name))
+  const act = async (fn: () => Promise<{ title: string }>) => {
+    setBusy(true)
+    setProblem(null)
+    setSaid(null)
+    try {
+      const out = await fn()
+      setSaid(`Added ${out.title}. Connect it above.`)
+      setFolder('')
+      onChange()
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That connector was not added.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {offered.length > 0 && (
+        <List>
+          {offered.map((p) => (
+            <Row
+              key={p.name}
+              lead={
+                <Tile>
+                  <Plug className="size-4" />
+                </Tile>
+              }
+              title={p.title}
+              sub={`Came with Alpha, not loaded until you add it (${p.version})`}
+              actions={
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={() =>
+                    act(() =>
+                      api.post<{ title: string }>('/api/connectors/available', { name: p.name }),
+                    )
+                  }
+                >
+                  Add {p.title}
+                </Button>
+              }
+            />
+          ))}
+        </List>
+      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void act(() => api.post<{ title: string }>('/api/connectors', { folder: folder.trim() }))
+        }}
+        className="flex gap-2"
+      >
+        <Field
+          className="flex-1"
+          value={folder}
+          placeholder="A connector's folder, like /Users/you/dev/connectors/outlook"
+          onChange={(e) => setFolder(e.target.value)}
+        />
+        <Button type="submit" disabled={busy || !folder.trim()}>
+          {busy ? 'Adding…' : 'Add a connector'}
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={() => picker.current?.click()}>
+          Add from a file
+        </Button>
+        <input
+          ref={picker}
+          type="file"
+          accept=".alphaconnector"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void act(() => api.uploadTo<{ title: string }>('/api/connectors/pack', file))
+            e.target.value = ''
+          }}
+        />
+      </form>
+      {said && <div className="text-ink-2 text-md">{said}</div>}
+      {problem && <div className="text-bad text-md">{problem}</div>}
+    </div>
+  )
+}
+
+function FolderForm({
+  connector: c,
+  onChange,
+  startOpen,
+}: {
+  connector: ConnectorView
+  onChange: () => void
+  startOpen: boolean
+}) {
   const [path, setPath] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -709,7 +881,7 @@ function FolderForm({ onChange, startOpen }: { onChange: () => void; startOpen: 
     setBusy(true)
     setProblem(null)
     try {
-      await api.post('/api/connections', { connector: 'folder', account: path.trim() })
+      await api.post('/api/connections', { connector: c.name, account: path.trim() })
       setPath('')
       onChange()
     } catch (err) {
@@ -725,11 +897,11 @@ function FolderForm({ onChange, startOpen }: { onChange: () => void; startOpen: 
           className="flex-1"
           value={path}
           autoFocus={startOpen}
-          placeholder="/Users/you/Documents/Exports"
+          placeholder={c.account.placeholder}
           onChange={(e) => setPath(e.target.value)}
         />
         <Button type="submit" disabled={busy || !path.trim()}>
-          Add folder
+          Add {c.title.toLowerCase()}
         </Button>
       </div>
       {problem && <div className="text-bad text-md">{problem}</div>}

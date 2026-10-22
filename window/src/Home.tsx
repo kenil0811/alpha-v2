@@ -341,7 +341,11 @@ function AskBox({
 
 // First open: a few ways to start, and three setup rows, none of which stands in the way.
 function Welcome({ onTry }: { onTry: (words: string) => void }) {
-  const [view, setView] = useState<{ gmail: boolean; folder: boolean; kit: boolean } | null>(null)
+  // the connectors that ask for a place here (their manifests), and the one that takes a folder
+  const [view, setView] = useState<{
+    steps: { name: string; words: string; sub: string; done: boolean }[]
+    kit: boolean
+  } | null>(null)
   useEffect(() => {
     Promise.all([
       api.get<ConnectorsView>('/api/connectors'),
@@ -349,8 +353,17 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
     ]).then(
       ([c, w]) =>
         setView({
-          gmail: c.connections.some((k) => k.connector === 'gmail'),
-          folder: c.connections.some((k) => k.connector === 'folder'),
+          steps: c.connectors
+            .filter((k) => k.setup || k.auth === 'path')
+            .map((k) => ({
+              name: k.name,
+              words: k.auth === 'path' ? `Add a ${k.title.toLowerCase()}` : `Connect ${k.title}`,
+              sub:
+                k.auth === 'path'
+                  ? 'Exports and documents, read where they are'
+                  : (k.setup?.sub ?? ''),
+              done: c.connections.some((x) => x.connector === k.name),
+            })),
           kit: w.some((m) => m.kit),
         }),
       () => setView(null),
@@ -363,18 +376,12 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
     'Who emailed me this week?',
   ]
   const setup = [
-    {
-      done: view?.gmail,
-      words: 'Connect Gmail',
-      sub: 'So Alpha can read and draft your mail',
-      href: '#/settings?connect=gmail',
-    },
-    {
-      done: view?.folder,
-      words: 'Add a folder',
-      sub: 'Exports and documents, read where they are',
-      href: '#/settings?connect=folder',
-    },
+    ...(view?.steps ?? []).map((s) => ({
+      done: s.done,
+      words: s.words,
+      sub: s.sub,
+      href: `#/settings?connect=${s.name}`,
+    })),
     {
       done: view?.kit,
       words: 'Install a kit',

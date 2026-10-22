@@ -1,4 +1,5 @@
-// What a step is called where the person reads it: plain words, no tool names, no ids.
+// What a step is called where the person reads it: plain words, no tool names, no ids. A
+// connector's tools say their own words (its manifest); the desk asks the service first.
 import { basename } from 'node:path'
 
 type Input = Record<string, unknown>
@@ -7,7 +8,7 @@ const s = (v: unknown) => (typeof v === 'string' ? v : '')
 const short = (v: string, n = 80) => (v.length > n ? `${v.slice(0, n - 1)}…` : v)
 
 export function stepWords(tool: string, input: Input): string {
-  const name = tool.replace(/^mcp__(alpha|connectors)__/, '')
+  const name = tool.replace(/^mcp__alpha__/, '')
   switch (name) {
     case 'query':
       return 'Looked through the tables'
@@ -115,18 +116,6 @@ export function stepWords(tool: string, input: Input): string {
       return `Ran ${s(input.agent) || basename(s(input.script))} to try it`
     case 'connect':
       return `Connect ${s(input.connector)}`
-    case 'gmail_search':
-      return `Searched Gmail for “${short(s(input.query), 60)}”`
-    case 'gmail_read':
-      return 'Read an email'
-    case 'gmail_draft':
-      return `Saved a draft to ${s(input.to)}`
-    case 'gmail_send':
-      return `Send an email to ${s(input.to)}`
-    case 'calendar_events':
-      return 'Looked at the calendar'
-    case 'contacts_find':
-      return `Looked up “${short(s(input.words), 40)}” in contacts`
     default:
       return 'Worked on it'
   }

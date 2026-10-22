@@ -9,12 +9,20 @@ import type { Effect } from './effects.ts'
 // oauth: Alpha's own app, the person consenting in their browser.
 // browser: a browser profile the person signs into.
 // system: the Mac asks the person itself (Calendar, Contacts).
-export type AuthKind = 'secret' | 'oauth' | 'browser' | 'system'
+// path: a place on this Mac the person names (a watched folder); nothing to sign in to.
+export type AuthKind = 'secret' | 'oauth' | 'browser' | 'system' | 'path'
 
+// The pictures the window has for a connector's tile.
+export type Icon = 'mail' | 'calendar' | 'people' | 'network' | 'folder' | 'plug'
+
+// A connector describes itself; the core names no connector (decision 10). What the window
+// shows for it (its tile, its first-open step, the System Settings pane after a no, a warning)
+// is all here.
 export interface Manifest {
-  name: string // gmail
+  name: string // gmail: letters, digits and dashes; the model's tools are mcp__<name>__<tool>
   title: string // Gmail
   auth: AuthKind
+  icon?: Icon
   account: { label: string; placeholder?: string }
   secret?: { label: string; help: string; url?: string }
   // Pacing per account: calls a minute, and a day's budget where the service has one.
@@ -23,20 +31,31 @@ export interface Manifest {
   syncEveryMinutes?: number
   // browser: where the person signs in themselves, in Google Chrome
   signIn?: string
+  // system: the System Settings pane (Privacy & Security › <pane>) that turns Alpha on after a no
+  system?: { pane: string }
+  // Its step on the first open, when it has one: why the person would connect it.
+  setup?: { sub: string }
+  // What the person reads before connecting it, when there is something to weigh (a site that
+  // asks not to be read automatically).
+  warning?: string
 }
 
-export type FieldKind =
-  | 'text'
-  | 'number'
-  | 'money'
-  | 'date'
-  | 'choice'
-  | 'relation'
-  | 'person'
-  | 'file'
-  | 'link'
-  | 'email'
-  | 'phone'
+// The kinds a table's fields can have: the kit API's list, said again here so a connector imports
+// only this SDK (the core checks the two lists agree).
+export const FIELD_KINDS = [
+  'text',
+  'number',
+  'money',
+  'date',
+  'choice',
+  'relation',
+  'person',
+  'file',
+  'link',
+  'email',
+  'phone',
+] as const
+export type FieldKind = (typeof FIELD_KINDS)[number]
 
 // How a table's rows name people, by its fields' names (the core's people read them): each row
 // is a person, or an exchange with people whose fields hold addresses as a message writes them.
@@ -110,6 +129,8 @@ export interface Tool<S extends z.ZodRawShape = z.ZodRawShape> {
   effect: Effect | ((input: z.infer<z.ZodObject<S>>) => Effect)
   // What a card shows when the call waits on one: a line, and the whole of it.
   preview?: (input: z.infer<z.ZodObject<S>>) => { words: string; detail?: string; yes?: string }
+  // What the step is called where the person reads it (Activity): plain words, no tool names.
+  words?: (input: z.infer<z.ZodObject<S>>) => string
   run: (c: Call, input: z.infer<z.ZodObject<S>>) => Promise<unknown>
 }
 

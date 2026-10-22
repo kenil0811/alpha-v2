@@ -82,6 +82,9 @@ export const calendar: Connector = {
     name: 'calendar',
     title: 'Calendar',
     auth: 'system',
+    icon: 'calendar',
+    system: { pane: 'Calendars' },
+    setup: { sub: 'Through your Mac’s own Calendar; macOS asks you once' },
     account: { label: 'This Mac' },
     pace: { perMinute: 30 },
     syncEveryMinutes: 30,
@@ -119,6 +122,7 @@ export const calendar: Connector = {
         'The events on the person’s Mac calendar between two times (ISO 8601), with their attendees.',
       input: { from: z.string(), to: z.string() },
       effect: 'read',
+      words: () => 'Looked at the calendar',
       run: async (c, { from, to }) => {
         const f = new Date(from)
         const t = new Date(to)
@@ -162,6 +166,9 @@ export const contactsConnector: Connector = {
     name: 'contacts',
     title: 'Contacts',
     auth: 'system',
+    icon: 'people',
+    system: { pane: 'Contacts' },
+    setup: { sub: 'Through your Mac’s own Contacts; macOS asks you once' },
     account: { label: 'This Mac' },
     pace: { perMinute: 10 },
     syncEveryMinutes: 24 * 60,
@@ -198,6 +205,8 @@ export const contactsConnector: Connector = {
         'Find people in the person’s Mac contacts by any words: a name, a company, an email or a number.',
       input: { words: z.string() },
       effect: 'read',
+      words: ({ words }) =>
+        `Looked up “${words.length > 40 ? `${words.slice(0, 39)}…` : words}” in contacts`,
       run: async (c, { words }) => {
         const w = words.toLowerCase()
         return (await contacts(c))
@@ -233,3 +242,6 @@ export const contactsConnector: Connector = {
     return { rows: all.length, sawNew: landed.added > 0 }
   },
 }
+
+// What a folder of this connector exports for Alpha to load: two connectors from one helper.
+export const connectors = [calendar, contactsConnector]

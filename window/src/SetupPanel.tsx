@@ -71,21 +71,13 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
       words: `The document reader: ${READY[view.readers.documents]}`,
       sub: 'What reads PDFs with their pages and places, about 1.6 GB',
     },
-    {
-      done: view.connected.gmail,
-      words: view.connected.gmail ? 'Gmail: connected' : 'Connect Gmail',
-      sub: 'So Alpha can read your mail and send what you say yes to',
-      act: view.connected.gmail ? null : <a href="#/settings?connect=gmail">Connect</a>,
-    },
-    {
-      done: view.connected.calendar && view.connected.contacts,
-      words: 'Calendar and contacts',
-      sub: 'Through your Mac’s own Calendar and Contacts; macOS asks you once for each',
-      act:
-        view.connected.calendar && view.connected.contacts ? null : (
-          <a href="#/settings?connect=calendar">Connect</a>
-        ),
-    },
+    // each connector that asks for a place here, as it describes itself
+    ...view.steps.map((s) => ({
+      done: s.done,
+      words: s.done ? `${s.title}: connected` : `Connect ${s.title}`,
+      sub: s.sub,
+      act: s.done ? null : <a href={`#/settings?connect=${s.connector}`}>Connect</a>,
+    })),
     {
       done: view.chrome,
       words: view.chrome ? 'Google Chrome is on this Mac' : 'Google Chrome',

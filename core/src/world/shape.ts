@@ -148,6 +148,7 @@ const RESERVED = new Set([
   'tasks',
   'task_refs',
   'desk_sessions',
+  'desk_messages',
   'meta',
   'select',
   'from',

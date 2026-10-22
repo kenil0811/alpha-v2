@@ -193,8 +193,9 @@ export interface DraftView {
 // What this Mac still needs, for the first open and Settings › This Mac.
 export interface SetupView {
   claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
-  route: 'subscription' | 'key'
-  connected: { gmail: boolean; calendar: boolean; contacts: boolean }
+  route: 'subscription' | 'key' | 'api'
+  // each connector that asks for a place on the first open, as it describes itself
+  steps: { connector: string; title: string; sub: string; done: boolean }[]
   chrome: boolean // Google Chrome, for sites the person signs in to
   keepAwake: boolean | null // the Mac kept from sleeping while plugged in; none where it can't be
   readers: {
@@ -425,12 +426,17 @@ export interface SavedView {
   madeBy: 'person' | 'alpha' | 'kit'
 }
 
+// A connector as it describes itself (its manifest): the window draws every one the same way.
 export interface ConnectorView {
   name: string
   title: string
-  auth: 'secret' | 'oauth' | 'browser' | 'system'
+  auth: 'secret' | 'oauth' | 'browser' | 'system' | 'path'
+  icon: 'mail' | 'calendar' | 'people' | 'network' | 'folder' | 'plug'
   account: { label: string; placeholder?: string }
   secret?: { label: string; help: string; url?: string }
+  system?: { pane: string } // the System Settings pane that turns Alpha on after a no
+  setup?: { sub: string } // its step on the first open, when it asks for one
+  warning?: string // what the person reads before connecting it
 }
 
 export interface ConnectionView {
@@ -439,16 +445,21 @@ export interface ConnectionView {
   title: string
   account: string
   inBrowser: boolean // signed in to in Google Chrome, and read as the person
+  loaded: boolean // its connector is in the loaded set; else it waits until that is added
   state: 'connected' | 'needs_sign_in' | 'broken' | 'paused'
   health: string | null
   lastSyncAt: string | null
   tables: { id: string; name: string; hidden: boolean }[] // what it keeps, maybe out of the sidebar
-  settings: 'contacts' | 'calendars' | null // the System Settings pane that turns Alpha Helper on
+  settings: string | null // the System Settings pane that turns Alpha on, when it needs that
 }
 
 export interface ConnectorsView {
   connectors: ConnectorView[]
   connections: ConnectionView[]
+  // the packs that came with the release and are not loaded until added (LinkedIn)
+  available: { file: string; name: string; title: string; version: string }[]
+  added: string[] // the connectors loaded from Alpha's own connectors/, by name
+  failed: { folder: string; why: string }[] // folders that did not load at start
 }
 
 // An agent as Settings shows it: its trigger in words, on or paused.
@@ -519,10 +530,21 @@ export interface InstructionView {
 }
 
 // The model Alpha runs on and how it reaches it, as Settings shows it.
+// The model as the person chooses it: a provider per route, each saying what it can do.
+export interface ProviderView {
+  route: 'subscription' | 'key' | 'api'
+  title: string
+  can: string // what it can do, in a line
+  cannot: string | null // what another listed provider can and this one cannot
+  needsKey: boolean
+  chosen: boolean
+}
+
 export interface ModelView {
   desk: string
-  route: 'subscription' | 'key' // the person's own Claude subscription, or the firm's API key
+  route: 'subscription' | 'key' | 'api' // their own subscription; the firm's key through Claude Code; the key through Alpha's own loop
   hasKey: boolean // a key is kept in the Keychain
+  providers: ProviderView[]
 }
 
 // A run in Activity: an agent's or a reader's, or a connection reading its account.
