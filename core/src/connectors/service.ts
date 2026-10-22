@@ -24,7 +24,6 @@ import { z } from 'zod'
 import { config } from '../config.ts'
 import { takeIn } from '../files/documents.ts'
 import type { Connection } from '../world/connections.ts'
-import { all } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
@@ -125,13 +124,7 @@ export class ConnectorService {
       ...(this.options.browser ? { browser: this.options.browser } : {}),
       keys: (tableName) => {
         const t = this.world.shape.table(tableName)
-        return t
-          ? all<{ item_key: string }>(
-              this.world.db,
-              'SELECT item_key FROM records WHERE table_id = ? AND item_key IS NOT NULL',
-              t.id,
-            ).map((r) => r.item_key)
-          : []
+        return t ? this.world.records.keys(t.id) : []
       },
       keepFile: (name, bytes, mime) => {
         const known = this.world.files.file(hashOf(bytes))

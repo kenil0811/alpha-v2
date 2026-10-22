@@ -305,14 +305,10 @@ async function judge(world: World, user: User, check: Check): Promise<Outcome> {
   if ('field' in check) {
     const f = check.field
     const t = world.shape.table(f.table)
-    const row = t
-      ? (world.db
-          .prepare('SELECT id FROM records WHERE table_id = ? AND item_key = ?')
-          .get(t.id, f.key) as { id: string } | undefined)
-      : undefined
+    const row = t ? world.records.byKey(t.id, f.key) : undefined
     const slug = t?.fields.find((x) => x.name === f.field)?.slug ?? ''
     const value =
-      t && row ? world.records.list(t.id).find((r) => r.id === row.id)?.values[slug] : undefined
+      t && row ? world.records.list(t.id).find((r) => r.id === row)?.values[slug] : undefined
     const ok =
       f.equals !== undefined
         ? value === f.equals

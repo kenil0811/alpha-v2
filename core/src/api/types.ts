@@ -276,6 +276,7 @@ export interface FieldView {
   kind: string
   choices: string[]
   tones: Record<string, 'good' | 'warn' | 'bad' | 'accent'> // a choice's colour, where it is a state
+  many: boolean // a relation holding a list of rows
 }
 
 // Where a value came from, in words the person reads, with what to open.

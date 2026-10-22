@@ -4,8 +4,21 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse as parseYaml, stringify } from 'yaml'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
+import {
+  addFieldSql,
+  type ColumnSpec,
+  columnsOf,
+  createTableSql,
+  dropFieldSql,
+  dropTableSql,
+  junctionName,
+  lit,
+  OWN_COLUMNS,
+  quote,
+} from './ddl.ts'
 import { type Actor, append } from './journal.ts'
 import { FIELD_KINDS, type FieldKind, Refused } from './kinds.ts'
+import { MODEL_VIEWS } from './modelsql.ts'
 import { namedConfig, ViewConfig } from './views.ts'
 
 export interface Module {
@@ -29,6 +42,8 @@ export interface Field {
   choices: string[]
   tones: Record<string, Tone> // a choice's colour where it means a state (Fits, Does not fit)
   relatesTo: string | null
+  many: boolean // a relation holding a list of rows: a junction table, not a column
+  indexed: boolean // an index the kit asked for
 }
 
 // The colours a choice may take: the window's state colours, nothing else.
@@ -79,6 +94,8 @@ export interface FieldInput {
   choices?: string[]
   tones?: Record<string, Tone>
   relatesTo?: string // a table, for a relation
+  many?: boolean // a relation holding a list of rows
+  indexed?: boolean // an index on it, for a field filtered on often
 }
 
 export interface WriteCtx {
@@ -108,6 +125,9 @@ const RESERVED = new Set([
   'fields',
   'records',
   'record_versions',
+  'versions',
+  'provenance',
+  'rows',
   'cards',
   'files',
   'documents',
@@ -132,6 +152,7 @@ const RESERVED = new Set([
   'order',
   'group',
   'id',
+  ...MODEL_VIEWS,
 ])
 
 function freeSlug(base: string, taken: (slug: string) => boolean): string {
@@ -316,10 +337,13 @@ export class Shape {
       'SELECT id, name, slug, kind, options FROM fields WHERE table_id = ? ORDER BY position',
       t.id,
     ).map((f) => {
-      const o = parse<{ choices?: string[]; tones?: Record<string, Tone>; relatesTo?: string }>(
-        f.options,
-        {},
-      )
+      const o = parse<{
+        choices?: string[]
+        tones?: Record<string, Tone>
+        relatesTo?: string
+        many?: boolean
+        indexed?: boolean
+      }>(f.options, {})
       return {
         id: f.id,
         name: f.name,
@@ -328,6 +352,8 @@ export class Shape {
         choices: o.choices ?? [],
         tones: o.tones ?? {},
         relatesTo: o.relatesTo ?? null,
+        many: f.kind === 'relation' && !!o.many,
+        indexed: !!o.indexed,
       }
     })
     return {
@@ -356,10 +382,7 @@ export class Shape {
       if (one(this.db, 'SELECT 1 FROM tables WHERE lower(name) = lower(?)', name.trim()))
         throw new Refused(`There is already a table called ${name.trim()}.`)
       const id = newId('t')
-      const slug = freeSlug(
-        slugify(name),
-        (s) => !!one(this.db, 'SELECT 1 FROM tables WHERE slug = ?', s),
-      )
+      const slug = freeSlug(slugify(name), (s) => this.slugTaken(s))
       run(
         this.db,
         'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -371,8 +394,10 @@ export class Shape {
         now(),
         options.hidden ? 1 : 0,
       )
-      for (const f of fields) this.insertField(id, f)
+      for (const f of fields) this.insertField(id, f, false)
       const table = this.table(id) as Table
+      for (const sql of createTableSql(table.slug, table.id, table.fields.map(spec)))
+        this.db.exec(sql)
       append(this.db, {
         actor: ctx.actor,
         kind: 'made',
@@ -418,17 +443,34 @@ export class Shape {
       let words: string
       if (what.field) {
         const field = findField(table, what.field)
-        const slug = freeSlug(slugify(to), (s) =>
-          table.fields.some((f) => f.slug === s && f.id !== field.id),
-        )
+        const slug = this.freeFieldSlug(table, to, field.kind, field.many, field.id)
         run(this.db, 'UPDATE fields SET name = ?, slug = ? WHERE id = ?', to.trim(), slug, field.id)
+        if (slug !== field.slug) {
+          if (field.kind === 'relation' && field.many)
+            this.db.exec(
+              `ALTER TABLE ${quote(junctionName(table.slug, field.slug))} RENAME TO ${quote(junctionName(table.slug, slug))}`,
+            )
+          else
+            for (const [was, is] of columnsOf(spec(field)).map((c, i): [string, string] => [
+              c.name,
+              columnsOf(spec({ ...field, slug })).map((x) => x.name)[i] as string,
+            ]))
+              this.db.exec(
+                `ALTER TABLE ${quote(table.slug)} RENAME COLUMN ${quote(was)} TO ${quote(is)}`,
+              )
+        }
         words = `Renamed ${field.name} to ${to.trim()} in ${table.name}.`
       } else {
-        const slug = freeSlug(
-          slugify(to),
-          (s) => !!one(this.db, 'SELECT 1 FROM tables WHERE slug = ? AND id != ?', s, table.id),
-        )
+        const slug = freeSlug(slugify(to), (s) => s !== table.slug && this.slugTaken(s))
         run(this.db, 'UPDATE tables SET name = ?, slug = ? WHERE id = ?', to.trim(), slug, table.id)
+        if (slug !== table.slug) {
+          this.db.exec(`ALTER TABLE ${quote(table.slug)} RENAME TO ${quote(slug)}`)
+          for (const f of table.fields)
+            if (f.kind === 'relation' && f.many)
+              this.db.exec(
+                `ALTER TABLE ${quote(junctionName(table.slug, f.slug))} RENAME TO ${quote(junctionName(slug, f.slug))}`,
+              )
+        }
         words = `Renamed the table ${table.name} to ${to.trim()}.`
       }
       append(this.db, {
@@ -611,17 +653,15 @@ export class Shape {
           (r) => r.id,
         ),
       )
-      run(
-        this.db,
-        'DELETE FROM record_versions WHERE record_id IN (SELECT id FROM records WHERE table_id = ?)',
-        table.id,
-      )
+      this.clearPointers(table.id, `(SELECT id FROM records WHERE table_id = ${lit(table.id)})`)
+      for (const side of ['versions', 'provenance', 'row_files', 'kit_rows'])
+        run(
+          this.db,
+          `DELETE FROM ${side} WHERE record_id IN (SELECT id FROM records WHERE table_id = ?)`,
+          table.id,
+        )
       run(this.db, 'DELETE FROM records_fts WHERE table_id = ?', table.id)
-      run(
-        this.db,
-        'DELETE FROM row_files WHERE record_id IN (SELECT id FROM records WHERE table_id = ?)',
-        table.id,
-      )
+      for (const sql of dropTableSql(table.slug, table.fields.map(spec))) this.db.exec(sql)
       run(this.db, 'DELETE FROM records WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM views WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
@@ -640,7 +680,9 @@ export class Shape {
     })
   }
 
-  private insertField(tableId: string, f: FieldInput): void {
+  // A field: its catalogue row, then its column (or its junction table) on the real table; on a
+  // table being made, the columns come with the CREATE TABLE instead.
+  private insertField(tableId: string, f: FieldInput, ddl = true): void {
     if (!f.name?.trim()) throw new Refused('Every field needs a name.')
     if (!(FIELD_KINDS as readonly string[]).includes(f.kind))
       throw new Refused(
@@ -648,10 +690,11 @@ export class Shape {
       )
     if (f.kind === 'relation' && (!f.relatesTo || !this.table(f.relatesTo)))
       throw new Refused(`${f.name} relates to a table that is not there.`)
-    const taken = (s: string) =>
-      !!one(this.db, 'SELECT 1 FROM fields WHERE table_id = ? AND slug = ?', tableId, s)
-    if (taken(slugify(f.name))) throw new Refused(`There is already a field called ${f.name}.`)
-    const slug = freeSlug(slugify(f.name), taken)
+    const table = this.table(tableId) as Table
+    const many = f.kind === 'relation' && !!f.many
+    if (table.fields.some((x) => x.slug === slugify(f.name)))
+      throw new Refused(`There is already a field called ${f.name}.`)
+    const slug = this.freeFieldSlug(table, f.name, f.kind, many, null)
     const position = Number(
       one<{ n: number }>(
         this.db,
@@ -663,17 +706,204 @@ export class Shape {
       ...(f.choices?.length ? { choices: f.choices } : {}),
       ...(f.tones && Object.keys(f.tones).length ? { tones: f.tones } : {}),
       ...(f.relatesTo ? { relatesTo: (this.table(f.relatesTo) as Table).id } : {}),
+      ...(many ? { many: true } : {}),
+      ...(f.indexed && f.kind !== 'relation' ? { indexed: true } : {}),
     }
+    const id = newId('f')
     run(
       this.db,
       'INSERT INTO fields (id, table_id, name, slug, kind, options, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      newId('f'),
+      id,
       tableId,
       f.name.trim(),
       slug,
       f.kind,
       json(options),
       position,
+    )
+    if (ddl)
+      for (const sql of addFieldSql(table.slug, table.id, {
+        id,
+        slug,
+        kind: f.kind,
+        many,
+        indexed: !!options.indexed,
+      }))
+        this.db.exec(sql)
+  }
+
+  // Removing a field drops its column (or its junction table) and its provenance; the versions
+  // keep what the rows held under it, and the saved views forget it.
+  removeField(tableId: string, field: string, ctx: WriteCtx): Table {
+    return tx(this.db, () => {
+      const table = this.table(tableId)
+      if (!table) throw new Refused('That table is not there.')
+      const f = findField(table, field)
+      for (const sql of dropFieldSql(table.slug, table.id, spec(f))) this.db.exec(sql)
+      run(this.db, 'DELETE FROM provenance WHERE field_id = ?', f.id)
+      run(this.db, 'DELETE FROM fields WHERE id = ?', f.id)
+      this.dropFieldFromViews(table.id, f.id)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'removed',
+        words: `Removed the field ${f.name} from ${table.name}.`,
+        data: { table: table.id, field: f.id, name: f.name, kind: f.kind },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+      })
+      this.writeManifest(table.module)
+      return this.table(table.id) as Table
+    })
+  }
+
+  // The rows pointing at these rows let go of them: a relation column set to nothing, a
+  // junction row gone. `ids` is a SQL list or subquery of the rows going; back comes how many
+  // rows let go.
+  clearPointers(tableId: string, ids: string): number {
+    const rows = new Set<string>()
+    for (const t of this.tables())
+      for (const f of t.fields) {
+        if (f.kind !== 'relation' || f.relatesTo !== tableId) continue
+        if (f.many) {
+          const j = quote(junctionName(t.slug, f.slug))
+          const was = all<{ record_id: string }>(
+            this.db,
+            `SELECT DISTINCT record_id FROM ${j} WHERE other_id IN ${ids}`,
+          ).map((r) => r.record_id)
+          for (const id of was) rows.add(id)
+          run(this.db, `DELETE FROM ${j} WHERE other_id IN ${ids}`)
+          // a list left empty has no value there any more, so no provenance either
+          for (const id of was)
+            run(
+              this.db,
+              `DELETE FROM provenance WHERE record_id = ? AND field_id = ? AND NOT EXISTS (SELECT 1 FROM ${j} WHERE record_id = ?)`,
+              id,
+              f.id,
+              id,
+            )
+        } else {
+          const was = all<{ id: string }>(
+            this.db,
+            `SELECT id FROM ${quote(t.slug)} WHERE ${quote(f.slug)} IN ${ids}`,
+          ).map((r) => r.id)
+          for (const id of was) rows.add(id)
+          run(
+            this.db,
+            `UPDATE ${quote(t.slug)} SET ${quote(f.slug)} = NULL WHERE ${quote(f.slug)} IN ${ids}`,
+          )
+          for (const id of was)
+            run(this.db, 'DELETE FROM provenance WHERE record_id = ? AND field_id = ?', id, f.id)
+        }
+      }
+    return rows.size
+  }
+
+  // How many rows point at these rows, for the words before a removal.
+  pointersAt(tableId: string, ids: string[]): number {
+    if (!ids.length) return 0
+    const marks = ids.map(() => '?').join(', ')
+    const rows = new Set<string>()
+    for (const t of this.tables())
+      for (const f of t.fields) {
+        if (f.kind !== 'relation' || f.relatesTo !== tableId) continue
+        for (const r of all<{ id: string }>(
+          this.db,
+          f.many
+            ? `SELECT DISTINCT record_id AS id FROM ${quote(junctionName(t.slug, f.slug))} WHERE other_id IN (${marks})`
+            : `SELECT id FROM ${quote(t.slug)} WHERE ${quote(f.slug)} IN (${marks})`,
+          ...ids,
+        ))
+          rows.add(r.id)
+      }
+    return rows.size
+  }
+
+  private dropFieldFromViews(tableId: string, fieldId: string): void {
+    for (const v of all<{ id: string; config: string }>(
+      this.db,
+      'SELECT id, config FROM views WHERE table_id = ?',
+      tableId,
+    )) {
+      const c = ViewConfig.parse(parse(v.config, {}))
+      const not = (id: string | null) => (id === fieldId ? null : id)
+      const kept: ViewConfig = {
+        ...c,
+        filters: { ...c.filters, rules: c.filters.rules.filter((r) => r.field !== fieldId) },
+        sorts: c.sorts.filter((x) => x.field !== fieldId),
+        group: not(c.group),
+        by: not(c.by),
+        measure: not(c.measure),
+        hidden: c.hidden.filter((x) => x !== fieldId),
+        order: c.order.filter((x) => x !== fieldId),
+        widths: Object.fromEntries(Object.entries(c.widths).filter(([k]) => k !== fieldId)),
+        totals: Object.fromEntries(Object.entries(c.totals).filter(([k]) => k !== fieldId)),
+        colours: {
+          tint: not(c.colours.tint),
+          when: c.colours.when.filter((w) => w.field !== fieldId),
+        },
+      }
+      if (JSON.stringify(kept) !== JSON.stringify(c))
+        run(this.db, 'UPDATE views SET config = ? WHERE id = ?', json(kept), v.id)
+    }
+  }
+
+  // A slug no column of the table has: not a column every table has, not another field's, not
+  // a money field's currency column. A name that is one steps aside as `<slug>_field`.
+  private freeFieldSlug(
+    table: Table,
+    name: string,
+    kind: FieldKind,
+    many: boolean,
+    exceptId: string | null,
+  ): string {
+    const used = new Set<string>(OWN_COLUMNS)
+    for (const x of table.fields)
+      if (x.id !== exceptId) for (const c of columnsOf(spec(x))) used.add(c.name)
+    const names = (slug: string) =>
+      columnsOf({ id: '', slug, kind, many, indexed: false }).map((c) => c.name)
+    const base = slugify(name)
+    return freeSlug(OWN_COLUMNS.has(base) ? `${base}_field` : base, (s) =>
+      names(s).some((n) => used.has(n)),
+    )
+  }
+
+  // The catalogue and the file must agree: every table's columns and junction tables as the
+  // catalogue says. A difference means a bug or a hand edit, and the world refuses to open on it
+  // rather than misread rows.
+  check(): string[] {
+    const drift: string[] = []
+    for (const t of this.tables()) {
+      const have = new Set(
+        all<{ name: string }>(this.db, `PRAGMA table_info(${quote(t.slug)})`).map((c) => c.name),
+      )
+      if (!have.size) {
+        drift.push(`${t.name}: no table ${t.slug} in the file`)
+        continue
+      }
+      const want = [
+        ...OWN_COLUMNS,
+        ...t.fields.flatMap((f) => columnsOf(spec(f)).map((c) => c.name)),
+      ].filter((c) => !['rowid', 'oid', '_rowid_'].includes(c))
+      for (const c of want) if (!have.has(c)) drift.push(`${t.name}: no column ${c}`)
+      for (const f of t.fields)
+        if (
+          f.kind === 'relation' &&
+          f.many &&
+          !one(this.db, 'SELECT 1 FROM sqlite_master WHERE name = ?', junctionName(t.slug, f.slug))
+        )
+          drift.push(`${t.name}: no junction table for ${f.name}`)
+    }
+    return drift
+  }
+
+  // A name no table in the world or in the file has: the world's own tables, SQL's words, and
+  // every kit table and junction table already there.
+  private slugTaken(slug: string): boolean {
+    return (
+      !!one(this.db, 'SELECT 1 FROM tables WHERE slug = ?', slug) ||
+      !!one(this.db, 'SELECT 1 FROM sqlite_master WHERE name = ?', slug)
     )
   }
 
@@ -717,6 +947,8 @@ export class Shape {
           ...(f.choices.length ? { choices: f.choices } : {}),
           ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
           ...(f.relatesTo ? { relates_to: this.table(f.relatesTo)?.name } : {}),
+          ...(f.many ? { many: true } : {}),
+          ...(f.indexed ? { indexed: true } : {}),
         })),
         ...(t.documents ? { documents: t.documents } : {}),
         ...(t.people ? { people: t.people } : {}),
@@ -738,6 +970,11 @@ function given(c: ViewConfig): Partial<ViewConfig> {
         !(k === 'filters' && !c.filters.rules.length),
     ),
   )
+}
+
+// A field as the DDL sees it.
+export function spec(f: Pick<Field, 'id' | 'slug' | 'kind' | 'many' | 'indexed'>): ColumnSpec {
+  return { id: f.id, slug: f.slug, kind: f.kind, many: f.many, indexed: f.indexed }
 }
 
 export function findField(table: Table, nameOrSlug: string): Field {

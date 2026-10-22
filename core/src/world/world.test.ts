@@ -142,7 +142,7 @@ describe('the world', () => {
     expect(row?.version).toBe(2)
     expect(row?.values).toEqual({ food: 'eggs', how_many: 3 })
     const versions = world.db
-      .prepare('SELECT version FROM record_versions WHERE record_id = ?')
+      .prepare('SELECT version FROM versions WHERE record_id = ?')
       .all(id as string)
     expect(versions).toEqual([{ version: 1 }])
   })
@@ -168,7 +168,7 @@ describe('the world', () => {
     )
     expect(world.records.remove(t.id, [id as string], { actor: alpha })).toBe(1)
     expect(world.records.list(t.id)).toHaveLength(0)
-    expect(world.db.prepare('SELECT count(*) AS n FROM record_versions').get()).toEqual({ n: 0 })
+    expect(world.db.prepare('SELECT count(*) AS n FROM versions').get()).toEqual({ n: 0 })
     expect(world.search('eggs').filter((h) => h.what === 'record')).toHaveLength(0)
     const removed = world.lines({ kinds: ['removed'] })[0]
     expect(removed?.words).toBe('Removed a row from Meals: Food eggs, Quantity 3.')

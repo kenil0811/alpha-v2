@@ -28,6 +28,8 @@ const Field = z.object({
   choices: z.array(z.string()).optional(),
   tones: z.record(z.string(), z.enum(TONES)).optional(),
   relates_to: z.string().optional(),
+  many: z.boolean().optional(), // a relation holding a list of rows
+  indexed: z.boolean().optional(), // an index on it, for a field filtered on often
 })
 
 const Manifest = z.object({
@@ -155,6 +157,8 @@ function fieldsOf(spec: KitManifest['tables'][number], withRelations: boolean): 
       ...(f.choices ? { choices: f.choices } : {}),
       ...(f.tones ? { tones: f.tones } : {}),
       ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
+      ...(f.many ? { many: true } : {}),
+      ...(f.indexed ? { indexed: true } : {}),
     }))
 }
 
@@ -244,13 +248,8 @@ function landSetup(
       throw new Refused(`The kit's setup rows are for a table it does not make: ${tableName}.`)
     for (const row of rows) {
       const key = `setup:${row.key}`
-      const existing = one<{ id: string }>(
-        world.db,
-        'SELECT id FROM records WHERE table_id = ? AND item_key = ?',
-        t.id,
-        key,
-      )
-      if (existing && !replaceable(existing.id)) {
+      const existing = world.records.byKey(t.id, key)
+      if (existing && !replaceable(existing)) {
         kept++
         continue
       }
@@ -260,19 +259,14 @@ function landSetup(
         { connector: 'kit', account: kit },
         ctx,
       )
-      const r = one<{ id: string; vals: string }>(
-        world.db,
-        'SELECT id, vals FROM records WHERE table_id = ? AND item_key = ?',
-        t.id,
-        key,
-      )
+      const r = world.records.byKey(t.id, key)
       const assumed = Object.entries(row.assumed ?? {}).filter(([f]) => f in row.values)
       if (r && assumed.length) {
         world.records.change(
           t.id,
           [
             {
-              id: r.id,
+              id: r,
               values: Object.fromEntries(assumed.map(([f]) => [f, row.values[f]])),
               provenance: { kind: 'assumed', basis: assumed[0]?.[1] ?? '' },
               per_field: Object.fromEntries(
@@ -287,8 +281,8 @@ function landSetup(
         run(
           world.db,
           'INSERT OR REPLACE INTO kit_rows (record_id, installed_hash) VALUES (?, ?)',
-          r.id,
-          rowHash(JSON.parse(r.vals)),
+          r,
+          rowHash(world.records.rawValues(r)?.vals ?? {}),
         )
         landed++
       }
@@ -309,8 +303,8 @@ function placeModule(world: World, module: Module, within: string | undefined, c
 }
 
 function currentRowHash(world: World, recordId: string): string | null {
-  const r = one<{ vals: string }>(world.db, 'SELECT vals FROM records WHERE id = ?', recordId)
-  return r ? rowHash(JSON.parse(r.vals)) : null
+  const r = world.records.rawValues(recordId)
+  return r ? rowHash(r.vals) : null
 }
 
 export async function install(world: World, kitDir: string, ctx: WriteCtx): Promise<Module> {

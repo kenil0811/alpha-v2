@@ -1,7 +1,10 @@
 // The model reads the world in SQL through a read-only view per table, on a read-only connection
-// whose authorizer lets it read those views and nothing else (design §4, §7: a wall).
+// whose authorizer lets it read those views and nothing else (design §4, §7: a wall). Since the
+// tables are real (22 Oct) a table's view is thin: its id, when it was added, and its fields'
+// columns, without the row's own bookkeeping; a list relation shows as a junction view.
 import { constants } from 'node:sqlite'
 import { all, type Db, one, openDb } from './db.ts'
+import { junctionName, quote } from './ddl.ts'
 import { Refused } from './kinds.ts'
 import type { Table } from './shape.ts'
 
@@ -12,8 +15,18 @@ export interface QueryResult {
   offset: number
 }
 
-const quote = (name: string) => `"${name.replace(/"/g, '""')}"`
-const lit = (s: string) => `'${s.replace(/'/g, "''")}'`
+// The names the model's own views take: no kit table may take one.
+export const MODEL_VIEWS = [
+  'provenance',
+  'journal',
+  'tasks',
+  'people',
+  'companies',
+  'exchanges',
+  'people_at',
+  'people_at_lines',
+  'people_up',
+] as const
 
 export class ModelSql {
   private db: Db
@@ -28,14 +41,29 @@ export class ModelSql {
     this.pageRows = pageRows
   }
 
-  // What the model sees: one view per table, named as the table, plus the journal.
+  // What the model sees: one view per table, named as the table, a view per list relation,
+  // provenance, the journal, tasks and people.
   describe(): { view: string; table: string; columns: string[] }[] {
     return [
-      ...this.tables().map((t) => ({
-        view: t.slug,
-        table: t.name,
-        columns: ['id', 'added', ...columnsOf(t)],
-      })),
+      ...this.tables().flatMap((t) => [
+        {
+          view: t.slug,
+          table: t.name,
+          columns: ['id', 'added', ...columnsOf(t)],
+        },
+        ...t.fields
+          .filter((f) => f.kind === 'relation' && f.many)
+          .map((f) => ({
+            view: junctionName(t.slug, f.slug),
+            table: `${t.name}: the rows each one's ${f.name} points at`,
+            columns: ['record_id', 'other_id', 'position'],
+          })),
+      ]),
+      {
+        view: 'provenance',
+        table: 'where every value came from (a row per value: its record, field, kind, source, at)',
+        columns: ['record_id', 'table_id', 'field', 'kind', 'source', 'basis', 'at'],
+      },
       {
         view: 'journal',
         table: 'the journal',
@@ -49,14 +77,22 @@ export class ModelSql {
     const text = sql.trim().replace(/;+\s*$/, '')
     if (!text) throw new Refused('There is no query.')
     if (text.includes(';')) throw new Refused('One statement at a time.')
+    // the one name the world's own views use for a table expression is the world's alone
+    if (/alpha_up_/i.test(text)) throw new Refused('That name is taken by the world’s own views.')
     this.refreshViews()
-    this.db.setAuthorizer((action, arg1, _arg2, _db, triggerOrView) => {
+    this.db.setAuthorizer((action, arg1, column, db, triggerOrView) => {
       if (action === constants.SQLITE_SELECT || action === constants.SQLITE_RECURSIVE)
         return constants.SQLITE_OK
       if (action === constants.SQLITE_FUNCTION) return constants.SQLITE_OK
       if (action === constants.SQLITE_READ) {
-        if (triggerOrView && this.views.has(triggerOrView)) return constants.SQLITE_OK
-        if (arg1 && this.views.has(arg1)) return constants.SQLITE_OK
+        // a read a view's own SQL makes, a temp view by name, or SQLite's JSON tables; never a
+        // column of a table of the file itself, even under a view's name (main.deals). A read
+        // with no column (count(*) over a view) carries no value and passes under the view's name.
+        if (triggerOrView && (this.views.has(triggerOrView) || triggerOrView === 'alpha_up_'))
+          return constants.SQLITE_OK
+        if (arg1 === 'json_each' || arg1 === 'json_tree') return constants.SQLITE_OK
+        if (arg1 && this.views.has(arg1) && (db === 'temp' || column === ''))
+          return constants.SQLITE_OK
         return constants.SQLITE_DENY
       }
       return constants.SQLITE_DENY
@@ -93,7 +129,7 @@ export class ModelSql {
   private refreshViews(): void {
     const tables = this.tables()
     const signature = JSON.stringify(
-      tables.map((t) => [t.id, t.slug, t.fields.map((f) => [f.id, f.slug, f.kind])]),
+      tables.map((t) => [t.id, t.slug, t.fields.map((f) => [f.id, f.slug, f.kind, f.many])]),
     )
     if (signature === this.signature) return
     for (const v of all<{ name: string }>(
@@ -103,23 +139,28 @@ export class ModelSql {
       this.db.exec(`DROP VIEW temp.${quote(v.name)}`)
     this.views.clear()
     for (const t of tables) {
-      const cols = ['id', 'created_at AS added']
-      for (const f of t.fields) {
-        const path = lit(`$."${f.id}"`)
-        if (f.kind === 'money') {
-          cols.push(`json_extract(vals, ${lit(`$."${f.id}".amount`)}) AS ${quote(f.slug)}`)
-          cols.push(
-            `json_extract(vals, ${lit(`$."${f.id}".currency`)}) AS ${quote(`${f.slug}_currency`)}`,
-          )
-        } else {
-          cols.push(`json_extract(vals, ${path}) AS ${quote(f.slug)}`)
-        }
-      }
+      const cols = ['id', 'created_at AS added', ...columnsOf(t).map(quote)]
       this.db.exec(
-        `CREATE TEMP VIEW ${quote(t.slug)} AS SELECT ${cols.join(', ')} FROM main.records WHERE table_id = ${lit(t.id)}`,
+        `CREATE TEMP VIEW ${quote(t.slug)} AS SELECT ${cols.join(', ')} FROM main.${quote(t.slug)}`,
       )
       this.views.add(t.slug)
+      for (const f of t.fields) {
+        if (!(f.kind === 'relation' && f.many)) continue
+        const j = junctionName(t.slug, f.slug)
+        this.db.exec(
+          `CREATE TEMP VIEW ${quote(j)} AS SELECT record_id, other_id, position FROM main.${quote(j)}`,
+        )
+        this.views.add(j)
+      }
     }
+    this.db.exec(
+      `CREATE TEMP VIEW provenance AS SELECT p.record_id, r.table_id, f.slug AS field, p.kind,
+         p.source, p.basis, p.at FROM main.provenance p JOIN main.records r ON r.id = p.record_id
+         JOIN main.fields f ON f.id = p.field_id
+           OR (p.field_id = '' AND f.table_id = r.table_id AND NOT EXISTS
+             (SELECT 1 FROM main.provenance o WHERE o.record_id = p.record_id AND o.field_id = f.id))`,
+    )
+    this.views.add('provenance')
     this.db.exec(
       'CREATE TEMP VIEW journal AS SELECT id, at, actor_kind AS actor, kind, words, module_id AS module FROM main.journal',
     )
@@ -133,7 +174,13 @@ export class ModelSql {
 }
 
 function columnsOf(t: Table): string[] {
-  return t.fields.flatMap((f) => (f.kind === 'money' ? [f.slug, `${f.slug}_currency`] : [f.slug]))
+  return t.fields.flatMap((f) =>
+    f.kind === 'money'
+      ? [f.slug, `${f.slug}_currency`]
+      : f.kind === 'relation' && f.many
+        ? []
+        : [f.slug],
+  )
 }
 
 // People and companies as the model reads them (design §4): each as one, through merges.
@@ -208,10 +255,10 @@ const PEOPLE_SQL: [string, string][] = [
   ],
   [
     'people_up',
-    `WITH RECURSIVE up (id, root) AS (
+    `WITH RECURSIVE alpha_up_ (id, root) AS (
        SELECT id, id FROM main.people WHERE merged_into IS NULL
-       UNION ALL SELECT x.id, up.root FROM main.people x JOIN up ON x.merged_into = up.id
-     ) SELECT id, root FROM up`,
+       UNION ALL SELECT x.id, alpha_up_.root FROM main.people x JOIN alpha_up_ ON x.merged_into = alpha_up_.id
+     ) SELECT id, root FROM alpha_up_`,
   ],
   [
     'people_at_lines',

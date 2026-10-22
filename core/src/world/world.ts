@@ -104,6 +104,7 @@ export class World {
     this.permissions = new Permissions(db)
     this.people = new People(db, this.shape, this.cards)
     this.records.watch = this.people
+    this.people.records = this.records
     this.records.personOf = (said) => this.people.ref(said)
     this.tasks = new Tasks(db, this.shape, (id) => this.user(id)?.name ?? null)
     this.shape.onGone = (ids) => this.people.gone(ids)
@@ -117,6 +118,11 @@ export class World {
     await migrate(db, paths.world, paths.backups)
     const tenant = dir.split('/').filter(Boolean).pop() as string
     const world = new World(db, paths, tenant, options.pageRows ?? 500)
+    const drift = world.shape.check()
+    if (drift.length)
+      throw new Error(
+        `This world's tables do not match its catalogue (${drift.join('; ')}). Restore a backup, or send Kenil a report.`,
+      )
     // people read again when this Alpha reads them by newer rules
     world.people.keepRules({ actor: { kind: 'system' } })
     return world

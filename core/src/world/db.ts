@@ -1,7 +1,7 @@
 // The one module that touches Node's SQLite (design §3: it is still a release candidate, so the
 // world wraps it here and better-sqlite3 stays the fallback).
 import { randomBytes } from 'node:crypto'
-import { DatabaseSync } from 'node:sqlite'
+import { DatabaseSync, type StatementSync } from 'node:sqlite'
 
 export type Db = DatabaseSync
 export type Row = Record<string, unknown>
@@ -30,16 +30,34 @@ export function tx<T>(db: Db, fn: () => T): T {
   }
 }
 
+// A statement is prepared once per connection and kept (SQLite re-prepares it itself when the
+// schema changes under it); a landing of thousands of rows runs a handful of statements each.
+const prepared = new WeakMap<Db, Map<string, StatementSync>>()
+function stmt(db: Db, sql: string): StatementSync {
+  let kept = prepared.get(db)
+  if (!kept) {
+    kept = new Map()
+    prepared.set(db, kept)
+  }
+  let s = kept.get(sql)
+  if (!s) {
+    if (kept.size >= 500) kept.clear()
+    s = db.prepare(sql)
+    kept.set(sql, s)
+  }
+  return s
+}
+
 export function all<T = Row>(db: Db, sql: string, ...params: SqlValue[]): T[] {
-  return db.prepare(sql).all(...params) as T[]
+  return stmt(db, sql).all(...params) as T[]
 }
 
 export function one<T = Row>(db: Db, sql: string, ...params: SqlValue[]): T | undefined {
-  return db.prepare(sql).get(...params) as T | undefined
+  return stmt(db, sql).get(...params) as T | undefined
 }
 
 export function run(db: Db, sql: string, ...params: SqlValue[]) {
-  return db.prepare(sql).run(...params)
+  return stmt(db, sql).run(...params)
 }
 
 export type SqlValue = string | number | bigint | null | Uint8Array

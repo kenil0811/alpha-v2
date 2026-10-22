@@ -4,8 +4,10 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { backup } from 'node:sqlite'
 import { type Db, one } from './db.ts'
+import { addSeq, foldProvenance, toRealTables } from './migrate13.ts'
 
-export const MIGRATIONS: string[] = [
+// A migration is SQL, or code where the shape of the data decides the statements.
+export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   `
   CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
@@ -435,6 +437,13 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE agents ADD COLUMN tasks INTEGER NOT NULL DEFAULT 0;
   CREATE INDEX runs_task ON runs (task_id, started_at);
   `,
+  // 13: real tables (Kenil, 22 Oct): a SQLite table per kit table, provenance and versions
+  // beside them, records as the registry; see migrate13.ts and ddl.ts.
+  toRealTables,
+  // 14: a row's number that never changes, its full-text entry under it (migrate13.ts).
+  addSeq,
+  // 15: one provenance per row where every value came the same way (migrate13.ts).
+  foldProvenance,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.
@@ -456,7 +465,9 @@ export async function migrate(db: Db, file: string, backups: string): Promise<nu
   for (let v = current; v < MIGRATIONS.length; v++) {
     db.exec('BEGIN IMMEDIATE')
     try {
-      db.exec(MIGRATIONS[v] as string)
+      const m = MIGRATIONS[v] as string | ((db: Db) => void)
+      if (typeof m === 'string') db.exec(m)
+      else m(db)
       db.exec(`PRAGMA user_version = ${v + 1}`)
       db.exec('COMMIT')
     } catch (err) {

@@ -214,13 +214,7 @@ export class AgentRunner {
     return {
       'rows.list': async (p: Record<string, unknown>) => {
         const t = tableOf(p.table)
-        const keys = new Map(
-          all<{ id: string; item_key: string | null }>(
-            this.world.db,
-            'SELECT id, item_key FROM records WHERE table_id = ?',
-            t.id,
-          ).map((r) => [r.id, r.item_key]),
-        )
+        const keys = this.world.records.itemKeys(t.id)
         // values by field name, as land and compute take them
         const names = new Map(t.fields.map((f) => [f.slug, f.name]))
         return this.world.records.list(t.id).map((r) => ({
@@ -411,17 +405,10 @@ export class AgentRunner {
       'rows.compute': async (p: Record<string, unknown>) => {
         const t = tableOf(p.table)
         // what the person said stands: a script computes only the rest
-        const said = fromJson<Record<string, { kind?: string }>>(
-          one<{ provenance: string }>(
-            this.world.db,
-            'SELECT provenance FROM records WHERE id = ? AND table_id = ?',
-            String(p.id),
-            t.id,
-          )?.provenance ?? null,
-          {},
-        )
+        const got = this.world.records.get(String(p.id))
+        const said = got && got.table.id === t.id ? got.record.provenance : {}
         const stated = new Set(
-          t.fields.filter((f) => said[f.id]?.kind === 'stated').map((f) => f.name),
+          t.fields.filter((f) => said[f.slug]?.kind === 'stated').map((f) => f.name),
         )
         const given = (p.values ?? {}) as Record<string, unknown>
         const values = Object.fromEntries(Object.entries(given).filter(([k]) => !stated.has(k)))

@@ -1226,6 +1226,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         kind: f.kind,
         choices: f.choices,
         tones: f.tones,
+        many: f.many,
       })),
       views: world.views.list(t.id).map(savedView),
       rows: world.records.list(t.id).map((r) => ({

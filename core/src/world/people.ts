@@ -13,6 +13,7 @@ import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
 import { likelyRegion, phoneKey, phoneWords } from './phones.ts'
+import type { Records } from './records.ts'
 import { findField, type PeopleMap, type Shape, type Table, type WriteCtx } from './shape.ts'
 
 export type KeyKind = 'email' | 'phone' | 'profile' | 'domain' | 'company'
@@ -244,6 +245,8 @@ interface PersonRow {
 }
 
 export class People {
+  // The rows' own store, set by the world: what a row holds is read through it.
+  records: Records | null = null
   private db: Db
   private shape: Shape
   private cards: Cards
@@ -506,13 +509,11 @@ export class People {
       const map = table.people
       if (map?.each === 'person' && map.phones) {
         const f = findField(table, map.phones)
-        const marks = ids.map(() => '?').join(', ')
-        const theirs = all<{ v: string | null }>(
-          this.db,
-          `SELECT json_extract(vals, ?) AS v FROM records WHERE id IN (${marks})`,
-          `$."${f.id}"`,
-          ...ids,
-        ).flatMap((r) => (r.v ?? '').split(/[,;\n]+/).map((x) => x.trim()))
+        const theirs = (this.records?.valuesOf(ids, f.id) ?? []).flatMap((v) =>
+          String(v ?? '')
+            .split(/[,;\n]+/)
+            .map((x) => x.trim()),
+        )
         const kept = all<{ value: string }>(
           this.db,
           "SELECT value FROM people_keys WHERE key = 'phone' AND value LIKE '+%'",
@@ -621,16 +622,12 @@ export class People {
   }
 
   private landRecord(table: Table, recordId: string): void {
-    const r = one<{ vals: string; table_id: string }>(
-      this.db,
-      'SELECT vals, table_id FROM records WHERE id = ?',
-      recordId,
-    )
-    if (!r || r.table_id !== table.id) {
+    const r = this.records?.rawValues(recordId)
+    if (!r || r.table.id !== table.id) {
       this.forget([recordId])
       return
     }
-    const { said, exchanges, yours } = this.derive(table, parse(r.vals, {}))
+    const { said, exchanges, yours } = this.derive(table, r.vals)
     const learned = this.learnYou(yours)
     const before = all<{ person_id: string }>(
       this.db,
@@ -1613,17 +1610,9 @@ export class People {
       for (const f of t.fields) {
         const values = f.kind === 'person' ? ids : f.kind === 'email' ? emails : []
         if (!values.length) continue
-        const marks = values.map(() => '?').join(', ')
-        for (const r of all<{ id: string }>(
-          this.db,
-          `SELECT id FROM records WHERE table_id = ? AND lower(json_extract(vals, ?)) IN (${marks})
-           ORDER BY updated_at DESC`,
-          t.id,
-          `$."${f.id}"`,
-          ...values.map((x) => x.toLowerCase()),
-        ))
-          if (!out.some((o) => o.record === r.id))
-            out.push({ table: t.id, record: r.id, field: f.name })
+        for (const id of this.records?.idsWhere(t.id, f.id, values) ?? [])
+          if (!out.some((o) => o.record === id))
+            out.push({ table: t.id, record: id, field: f.name })
       }
     }
     return out
@@ -1643,19 +1632,15 @@ export class People {
       if (t.hidden) continue
       for (const f of t.fields) {
         if (f.kind !== 'person' && f.kind !== 'email') continue
-        for (const r of all<{ v: string | null }>(
-          this.db,
-          'SELECT json_extract(vals, ?) AS v FROM records WHERE table_id = ?',
-          `$."${f.id}"`,
-          t.id,
-        )) {
-          if (!r.v) continue
+        for (const { value } of this.records?.column(t.id, f.id) ?? []) {
+          const v = typeof value === 'string' ? value : ''
+          if (!v) continue
           const who =
             f.kind === 'person'
-              ? this.row(r.v)
-                ? this.root(r.v)
+              ? this.row(v)
+                ? this.root(v)
                 : undefined
-              : owner.get(r.v.trim().toLowerCase())
+              : owner.get(v.trim().toLowerCase())
           if (!who) continue
           const mine = out.get(who) ?? new Map()
           const key = `${t.name}\u0000${f.name}`
@@ -1699,10 +1684,9 @@ export class People {
       at: string
       started_by: 'you' | 'them' | null
       table_id: string
-      vals: string
     }>(
       this.db,
-      `SELECT e.record_id, e.channel, e.at, e.started_by, r.table_id, r.vals FROM exchanges e
+      `SELECT e.record_id, e.channel, e.at, e.started_by, r.table_id FROM exchanges e
          JOIN people_keys k ON k.key = e.key AND k.value = e.value
          JOIN records r ON r.id = e.record_id
        WHERE k.person_id IN (${marks})
@@ -1716,7 +1700,7 @@ export class People {
         t && map?.each === 'exchange' && map.about
           ? t.fields.find((f) => f.name.toLowerCase() === map.about?.toLowerCase())
           : undefined
-      const about = field ? text(parse<Record<string, unknown>>(r.vals, {})[field.id]).trim() : ''
+      const about = field ? text(this.records?.rawValues(r.record_id)?.vals[field.id]).trim() : ''
       return {
         at: r.at,
         channel: r.channel,

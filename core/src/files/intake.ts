@@ -128,17 +128,11 @@ export class Intake {
       const date = t.fields.find((f) => f.kind === 'date')
       const from = t.fields.find((f) => f.name === 'From')
       const subject = t.fields.find((f) => f.name === 'Subject')
-      const rows = all<{ id: string; item_key: string; vals: string; created_at: string }>(
-        this.world.db,
-        'SELECT id, item_key, vals, created_at FROM records WHERE table_id = ? AND item_key IS NOT NULL AND created_at >= ? ORDER BY created_at',
-        t.id,
-        since,
-      )
-      for (const r of rows) {
-        const v = JSON.parse(r.vals) as Record<string, unknown>
-        if (!v[field.id] || done.has(`${s.connection}:${r.item_key}`)) continue
+      for (const r of this.world.records.landed(t.id, since)) {
+        const v = r.vals
+        if (!v[field.id] || done.has(`${s.connection}:${r.key}`)) continue
         if (date && typeof v[date.id] === 'string' && (v[date.id] as string) < since) continue
-        await this.take(s, r.item_key, {
+        await this.take(s, r.key, {
           from: String((from && v[from.id]) ?? ''),
           subject: String((subject && v[subject.id]) ?? ''),
           date: String((date && v[date.id]) ?? ''),
@@ -151,7 +145,7 @@ export class Intake {
               actor: { kind: 'system' },
               kind: 'intake',
               words: `Could not look at the files of “${String((subject && v[subject.id]) ?? 'an email')}”: ${err instanceof Error ? err.message : String(err)}`,
-              data: { connection: s.connection, item: r.item_key, failed: true },
+              data: { connection: s.connection, item: r.key, failed: true },
             })
           })
       }
