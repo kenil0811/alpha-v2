@@ -1,6 +1,12 @@
 # Alpha's own Network (Kenil, 21 Oct: a default module for every client), installed at start.
 name: Network
-version: 0.2.1
+api: 1
+# the connectors' tables its agents read and run on
+uses:
+  - { connector: mac, tables: [Contacts, Events] }
+  - { connector: gmail, tables: [Mail] }
+  - { connector: linkedin, tables: [LinkedIn connections] }
+version: 0.2.2
 description: >
   Who the person knows, in circles they name: who belongs in each, proposed for their yes; how
   close each one is, by rules they can read and change; and who is going quiet in the circles

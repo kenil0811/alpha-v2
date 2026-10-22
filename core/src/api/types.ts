@@ -456,6 +456,8 @@ export interface AgentView {
   id: string
   name: string
   state: 'on' | 'paused'
+  description: string | null
+  needs: string | null // what it needs that is not there: "Gmail connected"
   when: string
   lastRunAt: string | null
   running: boolean
@@ -465,8 +467,25 @@ export interface AgentView {
 export interface WorkingModuleView {
   id: string
   name: string
-  kit: { name: string; version: string; source: string } | null
+  kit: {
+    name: string
+    version: string
+    source: string
+    api: number
+    maintainer: { name: string; address: string } | null
+    changes: number // changes of the person's a maintained kit's maintainer has not seen
+  } | null
   agents: AgentView[]
+}
+
+// What of a kit is the person's now: changed files, rows, views and fields, and the fields the kit
+// no longer uses with the rows still under them.
+export interface YoursView {
+  files: { path: string; state: 'changed' | 'removed' }[]
+  rows: { table: string; tableId: string; key: string; id: string; name: string }[]
+  views: { table: string; tableId: string; id: string; name: string }[]
+  fields: { table: string; tableId: string; id: string; name: string }[]
+  removed: { table: string; tableId: string; fieldId: string; name: string; rows: number }[]
 }
 
 // A module's head and its parts, for its screen.

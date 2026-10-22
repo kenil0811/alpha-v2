@@ -1,23 +1,11 @@
 // Field kinds, values and provenance (design §4). Every value written carries its provenance:
 // kind, source and time. A value without them is refused here, where the write happens.
 
-export const FIELD_KINDS = [
-  'text',
-  'number',
-  'money',
-  'date',
-  'choice',
-  'relation',
-  'person',
-  'file',
-  'link',
-  'email',
-  'phone',
-] as const
-export type FieldKind = (typeof FIELD_KINDS)[number]
+// The kinds are part of the kit API (kit-sdk): a kit cannot add one, and a change is an API change.
+import { FIELD_KINDS, type FieldKind, PROVENANCE_KINDS, type ProvenanceKind } from '@alpha/kit-sdk'
 
-export const PROVENANCE_KINDS = ['stated', 'looked_up', 'estimated', 'assumed', 'computed'] as const
-export type ProvenanceKind = (typeof PROVENANCE_KINDS)[number]
+export type { FieldKind, ProvenanceKind }
+export { FIELD_KINDS, PROVENANCE_KINDS }
 
 // Where a value came from. One of these, depending on its kind.
 export interface Source {

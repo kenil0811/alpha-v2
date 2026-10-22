@@ -1,4 +1,5 @@
 ---
+description: Proposes who belongs in each circle, for the person to decide.
 name: Circles
 trigger: { changes: [Circles, Contacts, Mail, Events, LinkedIn, LinkedIn connections] }
 runs: { script: skills/circles/run.js }

@@ -21,6 +21,9 @@
     },
     {
       "path": "../connectors/linkedin"
+    },
+    {
+      "path": "../kit-sdk"
     }
   ]
 }

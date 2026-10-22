@@ -1,11 +1,13 @@
 // A kit's or a skill's script, run in a child process under Anthropic's sandbox runtime (design
 // §5, §9): no network at all, writes only in its module's folder, reads only there and in Alpha's
 // own code. Everything it needs from outside it asks the core for, through `alpha`.
+
 import { spawn } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
+import { callNamed } from '@alpha/kit-sdk'
 import { SandboxManager } from '@anthropic-ai/sandbox-runtime'
 
 export type ScriptApi = Record<string, (params: Record<string, unknown>) => Promise<unknown>>
@@ -94,6 +96,15 @@ export async function runScript(options: {
       const fn = options.api[m.method]
       try {
         if (!fn) throw new Error(`alpha has no ${m.method}.`)
+        // the input as the kit API says it: a wrong one is refused here with plain words
+        const spec = callNamed(m.method)
+        const checked = spec ? spec.args.safeParse(m.params ?? {}) : null
+        if (checked && !checked.success)
+          throw new Error(
+            `alpha.${m.method} was given ${checked.error.issues
+              .map((i) => `${i.path.join('.') || 'input'}: ${i.message}`)
+              .join('; ')}.`,
+          )
         const result = await fn(m.params ?? {})
         child.stdin.write(`${JSON.stringify({ id: m.id, result: result ?? null })}\n`)
       } catch (err) {

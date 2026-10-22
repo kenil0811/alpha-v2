@@ -2,6 +2,7 @@
 // its tables from the world on every change, and NOTES.md is the module's notes.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { TONES } from '@alpha/kit-sdk'
 import { parse as parseYaml, stringify } from 'yaml'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import {
@@ -12,6 +13,7 @@ import {
   dropFieldSql,
   dropTableSql,
   junctionName,
+  junctionSql,
   lit,
   OWN_COLUMNS,
   quote,
@@ -44,11 +46,12 @@ export interface Field {
   relatesTo: string | null
   many: boolean // a relation holding a list of rows: a junction table, not a column
   indexed: boolean // an index the kit asked for
+  key: string | null // a kit field's stable name, matched on update; none for the person's own
 }
 
 // The colours a choice may take: the window's state colours, nothing else.
 export type Tone = 'good' | 'warn' | 'bad' | 'accent'
-export const TONES = ['good', 'warn', 'bad', 'accent'] as const
+export { TONES }
 
 export interface Table {
   id: string
@@ -96,6 +99,7 @@ export interface FieldInput {
   relatesTo?: string // a table, for a relation
   many?: boolean // a relation holding a list of rows
   indexed?: boolean // an index on it, for a field filtered on often
+  key?: string // a kit field's stable name
 }
 
 export interface WriteCtx {
@@ -326,15 +330,17 @@ export class Shape {
     )
     if (!t) return undefined
     const module = this.module(t.module_id) as Module
+    // a field a kit no longer uses is hidden: its column stays, the table does not show it
     const fields = all<{
       id: string
       name: string
       slug: string
       kind: FieldKind
       options: string
+      key: string | null
     }>(
       this.db,
-      'SELECT id, name, slug, kind, options FROM fields WHERE table_id = ? ORDER BY position',
+      'SELECT id, name, slug, kind, options, key FROM fields WHERE table_id = ? AND hidden = 0 ORDER BY position',
       t.id,
     ).map((f) => {
       const o = parse<{
@@ -354,6 +360,7 @@ export class Shape {
         relatesTo: o.relatesTo ?? null,
         many: f.kind === 'relation' && !!o.many,
         indexed: !!o.indexed,
+        key: f.key,
       }
     })
     return {
@@ -666,6 +673,7 @@ export class Shape {
       run(this.db, 'DELETE FROM views WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
       run(this.db, 'DELETE FROM tables WHERE id = ?', table.id)
+      this.tombstone(table.module.id, 'table', table.name, ctx)
       append(this.db, {
         actor: ctx.actor,
         kind: 'removed',
@@ -712,7 +720,7 @@ export class Shape {
     const id = newId('f')
     run(
       this.db,
-      'INSERT INTO fields (id, table_id, name, slug, kind, options, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO fields (id, table_id, name, slug, kind, options, position, key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       id,
       tableId,
       f.name.trim(),
@@ -720,6 +728,7 @@ export class Shape {
       f.kind,
       json(options),
       position,
+      f.key ?? null,
     )
     if (ddl)
       for (const sql of addFieldSql(table.slug, table.id, {
@@ -739,10 +748,7 @@ export class Shape {
       const table = this.table(tableId)
       if (!table) throw new Refused('That table is not there.')
       const f = findField(table, field)
-      for (const sql of dropFieldSql(table.slug, table.id, spec(f))) this.db.exec(sql)
-      run(this.db, 'DELETE FROM provenance WHERE field_id = ?', f.id)
-      run(this.db, 'DELETE FROM fields WHERE id = ?', f.id)
-      this.dropFieldFromViews(table.id, f.id)
+      this.dropField(table, f, ctx)
       append(this.db, {
         actor: ctx.actor,
         kind: 'removed',
@@ -756,6 +762,175 @@ export class Shape {
       this.writeManifest(table.module)
       return this.table(table.id) as Table
     })
+  }
+
+  private dropField(table: Table, f: Field, ctx: WriteCtx): void {
+    for (const sql of dropFieldSql(table.slug, table.id, spec(f))) this.db.exec(sql)
+    run(this.db, 'DELETE FROM provenance WHERE field_id = ?', f.id)
+    run(this.db, 'DELETE FROM fields WHERE id = ?', f.id)
+    this.dropFieldFromViews(table.id, f.id)
+    this.tombstone(table.module.id, 'field', f.key ?? f.name, ctx)
+  }
+
+  // A field a kit no longer uses (decision 4): hidden, its column and rows kept, so the person
+  // can still remove its rows, or not.
+  hideField(tableId: string, field: string, ctx: WriteCtx): Table {
+    return tx(this.db, () => {
+      const table = this.table(tableId)
+      if (!table) throw new Refused('That table is not there.')
+      const f = findField(table, field)
+      run(this.db, 'UPDATE fields SET hidden = 1 WHERE id = ?', f.id)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'shaped',
+        words: `${table.name} no longer uses ${f.name}; its values are kept.`,
+        data: { table: table.id, field: f.id, name: f.name, hidden: true },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+      })
+      this.writeManifest(table.module)
+      return this.table(table.id) as Table
+    })
+  }
+
+  // The fields a table no longer uses, each with how many rows still hold a value under it.
+  hiddenFields(tableId: string): (Field & { rows: number })[] {
+    const t = this.table(tableId)
+    if (!t) return []
+    return all<{
+      id: string
+      name: string
+      slug: string
+      kind: FieldKind
+      options: string
+      key: string | null
+    }>(
+      this.db,
+      'SELECT id, name, slug, kind, options, key FROM fields WHERE table_id = ? AND hidden = 1 ORDER BY position',
+      t.id,
+    ).map((f) => {
+      const o = parse<{ many?: boolean; indexed?: boolean; relatesTo?: string }>(f.options, {})
+      const field: Field = {
+        id: f.id,
+        name: f.name,
+        slug: f.slug,
+        kind: f.kind,
+        choices: [],
+        tones: {},
+        relatesTo: o.relatesTo ?? null,
+        many: f.kind === 'relation' && !!o.many,
+        indexed: !!o.indexed,
+        key: f.key,
+      }
+      const rows = field.many
+        ? Number(
+            one<{ n: number }>(
+              this.db,
+              `SELECT count(DISTINCT record_id) AS n FROM ${quote(junctionName(t.slug, f.slug))}`,
+            )?.n ?? 0,
+          )
+        : Number(
+            one<{ n: number }>(
+              this.db,
+              `SELECT count(*) AS n FROM ${quote(t.slug)} WHERE ${quote(f.slug)} IS NOT NULL`,
+            )?.n ?? 0,
+          )
+      return { ...field, rows }
+    })
+  }
+
+  // A hidden field removed for good, with its values: through the deletes-own gate's words in
+  // the window, by the person.
+  removeHiddenField(tableId: string, fieldId: string, ctx: WriteCtx): void {
+    tx(this.db, () => {
+      const table = this.table(tableId)
+      const f = this.hiddenFields(tableId).find((x) => x.id === fieldId)
+      if (!table || !f) throw new Refused('That field is not there.')
+      this.dropField(table, f, ctx)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'removed',
+        words: `Removed the field ${f.name} from ${table.name}, with its ${f.rows} value${f.rows === 1 ? '' : 's'}.`,
+        data: { table: table.id, field: f.id, name: f.name, rows: f.rows },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+      })
+      this.writeManifest(table.module)
+    })
+  }
+
+  // A relation that held one row comes to hold a list (a kit's newer version says many): its
+  // junction table is made, each row's one pointer becomes its first entry, the column goes.
+  setMany(tableId: string, field: string, ctx: WriteCtx): Table {
+    return tx(this.db, () => {
+      const table = this.table(tableId)
+      if (!table) throw new Refused('That table is not there.')
+      const f = findField(table, field)
+      if (f.kind !== 'relation') throw new Refused(`${f.name} is not a relation.`)
+      if (f.many) return table
+      const next = { ...spec(f), many: true }
+      for (const sql of junctionSql(table.slug, next, table.id)) this.db.exec(sql)
+      run(
+        this.db,
+        `INSERT INTO ${quote(junctionName(table.slug, f.slug))} (record_id, other_id, position)
+         SELECT id, ${quote(f.slug)}, 0 FROM ${quote(table.slug)} WHERE ${quote(f.slug)} IS NOT NULL`,
+      )
+      for (const sql of dropFieldSql(table.slug, table.id, spec(f))) this.db.exec(sql)
+      const o = parse<Record<string, unknown>>(
+        one<{ options: string }>(this.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+        {},
+      )
+      run(this.db, 'UPDATE fields SET options = ? WHERE id = ?', json({ ...o, many: true }), f.id)
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'shaped',
+        words: `${f.name} in ${table.name} now holds a list of rows.`,
+        data: { table: table.id, field: f.id, many: true },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+      })
+      this.writeManifest(table.module)
+      return this.table(table.id) as Table
+    })
+  }
+
+  // A kit field's stable name, set once on a field that had none (a world from before keys).
+  setKey(fieldId: string, key: string): void {
+    run(this.db, 'UPDATE fields SET key = ? WHERE id = ? AND key IS NULL', key, fieldId)
+  }
+
+  // What the person removed on purpose, so a kit's update does not bring it back.
+  tombstone(
+    moduleId: string,
+    kind: 'field' | 'table' | 'row' | 'view',
+    key: string,
+    ctx: WriteCtx,
+  ): void {
+    run(
+      this.db,
+      'INSERT OR REPLACE INTO tombstones (module_id, kind, key, removed_at, removed_by) VALUES (?, ?, ?, ?, ?)',
+      moduleId,
+      kind,
+      key.toLowerCase(),
+      now(),
+      actorName(ctx.actor),
+    )
+  }
+
+  tombstoned(moduleId: string, kind: 'field' | 'table' | 'row' | 'view', key: string): boolean {
+    return !!one(
+      this.db,
+      'SELECT 1 FROM tombstones WHERE module_id = ? AND kind = ? AND key = ?',
+      moduleId,
+      kind,
+      key.toLowerCase(),
+    )
   }
 
   // The rows pointing at these rows let go of them: a relation column set to nothing, a
@@ -949,6 +1124,7 @@ export class Shape {
           ...(f.relatesTo ? { relates_to: this.table(f.relatesTo)?.name } : {}),
           ...(f.many ? { many: true } : {}),
           ...(f.indexed ? { indexed: true } : {}),
+          ...(f.key && f.key !== f.name ? { key: f.key } : {}),
         })),
         ...(t.documents ? { documents: t.documents } : {}),
         ...(t.people ? { people: t.people } : {}),

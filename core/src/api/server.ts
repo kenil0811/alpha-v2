@@ -14,19 +14,40 @@ import { z } from 'zod'
 import { config } from '../config.ts'
 import { connectorOf, KNOWN } from '../connectors/service.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
-import { instructionsFile } from '../engine/tools.ts'
+import {
+  applyShape,
+  describeShape,
+  instructionsFile,
+  MAINTAINED_SHAPE,
+  type ShapeAction,
+} from '../engine/tools.ts'
 import { stillBeingRead } from '../files/documents.ts'
-import { agents, nextRun, setAgentState, whenWords } from '../modules/agents.ts'
+import {
+  type Agent,
+  agents,
+  nextRun,
+  readAgent,
+  setAgentState,
+  whenWords,
+} from '../modules/agents.ts'
 import { DRAFT } from '../modules/drafts.ts'
-import { install, installedKits, update } from '../modules/kits.ts'
+import {
+  install,
+  installedKits,
+  recordChange,
+  takeBack,
+  unseenChanges,
+  update,
+  yours,
+} from '../modules/kits.ts'
 import { installPack } from '../modules/packs.ts'
-import { moduleNetwork, PROPOSE_TASKS, type RunRow } from '../modules/runs.ts'
+import { moduleNetwork, PROPOSE_TASKS, type RunRow, unmetNeeds } from '../modules/runs.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../pages/pages.ts'
 import type { Setup } from '../setup.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
 import { phoneWords } from '../world/phones.ts'
-import { findField } from '../world/shape.ts'
+import { findField, type Module } from '../world/shape.ts'
 import type { Task } from '../world/tasks.ts'
 import type { View } from '../world/views.ts'
 import type { User } from '../world/world.ts'
@@ -60,6 +81,7 @@ import type {
   TaskView,
   TodayView,
   WorkingModuleView,
+  YoursView,
 } from './types.ts'
 
 export const VERSION = '0.1.0'
@@ -410,6 +432,58 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       // a yes on proposed tasks adds them all; the card's own list keeps some
       if (c?.call?.tool === PROPOSE_TASKS && answer === c.options[0] && engine.hands?.runner) {
         const out = engine.hands.runner.adopt(id, 'all', user.id)
+        live()
+        return cardOut(out)
+      }
+      // a maintained kit's shape change (decision 3b): asked of the maintainer as a drafted
+      // email, or done now and counted as a change of the person's they have not seen
+      if (c?.call?.tool === MAINTAINED_SHAPE && c.module) {
+        const a = c.call.input as unknown as ShapeAction
+        const kit = installedKits(world).find((k) => k.module === c.module)
+        const m = world.shape.module(c.module)
+        if (!kit?.maintainer || !m) throw new Refused('That kit is not maintained any more.')
+        const change = describeShape(a)
+        const words = `${change[0]?.toUpperCase() ?? ''}${change.slice(1)}`
+        if (answer === c.options[1]) {
+          const said = applyShape(world, a, { actor: person, user: user.id })
+          recordChange(world, m.id, words, a, user.id)
+          const out = world.cards.answer(id, answer, person, `Done now: ${said}`)
+          live()
+          return cardOut(out)
+        }
+        const drafts = engine.hands?.drafts
+        if (drafts)
+          await drafts.propose(
+            {
+              agent: 'Alpha',
+              module: m.id,
+              kind: 'request to the maintainer',
+              key: null,
+              connector: 'gmail',
+              message: {
+                to: kit.maintainer.address,
+                subject: `A change to ${kit.kit} asked from Alpha`,
+                body: `${words}.\n\nAsked in ${m.name} (${kit.kit} ${kit.version}) on ${new Date().toDateString()}.`,
+              },
+              about: null,
+              note: `For ${kit.maintainer.name} to put in the kit's next version.`,
+            },
+            null,
+          )
+        else
+          world.line({
+            actor: person,
+            kind: 'noted',
+            words: `To ask ${kit.maintainer.name} (${kit.maintainer.address}): ${words}.`,
+            user: user.id,
+            module: m.id,
+          })
+        const out = world.cards.answer(
+          id,
+          answer,
+          person,
+          `Asked ${kit.maintainer.name}: ${words}.`,
+        )
         live()
         return cardOut(out)
       }
@@ -923,6 +997,18 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   // The modules the window shows: each with a page or a table in sight, and the modules they sit
   // inside (a module only of a connection's hidden tables stays out).
+  // What an agent needs that is not there, in words, from its file.
+  const needsOf = (m: Module, a: Agent): string | null => {
+    const path = join(m.dir, a.file)
+    if (!existsSync(path)) return null
+    try {
+      const missing = unmetNeeds(world, readAgent(path))
+      return missing.length ? `needs ${missing.join(' and ')}` : null
+    } catch {
+      return null
+    }
+  }
+
   const summaries = (): ModuleSummary[] => {
     const all = world.shape.modules().map((m) => ({
       id: m.id,
@@ -1485,11 +1571,22 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         return {
           id: m.id,
           name: m.name,
-          kit: k ? { name: k.kit, version: k.version, source: k.source } : null,
+          kit: k
+            ? {
+                name: k.kit,
+                version: k.version,
+                source: k.source,
+                api: k.api,
+                maintainer: k.maintainer,
+                changes: k.maintainer ? unseenChanges(world, m.id) : 0,
+              }
+            : null,
           agents: agents(world, m.id).map((a) => ({
             id: a.id,
             name: a.name,
             state: a.state,
+            description: a.description,
+            needs: needsOf(m, a),
             when: whenWords(a.trigger),
             lastRunAt: a.lastRunAt,
             running: running.has(a.id),
@@ -1540,6 +1637,35 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return report
+  })
+
+  // What of a kit is the person's now (decision 3), and the kit's version of one thing back.
+  app.get('/api/kits/:module/yours', async (req): Promise<YoursView> => {
+    const { module } = z.object({ module: z.string() }).parse(req.params)
+    return yours(world, module)
+  })
+  app.post('/api/kits/:module/yours/back', async (req) => {
+    const { module } = z.object({ module: z.string() }).parse(req.params)
+    const what = z
+      .union([
+        z.object({ kind: z.literal('file'), path: z.string() }),
+        z.object({ kind: z.literal('row'), table: z.string(), key: z.string() }),
+        z.object({ kind: z.literal('view'), table: z.string(), name: z.string() }),
+      ])
+      .parse(req.body)
+    const words = await takeBack(world, module, what, { actor: person, user: user.id })
+    live()
+    return { words }
+  })
+  // a field the kit no longer uses, removed with its values, by the person
+  app.post('/api/kits/:module/fields/remove', async (req) => {
+    const { module } = z.object({ module: z.string() }).parse(req.params)
+    const { table, field } = z.object({ table: z.string(), field: z.string() }).parse(req.body)
+    const t = world.shape.table(table)
+    if (!t || t.module.id !== module) throw new Refused('That table is not there.')
+    world.shape.removeHiddenField(t.id, field, { actor: person, user: user.id })
+    live()
+    return { ok: true }
   })
 
   app.post('/api/agents/:id', async (req) => {
@@ -1618,6 +1744,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         id: a.id,
         name: a.name,
         state: a.state,
+        description: a.description,
+        needs: needsOf(m, a),
         when: whenWords(a.trigger),
         lastRunAt: a.lastRunAt,
         running: running.has(a.id),

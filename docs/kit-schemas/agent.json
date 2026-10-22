@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "trigger": {
+      "anyOf": [
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "every": {
+                  "type": "string",
+                  "enum": [
+                    "hour",
+                    "day",
+                    "week"
+                  ]
+                },
+                "at": {
+                  "type": "string",
+                  "pattern": "^\\d{2}:\\d{2}$"
+                }
+              },
+              "required": [
+                "every"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "cron": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cron"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "changes": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "changes"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "filed": {
+                  "type": "boolean",
+                  "const": true
+                }
+              },
+              "required": [
+                "filed"
+              ]
+            }
+          ]
+        },
+        {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "every": {
+                    "type": "string",
+                    "enum": [
+                      "hour",
+                      "day",
+                      "week"
+                    ]
+                  },
+                  "at": {
+                    "type": "string",
+                    "pattern": "^\\d{2}:\\d{2}$"
+                  }
+                },
+                "required": [
+                  "every"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "cron": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cron"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "changes": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "changes"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "filed": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "required": [
+                  "filed"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "runs": {
+      "type": "object",
+      "properties": {
+        "script": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "script"
+      ]
+    },
+    "touches": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tasks": {
+      "default": false,
+      "type": "boolean"
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "needs": {
+      "default": {
+        "connectors": [],
+        "tables": []
+      },
+      "type": "object",
+      "properties": {
+        "connectors": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tables": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "default": {},
+          "about": {
+            "type": "string"
+          },
+          "setup": {
+            "type": "object",
+            "properties": {
+              "table": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "field": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "table",
+              "key",
+              "field"
+            ]
+          }
+        }
+      }
+    },
+    "budget": {
+      "default": {
+        "minutes": 15,
+        "runs": 24
+      },
+      "type": "object",
+      "properties": {
+        "minutes": {
+          "default": 15,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "runs": {
+          "default": 24,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    }
+  },
+  "required": [
+    "runs"
+  ]
+}

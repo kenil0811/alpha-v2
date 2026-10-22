@@ -1,0 +1,13 @@
+# The reader on a recorded page: one supplier landed, with the page it was read from.
+script: skills/read/run.js
+pages:
+  https://supplies.example/list:
+    url: https://supplies.example/list
+    pages: 1
+    items:
+      - { _id: S1, name: Oat Mill, _url: https://supplies.example/list/S1 }
+expect:
+  words: '1 seen, 1 new'
+  rows:
+    Suppliers:
+      - { Name: Oat Mill }

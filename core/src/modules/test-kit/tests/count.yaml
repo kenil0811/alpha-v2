@@ -1,0 +1,8 @@
+# The counter's run on two orders.
+agent: Counter
+rows:
+  Orders:
+    - { Item: Flour, Quantity: 2 }
+    - { Item: Sugar, Quantity: 1 }
+expect:
+  result: { orders: 2 }

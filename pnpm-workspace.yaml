@@ -2,6 +2,7 @@ packages:
   - core
   - window
   - connector-sdk
+  - kit-sdk
   - connectors/*
 
 # One version of each dependency for every package.

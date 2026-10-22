@@ -4,6 +4,7 @@
 // stderr; stdout carries only the calls and the result.
 import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
+import { shape } from '@alpha/kit-sdk'
 
 const [script, input] = process.argv.slice(2)
 const out = (m: unknown) => process.stdout.write(`${JSON.stringify(m)}\n`)
@@ -29,99 +30,31 @@ function call(method: string, params: unknown): Promise<unknown> {
   })
 }
 
-const alpha = {
-  input: JSON.parse(input ?? '{}') as unknown,
-  rows: {
-    list: (table: string) => call('rows.list', { table }),
-    land: (table: string, items: unknown[]) => call('rows.land', { table, items }),
-    compute: (
-      table: string,
-      id: string,
-      values: Record<string, unknown>,
-      formula: Record<string, string>,
-      notes?: Record<string, string>, // the sum with its numbers, or each check, per field
-    ) => call('rows.compute', { table, id, values, formula, ...(notes ? { notes } : {}) }),
-  },
-  // the documents filed (each with its file's hash and the rows it sits on), one's cells or lines
-  // with their places, and a document put on a row of the module's own tables
-  documents: {
-    list: () => call('documents.list', {}),
-    read: (file: string) => call('documents.read', { file }),
-    place: (file: string, table: string, row: string, kind?: string) =>
-      call('documents.place', { file, table, row, ...(kind ? { kind } : {}) }),
-    // the model reads it into what the script names; each value comes with the place it was read
-    // from, and one not found where it is cited comes back as null
-    extract: (file: string, spec: unknown) => call('documents.extract', { file, spec }),
-  },
-  browser: {
-    open: (url: string) => call('browser.open', { url }),
-    extract: (url: string, spec: unknown) => call('browser.extract', { url, spec }),
-  },
-  // a line on the person's Home; with rows, each can be opened, and `choice` sets one field
-  tell: (
-    words: string,
-    about?: {
-      table: string
-      rows: string[]
-      choice?: { field: string; value: string; label?: string }
-    },
-  ) => call('tell', { words, ...(about ? { about } : {}) }),
-  log: (words: string) => call('log', { words }),
-  // the person's people (or companies): how to reach them, where they work, their contact in plain
-  // numbers, since when Alpha knows them, and the rows of the person's modules that name them
-  people: {
-    list: (kind?: 'person' | 'company') => call('people.list', kind ? { kind } : {}),
-  },
-  // the model sorts items into the groups the person named, each with why, or none
-  judge: (spec: {
-    groups: { name: string; about: string }[]
-    items: { id: string; facts: string }[]
-  }) => call('judge', spec),
-  // rows of the module's own tables put to the person on one card: a choice each, or one for all
-  review: (r: {
-    words: string
-    table: string
-    rows: string[]
-    field: string
-    choices: string[]
-    note?: string
-  }) => call('review', r),
-  // an email for the person's yes, on a card (sent at once when a standing permission covers its
-  // kind); one address, never a blast
-  draft: {
-    email: (d: {
-      to: string
-      cc?: string
-      subject: string
-      body: string
-      kind: string
-      key?: string
-      about?: { table: string; row: string }
-      note?: string
-      connector?: string
-    }) => call('draft.email', d),
-  },
-  // a run started on a task says what became of it; any run may propose tasks for the person's yes
-  task: {
-    done: (words: string) => call('task.done', { words }),
-    wait: (words: string) => call('task.wait', { words }),
-    propose: (
-      tasks: {
-        title: string
-        notes?: string
-        due?: string
-        priority?: 'high' | 'normal' | 'low'
-        on?: { table?: string; row?: string; field?: string; page?: string }
-        owner?: 'person' | 'agent'
-      }[],
-      words?: string,
-    ) => call('task.propose', { tasks, ...(words ? { words } : {}) }),
-  },
+// `alpha` is built from the kit API's own shape (kit-sdk): each call sits at its dotted place,
+// and a script's positional arguments become the call's input by the names the schema gives;
+// an argument left out is left out of the input. alpha.input is what the run was given.
+const alpha: Record<string, unknown> = { input: JSON.parse(input ?? '{}') as unknown }
+for (const c of shape()) {
+  const path = c.name.split('.')
+  let at = alpha
+  for (const p of path.slice(0, -1)) {
+    at[p] ??= {}
+    at = at[p] as Record<string, unknown>
+  }
+  at[path.at(-1) as string] = (...args: unknown[]) =>
+    call(
+      c.name,
+      c.params === 'object'
+        ? args[0]
+        : Object.fromEntries(
+            c.params.map((k, i) => [k, args[i]]).filter(([, v]) => v !== undefined),
+          ),
+    )
 }
 
 try {
   const mod = (await import(pathToFileURL(script as string).href)) as {
-    default: (a: typeof alpha) => unknown
+    default: (a: unknown) => unknown
   }
   out({ done: true, result: (await mod.default(alpha)) ?? null })
 } catch (err) {

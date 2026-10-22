@@ -16,6 +16,7 @@
     "@alpha/connector-linkedin": "workspace:*",
     "@alpha/connector-mac": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
+    "@alpha/kit-sdk": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@anthropic-ai/sandbox-runtime": "catalog:",
     "@fastify/static": "catalog:",

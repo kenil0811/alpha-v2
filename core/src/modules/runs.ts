@@ -2,9 +2,11 @@
 // steps are journal lines carrying its id; it reaches the person's stream only as a card. What a
 // script reads from a site goes through the browser engine, and only to sites on its module's
 // list: a new site waits on the person's yes (gate 1), which puts it on the list.
+
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { BrowserEngine, ExtractSpec } from '@alpha/connector-sdk'
+import { Manifest, type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { parse, stringify } from 'yaml'
 import { config } from '../config.ts'
@@ -17,7 +19,7 @@ import { Refused } from '../world/kinds.ts'
 import type { Module, Table } from '../world/shape.ts'
 import type { Task, TaskInput } from '../world/tasks.ts'
 import type { World } from '../world/world.ts'
-import { type Agent, agents } from './agents.ts'
+import { type Agent, type AgentFile, agents, readAgent } from './agents.ts'
 import type { Drafts } from './drafts.ts'
 import { type JudgeSpec, judge } from './judging.ts'
 import { Reviews } from './reviews.ts'
@@ -31,6 +33,31 @@ export interface RunOutcome {
 
 // Who a run serves: the person, and the desk's turn when the desk started it, so a card it
 // opens shows in that turn; and the task it works on, when it was started on one.
+// What an agent's file lets its run do (decisions 6 and 8), enforced where each call lands: the
+// tables it may write (touches), the tables it may read (its module's and its kit's uses), and
+// the calls with an effect it may make (effects; a file that says nothing is an older one,
+// allowed and said).
+export interface Walls {
+  touches: Set<string> // table names, lower case
+  reads: Set<string>
+  effects: Set<string> | null
+}
+
+// A connector or a table an agent needs that is not there (needs), in words.
+export function unmetNeeds(world: World, file: AgentFile): string[] {
+  const out: string[] = []
+  const connected = new Set(
+    world.connections
+      .list()
+      .filter((c) => c.state === 'connected')
+      .map((c) => c.connector.toLowerCase()),
+  )
+  for (const c of file.needs.connectors)
+    if (!connected.has(c.toLowerCase())) out.push(`${c} connected`)
+  for (const t of file.needs.tables) if (!world.shape.table(t)) out.push(`a table called ${t}`)
+  return out.length ? out : []
+}
+
 export interface RunFor {
   user: string | null
   turn: string | null
@@ -99,6 +126,7 @@ export class AgentRunner {
   private ask: Ask
   private judgeAsk: Ask
   private tokens = new Map<string, number>() // a run's model tokens, while it runs
+  private budgetSaid = new Map<string, number>() // when an agent's runs budget was last said
   drafts: Drafts | null = null // an agent's drafts, sent from the person's mail on their yes
   readonly reviews: Reviews // rows an agent puts to the person, on a card
 
@@ -203,7 +231,14 @@ export class AgentRunner {
     }
   }
 
-  private api(module: Module, label: string, runId: string, who: RunFor, agentId: string | null) {
+  private api(
+    module: Module,
+    label: string,
+    runId: string,
+    who: RunFor,
+    agentId: string | null,
+    walls: Walls | null = null,
+  ) {
     const actor = { kind: 'agent' as const, id: label }
     const ctx = { actor, run: runId }
     const tableOf = (name: unknown): Table => {
@@ -211,9 +246,40 @@ export class AgentRunner {
       if (!t) throw new Refused(`There is no table called ${String(name)}.`)
       return t
     }
+    // the walls: a refusal is a step of the run, so Activity says what was refused and why
+    const refuse = (why: string): never => {
+      this.world.line({
+        actor,
+        kind: 'run_step',
+        words: `Refused: ${why}`,
+        run: runId,
+        module: module.id,
+      })
+      throw new Refused(why)
+    }
+    const readable = (t: Table): Table => {
+      if (walls && !walls.reads.has(t.name.toLowerCase()))
+        refuse(
+          `${label} may not read ${t.name}: it is neither ${module.name}'s own table nor one its kit uses.`,
+        )
+      return t
+    }
+    const writable = (t: Table): Table => {
+      if (walls && !walls.touches.has(t.name.toLowerCase()))
+        refuse(
+          `${label} does not touch ${t.name}: its file says touches: [${[...walls.touches].join(', ') || 'nothing'}].`,
+        )
+      return t
+    }
+    const affecting = (call: string): void => {
+      if (walls?.effects && !walls.effects.has(call))
+        refuse(
+          `${label} may not ${call}: its file names no such effect (effects: [${[...walls.effects].join(', ') || 'none'}]).`,
+        )
+    }
     return {
       'rows.list': async (p: Record<string, unknown>) => {
-        const t = tableOf(p.table)
+        const t = readable(tableOf(p.table))
         const keys = this.world.records.itemKeys(t.id)
         // values by field name, as land and compute take them
         const names = new Map(t.fields.map((f) => [f.slug, f.name]))
@@ -233,7 +299,7 @@ export class AgentRunner {
         }))
       },
       'rows.land': async (p: Record<string, unknown>) => {
-        const t = tableOf(p.table)
+        const t = writable(tableOf(p.table))
         const items = (Array.isArray(p.items) ? p.items : []) as {
           key: string
           row?: string // a row already there, by its id
@@ -280,7 +346,7 @@ export class AgentRunner {
         })),
       // a filed document put on a row of the module's own tables (the deal it is about)
       'documents.place': async (p: Record<string, unknown>) => {
-        const t = tableOf(p.table)
+        const t = writable(tableOf(p.table))
         if (!this.world.shape.within(module.id).includes(t.module.id))
           throw new Refused(`${t.name} is not one of ${module.name}'s tables.`)
         const rec = this.world.records.get(String(p.row))
@@ -354,7 +420,7 @@ export class AgentRunner {
       },
       // rows of the module's own tables put to the person on one card, with the choices given
       review: async (p: Record<string, unknown>) => {
-        const t = tableOf(p.table)
+        const t = writable(tableOf(p.table))
         if (!this.world.shape.within(module.id).includes(t.module.id))
           throw new Refused(`${t.name} is not one of ${module.name}'s tables.`)
         const card = this.reviews.open(
@@ -373,6 +439,7 @@ export class AgentRunner {
       },
       // an email drafted for the person's yes (or sent at once under a standing permission)
       'draft.email': async (p: Record<string, unknown>) => {
+        affecting('draft.email')
         if (!this.drafts) throw new Refused('Drafts are not set up in this core.')
         const about = p.about as { table?: unknown; row?: unknown } | undefined
         const t = about ? tableOf(about.table) : null
@@ -403,7 +470,7 @@ export class AgentRunner {
         return this.world.files.chunks(d.id).map((c) => ({ ...c.position, words: c.words }))
       },
       'rows.compute': async (p: Record<string, unknown>) => {
-        const t = tableOf(p.table)
+        const t = writable(tableOf(p.table))
         // what the person said stands: a script computes only the rest
         const got = this.world.records.get(String(p.id))
         const said = got && got.table.id === t.id ? got.record.provenance : {}
@@ -457,12 +524,14 @@ export class AgentRunner {
         return null
       },
       'browser.open': async (p: Record<string, unknown>) => {
+        affecting('browser.open')
         this.reach(module, String(p.url), runId, who)
         return this.browse(module, String(p.url), label, runId, agentId, who, () =>
           this.engine().open(String(p.url)),
         )
       },
       'browser.extract': async (p: Record<string, unknown>) => {
+        affecting('browser.extract')
         this.reach(module, String(p.url), runId, who)
         return this.browse(module, String(p.url), label, runId, agentId, who, () =>
           this.engine().extract(String(p.url), p.spec as ExtractSpec),
@@ -626,6 +695,9 @@ export class AgentRunner {
     if (!path.startsWith(`${module.dir}/`) || !existsSync(path))
       throw new Refused(`${module.name} has no script ${script}.`)
     const runId = newId('n')
+    // an agent's run keeps to its file: what it touches, reads and may do, within its budget
+    const file = agentId ? this.fileOf(agentId, module) : null
+    const walls = file ? this.wallsFor(module, file) : null
     exec(
       this.world.db,
       "INSERT INTO runs (id, agent_id, module_id, started_at, state, task_id) VALUES (?, ?, ?, ?, 'running', ?)",
@@ -635,6 +707,29 @@ export class AgentRunner {
       now(),
       who.task ?? null,
     )
+    const missing = file ? unmetNeeds(this.world, file) : []
+    if (missing.length) {
+      const words = `${label} did not run: it needs ${missing.join(' and ')}.`
+      exec(
+        this.world.db,
+        'UPDATE runs SET ended_at = ?, state = ?, words = ?, data = ? WHERE id = ?',
+        now(),
+        'failed',
+        words,
+        json({ skipped: true }),
+        runId,
+      )
+      this.world.line({
+        actor: { kind: 'agent', id: label },
+        kind: 'run_ended',
+        words,
+        data: { state: 'failed', skipped: true },
+        run: runId,
+        module: module.id,
+      })
+      this.notify()
+      return { id: runId, state: 'failed', words, result: null }
+    }
     this.world.line({
       actor: { kind: 'agent', id: label },
       kind: 'run_started',
@@ -645,16 +740,27 @@ export class AgentRunner {
     this.notify()
     const stop = new AbortController()
     this.running.set(runId, stop)
+    // the minutes of its budget: past them the script is killed and the run says so
+    let overBudget = false
+    const minutes = file?.budget.minutes ?? null
+    const timer =
+      minutes !== null
+        ? setTimeout(() => {
+            overBudget = true
+            stop.abort()
+          }, minutes * 60_000)
+        : null
     let out: ScriptRun
     try {
       out = await runScript({
         script: path,
         moduleDir: module.dir,
         input,
-        api: this.api(module, label, runId, who, agentId),
+        api: this.api(module, label, runId, who, agentId, walls),
         signal: stop.signal,
       })
     } finally {
+      if (timer) clearTimeout(timer)
       this.running.delete(runId)
     }
     const state: RunOutcome['state'] = out.stopped ? 'stopped' : out.error ? 'failed' : 'ok'
@@ -664,7 +770,9 @@ export class AgentRunner {
         : null
     const words =
       state === 'stopped'
-        ? `${label} was stopped.`
+        ? overBudget
+          ? `${label} was stopped at ${minutes} minute${minutes === 1 ? '' : 's'}, its budget.`
+          : `${label} was stopped.`
         : out.error
           ? `${label} did not finish: ${out.error}`
           : said
@@ -910,6 +1018,44 @@ export class AgentRunner {
     ).map(toRun)
   }
 
+  // An agent's file, read again at each run, so an edit counts at once.
+  private fileOf(agentId: string, module: Module): AgentFile | null {
+    const a = agents(this.world).find((x) => x.id === agentId)
+    if (!a) return null
+    const path = join(module.dir, a.file)
+    return existsSync(path) ? readAgent(path) : null
+  }
+
+  private wallsFor(module: Module, file: AgentFile): Walls {
+    const lower = (names: string[]) => new Set(names.map((n) => n.toLowerCase()))
+    // the module's own tables and those of the modules inside it, plus its kit's uses
+    const own = this.world.shape
+      .within(module.id)
+      .flatMap((id) => this.world.shape.tables(id).map((t) => t.name))
+    const manifest = join(module.dir, 'module.yaml')
+    const uses = existsSync(manifest)
+      ? (Manifest.safeParse(parse(readFileSync(manifest, 'utf8'))).data?.uses ?? [])
+      : []
+    return {
+      touches: lower(file.touches),
+      reads: lower([...own, ...uses.flatMap((u) => u.tables)]),
+      effects: file.effects ? lower(file.effects) : null,
+    }
+  }
+
+  // The runs an agent has started in the last day, against the runs of its budget.
+  private overRuns(a: Agent, file: AgentFile, nowMs: number): boolean {
+    const n = Number(
+      one<{ n: number }>(
+        this.world.db,
+        'SELECT count(*) AS n FROM runs WHERE agent_id = ? AND started_at >= ? AND (data IS NULL OR data NOT LIKE \'%"skipped":true%\')',
+        a.id,
+        new Date(nowMs - 86_400_000).toISOString(),
+      )?.n ?? 0,
+    )
+    return n >= file.budget.runs
+  }
+
   async runAgent(agent: Agent, who?: RunFor, given: object = {}): Promise<RunOutcome> {
     const module = this.world.shape.module(agent.module)
     if (!module) throw new Refused('That agent’s module is not there.')
@@ -942,11 +1088,27 @@ export class AgentRunner {
   async runDue(nowMs = Date.now()): Promise<void> {
     this.resumeTasks()
     for (const a of agents(this.world)) {
-      if (a.state !== 'on' || !a.trigger) continue
+      if (a.state !== 'on' || !triggersOf(a.trigger).length) continue
       if (one(this.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
         continue
       const given = this.due(a, nowMs)
       if (!given) continue
+      const module = this.world.shape.module(a.module)
+      const file = module ? this.fileOf(a.id, module) : null
+      if (module && file && this.overRuns(a, file, nowMs)) {
+        // said once a day, not at every tick
+        const said = this.budgetSaid.get(a.id) ?? 0
+        if (nowMs - said >= 86_400_000) {
+          this.budgetSaid.set(a.id, nowMs)
+          this.world.line({
+            actor: { kind: 'agent', id: a.name },
+            kind: 'run_step',
+            words: `${a.name} has run ${file.budget.runs} time${file.budget.runs === 1 ? '' : 's'} in a day, its budget; it runs again tomorrow.`,
+            module: module.id,
+          })
+        }
+        continue
+      }
       await this.runAgent(a, undefined, given).catch(() => undefined)
       // the run counts at the tick's time, the clock its next one is judged by
       exec(
@@ -964,10 +1126,31 @@ export class AgentRunner {
     return is === true ? {} : is
   }
 
+  // Due by any of its triggers. The ones that read the journal (filed, changes) share the
+  // agent's cursor: it is read once before and moved once after, so a list of them agrees.
   private isDue(a: Agent, nowMs: number): boolean | { filed: Filed[] } {
+    const seen = Number(a.cursor ?? 0)
+    let due: boolean | { filed: Filed[] } = false
+    let reads = false
+    for (const t of triggersOf(a.trigger)) {
+      const is = this.isDueBy(a, t, nowMs, seen)
+      if ('filed' in t || 'changes' in t) reads = true
+      if (is === true && due === false) due = true
+      else if (typeof is === 'object')
+        due = typeof due === 'object' ? { filed: [...due.filed, ...is.filed] } : is
+    }
+    if (reads)
+      exec(
+        this.world.db,
+        'UPDATE agents SET cursor = ? WHERE id = ?',
+        String(this.world.lastLineId()),
+        a.id,
+      )
+    return due
+  }
+
+  private isDueBy(a: Agent, t: Trigger, nowMs: number, seen: number): boolean | { filed: Filed[] } {
     const last = a.lastRunAt ? Date.parse(a.lastRunAt) : 0
-    const t = a.trigger
-    if (!t) return false
     if ('every' in t) {
       if (t.every === 'hour') return nowMs - last >= 3_600_000
       const days = t.every === 'week' ? 7 : 1
@@ -983,19 +1166,12 @@ export class AgentRunner {
     }
     if ('filed' in t) {
       // a document read, or put on a row, since the agent last looked (not by the agent itself)
-      const seen = Number(a.cursor ?? 0)
       const files = new Set<string>()
       for (const l of this.world.lines({ after: seen, kinds: ['filed'] })) {
         const d = l.data as { file?: string; document?: string; record?: string; off?: boolean }
         if (l.actor.kind === 'agent' && l.actor.id === a.name) continue
         if (d.file && (d.document || (d.record && !d.off))) files.add(d.file)
       }
-      exec(
-        this.world.db,
-        'UPDATE agents SET cursor = ? WHERE id = ?',
-        String(this.world.lastLineId()),
-        a.id,
-      )
       const filed: Filed[] = []
       for (const hash of files) {
         const doc = this.world.files.document(hash)
@@ -1020,7 +1196,6 @@ export class AgentRunner {
         .filter(Boolean),
     )
     if (!tables.size) return false
-    const seen = Number(a.cursor ?? 0)
     const lines = this.world
       .lines({ after: seen, kinds: CHANGE_KINDS })
       .filter(
@@ -1028,8 +1203,6 @@ export class AgentRunner {
           tables.has((l.data as { table?: string }).table) &&
           !(l.actor.kind === 'agent' && l.actor.id === a.name),
       )
-    const latest = this.world.lastLineId()
-    exec(this.world.db, 'UPDATE agents SET cursor = ? WHERE id = ?', String(latest), a.id)
     return lines.length > 0
   }
 

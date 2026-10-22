@@ -1,4 +1,5 @@
 ---
+description: Keeps how close each person in a circle is, and finds the follow-ups.
 name: Closeness
 trigger: { changes: [Members, Circles, Closeness rules, Follow-ups, Notes, Mail, Events] }
 runs: { script: skills/closeness/run.js }

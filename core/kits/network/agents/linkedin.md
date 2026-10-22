@@ -1,4 +1,5 @@
 ---
+description: Reads LinkedIn's export of the person's connections when it is dropped in.
 name: LinkedIn export
 trigger: { filed: true }
 runs: { script: skills/linkedin/run.js }

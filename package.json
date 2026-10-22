@@ -20,6 +20,7 @@
     "kit": "node core/src/kit.ts",
     "release": "node scripts/release.ts",
     "fixture": "node scripts/fixture.ts",
+    "kit-api": "node scripts/kit-api.ts",
     "mac": "cd mac && PATH=/usr/bin:$PATH cargo tauri build"
   },
   "devDependencies": {
@@ -27,5 +28,9 @@
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@alpha/kit-sdk": "workspace:*",
+    "zod": "catalog:"
   }
 }

@@ -4,6 +4,7 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type BrowserEngine, type Effect, Problem } from '@alpha/connector-sdk'
+import { guide } from '@alpha/kit-sdk'
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { KNOWN } from '../connectors/service.ts'
@@ -12,10 +13,11 @@ import { FILING, type Filing, type Intake } from '../files/intake.ts'
 import { agents } from '../modules/agents.ts'
 import { DRAFT, type Drafts } from '../modules/drafts.ts'
 import { keep } from '../modules/keep.ts'
+import { installedKits } from '../modules/kits.ts'
 import { type AgentRunner, PROPOSE_TASKS } from '../modules/runs.ts'
 import { pagesOf, printPage } from '../pages/pages.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../world/kinds.ts'
-import { findField, type Table } from '../world/shape.ts'
+import { findField, type Table, type WriteCtx } from '../world/shape.ts'
 import { PRIORITIES, type Task } from '../world/tasks.ts'
 import { namedConfig, ViewConfig } from '../world/views.ts'
 import type { User, World } from '../world/world.ts'
@@ -119,16 +121,9 @@ const PAGE = [
   'A page reads its own module’s tables only and writes nothing; it reaches nothing outside its frame. Alpha’s look is the kit’s: no colours, fonts or line weights of your own. Look at it (look with module and page) before you say it is done.',
 ].join('\n')
 
-const SCRIPT = [
-  'A script is JavaScript: `export default async (alpha) => { … return { words } }`. It has no network and writes only in its module folder; it reaches the world through alpha:',
-  'alpha.input; alpha.rows.list(table) (each row: id, key, values by field name, notes of its computed values); alpha.rows.land(table, [{ key, values, url, places }]) (a row per key, added or changed; values by field name; url only for the web page a row was read from; places by field name: { file, sheet, cell } or { file, page, line }, the document place a value was read from, so it opens there);',
-  'alpha.documents.list() (the documents filed: file (its hash), name, title, kind sheet or text or pdf, pieces, and rows: the rows it sits on, each table, row and kind); alpha.documents.read(file) (its cells or lines, each with sheet, cell and row, or page and line, and its words); alpha.documents.place(file, table, row, kind) (a filed document put on a row of the module’s own tables, as one of the kinds that table takes); alpha.documents.extract(file, { about, values: { name: { kind, choices, about } }, lists: { name: { about, fields } } }) (the model reads the document into those values, kind text, number, money, percent, date or choice; each comes back as { value, place } with the place it was read from, ready for rows.land’s places, or null when it is not found where it is cited; and dropped, why each left out was left out); an agent woken by a filing gets alpha.input.filed: the documents filed or placed since it last looked, each with file, name, kind and rows;',
-  'alpha.rows.compute(table, id, values, formula, notes) (values with the formula each came from, and per field a note: the sum with its numbers, or each check; a value the person typed over keeps theirs, and the figure is kept beside it for Reset); alpha.browser.open(url) (title, text, links, html);',
-  'alpha.browser.extract(url, { list, fields: { name: { css, attr } }, next, id: { field, pattern }, pages }) (every page of a list by its next link, or at most `pages`; returns { pages, items }, each item its fields with _id and _url; a failure carries kind sign_in or blocked);',
-  'alpha.tell(words, { table, rows, choice: { field, value, label } }) (a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click); alpha.log(words) (a step in Activity);',
-  'alpha.draft.email({ to, cc, subject, body, kind, key, about: { table, row }, note }) (an email to one address for the person’s yes, on a card; a newer draft with the same key replaces the waiting one; sent at once only when the person gave a standing permission for that agent’s kind; an agent’s next run gets alpha.input.decided: what became of each draft, sent or not and why).',
-  'An agent whose file says tasks: true takes the tasks given to it (with no trigger, it runs only for them). A run started on a task gets alpha.input.task: id, title, notes, due, priority, place (words, module, table, row, field, page), values (that row’s, by field name), touches, before (what earlier runs on it said) and cards (what came of the cards they opened). It ends with alpha.task.done(words) (what it did: only this makes the task Done) or alpha.task.wait(words) (what it waits for); a run that opened cards waits for the person’s yes, and runs again once they are all decided. A try of the script with a made-up alpha.input.task changes no task: what done or wait would say comes back as a step. alpha.task.propose([{ title, notes, due, priority, on: { table, row, field }, owner: person or agent }], words) (tasks it thinks need doing, on one card for the person’s yes).',
-].join('\n')
+// What a script may call: the kit API's own guide (kit-sdk), the same source as the host and
+// the reference page.
+const SCRIPT = guide()
 
 // The effect of a call, by tool and input: the gates read it.
 export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect> = {
@@ -177,6 +172,153 @@ function tableOf(world: World, name: string): Table {
   return t
 }
 
+// A shape change as the desk's tool takes it.
+const SHAPE_INPUT = {
+  action: z.enum([
+    'make_table',
+    'add_fields',
+    'rename',
+    'set_choices',
+    'remove_table',
+    'save_view',
+    'remove_view',
+    'place_module',
+  ]),
+  module: z.string().optional(),
+  within: z.string().optional(),
+  table: z.string().optional(),
+  fields: z.array(Field).optional(),
+  field: z.string().optional(),
+  to: z.string().optional(),
+  choices: z.array(z.string()).optional(),
+  asked_in: z.string().optional(),
+  view: ViewConfig.partial().optional(),
+  default: z.boolean().optional(),
+}
+export type ShapeAction = z.infer<z.ZodObject<typeof SHAPE_INPUT>>
+
+export const MAINTAINED_SHAPE = 'maintained_shape'
+
+// The module a shape change is to, and its kit, when someone else maintains it. Arrangement
+// (views, placement) is the person's under any mark; shape is what goes to the maintainer.
+function maintainedKit(world: World, a: ShapeAction) {
+  if (['save_view', 'remove_view', 'place_module'].includes(a.action)) return null
+  const module =
+    a.action === 'make_table'
+      ? world.shape.module(a.module?.trim() || a.table || '')
+      : a.table
+        ? world.shape.table(a.table)?.module
+        : undefined
+  if (!module) return null
+  const kit = installedKits(world).find((k) => k.module === module.id)
+  return kit?.maintainer ? { ...kit, maintainer: kit.maintainer, module } : null
+}
+
+export function describeShape(a: ShapeAction): string {
+  const fields = (a.fields ?? []).map((f) => `${f.name} (${f.kind})`).join(', ')
+  switch (a.action) {
+    case 'make_table':
+      return `make the table ${a.table}${fields ? ` with ${fields}` : ''}`
+    case 'add_fields':
+      return `add ${fields || 'fields'} to ${a.table}`
+    case 'rename':
+      return `rename ${a.field ? `${a.field} in ${a.table}` : `the table ${a.table}`} to ${a.to}`
+    case 'set_choices':
+      return `give ${a.field} in ${a.table} the choices ${(a.choices ?? []).join(', ')}`
+    case 'remove_table':
+      return `remove the table ${a.table}`
+    default:
+      return a.action.replace('_', ' ')
+  }
+}
+
+// The shape change itself, as the tool and a card's "Do it now anyway" both apply it.
+export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
+  const say = (words: string) => words
+  const fields = (a.fields ?? []).map((f) => ({
+    name: f.name,
+    kind: f.kind,
+    ...(f.choices ? { choices: f.choices } : {}),
+    ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
+  }))
+  if (a.action === 'place_module') {
+    if (!a.module) throw new Refused('place_module needs module.')
+    const m = world.shape.place(a.module, a.within?.trim() || null, c)
+    const parent = m.parent ? world.shape.module(m.parent) : undefined
+    return say(`${m.name} is ${parent ? `inside ${parent.name}` : 'at the top level'}.`)
+  }
+  const table = a.table
+  if (!table) throw new Refused(`${a.action} needs table.`)
+  switch (a.action) {
+    case 'make_table': {
+      const moduleName = a.module?.trim() || table
+      const existing = world.shape.module(moduleName)
+      const module = existing ?? world.shape.makeModule(moduleName, c)
+      const t = world.shape.makeTable(module.id, table, fields, c)
+      return say(
+        `${existing ? '' : `Made the module ${module.name}. `}Made the table ${t.name} (view ${t.slug}) with ${
+          t.fields.map((f) => `${f.name} (${f.kind})`).join(', ') || 'no fields yet'
+        }.`,
+      )
+    }
+    case 'add_fields': {
+      const t = world.shape.addFields(tableOf(world, table).id, fields, c)
+      return say(`${t.name} now has ${t.fields.map((f) => `${f.name} (${f.kind})`).join(', ')}.`)
+    }
+    case 'rename': {
+      if (!a.to) throw new Refused('rename needs to.')
+      const t = world.shape.rename(
+        { table: tableOf(world, table).id, ...(a.field ? { field: a.field } : {}) },
+        a.to,
+        c,
+      )
+      return say(`Renamed. ${t.name} has ${t.fields.map((f) => f.name).join(', ')}.`)
+    }
+    case 'set_choices': {
+      if (!a.field || !a.choices) throw new Refused('set_choices needs field and choices.')
+      world.shape.setChoices(tableOf(world, table).id, a.field, a.choices, c)
+      return say(`${a.field} now offers ${a.choices.join(', ')}.`)
+    }
+    case 'remove_table': {
+      const t = tableOf(world, table)
+      world.shape.removeTable(t.id, c)
+      return say(`Removed the table ${t.name}.`)
+    }
+    case 'save_view': {
+      if (!a.field) throw new Refused('save_view needs field: the view’s name.')
+      const t = tableOf(world, table)
+      const was = world.views
+        .list(t.id)
+        .find((v) => v.name.toLowerCase() === a.field?.toLowerCase())
+      const v = world.views.save(
+        {
+          table: t.id,
+          ...(was ? { id: was.id } : {}),
+          name: a.to ?? a.field,
+          // a change names only what changes; the rest stays as it was
+          config: { ...(was ? namedConfig(t, was.config) : {}), ...(a.view ?? {}) },
+          ...(a.default !== undefined ? { isDefault: a.default } : {}),
+        },
+        c,
+      )
+      return say(
+        `${was ? 'Saved' : 'Made'} the view ${v.name} on ${t.name}${v.isDefault ? ', which the table opens on' : ''}.`,
+      )
+    }
+    case 'remove_view': {
+      const t = tableOf(world, table)
+      const views = world.views.list(t.id)
+      const v = views.find((x) => x.name.toLowerCase() === a.field?.toLowerCase())
+      if (!v)
+        throw new Refused(
+          `${t.name} has no view called ${a.field}; it has ${views.map((x) => x.name).join(', ') || 'none'}.`,
+        )
+      world.views.remove(v.id, c)
+      return say(`Removed the view ${v.name} from ${t.name}.`)
+    }
+  }
+}
+
 export function worldTools(world: World, here: Here, hands?: Hands) {
   const ctx = () => ({
     actor: { kind: 'alpha' as const },
@@ -214,115 +356,30 @@ export function worldTools(world: World, here: Here, hands?: Hands) {
         'place_module: put a module inside another; give module and within (the module it goes inside; leave within out for the top level). A module never goes inside itself or one of its own.',
         `Field kinds: ${FIELD_KINDS.join(', ')}. A relation names the table it relates_to.`,
       ].join('\n'),
-      {
-        action: z.enum([
-          'make_table',
-          'add_fields',
-          'rename',
-          'set_choices',
-          'remove_table',
-          'save_view',
-          'remove_view',
-          'place_module',
-        ]),
-        module: z.string().optional(),
-        within: z.string().optional(),
-        table: z.string().optional(),
-        fields: z.array(Field).optional(),
-        field: z.string().optional(),
-        to: z.string().optional(),
-        choices: z.array(z.string()).optional(),
-        asked_in: z.string().optional(),
-        view: ViewConfig.partial().optional(),
-        default: z.boolean().optional(),
-      },
+      SHAPE_INPUT,
       async (a) =>
         guard(() => {
           const c = ctx()
-          const fields = (a.fields ?? []).map((f) => ({
-            name: f.name,
-            kind: f.kind,
-            ...(f.choices ? { choices: f.choices } : {}),
-            ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
-          }))
-          if (a.action === 'place_module') {
-            if (!a.module) throw new Refused('place_module needs module.')
-            const m = world.shape.place(a.module, a.within?.trim() || null, c)
-            const parent = m.parent ? world.shape.module(m.parent) : undefined
-            return ok(`${m.name} is ${parent ? `inside ${parent.name}` : 'at the top level'}.`)
+          // a kit someone else maintains (decision 3b): a change to its shape goes to them as a
+          // request, or in now with them told later; the person decides on a card
+          const kit = a.action === 'place_module' ? null : maintainedKit(world, a)
+          if (kit) {
+            const card = world.cards.open({
+              kind: 'suggestion',
+              words: `${kit.maintainer.name} maintains ${kit.module.name}: ${describeShape(a)}. Ask them to put it in the kit's next version, or do it now and they are told later.`,
+              restsOn: [`${kit.kit} ${kit.version} is maintained by ${kit.maintainer.name}`],
+              options: [`Ask ${kit.maintainer.name}`, 'Do it now anyway'],
+              call: { tool: MAINTAINED_SHAPE, input: a as Record<string, unknown> },
+              actor: c.actor,
+              user: c.user ?? null,
+              turn: c.turn ?? null,
+              module: kit.module.id,
+            })
+            return ok(
+              `${kit.maintainer.name} maintains ${kit.module.name}, so this change is on a card for the person: ask ${kit.maintainer.name}, or do it now (card ${card.id}). Nothing changed yet.`,
+            )
           }
-          const table = a.table
-          if (!table) throw new Refused(`${a.action} needs table.`)
-          switch (a.action) {
-            case 'make_table': {
-              const moduleName = a.module?.trim() || table
-              const existing = world.shape.module(moduleName)
-              const module = existing ?? world.shape.makeModule(moduleName, c)
-              const t = world.shape.makeTable(module.id, table, fields, c)
-              return ok(
-                `${existing ? '' : `Made the module ${module.name}. `}Made the table ${t.name} (view ${t.slug}) with ${
-                  t.fields.map((f) => `${f.name} (${f.kind})`).join(', ') || 'no fields yet'
-                }.`,
-              )
-            }
-            case 'add_fields': {
-              const t = world.shape.addFields(tableOf(world, table).id, fields, c)
-              return ok(
-                `${t.name} now has ${t.fields.map((f) => `${f.name} (${f.kind})`).join(', ')}.`,
-              )
-            }
-            case 'rename': {
-              if (!a.to) throw new Refused('rename needs to.')
-              const t = world.shape.rename(
-                { table: tableOf(world, table).id, ...(a.field ? { field: a.field } : {}) },
-                a.to,
-                c,
-              )
-              return ok(`Renamed. ${t.name} has ${t.fields.map((f) => f.name).join(', ')}.`)
-            }
-            case 'set_choices': {
-              if (!a.field || !a.choices) throw new Refused('set_choices needs field and choices.')
-              world.shape.setChoices(tableOf(world, table).id, a.field, a.choices, c)
-              return ok(`${a.field} now offers ${a.choices.join(', ')}.`)
-            }
-            case 'remove_table': {
-              const t = tableOf(world, table)
-              world.shape.removeTable(t.id, c)
-              return ok(`Removed the table ${t.name}.`)
-            }
-            case 'save_view': {
-              if (!a.field) throw new Refused('save_view needs field: the view’s name.')
-              const t = tableOf(world, table)
-              const was = world.views
-                .list(t.id)
-                .find((v) => v.name.toLowerCase() === a.field?.toLowerCase())
-              const v = world.views.save(
-                {
-                  table: t.id,
-                  ...(was ? { id: was.id } : {}),
-                  name: a.to ?? a.field,
-                  // a change names only what changes; the rest stays as it was
-                  config: { ...(was ? namedConfig(t, was.config) : {}), ...(a.view ?? {}) },
-                  ...(a.default !== undefined ? { isDefault: a.default } : {}),
-                },
-                c,
-              )
-              return ok(
-                `${was ? 'Saved' : 'Made'} the view ${v.name} on ${t.name}${v.isDefault ? ', which the table opens on' : ''}.`,
-              )
-            }
-            case 'remove_view': {
-              const t = tableOf(world, table)
-              const views = world.views.list(t.id)
-              const v = views.find((x) => x.name.toLowerCase() === a.field?.toLowerCase())
-              if (!v)
-                throw new Refused(
-                  `${t.name} has no view called ${a.field}; it has ${views.map((x) => x.name).join(', ') || 'none'}.`,
-                )
-              world.views.remove(v.id, c)
-              return ok(`Removed the view ${v.name} from ${t.name}.`)
-            }
-          }
+          return ok(applyShape(world, a, c))
         }),
       { alwaysLoad: true },
     ),

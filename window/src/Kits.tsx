@@ -1,6 +1,6 @@
 // Settings › Kits and agents (design §10, §11): what each module does on its own, and its agents,
 // each on or paused, folded under the module until opened. A kit is installed from a folder.
-import type { AgentView, WorkingModuleView } from '@alpha/core/api'
+import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
 import { Bot, ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
@@ -106,7 +106,9 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
         sub={
           <>
             <span>
-              {m.kit ? `From the kit ${m.kit.name} ${m.kit.version}` : 'Made in a conversation'}
+              {m.kit
+                ? `From the kit ${m.kit.name} ${m.kit.version} (API ${m.kit.api})${m.kit.maintainer ? `, maintained by ${m.kit.maintainer.name}` : ''}${m.kit.changes ? ` · ${m.kit.changes} change${m.kit.changes === 1 ? '' : 's'} of yours the maintainer has not seen` : ''}`
+                : 'Made in a conversation'}
               {m.agents.length > 0 &&
                 ` · ${m.agents.length === 1 ? 'one agent' : `${m.agents.length} agents`}, ${
                   on === m.agents.length ? (on === 1 ? 'on' : 'all on') : on ? `${on} on` : 'paused'
@@ -129,6 +131,7 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
         }
       />
       {open && m.agents.map((a) => <AgentLine key={a.id} agent={a} onChange={onChange} />)}
+      {open && m.kit && <Yours module={m} onChange={onChange} />}
     </List>
   )
 }
@@ -176,9 +179,15 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
       indent
       lead={<Bot className="size-4 text-ink-3" />}
       title={a.name}
-      sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
+      sub={
+        <>
+          {a.description && <div className="text-ink-2">{a.description}</div>}
+          {`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
+        </>
+      }
       actions={
         <>
+          {a.needs && <Pill tone="warn">{a.needs}</Pill>}
           {a.running && <Pill tone="accent">Running</Pill>}
           <Button
             size="sm"
@@ -198,6 +207,101 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
         </>
       }
     />
+  )
+}
+
+// What of the kit is the person's now (decision 3): each with the kit's version back, and the
+// fields the kit no longer uses, each with its rows gone for good.
+function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: () => void }) {
+  const [yours, setYours] = useState<YoursView | null>(null)
+  const [busy, setBusy] = useState(false)
+  const load = useCallback(() => {
+    api.get<YoursView>(`/api/kits/${m.id}/yours`).then(setYours, () => setYours(null))
+  }, [m.id])
+  useEffect(() => {
+    load()
+  }, [load])
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true)
+    await fn().catch(() => undefined)
+    setBusy(false)
+    load()
+    onChange()
+  }
+  if (!yours) return null
+  const back = (what: Record<string, string>) =>
+    act(() => api.post(`/api/kits/${m.id}/yours/back`, what))
+  const items = [
+    ...yours.files.map((f) => ({
+      key: `file:${f.path}`,
+      words: `${f.path}, ${f.state === 'removed' ? 'removed' : 'changed'} by you`,
+      back: () => back({ kind: 'file', path: f.path }),
+    })),
+    ...yours.rows.map((r) => ({
+      key: `row:${r.id}`,
+      words: `${r.name} in ${r.table}, a setup row you changed`,
+      back: () => back({ kind: 'row', table: r.table, key: r.key }),
+    })),
+    ...yours.views.map((v) => ({
+      key: `view:${v.id}`,
+      words: `The view ${v.name} on ${v.table}, yours`,
+      back: () => back({ kind: 'view', table: v.table, name: v.name }),
+    })),
+    ...yours.fields.map((f) => ({
+      key: `field:${f.id}`,
+      words: `The field ${f.name} in ${f.table}, added by you`,
+      back: null,
+    })),
+  ]
+  if (!items.length && !yours.removed.length) return null
+  return (
+    <>
+      {items.map((it) => (
+        <Row
+          key={it.key}
+          indent
+          title={it.words}
+          sub="Yours now; the kit's updates leave it alone"
+          actions={
+            it.back && (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={it.back}>
+                Take the kit's version back
+              </Button>
+            )
+          }
+        />
+      ))}
+      {yours.removed.map((f) => (
+        <Row
+          key={`removed:${f.fieldId}`}
+          indent
+          title={`${f.name} in ${f.table}: the kit no longer uses it`}
+          sub={`${f.rows} row${f.rows === 1 ? '' : 's'} still hold a value under it`}
+          actions={
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Remove ${f.name} from ${f.table} with its ${f.rows} value${f.rows === 1 ? '' : 's'}? This cannot be undone.`,
+                  )
+                )
+                  act(() =>
+                    api.post(`/api/kits/${m.id}/fields/remove`, {
+                      table: f.table,
+                      field: f.fieldId,
+                    }),
+                  )
+              }}
+            >
+              Remove its rows
+            </Button>
+          }
+        />
+      ))}
+    </>
   )
 }
 

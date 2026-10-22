@@ -4,6 +4,13 @@
 // agent that takes tasks is on call for the tasks given to it, and needs no trigger (Q92).
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import {
+  AgentFront,
+  type AgentFrontMatter,
+  type Runs,
+  type Trigger,
+  triggersOf,
+} from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { parse } from 'yaml'
 import { z } from 'zod'
@@ -12,23 +19,17 @@ import { Refused } from '../world/kinds.ts'
 import type { Module } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 
-export const Trigger = z.union([
-  z.object({
-    every: z.enum(['hour', 'day', 'week']),
-    at: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/)
-      .optional(),
-  }),
-  z.object({ cron: z.string() }),
-  z.object({ changes: z.union([z.string(), z.array(z.string())]) }), // a row added or changed in a table
-  z.object({ filed: z.literal(true) }), // a document filed and read (an export dropped, say)
-])
-export type Trigger = z.infer<typeof Trigger>
+// The trigger, the script and the front matter are the kit API's (kit-sdk), schema version 1.
+export type { Runs, Trigger }
 
 // A trigger as the person reads it; an agent with none runs only for the tasks given to it.
-export function whenWords(t: Trigger | null): string {
-  if (!t) return 'when given a task'
+export function whenWords(t: Trigger | Trigger[] | null): string {
+  const list = triggersOf(t)
+  if (!list.length) return 'when given a task'
+  return list.map(oneWhen).join(', and ')
+}
+
+function oneWhen(t: Trigger): string {
   if ('every' in t) return `every ${t.every}${t.at ? ` at ${t.at}` : ''}`
   if ('cron' in t) return `on the schedule ${t.cron}`
   if ('filed' in t) return 'when a document is filed'
@@ -38,8 +39,19 @@ export function whenWords(t: Trigger | null): string {
 
 // When a trigger on the clock next fires, after its last run; a trigger on changes has no time.
 // The same rule as the runner's (runs.ts `due`): a day's run is due once its hour has passed.
-export function nextRun(t: Trigger | null, lastRunAt: string | null, nowMs: number): Date | null {
-  if (!t) return null
+// Of a list, the earliest.
+export function nextRun(
+  t: Trigger | Trigger[] | null,
+  lastRunAt: string | null,
+  nowMs: number,
+): Date | null {
+  const times = triggersOf(t)
+    .map((x) => nextRunOf(x, lastRunAt, nowMs))
+    .filter((d): d is Date => d !== null)
+  return times.length ? new Date(Math.min(...times.map((d) => d.getTime()))) : null
+}
+
+function nextRunOf(t: Trigger, lastRunAt: string | null, nowMs: number): Date | null {
   const last = lastRunAt ? Date.parse(lastRunAt) : 0
   if ('every' in t) {
     if (t.every === 'hour') return new Date(Math.max(nowMs, last + 3_600_000))
@@ -60,32 +72,14 @@ export function nextRun(t: Trigger | null, lastRunAt: string | null, nowMs: numb
   return null
 }
 
-// The script it runs, and what it is handed as `alpha.input` (a reader's page and settings).
-export const Runs = z.object({
-  script: z.string(),
-  input: z.record(z.string(), z.unknown()).optional(),
-})
-export type Runs = z.infer<typeof Runs>
-
-const Front = z
-  .object({
-    name: z.string().optional(),
-    trigger: Trigger.optional(),
-    runs: Runs,
-    touches: z.array(z.string()).default([]),
-    tasks: z.boolean().default(false), // takes the tasks given to it: alpha.input.task
-  })
-  .refine((f) => f.trigger || f.tasks, {
-    message: 'An agent needs a trigger, or tasks: true to be on call for the tasks given to it.',
-  })
-
 export interface Agent {
   id: string
   module: string
   name: string
+  description: string | null
   file: string
   state: 'on' | 'paused'
-  trigger: Trigger | null // none: on call for tasks only
+  trigger: Trigger | Trigger[] | null // none: on call for tasks only
   tasks: boolean // takes the tasks given to it
   runs: Runs
   cursor: string | null
@@ -94,10 +88,15 @@ export interface Agent {
 
 export interface AgentFile {
   name: string
-  trigger: Trigger | null
+  description: string | null
+  trigger: Trigger | Trigger[] | null
   tasks: boolean
   runs: Runs
   touches: string[]
+  effects: string[] | null // null: the file says nothing, an older one
+  needs: { connectors: string[]; tables: string[] }
+  input: AgentFrontMatter['input'] | null
+  budget: { minutes: number; runs: number }
   brief: string
 }
 
@@ -108,16 +107,21 @@ export function readAgent(file: string): AgentFile {
 export function parseAgent(text: string, file: string): AgentFile {
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text)
   if (!m) throw new Refused(`${file} has no front matter.`)
-  const front = Front.safeParse(parse(m[1] as string))
+  const front = AgentFront.safeParse(parse(m[1] as string))
   if (!front.success)
     throw new Refused(`The agent ${file} is not right: ${z.prettifyError(front.error)}`)
   const name = front.data.name ?? (file.split('/').pop() as string).replace(/\.md$/, '')
   return {
     name,
+    description: front.data.description ?? null,
     trigger: front.data.trigger ?? null,
     tasks: front.data.tasks,
     runs: front.data.runs,
     touches: front.data.touches,
+    effects: front.data.effects ?? null,
+    needs: front.data.needs,
+    input: front.data.input ?? null,
+    budget: front.data.budget,
     brief: (m[2] as string).trim(),
   }
 }
@@ -140,17 +144,18 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
     if (known)
       run(
         world.db,
-        'UPDATE agents SET file = ?, trigger = ?, runs = ?, tasks = ? WHERE id = ?',
+        'UPDATE agents SET file = ?, trigger = ?, runs = ?, tasks = ?, description = ? WHERE id = ?',
         `agents/${f}`,
         json(a.trigger),
         json(a.runs),
         a.tasks ? 1 : 0,
+        a.description,
         known.id,
       )
     else
       run(
         world.db,
-        'INSERT INTO agents (id, module_id, name, file, state, trigger, runs, tasks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO agents (id, module_id, name, file, state, trigger, runs, tasks, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         newId('a'),
         module.id,
         a.name,
@@ -159,6 +164,7 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
         json(a.trigger),
         json(a.runs),
         a.tasks ? 1 : 0,
+        a.description,
       )
   }
   for (const a of all<{ id: string; name: string }>(
@@ -174,6 +180,7 @@ interface AgentRow {
   id: string
   module_id: string
   name: string
+  description: string | null
   file: string
   state: 'on' | 'paused'
   trigger: string
@@ -194,7 +201,8 @@ export function agents(world: World, moduleId?: string): Agent[] {
     name: r.name,
     file: r.file,
     state: r.state,
-    trigger: JSON.parse(r.trigger) as Trigger | null,
+    description: r.description,
+    trigger: JSON.parse(r.trigger) as Trigger | Trigger[] | null,
     tasks: r.tasks === 1,
     runs: JSON.parse(r.runs) as Runs,
     cursor: r.cursor,

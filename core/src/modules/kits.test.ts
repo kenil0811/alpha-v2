@@ -6,12 +6,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { history } from './git.ts'
-import { install, installedKits, update } from './kits.ts'
+import { install, installedKits, takeBack, update, yours } from './kits.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
 let home: string
 let world: World
 const ctx = { actor: { kind: 'person' as const, id: 'u_1' }, user: 'u_1' }
+const alpha = { kind: 'alpha' as const }
 
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'alpha-kits-'))
@@ -46,7 +47,7 @@ describe('installing a kit', () => {
       ['Counter', 'paused', { every: 'day', at: '07:00' }],
     ])
     expect(installedKits(world)).toEqual([
-      { module: m.id, kit: 'Bakery', version: '0.1.0', source: KIT },
+      { module: m.id, kit: 'Bakery', version: '0.1.0', source: KIT, api: 1, maintainer: null },
     ])
     expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('example.com')
     expect((await history(m.dir)).map((c) => c.message)).toEqual(['Installed Bakery 0.1.0'])
@@ -348,5 +349,225 @@ describe('Alpha’s own modules', () => {
       false,
       true,
     ])
+  })
+})
+
+describe('the contracts a kit signs (step 2)', () => {
+  function copyKit(change: (manifest: string) => string, extra?: Record<string, string>): string {
+    const dir = join(home, 'kit')
+    cpSync(KIT, dir, { recursive: true })
+    writeFileSync(join(dir, 'module.yaml'), change(readFileSync(join(KIT, 'module.yaml'), 'utf8')))
+    for (const [path, text] of Object.entries(extra ?? {})) writeFileSync(join(dir, path), text)
+    return dir
+  }
+
+  it('refuses a kit that uses one not there, or an api this Alpha does not serve', async () => {
+    const uses = copyKit((m) => `${m}uses:\n  - { kit: Orchard, min: '0.2' }\n`)
+    await expect(install(world, uses, ctx)).rejects.toThrow(/uses Orchard, which is not there/)
+    const api = copyKit((m) => m.replace('api: 1', 'api: 7'))
+    await expect(install(world, api, ctx)).rejects.toThrow(/api: 7; this Alpha serves 1/)
+  })
+
+  it('takes a kit with no api as 1 for now, and says so', async () => {
+    const dir = copyKit((m) => m.replace('api: 1\n', ''))
+    const m = await install(world, dir, ctx)
+    expect(installedKits(world)[0]?.api).toBe(1)
+    expect(world.lines({ kinds: ['installed'] })[0]?.words).toMatch(/says no api; taken as 1/)
+    expect(m.name).toBe('Bakery')
+  })
+
+  it('keeps who maintains a kit, and an agent’s description', async () => {
+    const dir = copyKit((m) => `${m}maintainer: { name: Avilo, address: kits@avilo.example }\n`, {
+      'agents/counter.md':
+        '---\nname: Counter\ndescription: Counts the orders.\ntrigger: [{ every: day, at: "07:00" }, { changes: Orders }]\nruns: { script: skills/count/run.js }\ntouches: [Orders]\nbudget: { minutes: 5 }\n---\nCounts the orders each morning.\n',
+    })
+    const m = await install(world, dir, ctx)
+    expect(installedKits(world)[0]?.maintainer).toEqual({
+      name: 'Avilo',
+      address: 'kits@avilo.example',
+    })
+    const [counter] = agents(world, m.id)
+    expect(counter?.description).toBe('Counts the orders.')
+    expect(Array.isArray(counter?.trigger) ? counter.trigger.length : 0).toBe(2)
+  })
+
+  it('says what is wrong with a kit before anything installs', async () => {
+    const dir = copyKit((m) => m, {
+      'agents/bad.md':
+        '---\nname: Bad\ntrigger: { changes: Nowhere }\nruns: { script: skills/none/run.js }\ntouches: [Elsewhere]\neffects: [fly]\n---\n',
+    })
+    await expect(install(world, dir, ctx)).rejects.toThrow(
+      /runs skills\/none\/run.js, which is not in the kit.*touches Elsewhere.*names the effect fly.*runs when Nowhere changes.*has no brief/s,
+    )
+  })
+})
+
+describe('stable keys and tombstones (step 2, sub-step 4)', () => {
+  function kitAt(version: string, manifest: (m: string) => string, setup?: string): string {
+    const dir = join(home, `kit-${version}`)
+    cpSync(KIT, dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      manifest(
+        readFileSync(join(KIT, 'module.yaml'), 'utf8').replace(
+          'version: 0.1.0',
+          `version: ${version}`,
+        ),
+      ),
+    )
+    if (setup !== undefined) writeFileSync(join(dir, 'setup.yaml'), setup)
+    return dir
+  }
+
+  it('renames a field in place when the kit declares it, keyed, and leaves what the person removed removed', async () => {
+    const m = await install(
+      world,
+      kitAt('0.1.0', (x) => x),
+      ctx,
+    )
+    const orders = world.shape.table('Orders') as { id: string }
+    world.records.add(
+      orders.id,
+      [
+        {
+          values: { Item: 'Flour', Quantity: 2 },
+          provenance: { kind: 'estimated', basis: 'a guess' },
+        },
+      ],
+      { actor: alpha },
+    )
+    // the person removes Quantity and a whole table of the kit's
+    world.shape.removeField(orders.id, 'Quantity', ctx)
+    world.shape.removeTable((world.shape.table('Suppliers') as { id: string }).id, ctx)
+    const newer = kitAt(
+      '0.2.0',
+      (x) =>
+        `${x.replace('{ name: Item, kind: text }', '{ name: What, kind: text, key: Item }')}history:\n  renamed: [{ from: Item, to: What, in: 0.2.0 }]\n`,
+    )
+    await update(world, m.name, newer, ctx)
+    const t = world.shape.table('Orders')
+    expect(t?.fields.map((f) => [f.name, f.key])).toEqual([
+      ['What', 'Item'],
+      ['Supplier', 'Supplier'],
+    ])
+    expect(world.records.list(orders.id)[0]?.values.what).toBe('Flour')
+    expect(world.shape.table('Suppliers')).toBeUndefined()
+  })
+
+  it('hides a field the kit no longer uses, keeping its rows, and lists it as removable', async () => {
+    const m = await install(
+      world,
+      kitAt('0.1.0', (x) => x),
+      ctx,
+    )
+    const orders = world.shape.table('Orders') as { id: string }
+    world.records.add(
+      orders.id,
+      [
+        {
+          values: { Item: 'Flour', Quantity: 2 },
+          provenance: { kind: 'estimated', basis: 'a guess' },
+        },
+      ],
+      { actor: alpha },
+    )
+    const newer = kitAt('0.2.0', (x) => `${x}history:\n  removed: [{ key: Quantity, in: 0.2.0 }]\n`)
+    await update(world, m.name, newer, ctx)
+    expect(world.shape.table('Orders')?.fields.map((f) => f.name)).toEqual(['Item', 'Supplier'])
+    const y = yours(world, m.id)
+    expect(y.removed).toEqual([
+      {
+        table: 'Orders',
+        tableId: orders.id,
+        fieldId: expect.any(String),
+        name: 'Quantity',
+        rows: 1,
+      },
+    ])
+    world.shape.removeHiddenField(orders.id, y.removed[0]?.fieldId as string, ctx)
+    expect(yours(world, m.id).removed).toEqual([])
+    expect(world.records.list(orders.id)[0]?.values).toEqual({ item: 'Flour' })
+  })
+
+  it('lists what is yours and gives the kit’s version back', async () => {
+    const dir = kitAt(
+      '0.1.0',
+      (x) => x,
+      'Suppliers:\n  - { key: mill, values: { Name: Mill & Co, Email: me@mill.example } }\n',
+    )
+    const m = await install(world, dir, ctx)
+    const suppliers = world.shape.table('Suppliers') as { id: string }
+    const row = world.records.byKey(suppliers.id, 'setup:mill') as string
+    world.records.change(
+      suppliers.id,
+      [
+        {
+          id: row,
+          values: { Name: 'Mill and Sons' },
+          provenance: { kind: 'estimated', basis: 'said' },
+        },
+      ],
+      { actor: alpha },
+    )
+    writeFileSync(
+      join(m.dir, 'skills', 'count', 'run.js'),
+      'export default async () => ({ orders: 1 })',
+    )
+    const y = yours(world, m.id)
+    expect(y.files).toEqual([{ path: 'skills/count/run.js', state: 'changed' }])
+    expect(y.rows.map((r) => [r.table, r.key, r.name])).toEqual([
+      ['Suppliers', 'mill', 'Mill and Sons'],
+    ])
+    await takeBack(world, m.id, { kind: 'file', path: 'skills/count/run.js' }, ctx)
+    await takeBack(world, m.id, { kind: 'row', table: 'Suppliers', key: 'mill' }, ctx)
+    expect(yours(world, m.id)).toMatchObject({ files: [], rows: [] })
+    expect(world.records.list(suppliers.id)[0]?.values.name).toBe('Mill & Co')
+    // a setup row the person removes stays removed through an update
+    world.records.remove(suppliers.id, [row], ctx)
+    await update(
+      world,
+      m.name,
+      kitAt(
+        '0.1.1',
+        (x) => x,
+        'Suppliers:\n  - { key: mill, values: { Name: Mill & Co, Email: me@mill.example } }\n',
+      ),
+      ctx,
+    )
+    expect(world.records.list(suppliers.id)).toEqual([])
+  })
+
+  it('turns a relation into a list when the kit’s newer version says many, keeping each row’s pointer', async () => {
+    const m = await install(
+      world,
+      kitAt('0.1.0', (x) => x),
+      ctx,
+    )
+    const orders = world.shape.table('Orders') as { id: string }
+    const suppliers = world.shape.table('Suppliers') as { id: string }
+    const [s1] = world.records.add(
+      suppliers.id,
+      [{ values: { Name: 'Mill' }, provenance: { kind: 'estimated', basis: 'a guess' } }],
+      { actor: alpha },
+    )
+    world.records.add(
+      orders.id,
+      [
+        {
+          values: { Item: 'Flour', Supplier: s1 },
+          provenance: { kind: 'estimated', basis: 'a guess' },
+        },
+      ],
+      { actor: alpha },
+    )
+    const newer = kitAt('0.2.0', (x) =>
+      x.replace(
+        '{ name: Supplier, kind: relation, relates_to: Suppliers }',
+        '{ name: Supplier, kind: relation, relates_to: Suppliers, many: true }',
+      ),
+    )
+    await update(world, m.name, newer, ctx)
+    expect(world.shape.table('Orders')?.fields.find((f) => f.name === 'Supplier')?.many).toBe(true)
+    expect(world.records.list(orders.id)[0]?.values.supplier).toEqual([s1])
   })
 })

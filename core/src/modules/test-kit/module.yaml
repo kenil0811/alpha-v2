@@ -1,6 +1,7 @@
 # A made-up kit for the installer's tests: never a client's.
 name: Bakery
 version: 0.1.0
+api: 1
 tables:
   - name: Orders
     fields:

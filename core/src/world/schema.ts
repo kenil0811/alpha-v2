@@ -444,6 +444,37 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   addSeq,
   // 15: one provenance per row where every value came the same way (migrate13.ts).
   foldProvenance,
+  // 16: the contracts (Stage 1, step 2): the kit API a kit was written for and who keeps it; an
+  // agent's one-line description.
+  `
+  ALTER TABLE kits ADD COLUMN api INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE kits ADD COLUMN maintainer TEXT;
+  ALTER TABLE agents ADD COLUMN description TEXT;
+  `,
+  // 17: stable keys and tombstones (decision 3): a kit field's key, a field a kit no longer uses
+  // (hidden, its rows kept), what the person removed so an update does not bring it back, and
+  // the changes of theirs a maintained kit's maintainer has not seen (decision 3b).
+  `
+  ALTER TABLE fields ADD COLUMN key TEXT;
+  ALTER TABLE fields ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE tombstones (
+    module_id TEXT NOT NULL REFERENCES modules (id),
+    kind TEXT NOT NULL CHECK (kind IN ('field', 'table', 'row', 'view')),
+    key TEXT NOT NULL,
+    removed_at TEXT NOT NULL,
+    removed_by TEXT NOT NULL,
+    PRIMARY KEY (module_id, kind, key)
+  );
+  CREATE TABLE kit_changes (
+    id TEXT PRIMARY KEY,
+    module_id TEXT NOT NULL REFERENCES modules (id),
+    words TEXT NOT NULL,
+    call TEXT,
+    at TEXT NOT NULL,
+    by TEXT NOT NULL,
+    seen_at TEXT
+  );
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

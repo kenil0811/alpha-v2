@@ -1,8 +1,10 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Engine } from '../engine/engine.ts'
+import { MAINTAINED_SHAPE } from '../engine/tools.ts'
+import { install } from '../modules/kits.ts'
 import { World } from '../world/world.ts'
 import { buildServer, VERSION } from './server.ts'
 import type { Stream, TableView } from './types.ts'
@@ -494,6 +496,57 @@ describe('the api over a world', () => {
     const shown = (await a.inject({ url: `/api/tables/${t.id}`, headers: ok })).json() as TableView
     expect(shown.rows.length).toBe(1)
     expect(shown.views.map((v) => v.name)).toEqual(['Pricey'])
+    await a.close()
+  })
+
+  it('puts a maintained kit’s shape change on a card: done now and counted, or asked of the maintainer', async () => {
+    const a = app()
+    const dir = join(home, 'kit')
+    cpSync(join(import.meta.dirname, '..', 'modules', 'test-kit'), dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      `${readFileSync(join(dir, 'module.yaml'), 'utf8')}maintainer: { name: Avilo, address: kits@avilo.example }\n`,
+    )
+    const owner = world.owner('Kenil')
+    const m = await install(world, dir, { actor: { kind: 'person', id: owner.id }, user: owner.id })
+    const change = {
+      action: 'add_fields',
+      table: 'Orders',
+      fields: [{ name: 'Note', kind: 'text' }],
+    }
+    const open = (words: string) =>
+      world.cards.open({
+        kind: 'suggestion',
+        words,
+        options: ['Ask Avilo', 'Do it now anyway'],
+        call: { tool: MAINTAINED_SHAPE, input: change },
+        actor: { kind: 'alpha' },
+        user: owner.id,
+        module: m.id,
+      })
+    const now = open('Avilo maintains Bakery: add Note (text) to Orders')
+    const done = await a.inject({
+      method: 'POST',
+      url: `/api/cards/${now.id}`,
+      headers: ok,
+      payload: { answer: 'Do it now anyway' },
+    })
+    expect(done.statusCode).toBe(200)
+    expect(world.shape.table('Orders')?.fields.map((f) => f.name)).toContain('Note')
+    const working = (await a.inject({ url: '/api/working', headers: ok })).json() as {
+      kit: { maintainer: { name: string }; changes: number } | null
+    }[]
+    expect(working[0]?.kit).toMatchObject({ maintainer: { name: 'Avilo' }, changes: 1 })
+    const ask = open('Avilo maintains Bakery: rename Quantity in Orders to How many')
+    const asked = await a.inject({
+      method: 'POST',
+      url: `/api/cards/${ask.id}`,
+      headers: ok,
+      payload: { answer: 'Ask Avilo' },
+    })
+    expect(asked.statusCode).toBe(200)
+    expect(world.cards.get(ask.id)?.state).toBe('yes')
+    expect(world.shape.table('Orders')?.fields.map((f) => f.name)).not.toContain('How many')
     await a.close()
   })
 })

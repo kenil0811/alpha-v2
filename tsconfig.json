@@ -24,6 +24,9 @@
     },
     {
       "path": "connectors/files"
+    },
+    {
+      "path": "kit-sdk"
     }
   ]
 }

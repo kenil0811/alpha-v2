@@ -272,6 +272,9 @@ export class Records {
         if (!row) throw new Refused(`${table.name} has no row ${id}.`)
         gone.push({ id, values: this.snapshot(table, row).vals })
         this.watch?.gone([id])
+        // a kit's setup row the person removes stays removed through the kit's updates
+        if (row.item_key && one(this.db, 'SELECT 1 FROM kit_rows WHERE record_id = ?', id))
+          this.shape.tombstone(table.module.id, 'row', row.item_key, ctx)
         for (const f of table.fields)
           if (f.kind === 'relation' && f.many)
             run(
