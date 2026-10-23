@@ -588,6 +588,16 @@ window signs in with better-auth.
 
 ## 15. Deployment, security, observability
 
+**The computer's own pieces** (decision 12, 23 Oct): secrets, a notification outside the window,
+keeping the machine awake, its settings panes, the person's name and the region sit behind one
+`Platform` interface (`core/src/platform/`): the Mac's implementation, and a plain one that runs
+the core for the tests and says in words what it cannot do. `process.platform` is read in one
+file, and `pnpm check` refuses a Mac call anywhere else in the core. The server shape below is a
+`linux.ts` there. **An install** is one file, `alpha.yaml` in the data folder (owner, tenant,
+port, the report address, the helper, uv and log paths, keep awake, the readers), written by the
+installer and at first start, read at every start, the environment overriding it for a
+development run; `ALPHA_HOME` is the one variable, the token its own file.
+
 **Mac:** a login item runs the core with its own Node; the Tauri shell (`mac/`) attaches to it
 and never starts a core of its own, shows the two windows, and opens quietly at login from a
 second login item. Signed ad hoc, or with the self-signed "Alpha Code Signing" certificate once

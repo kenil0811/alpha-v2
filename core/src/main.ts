@@ -1,9 +1,8 @@
 // The core: one process, listening on loopback (design §2, §3).
-import { execFile, execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { BrowserEngine, MacKeychain, NoSecrets, type SecretStore } from '@alpha/connector-sdk'
+import { BrowserEngine } from '@alpha/connector-sdk'
 import { buildServer } from './api/server.ts'
 import { config } from './config.ts'
 import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
@@ -21,9 +20,11 @@ import { keepDefaults } from './modules/defaults.ts'
 import { Drafts } from './modules/drafts.ts'
 import { installInbox } from './modules/packs.ts'
 import { AgentRunner } from './modules/runs.ts'
+import { platformHere } from './platform/index.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
 import { backupDaily } from './world/backups.ts'
+import { setHomeRegion } from './world/phones.ts'
 import { tenantDir, World } from './world/world.ts'
 
 const home = process.env.ALPHA_HOME
@@ -69,42 +70,25 @@ if (!existsSync(tokenFile))
   writeFileSync(tokenFile, randomBytes(24).toString('hex'), { mode: 0o600 })
 const token = readFileSync(tokenFile, 'utf8').trim()
 
+// The computer's own pieces (secrets, notifications, keeping awake, settings, the person's
+// name, the region): the Mac's here, the plain ones elsewhere.
+const platform = platformHere()
+setHomeRegion(platform.region())
 const port = install.port
 const windowPort = port + 1
 const tenant = tenantDir(home, install.tenant)
 const world = await World.open(tenant)
-const user = world.owner(install.owner ?? undefined)
+const user = world.owner(install.owner ?? platform.personName())
 // what was learned at first start goes back in the file, so the next start finds it there
 if (!install.tenant || !install.owner)
   writeInstall(home, { tenant: basename(tenant), owner: user.name })
 // what the core is still setting up once it listens: the window says so meanwhile
 const kitsNow = { now: null as string | null }
-// Alpha's helper on the Mac (the Keychain, Calendar, Contacts). The shipped app carries it built
-// and signed (ALPHA_HELPER_APP); in development it is built when its source changed. Without it no
-// password is kept, and connecting an account says why, rather than keeping it in memory only.
-const sdk = join(import.meta.dirname, '..', '..', 'connector-sdk', 'helper')
-let secrets: SecretStore = new NoSecrets(
-  "Alpha's helper is not running on this Mac, so Alpha cannot keep a password safely. Reinstall Alpha, or send Kenil a report.",
-)
-// the helper and uv the file names are handed on to the packages that read them
+// The secret store: the Mac's Keychain through Alpha's helper (named in alpha.yaml, or built in
+// development); the helper and uv are handed on to the packages that read them.
+const { store: secrets, helper } = platform.secrets(install.helper)
+if (helper) process.env.ALPHA_HELPER_APP = helper
 if (install.uv) process.env.ALPHA_UV = install.uv
-if (process.platform === 'darwin') {
-  const shipped = install.helper
-  if (shipped && existsSync(join(shipped, 'Contents', 'MacOS', 'alpha-helper'))) {
-    process.env.ALPHA_HELPER_APP = shipped
-    secrets = new MacKeychain(shipped)
-  } else
-    try {
-      execFileSync('/bin/sh', [join(sdk, 'build.sh')], { stdio: 'inherit' })
-      const built = join(sdk, 'build', 'Alpha Helper.app')
-      process.env.ALPHA_HELPER_APP = built
-      secrets = new MacKeychain(built)
-    } catch {
-      console.error(
-        "Alpha's helper is not there and did not build: no password can be kept until it is.",
-      )
-    }
-}
 // The connectors: the standard set the release ships, then every folder under Alpha's own
 // connectors/ (added from Settings); a folder that does not load is said on Home and left out.
 const connectorsDir = join(home, 'connectors')
@@ -212,15 +196,10 @@ const scheduler = new Scheduler(world, [
       let said = false
       world.tasks.tick(now, { actor: { kind: 'system' }, user: user.id }, (t) => {
         said = true
-        // Alpha's Mac app shows it when it is running (it asked for notices lately); else macOS's
-        // own script runner does
-        if (process.platform !== 'darwin' || Date.now() - shell.seen < 30_000) return
-        const q = (s: string) => s.replace(/["\\]/g, '\\$&')
-        execFile(
-          '/usr/bin/osascript',
-          ['-e', `display notification "${q(t.title)}" with title "Alpha" subtitle "Reminder"`],
-          () => undefined,
-        )
+        // Alpha's Mac app shows it when it is running (it asked for notices lately); else the
+        // computer's own notifications do
+        if (Date.now() - shell.seen < 30_000) return
+        platform.notify('Reminder', t.title)
       })
       if (said) engine.events.emit('event', { type: 'lines', user: user.id })
     },
@@ -248,7 +227,7 @@ engine.events.on('event', (e: { type: string }) => {
 const windowDir = join(import.meta.dirname, '..', '..', 'window', 'dist')
 const served = process.env.ALPHA_DEV_WINDOW !== '1' && existsSync(join(windowDir, 'index.html'))
 // What this Mac still needs; the installed app's login item starts the readers' downloads.
-const setup = new Setup(home, world, route, connectors, install)
+const setup = new Setup(home, world, route, connectors, install, platform)
 if (install.prepareReaders) setup.prepare()
 setup.holdAwake()
 const app = buildServer({
@@ -261,6 +240,7 @@ const app = buildServer({
   ports: [port, windowPort],
   browsers: join(home, 'browsers'),
   connectorsDir,
+  platform,
   failedConnectors: [...standard.failed, ...added.failed],
   ...(served ? { windowDir } : {}),
 })

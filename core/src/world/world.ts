@@ -1,6 +1,5 @@
 // One tenant's world: the SQLite file and what lives beside it (design §3, §4). Every write is a
 // function of the world that writes its journal line in the same transaction.
-import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { join } from 'node:path'
@@ -521,16 +520,9 @@ export class World {
   }
 }
 
-// The Mac's own name for its user ("Kenil Shah"), else the account name.
+// The account name, when the platform gave none (its own name for the person is the
+// platform's to know).
 function fullName(): string {
-  if (process.platform === 'darwin') {
-    try {
-      const n = execFileSync('/usr/bin/id', ['-F'], { encoding: 'utf8' }).trim()
-      if (n) return n
-    } catch {
-      // the account name below
-    }
-  }
   return userInfo().username
 }
 

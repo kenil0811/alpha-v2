@@ -4,29 +4,21 @@
 // that the Mac's own region: v1 found the Mac's region said Singapore while its clock said the
 // UK, so the numbers are the better witness. A number that can't be read is kept as written, and
 // never merges with another written differently.
-import { execFileSync } from 'node:child_process'
 import { type CountryCode, parsePhoneNumberFromString } from 'libphonenumber-js/max'
 
-let macRegion: CountryCode | null | undefined
+let told: CountryCode | null | undefined
 
-// The Mac's region (en_SG → SG), else the locale's; none off a Mac with no region.
+// The region phone numbers are read in: what the platform told the core at start (the Mac's
+// own), else the locale's; none when neither has one.
+export function setHomeRegion(region: string | null): void {
+  told = region && /^[A-Z]{2}$/.test(region) ? (region as CountryCode) : null
+}
+
 export function homeRegion(): CountryCode | null {
-  if (macRegion !== undefined) return macRegion
-  let locale = ''
-  if (process.platform === 'darwin') {
-    try {
-      locale = execFileSync('/usr/bin/defaults', ['read', '-g', 'AppleLocale'], {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim()
-    } catch {
-      // the locale below
-    }
-  }
-  locale ||= Intl.DateTimeFormat().resolvedOptions().locale
+  if (told !== undefined) return told
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale
   const region = locale.replace('_', '-').split('-')[1]?.split('@')[0]?.toUpperCase()
-  macRegion = region && /^[A-Z]{2}$/.test(region) ? (region as CountryCode) : null
-  return macRegion
+  return region && /^[A-Z]{2}$/.test(region) ? (region as CountryCode) : null
 }
 
 // The number in E.164, or null when it can't be read: written with its country (+44 …, 0044 …),

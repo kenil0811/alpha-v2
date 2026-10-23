@@ -3,7 +3,7 @@
 // answers for the route this install uses), the person's connections, Google Chrome for sites they
 // sign in to, and the two downloads reading needs, started at install and here on asking: the
 // reading browser and the document reader (about 1.8 GB between them).
-import { type ChildProcess, execFile, spawn } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
@@ -12,6 +12,7 @@ import { chromePath, ensureBrowser } from '@alpha/connector-sdk'
 import type { ConnectorService } from './connectors/service.ts'
 import type { ModelRoute } from './engine/route.ts'
 import { type Install, readInstall, writeInstall } from './install.ts'
+import { type Platform, platformHere } from './platform/index.ts'
 import type { World } from './world/world.ts'
 
 export type Readiness = 'ready' | 'preparing' | 'not yet' | 'failed'
@@ -48,10 +49,10 @@ export class Setup {
   private route: ModelRoute | null
   private connectors: ConnectorService | null
   private install: Install
+  private platform: Platform
   private browser: Readiness
   private documents: Readiness
   private problem: string | null = null
-  private awake: ChildProcess | null = null
 
   constructor(
     home: string,
@@ -59,7 +60,9 @@ export class Setup {
     route: ModelRoute | null,
     connectors: ConnectorService | null = null,
     install: Install = readInstall(home),
+    platform: Platform = platformHere(),
   ) {
+    this.platform = platform
     this.home = home
     this.world = world
     this.route = route
@@ -101,20 +104,14 @@ export class Setup {
 
   // Whether Alpha keeps this Mac from sleeping while it is plugged in (the installed app asks
   // for it in alpha.yaml; the person turns it off in Settings › This Mac, and the core writes
-  // that back): macOS's own caffeinate, for as long as the core runs. The screen still turns
+  // that back): the computer's own way, through the platform, for as long as the core runs. The screen still turns
   // off; on battery or with the lid closed the Mac sleeps, and catches up on waking.
   get keepAwake(): boolean {
     return this.install.keepAwake
   }
 
   holdAwake(): void {
-    this.awake?.kill()
-    this.awake = null
-    if (process.platform !== 'darwin' || !this.keepAwake) return
-    this.awake = spawn('/usr/bin/caffeinate', ['-s', '-w', String(process.pid)], {
-      stdio: 'ignore',
-    })
-    this.awake.unref()
+    this.platform.keepAwake(this.platform.can.keepAwake && this.keepAwake)
   }
 
   setKeepAwake(on: boolean): void {
@@ -209,7 +206,7 @@ export class Setup {
       ),
       chrome: !!chromePath(),
       // the switch shows where an installed app runs the core; a development run has no login item
-      keepAwake: this.install.helper ? this.keepAwake : null,
+      keepAwake: this.install.helper && this.platform.can.keepAwake ? this.keepAwake : null,
       install: {
         owner: this.world.owner().name,
         port: this.install.port,

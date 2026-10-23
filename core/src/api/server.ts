@@ -1,6 +1,5 @@
 // The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
 // HTTP or websocket, checks its Host, its Origin and the per-install token.
-import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -50,6 +49,7 @@ import {
 import { installPack } from '../modules/packs.ts'
 import { moduleNetwork, PROPOSE_TASKS, type RunRow, unmetNeeds } from '../modules/runs.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../pages/pages.ts'
+import { PlainPlatform, type Platform } from '../platform/index.ts'
 import type { Setup } from '../setup.ts'
 import type { Card } from '../world/cards.ts'
 import { FIELD_KINDS, type Provenance, Refused } from '../world/kinds.ts'
@@ -128,6 +128,7 @@ export interface ServerOptions {
   shell?: { seen: number } // when Alpha's Mac app last asked for notices: it shows them, not the core
   kits?: { now: string | null } // what the core is still setting up after it started listening
   connectorsDir?: string // Alpha's own connectors/: the added set, and the available packs
+  platform?: Platform // the computer's own pieces; the plain one when not given
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
 }
 
@@ -2064,12 +2065,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const { pane } = z.object({ pane: z.string() }).parse(req.body)
     const known = (engine.connectors?.known() ?? []).some((c) => c.manifest.system?.pane === pane)
     if (!known) throw new Refused('No connection needs that pane of System Settings.')
-    if (process.platform === 'darwin')
-      execFile(
-        '/usr/bin/open',
-        [`x-apple.systempreferences:com.apple.preference.security?Privacy_${pane}`],
-        () => undefined,
-      )
+    ;(options.platform ?? new PlainPlatform()).openSettings(pane)
     return { ok: true }
   })
   app.post('/api/setup/prepare', async () => {
