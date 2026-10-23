@@ -21,3 +21,8 @@ pnpm journey track-what-i-eat
 ```
 
 A journey runs on a fresh tenant with the real model and writes its report to `docs/journeys/`.
+
+Every push runs the same checks on GitHub (`.github/workflows/check.yml`), plus `pnpm kit check`
+on Alpha's own kit and `pnpm connector check` on every connector. A tag `v<version>` makes the
+release (`.github/workflows/release.yml`): `pnpm release` with its smoke test, and the disk
+image on the release page.

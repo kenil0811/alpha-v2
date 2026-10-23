@@ -1,0 +1,30 @@
+# Every push and pull request: the checks a contributor runs (pnpm check: typecheck, lint, the
+# tests on the plain platform, the platform wall), then every kit and connector in the
+# repository against the API being built (the decisions doc's section 5).
+name: Check
+on:
+  push:
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: What the reading browser needs on Linux (the browser tests fetch it themselves)
+        run: pnpm --filter @alpha/connector-sdk exec playwright install-deps chromium
+      - run: pnpm check
+      - run: pnpm kit check core/kits/network
+      - name: Every connector in the repository
+        run: |
+          for d in connectors/*/ connectors-extra/*/; do
+            [ -f "$d/package.json" ] && pnpm connector check "$d"
+          done

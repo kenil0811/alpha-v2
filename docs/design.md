@@ -613,6 +613,11 @@ every hook. Encryption at rest with a tenant key, and retention rules, when Dell
 **Observability:** the journal and the runs. "Send report" carries versions, health and shapes,
 never rows.
 
+**CI** (decision 12, 23 Oct): every push and pull request runs `pnpm check` on Linux (the tests on
+the plain platform), `pnpm kit check` on Alpha's own kit and `pnpm connector check` on every
+connector in the repository; a tag `v<version>` runs `pnpm release` on a Mac runner, smoke test
+included, and puts the disk image on the GitHub release page. The client image stays by hand.
+
 ## 16. Journeys and tests
 
 A **journey** is a YAML file of steps (say, drop a file, seed, run an agent, answer a card) and
