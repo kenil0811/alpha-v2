@@ -31,6 +31,8 @@ export async function runHelper(
       out += d
     })
     child.on('error', (err) => reject(new Problem(`Alpha's helper did not start: ${err.message}`)))
+    // a helper gone before its stdin is written is a closed pipe, not a crash of the core
+    child.stdin.on('error', () => undefined)
     child.on('close', () => resolve(out))
     child.stdin.end(options.stdin ?? '')
   })

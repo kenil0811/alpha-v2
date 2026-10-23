@@ -62,6 +62,14 @@ export async function runScript(options: {
   child.stderr.on('data', (d) => {
     stderr += d
   })
+  // An answer to a call the script made: only while the script is still there to read it (a
+  // script stopped or dead under a long call leaves a closed pipe, which is its ending, not a
+  // failure of the core).
+  child.stdin.on('error', () => undefined)
+  const answer = (m: Record<string, unknown>) => {
+    if (child.exitCode === null && child.signalCode === null && child.stdin.writable)
+      child.stdin.write(`${JSON.stringify(m)}\n`)
+  }
   let stopped = false
   options.signal?.addEventListener('abort', () => {
     stopped = true
@@ -106,17 +114,15 @@ export async function runScript(options: {
               .join('; ')}.`,
           )
         const result = await fn(m.params ?? {})
-        child.stdin.write(`${JSON.stringify({ id: m.id, result: result ?? null })}\n`)
+        answer({ id: m.id, result: result ?? null })
       } catch (err) {
         // a problem's kind goes with its words, so a reader can say "needs your sign-in"
         const kind = (err as { kind?: unknown }).kind
-        child.stdin.write(
-          `${JSON.stringify({
-            id: m.id,
-            error: err instanceof Error ? err.message : String(err),
-            ...(typeof kind === 'string' ? { kind } : {}),
-          })}\n`,
-        )
+        answer({
+          id: m.id,
+          error: err instanceof Error ? err.message : String(err),
+          ...(typeof kind === 'string' ? { kind } : {}),
+        })
       }
     })
     child.on('close', (code) =>
