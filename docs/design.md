@@ -117,7 +117,14 @@ the world that writes its journal line in the same transaction. Nothing else wri
 The model reads the world in SQL through a read-only view per table (thin: id, added, the fields' columns; a view per list relation; a `provenance` view) on a read-only connection.
 Removing something deletes everything related to it and journals the removal; the journal is
 never touched. Backups use SQLite's backup API, daily, never `cp` (a copied WAL file ran a
-stale scheduler for real in v1).
+stale scheduler for real in v1). The person's own data is theirs from within Alpha (decision
+12, 23 Oct; Settings › Data): what the world holds and weighs, a backup now, going back to a
+backup (one taken just before), taking the data as one archive in the open format
+(`docs/data.md`: the world, the files by hash, the modules, the instructions, the added
+connectors), bringing it in on a fresh install, a copy of the newest backup in a folder of
+theirs each day, and removing it all on their word with their name typed. A restore, a
+bring-in or a removal closes the world, applies the change and starts the core again. Journal
+tiering and `keeps` per table (the decisions doc's section 2) wait for Stage 2.
 
 Tenancy is in the shape from day one: a tenant id on every path, users and roles inside the
 tenant's world, one stream per user over the shared world. No admin screens until Dell.
@@ -525,8 +532,8 @@ person in the world, like the theme.
 
 **The other screens:** a Module (the same stream filtered to it; tables in eight views: table,
 list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and agents as text;
-files; activity), People, Activity, Settings (connections, folders, kits, model route, users for
-a firm). Plain words, no tool names, no ids.
+files; activity), People, Activity, Settings (this Mac, data, connections, folders, kits, model
+route, users for a firm). Plain words, no tool names, no ids.
 
 **On a Mac** (Kenil's plan, 21 Oct): Alpha's own window over the running core, with no browser
 bars and an icon in the Dock; a mark in the menu bar with a dot when something needs the person
@@ -672,6 +679,12 @@ client's own repository, where its fit analysis lives.
    sign-in, their first run with Kenil present, the feedback report.
 
 Then Dell: the hosted shape, Graph and SQL connectors, the Total Office mirror, the intake kit.
+
+**Stage 1 (22–23 Oct), done:** after the checkpoint review's platform decisions, the open core's
+promises in code: the world on real tables (§4), the kit and agent contracts (§10, §11),
+connectors as plugins and the model as a provider (§5, §8), then the install file, the platform
+interface, Settings › Data, CI and the split of the two long files (§15). Each step a plan for
+Kenil's yes, built, checked, restarted in his Alpha with test steps, committed on his looks good.
 
 ## 20. Working rules
 
