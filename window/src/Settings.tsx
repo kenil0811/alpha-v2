@@ -4,6 +4,7 @@ import type {
   ConnectionView,
   ConnectorsView,
   ConnectorView,
+  DataPageView,
   InstructionView,
   ModelView,
   PermissionView,
@@ -53,6 +54,7 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
 // The page's sections, in its index.
 const SECTIONS = [
   ['mac', 'This Mac'],
+  ['data', 'Data'],
   ['connections', 'Connections'],
   ['folders', 'Folders'],
   ['kits', 'Kits and agents'],
@@ -168,6 +170,9 @@ export function Settings({ open, version }: { open: string | null; version: numb
           <div id="settings-mac" className="scroll-mt-4">
             <ThisMac />
           </div>
+          <div id="settings-data" className="scroll-mt-4">
+            <DataSection />
+          </div>
           <div id="settings-permissions" className="scroll-mt-4">
             <Standing version={version} />
           </div>
@@ -242,6 +247,257 @@ function ThisMac() {
         <SetupList view={view} onChange={reload} />
       ) : (
         <p className="text-ink-2 text-md">This core does not say.</p>
+      )}
+    </Section>
+  )
+}
+
+// The person's own data (decision 12): what the world holds, its backups, a backup now, going
+// back, taking it as one archive, bringing one in, a copy in a folder, and removing it all.
+const mb = (n: number) => (n < 1e6 ? `${Math.round(n / 1e3)} KB` : `${(n / 1e6).toFixed(1)} MB`)
+
+function DataSection() {
+  const [view, setView] = useState<DataPageView | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [said, setSaid] = useState<string | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  const [restarting, setRestarting] = useState(false)
+  const [folder, setFolder] = useState('')
+  const [archive, setArchive] = useState('')
+  const [removing, setRemoving] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [goingBack, setGoingBack] = useState<string | null>(null) // the backup asked about
+  const [bringing, setBringing] = useState(false)
+  const load = useCallback(() => {
+    api.get<DataPageView>('/api/data').then(
+      (v) => {
+        setView(v)
+        setFolder(v.copyTo ?? '')
+      },
+      () => setView(null),
+    )
+  }, [])
+  useEffect(() => {
+    load()
+  }, [load])
+  // after a restore, a bring-in or a removal the core goes and comes back: wait for it, then reload
+  useEffect(() => {
+    if (!restarting) return
+    const t = setInterval(() => {
+      fetch('/api/health').then(
+        (r) => {
+          if (r.ok) window.location.reload()
+        },
+        () => undefined,
+      )
+    }, 2000)
+    return () => clearInterval(t)
+  }, [restarting])
+  const act = async (
+    fn: () => Promise<{ restarting?: boolean; file?: string; copyTo?: string | null }>,
+    words?: string,
+  ) => {
+    setBusy(true)
+    setProblem(null)
+    setSaid(null)
+    try {
+      const out = await fn()
+      if (out.restarting) {
+        setRestarting(true)
+        setSaid(
+          'Alpha is restarting; this page comes back when it does. If it does not within a minute, start Alpha again.',
+        )
+      } else {
+        setSaid(out.file ? `Your data is in ${out.file}.` : (words ?? null))
+        load()
+      }
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That did not go through.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (!view)
+    return (
+      <Section title="Data" about="Your world, its backups, and where it goes.">
+        <p className="text-ink-2 text-md">{problem ?? 'Loading…'}</p>
+      </Section>
+    )
+  return (
+    <Section
+      title="Data"
+      about="Your world, its backups, and where it goes. Everything here is yours to take or remove."
+    >
+      <p className="text-ink-2 text-md">
+        The world holds {view.world.rows.toLocaleString()} rows and{' '}
+        {view.world.lines.toLocaleString()} lines of Activity ({mb(view.world.size)}, shape version{' '}
+        {view.world.version}); {view.files.count.toLocaleString()} files ({mb(view.files.size)});
+        the modules {mb(view.modules.size)}.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          disabled={busy || restarting}
+          onClick={() => act(() => api.post('/api/data/backup'), 'Backed up now.')}
+        >
+          Back up now
+        </Button>
+        <Button
+          size="sm"
+          disabled={busy || restarting}
+          onClick={() => act(() => api.post('/api/data/export'))}
+        >
+          Take my data
+        </Button>
+      </div>
+      {view.backups.length > 0 && (
+        <List>
+          {view.backups.map((b) => (
+            <Row
+              key={b.name}
+              title={`${when(b.at)} · ${mb(b.size)}`}
+              sub={
+                b.kind === 'daily'
+                  ? 'The day’s backup'
+                  : b.kind === 'now'
+                    ? 'Taken on asking'
+                    : b.kind === 'before'
+                      ? 'Taken before going back'
+                      : 'Taken before a shape change'
+              }
+              actions={
+                goingBack === b.name ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-md text-warn">
+                      Alpha backs up now first, then restarts on this one.
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="warn"
+                      disabled={busy || restarting}
+                      onClick={() => {
+                        setGoingBack(null)
+                        void act(() => api.post('/api/data/restore', { name: b.name }))
+                      }}
+                    >
+                      Yes, go back to this
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setGoingBack(null)}>
+                      Keep as is
+                    </Button>
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy || restarting}
+                    onClick={() => setGoingBack(b.name)}
+                  >
+                    Go back to this
+                  </Button>
+                )
+              }
+            />
+          ))}
+        </List>
+      )}
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void act(
+            () => api.post('/api/data/copy', { folder: folder.trim() }),
+            folder.trim()
+              ? `A copy of the newest backup goes to ${folder.trim()} each day.`
+              : 'No copy goes anywhere now.',
+          )
+        }}
+      >
+        <Field
+          className="flex-1"
+          value={folder}
+          placeholder="Keep a copy of the newest backup in a folder, like /Users/you/Library/Mobile Documents/com~apple~CloudDocs/Alpha"
+          onChange={(e) => setFolder(e.target.value)}
+        />
+        <Button type="submit" size="sm" disabled={busy || restarting}>
+          {folder.trim() ? 'Keep a copy there' : 'Keep no copy'}
+        </Button>
+      </form>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!bringing) setBringing(true)
+          else {
+            setBringing(false)
+            void act(() => api.post('/api/data/import', { archive: archive.trim() }))
+          }
+        }}
+      >
+        <Field
+          className="flex-1"
+          value={archive}
+          placeholder="Bring data in from an archive, like /Users/you/Desktop/alpha-data-2026-10-23.tar.gz (a fresh install only)"
+          onChange={(e) => setArchive(e.target.value)}
+        />
+        <Button
+          type="submit"
+          size="sm"
+          variant={bringing ? 'warn' : 'default'}
+          disabled={busy || restarting || !archive.trim()}
+        >
+          {bringing ? 'Yes, bring it in and restart' : 'Bring data in'}
+        </Button>
+        {bringing && (
+          <Button size="sm" variant="ghost" onClick={() => setBringing(false)}>
+            Not now
+          </Button>
+        )}
+      </form>
+      {said && <div className="text-ink-2 text-md">{said}</div>}
+      {problem && <div className="text-bad text-md">{problem}</div>}
+      {!removing ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy || restarting}
+          onClick={() => setRemoving(true)}
+        >
+          Remove my data
+        </Button>
+      ) : (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void act(() => api.post('/api/data/remove', { name: typed }))
+          }}
+        >
+          <p className="text-md text-warn">
+            This removes every world, file, module, backup and sign-in Alpha keeps for you, to the
+            Trash, and takes Alpha back to its first open. Type your name as Alpha knows it to go
+            on.
+          </p>
+          <div className="flex gap-2">
+            <Field
+              className="flex-1"
+              value={typed}
+              placeholder="Your name"
+              onChange={(e) => setTyped(e.target.value)}
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="warn"
+              disabled={busy || restarting || !typed.trim()}
+            >
+              Remove everything
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setRemoving(false)}>
+              Keep it
+            </Button>
+          </div>
+        </form>
       )}
     </Section>
   )
@@ -628,6 +884,7 @@ function ConnectorTile({
   const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [removing, setRemoving] = useState(false)
   useEffect(() => setOpen(startOpen), [startOpen])
 
   const submit = async (e: FormEvent) => {
@@ -675,22 +932,32 @@ function ConnectorTile({
             {connections.length ? 'Add another' : 'Connect'}
           </Button>
         )}
-        {!open && added && connections.length === 0 && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={async () => {
-              if (!window.confirm(`Remove the connector ${c.title}? Its folder goes with it.`))
-                return
-              setBusy(true)
-              await api.delete(`/api/connectors/${c.name}`).catch(() => undefined)
-              setBusy(false)
-              onChange()
-            }}
-          >
+        {!open && added && connections.length === 0 && !removing && (
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => setRemoving(true)}>
             Remove
           </Button>
+        )}
+        {removing && (
+          <span className="flex items-center gap-1.5">
+            <span className="text-md text-warn">Its folder goes with it.</span>
+            <Button
+              size="sm"
+              variant="warn"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true)
+                await api.delete(`/api/connectors/${c.name}`).catch(() => undefined)
+                setBusy(false)
+                setRemoving(false)
+                onChange()
+              }}
+            >
+              Yes, remove it
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setRemoving(false)}>
+              Keep it
+            </Button>
+          </span>
         )}
       </div>
       {open && (

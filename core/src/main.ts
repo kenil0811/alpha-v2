@@ -1,4 +1,5 @@
 // The core: one process, listening on loopback (design §2, §3).
+import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
@@ -7,6 +8,7 @@ import { buildServer } from './api/server.ts'
 import { config } from './config.ts'
 import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
+import { copyNewestBackup, takeRestartNote } from './data.ts'
 import { ClaudeApiProvider } from './engine/claudeapi.ts'
 import { ClaudeCodeProvider } from './engine/claudecode.ts'
 import { Engine } from './engine/engine.ts'
@@ -63,6 +65,34 @@ process.on('exit', () => {
   } catch {}
 })
 
+// The core started again: under the login item (install.sh says so in its plist) an
+// unsuccessful exit brings it back; started by hand, it starts itself again, the lock handed
+// over first. After a restore, a removal, or a failure nothing caught.
+function restartSelf(): void {
+  if (process.env.ALPHA_LOGIN_ITEM === '1') process.exit(3)
+  rmSync(lock, { force: true })
+  spawn(process.execPath, process.argv.slice(1), {
+    detached: true,
+    stdio: 'inherit',
+    env: process.env,
+    cwd: process.cwd(),
+  }).unref()
+  process.exit(0)
+}
+
+// A failure nothing caught (a pipe closed under a write, a library's own error) is said in the
+// log with its stack and the core comes back, rather than staying down until someone looks.
+let restarting = false
+const lastResort = (what: string) => (err: unknown) => {
+  if (restarting) return
+  restarting = true
+  const words = err instanceof Error ? (err.stack ?? err.message) : String(err)
+  console.error(`The core stopped on ${what} nothing caught: ${words}\nStarting again.`)
+  setTimeout(restartSelf, 200)
+}
+process.on('uncaughtException', lastResort('an error'))
+process.on('unhandledRejection', lastResort('a rejected promise'))
+
 // The per-install token: the shell passes it to the window; until the shell exists, the address
 // printed below carries it.
 const tokenFile = join(home, 'token')
@@ -79,6 +109,10 @@ const windowPort = port + 1
 const tenant = tenantDir(home, install.tenant)
 const world = await World.open(tenant)
 const user = world.owner(install.owner ?? platform.personName())
+// what the last start was told to say (a backup put back, data brought in)
+const note = takeRestartNote(tenant)
+if (note)
+  world.line({ actor: { kind: 'person', id: user.id }, kind: 'data', words: note, user: user.id })
 // what was learned at first start goes back in the file, so the next start finds it there
 if (!install.tenant || !install.owner)
   writeInstall(home, { tenant: basename(tenant), owner: user.name })
@@ -209,6 +243,12 @@ const scheduler = new Scheduler(world, [
     run: async () => {
       const made = await backupDaily(world.db, world.paths.backups)
       if (made) console.log(`Backed up the world: ${made}`)
+      // and a copy of the newest to the person's folder, where they named one
+      const copyTo = readInstall(home).backupsCopy
+      if (copyTo) {
+        const copied = copyNewestBackup(world.paths.backups, copyTo)
+        if (copied) console.log(`Copied the newest backup to ${copied}`)
+      }
     },
   },
 ])
@@ -241,6 +281,26 @@ const app = buildServer({
   browsers: join(home, 'browsers'),
   connectorsDir,
   platform,
+  data: {
+    home,
+    install: () => readInstall(home),
+    setCopy: (folder) => writeInstall(home, { backupsCopy: folder }),
+    secrets,
+    // the world closed, the change applied, the process gone: the login item starts it again
+    // (an unsuccessful exit, as its plist asks); a development run is started again by hand
+    restart: async (words, apply) => {
+      console.log(`${words} Restarting.`)
+      scheduler.stop()
+      engine.rerouted()
+      world.close()
+      try {
+        await apply()
+      } catch (err) {
+        console.error(`That did not go through: ${err instanceof Error ? err.message : err}`)
+      }
+      setTimeout(restartSelf, 300)
+    },
+  },
   failedConnectors: [...standard.failed, ...added.failed],
   ...(served ? { windowDir } : {}),
 })

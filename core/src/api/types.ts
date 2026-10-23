@@ -428,6 +428,23 @@ export interface SavedView {
   madeBy: 'person' | 'alpha' | 'kit'
 }
 
+// The person's own data (Settings › Data): what the world holds and weighs, and its backups.
+export interface BackupView {
+  name: string
+  at: string // when it was taken
+  size: number // bytes
+  kind: 'daily' | 'now' | 'before' | 'migration'
+}
+
+export interface DataPageView {
+  world: { size: number; rows: number; lines: number; version: number }
+  files: { size: number; count: number }
+  modules: { size: number }
+  backups: BackupView[] // newest first
+  copyTo: string | null // the folder a copy of the newest backup goes to each day
+  exportsTo: string // where Take my data puts the archive
+}
+
 // A connector as it describes itself (its manifest): the window draws every one the same way.
 export interface ConnectorView {
   name: string

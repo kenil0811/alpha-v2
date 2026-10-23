@@ -22,4 +22,6 @@ export interface Platform {
   personName(): string
   // The region phone numbers are read in (SG), else none.
   region(): string | null
+  // A file or folder of the person's discarded on their word: the Mac's Trash where there is one.
+  discard(path: string): void
 }

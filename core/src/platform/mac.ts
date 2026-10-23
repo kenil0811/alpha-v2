@@ -1,9 +1,9 @@
 // The Mac: the Keychain through Alpha's helper app, macOS's own notifications, caffeinate,
 // System Settings, the user's full name and the region.
 import { type ChildProcess, execFile, execFileSync, spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { userInfo } from 'node:os'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, renameSync } from 'node:fs'
+import { homedir, userInfo } from 'node:os'
+import { basename, join } from 'node:path'
 import { MacKeychain, NoSecrets } from '@alpha/connector-sdk'
 import type { Platform } from './platform.ts'
 
@@ -78,6 +78,14 @@ export class MacPlatform implements Platform {
       // the account name below
     }
     return userInfo().username
+  }
+
+  // To the Trash, under a name that says what and when, so nothing is gone for good by Alpha.
+  discard(path: string): void {
+    const trash = join(homedir(), '.Trash')
+    mkdirSync(trash, { recursive: true })
+    const when = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '.')
+    renameSync(path, join(trash, `Alpha ${basename(path)} ${when}`))
   }
 
   // The Mac's region (en_SG → SG), else none.

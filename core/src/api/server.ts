@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Cell, renderPage, sheetBytes } from '@alpha/connector-files'
-import { type Connector, chromePath } from '@alpha/connector-sdk'
+import { type Connector, chromePath, type SecretStore } from '@alpha/connector-sdk'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify'
@@ -18,6 +18,17 @@ import {
   removeFolder,
   unpack,
 } from '../connectors/discover.ts'
+import {
+  applyBring,
+  backupNow,
+  copyNewestBackup,
+  dataView,
+  markRestart,
+  prepareBring,
+  removeData,
+  restoreWorld,
+  takeData,
+} from '../data.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
 import type { Capabilities } from '../engine/provider.ts'
 import {
@@ -28,6 +39,7 @@ import {
   type ShapeAction,
 } from '../engine/tools.ts'
 import { stillBeingRead } from '../files/documents.ts'
+import type { Install } from '../install.ts'
 import {
   type Agent,
   agents,
@@ -62,6 +74,7 @@ import type {
   AboutRows,
   CardView,
   ConnectorsView,
+  DataPageView,
   FileView,
   FoundRow,
   Health,
@@ -129,6 +142,15 @@ export interface ServerOptions {
   kits?: { now: string | null } // what the core is still setting up after it started listening
   connectorsDir?: string // Alpha's own connectors/: the added set, and the available packs
   platform?: Platform // the computer's own pieces; the plain one when not given
+  // the person's own data (Settings › Data): where it is, and how the core restarts after a
+  // restore, a bring-in or a removal (the world closed, the change applied, the process gone)
+  data?: {
+    home: string
+    install: () => Install
+    setCopy: (folder: string | null) => void
+    secrets: SecretStore
+    restart: (words: string, apply: () => Promise<void>) => Promise<void>
+  }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
 }
 
@@ -2077,6 +2099,75 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     options.setup?.setKeepAwake(on)
     return { ok: true }
   })
+  // The person's own data, from within Alpha (decision 12): what it holds, a backup now, going
+  // back, taking it, bringing it in, a copy in a folder, removing it all on their word.
+  const data = () => {
+    if (!options.data) throw new Refused('The data page is not set up in this core.')
+    return options.data
+  }
+  app.get('/api/data', async (): Promise<DataPageView> => dataView(world, data().install()))
+  app.post('/api/data/backup', async () => backupNow(world, { user: user.id }))
+  app.post('/api/data/restore', async (req) => {
+    const { name } = z.object({ name: z.string().regex(/^world-[\w.-]+\.sqlite$/) }).parse(req.body)
+    const file = join(world.paths.backups, name)
+    if (!existsSync(file)) throw new Refused('That backup is not there.')
+    const d = data()
+    await backupNow(world, { user: user.id }, 'before')
+    const paths = world.paths
+    void d.restart(`Went back to the backup ${name}.`, async () => {
+      await restoreWorld(paths, file)
+      markRestart(
+        paths,
+        `Went back to the backup ${name}; the backup taken just before is in the list.`,
+      )
+    })
+    return { restarting: true }
+  })
+  app.post('/api/data/export', async () => ({ file: await takeData(world, data().home) }))
+  app.post('/api/data/import', async (req) => {
+    const { archive } = z.object({ archive: z.string().trim().min(1) }).parse(req.body)
+    const d = data()
+    const staged = prepareBring(world, archive)
+    const paths = world.paths
+    void d.restart(`Brought the data in from ${archive}.`, async () => {
+      await applyBring(paths, d.home, staged)
+      markRestart(paths, `Brought the data in from ${archive}.`)
+    })
+    return { restarting: true }
+  })
+  app.post('/api/data/copy', async (req) => {
+    const { folder } = z.object({ folder: z.string().trim() }).parse(req.body)
+    if (folder && !existsSync(folder)) throw new Refused('That folder is not there.')
+    data().setCopy(folder || null)
+    if (folder) copyNewestBackup(world.paths.backups, folder)
+    world.line({
+      actor: person,
+      kind: 'data',
+      words: folder
+        ? `A copy of the newest backup goes to ${folder} each day.`
+        : 'No copy of the backups goes anywhere now.',
+      user: user.id,
+    })
+    return { copyTo: folder || null }
+  })
+  app.post('/api/data/remove', async (req) => {
+    const { name } = z.object({ name: z.string() }).parse(req.body)
+    if (name.trim() !== user.name.trim())
+      throw new Refused(`Type ${user.name} to remove everything; nothing was removed.`)
+    const d = data()
+    const refs = world.connections.list().flatMap((k) => (k.secretRef ? [k.secretRef] : []))
+    void d.restart('Removed all of the person’s data on their word.', async () => {
+      const gone = await removeData(
+        d.home,
+        refs,
+        d.secrets,
+        options.platform ?? new PlainPlatform(),
+      )
+      console.log(`Removed the person's data on their word: ${gone.join(', ')}.`)
+    })
+    return { restarting: true }
+  })
+
   // The route, the person's choice: their own subscription, or an API key kept in the Keychain.
   app.post('/api/model', async (req): Promise<ModelView> => {
     const { route, key } = z

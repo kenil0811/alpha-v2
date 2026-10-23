@@ -151,6 +151,7 @@ cat > "$PLIST" <<PLIST
   <key>EnvironmentVariables</key>
   <dict>
     <key>ALPHA_HOME</key><string>$DATA</string>
+    <key>ALPHA_LOGIN_ITEM</key><string>1</string>
     <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>RunAtLoad</key><true/>

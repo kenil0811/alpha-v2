@@ -1,6 +1,7 @@
 // The plain platform: a computer the core knows nothing special about. It runs the core for the
 // tests and the journeys runner, and says in words where the Mac does something it cannot. It
 // is not a server port: that comes with the server shape (design §15).
+import { rmSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { NoSecrets, type SecretStore } from '@alpha/connector-sdk'
 import { Refused } from '../world/kinds.ts'
@@ -36,5 +37,9 @@ export class PlainPlatform implements Platform {
 
   region(): string | null {
     return null
+  }
+
+  discard(path: string): void {
+    rmSync(path, { recursive: true, force: true })
   }
 }

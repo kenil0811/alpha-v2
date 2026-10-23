@@ -21,6 +21,7 @@ export interface Install {
   logs: string | null // where core.log goes; none: the console only
   keepAwake: boolean // the Mac kept from sleeping while plugged in
   prepareReaders: boolean // the readers' downloads started at start
+  backupsCopy: string | null // a folder of the person's where a copy of the newest backup goes each day
 }
 
 const Shape = z
@@ -34,6 +35,7 @@ const Shape = z
     logs: z.string().nullable(),
     keep_awake: z.boolean(),
     prepare_readers: z.boolean(),
+    backups_copy: z.string().nullable(),
   })
   .partial()
 
@@ -47,6 +49,7 @@ const DEFAULTS: Install = {
   logs: null,
   keepAwake: false,
   prepareReaders: false,
+  backupsCopy: null,
 }
 
 function fromFile(home: string): Partial<Install> {
@@ -65,6 +68,7 @@ function fromFile(home: string): Partial<Install> {
     ...(f.logs !== undefined ? { logs: f.logs } : {}),
     ...(f.keep_awake !== undefined ? { keepAwake: f.keep_awake } : {}),
     ...(f.prepare_readers !== undefined ? { prepareReaders: f.prepare_readers } : {}),
+    ...(f.backups_copy !== undefined ? { backupsCopy: f.backups_copy } : {}),
   }
 }
 
@@ -108,6 +112,7 @@ export function writeInstall(home: string, patch: Partial<Install>): void {
   put('logs', patch.logs)
   put('keep_awake', patch.keepAwake)
   put('prepare_readers', patch.prepareReaders)
+  put('backups_copy', patch.backupsCopy)
   mkdirSync(home, { recursive: true })
   writeFileSync(
     file,

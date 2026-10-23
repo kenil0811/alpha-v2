@@ -12,7 +12,7 @@ import type { World } from '../world/world.ts'
 
 export type RouteName = 'subscription' | 'key' | 'api'
 
-const KEY_REF = 'anthropic:api-key'
+export const KEY_REF = 'anthropic:api-key'
 
 export class ModelRoute {
   private world: World

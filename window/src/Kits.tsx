@@ -215,6 +215,7 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
 function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: () => void }) {
   const [yours, setYours] = useState<YoursView | null>(null)
   const [busy, setBusy] = useState(false)
+  const [asking, setAsking] = useState<string | null>(null)
   const load = useCallback(() => {
     api.get<YoursView>(`/api/kits/${m.id}/yours`).then(setYours, () => setYours(null))
   }, [m.id])
@@ -278,26 +279,41 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
           title={`${f.name} in ${f.table}: the kit no longer uses it`}
           sub={`${f.rows} row${f.rows === 1 ? '' : 's'} still hold a value under it`}
           actions={
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={busy}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Remove ${f.name} from ${f.table} with its ${f.rows} value${f.rows === 1 ? '' : 's'}? This cannot be undone.`,
-                  )
-                )
-                  act(() =>
-                    api.post(`/api/kits/${m.id}/fields/remove`, {
-                      table: f.table,
-                      field: f.fieldId,
-                    }),
-                  )
-              }}
-            >
-              Remove its rows
-            </Button>
+            asking === f.fieldId ? (
+              <span className="flex items-center gap-1.5">
+                <span className="text-md text-warn">
+                  Its {f.rows} value{f.rows === 1 ? '' : 's'} go for good.
+                </span>
+                <Button
+                  size="sm"
+                  variant="warn"
+                  disabled={busy}
+                  onClick={() => {
+                    setAsking(null)
+                    act(() =>
+                      api.post(`/api/kits/${m.id}/fields/remove`, {
+                        table: f.table,
+                        field: f.fieldId,
+                      }),
+                    )
+                  }}
+                >
+                  Yes, remove them
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setAsking(null)}>
+                  Keep them
+                </Button>
+              </span>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => setAsking(f.fieldId)}
+              >
+                Remove its rows
+              </Button>
+            )
           }
         />
       ))}
