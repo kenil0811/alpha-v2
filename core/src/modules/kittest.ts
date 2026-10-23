@@ -18,7 +18,7 @@ import type { Table } from '../world/shape.ts'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { install } from './kits.ts'
-import { AgentRunner } from './runs.ts'
+import { AgentRunner } from './runs/index.ts'
 
 const Case = z.object({
   agent: z.string().optional(),

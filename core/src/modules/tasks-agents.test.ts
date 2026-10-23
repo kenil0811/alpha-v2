@@ -9,7 +9,7 @@ import type { Module } from '../world/shape.ts'
 import { World } from '../world/world.ts'
 import { agents, syncAgents } from './agents.ts'
 import { install } from './kits.ts'
-import { AgentRunner } from './runs.ts'
+import { AgentRunner } from './runs/index.ts'
 
 let home: string
 let world: World

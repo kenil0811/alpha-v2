@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { World } from '../world/world.ts'
 import { install } from './kits.ts'
-import { AgentRunner } from './runs.ts'
+import { AgentRunner } from './runs/index.ts'
 
 let home: string
 let world: World

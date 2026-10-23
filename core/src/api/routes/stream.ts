@@ -1,0 +1,105 @@
+import { z } from 'zod'
+import { agents } from '../../modules/agents.ts'
+import type { Ctx } from '../ctx.ts'
+import type { Stream, StreamLine } from '../types.ts'
+
+// What the stream shows: the person's sentences, Alpha's replies, the steps and what they made.
+const STREAM_KINDS = [
+  'said',
+  'replied',
+  'error',
+  'limit',
+  'noticed',
+  'card_opened',
+  'card_closed',
+  'card_used',
+  'call',
+  'called',
+  'made',
+  'shaped',
+  'wrote',
+  'changed',
+  'removed',
+  'filed',
+  'remembered',
+  'kept',
+  'told',
+  'reminder',
+]
+
+export function registerStream(ctx: Ctx): void {
+  const { app, world, engine, user, options } = ctx
+  const { cardOut, moduleOf, aboutRows, shown } = ctx.views
+
+  app.get('/api/stream', async (req): Promise<Stream> => {
+    const q = z
+      .object({
+        after: z.coerce.number().optional(),
+        before: z.coerce.number().optional(),
+        limit: z.coerce.number().optional(),
+      })
+      .parse(req.query)
+    const lines = world
+      .lines({
+        user: user.id,
+        kinds: STREAM_KINDS,
+        ...(q.after !== undefined ? { after: q.after } : {}),
+        ...(q.before !== undefined ? { before: q.before } : {}),
+        limit: q.limit ?? 400,
+      })
+      .map(
+        (l): StreamLine => ({
+          id: l.id,
+          at: l.at,
+          actor: l.actor.kind,
+          kind: l.kind,
+          words: l.words,
+          turn: l.turn,
+          card: l.card,
+          module: moduleOf(l.module),
+          data:
+            l.kind === 'told'
+              ? { about: aboutRows(l.data.about), agent: l.data.agent ?? null }
+              : shown(l.kind, l.data),
+        }),
+      )
+    return {
+      lines,
+      cards: world.cards.waiting(user.id).map(cardOut),
+      busy: engine.busy(user),
+      running: (engine.hands?.runner.runs(50) ?? [])
+        .filter((r) => r.state === 'running')
+        .map((r) => ({
+          id: r.id,
+          name: (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try',
+          module: r.module,
+        })),
+      attention: world.connections
+        .list()
+        .filter((k) => k.state === 'needs_sign_in')
+        .map((k) => ({
+          connector: k.connector,
+          title: engine.connectors?.find(k.connector)?.manifest.title ?? k.connector,
+          connection: k.id,
+          inBrowser: engine.connectors?.find(k.connector)?.manifest.auth === 'browser',
+        })),
+      tasks: world.tasks.counts(),
+      reading: engine.connectors?.reading() ?? [],
+      settingUp: options.kits?.now ?? null,
+      lastId: world.lastLineId(),
+    }
+  })
+
+  app.post('/api/say', async (req) => {
+    const { words, from } = z
+      .object({ words: z.string().trim().min(1), from: z.string().optional() })
+      .parse(req.body)
+    const m = from ? world.shape.module(from) : undefined
+    return { turn: engine.say(user, words, m ? { id: m.id, name: m.name } : null) }
+  })
+
+  app.post('/api/stop', async () => {
+    await engine.stop(user)
+    return { ok: true }
+  })
+}

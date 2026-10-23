@@ -4,10 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { run as exec } from '../world/db.ts'
 import { World } from '../world/world.ts'
-import { agents, setAgentState, syncAgents } from './agents.ts'
+import { type Agent, agents, setAgentState, syncAgents } from './agents.ts'
 import { install } from './kits.ts'
-import { AgentRunner } from './runs.ts'
+import { AgentRunner } from './runs/index.ts'
 
 let home: string
 let world: World
@@ -40,6 +41,39 @@ afterEach(() => {
 })
 
 describe('a run', () => {
+  it('ends the runs a stopped core left running, and Stop ends one nothing runs any more', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const agent = agents(world, m.id)[0] as Agent
+    // two rows a crashed core left behind, as its table would hold them
+    for (const id of ['n_left1', 'n_left2'])
+      exec(
+        world.db,
+        "INSERT INTO runs (id, agent_id, module_id, started_at, state, data) VALUES (?, ?, ?, ?, 'running', '{}')",
+        id,
+        agent.id,
+        m.id,
+        '2026-10-23T07:01:00.000Z',
+      )
+    const runner = new AgentRunner(world, () => engine)
+    const left = runner.runs(10).filter((r) => r.id.startsWith('n_left'))
+    expect(left.map((r) => [r.state, r.words])).toEqual([
+      ['failed', `${agent.name} was cut short when the core stopped.`],
+      ['failed', `${agent.name} was cut short when the core stopped.`],
+    ])
+    expect(world.lines({ kinds: ['run_ended'] }).map((l) => l.words)).toHaveLength(2)
+    // a row left running by another core while this one runs: Stop ends it
+    exec(
+      world.db,
+      "INSERT INTO runs (id, agent_id, module_id, started_at, state, data) VALUES ('n_left3', ?, ?, ?, 'running', '{}')",
+      agent.id,
+      m.id,
+      '2026-10-23T07:02:00.000Z',
+    )
+    expect(runner.stop('n_left3')).toBe(true)
+    expect(runner.runs(10).find((r) => r.id === 'n_left3')?.state).toBe('stopped')
+    expect(runner.stop('n_nothing')).toBe(false)
+  })
+
   it('runs an agent’s script in its sandbox and reports its outcome', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new AgentRunner(world, () => engine)
