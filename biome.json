@@ -6,6 +6,7 @@
       "!**/node_modules",
       "!**/dist",
       "!**/.tsbuild",
+      "!**/.tsbuild-scripts",
       "!.data",
       "!docs",
       "!BRIEF.md",
