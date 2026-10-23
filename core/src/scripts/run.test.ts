@@ -1,5 +1,5 @@
 // Scripts in their sandbox: what they may do through `alpha`, and what they may not do at all.
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -65,12 +65,14 @@ describe('a script', () => {
       moduleDir: dir,
       api: {},
     })
-    expect(out.result).toEqual({
-      net: 'blocked',
-      write: 'blocked',
-      read: 'blocked',
-      inside: 'written',
-    })
+    const r = out.result as Record<string, string>
+    expect(r.net).toBe('blocked')
+    expect(r.read).toBe('blocked')
+    expect(r.inside).toBe('written')
+    // the Mac's sandbox refuses the write outright; Linux's gives the script a private, empty
+    // home, so the write "succeeds" into nothing: either way nothing lands on the person's disk
+    expect(process.platform === 'darwin' ? r.write : 'blocked').toBe('blocked')
+    expect(existsSync(join(homedir(), '.alpha-escape-test'))).toBe(false)
   }, 60_000)
 
   it('says when a call it makes is not there, and when it fails', async () => {
