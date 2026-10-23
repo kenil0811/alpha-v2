@@ -232,6 +232,12 @@ function ThisMac() {
   const [view, reload] = useSetup()
   return (
     <Section title="This Mac" about="What Alpha needs on this Mac, and whether it has it.">
+      {view && (
+        <p className="text-ink-2 text-md">
+          Alpha for {view.install.owner}, on port {view.install.port}. Its data is in{' '}
+          {view.install.home}; a report goes to {view.install.reportTo ?? 'whoever gave you Alpha'}.
+        </p>
+      )}
       {view ? (
         <SetupList view={view} onChange={reload} />
       ) : (

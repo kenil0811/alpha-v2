@@ -12,8 +12,11 @@ LOGS="$HOME/Library/Logs/Alpha"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 APP_PLIST="$HOME/Library/LaunchAgents/io.github.kenil0811.alpha.app.plist"
 BUNDLE="$(cd "$APP/../../.." && pwd)"                # …/Alpha.app
-PORT="${ALPHA_PORT:-4700}"
-export ALPHA_HOME="$DATA" ALPHA_LOG_DIR="$LOGS"
+# what the installer knows about this Alpha: alpha.yaml in the data folder
+setting() { sed -n "s/^$1: *//p" "$DATA/alpha.yaml" 2>/dev/null | head -1 | sed 's/^"\(.*\)"$/\1/'; }
+PORT="${ALPHA_PORT:-$(setting port)}"; PORT="${PORT:-4700}"
+REPORT_TO="$(setting report_to)"
+export ALPHA_HOME="$DATA"
 CLAUDE="$(find "$APP/node_modules/.pnpm" -path '*claude-agent-sdk-darwin-arm64*' -name claude -type f 2>/dev/null | head -1)"
 
 say() { printf '%s\n' "$*"; }
@@ -101,7 +104,8 @@ case "$1" in
   report)
     out="$HOME/Desktop/Alpha report $(date "+%Y-%m-%d %H.%M").txt"
     "$NODE" "$APP/core/src/cli.ts" report "$out" >/dev/null
-    say "The report is on your Desktop: $(basename "$out"). Send it to Kenil."
+    if [ -n "$REPORT_TO" ] && [ "$REPORT_TO" != null ]; then say "The report is on your Desktop: $(basename "$out"). Send it to $REPORT_TO."
+    else say "The report is on your Desktop: $(basename "$out"). Send it to whoever gave you Alpha."; fi
     ;;
   signin)
     [ -n "$CLAUDE" ] || { say "Claude Code is not in this copy of Alpha."; exit 1; }

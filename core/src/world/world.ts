@@ -544,9 +544,10 @@ export function ftsQuery(words: string): string {
 }
 
 // The tenant on this machine: single-tenant in features, a tenant id on every path.
-export function tenantDir(home: string): string {
+export function tenantDir(home: string, id: string | null = null): string {
   const tenants = join(home, 'tenants')
   mkdirSync(tenants, { recursive: true })
+  if (id) return join(tenants, id)
   const found = readdirSync(tenants, { withFileTypes: true }).find(
     (d) =>
       d.isDirectory() &&

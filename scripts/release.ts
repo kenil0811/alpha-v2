@@ -44,6 +44,12 @@ const version =
   `0.1.0-${sha(['rev-parse', '--short', 'HEAD'])}`
 
 const say = (words: string) => console.log(`· ${words}`)
+function clientReportTo(): string {
+  if (!client) return '""'
+  const bundle = readFileSync(join(process.env.INIT_CWD ?? ROOT, client, 'bundle.yaml'), 'utf8')
+  const rt = /^report_to:\s*(\S+)/m.exec(bundle)?.[1] ?? ''
+  return rt ? JSON.stringify(rt) : '""'
+}
 const run = (cmd: string, a: string[], cwd: string, env?: NodeJS.ProcessEnv) =>
   execFileSync(cmd, a, { cwd, stdio: 'inherit', ...(env ? { env } : {}) })
 const hash = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex')
@@ -124,6 +130,9 @@ for (const d of ['core', 'connector-sdk', 'connectors'])
     recursive: true,
     filter: (src) => !/\/(node_modules|build)(\/|$)/.test(src) && !src.endsWith('.test.ts'),
   })
+// what install.sh puts in the install's alpha.yaml: the address a report is for, the client's
+// bundle's say, or none in the generic release
+writeFileSync(join(app, 'release.yaml'), `report_to: ${clientReportTo()}\n`)
 mkdirSync(join(app, 'window'), { recursive: true })
 copyFileSync(join(build, 'window', 'package.json'), join(app, 'window', 'package.json'))
 cpSync(join(build, 'window', 'dist'), join(app, 'window', 'dist'), { recursive: true })
@@ -200,12 +209,20 @@ const env = {
   PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
   TMPDIR: process.env.TMPDIR ?? '/tmp',
   ALPHA_HOME: join(smoke, 'Alpha'),
-  ALPHA_PORT: String(port),
-  ALPHA_OWNER: 'Smoke',
-  ALPHA_HELPER_APP: join(app, 'helper', 'Alpha Helper.app'),
-  ALPHA_UV: join(app, 'runtime', 'uv'),
-  ALPHA_LOG_DIR: join(smoke, 'Logs'),
 }
+// the smoke test's install file, as install.sh would write it
+mkdirSync(join(smoke, 'Alpha'), { recursive: true })
+writeFileSync(
+  join(smoke, 'Alpha', 'alpha.yaml'),
+  [
+    'owner: Smoke',
+    `port: ${port}`,
+    `helper: ${JSON.stringify(join(app, 'helper', 'Alpha Helper.app'))}`,
+    `uv: ${JSON.stringify(join(app, 'runtime', 'uv'))}`,
+    `logs: ${JSON.stringify(join(smoke, 'Logs'))}`,
+    '',
+  ].join('\n'),
+)
 const core = spawn(join(app, 'runtime', 'node'), [join(app, 'core', 'src', 'main.ts')], {
   cwd: smoke,
   env,

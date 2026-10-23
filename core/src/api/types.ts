@@ -198,6 +198,8 @@ export interface SetupView {
   steps: { connector: string; title: string; sub: string; done: boolean }[]
   chrome: boolean // Google Chrome, for sites the person signs in to
   keepAwake: boolean | null // the Mac kept from sleeping while plugged in; none where it can't be
+  // what alpha.yaml says of this install: shown under This Mac
+  install: { owner: string; port: number; home: string; reportTo: string | null }
   readers: {
     browser: 'ready' | 'preparing' | 'not yet' | 'failed' // the reading browser
     documents: 'ready' | 'preparing' | 'not yet' | 'failed' // the document reader

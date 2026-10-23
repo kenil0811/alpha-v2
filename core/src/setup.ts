@@ -11,7 +11,7 @@ import { doclingEnv } from '@alpha/connector-files'
 import { chromePath, ensureBrowser } from '@alpha/connector-sdk'
 import type { ConnectorService } from './connectors/service.ts'
 import type { ModelRoute } from './engine/route.ts'
-import { one, run } from './world/db.ts'
+import { type Install, readInstall, writeInstall } from './install.ts'
 import type { World } from './world/world.ts'
 
 export type Readiness = 'ready' | 'preparing' | 'not yet' | 'failed'
@@ -24,6 +24,8 @@ export interface SetupView {
   chrome: boolean
   keepAwake: boolean | null
   readers: { browser: Readiness; documents: Readiness; problem: string | null }
+  // what alpha.yaml says of this install
+  install: { owner: string; port: number; home: string; reportTo: string | null }
 }
 
 // Claude Code as the Agent SDK carries it for this Mac.
@@ -45,6 +47,7 @@ export class Setup {
   private world: World
   private route: ModelRoute | null
   private connectors: ConnectorService | null
+  private install: Install
   private browser: Readiness
   private documents: Readiness
   private problem: string | null = null
@@ -55,11 +58,13 @@ export class Setup {
     world: World,
     route: ModelRoute | null,
     connectors: ConnectorService | null = null,
+    install: Install = readInstall(home),
   ) {
     this.home = home
     this.world = world
     this.route = route
     this.connectors = connectors
+    this.install = install
     this.browser = existsSync(join(home, 'browsers', '.chromium-headless-shell-ready'))
       ? 'ready'
       : 'not yet'
@@ -94,15 +99,12 @@ export class Setup {
     }
   }
 
-  // Whether Alpha keeps this Mac from sleeping while it is plugged in (on by default where the
-  // installed app asks it to): macOS's own caffeinate, for as long as the core runs. The screen
-  // still turns off; on battery or with the lid closed the Mac sleeps, and catches up on waking.
+  // Whether Alpha keeps this Mac from sleeping while it is plugged in (the installed app asks
+  // for it in alpha.yaml; the person turns it off in Settings › This Mac, and the core writes
+  // that back): macOS's own caffeinate, for as long as the core runs. The screen still turns
+  // off; on battery or with the lid closed the Mac sleeps, and catches up on waking.
   get keepAwake(): boolean {
-    return (
-      process.env.ALPHA_KEEP_AWAKE === '1' &&
-      one<{ value: string }>(this.world.db, "SELECT value FROM meta WHERE key = 'keep_awake'")
-        ?.value !== 'off'
-    )
+    return this.install.keepAwake
   }
 
   holdAwake(): void {
@@ -116,11 +118,8 @@ export class Setup {
   }
 
   setKeepAwake(on: boolean): void {
-    run(
-      this.world.db,
-      "INSERT INTO meta (key, value) VALUES ('keep_awake', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-      on ? 'on' : 'off',
-    )
+    this.install = { ...this.install, keepAwake: on }
+    writeInstall(this.home, { keepAwake: on })
     this.holdAwake()
   }
 
@@ -209,7 +208,14 @@ export class Setup {
           : [],
       ),
       chrome: !!chromePath(),
-      keepAwake: process.env.ALPHA_KEEP_AWAKE === '1' ? this.keepAwake : null,
+      // the switch shows where an installed app runs the core; a development run has no login item
+      keepAwake: this.install.helper ? this.keepAwake : null,
+      install: {
+        owner: this.world.owner().name,
+        port: this.install.port,
+        home: this.home,
+        reportTo: this.install.reportTo,
+      },
       readers: { browser: this.browser, documents: this.documents, problem: this.problem },
     }
   }

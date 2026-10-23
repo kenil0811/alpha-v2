@@ -7,12 +7,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { arch, release } from 'node:os'
 import { join } from 'node:path'
 import { backup, DatabaseSync } from 'node:sqlite'
+import { readInstall } from './install.ts'
 
 const home = process.env.ALPHA_HOME
 if (!home) {
   console.error('ALPHA_HOME is not set.')
   process.exit(1)
 }
+const install = readInstall(home)
 const tenants = join(home, 'tenants')
 const worlds = existsSync(tenants)
   ? readdirSync(tenants).filter((t) => existsSync(join(tenants, t, 'world.sqlite')))
@@ -40,6 +42,7 @@ if (verb === 'backup' && where) {
 } else if (verb === 'report' && where) {
   const lines: string[] = []
   const say = (s: string) => lines.push(s)
+  if (install.reportTo) say(`For ${install.reportTo}`)
   const app = join(import.meta.dirname, '..', '..')
   say(
     `Alpha ${existsSync(join(app, 'VERSION')) ? readFileSync(join(app, 'VERSION'), 'utf8').trim() : 'from a repository'}`,
@@ -89,8 +92,8 @@ if (verb === 'backup' && where) {
       say(`  error ${e.at}: ${e.words.slice(0, 200)}`)
     db.close()
   }
-  const log = join(process.env.ALPHA_LOG_DIR ?? '', 'core.log')
-  if (process.env.ALPHA_LOG_DIR && existsSync(log)) {
+  const log = join(install.logs ?? '', 'core.log')
+  if (install.logs && existsSync(log)) {
     say('\nThe log, its last 150 lines:')
     say(readFileSync(log, 'utf8').split('\n').slice(-150).join('\n'))
   }

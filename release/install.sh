@@ -115,7 +115,27 @@ for c in "$APP/Contents/Resources/connectors"/*.alphaconnector "$here"/connector
 done
 printf '%s\n' "$new" > "$DATA/version"
 
-# Alpha's core starts at login, with its own Node, helper and uv, and only macOS's own PATH.
+# What the installer knows about this Alpha, in alpha.yaml: where its helper, uv and log live,
+# and that the installed app keeps the Mac awake and readies the readers; the address a report
+# is for comes with the release. Lines the person or the core wrote (owner, tenant, keep_awake)
+# stay as they are.
+CONF="$DATA/alpha.yaml"
+[ -f "$CONF" ] || printf '# What the installer knows about this Alpha; the environment overrides it for a development run.\n' > "$CONF"
+setline() {
+  if grep -q "^$1:" "$CONF"; then sed -i '' "s|^$1:.*|$1: $2|" "$CONF"; else printf '%s: %s\n' "$1" "$2" >> "$CONF"; fi
+}
+setline helper "\"$PAY/helper/Alpha Helper.app\""
+setline uv "\"$PAY/runtime/uv\""
+setline logs "\"$LOGS\""
+setline prepare_readers true
+grep -q "^keep_awake:" "$CONF" || setline keep_awake true
+if [ -f "$PAY/release.yaml" ]; then
+  rt="$(sed -n 's/^report_to: *//p' "$PAY/release.yaml" | head -1)"
+  [ -n "$rt" ] && setline report_to "$rt"
+fi
+
+# Alpha's core starts at login, with its own Node and only macOS's own PATH; the rest is in
+# alpha.yaml.
 cat > "$PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -131,11 +151,6 @@ cat > "$PLIST" <<PLIST
   <key>EnvironmentVariables</key>
   <dict>
     <key>ALPHA_HOME</key><string>$DATA</string>
-    <key>ALPHA_LOG_DIR</key><string>$LOGS</string>
-    <key>ALPHA_HELPER_APP</key><string>$PAY/helper/Alpha Helper.app</string>
-    <key>ALPHA_UV</key><string>$PAY/runtime/uv</string>
-    <key>ALPHA_PREPARE_READERS</key><string>1</string>
-    <key>ALPHA_KEEP_AWAKE</key><string>1</string>
     <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>RunAtLoad</key><true/>
