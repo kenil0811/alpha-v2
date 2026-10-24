@@ -107,7 +107,9 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
           <>
             <span>
               {m.kit
-                ? `From the kit ${m.kit.name} ${m.kit.version} (API ${m.kit.api})${m.kit.maintainer ? `, maintained by ${m.kit.maintainer.name}` : ''}${m.kit.changes ? ` · ${m.kit.changes} change${m.kit.changes === 1 ? '' : 's'} of yours the maintainer has not seen` : ''}`
+                ? m.kit.core
+                  ? `Alpha's own, ${m.kit.version}: kept up to date by Alpha; its agents can be paused`
+                  : `From the kit ${m.kit.name} ${m.kit.version} (API ${m.kit.api})${m.kit.maintainer ? `, maintained by ${m.kit.maintainer.name}` : ''}${m.kit.changes ? ` · ${m.kit.changes} change${m.kit.changes === 1 ? '' : 's'} of yours the maintainer has not seen` : ''}`
                 : 'Made in a conversation'}
               {m.agents.length > 0 &&
                 ` · ${m.agents.length === 1 ? 'one agent' : `${m.agents.length} agents`}, ${

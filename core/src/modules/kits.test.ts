@@ -47,7 +47,15 @@ describe('installing a kit', () => {
       ['Counter', 'paused', { every: 'day', at: '07:00' }],
     ])
     expect(installedKits(world)).toEqual([
-      { module: m.id, kit: 'Bakery', version: '0.1.0', source: KIT, api: 1, maintainer: null },
+      {
+        module: m.id,
+        kit: 'Bakery',
+        version: '0.1.0',
+        source: KIT,
+        api: 1,
+        maintainer: null,
+        core: false,
+      },
     ])
     expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('example.com')
     expect((await history(m.dir)).map((c) => c.message)).toEqual(['Installed Bakery 0.1.0'])

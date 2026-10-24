@@ -1,0 +1,12 @@
+# Alpha's own kit (decision 13, 24 Oct): the agents that speak for Alpha, installed and kept up to
+# date by the core; never uninstalled, each can be paused. Morning is all of Alpha's
+# proactiveness; Watson notices what the person said.
+name: Alpha
+api: 1
+version: 0.1.0
+core: true
+description: >
+  Alpha's own agents. Morning, at 07:30: what is due, what changed overnight, what comes, and one
+  or two suggestions on a card.
+tables: []
+network: []

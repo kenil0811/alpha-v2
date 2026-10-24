@@ -453,11 +453,13 @@ every card is decided, handed what came of them. Only runs serving a task show o
 runs on its own trigger stay in Activity. Tasks an agent proposes come on one card, each ticked, and
 none is kept before the yes.
 
-**Built-ins, quiet:** **Watson** notices after turns, consolidates while the Mac is idle, and
-shows a folded line under a reply. **Doc** repairs skills and readers. **Morning** is all of
-Alpha's proactiveness: at first open, what is due, what changed, what went quiet, and one or two
-suggestions with Take and Not now, as a card on Home and a line in the companion. No other
-characters.
+**Built-ins, quiet** (decision 13, 24 Oct: agents of Alpha's own kit, `core/kits/alpha`, with
+`core: true`, each at fixed times of the day, never after every turn): **Morning** is all of
+Alpha's proactiveness: at 07:30, what is due, what changed overnight, what comes, in one line on
+Home and in the companion, and one or two suggestions as tasks on one card the person takes or
+leaves (`alpha.home.today()` is what it reads). **Watson** notices what the person said, at 12:30
+and 18:30: promises as proposed tasks, decisions and facts for the person's yes. **Doc** repairs
+skills and readers (later). No other characters.
 
 **Schema v1** (decision 6, 22 Oct): an agent's front matter is `name`, `description`, a `trigger`
 or a list of them, `runs`, `tasks`, `touches` (the tables it may write: a wall), `effects` (the

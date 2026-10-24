@@ -503,6 +503,7 @@ export interface WorkingModuleView {
     source: string
     api: number
     maintainer: { name: string; address: string } | null
+    core: boolean // Alpha's own kit: kept by the core, never uninstalled
     changes: number // changes of the person's a maintained kit's maintainer has not seen
   } | null
   agents: AgentView[]

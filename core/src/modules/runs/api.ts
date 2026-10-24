@@ -3,6 +3,7 @@ import { inReadingOrder, type ReadSpec, readInto } from '../../files/reading.ts'
 import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module, Table } from '../../world/shape.ts'
+import { agents, nextRun } from '../agents.ts'
 import { type JudgeSpec, judge } from '../judging.ts'
 import type { AgentRunner } from './runner.ts'
 import { PROPOSE_TASKS, type ProposedTask, type RunFor } from './types.ts'
@@ -401,6 +402,57 @@ export function api(
         })
       runner.notify()
       return null
+    },
+    // What the person's Home shows today, for an agent that speaks for Alpha (Morning).
+    'home.today': async () => {
+      const w = runner.world
+      const now = Date.now()
+      const day = new Date(now).toISOString().slice(0, 10)
+      const open = w.tasks.list({ open: true })
+      const due = open
+        .filter((t) => t.due && t.due.slice(0, 10) <= day)
+        .map((t) => ({
+          id: t.id,
+          title: t.title,
+          due: t.due,
+          overdue: (t.due ?? '').slice(0, 10) < day,
+        }))
+      const quiet = open
+        .filter((t) => !t.due && now - Date.parse(t.updatedAt) >= 7 * 86_400_000)
+        .map((t) => ({ id: t.id, title: t.title, since: t.updatedAt.slice(0, 10) }))
+      const counts = w.tasks.counts()
+      const cards = w.cards
+        .waiting(runner.owner ?? undefined)
+        .map((c) => ({ id: c.id, words: c.words }))
+      const names = new Map(agents(w).map((a) => [a.id, a.name]))
+      const modules = new Map(w.shape.modules().map((m) => [m.id, m.name]))
+      const since = new Date(now - 86_400_000).toISOString()
+      const changed = runner
+        .runs(200)
+        .filter((r) => r.startedAt > since && r.state !== 'running' && r.words)
+        .map((r) => ({
+          name: r.agent ? (names.get(r.agent) ?? 'A try') : 'A try',
+          words: r.words ?? '',
+          state: r.state,
+          at: r.endedAt ?? r.startedAt,
+        }))
+      // the runs to come, the asking agent's own left out
+      const coming = agents(w)
+        .filter((a) => a.state === 'on' && a.id !== agentId)
+        .flatMap((a) => {
+          const next = nextRun(a.trigger, a.lastRunAt, now)
+          return next
+            ? [{ name: a.name, module: modules.get(a.module) ?? '', at: next.toISOString() }]
+            : []
+        })
+        .sort((a, b) => a.at.localeCompare(b.at))
+      return {
+        date: day,
+        tasks: { open: counts.open, overdue: counts.overdue, today: counts.today, due, quiet },
+        cards,
+        changed,
+        coming,
+      }
     },
     // Tasks the agent thinks need doing, on one card for the person's yes; none is kept before.
     'task.propose': async (p: Record<string, unknown>) => {

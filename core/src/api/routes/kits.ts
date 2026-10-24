@@ -42,6 +42,7 @@ export function registerKits(ctx: Ctx): void {
                 source: k.source,
                 api: k.api,
                 maintainer: k.maintainer,
+                core: k.core,
                 changes: k.maintainer ? unseenChanges(world, m.id) : 0,
               }
             : null,

@@ -255,6 +255,18 @@ export const CALLS: Call[] = [
     since: 1,
   },
   {
+    name: 'home.today',
+    signature: 'alpha.home.today()',
+    params: [],
+    args: z.looseObject({}),
+    answer:
+      '{ date, tasks: { open, overdue, today, due: [{ id, title, due, overdue }], quiet: [{ id, title, since }] }, cards: [{ id, words }], changed: [{ name, words, state, at }], coming: [{ name, module, at }] }',
+    words:
+      'what the person’s Home shows today: the tasks due and overdue, the open ones nobody touched for a week, the cards waiting, what the runs changed since yesterday, the runs to come',
+    effect: null,
+    since: 1,
+  },
+  {
     name: 'log',
     signature: 'alpha.log(words)',
     params: ['words'],

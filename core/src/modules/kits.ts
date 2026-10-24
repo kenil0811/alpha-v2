@@ -76,6 +76,16 @@ export interface KitInfo {
   source: string
   api: number
   maintainer: { name: string; address: string } | null
+  core: boolean // Alpha's own: installed and kept by the core, never uninstalled
+}
+
+// Whether a kit is Alpha's own, from its folder's manifest (the folder the core ships).
+function isCore(source: string): boolean {
+  try {
+    return existsSync(join(source, 'module.yaml')) && !!readKit(source).manifest.core
+  } catch {
+    return false
+  }
 }
 
 export function installedKits(world: World): KitInfo[] {
@@ -98,6 +108,7 @@ export function installedKits(world: World): KitInfo[] {
     maintainer: k.maintainer
       ? (JSON.parse(k.maintainer) as { name: string; address: string })
       : null,
+    core: isCore(k.source),
   }))
 }
 

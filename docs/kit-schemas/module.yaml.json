@@ -60,6 +60,9 @@
         "address"
       ]
     },
+    "core": {
+      "type": "boolean"
+    },
     "history": {
       "type": "object",
       "properties": {

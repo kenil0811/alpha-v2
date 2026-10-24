@@ -41,6 +41,9 @@ export const Manifest = z.object({
     .default([]),
   // whose kit it is to keep (decision 3b); none means the person's own
   maintainer: z.object({ name: z.string().min(1), address: z.string().email() }).optional(),
+  // Alpha's own kit (decision 13): installed and kept up to date by the core, never uninstalled;
+  // its agents can still be paused
+  core: z.boolean().optional(),
   // what changed between versions, so an update renames in place and leaves a removal removed
   history: z
     .object({
