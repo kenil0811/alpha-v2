@@ -51,7 +51,7 @@ describe('the walls of an agent', () => {
       'trigger: { every: day }\ntouches: [Orders]',
       "export default async (alpha) => alpha.rows.land('Suppliers', [{ key: 's', values: { Name: 'X' } }])",
     )
-    const out = await runner.runAgent(agent)
+    const out = await runner.runAgent(agent, undefined, {}, { asked: true })
     expect(out.state).toBe('failed')
     expect(out.words).toMatch(/Walled does not touch Suppliers: its file says touches: \[orders\]/)
     expect(world.lines({ kinds: ['run_step'] }).some((l) => /^Refused: /.test(l.words))).toBe(true)
@@ -66,7 +66,7 @@ describe('the walls of an agent', () => {
       'trigger: { every: day }\ntouches: [Orders]',
       "export default async (alpha) => alpha.rows.list('Secrets')",
     )
-    const out = await runner.runAgent(agent)
+    const out = await runner.runAgent(agent, undefined, {}, { asked: true })
     expect(out.words).toMatch(/may not read Secrets/)
   }, 60_000)
 
@@ -75,7 +75,7 @@ describe('the walls of an agent', () => {
       'trigger: { every: day }\ntouches: [Suppliers]\neffects: []',
       "export default async (alpha) => alpha.browser.extract('https://supplies.example/list', { list: '.item' })",
     )
-    const out = await runner.runAgent(agent)
+    const out = await runner.runAgent(agent, undefined, {}, { asked: true })
     expect(out.words).toMatch(/may not browser.extract: its file names no such effect/)
     expect(world.cards.waiting().filter((c) => c.kind === 'permission')).toHaveLength(0)
     world.close()
@@ -84,7 +84,7 @@ describe('the walls of an agent', () => {
       'trigger: { every: day }\ntouches: [Suppliers]',
       "export default async (alpha) => alpha.browser.extract('https://supplies.example/list', { list: '.item' })",
     )
-    const out2 = await older.runner.runAgent(older.agent)
+    const out2 = await older.runner.runAgent(older.agent, undefined, {}, { asked: true })
     expect(out2.words).not.toMatch(/no such effect/)
   }, 90_000)
 
@@ -93,7 +93,7 @@ describe('the walls of an agent', () => {
       'trigger: { every: day }\ntouches: [Orders]\nbudget: { minutes: 0.002 }',
       'export default async () => { await new Promise((r) => setTimeout(r, 3000)); return { words: "slept" } }',
     )
-    const out = await runner.runAgent(agent)
+    const out = await runner.runAgent(agent, undefined, {}, { asked: true })
     expect(out.state).toBe('stopped')
     expect(out.words).toMatch(/stopped at 0.002 minutes, its budget/)
   }, 60_000)
@@ -120,7 +120,7 @@ describe('the walls of an agent', () => {
       'trigger: { every: day }\ntouches: [Orders]\nneeds: { connectors: [gmail] }',
       'export default async () => ({ words: "ran" })',
     )
-    const out = await runner.runAgent(agent)
+    const out = await runner.runAgent(agent, undefined, {}, { asked: true })
     expect(out.state).toBe('failed')
     expect(out.words).toBe('Walled did not run: it needs gmail connected.')
   }, 60_000)

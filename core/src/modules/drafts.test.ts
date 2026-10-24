@@ -128,6 +128,80 @@ describe('an agent’s drafts', () => {
     expect(s.drafts.view(world.cards.get(after.card as string) as never)?.always).toBeNull()
   })
 
+  it('under Always, a new recipient waits on a card that says so; once sent to, they go at once', async () => {
+    const s = setUp()
+    for (const i of [0, 1, 2])
+      await s.drafts.send((await s.drafts.propose(s.draft(i), null)).card as string, null, s.owner)
+    await s.drafts.send(
+      (await s.drafts.propose(s.draft(3), null)).card as string,
+      null,
+      s.owner,
+      true,
+    )
+    expect(world.permissions.list()).toHaveLength(1)
+    // the same address goes at once; a new one is a card, with no Always offered on it
+    const known = await s.drafts.propose(s.draft(4), null)
+    expect(known.sent).toBe(true)
+    const fresh = await s.drafts.propose(
+      { ...s.draft(0), message: { ...s.draft(0).message, to: 'new@builders.example' } },
+      null,
+    )
+    expect(fresh.sent).toBe(false)
+    const card = world.cards.get(fresh.card as string)
+    expect(card?.words).toBe(
+      'Send the quote request for Shop fit to new@builders.example, a new recipient?',
+    )
+    expect(card?.restsOn[1]).toContain('nothing has gone to new@builders.example before')
+    expect(s.drafts.view(card as never)?.always).toBeNull()
+    await s.drafts.send(fresh.card as string, null, s.owner)
+    const again = await s.drafts.propose(
+      { ...s.draft(1), message: { ...s.draft(1).message, to: 'New@Builders.example' } },
+      null,
+    )
+    expect(again.sent).toBe(true)
+    expect(s.sent).toHaveLength(7)
+  })
+
+  it('sends a draft once, even when two Send its arrive together, and keeps the card when the send fails', async () => {
+    const s = setUp()
+    let release: () => void = () => undefined
+    let calls = 0
+    const slow = new Drafts(
+      world,
+      {
+        send: async () => {
+          calls += 1
+          await new Promise<void>((r) => {
+            release = r
+          })
+        },
+      },
+      s.owner,
+    )
+    const d = await slow.propose(s.draft(0), null)
+    const first = slow.send(d.card as string, null, s.owner)
+    await new Promise((r) => setTimeout(r, 10))
+    await expect(slow.send(d.card as string, null, s.owner)).rejects.toThrow(/being sent right now/)
+    release()
+    await first
+    expect(calls).toBe(1)
+    expect(world.cards.get(d.card as string)?.state).toBe('yes')
+    // a send that fails leaves the card waiting, for another go
+    const failing = new Drafts(
+      world,
+      {
+        send: async () => {
+          throw new Error('Gmail is away')
+        },
+      },
+      s.owner,
+    )
+    const e = await failing.propose(s.draft(1), null)
+    await expect(failing.send(e.card as string, null, s.owner)).rejects.toThrow(/Gmail is away/)
+    expect(world.cards.get(e.card as string)?.state).toBe('waiting')
+    await expect(failing.send(e.card as string, null, s.owner)).rejects.toThrow(/Gmail is away/)
+  })
+
   it('a standing permission is given only by the person, and only after the yeses that earn it', () => {
     const s = setUp()
     const covered = s.drafts.covered(s.draft(0))

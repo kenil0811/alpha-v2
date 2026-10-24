@@ -132,7 +132,8 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
       ? await (async () => {
           const a = agents(world, module.id).find((x) => x.name === c.agent)
           if (!a) throw new Refused(`The kit has no agent called ${c.agent}.`)
-          return runner.runAgent(a, undefined, c.input)
+          // a kit's test is its author asking: a paused agent runs for it
+          return runner.runAgent(a, undefined, c.input, { asked: true })
         })()
       : await runner.runScript(module, c.script as string, c.input, 'the test', null)
     const refused = world

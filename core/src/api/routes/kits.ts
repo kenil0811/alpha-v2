@@ -172,7 +172,10 @@ export function registerKits(ctx: Ctx): void {
     const runner = engine.hands?.runner
     const a = agents(world).find((x) => x.id === id)
     if (!runner || !a) throw new Refused('That agent is not there.')
-    void runner.runAgent(a, { user: user.id, turn: null }).catch(() => undefined)
+    // the person asked for it now: a paused agent runs this once
+    void runner
+      .runAgent(a, { user: user.id, turn: null }, {}, { asked: true })
+      .catch(() => undefined)
     return { ok: true }
   })
 }

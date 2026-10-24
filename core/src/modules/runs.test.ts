@@ -78,7 +78,9 @@ describe('a run', () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new AgentRunner(world, () => engine)
     const [counter] = agents(world, m.id)
-    const out = await runner.runAgent(counter as never)
+    // installed paused: it runs now only because the person asked
+    await expect(runner.runAgent(counter as never)).rejects.toThrow(/is paused/)
+    const out = await runner.runAgent(counter as never, undefined, {}, { asked: true })
     expect(out.state).toBe('ok')
     expect(out.result).toEqual({ orders: 0 })
     expect(runner.runs().map((r) => [r.state, r.words])).toEqual([['ok', 'Counter finished.']])
@@ -86,6 +88,25 @@ describe('a run', () => {
       'Counter started.',
       'Counter finished.',
     ])
+  }, 60_000)
+
+  it('runs an agent once at a time: a second run while one is going is turned away', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    writeFileSync(
+      join(m.dir, 'skills', 'count', 'run.js'),
+      'export default async () => { await new Promise((r) => setTimeout(r, 1500)); return { slow: true } }',
+    )
+    const runner = new AgentRunner(world, () => engine)
+    const [counter] = agents(world, m.id)
+    setAgentState(world, counter?.id as string, 'on', 'u_1')
+    const on = agents(world, m.id)[0] as Agent
+    const first = runner.runAgent(on)
+    await new Promise((r) => setTimeout(r, 300))
+    await expect(runner.runAgent(on, undefined, {}, { asked: true })).rejects.toThrow(
+      /busy with another run/,
+    )
+    expect((await first).state).toBe('ok')
+    expect(runner.runs().filter((r) => r.state === 'ok')).toHaveLength(1)
   }, 60_000)
 
   it('reads only sites on its module’s list; a new one waits on the person’s yes, then stays allowed', async () => {

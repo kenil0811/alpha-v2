@@ -5,7 +5,7 @@
 // then sends that kind without a card, each one a line on Home. Scripts reach no network: the
 // core sends, through the person's connection.
 import type { Card } from '../world/cards.ts'
-import { all, parse } from '../world/db.ts'
+import { all, one, parse } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Covered, Permission } from '../world/permissions.ts'
 import type { User, World } from '../world/world.ts'
@@ -66,6 +66,9 @@ export class Drafts {
   private owner: User
   // the drafter runs again once its draft is decided, to hear what became of it
   private back: (agent: string, module: string) => void
+  // the cards being sent right now: a second Send it on one of them is turned away (item 10 of
+  // the problems list, 24 Oct), and a send that fails leaves the card waiting as it was
+  private sending = new Set<string>()
 
   constructor(
     world: World,
@@ -105,8 +108,11 @@ export class Drafts {
       throw new Refused('A draft needs a subject and a body.')
     if (d.about && !this.world.records.get(d.about.row))
       throw new Refused('The row the draft is about is not there.')
+    // under a standing permission, an address the person has sent this kind to before goes at
+    // once; a new recipient is a card of its own, saying so (Kenil, 24 Oct, item 7)
     const p = this.world.permissions.covering(this.covered(d))
-    if (p) {
+    const fresh = !this.approved(d, d.message.to)
+    if (p && !fresh) {
       await this.sendNow(d, d.message, false, p, run)
       return { sent: true, card: null }
     }
@@ -126,9 +132,16 @@ export class Drafts {
     const card = this.world.cards.open({
       kind: 'permission',
       gate: 'leaves_world',
-      words: `Send the ${d.kind}${this.aboutWords(d)} to ${m.to}?`,
+      words: `Send the ${d.kind}${this.aboutWords(d)} to ${m.to}${p ? ', a new recipient' : ''}?`,
       detail: `To: ${m.to}${m.cc ? `\nCc: ${m.cc}` : ''}\nSubject: ${m.subject}\n\n${m.body}`,
-      restsOn: [`${d.agent}'s draft${d.note ? ` (${d.note})` : ''}`],
+      restsOn: [
+        `${d.agent}'s draft${d.note ? ` (${d.note})` : ''}`,
+        ...(p
+          ? [
+              `Your standing permission covers ${plural(d.kind)}, but nothing has gone to ${m.to} before.`,
+            ]
+          : []),
+      ],
       cannotUndo: 'Once it has gone, it cannot be called back.',
       options: ['Send it', 'Not now'],
       call: { tool: DRAFT, input: d },
@@ -162,7 +175,13 @@ export class Drafts {
     if (always && (changed || !this.world.permissions.offers(this.covered(d))))
       throw new Refused('Always is offered only for a draft sent as it is, after three like it.')
     const ctx = { actor: { kind: 'person' as const, id: who.id }, user: who.id }
-    await this.sender.send(d.connector, m)
+    if (this.sending.has(cardId)) throw new Refused('That draft is being sent right now.')
+    this.sending.add(cardId)
+    try {
+      await this.sender.send(d.connector, m)
+    } finally {
+      this.sending.delete(cardId)
+    }
     const card = this.world.cards.answer(cardId, 'Send it', ctx.actor)
     this.world.permissions.decided(this.covered(d), { yes: true, changed, card: cardId }, ctx)
     this.outcome(d, m, 'sent', null, changed, ctx.actor)
@@ -249,6 +268,21 @@ export class Drafts {
       user: this.owner.id,
       module: d.module,
     })
+  }
+
+  // Whether this kind of message has gone from this agent to this address before, on the
+  // person's yes or under their standing permission: the journal's own record of every send.
+  private approved(d: Pick<Draft, 'agent' | 'module' | 'kind'>, to: string): boolean {
+    return !!one(
+      this.world.db,
+      `SELECT 1 FROM journal WHERE kind = 'draft_decided' AND module_id = ?
+         AND json_extract(data, '$.agent') = ? AND json_extract(data, '$.kind') = ?
+         AND json_extract(data, '$.outcome') = 'sent' AND lower(json_extract(data, '$.to')) = lower(?)`,
+      d.module,
+      d.agent,
+      d.kind,
+      to.trim(),
+    )
   }
 
   // What became of an agent's drafts since it last ran, for its next run.

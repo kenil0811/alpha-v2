@@ -37,3 +37,20 @@ constructor since 23 Oct) and restarted itself until the orphans were gone, eigh
 `notify` now tells the engine only once it exists.
 
 Kenil's "looks good" 21:05 UTC: pushed, tagged v0.5.1.
+
+## Steps B and C, on Kenil's "all the other parts at once" (21:05 UTC)
+
+- **B, runs and sends happen once** (items 9 and 10): `runAgent` refuses a second run of an
+  agent while one is going, for every caller, and refuses a paused agent unless the call says the
+  person asked for it now (`asked: true`: Run now in Settings, the desk's `run` tool, a kit's own
+  tests); the scheduler, a task's start, the follow-up after a draft is decided and the rerun
+  after a sign-in pass nothing, so a paused agent stays paused there. `Drafts.send` keeps the
+  cards being sent in a set: a second Send it on one is turned away in words, and a send that
+  fails leaves the card waiting. Tests in `runs.test.ts` and `drafts.test.ts`.
+- **C, Always knows the recipient** (item 7, Kenil's rule of 24 Oct): under a standing
+  permission a draft goes at once only to an address that agent's kind of message has gone to
+  before (the journal's `draft_decided` lines, sent, by agent, module, kind and address); a new
+  recipient opens a card saying "a new recipient", with no Always offered on it, and once sent to
+  on that card the address goes at once from then on. Test in `drafts.test.ts`; alpha-avilo's
+  `dealpilot-outreach` journey gained the new-recipient step and a known-address step.
+- **D** was done with step A (the files only).

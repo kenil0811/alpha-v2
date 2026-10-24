@@ -216,7 +216,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
               (x) => x.name.toLowerCase() === a.agent?.toLowerCase(),
             )
             if (!agent) throw new Refused(`${module.name} has no agent called ${a.agent}.`)
-            out = await hands.runner.runAgent(agent, who)
+            out = await hands.runner.runAgent(agent, who, {}, { asked: true })
           } else if (a.script) {
             out = await hands.runner.runScript(
               module,

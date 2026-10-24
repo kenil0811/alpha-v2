@@ -11,7 +11,7 @@ import { askModel } from '../../engine/ask.ts'
 import type { Ask } from '../../files/reading.ts'
 import { runScript, type ScriptRun } from '../../scripts/run.ts'
 import type { Card } from '../../world/cards.ts'
-import { all, run as exec, json, newId, now } from '../../world/db.ts'
+import { all, run as exec, json, newId, now, one } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module } from '../../world/shape/index.ts'
 import type { Task, TaskInput } from '../../world/tasks/index.ts'
@@ -310,9 +310,21 @@ export class AgentRunner {
     return { id: runId, state, words, result: out.result }
   }
 
-  async runAgent(agent: Agent, who?: RunFor, given: object = {}): Promise<RunOutcome> {
+  // One run of an agent at a time, whoever asks (two could send the same email twice); a paused
+  // agent runs only when the person asked for it now (Run now, the desk's run), never on its own
+  // or on a follow-up (items 9 and 10 of the problems list, 24 Oct).
+  async runAgent(
+    agent: Agent,
+    who?: RunFor,
+    given: object = {},
+    options: { asked?: boolean } = {},
+  ): Promise<RunOutcome> {
     const module = this.world.shape.module(agent.module)
     if (!module) throw new Refused('That agent’s module is not there.')
+    if (one(this.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", agent.id))
+      throw new Refused(`${agent.name} is busy with another run; it runs again when that one ends.`)
+    if (agent.state !== 'on' && !options.asked)
+      throw new Refused(`${agent.name} is paused; turn it on in Settings, or run it now yourself.`)
     // what became of its drafts since its last run
     const decided = this.drafts?.outcomes(agent.name, module.id, agent.lastRunAt) ?? []
     return this.runScript(

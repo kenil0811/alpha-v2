@@ -307,7 +307,10 @@ thing (Kenil, 20 Oct): a card offers Always only after three yeses in a row for 
 unchanged, and it is confirmed in a second step, stored as a row, shown as a sentence, counted when
 used, and revoked in Settings › Standing permissions. Code holds the wall: only the person grants
 one, only where the yeses earned it. One may let an email go without asking only when it is one
-agent's one kind of message (DealPilot's CIM requests); each thing it lets through is a line on
+agent's one kind of message (DealPilot's CIM requests) **to an address that kind has gone to
+before on the person's yes; a new recipient is a card of its own that says so, under any
+standing permission** (Kenil, 24 Oct). A draft card sends once: a second Send it while one is
+going is turned away, and a send that fails leaves the card waiting. Each thing it lets through is a line on
 Home. Everything else is done and said in a line.
 
 **Cards that are not gates:** the model's questions, reviews of what an agent pulls in (§12),
@@ -476,7 +479,9 @@ stream only as a card, or when a standing instruction lets it in. A shipped agen
 kit scripts (XState for stages) with the model at marked judgement points; a user-made agent is
 a brief the model writes. Tokens and duration are recorded on every run as facts, not a budget.
 **Activity** lists every run with its steps, and stops one that is running; **Settings › Kits and
-agents** shows each module's agents, on or paused, with Run now. An agent may wait on a change in
+agents** shows each module's agents, on or paused, with Run now. **One run of an agent at a
+time**, whoever asks; a paused agent runs only when the person asks for it now (Run now, the
+desk's run), never on its trigger, a follow-up or a sign-in (24 Oct). An agent may wait on a change in
 several tables, and hands its script an input (one listing reader serves every source, each
 source's agent giving it the page); an agent waiting on a filing is handed the documents filed or
 put on a row since it last looked, with their rows. A change runs the agents waiting on it soon after, not at the
