@@ -58,3 +58,5 @@ Kenil's "looks good" 21:05 UTC: pushed, tagged v0.5.1.
 The release workflow's first run, on the v0.5.1 tag: green in 9 minutes on macos-15,
 `Alpha-0.5.1.dmg` on https://github.com/kenil0811/alpha-v2/releases/tag/v0.5.1 (the generic
 build; Avilo's build with its kits is made from alpha-avilo, as 0.5.0 was).
+
+Kenil's "looks good" 22:03 UTC on steps B and C: pushed. Steps A to D of the problems list done.
