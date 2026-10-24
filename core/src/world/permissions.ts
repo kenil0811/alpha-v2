@@ -5,7 +5,7 @@
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
-import type { WriteCtx } from './shape.ts'
+import type { WriteCtx } from './shape/index.ts'
 
 // What a yes or a permission covers: the action (send_email, file_from_mail), the agent and its
 // module when an agent asks, and the place (a kind of message; a sender, a row and a kind).

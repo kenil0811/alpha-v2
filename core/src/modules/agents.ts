@@ -16,7 +16,7 @@ import { parse } from 'yaml'
 import { z } from 'zod'
 import { all, json, newId, run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
-import type { Module } from '../world/shape.ts'
+import type { Module } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 
 // The trigger, the script and the front matter are the kit API's (kit-sdk), schema version 1.

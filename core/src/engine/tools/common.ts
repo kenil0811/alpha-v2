@@ -7,7 +7,7 @@ import type { Intake } from '../../files/intake.ts'
 import type { Drafts } from '../../modules/drafts.ts'
 import type { AgentRunner } from '../../modules/runs/index.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../../world/kinds.ts'
-import type { Table } from '../../world/shape.ts'
+import type { Table } from '../../world/shape/index.ts'
 import type { User, World } from '../../world/world.ts'
 import { entry, type ToolEntry, type ToolResult } from '../registry.ts'
 

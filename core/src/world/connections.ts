@@ -3,7 +3,7 @@
 import { all, type Db, newId, now, one, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
-import { actorName, type WriteCtx } from './shape.ts'
+import { actorName, type WriteCtx } from './shape/index.ts'
 
 export type ConnectionState = 'connected' | 'needs_sign_in' | 'broken' | 'paused'
 

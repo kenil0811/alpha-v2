@@ -1,5 +1,5 @@
 import type { Provenance, ProvenanceInput, ProvenanceKind, Said } from '../kinds.ts'
-import type { Table, WriteCtx } from '../shape.ts'
+import type { Table, WriteCtx } from '../shape/index.ts'
 
 export interface RowInput {
   values: Record<string, unknown> // by field name

@@ -4,7 +4,7 @@
 import { z } from 'zod'
 import { installedKits } from '../../modules/kits/index.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
-import type { WriteCtx } from '../../world/shape.ts'
+import type { WriteCtx } from '../../world/shape/index.ts'
 import { namedConfig, ViewConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
 import type { ToolEntry } from '../registry.ts'

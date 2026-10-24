@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
-import type { WriteCtx } from '../world/shape.ts'
+import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { install, readKit, update } from './kits/index.ts'
 

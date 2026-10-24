@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { renderPage } from '@alpha/connector-sdk'
 import { Refused } from '../world/kinds.ts'
-import type { Module } from '../world/shape.ts'
+import type { Module } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 
 export interface PageInfo {

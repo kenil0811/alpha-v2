@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
-import { findField, type Shape, type Table, type WriteCtx } from './shape.ts'
+import { findField, type Shape, type Table, type WriteCtx } from './shape/index.ts'
 
 export const VIEW_KINDS = [
   'table',

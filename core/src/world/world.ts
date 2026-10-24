@@ -14,7 +14,7 @@ import { People } from './people.ts'
 import { Permissions } from './permissions.ts'
 import { Records } from './records/index.ts'
 import { migrate } from './schema.ts'
-import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape.ts'
+import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape/index.ts'
 import { Tasks } from './tasks/index.ts'
 import { Views } from './views.ts'
 

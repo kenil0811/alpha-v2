@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import { decide } from '../../gates/gates.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { Module } from '../../world/shape.ts'
+import type { Module } from '../../world/shape/index.ts'
 import type { AgentRunner } from './runner.ts'
 import type { RunFor } from './types.ts'
 

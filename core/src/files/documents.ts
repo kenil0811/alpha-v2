@@ -7,7 +7,7 @@ import { config } from '../config.ts'
 import type { FileOut } from '../world/files.ts'
 import { checkValue, type ProvenanceInput, Refused } from '../world/kinds.ts'
 import type { RecordCtx } from '../world/records/index.ts'
-import type { Table, WriteCtx } from '../world/shape.ts'
+import type { Table, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 
 // PDFs being read now, by file: a second drop of the same bytes waits for the first.

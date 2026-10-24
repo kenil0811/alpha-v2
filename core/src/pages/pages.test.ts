@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { Module, Table } from '../world/shape.ts'
+import type { Module, Table } from '../world/shape/index.ts'
 import { World } from '../world/world.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from './pages.ts'
 

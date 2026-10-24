@@ -12,7 +12,7 @@ import {
   type Said,
   valueWords,
 } from '../kinds.ts'
-import { type Field, findField, type Table } from '../shape.ts'
+import { type Field, findField, type Table } from '../shape/index.ts'
 import { provenanceOf, rowVals } from './reading.ts'
 import type { Records } from './records.ts'
 import type { Row, Snapshot } from './types.ts'

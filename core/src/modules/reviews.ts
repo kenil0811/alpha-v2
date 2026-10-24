@@ -5,7 +5,7 @@
 // row has one of its choices.
 import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
-import type { Table, WriteCtx } from '../world/shape.ts'
+import type { Table, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 
 export const REVIEW = 'rows_review'

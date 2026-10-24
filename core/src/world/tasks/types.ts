@@ -1,5 +1,5 @@
 import { Refused } from '../kinds.ts'
-import type { WriteCtx } from '../shape.ts'
+import type { WriteCtx } from '../shape/index.ts'
 
 export const TASK_STATES = ['todo', 'doing', 'waiting', 'done', 'dropped'] as const
 export type TaskState = (typeof TASK_STATES)[number]

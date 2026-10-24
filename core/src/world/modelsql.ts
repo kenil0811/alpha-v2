@@ -6,7 +6,7 @@ import { constants } from 'node:sqlite'
 import { all, type Db, one, openDb } from './db.ts'
 import { junctionName, quote } from './ddl.ts'
 import { Refused } from './kinds.ts'
-import type { Table } from './shape.ts'
+import type { Table } from './shape/index.ts'
 
 export interface QueryResult {
   columns: string[]

@@ -4,7 +4,7 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { run } from '../world/db.ts'
-import type { WriteCtx } from '../world/shape.ts'
+import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { install, installedKits, readKit, update } from './kits/index.ts'

@@ -25,7 +25,7 @@ import { entry, Registry, type ToolEntry } from '../engine/registry.ts'
 import { takeIn } from '../files/documents.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
-import type { Table } from '../world/shape.ts'
+import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 
 export interface ServiceOptions {

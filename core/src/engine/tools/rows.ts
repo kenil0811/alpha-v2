@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { importRows, readDocument } from '../../files/documents.ts'
 import { Refused } from '../../world/kinds.ts'
-import { findField } from '../../world/shape.ts'
+import { findField } from '../../world/shape/index.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import { cardsCited, guard, ok, Provenance, tableOf, tool } from './common.ts'

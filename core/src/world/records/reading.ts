@@ -4,7 +4,7 @@
 import { all, one, parse } from '../db.ts'
 import { columnsOf, junctionName, quote } from '../ddl.ts'
 import { isPersonsOwn, type Provenance } from '../kinds.ts'
-import { findField, spec, type Table } from '../shape.ts'
+import { findField, spec, type Table } from '../shape/index.ts'
 import type { Records } from './records.ts'
 import { snapshot } from './storing.ts'
 import type { ProvRow, RecordOut, Row, Stored } from './types.ts'

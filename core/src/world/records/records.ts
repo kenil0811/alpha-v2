@@ -8,7 +8,7 @@ import { all, type Db, newId, now, one, run, tx } from '../db.ts'
 import { junctionName, lit, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { checkValue, type Provenance, type ProvenanceInput, Refused, type Said } from '../kinds.ts'
-import { actorName, findField, type Shape, type Table, type WriteCtx } from '../shape.ts'
+import { actorName, findField, type Shape, type Table, type WriteCtx } from '../shape/index.ts'
 import {
   byKey,
   column,

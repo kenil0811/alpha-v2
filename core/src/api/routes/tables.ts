@@ -1,7 +1,7 @@
 import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
-import { findField } from '../../world/shape.ts'
+import { findField } from '../../world/shape/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { HistoryView, SavedView, TableView } from '../types.ts'
 

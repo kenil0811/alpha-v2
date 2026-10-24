@@ -4,7 +4,7 @@
 import { all, type Db, one } from '../db.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
-import type { Shape, WriteCtx } from '../shape.ts'
+import type { Shape, WriteCtx } from '../shape/index.ts'
 import { add, change, remove, setState, tick } from './changes.ts'
 import type { Place, PlaceInput, Ref, Task, TaskInput, TaskRow, TaskState } from './types.ts'
 import { actorWord, checkWhen, dayOf, OPEN, PRIORITIES, readRepeat } from './types.ts'

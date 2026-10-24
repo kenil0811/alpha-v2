@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { agents } from '../../modules/agents.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { Table } from '../../world/shape.ts'
+import type { Table } from '../../world/shape/index.ts'
 import { PRIORITIES, type Task } from '../../world/tasks/index.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'

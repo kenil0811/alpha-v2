@@ -4,7 +4,7 @@
 import { all, json, newId, now, one, parse, run, tx } from '../db.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
-import type { WriteCtx } from '../shape.ts'
+import type { WriteCtx } from '../shape/index.ts'
 import type { Tasks } from './tasks.ts'
 import type { Repeat, Task, TaskInput, TaskRow, TaskState } from './types.ts'
 import {

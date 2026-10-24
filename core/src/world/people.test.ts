@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Refused } from './kinds.ts'
 import { addressList, profileKey } from './people.ts'
-import type { Table } from './shape.ts'
+import type { Table } from './shape/index.ts'
 import { World } from './world.ts'
 
 let home: string
