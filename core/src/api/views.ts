@@ -7,7 +7,7 @@ import { pagesOf } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
 import type { Provenance } from '../world/kinds.ts'
 import type { Module } from '../world/shape.ts'
-import type { Task } from '../world/tasks.ts'
+import type { Task } from '../world/tasks/index.ts'
 import type { View } from '../world/views.ts'
 import type { BaseCtx } from './ctx.ts'
 import type {

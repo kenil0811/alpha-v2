@@ -2,7 +2,7 @@
 import type { Card } from '../../world/cards.ts'
 import { all, one } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { Task, TaskInput } from '../../world/tasks.ts'
+import type { Task, TaskInput } from '../../world/tasks/index.ts'
 import { agents } from '../agents.ts'
 import type { AgentRunner } from './runner.ts'
 import {

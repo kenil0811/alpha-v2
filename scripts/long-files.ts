@@ -14,7 +14,7 @@ const LEFT: Record<string, number> = {
   'world/people.ts': 1850, // how the world gathers people
   'world/records.ts': 980, // rows on real tables
   'world/shape.ts': 1190, // modules, tables, fields, DDL
-  'world/tasks.ts': 830, // the task store
+  'world/tasks/index.ts': 830, // the task store
 }
 const long: string[] = []
 function walk(dir: string) {

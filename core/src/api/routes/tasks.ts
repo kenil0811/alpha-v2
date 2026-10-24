@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
-import type { Task } from '../../world/tasks.ts'
+import type { Task } from '../../world/tasks/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { TasksView, TaskView } from '../types.ts'
 

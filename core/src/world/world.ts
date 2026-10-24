@@ -15,7 +15,7 @@ import { Permissions } from './permissions.ts'
 import { Records } from './records.ts'
 import { migrate } from './schema.ts'
 import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape.ts'
-import { Tasks } from './tasks.ts'
+import { Tasks } from './tasks/index.ts'
 import { Views } from './views.ts'
 
 export interface User {
