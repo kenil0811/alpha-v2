@@ -183,11 +183,15 @@ const browserEngine = () => {
   }
   return browser
 }
+// The runner ends the runs a crashed core left running as it is made, and tells the window; the
+// engine is made after it, so until then there is no window to tell (a start with orphans
+// crashed on this, 24 Oct).
+let started: Engine | null = null
 const runner = new AgentRunner(world, browserEngine, {
   owner: user.id,
   ask,
   judge: (prompt, schema) => provider().ask(config.judging(), prompt, schema),
-  notify: () => engine.events.emit('event', { type: 'lines', user: user.id }),
+  notify: () => started?.events.emit('event', { type: 'lines', user: user.id }),
 })
 // Files that come by mail, proposed for filing on a card each.
 const intake = new Intake(
@@ -214,6 +218,7 @@ const engine = new Engine(world, {
   providers,
   hands: { browser: browserEngine, runner, browsers: join(home, 'browsers'), intake, drafts },
 })
+started = engine
 // when Alpha's Mac app last asked for notices
 const shell = { seen: 0 }
 const scheduler = new Scheduler(world, [

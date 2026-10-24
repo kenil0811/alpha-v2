@@ -29,3 +29,9 @@ beside the repo) so the running prompt measurement was not touched; the history 
 
 Item 8, the files only: the client's figures moved from `docs/log/2026-10-20-accounting.md` to
 alpha-avilo's log; the two comments that named a client's domain use an invented one.
+
+Found while checking the fixes on Kenil's Alpha (its log): a start that had orphan runs to end
+crashed on `ReferenceError: Cannot access 'engine' before initialization` (the runner's `notify`
+in `main.ts` reached the engine, made after the runner; `endOrphans` runs in the runner's
+constructor since 23 Oct) and restarted itself until the orphans were gone, eight times today.
+`notify` now tells the engine only once it exists.
