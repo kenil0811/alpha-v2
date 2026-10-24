@@ -1,20 +1,15 @@
-// A wall for developers (decision 12, step 4): no file in core/src over 600 lines, so the two that
-// were split (server.ts, runs.ts) never grow back. The one left for its own step is named here.
+// A wall for developers (decision 12, step 4): no file in core/src over 600 lines, so a reader
+// finds what they came for in a screen or two. A file that grows past it is split into a folder
+// named for it with an index.ts (runs/, tools/, kits/, world/tasks/, records/, shape/, people/).
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..', 'core', 'src')
 const LIMIT = 600
-// The files over the limit before the wall went up, each left for a step of its own: the wall
-// keeps them from growing further (a file here over its line count here fails too).
+// The one file over the limit by design: the window's contract, read whole. The wall keeps it
+// from growing further (over its own count here fails too).
 const LEFT: Record<string, number> = {
-  'engine/tools/index.ts': 880, // the world tools
-  'api/types.ts': 660, // the window's contract, one file by design
-  'modules/kits/index.ts': 670, // install, update, the ownership rule (+ the core flag, 24 Oct)
-  'world/people.ts': 1850, // how the world gathers people
-  'world/records/index.ts': 980, // rows on real tables
-  'world/shape/index.ts': 1190, // modules, tables, fields, DDL
-  'world/tasks/index.ts': 830, // the task store
+  'api/types.ts': 660, // the window's contract, one file by design (Kenil, 24 Oct)
 }
 const long: string[] = []
 function walk(dir: string) {
@@ -38,5 +33,5 @@ if (long.length) {
   process.exit(1)
 }
 console.log(
-  `No file in core/src is over ${LIMIT} lines, and none of the ${Object.keys(LEFT).length} left for their own steps grew.`,
+  `No file in core/src is over ${LIMIT} lines, and the ${Object.keys(LEFT).length} left by design did not grow.`,
 )

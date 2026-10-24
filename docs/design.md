@@ -94,6 +94,13 @@ Code. No single-executable packing: Node's is not stable yet.
 without it set, and every test makes its own in a temporary folder: v1's tests wrote into the
 real home for weeks.
 
+**No file over 600 lines** (decision 12; the wall `scripts/long-files.ts` in `pnpm check`): a file
+that grows past it is split by what a reader comes looking for into a folder named for it, with an
+`index.ts` exporting what the rest imported before and a class kept as the surface, its moved
+methods functions of the instance (`runs/`, `engine/tools/`, `modules/kits/`, `world/tasks/`,
+`world/records/`, `world/shape/`, `world/people/`, 23–24 Oct). `api/types.ts`, the window's
+contract, stays one file by design (Kenil, 24 Oct) and is the wall's one named exception.
+
 ## 4. The world
 
 One SQLite file per tenant (`tenants/<id>/world.sqlite`, WAL, FTS5), with `files/` (blobs by
