@@ -6,7 +6,7 @@ import { readBytes, readPdf } from '@alpha/connector-files'
 import { config } from '../config.ts'
 import type { FileOut } from '../world/files.ts'
 import { checkValue, type ProvenanceInput, Refused } from '../world/kinds.ts'
-import type { RecordCtx } from '../world/records.ts'
+import type { RecordCtx } from '../world/records/index.ts'
 import type { Table, WriteCtx } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 

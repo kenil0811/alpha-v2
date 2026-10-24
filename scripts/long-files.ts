@@ -12,7 +12,7 @@ const LEFT: Record<string, number> = {
   'api/types.ts': 660, // the window's contract, one file by design
   'modules/kits/index.ts': 670, // install, update, the ownership rule (+ the core flag, 24 Oct)
   'world/people.ts': 1850, // how the world gathers people
-  'world/records.ts': 980, // rows on real tables
+  'world/records/index.ts': 980, // rows on real tables
   'world/shape.ts': 1190, // modules, tables, fields, DDL
   'world/tasks/index.ts': 830, // the task store
 }

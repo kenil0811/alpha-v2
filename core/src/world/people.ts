@@ -13,7 +13,7 @@ import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
 import { likelyRegion, phoneKey, phoneWords } from './phones.ts'
-import type { Records } from './records.ts'
+import type { Records } from './records/index.ts'
 import { findField, type PeopleMap, type Shape, type Table, type WriteCtx } from './shape.ts'
 
 export type KeyKind = 'email' | 'phone' | 'profile' | 'domain' | 'company'
