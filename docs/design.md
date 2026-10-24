@@ -423,6 +423,17 @@ drafted email), or do it now and count it as a change of the person's they have 
 `pnpm kit check <dir>` says what is wrong with a kit before anything installs; `pnpm kit test
 <dir>` runs its cases without the model (§9).
 
+**Make this a kit** (Stage 2, step 1, 24 Oct): a module made in a conversation leaves as a kit in
+one action, in Settings › Kits and agents on a module that came from no kit. Its `module.yaml`
+already mirrors its shape; the kit adds `version: 0.1.0`, the kit API it was written for, a
+description from the first paragraph of its notes and `uses` for what its relations and agents
+reach of other kits (by name, with the version there) and connectors; a module that reaches a
+plain module's table is refused, with the words to make that one a kit first. Its notes, agents,
+skills and pages go with it, never its rows, git history or a tool's folder. The folder is checked
+as `pnpm kit check` does and packed as `pnpm kit pack` does onto the Desktop
+(`<name>-0.1.0.alphakit`), and the journal says so. On a module that came from a kit the same
+action is "Pack the kit as it is now", its version kept, so what the person changed can travel.
+
 ## 11. Agents, triggers, runs
 
 An **agent** is a file `agents/<name>.md`: front matter (triggers, what it may touch, model)

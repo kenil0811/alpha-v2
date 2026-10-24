@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { z } from 'zod'
+import { exportsDir } from '../../data.ts'
 import { agents, setAgentState, whenWords } from '../../modules/agents.ts'
 import {
   install,
@@ -11,6 +12,7 @@ import {
   update,
   yours,
 } from '../../modules/kits.ts'
+import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
@@ -102,6 +104,17 @@ export function registerKits(ctx: Ctx): void {
     })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return report
+  })
+
+  // A module made in a conversation leaves as a kit (design §10): packed onto the Desktop, its
+  // rows never; a module from a kit is packed as it is now.
+  app.post('/api/kits/:module/make', async (req) => {
+    const { module } = z.object({ module: z.string() }).parse(req.params)
+    const made = makeKit(world, module, exportsDir(), {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    return { file: made.file, words: made.words }
   })
 
   // What of a kit is the person's now (decision 3), and the kit's version of one thing back.

@@ -80,6 +80,20 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
       onChange()
     }
   }
+  // the module as a kit on the Desktop: made from its shape when it came from none, packed as it
+  // is now when it came from one
+  const makeKit = async () => {
+    setBusy(true)
+    setSaid(null)
+    try {
+      const r = await api.post<{ file: string; words: string }>(`/api/kits/${m.id}/make`, {})
+      setSaid(r.words)
+    } catch (err) {
+      setSaid(err instanceof Problem ? err.message : 'The kit was not made.')
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
     <List>
       <Row
@@ -129,6 +143,9 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
                 Update from its folder
               </Button>
             )}
+            <Button size="sm" variant="ghost" disabled={busy} onClick={makeKit}>
+              {m.kit ? 'Pack the kit as it is now' : 'Make this a kit'}
+            </Button>
           </>
         }
       />
