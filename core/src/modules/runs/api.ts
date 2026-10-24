@@ -403,6 +403,29 @@ export function api(
       runner.notify()
       return null
     },
+    // The journal's lines since a moment, for an agent that notices what was said (Watson).
+    'journal.list': async (p: Record<string, unknown>) => {
+      const w = runner.world
+      const me = agentId ? agents(w).find((a) => a.id === agentId) : undefined
+      const since =
+        typeof p.since === 'string' && p.since
+          ? p.since
+          : (me?.lastRunAt ?? new Date(Date.now() - 86_400_000).toISOString())
+      const kinds =
+        Array.isArray(p.kinds) && p.kinds.length ? p.kinds.map(String) : ['said', 'replied']
+      const limit = Math.min(Number(p.limit) || 200, 500)
+      return w
+        .lines({ kinds })
+        .filter((l) => l.at > since)
+        .slice(-limit)
+        .map((l) => ({
+          id: l.id,
+          at: l.at,
+          who: l.actor.id ? `${l.actor.kind} ${l.actor.id}` : l.actor.kind,
+          kind: l.kind,
+          words: l.words,
+        }))
+    },
     // What the person's Home shows today, for an agent that speaks for Alpha (Morning).
     'home.today': async () => {
       const w = runner.world

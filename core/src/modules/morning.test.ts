@@ -26,7 +26,7 @@ describe('Morning', () => {
   it('is Alpha’s own kit, on from install, and says the day in one line', async () => {
     const ctx = { actor: { kind: 'system' as const }, user: world.owner().id }
     const said = await keepDefaults(world, ctx, DEFAULT_KITS)
-    expect(said.some((s) => s.startsWith('Installed Alpha 0.1.0'))).toBe(true)
+    expect(said.some((s) => /^Installed Alpha \d/.test(s))).toBe(true)
     const alpha = world.shape.module('Alpha')
     const morning = alpha && agents(world, alpha.id).find((a) => a.name === 'Morning')
     expect(morning?.state).toBe('on')
@@ -40,7 +40,8 @@ describe('Morning', () => {
     const out = await runner.runAgent(morning as never)
     expect(out.state).toBe('ok')
     const told = world.lines({ kinds: ['told'] }).map((l) => l.words)
-    expect(told[0]).toMatch(/^Morning: Nothing is due\.$/)
+    // Watson is the next run, at its first fixed time
+    expect(told[0]).toMatch(/^Morning: Nothing is due; next up Watson at \d\d:\d\d\.$/)
     expect(world.cards.waiting(world.owner().id)).toHaveLength(0)
   }, 60_000)
 

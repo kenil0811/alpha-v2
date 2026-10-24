@@ -49,7 +49,20 @@ export async function keepDefaults(
       }
       said.push(`Installed ${manifest.name} ${manifest.version}, Alpha's own.`)
     } else if (k?.kit === manifest.name && newer(manifest.version, k.version)) {
+      // an agent the newer version brings starts on, being Alpha's own; one the person paused
+      // stays paused (the ownership rule)
+      const before = new Set(agents(world, m.id).map((a) => a.id))
       await update(world, manifest.name, folder, ctx)
+      for (const a of agents(world, m.id).filter((x) => !before.has(x.id))) {
+        run(world.db, "UPDATE agents SET state = 'on' WHERE id = ?", a.id)
+        world.line({
+          actor: ctx.actor,
+          kind: 'agent',
+          words: `Turned on ${a.name}: ${manifest.name} is Alpha's own.`,
+          data: { agent: a.id, state: 'on' },
+          module: m.id,
+        })
+      }
       said.push(`Updated ${manifest.name} to ${manifest.version}, Alpha's own.`)
     }
   }

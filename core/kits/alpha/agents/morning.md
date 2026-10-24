@@ -1,6 +1,6 @@
 ---
 name: Morning
-description: Every morning at 07:30, what is due, what changed overnight, what comes, and one or two suggestions on a card.
+description: "Every morning at 07:30, what is due, what changed overnight, what comes, and one or two suggestions on a card."
 trigger: { every: day, at: '07:30' }
 runs: { script: skills/morning/run.js }
 touches: []
