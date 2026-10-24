@@ -77,9 +77,24 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   }
   const hosts = new Set((options.ports ?? []).flatMap((p) => [`127.0.0.1:${p}`, `localhost:${p}`]))
 
+  // The check goes by the route the request reached and by its decoded path, never by the raw
+  // address alone: Fastify decodes %61 to a before it picks the route, so /%61pi/me is /api/me
+  // (item 1 of the problems list, 24 Oct).
+  const pathOf = (req: { url: string; routeOptions?: { url?: string | undefined } }): string => {
+    const raw = req.url.split('?')[0] ?? ''
+    let decoded = raw
+    try {
+      decoded = decodeURIComponent(raw)
+    } catch {
+      decoded = raw
+    }
+    const route = req.routeOptions?.url ?? ''
+    return [route, decoded].find((p) => p.startsWith('/api') || p.startsWith('/ws')) ?? decoded
+  }
   app.addHook('onRequest', async (req, reply) => {
-    if (!req.url.startsWith('/api') && !req.url.startsWith('/ws')) return
-    if (req.url === '/api/health') return
+    const path = pathOf(req)
+    if (!path.startsWith('/api') && !path.startsWith('/ws')) return
+    if (path === '/api/health') return
     const host = req.headers.host ?? ''
     const origin = req.headers.origin
     const given = req.headers['x-alpha-token'] ?? (req.query as { t?: string }).t

@@ -68,6 +68,16 @@ export function pack(kitDir: string, outDir: string): string {
   }
 }
 
+// A link inside a pack would point outside the kit's folder once it lands: refused outright.
+function refuseLinks(dir: string): void {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name)
+    if (e.isSymbolicLink())
+      throw new Refused(`That kit pack holds a link (${e.name}), which no kit may.`)
+    if (e.isDirectory()) refuseLinks(p)
+  }
+}
+
 // A pack opened and checked: every file there with the hash it was packed with, nothing more.
 export function unpack(
   file: string,
@@ -83,7 +93,14 @@ export function unpack(
     const mf = join(stage, 'PACK.json')
     if (!existsSync(mf)) throw new Refused('That file is not a kit pack: it has no PACK.json.')
     const m = JSON.parse(readFileSync(mf, 'utf8')) as PackManifest
+    // the name and the version become a folder's path: a version is 1.2.3, nothing else (item 2
+    // of the problems list, 24 Oct), and a pack carries files only, never a link to elsewhere
+    if (typeof m.version !== 'string' || !/^\d+\.\d+\.\d+$/.test(m.version))
+      throw new Refused('That kit pack’s version is not a version like 1.2.3.')
+    if (typeof m.name !== 'string' || !/[a-z0-9]/i.test(m.name))
+      throw new Refused('That kit pack has no name.')
     const kit = join(stage, 'kit')
+    if (existsSync(kit)) refuseLinks(kit)
     const there = existsSync(kit) ? filesOf(kit) : []
     const listed = Object.keys(m.files).sort()
     if (JSON.stringify(there) !== JSON.stringify(listed))

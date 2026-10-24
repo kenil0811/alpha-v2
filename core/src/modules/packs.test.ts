@@ -1,22 +1,34 @@
 // Kit packs, on the made-up kit: packed, checked, installed from an inbox, updated from a file.
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { installInbox, installPack, pack, unpack } from './packs.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
+const sha = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
+function filesIn(root: string, dir = root, out: string[] = []): string[] {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name)
+    if (e.isDirectory()) filesIn(root, p, out)
+    else if (e.isFile()) out.push(relative(root, p))
+  }
+  return out.sort()
+}
 let home: string
 let world: World
 const ctx = { actor: { kind: 'system' as const } }
@@ -51,6 +63,38 @@ describe('kit packs', () => {
     const bad = join(home, 'bad.alphakit')
     execFileSync('tar', ['-czf', bad, '-C', open, 'PACK.json', 'kit'])
     expect(() => unpack(bad, join(home, 'kits'))).toThrow(/NOTES.md is not as it was packed/)
+  })
+
+  it('refuse a version that is a path, before any folder is touched, and a link inside', () => {
+    const kits = join(home, 'kits')
+    const keep = join(home, 'Documents')
+    mkdirSync(keep)
+    writeFileSync(join(keep, 'mine.txt'), 'keep me')
+    // a pack whose version climbs out of the kits folder
+    const open = join(home, 'open')
+    mkdirSync(join(open, 'kit'), { recursive: true })
+    cpSync(KIT, join(open, 'kit'), { recursive: true })
+    const files = Object.fromEntries(
+      filesIn(join(open, 'kit')).map((f) => [f, sha(readFileSync(join(open, 'kit', f)))]),
+    )
+    writeFileSync(
+      join(open, 'PACK.json'),
+      JSON.stringify({ name: 'Bakery', version: '../../Documents', files }),
+    )
+    const bad = join(home, 'bad.alphakit')
+    execFileSync('tar', ['-czf', bad, '-C', open, 'PACK.json', 'kit'])
+    expect(() => unpack(bad, kits)).toThrow(/not a version like 1.2.3/)
+    expect(readFileSync(join(keep, 'mine.txt'), 'utf8')).toBe('keep me')
+    // a pack carrying a link
+    symlinkSync('/etc/hosts', join(open, 'kit', 'hosts'))
+    writeFileSync(
+      join(open, 'PACK.json'),
+      JSON.stringify({ name: 'Bakery', version: '0.1.0', files }),
+    )
+    const linked = join(home, 'linked.alphakit')
+    execFileSync('tar', ['-czf', linked, '-C', open, 'PACK.json', 'kit'])
+    expect(() => unpack(linked, kits)).toThrow(/holds a link/)
+    expect(existsSync(join(kits, 'bakery'))).toBe(false)
   })
 
   it('go in from the inbox at start, agents paused, and a newer one updates the kit', async () => {

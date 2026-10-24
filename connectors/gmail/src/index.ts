@@ -46,16 +46,30 @@ async function secret(c: Call): Promise<string> {
   return s
 }
 
-async function withImap<T>(c: Call, fn: (client: ImapFlow) => Promise<T>): Promise<T> {
-  const client = new ImapFlow({
-    host: 'imap.gmail.com',
-    port: 993,
-    secure: true,
-    auth: { user: c.host.account, pass: await secret(c) },
-    logger: false,
+// What withImap needs of a client: the real ImapFlow, or a stand-in in a test.
+export interface ImapLike {
+  connect(): Promise<unknown>
+  logout(): Promise<unknown>
+  on(event: 'error', listener: (err: unknown) => void): unknown
+}
+
+// A connection dropped mid-call ends that call with the error, never the process: ImapFlow
+// emits 'error' outside any await, and an emitter with no listener throws it to the top (item 6
+// of the problems list, 24 Oct; Alpha restarted itself for it on 22 and 23 Oct).
+export async function withImapClient<T, C extends ImapLike>(
+  client: C,
+  fn: (client: C) => Promise<T>,
+): Promise<T> {
+  let fail: (err: Error) => void = () => undefined
+  const dropped = new Promise<never>((_, reject) => {
+    fail = reject
   })
+  dropped.catch(() => undefined)
+  client.on('error', (err) =>
+    fail(err instanceof Error ? err : new Error(`Gmail's connection dropped: ${String(err)}`)),
+  )
   try {
-    await client.connect()
+    await Promise.race([client.connect(), dropped])
   } catch (err) {
     const words = err instanceof Error ? err.message : String(err)
     if (
@@ -69,10 +83,23 @@ async function withImap<T>(c: Call, fn: (client: ImapFlow) => Promise<T>): Promi
     throw err
   }
   try {
-    return await fn(client)
+    return await Promise.race([fn(client), dropped])
   } finally {
     await client.logout().catch(() => undefined)
   }
+}
+
+async function withImap<T>(c: Call, fn: (client: ImapFlow) => Promise<T>): Promise<T> {
+  return withImapClient(
+    new ImapFlow({
+      host: 'imap.gmail.com',
+      port: 993,
+      secure: true,
+      auth: { user: c.host.account, pass: await secret(c) },
+      logger: false,
+    }),
+    fn,
+  )
 }
 
 async function mailbox(client: ImapFlow, use: '\\All' | '\\Drafts'): Promise<string> {
