@@ -99,7 +99,10 @@ export function RowPanel({
                 onClick={() => onField(f.slug)}
                 className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
               >
-                <dt className="flex items-center gap-2 text-ink-3 text-sm">
+                <dt
+                  className="flex items-center gap-2 text-ink-3 text-sm"
+                  title={f.about ?? undefined}
+                >
                   {f.name}
                   {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
                 </dt>

@@ -1,8 +1,17 @@
 // A column's menu, in the column itself (Kenil, 12 Oct, "like AG Grid"): sort, filter, group by
 // it, a total, colours, move it, hide it. And the rule editor a filter chip opens too.
 import type { FieldView, FilterOp, FilterRule, RowView, TotalOp, ViewConfig } from '@alpha/core/api'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, EyeOff, Rows3 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  EyeOff,
+  MessageSquareText,
+  Rows3,
+} from 'lucide-react'
 import { type FormEvent, useState } from 'react'
+import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { MenuItem, MenuLine } from '../ui/popover.tsx'
@@ -28,7 +37,15 @@ const TONE_WORDS: Record<Tone, string> = {
   accent: 'Blue',
 }
 
+// Whose sentence a field's about is, as the menu says it.
+const ABOUT_BY: Record<'kit' | 'alpha' | 'person', string> = {
+  kit: 'From the kit',
+  alpha: 'Assumed by Alpha',
+  person: 'Yours',
+}
+
 export function ColumnMenu({
+  tableId,
   field,
   config,
   shown,
@@ -37,6 +54,7 @@ export function ColumnMenu({
   onConfig,
   onClose,
 }: {
+  tableId: string
   field: FieldView
   config: ViewConfig
   shown: FieldView[]
@@ -45,7 +63,7 @@ export function ColumnMenu({
   onConfig: (c: ViewConfig) => void
   onClose: () => void
 }) {
-  const [page, setPage] = useState<'main' | 'filter' | 'total' | 'colour'>('main')
+  const [page, setPage] = useState<'main' | 'filter' | 'total' | 'colour' | 'describe'>('main')
   const apply = (c: ViewConfig) => {
     onConfig(c)
     onClose()
@@ -88,6 +106,7 @@ export function ColumnMenu({
       </div>
     )
   if (page === 'colour') return <ColourEditor field={field} config={config} onSave={apply} />
+  if (page === 'describe') return <AboutEditor tableId={tableId} field={field} onDone={onClose} />
 
   const canColour =
     (field.kind === 'choice' && Object.keys(field.tones).length > 0) ||
@@ -95,6 +114,17 @@ export function ColumnMenu({
     fam === 'date'
   return (
     <div className="flex flex-col">
+      <div className="flex max-w-72 flex-col gap-0.5 whitespace-normal px-3 pt-1.5 pb-1">
+        <span className="text-ink text-sm">
+          {field.about ?? <span className="text-ink-3">No sentence on what it means yet.</span>}
+        </span>
+        <span className="text-ink-3 text-xs">{field.aboutBy ? ABOUT_BY[field.aboutBy] : ''}</span>
+      </div>
+      <MenuItem onClick={() => setPage('describe')}>
+        <MessageSquareText className="size-3.5 text-ink-3" />
+        {field.about ? 'Describe it your way…' : 'Describe…'}
+      </MenuItem>
+      <MenuLine />
       <MenuItem checked={sorted === 'asc'} onClick={() => apply(setSort(config, field.id, 'asc'))}>
         <ArrowUp className="size-3.5 text-ink-3" />
         Sort {fam === 'number' ? 'smallest first' : fam === 'date' ? 'oldest first' : 'A to Z'}
@@ -353,3 +383,59 @@ function ColourEditor({
 }
 
 export type { TotalOp }
+
+// The person's own sentence on what a field means: theirs from then on, so a kit's update or
+// Alpha's guess never writes over it (the semantic layer, 24 Oct).
+function AboutEditor({
+  tableId,
+  field,
+  onDone,
+}: {
+  tableId: string
+  field: FieldView
+  onDone: () => void
+}) {
+  const [about, setAbout] = useState(field.about ?? '')
+  const [problem, setProblem] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setProblem(null)
+    try {
+      await api.post(`/api/tables/${tableId}/about`, {
+        field: field.id,
+        about: about.trim() || null,
+      })
+      onDone()
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'The sentence was not kept.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={save} className="flex w-72 flex-col gap-2 p-3">
+      <label className="text-ink-2 text-sm" htmlFor={`about-${field.id}`}>
+        What {field.name} means, in a sentence
+      </label>
+      <textarea
+        id={`about-${field.id}`}
+        value={about}
+        onChange={(e) => setAbout(e.target.value)}
+        rows={3}
+        maxLength={300}
+        className="rounded-sm border border-line bg-surface px-2 py-1.5 text-md text-ink outline-none focus:border-accent"
+      />
+      {problem && <div className="text-bad text-sm">{problem}</div>}
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          Leave it
+        </Button>
+        <Button type="submit" size="sm" disabled={busy}>
+          {busy ? 'Keeping…' : 'Keep'}
+        </Button>
+      </div>
+    </form>
+  )
+}

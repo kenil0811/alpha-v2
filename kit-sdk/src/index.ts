@@ -362,6 +362,7 @@ export function guide(): string {
   const lines = [
     'A script is JavaScript: `export default async (alpha) => { … return { words } }`. It has no network and writes only in its module folder; it reaches the world through alpha, and alpha.input holds what the run was given:',
     ...CALLS.map((c) => `${c.signature}: ${c.words}; gives ${c.answer}.`),
+    'Every table and field in module.yaml carries an about: one sentence on what it means, which the model reads before it queries the table; write one for anything a script makes or lands.',
     'An agent woken by a filing gets alpha.input.filed: the documents filed or placed since it last looked, each with file, name, kind and rows.',
     'An agent whose file says tasks: true takes the tasks given to it (with no trigger, it runs only for them). A run started on a task gets alpha.input.task: id, title, notes, due, priority, place (words, module, table, row, field, page), values (that row’s, by field name), touches, before (what earlier runs on it said) and cards (what came of the cards they opened).',
   ]

@@ -16,6 +16,7 @@ const Field = z.object({
   many: z.boolean().optional(), // a relation holding a list of rows
   indexed: z.boolean().optional(), // an index on it, for a field filtered on often
   key: z.string().optional(), // the kit's stable name for the field; its name at install when absent
+  about: z.string().optional(), // one sentence on what the field means (the semantic layer)
 })
 
 export const Manifest = z.object({
@@ -69,6 +70,7 @@ export const Manifest = z.object({
     .array(
       z.object({
         name: z.string(),
+        about: z.string().optional(), // one sentence on what a row of it is
         fields: z.array(Field),
         // the kinds of document its rows take (a deal's teaser, CIM, NDA), filed on a row
         documents: z.array(z.string().min(1)).optional(),
@@ -101,7 +103,13 @@ export const Manifest = z.object({
           .optional(),
         // saved views by field name: name, default, then the view (world/views.ts ViewConfig)
         views: z
-          .array(z.looseObject({ name: z.string(), default: z.boolean().optional() }))
+          .array(
+            z.looseObject({
+              name: z.string(),
+              default: z.boolean().optional(),
+              about: z.string().optional(), // the question the view answers
+            }),
+          )
           .default([]),
       }),
     )

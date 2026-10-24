@@ -5,7 +5,7 @@ import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import { slugTaken, writeManifest } from './manifest.ts'
 import type { Shape } from './shape.ts'
-import type { PeopleMap, Table, Tone, WriteCtx } from './types.ts'
+import type { AboutBy, PeopleMap, Table, Tone, WriteCtx } from './types.ts'
 import { findField, freeSlug, slugify, spec } from './types.ts'
 
 export function rename(
@@ -119,6 +119,50 @@ export function setTones(
     f.id,
   )
   writeManifest(shape, table.module)
+}
+
+// One sentence on what a table or a field means (the semantic layer, Kenil, 24 Oct), and whose it
+// is: the person's stands, so a kit's update or Alpha's guess never writes over it; the kit's and
+// Alpha's give way to anyone. Says whether anything changed.
+export function describe(
+  shape: Shape,
+  where: { table: string; field?: string },
+  about: string | null,
+  by: AboutBy,
+  ctx: WriteCtx,
+): boolean {
+  const table = shape.table(where.table)
+  if (!table) throw new Refused('That table is not there.')
+  const f = where.field ? findField(table, where.field) : null
+  const was = f ? { about: f.about, by: f.aboutBy } : { about: table.about, by: table.aboutBy }
+  const text = about?.trim().replace(/\s+/g, ' ') || null
+  if (text && text.length > 300)
+    throw new Refused('An about is one sentence: under 300 characters.')
+  if (was.by === 'person' && by !== 'person') return false
+  if (was.about === text) return false
+  run(
+    shape.db,
+    f
+      ? 'UPDATE fields SET about = ?, about_by = ? WHERE id = ?'
+      : 'UPDATE tables SET about = ?, about_by = ? WHERE id = ?',
+    text,
+    text ? by : null,
+    f ? f.id : table.id,
+  )
+  append(shape.db, {
+    actor: ctx.actor,
+    kind: 'shaped',
+    words: text
+      ? `${f ? `${f.name} in ${table.name}` : table.name}: ${text}`
+      : `Took the sentence off ${f ? `${f.name} in ${table.name}` : table.name}.`,
+    data: { table: table.id, ...(f ? { field: f.id } : {}), about: text, by },
+    user: ctx.user ?? null,
+    turn: ctx.turn ?? null,
+    module: table.module.id,
+    run: ctx.run ?? null,
+  })
+  writeManifest(shape, table.module)
+  return true
 }
 
 // The kinds of document a table's rows take (a deal's teaser, CIM, NDA), or none named.

@@ -28,7 +28,12 @@ export interface Field {
   many: boolean // a relation holding a list of rows: a junction table, not a column
   indexed: boolean // an index the kit asked for
   key: string | null // a kit field's stable name, matched on update; none for the person's own
+  about: string | null // one sentence on what it means (the semantic layer)
+  aboutBy: AboutBy | null // whose sentence: the kit's, Alpha's (assumed), or the person's
 }
+
+// Whose sentence an about is: the person's stands over the kit's and Alpha's.
+export type AboutBy = 'kit' | 'alpha' | 'person'
 
 // The colours a choice may take: the window's state colours, nothing else.
 export type Tone = 'good' | 'warn' | 'bad' | 'accent'
@@ -43,6 +48,8 @@ export interface Table {
   fields: Field[]
   documents: string[] | null // the kinds of document its rows take, as its kit names them
   people: PeopleMap | null // how its rows name people
+  about: string | null // one sentence on what a row of it is
+  aboutBy: AboutBy | null
 }
 
 // How a table's rows name people (design §4), by its fields' names: each row is a person (a
@@ -81,6 +88,8 @@ export interface FieldInput {
   many?: boolean // a relation holding a list of rows
   indexed?: boolean // an index on it, for a field filtered on often
   key?: string // a kit field's stable name
+  about?: string // one sentence on what it means
+  aboutBy?: AboutBy // whose sentence; alpha when the desk wrote it (shown as assumed)
 }
 
 export interface WriteCtx {

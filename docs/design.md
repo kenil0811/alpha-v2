@@ -122,6 +122,15 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | Users, roles, connections | Two roles (owner, member). A connection names its connector, account, auth kind, state and health, and points at a secret it never holds. |
 
 The model reads the world in SQL through a read-only view per table (thin: id, added, the fields' columns; a view per list relation; a `provenance` view) on a read-only connection.
+
+**The semantic layer** (Stage 2, step 3, Kenil's yes 24 Oct): every table, field and saved view
+carries an `about`, one sentence on what it means, and whose sentence it is (`kit`, `alpha` or
+`person`). A kit ships its own in `module.yaml` (`kit check` notes any missing, never refuses);
+the desk cannot make a table or a field without one (a wall in the shape tool's schema), and its
+sentences land as Alpha's, shown as assumed; the person writes theirs in the column menu
+(Describe…) or in words, and theirs stands: a kit's update and Alpha's guess never write over it.
+`module.yaml` mirrors them, so Make this a kit carries them. The model reads them with the
+fields of a table on its first touch (§6), not in the start layer.
 Removing something deletes everything related to it and journals the removal; the journal is
 never touched. Backups use SQLite's backup API, daily, never `cp` (a copied WAL file ran a
 stale scheduler for real in v1). The person's own data is theirs from within Alpha (decision

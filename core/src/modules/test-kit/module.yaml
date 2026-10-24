@@ -4,9 +4,10 @@ version: 0.1.0
 api: 1
 tables:
   - name: Orders
+    about: One order placed with a supplier.
     fields:
       - { name: Item, kind: text }
-      - { name: Quantity, kind: number }
+      - { name: Quantity, kind: number, about: How many were ordered. }
       - { name: Supplier, kind: relation, relates_to: Suppliers }
   - name: Suppliers
     fields:

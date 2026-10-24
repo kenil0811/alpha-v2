@@ -64,9 +64,9 @@ export function slugTaken(shape: Shape, slug: string): boolean {
 // version, its network allowlist) is kept as it is.
 // A table's saved views as module.yaml keeps them: by field name, so the module stays portable.
 export function viewsOf(shape: Shape, t: Table): { views?: unknown[] } {
-  const rows = all<{ name: string; config: string; is_default: number }>(
+  const rows = all<{ name: string; config: string; is_default: number; about: string | null }>(
     shape.db,
-    'SELECT name, config, is_default FROM views WHERE table_id = ? ORDER BY created_at',
+    'SELECT name, config, is_default, about FROM views WHERE table_id = ? ORDER BY created_at',
     t.id,
   )
   if (!rows.length) return {}
@@ -74,6 +74,7 @@ export function viewsOf(shape: Shape, t: Table): { views?: unknown[] } {
     views: rows.map((v) => ({
       name: v.name,
       ...(v.is_default ? { default: true } : {}),
+      ...(v.about ? { about: v.about } : {}),
       ...given(namedConfig(t, ViewConfig.parse(parse(v.config, {})))),
     })),
   }
@@ -94,9 +95,11 @@ export function writeManifest(shape: Shape, m: Module): void {
     ...rest,
     tables: shape.tables(m.id).map((t) => ({
       name: t.name,
+      ...(t.about ? { about: t.about } : {}),
       fields: t.fields.map((f) => ({
         name: f.name,
         kind: f.kind,
+        ...(f.about ? { about: f.about } : {}),
         ...(f.choices.length ? { choices: f.choices } : {}),
         ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
         ...(f.relatesTo ? { relates_to: shape.table(f.relatesTo)?.name } : {}),

@@ -216,6 +216,7 @@ export function Grid({
             {shown.map((f, i) => (
               <Header
                 key={f.id}
+                tableId={tableId}
                 field={f}
                 first={i === 0}
                 config={config}
@@ -386,6 +387,7 @@ function Tick({
 }
 
 function Header({
+  tableId,
   field: f,
   first,
   config,
@@ -395,6 +397,7 @@ function Header({
   width,
   onConfig,
 }: {
+  tableId: string
   field: FieldView
   first: boolean
   config: ViewConfig
@@ -437,7 +440,7 @@ function Header({
       <div className={cn('relative flex h-9 items-center', numeric && 'flex-row-reverse')}>
         <button
           type="button"
-          title="Sort by this column; shift-click to add it as the next sort"
+          title={f.about ?? 'Sort by this column; shift-click to add it as the next sort'}
           onClick={(e) => onConfig(cycleSort(config, f.id, e.shiftKey))}
           className={cn(
             'flex h-full min-w-0 flex-1 items-center gap-1 px-2.5 hover:text-ink',
@@ -484,6 +487,7 @@ function Header({
         align={numeric ? 'end' : 'start'}
       >
         <ColumnMenu
+          tableId={tableId}
           field={f}
           config={config}
           shown={shown}

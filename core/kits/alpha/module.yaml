@@ -1,9 +1,10 @@
 # Alpha's own kit (decision 13, 24 Oct): the agents that speak for Alpha, installed and kept up to
 # date by the core; never uninstalled, each can be paused. Morning is all of Alpha's
-# proactiveness; Watson notices what the person said.
+# proactiveness; Watson notices what the person said. Every table and field says what it means
+# (the semantic layer, 24 Oct).
 name: Alpha
 api: 1
-version: 0.2.0
+version: 0.3.0
 core: true
 description: >
   Alpha's own agents. Morning, at 07:30: what is due, what changed overnight, what comes, and one
@@ -11,28 +12,32 @@ description: >
   the promises as proposed tasks, the decisions and facts for their yes.
 tables:
   - name: Decisions
+    about: "A decision the person made in conversation, noticed by Watson and kept once they say so."
     fields:
-      - { name: Decision, kind: text }
-      - { name: Said on, kind: date }
+      - { name: Decision, kind: text, about: "The decision in a sentence, as the person said it." }
+      - { name: Said on, kind: date, about: "The day the person said it." }
       - name: State
         kind: choice
         choices: [Proposed, Kept, Dropped]
         tones: { Proposed: warn, Kept: good }
-      - { name: Why, kind: text }
+        about: "Proposed until the person keeps it or drops it on Watson's card."
+      - { name: Why, kind: text, about: "The words of the person's that Watson read it from." }
     views:
-      - { name: Kept, default: true, filters: { rules: [{ field: State, op: is, value: Kept }] } }
-      - { name: Proposed, filters: { rules: [{ field: State, op: is, value: Proposed }] } }
+      - { name: Kept, default: true, about: "The decisions the person confirmed.", filters: { rules: [{ field: State, op: is, value: Kept }] } }
+      - { name: Proposed, about: "What Watson noticed and the person has not decided on yet.", filters: { rules: [{ field: State, op: is, value: Proposed }] } }
   - name: Noticed
+    about: "A fact about a person or a company the person stated in conversation, noticed by Watson and kept once they confirm it."
     fields:
-      - { name: About, kind: text }
-      - { name: Fact, kind: text }
-      - { name: Said on, kind: date }
+      - { name: About, kind: text, about: "Who or what the fact is about, as the person named them." }
+      - { name: Fact, kind: text, about: "The fact in a sentence, as the person said it." }
+      - { name: Said on, kind: date, about: "The day the person said it." }
       - name: State
         kind: choice
         choices: [Proposed, Confirmed, Dropped]
         tones: { Proposed: warn, Confirmed: good }
-      - { name: Why, kind: text }
+        about: "Proposed until the person confirms it or drops it on Watson's card."
+      - { name: Why, kind: text, about: "The words of the person's that Watson read it from." }
     views:
-      - { name: Confirmed, default: true, filters: { rules: [{ field: State, op: is, value: Confirmed }] } }
-      - { name: Proposed, filters: { rules: [{ field: State, op: is, value: Proposed }] } }
+      - { name: Confirmed, default: true, about: "The facts the person confirmed.", filters: { rules: [{ field: State, op: is, value: Confirmed }] } }
+      - { name: Proposed, about: "What Watson noticed and the person has not confirmed yet.", filters: { rules: [{ field: State, op: is, value: Proposed }] } }
 network: []

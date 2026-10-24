@@ -19,6 +19,7 @@ function fieldsOf(spec: KitManifest['tables'][number], withRelations: boolean): 
       ...(f.many ? { many: true } : {}),
       ...(f.indexed ? { indexed: true } : {}),
       key: f.key ?? f.name,
+      ...(f.about ? { about: f.about, aboutBy: 'kit' as const } : {}),
     }))
 }
 
@@ -55,7 +56,9 @@ export function shapeTables(
     const t = world.shape.table(spec.name)
     if (!t) {
       if (world.shape.tombstoned(module.id, 'table', spec.name)) continue
-      world.shape.makeTable(module.id, spec.name, fieldsOf(spec, false), ctx)
+      world.shape.makeTable(module.id, spec.name, fieldsOf(spec, false), ctx, {
+        ...(spec.about ? { about: spec.about, aboutBy: 'kit' } : {}),
+      })
     } else if (t.module.id !== module.id)
       throw new Refused(`There is already a table called ${spec.name} in ${t.module.name}.`)
   }
@@ -101,6 +104,12 @@ export function shapeTables(
       // a choice's colours come with the kit's version of it
       if (was && f.tones) world.shape.setTones(t.id, was.name, f.tones)
     }
+    // what each means, as the kit says it; a sentence the person wrote stands (describe says so)
+    if (spec.about) world.shape.describe({ table: t.id }, spec.about, 'kit', ctx)
+    for (const f of spec.fields) {
+      const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
+      if (was && f.about) world.shape.describe({ table: t.id, field: was.id }, f.about, 'kit', ctx)
+    }
     // the kinds of document its rows take: a newer version's new kinds join them, none goes
     if (spec.documents?.length) {
       const was = world.shape.table(t.id)?.documents ?? []
@@ -124,18 +133,27 @@ export function shapeViews(world: World, manifest: KitManifest, ctx: WriteCtx): 
   for (const spec of manifest.tables) {
     const t = world.shape.table(spec.name)
     if (!t) continue
-    for (const { name, default: isDefault, ...given } of spec.views) {
+    for (const { name, default: isDefault, about, ...given } of spec.views) {
       const config = resolveConfig(t, given)
       const hash = hashOf(config)
       const was = world.views.list(t.id).find((v) => v.name.toLowerCase() === name.toLowerCase())
       if (!was && world.shape.tombstoned(t.module.id, 'view', `${t.name}:${name}`)) continue
+      const said = about ? { about } : {}
       if (!was)
         world.views.save(
-          { table: t.id, name, config, isDefault: !!isDefault, madeBy: 'kit', kitHash: hash },
+          {
+            table: t.id,
+            name,
+            config,
+            isDefault: !!isDefault,
+            madeBy: 'kit',
+            kitHash: hash,
+            ...said,
+          },
           ctx,
         )
-      else if (was.kitHash && was.kitHash !== hash)
-        world.views.save({ table: t.id, id: was.id, name, config, kitHash: hash }, ctx)
+      else if (was.kitHash && (was.kitHash !== hash || (about && was.about !== about)))
+        world.views.save({ table: t.id, id: was.id, name, config, kitHash: hash, ...said }, ctx)
     }
   }
 }

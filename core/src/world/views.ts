@@ -112,6 +112,7 @@ export interface View {
   isDefault: boolean
   madeBy: MadeBy
   kitHash: string | null // the kit's version of it, while nobody has changed it
+  about: string | null // the question the view answers, in a sentence
 }
 
 interface ViewRow {
@@ -122,6 +123,7 @@ interface ViewRow {
   is_default: number
   made_by: MadeBy
   kit_hash: string | null
+  about: string | null
 }
 
 export const hashOf = (c: ViewConfig) => createHash('sha256').update(json(c)).digest('hex')
@@ -231,6 +233,7 @@ export interface SaveInput {
   isDefault?: boolean | undefined
   madeBy?: MadeBy
   kitHash?: string | null
+  about?: string | null // given: set (null takes it off); left out: kept as it was
 }
 
 export class Views {
@@ -282,21 +285,22 @@ export class Views {
       if (before)
         run(
           this.db,
-          `UPDATE views SET name = ?, config = ?, is_default = ?, kit_hash = ?, updated_at = ?
+          `UPDATE views SET name = ?, config = ?, is_default = ?, kit_hash = ?, about = ?, updated_at = ?
            WHERE id = ?`,
           name,
           json(config),
           isDefault ? 1 : 0,
           // a kit's view that someone changed is theirs from now on: the kit's updates pass it by
           input.kitHash !== undefined ? input.kitHash : null,
+          input.about !== undefined ? input.about?.trim() || null : before.about,
           at,
           id,
         )
       else
         run(
           this.db,
-          `INSERT INTO views (id, table_id, name, config, is_default, made_by, kit_hash,
-             created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO views (id, table_id, name, config, is_default, made_by, kit_hash, about,
+             created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           id,
           table.id,
           name,
@@ -304,6 +308,7 @@ export class Views {
           isDefault ? 1 : 0,
           input.madeBy ?? (ctx.actor.kind === 'person' ? 'person' : 'alpha'),
           input.kitHash ?? null,
+          input.about?.trim() || null,
           at,
           at,
         )
@@ -361,5 +366,6 @@ function out(r: ViewRow): View {
     isDefault: r.is_default === 1,
     madeBy: r.made_by,
     kitHash: r.kit_hash,
+    about: r.about,
   }
 }

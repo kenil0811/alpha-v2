@@ -4,7 +4,7 @@
 // `pnpm kit pack <folder> [out]` packs a kit's folder into one file (out defaults to the
 // current folder), ready to send or to drop in a Mac's kits/inbox.
 import { resolve } from 'node:path'
-import { checkKit } from '@alpha/kit-sdk'
+import { checkKit, kitNotes } from '@alpha/kit-sdk'
 import { kitTest } from './modules/kittest.ts'
 import { pack } from './modules/packs.ts'
 
@@ -12,6 +12,7 @@ const [verb, folder, out] = process.argv.slice(2)
 const at = (p: string) => resolve(process.env.INIT_CWD ?? process.cwd(), p)
 if (verb === 'check' && folder) {
   const problems = checkKit(at(folder))
+  for (const n of kitNotes(at(folder))) console.log(`  note: ${n}`)
   if (!problems.length) console.log('The kit is right.')
   else {
     for (const p of problems) console.log(`- ${p}`)

@@ -28,6 +28,30 @@ export function atLeast(version: string, min: string): boolean {
   return true
 }
 
+// What a kit could say better, in plain sentences: never a refusal. A table or field with no
+// about leaves the model guessing what it means (the semantic layer, decision of 24 Oct).
+export function kitNotes(dir: string): string[] {
+  const file = join(dir, 'module.yaml')
+  if (!existsSync(file)) return []
+  let parsed: ReturnType<typeof Manifest.safeParse>
+  try {
+    parsed = Manifest.safeParse(parse(readFileSync(file, 'utf8')))
+  } catch {
+    return []
+  }
+  if (!parsed.success) return []
+  const notes: string[] = []
+  for (const t of parsed.data.tables) {
+    if (!t.about) notes.push(`${t.name} has no about: say in a sentence what a row of it is.`)
+    const bare = t.fields.filter((f) => !f.about).map((f) => f.name)
+    if (bare.length)
+      notes.push(
+        `${t.name}'s ${bare.join(', ')} ${bare.length === 1 ? 'has' : 'have'} no about: say what each means.`,
+      )
+  }
+  return notes
+}
+
 export function checkKit(dir: string, options: CheckOptions = {}): string[] {
   const problems: string[] = []
   const file = join(dir, 'module.yaml')

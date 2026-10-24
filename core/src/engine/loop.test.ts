@@ -79,7 +79,8 @@ describe('Alpha’s own loop', () => {
             action: 'make_table',
             module: 'Food',
             table: 'Meals',
-            fields: [{ name: 'Food', kind: 'text' }],
+            about: 'One meal the person ate.',
+            fields: [{ name: 'Food', kind: 'text', about: 'What was eaten.' }],
           })
         : round === 1
           ? call('t2', 'mcp__alpha__write', {

@@ -2,14 +2,46 @@ import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { findField } from '../../world/shape/index.ts'
+import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
 import type { HistoryView, SavedView, TableView } from '../types.ts'
 
 export function registerTables(ctx: Ctx): void {
-  const { app, world, engine, user } = ctx
+  const { app, world, engine, user, asPerson, live } = ctx
   const { sourceView, savedView } = ctx.views
 
   // In the sidebar or out of it (Settings › Connections).
+  // What a table, a field or a view means, in the person's own sentence (the semantic layer):
+  // theirs from then on, so a kit's update or Alpha's guess never writes over it.
+  app.post('/api/tables/:id/about', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { field, view, about } = z
+      .object({
+        field: z.string().optional(),
+        view: z.string().optional(),
+        about: z.string().max(300).nullable(),
+      })
+      .parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    if (view) {
+      const v = world.views.get(view)
+      if (!v || v.table !== t.id) throw new Refused('That view is not there.')
+      world.views.save(
+        { table: t.id, id: v.id, name: v.name, config: namedConfig(t, v.config), about },
+        asPerson,
+      )
+    } else
+      world.shape.describe(
+        field ? { table: t.id, field } : { table: t.id },
+        about,
+        'person',
+        asPerson,
+      )
+    live()
+    return { ok: true }
+  })
+
   app.post('/api/tables/:id/sidebar', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { shown } = z.object({ shown: z.boolean() }).parse(req.body)
@@ -267,6 +299,8 @@ export function registerTables(ctx: Ctx): void {
     return {
       id: t.id,
       name: t.name,
+      about: t.about,
+      aboutBy: t.aboutBy,
       module: { id: t.module.id, name: t.module.name },
       documents: t.documents,
       fields: t.fields.map((f) => ({
@@ -277,6 +311,8 @@ export function registerTables(ctx: Ctx): void {
         choices: f.choices,
         tones: f.tones,
         many: f.many,
+        about: f.about,
+        aboutBy: f.aboutBy,
       })),
       views: world.views.list(t.id).map(savedView),
       rows: world.records.list(t.id).map((r) => ({

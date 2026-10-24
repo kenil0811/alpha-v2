@@ -280,6 +280,8 @@ export interface FieldView {
   choices: string[]
   tones: Record<string, 'good' | 'warn' | 'bad' | 'accent'> // a choice's colour, where it is a state
   many: boolean // a relation holding a list of rows
+  about: string | null // one sentence on what it means
+  aboutBy: 'kit' | 'alpha' | 'person' | null // whose sentence: the kit's, assumed by Alpha, or yours
 }
 
 // Where a value came from, in words the person reads, with what to open.
@@ -342,6 +344,8 @@ export interface RowView {
 export interface TableView {
   id: string
   name: string
+  about: string | null // one sentence on what a row of it is
+  aboutBy: 'kit' | 'alpha' | 'person' | null
   module: { id: string; name: string }
   fields: FieldView[]
   documents: string[] | null // the kinds of document its rows take, when it names them
@@ -426,6 +430,7 @@ export interface SavedView {
   config: ViewConfig
   isDefault: boolean
   madeBy: 'person' | 'alpha' | 'kit'
+  about: string | null // the question the view answers
 }
 
 // The person's own data (Settings › Data): what the world holds and weighs, and its backups.
@@ -549,7 +554,6 @@ export interface InstructionView {
   words: string
 }
 
-// The model Alpha runs on and how it reaches it, as Settings shows it.
 // The model as the person chooses it: a provider per route, each saying what it can do.
 export interface ProviderView {
   route: 'subscription' | 'key' | 'api'

@@ -9,6 +9,7 @@ import { addFieldSql, columnsOf, createTableSql, OWN_COLUMNS } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { FIELD_KINDS, type FieldKind, Refused } from '../kinds.ts'
 import {
+  describe,
   rename,
   setChoices,
   setDocuments,
@@ -31,6 +32,7 @@ import {
   tombstoned,
 } from './removal.ts'
 import type {
+  AboutBy,
   Field,
   FieldInput,
   Module,
@@ -199,9 +201,11 @@ export class Shape {
       hidden: number
       documents: string | null
       people: string | null
+      about: string | null
+      about_by: AboutBy | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, hidden, documents, people FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, hidden, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -216,9 +220,11 @@ export class Shape {
       kind: FieldKind
       options: string
       key: string | null
+      about: string | null
+      about_by: AboutBy | null
     }>(
       this.db,
-      'SELECT id, name, slug, kind, options, key FROM fields WHERE table_id = ? AND hidden = 0 ORDER BY position',
+      'SELECT id, name, slug, kind, options, key, about, about_by FROM fields WHERE table_id = ? AND hidden = 0 ORDER BY position',
       t.id,
     ).map((f) => {
       const o = parse<{
@@ -239,6 +245,8 @@ export class Shape {
         many: f.kind === 'relation' && !!o.many,
         indexed: !!o.indexed,
         key: f.key,
+        about: f.about,
+        aboutBy: f.about_by,
       }
     })
     return {
@@ -250,6 +258,8 @@ export class Shape {
       fields,
       documents: t.documents ? parse<string[]>(t.documents, []) : null,
       people: t.people ? parse<PeopleMap | null>(t.people, null) : null,
+      about: t.about,
+      aboutBy: t.about_by,
     }
   }
 
@@ -258,7 +268,7 @@ export class Shape {
     name: string,
     fields: FieldInput[],
     ctx: WriteCtx,
-    options: { hidden?: boolean } = {},
+    options: { hidden?: boolean; about?: string; aboutBy?: AboutBy } = {},
   ): Table {
     if (!name.trim()) throw new Refused('A table needs a name.')
     return tx(this.db, () => {
@@ -270,7 +280,7 @@ export class Shape {
       const slug = freeSlug(slugify(name), (s) => this.slugTaken(s))
       run(
         this.db,
-        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden, about, about_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         id,
         module.id,
         name.trim(),
@@ -278,6 +288,8 @@ export class Shape {
         actorName(ctx.actor),
         now(),
         options.hidden ? 1 : 0,
+        options.about?.trim() || null,
+        options.about?.trim() ? (options.aboutBy ?? 'person') : null,
       )
       for (const f of fields) this.insertField(id, f, false)
       const table = this.table(id) as Table
@@ -352,7 +364,7 @@ export class Shape {
     const id = newId('f')
     run(
       this.db,
-      'INSERT INTO fields (id, table_id, name, slug, kind, options, position, key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO fields (id, table_id, name, slug, kind, options, position, key, about, about_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       id,
       tableId,
       f.name.trim(),
@@ -361,6 +373,8 @@ export class Shape {
       json(options),
       position,
       f.key ?? null,
+      f.about?.trim() || null,
+      f.about?.trim() ? (f.aboutBy ?? 'person') : null,
     )
     if (ddl)
       for (const sql of addFieldSql(table.slug, table.id, {
@@ -401,6 +415,14 @@ export class Shape {
   }
   setTones(tableId: string, field: string, tones: Record<string, Tone>): void {
     setTones(this, tableId, field, tones)
+  }
+  describe(
+    where: { table: string; field?: string },
+    about: string | null,
+    by: AboutBy,
+    ctx: WriteCtx,
+  ): boolean {
+    return describe(this, where, about, by, ctx)
   }
   setDocuments(tableId: string, kinds: string[] | null, ctx: WriteCtx): Table {
     return setDocuments(this, tableId, kinds, ctx)

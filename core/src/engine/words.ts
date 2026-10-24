@@ -26,6 +26,8 @@ export function stepWords(tool: string, input: Input): string {
           return `Set the choices for ${s(input.field)}`
         case 'remove_table':
           return `Remove the table ${s(input.table)}`
+        case 'describe':
+          return `Said what ${s(input.field) || s(input.table)} means`
         default:
           return `Changed the shape of ${s(input.table)}`
       }

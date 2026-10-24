@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { type BrowserEngine, type Effect, Problem } from '@alpha/connector-sdk'
-import { guide } from '@alpha/kit-sdk'
+import { guide, TONES } from '@alpha/kit-sdk'
 import { z } from 'zod'
 import type { ConnectorService } from '../../connectors/service.ts'
 import type { Intake } from '../../files/intake.ts'
@@ -61,8 +61,12 @@ export const Provenance = z.object({
 export const Field = z.object({
   name: z.string(),
   kind: z.enum(FIELD_KINDS),
+  // one sentence on what the field means: a wall, so no field is made without one (Kenil, 24 Oct)
+  about: z.string().min(1),
   choices: z.array(z.string()).optional(),
+  tones: z.record(z.string(), z.enum(TONES)).optional(),
   relates_to: z.string().optional(),
+  many: z.boolean().optional(), // a relation holding a list of rows
 })
 
 export type Result = ToolResult

@@ -451,7 +451,14 @@ export function deny(reply: FastifyReply, words: string) {
 }
 
 export function savedView(v: View): SavedView {
-  return { id: v.id, name: v.name, config: v.config, isDefault: v.isDefault, madeBy: v.madeBy }
+  return {
+    id: v.id,
+    name: v.name,
+    config: v.config,
+    isDefault: v.isDefault,
+    madeBy: v.madeBy,
+    about: v.about,
+  }
 }
 
 export function cardView(c: Card): CardView {

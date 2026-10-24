@@ -132,6 +132,9 @@
           "name": {
             "type": "string"
           },
+          "about": {
+            "type": "string"
+          },
           "fields": {
             "type": "array",
             "items": {
@@ -187,6 +190,9 @@
                   "type": "boolean"
                 },
                 "key": {
+                  "type": "string"
+                },
+                "about": {
                   "type": "string"
                 }
               },
@@ -322,6 +328,9 @@
                 },
                 "default": {
                   "type": "boolean"
+                },
+                "about": {
+                  "type": "string"
                 }
               },
               "required": [

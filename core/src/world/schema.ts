@@ -487,6 +487,15 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   );
   CREATE INDEX idx_desk_messages_user ON desk_messages (user_id, id);
   `,
+  // 19: the semantic layer (Kenil, 24 Oct): one sentence on what a table, a field and a view
+  // mean, and whose sentence it is (the kit's, Alpha's, or the person's, which stands).
+  `
+  ALTER TABLE tables ADD COLUMN about TEXT;
+  ALTER TABLE tables ADD COLUMN about_by TEXT CHECK (about_by IN ('kit', 'alpha', 'person'));
+  ALTER TABLE fields ADD COLUMN about TEXT;
+  ALTER TABLE fields ADD COLUMN about_by TEXT CHECK (about_by IN ('kit', 'alpha', 'person'));
+  ALTER TABLE views ADD COLUMN about TEXT;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.
