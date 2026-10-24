@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Engine } from '../engine/engine.ts'
-import { MAINTAINED_SHAPE } from '../engine/tools.ts'
+import { MAINTAINED_SHAPE } from '../engine/tools/index.ts'
 import { install } from '../modules/kits/index.ts'
 import { World } from '../world/world.ts'
 import { buildServer, VERSION } from './server.ts'
@@ -248,7 +248,7 @@ describe('the api over a world', () => {
   it('shows what Alpha remembers and forgets a line the person removes', async () => {
     const user = world.owner('Kenil')
     const { appendFileSync } = await import('node:fs')
-    const { instructionsFile } = await import('../engine/tools.ts')
+    const { instructionsFile } = await import('../engine/tools/index.ts')
     appendFileSync(
       instructionsFile(world, user.id),
       '# Standing instructions\n\n- Call me Kenil\n- Money in USD\n',

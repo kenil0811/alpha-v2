@@ -14,7 +14,7 @@ import {
   takeData,
 } from '../../data.ts'
 import type { Capabilities } from '../../engine/provider.ts'
-import { instructionsFile } from '../../engine/tools.ts'
+import { instructionsFile } from '../../engine/tools/index.ts'
 import { PlainPlatform } from '../../platform/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'

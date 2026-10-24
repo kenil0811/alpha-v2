@@ -11,7 +11,7 @@ import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 import { Gatekeeper } from './gate.ts'
 import { Registry } from './registry.ts'
-import { type Here, worldTools } from './tools.ts'
+import { type Here, worldTools } from './tools/index.ts'
 
 let home: string
 let world: World

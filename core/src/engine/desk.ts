@@ -16,7 +16,7 @@ import { Gatekeeper } from './gate.ts'
 import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
 import { Registry } from './registry.ts'
 import type { ModelRoute } from './route.ts'
-import { type Hands, type Here, SERVER, TOOL_NAMES, worldTools } from './tools.ts'
+import { type Hands, type Here, SERVER, TOOL_NAMES, worldTools } from './tools/index.ts'
 
 export type { QueryFn } from './claudecode.ts'
 

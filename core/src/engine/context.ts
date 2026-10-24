@@ -4,7 +4,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { config } from '../config.ts'
 import type { World } from '../world/world.ts'
-import { instructionsFile } from './tools.ts'
+import { instructionsFile } from './tools/index.ts'
 
 function readWhole(file: string): string {
   return existsSync(file) ? readFileSync(file, 'utf8').trim() : ''

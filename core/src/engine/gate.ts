@@ -6,7 +6,7 @@ import type { ConnectorService } from '../connectors/service.ts'
 import { decide } from '../gates/gates.ts'
 import type { User, World } from '../world/world.ts'
 import type { Decision } from './provider.ts'
-import { EFFECTS, type Here, SERVER } from './tools.ts'
+import { EFFECTS, type Here, SERVER } from './tools/index.ts'
 import { stepWords } from './words.ts'
 
 export interface CallContext {

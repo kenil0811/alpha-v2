@@ -5,7 +5,7 @@ import {
   describeShape,
   MAINTAINED_SHAPE,
   type ShapeAction,
-} from '../../engine/tools.ts'
+} from '../../engine/tools/index.ts'
 import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { installedKits, recordChange } from '../../modules/kits/index.ts'

@@ -8,7 +8,7 @@ const LIMIT = 600
 // The files over the limit before the wall went up, each left for a step of its own: the wall
 // keeps them from growing further (a file here over its line count here fails too).
 const LEFT: Record<string, number> = {
-  'engine/tools.ts': 880, // the world tools
+  'engine/tools/index.ts': 880, // the world tools
   'api/types.ts': 660, // the window's contract, one file by design
   'modules/kits/index.ts': 670, // install, update, the ownership rule (+ the core flag, 24 Oct)
   'world/people.ts': 1850, // how the world gathers people
