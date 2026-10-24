@@ -54,3 +54,7 @@ Kenil's "looks good" 21:05 UTC: pushed, tagged v0.5.1.
   on that card the address goes at once from then on. Test in `drafts.test.ts`; alpha-avilo's
   `dealpilot-outreach` journey gained the new-recipient step and a known-address step.
 - **D** was done with step A (the files only).
+
+The release workflow's first run, on the v0.5.1 tag: green in 9 minutes on macos-15,
+`Alpha-0.5.1.dmg` on https://github.com/kenil0811/alpha-v2/releases/tag/v0.5.1 (the generic
+build; Avilo's build with its kits is made from alpha-avilo, as 0.5.0 was).
