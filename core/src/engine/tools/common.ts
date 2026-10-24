@@ -23,6 +23,9 @@ export interface TurnContext {
 export interface Here {
   current: TurnContext
   fromSubagent: boolean
+  // the tables whose fields and meanings the model has been given this session (context by
+  // mode, 24 Oct): a table is described on its first touch, again after compaction
+  touched: Set<string>
 }
 
 // What reaches past the world's tables: the browser engine and the runner of module scripts.
@@ -124,6 +127,17 @@ export const PAGE = [
 // the reference page.
 export const SCRIPT = guide()
 
+// The grammar of a saved view, fetched with guide (about: views) when a turn saves one.
+export const VIEWS =
+  'A saved view, given to shape save_view as view (a change names only what changes; fields by name). view.kind: table, board, list, gallery, calendar, timeline, chart, form; filters { match: all or any, rules: [{ field, op, value, value2, values }] }: ops for text is, is_not, contains, not_contains, starts, ends; for numbers and money eq, ne, gt, lt, between (value, value2); for dates before, after, between, today, this_week, next_days (value: days); for a choice in (values); for any empty, not_empty. sorts [{ field, dir: asc or desc }] in order; group (a choice, text or date field); by (the date a calendar or timeline is laid on; a chart’s bars are by group, else by the months of by); measure (a number a chart adds up; none counts rows); hidden and order (fields); widths { field: px }; totals { field: sum, avg, min, max, count, empty, filled, unique, earliest, latest }; colours { tint: a choice whose colours tint rows, when: [{ field, op: gt, lt, eq, before or after, value, tone: good, warn, bad or accent }] }.'
+
+// The grammar of a task, fetched with guide (about: tasks) when a turn adds or changes one.
+export const TASKS = [
+  'task add: a task with its title, on the place it concerns: on { module, table, row, field, page } (find the row first with query or search). Without on it sits on the module the person asked from, or nowhere yet. Then say in a line where you put it, so they can change it. touches: other rows ({ kind: row, ref: <row id> }), people ({ kind: person, ref: <id in view people> }) or files ({ kind: file, ref: <hash> }) it is about. An open task on the same place with most of the same words comes back as similar: offer to keep one.',
+  "due: a day (2026-10-24) or a moment (2026-10-24T10:00:00, the person's time unless it says its zone); remind_at: when to remind them (a Mac notification and a line on Home); repeat: every day, every weekday, every Monday, every 2 weeks, monthly, on the 1st of each month (each occurrence its own task, the next made when one is done); priority: high, normal or low; owner: me (the person), alpha, or the name of an agent that takes tasks (its file says tasks: true); parent: the task it sits under.",
+  'change (and on, to move it), start, wait, done, drop, reopen: one task by its id. Giving a task to an agent never starts it: start does, when the person says so, and runs the agent on it; its run says when it is done. remove: tasks by their ids (with the ones beneath), with asked_in: the person’s words asking for it, when they did. find: open tasks, by words and place.',
+].join('\n')
+
 // The effect of a call, by tool and input: the gates read it.
 export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect> = {
   query: () => 'read',
@@ -139,6 +153,7 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   look: () => 'read',
   keep: () => 'write',
   run: () => 'write',
+  guide: () => 'read',
 }
 
 // A stated value that cites a card rests on the person's answer to it: a wall, so a card that is

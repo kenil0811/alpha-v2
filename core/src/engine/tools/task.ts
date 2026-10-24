@@ -15,9 +15,7 @@ export function taskTools({ world, here, hands, ctx }: Tooling): ToolEntry[] {
       'task',
       [
         "Keep the person's tasks: one list of all work, each on the place it concerns. Read them in the view tasks.",
-        'add: a task with its title, on the place it concerns: on { module, table, row, field, page } (find the row first with query or search). Without on it sits on the module the person asked from, or nowhere yet. Then say in a line where you put it, so they can change it. touches: other rows ({ kind: row, ref: <row id> }), people ({ kind: person, ref: <id in view people> }) or files ({ kind: file, ref: <hash> }) it is about. An open task on the same place with most of the same words comes back as similar: offer to keep one.',
-        "due: a day (2026-10-24) or a moment (2026-10-24T10:00:00, the person's time unless it says its zone); remind_at: when to remind them (a Mac notification and a line on Home); repeat: every day, every weekday, every Monday, every 2 weeks, monthly, on the 1st of each month (each occurrence its own task, the next made when one is done); priority: high, normal or low; owner: me (the person), alpha, or the name of an agent that takes tasks (its file says tasks: true); parent: the task it sits under.",
-        'change (and on, to move it), start, wait, done, drop, reopen: one task by its id. Giving a task to an agent never starts it: start does, when the person says so, and runs the agent on it; its run says when it is done. remove: tasks by their ids (with the ones beneath), with asked_in: the person’s words asking for it, when they did. find: open tasks, by words and place.',
+        'Actions: add (on the place it concerns, with due, remind_at, repeat, priority, owner, parent, touches), change, start, wait, done, drop, reopen (one task by id), remove (ids, with asked_in: the person’s words), find (open tasks by words and place). Read the task grammar with guide (about: tasks) before you add or change one.',
       ].join('\n'),
       {
         action: z.enum([

@@ -13,6 +13,7 @@ export interface QueryResult {
   rows: Record<string, unknown>[]
   total: number
   offset: number
+  tables: string[] // the ids of the tables the query read, through their views
 }
 
 // The names the model's own views take: no kit table may take one.
@@ -80,7 +81,9 @@ export class ModelSql {
     // the one name the world's own views use for a table expression is the world's alone
     if (/alpha_up_/i.test(text)) throw new Refused('That name is taken by the world’s own views.')
     this.refreshViews()
+    const read = new Set<string>()
     this.db.setAuthorizer((action, arg1, column, db, triggerOrView) => {
+      if (action === constants.SQLITE_READ && arg1 && this.views.has(arg1)) read.add(arg1)
       if (action === constants.SQLITE_SELECT || action === constants.SQLITE_RECURSIVE)
         return constants.SQLITE_OK
       if (action === constants.SQLITE_FUNCTION) return constants.SQLITE_OK
@@ -107,7 +110,16 @@ export class ModelSql {
         unknown
       >[]
       const columns = stmt.columns().map((c) => c.name)
-      return { columns, rows, total, offset }
+      const tables = this.tables()
+        .filter(
+          (t) =>
+            read.has(t.slug) ||
+            t.fields.some(
+              (f) => f.kind === 'relation' && f.many && read.has(junctionName(t.slug, f.slug)),
+            ),
+        )
+        .map((t) => t.id)
+      return { columns, rows, total, offset, tables }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       if (/not authorized|prohibited|readonly/i.test(msg))

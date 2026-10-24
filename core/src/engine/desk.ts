@@ -16,7 +16,7 @@ import { Gatekeeper } from './gate.ts'
 import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
 import { Registry } from './registry.ts'
 import type { ModelRoute } from './route.ts'
-import { type Hands, type Here, SERVER, TOOL_NAMES, worldTools } from './tools/index.ts'
+import { type Hands, type Here, TOOL_NAMES, worldTools } from './tools/index.ts'
 
 export type { QueryFn } from './claudecode.ts'
 
@@ -84,7 +84,11 @@ export class Desk {
     this.connectors = options.connectors ?? null
     this.hands = options.hands
     this.prompt = options.prompt ?? 'appended'
-    this.here = { current: { user, turn: null, said: null, message: null }, fromSubagent: false }
+    this.here = {
+      current: { user, turn: null, said: null, message: null },
+      fromSubagent: false,
+      touched: new Set(),
+    }
     const given = options.provider
     const own = given
       ? null
@@ -118,11 +122,12 @@ export class Desk {
   // The tools the model has: the world's and every connector's, one registry.
   registry(): Registry {
     return new Registry(
+      // the nine small tools are in the model's hands from the start; connect, look, keep and
+      // run are found when a turn needs them (context by mode, 24 Oct)
       [
         ...worldTools(this.world, this.here, this.hands, this.connectors ?? undefined),
         ...(this.connectors?.entries() ?? []),
       ],
-      { alwaysLoad: [SERVER] },
     )
   }
 
@@ -227,13 +232,16 @@ export class Desk {
       registry: this.registry(),
       gate: this.gate,
       context: {
-        start: () =>
-          startLayer(
+        start: () => {
+          // the start layer is the fresh start: every table is described again on its first touch
+          this.here.touched.clear()
+          return startLayer(
             this.world,
             this.user.id,
             this.world.deskDir(this.user.id),
             this.connectors?.describe() ?? null,
-          ),
+          )
+        },
         turn: () =>
           turnLayer(
             this.world,

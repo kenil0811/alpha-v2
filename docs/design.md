@@ -248,12 +248,22 @@ this shape exactly.
    > Write to the person in plain words: no tool names, no ids, no code unless they ask.
 
 2. **At session start and after compaction:** the tenant's and the user's standing
-   instructions (files, read whole), the module's notes, a map of modules and tables with row
-   counts, the skills index, the connections and their state.
-3. **On each message:** the clock, what changed elsewhere since the last turn here, what is due
-   today, open cards, and a three-line hint of what the message matches in the world.
+   instructions (files, read whole), each module with its notes and its tables, each table with
+   its row count and what a row of it is (its `about`), the files, the people and task counts,
+   the connections and the folders. Not the fields: **a table's fields and what each means come
+   with the first query, write or change of it in a session** (context by mode, Kenil's yes 24
+   Oct), once, and again after compaction when this layer is resent; a table with no sentence
+   yet says so there, and the model describes it when it can tell.
+3. **On each message:** the clock, what changed elsewhere since the last turn here, open cards,
+   and a three-line hint of what the message matches in the world.
 4. **Everything else the model fetches.** It writes its own memory files and files facts
-   through the world. No pre-pack, no behavioural rules.
+   through the world. No pre-pack, no behavioural rules. **Nine small tools are in its hands
+   from the start** (`query`, `search`, `shape`, `write`, `change`, `file`, `ask`, `remember`,
+   `task`) and a one-line `guide` that hands out a grammar when a turn needs it (`scripts`: the
+   kit API; `pages`: the page contract; `views`: a saved view's grammar; `tasks`: a task's
+   fields and actions); `connect`, `look`, `keep` and `run` are found through tool search on the
+   Claude Code route, and sent with their short descriptions on the own loop. A build turn pays
+   for what it fetches; an ask turn does not.
 
 ## 7. Gates and walls
 

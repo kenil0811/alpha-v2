@@ -3,7 +3,9 @@
 // else the model fetches.
 import { existsSync, readFileSync } from 'node:fs'
 import { config } from '../config.ts'
+import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
+import type { Here } from './tools/common.ts'
 import { instructionsFile } from './tools/index.ts'
 
 function readWhole(file: string): string {
@@ -31,11 +33,15 @@ export function startLayer(
     parts.push(`### ${m.module}${m.within ? ` (inside ${m.within})` : ''}`)
     const notes = readWhole(m.notes)
     if (notes && notes.split('\n').length > 1) parts.push(`Notes:\n${notes}`)
+    // tables with their counts and what each is; the fields come with the first touch of a table
     for (const t of m.tables)
       parts.push(
-        `- ${t.name} (view ${t.view}), ${t.rows} row${t.rows === 1 ? '' : 's'}: ${t.fields.join(', ') || 'no fields'}${t.documents?.length ? `; its rows take documents: ${t.documents.join(', ')}` : ''}`,
+        `- ${t.name} (view ${t.view}), ${t.rows} row${t.rows === 1 ? '' : 's'}${t.about ? `: ${t.about}` : ''}${t.documents?.length ? ` Its rows take documents: ${t.documents.join(', ')}.` : ''}`,
       )
   }
+  parts.push(
+    'A table’s fields and what each means come with your first query, write or change of it; ask for a grammar (scripts, pages, views, tasks) with guide.',
+  )
   const docs = world.files.documents()
   if (docs.length) {
     parts.push('## Files')
@@ -62,6 +68,39 @@ export function startLayer(
     `## Folders\nYour own folder is ${deskDir}; module folders are under ${world.paths.modules}.`,
   )
   return parts.join('\n\n')
+}
+
+// A table as the model needs it to read or write it: its fields with their kinds, choices,
+// relations and what each means (the semantic layer, 24 Oct), given once per session on the
+// table's first touch, and again after compaction when the start layer is resent.
+export function tableBrief(world: World, t: Table): string {
+  const rows = world.records.count(t.id)
+  const lines = t.fields.map((f) => {
+    const kind =
+      f.kind === 'choice'
+        ? `choice: ${f.choices.join(', ')}`
+        : f.kind === 'relation'
+          ? `relation to ${f.relatesTo ? (world.shape.table(f.relatesTo)?.name ?? 'a table') : 'a table'}${f.many ? ', a list' : ''}`
+          : f.kind
+    return `- ${f.name} (${kind})${f.about ? `: ${f.about}` : ''}`
+  })
+  const bare = t.fields.filter((f) => !f.about).map((f) => f.name)
+  return [
+    `${t.name} (view ${t.slug}), ${rows} row${rows === 1 ? '' : 's'}${t.about ? `: ${t.about}` : ''}`,
+    ...lines,
+    ...(bare.length
+      ? [
+          `No sentence yet on what ${bare.join(', ')} ${bare.length === 1 ? 'means' : 'mean'}${t.about ? '' : ', nor on the table'}: when you can tell from the rows or the person's words, say so with shape describe (it shows as assumed until they edit it).`,
+        ]
+      : []),
+  ].join('\n')
+}
+
+// The briefs of the tables a tool touched that the model has not been given yet this session.
+export function firstTouch(world: World, here: Here, tables: Table[]): string {
+  const fresh = tables.filter((t) => !here.touched.has(t.id))
+  for (const t of fresh) here.touched.add(t.id)
+  return fresh.map((t) => tableBrief(world, t)).join('\n\n')
 }
 
 export function turnLayer(

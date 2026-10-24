@@ -12,7 +12,17 @@ import { pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
-import { guard, guardAsync, instructionsFile, ok, PAGE, SCRIPT, tool } from './common.ts'
+import {
+  guard,
+  guardAsync,
+  instructionsFile,
+  ok,
+  PAGE,
+  SCRIPT,
+  TASKS,
+  tool,
+  VIEWS,
+} from './common.ts'
 
 export function deskTools({ world, here, hands, connectors, ctx }: Tooling): ToolEntry[] {
   return [
@@ -114,7 +124,6 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
             `The sign-in for ${c.manifest.title} is open in the person's window, under Settings › Connections. They type their own details there.`,
           )
         }),
-      { alwaysLoad: true },
     ),
     tool(
       'look',
@@ -161,8 +170,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
       [
         'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), an agent (agents/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
         'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed), `tasks: true` when it takes the tasks given to it (then the trigger may be left out: it runs only for them; its script reads the task from alpha.input.task, whose place.row is the row’s id and values that row’s values by field name, and ends with alpha.task.done(words) or alpha.task.wait(words)), and `runs: { script: <path in the module> }`, then its brief: what it does, and for an agent that takes tasks, which tasks. Keep its script first. An agent kept here is on.',
-        PAGE,
-        SCRIPT,
+        'Before you write a page or a script, read its grammar with guide (about: pages, or scripts).',
       ].join('\n'),
       { module: z.string(), path: z.string(), content: z.string().optional() },
       async (a) =>
@@ -170,6 +178,22 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
           const module = world.shape.module(a.module) ?? world.shape.makeModule(a.module, ctx())
           return ok(await keep(world, module, a.path, a.content, ctx()))
         }),
+    ),
+    tool(
+      'guide',
+      'The grammar of what a turn is about to write, fetched when needed: scripts (what a module’s script may call on alpha), pages (what a page is and its blocks), views (a saved view’s filters, sorts, group, colours), tasks (a task’s place, due, repeat, owner, and the task actions).',
+      { about: z.enum(['scripts', 'pages', 'views', 'tasks']) },
+      async ({ about }) =>
+        ok(
+          about === 'scripts'
+            ? SCRIPT
+            : about === 'pages'
+              ? PAGE
+              : about === 'views'
+                ? VIEWS
+                : TASKS,
+        ),
+      { alwaysLoad: true },
     ),
     tool(
       'run',

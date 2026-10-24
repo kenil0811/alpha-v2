@@ -1,18 +1,33 @@
 import { z } from 'zod'
 import { importRows, readDocument } from '../../files/documents.ts'
 import { Refused } from '../../world/kinds.ts'
+import type { Table } from '../../world/shape/index.ts'
 import { findField } from '../../world/shape/index.ts'
+import { firstTouch } from '../context.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import { cardsCited, guard, ok, Provenance, tableOf, tool } from './common.ts'
 
-export function rowTools({ world, ctx }: Tooling): ToolEntry[] {
+export function rowTools({ world, here, ctx }: Tooling): ToolEntry[] {
+  // a table's fields and meanings, the first time this session touches it
+  const briefed = (tables: Table[], result: ReturnType<typeof ok>) => {
+    const brief = firstTouch(world, here, tables)
+    if (brief) result.content.unshift({ type: 'text', text: brief })
+    return result
+  }
   return [
     tool(
       'query',
-      'Read the world in SQL (SQLite). Each table is a view named as the table, with columns id, added and one per field; the journal is the view `journal` (id, at, actor, kind, words, module). Returns rows, their total and the offset; pass offset for the next page.',
+      'Read the world in SQL (SQLite). Each table is a view named as the table, with columns id, added and one per field; the journal is the view `journal` (id, at, actor, kind, words, module). Returns rows, their total and the offset; pass offset for the next page. The first read of a table this session comes with its fields and what each means.',
       { sql: z.string(), offset: z.number().int().optional() },
-      async ({ sql, offset }) => guard(() => ok(world.sql.query(sql, offset ?? 0))),
+      async ({ sql, offset }) =>
+        guard(() => {
+          const { tables, ...result } = world.sql.query(sql, offset ?? 0)
+          return briefed(
+            tables.map((id) => world.shape.table(id)).filter((t): t is Table => !!t),
+            ok(result),
+          )
+        }),
       { alwaysLoad: true },
     ),
     tool(
@@ -48,8 +63,11 @@ export function rowTools({ world, ctx }: Tooling): ToolEntry[] {
             })) as never,
             ctx(),
           )
-          return ok(
-            `Added ${ids.length} row${ids.length === 1 ? '' : 's'} to ${t.name}: ${ids.join(', ')}.`,
+          return briefed(
+            [t],
+            ok(
+              `Added ${ids.length} row${ids.length === 1 ? '' : 's'} to ${t.name}: ${ids.join(', ')}.`,
+            ),
           )
         }),
       { alwaysLoad: true },
@@ -86,7 +104,7 @@ export function rowTools({ world, ctx }: Tooling): ToolEntry[] {
             said.push(`Removed ${n} row${n === 1 ? '' : 's'} from ${t.name}.`)
           }
           if (!said.length) throw new Refused('Nothing to change: give rows or remove.')
-          return ok(said.join(' '))
+          return briefed([t], ok(said.join(' ')))
         }),
       { alwaysLoad: true },
     ),

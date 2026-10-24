@@ -443,6 +443,7 @@ export class World {
       rows: number
       fields: string[]
       documents: string[] | null
+      about: string | null
     }[]
   }[] {
     const modules = this.shape.modules()
@@ -456,6 +457,7 @@ export class World {
         rows: this.records.count(t.id),
         fields: t.fields.map((f) => `${f.name} (${f.kind})`),
         documents: t.documents,
+        about: t.about,
       })),
     }))
   }
