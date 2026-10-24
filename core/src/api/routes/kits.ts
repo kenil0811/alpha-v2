@@ -11,7 +11,7 @@ import {
   unseenChanges,
   update,
   yours,
-} from '../../modules/kits.ts'
+} from '../../modules/kits/index.ts'
 import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
 import { Refused } from '../../world/kinds.ts'

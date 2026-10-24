@@ -7,7 +7,7 @@ import { run } from '../world/db.ts'
 import type { WriteCtx } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 import { agents } from './agents.ts'
-import { install, installedKits, readKit, update } from './kits.ts'
+import { install, installedKits, readKit, update } from './kits/index.ts'
 
 export const DEFAULT_KITS = join(import.meta.dirname, '..', '..', 'kits')
 

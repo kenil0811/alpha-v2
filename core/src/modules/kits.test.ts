@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { history } from './git.ts'
-import { install, installedKits, takeBack, update, yours } from './kits.ts'
+import { install, installedKits, takeBack, update, yours } from './kits/index.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
 let home: string

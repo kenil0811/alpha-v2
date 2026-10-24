@@ -8,7 +8,7 @@ import { AgentFront, CALL_NAMES, guide, Manifest, reference, shape } from '@alph
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { World } from '../world/world.ts'
-import { install } from './kits.ts'
+import { install } from './kits/index.ts'
 import { AgentRunner } from './runs/index.ts'
 
 let home: string

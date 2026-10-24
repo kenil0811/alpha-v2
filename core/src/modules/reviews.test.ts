@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Ask } from '../files/reading.ts'
 import { World } from '../world/world.ts'
 import { judge } from './judging.ts'
-import { install } from './kits.ts'
+import { install } from './kits/index.ts'
 import { AgentRunner } from './runs/index.ts'
 
 let home: string

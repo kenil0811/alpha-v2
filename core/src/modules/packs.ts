@@ -22,7 +22,7 @@ import { one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
-import { install, readKit, update } from './kits.ts'
+import { install, readKit, update } from './kits/index.ts'
 
 export const PACK_SUFFIX = '.alphakit'
 

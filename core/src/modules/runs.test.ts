@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { run as exec } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { type Agent, agents, setAgentState, syncAgents } from './agents.ts'
-import { install } from './kits.ts'
+import { install } from './kits/index.ts'
 import { AgentRunner } from './runs/index.ts'
 
 let home: string

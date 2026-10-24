@@ -24,7 +24,7 @@ import { Refused } from '../world/kinds.ts'
 import type { Module, WriteCtx } from '../world/shape.ts'
 import type { World } from '../world/world.ts'
 import { parseAgent } from './agents.ts'
-import { installedKits } from './kits.ts'
+import { installedKits } from './kits/index.ts'
 import { pack } from './packs.ts'
 
 // What of a module's folder goes with the kit: never its git history or a tool's own folder.

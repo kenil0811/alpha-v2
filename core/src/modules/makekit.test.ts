@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
-import { install } from './kits.ts'
+import { install } from './kits/index.ts'
 import { makeKit } from './makekit.ts'
 import { unpack } from './packs.ts'
 

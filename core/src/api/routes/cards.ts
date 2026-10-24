@@ -8,7 +8,7 @@ import {
 } from '../../engine/tools.ts'
 import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
-import { installedKits, recordChange } from '../../modules/kits.ts'
+import { installedKits, recordChange } from '../../modules/kits/index.ts'
 import { PROPOSE_TASKS } from '../../modules/runs/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'

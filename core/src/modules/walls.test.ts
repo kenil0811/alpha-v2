@@ -8,7 +8,7 @@ import type { BrowserEngine } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
 import { agents, setAgentState } from './agents.ts'
-import { install } from './kits.ts'
+import { install } from './kits/index.ts'
 import { AgentRunner } from './runs/index.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
