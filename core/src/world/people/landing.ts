@@ -152,7 +152,7 @@ export function companyKeys(people: People, company: string | null, emails: stri
 }
 
 // The companies a person's row names: one per address domain that is no mail service, and the
-// company it names, which goes with the first such domain (RestoPros and restopros.com are one).
+// company it names, which goes with the first such domain (Oakmill and oakmill.com are one).
 export function companiesOf(people: People, s: Said): Said[] {
   const { services, seconds } = people.judgements()
   const domains = uniq(

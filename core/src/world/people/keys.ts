@@ -57,7 +57,7 @@ export function domainOf(
   return services.has(d) ? null : d
 }
 
-// A company's name until a row names it: restopros.com is Restopros, chase-global.com is Chase
+// A company's name until a row names it: oakmill.com is Oakmill, chase-global.com is Chase
 // Global.
 export function domainWords(domain: string): string {
   return (domain.split('.')[0] ?? domain)

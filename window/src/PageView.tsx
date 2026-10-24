@@ -64,6 +64,7 @@ export function PageView({
   const [height, setHeight] = useState(480)
   const [problem, setProblem] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
+  const [asks, setAsks] = useState<string | null>(null)
   const inputs = useRef<Record<string, string>>({})
   const base = `/api/modules/${m.id}/pages/${page.name}`
 
@@ -112,9 +113,10 @@ export function PageView({
         openTarget(m, msg.target)
       } else if (msg.alpha === 'inputs' && msg.values) {
         inputs.current = msg.values
-      } else if (msg.alpha === 'say' && msg.words) {
-        // a page's button asks Alpha in the person's words, in the module's conversation
-        await api.post('/api/say', { words: msg.words, from: m.id }).catch(() => undefined)
+      } else if (msg.alpha === 'say' && typeof msg.words === 'string' && msg.words.trim()) {
+        // a page's button asks Alpha in the person's words: shown outside the frame and sent
+        // only when the person says so (item 5 of the problems list, 24 Oct)
+        setAsks(msg.words.trim().slice(0, 500))
       }
     }
     window.addEventListener('message', onMessage)
@@ -142,8 +144,28 @@ export function PageView({
     }
   }
 
+  const ask = async () => {
+    const words = asks
+    setAsks(null)
+    if (!words) return
+    await api.post('/api/say', { words, from: m.id }).catch(() => undefined)
+  }
+
   return (
     <div className="h-full overflow-y-auto">
+      {asks && (
+        <div className="flex max-w-page items-center gap-3 border-hair border-b bg-surface px-7 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-ink text-md">
+            This page asks Alpha: “{asks}”
+          </span>
+          <Button size="sm" variant="ghost" onClick={() => setAsks(null)}>
+            Not now
+          </Button>
+          <Button size="sm" onClick={ask}>
+            Ask Alpha
+          </Button>
+        </div>
+      )}
       <div className="flex max-w-page items-center gap-3 px-7 pt-4">
         <span className="min-w-0 flex-1 truncate text-ink-3 text-sm">
           {problem ?? (html ? '' : 'Loading the page…')}

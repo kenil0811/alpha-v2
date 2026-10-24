@@ -170,14 +170,13 @@ export default async (alpha) => {
   }
 
   return {
-    words:
-      [
-        `${inCircles.size} in circles`,
-        due.length ? `${due.length} going quiet` : '',
-        drafted ? `${drafted} note${drafted === 1 ? '' : 's'} drafted for your yes` : '',
-        sent ? `${sent} sent under your standing permission` : '',
-      ]
-        .filter(Boolean)
-        .join(', ') + '.',
+    words: `${[
+      `${inCircles.size} in circles`,
+      due.length ? `${due.length} going quiet` : '',
+      drafted ? `${drafted} note${drafted === 1 ? '' : 's'} drafted for your yes` : '',
+      sent ? `${sent} sent under your standing permission` : '',
+    ]
+      .filter(Boolean)
+      .join(', ')}.`,
   }
 }

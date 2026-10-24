@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- a module's page runs in a frame of its own; the frame may never navigate away with what
+         it was shown (item 4 of the problems list, 24 Oct) -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'self'" />
     <title>Alpha</title>
   </head>
   <body>

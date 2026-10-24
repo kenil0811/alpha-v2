@@ -7,6 +7,20 @@ import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FileView, RowFileView } from '../types.ts'
 
+// What a browser may show as itself: documents and pictures that carry no script.
+const INLINE = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'text/plain',
+  'text/csv',
+  'text/markdown',
+])
+// What shows only in a sandbox: markup that could carry a script.
+const SANDBOXED = new Set(['text/html', 'image/svg+xml', 'application/xhtml+xml'])
+
 export function registerFiles(ctx: Ctx): void {
   const { app, world, engine, user, person, live } = ctx
   const { byWords, columnOf } = ctx.views
@@ -125,13 +139,35 @@ export function registerFiles(ctx: Ctx): void {
       .send(readFileSync(png))
   })
 
+  // A stored file came from outside (a mailed attachment, a drop), so it never runs as Alpha's
+  // own page (item 3 of the problems list, 24 Oct): the harmless kinds show inline, HTML and SVG
+  // show in a sandbox that runs nothing and sends nothing, everything else downloads, and no
+  // browser guesses a type.
   app.get('/api/files/:hash', async (req, reply) => {
     const { hash } = z.object({ hash: z.string() }).parse(req.params)
     const f = world.files.file(hash)
     if (!f) return reply.code(404).send({ problem: 'That file is not there.' })
+    const mime = (f.mime.split(';')[0] ?? '').trim().toLowerCase() || 'application/octet-stream'
+    const name = encodeURIComponent(f.name)
+    reply.header('x-content-type-options', 'nosniff')
+    if (INLINE.has(mime))
+      return reply
+        .type(mime)
+        .header('content-disposition', `inline; filename="${name}"`)
+        .send(world.files.bytes(hash))
+    if (SANDBOXED.has(mime))
+      return reply
+        .type(mime)
+        .header(
+          'content-security-policy',
+          "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+        )
+        .header('referrer-policy', 'no-referrer')
+        .header('content-disposition', `inline; filename="${name}"`)
+        .send(world.files.bytes(hash))
     return reply
-      .type(f.mime)
-      .header('content-disposition', `inline; filename="${encodeURIComponent(f.name)}"`)
+      .type('application/octet-stream')
+      .header('content-disposition', `attachment; filename="${name}"`)
       .send(world.files.bytes(hash))
   })
 }

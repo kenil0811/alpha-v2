@@ -26,9 +26,9 @@ alpha-v2's docs speak of "the first client".
   income ties) and the benchmarks as Flags; the Report page in the reference's order, every figure
   opening its source, the PDF from pages.
 - **a client's real exports, on Kenil's Mac only (`core/.readers/accounting-check.ts`, not
-  committed):** days cash on hand 54 (the reference: 656), 89% of A/R ($292,160.49) over 90 days,
-  Michael Hutchinson's −$184,107.55 credit, and no check failing (assets $658,446.40 balance, the
-  A/R aging ties at $329,593.77, January to June net income ties at −$63,953.37).
+  committed):** the figures and the checks came out right against the reference; the numbers are
+  in alpha-avilo's log (the client's own repository), not here (moved 24 Oct, item 8 of the
+  problems list).
 - Journey `accounting-a-month` on invented exports (the client's repository, `journeys/fixtures/files/
   lakeside`) passed, Alpha's drafted insights included. Seen in the window in WebKit; a figure
   opened its formula and sum; the PDF printed (four A4 pages).

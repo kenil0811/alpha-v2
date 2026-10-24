@@ -94,6 +94,57 @@ describe('the api over a world', () => {
     })
     expect(me.statusCode).toBe(200)
     expect(me.json().user.name).toBe('Kenil')
+    // an encoded spelling of the address reaches the same route and meets the same check
+    for (const url of ['/%61pi/me', '/%77s', '/api/%6de', '/%61pi/kits/pack'])
+      expect(
+        (
+          await a.inject({
+            url,
+            method: url.endsWith('pack') ? 'POST' : 'GET',
+            headers: { host: '127.0.0.1:4700' },
+          })
+        ).statusCode,
+        url,
+      ).toBe(403)
+    await a.close()
+  })
+
+  it('shows a stored file inline only when it is harmless, HTML in a sandbox, the rest as a download', async () => {
+    const a = app()
+    const person = { actor: { kind: 'person' as const, id: world.owner('Kenil').id } }
+    const take = (name: string, mime: string, text: string) =>
+      world.files.take(Buffer.from(text), name, mime, person).file.hash
+    const pdf = await a.inject({
+      url: `/api/files/${take('a.pdf', 'application/pdf', '%PDF-1.4')}`,
+      headers: ok,
+    })
+    expect(pdf.headers['content-type']).toContain('application/pdf')
+    expect(pdf.headers['content-disposition']).toContain('inline')
+    expect(pdf.headers['x-content-type-options']).toBe('nosniff')
+    const html = await a.inject({
+      url: `/api/files/${take('invoice.html', 'text/html', '<script>fetch("/api/me")</script>')}`,
+      headers: ok,
+    })
+    expect(html.headers['content-security-policy']).toContain('sandbox')
+    expect(html.headers['referrer-policy']).toBe('no-referrer')
+    const svg = await a.inject({
+      url: `/api/files/${take('logo.svg', 'image/svg+xml', '<svg/>')}`,
+      headers: ok,
+    })
+    expect(svg.headers['content-security-policy']).toContain('sandbox')
+    const exe = await a.inject({
+      url: `/api/files/${take('setup.exe', 'application/x-msdownload', 'MZ')}`,
+      headers: ok,
+    })
+    expect(exe.headers['content-disposition']).toContain('attachment')
+    expect(exe.headers['content-type']).toContain('application/octet-stream')
+    // a type the sender lied about still never runs: nosniff on every file
+    const lied = await a.inject({
+      url: `/api/files/${take('x.txt', 'text/plain', '<html>')}`,
+      headers: ok,
+    })
+    expect(lied.headers['content-type']).toContain('text/plain')
+    expect(lied.headers['x-content-type-options']).toBe('nosniff')
     await a.close()
   })
 
