@@ -35,3 +35,5 @@ crashed on `ReferenceError: Cannot access 'engine' before initialization` (the r
 in `main.ts` reached the engine, made after the runner; `endOrphans` runs in the runner's
 constructor since 23 Oct) and restarted itself until the orphans were gone, eight times today.
 `notify` now tells the engine only once it exists.
+
+Kenil's "looks good" 21:05 UTC: pushed, tagged v0.5.1.
