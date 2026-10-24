@@ -1,7 +1,7 @@
 // The journeys runner (design §16): a journey is a YAML file of steps and checks on the world,
 // run on a fresh tenant of its own with the real model. Checks read the world, not the model's
 // prose. The report goes in docs/journeys/.
-//   node src/journeys/run.ts <name> [--alone] [--keep] [--from <folder of journeys>]
+//   node src/journeys/run.ts <name> [--appended] [--keep] [--from <folder of journeys>]
 // A client's journeys live in the client's own repository (--from ../<client>/journeys); their
 // paths are then from that repository's root, and their reports go in its docs/journeys/.
 import {
@@ -360,7 +360,8 @@ async function main() {
   const args = process.argv.slice(2)
   const name = args.find((a) => !a.startsWith('--'))
   if (!name) throw new Error('Name a journey: node src/journeys/run.ts track-what-i-eat')
-  const prompt = args.includes('--alone') ? 'alone' : 'appended'
+  // Alpha's prompt alone is the default since 24 Oct; --appended tries it on Claude Code's own
+  const prompt = args.includes('--appended') ? 'appended' : 'alone'
   const fromAt = args.indexOf('--from')
   const journeys = fromAt >= 0 ? resolve(ROOT, args[fromAt + 1] ?? '') : join(ROOT, 'journeys')
   const base = fromAt >= 0 ? resolve(journeys, '..') : ROOT

@@ -38,7 +38,9 @@ export interface DeskOptions {
   connectors?: ConnectorService
   hands?: Hands
   route?: ModelRoute // how this install reaches Claude: the person's subscription or a key
-  // Alpha's words appended to the route's own prompt (the design's choice), or alone: week 1
+  // Alpha's words alone (measured 24 Oct: six journeys, three runs each way; alone passed 17 of
+  // 18 to appended's 18, 8% faster and 9% fewer input tokens, and one prompt serves both routes),
+  // or appended to the route's own prompt:
   // measures one against the other.
   prompt?: 'appended' | 'alone'
 }
@@ -83,7 +85,7 @@ export class Desk {
     this.granted = options.granted ?? []
     this.connectors = options.connectors ?? null
     this.hands = options.hands
-    this.prompt = options.prompt ?? 'appended'
+    this.prompt = options.prompt ?? 'alone'
     this.here = {
       current: { user, turn: null, said: null, message: null },
       fromSubagent: false,

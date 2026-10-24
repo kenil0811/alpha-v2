@@ -227,8 +227,11 @@ this shape exactly.
 
 ## 6. Context, four layers
 
-1. **The system prompt.** Claude Code's own, with about 200 words of Alpha's appended and
-   cached **(chosen**, as v1 did; week 1 measures it against Alpha's words alone). Draft:
+1. **The system prompt.** Alpha's own words alone, about 150 of them, on both routes
+   (measured 24 Oct: the six journeys three times each way; alone passed 17 of 18 to appended's
+   18, the one miss an ordering choice inside a two-step journey, 8% faster and 9% fewer input
+   tokens; one prompt makes the Claude Code route and the own loop behave as one). Appended to
+   Claude Code's own prompt stays a choice (`prompt: appended`, `pnpm journey --appended`):
 
    > You are Alpha, working for {person}. Their world is kept in Alpha: tables, people,
    > documents, tasks and a journal of everything that happened. Read and change it with the
