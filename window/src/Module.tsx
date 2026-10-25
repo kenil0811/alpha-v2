@@ -9,17 +9,21 @@
 // on its Overview, else on its front page, else its first table.
 import type { ModuleView, PermissionView, RunView, TableView as TableData } from '@alpha/core/api'
 import {
+  Ban,
   Bot,
   Briefcase,
   Building2,
+  Check,
   LayoutDashboard,
   LayoutGrid,
   MessageSquare,
+  Plus,
   Table2,
   Users,
 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { startAsk } from './ask.ts'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
 import { InBar } from './Shell.tsx'
@@ -345,25 +349,9 @@ function Below({ m, version, onChange }: { m: ModuleView; version: number; onCha
       </Section>
       <Section
         title="Governance"
-        sub="What Alpha may read and do here, and what it asks you first."
+        sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
       >
-        <ul className="flex flex-col gap-1.5 text-md text-ink-2">
-          <li>
-            {m.sites
-              ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
-              : 'Its readers read no sites.'}
-          </li>
-          {allowed?.map((p) => (
-            <li key={p.id}>
-              May, without asking: {p.sentence}{' '}
-              <span className="text-ink-3">(given by {p.grantedBy}, across Alpha)</span>
-            </li>
-          ))}
-          <li>Anything else that changes your data or reaches someone, Alpha asks you first.</li>
-        </ul>
-        <a href="#/settings" className="mt-2 inline-block text-accent text-sm hover:underline">
-          Standing permissions
-        </a>
+        <Governance m={m} allowed={allowed} />
       </Section>
     </div>
   )
@@ -426,3 +414,93 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
     sel: kind === 'company',
   },
 ]
+
+// Governance's rules under two tabs, Allowed n and Denied n (Alpha Brain §5): each rule a sentence
+// opening its page, and + Add starting the assistant with the rule's first words, for the person
+// to finish; Alpha keeps it from the conversation.
+function Governance({ m, allowed }: { m: ModuleView; allowed: PermissionView[] | null }) {
+  const [tab, setTab] = useState<'allowed' | 'denied'>('allowed')
+  const may: { key: string; words: string; why: string; href?: string }[] = [
+    {
+      key: 'sites',
+      words: m.sites
+        ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
+        : 'Its readers read no sites.',
+      why: 'The sites were named when the module was made.',
+    },
+    ...(allowed ?? []).map((p) => ({
+      key: p.id,
+      words: p.sentence,
+      why: `You said Always on its card (${p.grantedBy}); it holds across Alpha.`,
+      href: `#/permission/${p.id}`,
+    })),
+  ]
+  const never: typeof may = [] // nothing serves a module's denied rules yet; + Add asks Alpha
+  const rules = tab === 'allowed' ? may : never
+  const tabClass = (on: boolean) =>
+    cn(
+      '-mb-px flex h-9 items-center gap-1.5 border-b-2 px-1 text-md',
+      on ? 'border-accent font-medium text-ink' : 'border-transparent text-ink-2 hover:text-ink',
+    )
+  return (
+    <div className="flex flex-col gap-3">
+      <fieldset
+        aria-label="Governance"
+        className="m-0 flex min-w-0 gap-4 border-0 border-line border-b p-0"
+      >
+        <button
+          type="button"
+          aria-pressed={tab === 'allowed'}
+          onClick={() => setTab('allowed')}
+          className={tabClass(tab === 'allowed')}
+        >
+          <Check className="size-3.5 text-good" />
+          Allowed <span className="text-ink-3 tabular-nums">{may.length}</span>
+        </button>
+        <button
+          type="button"
+          aria-pressed={tab === 'denied'}
+          onClick={() => setTab('denied')}
+          className={tabClass(tab === 'denied')}
+        >
+          <Ban className="size-3.5 text-bad" />
+          Denied <span className="text-ink-3 tabular-nums">{never.length}</span>
+        </button>
+      </fieldset>
+      {rules.length === 0 ? (
+        <p className="text-ink-3 text-md">
+          {tab === 'allowed' ? 'Nothing allowed.' : 'Nothing denied.'}
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {rules.map((r) => (
+            <li key={r.key} className="flex flex-col">
+              {r.href ? (
+                <a href={r.href} className="text-ink text-md hover:underline">
+                  {r.words}
+                </a>
+              ) : (
+                <span className="text-ink text-md">{r.words}</span>
+              )}
+              <span className="text-ink-3 text-sm">{r.why}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        onClick={() =>
+          startAsk(
+            tab === 'allowed'
+              ? `From now on, in ${m.name}, you may `
+              : `From now on, in ${m.name}, never `,
+          )
+        }
+        className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+      >
+        <Plus className="size-3.5" />
+        {tab === 'allowed' ? 'Add allowed action' : 'Add denied action'}
+      </button>
+    </div>
+  )
+}

@@ -8,7 +8,6 @@
 // buttons.
 import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
-  Briefcase,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -37,8 +36,10 @@ import { createPortal } from 'react-dom'
 import { api } from './api.ts'
 import type { FilePlace } from './FileView.tsx'
 import { inMacApp } from './macApp.ts'
+import { ModuleIcon } from './moduleIcon.tsx'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
+import { Edge } from './ui/edge.tsx'
 import { Kbd } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover } from './ui/popover.tsx'
 
@@ -121,6 +122,21 @@ export function Rail({
   onLayout: (change: Partial<Layout>) => void
   onNew: () => void // New module: the assistant makes one from what the person says
 }) {
+  // the rail's width, dragged by its edge, kept in this browser
+  const [width, setWidth] = useState(() => {
+    try {
+      return Number(localStorage.getItem('alpha.rail')) || 216
+    } catch {
+      return 216
+    }
+  })
+  const [dragged, setDragged] = useState<number | null>(null)
+  const keepWidth = (w: number) => {
+    setWidth(w)
+    try {
+      localStorage.setItem('alpha.rail', String(w))
+    } catch {}
+  }
   if (layout.railFolded)
     return (
       <Strip
@@ -141,7 +157,19 @@ export function Rail({
         : [...layout.folded, id],
     })
   return (
-    <nav className="flex w-54 shrink-0 flex-col overflow-hidden border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink">
+    <nav
+      style={{ width: dragged ?? width }}
+      className="relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
+    >
+      <Edge
+        side="right"
+        width={dragged ?? width}
+        min={RAIL[0]}
+        max={RAIL[1]}
+        onDrag={setDragged}
+        onDone={keepWidth}
+        onFold={() => onLayout({ railFolded: true })}
+      />
       {/* the rail's head sits on the window's header line; in Alpha's own window it moves the
           window and leaves room for its buttons */}
       <div
@@ -250,7 +278,7 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
 
 function Badge({ n }: { n: number }) {
   return (
-    <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
+    <span className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
     </span>
   )
@@ -278,7 +306,7 @@ function ModuleItem({
       <div className="group/item relative flex items-center">
         <Nav
           href={`#/module/${m.id}`}
-          icon={<Briefcase className="size-4" />}
+          icon={<ModuleIcon name={m.name} className="size-4" />}
           label={m.name}
           current={here === m.id}
           extra={<span className="w-11 shrink-0" />}
@@ -355,7 +383,7 @@ function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }
         <EllipsisVertical className="size-3.5" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
-        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs uppercase tracking-label">
+        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs">
           Move {m.name} into
         </div>
         {flat(modules)
@@ -377,14 +405,6 @@ function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }
       </Popover>
     </>
   )
-}
-
-// A module's two letters in the folded rail: the first of its first two words, else its first two.
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/)
-  return words.length > 1
-    ? `${words[0]?.[0] ?? ''}${words[1]?.[0] ?? ''}`.toUpperCase()
-    : `${name.slice(0, 1).toUpperCase()}${name.slice(1, 2)}`
 }
 
 // The rail folded to a strip of icons: the same places, each named when hovered.
@@ -478,9 +498,7 @@ function Strip({
             `#/module/${m.id}`,
             m.name,
             top === m.id,
-            <span className="grid h-6 min-w-6 place-items-center rounded-sm bg-rail-hover px-0.5 font-semibold text-rail-ink-2 text-xs">
-              {initials(m.name)}
-            </span>,
+            <ModuleIcon name={m.name} className="size-4" />,
           ),
         )}
         <button
@@ -514,6 +532,9 @@ export interface Crumb {
   icon?: ReactNode
   parts: { label: string; href?: string | undefined }[]
 }
+
+// the rail's narrowest and widest
+const RAIL = [180, 360] as const
 
 // Network, the module shipped on install that People and Organizations live in, found by its name.
 export const network = (modules: ModuleSummary[]) =>

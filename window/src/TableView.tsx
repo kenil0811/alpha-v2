@@ -40,6 +40,7 @@ import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
+import { Select } from './ui/field.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 
 interface Working {
@@ -108,6 +109,21 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
+  // rows to a page, the person's choice, kept in this browser
+  const [size, setSize] = useState(() => {
+    try {
+      return Number(localStorage.getItem('alpha-page-size')) || PAGE
+    } catch {
+      return PAGE
+    }
+  })
+  const resize = (n: number) => {
+    setSize(n)
+    setPage(0)
+    try {
+      localStorage.setItem('alpha-page-size', String(n))
+    } catch {}
+  }
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
   const [strip, setStrip] = useState(() => {
     try {
@@ -213,9 +229,9 @@ export function TableView({
   const pickedField = picked ? data.fields.find((f) => f.slug === picked.field) : undefined
 
   // the rows a page at a time, PAGE to a page; a changed view starts again at the first
-  const pages = Math.max(1, Math.ceil(rows.length / PAGE))
+  const pages = Math.max(1, Math.ceil(rows.length / size))
   const at = Math.min(page, pages - 1)
-  const paged = rows.slice(at * PAGE, (at + 1) * PAGE)
+  const paged = rows.slice(at * size, (at + 1) * size)
 
   return (
     <div className="flex h-full min-h-0">
@@ -458,27 +474,41 @@ export function TableView({
                       : 'This table has no columns to fill in.'
               }
             />
-            {rows.length > PAGE && (
-              <div className="-mt-4 flex items-center justify-end gap-2 px-7 pb-3 text-ink-3 text-sm">
-                <span className="tabular-nums">
-                  Showing {at * PAGE + 1}–{at * PAGE + paged.length} of {rows.length}
+            {rows.length > Math.min(size, ...SIZES) && (
+              <div className="-mt-4 flex items-center justify-end gap-1 px-7 pb-3 text-ink-3 text-sm">
+                <span className="mr-2 tabular-nums">
+                  Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
                 </span>
-                <button
-                  type="button"
-                  disabled={at === 0}
-                  onClick={() => setPage(at - 1)}
-                  className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                <Select
+                  aria-label="Rows to a page"
+                  value={String(size)}
+                  onChange={(e) => resize(Number(e.target.value))}
+                  className="mr-2 w-28"
                 >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={at >= pages - 1}
-                  onClick={() => setPage(at + 1)}
-                  className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
-                >
-                  Next
-                </button>
+                  {SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      {n} a page
+                    </option>
+                  ))}
+                </Select>
+                {(
+                  [
+                    ['First', 0, at === 0],
+                    ['Previous', at - 1, at === 0],
+                    ['Next', at + 1, at >= pages - 1],
+                    ['Last', pages - 1, at >= pages - 1],
+                  ] as const
+                ).map(([label, to, off]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={off}
+                    onClick={() => setPage(to)}
+                    className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
           </>
@@ -522,6 +552,7 @@ export function TableView({
 }
 
 const PAGE = 50
+const SIZES = [25, 50, 100, 250]
 
 // The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
 function More({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {

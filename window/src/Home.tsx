@@ -16,6 +16,7 @@ import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucid
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
+import { ModuleIcon } from './moduleIcon.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
@@ -534,8 +535,8 @@ function ModuleCards({ modules }: { modules: ModuleSummary[] }) {
               href={`#/module/${m.id}`}
               className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 hover:border-accent-line"
             >
-              <span className="grid size-8 place-items-center rounded-md bg-accent-soft font-semibold text-accent text-sm">
-                {m.name.slice(0, 2).toUpperCase()}
+              <span className="grid size-8 place-items-center rounded-md bg-accent-soft text-accent">
+                <ModuleIcon name={m.name} className="size-4" />
               </span>
               <span className="font-medium text-base text-ink">{m.name}</span>
               <span className="text-ink-3 text-sm">{line || 'Empty for now'}</span>

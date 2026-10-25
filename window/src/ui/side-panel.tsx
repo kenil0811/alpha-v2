@@ -1,10 +1,11 @@
 // The side panel: detail on the right, 320px, pushing the content rather than covering it. Given
 // `width`, it is the person's to size: its left edge drags it wider (up to two thirds of the
-// window), Expand makes it half the window and back, and Open full opens it as a screen.
+// window) or, dragged all the way in, closes it, Expand makes it half the window and back, and Open full opens it as a screen.
 import { Maximize2, Minimize2, SquareArrowOutUpRight, X } from 'lucide-react'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { IconButton } from './button.tsx'
 import { cn } from './cn.ts'
+import { Edge } from './edge.tsx'
 
 const NARROW = 320
 
@@ -38,7 +39,6 @@ export function SidePanel({
   const shown = clamp(dragged ?? width ?? NARROW)
   const half = clamp(room / 2)
   const wide = shown >= half - 8
-  const from = useRef<{ x: number; w: number } | null>(null)
 
   return (
     <aside
@@ -49,28 +49,14 @@ export function SidePanel({
       )}
     >
       {sizable && (
-        <div
-          title="Drag to make it wider or narrower"
-          className={cn(
-            '-left-1 absolute inset-y-0 z-10 w-2 cursor-col-resize transition-colors hover:bg-accent-line/40',
-            dragged !== null && 'bg-accent-line/40',
-          )}
-          onPointerDown={(e) => {
-            e.preventDefault()
-            e.currentTarget.setPointerCapture(e.pointerId)
-            from.current = { x: e.clientX, w: shown }
-            setDragged(shown)
-          }}
-          onPointerMove={(e) => {
-            if (from.current) setDragged(clamp(from.current.w + from.current.x - e.clientX))
-          }}
-          onPointerUp={(e) => {
-            if (!from.current) return
-            const w = clamp(from.current.w + from.current.x - e.clientX)
-            from.current = null
-            setDragged(null)
-            onWidth?.(w <= NARROW ? null : w)
-          }}
+        <Edge
+          side="left"
+          width={shown}
+          min={NARROW}
+          max={widest}
+          onDrag={setDragged}
+          onDone={(w) => onWidth?.(w <= NARROW ? null : w)}
+          onFold={onClose}
         />
       )}
       {head ?? (

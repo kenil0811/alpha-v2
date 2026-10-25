@@ -380,7 +380,7 @@ function TaskPage({
             onBlur={() =>
               title.trim() && title.trim() !== t.title && change({ title: title.trim() })
             }
-            className="w-full bg-transparent font-serif text-2xl text-ink outline-none"
+            className="h-12 w-full bg-transparent font-serif text-2xl text-ink outline-none"
           />
           <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
             <span>

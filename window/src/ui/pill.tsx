@@ -26,7 +26,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        'inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 font-medium text-sm',
+        'inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 font-medium text-sm',
         TONES[tone],
         className,
       )}
@@ -41,7 +41,7 @@ export function Topic({ className, ...props }: ButtonHTMLAttributes<HTMLButtonEl
     <button
       type="button"
       className={cn(
-        'inline-flex h-5 items-center rounded-sm border border-line bg-surface px-1.75 font-medium text-ink-2 text-xs transition-colors hover:border-accent-line hover:text-accent',
+        'inline-flex h-6 items-center rounded-sm border border-line bg-surface px-1.75 font-medium text-ink-2 text-xs transition-colors hover:border-accent-line hover:text-accent',
         className,
       )}
       {...props}
@@ -49,13 +49,9 @@ export function Topic({ className, ...props }: ButtonHTMLAttributes<HTMLButtonEl
   )
 }
 
-// An 11px uppercase label: the only uppercase there is.
+// A small label, in sentence case like everything else.
 export function Label({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <span className={cn('font-semibold text-ink-3 text-xs uppercase tracking-label', className)}>
-      {children}
-    </span>
-  )
+  return <span className={cn('font-semibold text-ink-3 text-xs', className)}>{children}</span>
 }
 
 export function Kbd({ children }: { children: ReactNode }) {

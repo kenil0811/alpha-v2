@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
+import { startAsk } from './ask.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
@@ -188,18 +189,37 @@ export function App() {
         setAsking((a) => !a)
       }
     }
+    const onAsk = () => setAsking(true)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('alpha:ask', onAsk)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('alpha:ask', onAsk)
+    }
   }, [])
 
   // ⌘K opens Find anywhere; ⌘\ folds the rail or opens it
   const foldedRef = useRef(layout.railFolded)
   foldedRef.current = layout.railFolded
+  const panelRef = useRef(layout.panel)
+  panelRef.current = layout.panel
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setFinding((f) => !f)
+      }
+      // Escape steps the assistant back one level: wide to normal to folded; never while typing or
+      // with a pop-up open, which Escape closes first
+      if (
+        e.key === 'Escape' &&
+        !e.defaultPrevented &&
+        !typing(e.target) &&
+        !document.querySelector('dialog[open]') &&
+        askableRef.current
+      ) {
+        if (panelRef.current) changeLayout({ panel: null })
+        else setAsking(false)
       }
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault()
@@ -371,7 +391,7 @@ export function App() {
         onLayout={changeLayout}
         name={name}
         waiting={stream?.cards.length ?? 0}
-        onNew={() => setAsking(true)}
+        onNew={() => startAsk('Make a module for ')}
         tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
         online={!problem}
       />
@@ -500,3 +520,7 @@ export function App() {
     </div>
   )
 }
+
+// a key pressed in a field belongs to the field
+const typing = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))

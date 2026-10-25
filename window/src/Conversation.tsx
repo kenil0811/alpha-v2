@@ -24,6 +24,7 @@ import {
   useState,
 } from 'react'
 import { api, Problem } from './api.ts'
+import { takeAsk } from './ask.ts'
 import { Beside } from './Beside.tsx'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
@@ -96,6 +97,18 @@ export function Conversation({
   const [problem, setProblem] = useState<string | null>(null)
   const [words, setWords] = useState('')
   const composer = useRef<HTMLTextAreaElement>(null)
+  // words another screen started the assistant with (Governance's + Add, New module)
+  useEffect(() => {
+    const take = () => {
+      const w = takeAsk()
+      if (!w) return
+      setWords((d) => (d.trim() ? `${d.trimEnd()}\n${w}` : w)) // a draft stays
+      composer.current?.focus()
+    }
+    take()
+    window.addEventListener('alpha:ask', take)
+    return () => window.removeEventListener('alpha:ask', take)
+  }, [])
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
@@ -218,7 +231,7 @@ const keyOf = (i: Item) =>
 
 function DayLine({ day }: { day: string }) {
   return (
-    <div className="flex items-center gap-3 font-semibold text-ink-3 text-xs uppercase tracking-label">
+    <div className="flex items-center gap-3 font-semibold text-ink-3 text-xs">
       <span className="h-px flex-1 bg-hair" />
       {day}
       <span className="h-px flex-1 bg-hair" />
@@ -422,7 +435,7 @@ function Now({ stream }: { stream: Stream | null }) {
   const shown = [...chips.filter((c) => c.need), ...chips.filter((c) => !c.need)].slice(0, 3)
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-0.5 font-semibold text-ink-3 text-xs uppercase tracking-label">Now</span>
+      <span className="mr-0.5 font-semibold text-ink-3 text-xs">Now</span>
       {shown.map((c) => (
         <button
           key={c.key}
