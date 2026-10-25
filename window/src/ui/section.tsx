@@ -1,5 +1,6 @@
-// A section of a page: its title in serif, a line on what it is, then its rows.
+// A section of a page: its title in serif, an ⓘ with what it is, then its rows.
 import type { ReactNode } from 'react'
+import { Info } from './info.tsx'
 
 export function Section({
   title,
@@ -12,9 +13,9 @@ export function Section({
 }) {
   return (
     <section className="flex flex-col gap-2.5">
-      <div className="flex flex-wrap items-baseline gap-2.5">
+      <div className="flex items-center gap-1.5">
         <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
-        {about && <p className="text-ink-3 text-sm">{about}</p>}
+        {about && <Info help={about} />}
       </div>
       {children}
     </section>
