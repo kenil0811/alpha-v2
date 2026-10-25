@@ -1,6 +1,6 @@
-// A row opened: every field with its value and mark, each opening to where it came from, the
-// pages and files its values were read from, and the documents on it (a deal's CIM), which a file
-// dropped on the panel joins at once.
+// A row's detail, on its record page: every field with its value and mark, each opening to where
+// it came from, the pages and files its values were read from, its tasks, and the documents on it
+// (a deal's CIM), which a file dropped on it joins at once.
 import type { FieldView, RowFileView, RowView, TasksView } from '@alpha/core/api'
 import { ExternalLink, FileText, Paperclip, X } from 'lucide-react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
@@ -11,27 +11,22 @@ import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
-import { SidePanel } from '../ui/side-panel.tsx'
 import { KIND_WORDS, MARK, show } from './values.ts'
 
-export function RowPanel({
+export function RowDetail({
   tableId,
   kinds,
   row,
   fields,
   names,
-  title,
   onField,
-  onClose,
 }: {
   tableId: string
   kinds: string[] | null // the kinds of document the table's rows take
   row: RowView
   fields: FieldView[]
   names: Record<string, string>
-  title: string
   onField: (slug: string) => void
-  onClose: () => void
 }) {
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
   const [files, setFiles] = useState<RowFileView[]>([])
@@ -77,7 +72,7 @@ export function RowPanel({
       })
   }
   return (
-    <SidePanel title={title || 'A row'} onClose={onClose}>
+    <>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop target for files; Add a file is the keyboard way */}
       <div
         className="relative"
@@ -88,7 +83,7 @@ export function RowPanel({
         onDragLeave={() => setDragging(false)}
         onDrop={drop}
       >
-        <dl className="flex flex-col">
+        <dl className="grid grid-cols-1 overflow-hidden rounded-lg border border-line bg-surface @2xl:grid-cols-2">
           {fields.map((f) => {
             const source = row.sources[f.slug]
             const text = show(f, row.values[f.slug], names)
@@ -97,7 +92,7 @@ export function RowPanel({
                 key={f.id}
                 type="button"
                 onClick={() => onField(f.slug)}
-                className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
+                className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover @2xl:odd:border-r"
               >
                 <dt
                   className="flex items-center gap-2 text-ink-3 text-sm"
@@ -125,7 +120,7 @@ export function RowPanel({
           })}
         </dl>
         {places.size > 0 && (
-          <div className="flex flex-col gap-2 p-4.5">
+          <div className="flex flex-col gap-2 pt-6">
             <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
               Read from
             </div>
@@ -153,7 +148,7 @@ export function RowPanel({
             </div>
           </div>
         )}
-        <div className="flex flex-col gap-2 p-4.5">
+        <div className="flex flex-col gap-2 pt-6">
           <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
             Tasks
             {tasks?.lines.length
@@ -169,7 +164,7 @@ export function RowPanel({
             onAdded={() => void loadTasks()}
           />
         </div>
-        <div className="flex flex-col gap-2 p-4.5">
+        <div className="flex flex-col gap-2 pt-6">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
               Documents
@@ -259,6 +254,6 @@ export function RowPanel({
           </div>
         )}
       </div>
-    </SidePanel>
+    </>
   )
 }

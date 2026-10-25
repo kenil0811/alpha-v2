@@ -29,7 +29,7 @@ import {
 import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { PasteBar, TickedBar } from './table/Many.tsx'
-import { RowPanel } from './table/RowPanel.tsx'
+import { RecordPage } from './table/RecordPage.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
@@ -92,7 +92,7 @@ export function TableView({
   const dirty = differs(config, saved)
   const [problem, setProblem] = useState<string | null>(null)
   const [picked, setPicked] = useState<{ row: string; field: string } | null>(
-    openRow
+    openRow && openField
       ? {
           row: openRow,
           field:
@@ -105,7 +105,6 @@ export function TableView({
   const [adding, setAdding] = useState(false)
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
-  const [opened, setOpened] = useState<string | null>(null)
   // the open tasks on each row, drawn beside its name
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
   useEffect(() => {
@@ -176,16 +175,16 @@ export function TableView({
     write(() => api.post(`/api/tables/${data.id}/rows/${row.id}`, { field: field.name, value }))
   const tickedRows = data.rows.filter((r) => ticked.has(r.id))
   const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
-  const openRowPanel = (id: string) => {
-    setOpened(id)
-    setPicked(null)
-    setAdding(false)
+  // a row opens as its own page
+  const openRecord = (id: string) => {
+    window.location.hash = `#/table/${data.id}/${id}`
   }
   const first = data.fields[0]
-  const openedRow = opened ? data.rows.find((r) => r.id === opened) : undefined
+  const record = openRow && !openField ? data.rows.find((r) => r.id === openRow) : undefined
   const pickedRow = picked ? data.rows.find((r) => r.id === picked.row) : undefined
   const pickedField = picked ? data.fields.find((f) => f.slug === picked.field) : undefined
 
+  if (record) return <RecordPage data={data} row={record} />
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
@@ -351,14 +350,14 @@ export function TableView({
             fields={shown}
             group={fields.find((f) => f.id === config.group)}
             names={data.names}
-            onOpen={openRowPanel}
+            onOpen={openRecord}
           />
         ) : config.kind === 'gallery' ? (
-          <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
+          <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRecord} />
         ) : config.kind === 'calendar' && dateBy ? (
-          <CalendarView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+          <CalendarView rows={rows} fields={fields} by={dateBy} onOpen={openRecord} />
         ) : config.kind === 'timeline' && dateBy ? (
-          <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+          <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRecord} />
         ) : config.kind === 'chart' ? (
           <ChartView
             rows={rows}
@@ -397,18 +396,11 @@ export function TableView({
               picked={picked}
               openRow={openRow ?? null}
               ticked={ticked}
-              onPick={(p) => {
-                setPicked(p)
-                setOpened(null)
-              }}
+              onPick={setPicked}
               onConfig={setConfig}
               onTick={setTicked}
               onEdit={edit}
-              onOpen={(id) => {
-                setOpened(id)
-                setPicked(null)
-                setAdding(false)
-              }}
+              onOpen={openRecord}
               onPaste={setPasting}
             />
           </>
@@ -422,22 +414,7 @@ export function TableView({
           onClose={() => setAdding(false)}
         />
       )}
-      {!adding && !quiet && openedRow && (
-        <RowPanel
-          tableId={data.id}
-          kinds={data.documents}
-          row={openedRow}
-          fields={shown}
-          names={data.names}
-          title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
-          onField={(slug) => {
-            setPicked({ row: openedRow.id, field: slug })
-            setOpened(null)
-          }}
-          onClose={() => setOpened(null)}
-        />
-      )}
-      {!adding && !quiet && !openedRow && pickedRow && pickedField && (
+      {!adding && !quiet && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
           row={pickedRow}

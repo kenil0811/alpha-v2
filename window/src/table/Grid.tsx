@@ -595,8 +595,8 @@ function Cell({
       {onOpen && (
         <button
           type="button"
-          aria-label="Open the row"
-          title="Open the row"
+          aria-label="Open the record"
+          title="Open the record"
           onClick={onOpen}
           className="absolute top-1.5 right-1.5 grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
         >
