@@ -10,6 +10,7 @@ import { api } from './api.ts'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { Confirm } from './ui/dialog.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -252,29 +253,25 @@ function PermissionPage({ permission: p }: { permission: PermissionView }) {
             title="Revoke it"
             sub="Alpha asks you again each time."
             actions={
-              asking ? (
-                <span className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="warn"
-                    disabled={busy}
-                    onClick={() => act(() => api.post(`/api/permissions/${p.id}/revoke`))}
-                  >
-                    Revoke it
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
-                    Keep it
-                  </Button>
-                </span>
-              ) : (
-                <Button size="sm" variant="warn" onClick={() => setAsking(true)}>
-                  Revoke
-                </Button>
-              )
+              <Button size="sm" variant="danger" onClick={() => setAsking(true)}>
+                Revoke
+              </Button>
             }
           />
         </List>
       )}
+      <Confirm
+        open={asking}
+        title="Revoke this?"
+        yes="Revoke it"
+        busy={busy}
+        onClose={() => setAsking(false)}
+        onYes={() =>
+          act(() => api.post(`/api/permissions/${p.id}/revoke`)).then(() => setAsking(false))
+        }
+      >
+        Alpha asks you again each time: “{p.sentence}”
+      </Confirm>
       <Refusal words={problem} />
     </Page>
   )

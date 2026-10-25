@@ -561,7 +561,9 @@ function Standing({ version }: { version: number }) {
                     p.revokedAt && 'text-ink-3 line-through',
                   )}
                 >
-                  {p.sentence}
+                  <a href={`#/permission/${p.id}`} className="hover:underline">
+                    {p.sentence}
+                  </a>
                 </span>
               }
               sub={`${p.grantedBy}, ${when(p.grantedAt)} · used ${p.uses === 1 ? 'once' : `${p.uses} times`}${p.revokedAt ? ` · revoked ${when(p.revokedAt)}` : ''}`}

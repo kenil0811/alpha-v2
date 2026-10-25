@@ -198,7 +198,11 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
     <Row
       indent
       lead={<Bot className="size-4 text-ink-3" />}
-      title={a.name}
+      title={
+        <a href={`#/agent/${a.id}`} className="hover:underline">
+          {a.name}
+        </a>
+      }
       sub={
         <>
           {a.description && <div className="text-ink-2">{a.description}</div>}
