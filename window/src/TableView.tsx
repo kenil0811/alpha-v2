@@ -11,7 +11,7 @@ import type {
   TableView as TableData,
   ViewConfig,
 } from '@alpha/core/api'
-import { EllipsisVertical, Search } from 'lucide-react'
+import { ChevronDown, ChevronUp, EllipsisVertical, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { AddRow } from './table/AddRow.tsx'
@@ -29,6 +29,7 @@ import {
 import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { PasteBar, TickedBar } from './table/Many.tsx'
+import { Metrics } from './table/Metrics.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
@@ -102,6 +103,21 @@ export function TableView({
       : null,
   )
   const [adding, setAdding] = useState(false)
+  const [page, setPage] = useState(0)
+  useEffect(() => setPage(0), [config]) // back to the first page when the view changes
+  const [strip, setStrip] = useState(() => {
+    try {
+      return localStorage.getItem('alpha-strip') !== 'off'
+    } catch {
+      return true
+    }
+  })
+  const fold = (on: boolean) => {
+    setStrip(on)
+    try {
+      localStorage.setItem('alpha-strip', on ? 'on' : 'off')
+    } catch {}
+  }
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)
@@ -185,9 +201,15 @@ export function TableView({
   const pickedRow = picked ? data.rows.find((r) => r.id === picked.row) : undefined
   const pickedField = picked ? data.fields.find((f) => f.slug === picked.field) : undefined
 
+  // the rows a page at a time, PAGE to a page; a changed view starts again at the first
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE))
+  const at = Math.min(page, pages - 1)
+  const paged = rows.slice(at * PAGE, (at + 1) * PAGE)
+
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
+        {strip && <Metrics rows={data.rows} fields={fields} />}
         <ViewTabs
           right={
             <>
@@ -223,6 +245,15 @@ export function TableView({
                   )
                 }
               />
+              <button
+                type="button"
+                aria-label={strip ? 'Hide the numbers' : 'Show the numbers'}
+                aria-expanded={strip}
+                onClick={() => fold(!strip)}
+                className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
+              >
+                {strip ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              </button>
             </>
           }
           views={views}
@@ -380,7 +411,8 @@ export function TableView({
             )}
             <Grid
               tableId={data.id}
-              rows={rows}
+              rows={paged}
+              counted={rows}
               allRows={data.rows}
               fields={fields}
               shown={shown}
@@ -415,6 +447,29 @@ export function TableView({
                     : 'This table has no columns to fill in.'
               }
             />
+            {rows.length > PAGE && (
+              <div className="-mt-4 flex items-center justify-end gap-2 px-7 pb-3 text-ink-3 text-sm">
+                <span className="tabular-nums">
+                  Showing {at * PAGE + 1}–{at * PAGE + paged.length} of {rows.length}
+                </span>
+                <button
+                  type="button"
+                  disabled={at === 0}
+                  onClick={() => setPage(at - 1)}
+                  className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={at >= pages - 1}
+                  onClick={() => setPage(at + 1)}
+                  className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -454,6 +509,8 @@ export function TableView({
     </div>
   )
 }
+
+const PAGE = 50
 
 // The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
 function More({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
