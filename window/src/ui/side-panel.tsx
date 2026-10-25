@@ -15,6 +15,7 @@ export function SidePanel({
   width,
   onWidth,
   full,
+  head,
 }: {
   title: string
   onClose: () => void
@@ -22,6 +23,7 @@ export function SidePanel({
   width?: number | null // the person's width; none is the usual 320px
   onWidth?: (w: number | null) => void // the width they left it at
   full?: string // where Open full goes
+  head?: ReactNode // a header of its own, in place of the title and its buttons
 }) {
   const sizable = onWidth !== undefined
   const [room, setRoom] = useState(() => window.innerWidth)
@@ -71,30 +73,32 @@ export function SidePanel({
           }}
         />
       )}
-      <div className="flex h-11.5 shrink-0 items-center gap-0.5 border-hair border-b pr-2 pl-4.5 font-semibold text-ink text-md">
-        <span className="flex-1 truncate">{title}</span>
-        {sizable && (
-          <IconButton
-            label={wide ? 'Make it narrow' : 'Expand to half the window'}
-            onClick={() => onWidth?.(wide ? null : half)}
-          >
-            {wide ? <Minimize2 className="size-3.75" /> : <Maximize2 className="size-3.75" />}
+      {head ?? (
+        <div className="flex h-11.5 shrink-0 items-center gap-0.5 border-hair border-b pr-2 pl-4.5 font-semibold text-ink text-md">
+          <span className="flex-1 truncate">{title}</span>
+          {sizable && (
+            <IconButton
+              label={wide ? 'Make it narrow' : 'Expand to half the window'}
+              onClick={() => onWidth?.(wide ? null : half)}
+            >
+              {wide ? <Minimize2 className="size-3.75" /> : <Maximize2 className="size-3.75" />}
+            </IconButton>
+          )}
+          {full && (
+            <IconButton
+              label="Open full"
+              onClick={() => {
+                window.location.hash = full
+              }}
+            >
+              <SquareArrowOutUpRight className="size-3.75" />
+            </IconButton>
+          )}
+          <IconButton label="Close" onClick={onClose}>
+            <X className="size-4" />
           </IconButton>
-        )}
-        {full && (
-          <IconButton
-            label="Open full"
-            onClick={() => {
-              window.location.hash = full
-            }}
-          >
-            <SquareArrowOutUpRight className="size-3.75" />
-          </IconButton>
-        )}
-        <IconButton label="Close" onClick={onClose}>
-          <X className="size-4" />
-        </IconButton>
-      </div>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
     </aside>
   )

@@ -21,7 +21,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { answerWords } from './vocabulary.ts'
 
-type Mood = 'quiet' | 'working' | 'needs' | 'typing'
+export type Mood = 'quiet' | 'working' | 'needs' | 'typing'
 
 // a card the bubble can settle in place: two plain choices, nothing to read or pick first
 const plain = (c: CardView) =>

@@ -1,20 +1,21 @@
-// The shell (design §14, Ledger): the rail on the left and a 48px bar over every screen. The rail
-// has the mark, Home with a badge for what waits on the person, Conversation, People, Activity, the modules
-// by name, each with the modules inside it (Kenil, 20 Oct: module names only), Settings and
-// Alpha's state at its foot; it folds to a strip of icons. Its top 48px is left for the Mac's
-// window buttons when the window has a shell of its own.
+// The shell, in the shape Bridge and Alpha Brain share (Vikas, 25 Oct; reverses design §14's rail
+// until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
+// the right, their headers on one line. The rail has the workspace at its top, Home with a badge
+// for what waits on the person, Tasks, People, the modules by name with the modules inside them,
+// New module last in the list, and Settings at its foot; no headings and no status lines. It
+// folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
+// buttons.
 import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
-  Activity as ActivityIcon,
   Briefcase,
   ChevronDown,
   ChevronRight,
   Ellipsis,
   House,
   ListChecks,
-  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   Search,
   SlidersHorizontal,
   Users,
@@ -23,6 +24,7 @@ import {
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api.ts'
 import type { FilePlace } from './FileView.tsx'
+import { inMacApp } from './macApp.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Kbd } from './ui/pill.tsx'
@@ -70,9 +72,10 @@ function Nav({
       href={href}
       aria-current={current ? 'page' : undefined}
       className={cn(
-        'group flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+        'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
         small ? 'h-7' : 'h-7.5',
-        current && 'bg-rail-sel font-medium text-rail-ink shadow-btn',
+        current &&
+          'bg-accent-soft font-medium text-accent before:absolute before:inset-y-1.5 before:left-0 before:w-0.75 before:rounded-full before:bg-accent hover:bg-accent-soft hover:text-accent',
       )}
     >
       <span className={cn('shrink-0 text-rail-ink-3', current && 'text-accent')}>{icon}</span>
@@ -87,23 +90,23 @@ export function Rail({
   place,
   name,
   waiting,
-  running,
   tasksDue,
   online,
   here,
   layout,
   onLayout,
+  onNew,
 }: {
   modules: ModuleSummary[]
   place: Place
   here: string | null // the module whose screen or table is open
   name: string
   waiting: number
-  running: number
   tasksDue: number // tasks due today or overdue
   online: boolean
   layout: Layout
   onLayout: (change: Partial<Layout>) => void
+  onNew: () => void // New module: the assistant makes one from what the person says
 }) {
   if (layout.railFolded)
     return (
@@ -111,10 +114,10 @@ export function Rail({
         modules={modules}
         place={place}
         here={here}
+        name={name}
         waiting={waiting}
-        running={running}
         tasksDue={tasksDue}
-        online={online}
+        onNew={onNew}
         onOpen={() => onLayout({ railFolded: false })}
       />
     )
@@ -126,16 +129,16 @@ export function Rail({
     })
   return (
     <nav className="flex w-54 shrink-0 flex-col overflow-hidden border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink">
-      {/* room for the Mac window's traffic lights; in Alpha's own window it moves the window */}
-      <div className="h-12 shrink-0" aria-hidden="true" data-tauri-drag-region />
-      <div className="flex items-center gap-2.5 pb-3.5 pl-1.5">
-        <Mark />
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-base leading-tight">Alpha</span>
-          <span className="block truncate text-rail-ink-3 text-xs">
-            {name ? `${name} · on this Mac` : 'On this Mac'}
-          </span>
-        </span>
+      {/* the rail's head sits on the window's header line; in Alpha's own window it moves the
+          window and leaves room for its buttons */}
+      <div
+        data-tauri-drag-region
+        className={cn(
+          '-mx-2.5 mb-2 flex h-12 shrink-0 items-center gap-1 border-hair border-b pr-2 pl-2.5',
+          inMacApp() && 'pl-19',
+        )}
+      >
+        <Workspace name={name} />
         <button
           type="button"
           aria-label="Fold the rail"
@@ -154,12 +157,6 @@ export function Rail({
         extra={waiting > 0 && <Badge n={waiting} />}
       />
       <Nav
-        href="#/conversation"
-        icon={<MessageSquare className="size-4" />}
-        label="Conversation"
-        current={place.at === 'conversation'}
-      />
-      <Nav
         href="#/tasks"
         icon={<ListChecks className="size-4" />}
         label="Tasks"
@@ -172,17 +169,7 @@ export function Rail({
         label="People"
         current={place.at === 'people'}
       />
-      <Nav
-        href="#/activity"
-        icon={<ActivityIcon className="size-4" />}
-        label="Activity"
-        current={place.at === 'activity'}
-        extra={running > 0 && <Spinner running={running} />}
-      />
-      <div className="px-2 pt-4 pb-1 font-semibold text-rail-ink-3 text-xs uppercase tracking-label">
-        Modules
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
         {modules.length === 0 && online && (
           <div className="px-2 py-1 text-rail-ink-3 text-sm">
             Modules appear here as you ask for them.
@@ -198,6 +185,14 @@ export function Rail({
             onFold={fold}
           />
         ))}
+        <button
+          type="button"
+          onClick={onNew}
+          className="flex h-7.5 w-full items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink"
+        >
+          <Plus className="size-4 shrink-0" />
+          New module
+        </button>
       </div>
       <div className="flex flex-col gap-0.5 pt-2">
         <Nav
@@ -206,20 +201,27 @@ export function Rail({
           label="Settings"
           current={place.at === 'settings'}
         />
-        <div className="flex items-center gap-1.75 px-2 py-1.5 text-rail-ink-3 text-xs">
-          <span className={cn('size-1.75 shrink-0 rounded-full', online ? 'bg-good' : 'bg-warn')} />
-          {online ? 'Alpha is running' : 'Alpha is not answering'}
-        </div>
       </div>
     </nav>
   )
 }
 
-function Mark() {
+// The workspace at the rail's top: its initial on an accent tile and its name. It opens Settings,
+// where the workspace is kept.
+function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
+  const label = name ? `${name}'s workspace` : 'Your workspace'
   return (
-    <span className="grid size-7 shrink-0 place-items-center rounded-md bg-ink font-semibold font-serif text-canvas text-lg leading-none">
-      A
-    </span>
+    <a
+      href="#/settings"
+      title={label}
+      aria-label={tileOnly ? label : undefined}
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 hover:bg-rail-hover"
+    >
+      <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
+        {(name.trim()[0] ?? 'A').toUpperCase()}
+      </span>
+      {!tileOnly && <span className="truncate font-semibold text-md">{label}</span>}
+    </a>
   )
 }
 
@@ -228,15 +230,6 @@ function Badge({ n }: { n: number }) {
     <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
     </span>
-  )
-}
-
-function Spinner({ running }: { running: number }) {
-  return (
-    <span
-      title={`${running} running`}
-      className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent"
-    />
   )
 }
 
@@ -376,19 +369,19 @@ function Strip({
   modules,
   place,
   here,
+  name,
   waiting,
-  running,
   tasksDue,
-  online,
+  onNew,
   onOpen,
 }: {
   modules: ModuleSummary[]
   place: Place
   here: string | null
+  name: string
   waiting: number
-  running: number
   tasksDue: number
-  online: boolean
+  onNew: () => void
   onOpen: () => void
 }) {
   // a module inside another lights the one at the top that holds it
@@ -408,7 +401,7 @@ function Strip({
       aria-current={current ? 'page' : undefined}
       className={cn(
         'relative grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-        current && 'bg-rail-sel text-accent shadow-btn',
+        current && 'bg-accent-soft text-accent',
       )}
     >
       {child}
@@ -417,9 +410,15 @@ function Strip({
   )
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
-      {/* room for the Mac window's traffic lights; in Alpha's own window it moves the window */}
-      <div className="h-12 shrink-0" aria-hidden="true" data-tauri-drag-region />
-      <Mark />
+      <div
+        data-tauri-drag-region
+        className={cn(
+          'flex h-12 w-full shrink-0 items-center justify-center border-hair border-b',
+          inMacApp() && 'h-20 items-end pb-1.5',
+        )}
+      >
+        <Workspace name={name} tileOnly />
+      </div>
       <button
         type="button"
         aria-label="Open the rail"
@@ -442,30 +441,12 @@ function Strip({
         ),
       )}
       {icon(
-        '#/conversation',
-        'Conversation',
-        place.at === 'conversation',
-        <MessageSquare className="size-4" />,
-      )}
-      {icon(
         '#/tasks',
         tasksDue ? `Tasks, ${tasksDue} due` : 'Tasks',
         place.at === 'tasks',
         <ListChecks className="size-4" />,
       )}
       {icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
-      {icon(
-        '#/activity',
-        running ? `Activity, ${running} running` : 'Activity',
-        place.at === 'activity',
-        <ActivityIcon className="size-4" />,
-        running > 0 && (
-          <span
-            className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
-            aria-hidden="true"
-          />
-        ),
-      )}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
       <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
         {tops(modules).map((m) =>
@@ -478,6 +459,15 @@ function Strip({
             </span>,
           ),
         )}
+        <button
+          type="button"
+          aria-label="New module"
+          title="New module"
+          onClick={onNew}
+          className="grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+        >
+          <Plus className="size-4" />
+        </button>
       </div>
       {icon(
         '#/settings',
@@ -485,10 +475,6 @@ function Strip({
         place.at === 'settings',
         <SlidersHorizontal className="size-4" />,
       )}
-      <span
-        title={online ? 'Alpha is running' : 'Alpha is not answering'}
-        className={cn('mt-1.5 size-1.75 shrink-0 rounded-full', online ? 'bg-good' : 'bg-warn')}
-      />
     </nav>
   )
 }
@@ -504,15 +490,11 @@ export function Bar({
   onFind,
   lens,
   onClearLens,
-  ask,
-  onAsk,
 }: {
   crumb: Crumb
   onFind: () => void
   lens: { id: string; name: string } | null
   onClearLens: () => void
-  ask: { name: string } | null // Ask Alpha, or Ask about a module on its screen; none where the conversation is
-  onAsk: () => void
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
   return (
@@ -551,17 +533,6 @@ export function Bar({
         </span>
       )}
       <span className="flex-1" data-tauri-drag-region />
-      {ask && (
-        <button
-          type="button"
-          onClick={onAsk}
-          className="flex h-7.5 items-center gap-2 rounded-md px-2.5 text-ink-2 text-md transition-colors hover:bg-hover hover:text-ink"
-        >
-          <MessageSquare className="size-3.5 shrink-0" />
-          {ask.name ? `Ask about ${ask.name}` : 'Ask Alpha'}
-          <Kbd>⌘J</Kbd>
-        </button>
-      )}
       <button
         type="button"
         onClick={onFind}
