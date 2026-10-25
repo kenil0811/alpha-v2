@@ -163,7 +163,7 @@ export function PageView({
             This page asks Alpha: “{asks}”
           </span>
           <Button size="sm" variant="ghost" onClick={() => setAsks(null)}>
-            Not now
+            Cancel
           </Button>
           <Button size="sm" onClick={ask}>
             Ask Alpha

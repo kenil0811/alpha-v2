@@ -397,7 +397,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
               words: k.auth === 'path' ? `Add a ${k.title.toLowerCase()}` : `Connect ${k.title}`,
               sub:
                 k.auth === 'path'
-                  ? 'Exports and documents, read where they are'
+                  ? 'Documents and downloaded files, read where they are'
                   : (k.setup?.sub ?? ''),
               done: c.connections.some((x) => x.connector === k.name),
             })),
@@ -421,7 +421,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
     })),
     {
       done: view?.kit,
-      words: 'Install a kit',
+      words: 'Install a module',
       sub: 'A module made for your work, like a deal tracker or a client report',
       href: '#/settings',
     },

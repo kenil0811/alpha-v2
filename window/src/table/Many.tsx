@@ -174,7 +174,7 @@ export function PasteBar({
         </Button>
       )}
       <Button size="sm" variant="ghost" onClick={onNo}>
-        {ready ? 'Not now' : 'Close'}
+        {ready ? 'Cancel' : 'Close'}
       </Button>
     </div>
   )

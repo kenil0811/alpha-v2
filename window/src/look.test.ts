@@ -4,6 +4,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { NEVER_SAY } from './vocabulary.ts'
 
 const SRC = import.meta.dirname
 
@@ -43,6 +44,33 @@ describe('the window’s look', () => {
             for (const m of line.matchAll(re))
               found.push(`${relative(SRC, file)}:${i + 1}: ${m[0]} (${what})`)
         })
+    }
+    expect(found).toEqual([])
+  })
+
+  it('says only the agreed words', () => {
+    const found: string[] = []
+    for (const file of sources(SRC)) {
+      if (!file.endsWith('.tsx')) continue // words a person reads are in the screens
+      const text = readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+        .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
+      // what a person can read: quoted words and the text between tags, never an import or an address
+      const said = [
+        ...text.matchAll(/(['"`])((?:(?!\1)[^\\\n]|\\.)*)\1/g),
+        ...text.matchAll(/>([^<>{}=]*[A-Za-z][^<>{}=]*)</g),
+      ]
+      for (const m of said) {
+        // what a template works out (${…}) is code; only its words around it are said
+        const words = (m[2] ?? m[1] ?? '').replace(/\$\{[^}]*\}/g, ' ').trim()
+        if (!words || /^(?:\.{0,2}\/|#\/|@|[\w-]+\.(?:tsx?|css)$)/.test(words)) continue
+        if (/^[a-z][\w-]*$/.test(words)) continue // a key or an id, one word in code's case
+        for (const [word, instead] of NEVER_SAY)
+          if (word.test(words)) {
+            const line = text.slice(0, m.index).split('\n').length
+            found.push(`${relative(SRC, file)}:${line}: “${words.slice(0, 60)}” (say ${instead})`)
+          }
+      }
     }
     expect(found).toEqual([])
   })

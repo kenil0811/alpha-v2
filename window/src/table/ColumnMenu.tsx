@@ -39,7 +39,7 @@ const TONE_WORDS: Record<Tone, string> = {
 
 // Whose sentence a field's about is, as the menu says it.
 const ABOUT_BY: Record<'kit' | 'alpha' | 'person', string> = {
-  kit: 'From the kit',
+  kit: 'From the module',
   alpha: 'Assumed by Alpha',
   person: 'Yours',
 }
@@ -294,7 +294,7 @@ export function RuleEditor({
         </Button>
         {onRemove && (
           <Button size="sm" variant="ghost" onClick={onRemove}>
-            Remove the filter
+            Clear the filter
           </Button>
         )}
       </div>
