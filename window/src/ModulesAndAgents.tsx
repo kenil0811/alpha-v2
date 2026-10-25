@@ -1,11 +1,13 @@
-// Settings › Kits and agents (design §10, §11): what each module does on its own, and its agents,
-// each on or paused, folded under the module until opened. A kit is installed from a folder.
+// Settings › Modules and agents (design §10, §11): what each module does on its own, and its
+// agents, each on or paused, folded under the module until opened. A module is installed from a
+// folder or a file. The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
 import { Bot, ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -22,7 +24,7 @@ export function when(at: string | null): string {
   })
 }
 
-export function Kits({ version }: { version: number }) {
+export function ModulesAndAgents({ version }: { version: number }) {
   const [modules, setModules] = useState<WorkingModuleView[] | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
@@ -34,8 +36,8 @@ export function Kits({ version }: { version: number }) {
 
   return (
     <Section
-      title="Kits and agents"
-      about="What each module does on its own; a kit brings its tables, readers and agents."
+      title="Modules and agents"
+      about="What each module does on its own: its tables, readers and agents."
     >
       {problem && <div className="text-bad text-md">{problem}</div>}
       {modules?.length === 0 && (
@@ -46,7 +48,7 @@ export function Kits({ version }: { version: number }) {
       {modules?.map((m) => (
         <ModuleWork key={m.id} module={m} onChange={load} />
       ))}
-      <KitForm onChange={load} />
+      <InstallModule onChange={load} />
     </Section>
   )
 }
@@ -57,7 +59,7 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
   const [open, setOpen] = useState(false)
   const on = m.agents.filter((a) => a.state === 'on').length
   const Fold = open ? ChevronDown : ChevronRight
-  const updateKit = async () => {
+  const updateModule = async () => {
     setBusy(true)
     setSaid(null)
     try {
@@ -66,27 +68,27 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
         {},
       )
       setSaid(
-        `Updated: ${r.replaced.length + r.added.length} files from the kit${
+        `Updated: ${r.replaced.length + r.added.length} files from the module${
           r.kept.length ? `; kept your changes to ${r.kept.join(', ')}` : ''
         }.`,
       )
     } catch (err) {
-      setSaid(err instanceof Problem ? err.message : 'The kit was not updated.')
+      setSaid(err instanceof Problem ? err.message : 'The module was not updated.')
     } finally {
       setBusy(false)
       onChange()
     }
   }
-  // the module as a kit on the Desktop: made from its shape when it came from none, packed as it
-  // is now when it came from one
-  const makeKit = async () => {
+  // the module as a file on the Desktop, to install on another Mac: made from its shape when it
+  // came from none, packed as it is now when it came from one
+  const packModule = async () => {
     setBusy(true)
     setSaid(null)
     try {
       const r = await api.post<{ file: string; words: string }>(`/api/kits/${m.id}/make`, {})
       setSaid(r.words)
     } catch (err) {
-      setSaid(err instanceof Problem ? err.message : 'The kit was not made.')
+      setSaid(err instanceof Problem ? err.message : 'The module was not packed.')
     } finally {
       setBusy(false)
     }
@@ -117,11 +119,7 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
         sub={
           <>
             <span>
-              {m.kit
-                ? m.kit.core
-                  ? `Alpha's own, ${m.kit.version}: kept up to date by Alpha; its agents can be paused`
-                  : `From the kit ${m.kit.name} ${m.kit.version} (API ${m.kit.api})${m.kit.maintainer ? `, maintained by ${m.kit.maintainer.name}` : ''}${m.kit.changes ? ` · ${m.kit.changes} change${m.kit.changes === 1 ? '' : 's'} of yours the maintainer has not seen` : ''}`
-                : 'Made in a conversation'}
+              {origin(m)}
               {m.agents.length > 0 &&
                 ` · ${m.agents.length === 1 ? 'one agent' : `${m.agents.length} agents`}, ${
                   on === m.agents.length ? (on === 1 ? 'on' : 'all on') : on ? `${on} on` : 'paused'
@@ -136,12 +134,12 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
               <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
             )}
             {m.kit && (
-              <Button size="sm" variant="ghost" disabled={busy} onClick={updateKit}>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={updateModule}>
                 Update from its folder
               </Button>
             )}
-            <Button size="sm" variant="ghost" disabled={busy} onClick={makeKit}>
-              {m.kit ? 'Pack the kit as it is now' : 'Make this a kit'}
+            <Button size="sm" variant="ghost" disabled={busy} onClick={packModule}>
+              {m.kit ? 'Pack it as it is now' : 'Pack it to install elsewhere'}
             </Button>
           </>
         }
@@ -150,6 +148,20 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
       {open && m.kit && <Yours module={m} onChange={onChange} />}
     </List>
   )
+}
+
+// Where a module came from: Alpha's own, installed (with its version and maintainer), or made in a
+// conversation.
+function origin(m: WorkingModuleView): string {
+  const from = m.kit
+  if (!from) return 'Made in a conversation'
+  if (from.core)
+    return `Alpha's own, version ${from.version}: kept up to date by Alpha; its agents can be paused`
+  const by = from.maintainer ? `, maintained by ${from.maintainer.name}` : ''
+  const unseen = from.changes
+    ? ` · ${from.changes} change${from.changes === 1 ? '' : 's'} of yours the maintainer has not seen`
+    : ''
+  return `From ${from.name}, version ${from.version} (API ${from.api})${by}${unseen}`
 }
 
 // Every agent of a module on at once, or all paused once they are all on.
@@ -219,8 +231,8 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
   )
 }
 
-// What of the kit is the person's now (decision 3): each with the kit's version back, and the
-// fields the kit no longer uses, each with its rows gone for good.
+// What of an installed module is the person's now (decision 3): each with the installed version
+// back, and the fields the module no longer uses, each with its values gone for good.
 function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: () => void }) {
   const [yours, setYours] = useState<YoursView | null>(null)
   const [asking, setAsking] = useState<string | null>(null)
@@ -240,7 +252,7 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
   const items = [
     ...yours.files.map((f) => ({
       key: `file:${f.path}`,
-      words: `${f.path}, ${f.state === 'removed' ? 'removed' : 'changed'} by you`,
+      words: `${f.path}, ${f.state === 'removed' ? 'deleted' : 'changed'} by you`,
       back: () => back({ kind: 'file', path: f.path }),
     })),
     ...yours.rows.map((r) => ({
@@ -260,6 +272,7 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
     })),
   ]
   if (!items.length && !yours.removed.length) return null
+  const gone = yours.removed.find((f) => f.fieldId === asking)
   return (
     <>
       {problem && <Row indent title={<Refusal words={problem} />} />}
@@ -268,11 +281,11 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
           key={it.key}
           indent
           title={it.words}
-          sub="Yours now; the kit's updates leave it alone"
+          sub="Yours now; the module's updates leave it alone"
           actions={
             it.back && (
               <Button size="sm" variant="ghost" disabled={busy} onClick={it.back}>
-                Take the kit's version back
+                Take the module's version back
               </Button>
             )
           }
@@ -280,60 +293,49 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
       ))}
       {yours.removed.map((f) => (
         <Row
-          key={`removed:${f.fieldId}`}
+          key={`gone-${f.fieldId}`}
           indent
-          title={`${f.name} in ${f.table}: the kit no longer uses it`}
+          title={`${f.name} in ${f.table}: the module no longer uses it`}
           sub={`${f.rows} row${f.rows === 1 ? '' : 's'} still hold a value under it`}
           actions={
-            asking === f.fieldId ? (
-              <span className="flex items-center gap-1.5">
-                <span className="text-md text-warn">
-                  Its {f.rows} value{f.rows === 1 ? '' : 's'} go for good.
-                </span>
-                <Button
-                  size="sm"
-                  variant="warn"
-                  disabled={busy}
-                  onClick={() => {
-                    setAsking(null)
-                    act(() =>
-                      api.post(`/api/kits/${m.id}/fields/remove`, {
-                        table: f.table,
-                        field: f.fieldId,
-                      }),
-                    )
-                  }}
-                >
-                  Yes, remove them
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setAsking(null)}>
-                  Keep them
-                </Button>
-              </span>
-            ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => setAsking(f.fieldId)}
-              >
-                Remove its rows
-              </Button>
-            )
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => setAsking(f.fieldId)}>
+              Delete its values
+            </Button>
           }
         />
       ))}
+      {gone && (
+        <Confirm
+          open
+          title={`Delete ${gone.name}'s values?`}
+          yes={`Delete ${gone.rows === 1 ? 'it' : `all ${gone.rows}`}`}
+          busy={busy}
+          onClose={() => setAsking(null)}
+          onYes={() => {
+            setAsking(null)
+            act(() =>
+              api.post(`/api/kits/${m.id}/fields/remove`, {
+                table: gone.table,
+                field: gone.fieldId,
+              }),
+            )
+          }}
+        >
+          {gone.rows === 1 ? 'One row' : `${gone.rows} rows`} in {gone.table}{' '}
+          {gone.rows === 1 ? 'holds' : 'hold'} a value under it, and can’t get it back.
+        </Confirm>
+      )}
     </>
   )
 }
 
-function KitForm({ onChange }: { onChange: () => void }) {
+function InstallModule({ onChange }: { onChange: () => void }) {
   const [folder, setFolder] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [said, setSaid] = useState<string | null>(null)
   const picker = useRef<HTMLInputElement>(null)
-  // a kit pack sent as a file: installed, or its kit updated (what the person changed stays)
+  // a module sent as a file: installed, or updated (what the person changed stays)
   const fromFile = async (file: File | undefined) => {
     if (!file) return
     setBusy(true)
@@ -343,7 +345,7 @@ function KitForm({ onChange }: { onChange: () => void }) {
       setSaid(out.words)
       onChange()
     } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That kit was not installed.')
+      setProblem(err instanceof Problem ? err.message : 'That module was not installed.')
     } finally {
       setBusy(false)
     }
@@ -357,7 +359,7 @@ function KitForm({ onChange }: { onChange: () => void }) {
       setFolder('')
       onChange()
     } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That kit was not installed.')
+      setProblem(err instanceof Problem ? err.message : 'That module was not installed.')
     } finally {
       setBusy(false)
     }
@@ -368,11 +370,11 @@ function KitForm({ onChange }: { onChange: () => void }) {
         <Field
           className="flex-1"
           value={folder}
-          placeholder="The kit's folder, like /Users/you/dev/kits/deals"
+          placeholder="The module's folder, like /Users/you/dev/modules/deals"
           onChange={(e) => setFolder(e.target.value)}
         />
         <Button type="submit" disabled={busy || !folder.trim()}>
-          {busy ? 'Installing…' : 'Install kit'}
+          {busy ? 'Installing…' : 'Install module'}
         </Button>
         <Button variant="ghost" disabled={busy} onClick={() => picker.current?.click()}>
           Install or update from a file

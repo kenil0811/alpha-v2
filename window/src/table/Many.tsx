@@ -1,9 +1,10 @@
-// Acting on many rows: the ticked rows' bar (set a field on all of them, remove them, untick),
+// Acting on many rows: the ticked rows' bar (set a field on all of them, delete them, untick),
 // and a paste waiting for the person's yes.
 import type { FieldView, RowView } from '@alpha/core/api'
 import { ClipboardPaste, X } from 'lucide-react'
 import { type FormEvent, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
+import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
 import type { PastePlan } from './Grid.tsx'
@@ -25,7 +26,6 @@ export function TickedBar({
   const [setting, setSetting] = useState(false)
   const [removing, setRemoving] = useState(false)
   const setAnchor = useRef<HTMLButtonElement>(null)
-  const removeAnchor = useRef<HTMLButtonElement>(null)
   // rows holding a value the person typed: removing them is removing their own word
   const theirs = rows.filter((r) => Object.values(r.sources).some((s) => s?.kind === 'stated'))
   const n = rows.length
@@ -37,8 +37,8 @@ export function TickedBar({
       <Button ref={setAnchor} size="sm" variant="ghost" onClick={() => setSetting((o) => !o)}>
         Set…
       </Button>
-      <Button ref={removeAnchor} size="sm" variant="ghost" onClick={() => setRemoving((o) => !o)}>
-        Remove
+      <Button size="sm" variant="ghost" onClick={() => setRemoving(true)}>
+        Delete
       </Button>
       <button
         type="button"
@@ -57,32 +57,19 @@ export function TickedBar({
           }}
         />
       </Popover>
-      <Popover anchor={removeAnchor} open={removing} onClose={() => setRemoving(false)}>
-        <div className="flex w-72 flex-col gap-2 p-1.5">
-          <div className="font-medium text-ink">
-            Remove {n === 1 ? 'this row' : `these ${n} rows`}?
-          </div>
-          <p className="text-ink-2">
-            {theirs.length > 0 &&
-              `${theirs.length === n ? (n === 1 ? 'It holds' : 'They hold') : `${theirs.length} of them hold`} values you typed. `}
-            They can’t be brought back; Activity keeps what they held.
-          </p>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="warn"
-              onClick={async () => {
-                if (await onRemove()) setRemoving(false)
-              }}
-            >
-              Remove {n === 1 ? 'it' : 'them'}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setRemoving(false)}>
-              Not now
-            </Button>
-          </div>
-        </div>
-      </Popover>
+      <Confirm
+        open={removing}
+        title={`Delete ${n === 1 ? 'this row' : `these ${n} rows`}?`}
+        yes={`Delete ${n === 1 ? 'it' : 'them'}`}
+        onYes={async () => {
+          if (await onRemove()) setRemoving(false)
+        }}
+        onClose={() => setRemoving(false)}
+      >
+        {theirs.length > 0 &&
+          `${theirs.length === n ? (n === 1 ? 'It holds' : 'They hold') : `${theirs.length} of them hold`} values you typed. `}
+        They can’t be brought back; Activity keeps what they held.
+      </Confirm>
     </div>
   )
 }
@@ -187,7 +174,7 @@ export function PasteBar({
         </Button>
       )}
       <Button size="sm" variant="ghost" onClick={onNo}>
-        {ready ? 'Not now' : 'Close'}
+        {ready ? 'Cancel' : 'Close'}
       </Button>
     </div>
   )

@@ -260,7 +260,7 @@ export function App() {
               parts: place.id
                 ? [at('People', '#/people'), at(personName || '…')]
                 : place.kind === 'company'
-                  ? [at('People', '#/people'), at('Companies')]
+                  ? [at('People', '#/people'), at('Organizations')]
                   : [at('People')],
             }
           : place.at === 'conversation'

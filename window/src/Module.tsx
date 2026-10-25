@@ -8,7 +8,7 @@ import type { ModuleView, TableView as TableData } from '@alpha/core/api'
 import { Bot, Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { AllAgents, when } from './Kits.tsx'
+import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { cn } from './ui/cn.ts'
@@ -73,7 +73,7 @@ export function ModuleScreen({
   const about = m
     ? [
         m.kit
-          ? `From the ${m.kit.name} kit ${m.kit.version}`
+          ? `From ${m.kit.name}, version ${m.kit.version}`
           : m.modules.length && !m.tables.length
             ? ''
             : 'Made in a conversation',
@@ -192,7 +192,7 @@ function Overview({ m }: { m: ModuleView }) {
           {m.modules.map((c) => {
             const quiet = !c.agents && !c.running && !c.needs && !c.tasks
             const sub = [
-              c.kit ? `From the ${c.kit} kit` : 'Made in a conversation',
+              c.kit ? `From ${c.kit}` : 'Made in a conversation',
               c.agents
                 ? `${c.agents} agent${c.agents === 1 ? '' : 's'} on${c.running ? `, ${c.running} running` : ''}`
                 : c.running

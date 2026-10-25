@@ -6,6 +6,7 @@ import { ChevronDown, Plus } from 'lucide-react'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
+import { Confirm } from '../ui/dialog.tsx'
 import { Field } from '../ui/field.tsx'
 import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
 
@@ -37,12 +38,9 @@ export function ViewTabs({
   onReset: () => void
 }) {
   const [menu, setMenu] = useState(false)
-  const [removing, setRemoving] = useState(false) // Remove the view asks first, in the menu
+  const [removing, setRemoving] = useState(false) // Delete the view asks first, in the pop-up
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null)
-  const closeMenu = () => {
-    setMenu(false)
-    setRemoving(false)
-  }
+  const closeMenu = () => setMenu(false)
   const menuAnchor = useRef<HTMLButtonElement>(null)
   const newAnchor = useRef<HTMLButtonElement>(null)
   const view = views.find((v) => v.id === current)
@@ -148,27 +146,15 @@ export function ViewTabs({
               Open the table on this view
             </MenuItem>
             <MenuLine />
-            {removing ? (
-              <>
-                <div className="max-w-64 whitespace-normal px-2.5 py-1.5 text-sm text-warn">
-                  Remove {view.name} for everyone? Its filters, sorts and columns go; the rows stay.
-                </div>
-                <MenuItem
-                  danger
-                  onClick={() => {
-                    closeMenu()
-                    onRemove()
-                  }}
-                >
-                  Yes, remove it
-                </MenuItem>
-                <MenuItem onClick={() => setRemoving(false)}>Keep it</MenuItem>
-              </>
-            ) : (
-              <MenuItem danger onClick={() => setRemoving(true)}>
-                Remove the view
-              </MenuItem>
-            )}
+            <MenuItem
+              danger
+              onClick={() => {
+                setMenu(false)
+                setRemoving(true)
+              }}
+            >
+              Delete the view
+            </MenuItem>
           </>
         ) : (
           <>
@@ -206,6 +192,18 @@ export function ViewTabs({
           }}
         />
       </Popover>
+      <Confirm
+        open={removing && !!view}
+        title={`Delete ${view?.name} for everyone?`}
+        yes="Delete the view"
+        onClose={() => setRemoving(false)}
+        onYes={() => {
+          setRemoving(false)
+          onRemove()
+        }}
+      >
+        Its filters, sorts and columns go; the rows stay.
+      </Confirm>
     </div>
   )
 }

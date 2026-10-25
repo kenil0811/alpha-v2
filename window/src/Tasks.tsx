@@ -30,11 +30,13 @@ import { CardBox } from './Conversation.tsx'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Confirm } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { answerWords } from './vocabulary.ts'
 
 type List = 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
 type Look = 'list' | 'tree' | 'board' | 'calendar'
@@ -804,31 +806,22 @@ function TaskPage({
         )}
 
         <div>
-          {removing ? (
-            <span className="flex items-center gap-2 text-sm">
-              <span className="text-ink-2">
-                Remove this task{t.children ? ' and the ones beneath it' : ''}?
-              </span>
-              <Button
-                size="sm"
-                variant="warn"
-                onClick={async () => {
-                  await api.delete(`/api/tasks/${t.id}`)
-                  window.location.hash = '#/tasks'
-                }}
-              >
-                Remove
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setRemoving(false)}>
-                Keep it
-              </Button>
-            </span>
-          ) : (
-            <Button size="sm" variant="ghost" onClick={() => setRemoving(true)}>
-              <Trash2 className="size-3.5" />
-              Remove
-            </Button>
-          )}
+          <Button size="sm" variant="ghost" onClick={() => setRemoving(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+          <Confirm
+            open={removing}
+            title={`Delete this task${t.children ? ' and the ones beneath it' : ''}?`}
+            yes="Delete"
+            onClose={() => setRemoving(false)}
+            onYes={async () => {
+              await api.delete(`/api/tasks/${t.id}`)
+              window.location.hash = '#/tasks'
+            }}
+          >
+            It can’t be brought back; Activity keeps what it held.
+          </Confirm>
         </div>
       </div>
     </div>
@@ -839,11 +832,9 @@ const decidedWords = (state: string, answer: string | null) =>
   state === 'withdrawn'
     ? 'Withdrawn'
     : state === 'yes'
-      ? (answer ?? 'Yes')
+      ? answerWords(answer ?? 'Yes')
       : state === 'no'
-        ? answer === 'No'
-          ? 'Not now'
-          : (answer ?? 'Not now')
+        ? answerWords(answer ?? 'No')
         : (answer ?? state)
 
 // The agent a task is given to: Start (giving it never starts it), the run working on it with
@@ -877,7 +868,7 @@ function AgentOnTask({
   const about = !agent.takes
     ? `${agent.name} does not take tasks; give it to someone else.`
     : !agent.on
-      ? `${agent.name} is paused; turn it on in Settings › Kits and agents to start it.`
+      ? `${agent.name} is paused; turn it on in Settings › Modules and agents to start it.`
       : running
         ? `${agent.name} is working on it.`
         : t.waitingForYou

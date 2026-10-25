@@ -73,7 +73,7 @@ export function ProposedCard({ card, proposed }: { card: CardView; proposed: Pro
           {n === proposed.tasks.length ? 'Add them' : `Add ${n === 1 ? 'this one' : `these ${n}`}`}
         </Button>
         <Button disabled={busy} onClick={() => take([])}>
-          Not now
+          Decline
         </Button>
       </div>
     </Card>

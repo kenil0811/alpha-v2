@@ -137,7 +137,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
               placeholder="Anything to add, for the agent"
             />
             <Button type="submit" disabled={busy || !reason}>
-              Not now
+              Decline
             </Button>
             <Button variant="ghost" onClick={() => setHolding(false)}>
               Back
@@ -150,7 +150,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
             {changed ? 'Send it as changed' : 'Send it'}
           </Button>
           <Button disabled={busy} onClick={() => setHolding(true)}>
-            Not now
+            Decline
           </Button>
           {draft.always && !changed && (
             <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>

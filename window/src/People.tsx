@@ -108,15 +108,18 @@ function PeopleList({ kind, version }: { kind: 'person' | 'company'; version: nu
             }}
             options={[
               { value: 'person', label: view ? `People · ${view.people}` : 'People' },
-              { value: 'company', label: view ? `Companies · ${view.companies}` : 'Companies' },
+              {
+                value: 'company',
+                label: view ? `Organizations · ${view.companies}` : 'Organizations',
+              },
             ]}
           />
           <span className="flex-1" />
           <div className="relative flex items-center">
             <Search className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
             <Field
-              aria-label={kind === 'company' ? 'Find a company' : 'Find someone'}
-              placeholder={kind === 'company' ? 'Find a company' : 'Find someone'}
+              aria-label={kind === 'company' ? 'Find an organization' : 'Find someone'}
+              placeholder={kind === 'company' ? 'Find an organization' : 'Find someone'}
               className="w-64 pl-8"
               value={words}
               onChange={(e) => setWords(e.target.value)}
@@ -302,7 +305,7 @@ function PersonPage({
                     .filter(Boolean)
                     .join(' · ')
                 : now.map((c) => (c.title ? `${c.title}, ${c.name}` : c.name)).join(' · ') ||
-                  'No company known'}
+                  'No organization known'}
             </div>
           </div>
         </div>

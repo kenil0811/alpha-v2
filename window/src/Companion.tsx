@@ -19,6 +19,7 @@ import { api, listen, Problem } from './api.ts'
 import { openInAlpha, shell } from './macApp.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { answerWords } from './vocabulary.ts'
 
 type Mood = 'quiet' | 'working' | 'needs' | 'typing'
 
@@ -164,7 +165,7 @@ export function Companion() {
                 variant={i === 0 ? 'primary' : 'default'}
                 onClick={() => act(() => api.post(`/api/cards/${card.id}`, { answer: o }))}
               >
-                {o === 'No' ? 'Not now' : o}
+                {answerWords(o)}
               </Button>
             ))
           ) : (

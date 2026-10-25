@@ -68,6 +68,7 @@
   --face-needs: #f0a92e;
 
   --elev-pop: 0 1px 2px rgb(22 32 43 / 0.06), 0 8px 22px rgb(22 32 43 / 0.09);
+  --scrim: rgb(22 32 43 / 0.28);
   --elev-btn: 0 1px 2px rgb(22 32 43 / 0.1);
 
   color-scheme: light;
@@ -102,6 +103,7 @@
     --bad: #e78a83;
     --bad-soft: #38201f;
     --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
+    --scrim: rgb(0 0 0 / 0.5);
     --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
@@ -135,6 +137,7 @@
   --bad: #e78a83;
   --bad-soft: #38201f;
   --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
+  --scrim: rgb(0 0 0 / 0.5);
   --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }
@@ -181,6 +184,7 @@
   --color-paper-rule: var(--paper-rule);
   --color-paper-box: var(--paper-box);
   --color-mark: var(--mark);
+  --color-scrim: var(--scrim);
 
   --font-*: initial;
   --font-sans:
