@@ -1,6 +1,7 @@
-// A table's saved views as tabs over it: All, then each view, shared by everyone. A dot shows when
-// the open view differs from what was saved; its menu saves, saves as new, renames, makes it the
-// view the table opens on, or removes it.
+// A table's toolbar, one row that never wraps: its saved views as tabs (the saved list), then the
+// table's own controls on the right. The saved views: All, then each view, shared by everyone. A
+// dot shows when the open view differs from what was saved; its menu saves, saves as new,
+// renames, makes it the view the table opens on, or removes it.
 import type { SavedView } from '@alpha/core/api'
 import { ChevronDown, Plus } from 'lucide-react'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
@@ -84,17 +85,19 @@ export function ViewTabs({
   }
   return (
     <div className="flex min-h-11 items-center gap-1 border-hair border-b pr-7 pl-5">
-      {tab(null, 'All')}
-      {views.map((v) => tab(v.id, v.name, v.isDefault))}
-      <button
-        ref={newAnchor}
-        type="button"
-        onClick={() => setNaming('new')}
-        className="ml-1 flex h-7 items-center gap-1 whitespace-nowrap rounded-md px-2 text-ink-3 text-md hover:bg-hover hover:text-ink"
-      >
-        <Plus className="size-3.5" />
-        Save as a view
-      </button>
+      <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+        {tab(null, 'All')}
+        {views.map((v) => tab(v.id, v.name, v.isDefault))}
+        <button
+          ref={newAnchor}
+          type="button"
+          onClick={() => setNaming('new')}
+          className="ml-1 flex h-7 items-center gap-1 whitespace-nowrap rounded-md px-2 text-ink-3 text-md hover:bg-hover hover:text-ink"
+        >
+          <Plus className="size-3.5" />
+          Save as a view
+        </button>
+      </div>
       {problem && <span className="ml-2 min-w-0 truncate text-bad text-sm">{problem}</span>}
       <span className="ml-auto flex shrink-0 items-center gap-2">{right}</span>
       <Popover anchor={menuAnchor} open={menu} onClose={closeMenu}>
