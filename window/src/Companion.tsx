@@ -20,7 +20,7 @@ import { openInAlpha, shell } from './macApp.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 
-type Mood = 'quiet' | 'working' | 'needs' | 'typing'
+export type Mood = 'quiet' | 'working' | 'needs' | 'typing'
 
 // a card the bubble can settle in place: two plain choices, nothing to read or pick first
 const plain = (c: CardView) =>

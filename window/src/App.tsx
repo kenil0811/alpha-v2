@@ -1,7 +1,7 @@
-// The window (design §14): the rail, a bar over each screen, and the screen: Home (the important
-// things), the Conversation, Activity, Settings or a module (its tables, conversation, agents and
-// notes). Ask (⌘J) opens the conversation on the right of any other screen, through the module's
-// lens on a module's screen.
+// The window (design §14): the rail, a bar over each screen, the screen (Home, Activity, Settings
+// or a module: its tables, conversation, agents and notes) and the assistant on the right of every
+// screen but the whole conversation's own, through the module's lens on a module's screen. ⌘J
+// folds it and opens it again (Vikas, 25 Oct: Bridge's and Alpha Brain's frame).
 import type {
   Layout,
   LiveEvent,
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
+import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
@@ -37,7 +38,6 @@ import { Tasks } from './Tasks.tsx'
 import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
-import { SidePanel } from './ui/side-panel.tsx'
 
 function placeOf(hash: string): Place {
   const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?$/.exec(hash)
@@ -123,8 +123,21 @@ export function App() {
   const [finding, setFinding] = useState(false)
   // a topic chip's lens: the conversation keeps to one module until it is cleared
   const [lens, setLens] = useState<Module>(null)
-  // Ask (⌘J): the conversation on the right of any screen but the conversation's own
-  const [asking, setAsking] = useState(false)
+  // the assistant on the right: open unless the person folded it, kept in this browser
+  const [asking, setAsking] = useState(() => {
+    try {
+      return localStorage.getItem('alpha.assistant') !== 'folded'
+    } catch {
+      return true
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('alpha.assistant', asking ? 'open' : 'folded')
+    } catch {
+      // a browser that keeps nothing opens it each time
+    }
+  }, [asking])
   // how the person left the window: the rail, its folds, the side conversation's width
   const [layout, setLayout] = useState<Layout>({ railFolded: false, folded: [], panel: null })
   const changeLayout = useCallback((change: Partial<Layout>) => {
@@ -162,9 +175,6 @@ export function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  useEffect(() => {
-    if (!askable) setAsking(false)
-  }, [askable])
 
   // ⌘K opens Find anywhere; ⌘\ folds the rail or opens it
   const foldedRef = useRef(layout.railFolded)
@@ -330,7 +340,7 @@ export function App() {
         onLayout={changeLayout}
         name={name}
         waiting={stream?.cards.length ?? 0}
-        running={(stream?.running.length ?? 0) + (stream?.reading.length ?? 0)}
+        onNew={() => setAsking(true)}
         tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
         online={!problem}
       />
@@ -340,8 +350,6 @@ export function App() {
           onFind={() => setFinding(true)}
           lens={place.at === 'conversation' ? lens : null}
           onClearLens={() => setLens(null)}
-          ask={askable ? { name: moduleHere?.name ?? '' } : null}
-          onAsk={() => setAsking((a) => !a)}
         />
         {problem && (
           <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
@@ -411,27 +419,30 @@ export function App() {
               <p className="p-6 text-ink-3">That table is not there.</p>
             )}
           </div>
-          {asking && askable && (
-            <SidePanel
-              title={moduleHere ? `Ask about ${moduleHere.name}` : 'Ask Alpha'}
-              onClose={() => setAsking(false)}
-              width={layout.panel}
-              onWidth={(panel) => changeLayout({ panel })}
-              full={moduleHere ? `#/module/${moduleHere.id}/conversation` : '#/conversation'}
-            >
-              <Conversation
-                stream={stream}
-                live={live}
-                busyTurn={busyTurn}
-                lens={moduleHere}
-                onLens={() => undefined}
-                from={moduleHere}
-                compact
-              />
-            </SidePanel>
-          )}
         </div>
       </main>
+      {askable && (
+        <Assistant
+          folded={!asking}
+          onFold={(f) => setAsking(!f)}
+          title={moduleHere ? `Ask about ${moduleHere.name}` : 'Alpha'}
+          mood={stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'}
+          running={(stream?.running.length ?? 0) + (stream?.reading.length ?? 0)}
+          width={layout.panel}
+          onWidth={(panel) => changeLayout({ panel })}
+          full={moduleHere ? `#/module/${moduleHere.id}/conversation` : '#/conversation'}
+        >
+          <Conversation
+            stream={stream}
+            live={live}
+            busyTurn={busyTurn}
+            lens={moduleHere}
+            onLens={() => undefined}
+            from={moduleHere}
+            compact
+          />
+        </Assistant>
+      )}
       {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
     </div>
   )
