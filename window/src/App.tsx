@@ -26,6 +26,7 @@ import { api, listen, wordsOf } from './api.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
+import { ItemPage } from './Items.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
@@ -95,6 +96,9 @@ function placeOf(hash: string): Place {
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
+  const it = /^#\/(agent|run|permission)\/([\w-]+)$/.exec(hash)
+  if (it?.[1] && it[2])
+    return { at: 'item', kind: it[1] as 'agent' | 'run' | 'permission', id: it[2] }
   const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)))?$/.exec(hash)
   if (mod?.[1])
     return {
@@ -118,6 +122,7 @@ export function App() {
   const [fileName, setFileName] = useState('')
   const [personName, setPersonName] = useState('')
   const [taskName, setTaskName] = useState('')
+  const [itemName, setItemName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [finding, setFinding] = useState(false)
@@ -246,6 +251,19 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
+  // an agent's or a run's page sits under Activity, a standing permission's under Settings
+  const itemCrumb: Crumb | null =
+    place.at !== 'item'
+      ? null
+      : place.kind === 'permission'
+        ? {
+            icon: <SlidersHorizontal className={icon} />,
+            parts: [at('Settings', '#/settings'), at(itemName || '…')],
+          }
+        : {
+            icon: <ActivityIcon className={icon} />,
+            parts: [at('Activity', '#/activity'), at(itemName || '…')],
+          }
   const crumb: Crumb =
     place.at === 'activity'
       ? { icon: <ActivityIcon className={icon} />, parts: [at('Activity')] }
@@ -336,7 +354,7 @@ export function App() {
       />
       <main className="flex min-w-0 flex-1 flex-col">
         <Bar
-          crumb={crumb}
+          crumb={itemCrumb ?? crumb}
           onFind={() => setFinding(true)}
           lens={place.at === 'conversation' ? lens : null}
           onClearLens={() => setLens(null)}
@@ -366,6 +384,14 @@ export function App() {
               <FileView place={place.place} onName={setFileName} />
             ) : place.at === 'activity' ? (
               <Activity version={version} />
+            ) : place.at === 'item' ? (
+              <ItemPage
+                key={`${place.kind}/${place.id}`}
+                kind={place.kind}
+                id={place.id}
+                version={version}
+                onName={setItemName}
+              />
             ) : place.at === 'tasks' ? (
               <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
             ) : place.at === 'people' ? (
