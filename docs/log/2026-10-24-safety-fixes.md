@@ -103,3 +103,45 @@ picks in the batch 2 review (https://claude.ai/artifact/FApSQP7bE3WdXaxM8Ermb9; 
   DealPilot 0.5.3: `touches: [Deals, Conditions]`.
 
 Kenil's "yes push" 25 Oct 13:11 UTC on batch 2: pushed. Items 1 to 18 and 25 of the problems list done; 21 parked.
+
+## Batch 3 (items 28 to 43), 25 Oct
+
+Plan https://claude.ai/artifact/7AyskW9VaGjDdYeMTGUnFn, Kenil's "yes" 13:36 UTC, on his picks in
+the batch 3 review (https://claude.ai/artifact/BkkgKPE3fMEV15uvLJxP9i): 28, 29, 30, 39, 40, 41,
+42, 43 done; 37 the design matched to the build; 26 dropped.
+
+- **F, the window.** 28: Disconnect (naming the connector and account), Remove the view (inside
+  its menu) and Forget ask on the page first. 29: `window/src/ui/act.tsx` (`useAct`, `Refusal`):
+  the control busy, the refusal's words kept beside it, the screen loaded again; Kits, Module,
+  Board, Conversation's Pass, Settings (appearance, connections, a connector's removal) and the
+  page's ask use it. Run now's route dropped the core's refusal too: `runner.refuseRun` (the
+  busy and paused checks, shared with `runAgent`) now answers it at once; a paused agent still
+  runs on Run now, as designed. 30: `NOT_ANSWERING` and `wordsOf` in `api.ts` ("Alpha isn't answering on
+  this Mac right now." for a core that gave no words, never the browser's "Load failed"); Home's
+  three parts load on opening and say "This didn't load." with Try again; "Nothing waits on
+  you" and the rail's "Modules appear here" wait until something has loaded. Looked at in WebKit
+  on Kenil's Alpha at 1240×820 and 1100×560, light and dark (`.data/shots/batch-3`), with every
+  removal call blocked in that browser.
+- **G, approvals.** 39: `useYes(call, yes_hours)` (limits.yaml, 6): an older yes is marked
+  `lapsed_at` (migration 20) with a `card_lapsed` line, and the call asks again; `resumeRuns` in
+  `due.ts`: an agent's run that ended on a permission card of its own (not a draft, not the
+  desk's) goes again at the next tick once the person said yes; the desk's send cards say "a new
+  recipient" when `cards.approvedTo` finds no yes or sent draft to that address. 40: `writable`
+  refuses a table outside the module whatever `touches` says; `wallsForTry`: a try from the desk
+  writes its module's tables and reads those and its kit's uses (its effects stay with the
+  cards). 41: `answerDraft` sends only on Send it, other words hold it as the reason; the desk
+  hears only cards with a turn; the task tool refuses done on an agent's task.
+- **H, kits and release.** 42: `setTones` takes a ctx and journals who set the colours;
+  `tonesSetByOthers` keeps them through a kit update. No screen or tool changes a colour today,
+  so this guards the next one. `installPack` refuses an older pack with words (the inbox sets it
+  aside). 43: `release.ts` writes MANIFEST after install.sh, the kits and the connector packs are
+  in (their hashes listed too), with one seal and its verify after; `install.sh` waits on
+  `ALPHA_PORT`, else alpha.yaml's port, else 4700. Not run: the next release checks both.
+- **37.** Design §12: what an agent pulls in lands at once, marked with its source, never over
+  the person's stated value; judgement calls go to the person as rows put to them.
+- Tests: the lapse (gates), a run again on a yes (runs), the new recipient on the desk's send
+  card (gate), a try's walls and a write kept in its module (walls), the draft held on other
+  words and the desk told only of its own cards (engine), done refused on an agent's task (task
+  tool), colours kept through an update (kits), an older pack refused (packs).
+
+Kenil's "ok looks good" 25 Oct 14:07 UTC on batch 3's test steps: committed and pushed.

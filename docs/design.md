@@ -303,7 +303,10 @@ A gate makes a card: a preview, what it rests on, and what cannot be undone. The
 run: it is refused with words saying it waits on the card, and the card holds the exact call.
 The person's yes lets that same call through once when the model makes it again, so a yes
 survives the turn and a restart (Kenil, 19 Oct: the SDK's own defer failed for in-process tools
-in week 1's spike). The person answers in the window or in words:
+in week 1's spike), within `yes_hours` of it (`core/config/limits.yaml`, 6): an older yes lapses,
+said in Activity, and the call asks again (item 39, 25 Oct). The desk carries on after a card only
+when its own turn opened it; an agent's run that ended on a card goes again at the next tick once
+the person said yes (§11). The person answers in the window or in words:
 "go ahead" reaches the one waiting card, and with two the desk asks which. Many alike are
 batched on one card. A removal of the person's own entries goes without a card only when they asked for it in words
 code finds in what they typed this turn, and those words say removal (`core/config/words.yaml`:
@@ -318,8 +321,10 @@ used, and revoked in Settings › Standing permissions. Code holds the wall: onl
 one, only where the yeses earned it. One may let an email go without asking only when it is one
 agent's one kind of message (DealPilot's CIM requests) **to an address that kind has gone to
 before on the person's yes; a new recipient is a card of its own that says so, under any
-standing permission** (Kenil, 24 Oct). A draft card sends once: a second Send it while one is
-going is turned away, and a send that fails leaves the card waiting. Each thing it lets through is a line on
+standing permission** (Kenil, 24 Oct). A send card from the desk says "a new recipient" too when
+nothing has gone to that address from here (item 39, 25 Oct). A draft card sends only on its Send
+it, and once: any other answer holds it, the words typed kept as the reason (item 41); a second
+Send it while one is going is turned away, and a send that fails leaves the card waiting. Each thing it lets through is a line on
 Home. Everything else is done and said in a line.
 
 **Cards that are not gates:** the model's questions, reviews of what an agent pulls in (§12),
@@ -436,7 +441,9 @@ generic part moves to a shared kits repository then. Install makes the tables em
 paused; a setup row may mark a value assumed, with what it rests on (a thesis's financing). **The ownership rule:** on update, what was installed and is untouched is replaced; what
 the person changed is theirs and kept; nothing is deleted. It is judged by each file's and each
 setup row's hash. Tables and fields are only added; a choice field gains a newer version's new
-choices where the kit has them. A kit's Python scripts run in a per-kit environment that Alpha makes with a
+choices where the kit has them, and its colours, unless someone other than a kit set them since
+(the journal says who). An older pack than the version installed is refused, with words, and
+nothing changes (item 42, 25 Oct). A kit's Python scripts run in a per-kit environment that Alpha makes with a
 bundled `uv` at install, never the Mac's own Python. Kits update by content hash, the app by
 release.
 
@@ -496,7 +503,9 @@ keep the minute while readers run. A run that did not finish (an error, a stop, 
 could not start) leaves the agent due: it is tried again on the next ticks, up to `run_retries`
 in `core/config/limits.yaml`, then a card on Home asks Try again or Leave it; its place in the
 journal and its last-run time move only after a run that ended well (items 14 to 16 of the
-problems list, 25 Oct). An agent may wait on a change in
+problems list, 25 Oct). A run that ended on a card of its own (a sign-in, a site to reach) goes
+again at the next tick once the person said yes, so the yes is used while it means what it meant
+(item 39). An agent may wait on a change in
 several tables, and hands its script an input (one listing reader serves every source, each
 source's agent giving it the page); an agent waiting on a filing is handed the documents filed or
 put on a row since it last looked, with their rows. A change runs the agents waiting on it soon after, not at the
@@ -527,8 +536,10 @@ gated calls it may make, such as `draft.email` or `browser.open`; any other is r
 card; a file that names none is an older one, allowed), `needs` (connectors and tables it depends
 on; unmet, it does not run and Settings says what), `input` (its settings with defaults) and
 `budget` (minutes a run, runs a day; 15 and 24 unless said; past them a run is stopped or
-skipped, and says so). Reads are its module's tables and its kit's `uses`. Every refusal is a step
-of the run in Activity.
+skipped, and says so). Reads are its module's tables and its kit's `uses`. A write stays inside
+its module, whatever `touches` says; a try of a script from the desk has no file, so its module is
+its wall: it writes the module's own tables and reads those and its kit's `uses` (item 40, 25
+Oct). Every refusal is a step of the run in Activity.
 
 ## 12. Tasks and cards
 
@@ -537,9 +548,12 @@ tool: it places each on what the person's words name (the rows, people and files
 they asked from) and says where in a line, so they can change it; an open task on the same place
 with most of the same words comes back to offer one. A reminder comes once at its time, as a Mac
 notification and a line on Home; a repeating task makes its next when it is done or dropped, or its
-day has passed. The model reads them in the view `tasks`; removing the person's own asks first. What an agent pulls in from outside lands as a staged batch on one card and is filed
-on the yes, with the card in each value's provenance; what a person types or drops is filed at
-once. **Files that come by mail** (Kenil, 20 Oct): for each email with attachments after intake
+day has passed. The model reads them in the view `tasks`; removing the person's own asks first; only an agent's
+run marks its task done, and the desk's task tool refuses to (item 41, 25 Oct). **What an agent
+pulls in from outside lands at once** (Kenil, 25 Oct, item 37), each value marked with its source;
+a reader never writes over a value the person stated or a figure a script worked out (§4), and a
+judgement call goes to the person as rows put to them on a card (§11); what a person types or
+drops is filed at once. **Files that come by mail** (Kenil, 20 Oct): for each email with attachments after intake
 began, the model proposes each file's row among the rows of tables that take documents (only rows
 the email or file names) and its kind; a card per file shows the email, the file's first page,
 what it is, how sure and why, and the rows to pick from. File it puts it on the row and reads it,
@@ -595,7 +609,12 @@ person in the world, like the theme.
 **The other screens:** a Module (the same stream filtered to it; tables in eight views: table,
 list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and agents as text;
 files; activity), People, Activity, Settings (this Mac, data, connections, folders, kits, model
-route, users for a firm). Plain words, no tool names, no ids.
+route, users for a firm). Plain words, no tool names, no ids. **The window says what happened**
+(items 28 to 30 of the problems list, 25 Oct): a removal that cannot be taken back in a click
+(Disconnect, Remove the view, Forget, a connector, ticked rows, a task) asks on the page first,
+naming what goes; a refusal shows in a line beside the control that was pressed (one hook,
+`window/src/ui/act.tsx`), never dropped; a core that does not answer is "Alpha isn't answering on
+this Mac right now.", and a part of Home that did not load says so, with Try again.
 
 **On a Mac** (Kenil's plan, 21 Oct): Alpha's own window over the running core, with no browser
 bars and an icon in the Dock; a mark in the menu bar with a dot when something needs the person
