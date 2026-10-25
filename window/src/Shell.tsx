@@ -33,6 +33,7 @@ export type Place =
   | { at: 'conversation' }
   | { at: 'activity' }
   | { at: 'parts' }
+  | { at: 'item'; kind: 'agent' | 'run' | 'permission'; id: string }
   | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
   | {
       at: 'module'

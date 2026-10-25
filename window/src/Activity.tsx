@@ -155,7 +155,13 @@ export function RunRow({
   return (
     <div className="border-hair border-t first:border-t-0">
       <div className="grid grid-cols-[48px_1fr_auto] items-start gap-3.5 px-4 py-3 hover:bg-hover">
-        <span className="pt-0.5 font-mono text-ink-3 text-sm">{time(r.startedAt)}</span>
+        <a
+          href={`#/run/${r.id}`}
+          title="Open the run"
+          className="pt-0.5 font-mono text-ink-3 text-sm hover:text-ink hover:underline"
+        >
+          {time(r.startedAt)}
+        </a>
         <button
           type="button"
           className="min-w-0 text-left"

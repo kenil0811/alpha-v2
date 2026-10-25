@@ -256,7 +256,11 @@ function AgentsAndNotes({ m, onChange }: { m: ModuleView; onChange: () => void }
                 <Row
                   key={a.id}
                   lead={<Bot className="size-4 text-ink-3" />}
-                  title={a.name}
+                  title={
+                    <a href={`#/agent/${a.id}`} className="hover:underline">
+                      {a.name}
+                    </a>
+                  }
                   sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
                   actions={
                     <>
