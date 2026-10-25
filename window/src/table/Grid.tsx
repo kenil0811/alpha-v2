@@ -79,6 +79,7 @@ export function Grid({
   onPaste,
   onNew,
   counted,
+  readOnly = false,
 }: {
   tableId: string
   rows: RowView[] // filtered and sorted
@@ -99,6 +100,7 @@ export function Grid({
   onPaste: (plan: PastePlan) => void
   onNew: (() => void) | string // adds a row, or why one can't be added here
   counted?: RowView[] // what the footer totals: every row the view holds, not only this page
+  readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [folded, setFolded] = useState<Set<string>>(new Set())
@@ -324,7 +326,11 @@ export function Grid({
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
                           onPick={() => pick(here)}
-                          onEdit={CORRECTABLE.has(f.kind) ? () => startEditing(here) : undefined}
+                          onEdit={
+                            !readOnly && CORRECTABLE.has(f.kind)
+                              ? () => startEditing(here)
+                              : undefined
+                          }
                           onOpen={i === 0 ? () => onOpen(r.id) : undefined}
                         />
                       )}

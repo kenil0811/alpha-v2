@@ -62,12 +62,16 @@ export function TableView({
   only = null,
   field: openField = null,
   quiet = false,
+  kept = null,
 }: {
   data: TableData
   row?: string | null
   only?: string[] | null // the rows a page opened: only these, until Show all
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
+  // rows kept elsewhere (people, organizations, tasks) shown the same way: read here, opened on
+  // their own page, changed there; why is said when something would be typed or saved
+  kept?: { why: string; open: (row: string) => void } | null
 }) {
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
@@ -124,10 +128,11 @@ export function TableView({
   // the open tasks on each row, drawn beside its name
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
   useEffect(() => {
+    if (kept) return
     api
       .get<Record<string, number>>(`/api/tables/${data.id}/tasks`)
       .then(setTaskCounts, () => setTaskCounts({}))
-  }, [data])
+  }, [data, kept])
 
   const fields = data.fields
   const shown = columns(fields, config)
@@ -158,6 +163,7 @@ export function TableView({
     choices[0]
 
   const act = async (fn: () => Promise<void>) => {
+    if (kept) return setProblem(kept.why)
     setProblem(null)
     try {
       await fn()
@@ -178,6 +184,10 @@ export function TableView({
     )
   // what the person changes in the table is their word; a refusal shows in the views' line
   const write = async (fn: () => Promise<unknown>) => {
+    if (kept) {
+      setProblem(kept.why)
+      return false
+    }
     setProblem(null)
     try {
       await fn()
@@ -192,6 +202,7 @@ export function TableView({
   const tickedRows = data.rows.filter((r) => ticked.has(r.id))
   const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
   const openRowPanel = (id: string) => {
+    if (kept) return kept.open(id)
     setOpened(id)
     setPicked(null)
     setAdding(false)
@@ -422,29 +433,29 @@ export function TableView({
               picked={picked}
               openRow={openRow ?? null}
               ticked={ticked}
+              readOnly={!!kept}
               onPick={(p) => {
+                if (kept) return
                 setPicked(p)
                 setOpened(null)
               }}
               onConfig={setConfig}
               onTick={setTicked}
               onEdit={edit}
-              onOpen={(id) => {
-                setOpened(id)
-                setPicked(null)
-                setAdding(false)
-              }}
+              onOpen={openRowPanel}
               onPaste={setPasting}
               onNew={
-                quiet
-                  ? 'Close the side panel to add a row.'
-                  : data.fields.some((f) => CORRECTABLE.has(f.kind))
-                    ? () => {
-                        setAdding(true)
-                        setOpened(null)
-                        setPicked(null)
-                      }
-                    : 'This table has no columns to fill in.'
+                kept
+                  ? kept.why
+                  : quiet
+                    ? 'Close the side panel to add a row.'
+                    : data.fields.some((f) => CORRECTABLE.has(f.kind))
+                      ? () => {
+                          setAdding(true)
+                          setOpened(null)
+                          setPicked(null)
+                        }
+                      : 'This table has no columns to fill in.'
               }
             />
             {rows.length > PAGE && (
