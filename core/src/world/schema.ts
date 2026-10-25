@@ -496,6 +496,10 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   ALTER TABLE fields ADD COLUMN about_by TEXT CHECK (about_by IN ('kit', 'alpha', 'person'));
   ALTER TABLE views ADD COLUMN about TEXT;
   `,
+  // 20: a one-time yes that was not used in time lapses (item 39 of the problems list, 25 Oct).
+  `
+  ALTER TABLE cards ADD COLUMN lapsed_at TEXT;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

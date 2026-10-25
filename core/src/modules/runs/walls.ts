@@ -16,6 +16,7 @@ import type { AgentRunner } from './runner.ts'
 // the calls with an effect it may make (effects; a file that says nothing is an older one,
 // allowed and said).
 export interface Walls {
+  kind: 'file' | 'try' // an agent's file, or a try of a script from the chat (its module's walls)
   touches: Set<string> // table names, lower case
   reads: Set<string>
   effects: Set<string> | null
@@ -44,9 +45,10 @@ export function fileOf(runner: AgentRunner, agentId: string, module: Module): Ag
   return existsSync(path) ? readAgent(path) : null
 }
 
-export function wallsFor(runner: AgentRunner, module: Module, file: AgentFile): Walls {
-  const lower = (names: string[]) => new Set(names.map((n) => n.toLowerCase()))
-  // the module's own tables and those of the modules inside it, plus its kit's uses
+const lower = (names: string[]) => new Set(names.map((n) => n.toLowerCase()))
+
+// The module's own tables and those of the modules inside it, and its kit's uses.
+function reach(runner: AgentRunner, module: Module): { own: string[]; uses: string[] } {
   const own = runner.world.shape
     .within(module.id)
     .flatMap((id) => runner.world.shape.tables(id).map((t) => t.name))
@@ -54,9 +56,24 @@ export function wallsFor(runner: AgentRunner, module: Module, file: AgentFile): 
   const uses = existsSync(manifest)
     ? (Manifest.safeParse(parse(readFileSync(manifest, 'utf8'))).data?.uses ?? [])
     : []
+  return { own, uses: uses.flatMap((u) => u.tables) }
+}
+
+// A try of a script from the chat has no agent file, so its module is its wall (item 40 of the
+// problems list, 25 Oct): it writes the module's own tables and reads those and its kit's uses.
+// Its effects are not walled here: a try is how a reader is tried before it runs on its own, and
+// a site not on the module's list waits on the person's card as ever.
+export function wallsForTry(runner: AgentRunner, module: Module): Walls {
+  const { own, uses } = reach(runner, module)
+  return { kind: 'try', touches: lower(own), reads: lower([...own, ...uses]), effects: null }
+}
+
+export function wallsFor(runner: AgentRunner, module: Module, file: AgentFile): Walls {
+  const { own, uses } = reach(runner, module)
   return {
+    kind: 'file',
     touches: lower(file.touches),
-    reads: lower([...own, ...uses.flatMap((u) => u.tables)]),
+    reads: lower([...own, ...uses]),
     effects: file.effects ? lower(file.effects) : null,
   }
 }

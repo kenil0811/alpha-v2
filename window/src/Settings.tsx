@@ -21,10 +21,11 @@ import {
   UserRound,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { api, Problem } from './api.ts'
+import { api, Problem, wordsOf } from './api.ts'
 import { Kits, when } from './Kits.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
+import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
@@ -68,11 +69,7 @@ export function Settings({ open, version }: { open: string | null; version: numb
   const [view, setView] = useState<ConnectorsView | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
-    api
-      .get<ConnectorsView>('/api/connectors')
-      .then(setView, (e) =>
-        setProblem(e instanceof Problem ? e.message : 'The core did not answer.'),
-      )
+    api.get<ConnectorsView>('/api/connectors').then(setView, (e) => setProblem(wordsOf(e)))
   }, [])
   useEffect(() => {
     if (version >= 0) load()
@@ -197,8 +194,13 @@ function Remembered({ version }: { version: number }) {
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const forget = (l: InstructionView) =>
-    api.post('/api/instructions/remove', { for: l.for, words: l.words }).then(load, load)
+  const { busy, on, problem, act } = useAct(load)
+  const [forgetting, setForgetting] = useState<string | null>(null)
+  const keyOf = (l: InstructionView) => `${l.for}${l.words}`
+  const forget = (l: InstructionView) => {
+    setForgetting(null)
+    void act(() => api.post('/api/instructions/remove', { for: l.for, words: l.words }), keyOf(l))
+  }
   return (
     <Section
       title="What Alpha remembers"
@@ -211,7 +213,7 @@ function Remembered({ version }: { version: number }) {
         <List>
           {lines.map((l) => (
             <Row
-              key={`${l.for}${l.words}`}
+              key={keyOf(l)}
               lead={
                 <Tile>
                   <BookmarkCheck className="size-4" />
@@ -220,11 +222,33 @@ function Remembered({ version }: { version: number }) {
               title={<span className="whitespace-normal font-normal">{l.words}</span>}
               sub={l.for === 'me' ? 'For you' : 'For everyone here'}
               actions={
-                <Button size="sm" variant="warn" onClick={() => forget(l)}>
-                  Forget
-                </Button>
+                <>
+                  {on === keyOf(l) && <Refusal words={problem} />}
+                  <Button
+                    size="sm"
+                    variant="warn"
+                    disabled={busy || forgetting === keyOf(l)}
+                    onClick={() => setForgetting(keyOf(l))}
+                  >
+                    Forget
+                  </Button>
+                </>
               }
-            />
+            >
+              {forgetting === keyOf(l) && (
+                <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 pl-15">
+                  <span className="text-md text-warn">
+                    Forget it? Alpha stops doing this from now on.
+                  </span>
+                  <Button size="sm" variant="warn" disabled={busy} onClick={() => forget(l)}>
+                    Yes, forget it
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setForgetting(null)}>
+                    Keep it
+                  </Button>
+                </div>
+              )}
+            </Row>
           ))}
         </List>
       )}
@@ -684,16 +708,14 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
   const [theme, setTheme] = useState<Theme>(savedTheme)
   const tables = view.connections.flatMap((k) => k.tables)
   const shown = tables.some((t) => !t.hidden)
-  const [busy, setBusy] = useState(false)
-  const showTables = async (on: boolean) => {
-    setBusy(true)
-    for (const t of tables)
-      await api.post(`/api/tables/${t.id}/sidebar`, { shown: on }).catch(() => undefined)
-    setBusy(false)
-    onChange()
-  }
+  const { busy, problem, act } = useAct(onChange)
+  const showTables = (on: boolean) =>
+    act(async () => {
+      for (const t of tables) await api.post(`/api/tables/${t.id}/sidebar`, { shown: on })
+    })
   return (
     <Section title="Appearance">
+      <Refusal words={problem} />
       <List>
         <Row
           title="Look"
@@ -705,7 +727,7 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
               onChange={(t) => {
                 setTheme(t)
                 applyTheme(t)
-                void api.post('/api/appearance', { theme: t }).catch(() => undefined)
+                void act(() => api.post('/api/appearance', { theme: t }))
               }}
               options={[
                 { value: 'mac', label: 'Match Mac' },
@@ -744,13 +766,8 @@ function ConnectionLine({
   onChange: () => void
   inTile?: boolean
 }) {
-  const [busy, setBusy] = useState(false)
-  const act = async (fn: () => Promise<unknown>) => {
-    setBusy(true)
-    await fn().catch(() => undefined)
-    setBusy(false)
-    onChange()
-  }
+  const { busy, problem, act } = useAct(onChange)
+  const [leaving, setLeaving] = useState(false)
   const [state, tone] = STATE[k.state]
   const about = (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -817,15 +834,36 @@ function ConnectionLine({
           Read now
         </Button>
       )}
+      {!leaving && (
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => setLeaving(true)}>
+          Disconnect
+        </Button>
+      )}
+      <Refusal words={problem} />
+    </>
+  )
+  // Disconnect asks first, naming what goes (item 28, 25 Oct)
+  const confirm = leaving && (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span className="text-md text-warn">
+        Disconnect {k.title}? Alpha stops reading {k.account}; what it read stays, and connecting
+        again starts from scratch.
+      </span>
       <Button
         size="sm"
-        variant="ghost"
+        variant="warn"
         disabled={busy}
-        onClick={() => act(() => api.delete(`/api/connections/${k.id}`))}
+        onClick={() => {
+          setLeaving(false)
+          void act(() => api.delete(`/api/connections/${k.id}`))
+        }}
       >
-        Disconnect
+        Yes, disconnect
       </Button>
-    </>
+      <Button size="sm" variant="ghost" onClick={() => setLeaving(false)}>
+        Keep it
+      </Button>
+    </span>
   )
   if (inTile)
     return (
@@ -836,6 +874,7 @@ function ConnectionLine({
         </div>
         <div className="text-ink-3 text-sm">{about}</div>
         <div className="flex flex-wrap gap-2">{buttons}</div>
+        {confirm}
       </div>
     )
   return (
@@ -853,7 +892,9 @@ function ConnectionLine({
           {buttons}
         </>
       }
-    />
+    >
+      {confirm && <div className="px-4 pb-3 pl-15">{confirm}</div>}
+    </Row>
   )
 }
 
@@ -946,9 +987,14 @@ function ConnectorTile({
               disabled={busy}
               onClick={async () => {
                 setBusy(true)
-                await api.delete(`/api/connectors/${c.name}`).catch(() => undefined)
+                setProblem(null)
+                try {
+                  await api.delete(`/api/connectors/${c.name}`)
+                  setRemoving(false)
+                } catch (err) {
+                  setProblem(wordsOf(err))
+                }
                 setBusy(false)
-                setRemoving(false)
                 onChange()
               }}
             >

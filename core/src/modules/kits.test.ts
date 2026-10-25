@@ -96,6 +96,34 @@ describe('updating a kit', () => {
     ])
   })
 
+  it('brings a newer version’s colours, and keeps the ones someone else set since', async () => {
+    const withKind = (dir: string, version: string, tones: string) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace(
+            '      - { name: Email, kind: email }',
+            `      - { name: Email, kind: email }\n      - { name: Kind, kind: choice, choices: [Flour, Milk], tones: { ${tones} } }\n      - { name: Grade, kind: choice, choices: [A, B], tones: { ${tones.replace('Flour', 'A').replace('Milk', 'B')} } }`,
+          ),
+      )
+    const first = join(home, 'kit-0.1.0')
+    cpSync(KIT, first, { recursive: true })
+    withKind(first, '0.1.0', 'Flour: good, Milk: warn')
+    await install(world, first, ctx)
+    const suppliers = world.shape.table('Suppliers')?.id as string
+    // the person makes Kind's colours their own; Grade they leave as the kit has it
+    world.shape.setTones(suppliers, 'Kind', { Flour: 'accent' }, ctx)
+    const next = join(home, 'kit-0.2.0')
+    cpSync(KIT, next, { recursive: true })
+    withKind(next, '0.2.0', 'Flour: bad, Milk: good')
+    await update(world, 'Bakery', next, ctx)
+    const field = (name: string) =>
+      world.shape.table(suppliers)?.fields.find((f) => f.name === name)?.tones
+    expect(field('Kind')).toEqual({ Flour: 'accent' })
+    expect(field('Grade')).toEqual({ A: 'bad', B: 'good' })
+  })
+
   it('names the documents a table’s rows take, and a newer version adds kinds', async () => {
     const withDocs = (dir: string, version: string, kinds: string) =>
       writeFileSync(

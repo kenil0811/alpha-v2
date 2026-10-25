@@ -33,6 +33,11 @@ health_quiet_days: 7
 # again or leave it (item 16 of the problems list, 25 Oct).
 run_retries: 3
 
+# Hours a one-time yes on a card stays good for: a yes answers the call in front of the person,
+# and the same call hours later is out of that context, so it is asked again (item 39, 25 Oct).
+# An Always stays until it is revoked.
+yes_hours: 6
+
 # Rounds of tool calls Alpha's own loop takes on one message before it stops and says so: a
 # wall against a model that never finishes, never met in ordinary work.
 loop_rounds_per_turn: 60

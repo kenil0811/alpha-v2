@@ -148,6 +148,14 @@ export function taskTools({ world, here, hands, ctx }: Tooling): ToolEntry[] {
             case 'done':
             case 'drop':
             case 'reopen': {
+              // only the run's own word makes an agent's task done (design §12, Q93)
+              if (a.action === 'done') {
+                const t = world.tasks.get(one())
+                if (t?.owner.kind === 'agent')
+                  throw new Refused(
+                    `Only ${world.tasks.ownerWords(t)}'s run marks “${t.title}” done; start it, or drop it.`,
+                  )
+              }
               const state = {
                 wait: 'waiting',
                 done: 'done',

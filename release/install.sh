@@ -23,6 +23,9 @@ APP=/Applications/Alpha.app
 PAY="$APP/Contents/Resources/app"
 # the core's own tools (backup, restore) find the data by these
 export ALPHA_HOME="$DATA" ALPHA_LOG_DIR="$LOGS"
+# the port the core answers on, as the core takes it: ALPHA_PORT, else alpha.yaml's, else 4700
+PORT="${ALPHA_PORT:-$(sed -n 's/^port: *//p' "$DATA/alpha.yaml" 2>/dev/null | head -1)}"
+PORT="${PORT:-4700}"
 say() { printf '\n%s\n' "$*"; }
 fail() { printf '\n%s\n' "$*"; exit 1; }
 
@@ -88,7 +91,7 @@ if [ -f "$PLIST" ] || { [ -d "$APP" ] && [ -z "$in_place" ]; }; then
   fi
   launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
   i=0
-  while curl -s -o /dev/null -m 2 "http://127.0.0.1:4700/api/health"; do i=$((i + 1)); [ "$i" -gt 30 ] && break; sleep 1; done
+  while curl -s -o /dev/null -m 2 "http://127.0.0.1:$PORT/api/health"; do i=$((i + 1)); [ "$i" -gt 30 ] && break; sleep 1; done
   if [ -z "$in_place" ] && [ -d "$APP" ]; then
     rm -rf "$DATA/previous"
     mkdir -p "$DATA/previous"
@@ -195,7 +198,7 @@ PLIST
 
 say "Starting Alpha. Its first start sets up your kits and can take a few minutes. macOS may say \"Background item added\": that is Alpha starting at login."
 i=0
-until curl -s -o /dev/null -m 10 "http://127.0.0.1:4700/api/health"; do
+until curl -s -o /dev/null -m 10 "http://127.0.0.1:$PORT/api/health"; do
   i=$((i + 1))
   [ $((i % 30)) -eq 0 ] && say "Still starting ($((i / 60)) min)."
   if [ "$i" -gt 600 ]; then

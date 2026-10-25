@@ -15,6 +15,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { one } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { installInbox, installPack, pack, unpack } from './packs.ts'
@@ -125,5 +126,13 @@ describe('kit packs', () => {
     expect(await installPack(world, pack(next, join(home, 'again')), kits, ctx)).toBe(
       'Bakery 0.2.0 is already there.',
     )
+    // an older one never takes it back: refused with words, set aside with the reason
+    mkdirSync(join(kits, 'inbox'), { recursive: true })
+    pack(KIT, join(kits, 'inbox'))
+    expect(await installInbox(world, kits, ctx)).toEqual([
+      'bakery-0.1.0.alphakit did not go in: Bakery 0.2.0 is already there, newer than 0.1.0; nothing changed.',
+    ])
+    expect(existsSync(join(kits, 'inbox', 'failed', 'bakery-0.1.0.alphakit'))).toBe(true)
+    expect(one(world.db, 'SELECT version FROM kits')).toEqual({ version: '0.2.0' })
   })
 })

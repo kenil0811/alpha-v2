@@ -2,15 +2,16 @@
 import { type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { config } from '../../config.ts'
-import { run as exec, one } from '../../world/db.ts'
+import { all, run as exec, one } from '../../world/db.ts'
 import { type Agent, agents } from '../agents.ts'
 import type { AgentRunner } from './runner.ts'
-import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome } from './types.ts'
+import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome, type RunRowDb } from './types.ts'
 
 // What is due by each agent's trigger, and tasks whose cards are all decided. One run of an
 // agent at a time.
 export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<void> {
   runner.resumeTasks()
+  resumeRuns(runner)
   for (const a of agents(runner.world)) {
     if (a.state !== 'on' || !triggersOf(a.trigger).length) continue
     if (one(runner.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
@@ -76,6 +77,42 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
     })
     runner.held.set(a.id, card.id)
     runner.notify()
+  }
+}
+
+// An agent's run that opened a card (a sign-in, a site to reach, a removal) and ended on it goes
+// again at the next tick once the person has said yes, as a task's does (item 39 of the problems
+// list, 25 Oct): the yes is used while it still means what it meant, not at the agent's next
+// trigger, which can be the next day. A card the desk's own turn opened is the desk's to carry
+// on; a draft's yes sends the draft itself and starts nothing.
+export function resumeRuns(runner: AgentRunner): void {
+  for (const a of agents(runner.world)) {
+    if (runner.held.has(a.id)) continue
+    const last = one<RunRowDb>(
+      runner.world.db,
+      'SELECT * FROM runs WHERE agent_id = ? AND task_id IS NULL ORDER BY started_at DESC LIMIT 1',
+      a.id,
+    )
+    const ended = last?.ended_at
+    if (!last || !ended || last.state === 'running') continue
+    const cards = all<{ state: string; decided_at: string | null }>(
+      runner.world.db,
+      `SELECT state, decided_at FROM cards WHERE run_id = ? AND kind = 'permission' AND turn_id IS NULL
+         AND json_extract(call, '$.tool') != 'agent_draft'`,
+      last.id,
+    )
+    if (!cards.length || cards.some((c) => c.state === 'waiting')) continue
+    if (!cards.some((c) => c.state === 'yes' && c.decided_at && c.decided_at > ended)) continue
+    runner.world.line({
+      actor: { kind: 'agent', id: a.name },
+      kind: 'run_step',
+      words: `${a.name} runs again on your yes.`,
+      module: a.module,
+    })
+    // the run started here is the agent's newest, so the next tick finds no yes after it
+    runner
+      .runAgent(a, { user: runner.owner, turn: null }, {}, { asked: true })
+      .catch(() => undefined)
   }
 }
 

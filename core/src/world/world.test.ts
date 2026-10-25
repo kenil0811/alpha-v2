@@ -376,12 +376,12 @@ describe('cards', () => {
     expect(() => world.cards.answer(card.id, 'Yes', { kind: 'agent', id: 'morning' })).toThrow(
       Refused,
     )
-    expect(world.cards.useYes(call)).toBeUndefined()
+    expect(world.cards.useYes(call, 6)).toBeUndefined()
     world.cards.answer(card.id, 'Yes', person)
     expect(world.cards.get(card.id)?.state).toBe('yes')
     const reordered = { tool: 'change', input: { remove: ['r_1'], table: 'Meals' } }
-    expect(world.cards.useYes(reordered)?.id).toBe(card.id)
-    expect(world.cards.useYes(call)).toBeUndefined()
+    expect(world.cards.useYes(reordered, 6)?.id).toBe(card.id)
+    expect(world.cards.useYes(call, 6)).toBeUndefined()
     expect(world.lines({ kinds: ['card_opened', 'card_closed'] }).map((l) => l.words)).toEqual([
       'Remove eggs?',
       'Yes: Remove eggs?',
@@ -392,7 +392,7 @@ describe('cards', () => {
     const card = world.cards.open({ kind: 'permission', words: 'Remove eggs?', call, actor: alpha })
     world.cards.answer(card.id, 'No', person)
     expect(world.cards.get(card.id)?.state).toBe('no')
-    expect(world.cards.useYes(call)).toBeUndefined()
+    expect(world.cards.useYes(call, 6)).toBeUndefined()
   })
 })
 

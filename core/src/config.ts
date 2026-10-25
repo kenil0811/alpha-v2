@@ -26,6 +26,7 @@ const Limits = z.object({
   browser_pace_max_ms: z.number().int().min(0),
   loop_rounds_per_turn: z.number().int().positive(),
   run_retries: z.number().int().min(1),
+  yes_hours: z.number().positive(),
 })
 
 const Words = z.object({

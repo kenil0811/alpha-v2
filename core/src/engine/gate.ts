@@ -3,7 +3,7 @@
 // tool's effect comes from its table (tools.ts); a connector tool's from its connector; the shell's
 // reach outside from the sandbox's ask. The verdict is the gates' (gates.ts): pass, or a card.
 import type { ConnectorService } from '../connectors/service.ts'
-import { decide } from '../gates/gates.ts'
+import { decide, gateOf } from '../gates/gates.ts'
 import type { User, World } from '../world/world.ts'
 import type { Decision } from './provider.ts'
 import { EFFECTS, type Here, SERVER } from './tools/index.ts'
@@ -118,11 +118,24 @@ export class Gatekeeper {
   ): Decision {
     const preview = this.connectors?.preview(toolName, input)
     const cur = this.here.current
+    const tool = this.connectors?.keyOf(toolName) ?? toolName
+    const effect = this.connectors?.effect(toolName, input)
+    // a send to an address nothing has gone to from here is said on the card, as an agent's
+    // draft says it (item 39 of the problems list, 25 Oct)
+    const to = typeof input.to === 'string' ? input.to.trim() : ''
+    const fresh =
+      !!to &&
+      gateOf({ call: { tool, input }, effect, preview: '', actor: { kind: 'alpha' } }) ===
+        'leaves_world' &&
+      !this.world.cards.approvedTo(tool, to)
     const verdict = decide(this.world, {
-      call: { tool: this.connectors?.keyOf(toolName) ?? toolName, input },
-      effect: this.connectors?.effect(toolName, input),
-      restsOn: message ? [`your message: “${message}”`] : [],
-      preview: preview?.words ? `${preview.words}?` : `${words}?`,
+      call: { tool, input },
+      effect,
+      restsOn: [
+        ...(message ? [`your message: “${message}”`] : []),
+        ...(fresh ? ['Nothing has gone to this address from here before.'] : []),
+      ],
+      preview: `${preview?.words ?? words}${fresh ? ', a new recipient' : ''}?`,
       ...(preview?.detail ? { detail: preview.detail } : {}),
       ...(preview?.yes ? { yes: preview.yes } : {}),
       cannotUndo: 'Once it has gone, it cannot be called back.',

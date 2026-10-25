@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { run } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { askedFor, decide, gateOf, WAITS } from './gates.ts'
 
@@ -83,6 +84,39 @@ describe('the gates', () => {
     })
     const again = decide(world, input)
     expect(again.pass).toBe(false)
+  })
+
+  it('let a yes lapse after its hours: the call asks again, and Activity says so', () => {
+    const input = {
+      call,
+      effect: 'remove' as const,
+      preview: 'Remove eggs?',
+      actor: alpha,
+      ownEntries: true,
+    }
+    const first = decide(world, input)
+    expect(first.pass).toBe(false)
+    if (first.pass) return
+    world.cards.answer(first.card.id, 'Remove them', { kind: 'person', id: 'u_1' })
+    // the yes is seven hours old by the time the call comes again
+    run(
+      world.db,
+      'UPDATE cards SET decided_at = ? WHERE id = ?',
+      new Date(Date.now() - 7 * 3_600_000).toISOString(),
+      first.card.id,
+    )
+    const again = decide(world, input)
+    expect(again.pass).toBe(false)
+    if (again.pass) return
+    expect(again.card.id).not.toBe(first.card.id)
+    expect(again.card.state).toBe('waiting')
+    expect(world.cards.get(first.card.id)?.lapsedAt).not.toBeNull()
+    expect(world.lines({ kinds: ['card_lapsed'] }).map((l) => l.words)).toEqual([
+      'Your yes on “Remove eggs?” lapsed after 6 hours; Alpha asks again.',
+    ])
+    // a fresh yes still lets the same call through once
+    world.cards.answer(again.card.id, 'Remove them', { kind: 'person', id: 'u_1' })
+    expect(decide(world, input).pass).toBe(true)
   })
 
   it('keep a no: the call waits on a new card', () => {

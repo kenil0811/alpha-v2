@@ -5,7 +5,7 @@
 import type { ModuleView, PageSummary } from '@alpha/core/api'
 import { Download } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { api, Problem } from './api.ts'
+import { api, Problem, wordsOf } from './api.ts'
 import { Button } from './ui/button.tsx'
 
 // the window's look, handed to the page as its variables
@@ -104,7 +104,7 @@ export function PageView({
           })
           win.postMessage({ alpha: 'answer', id: msg.id, value }, '*')
         } catch (err) {
-          const words = err instanceof Problem ? err.message : 'The core did not answer.'
+          const words = wordsOf(err)
           win.postMessage({ alpha: 'answer', id: msg.id, problem: words }, '*')
         }
       } else if (msg.alpha === 'height' && typeof msg.height === 'number') {
@@ -148,7 +148,11 @@ export function PageView({
     const words = asks
     setAsks(null)
     if (!words) return
-    await api.post('/api/say', { words, from: m.id }).catch(() => undefined)
+    try {
+      await api.post('/api/say', { words, from: m.id })
+    } catch (err) {
+      setProblem(wordsOf(err))
+    }
   }
 
   return (

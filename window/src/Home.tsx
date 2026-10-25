@@ -24,6 +24,18 @@ import { cn } from './ui/cn.ts'
 import { Group, Line, Quiet } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
 
+// A part of Home whose load failed: said in its place, with the way to try again.
+function NotLoaded({ onTry }: { onTry: () => void }) {
+  return (
+    <p className="flex items-center gap-2 text-md text-warn">
+      This didn't load.
+      <Button size="sm" variant="ghost" onClick={onTry}>
+        Try again
+      </Button>
+    </p>
+  )
+}
+
 function greeting(name: string): string {
   const h = new Date().getHours()
   const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
@@ -44,17 +56,35 @@ export function Home({
   const [today, setToday] = useState<TodayView | null>(null)
   const [setup, reloadSetup] = useSetup()
   const [tasks, setTasks] = useState<TasksView | null>(null)
+  // a load that failed is said, with Try again, never shown as a quiet day (item 30, 25 Oct)
+  const [failed, setFailed] = useState<{ today: boolean; tasks: boolean }>({
+    today: false,
+    tasks: false,
+  })
   const [words, setWords] = useState('')
   const [allComing, setAllComing] = useState(false)
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
   const load = useCallback(() => {
-    api.get<TodayView>('/api/today').then(setToday, () => undefined)
-    api.get<TasksView>('/api/tasks?list=today').then(setTasks, () => undefined)
+    api.get<TodayView>('/api/today').then(
+      (t) => {
+        setToday(t)
+        setFailed((f) => (f.today ? { ...f, today: false } : f))
+      },
+      () => setFailed((f) => ({ ...f, today: true })),
+    )
+    api.get<TasksView>('/api/tasks?list=today').then(
+      (t) => {
+        setTasks(t)
+        setFailed((f) => (f.tasks ? { ...f, tasks: false } : f))
+      },
+      () => setFailed((f) => ({ ...f, tasks: true })),
+    )
   }, [])
-  // a new journal line is the cue to look again
+  // on opening, and at each new journal line, Home looks again
   useEffect(() => {
-    if (last !== undefined) load()
+    void last
+    load()
   }, [load, last])
 
   const cards = stream?.cards ?? []
@@ -118,7 +148,9 @@ export function Home({
           <div className="grid items-start gap-7 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-7">
               <Group title="Needs you" count={cards.length + signIns.length}>
-                {cards.length + signIns.length === 0 && <Quiet>Nothing waits on you.</Quiet>}
+                {stream && cards.length + signIns.length === 0 && (
+                  <Quiet>Nothing waits on you.</Quiet>
+                )}
                 {cards.map((c) => (
                   <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
                 ))}
@@ -158,7 +190,8 @@ export function Home({
                   )
                 }
               >
-                {today && changed.length === 0 && <Quiet>Nothing changed.</Quiet>}
+                {failed.today && <NotLoaded onTry={load} />}
+                {today && !failed.today && changed.length === 0 && <Quiet>Nothing changed.</Quiet>}
                 {changed.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
                     {changed.slice(0, 10).map((r) => {
@@ -200,7 +233,8 @@ export function Home({
                   </a>
                 }
               >
-                {tasks && tasks.lines.length === 0 && (
+                {failed.tasks && <NotLoaded onTry={load} />}
+                {tasks && !failed.tasks && tasks.lines.length === 0 && (
                   <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
                 )}
                 {tasks && tasks.lines.length > 0 && (
@@ -244,7 +278,10 @@ export function Home({
               )}
 
               <Group title="Coming up">
-                {today && coming.length === 0 && <Quiet>No agent runs on the clock.</Quiet>}
+                {failed.today && <NotLoaded onTry={load} />}
+                {today && !failed.today && coming.length === 0 && (
+                  <Quiet>No agent runs on the clock.</Quiet>
+                )}
                 {coming.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
                     {/* opened out, the rows scroll inside their box, not the whole screen (Kenil,

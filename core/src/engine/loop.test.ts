@@ -150,7 +150,7 @@ describe('Alpha’s own loop', () => {
     await done
     expect(sent[0]).toMatch(/waits/i)
     const card = world.cards.waiting(user.id).find((c) => c.call?.tool === 'gmail_send')
-    expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”?')
+    expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”, a new recipient?')
     expect(connectors.known().length).toBeGreaterThan(0)
     // the person's yes on the card: the desk is told and carries on in the same session
     done = idle()

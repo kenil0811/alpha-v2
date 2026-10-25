@@ -37,7 +37,12 @@ export function ViewTabs({
   onReset: () => void
 }) {
   const [menu, setMenu] = useState(false)
+  const [removing, setRemoving] = useState(false) // Remove the view asks first, in the menu
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null)
+  const closeMenu = () => {
+    setMenu(false)
+    setRemoving(false)
+  }
   const menuAnchor = useRef<HTMLButtonElement>(null)
   const newAnchor = useRef<HTMLButtonElement>(null)
   const view = views.find((v) => v.id === current)
@@ -70,7 +75,7 @@ export function ViewTabs({
             ref={menuAnchor}
             type="button"
             aria-label={`${name}: save, rename and more`}
-            onClick={() => setMenu((m) => !m)}
+            onClick={() => (menu ? closeMenu() : setMenu(true))}
             className="grid size-6 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink"
           >
             <ChevronDown className="size-3.5" />
@@ -94,7 +99,7 @@ export function ViewTabs({
       </button>
       {problem && <span className="ml-2 min-w-0 truncate text-bad text-sm">{problem}</span>}
       <span className="ml-auto flex shrink-0 items-center gap-2">{right}</span>
-      <Popover anchor={menuAnchor} open={menu} onClose={() => setMenu(false)}>
+      <Popover anchor={menuAnchor} open={menu} onClose={closeMenu}>
         {view ? (
           <>
             <MenuItem
@@ -143,15 +148,27 @@ export function ViewTabs({
               Open the table on this view
             </MenuItem>
             <MenuLine />
-            <MenuItem
-              danger
-              onClick={() => {
-                setMenu(false)
-                onRemove()
-              }}
-            >
-              Remove the view
-            </MenuItem>
+            {removing ? (
+              <>
+                <div className="max-w-64 whitespace-normal px-2.5 py-1.5 text-sm text-warn">
+                  Remove {view.name} for everyone? Its filters, sorts and columns go; the rows stay.
+                </div>
+                <MenuItem
+                  danger
+                  onClick={() => {
+                    closeMenu()
+                    onRemove()
+                  }}
+                >
+                  Yes, remove it
+                </MenuItem>
+                <MenuItem onClick={() => setRemoving(false)}>Keep it</MenuItem>
+              </>
+            ) : (
+              <MenuItem danger onClick={() => setRemoving(true)}>
+                Remove the view
+              </MenuItem>
+            )}
           </>
         ) : (
           <>

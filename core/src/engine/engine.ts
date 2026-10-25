@@ -104,14 +104,21 @@ export class Engine {
     return this.desk(user).stop()
   }
 
-  // An agent's draft answered in words or with the card's own buttons: sent as drafted, or held.
+  // An agent's draft answered with the card's own buttons or in words: sent as drafted only on
+  // its yes, Send it; anything else holds it, the words typed kept as the reason (item 41 of the
+  // problems list, 25 Oct).
   async answerDraft(user: User, cardId: string, answer: string): Promise<Card> {
     const drafts = this.options.hands?.drafts
     if (!drafts) throw new Refused('Drafts are not set up in this core.')
     const out =
-      answer === 'Not now' || answer === 'No'
-        ? drafts.hold(cardId, 'Something else', '', user)
-        : await drafts.send(cardId, null, user)
+      answer === 'Send it'
+        ? await drafts.send(cardId, null, user)
+        : drafts.hold(
+            cardId,
+            'Something else',
+            answer === 'Not now' || answer === 'No' ? '' : answer,
+            user,
+          )
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
     return out
   }
@@ -131,7 +138,9 @@ export class Engine {
     }
     const card = this.world.cards.answer(cardId, answer, { kind: 'person', id: user.id })
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
-    this.desk(user).cardAnswered(card)
+    // the desk carries on only with a card its own turn opened, or a run it started; an agent's
+    // card from a scheduled run is the run's to go on with (item 41, 25 Oct)
+    if (card.turn) this.desk(user).cardAnswered(card)
     return card
   }
 

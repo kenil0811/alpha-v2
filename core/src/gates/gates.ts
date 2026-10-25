@@ -71,7 +71,7 @@ export function askedFor(words: string | null, message: string | null): boolean 
 export function decide(world: World, input: GateInput): Verdict {
   const gate = gateOf(input)
   if (!gate) return { pass: true }
-  const yes = world.cards.useYes(input.call)
+  const yes = world.cards.useYes(input.call, config.limits().yes_hours)
   if (yes) return { pass: true, card: yes }
   const card = world.cards.open({
     kind: 'permission',

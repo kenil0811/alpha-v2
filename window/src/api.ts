@@ -22,6 +22,16 @@ function token(): string {
 
 export class Problem extends Error {}
 
+// The window's words for a core that gave none: it is on this Mac, so "not answering" is the
+// whole story (item 30 of the problems list, 25 Oct).
+export const NOT_ANSWERING = "Alpha isn't answering on this Mac right now."
+
+// A failure in words a person reads: the core's own when it refused, else the line above (never
+// the browser's, like "Load failed").
+export function wordsOf(err: unknown): string {
+  return err instanceof Problem ? err.message : NOT_ANSWERING
+}
+
 async function call<T>(
   method: string,
   path: string,
@@ -40,7 +50,7 @@ async function call<T>(
     ...(body !== undefined ? { body: body instanceof Blob ? body : JSON.stringify(body) } : {}),
   })
   const data = (await res.json().catch(() => ({}))) as T & { problem?: string }
-  if (!res.ok) throw new Problem(data.problem ?? 'The core did not answer.')
+  if (!res.ok) throw new Problem(data.problem ?? NOT_ANSWERING)
   return data
 }
 
@@ -73,7 +83,7 @@ export const api = {
     })
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { problem?: string }
-      throw new Problem(data.problem ?? 'The core did not answer.')
+      throw new Problem(data.problem ?? NOT_ANSWERING)
     }
     const url = URL.createObjectURL(await res.blob())
     const a = document.createElement('a')

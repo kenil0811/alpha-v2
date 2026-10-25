@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
-import { api, listen } from './api.ts'
+import { api, listen, wordsOf } from './api.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
@@ -199,7 +199,7 @@ export function App() {
       if (p.at === 'table') setTable(await api.get<TableData>(`/api/tables/${p.id}`))
       setProblem(null)
     } catch (err) {
-      setProblem(err instanceof Error ? err.message : 'The core did not answer.')
+      setProblem(wordsOf(err))
     }
   }, [])
 

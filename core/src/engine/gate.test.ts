@@ -67,10 +67,21 @@ describe('the gate adapter', () => {
     expect(send.allow).toBe(false)
     expect(send.reason).toMatch(/waits/i)
     const card = world.cards.waiting(user.id).find((c) => c.call?.tool === 'gmail_send')
-    expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”?')
+    // nothing has gone to this address from here: the card says so (item 39, 25 Oct)
+    expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”, a new recipient?')
+    expect(card?.restsOn).toContain('Nothing has gone to this address from here before.')
     expect(card?.options[0]).toBe('Send it')
+    world.cards.answer(card?.id as string, 'Send it', { kind: 'person', id: user.id })
+    gate.before(
+      'mcp__gmail__send',
+      { ...mail, subject: 'The NDA' },
+      { callId: 'c3b', subagent: null },
+    )
+    const second = world.cards.waiting(user.id).find((c) => c.call?.tool === 'gmail_send')
+    expect(second?.words).toBe('Send an email to priya@harbor.example: “The NDA”?')
     expect(world.lines({ kinds: ['call'] }).map((l) => l.words)).toEqual([
       'Saved a draft to priya@harbor.example',
+      'Send an email to priya@harbor.example',
       'Send an email to priya@harbor.example',
     ])
     expect(gate.network('api.example.com').allow).toBe(false)

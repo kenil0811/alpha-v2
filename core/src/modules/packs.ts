@@ -22,6 +22,7 @@ import { one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
+import { newer } from './defaults.ts'
 import { install, readKit, update } from './kits/index.ts'
 
 export const PACK_SUFFIX = '.alphakit'
@@ -134,6 +135,11 @@ export async function installPack(
     m && one<{ version: string }>(world.db, 'SELECT version FROM kits WHERE module_id = ?', m.id)
   // the same kit again (every install refills the inbox): nothing to do
   if (m && fromKit && fromKit.version === version) return `${name} ${version} is already there.`
+  // an older pack never takes a kit back (item 42 of the problems list, 25 Oct)
+  if (m && fromKit && newer(fromKit.version, version))
+    throw new Refused(
+      `${name} ${fromKit.version} is already there, newer than ${version}; nothing changed.`,
+    )
   if (m && fromKit) {
     const r = await update(world, name, dir, ctx)
     return `Updated ${name} to ${version}: ${r.replaced.length + r.added.length} files new or replaced, ${r.kept.length} of your changes kept.`

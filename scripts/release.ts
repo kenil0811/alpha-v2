@@ -1,9 +1,10 @@
 // The release (packaging, piece 2): Alpha as one self-contained app, staged from a clean copy of
 // the repository, carrying its own Node and uv (each checked against its published SHA-256), its
 // production packages (Claude Code comes inside the Agent SDK's package), the built window and
-// the helper built for macOS 14 and signed; then a MANIFEST of every file's hash, and a smoke test
-// that starts the core from the staged app with an empty home and only macOS's own PATH, installs
-// a made-up kit and runs its agent in the sandbox. It refuses to finish if any of that fails.
+// the helper built for macOS 14 and signed; then a smoke test that starts the core from the staged
+// app with an empty home and only macOS's own PATH, installs a made-up kit and runs its agent in
+// the sandbox; then install.sh and the kits go in, and last a MANIFEST of every file's hash and
+// the app's seal. It refuses to finish if any of that fails.
 //   pnpm release [version] [--working-tree] [--client <client repository>]
 // --working-tree stages the files as they are now, committed or not (for trying a release before
 // a commit); without it, HEAD. --client packs the kits the client's bundle.yaml lists, which
@@ -176,27 +177,6 @@ mkdirSync(join(app, 'bin'), { recursive: true })
 copyFileSync(join(ROOT, 'release', 'alpha'), join(app, 'bin', 'alpha'))
 chmodSync(join(app, 'bin', 'alpha'), 0o755)
 writeFileSync(join(app, 'VERSION'), `${version}\n`)
-const manifest: string[] = []
-const walk = (dir: string) => {
-  for (const e of readdirSync(dir).sort()) {
-    const p = join(dir, e)
-    const st = lstatSync(p)
-    if (st.isSymbolicLink()) manifest.push(`link ${relative(app, p)}`)
-    else if (st.isDirectory()) walk(p)
-    else manifest.push(`${hash(p)}  ${relative(app, p)}`)
-  }
-}
-walk(app)
-writeFileSync(join(app, 'MANIFEST'), `${manifest.join('\n')}\n`)
-// the app's seal, again over everything now inside it: with the constant certificate when this
-// Mac has it, else ad hoc (the helper inside keeps its own signature)
-const identity = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'])
-  .toString()
-  .includes('"Alpha Code Signing"')
-  ? 'Alpha Code Signing'
-  : '-'
-run('codesign', ['--force', '--sign', identity, appDir], ROOT)
-run('codesign', ['--verify', appDir], ROOT)
 
 // 7. The smoke test: the core from the staged app, with an empty home and macOS's own PATH only,
 // answering, serving the window, installing a made-up kit and running its agent in the sandbox.
@@ -319,8 +299,33 @@ if (existsSync(extra))
     const file = await packConnector(dir, join(appDir, 'Contents', 'Resources', 'connectors'))
     say(`Packed ${relative(appDir, file)}`)
   }
-// the app's seal again, over install.sh, the kits and the connector packs now inside it
+// The hash of every file the app carries, written once install.sh, the kits and the connector
+// packs are inside it (item 43 of the problems list, 25 Oct), then the app's one seal over all of
+// it: with the constant certificate when this Mac has it, else ad hoc (the helper inside keeps
+// its own signature).
+const manifest: string[] = []
+const walk = (dir: string) => {
+  for (const e of readdirSync(dir).sort()) {
+    const p = join(dir, e)
+    const st = lstatSync(p)
+    if (st.isSymbolicLink()) manifest.push(`link ${relative(app, p)}`)
+    else if (st.isDirectory()) walk(p)
+    else manifest.push(`${hash(p)}  ${relative(app, p)}`)
+  }
+}
+walk(app)
+for (const beside of ['kits', 'connectors']) {
+  const dir = join(appDir, 'Contents', 'Resources', beside)
+  if (existsSync(dir)) walk(dir)
+}
+writeFileSync(join(app, 'MANIFEST'), `${manifest.join('\n')}\n`)
+const identity = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'])
+  .toString()
+  .includes('"Alpha Code Signing"')
+  ? 'Alpha Code Signing'
+  : '-'
 run('codesign', ['--force', '--sign', identity, appDir], ROOT)
+run('codesign', ['--verify', appDir], ROOT)
 symlinkSync('/Applications', join(out, 'Applications'))
 const file = join(
   ROOT,

@@ -262,7 +262,7 @@ describe('the desk', () => {
     await done
     expect(decisions).toEqual(['draft:allow', 'send:deny'])
     const [card] = world.cards.waiting(user.id)
-    expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”?')
+    expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”, a new recipient?')
     expect(card?.detail).toBe(
       'To: priya@harbor.example\nSubject: The CIM\n\nCould you send it over?',
     )

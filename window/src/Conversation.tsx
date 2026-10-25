@@ -31,6 +31,7 @@ import { MatchCard } from './MatchCard.tsx'
 import { ProposedCard } from './ProposedCard.tsx'
 import { ReviewCard } from './ReviewCard.tsx'
 import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
+import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
@@ -444,17 +445,18 @@ function Now({ stream }: { stream: Stream | null }) {
 // What an agent's run told the person: its words, and the rows it is about, each with Open and
 // the one choice it offers (a deal's Pass).
 function Told({ words, about }: { words: string; about: AboutRows | null }) {
-  const [busy, setBusy] = useState<string | null>(null)
-  const choose = async (row: string) => {
+  const { busy, on, problem, act } = useAct()
+  const choose = (row: string) => {
     if (!about?.choice) return
-    setBusy(row)
-    await api
-      .post(`/api/tables/${about.table}/rows/${row}`, {
-        field: about.choice.field,
-        value: about.choice.value,
-      })
-      .catch(() => undefined)
-    setBusy(null)
+    const choice = about.choice
+    void act(
+      () =>
+        api.post(`/api/tables/${about.table}/rows/${row}`, {
+          field: choice.field,
+          value: choice.value,
+        }),
+      row,
+    )
   }
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface">
@@ -479,11 +481,12 @@ function Told({ words, about }: { words: string; about: AboutRows | null }) {
           >
             Open
           </Button>
+          {on === r.id && <Refusal words={problem} />}
           {about.choice &&
             (r.value === about.choice.value ? (
               <span className="shrink-0 px-2.5 text-ink-3 text-sm">{about.choice.value}</span>
             ) : (
-              <Button size="sm" disabled={busy === r.id} onClick={() => choose(r.id)}>
+              <Button size="sm" disabled={busy && on === r.id} onClick={() => choose(r.id)}>
                 {about.choice.label}
               </Button>
             ))}

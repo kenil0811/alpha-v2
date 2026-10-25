@@ -174,6 +174,10 @@ export class AgentRunner {
     return wallsOf.wallsFor(this, module, file)
   }
 
+  wallsForTry(module: Module): Walls {
+    return wallsOf.wallsForTry(this, module)
+  }
+
   overRuns(a: Agent, file: AgentFile, nowMs: number): boolean {
     return wallsOf.overRuns(this, a, file, nowMs)
   }
@@ -236,9 +240,10 @@ export class AgentRunner {
     if (!path.startsWith(`${module.dir}/`) || !existsSync(path))
       throw new Refused(`${module.name} has no script ${script}.`)
     const runId = newId('n')
-    // an agent's run keeps to its file: what it touches, reads and may do, within its budget
+    // an agent's run keeps to its file: what it touches, reads and may do, within its budget; a
+    // try from the chat keeps to its module (item 40, 25 Oct)
     const file = agentId ? this.fileOf(agentId, module) : null
-    const walls = file ? this.wallsFor(module, file) : null
+    const walls = file ? this.wallsFor(module, file) : agentId ? null : this.wallsForTry(module)
     exec(
       this.world.db,
       "INSERT INTO runs (id, agent_id, module_id, started_at, state, task_id) VALUES (?, ?, ?, ?, 'running', ?)",
@@ -358,18 +363,25 @@ export class AgentRunner {
   // One run of an agent at a time, whoever asks (two could send the same email twice); a paused
   // agent runs only when the person asked for it now (Run now, the desk's run), never on its own
   // or on a follow-up (items 9 and 10 of the problems list, 24 Oct).
-  async runAgent(
-    agent: Agent,
-    who?: RunFor,
-    given: object = {},
-    options: { asked?: boolean } = {},
-  ): Promise<RunOutcome> {
+  // Why an agent cannot run now, as a refusal: asked before a run starts (Run now says it at
+  // once), and again by the run itself.
+  refuseRun(agent: Agent, options: { asked?: boolean } = {}): Module {
     const module = this.world.shape.module(agent.module)
     if (!module) throw new Refused('That agent’s module is not there.')
     if (one(this.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", agent.id))
       throw new Refused(`${agent.name} is busy with another run; it runs again when that one ends.`)
     if (agent.state !== 'on' && !options.asked)
       throw new Refused(`${agent.name} is paused; turn it on in Settings, or run it now yourself.`)
+    return module
+  }
+
+  async runAgent(
+    agent: Agent,
+    who?: RunFor,
+    given: object = {},
+    options: { asked?: boolean } = {},
+  ): Promise<RunOutcome> {
+    const module = this.refuseRun(agent, options)
     // what became of its drafts since its last run
     const decided = this.drafts?.outcomes(agent.name, module.id, agent.lastRunAt) ?? []
     return this.runScript(

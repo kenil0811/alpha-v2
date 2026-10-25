@@ -302,6 +302,55 @@ describe('a script’s figures', () => {
   }, 60_000)
 })
 
+describe('a run on a yes', () => {
+  it('runs an agent again once the person said yes on a card its run opened, and only then', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const runner = new AgentRunner(world, () => engine, { owner: 'u_1' })
+    writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async (alpha) => alpha.input')
+    writeFileSync(
+      join(m.dir, 'agents/asker.md'),
+      '---\nname: Asker\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/echo.js }\n---\nAsks.\n',
+    )
+    syncAgents(world, m, 'on')
+    const a = agents(world, m.id).find((x) => x.name === 'Asker') as Agent
+    // its last run ended on a sign-in card yesterday, and it is not due by its trigger today
+    exec(
+      world.db,
+      "INSERT INTO runs (id, agent_id, module_id, started_at, ended_at, state, data) VALUES ('n_asked', ?, ?, ?, ?, 'failed', '{}')",
+      a.id,
+      m.id,
+      '2026-10-24T07:00:00.000Z',
+      '2026-10-24T07:00:05.000Z',
+    )
+    exec(world.db, 'UPDATE agents SET last_run_at = ? WHERE id = ?', new Date().toISOString(), a.id)
+    const card = world.cards.open({
+      kind: 'permission',
+      gate: 'sign_in',
+      words: 'mill.example wants you to sign in',
+      options: ['Sign in', 'Not now'],
+      call: { tool: 'site_sign_in', input: { host: 'mill.example' } },
+      actor: { kind: 'agent', id: 'n_asked' },
+      user: 'u_1',
+      module: m.id,
+      run: 'n_asked',
+    })
+    const runsOfAsker = () => runner.runs(20).filter((r) => r.agent === a.id)
+    await runner.runDue()
+    expect(runsOfAsker()).toHaveLength(1) // the card waits: nothing runs
+    world.cards.answer(card.id, 'Sign in', { kind: 'person', id: 'u_1' })
+    await runner.runDue()
+    // the run goes on behind the tick
+    for (let i = 0; i < 100 && runsOfAsker().filter((r) => r.state !== 'running').length < 2; i++)
+      await new Promise((r) => setTimeout(r, 100))
+    expect(runsOfAsker().map((r) => r.state)).toEqual(['ok', 'failed'])
+    expect(world.lines({ kinds: ['run_step'] }).map((l) => l.words)).toContain(
+      'Asker runs again on your yes.',
+    )
+    await runner.runDue() // the yes was for the run before: nothing more
+    expect(runsOfAsker()).toHaveLength(2)
+  }, 60_000)
+})
+
 describe('triggers', () => {
   it('run an agent on a change in any of its tables, handing its script its input', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)

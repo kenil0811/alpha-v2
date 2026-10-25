@@ -70,6 +70,32 @@ describe('the walls of an agent', () => {
     expect(out.words).toMatch(/may not read Secrets/)
   }, 60_000)
 
+  it('walls a try of a script from the chat to its module, and keeps a write inside the module whatever the file says', async () => {
+    const other = world.shape.makeModule('Elsewhere', { actor: { kind: 'alpha' } })
+    world.shape.makeTable(other.id, 'Secrets', [{ name: 'Name', kind: 'text' }], {
+      actor: { kind: 'alpha' },
+    })
+    // the kit check refuses a file that touches another module's table; one edited after the
+    // install to say so (the file is read again at each run) is refused at the write
+    const { m, agent, runner } = await kitWith(
+      'trigger: { every: day }\ntouches: [Orders]',
+      "export default async (alpha) => alpha.rows.land('Secrets', [{ key: 's', values: { Name: 'X' } }])",
+    )
+    writeFileSync(
+      join(m.dir, 'agents', 'walled.md'),
+      '---\nname: Walled\ntrigger: { every: day }\ntouches: [Secrets]\nruns: { script: skills/walled/run.js }\n---\nEdited.\n',
+    )
+    const out = await runner.runAgent(agent, undefined, {}, { asked: true })
+    expect(out.words).toMatch(/Secrets is not one of Bakery's tables/)
+    // a try has no file: its module is its wall
+    const tried = await runner.runScript(m, 'skills/walled/run.js', {}, 'A try of walled', null)
+    expect(tried.words).toMatch(/A try of walled may write only Bakery's own tables, not Secrets/)
+    // a try of a reader keeps its reach: the walls refuse nothing of it (a site waits on a card
+    // as ever), and it lands in the module's own table
+    const reached = await runner.runScript(m, 'skills/read/run.js', {}, 'A try of read', null)
+    expect(reached.words).not.toMatch(/may write only|may not read/)
+  }, 90_000)
+
   it('refuses an effect its file does not name, before any card; an older file that names none is allowed', async () => {
     const { agent, runner } = await kitWith(
       'trigger: { every: day }\ntouches: [Suppliers]\neffects: []',

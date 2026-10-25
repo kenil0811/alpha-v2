@@ -46,8 +46,13 @@ export function api(
   const writable = (t: Table): Table => {
     if (walls && !walls.touches.has(t.name.toLowerCase()))
       refuse(
-        `${label} does not touch ${t.name}: its file says touches: [${[...walls.touches].join(', ') || 'nothing'}].`,
+        walls.kind === 'try'
+          ? `${label} may write only ${module.name}'s own tables, not ${t.name}.`
+          : `${label} does not touch ${t.name}: its file says touches: [${[...walls.touches].join(', ') || 'nothing'}].`,
       )
+    // a write stays inside the module whatever the file says (item 40, 25 Oct)
+    if (!runner.world.shape.within(module.id).includes(t.module.id))
+      refuse(`${t.name} is not one of ${module.name}'s tables.`)
     return t
   }
   const affecting = (call: string): void => {

@@ -182,7 +182,7 @@ export function Rail({
         Modules
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {modules.length === 0 && (
+        {modules.length === 0 && online && (
           <div className="px-2 py-1 text-rail-ink-3 text-sm">
             Modules appear here as you ask for them.
           </div>

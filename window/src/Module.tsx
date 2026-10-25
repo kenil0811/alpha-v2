@@ -10,6 +10,7 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { AllAgents, when } from './Kits.tsx'
 import { PageView } from './PageView.tsx'
+import { Refusal, useAct } from './ui/act.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -234,13 +235,9 @@ function Overview({ m }: { m: ModuleView }) {
 }
 
 function AgentsAndNotes({ m, onChange }: { m: ModuleView; onChange: () => void }) {
-  const [busy, setBusy] = useState<string | null>(null)
-  const turn = async (id: string, on: boolean) => {
-    setBusy(id)
-    await api.post(`/api/agents/${id}`, { state: on ? 'on' : 'paused' }).catch(() => undefined)
-    setBusy(null)
-    onChange()
-  }
+  const { busy, on, problem, act } = useAct(onChange)
+  const turn = (id: string, state: boolean) =>
+    act(() => api.post(`/api/agents/${id}`, { state: state ? 'on' : 'paused' }), id)
   return (
     <div className="@container h-full overflow-y-auto">
       <div className="grid max-w-page items-start gap-6 px-7 py-6 @min-[960px]:grid-cols-2">
@@ -263,10 +260,11 @@ function AgentsAndNotes({ m, onChange }: { m: ModuleView; onChange: () => void }
                   sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
                   actions={
                     <>
+                      {on === a.id && <Refusal words={problem} />}
                       {a.running && <Pill tone="accent">Running</Pill>}
                       <Switch
                         checked={a.state === 'on'}
-                        disabled={busy === a.id}
+                        disabled={busy && on === a.id}
                         label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
                         onChange={(on) => turn(a.id, on)}
                       />

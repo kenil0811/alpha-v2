@@ -101,8 +101,10 @@ export function shapeTables(
         })
         world.shape.setChoices(t.id, was.name, merged, ctx)
       }
-      // a choice's colours come with the kit's version of it
-      if (was && f.tones) world.shape.setTones(t.id, was.name, f.tones)
+      // a choice's colours come with the kit's version of it, unless someone else set them since
+      // (item 42 of the problems list, 25 Oct): those are theirs, and stand
+      if (was && f.tones && !world.shape.tonesSetByOthers(was.id))
+        world.shape.setTones(t.id, was.name, f.tones, ctx)
     }
     // what each means, as the kit says it; a sentence the person wrote stands (describe says so)
     if (spec.about) world.shape.describe({ table: t.id }, spec.about, 'kit', ctx)

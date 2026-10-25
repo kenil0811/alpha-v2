@@ -18,6 +18,7 @@ import {
   setMany,
   setPeople,
   setTones,
+  tonesSetByOthers,
 } from './fields.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
 import {
@@ -413,8 +414,11 @@ export class Shape {
   setChoices(tableId: string, field: string, choices: string[], ctx: WriteCtx): Table {
     return setChoices(this, tableId, field, choices, ctx)
   }
-  setTones(tableId: string, field: string, tones: Record<string, Tone>): void {
-    setTones(this, tableId, field, tones)
+  setTones(tableId: string, field: string, tones: Record<string, Tone>, ctx: WriteCtx): void {
+    setTones(this, tableId, field, tones, ctx)
+  }
+  tonesSetByOthers(fieldId: string): boolean {
+    return tonesSetByOthers(this, fieldId)
   }
   describe(
     where: { table: string; field?: string },

@@ -100,11 +100,14 @@ export function setChoices(
 }
 
 // The colours of a choice field's choices (a kit's: Fits in green). Only the state colours.
+// A choice field's colours, set by whoever sets them and journalled as theirs, so a kit's
+// update leaves colours someone else set alone (item 42 of the problems list, 25 Oct).
 export function setTones(
   shape: Shape,
   tableId: string,
   field: string,
   tones: Record<string, Tone>,
+  ctx: WriteCtx,
 ): void {
   const table = shape.table(tableId)
   if (!table) throw new Refused('That table is not there.')
@@ -112,13 +115,41 @@ export function setTones(
   if (f.kind !== 'choice') throw new Refused(`${f.name} is not a choice field.`)
   for (const t of Object.values(tones))
     if (!TONES.includes(t)) throw new Refused(`${t} is not one of ${TONES.join(', ')}.`)
-  run(
-    shape.db,
-    'UPDATE fields SET options = ? WHERE id = ?',
-    json({ choices: f.choices, ...(Object.keys(tones).length ? { tones } : {}) }),
-    f.id,
-  )
+  const same = (a: Record<string, Tone>, b: Record<string, Tone>) =>
+    JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort())
+  if (same(f.tones, tones)) return
+  tx(shape.db, () => {
+    run(
+      shape.db,
+      'UPDATE fields SET options = ? WHERE id = ?',
+      json({ choices: f.choices, ...(Object.keys(tones).length ? { tones } : {}) }),
+      f.id,
+    )
+    append(shape.db, {
+      actor: ctx.actor,
+      kind: 'shaped',
+      words: `${f.name} in ${table.name} now shows its choices in new colours.`,
+      data: { table: table.id, field: f.id, tones },
+      user: ctx.user ?? null,
+      turn: ctx.turn ?? null,
+      module: table.module.id,
+      run: ctx.run ?? null,
+    })
+  })
   writeManifest(shape, table.module)
+}
+
+// Whether a field's colours were last set by someone other than a kit (the person, Alpha): then
+// they are theirs, and a kit's update keeps them.
+export function tonesSetByOthers(shape: Shape, fieldId: string): boolean {
+  const last = one<{ actor_kind: string; actor_id: string | null }>(
+    shape.db,
+    `SELECT actor_kind, actor_id FROM journal WHERE kind = 'shaped'
+       AND json_extract(data, '$.field') = ? AND json_extract(data, '$.tones') IS NOT NULL
+     ORDER BY id DESC LIMIT 1`,
+    fieldId,
+  )
+  return !!last && !(last.actor_kind === 'system' && (last.actor_id ?? '').startsWith('kit:'))
 }
 
 // One sentence on what a table or a field means (the semantic layer, Kenil, 24 Oct), and whose it

@@ -1,13 +1,13 @@
 import type { FieldView, RowView, TableView as TableData } from '@alpha/core/api'
-import { useState } from 'react'
 import { api } from '../api.ts'
+import { Refusal, useAct } from '../ui/act.tsx'
 import { Select } from '../ui/field.tsx'
 import { show } from './values.ts'
 
 // The board: a column per choice, each row a card with its name and a few of its values, moved
 // by setting its choice (the person's own word).
 export function Board({ data, by }: { data: TableData; by: FieldView }) {
-  const [busy, setBusy] = useState<string | null>(null)
+  const { busy, on, problem, act } = useAct()
   const name = data.fields.find((f) => f.kind === 'text')
   // on a card: up to two amounts, then up to two other choices, each only when it has a value
   const others = data.fields.filter((f) => f !== name && f !== by)
@@ -15,13 +15,8 @@ export function Board({ data, by }: { data: TableData; by: FieldView }) {
     ...others.filter((f) => f.kind === 'money' && r.values[f.slug] != null).slice(0, 2),
     ...others.filter((f) => f.kind === 'choice' && r.values[f.slug] != null).slice(0, 2),
   ]
-  const move = async (row: string, value: string) => {
-    setBusy(row)
-    await api
-      .post(`/api/tables/${data.id}/rows/${row}`, { field: by.name, value })
-      .catch(() => undefined)
-    setBusy(null)
-  }
+  const move = (row: string, value: string) =>
+    act(() => api.post(`/api/tables/${data.id}/rows/${row}`, { field: by.name, value }), row)
   const columns = [...by.choices, '']
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
@@ -54,7 +49,7 @@ export function Board({ data, by }: { data: TableData; by: FieldView }) {
                 <Select
                   className="mt-1 h-6.5 text-sm"
                   value={choice}
-                  disabled={busy === r.id}
+                  disabled={busy && on === r.id}
                   aria-label={`Move to another ${by.name.toLowerCase()}`}
                   onChange={(e) => move(r.id, e.target.value)}
                 >
@@ -65,6 +60,7 @@ export function Board({ data, by }: { data: TableData; by: FieldView }) {
                     </option>
                   ))}
                 </Select>
+                {on === r.id && <Refusal words={problem} />}
               </div>
             ))}
           </div>

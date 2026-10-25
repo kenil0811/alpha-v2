@@ -45,6 +45,7 @@ export interface Card {
   decidedBy: string | null
   decidedAt: string | null
   usedAt: string | null
+  lapsedAt: string | null // a yes not used within its hours: asked again
   module: string | null
   run: string | null // the run that opened it, and through it the task it serves
   turn: string | null
@@ -67,6 +68,7 @@ interface CardRow {
   decided_by: string | null
   decided_at: string | null
   used_at: string | null
+  lapsed_at: string | null
   module_id: string | null
   run_id: string | null
   turn_id: string | null
@@ -90,6 +92,7 @@ function toCard(r: CardRow): Card {
     decidedBy: r.decided_by,
     decidedAt: r.decided_at,
     usedAt: r.used_at,
+    lapsedAt: r.lapsed_at,
     module: r.module_id,
     run: r.run_id,
     turn: r.turn_id,
@@ -223,6 +226,26 @@ export class Cards {
     })
   }
 
+  // Whether anything was ever sent to this address from here: a yes on a card for this tool to
+  // it, or an agent's draft the person let go (the journal's own record of every send).
+  approvedTo(tool: string, to: string): boolean {
+    return (
+      !!one(
+        this.db,
+        `SELECT 1 FROM cards WHERE state IN ('yes', 'allowed') AND json_extract(call, '$.tool') = ?
+           AND lower(json_extract(call, '$.input.to')) = lower(?)`,
+        tool,
+        to.trim(),
+      ) ||
+      !!one(
+        this.db,
+        `SELECT 1 FROM journal WHERE kind = 'draft_decided' AND json_extract(data, '$.outcome') = 'sent'
+           AND lower(json_extract(data, '$.to')) = lower(?)`,
+        to.trim(),
+      )
+    )
+  }
+
   withdraw(id: string, by: Actor, why: string): void {
     tx(this.db, () => {
       const card = this.get(id)
@@ -230,14 +253,35 @@ export class Cards {
     })
   }
 
-  // The yes that lets one call through: found by the call itself, used once.
-  useYes(call: Call): Card | undefined {
+  // The yes that lets one call through: found by the call itself, used once, and only within
+  // its hours (limits.yaml yes_hours): a yes answers the call in front of the person, and the same
+  // call hours later is out of that context (item 39 of the problems list, 25 Oct). An older yes
+  // lapses, said in Activity, and the call asks again.
+  useYes(call: Call, hours: number): Card | undefined {
     return tx(this.db, () => {
-      const r = one<CardRow>(
+      const edge = Date.now() - hours * 3_600_000
+      let r: CardRow | undefined
+      for (const c of all<CardRow>(
         this.db,
-        "SELECT * FROM cards WHERE call_key = ? AND state = 'yes' AND used_at IS NULL ORDER BY decided_at DESC",
+        "SELECT * FROM cards WHERE call_key = ? AND state = 'yes' AND used_at IS NULL AND lapsed_at IS NULL ORDER BY decided_at DESC",
         callKey(call),
-      )
+      )) {
+        if (c.decided_at && Date.parse(c.decided_at) >= edge) {
+          r ??= c
+          continue
+        }
+        run(this.db, 'UPDATE cards SET lapsed_at = ? WHERE id = ?', now(), c.id)
+        append(this.db, {
+          actor: { kind: 'system' },
+          kind: 'card_lapsed',
+          words: `Your yes on “${c.words}” lapsed after ${hours} hours; Alpha asks again.`,
+          data: { card: c.id },
+          user: c.user_id,
+          turn: c.turn_id,
+          module: c.module_id,
+          card: c.id,
+        })
+      }
       if (!r) return undefined
       run(this.db, 'UPDATE cards SET used_at = ? WHERE id = ?', now(), r.id)
       append(this.db, {

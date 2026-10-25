@@ -3,7 +3,8 @@
 import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
 import { Bot, ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { api, Problem } from './api.ts'
+import { api, Problem, wordsOf } from './api.ts'
+import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
@@ -25,11 +26,7 @@ export function Kits({ version }: { version: number }) {
   const [modules, setModules] = useState<WorkingModuleView[] | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
-    api
-      .get<WorkingModuleView[]>('/api/working')
-      .then(setModules, (e) =>
-        setProblem(e instanceof Problem ? e.message : 'The core did not answer.'),
-      )
+    api.get<WorkingModuleView[]>('/api/working').then(setModules, (e) => setProblem(wordsOf(e)))
   }, [])
   useEffect(() => {
     if (version >= 0) load()
@@ -165,34 +162,26 @@ export function AllAgents({
   agents: AgentView[]
   onChange: () => void
 }) {
-  const [busy, setBusy] = useState(false)
+  const { busy, problem, act } = useAct(onChange)
   const allOn = agents.every((a) => a.state === 'on')
   return (
-    <Button
-      size="sm"
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true)
-        await api
-          .post(`/api/modules/${moduleId}/agents`, { state: allOn ? 'paused' : 'on' })
-          .catch(() => undefined)
-        setBusy(false)
-        onChange()
-      }}
-    >
-      {allOn ? 'Pause all' : 'Turn on all'}
-    </Button>
+    <>
+      <Refusal words={problem} />
+      <Button
+        size="sm"
+        disabled={busy}
+        onClick={() =>
+          act(() => api.post(`/api/modules/${moduleId}/agents`, { state: allOn ? 'paused' : 'on' }))
+        }
+      >
+        {allOn ? 'Pause all' : 'Turn on all'}
+      </Button>
+    </>
   )
 }
 
 function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const act = async (fn: () => Promise<unknown>) => {
-    setBusy(true)
-    await fn().catch(() => undefined)
-    setBusy(false)
-    onChange()
-  }
+  const { busy, problem, act } = useAct(onChange)
   return (
     <Row
       indent
@@ -206,6 +195,7 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
       }
       actions={
         <>
+          <Refusal words={problem} />
           {a.needs && <Pill tone="warn">{a.needs}</Pill>}
           {a.running && <Pill tone="accent">Running</Pill>}
           <Button
@@ -233,7 +223,6 @@ function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => v
 // fields the kit no longer uses, each with its rows gone for good.
 function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: () => void }) {
   const [yours, setYours] = useState<YoursView | null>(null)
-  const [busy, setBusy] = useState(false)
   const [asking, setAsking] = useState<string | null>(null)
   const load = useCallback(() => {
     api.get<YoursView>(`/api/kits/${m.id}/yours`).then(setYours, () => setYours(null))
@@ -241,13 +230,10 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
   useEffect(() => {
     load()
   }, [load])
-  const act = async (fn: () => Promise<unknown>) => {
-    setBusy(true)
-    await fn().catch(() => undefined)
-    setBusy(false)
+  const { busy, problem, act } = useAct(() => {
     load()
     onChange()
-  }
+  })
   if (!yours) return null
   const back = (what: Record<string, string>) =>
     act(() => api.post(`/api/kits/${m.id}/yours/back`, what))
@@ -276,6 +262,7 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
   if (!items.length && !yours.removed.length) return null
   return (
     <>
+      {problem && <Row indent title={<Refusal words={problem} />} />}
       {items.map((it) => (
         <Row
           key={it.key}
