@@ -101,3 +101,5 @@ picks in the batch 2 review (https://claude.ai/artifact/FApSQP7bE3WdXaxM8Ermb9; 
   each condition's Rules you out and Why, but its file said `touches: [Deals]`, so the wall
   refused it once a CIM had landed conditions (it never had before: no journey filed a CIM).
   DealPilot 0.5.3: `touches: [Deals, Conditions]`.
+
+Kenil's "yes push" 25 Oct 13:11 UTC on batch 2: pushed. Items 1 to 18 and 25 of the problems list done; 21 parked.
