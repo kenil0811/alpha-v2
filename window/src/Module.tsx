@@ -4,11 +4,29 @@
 // 21 Oct), one per page (design §13), one per table, and its Conversation (Home through the
 // module's lens). Labels fold to icons when the window is narrow; the switch never wraps. A module
 // with a single table shows its name in serif instead. Under a table or a page, as the page
-// scrolls: Files, then Intelligence (its agents, notes and recent activity), then Governance (the
-// sites its readers may read and what Alpha may do without asking). A module holding others opens
+// scrolls: Files, then Intelligence, then Governance, as Alpha Brain draws them (see Below). A
+// module holding others opens
 // on its Overview, else on its front page, else its first table.
-import type { ModuleView, PermissionView, RunView, TableView as TableData } from '@alpha/core/api'
-import { Bot, Briefcase, LayoutDashboard, LayoutGrid, MessageSquare, Table2 } from 'lucide-react'
+import type {
+  ModuleSummary,
+  ModuleView,
+  PermissionView,
+  RunView,
+  TableView as TableData,
+} from '@alpha/core/api'
+import {
+  Ban,
+  Bot,
+  Briefcase,
+  Check,
+  FileText,
+  LayoutDashboard,
+  LayoutGrid,
+  MessageSquare,
+  ShieldCheck,
+  Sparkles,
+  Table2,
+} from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { AllAgents, when } from './Kits.tsx'
@@ -17,6 +35,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
+import { Segmented } from './ui/segmented.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Words } from './ui/words.tsx'
 
@@ -238,141 +257,319 @@ function Overview({ m }: { m: ModuleView }) {
   )
 }
 
-// A section card under the table: a small title, a grey line saying what it is, its content.
-function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
+// A section card under the table (Alpha Brain's SectionCard): an icon and a small title, a grey
+// line saying what it is, its content.
+function Section({
+  icon,
+  title,
+  sub,
+  children,
+}: {
+  icon: ReactNode
+  title: string
+  sub: string
+  children: ReactNode
+}) {
   return (
-    <section className="rounded-lg border border-line bg-surface px-5 py-4">
-      <h2 className="font-medium text-ink text-md">{title}</h2>
+    <section aria-label={title} className="rounded-lg border border-line bg-surface px-5 py-4">
+      <h2 className="flex items-center gap-2 font-medium text-ink text-md">
+        <span className="text-ink-3">{icon}</span>
+        {title}
+      </h2>
       <p className="mt-0.5 mb-3 text-ink-3 text-sm">{sub}</p>
       {children}
     </section>
   )
 }
 
+// A titled block inside a section card.
+function Sub({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="font-medium text-ink-2 text-sm">{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+// A rule Alpha keeps here, with its one-sentence reason.
+function Rule({ allowed, words, why }: { allowed: boolean; words: string; why: string }) {
+  return (
+    <Row
+      lead={allowed ? <Check className="size-4 text-good" /> : <Ban className="size-4 text-bad" />}
+      title={words}
+      sub={why}
+    />
+  )
+}
+
+// Under a table or a page, in Alpha Brain's order (its ModuleSections, 9 Oct): Files; then
+// Intelligence as tabs (Activity, Agents, Alpha's page, the modules inside); then Governance as
+// Allowed and Denied, then what it keeps, where it reads from and where it sits. Only what the
+// API serves: Allowed is the standing permissions, Denied the walls the core keeps.
 function Below({ m, version, onChange }: { m: ModuleView; version: number; onChange: () => void }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
   const [allowed, setAllowed] = useState<PermissionView[] | null>(null)
+  const [all, setAll] = useState<ModuleSummary[]>([])
+  const [intel, setIntel] = useState<'activity' | 'agents' | 'page' | 'inside'>('activity')
+  const [side, setSide] = useState<'allowed' | 'denied'>('allowed')
   useEffect(() => {
     if (version < 0) return
     api.get<RunView[]>('/api/activity').then(
-      (all) => setRuns(all.filter((r) => r.moduleId === m.id).slice(0, 5)),
+      (runs) => setRuns(runs.filter((r) => r.moduleId === m.id)),
       () => setRuns([]),
     )
     api.get<PermissionView[]>('/api/permissions').then(
-      (all) => setAllowed(all.filter((p) => !p.revokedAt)),
+      (ps) => setAllowed(ps.filter((p) => !p.revokedAt)),
       () => setAllowed([]),
     )
+    api.get<ModuleSummary[]>('/api/modules').then(setAll, () => setAll([]))
   }, [m.id, version])
   const { busy, on, problem, act } = useAct(onChange)
   const turn = (id: string, state: boolean) =>
     act(() => api.post(`/api/agents/${id}`, { state: state ? 'on' : 'paused' }), id)
+  const parent = all.find((x) => x.id === m.parent)
+  const denied = [
+    {
+      words: 'Change your data or reach someone without your yes',
+      why: 'Every write and every message waits on a card until you say yes, unless a standing permission covers it.',
+    },
+    {
+      words: m.sites
+        ? `Read sites beyond the ${m.sites} its readers may read`
+        : 'Read any site for this module',
+      why: 'Its readers reach only the sites the module names; the core refuses the rest.',
+    },
+  ]
 
   return (
     <div className="flex max-w-page flex-col gap-4 px-7 pt-2 pb-8">
-      <Section title="Files" sub="What was dropped on this module’s rows.">
+      <Section
+        icon={<FileText className="size-4" />}
+        title="Files"
+        sub="What was dropped on this module’s rows."
+      >
         <p className="text-ink-2 text-md">
           Files sit on the row they belong to: open a row to see its files, or drop one on it.
         </p>
       </Section>
       <Section
+        icon={<Sparkles className="size-4" />}
         title="Intelligence"
-        sub={`The agents that work on ${m.name}, what Alpha reads first, and what ran lately.`}
+        sub={`What Alpha does in ${m.name}: what happened, its agents, and what it reads first.`}
       >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            {m.agents.length > 1 && (
-              <div className="flex justify-end">
-                <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+        <div className="flex flex-col gap-3">
+          <div>
+            <Segmented
+              label="Intelligence"
+              value={intel}
+              onChange={setIntel}
+              options={[
+                { value: 'activity', label: 'Activity' },
+                { value: 'agents', label: `Agents · ${m.agents.length}` },
+                { value: 'page', label: 'Alpha’s page' },
+                ...(m.modules.length
+                  ? [{ value: 'inside' as const, label: `Modules inside · ${m.modules.length}` }]
+                  : []),
+              ]}
+            />
+          </div>
+          {intel === 'activity' ? (
+            runs === null ? (
+              <p className="text-ink-3 text-md">Loading…</p>
+            ) : runs.length === 0 ? (
+              <p className="text-ink-3 text-md">Nothing has happened here yet.</p>
+            ) : (
+              <div className="flex flex-col">
+                <List>
+                  {runs.slice(0, 10).map((r) => (
+                    <Row
+                      key={r.id}
+                      lead={
+                        <span className="w-24 shrink-0 text-ink-3 text-sm tabular-nums">
+                          {when(r.startedAt)}
+                        </span>
+                      }
+                      title={r.name}
+                      sub={r.words ?? undefined}
+                      actions={
+                        r.state === 'failed' ? (
+                          <Pill tone="bad">Didn’t finish</Pill>
+                        ) : r.state === 'running' ? (
+                          <Pill tone="accent">Running</Pill>
+                        ) : undefined
+                      }
+                    />
+                  ))}
+                </List>
+                <a
+                  href="#/activity"
+                  className="mt-2 self-start text-accent text-sm hover:underline"
+                >
+                  All activity
+                </a>
               </div>
-            )}
-            {m.agents.length === 0 ? (
-              <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
+            )
+          ) : intel === 'agents' ? (
+            <div className="flex flex-col gap-2">
+              {m.agents.length > 1 && (
+                <div className="flex justify-end">
+                  <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+                </div>
+              )}
+              {m.agents.length === 0 ? (
+                <p className="text-ink-3 text-md">No agents yet. Ask Alpha to keep one.</p>
+              ) : (
+                <List>
+                  {m.agents.map((a) => (
+                    <Row
+                      key={a.id}
+                      lead={<Bot className="size-4 text-ink-3" />}
+                      title={
+                        <a href={`#/agent/${a.id}`} className="hover:underline">
+                          {a.name}
+                        </a>
+                      }
+                      sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
+                      actions={
+                        <>
+                          {on === a.id && <Refusal words={problem} />}
+                          {a.running && <Pill tone="accent">Running</Pill>}
+                          <Switch
+                            checked={a.state === 'on'}
+                            disabled={busy && on === a.id}
+                            label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
+                            onChange={(on) => turn(a.id, on)}
+                          />
+                        </>
+                      }
+                    />
+                  ))}
+                </List>
+              )}
+            </div>
+          ) : intel === 'page' ? (
+            <div className="flex flex-col gap-1">
+              <p className="text-ink-3 text-sm">
+                What Alpha reads about {m.name} before it works on it; ask Alpha to change it.
+              </p>
+              <div className="rounded-md border border-hair bg-canvas px-4 py-3 text-md">
+                <Words text={m.notes.replace(/^# .*\n+/, '') || 'No page yet.'} />
+              </div>
+            </div>
+          ) : (
+            <List>
+              {m.modules.map((c) => (
+                <Row
+                  key={c.id}
+                  lead={<Briefcase className="size-4 text-ink-3" />}
+                  title={
+                    <a href={`#/module/${c.id}`} className="hover:underline">
+                      {c.name}
+                    </a>
+                  }
+                  sub={`${c.agents} agent${c.agents === 1 ? '' : 's'} on · ${c.tasks} open task${c.tasks === 1 ? '' : 's'}`}
+                />
+              ))}
+            </List>
+          )}
+        </div>
+      </Section>
+      <Section
+        icon={<ShieldCheck className="size-4" />}
+        title="Governance"
+        sub="What Alpha may and may not do here, where the data is kept and where it is read from."
+      >
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <div>
+              <Segmented
+                label="What Alpha may do here"
+                value={side}
+                onChange={setSide}
+                options={[
+                  { value: 'allowed', label: `Allowed · ${allowed?.length ?? 0}` },
+                  { value: 'denied', label: `Denied · ${denied.length}` },
+                ]}
+              />
+            </div>
+            {side === 'allowed' ? (
+              allowed?.length ? (
+                <List>
+                  {allowed.map((p) => (
+                    <Rule
+                      key={p.id}
+                      allowed
+                      words={p.sentence}
+                      why={`You said Always allow (${p.grantedBy}, ${when(p.grantedAt)}); it holds across Alpha, and Settings can take it back.`}
+                    />
+                  ))}
+                </List>
+              ) : (
+                <p className="text-ink-3 text-md">
+                  Nothing yet: Alpha asks first. Say Always allow on a card to add one here.
+                </p>
+              )
             ) : (
               <List>
-                {m.agents.map((a) => (
-                  <Row
-                    key={a.id}
-                    lead={<Bot className="size-4 text-ink-3" />}
-                    title={
-                      <a href={`#/agent/${a.id}`} className="hover:underline">
-                        {a.name}
-                      </a>
-                    }
-                    sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
-                    actions={
-                      <>
-                        {on === a.id && <Refusal words={problem} />}
-                        {a.running && <Pill tone="accent">Running</Pill>}
-                        <Switch
-                          checked={a.state === 'on'}
-                          disabled={busy && on === a.id}
-                          label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-                          onChange={(on) => turn(a.id, on)}
-                        />
-                      </>
-                    }
-                  />
+                {denied.map((d) => (
+                  <Rule key={d.words} allowed={false} words={d.words} why={d.why} />
                 ))}
               </List>
             )}
           </div>
-          <div>
-            <h3 className="mb-1 font-medium text-ink-2 text-sm">Notes Alpha reads first</h3>
-            <div className="text-md">
-              <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
-            </div>
-          </div>
-          <div>
-            <h3 className="mb-1 font-medium text-ink-2 text-sm">Recent activity</h3>
-            {runs === null ? (
-              <p className="text-ink-3 text-md">Loading…</p>
-            ) : runs.length === 0 ? (
-              <p className="text-ink-2 text-md">Nothing has run here yet.</p>
-            ) : (
-              <ul className="flex flex-col">
-                {runs.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
-                  >
-                    <span className="w-28 shrink-0 text-ink-3 tabular-nums">
-                      {when(r.startedAt)}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-ink">
-                      {r.name}
-                      {r.words && <span className="text-ink-3"> · {r.words}</span>}
-                    </span>
-                  </li>
+          <Sub title="What it keeps">
+            {m.tables.length ? (
+              <List>
+                {m.tables.map((t) => (
+                  <Row
+                    key={t.id}
+                    lead={<Table2 className="size-4 text-ink-3" />}
+                    title={
+                      <a href={`#/table/${t.id}`} className="hover:underline">
+                        {t.name}
+                      </a>
+                    }
+                    actions={
+                      <span className="text-ink-3 text-sm tabular-nums">
+                        {t.rows} row{t.rows === 1 ? '' : 's'}
+                      </span>
+                    }
+                  />
                 ))}
-              </ul>
+              </List>
+            ) : (
+              <p className="text-ink-3 text-md">Nothing yet.</p>
             )}
-            <a href="#/activity" className="mt-1 inline-block text-accent text-sm hover:underline">
-              All activity
-            </a>
-          </div>
+          </Sub>
+          <Sub title="Where it reads from">
+            <p className="text-ink-2 text-md">
+              {m.sites
+                ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
+                : 'It reads no sites; what is here came from you, your files and your connections.'}
+            </p>
+          </Sub>
+          <Sub title="Where it sits">
+            <List>
+              <Row
+                lead={<Briefcase className="size-4 text-ink-3" />}
+                title={m.name}
+                sub={
+                  parent ? (
+                    <>
+                      Inside{' '}
+                      <a href={`#/module/${parent.id}`} className="text-accent hover:underline">
+                        {parent.name}
+                      </a>
+                    </>
+                  ) : (
+                    'At the top level'
+                  )
+                }
+              />
+            </List>
+          </Sub>
         </div>
-      </Section>
-      <Section
-        title="Governance"
-        sub="What Alpha may read and do here, and what it asks you first."
-      >
-        <ul className="flex flex-col gap-1.5 text-md text-ink-2">
-          <li>
-            {m.sites
-              ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
-              : 'Its readers read no sites.'}
-          </li>
-          {allowed?.map((p) => (
-            <li key={p.id}>
-              May, without asking: {p.sentence}{' '}
-              <span className="text-ink-3">(given by {p.grantedBy}, across Alpha)</span>
-            </li>
-          ))}
-          <li>Anything else that changes your data or reaches someone, Alpha asks you first.</li>
-        </ul>
-        <a href="#/settings" className="mt-2 inline-block text-accent text-sm hover:underline">
-          Standing permissions
-        </a>
       </Section>
     </div>
   )
