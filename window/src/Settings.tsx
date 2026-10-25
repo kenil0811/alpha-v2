@@ -11,6 +11,7 @@ import type {
 } from '@alpha/core/api'
 import {
   BookmarkCheck,
+  Bot,
   CalendarDays,
   Folder,
   Mail,
@@ -24,8 +25,10 @@ import {
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
+import { PillSwitch } from './Module.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
+import { InBar } from './Shell.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -59,25 +62,25 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
 // tabs. Settings: how Alpha runs, a list of sections on the left and one section at a time.
 const PAGES = {
   intelligence: {
-    icon: <Sparkles className="size-4.5" />,
+    icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
     about: 'What Alpha knows, its agents, the accounts it reads and what it may do.',
     tabs: [
-      ['brain', 'Second Brain'],
-      ['agents', 'Modules and agents'],
-      ['connections', 'Connections'],
-      ['permissions', 'Permissions'],
+      ['brain', 'Second Brain', <BookmarkCheck key="i" className="size-3.5" />],
+      ['agents', 'Modules and agents', <Bot key="i" className="size-3.5" />],
+      ['connections', 'Connections', <Plug key="i" className="size-3.5" />],
+      ['permissions', 'Permissions', <ShieldCheck key="i" className="size-3.5" />],
     ],
   },
   settings: {
-    icon: <SlidersHorizontal className="size-4.5" />,
+    icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
     about: 'How Alpha runs on this Mac: its model, your data and how it looks.',
     tabs: [
-      ['model', 'Model'],
-      ['data', 'Data'],
-      ['appearance', 'Appearance'],
-      ['experimental', 'Experimental'],
+      ['model', 'Model', null],
+      ['data', 'Data', null],
+      ['appearance', 'Appearance', null],
+      ['experimental', 'Experimental', null],
     ],
   },
 } as const
@@ -170,16 +173,30 @@ export function Settings({
     appearance: <Appearance view={view} onChange={load} />,
     experimental: <Experimental />,
   }
+  // the bar holds Intelligence's tabs, or Settings' icon tile, title and line
   const head = (
-    <div className="flex items-center gap-3">
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
-        {p.icon}
-      </span>
-      <div className="min-w-0">
-        <h1 className="font-serif text-2xl text-ink">{p.title}</h1>
-        <p className="text-ink-3 text-sm">{p.about}</p>
-      </div>
-    </div>
+    <InBar>
+      {page === 'intelligence' ? (
+        <PillSwitch
+          label="Intelligence"
+          tabs={PAGES.intelligence.tabs.map(([id, label, icon]) => ({
+            key: id,
+            href: `#/intelligence/${id}`,
+            label,
+            icon,
+            sel: id === at,
+          }))}
+        />
+      ) : (
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
+            {p.icon}
+          </span>
+          <h1 className="font-serif text-ink text-xl">{p.title}</h1>
+          <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
+        </div>
+      )}
+    </InBar>
   )
   const go = (id: string) => {
     window.location.hash = `#/${page}/${id}`
@@ -189,14 +206,6 @@ export function Settings({
       <div className="h-full overflow-y-auto">
         <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
           {head}
-          <div className="overflow-x-auto">
-            <Segmented
-              label="Intelligence"
-              value={at}
-              options={p.tabs.map(([value, label]) => ({ value, label }))}
-              onChange={go}
-            />
-          </div>
           <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
       </div>

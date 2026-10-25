@@ -33,7 +33,7 @@ import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
 import { Settings } from './Settings.tsx'
-import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
+import { Bar, BarMiddle, type Crumb, Find, network, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
@@ -156,12 +156,16 @@ export function App() {
     setLayout((l) => ({ ...l, ...change }))
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
+  // where a screen puts its switch, in the middle of the bar
+  const [middle, setMiddle] = useState<HTMLElement | null>(null)
   const placed: Module =
     place.at === 'module'
       ? (modules.find((m) => m.id === place.id) ?? null)
       : place.at === 'table' && table
         ? table.module
-        : null
+        : place.at === 'people'
+          ? network(modules)
+          : null
   // a module's lens takes in the modules inside it
   const moduleHere: Module = useMemo(
     () => placed && { id: placed.id, name: placed.name, ids: inside(modules, placed.id) },
@@ -377,84 +381,98 @@ export function App() {
           onFind={() => setFinding(true)}
           lens={place.at === 'conversation' ? lens : null}
           onClearLens={() => setLens(null)}
+          middle={setMiddle}
         />
         {problem && (
           <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
             {problem}
           </div>
         )}
-        <div className="flex min-h-0 flex-1">
-          <div className="min-w-0 flex-1">
-            {place.at === 'home' ? (
-              <Home stream={stream} modules={modules} name={name} onAsked={() => setAsking(true)} />
-            ) : place.at === 'conversation' ? (
-              <Conversation
-                stream={stream}
-                live={live}
-                busyTurn={busyTurn}
-                lens={lens}
-                onLens={setLens}
-              />
-            ) : place.at === 'parts' ? (
-              <Parts />
-            ) : place.at === 'file' ? (
-              <FileView place={place.place} onName={setFileName} />
-            ) : place.at === 'activity' ? (
-              <Activity version={version} />
-            ) : place.at === 'item' ? (
-              <ItemPage
-                key={`${place.kind}/${place.id}`}
-                kind={place.kind}
-                id={place.id}
-                version={version}
-                onName={setItemName}
-              />
-            ) : place.at === 'tasks' ? (
-              <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
-            ) : place.at === 'people' ? (
-              <People kind={place.kind} id={place.id} version={version} onName={setPersonName} />
-            ) : place.at === 'settings' || place.at === 'intelligence' ? (
-              <Settings page={place.at} tab={place.section} open={place.open} version={version} />
-            ) : place.at === 'module' || table ? (
-              <ModuleScreen
-                moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
-                tab={
-                  place.at === 'table'
-                    ? { kind: 'table', id: place.id }
-                    : place.tab
-                      ? { kind: place.tab }
-                      : place.page
-                        ? { kind: 'page', name: place.page }
-                        : null
-                }
-                version={version}
-                table={table}
-                renderTable={(t) => (
-                  <TableView
-                    key={t.id}
-                    data={t}
-                    row={place.at === 'table' ? place.row : null}
-                    only={place.at === 'table' ? place.only : null}
-                    field={place.at === 'table' ? place.field : null}
-                    quiet={asking}
-                  />
-                )}
-                conversation={
-                  <Conversation
-                    stream={stream}
-                    live={live}
-                    busyTurn={busyTurn}
-                    lens={moduleHere}
-                    onLens={() => undefined}
-                    from={moduleHere}
-                  />
-                }
-              />
-            ) : (
-              <p className="p-6 text-ink-3">That table is not there.</p>
-            )}
+        <BarMiddle value={middle}>
+          <div className="flex min-h-0 flex-1">
+            <div className="min-w-0 flex-1">
+              {place.at === 'home' ? (
+                <Home
+                  stream={stream}
+                  modules={modules}
+                  name={name}
+                  onAsked={() => setAsking(true)}
+                />
+              ) : place.at === 'conversation' ? (
+                <Conversation
+                  stream={stream}
+                  live={live}
+                  busyTurn={busyTurn}
+                  lens={lens}
+                  onLens={setLens}
+                />
+              ) : place.at === 'parts' ? (
+                <Parts />
+              ) : place.at === 'file' ? (
+                <FileView place={place.place} onName={setFileName} />
+              ) : place.at === 'activity' ? (
+                <Activity version={version} />
+              ) : place.at === 'item' ? (
+                <ItemPage
+                  key={`${place.kind}/${place.id}`}
+                  kind={place.kind}
+                  id={place.id}
+                  version={version}
+                  onName={setItemName}
+                />
+              ) : place.at === 'tasks' ? (
+                <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
+              ) : place.at === 'people' ? (
+                <People
+                  kind={place.kind}
+                  id={place.id}
+                  version={version}
+                  net={network(modules)}
+                  onName={setPersonName}
+                />
+              ) : place.at === 'settings' || place.at === 'intelligence' ? (
+                <Settings page={place.at} tab={place.section} open={place.open} version={version} />
+              ) : place.at === 'module' || table ? (
+                <ModuleScreen
+                  moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                  tab={
+                    place.at === 'table'
+                      ? { kind: 'table', id: place.id }
+                      : place.tab
+                        ? { kind: place.tab }
+                        : place.page
+                          ? { kind: 'page', name: place.page }
+                          : null
+                  }
+                  version={version}
+                  table={table}
+                  renderTable={(t) => (
+                    <TableView
+                      key={t.id}
+                      data={t}
+                      row={place.at === 'table' ? place.row : null}
+                      only={place.at === 'table' ? place.only : null}
+                      field={place.at === 'table' ? place.field : null}
+                      quiet={asking}
+                    />
+                  )}
+                  conversation={
+                    <Conversation
+                      stream={stream}
+                      live={live}
+                      busyTurn={busyTurn}
+                      lens={moduleHere}
+                      onLens={() => undefined}
+                      from={moduleHere}
+                    />
+                  }
+                />
+              ) : (
+                <p className="p-6 text-ink-3">That table is not there.</p>
+              )}
+            </div>
           </div>
-        </div>
+        </BarMiddle>
       </main>
       {askable && (
         <Assistant

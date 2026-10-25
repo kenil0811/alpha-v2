@@ -534,7 +534,7 @@ function More({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
             onExport('xlsx')
           }}
         >
-          Export to Excel, as shown
+          Download Excel, as shown
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -542,7 +542,7 @@ function More({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
             onExport('csv')
           }}
         >
-          Export to CSV, as shown
+          Download CSV, as shown
         </MenuItem>
       </Popover>
     </>

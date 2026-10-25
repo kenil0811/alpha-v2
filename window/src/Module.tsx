@@ -8,11 +8,21 @@
 // sites its readers may read and what Alpha may do without asking). A module holding others opens
 // on its Overview, else on its front page, else its first table.
 import type { ModuleView, PermissionView, RunView, TableView as TableData } from '@alpha/core/api'
-import { Bot, Briefcase, LayoutDashboard, LayoutGrid, MessageSquare, Table2 } from 'lucide-react'
+import {
+  Bot,
+  Briefcase,
+  Building2,
+  LayoutDashboard,
+  LayoutGrid,
+  MessageSquare,
+  Table2,
+  Users,
+} from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
+import { InBar } from './Shell.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row, Tile } from './ui/list.tsx'
@@ -69,13 +79,16 @@ export function ModuleScreen({
   const firstTable =
     !tab && m && m.id === moduleId && !front && !holds ? m.tables[0]?.id : undefined
   useEffect(() => {
-    if (firstTable) window.location.replace(`#/table/${firstTable}`)
-  }, [firstTable])
+    // Network opens on its People
+    if (firstTable)
+      window.location.replace(m?.name === 'Network' ? '#/people' : `#/table/${firstTable}`)
+  }, [firstTable, m?.name])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
   const single = !!m && !holds && !m.pages.length && m.tables.length === 1
 
-  const tabs: { key: string; href: string; label: string; icon: ReactNode; sel: boolean }[] = m
+  const tabs: Tab[] = m
     ? [
+        ...(m.name === 'Network' && !m.parent ? peopleTabs(null) : []),
         ...(holds
           ? [
               {
@@ -123,40 +136,18 @@ export function ModuleScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="@container flex h-13 shrink-0 items-center justify-center border-line border-b px-5">
+      <InBar>
         {single ? (
           <div className="flex min-w-0 items-center gap-3">
-            <h1 className="truncate font-serif text-2xl text-ink">{m.name}</h1>
+            <h1 className="truncate font-serif text-ink text-xl">{m.name}</h1>
             <div className="flex rounded-full bg-sunk p-0.5">{talk}</div>
           </div>
         ) : (
-          <div
-            role="tablist"
-            aria-label={m?.name ?? 'Module'}
-            className="flex min-w-0 flex-nowrap items-center gap-0.5 overflow-hidden rounded-full bg-sunk p-0.5"
-          >
-            {tabs.map((t) => (
-              <a
-                key={t.key}
-                role="tab"
-                aria-selected={t.sel}
-                href={t.href}
-                title={t.label}
-                className={cn(
-                  'flex h-7 min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-md',
-                  t.sel
-                    ? 'bg-surface font-medium text-ink shadow-btn'
-                    : 'text-ink-2 hover:text-ink',
-                )}
-              >
-                <span className={t.sel ? 'text-accent' : 'text-ink-3'}>{t.icon}</span>
-                <span className="hidden truncate @min-[760px]:inline">{t.label}</span>
-              </a>
-            ))}
+          <PillSwitch label={m?.name ?? 'Module'} tabs={tabs}>
             {m && talk}
-          </div>
+          </PillSwitch>
         )}
-      </header>
+      </InBar>
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
           m && <Overview m={m} />
@@ -377,3 +368,61 @@ function Below({ m, version, onChange }: { m: ModuleView; version: number; onCha
     </div>
   )
 }
+
+export type Tab = { key: string; href: string; label: string; icon: ReactNode; sel: boolean }
+
+// The pill switch in the bar's middle: one tab per page or table, labels folding to icons when the
+// bar is narrow; it never wraps.
+export function PillSwitch({
+  label,
+  tabs,
+  children,
+}: {
+  label: string
+  tabs: Tab[]
+  children?: ReactNode
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className="flex min-w-0 flex-nowrap items-center gap-0.5 overflow-hidden rounded-full bg-sunk p-0.5"
+    >
+      {tabs.map((t) => (
+        <a
+          key={t.key}
+          role="tab"
+          aria-selected={t.sel}
+          href={t.href}
+          title={t.label}
+          className={cn(
+            'flex h-7 min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-md',
+            t.sel ? 'bg-surface font-medium text-ink shadow-btn' : 'text-ink-2 hover:text-ink',
+          )}
+        >
+          <span className={t.sel ? 'text-accent' : 'text-ink-3'}>{t.icon}</span>
+          <span className="hidden truncate @min-[760px]:inline">{t.label}</span>
+        </a>
+      ))}
+      {children}
+    </div>
+  )
+}
+
+// People and Organizations, the first two tabs of Network.
+export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
+  {
+    key: 'people',
+    href: '#/people',
+    label: 'People',
+    icon: <Users className="size-3.5" />,
+    sel: kind === 'person',
+  },
+  {
+    key: 'companies',
+    href: '#/people?companies',
+    label: 'Organizations',
+    icon: <Building2 className="size-3.5" />,
+    sel: kind === 'company',
+  },
+]

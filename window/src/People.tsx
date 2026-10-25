@@ -3,15 +3,24 @@
 // first), never a score; companies the same way. A page each: how to reach them, where they work
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
-import type { PeopleView, PersonLineView, PersonView } from '@alpha/core/api'
-import { CalendarDays, ChevronRight, Mail, Pencil, Search } from 'lucide-react'
+import type { ModuleSummary, PeopleView, PersonLineView, PersonView } from '@alpha/core/api'
+import {
+  CalendarDays,
+  ChevronRight,
+  LayoutDashboard,
+  Mail,
+  Pencil,
+  Search,
+  Table2,
+} from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { PillSwitch, peopleTabs } from './Module.tsx'
+import { InBar } from './Shell.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { Section } from './ui/section.tsx'
-import { Segmented } from './ui/segmented.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, {
@@ -64,21 +73,32 @@ export function People({
   kind,
   id,
   version,
+  net,
   onName,
 }: {
   kind: 'person' | 'company'
   id: string | null
   version: number
+  net: ModuleSummary | null
   onName: (name: string) => void
 }) {
   return id ? (
     <PersonPage id={id} version={version} onName={onName} />
   ) : (
-    <PeopleList kind={kind} version={version} />
+    <PeopleList kind={kind} version={version} net={net} />
   )
 }
 
-function PeopleList({ kind, version }: { kind: 'person' | 'company'; version: number }) {
+// People and Organizations are Network's first two tabs, beside its pages and tables, in the bar.
+function PeopleList({
+  kind,
+  version,
+  net,
+}: {
+  kind: 'person' | 'company'
+  version: number
+  net: ModuleSummary | null
+}) {
   const [view, setView] = useState<PeopleView | null>(null)
   const [words, setWords] = useState('')
   const load = useCallback(() => {
@@ -99,21 +119,31 @@ function PeopleList({ kind, version }: { kind: 'person' | 'company'; version: nu
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-page flex-col gap-4 px-8 pt-7 pb-10">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl text-ink">People</h1>
-          <Segmented
-            label="Show"
-            value={kind}
-            onChange={(k) => {
-              window.location.hash = k === 'company' ? '#/people?companies' : '#/people'
-            }}
-            options={[
-              { value: 'person', label: view ? `People · ${view.people}` : 'People' },
-              {
-                value: 'company',
-                label: view ? `Organizations · ${view.companies}` : 'Organizations',
-              },
-            ]}
-          />
+          <InBar>
+            <PillSwitch
+              label={net?.name ?? 'People'}
+              tabs={[
+                ...peopleTabs(kind),
+                ...(net?.pages ?? []).map((p) => ({
+                  key: `p:${p.name}`,
+                  href: `#/module/${net?.id}/page/${p.name}`,
+                  label: p.title,
+                  icon: <LayoutDashboard className="size-3.5" />,
+                  sel: false,
+                })),
+                ...(net?.tables ?? []).map((t) => ({
+                  key: `t:${t.id}`,
+                  href: `#/table/${t.id}`,
+                  label: t.name,
+                  icon: <Table2 className="size-3.5" />,
+                  sel: false,
+                })),
+              ]}
+            />
+          </InBar>
+          <p className="text-ink-3 text-sm">
+            {view ? `${view.people} people · ${view.companies} organizations` : ''}
+          </p>
           <span className="flex-1" />
           <div className="relative flex items-center">
             <Search className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
