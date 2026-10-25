@@ -78,6 +78,7 @@ export function Grid({
   onOpen,
   onPaste,
   onNew,
+  counted,
 }: {
   tableId: string
   rows: RowView[] // filtered and sorted
@@ -97,6 +98,7 @@ export function Grid({
   onOpen: (row: string) => void
   onPaste: (plan: PastePlan) => void
   onNew: (() => void) | string // adds a row, or why one can't be added here
+  counted?: RowView[] // what the footer totals: every row the view holds, not only this page
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [folded, setFolded] = useState<Set<string>>(new Set())
@@ -361,7 +363,7 @@ export function Grid({
                 key={f.id}
                 field={f}
                 first={i === 0}
-                rows={rows}
+                rows={counted ?? rows}
                 config={config}
                 names={names}
                 onConfig={onConfig}

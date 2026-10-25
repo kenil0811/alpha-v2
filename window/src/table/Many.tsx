@@ -1,7 +1,7 @@
 // Acting on many rows: the ticked rows' bar (set a field on all of them, remove them, untick),
 // and a paste waiting for the person's yes.
 import type { FieldView, RowView } from '@alpha/core/api'
-import { ClipboardPaste, X } from 'lucide-react'
+import { ClipboardPaste } from 'lucide-react'
 import { type FormEvent, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { Field, Select } from '../ui/field.tsx'
@@ -31,23 +31,16 @@ export function TickedBar({
   const n = rows.length
   return (
     <div className="flex items-center gap-2 rounded-md bg-accent-soft py-0.5 pr-1 pl-3 text-accent text-md">
-      <span className="font-medium">
-        {n} row{n === 1 ? '' : 's'} ticked
-      </span>
+      <span className="font-medium">{n} selected</span>
       <Button ref={setAnchor} size="sm" variant="ghost" onClick={() => setSetting((o) => !o)}>
         Set…
       </Button>
       <Button ref={removeAnchor} size="sm" variant="ghost" onClick={() => setRemoving((o) => !o)}>
         Remove
       </Button>
-      <button
-        type="button"
-        aria-label="Untick every row"
-        onClick={onClear}
-        className="grid size-6 place-items-center rounded-sm hover:bg-hover"
-      >
-        <X className="size-3.5" />
-      </button>
+      <Button size="sm" variant="ghost" onClick={onClear}>
+        Cancel
+      </Button>
       <Popover anchor={setAnchor} open={setting} onClose={() => setSetting(false)}>
         <SetForm
           fields={fields.filter((f) => CORRECTABLE.has(f.kind))}
