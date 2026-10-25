@@ -45,6 +45,33 @@ mail_services:
   - naver.com
   - singnet.com.sg
 
+# A role address (info@, office@) is a firm's, not one person's: two rows with different names
+# and the same role address are two people, put on the match card for the person to decide,
+# never merged by it (item 25 of the problems list, 25 Oct). The part before the @.
+role_addresses:
+  - info
+  - office
+  - admin
+  - sales
+  - support
+  - hello
+  - contact
+  - team
+  - billing
+  - accounts
+  - help
+  - enquiries
+  - inquiries
+  - mail
+  - noreply
+  - no-reply
+  - reception
+  - careers
+  - jobs
+  - press
+  - marketing
+  - orders
+
 # The second-level names under a country's code (co.uk, com.au, ac.in): a company's domain is the
 # one under them, so alerts.sbi.co.in and sbi.co.in are one company.
 second_levels: [co, com, ac, org, net, gov, edu, ltd, plc, nic, gen, firm, ind, ne, or, go, sch, mil]

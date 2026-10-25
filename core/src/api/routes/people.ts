@@ -63,6 +63,7 @@ export function registerPeople(ctx: Ctx): void {
                 name: world.rowName(rec.table, rec.record.values),
                 field: r.field,
                 href: `#/table/${r.table}/${r.record}`,
+                record: r.record,
               },
             ]
           : []
@@ -98,6 +99,15 @@ export function registerPeople(ctx: Ctx): void {
     const alone = world.people.unmerge(id, asPerson)
     live()
     return personOut(alone.id)
+  })
+
+  // a row that is not this person: it leaves with what it alone brought, as someone of its own
+  app.post('/api/people/:id/not', async (req): Promise<PersonView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { record } = z.object({ record: z.string().min(1) }).parse(req.body)
+    world.people.notThis(id, record, asPerson)
+    live()
+    return personOut(id)
   })
 
   app.post('/api/people/:id/you', async (req) => {

@@ -99,3 +99,21 @@ export const text = (v: unknown): string =>
   v === null || v === undefined ? '' : Array.isArray(v) ? v.join(', ') : String(v)
 
 export const uniq = <T>(xs: T[]): T[] => [...new Set(xs)]
+
+// Whether two names are plainly two people's, not one name written two ways: Sam O, S. Ortiz
+// and Samuel Ortiz are one; Dana Shaw and Lee Park, or Sam Ortiz and Sam Carter, are two. A
+// name is read by its first and last words, each the other's when one starts the other.
+export function otherName(a: string, b: string): boolean {
+  const words = (s: string) =>
+    nameKey(s)
+      .split(' ')
+      .map((w) => w.replace(/\./g, ''))
+      .filter(Boolean)
+  const x = words(a)
+  const y = words(b)
+  if (!x.length || !y.length) return false
+  const alike = (p: string, q: string) => p.startsWith(q) || q.startsWith(p)
+  if (!alike(x[0] as string, y[0] as string)) return true
+  if (x.length < 2 || y.length < 2) return false
+  return !alike(x[x.length - 1] as string, y[y.length - 1] as string)
+}

@@ -23,6 +23,7 @@ import type { BackupView, DataPageView } from './api/types.ts'
 import { KEY_REF } from './engine/route.ts'
 import type { Install } from './install.ts'
 import type { Platform } from './platform/index.ts'
+import { type Beside, mirror } from './world/backups.ts'
 import { one } from './world/db.ts'
 import { Refused } from './world/kinds.ts'
 import type { TenantPaths, World } from './world/world.ts'
@@ -234,7 +235,11 @@ export async function applyBring(
 
 // The newest backup copied to the person's folder (iCloud Drive, a disk), once a day, the last
 // seven copies kept there.
-export function copyNewestBackup(backupsDir: string, folder: string): string | null {
+export function copyNewestBackup(
+  backupsDir: string,
+  folder: string,
+  beside: Beside | null = null,
+): string | null {
   // the newest by the day in its name, which is what a daily backup is named for
   const newest = listBackups(backupsDir)
     .filter((b) => b.kind === 'daily')
@@ -244,6 +249,8 @@ export function copyNewestBackup(backupsDir: string, folder: string): string | n
   const out = join(folder, `alpha-${newest.name}`)
   if (existsSync(out) && statSync(out).size === newest.size) return null
   cpSync(join(backupsDir, newest.name), out)
+  // the modules and the files go with it, so the folder is the whole business
+  if (beside) mirror(beside, folder)
   const copies = readdirSync(folder)
     .filter((n) => /^alpha-world-daily-\d{4}-\d{2}-\d{2}\.sqlite$/.test(n))
     .sort()

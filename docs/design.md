@@ -111,7 +111,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 |---|---|
 | Journal | Append-only lines: when, actor (a person, Alpha, an agent, a connector, the system), source, kind, words, data, and the module, run and card it belongs to. Full-text search. Triggers refuse any update or delete. |
 | Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone). Each is a SQLite table of its own (Kenil, 22 Oct: real tables): STRICT, named by its slug, a typed column per field, a junction table per list relation (`many`), an index on every relation column; `records` is the registry of which table a row is in, `provenance` holds a row per value and `versions` a snapshot per change. A shape change is transactional DDL (add, rename, drop; a kind never changes). Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. A relation holds one row, or a list when the kit says `many`; removing a row clears every pointer at it in the same transaction, journaled with the count; pointers are kept whole by Alpha's own writes, not by SQL foreign keys. |
-| People and companies | Derived from the rows of tables that say how their rows name people (a row that is a person: a contact card, a source's contact, a deal's broker; a row that is an exchange: a message, a meeting) and from the person's own word. Hard keys (email, E.164 phone, profile URL, domain, company name) merge at once: a key belongs to the one whose row first gave it, and a row naming two holders never merges them. From mail, only those the person writes to become people; from meetings, those at meetings of up to twenty (Kenil, 21 Oct). Companies come from work domains and company names, with when someone was there kept. Messages and meetings count by address for whoever holds it now: plain numbers, never a score. Soft matches (the same full name, or the same name at the same company) are proposals on one card per batch, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. Removing a row takes only what it alone brought. A person field holds one of the person's people. |
+| People and companies | Derived from the rows of tables that say how their rows name people (a row that is a person: a contact card, a source's contact, a deal's broker; a row that is an exchange: a message, a meeting) and from the person's own word. Hard keys (email, E.164 phone, profile URL, domain, company name) merge at once: a key belongs to the one whose row first gave it, and a row naming two holders never merges them. Two kinds are not keys (item 25, 25 Oct): a role address (`info@`, `office@`; the list in `core/config/people.yaml`) and a phone held by a row of plainly another name; each puts the pair on the match card instead. On a person's page, Not this person splits a row off with the keys it alone brought, kept apart from then on. From mail, only those the person writes to become people; from meetings, those at meetings of up to twenty (Kenil, 21 Oct). Companies come from work domains and company names, with when someone was there kept. Messages and meetings count by address for whoever holds it now: plain numbers, never a score. Soft matches (the same full name, or the same name at the same company) are proposals on one card per batch, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. Removing a row takes only what it alone brought. A person field holds one of the person's people. |
 | Facts | Two time axes: when true, when recorded. Corrected by a newer fact, never edited. |
 | Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. A file sits on the rows it belongs to (a deal's CIM, a client's export) with its kind, one its table names when its kit names them (Kenil, 20 Oct). |
 | Tasks | Title, state (To do, In progress, Waiting, Done, Dropped), anchor (a module, table, record, field or page) and what else it touches (rows, people, files), owner (the person, Alpha, or an agent that takes tasks), due and reminder, repeat in words (each occurrence its own task), priority (High, Normal, Low), parent, made by, and the runs that served it (Kenil's plan, 21 Oct). |
@@ -133,7 +133,10 @@ sentences land as Alpha's, shown as assumed; the person writes theirs in the col
 fields of a table on its first touch (§6), not in the start layer.
 Removing something deletes everything related to it and journals the removal; the journal is
 never touched. Backups use SQLite's backup API, daily, never `cp` (a copied WAL file ran a
-stale scheduler for real in v1). The person's own data is theirs from within Alpha (decision
+stale scheduler for real in v1); beside the world the daily backup mirrors the modules and the
+files by hash (a file once, since its hash never changes), into the backups folder and the
+person's own copy folder, so a lost Mac keeps the whole business; the installer stops an update
+whose backup failed, and `alpha restore` refuses while the core still answers (item 17, 25 Oct). The person's own data is theirs from within Alpha (decision
 12, 23 Oct; Settings › Data): what the world holds and weighs, a backup now, going back to a
 backup (one taken just before), taking the data as one archive in the open format
 (`docs/data.md`: the world, the files by hash, the modules, the instructions, the added
@@ -302,7 +305,13 @@ The person's yes lets that same call through once when the model makes it again,
 survives the turn and a restart (Kenil, 19 Oct: the SDK's own defer failed for in-process tools
 in week 1's spike). The person answers in the window or in words:
 "go ahead" reaches the one waiting card, and with two the desk asks which. Many alike are
-batched on one card. A **standing permission** is a yes given once for one agent's one kind of
+batched on one card. A removal of the person's own entries goes without a card only when they asked for it in words
+code finds in what they typed this turn, and those words say removal (`core/config/words.yaml`:
+remove, delete, clear, drop and the like; item 11, 25 Oct); three letters of a message never
+count. A module's `module.yaml` (its sites, its shape) is written by the core alone, from the
+shape tool, a card's yes or a kit install: never by a script (a deny in its sandbox) nor by the
+desk's Write or Edit (item 12's stopgap, 25 Oct; the proper home for a site is a connection,
+with readers-as-connectors). A **standing permission** is a yes given once for one agent's one kind of
 thing (Kenil, 20 Oct): a card offers Always only after three yeses in a row for exactly that, each
 unchanged, and it is confirmed in a second step, stored as a row, shown as a sentence, counted when
 used, and revoked in Settings › Standing permissions. Code holds the wall: only the person grants
@@ -481,7 +490,13 @@ a brief the model writes. Tokens and duration are recorded on every run as facts
 **Activity** lists every run with its steps, and stops one that is running; **Settings › Kits and
 agents** shows each module's agents, on or paused, with Run now. **One run of an agent at a
 time**, whoever asks; a paused agent runs only when the person asks for it now (Run now, the
-desk's run), never on its trigger, a follow-up or a sign-in (24 Oct). An agent may wait on a change in
+desk's run), never on its trigger, a follow-up or a sign-in (24 Oct). The due runs go in a lane
+of their own: the minute tick starts them and goes on, so reminders, mail intake and the backup
+keep the minute while readers run. A run that did not finish (an error, a stop, a script that
+could not start) leaves the agent due: it is tried again on the next ticks, up to `run_retries`
+in `core/config/limits.yaml`, then a card on Home asks Try again or Leave it; its place in the
+journal and its last-run time move only after a run that ended well (items 14 to 16 of the
+problems list, 25 Oct). An agent may wait on a change in
 several tables, and hands its script an input (one listing reader serves every source, each
 source's agent giving it the page); an agent waiting on a filing is handed the documents filed or
 put on a row since it last looked, with their rows. A change runs the agents waiting on it soon after, not at the

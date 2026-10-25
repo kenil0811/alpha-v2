@@ -156,6 +156,63 @@ describe('people from rows', () => {
     )
   })
 
+  it('never merges on a role address or on a phone another name holds: the pair waits for the person', () => {
+    const t = contacts()
+    land(t, [
+      {
+        key: 'r1',
+        values: { Name: 'Dana Shaw', Emails: 'info@acme.example', Phones: '+1 415 555 0100' },
+      },
+      { key: 'r2', values: { Name: 'Lee Park', Phones: '+1 415 555 0100' } },
+      { key: 'r3', values: { Name: 'Kim Ro', Emails: 'info@acme.example' } },
+      { key: 'r4', values: { Name: 'D. Shaw', Phones: '+1 415 555 0100' } },
+    ])
+    // Lee and Kim stay apart from Dana, each on the card; D. Shaw is Dana written short
+    expect(world.people.count()).toBe(3)
+    const dana = world.people.byKey('phone', '+14155550100') as string
+    const whyOf = (name: string) =>
+      world.people
+        .pairs()
+        .find((p) =>
+          [p.a, p.b].includes(world.people.list().find((x) => x.name === name)?.id ?? ''),
+        )?.why
+    expect(whyOf('Lee Park')).toBe('the same phone')
+    expect(whyOf('Kim Ro')).toBe('the same address')
+    expect(world.people.byKey('email', 'info@acme.example')).toBeNull()
+    expect(world.people.get(dana)?.name).toBe('Dana Shaw')
+    // the role address is the firm's: on the row, never one of Kim's own addresses
+    expect(world.people.list().find((x) => x.name === 'Kim Ro')?.emails).toEqual([])
+  })
+
+  it('splits a row off someone on the person’s word, with the keys it alone brought', () => {
+    const t = contacts()
+    land(t, [
+      { key: 's1', values: { Name: 'Sam Ortiz', Emails: 'sam@grand.com' } },
+      {
+        key: 's2',
+        values: {
+          Name: 'Sam Ortiz',
+          Emails: 'sam@grand.com, other@grand.com',
+          Phones: '+1 415 555 0199',
+        },
+      },
+    ])
+    expect(world.people.count()).toBe(1)
+    const sam = world.people.get(world.people.byKey('email', 'sam@grand.com') as string)
+    const row = sam?.sources.find((s) => s.record !== 'person' && s.said.keys.phone?.length)
+      ?.record as string
+    const other = world.people.notThis(sam?.id as string, row, { actor: person })
+    expect(world.people.count()).toBe(2)
+    expect(other.keys.phone).toEqual(['+14155550199'])
+    expect(other.keys.email).toEqual(['other@grand.com'])
+    expect(world.people.byKey('email', 'sam@grand.com')).toBe(sam?.id)
+    // kept apart from then on: never proposed again
+    expect(world.people.pairs().some((p) => p.state === 'apart')).toBe(true)
+    expect(world.lines({ kinds: ['people'] }).at(-1)?.words).toBe(
+      'Sam Ortiz is not Sam Ortiz: their own now.',
+    )
+  })
+
   it('reads a phone written two ways as one key', () => {
     const t = contacts()
     land(t, [

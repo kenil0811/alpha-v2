@@ -8,7 +8,7 @@ import { relandNaming, rename, sweepOne } from './landing.ts'
 import type { People } from './people.ts'
 import { get, pairs } from './reading.ts'
 import type { Kind, MatchView, Pair, PersonOut, PersonRow, Said, Side } from './types.ts'
-import { PERSONS_WORD, RANK, SAME_NAME, SAME_PLACE } from './types.ts'
+import { PERSONS_WORD, RANK, SAME_ADDRESS, SAME_NAME, SAME_PHONE, SAME_PLACE } from './types.ts'
 
 // After people change: pairs that are one by now withdrawn, the likely ones found, and the new
 // ones put on the card that waits, or on a new one: one card per batch, never merged by code.
@@ -274,6 +274,31 @@ export function notePair(people: People, a: string, b: string, why: string): voi
   )
 }
 
+// What a row shares with someone else without being theirs to merge on: a phone another name
+// holds, a role address (item 25, 25 Oct). Each is a pair for the person, never a merge.
+export function noteShared(
+  people: People,
+  s: Said,
+  recordId: string,
+  leaf: string,
+  otherNamed: string[],
+): void {
+  const mine = people.root(leaf)
+  for (const other of otherNamed)
+    if (people.root(other) !== mine) notePair(people, mine, other, SAME_PHONE)
+  for (const e of s.soft?.email ?? [])
+    for (const o of all<{ person_id: string }>(
+      people.db,
+      `SELECT DISTINCT person_id FROM people_sources WHERE record_id != ?
+         AND EXISTS (SELECT 1 FROM json_each(json_extract(said, '$.soft.email')) WHERE value = ?)`,
+      recordId,
+      e,
+    )) {
+      const other = people.root(o.person_id)
+      if (other !== mine) notePair(people, mine, other, SAME_ADDRESS)
+    }
+}
+
 // Two the person says are one: the other joins the one kept, both rows kept for Unmerge.
 export function merge(people: People, keepId: string, otherId: string, ctx: WriteCtx): PersonOut {
   return tx(people.db, () => {
@@ -372,6 +397,85 @@ export function apart(people: People, a: string, b: string, ctx: WriteCtx): void
       turn: ctx.turn ?? null,
       run: ctx.run ?? null,
     })
+  })
+}
+
+// The person says a row is not this person: the row leaves with the keys it alone brought and
+// becomes someone of its own, kept apart from then on (item 25 of the problems list, 25 Oct).
+export function notThis(people: People, id: string, recordId: string, ctx: WriteCtx): PersonOut {
+  return tx(people.db, () => {
+    const p = people.mustRoot(id)
+    const parts = people.parts(p.id)
+    const marks = parts.map(() => '?').join(', ')
+    const src = one<{ person_id: string; table_id: string | null; said: string }>(
+      people.db,
+      `SELECT person_id, table_id, said FROM people_sources WHERE record_id = ? AND person_id IN (${marks})`,
+      recordId,
+      ...parts,
+    )
+    if (!src || recordId === PERSONS_WORD) throw new Refused(`That row does not name ${p.name}.`)
+    const said = parse<Said>(src.said, { kind: p.kind, name: p.name, rank: RANK.key, keys: {} })
+    const at = now()
+    const fresh = newId(p.kind === 'person' ? 'p' : 'co')
+    run(
+      people.db,
+      'INSERT INTO people (id, kind, name, rank, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      fresh,
+      p.kind,
+      said.name,
+      said.rank,
+      at,
+      at,
+    )
+    run(
+      people.db,
+      'UPDATE people_sources SET person_id = ? WHERE record_id = ? AND person_id = ?',
+      fresh,
+      recordId,
+      src.person_id,
+    )
+    // the keys this row alone brought go with it; one another row also gives stays
+    for (const [k, values] of Object.entries(said.keys) as [string, string[]][])
+      for (const v of values) {
+        const elsewhere = one(
+          people.db,
+          `SELECT 1 FROM people_sources WHERE person_id IN (${marks}) AND record_id != ?
+             AND EXISTS (SELECT 1 FROM json_each(json_extract(said, '$.keys.' || ?)) WHERE value = ?)`,
+          ...parts,
+          recordId,
+          k,
+          v,
+        )
+        if (!elsewhere)
+          run(
+            people.db,
+            'UPDATE people_keys SET person_id = ? WHERE key = ? AND value = ?',
+            fresh,
+            k,
+            v,
+          )
+      }
+    run(
+      people.db,
+      `UPDATE people_links SET person_id = ? WHERE record_id = ? AND person_id IN (${marks})`,
+      fresh,
+      recordId,
+      ...parts,
+    )
+    decide(people, p.id, fresh, 'apart', 'you said the row is not them')
+    recount(people, p.id)
+    recount(people, fresh)
+    people.changed = true
+    append(people.db, {
+      actor: ctx.actor,
+      kind: 'people',
+      words: `${said.name} is not ${people.row(p.id)?.name ?? p.name}: their own now.`,
+      data: { notThis: p.id, record: recordId, person: fresh },
+      user: ctx.user ?? null,
+      turn: ctx.turn ?? null,
+      run: ctx.run ?? null,
+    })
+    return get(people, fresh) as PersonOut
   })
 }
 

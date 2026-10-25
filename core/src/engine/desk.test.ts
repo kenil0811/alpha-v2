@@ -10,7 +10,7 @@ import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
-import { Desk, type DeskEvent, type QueryFn } from './desk.ts'
+import { Desk, type DeskEvent, fileWall, type QueryFn } from './desk.ts'
 
 let home: string
 let world: World
@@ -111,6 +111,20 @@ function deskWith(turn: Turn, connectors?: ConnectorService) {
   const idle = () => new Promise<void>((r) => waiters.push(r))
   return { desk, seen, events, idle }
 }
+
+describe('the file walls', () => {
+  it('let the desk write in its folder and the modules, never a module.yaml, and read what was granted', () => {
+    const d = (tool: string, file_path: string) =>
+      fileWall(tool, { file_path }, '/home/desk', '/home/modules', ['/granted']).allow
+    expect(d('Write', '/home/desk/notes.md')).toBe(true)
+    expect(d('Edit', '/home/modules/rentals/skills/reader/run.js')).toBe(true)
+    expect(d('Write', '/home/modules/rentals/module.yaml')).toBe(false)
+    expect(d('Edit', '/home/modules/rentals/module.yaml')).toBe(false)
+    expect(d('Write', '/granted/anything.txt')).toBe(false)
+    expect(d('Read', '/granted/anything.txt')).toBe(true)
+    expect(d('Read', '/elsewhere/secret')).toBe(false)
+  })
+})
 
 describe('the desk', () => {
   it('answers sentences in order, with the start layer on a fresh session’s first message only', async () => {

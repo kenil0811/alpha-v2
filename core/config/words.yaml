@@ -1,0 +1,18 @@
+# Words the walls read for, each with its why. None of these is a setting the person meets.
+
+# A removal of the person's own entries goes without a card only when they asked for it in
+# words, and their words said removal: the model's quote of their message must hold one of these
+# (item 11 of the problems list, 25 Oct). Any other quote opens the card.
+removal:
+  - remove
+  - delete
+  - clear
+  - drop
+  - get rid of
+  - take out
+  - take off
+  - erase
+  - wipe
+  - throw away
+  - discard
+  - purge

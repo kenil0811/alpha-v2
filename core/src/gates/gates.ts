@@ -1,7 +1,9 @@
 // The three gates, the only gates (design §7): anything that leaves the tenant's world; deleting
 // the person's own entries when they didn't ask for it; a sign-in. A gate makes a card and the
 // call does not run; the person's yes on that card lets the same call through once.
+
 import type { Effect } from '@alpha/connector-sdk'
+import { config } from '../config.ts'
 import type { Call, Card } from '../world/cards.ts'
 import type { Actor } from '../world/journal.ts'
 import type { World } from '../world/world.ts'
@@ -53,12 +55,17 @@ export function gateOf(input: GateInput): GateName | null {
   }
 }
 
-// A removal the person asked for carries their words, and code finds them in their message.
+// A removal the person asked for carries their words, and code finds them in their message:
+// the quote must be in what they typed this turn, and must say removal in one of the words
+// core/config/words.yaml lists (item 11 of the problems list, 25 Oct); anything else is a card.
 export function askedFor(words: string | null, message: string | null): boolean {
   if (!words || !message) return false
   const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, ' ').trim()
   const w = norm(words)
-  return w.length >= 3 && norm(message).includes(w)
+  if (w.length < 3 || !norm(message).includes(w)) return false
+  return config
+    .words()
+    .removal.some((r) => new RegExp(`\\b${norm(r).replace(/ /g, '\\s+')}\\b`).test(w))
 }
 
 export function decide(world: World, input: GateInput): Verdict {

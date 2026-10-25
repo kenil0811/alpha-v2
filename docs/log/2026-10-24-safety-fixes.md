@@ -60,3 +60,44 @@ The release workflow's first run, on the v0.5.1 tag: green in 9 minutes on macos
 build; Avilo's build with its kits is made from alpha-avilo, as 0.5.0 was).
 
 Kenil's "looks good" 22:03 UTC on steps B and C: pushed. Steps A to D of the problems list done.
+
+# 25 October: batch 2 (items 11 to 18 and 25)
+
+Plan https://claude.ai/artifact/Agke9YSBRFSwHJtExTtL6W, Kenil's "yes sart" 12:07 UTC, on his
+picks in the batch 2 review (https://claude.ai/artifact/FApSQP7bE3WdXaxM8Ermb9; 21 parked).
+
+- **E1, runs part 2.** 14: `runScript`'s throw is caught in `runner.ts` and ends the run as
+  failed with its words; `scripts/run.ts` forgets a sandbox start that failed. 15: the agents'
+  lane (`runner.startDue`): the minute tick starts the due runs and goes on; a tick while they
+  run leaves them alone. 16: `due.ts` moves an agent's cursor and last-run time only after an ok
+  run (the runner too sets last-run only on ok); a failed run counts, and at `run_retries`
+  (limits.yaml, 3) a card asks Try again (`runner.retry`: the count reset, one run now) or Leave
+  it (`runner.leave`: the cursor and last-run moved past); the cards route answers it
+  (`RUN_AGAIN`). Tests: a sandbox-down run (the script runner stubbed), three failures then the
+  card, the lane.
+- **E2, walls.** 11: `askedFor` needs a removal word from `core/config/words.yaml` in the quote,
+  and the quote in the message typed this turn; the journey `remove-the-eggs`. 12 (stopgap):
+  `module.yaml` is denied to scripts in the sandbox and to the desk's Write and Edit
+  (`fileWall` in `engine/desk.ts`, now a function with a test).
+- **E3, backups.** `backups.ts` `mirror(beside, dir)`: the files by hash copied once each, the
+  modules refreshed whole, beside the daily world; the copy folder gets the same three
+  (`copyNewestBackup`); `install.sh` stops an update whose backup failed; `alpha restore` refuses
+  while the core answers. Test for the mirror.
+- **E4, people.** `role_addresses` in `people.yaml`: a role address is a soft key kept in the
+  row's `said.soft.email`, never in `people_keys`; a phone held by a row of plainly another name
+  (`otherName` in `keys.ts`: first and last words, one starting the other is one name) is not
+  merged on; both put the pair on the match card (`noteShared` in `matching.ts`, why "the same
+  address" / "the same phone"). `notThis(person, record)`: the row leaves with the keys it alone
+  brought as its own person, kept apart; `POST /api/people/:id/not`, Not this person on the
+  person's page rows. Tests in `people.test.ts`.
+- **alpha-avilo.** 13: the exports reader reads only sheets on an Accounting row or on no row
+  (Accounting 0.3.2); no journey covers a sheet on a deal yet, since no journey installs both
+  kits (a later one). 18: `exports-in-a-folder` and `pdf-with-places` on invented inputs
+  (`fixtures/files/lakeside`, `fixtures/files/lakeside-statements`: a two-page balance sheet
+  printed from HTML with Alpha's own browser); `dealpilot-deal-documents` on an invented CIM
+  (`fixtures/files/harbor`): filed on a deal, read into Financials, Service mix and Staff,
+  Figures taking the actual year.
+- The new `dealpilot-deal-documents` journey caught a kit bug on its first run: Figures writes
+  each condition's Rules you out and Why, but its file said `touches: [Deals]`, so the wall
+  refused it once a CIM had landed conditions (it never had before: no journey filed a CIM).
+  DealPilot 0.5.3: `touches: [Deals, Conditions]`.

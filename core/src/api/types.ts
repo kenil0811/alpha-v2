@@ -13,8 +13,7 @@ export interface Me {
   layout: Layout
 }
 
-// How the person left the window: the rail folded to icons or not, the modules folded in it, and
-// the side conversation's width (none: its usual 320px). Kept by Alpha, per person.
+// How the person left the window: the rail folded or not, the modules folded in it, the side conversation's width (none: 320px); kept by Alpha, per person.
 export interface Layout {
   railFolded: boolean
   folded: string[]
@@ -167,7 +166,14 @@ export interface PersonView {
     first: 'you' | 'them' | null
   }
   // the rows of the person's modules that name them: a person field, or an address of theirs
-  rows: { table: string; module: string; name: string; field: string; href: string }[]
+  rows: {
+    table: string
+    module: string
+    name: string
+    field: string
+    href: string
+    record: string
+  }[]
   history: {
     at: string
     channel: string
@@ -178,8 +184,7 @@ export interface PersonView {
   createdAt: string
 }
 
-// An agent's draft on its card: the email to change, what it is about, the reasons a Not now picks
-// from, and Always when three unchanged sends of its kind have earned it.
+// An agent's draft on its card: the email to change, what it is about, the Not now reasons, and Always when three unchanged sends of its kind have earned it.
 export interface DraftView {
   agent: string
   kind: string
@@ -218,8 +223,7 @@ export interface PermissionView {
   revokedAt: string | null
 }
 
-// A file that came by mail, waiting to be filed: the email, what the file is, the place the model
-// proposed and how sure, and the rows the email or the file names, to pick another.
+// A file that came by mail, waiting to be filed: the email, what the file is, the place the model proposed and how sure, and the rows named, to pick another.
 export interface FilingView {
   file: string
   name: string
@@ -305,8 +309,7 @@ export interface SourceView {
   beside?: { value: unknown; words: string; note?: string }
 }
 
-// A document as the window shows it at a value's place: a sheet's cells, a PDF's pages (drawn by
-// /api/files/:hash/page/:n), or a text's lines.
+// A document as the window shows it at a value's place: a sheet's cells, a PDF's pages (drawn by /api/files/:hash/page/:n), or a text's lines.
 export interface FileView {
   hash: string
   name: string
@@ -514,8 +517,7 @@ export interface WorkingModuleView {
   agents: AgentView[]
 }
 
-// What of a kit is the person's now: changed files, rows, views and fields, and the fields the kit
-// no longer uses with the rows still under them.
+// What of a kit is the person's now: changed files, rows, views and fields, and the fields the kit no longer uses with the rows still under them.
 export interface YoursView {
   files: { path: string; state: 'changed' | 'removed' }[]
   rows: { table: string; tableId: string; key: string; id: string; name: string }[]
@@ -538,8 +540,7 @@ export interface ModuleView {
   modules: InsideModuleView[] // the modules inside it
 }
 
-// A module inside another, as the parent's Overview lists it: where it comes from and what goes
-// on in it right now, counting the modules inside it too.
+// A module inside another, as the parent's Overview lists it: where it comes from and what goes on in it now, the modules inside it counted too.
 export interface InsideModuleView extends ModuleSummary {
   kit: string | null
   agents: number // on
@@ -587,8 +588,7 @@ export interface RunView {
   steps: { id: number; at: string; kind: string; words: string }[]
 }
 
-// Today, beside the stream on a wide window: what changed since the person last cleared it, and
-// what is coming up. What needs them and what is running come with the stream.
+// Today, beside the stream on a wide window: what changed since the person last cleared it, and what is coming up; what needs them and what runs come with the stream.
 export interface TodayView {
   since: string // when they last cleared it, or the start of today
   changed: RunView[] // runs and reads that ended having changed something, or did not finish

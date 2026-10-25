@@ -428,19 +428,34 @@ function PersonPage({
           <Section title="In your modules" about="Rows that name them, by a person or an address">
             <div className="overflow-hidden rounded-lg border border-line bg-surface">
               {p.rows.map((r) => (
-                <a
+                <div
                   key={r.href}
-                  href={r.href}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-base text-ink">{r.name}</span>
-                    <span className="block truncate text-ink-3 text-sm">
-                      {r.module} · {r.table} · {r.field}
+                  <a href={r.href} className="flex min-w-0 flex-1 items-center gap-3">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-base text-ink">
+                        {r.name}
+                      </span>
+                      <span className="block truncate text-ink-3 text-sm">
+                        {r.module} · {r.table} · {r.field}
+                      </span>
                     </span>
-                  </span>
-                  <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-                </a>
+                  </a>
+                  {r.field !== 'their own word' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="This row is someone else: it leaves with its own addresses"
+                      onClick={() => act(`${p.id}/not`, { record: r.record })}
+                    >
+                      Not this person
+                    </Button>
+                  )}
+                  <a href={r.href} aria-label={`Open ${r.name}`}>
+                    <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+                  </a>
+                </div>
               ))}
             </div>
           </Section>

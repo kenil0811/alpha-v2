@@ -82,7 +82,10 @@ if [ -f "$PLIST" ] || { [ -d "$APP" ] && [ -z "$in_place" ]; }; then
   mkdir -p "$DATA/updates/$stamp"
   backup_with="$PAY/runtime/node"
   [ -x "$backup_with" ] || backup_with="$SRC/Contents/Resources/app/runtime/node"
-  "$backup_with" "$(dirname "$backup_with")/../core/src/cli.ts" backup "$DATA/updates/$stamp/worlds" >/dev/null 2>&1 || true
+  if ! "$backup_with" "$(dirname "$backup_with")/../core/src/cli.ts" backup "$DATA/updates/$stamp/worlds" >/dev/null 2>&1; then
+    say "The backup of your data did not work, so Alpha was not updated; nothing changed. Try again, or ask for help with $DATA/updates/$stamp."
+    exit 1
+  fi
   launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
   i=0
   while curl -s -o /dev/null -m 2 "http://127.0.0.1:4700/api/health"; do i=$((i + 1)); [ "$i" -gt 30 ] && break; sleep 1; done

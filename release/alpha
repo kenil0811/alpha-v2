@@ -65,6 +65,7 @@ case "$1" in
   restore)
     [ -d "$2" ] || { say "Say which backup folder, like $DATA/backups/2026-10-21-090000"; exit 1; }
     stop
+    if answering; then say "Alpha is still running, so nothing was restored: stop it first (alpha stop), then restore."; exit 1; fi
     "$NODE" "$APP/core/src/cli.ts" restore "$2"
     start
     say "Alpha is running on the restored data."

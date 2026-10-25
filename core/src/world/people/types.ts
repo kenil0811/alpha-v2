@@ -17,6 +17,9 @@ export interface Said {
   name: string
   rank: number
   keys: Keys
+  // what a row says that names someone without being theirs alone: a role address, a phone
+  // another name holds; kept for the match card, never a key that merges (item 25, 25 Oct)
+  soft?: { email?: string[]; phone?: string[] }
   company?: string | null
   title?: string | null
 }
@@ -90,6 +93,8 @@ export interface Pair {
 export const SAME_NAME = 'the same name'
 export const SAME_PLACE = 'the same name and company'
 export const NAMES_BOTH = 'a row names both'
+export const SAME_ADDRESS = 'the same address'
+export const SAME_PHONE = 'the same phone'
 
 // One side of a pair on its card: enough to tell the two apart.
 export interface Side {

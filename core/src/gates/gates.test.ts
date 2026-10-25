@@ -50,9 +50,17 @@ describe('the gates', () => {
     )
   })
 
-  it('find the asking words whatever their case, spacing or quote marks', () => {
-    expect(askedFor("don't keep  THE eggs", 'please don’t keep the eggs')).toBe(true)
+  it('find the asking words whatever their case, spacing or quote marks, and only when they say removal', () => {
+    expect(askedFor('throw away  THE eggs', 'please throw away the eggs')).toBe(true)
+    expect(askedFor('Get rid of the eggs', 'get rid of the eggs, I logged them twice')).toBe(true)
+    // the person's words, but no removal in them: a card
+    expect(askedFor("don't keep the eggs", 'please don’t keep the eggs')).toBe(false)
+    // three letters of a message are never an ask
+    expect(askedFor('two', 'log two eggs')).toBe(false)
+    expect(askedFor('eggs', 'remove the eggs')).toBe(false)
     expect(askedFor('ok', 'ok')).toBe(false)
+    // removal words the model made up, not in what was typed
+    expect(askedFor('remove the eggs', 'the eggs were a mistake')).toBe(false)
   })
 
   it('make a card and refuse; the yes on it lets the same call through once', () => {

@@ -228,7 +228,8 @@ const scheduler = new Scheduler(world, [
       if (await intake.due()) engine.events.emit('event', { type: 'lines', user: user.id })
     },
   },
-  { run: (now) => runner.runDue(now) },
+  // agents in their own lane: the tick goes on while they run (item 15 of the problems list)
+  { run: async (now) => runner.startDue(now) },
   // tasks' reminders as they come due (a Mac notification and a line on Home), and repeats made
   {
     run: async (now) => {
@@ -246,12 +247,18 @@ const scheduler = new Scheduler(world, [
   // the world backed up once a day, the last 7 days and 4 weeks kept
   {
     run: async () => {
-      const made = await backupDaily(world.db, world.paths.backups)
+      const made = await backupDaily(world.db, world.paths.backups, new Date(), {
+        files: world.paths.files,
+        modules: world.paths.modules,
+      })
       if (made) console.log(`Backed up the world: ${made}`)
       // and a copy of the newest to the person's folder, where they named one
       const copyTo = readInstall(home).backupsCopy
       if (copyTo) {
-        const copied = copyNewestBackup(world.paths.backups, copyTo)
+        const copied = copyNewestBackup(world.paths.backups, copyTo, {
+          files: world.paths.files,
+          modules: world.paths.modules,
+        })
         if (copied) console.log(`Copied the newest backup to ${copied}`)
       }
     },

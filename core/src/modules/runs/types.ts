@@ -1,6 +1,9 @@
 // Runs (design §11): a run's outcome, who it is for, its row, a proposed task, a filing.
 import { parse as fromJson } from '../../world/db.ts'
 
+// The card that asks whether an agent that did not finish three times runs again or is left.
+export const RUN_AGAIN = 'run_again'
+
 export interface RunOutcome {
   id: string
   state: 'ok' | 'failed' | 'stopped'

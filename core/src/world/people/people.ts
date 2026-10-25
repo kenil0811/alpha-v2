@@ -21,6 +21,7 @@ import {
   merge,
   mergeSamePlace,
   name as nameOf,
+  notThis,
   settle,
   unmerge,
 } from './matching.ts'
@@ -322,6 +323,9 @@ export class People {
   }
   isYou(id: string, ctx: WriteCtx): string[] {
     return isYou(this, id, ctx)
+  }
+  notThis(id: string, recordId: string, ctx: WriteCtx): PersonOut {
+    return notThis(this, id, recordId, ctx)
   }
   apart(a: string, b: string, ctx: WriteCtx): void {
     apart(this, a, b, ctx)

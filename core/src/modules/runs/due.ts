@@ -1,10 +1,11 @@
 // What is due: each agent's triggers, read against the clock and the journal, one run at a time.
 import { type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
+import { config } from '../../config.ts'
 import { run as exec, one } from '../../world/db.ts'
 import { type Agent, agents } from '../agents.ts'
 import type { AgentRunner } from './runner.ts'
-import { CHANGE_KINDS, type Filed } from './types.ts'
+import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome } from './types.ts'
 
 // What is due by each agent's trigger, and tasks whose cards are all decided. One run of an
 // agent at a time.
@@ -14,6 +15,11 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
     if (a.state !== 'on' || !triggersOf(a.trigger).length) continue
     if (one(runner.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
       continue
+    // waiting on the person's Try again or Leave it
+    if (runner.held.has(a.id)) continue
+    // where the journal stands as the agent is judged: its place moves here only after a run
+    // that ended well, so a failed run is handed the same things again (item 16, 25 Oct)
+    const cursorTo = readsJournal(a) ? String(runner.world.lastLineId()) : null
     const given = runner.due(a, nowMs)
     if (!given) continue
     const module = runner.world.shape.module(a.module)
@@ -32,15 +38,51 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
       }
       continue
     }
-    await runner.runAgent(a, undefined, given).catch(() => undefined)
-    // the run counts at the tick's time, the clock its next one is judged by
-    exec(
-      runner.world.db,
-      'UPDATE agents SET last_run_at = ? WHERE id = ?',
-      new Date(nowMs).toISOString(),
-      a.id,
+    const out = await runner.runAgent(a, undefined, given).catch(
+      (err): RunOutcome => ({
+        id: '',
+        state: 'failed',
+        words: err instanceof Error ? err.message : String(err),
+        result: null,
+      }),
     )
+    if (out.state === 'ok') {
+      runner.failures.delete(a.id)
+      // the run counts at the tick's time, the clock its next one is judged by
+      exec(
+        runner.world.db,
+        'UPDATE agents SET cursor = coalesce(?, cursor), last_run_at = ? WHERE id = ?',
+        cursorTo,
+        new Date(nowMs).toISOString(),
+        a.id,
+      )
+      continue
+    }
+    const failed = (runner.failures.get(a.id) ?? 0) + 1
+    runner.failures.set(a.id, failed)
+    const limit = config.limits().run_retries
+    if (failed < limit) continue
+    // enough: the person decides on a card, and the agent waits on it
+    const files = given.filed?.map((f) => f.name) ?? []
+    const card = runner.world.cards.open({
+      kind: 'suggestion',
+      words: `${a.name} did not finish ${failed} times${files.length ? ` on ${files.join(', ')}` : ''}: ${out.words}`,
+      restsOn: [`${a.name}'s last ${failed} runs`],
+      options: ['Try again', 'Leave it'],
+      call: { tool: RUN_AGAIN, input: { agent: a.id, cursor: cursorTo } },
+      actor: { kind: 'agent', id: a.name },
+      user: runner.owner,
+      module: a.module,
+    })
+    runner.held.set(a.id, card.id)
+    runner.notify()
   }
+}
+
+// Whether any of an agent's triggers reads the journal (a filing, a change), so its place in it
+// matters.
+function readsJournal(a: Agent): boolean {
+  return triggersOf(a.trigger).some((t) => 'filed' in t || 'changes' in t)
 }
 
 // Whether an agent is due, and what its trigger hands it when it is (a filing's documents).
@@ -62,13 +104,8 @@ export function isDue(runner: AgentRunner, a: Agent, nowMs: number): boolean | {
     else if (typeof is === 'object')
       due = typeof due === 'object' ? { filed: [...due.filed, ...is.filed] } : is
   }
-  if (reads)
-    exec(
-      runner.world.db,
-      'UPDATE agents SET cursor = ? WHERE id = ?',
-      String(runner.world.lastLineId()),
-      a.id,
-    )
+  // the cursor moves in runDue, after a run that ended well; nothing moves here
+  void reads
   return due
 }
 

@@ -25,6 +25,11 @@ const Limits = z.object({
   browser_pace_min_ms: z.number().int().min(0),
   browser_pace_max_ms: z.number().int().min(0),
   loop_rounds_per_turn: z.number().int().positive(),
+  run_retries: z.number().int().min(1),
+})
+
+const Words = z.object({
+  removal: z.array(z.string().min(1)).min(1),
 })
 
 const People = z.object({
@@ -32,6 +37,7 @@ const People = z.object({
   second_levels: z.array(z.string().min(1)),
   meeting_most_people: z.number().int().min(2),
   contact_days: z.number().int().positive(),
+  role_addresses: z.array(z.string().min(1)),
 })
 
 export type ModelsConfig = z.infer<typeof Models>
@@ -62,6 +68,7 @@ export const config = {
   models: (dir?: string) => load('models.yaml', yamlOf(Models, 'models.yaml'), dir),
   limits: (dir?: string) => load('limits.yaml', yamlOf(Limits, 'limits.yaml'), dir),
   people: (dir?: string) => load('people.yaml', yamlOf(People, 'people.yaml'), dir),
+  words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
   // how the model reads a document into the values a kit names

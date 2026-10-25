@@ -1,3 +1,4 @@
+import { config } from '../../config.ts'
 import { all, json, newId, now, one, parse, run, tx } from '../db.ts'
 import { append } from '../journal.ts'
 import { likelyRegion, phoneKey } from '../phones.ts'
@@ -9,11 +10,12 @@ import {
   isEmail,
   keyLike,
   nameKey,
+  otherName,
   profileKey,
   text,
   uniq,
 } from './keys.ts'
-import { notePair, settle } from './matching.ts'
+import { notePair, noteShared, settle } from './matching.ts'
 import type { People } from './people.ts'
 import type { Exchange, Keys, Said } from './types.ts'
 import { KEYS_OF, PERSONS_WORD, RANK } from './types.ts'
@@ -32,12 +34,16 @@ export function derive(
   if (map.each === 'person') {
     const region = people.batch?.region !== undefined ? people.batch.region : people.phoneRegion()
     const name = v(map.name)
-    const emails = uniq(
+    const given = uniq(
       v(map.emails)
         .split(/[\s,;]+/)
         .map((e) => e.toLowerCase())
         .filter(isEmail),
     )
+    // a role address is a firm's, not one person's: never a key that merges
+    const roles = new Set(config.people().role_addresses.map((r) => r.toLowerCase()))
+    const emails = given.filter((e) => !roles.has(e.split('@')[0] ?? ''))
+    const shared = given.filter((e) => roles.has(e.split('@')[0] ?? ''))
     // the person's own card: their addresses, never one of their people
     if (map.you && v(map.you.field) === map.you.is)
       return { said: [], exchanges: [], yours: emails }
@@ -70,7 +76,7 @@ export function derive(
         exchanges: [],
         yours: [],
       }
-    const shown = name || emails[0] || phones[0] || profile
+    const shown = name || emails[0] || shared[0] || phones[0] || profile
     if (!shown) return none
     return {
       said: [
@@ -79,6 +85,7 @@ export function derive(
           name: shown,
           rank: name && !keyLike(name) ? RANK.row : RANK.key,
           keys,
+          ...(shared.length ? { soft: { email: shared } } : {}),
           company,
           title,
         },
@@ -366,7 +373,25 @@ export function resolve(
       v,
     )?.person_id,
   }))
-  const hits = uniq(owners.map((o) => o.leaf).filter((x): x is string => !!x))
+  // a phone held by someone of another name is not this row's to merge on: the two go on the
+  // match card instead (item 25, 25 Oct); the phone stays with its first holder
+  const named = s.rank >= RANK.row && !keyLike(s.name)
+  const otherNamed: string[] = []
+  const merging = owners.filter((o) => {
+    if (o.k !== 'phone' || !o.leaf || !named) return true
+    const holder = people.row(people.root(o.leaf))
+    if (
+      holder &&
+      holder.rank >= RANK.row &&
+      !keyLike(holder.name) &&
+      otherName(holder.name, s.name)
+    ) {
+      otherNamed.push(holder.id)
+      return false
+    }
+    return true
+  })
+  const hits = uniq(merging.map((o) => o.leaf).filter((x): x is string => !!x))
   let leaf: string
   if (hits.length) {
     leaf = hits[0] as string
@@ -404,6 +429,7 @@ export function resolve(
         o.v,
         leaf,
       )
+  noteShared(people, s, recordId, leaf, otherNamed)
   run(
     people.db,
     `INSERT INTO people_sources (person_id, record_id, table_id, said, at) VALUES (?, ?, ?, ?, ?)

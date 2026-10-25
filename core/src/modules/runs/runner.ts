@@ -16,7 +16,7 @@ import { Refused } from '../../world/kinds.ts'
 import type { Module } from '../../world/shape/index.ts'
 import type { Task, TaskInput } from '../../world/tasks/index.ts'
 import type { World } from '../../world/world.ts'
-import type { Agent, AgentFile } from '../agents.ts'
+import { type Agent, type AgentFile, agents } from '../agents.ts'
 import type { Drafts } from '../drafts.ts'
 import { Reviews } from '../reviews.ts'
 import * as apiOf from './api.ts'
@@ -45,6 +45,11 @@ export class AgentRunner {
   judgeAsk: Ask
   tokens = new Map<string, number>() // a run's model tokens, while it runs
   budgetSaid = new Map<string, number>() // when an agent's runs budget was last said
+  // the agents' own lane (item 15): the minute tick starts the due runs and goes on; while they
+  // run, the next tick leaves them alone, so reminders and the backup keep the minute
+  lane: Promise<void> | null = null
+  failures = new Map<string, number>() // an agent's runs that did not finish, in a row
+  held = new Map<string, string>() // agents waiting on a Try again card, by the card's id
   drafts: Drafts | null = null // an agent's drafts, sent from the person's mail on their yes
   readonly reviews: Reviews // rows an agent puts to the person, on a card
 
@@ -176,6 +181,36 @@ export class AgentRunner {
   async runDue(nowMs = Date.now()): Promise<void> {
     return dueOf.runDue(this, nowMs)
   }
+  // The due runs started in the agents' own lane: back at once, the runs going on behind.
+  startDue(nowMs = Date.now()): void {
+    if (this.lane) return
+    this.lane = dueOf
+      .runDue(this, nowMs)
+      .catch(() => undefined)
+      .finally(() => {
+        this.lane = null
+      })
+  }
+  // The person's Try again on the card: one more run now, the count reset.
+  async retry(agentId: string, who: RunFor): Promise<RunOutcome> {
+    const a = agents(this.world).find((x) => x.id === agentId)
+    if (!a) throw new Refused('That agent is not there any more.')
+    this.failures.delete(a.id)
+    this.held.delete(a.id)
+    return this.runAgent(a, who, {}, { asked: true })
+  }
+  // The person's Leave it: what the agent was handed is left behind, as if it had run.
+  leave(agentId: string, cursor: string | null): void {
+    this.failures.delete(agentId)
+    this.held.delete(agentId)
+    exec(
+      this.world.db,
+      'UPDATE agents SET cursor = coalesce(?, cursor), last_run_at = ? WHERE id = ?',
+      cursor,
+      now(),
+      agentId,
+    )
+  }
 
   due(a: Agent, nowMs: number): false | { filed?: Filed[] } {
     return dueOf.due(this, a, nowMs)
@@ -265,6 +300,15 @@ export class AgentRunner {
         api: this.api(module, label, runId, who, agentId, walls),
         signal: stop.signal,
       })
+    } catch (err) {
+      // a throw before or around the script (the sandbox not starting, a folder gone) ends the
+      // run as failed, never leaves it running (item 14 of the problems list, 25 Oct)
+      out = {
+        result: null,
+        error: err instanceof Error ? err.message : String(err),
+        stderr: '',
+        stopped: false,
+      }
     } finally {
       if (timer) clearTimeout(timer)
       this.running.delete(runId)
@@ -295,7 +339,8 @@ export class AgentRunner {
       json({ result: out.result, stderr: out.stderr.slice(-4000), tokens }),
       runId,
     )
-    if (agentId)
+    // a run that did not finish leaves the agent due, so it is tried again (item 16)
+    if (agentId && state === 'ok')
       exec(this.world.db, 'UPDATE agents SET last_run_at = ? WHERE id = ?', now(), agentId)
     this.world.line({
       actor: { kind: 'agent', id: label },

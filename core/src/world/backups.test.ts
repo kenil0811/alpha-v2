@@ -1,9 +1,9 @@
 // Daily backups and what is kept of them.
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { backupDaily, kept } from './backups.ts'
+import { backupDaily, kept, mirror } from './backups.ts'
 import { World } from './world.ts'
 
 let home: string
@@ -42,5 +42,29 @@ describe('daily backups', () => {
     const names = readdirSync(dir)
     expect(names.filter((n) => n.startsWith('world-daily-'))).toHaveLength(7 + 2)
     expect(names).toContain('world-2026-09-01T00-00-00-000Z-v6.sqlite')
+  })
+
+  it('mirror the files by hash once each and the modules whole, beside the world', async () => {
+    const dir = join(home, 'b')
+    const ctx = { actor: { kind: 'person' as const, id: world.owner('Kenil').id } }
+    const { file } = world.files.take(Buffer.from('a cim'), 'cim.pdf', 'application/pdf', ctx)
+    const m = world.shape.makeModule('Rentals', { actor: { kind: 'alpha' } })
+    writeFileSync(join(m.dir, 'NOTES.md'), '# Rentals\n')
+    await backupDaily(world.db, dir, new Date('2026-10-25T08:00:00Z'), {
+      files: world.paths.files,
+      modules: world.paths.modules,
+    })
+    expect(existsSync(join(dir, 'files', file.hash.slice(0, 2), file.hash))).toBe(true)
+    expect(existsSync(join(dir, 'modules', 'rentals', 'NOTES.md'))).toBe(true)
+    // the next day: a new file comes, the old one is not copied again, the modules are refreshed
+    writeFileSync(join(m.dir, 'NOTES.md'), '# Rentals, changed\n')
+    const second = world.files.take(Buffer.from('a teaser'), 'teaser.pdf', 'application/pdf', ctx)
+    expect(mirror({ files: world.paths.files, modules: world.paths.modules }, dir)).toEqual({
+      files: 1,
+    })
+    expect(existsSync(join(dir, 'files', second.file.hash.slice(0, 2), second.file.hash))).toBe(
+      true,
+    )
+    expect(readFileSync(join(dir, 'modules', 'rentals', 'NOTES.md'), 'utf8')).toContain('changed')
   })
 })

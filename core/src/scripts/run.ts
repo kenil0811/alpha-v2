@@ -24,11 +24,19 @@ const CODE = realpathSync(join(import.meta.dirname, '..', '..', '..')) // alpha-
 
 let ready: Promise<void> | null = null
 
+// A start that fails is forgotten, so the next run tries again rather than failing for ever
+// (item 14 of the problems list, 25 Oct).
 function sandbox(): Promise<void> {
-  ready ??= SandboxManager.initialize({
-    network: { allowedDomains: [], deniedDomains: [], strictAllowlist: true },
-    filesystem: { denyRead: [homedir()], allowRead: [CODE], allowWrite: [], denyWrite: [] },
-  })
+  if (!ready) {
+    const starting = SandboxManager.initialize({
+      network: { allowedDomains: [], deniedDomains: [], strictAllowlist: true },
+      filesystem: { denyRead: [homedir()], allowRead: [CODE], allowWrite: [], denyWrite: [] },
+    })
+    ready = starting
+    starting.catch(() => {
+      if (ready === starting) ready = null
+    })
+  }
   return ready
 }
 
@@ -54,7 +62,9 @@ export async function runScript(options: {
       denyRead: [homedir()],
       allowRead: [CODE, moduleDir],
       allowWrite: [moduleDir, realpathSync(tmpdir())],
-      denyWrite: [],
+      // a module's sites and shape are the core's to write, on a card's yes or a kit install:
+      // never a script's (item 12 of the problems list, 25 Oct)
+      denyWrite: [join(moduleDir, 'module.yaml')],
     },
   })
   const child = spawn(wrapped, { shell: true, cwd: moduleDir, stdio: ['pipe', 'pipe', 'pipe'] })

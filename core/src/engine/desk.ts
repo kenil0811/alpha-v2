@@ -273,19 +273,7 @@ export class Desk {
     deskDir: string,
     modules: string,
   ): Decision {
-    const path = String(input.file_path ?? input.path ?? input.notebook_path ?? '')
-    if (tool === 'Read') {
-      if (inside(path, deskDir, [deskDir, modules, ...this.granted])) return { allow: true }
-      return { allow: false, reason: `${path} is not in a folder the person granted.` }
-    }
-    if (tool === 'Write' || tool === 'Edit' || tool === 'NotebookEdit') {
-      if (inside(path, deskDir, [deskDir, modules])) return { allow: true }
-      return {
-        allow: false,
-        reason: `Alpha writes files only in ${deskDir} and the module folders under ${modules}.`,
-      }
-    }
-    return { allow: false, reason: `${tool} is not one of Alpha's tools.` }
+    return fileWall(tool, input, deskDir, modules, this.granted)
   }
 
   private async read(session: Session): Promise<void> {
@@ -415,4 +403,36 @@ function inside(path: string, base: string, roots: string[]): boolean {
     }
   }
   return roots.some((r) => full === r || full.startsWith(`${r}/`))
+}
+
+// The walls on the route's file tools: reads in the desk's folder, the modules and the granted
+// folders; writes in the first two only; and a module's module.yaml never by hand, since its
+// sites and shape change through the shape tool and the person's cards (item 12 of the problems
+// list, 25 Oct).
+export function fileWall(
+  tool: string,
+  input: Record<string, unknown>,
+  deskDir: string,
+  modules: string,
+  granted: string[],
+): Decision {
+  const path = String(input.file_path ?? input.path ?? input.notebook_path ?? '')
+  if (tool === 'Read') {
+    if (inside(path, deskDir, [deskDir, modules, ...granted])) return { allow: true }
+    return { allow: false, reason: `${path} is not in a folder the person granted.` }
+  }
+  if (tool === 'Write' || tool === 'Edit' || tool === 'NotebookEdit') {
+    if (/(^|\/)module\.yaml$/.test(path) && inside(path, deskDir, [modules]))
+      return {
+        allow: false,
+        reason:
+          'module.yaml is written by Alpha from the shape tool and the person’s cards, never by hand.',
+      }
+    if (inside(path, deskDir, [deskDir, modules])) return { allow: true }
+    return {
+      allow: false,
+      reason: `Alpha writes files only in ${deskDir} and the module folders under ${modules}.`,
+    }
+  }
+  return { allow: false, reason: `${tool} is not one of Alpha's tools.` }
 }

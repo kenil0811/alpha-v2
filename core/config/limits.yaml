@@ -29,6 +29,10 @@ health_fewer_rows_ratio: 0.5
 # Nothing new from a connection for this many days is worth a line.
 health_quiet_days: 7
 
+# Runs of an agent that did not finish, one a tick, before a card on Home asks whether to try
+# again or leave it (item 16 of the problems list, 25 Oct).
+run_retries: 3
+
 # Rounds of tool calls Alpha's own loop takes on one message before it stops and says so: a
 # wall against a model that never finishes, never met in ordinary work.
 loop_rounds_per_turn: 60

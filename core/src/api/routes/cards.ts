@@ -9,7 +9,7 @@ import {
 import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { installedKits, recordChange } from '../../modules/kits/index.ts'
-import { PROPOSE_TASKS } from '../../modules/runs/index.ts'
+import { PROPOSE_TASKS, RUN_AGAIN } from '../../modules/runs/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { CardView, PermissionView } from '../types.ts'
@@ -134,6 +134,17 @@ export function registerCards(ctx: Ctx): void {
     try {
       const c = world.cards.get(id)
       if (c?.call?.tool === DRAFT) return cardOut(await engine.answerDraft(user, id, answer))
+      // an agent that did not finish three times: one more run now, or left as if it had run
+      if (c?.call?.tool === RUN_AGAIN && engine.hands?.runner) {
+        const runner = engine.hands.runner
+        const input = c.call.input as { agent: string; cursor: string | null }
+        if (answer === c.options[0])
+          void runner.retry(input.agent, { user: user.id, turn: null }).catch(() => undefined)
+        else runner.leave(input.agent, input.cursor)
+        const out = world.cards.answer(id, answer, person)
+        live()
+        return cardOut(out)
+      }
       // a yes on proposed tasks adds them all; the card's own list keeps some
       if (c?.call?.tool === PROPOSE_TASKS && answer === c.options[0] && engine.hands?.runner) {
         const out = engine.hands.runner.adopt(id, 'all', user.id)
