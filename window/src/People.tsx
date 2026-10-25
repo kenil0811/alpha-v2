@@ -8,6 +8,7 @@ import { CalendarDays, ChevronRight, LayoutDashboard, Mail, Pencil, Table2 } fro
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { PillSwitch, peopleTabs } from './Module.tsx'
+import { Record } from './Record.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { peopleTable } from './table/kept.ts'
@@ -220,8 +221,8 @@ function PersonPage({
   const past = p.history.filter((h) => h.at <= new Date().toISOString())
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-7 pb-10">
+    <Record kind={company ? 'Organization' : 'Person'}>
+      <div className="flex flex-col gap-7">
         <div className="flex items-center gap-4">
           <Face name={p.name} company={company} big />
           <div className="min-w-0 flex-1">
@@ -485,7 +486,7 @@ function PersonPage({
           </Section>
         )}
       </div>
-    </div>
+    </Record>
   )
 }
 

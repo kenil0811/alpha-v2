@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Ellipsis,
+  EllipsisVertical,
   House,
   ListChecks,
   PanelLeftClose,
@@ -352,7 +352,7 @@ function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }
           open && 'opacity-100',
         )}
       >
-        <Ellipsis className="size-3.5" />
+        <EllipsisVertical className="size-3.5" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
         <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs uppercase tracking-label">

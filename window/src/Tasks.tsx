@@ -18,6 +18,7 @@ import { RunRow } from './Activity.tsx'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
 import { PillSwitch } from './Module.tsx'
+import { Record } from './Record.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { tasksTable } from './table/kept.ts'
@@ -364,8 +365,8 @@ function TaskPage({
   const dueDay = t.due?.slice(0, 10) ?? ''
   const remind = t.remindAt ? toLocalInput(t.remindAt) : ''
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-10">
+    <Record kind={t.parent ? 'Subtask' : 'Task'}>
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           {t.parent && (
             <a href={`#/tasks/${t.parent}`} className="text-ink-3 text-sm hover:underline">
@@ -587,7 +588,7 @@ function TaskPage({
           </Confirm>
         </div>
       </div>
-    </div>
+    </Record>
   )
 }
 

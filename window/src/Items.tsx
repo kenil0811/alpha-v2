@@ -3,10 +3,10 @@
 // core already serves (/api/working, /api/activity, /api/permissions) and comes again when the
 // world changes, so a running run's steps arrive as they happen.
 import type { AgentView, PermissionView, RunView, WorkingModuleView } from '@alpha/core/api'
-import { ArrowLeft } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api } from './api.ts'
+import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -17,29 +17,13 @@ import { Switch } from './ui/switch.tsx'
 
 export type ItemKind = 'agent' | 'run' | 'permission'
 
-function Page({
-  back,
-  title,
-  children,
-}: {
-  back: [string, string]
-  title: string
-  children: ReactNode
-}) {
+// The bar holds the way back (the crumb); the page names what the item is, then its title.
+function Page({ kind, title, children }: { kind: string; title: string; children: ReactNode }) {
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-5 px-8 pt-6 pb-12">
-        <a
-          href={back[1]}
-          className="flex w-fit items-center gap-1.5 text-ink-3 text-md hover:text-ink"
-        >
-          <ArrowLeft className="size-3.5" />
-          {back[0]}
-        </a>
-        <h1 className="text-2xl text-ink">{title}</h1>
-        {children}
-      </div>
-    </div>
+    <Record kind={kind}>
+      <h1 className="font-serif text-2xl text-ink">{title}</h1>
+      {children}
+    </Record>
   )
 }
 
@@ -137,7 +121,7 @@ function AgentPage({
   // what changes comes back through the world's next change, which loads the page again
   const { busy, problem, act } = useAct()
   return (
-    <Page back={[m.name, `#/module/${m.id}/agents`]} title={a.name}>
+    <Page kind={`Agent in ${m.name}`} title={a.name}>
       {a.description && <p className="text-ink-2 text-md">{a.description}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <Switch
@@ -196,7 +180,7 @@ function AgentPage({
 
 function RunPage({ run, agent }: { run: RunView; agent: AgentView | null }) {
   return (
-    <Page back={['Activity', '#/activity']} title={run.name}>
+    <Page kind="Run" title={run.name}>
       <Facts
         lines={[
           ...(agent
@@ -238,7 +222,7 @@ function PermissionPage({ permission: p }: { permission: PermissionView }) {
   const [asking, setAsking] = useState(false)
   const { busy, problem, act } = useAct()
   return (
-    <Page back={['Intelligence', '#/intelligence/permissions']} title={p.sentence}>
+    <Page kind="Permission" title={p.sentence}>
       <Facts
         lines={[
           ['Given by', `${p.grantedBy}, ${dayWords(p.grantedAt)}`],

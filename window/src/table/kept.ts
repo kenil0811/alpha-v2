@@ -1,11 +1,13 @@
-// Rows kept outside a module's tables (people, organizations, tasks), drawn by the one shared table
+// Rows kept outside a module's tables (people, organizations, tasks, agents, permissions), drawn by the one shared table
 // view all the same: each list turned into a table's shape, read only. Fields' ids are their slugs.
 import type {
   FieldView,
+  PermissionView,
   PersonLineView,
   RowView,
   TableView as TableData,
   TaskLineView,
+  WorkingModuleView,
 } from '@alpha/core/api'
 
 const field = (name: string, kind: string, tones: FieldView['tones'] = {}): FieldView => ({
@@ -109,6 +111,60 @@ export function tasksTable(lines: TaskLineView[]): TableData {
         priority: t.priority[0]?.toUpperCase() + t.priority.slice(1),
         owner: t.owner,
         where: t.place.words,
+      },
+    })),
+  )
+}
+
+export function agentsTable(modules: WorkingModuleView[]): TableData {
+  return table(
+    'kept-agents',
+    'Agents',
+    [
+      field('Agent', 'text'),
+      field('Module', 'text'),
+      field('State', 'choice', { On: 'good', Paused: 'warn', Running: 'accent' }),
+      field('Runs', 'text'),
+      field('Last ran', 'date'),
+      field('Needs', 'text'),
+    ],
+    modules.flatMap((m) =>
+      m.agents.map((a) => ({
+        id: a.id,
+        values: {
+          agent: a.name,
+          module: m.name,
+          state: a.running ? 'Running' : a.state === 'on' ? 'On' : 'Paused',
+          runs: a.when,
+          'last ran': a.lastRunAt,
+          needs: a.needs,
+        },
+      })),
+    ),
+  )
+}
+
+export function permissionsTable(list: PermissionView[]): TableData {
+  return table(
+    'kept-permissions',
+    'Always allowed',
+    [
+      field('Permission', 'text'),
+      field('Given by', 'text'),
+      field('Given', 'date'),
+      field('Uses', 'number'),
+      field('Last used', 'date'),
+      field('State', 'choice', { Allowed: 'good', Revoked: 'bad' }),
+    ],
+    list.map((p) => ({
+      id: p.id,
+      values: {
+        permission: p.sentence,
+        'given by': p.grantedBy,
+        given: p.grantedAt,
+        uses: p.uses,
+        'last used': p.lastUsedAt,
+        state: p.revokedAt ? 'Revoked' : 'Allowed',
       },
     })),
   )

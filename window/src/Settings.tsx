@@ -8,6 +8,8 @@ import type {
   InstructionView,
   ModelView,
   PermissionView,
+  TableView as TableData,
+  WorkingModuleView,
 } from '@alpha/core/api'
 import {
   BookmarkCheck,
@@ -29,6 +31,8 @@ import { PillSwitch } from './Module.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
+import { TableView } from './TableView.tsx'
+import { agentsTable, permissionsTable } from './table/kept.ts'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -37,7 +41,7 @@ import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
-import { Section } from './ui/section.tsx'
+import { Empty, Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Switch } from './ui/switch.tsx'
 
@@ -117,7 +121,7 @@ export function Settings({
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
     brain: <SecondBrain version={version} />,
-    agents: <ModulesAndAgents version={version} />,
+    agents: <Agents version={version} />,
     connections: (
       <>
         <Section
@@ -268,7 +272,7 @@ function SecondBrain({ version }: { version: number }) {
       about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
     >
       {lines?.length === 0 && (
-        <p className="text-ink-2 text-md">Nothing yet. Say “from now on…” to add one.</p>
+        <Empty>Nothing configured yet. Say “from now on…” to Alpha to add one.</Empty>
       )}
       {lines && lines.length > 0 && (
         <List>
@@ -582,70 +586,21 @@ function DataSection() {
 // used, with Revoke; a revoked one stays listed, greyed, as history. Shown under Permissions.
 function Standing({ version }: { version: number }) {
   const [list, setList] = useState<PermissionView[] | null>(null)
-  const [asking, setAsking] = useState<string | null>(null)
   const load = useCallback(() => {
     api.get<PermissionView[]>('/api/permissions').then(setList, () => setList([]))
   }, [])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const revoke = (id: string) =>
-    api.post(`/api/permissions/${id}/revoke`).then(() => {
-      setAsking(null)
-      load()
-    }, load)
-  const asked = list?.find((p) => p.id === asking)
+  if (!list) return null
   return (
-    <>
-      {list?.length === 0 && (
-        <p className="text-ink-2 text-md">
-          None yet. After three yeses in a row for the same thing, its card offers Always.
-        </p>
-      )}
-      {list && list.length > 0 && (
-        <List>
-          {list.map((p) => (
-            <Row
-              key={p.id}
-              lead={
-                <Tile>
-                  <ShieldCheck className="size-4" />
-                </Tile>
-              }
-              title={
-                <span
-                  className={cn(
-                    'whitespace-normal font-normal',
-                    p.revokedAt && 'text-ink-3 line-through',
-                  )}
-                >
-                  <a href={`#/permission/${p.id}`} className="hover:underline">
-                    {p.sentence}
-                  </a>
-                </span>
-              }
-              sub={`${p.grantedBy}, ${when(p.grantedAt)} · used ${p.uses === 1 ? 'once' : `${p.uses} times`}${p.revokedAt ? ` · revoked ${when(p.revokedAt)}` : ''}`}
-              actions={
-                p.revokedAt ? null : (
-                  <Button size="sm" variant="danger" onClick={() => setAsking(p.id)}>
-                    Revoke
-                  </Button>
-                )
-              }
-            />
-          ))}
-        </List>
-      )}
-      <Confirm
-        open={!!asked}
-        title="Revoke this?"
-        yes="Revoke it"
-        onClose={() => setAsking(null)}
-        onYes={() => asked && revoke(asked.id)}
-      >
-        Alpha asks you again each time: “{asked?.sentence}”
-      </Confirm>
-    </>
+    <Embedded
+      data={permissionsTable(list)}
+      why="A permission is revoked on its own page. Open one to revoke it."
+      open={(id) => {
+        window.location.hash = `#/permission/${id}`
+      }}
+    />
   )
 }
 
@@ -840,7 +795,7 @@ function ConnectionLine({
           </button>
         </span>
       ))}
-      {k.health && <span className="text-warn">{k.health}</span>}
+      {k.health && <Pill tone="warn">{k.health}</Pill>}
     </span>
   )
   const buttons = (
@@ -1292,5 +1247,48 @@ function ExperimentLine({ name, title, about }: { name: string; title: string; a
       sub={about}
       actions={<Switch checked={on} label={title} onChange={(v) => setExperiment(name, v)} />}
     />
+  )
+}
+
+// A shared table inside a page that scrolls: a fixed height, framed like a card.
+function Embedded({
+  data,
+  why,
+  open,
+}: {
+  data: TableData
+  why: string
+  open: (id: string) => void
+}) {
+  return (
+    <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
+      <TableView data={data} kept={{ why, open }} />
+    </div>
+  )
+}
+
+// Intelligence's Agents: every agent in one shared table, each opening its page; then the modules
+// they come from, to install, update and pack.
+function Agents({ version }: { version: number }) {
+  const [modules, setModules] = useState<WorkingModuleView[] | null>(null)
+  useEffect(() => {
+    if (version >= 0)
+      api.get<WorkingModuleView[]>('/api/working').then(setModules, () => setModules([]))
+  }, [version])
+  return (
+    <>
+      <Section title="Agents" about="Every agent, what it does and when it last ran.">
+        {modules && (
+          <Embedded
+            data={agentsTable(modules)}
+            why="An agent is turned on or paused on its own page. Open one to change it."
+            open={(id) => {
+              window.location.hash = `#/agent/${id}`
+            }}
+          />
+        )}
+      </Section>
+      <ModulesAndAgents version={version} />
+    </>
   )
 }
