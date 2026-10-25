@@ -238,7 +238,7 @@ function PermissionPage({ permission: p }: { permission: PermissionView }) {
   const [asking, setAsking] = useState(false)
   const { busy, problem, act } = useAct()
   return (
-    <Page back={['Settings', '#/settings']} title={p.sentence}>
+    <Page back={['Intelligence', '#/intelligence/permissions']} title={p.sentence}>
       <Facts
         lines={[
           ['Given by', `${p.grantedBy}, ${dayWords(p.grantedAt)}`],

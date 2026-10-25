@@ -18,6 +18,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -43,7 +44,8 @@ export type Place =
       tab: 'overview' | 'conversation' | 'agents' | null
       page: string | null
     }
-  | { at: 'settings'; open: string | null }
+  | { at: 'settings'; section: string | null; open: null }
+  | { at: 'intelligence'; section: string | null; open: string | null }
   | { at: 'file'; place: FilePlace }
   | { at: 'people'; kind: 'person' | 'company'; id: string | null }
   | {
@@ -195,6 +197,14 @@ export function Rail({
         </button>
       </div>
       <div className="flex flex-col gap-0.5 pt-2">
+        <Nav
+          href="#/intelligence"
+          icon={<Sparkles className="size-4" />}
+          label="Intelligence"
+          current={
+            place.at === 'intelligence' || (place.at === 'item' && place.kind === 'permission')
+          }
+        />
         <Nav
           href="#/settings"
           icon={<SlidersHorizontal className="size-4" />}
@@ -470,6 +480,12 @@ function Strip({
         </button>
       </div>
       {icon(
+        '#/intelligence',
+        'Intelligence',
+        place.at === 'intelligence',
+        <Sparkles className="size-4" />,
+      )}
+      {icon(
         '#/settings',
         'Settings',
         place.at === 'settings',
@@ -561,6 +577,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       { label: 'People', hint: '', href: '#/people' },
       { label: 'Organizations', hint: 'People', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
+      { label: 'Intelligence', hint: '', href: '#/intelligence' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
         label: m.name,

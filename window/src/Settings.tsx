@@ -17,6 +17,7 @@ import {
   Network,
   Plug,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   UserRound,
 } from 'lucide-react'
@@ -54,20 +55,44 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
   plug: <Plug className="size-4" />,
 }
 
-// The page's sections, in its index.
-const SECTIONS = [
-  ['connections', 'Connections'],
-  ['folders', 'Folders'],
-  ['modules', 'Modules and agents'],
-  ['brain', 'Second Brain'],
-  ['permissions', 'Permissions'],
-  ['model', 'Model'],
-  ['data', 'Data'],
-  ['appearance', 'Appearance'],
-  ['experimental', 'Experimental'],
-] as const
+// Two pages share this file (proposal item 14, 15). Intelligence: what Alpha knows and does, as
+// tabs. Settings: how Alpha runs, a list of sections on the left and one section at a time.
+const PAGES = {
+  intelligence: {
+    icon: <Sparkles className="size-4.5" />,
+    title: 'Intelligence',
+    about: 'What Alpha knows, its agents, the accounts it reads and what it may do.',
+    tabs: [
+      ['brain', 'Second Brain'],
+      ['agents', 'Modules and agents'],
+      ['connections', 'Connections'],
+      ['permissions', 'Permissions'],
+    ],
+  },
+  settings: {
+    icon: <SlidersHorizontal className="size-4.5" />,
+    title: 'Settings',
+    about: 'How Alpha runs on this Mac: its model, your data and how it looks.',
+    tabs: [
+      ['model', 'Model'],
+      ['data', 'Data'],
+      ['appearance', 'Appearance'],
+      ['experimental', 'Experimental'],
+    ],
+  },
+} as const
 
-export function Settings({ open, version }: { open: string | null; version: number }) {
+export function Settings({
+  page,
+  tab,
+  open,
+  version,
+}: {
+  page: keyof typeof PAGES
+  tab: string | null
+  open: string | null
+  version: number
+}) {
   const [view, setView] = useState<ConnectorsView | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
@@ -77,6 +102,8 @@ export function Settings({ open, version }: { open: string | null; version: numb
     if (version >= 0) load()
   }, [load, version])
 
+  const p = PAGES[page]
+  const at = p.tabs.find(([id]) => id === tab)?.[0] ?? p.tabs[0][0]
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
   // a connector that names a place on this Mac (a folder) is a list under Folders; every other
   // is a tile under Connections
@@ -85,102 +112,124 @@ export function Settings({ open, version }: { open: string | null; version: numb
   const folders = view.connections.filter((k) => places.some((c) => c.name === k.connector))
   // a connection whose connector is not loaded (its pack not added yet): shown, waiting
   const orphans = view.connections.filter((k) => !k.loaded)
-  const go = (id: string) =>
-    document
-      .getElementById(`settings-${id}`)
-      ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  const body: Record<string, ReactNode> = {
+    brain: <SecondBrain version={version} />,
+    agents: <ModulesAndAgents version={version} />,
+    connections: (
+      <>
+        <Section
+          title="Connections"
+          about="Your accounts, read by Alpha; what you type stays in the Keychain."
+        >
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+            {accounts.map((c) => (
+              <ConnectorTile
+                key={c.name}
+                connector={c}
+                connections={view.connections.filter((k) => k.connector === c.name)}
+                startOpen={open === c.name}
+                added={view.added.includes(c.name)}
+                onChange={load}
+              />
+            ))}
+          </div>
+          {orphans.length > 0 && (
+            <List>
+              {orphans.map((k) => (
+                <ConnectionLine key={k.id} connection={k} onChange={load} />
+              ))}
+            </List>
+          )}
+          {view.failed.map((f) => (
+            <div key={f.folder} className="text-bad text-md">
+              The connector in {f.folder} did not load: {f.why}
+            </div>
+          ))}
+          <AddConnector view={view} onChange={load} />
+        </Section>
+        <Section
+          title="Folders"
+          about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
+        >
+          {folders.length > 0 && (
+            <List>
+              {folders.map((k) => (
+                <ConnectionLine key={k.id} connection={k} onChange={load} />
+              ))}
+            </List>
+          )}
+          {places.map((c) => (
+            <FolderForm key={c.name} connector={c} onChange={load} startOpen={open === c.name} />
+          ))}
+        </Section>
+      </>
+    ),
+    permissions: <Permissions version={version} />,
+    model: <ModelSection />,
+    data: <DataSection />,
+    appearance: <Appearance view={view} onChange={load} />,
+    experimental: <Experimental />,
+  }
+  const head = (
+    <div className="flex items-center gap-3">
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
+        {p.icon}
+      </span>
+      <div className="min-w-0">
+        <h1 className="font-serif text-2xl text-ink">{p.title}</h1>
+        <p className="text-ink-3 text-sm">{p.about}</p>
+      </div>
+    </div>
+  )
+  const go = (id: string) => {
+    window.location.hash = `#/${page}/${id}`
+  }
+  if (page === 'intelligence')
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
+          {head}
+          <div className="overflow-x-auto">
+            <Segmented
+              label="Intelligence"
+              value={at}
+              options={p.tabs.map(([value, label]) => ({ value, label }))}
+              onChange={go}
+            />
+          </div>
+          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
+        </div>
+      </div>
+    )
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto grid max-w-page grid-cols-[170px_1fr] gap-7 px-8 pt-7 pb-12">
-        <nav className="sticky top-0 flex flex-col gap-px self-start pt-15.5">
-          {SECTIONS.map(([id, name]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => go(id)}
-              className="h-7 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink"
-            >
-              {name}
-            </button>
-          ))}
-        </nav>
-        <div className="flex min-w-0 flex-col gap-8">
-          <h1 className="text-2xl text-ink">Settings</h1>
-          <div id="settings-connections" className="scroll-mt-4">
-            <Section
-              title="Connections"
-              about="Your accounts, read by Alpha; what you type stays in the Keychain."
-            >
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
-                {accounts.map((c) => (
-                  <ConnectorTile
-                    key={c.name}
-                    connector={c}
-                    connections={view.connections.filter((k) => k.connector === c.name)}
-                    startOpen={open === c.name}
-                    added={view.added.includes(c.name)}
-                    onChange={load}
-                  />
-                ))}
-              </div>
-              {orphans.length > 0 && (
-                <List>
-                  {orphans.map((k) => (
-                    <ConnectionLine key={k.id} connection={k} onChange={load} />
-                  ))}
-                </List>
-              )}
-              {view.failed.map((f) => (
-                <div key={f.folder} className="text-bad text-md">
-                  The connector in {f.folder} did not load: {f.why}
-                </div>
-              ))}
-              <AddConnector view={view} onChange={load} />
-            </Section>
-          </div>
-          <div id="settings-folders" className="scroll-mt-4">
-            <Section
-              title="Folders"
-              about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
-            >
-              {folders.length > 0 && (
-                <List>
-                  {folders.map((k) => (
-                    <ConnectionLine key={k.id} connection={k} onChange={load} />
-                  ))}
-                </List>
-              )}
-              {places.map((c) => (
-                <FolderForm
-                  key={c.name}
-                  connector={c}
-                  onChange={load}
-                  startOpen={open === c.name}
+      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
+        {head}
+        <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
+          <nav className="flex flex-col gap-px self-start max-md:flex-row max-md:flex-wrap">
+            {p.tabs.map(([id, name]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={id === at ? 'page' : undefined}
+                onClick={() => go(id)}
+                className={cn(
+                  'flex h-7 items-center gap-2 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink',
+                  id === at &&
+                    'bg-accent-soft font-medium text-accent hover:bg-accent-soft hover:text-accent',
+                )}
+              >
+                <span
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    id === at ? 'bg-accent' : 'bg-transparent',
+                  )}
                 />
-              ))}
-            </Section>
-          </div>
-          <div id="settings-modules" className="scroll-mt-4">
-            <ModulesAndAgents version={version} />
-          </div>
-          <div id="settings-brain" className="scroll-mt-4">
-            <SecondBrain version={version} />
-          </div>
-          <div id="settings-permissions" className="scroll-mt-4">
-            <Permissions version={version} />
-          </div>
-          <div id="settings-model" className="scroll-mt-4">
-            <ModelSection />
-          </div>
-          <div id="settings-data" className="scroll-mt-4">
-            <DataSection />
-          </div>
-          <div id="settings-appearance" className="scroll-mt-4">
-            <Appearance view={view} onChange={load} />
-          </div>
-          <div id="settings-experimental" className="scroll-mt-4">
-            <Experimental />
-          </div>
+                {name}
+              </button>
+            ))}
+          </nav>
+          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
       </div>
     </div>

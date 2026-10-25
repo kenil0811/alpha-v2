@@ -46,6 +46,7 @@ describe('the window', () => {
     expect(html).toContain('>2<')
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
+    expect(html).toContain('href="#/intelligence"')
     expect(html).not.toContain('Alpha is running')
     expect(html).not.toContain('href="#/conversation"')
   })

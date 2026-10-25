@@ -135,8 +135,8 @@ function PeopleList({ kind, version }: { kind: 'person' | 'company'; version: nu
           <p className="text-ink-2 text-md">
             No one yet. People come from your contacts, the people you write to and your small
             meetings, once Contacts, Calendar or Gmail is connected in{' '}
-            <a className="text-accent hover:underline" href="#/settings">
-              Settings
+            <a className="text-accent hover:underline" href="#/intelligence/connections">
+              Intelligence
             </a>
             .
           </p>

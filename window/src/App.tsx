@@ -18,6 +18,7 @@ import {
   ListChecks,
   MessageSquare,
   SlidersHorizontal,
+  Sparkles,
   Users,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -73,8 +74,14 @@ function placeOf(hash: string): Place {
       },
     }
   }
-  const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
-  if (s) return { at: 'settings', open: s[1] ?? null }
+  // an old #/settings?connect= link still lands on the connection, now under Intelligence
+  const c = /^#\/settings\?connect=([\w-]+)$/.exec(hash)
+  if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
+  const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
+  if (s)
+    return s[1] === 'settings'
+      ? { at: 'settings', section: s[2] ?? null, open: null }
+      : { at: 'intelligence', section: s[2] ?? null, open: null }
   if (hash === '#/activity') return { at: 'activity' }
   const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+))?$/.exec(hash)
   if (tk)
@@ -261,14 +268,14 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
-  // an agent's or a run's page sits under Activity, a standing permission's under Settings
+  // an agent's or a run's page sits under Activity, a standing permission's under Intelligence
   const itemCrumb: Crumb | null =
     place.at !== 'item'
       ? null
       : place.kind === 'permission'
         ? {
-            icon: <SlidersHorizontal className={icon} />,
-            parts: [at('Settings', '#/settings'), at(itemName || '…')],
+            icon: <Sparkles className={icon} />,
+            parts: [at('Intelligence', '#/intelligence/permissions'), at(itemName || '…')],
           }
         : {
             icon: <ActivityIcon className={icon} />,
@@ -295,58 +302,60 @@ export function App() {
             ? { icon: <MessageSquare className={icon} />, parts: [at('Conversation')] }
             : place.at === 'settings'
               ? { icon: <SlidersHorizontal className={icon} />, parts: [at('Settings')] }
-              : place.at === 'parts'
-                ? { parts: [at('Parts')] }
-                : place.at === 'file'
-                  ? {
-                      icon: <FileText className={icon} />,
-                      parts: [at('Documents'), at(fileName || '…')],
-                    }
-                  : place.at === 'table'
+              : place.at === 'intelligence'
+                ? { icon: <Sparkles className={icon} />, parts: [at('Intelligence')] }
+                : place.at === 'parts'
+                  ? { parts: [at('Parts')] }
+                  : place.at === 'file'
                     ? {
-                        icon: <Briefcase className={icon} />,
-                        parts: table
-                          ? [
-                              ...above,
-                              at(table.module.name, `#/module/${table.module.id}`),
-                              // with a row open, the table's name closes it
-                              place.row ? at(table.name, `#/table/${table.id}`) : at(table.name),
-                              ...(place.row
-                                ? [
-                                    at(
-                                      (() => {
-                                        const r = table.rows.find((x) => x.id === place.row)
-                                        return r ? titleOf(table.fields, r) : '…'
-                                      })(),
-                                    ),
-                                  ]
-                                : []),
-                            ]
-                          : [at('…')],
+                        icon: <FileText className={icon} />,
+                        parts: [at('Documents'), at(fileName || '…')],
                       }
-                    : place.at === 'module'
+                    : place.at === 'table'
                       ? {
                           icon: <Briefcase className={icon} />,
-                          parts: [
-                            ...above,
-                            at(moduleHere?.name ?? '…', `#/module/${place.id}`),
-                            at(
-                              place.tab === 'agents'
-                                ? 'Agents and notes'
-                                : place.tab === 'conversation'
-                                  ? 'Conversation'
-                                  : place.tab === 'overview' ||
-                                      (!place.page && modules.some((x) => x.parent === place.id))
-                                    ? 'Overview'
-                                    : (modules
-                                        .find((x) => x.id === place.id)
-                                        ?.pages.find((p) =>
-                                          place.page ? p.name === place.page : p.front,
-                                        )?.title ?? '…'),
-                            ),
-                          ],
+                          parts: table
+                            ? [
+                                ...above,
+                                at(table.module.name, `#/module/${table.module.id}`),
+                                // with a row open, the table's name closes it
+                                place.row ? at(table.name, `#/table/${table.id}`) : at(table.name),
+                                ...(place.row
+                                  ? [
+                                      at(
+                                        (() => {
+                                          const r = table.rows.find((x) => x.id === place.row)
+                                          return r ? titleOf(table.fields, r) : '…'
+                                        })(),
+                                      ),
+                                    ]
+                                  : []),
+                              ]
+                            : [at('…')],
                         }
-                      : { icon: <House className={icon} />, parts: [at('Home')] }
+                      : place.at === 'module'
+                        ? {
+                            icon: <Briefcase className={icon} />,
+                            parts: [
+                              ...above,
+                              at(moduleHere?.name ?? '…', `#/module/${place.id}`),
+                              at(
+                                place.tab === 'agents'
+                                  ? 'Agents and notes'
+                                  : place.tab === 'conversation'
+                                    ? 'Conversation'
+                                    : place.tab === 'overview' ||
+                                        (!place.page && modules.some((x) => x.parent === place.id))
+                                      ? 'Overview'
+                                      : (modules
+                                          .find((x) => x.id === place.id)
+                                          ?.pages.find((p) =>
+                                            place.page ? p.name === place.page : p.front,
+                                          )?.title ?? '…'),
+                              ),
+                            ],
+                          }
+                        : { icon: <House className={icon} />, parts: [at('Home')] }
 
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
@@ -404,8 +413,8 @@ export function App() {
               <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
             ) : place.at === 'people' ? (
               <People kind={place.kind} id={place.id} version={version} onName={setPersonName} />
-            ) : place.at === 'settings' ? (
-              <Settings open={place.open} version={version} />
+            ) : place.at === 'settings' || place.at === 'intelligence' ? (
+              <Settings page={place.at} tab={place.section} open={place.open} version={version} />
             ) : place.at === 'module' || table ? (
               <ModuleScreen
                 moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
