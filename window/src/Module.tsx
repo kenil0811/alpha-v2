@@ -14,20 +14,25 @@ import {
   Briefcase,
   Building2,
   Check,
+  FileText,
   LayoutDashboard,
   LayoutGrid,
   MessageSquare,
   Plus,
+  Search,
   Table2,
+  Upload,
   Users,
 } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
+import { fileHref } from './FileView.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
 import { InBar } from './Shell.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
+import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -233,6 +238,99 @@ function Overview({ m }: { m: ModuleView }) {
   )
 }
 
+// A file on one of the module's rows, as the core lists them for a module (asked of the core: until
+// it does, the list stays empty and keeps its frame).
+type ModuleFile = {
+  hash: string
+  name: string
+  size: number
+  at: string
+  table: string
+  row: string
+  rowName: string
+}
+
+const kb = (n: number) =>
+  n < 1e6 ? `${Math.max(1, Math.round(n / 1e3))} KB` : `${(n / 1e6).toFixed(1)} MB`
+
+// Files: search by name, Upload (Alpha files it on the row it belongs to), each file opening itself
+// and its row.
+function Files({ m, version }: { m: ModuleView; version: number }) {
+  const [files, setFiles] = useState<ModuleFile[]>([])
+  const [words, setWords] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const pick = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (version < 0) return
+    api.get<ModuleFile[]>(`/api/modules/${m.id}/files`).then(setFiles, () => setFiles([]))
+  }, [m.id, version])
+  const shown = files.filter((f) => f.name.toLowerCase().includes(words.trim().toLowerCase()))
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <label className="flex h-7.5 w-56 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+          <Search className="size-3.25 shrink-0" />
+          <input
+            value={words}
+            onChange={(e) => setWords(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape' || !words) return
+              e.preventDefault()
+              setWords('')
+            }}
+            placeholder="Search files"
+            aria-label="Search files"
+            title="Escape clears it"
+            className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+          />
+        </label>
+        <Refusal words={problem} />
+        <Button
+          className="ml-auto"
+          title="Alpha files it on the row it belongs to"
+          onClick={() => pick.current?.click()}
+        >
+          <Upload className="size-3.5" />
+          Upload
+        </Button>
+        <input
+          ref={pick}
+          type="file"
+          multiple
+          hidden
+          onChange={async (e) => {
+            setProblem(null)
+            for (const f of Array.from(e.target.files ?? []))
+              await api.upload(f).catch(() => setProblem(`${f.name} did not go in.`))
+            e.target.value = ''
+          }}
+        />
+      </div>
+      <List className="min-h-19">
+        {shown.map((f) => (
+          <Row
+            key={`${f.hash}-${f.row}`}
+            lead={<FileText className="size-4 text-ink-3" />}
+            title={
+              <a href={fileHref({ file: f.hash })} className="hover:underline">
+                {f.name}
+              </a>
+            }
+            sub={
+              <>
+                <a href={`#/table/${f.table}/${f.row}`} className="hover:underline">
+                  {f.rowName}
+                </a>
+                {` · ${kb(f.size)} · ${when(f.at)}`}
+              </>
+            }
+          />
+        ))}
+      </List>
+    </div>
+  )
+}
+
 // A section card under the table: a small title, a grey line saying what it is, its content.
 function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
   return (
@@ -265,9 +363,7 @@ function Below({ m, version, onChange }: { m: ModuleView; version: number; onCha
   return (
     <div className="flex max-w-page flex-col gap-4 px-7 pt-2 pb-8">
       <Section title="Files" sub="What was dropped on this module’s rows.">
-        <p className="text-ink-2 text-md">
-          Files sit on the row they belong to: open a row to see its files, or drop one on it.
-        </p>
+        <Files m={m} version={version} />
       </Section>
       <Section
         title="Intelligence"
