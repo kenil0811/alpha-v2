@@ -1,4 +1,4 @@
-// The assistant on the right of every screen (Bridge and Alpha Brain, Vikas 25 Oct): always there.
+// The assistant on the right of every screen (Vikas, 25 Oct): always there.
 // Open, its header has the fold control, Alpha's face and name in the middle and the bell for
 // Activity; its edge drags it wider. Folded, it is a strip with the face, the name and the bell,
 // and a click anywhere on it opens it again. ⌘J folds and opens it.

@@ -1,4 +1,4 @@
-// The shell, in the shape Bridge and Alpha Brain share (Vikas, 25 Oct; reverses design §14's rail
+// The shell (Vikas, 25 Oct; reverses design §14's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
 // the right, their headers on one line. The rail has the workspace at its top, Home with a badge
 // for what waits on the person, Tasks, the modules by name (People and Organizations are
@@ -554,7 +554,7 @@ export function Bar({
   middle,
 }: {
   crumb: Crumb
-  onFind: () => void
+  onFind?: (() => void) | undefined // none inside a module: its own search is the one there; ⌘K still finds
   lens: { id: string; name: string } | null
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
@@ -596,18 +596,20 @@ export function Bar({
         <h1 className="hidden truncate font-serif text-ink text-xl peer-empty:block">{last}</h1>
       </div>
       <div className="flex justify-end" data-tauri-drag-region>
-        <button
-          type="button"
-          onClick={onFind}
-          aria-label="Find anything"
-          className="flex h-7.5 items-center gap-2 rounded-md border border-line bg-surface pr-2 pl-2.5 text-ink-3 text-md transition-colors hover:border-accent-line @min-[760px]:w-52.5"
-        >
-          <Search className="size-3.25 shrink-0" />
-          <span className="hidden flex-1 text-left @min-[760px]:inline">Find anything</span>
-          <span className="hidden @min-[760px]:inline">
-            <Kbd>⌘K</Kbd>
-          </span>
-        </button>
+        {onFind && (
+          <button
+            type="button"
+            onClick={onFind}
+            aria-label="Find anything"
+            className="flex h-7.5 items-center gap-2 rounded-md border border-line bg-surface pr-2 pl-2.5 text-ink-3 text-md transition-colors hover:border-accent-line @min-[760px]:w-52.5"
+          >
+            <Search className="size-3.25 shrink-0" />
+            <span className="hidden flex-1 text-left @min-[760px]:inline">Find anything</span>
+            <span className="hidden @min-[760px]:inline">
+              <Kbd>⌘K</Kbd>
+            </span>
+          </button>
+        )}
       </div>
     </div>
   )

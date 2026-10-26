@@ -10,15 +10,26 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
+  Copy,
+  CopyPlus,
+  EllipsisVertical,
+  Eraser,
   Filter,
+  History,
+  Link,
   ListChecks,
   PanelRightOpen,
+  Pencil,
+  Pin,
   Plus,
+  Trash2,
 } from 'lucide-react'
 import {
   type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
   useEffect,
   useMemo,
@@ -28,9 +39,10 @@ import {
 import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
+import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
-import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
 import { ColumnMenu } from './ColumnMenu.tsx'
 import { cycleSort, setTotal, setWidth } from './edits.ts'
 import {
@@ -44,6 +56,7 @@ import {
   total,
   widthOf,
 } from './engine.ts'
+import type { LayoutNow } from './layout.ts'
 import {
   CORRECTABLE,
   DOT,
@@ -93,6 +106,9 @@ export function Grid({
   onNew,
   counted,
   readOnly = false,
+  onDuplicate,
+  onRemove,
+  layout,
 }: {
   tableId: string
   rows: RowView[] // filtered and sorted
@@ -114,10 +130,33 @@ export function Grid({
   onNew: (() => void) | string // adds a row, or why one can't be added here
   counted?: RowView[] // what the footer totals: every row the view holds, not only this page
   readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
+  onDuplicate?: ((row: RowView) => Promise<boolean>) | undefined
+  onRemove?: ((rows: RowView[]) => Promise<boolean>) | undefined
+  layout: LayoutNow // frozen and wrapped columns, kept in this browser
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [folded, setFolded] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<{ row: string; field: string } | null>(null)
+  // a row's menu: from a right-click on it (with the cell under the pointer), Shift+F10, or its ⋮
+  const [menu, setMenu] = useState<{
+    row: RowView
+    field: FieldView | null
+    x: number
+    y: number
+  } | null>(null)
+  const [removing, setRemoving] = useState<RowView | null>(null)
+  const menuOn = (row: RowView, field: FieldView | null) => ({
+    onContextMenu: (e: MouseEvent) => {
+      e.preventDefault()
+      setMenu({ row, field, x: e.clientX, y: e.clientY })
+    },
+    onKeyDown: (e: KeyboardEvent) => {
+      if (!((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu')) return
+      e.preventDefault()
+      const r = (e.target as HTMLElement).getBoundingClientRect()
+      setMenu({ row, field, x: r.left + 8, y: r.bottom })
+    },
+  })
   // A first click opens the source panel a moment later, so a double-click can change the value
   // instead (the panel would push the table and move the cell under the second click). With the
   // panel already open, a click shows the new value at once.
@@ -163,6 +202,9 @@ export function Grid({
   }, [openRow, items, virtual])
 
   const widths = shown.map((f, i) => widthOf(f, config, i === 0))
+  // the columns frozen at the left stay in place as the table scrolls across
+  const lefts = widths.map((_, i) => TICK + widths.slice(0, i).reduce((a, b) => a + b, 0))
+  const stick = (i: number) => (i < layout.frozen ? lefts[i] : undefined)
   const width = TICK + widths.reduce((a, b) => a + b, 0) + ADD
   const vitems = virtual.getVirtualItems()
   const top = vitems[0]?.start ?? 0
@@ -237,7 +279,10 @@ export function Grid({
                 key={f.id}
                 tableId={tableId}
                 field={f}
-                first={i === 0}
+                left={stick(i)}
+                edge={i === layout.frozen - 1}
+                index={i}
+                layout={layout}
                 config={config}
                 shown={shown}
                 rows={allRows}
@@ -287,12 +332,19 @@ export function Grid({
               <tr
                 key={r.id}
                 id={`row-${r.id}`}
+                data-index={v.index}
+                ref={virtual.measureElement}
                 className={cn('group/row', r.id === openRow && '[&>td]:bg-accent-soft')}
               >
                 <td
+                  {...menuOn(r, null)}
                   className={cn(
                     'sticky left-0 z-1 border-hair border-b p-0 group-hover/row:bg-hover',
                     bg,
+                    // the tick shows on hover, and on every row once one is ticked
+                    !on &&
+                      ticked.size === 0 &&
+                      '[&_input]:opacity-0 group-hover/row:[&_input]:opacity-100 [&_input:focus]:opacity-100',
                   )}
                 >
                   <Tick
@@ -312,11 +364,14 @@ export function Grid({
                   return (
                     <td
                       key={f.id}
-                      style={i === 0 ? { left: TICK } : undefined}
+                      {...menuOn(r, f)}
+                      style={stick(i) === undefined ? undefined : { left: stick(i) }}
                       className={cn(
-                        'overflow-hidden whitespace-nowrap border-hair border-b p-0 group-hover/row:bg-hover',
+                        'overflow-hidden border-hair border-b p-0 group-hover/row:bg-hover',
+                        layout.wrap.includes(f.id) ? 'whitespace-normal' : 'whitespace-nowrap',
                         bg,
-                        i === 0 && 'sticky z-1 shadow-[inset_-1px_0_0_var(--hair)]',
+                        stick(i) !== undefined && 'sticky z-1',
+                        i === layout.frozen - 1 && 'shadow-[inset_-1px_0_0_var(--hair)]',
                       )}
                     >
                       {isEditing ? (
@@ -335,6 +390,7 @@ export function Grid({
                           row={r}
                           names={names}
                           first={i === 0}
+                          wrap={layout.wrap.includes(f.id)}
                           tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
@@ -350,7 +406,20 @@ export function Grid({
                     </td>
                   )
                 })}
-                <td className={cn('border-hair border-b p-0', bg)} />
+                <td className={cn('border-hair border-b p-0', bg)}>
+                  <button
+                    type="button"
+                    aria-label="Actions for this row"
+                    title="Open, duplicate, copy a link, delete…"
+                    onClick={(e) => {
+                      const b = e.currentTarget.getBoundingClientRect()
+                      setMenu({ row: r, field: null, x: b.left, y: b.bottom })
+                    }}
+                    className="mx-auto grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
+                  >
+                    <EllipsisVertical className="size-3.5" />
+                  </button>
+                </td>
               </tr>
             )
           })}
@@ -382,6 +451,8 @@ export function Grid({
                 key={f.id}
                 field={f}
                 first={i === 0}
+                left={stick(i)}
+                edge={i === layout.frozen - 1}
                 rows={counted ?? rows}
                 config={config}
                 names={names}
@@ -392,7 +463,136 @@ export function Grid({
           </tr>
         </tfoot>
       </table>
+      <Popover point={menu && { x: menu.x, y: menu.y }} open={!!menu} onClose={() => setMenu(null)}>
+        {menu && (
+          <RowMenu
+            tableId={tableId}
+            row={menu.row}
+            field={menu.field}
+            names={names}
+            readOnly={readOnly || !onRemove}
+            onDone={() => setMenu(null)}
+            onEdit={() => menu.field && startEditing({ row: menu.row.id, field: menu.field.slug })}
+            onClear={() => menu.field && onEdit(menu.row, menu.field, null)}
+            onHistory={() => menu.field && onPick({ row: menu.row.id, field: menu.field.slug })}
+            onOpen={() => onOpen(menu.row.id)}
+            onDuplicate={() => onDuplicate?.(menu.row)}
+            onRemove={() => setRemoving(menu.row)}
+          />
+        )}
+      </Popover>
+      <Confirm
+        open={!!removing}
+        title="Delete this row?"
+        yes="Delete row"
+        onClose={() => setRemoving(null)}
+        onYes={async () => {
+          if (removing && (await onRemove?.([removing]))) setRemoving(null)
+        }}
+      >
+        It can’t be brought back; Activity keeps what it held.
+      </Confirm>
     </div>
+  )
+}
+
+// A row's menu, with the cell's own lines first when it was opened on a cell. A line that can't be
+// used here stays, greyed, saying why.
+function RowMenu({
+  tableId,
+  row: r,
+  field: f,
+  names,
+  readOnly,
+  onDone,
+  onEdit,
+  onClear,
+  onHistory,
+  onOpen,
+  onDuplicate,
+  onRemove,
+}: {
+  tableId: string
+  row: RowView
+  field: FieldView | null
+  names: Record<string, string>
+  readOnly: boolean // kept on its own page: changed, copied and deleted there
+  onDone: () => void
+  onEdit: () => void
+  onClear: () => void
+  onHistory: () => void
+  onOpen: () => void
+  onDuplicate: () => void
+  onRemove: () => void
+}) {
+  const then = (fn: () => void) => () => {
+    onDone()
+    fn()
+  }
+  const text = f ? show(f, r.values[f.slug], names) : ''
+  const kept = readOnly ? 'This row is kept on its own page; change it there.' : undefined
+  const fixed =
+    kept ??
+    (f && !CORRECTABLE.has(f.kind)
+      ? 'Alpha works this value out; open where it came from to correct that.'
+      : undefined)
+  return (
+    <>
+      {f && (
+        <>
+          <MenuItem reason={fixed} hint="Enter" onClick={then(onEdit)}>
+            <Pencil className="size-3.5 text-ink-3" />
+            Edit
+          </MenuItem>
+          <MenuItem
+            reason={text ? undefined : 'There is nothing in it to copy.'}
+            onClick={then(() => navigator.clipboard?.writeText(text))}
+          >
+            <Copy className="size-3.5 text-ink-3" />
+            Copy
+          </MenuItem>
+          <MenuItem
+            reason={fixed ?? (text ? undefined : 'It is already empty.')}
+            onClick={then(onClear)}
+          >
+            <Eraser className="size-3.5 text-ink-3" />
+            Clear
+          </MenuItem>
+          <MenuItem onClick={then(onHistory)}>
+            <History className="size-3.5 text-ink-3" />
+            Where it came from, and its history
+          </MenuItem>
+          <MenuLine />
+        </>
+      )}
+      <MenuItem onClick={then(onOpen)}>
+        <PanelRightOpen className="size-3.5 text-ink-3" />
+        Open
+      </MenuItem>
+      <MenuItem reason={kept} onClick={then(onDuplicate)}>
+        <CopyPlus className="size-3.5 text-ink-3" />
+        Duplicate
+      </MenuItem>
+      <MenuItem
+        onClick={then(() =>
+          navigator.clipboard?.writeText(
+            `${location.origin}${location.pathname}#/table/${tableId}/${r.id}`,
+          ),
+        )}
+      >
+        <Link className="size-3.5 text-ink-3" />
+        Copy link
+      </MenuItem>
+      <MenuItem reason="Pinning a row needs Alpha's core to keep it; not yet." onClick={onDone}>
+        <Pin className="size-3.5 text-ink-3" />
+        Pin
+      </MenuItem>
+      <MenuLine />
+      <MenuItem danger reason={kept} onClick={then(onRemove)}>
+        <Trash2 className="size-3.5" />
+        Delete row
+      </MenuItem>
+    </>
   )
 }
 
@@ -426,7 +626,10 @@ function Tick({
 function Header({
   tableId,
   field: f,
-  first,
+  left,
+  edge,
+  index,
+  layout,
   config,
   shown,
   rows,
@@ -436,7 +639,10 @@ function Header({
 }: {
   tableId: string
   field: FieldView
-  first: boolean
+  left: number | undefined // where it stays when frozen
+  edge: boolean // the last frozen column, with a line at its right
+  index: number
+  layout: LayoutNow
   config: ViewConfig
   shown: FieldView[]
   rows: RowView[]
@@ -445,7 +651,15 @@ function Header({
   onConfig: (c: ViewConfig) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [inserting, setInserting] = useState<'left' | 'right' | null>(null)
+  const [over, setOver] = useState<'left' | 'right' | null>(null)
   const menu = useRef<HTMLButtonElement>(null)
+  const head = useRef<HTMLTableCellElement>(null)
+  const ctx = useContextMenu()
+  const close = () => {
+    setOpen(false)
+    ctx.close()
+  }
   const level = config.sorts.findIndex((s) => s.field === f.id)
   const dir = config.sorts[level]?.dir
   const filtered = config.filters.rules.some((r) => r.field === f.id)
@@ -466,21 +680,62 @@ function Header({
     el.addEventListener('pointermove', moveTo)
     el.addEventListener('pointerup', up)
   }
+  // a column dropped on this one goes to the side of it the pointer is on
+  const side = (e: DragEvent<HTMLTableCellElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return e.clientX < r.left + r.width / 2 ? 'left' : 'right'
+  }
+  const place = (moved: string, at: 'left' | 'right') => {
+    const order = shown.map((x) => x.id).filter((id) => id !== moved)
+    const i = order.indexOf(f.id)
+    if (i < 0) return
+    order.splice(at === 'left' ? i : i + 1, 0, moved)
+    onConfig({ ...config, order: [...order, ...config.order.filter((id) => !order.includes(id))] })
+  }
+  // a new column, put beside this one once it is made
+  const added = async (name: string) => {
+    const at = inserting
+    setInserting(null)
+    const t = await api.get<{ fields: FieldView[] }>(`/api/tables/${tableId}`)
+    const made = t.fields.find((x) => x.name === name && !shown.some((s) => s.id === x.id))
+    if (made && at) place(made.id, at)
+  }
   return (
     <th
-      style={first ? { left: TICK } : undefined}
+      ref={head}
+      style={left === undefined ? undefined : { left }}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/x-alpha-column', f.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('text/x-alpha-column')) return
+        e.preventDefault()
+        setOver(side(e))
+      }}
+      onDragLeave={() => setOver(null)}
+      onDrop={(e) => {
+        const moved = e.dataTransfer.getData('text/x-alpha-column')
+        setOver(null)
+        if (moved && moved !== f.id) place(moved, side(e))
+      }}
+      {...ctx.on}
       className={cn(
         'group/head sticky top-0 z-10 h-9 border-line border-b bg-surface p-0 font-medium text-ink-3 text-sm',
-        first && 'z-20 shadow-[inset_-1px_0_0_var(--hair)]',
+        left !== undefined && 'z-20',
+        edge && 'shadow-[inset_-1px_0_0_var(--hair)]',
+        over === 'left' && 'shadow-[inset_2px_0_0_var(--accent)]',
+        over === 'right' && 'shadow-[inset_-2px_0_0_var(--accent)]',
       )}
     >
       <div className={cn('relative flex h-9 items-center', numeric && 'flex-row-reverse')}>
         <button
           type="button"
-          title={f.about ?? 'Sort by this column; shift-click to add it as the next sort'}
+          title={`${f.about ? `${f.about} ` : ''}Click to sort, shift-click to sort by it next; drag to move it; right-click for more.`}
           onClick={(e) => onConfig(cycleSort(config, f.id, e.shiftKey))}
           className={cn(
-            'flex h-full min-w-0 flex-1 items-center gap-1 px-2.5 hover:text-ink',
+            'flex h-full min-w-0 flex-1 cursor-grab items-center gap-1 px-2.5 hover:text-ink active:cursor-grabbing',
             numeric && 'justify-end',
             (dir || filtered) && 'text-ink',
           )}
@@ -502,10 +757,11 @@ function Header({
           ref={menu}
           type="button"
           aria-label={`${f.name}: sort, filter, group and more`}
+          title={`${f.name}: sort, filter, group and more`}
           onClick={() => setOpen((o) => !o)}
           className={cn(
             'mx-1 grid size-6 shrink-0 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink',
-            open ? 'visible' : 'invisible group-hover/head:visible',
+            open || ctx.open ? 'visible' : 'invisible group-hover/head:visible',
           )}
         >
           <ChevronDown className="size-3.5" />
@@ -519,19 +775,33 @@ function Header({
       </div>
       <Popover
         anchor={menu}
-        open={open}
-        onClose={() => setOpen(false)}
+        point={ctx.point}
+        open={open || ctx.open}
+        onClose={close}
         align={numeric ? 'end' : 'start'}
       >
         <ColumnMenu
           tableId={tableId}
           field={f}
+          index={index}
+          layout={layout}
           config={config}
           shown={shown}
           rows={rows}
           names={names}
           onConfig={onConfig}
-          onClose={() => setOpen(false)}
+          onInsert={(at) => {
+            close()
+            setInserting(at)
+          }}
+          onClose={close}
+        />
+      </Popover>
+      <Popover anchor={head} open={inserting !== null} onClose={() => setInserting(null)}>
+        <AddFieldForm
+          tableId={tableId}
+          title={`Add a column to the ${inserting} of ${f.name}`}
+          onAdded={added}
         />
       </Popover>
     </th>
@@ -543,6 +813,7 @@ function Cell({
   row: r,
   names,
   first,
+  wrap,
   tasks,
   tone,
   selected,
@@ -554,6 +825,7 @@ function Cell({
   row: RowView
   names: Record<string, string>
   first: boolean
+  wrap: boolean
   tasks: number
   tone: string | null
   selected: boolean
@@ -585,7 +857,8 @@ function Cell({
         onKeyDown={key}
         title={onEdit ? 'Double-click, Enter or F2 to change it' : undefined}
         className={cn(
-          'group flex h-9.5 w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
+          'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
+          wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
           onOpen && 'pr-8',
           selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
@@ -605,7 +878,8 @@ function Cell({
         ) : (
           <span
             className={cn(
-              'truncate decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
+              wrap ? 'break-words' : 'truncate',
+              'decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
               first && 'font-medium',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
@@ -650,7 +924,7 @@ function Cell({
 }
 
 // A value being changed in place: Enter or leaving saves it as the person's word, Escape leaves it.
-function EditCell({
+export function EditCell({
   field,
   value,
   onDone,
@@ -794,6 +1068,8 @@ function GroupRow({
 function Foot({
   field: f,
   first,
+  left,
+  edge,
   rows,
   config,
   names,
@@ -801,6 +1077,8 @@ function Foot({
 }: {
   field: FieldView
   first: boolean
+  left: number | undefined
+  edge: boolean
   rows: RowView[]
   config: ViewConfig
   names: Record<string, string>
@@ -812,10 +1090,11 @@ function Foot({
   const numeric = NUMERIC.has(f.kind)
   return (
     <td
-      style={first ? { left: TICK } : undefined}
+      style={left === undefined ? undefined : { left }}
       className={cn(
         'sticky bottom-0 z-10 h-8.5 border-line border-t bg-canvas p-0 text-sm',
-        first && 'z-20 shadow-[inset_-1px_0_0_var(--hair)]',
+        left !== undefined && 'z-20',
+        edge && 'shadow-[inset_-1px_0_0_var(--hair)]',
       )}
     >
       <button
@@ -893,20 +1172,49 @@ const KINDS: [string, string][] = [
 // + at the end of the header: a field the person adds, with its kind.
 function AddField({ tableId }: { tableId: string }) {
   const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-label="Add a field"
+        title="Add a field"
+        onClick={() => setOpen((o) => !o)}
+        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink"
+      >
+        <Plus className="size-3.75" />
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <AddFieldForm tableId={tableId} title="Add a field" onAdded={() => setOpen(false)} />
+      </Popover>
+    </>
+  )
+}
+
+// A new column: its name and kind, choices for a choice, the table a relation points at.
+export function AddFieldForm({
+  tableId,
+  title,
+  onAdded,
+}: {
+  tableId: string
+  title: string
+  onAdded: (name: string) => void
+}) {
   const [name, setName] = useState('')
   const [kind, setKind] = useState('text')
   const [choices, setChoices] = useState('')
   const [relatesTo, setRelatesTo] = useState('')
   const [tables, setTables] = useState<{ id: string; name: string }[]>([])
   const [problem, setProblem] = useState<string | null>(null)
-  const anchor = useRef<HTMLButtonElement>(null)
   useEffect(() => {
-    if (open && kind === 'relation' && !tables.length)
+    if (kind === 'relation' && !tables.length)
       api.get<{ tables: { id: string; name: string }[] }[]>('/api/modules').then(
         (ms) => setTables(ms.flatMap((m) => m.tables)),
         () => undefined,
       )
-  }, [open, kind, tables.length])
+  }, [kind, tables.length])
   const save = async (e: FormEvent) => {
     e.preventDefault()
     setProblem(null)
@@ -924,7 +1232,7 @@ function AddField({ tableId }: { tableId: string }) {
           : {}),
         ...(kind === 'relation' ? { relatesTo } : {}),
       })
-      setOpen(false)
+      onAdded(name)
       setName('')
       setChoices('')
     } catch (err) {
@@ -932,73 +1240,59 @@ function AddField({ tableId }: { tableId: string }) {
     }
   }
   return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        aria-label="Add a field"
-        title="Add a field"
-        onClick={() => setOpen((o) => !o)}
-        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink"
-      >
-        <Plus className="size-3.75" />
-      </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        <form onSubmit={save} className="flex w-68 flex-col gap-2 p-1.5">
-          <div className="font-medium text-ink">Add a field</div>
-          <Field
-            autoFocus
-            value={name}
-            placeholder="Its name"
-            aria-label="The field’s name"
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Its kind">
-            {KINDS.map(([k, w]) => (
-              <option key={k} value={k}>
-                {w}
-              </option>
-            ))}
-          </Select>
-          {kind === 'choice' && (
-            <Field
-              value={choices}
-              placeholder="Its choices, with commas: New, Looking, Passed"
-              aria-label="Its choices"
-              onChange={(e) => setChoices(e.target.value)}
-            />
-          )}
-          {kind === 'relation' && (
-            <Select
-              value={relatesTo}
-              onChange={(e) => setRelatesTo(e.target.value)}
-              aria-label="The table it points at"
-            >
-              <option value="">Which table?</option>
-              {tables.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-          )}
-          {problem && <div className="text-bad text-sm">{problem}</div>}
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              size="sm"
-              variant="primary"
-              disabled={
-                !name.trim() ||
-                (kind === 'choice' && !choices.trim()) ||
-                (kind === 'relation' && !relatesTo)
-              }
-            >
-              Add it
-            </Button>
-          </div>
-        </form>
-      </Popover>
-    </>
+    <form onSubmit={save} className="flex w-68 flex-col gap-2 p-1.5">
+      <div className="font-medium text-ink">{title}</div>
+      <Field
+        autoFocus
+        value={name}
+        placeholder="Its name"
+        aria-label="The field’s name"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Its kind">
+        {KINDS.map(([k, w]) => (
+          <option key={k} value={k}>
+            {w}
+          </option>
+        ))}
+      </Select>
+      {kind === 'choice' && (
+        <Field
+          value={choices}
+          placeholder="Its choices, with commas: New, Looking, Passed"
+          aria-label="Its choices"
+          onChange={(e) => setChoices(e.target.value)}
+        />
+      )}
+      {kind === 'relation' && (
+        <Select
+          value={relatesTo}
+          onChange={(e) => setRelatesTo(e.target.value)}
+          aria-label="The table it points at"
+        >
+          <option value="">Which table?</option>
+          {tables.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      )}
+      {problem && <div className="text-bad text-sm">{problem}</div>}
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          variant="primary"
+          disabled={
+            !name.trim() ||
+            (kind === 'choice' && !choices.trim()) ||
+            (kind === 'relation' && !relatesTo)
+          }
+        >
+          Add it
+        </Button>
+      </div>
+    </form>
   )
 }

@@ -1,7 +1,7 @@
 // The window (design §14): the rail, a bar over each screen, the screen (Home, Activity, Settings
 // or a module: its tables, conversation, agents and notes) and the assistant on the right of every
 // screen but the whole conversation's own, through the module's lens on a module's screen. ⌘J
-// folds it and opens it again (Vikas, 25 Oct: Bridge's and Alpha Brain's frame).
+// folds it and opens it again (Vikas, 25 Oct).
 import type {
   Layout,
   LiveEvent,
@@ -400,7 +400,9 @@ export function App() {
         <main className="flex min-w-0 flex-1 flex-col">
           <Bar
             crumb={itemCrumb ?? crumb}
-            onFind={() => setFinding(true)}
+            onFind={
+              place.at === 'module' || place.at === 'table' ? undefined : () => setFinding(true)
+            }
             lens={place.at === 'conversation' ? lens : null}
             onClearLens={() => setLens(null)}
             middle={setMiddle}

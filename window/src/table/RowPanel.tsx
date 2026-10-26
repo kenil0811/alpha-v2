@@ -1,4 +1,5 @@
-// A row opened: every field with its value and mark, each opening to where it came from, the
+// A row opened: every field with its value and mark, each opening to where it came from (a
+// double-click changes it instead, as the person's word), the
 // pages and files its values were read from, and the documents on it (a deal's CIM), which a file
 // dropped on the panel joins at once.
 import type { FieldView, RowFileView, RowView, TasksView } from '@alpha/core/api'
@@ -12,7 +13,8 @@ import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
-import { EMPTY_WORDS, KIND_WORDS, MARK, show } from './values.ts'
+import { EditCell } from './Grid.tsx'
+import { CORRECTABLE, EMPTY_WORDS, KIND_WORDS, MARK, show } from './values.ts'
 
 export function RowPanel({
   tableId,
@@ -22,6 +24,7 @@ export function RowPanel({
   names,
   title,
   onField,
+  onEdit,
   onClose,
 }: {
   tableId: string
@@ -31,8 +34,12 @@ export function RowPanel({
   names: Record<string, string>
   title: string
   onField: (slug: string) => void
+  onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined // none: kept elsewhere
   onClose: () => void
 }) {
+  const [editing, setEditing] = useState<string | null>(null)
+  // a click waits a moment, so a double-click can change the value instead of opening its source
+  const click = useRef<ReturnType<typeof setTimeout> | null>(null)
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
   const [files, setFiles] = useState<RowFileView[]>([])
   const [tasks, setTasks] = useState<TasksView | null>(null)
@@ -92,11 +99,44 @@ export function RowPanel({
           {fields.map((f) => {
             const source = row.sources[f.slug]
             const text = show(f, row.values[f.slug], names)
+            const editable = !!onEdit && CORRECTABLE.has(f.kind)
+            if (editing === f.slug && onEdit)
+              return (
+                <div
+                  key={f.id}
+                  className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5"
+                >
+                  <dt className="text-ink-3 text-sm">{f.name}</dt>
+                  <EditCell
+                    field={f}
+                    value={row.values[f.slug]}
+                    onDone={async (v) => {
+                      const ok = v === undefined || (await onEdit(f, v))
+                      if (ok) setEditing(null)
+                      return ok
+                    }}
+                  />
+                </div>
+              )
             return (
               <button
                 key={f.id}
                 type="button"
-                onClick={() => onField(f.slug)}
+                title={
+                  editable
+                    ? 'Click for where it came from; double-click to change it'
+                    : 'Where it came from'
+                }
+                onClick={() => {
+                  if (!editable) return onField(f.slug)
+                  if (click.current) clearTimeout(click.current)
+                  click.current = setTimeout(() => onField(f.slug), 250)
+                }}
+                onDoubleClick={() => {
+                  if (!editable) return
+                  if (click.current) clearTimeout(click.current)
+                  setEditing(f.slug)
+                }}
                 className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
               >
                 <dt

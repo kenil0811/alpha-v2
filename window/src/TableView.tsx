@@ -12,13 +12,24 @@ import type {
   TableView as TableData,
   ViewConfig,
 } from '@alpha/core/api'
-import { EllipsisVertical, Search } from 'lucide-react'
+import {
+  ArrowDownUp,
+  ChevronDown,
+  ChevronUp,
+  Columns3,
+  Copy,
+  Download,
+  EllipsisVertical,
+  Group,
+  Plus,
+  Search,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
-import { setRule } from './table/edits.ts'
+import { setGroup, setRule } from './table/edits.ts'
 import {
   applyFilters,
   applySearch,
@@ -26,12 +37,15 @@ import {
   columns,
   complete,
   differs,
+  GROUPABLE,
   sortRows,
 } from './table/engine.ts'
-import { Grid, type PastePlan } from './table/Grid.tsx'
+import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
+import { type LayoutNow, useLayout as useTableLayout } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
+import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
@@ -42,7 +56,7 @@ import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { Select } from './ui/field.tsx'
-import { MenuItem, Popover } from './ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
 interface Working {
   view: string | null
@@ -115,9 +129,11 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
+  const [searching, setSearching] = useState(false)
+  const layout = useTableLayout(data.id)
   // rows to a page, the person's choice, kept by Alpha per person
-  const { layout, change } = useLayout()
-  const size = layout.pageSize ?? PAGE
+  const { layout: kept, change } = useLayout()
+  const size = kept.pageSize ?? PAGE
   const resize = (n: number) => {
     change({ pageSize: n })
     setPage(0)
@@ -222,19 +238,41 @@ export function TableView({
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
         <ViewTabs
-          right={
+          tools={
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
-              <label className="flex h-7.5 w-40 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-                <Search className="size-3.25 shrink-0" />
-                <input
-                  value={config.search}
-                  onChange={(e) => setConfig({ ...config, search: e.target.value })}
-                  placeholder={`Find in ${data.name}`}
-                  aria-label={`Find in ${data.name}`}
-                  className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-                />
-              </label>
+              {searching || config.search ? (
+                <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                  <Search className="size-3.25 shrink-0" />
+                  <input
+                    // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
+                    autoFocus={searching}
+                    value={config.search}
+                    onChange={(e) => setConfig({ ...config, search: e.target.value })}
+                    onBlur={() => setSearching(false)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Escape') return
+                      e.preventDefault()
+                      setConfig({ ...config, search: '' })
+                      setSearching(false)
+                    }}
+                    placeholder={`Search ${data.name}`}
+                    aria-label={`Search ${data.name}`}
+                    title="Escape clears it"
+                    className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+                  />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSearching(true)}
+                  title={`Search ${data.name}`}
+                  className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
+                >
+                  <Search className="size-3.25 shrink-0" />
+                  Search
+                </button>
+              )}
               <AddFilter
                 fields={fields}
                 config={config}
@@ -242,10 +280,31 @@ export function TableView({
                 names={data.names}
                 onConfig={setConfig}
               />
+            </>
+          }
+          right={
+            <>
               {config.kind !== 'board' && (
                 <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
               )}
               <More
+                tableId={data.id}
+                fields={fields}
+                shown={shown}
+                config={config}
+                layout={layout}
+                adding={!kept}
+                onConfig={setConfig}
+                onCopy={() =>
+                  navigator.clipboard?.writeText(
+                    [
+                      shown.map((f) => f.name),
+                      ...rows.map((r) => shown.map((f) => show(f, r.values[f.slug], data.names))),
+                    ]
+                      .map((line) => line.map((t) => t.replace(/[\t\n]/g, ' ')).join('\t'))
+                      .join('\n'),
+                  )
+                }
                 onExport={(as) =>
                   write(() =>
                     api.download(
@@ -434,6 +493,37 @@ export function TableView({
               onTick={setTicked}
               onEdit={edit}
               onOpen={openRowPanel}
+              onDuplicate={
+                kept
+                  ? undefined
+                  : (r) =>
+                      write(() =>
+                        api.post(`/api/tables/${data.id}/rows/many`, {
+                          add: [
+                            {
+                              values: Object.fromEntries(
+                                data.fields
+                                  .filter(
+                                    (f) => CORRECTABLE.has(f.kind) && r.values[f.slug] != null,
+                                  )
+                                  .map((f) => [f.name, r.values[f.slug]]),
+                              ),
+                            },
+                          ],
+                        }),
+                      )
+              }
+              onRemove={
+                kept
+                  ? undefined
+                  : (rs) =>
+                      write(() =>
+                        api.post(`/api/tables/${data.id}/rows/remove`, {
+                          rows: rs.map((r) => r.id),
+                        }),
+                      )
+              }
+              layout={layout}
               onPaste={setPasting}
               onNew={
                 kept
@@ -504,6 +594,7 @@ export function TableView({
           row={openedRow}
           fields={shown}
           names={data.names}
+          onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
           title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
           onField={(slug) => {
             setPicked({ row: openedRow.id, field: slug })
@@ -530,37 +621,176 @@ const PAGE = 50
 const SIZES = [25, 50, 100, 250]
 
 // The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
-function More({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
+// The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
+function More({
+  tableId,
+  fields,
+  shown,
+  config,
+  layout,
+  adding,
+  onConfig,
+  onExport,
+  onCopy,
+}: {
+  tableId: string
+  fields: FieldView[]
+  shown: FieldView[]
+  config: ViewConfig
+  layout: LayoutNow
+  adding: boolean // whether a column can be added here
+  onConfig: (c: ViewConfig) => void
+  onExport: (as: 'csv' | 'xlsx') => void
+  onCopy: () => void
+}) {
   const [open, setOpen] = useState(false)
+  const [add, setAdd] = useState(false)
+  const grid = config.kind === 'table' ? undefined : 'Columns are laid out in the table view.'
+  const wrapped = shown.length > 0 && shown.every((f) => layout.wrap.includes(f.id))
   const anchor = useRef<HTMLButtonElement>(null)
+  const sortedBy = config.sorts
+    .map((s) => fields.find((f) => f.id === s.field)?.name)
+    .filter(Boolean)
+  const grouped = fields.find((f) => f.id === config.group)
+  const groupable = fields.filter((f) => GROUPABLE.has(f.kind))
   return (
     <>
       <button
         ref={anchor}
         type="button"
         aria-label="More"
+        title="Sort, group, layout, download and more"
         onClick={() => setOpen((o) => !o)}
         className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <SubMenu
+          label={
+            <>
+              <ArrowDownUp className="size-3.5 text-ink-3" />
+              Sort
+            </>
+          }
+          hint={sortedBy.length ? sortedBy.join(', ') : 'None'}
+        >
+          <SortEditor fields={fields} config={config} onConfig={onConfig} />
+        </SubMenu>
+        <SubMenu
+          label={
+            <>
+              <Group className="size-3.5 text-ink-3" />
+              Group
+            </>
+          }
+          hint={grouped?.name ?? 'None'}
+          reason={
+            config.kind === 'table' || config.kind === 'list'
+              ? groupable.length
+                ? undefined
+                : 'No column here can be grouped by.'
+              : 'Groups show in the table and list views.'
+          }
+        >
+          <MenuItem checked={!grouped} onClick={() => onConfig(setGroup(config, null))}>
+            No grouping
+          </MenuItem>
+          <MenuLine />
+          {groupable.map((f) => (
+            <MenuItem
+              key={f.id}
+              checked={f.id === config.group}
+              onClick={() => onConfig(setGroup(config, f.id))}
+            >
+              {f.name}
+            </MenuItem>
+          ))}
+        </SubMenu>
+        <SubMenu
+          label={
+            <>
+              <Columns3 className="size-3.5 text-ink-3" />
+              Layout
+            </>
+          }
+          reason={grid}
+        >
+          {[1, 2, 3].map((n) => (
+            <MenuItem
+              key={n}
+              checked={layout.frozen === n}
+              reason={n > shown.length ? `There are only ${shown.length} columns.` : undefined}
+              onClick={() => layout.setFrozen(n)}
+            >
+              {n === 1 ? 'Freeze the first column' : `Freeze the first ${n} columns`}
+            </MenuItem>
+          ))}
+          <MenuLine />
+          <MenuItem
+            checked={wrapped}
+            onClick={() => layout.setWrap(wrapped ? [] : shown.map((f) => f.id))}
+          >
+            Wrap text in every column
+          </MenuItem>
+          <MenuItem
+            reason={
+              Object.keys(config.widths).length ? undefined : 'The columns are at their own widths.'
+            }
+            onClick={() => onConfig({ ...config, widths: {} })}
+          >
+            Reset the column widths
+          </MenuItem>
+        </SubMenu>
         <MenuItem
+          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
           onClick={() => {
             setOpen(false)
-            onExport('xlsx')
+            setAdd(true)
           }}
         >
-          Download Excel, as shown
+          <Plus className="size-3.5 text-ink-3" />
+          Add column
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            setOpen(false)
-            onExport('csv')
-          }}
+        <MenuLine />
+        <SubMenu
+          label={
+            <>
+              <Download className="size-3.5 text-ink-3" />
+              Download
+            </>
+          }
         >
-          Download CSV, as shown
-        </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setOpen(false)
+              onExport('xlsx')
+            }}
+          >
+            Excel, as shown
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setOpen(false)
+              onExport('csv')
+            }}
+          >
+            CSV, as shown
+          </MenuItem>
+          <MenuLine />
+          <MenuItem
+            onClick={() => {
+              setOpen(false)
+              onCopy()
+            }}
+          >
+            <Copy className="size-3.5 text-ink-3" />
+            Copy as a table
+          </MenuItem>
+        </SubMenu>
+      </Popover>
+      <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
+        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )

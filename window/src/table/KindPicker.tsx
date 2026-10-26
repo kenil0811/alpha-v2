@@ -57,6 +57,15 @@ export function KindPicker({
         : k === 'chart'
           ? choices.length > 0 || dates.length > 0
           : true
+  // why a view can't show this table, said on the greyed line
+  const why = (k: ViewKind) =>
+    can(k)
+      ? undefined
+      : k === 'board'
+        ? 'A board needs a choice column. Ask Alpha to add one.'
+        : k === 'chart'
+          ? 'A chart needs a choice or a date column. Ask Alpha to add one.'
+          : `A ${k} needs a date column. Ask Alpha to add one.`
   const current = KINDS.find((k) => k.kind === config.kind) ?? KINDS[0]
   // switching to a view that needs a field gives it one, as the core would
   // a calendar or timeline starts on the date most rows have; a board's columns and a chart's bars
@@ -159,7 +168,7 @@ export function KindPicker({
           <MenuItem
             key={k.kind}
             checked={k.kind === config.kind}
-            disabled={!can(k.kind)}
+            reason={why(k.kind)}
             onClick={() => {
               setOpen(false)
               switchTo(k.kind)

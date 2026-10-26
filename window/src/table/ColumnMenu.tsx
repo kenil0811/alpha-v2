@@ -4,11 +4,19 @@ import type { FieldView, FilterOp, FilterRule, RowView, TotalOp, ViewConfig } fr
 import {
   ArrowDown,
   ArrowLeft,
+  ArrowLeftToLine,
   ArrowRight,
+  ArrowRightToLine,
   ArrowUp,
+  Copy,
   EyeOff,
   MessageSquareText,
+  Pencil,
+  Pin,
   Rows3,
+  Shapes,
+  Trash2,
+  WrapText,
 } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { api, Problem } from '../api.ts'
@@ -27,6 +35,7 @@ import {
   setWhen,
 } from './edits.ts'
 import { family, GROUPABLE, needs, OP_WORDS, OPS, TOTAL_WORDS, TOTALS } from './engine.ts'
+import type { LayoutNow } from './layout.ts'
 import { show } from './values.ts'
 
 type Tone = 'good' | 'warn' | 'bad' | 'accent'
@@ -47,20 +56,26 @@ const ABOUT_BY: Record<'kit' | 'alpha' | 'person', string> = {
 export function ColumnMenu({
   tableId,
   field,
+  index,
+  layout,
   config,
   shown,
   rows,
   names,
   onConfig,
+  onInsert,
   onClose,
 }: {
   tableId: string
   field: FieldView
+  index: number
+  layout: LayoutNow
   config: ViewConfig
   shown: FieldView[]
   rows: RowView[]
   names: Record<string, string>
   onConfig: (c: ViewConfig) => void
+  onInsert: (side: 'left' | 'right') => void
   onClose: () => void
 }) {
   const [page, setPage] = useState<'main' | 'filter' | 'total' | 'colour' | 'describe'>('main')
@@ -169,20 +184,97 @@ export function ColumnMenu({
         </MenuItem>
       )}
       <MenuLine />
-      <MenuItem disabled={at <= 0} onClick={() => apply(move(config, shown, field.id, -1))}>
+      <MenuItem
+        reason={at <= 0 ? 'It is already the first column.' : undefined}
+        onClick={() => apply(move(config, shown, field.id, -1))}
+      >
         <ArrowLeft className="size-3.5 text-ink-3" />
         Move left
       </MenuItem>
       <MenuItem
-        disabled={at < 0 || at >= shown.length - 1}
+        reason={at < 0 || at >= shown.length - 1 ? 'It is already the last column.' : undefined}
         onClick={() => apply(move(config, shown, field.id, 1))}
       >
         <ArrowRight className="size-3.5 text-ink-3" />
         Move right
       </MenuItem>
-      <MenuItem disabled={shown.length <= 1} onClick={() => apply(hide(config, field.id, true))}>
+      <MenuItem
+        reason={shown.length <= 1 ? 'A table keeps at least one column.' : undefined}
+        onClick={() => apply(hide(config, field.id, true))}
+      >
         <EyeOff className="size-3.5 text-ink-3" />
         Hide column
+      </MenuItem>
+      {index + 1 < layout.frozen ? (
+        <MenuItem
+          onClick={() => {
+            layout.setFrozen(1)
+            onClose()
+          }}
+        >
+          <Pin className="size-3.5 text-ink-3" />
+          Unfreeze columns
+        </MenuItem>
+      ) : (
+        <MenuItem
+          checked={index > 0 && index + 1 === layout.frozen}
+          reason={index === 0 ? 'The first column always stays in place.' : undefined}
+          onClick={() => {
+            layout.setFrozen(index + 1 === layout.frozen ? 1 : index + 1)
+            onClose()
+          }}
+        >
+          <Pin className="size-3.5 text-ink-3" />
+          {index + 1 === layout.frozen && index > 0 ? 'Unfreeze columns' : 'Freeze up to here'}
+        </MenuItem>
+      )}
+      <MenuItem
+        checked={layout.wrap.includes(field.id)}
+        onClick={() => {
+          layout.toggleWrap(field.id)
+          onClose()
+        }}
+      >
+        <WrapText className="size-3.5 text-ink-3" />
+        Wrap text
+      </MenuItem>
+      <MenuLine />
+      <MenuItem onClick={() => onInsert('left')}>
+        <ArrowLeftToLine className="size-3.5 text-ink-3" />
+        Insert column left
+      </MenuItem>
+      <MenuItem onClick={() => onInsert('right')}>
+        <ArrowRightToLine className="size-3.5 text-ink-3" />
+        Insert column right
+      </MenuItem>
+      <MenuItem
+        reason="Changing a column itself goes through Alpha for now: ask in the panel."
+        onClick={onClose}
+      >
+        <Pencil className="size-3.5 text-ink-3" />
+        Rename…
+      </MenuItem>
+      <MenuItem
+        reason="Changing a column itself goes through Alpha for now: ask in the panel."
+        onClick={onClose}
+      >
+        <Shapes className="size-3.5 text-ink-3" />
+        Change type…
+      </MenuItem>
+      <MenuItem
+        reason="Changing a column itself goes through Alpha for now: ask in the panel."
+        onClick={onClose}
+      >
+        <Copy className="size-3.5 text-ink-3" />
+        Duplicate column
+      </MenuItem>
+      <MenuItem
+        danger
+        reason="Changing a column itself goes through Alpha for now: ask in the panel."
+        onClick={onClose}
+      >
+        <Trash2 className="size-3.5" />
+        Delete column
       </MenuItem>
     </div>
   )
