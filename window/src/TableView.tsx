@@ -11,12 +11,20 @@ import type {
   TableView as TableData,
   ViewConfig,
 } from '@alpha/core/api'
-import { ChevronDown, ChevronUp, EllipsisVertical, Search } from 'lucide-react'
+import {
+  ArrowDownUp,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  EllipsisVertical,
+  Group,
+  Search,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
-import { setRule } from './table/edits.ts'
+import { setGroup, setRule } from './table/edits.ts'
 import {
   applyFilters,
   applySearch,
@@ -24,6 +32,7 @@ import {
   columns,
   complete,
   differs,
+  GROUPABLE,
   sortRows,
 } from './table/engine.ts'
 import { Grid, type PastePlan } from './table/Grid.tsx'
@@ -31,6 +40,7 @@ import { KindPicker } from './table/KindPicker.tsx'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { Metrics } from './table/Metrics.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
+import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
@@ -41,7 +51,7 @@ import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { Select } from './ui/field.tsx'
-import { MenuItem, Popover } from './ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
 interface Working {
   view: string | null
@@ -289,6 +299,9 @@ export function TableView({
                 <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
               )}
               <More
+                fields={fields}
+                config={config}
+                onConfig={setConfig}
                 onExport={(as) =>
                   write(() =>
                     api.download(
@@ -612,27 +625,87 @@ const PAGE = 50
 const SIZES = [25, 50, 100, 250]
 
 // The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
-function More({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
+// The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
+function More({
+  fields,
+  config,
+  onConfig,
+  onExport,
+}: {
+  fields: FieldView[]
+  config: ViewConfig
+  onConfig: (c: ViewConfig) => void
+  onExport: (as: 'csv' | 'xlsx') => void
+}) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
+  const sortedBy = config.sorts
+    .map((s) => fields.find((f) => f.id === s.field)?.name)
+    .filter(Boolean)
+  const grouped = fields.find((f) => f.id === config.group)
+  const groupable = fields.filter((f) => GROUPABLE.has(f.kind))
   return (
     <>
       <button
         ref={anchor}
         type="button"
         aria-label="More"
+        title="Sort, group, download and more"
         onClick={() => setOpen((o) => !o)}
         className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <SubMenu
+          label={
+            <>
+              <ArrowDownUp className="size-3.5 text-ink-3" />
+              Sort
+            </>
+          }
+          hint={sortedBy.length ? sortedBy.join(', ') : 'None'}
+        >
+          <SortEditor fields={fields} config={config} onConfig={onConfig} />
+        </SubMenu>
+        <SubMenu
+          label={
+            <>
+              <Group className="size-3.5 text-ink-3" />
+              Group
+            </>
+          }
+          hint={grouped?.name ?? 'None'}
+          reason={
+            config.kind === 'table' || config.kind === 'list'
+              ? groupable.length
+                ? undefined
+                : 'No column here can be grouped by.'
+              : 'Groups show in the table and list views.'
+          }
+        >
+          <MenuItem checked={!grouped} onClick={() => onConfig(setGroup(config, null))}>
+            No grouping
+          </MenuItem>
+          <MenuLine />
+          {groupable.map((f) => (
+            <MenuItem
+              key={f.id}
+              checked={f.id === config.group}
+              onClick={() => onConfig(setGroup(config, f.id))}
+            >
+              {f.name}
+            </MenuItem>
+          ))}
+        </SubMenu>
+        <MenuLine />
         <MenuItem
           onClick={() => {
             setOpen(false)
             onExport('xlsx')
           }}
         >
+          <Download className="size-3.5 text-ink-3" />
           Download Excel, as shown
         </MenuItem>
         <MenuItem
@@ -641,6 +714,7 @@ function More({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
             onExport('csv')
           }}
         >
+          <Download className="size-3.5 text-ink-3" />
           Download CSV, as shown
         </MenuItem>
       </Popover>

@@ -239,8 +239,12 @@ export function SubMenu({
             }
           }}
           onClickCapture={(e) => {
-            // a choice in the submenu closes it; its line's own onClick closes the parent
-            if ((e.target as Element).closest('[role=menuitem]')) setTimeout(() => setOpen(false))
+            // a choice among the submenu's own lines closes it (not one in a dropdown inside it);
+            // its line's own onClick closes the parent
+            const t = e.target as Element
+            const panel = e.currentTarget.closest('[data-popover]')
+            if (t.closest('[role=menuitem]') && t.closest('[data-popover]') === panel)
+              setTimeout(() => setOpen(false))
           }}
         >
           {children}
