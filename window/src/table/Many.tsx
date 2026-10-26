@@ -2,7 +2,7 @@
 // and a paste waiting for the person's yes.
 import type { FieldView, RowView } from '@alpha/core/api'
 import { ClipboardPaste } from 'lucide-react'
-import { type FormEvent, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
@@ -29,6 +29,23 @@ export function TickedBar({
   // rows holding a value the person typed: removing them is removing their own word
   const theirs = rows.filter((r) => Object.values(r.sources).some((s) => s?.kind === 'stated'))
   const n = rows.length
+  // Escape lets go of the ticked rows, unless it is closing a menu or a dialog, or leaving a box
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (
+        e.key !== 'Escape' ||
+        e.defaultPrevented ||
+        t.closest('input, textarea, select, [contenteditable=true]') ||
+        document.querySelector('[data-popover], dialog[open]')
+      )
+        return
+      e.preventDefault() // used here: the screen's own Escape leaves it
+      onClear()
+    }
+    document.addEventListener('keydown', key)
+    return () => document.removeEventListener('keydown', key)
+  }, [onClear])
   return (
     <div className="flex items-center gap-2 rounded-md bg-accent-soft py-0.5 pr-1 pl-3 text-accent text-md">
       <span className="font-medium">{n} selected</span>
@@ -38,7 +55,7 @@ export function TickedBar({
       <Button size="sm" variant="ghost" onClick={() => setRemoving(true)}>
         Delete
       </Button>
-      <Button size="sm" variant="ghost" onClick={onClear}>
+      <Button size="sm" variant="ghost" title="Escape" onClick={onClear}>
         Cancel
       </Button>
       <Popover anchor={setAnchor} open={setting} onClose={() => setSetting(false)}>
