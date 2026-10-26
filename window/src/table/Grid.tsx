@@ -393,7 +393,8 @@ export function Grid({
                           tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
-                          onPick={() => pick(here)}
+                          // a row kept on its own page opens there from its name
+                          onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
                           onEdit={
                             !readOnly && CORRECTABLE.has(f.kind)
                               ? () => startEditing(here)

@@ -303,19 +303,25 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
-  // an agent's or a run's page sits under Activity, a standing permission's under Settings
+  // a run's page sits under Activity, an agent's under Intelligence, a standing permission's under
+  // Settings
   const itemCrumb: Crumb | null =
     place.at !== 'item'
       ? null
-      : place.kind === 'permission'
+      : place.kind === 'agent'
         ? {
-            icon: <SlidersHorizontal className={icon} />,
-            parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
+            icon: <Sparkles className={icon} />,
+            parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
           }
-        : {
-            icon: <ActivityIcon className={icon} />,
-            parts: [at('Activity', '#/activity'), at(itemName || '…')],
-          }
+        : place.kind === 'permission'
+          ? {
+              icon: <SlidersHorizontal className={icon} />,
+              parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
+            }
+          : {
+              icon: <ActivityIcon className={icon} />,
+              parts: [at('Activity', '#/activity'), at(itemName || '…')],
+            }
   const crumb: Crumb =
     place.at === 'activity'
       ? { icon: <ActivityIcon className={icon} />, parts: [at('Activity')] }
