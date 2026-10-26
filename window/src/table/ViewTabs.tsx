@@ -209,7 +209,8 @@ export function ViewTabs({
           onRemove()
         }}
       >
-        The list goes, with its filters, sorts and columns; the rows stay.
+        The list goes, with its filters, sorts and columns, and can’t be brought back; the rows
+        stay.
       </Confirm>
     </div>
   )

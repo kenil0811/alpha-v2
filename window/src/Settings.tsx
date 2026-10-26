@@ -22,6 +22,8 @@ import {
   Plug,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
+  Unplug,
   UserRound,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
@@ -38,7 +40,9 @@ import { cn } from './ui/cn.ts'
 import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
+import { More } from './ui/more.tsx'
 import { Kbd, Pill, type Tone } from './ui/pill.tsx'
+import { MenuItem } from './ui/popover.tsx'
 import { Empty, Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -352,14 +356,20 @@ function HowToWork({ version }: { version: number }) {
               actions={
                 <>
                   {on === keyOf(l) && <Refusal words={problem} />}
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    disabled={busy}
-                    onClick={() => setForgetting(keyOf(l))}
-                  >
-                    Forget
-                  </Button>
+                  <More label="More" disabled={busy}>
+                    {(close) => (
+                      <MenuItem
+                        danger
+                        onClick={() => {
+                          close()
+                          setForgetting(keyOf(l))
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Forget
+                      </MenuItem>
+                    )}
+                  </More>
                 </>
               }
             ></Row>
@@ -374,7 +384,7 @@ function HowToWork({ version }: { version: number }) {
         onClose={() => setForgetting(null)}
         onYes={() => asked && forget(asked)}
       >
-        Alpha stops doing it from now on: “{asked?.words}”
+        Alpha stops doing it from now on: “{asked?.words}”. Saying it again brings it back.
       </Confirm>
     </Section>
   )
@@ -1087,9 +1097,20 @@ function ConnectionLine({
           Read now
         </Button>
       )}
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => setLeaving(true)}>
-        Disconnect
-      </Button>
+      <More label="More" disabled={busy}>
+        {(close) => (
+          <MenuItem
+            danger
+            onClick={() => {
+              close()
+              setLeaving(true)
+            }}
+          >
+            <Unplug className="size-3.5" />
+            Disconnect
+          </MenuItem>
+        )}
+      </More>
       <Refusal words={problem} />
     </>
   )
@@ -1111,7 +1132,7 @@ function ConnectionLine({
   )
   if (inTile)
     return (
-      <div className="flex flex-col gap-2 border-hair border-t pt-3">
+      <div className="group/row flex flex-col gap-2 border-hair border-t pt-3">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate font-medium text-ink">{k.account}</span>
           <Pill tone={tone}>{state}</Pill>
@@ -1198,7 +1219,7 @@ function ConnectorTile({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 rounded-lg border border-line bg-surface p-4',
+        'group/row flex flex-col gap-3 rounded-lg border border-line bg-surface p-4',
         open && 'col-span-full',
       )}
     >
@@ -1218,9 +1239,20 @@ function ConnectorTile({
           </Button>
         )}
         {!open && added && connections.length === 0 && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => setRemoving(true)}>
-            Delete
-          </Button>
+          <More label="More" disabled={busy}>
+            {(close) => (
+              <MenuItem
+                danger
+                onClick={() => {
+                  close()
+                  setRemoving(true)
+                }}
+              >
+                <Trash2 className="size-3.5" />
+                Delete
+              </MenuItem>
+            )}
+          </More>
         )}
         <Confirm
           open={removing}
@@ -1241,7 +1273,7 @@ function ConnectorTile({
             onChange()
           }}
         >
-          The connector you added goes, with its folder.
+          The connector you added goes, with its folder. It can’t be brought back.
         </Confirm>
       </div>
       {open && (

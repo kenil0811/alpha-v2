@@ -28,7 +28,13 @@ export function Row({
   className?: string | undefined
 }) {
   return (
-    <div className={cn('border-hair border-t first:border-t-0', indent && 'bg-canvas', className)}>
+    <div
+      className={cn(
+        'group/row border-hair border-t first:border-t-0',
+        indent && 'bg-canvas',
+        className,
+      )}
+    >
       <div className={cn('flex items-center gap-3 px-4 py-3', indent && 'pl-14')}>
         {lead}
         <div className="min-w-0 flex-1">

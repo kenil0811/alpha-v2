@@ -2,7 +2,7 @@
 // agents, each on or paused, folded under the module until opened. A module is installed from a
 // folder or a file. The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
-import { ChevronDown, ChevronRight, Package } from 'lucide-react'
+import { ChevronDown, ChevronRight, Package, Trash2 } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -10,6 +10,8 @@ import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
+import { More } from './ui/more.tsx'
+import { MenuItem } from './ui/popover.tsx'
 import { Empty, Section } from './ui/section.tsx'
 
 export function when(at: string | null): string {
@@ -256,9 +258,20 @@ function Yours({ module: m, onChange }: { module: WorkingModuleView; onChange: (
           title={`${f.name} in ${f.table}: the module no longer uses it`}
           sub={`${f.rows} row${f.rows === 1 ? '' : 's'} still hold a value under it`}
           actions={
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => setAsking(f.fieldId)}>
-              Delete its values
-            </Button>
+            <More label="More" disabled={busy}>
+              {(close) => (
+                <MenuItem
+                  danger
+                  onClick={() => {
+                    close()
+                    setAsking(f.fieldId)
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete its values
+                </MenuItem>
+              )}
+            </More>
           }
         />
       ))}

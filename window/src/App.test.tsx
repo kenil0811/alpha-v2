@@ -5,6 +5,26 @@ import { NO_LAYOUT } from './layout.ts'
 import { buildWords, NewModule } from './NewModule.tsx'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
+import { More } from './ui/more.tsx'
+import { MenuItem } from './ui/popover.tsx'
+
+describe('delete', () => {
+  it('sits behind ⋮, hidden until the row is hovered, and is not on the screen until ⋮ opens', () => {
+    const html = renderToString(
+      <More label="More">{() => <MenuItem onClick={() => {}}>Delete</MenuItem>}</More>,
+    )
+    expect(html).toContain('aria-label="More"')
+    expect(html).toContain('group-hover/row:opacity-100')
+    expect(html).not.toContain('Delete')
+    expect(
+      renderToString(
+        <More label="More" shown>
+          {() => null}
+        </More>,
+      ),
+    ).not.toContain('opacity-0')
+  })
+})
 
 const modules = [
   { id: 'm_1', name: 'Shops', parent: null, people: false, alpha: false, pages: [], tables: [] },
