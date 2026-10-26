@@ -35,6 +35,7 @@ import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
+import { CellHistory } from './CellHistory.tsx'
 import { ColumnMenu } from './ColumnMenu.tsx'
 import { cycleSort, setTotal, setWidth } from './edits.ts'
 import {
@@ -138,6 +139,7 @@ export function Grid({
     y: number
   } | null>(null)
   const [removing, setRemoving] = useState<RowView | null>(null)
+  const [past, setPast] = useState<{ row: RowView; field: FieldView } | null>(null) // History
   const menuOn = (row: RowView, field: FieldView | null) => ({
     onContextMenu: (e: MouseEvent) => {
       e.preventDefault()
@@ -481,13 +483,24 @@ export function Grid({
             onDone={() => setMenu(null)}
             onEdit={() => menu.field && startEditing({ row: menu.row.id, field: menu.field.slug })}
             onClear={() => menu.field && onEdit(menu.row, menu.field, null)}
-            onHistory={() => menu.field && onPick({ row: menu.row.id, field: menu.field.slug })}
+            onSource={() => menu.field && onPick({ row: menu.row.id, field: menu.field.slug })}
+            onHistory={() => menu.field && setPast({ row: menu.row, field: menu.field })}
             onOpen={() => onOpen(menu.row.id)}
             onDuplicate={() => onDuplicate?.(menu.row)}
             onRemove={() => setRemoving(menu.row)}
           />
         )}
       </Popover>
+      {past && (
+        <CellHistory
+          tableId={tableId}
+          row={past.row.id}
+          field={past.field}
+          rowName={fields[0] ? show(fields[0], past.row.values[fields[0].slug], names) : ''}
+          names={names}
+          onClose={() => setPast(null)}
+        />
+      )}
       <Confirm
         open={!!removing}
         title="Delete this row?"

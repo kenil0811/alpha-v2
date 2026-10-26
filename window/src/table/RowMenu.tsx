@@ -1,8 +1,18 @@
 // A row's menu, opened from the grid by a right-click, Shift+F10 or its ⋮: the cell's own lines
-// (Edit, Copy, Clear, where it came from) when it was opened on a cell, then the row's (Open,
+// (Edit, Copy, Clear, where it came from, its history) when it was opened on a cell, then the row's (Open,
 // Duplicate, Copy link, Delete row). A line that can't be used here stays, greyed, saying why.
 import type { FieldView, RowView } from '@alpha/core/api'
-import { Copy, CopyPlus, Eraser, History, Link, PanelRightOpen, Pencil, Trash2 } from 'lucide-react'
+import {
+  Copy,
+  CopyPlus,
+  Eraser,
+  FileSearch,
+  History,
+  Link,
+  PanelRightOpen,
+  Pencil,
+  Trash2,
+} from 'lucide-react'
 import { MenuItem, MenuLine } from '../ui/popover.tsx'
 import { CORRECTABLE, show } from './values.ts'
 
@@ -16,6 +26,7 @@ export function RowMenu({
   onDone,
   onEdit,
   onClear,
+  onSource,
   onHistory,
   onOpen,
   onDuplicate,
@@ -30,6 +41,7 @@ export function RowMenu({
   onDone: () => void
   onEdit: () => void
   onClear: () => void
+  onSource: () => void
   onHistory: () => void
   onOpen: () => void
   onDuplicate: () => void
@@ -68,9 +80,13 @@ export function RowMenu({
             <Eraser className="size-3.5 text-ink-3" />
             Clear
           </MenuItem>
+          <MenuItem onClick={then(onSource)}>
+            <FileSearch className="size-3.5 text-ink-3" />
+            Where it came from
+          </MenuItem>
           <MenuItem onClick={then(onHistory)}>
             <History className="size-3.5 text-ink-3" />
-            Where it came from, and its history
+            History
           </MenuItem>
           <MenuLine />
         </>
