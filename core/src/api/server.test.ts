@@ -187,6 +187,7 @@ describe('the api over a world', () => {
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: false,
       folded: [],
+      hidden: [],
       railWidth: null,
       panel: null,
       assistant: 'open',
@@ -200,6 +201,7 @@ describe('the api over a world', () => {
       payload: {
         railFolded: true,
         folded: [shops.id],
+        hidden: [shops.id],
         panel: 560,
         railWidth: 260,
         assistant: 'folded',
@@ -209,6 +211,7 @@ describe('the api over a world', () => {
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: true,
       folded: [shops.id],
+      hidden: [shops.id],
       railWidth: 260,
       panel: 560,
       assistant: 'folded',

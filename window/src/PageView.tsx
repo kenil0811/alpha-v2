@@ -234,6 +234,7 @@ export function PageView({
       {source && opened?.row && opened.field && (
         <SourcePanel
           tableId={source.table.id}
+          table={source.table.name}
           row={opened.row}
           field={opened.field}
           rowName={

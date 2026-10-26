@@ -22,7 +22,7 @@ export function MarkButton() {
         startMark()
       }}
       aria-label="Mark something and comment"
-      title="Mark something and comment"
+      data-tip="Mark something and comment"
       className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
     >
       <Pencil className="size-4" />

@@ -26,7 +26,7 @@ export function More({
         ref={anchor}
         type="button"
         aria-label={label}
-        title={label}
+        data-tip={label}
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(

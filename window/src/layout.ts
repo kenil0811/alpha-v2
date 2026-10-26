@@ -6,6 +6,7 @@ import { createContext, useContext } from 'react'
 export const NO_LAYOUT: Layout = {
   railFolded: false,
   folded: [],
+  hidden: [],
   railWidth: null,
   panel: null,
   assistant: 'open',

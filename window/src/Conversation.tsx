@@ -925,7 +925,7 @@ function Composer({
           <button
             ref={chipAt}
             type="button"
-            title={model?.providers.find((p) => p.chosen)?.title}
+            data-tip={model?.providers.find((p) => p.chosen)?.title}
             onClick={() => setOpen(open === 'routes' ? null : 'routes')}
             className="flex h-6.5 items-center gap-1 rounded-full border border-line px-2.5 text-ink-2 text-sm hover:bg-hover hover:text-ink"
           >

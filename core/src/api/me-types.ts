@@ -13,6 +13,7 @@ export interface Me {
 export interface Layout {
   railFolded: boolean
   folded: string[] // the modules folded in the rail
+  hidden: string[] // the modules hidden from the rail, with the ones inside them
   railWidth: number | null // the rail dragged wider or narrower; none is 216px
   panel: number | null // the assistant's width; none is 320px
   assistant: 'open' | 'folded'

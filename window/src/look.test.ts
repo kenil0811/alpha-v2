@@ -1,7 +1,7 @@
 // The look is the tokens' (app.css): no screen names a colour of its own or invents a text size.
 // Tailwind's palette is switched off, so a raw colour would draw nothing; an arbitrary size or
 // colour would still draw, which is why this fails both.
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
@@ -116,8 +116,8 @@ describe('the window’s look', () => {
   })
 })
 
-// The rules in docs/ui-rules.md that code can check, by their numbers there. A skipped one is a
-// rule an open fix is landing: turn it on in the same PR.
+// The rules in docs/ui-rules.md that code can check, by their numbers there. A skipped one waits
+// on its fix: turn it on in the same change.
 const read = (file: string) => readFileSync(join(SRC, file), 'utf8')
 const lines = (re: RegExp, keep: (file: string) => boolean = () => true) =>
   sources(SRC)
@@ -131,33 +131,26 @@ const lines = (re: RegExp, keep: (file: string) => boolean = () => true) =>
     )
 
 describe('the window’s rules (docs/ui-rules.md)', () => {
-  it('R3: never the browser’s confirm, alert or prompt', () => {
+  it('R4: never the browser’s confirm, alert or prompt', () => {
     expect(lines(/(?<![\w.])(?:window\.)?(?:confirm|alert|prompt)\(/)).toEqual([])
   })
 
-  it('A4: an icon button is labelled, read aloud and on hover', () => {
+  it('A4: an icon button is labelled, read aloud and shown on hover in our one tooltip', () => {
     const html = renderToString(createElement(IconButton, { label: 'Close' }))
     expect(html).toContain('aria-label="Close"')
-    expect(html).toContain('title="Close"')
+    expect(html).toContain('data-tip="Close"')
+    expect(html).not.toContain('title=')
   })
 
-  it('T13: the overflow glyph is the vertical ⋮', () => {
+  it('T7: the overflow glyph is the vertical ⋮', () => {
     expect(lines(/\b(?:MoreHorizontal|Ellipsis)\b/)).toEqual([])
   })
 
-  it('T17: no bare <select> but the cell editor', () => {
+  it('T11: no bare <select> but the cell editor', () => {
     expect(lines(/<select\b/, (f) => !f.endsWith(join('table', 'Grid.tsx')))).toEqual([])
   })
 
-  // held: Kenil's look on main (26 Oct) has 11px capital labels; docs/ui-rules.md W5 waits on his answer
-  it.skip('W5: no letter-spaced capitals', () => {
-    expect(
-      lines(/(?<![\w-])(?:uppercase|tracking-wide[rs]?t?)(?![\w-])|text-transform:\s*uppercase/),
-    ).toEqual([])
-    expect(read('app.css')).not.toMatch(/text-transform:\s*uppercase/)
-  })
-
-  it('W5: labels are in sentence case', () => {
+  it('W4: labels are in sentence case', () => {
     // a capital after the first word is a name (Alpha, Second Brain…) or starts an example after a comma
     const NAMES = /^(?:Alpha|Mac|Second|Brain|Monday|Georgia|CSV|Excel|PDF)\b/
     const found: string[] = []
@@ -177,27 +170,19 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
     expect(found).toEqual([])
   })
 
-  // held: as W5, the 11px labels; docs/ui-rules.md L3
-  it.skip('L3: no text size under 12px', () => {
-    const sizes = [...read('app.css').matchAll(/--text-[\w]+:\s*(\d+)px/g)].map((m) => Number(m[1]))
-    expect(sizes.length).toBe(7)
-    expect(sizes.filter((px) => px < 12)).toEqual([])
-  })
-
-  it.skip('S10: heights in dvh, never vh', () => {
+  it.skip('S8: heights in dvh, never vh', () => {
     expect(lines(/\d+vh\b|(?<![\w-])(?:min-|max-)?h-screen\b/)).toEqual([])
   })
 
-  it.skip('H5: no Find box in the header; ⌘K still finds', () => {
+  it('H3: no Find box in the header; ⌘K still finds', () => {
     expect(read('Shell.tsx')).not.toContain('aria-label="Find anything"')
   })
 
-  it.skip('A1: the assistant’s header has no Expand and no Open whole conversation', () => {
+  it('A1: the assistant’s header has no Expand and no Open whole conversation', () => {
     expect(read('Assistant.tsx')).not.toMatch(/Expand to half|Open the whole conversation/)
   })
 
-  it.todo('T1: toolbar has saved list, view, search on the left; Filter, then ⋮, on the right')
-  it.todo('T2: metric tiles sit below the toolbar row')
-  it.todo('L4: headings are 27px')
-  it.todo('A4: every icon button shows one quick tooltip of ours, not the browser’s title')
+  it('T2: no cards of counts on a table', () => {
+    expect(existsSync(join(SRC, 'table', 'Metrics.tsx'))).toBe(false)
+  })
 })

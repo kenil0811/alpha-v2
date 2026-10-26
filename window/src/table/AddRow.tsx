@@ -1,6 +1,7 @@
 import type { FieldView } from '@alpha/core/api'
 import { type FormEvent, useState } from 'react'
 import { api, Problem } from '../api.ts'
+import { askForNew } from '../ask.ts'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Dialog } from '../ui/dialog.tsx'
@@ -57,6 +58,7 @@ export function AddRow({
               id={`add-${f.id}`}
               value={values[f.name] ?? ''}
               onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+              adds={{ what: 'choice', send: (w) => askForNew('choice', `${f.name} in ${name}`, w) }}
             >
               <option value="" />
               {f.choices.map((c) => (

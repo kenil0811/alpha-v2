@@ -690,7 +690,7 @@ function Header({
       <div className={cn('relative flex h-9 items-center', numeric && 'flex-row-reverse')}>
         <button
           type="button"
-          title={`${f.about ? `${f.about} ` : ''}Click to sort, shift-click to sort by it next; drag to move it; right-click for more.`}
+          data-tip={`${f.about ? `${f.about} ` : ''}Click to sort, shift-click to sort by it next; drag to move it; right-click for more.`}
           onClick={(e) => onConfig(cycleSort(config, f.id, e.shiftKey))}
           className={cn(
             'flex h-full min-w-0 flex-1 cursor-grab items-center gap-1 px-2.5 hover:text-ink active:cursor-grabbing',
@@ -727,7 +727,7 @@ function Header({
         <span
           aria-hidden="true"
           onPointerDown={resize}
-          title={`Drag to resize ${f.name}`}
+          data-tip={`Drag to resize ${f.name}`}
           className="absolute top-0 -right-1 z-10 h-full w-2 cursor-col-resize hover:bg-accent-line"
         />
       </div>
@@ -817,7 +817,7 @@ function Cell({
         }}
         onDoubleClick={onEdit}
         onKeyDown={key}
-        title={onEdit ? 'Double-click, Enter or F2 to change it' : undefined}
+        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : undefined}
         className={cn(
           'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
@@ -849,14 +849,14 @@ function Cell({
               tone && INK[tone],
             )}
             data-name={onOpen ? '' : undefined}
-            title={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
+            data-tip={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
           >
             {text}
           </span>
         )}
         {mark && !empty && source && (
           <span
-            title={KIND_WORDS[source.kind]}
+            data-tip={KIND_WORDS[source.kind]}
             className="self-start pt-2 text-ink-3 text-xs leading-none"
           >
             {mark}

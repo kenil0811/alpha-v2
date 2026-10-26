@@ -276,7 +276,7 @@ export function TableView({
                 <button
                   type="button"
                   onClick={() => setSearching(true)}
-                  title={`Search ${data.name}`}
+                  data-tip={`Search ${data.name}`}
                   className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
                 >
                   <Search className="size-3.25 shrink-0" />
@@ -354,10 +354,9 @@ export function TableView({
               if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
             })
           }
-          onDefault={(on) =>
+          onDefault={(id, on) =>
             act(async () => {
-              if (viewId)
-                replace(await api.put<SavedView>(`/api/views/${viewId}`, { isDefault: on }))
+              replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
             })
           }
           onRemove={() =>
@@ -424,6 +423,7 @@ export function TableView({
           </div>
         ) : config.kind === 'form' ? (
           <FormView
+            table={data.name}
             rows={rows}
             fields={shown}
             names={data.names}
@@ -533,7 +533,7 @@ export function TableView({
               onPaste={setPasting}
             />
             <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
-              <span title={typeof onNew === 'string' ? onNew : undefined} className="mr-auto">
+              <span data-tip={typeof onNew === 'string' ? onNew : undefined} className="mr-auto">
                 <Button
                   size="sm"
                   disabled={typeof onNew === 'string'}
@@ -612,6 +612,7 @@ export function TableView({
       {!adding && !quiet && !openedRow && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
+          table={data.name}
           row={pickedRow}
           field={pickedField}
           rowName={first ? show(first, pickedRow.values[first.slug], data.names) : ''}

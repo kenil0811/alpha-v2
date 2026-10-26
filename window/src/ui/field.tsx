@@ -1,9 +1,10 @@
 // A field: one line of text, a choice, or the composer's words. Focus shows in the accent.
 
-import { ChevronDown, Search } from 'lucide-react'
+import { ChevronDown, Plus, Search } from 'lucide-react'
 import {
   type ChangeEvent,
   Children,
+  type FormEvent,
   type InputHTMLAttributes,
   isValidElement,
   type KeyboardEvent,
@@ -12,8 +13,10 @@ import {
   useRef,
   useState,
 } from 'react'
+import { Refusal, useAct } from './act.tsx'
+import { Button } from './button.tsx'
 import { cn } from './cn.ts'
-import { MenuItem, Popover } from './popover.tsx'
+import { MenuItem, MenuLine, Popover } from './popover.tsx'
 
 const FIELD =
   'h-7.5 min-w-0 rounded-md border border-line bg-surface px-2.5 text-ink text-md outline-none transition-colors placeholder:text-ink-3 focus:border-accent-line focus:ring-3 focus:ring-accent-soft'
@@ -44,14 +47,27 @@ export function Select({
   children,
   disabled,
   title,
+  adds,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement>) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  // Add new… at the list's foot: one line naming the new one, sent for Alpha to add
+  adds?: { what: string; send: (words: string) => Promise<unknown> } | undefined
+}) {
   const options = optionsOf(children)
   const [own, setOwn] = useState(String(defaultValue ?? options[0]?.value ?? ''))
   const now = value === undefined ? own : String(value)
   const [open, setOpen] = useState(false)
   const [words, setWords] = useState('')
+  const [asking, setAsking] = useState(false) // Add new…'s line is open
+  const [ask, setAsk] = useState('')
+  const { busy, problem, act } = useAct()
   const anchor = useRef<HTMLButtonElement>(null)
+  const close = () => {
+    setOpen(false)
+    setWords('')
+    setAsking(false)
+    setAsk('')
+  }
   const shown = options.filter((o) => o.label.toLowerCase().includes(words.trim().toLowerCase()))
   // the keyboard is the menu's own (ui/popover.tsx): the arrows, Home, End and a letter move
   // between the lines, Return picks, Escape closes; ↓ or ↑ on the button opens it
@@ -63,8 +79,7 @@ export function Select({
   }
   const pick = (v: string) => {
     setOwn(v)
-    setOpen(false)
-    setWords('')
+    close()
     anchor.current?.focus()
     onChange?.({
       target: { value: v },
@@ -94,7 +109,7 @@ export function Select({
         </span>
         <ChevronDown className="size-3.5 shrink-0 text-ink-3" />
       </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
+      <Popover anchor={anchor} open={open} onClose={close}>
         <div className="flex max-h-72 min-w-44 flex-col p-1">
           {options.length > 5 && (
             <label className="mb-1 flex items-center gap-1.5 border-line border-b px-2 pb-1.5">
@@ -123,6 +138,38 @@ export function Select({
             ))}
             {shown.length === 0 && <p className="px-2.5 py-1.5 text-ink-3 text-md">No match.</p>}
           </div>
+          {adds && <MenuLine />}
+          {adds && !asking && (
+            <MenuItem onClick={() => setAsking(true)}>
+              <Plus className="size-3.5 text-ink-3" />
+              Add new…
+            </MenuItem>
+          )}
+          {adds && asking && (
+            <form
+              onSubmit={async (e: FormEvent) => {
+                e.preventDefault()
+                e.stopPropagation() // drawn over a form (Add a row) that would take the submit too
+                if (ask.trim() && (await act(() => adds.send(ask.trim())))) close()
+              }}
+              className="flex flex-col gap-1.5 p-1"
+            >
+              <div className="flex items-center gap-1.5">
+                <Field
+                  autoFocus
+                  value={ask}
+                  onChange={(e) => setAsk(e.target.value)}
+                  placeholder={`The new ${adds.what}`}
+                  aria-label={`The new ${adds.what}`}
+                  className="flex-1"
+                />
+                <Button type="submit" size="sm" variant="primary" disabled={busy || !ask.trim()}>
+                  Send
+                </Button>
+              </div>
+              <Refusal words={problem} />
+            </form>
+          )}
         </div>
       </Popover>
     </>

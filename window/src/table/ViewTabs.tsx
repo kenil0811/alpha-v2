@@ -1,10 +1,11 @@
-// A table's toolbar, one row that never wraps, in this order: the saved list (a dropdown: All,
-// then each list, shared by everyone, with Add list at its foot), Save and Cancel while the list
+// A table's toolbar, one row that never wraps, in this order: the saved list (a dropdown: the one
+// the table opens on first, its ★ filled, then All and each list, shared by everyone, a ★ on hover
+// making one the default, with Add list at its foot), Save and Cancel while the list
 // on screen differs from what was saved, the view, search and filter (`tools`), and on the right
 // the table's actions, ⋮ and the numbers' chevron (`right`). The list's own actions sit in the
 // dropdown and on a right-click of it: rename, duplicate, open the table on it, delete.
 import type { SavedView } from '@alpha/core/api'
-import { ChevronDown, Plus, Star } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { Confirm } from '../ui/dialog.tsx'
@@ -36,7 +37,7 @@ export function ViewTabs({
   onSave: () => void
   onSaveAs: (name: string) => void
   onRename: (name: string) => void
-  onDefault: (on: boolean) => void
+  onDefault: (id: string, on: boolean) => void // the core keeps the list the table opens on
   onRemove: () => void
   onReset: () => void
 }) {
@@ -52,6 +53,8 @@ export function ViewTabs({
     onList.close()
   }
   const allReason = view ? undefined : 'All keeps its name and stays.'
+  const mark = views.find((v) => v.isDefault) // the list the table opens on; none, All
+  const starred = (v: SavedView | null) => (v ? v.isDefault : !mark)
   // the list's own actions: in the dropdown, under its lines, and on a right-click of it
   const actions = (
     <>
@@ -83,7 +86,7 @@ export function ViewTabs({
         }
         onClick={() => {
           close()
-          if (view) onDefault(!view.isDefault)
+          if (view) onDefault(view.id, !view.isDefault)
         }}
       >
         Open the table on this list
@@ -109,7 +112,7 @@ export function ViewTabs({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Saved list: ${name}`}
-        title={
+        data-tip={
           view
             ? 'The saved list: double-click to rename it; right-click to rename, duplicate or delete it'
             : 'The saved list: right-click to duplicate it'
@@ -142,7 +145,7 @@ export function ViewTabs({
             size="sm"
             variant="primary"
             onClick={() => (view ? onSave() : setNaming('new'))}
-            title={
+            data-tip={
               view ? `Save the changes to ${view.name}` : 'Keep what is on screen as a new list'
             }
           >
@@ -155,23 +158,29 @@ export function ViewTabs({
       <span className="ml-auto flex shrink-0 items-center gap-1">{right}</span>
       <Popover anchor={picker} open={open} onClose={() => setOpen(false)}>
         <MenuHeading>Saved lists</MenuHeading>
-        {[null, ...views].map((v) => (
-          <MenuItem
-            key={v?.id ?? 'all'}
-            checked={(v?.id ?? null) === current}
-            hint={
-              (v ? v.isDefault : !views.some((x) => x.isDefault)) && (
-                <Star className="size-3.25 fill-current" aria-label="The table opens on it" />
-              )
-            }
-            onClick={() => {
-              setOpen(false)
-              onPick(v?.id ?? null)
-            }}
-          >
-            {v?.name ?? 'All'}
-          </MenuItem>
-        ))}
+        {[null, ...views]
+          .sort((a, b) => Number(starred(b)) - Number(starred(a)))
+          .map((v) => (
+            <MenuItem
+              key={v?.id ?? 'all'}
+              checked={(v?.id ?? null) === current}
+              star={{
+                on: starred(v),
+                // All's ★ comes back when no list has one; a list's own ★ off opens the table on All
+                onClick: v
+                  ? () => onDefault(v.id, !v.isDefault)
+                  : mark
+                    ? () => onDefault(mark.id, false)
+                    : undefined,
+              }}
+              onClick={() => {
+                setOpen(false)
+                onPick(v?.id ?? null)
+              }}
+            >
+              {v?.name ?? 'All'}
+            </MenuItem>
+          ))}
         <MenuLine />
         {actions}
         <MenuLine />

@@ -127,7 +127,7 @@ export function Rail({
   // the rail's width, dragged by its edge, kept by Alpha per person
   const width = layout.railWidth ?? 216
   const [dragged, setDragged] = useState<number | null>(null)
-  const hiding = useHiding()
+  const hiding: Hiding = { hidden: layout.hidden, set: (ids) => onLayout({ hidden: ids }) }
   const empty = useContextMenu()
   const keepWidth = (w: number) => onLayout({ railWidth: w })
   if (layout.railFolded)
@@ -268,10 +268,8 @@ export function Rail({
   )
 }
 
-// The workspace at the rail's top: its initial on an accent tile and its name. It opens Settings,
-// where the workspace is kept.
-// The rail's head: the workspace's tile and name, opening a menu of where Alpha is set up and how
-// it looks. One workspace per Mac, so switching is shown with its reason.
+// The rail's head: the workspace's initial on an accent tile and its name, opening a menu of where
+// Alpha is set up (Settings, Intelligence) and how it looks.
 function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   const label = name ? `${name}'s workspace` : 'Your workspace'
   const anchor = useRef<HTMLButtonElement>(null)
@@ -345,12 +343,6 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
               {words}
             </MenuItem>
           ))}
-          <MenuLine />
-          <div title="Alpha keeps one workspace on this Mac.">
-            <MenuItem disabled onClick={() => undefined}>
-              Switch workspace
-            </MenuItem>
-          </div>
         </div>
       </Popover>
     </>
@@ -418,26 +410,9 @@ function ModuleDrag({ modules, children }: { modules: ModuleSummary[]; children:
   )
 }
 
-// Modules hidden from the rail, in this browser only (the core keeps no such flag), with the
-// modules inside them. A hidden one still opens by its link and by Find.
+// Modules hidden from the rail, with the modules inside them, kept per person by the core like the
+// rail's folds. A hidden one still opens by its link and by Find.
 type Hiding = { hidden: string[]; set: (ids: string[]) => void }
-
-function useHiding(): Hiding {
-  const [hidden, setHidden] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('alpha.hidden') ?? '[]')
-    } catch {
-      return []
-    }
-  })
-  const set = (ids: string[]) => {
-    setHidden(ids)
-    try {
-      localStorage.setItem('alpha.hidden', JSON.stringify(ids))
-    } catch {}
-  }
-  return { hidden, set }
-}
 
 const shownTops = (modules: ModuleSummary[], hidden: string[]) =>
   tops(modules).filter((m) => !hidden.includes(m.id))
@@ -580,8 +555,8 @@ function ModuleItem({
   )
 }
 
-// A module's menu: Open, Rename and Change icon (waiting on the core), Move to › every other module
-// it may sit inside (never itself or one of its own) or the top, Hide, and Hidden modules ›.
+// A module's menu: Open, Move to › every other module it may sit inside (never itself or one of its
+// own) or the top, Hide, and Hidden modules ›.
 function ModuleMenu({
   m,
   modules,
@@ -640,12 +615,6 @@ function ModuleMenu({
         >
           Open
         </MenuItem>
-        <MenuItem onClick={() => undefined} reason="Not yet: the core can't rename a module">
-          Rename
-        </MenuItem>
-        <SubMenu label="Change icon" reason="Not yet: the core can't keep a module's icon">
-          {null}
-        </SubMenu>
         <SubMenu label="Move to">
           {flat(modules)
             .filter(({ module }) => !own.has(module.id))

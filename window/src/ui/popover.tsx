@@ -3,7 +3,7 @@
 // Escape (the innermost one only), or the page scrolling away. Inside, the arrow keys, Home and
 // End move between a menu's lines and a letter jumps to the next line starting with it; → opens a
 // submenu and ← goes back out of it.
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Star } from 'lucide-react'
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -147,7 +147,8 @@ function move(e: KeyboardEvent<HTMLDivElement>) {
 }
 
 // A line in a popover's menu. One that can't be used stays in the menu, greyed, and says why on
-// hover.
+// hover. With `star`, a ★ on its right shows on hover, filled on the default line; a click on the
+// ★ makes the line the default (on the default, stops it being one) and never picks the line.
 export function MenuItem({
   children,
   onClick,
@@ -156,6 +157,7 @@ export function MenuItem({
   reason,
   danger,
   hint,
+  star,
 }: {
   children: ReactNode
   onClick: () => void
@@ -164,9 +166,10 @@ export function MenuItem({
   reason?: string | undefined // why it can't be used, shown on hover
   danger?: boolean | undefined
   hint?: ReactNode // on the right: a count, a shortcut
+  star?: { on: boolean; onClick: (() => void) | undefined } | undefined // no onClick: kept as it is
 }) {
   const off = disabled || !!reason
-  return (
+  const line = (
     <button
       type="button"
       role="menuitem"
@@ -184,7 +187,28 @@ export function MenuItem({
       <span className="w-3.5 shrink-0 text-accent">{checked ? '✓' : ''}</span>
       <span className="flex min-w-0 flex-1 items-center gap-2">{children}</span>
       {hint && <span className="shrink-0 text-ink-3 text-sm">{hint}</span>}
+      {star && <span className="size-3.5 shrink-0" />}
     </button>
+  )
+  if (!star) return line
+  return (
+    <div className="group relative">
+      {line}
+      <button
+        type="button"
+        aria-pressed={star.on}
+        aria-label={star.on ? 'The default' : 'Make it the default'}
+        data-tip={star.on ? 'The default' : 'Make it the default'}
+        disabled={!star.onClick}
+        onClick={star.onClick}
+        className={cn(
+          'absolute top-1/2 right-1.5 grid size-5 -translate-y-1/2 place-items-center rounded-sm text-ink-3 outline-none focus-visible:ring-2 focus-visible:ring-accent-soft enabled:hover:text-accent',
+          star.on ? 'text-accent' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+        )}
+      >
+        <Star className={cn('size-3.25', star.on && 'fill-current')} />
+      </button>
+    </div>
   )
 }
 

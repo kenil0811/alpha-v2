@@ -18,7 +18,7 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      title={label}
+      data-tip={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(

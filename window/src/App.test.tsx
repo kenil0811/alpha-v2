@@ -49,6 +49,23 @@ const modules = [
 ]
 const open = NO_LAYOUT
 
+describe('a menu line', () => {
+  it('gives the default a filled ★ of its own beside it, so starring never picks the line', () => {
+    const line = (on: boolean) =>
+      renderToString(
+        <MenuItem onClick={() => undefined} star={{ on, onClick: () => undefined }}>
+          Won
+        </MenuItem>,
+      )
+    expect(line(true)).toContain('aria-pressed="true"')
+    expect(line(true)).toContain('fill-current')
+    expect(line(false)).toContain('aria-label="Make it the default"')
+    expect(line(false)).not.toContain('fill-current')
+    // two buttons side by side, not one inside the other
+    expect(line(false)).toMatch(/<\/button><button/)
+  })
+})
+
 describe('the window', () => {
   it('takes an old Intelligence › Permissions link to Settings', () => {
     expect(placeOf('#/intelligence/permissions')).toEqual({

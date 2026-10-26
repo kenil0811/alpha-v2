@@ -3,16 +3,19 @@
 import type { FieldView, RowView } from '@alpha/core/api'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
+import { askForNew } from '../../ask.ts'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { Field, Select } from '../../ui/field.tsx'
 import { CORRECTABLE, readValue, show, titleOf, typedOf } from '../values.ts'
 
 export function FormView({
+  table,
   rows,
   fields,
   names,
   onSave,
 }: {
+  table: string // its name, for Add new…
   rows: RowView[]
   fields: FieldView[]
   names: Record<string, string>
@@ -101,6 +104,10 @@ export function FormView({
                   id={`form-${f.id}`}
                   value={typed[f.slug] ?? ''}
                   onChange={(e) => setTyped({ ...typed, [f.slug]: e.target.value })}
+                  adds={{
+                    what: 'choice',
+                    send: (w) => askForNew('choice', `${f.name} in ${table}`, w),
+                  }}
                 >
                   <option value="" />
                   {f.choices.map((c) => (

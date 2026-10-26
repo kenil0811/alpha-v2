@@ -611,14 +611,15 @@ an agent. **The pencil**, beside the bell, marks anything on screen and sends a 
 Alpha with what was marked (the page; a cell's row, column and value; a header; a label and its
 section).
 
-**The rail is module names only** (Kenil, 20 Oct; UI batches 1 and 2, 26 Oct): the workspace at
-its head, Home, Conversation, Tasks, then each module by name (Alpha's own, whose module.yaml
+**The rail is module names only** (Kenil, 20 Oct; UI batches 1, 2 and 5, 26 Oct): the workspace at
+its head (a menu: Settings, Intelligence, Appearance), Home, Conversation, Tasks, then each module by name (Alpha's own, whose module.yaml
 says `core: true`, is not there: its Decisions and Noticed are Second Brain's) with the modules inside it folded
-under it, a menu to move one into another, New module last (it starts the sentence "Make a module
-for "), and Intelligence and Settings at the foot; Activity is the assistant's bell. **One header**
-(48px, across the rail, the screen and the assistant): a way back when inside something, the
-screen's name centred, Find on the right (left out on a screen showing a table, whose own search is
-the one box there; ⌘K still finds; UI batch 3). Under it, a screen with parts has **one row of tabs**,
+under it, a module's menu (its ⋮ or a right-click: Open, Move to, Hide, Hidden modules), modules
+dragged into one another or out to the top, New module last (a page: a name and what it keeps
+track of; Build it asks Alpha), and Intelligence and Settings at the foot; Activity is the
+assistant's bell. **One header** (48px, across the rail, the screen and the assistant): a way back
+when inside something other than a module, the screen's name centred, and no Find box (⌘K finds
+anywhere; UI batch 5). Under it, a screen with parts has **one row of tabs**,
 every label in full (a table's row count beside its name), scrolling sideways when long, never
 cut short or folded to icons (Kenil, 26 Oct). A module's tabs are its pages, its tables, its
 Conversation and its Agents and notes, which holds its agents, the notes Alpha reads first, what
@@ -630,10 +631,10 @@ of the module whose `module.yaml` says `people: true` (Network's), beside its ow
 plain list, a row per module with its name, where it comes from and what goes on in it right now
 (agents on and running, open tasks, what waits on the person), nothing of its tables. The
 rail folds to a strip of icons (⌘\) or drags wider by its edge, and the assistant drags wider,
-to two thirds of the window less what the screen keeps, or expands to half of it, or opens as the
-full Conversation. How the person left them (the rail's width and folds, the assistant's width and
-whether it is folded, a table's rows to a page) is kept per person in the world, like the theme,
-never in the browser. A table has no cards of counts above it (Kenil, 26 Oct). Scrollbars are thin,
+to two thirds of the window less what the screen keeps; its header is fold, face, name, the pencil
+and the bell. How the person left them (the rail's width, folds and hidden modules, the
+assistant's width and whether it is folded, a table's rows to a page) is kept per person in the
+world, like the theme, never in the browser. A table has no cards of counts above it (Kenil, 26 Oct). Scrollbars are thin,
 a 4px thumb shown while the box is under the pointer; a row of tabs shows none.
 
 **The other screens:** a Module (the same stream filtered to it; tables in the views offered:
@@ -653,10 +654,13 @@ sits in a card inside a card (Kenil, 26 Oct); one record layout serves a person,
 an agent, a run and a permission; one dropdown everywhere, by mouse or keyboard.
 Plain words, no tool names, no ids: the words a person reads are agreed (`window/src/vocabulary.ts`:
 module not kit, organization not company, Delete not remove, Download not export; a card's Yes and
-No read Approve and Decline), and a test holds them. A section's explanation sits behind an ⓘ. **The window says what happened**
+No read Approve and Decline), and a test holds them. A section's explanation sits behind an ⓘ;
+every icon button's label shows in one quick tooltip of the window's own; dates read "25 Oct"
+and are typed as words. `docs/ui-rules.md` lists each window rule with the test that holds it,
+and is corrected the day this section changes. **The window says what happened**
 (items 28 to 30 of the problems list, 25 Oct): a removal that cannot be taken back in a click
 (Disconnect, Delete list, Forget, Revoke, a connector, ticked rows, a task, going back to a
-backup, bringing data in, deleting it all) asks first in the one pop-up (`window/src/ui/dialog.tsx`,
+backup, bringing data in, deleting it all) sits behind a ⋮ (UI batch 5) and asks first in the one pop-up (`window/src/ui/dialog.tsx`,
 the browser's own dialog, Cancel first; pull requests 1 and 3, 26 Oct), naming what goes; a refusal shows in a line beside the control that was pressed (one hook,
 `window/src/ui/act.tsx`), never dropped; a core that does not answer is "Alpha isn't answering on
 this Mac right now.", and a part of Home that did not load says so, with Try again.
@@ -717,7 +721,8 @@ A choice may give its choices tones, drawn as a dot; a table filters by a choice
 added in the window is the person's; a computed value may carry its figuring as a note. Find (⌘K)
 finds rows too. Appearance is kept per person in the world. Tables have v1's tools (Kenil, 20 Oct),
 and since UI batch 3 (Kenil's picks, 26 Oct) one toolbar line: the saved list (a dropdown of All
-and each list, Add list at its foot; a saved view is called a list), the view, Search (a button
+and each list, the one the table opens on first with its ★ filled, a ★ on hover making another the
+default, Add list at its foot; a saved view is called a list), the view, Search (a button
 until clicked), Filter (Clear all after two), Columns and ⋮ (Sort editor, Group, Layout, Add column,
 Download as Excel, CSV or a copied table), with Save and Cancel only while the list on screen
 differs from the saved one. Every menu works from the keyboard (arrows, Home, End, a letter, Escape
@@ -726,8 +731,12 @@ cannot do with the reason on hover; a line for what Alpha cannot do at all yet i
 column's menu sorts, filters, groups, totals, moves, hides, freezes up to it, wraps its words and
 inserts a column beside it; a header drags to move it. Freezing and wrapping are kept with the
 list in the core, like widths and order. A cell's menu edits, copies, clears and opens where it
-came from; a row's (also its ⋮ on hover) opens, duplicates, copies its link and deletes it, asking
-first. Tick boxes show on hover. Sorts come in levels, one level of groups with totals, resizable
+came from, or shows its History (each change old → new, who, when); a row's (also its ⋮ on hover)
+opens, duplicates, copies its link and deletes it, asking first. Tick boxes show on hover. A click
+on a row's name opens it. New sits in the page row under the table, as a dialog while the
+assistant is open; an empty table keeps its header, blank rows and footer and says nothing. ⇧↓
+stretches a cell down its column and ⌘D fills it down, after a yes; a choice's dropdown ends with
+Add new…, which asks Alpha for one more (UI batch 5). Sorts come in levels, one level of groups with totals, resizable
 columns, values changed in place as the person's word (in a row opened whole too, by a
 double-click), ticked rows set or removed (Escape lets go), a pasted block filling across and down,
 a field added from the header, and a board's cards dragged between its columns. All

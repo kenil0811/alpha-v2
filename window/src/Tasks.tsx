@@ -193,7 +193,7 @@ function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
       <button
         ref={anchor}
         type="button"
-        title={`${label}: change it`}
+        data-tip={`${label}: change it`}
         aria-label={`${t.title}: ${label}. Change its state`}
         aria-haspopup="menu"
         onClick={() => setChoosing((c) => !c)}

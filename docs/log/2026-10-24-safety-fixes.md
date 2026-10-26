@@ -285,3 +285,27 @@ replies; 18's reason on a menu line for 37).
 - For the next plan: rules the core enforces, links between Second Brain items (44), scheduled
   reports (26), a model per message (37), Retry.
 
+## UI pull requests, batch 5 (26 Oct)
+
+Review https://claude.ai/artifact/HSnayYLdUJmBiomKLDQtrh; Kenil's calls (20:22): 18 taken (32, 34,
+42, 43, 45, 49 and 54 with my fixes), 39 and 55 held, 40, 41, 48, 58 and 60 dropped. Vikas had cut
+these from a copy of the menus chain he re-merged with main, so each landed as its own change (its
+pull request's diff, applied three-way onto main as tried in a scratch copy), one commit each with
+his name, never his branch.
+
+- Rail: no greyed Switch workspace, Rename or Change icon; hidden modules kept per person by the
+  core (`Layout.hidden`, beside the folds, and its test), not in the browser (32, 42).
+- Settings › Model: the ways on their rows; no usage cards of dashes and no key ending the core
+  never sends (43).
+- Add new… on the one dropdown (`adds`, sent through `askForNew` in `ask.ts`) on Add a row, the form
+  view, the board's cards and Correct it; the ★ only on saved lists, the core's own default, and a
+  test for the menu line's ★ (45).
+- The newer controls' hover help on the one tooltip (54); `docs/ui-rules.md` rewritten for what
+  Kenil decided, its tests numbered as it is, the tooltip, Find and assistant tests on, and
+  CLAUDE.md's line on it saying a rule lands on Kenil's yes (49).
+- Fixed on the way: an agent's page said Settings in the bar since batch 4; it says Intelligence.
+- Design §14: the rail, the header without Find, the assistant's header, tooltips, dates,
+  deleting behind ⋮, the table's new tools.
+- For the next plan: undo one change, bring deleted rows back, a module's files list, renaming a
+  module and its icon, what each run costs, removing a kept key, a choice default for everyone.
+

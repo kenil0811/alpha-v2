@@ -1,6 +1,7 @@
 import type { FieldView, RowView, TableView as TableData } from '@alpha/core/api'
 import { useState } from 'react'
 import { api } from '../api.ts'
+import { askForNew } from '../ask.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
 import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
@@ -91,6 +92,10 @@ export function Board({
                   disabled={busy && on === r.id}
                   aria-label={`Move to another ${by.name.toLowerCase()}`}
                   onChange={(e) => move(r.id, e.target.value)}
+                  adds={{
+                    what: 'choice',
+                    send: (w) => askForNew('choice', `${by.name} in ${data.name}`, w),
+                  }}
                 >
                   {choice === '' && <option value="">Move to…</option>}
                   {by.choices.map((c) => (
