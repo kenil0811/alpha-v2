@@ -14,6 +14,7 @@ import {
   EllipsisVertical,
   House,
   ListChecks,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -122,23 +123,12 @@ export function Rail({
   onLayout: (change: Partial<Layout>) => void
   onNew: () => void // New module: the assistant makes one from what the person says
 }) {
-  // the rail's width, dragged by its edge, kept in this browser
-  const [width, setWidth] = useState(() => {
-    try {
-      return Number(localStorage.getItem('alpha.rail')) || 216
-    } catch {
-      return 216
-    }
-  })
+  // the rail's width, dragged by its edge, kept by Alpha per person
+  const width = layout.railWidth ?? 216
   const [dragged, setDragged] = useState<number | null>(null)
   const hiding = useHiding()
   const empty = useContextMenu()
-  const keepWidth = (w: number) => {
-    setWidth(w)
-    try {
-      localStorage.setItem('alpha.rail', String(w))
-    } catch {}
-  }
+  const keepWidth = (w: number) => onLayout({ railWidth: w })
   if (layout.railFolded)
     return (
       <Strip
@@ -199,6 +189,12 @@ export function Rail({
         label="Home"
         current={place.at === 'home'}
         extra={waiting > 0 && <Badge n={waiting} />}
+      />
+      <Nav
+        href="#/conversation"
+        icon={<MessageSquare className="size-4" />}
+        label="Conversation"
+        current={place.at === 'conversation'}
       />
       <Nav
         href="#/tasks"
@@ -294,7 +290,7 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
 
 function Badge({ n }: { n: number }) {
   return (
-    <span className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
+    <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
     </span>
   )
@@ -752,9 +748,8 @@ export interface Crumb {
 // the rail's narrowest and widest
 const RAIL = [180, 360] as const
 
-// Network, the module shipped on install that People and Organizations live in, found by its name.
-export const network = (modules: ModuleSummary[]) =>
-  modules.find((m) => m.name === 'Network' && !m.parent) ?? null
+// The module People and Organizations live in, as its module.yaml says (people: true; Network's).
+export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
 
 // What a screen puts in the middle of the bar: its pill switch, or its title. A screen that puts
 // nothing there gets its name in serif.

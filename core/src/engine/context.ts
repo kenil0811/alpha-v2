@@ -1,7 +1,9 @@
 // The context layers (design §6). The system prompt is in config; this builds the start layer
 // (at session start and after compaction) and the per-turn layer (on each message). Everything
 // else the model fetches.
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { parse } from 'yaml'
 import { config } from '../config.ts'
 import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
@@ -10,6 +12,30 @@ import { instructionsFile } from './tools/index.ts'
 
 function readWhole(file: string): string {
   return existsSync(file) ? readFileSync(file, 'utf8').trim() : ''
+}
+
+// A module's skills, each by its SKILL.md's name and description (item 61 of the problems list,
+// 25 Oct): what its scripts do, known from the start without reading the folder.
+export function skillsOf(dir: string): { name: string; description: string }[] {
+  const root = join(dir, 'skills')
+  if (!existsSync(root)) return []
+  const out: { name: string; description: string }[] = []
+  for (const s of readdirSync(root, { withFileTypes: true })) {
+    if (!s.isDirectory()) continue
+    const file = join(root, s.name, 'SKILL.md')
+    const front = /^---\n([\s\S]*?)\n---/.exec(readWhole(file))?.[1]
+    if (!front) continue
+    try {
+      const f = (parse(front) ?? {}) as { name?: unknown; description?: unknown }
+      out.push({
+        name: String(f.name ?? s.name),
+        description: String(f.description ?? '').trim(),
+      })
+    } catch {
+      // a front matter that does not read is left out, never a broken start layer
+    }
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export function startLayer(
@@ -37,6 +63,11 @@ export function startLayer(
     for (const t of m.tables)
       parts.push(
         `- ${t.name} (view ${t.view}), ${t.rows} row${t.rows === 1 ? '' : 's'}${t.about ? `: ${t.about}` : ''}${t.documents?.length ? ` Its rows take documents: ${t.documents.join(', ')}.` : ''}`,
+      )
+    const skills = skillsOf(m.dir)
+    if (skills.length)
+      parts.push(
+        `Skills (skills/<name>/SKILL.md says more):\n${skills.map((s) => `- ${s.name}${s.description ? `: ${s.description}` : ''}`).join('\n')}`,
       )
   }
   parts.push(

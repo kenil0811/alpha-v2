@@ -127,24 +127,35 @@ export function parseAgent(text: string, file: string): AgentFile {
 }
 
 // The module's agents as its files say: new ones start in `state`, known ones keep theirs, and
-// one whose file is gone goes. Returns how many there are.
+// one whose file is gone goes. An agent is known by its file first, then its name, so a rename
+// in the file keeps it whole: its state, last run and history (item 47, 25 Oct). Returns how
+// many there are.
 export function syncAgents(world: World, module: Module, state: 'on' | 'paused'): number {
   const dir = join(module.dir, 'agents')
   const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.md')) : []
-  const seen = new Set<string>()
+  const kept = new Set<string>() // the ids of the agents still there
   for (const f of files) {
     const a = readAgent(join(dir, f))
-    seen.add(a.name)
-    const known = all<{ id: string }>(
+    const byFile = all<{ id: string; name: string }>(
       world.db,
-      'SELECT id FROM agents WHERE module_id = ? AND name = ?',
+      'SELECT id, name FROM agents WHERE module_id = ? AND file = ?',
       module.id,
-      a.name,
+      `agents/${f}`,
     )[0]
-    if (known)
+    const known =
+      (byFile && !kept.has(byFile.id) ? byFile : undefined) ??
+      all<{ id: string; name: string }>(
+        world.db,
+        'SELECT id, name FROM agents WHERE module_id = ? AND name = ?',
+        module.id,
+        a.name,
+      ).find((x) => !kept.has(x.id))
+    if (known) {
+      kept.add(known.id)
       run(
         world.db,
-        'UPDATE agents SET file = ?, trigger = ?, runs = ?, tasks = ?, description = ? WHERE id = ?',
+        'UPDATE agents SET name = ?, file = ?, trigger = ?, runs = ?, tasks = ?, description = ? WHERE id = ?',
+        a.name,
         `agents/${f}`,
         json(a.trigger),
         json(a.runs),
@@ -152,11 +163,21 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
         a.description,
         known.id,
       )
-    else
+      if (known.name !== a.name)
+        world.line({
+          actor: { kind: 'system' },
+          kind: 'shaped',
+          words: `${known.name} is now called ${a.name}.`,
+          data: { agent: known.id, from: known.name, to: a.name },
+          module: module.id,
+        })
+    } else {
+      const id = newId('a')
+      kept.add(id)
       run(
         world.db,
         'INSERT INTO agents (id, module_id, name, file, state, trigger, runs, tasks, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        newId('a'),
+        id,
         module.id,
         a.name,
         `agents/${f}`,
@@ -166,14 +187,15 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
         a.tasks ? 1 : 0,
         a.description,
       )
+    }
   }
-  for (const a of all<{ id: string; name: string }>(
+  for (const a of all<{ id: string }>(
     world.db,
-    'SELECT id, name FROM agents WHERE module_id = ?',
+    'SELECT id FROM agents WHERE module_id = ?',
     module.id,
   ))
-    if (!seen.has(a.name)) run(world.db, 'DELETE FROM agents WHERE id = ?', a.id)
-  return seen.size
+    if (!kept.has(a.id)) run(world.db, 'DELETE FROM agents WHERE id = ?', a.id)
+  return kept.size
 }
 
 interface AgentRow {
