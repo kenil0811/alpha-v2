@@ -398,7 +398,9 @@ export function App() {
       <main className="flex min-w-0 flex-1 flex-col">
         <Bar
           crumb={itemCrumb ?? crumb}
-          onFind={() => setFinding(true)}
+          onFind={
+            place.at === 'module' || place.at === 'table' ? undefined : () => setFinding(true)
+          }
           lens={place.at === 'conversation' ? lens : null}
           onClearLens={() => setLens(null)}
           middle={setMiddle}
