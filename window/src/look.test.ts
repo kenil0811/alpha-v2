@@ -18,8 +18,8 @@ const RULES: [string, RegExp][] = [
     new RegExp(`(?<![\\w-])(?:${UTILITY})-(?:${PALETTE})(?:-\\d{2,3})?(?:/\\d+)?(?![\\w-])`, 'g'),
   ],
   ['an invented text size or spacing of type', /(?<![\w-])(?:text|leading|tracking)-\[[^\]]*\]/g],
-  // the seven sizes are xs, sm, md, base, lg, xl and 2xl; any other draws no size at all
-  ['a text size that is not one of the seven', /(?<![\w-])text-(?:[3-9]xl|xxs)(?![\w-])/g],
+  // the eight sizes are xs, sm, md, base, lg, xl, 2xl and heading; any other draws no size at all
+  ['a text size that is not one of the eight', /(?<![\w-])text-(?:[3-9]xl|xxs)(?![\w-])/g],
   ['an invented colour', /(?<![\w-])(?:bg|border|ring|fill|stroke|decoration|outline)-\[[^\]]*\]/g],
   ['a colour written out', /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g],
 ]

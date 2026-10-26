@@ -19,7 +19,7 @@ export function Group({
     <section className="flex flex-col gap-2.5">
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-ink-3 text-xs">{title}</h2>
+          <h2 className="font-medium text-heading text-ink">{title}</h2>
           {!!count && (
             <span className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-warn-soft px-1.5 font-semibold text-warn text-xs">
               {count}

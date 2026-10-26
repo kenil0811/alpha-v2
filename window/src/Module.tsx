@@ -237,7 +237,7 @@ function Overview({ m }: { m: ModuleView }) {
 function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
   return (
     <section className="rounded-lg border border-line bg-surface px-5 py-4">
-      <h2 className="font-medium text-ink text-md">{title}</h2>
+      <h2 className="font-medium text-heading text-ink">{title}</h2>
       <p className="mt-0.5 mb-3 text-ink-3 text-sm">{sub}</p>
       {children}
     </section>

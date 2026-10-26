@@ -15,7 +15,7 @@ export function Section({
   return (
     <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-5">
       <div className="flex flex-col gap-0.5">
-        <h2 className="font-medium text-ink text-lg">{title}</h2>
+        <h2 className="font-medium text-heading text-ink">{title}</h2>
         {about && <p className="text-ink-3 text-sm">{about}</p>}
       </div>
       {children}

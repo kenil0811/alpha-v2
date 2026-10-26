@@ -192,7 +192,8 @@
   --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* seven sizes and no others, (Vikas, 25 Oct): body 18px, 30% over the old */
+  /* eight sizes and no others, (Vikas, 25 Oct): body 18px, 30% over the old; section headings
+     body × 1.5 (26 Oct) */
   --text-*: initial;
   --text-xs: 14px;
   --text-xs--line-height: 20px;
@@ -208,6 +209,8 @@
   --text-xl--line-height: 32px;
   --text-2xl: 34px;
   --text-2xl--line-height: 40px;
+  --text-heading: 27px;
+  --text-heading--line-height: 34px;
 
   /* labels are sentence case, like everything else (Vikas, 25 Oct); no letter-spaced capitals */
   --tracking-label: 0;
