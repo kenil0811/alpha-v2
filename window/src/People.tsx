@@ -3,19 +3,18 @@
 // first), never a score; companies the same way. A page each: how to reach them, where they work
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
-import type { ModuleSummary, PeopleView, PersonView } from '@alpha/core/api'
-import { CalendarDays, ChevronRight, LayoutDashboard, Mail, Pencil, Table2 } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import type { KeptTable, ModuleSummary, PersonView } from '@alpha/core/api'
+import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { PillSwitch, peopleTabs } from './Module.tsx'
+import { moduleTabs, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
-import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
-import { peopleTable } from './table/kept.ts'
+import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { Section } from './ui/section.tsx'
+import { Tabs } from './ui/tabs.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, {
@@ -41,28 +40,6 @@ function channelWords(channels: { channel: string; count: number }[], days: numb
 
 const firstWords = (first: 'you' | 'them' | null) =>
   first === 'you' ? 'you wrote first' : first === 'them' ? 'they wrote first' : null
-
-function initials(name: string): string {
-  const words = name
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-  return ((words[0]?.[0] ?? '') + (words.length > 1 ? (words.at(-1)?.[0] ?? '') : '')).toUpperCase()
-}
-
-function Face({ name, company, big }: { name: string; company?: boolean; big?: boolean }) {
-  return (
-    <span
-      className={cn(
-        'grid shrink-0 place-items-center bg-sunk font-semibold text-ink-2',
-        company ? 'rounded-md' : 'rounded-full',
-        big ? 'size-12 text-lg' : 'size-8 text-xs',
-      )}
-    >
-      {initials(name) || '?'}
-    </span>
-  )
-}
 
 export function People({
   kind,
@@ -94,39 +71,23 @@ function PeopleList({
   version: number
   net: ModuleSummary | null
 }) {
-  const [view, setView] = useState<PeopleView | null>(null)
+  // the core serves People and Organizations as tables; a name changes in its cell
+  const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
-    api.get<PeopleView>(`/api/people?kind=${kind}&words=`).then(setView, () => setView(null))
+    api
+      .get<KeptTable>(`/api/kept/${kind === 'company' ? 'organizations' : 'people'}`)
+      .then(setData, () => setData(null))
   }, [kind])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const data = useMemo(() => view && peopleTable(view.lines, kind), [view, kind])
-  const none = view && view.people + view.companies === 0
+  const none = data && data.rows.length === 0 && kind === 'person'
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <InBar>
-        <PillSwitch
-          label={net?.name ?? 'People'}
-          tabs={[
-            ...peopleTabs(kind),
-            ...(net?.pages ?? []).map((p) => ({
-              key: `p:${p.name}`,
-              href: `#/module/${net?.id}/page/${p.name}`,
-              label: p.title,
-              icon: <LayoutDashboard className="size-3.5" />,
-              sel: false,
-            })),
-            ...(net?.tables ?? []).map((t) => ({
-              key: `t:${t.id}`,
-              href: `#/table/${t.id}`,
-              label: t.name,
-              icon: <Table2 className="size-3.5" />,
-              sel: false,
-            })),
-          ]}
-        />
-      </InBar>
+      <Tabs
+        label={net?.name ?? 'People'}
+        tabs={[...peopleTabs(kind), ...(net ? moduleTabs(net, null) : [])]}
+      />
       {none && (
         <p className="border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
           No one yet. People come from your contacts, the people you write to and your small
@@ -143,7 +104,6 @@ function PeopleList({
             key={kind}
             data={data}
             kept={{
-              why: 'People are changed on their own page. Open one to change it.',
               open: (id) => {
                 window.location.hash = `#/people/${id}`
               },
@@ -224,7 +184,7 @@ function PersonPage({
     <Record kind={company ? 'Organization' : 'Person'}>
       <div className="flex flex-col gap-7">
         <div className="flex items-center gap-4">
-          <Face name={p.name} company={company} big />
+          <Avatar name={p.name} organization={company} big />
           <div className="min-w-0 flex-1">
             {naming ? (
               <form
@@ -360,7 +320,7 @@ function PersonPage({
                   href={`#/people/${c.id}`}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
                 >
-                  <Face name={c.name} company />
+                  <Avatar name={c.name} organization />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-base text-ink">{c.name}</span>
                     {c.title && <span className="block text-ink-3 text-sm">{c.title}</span>}
@@ -383,7 +343,7 @@ function PersonPage({
                   href={`#/people/${m.id}`}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
                 >
-                  <Face name={m.name} />
+                  <Avatar name={m.name} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-base text-ink">{m.name}</span>
                     {m.title && <span className="block text-ink-3 text-sm">{m.title}</span>}
@@ -475,7 +435,7 @@ function PersonPage({
                   key={m.id}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0"
                 >
-                  <Face name={m.name} company={company} />
+                  <Avatar name={m.name} organization={company} />
                   <span className="min-w-0 flex-1 truncate text-base text-ink">{m.name}</span>
                   <Button size="sm" onClick={() => act(`${m.id}/unmerge`)}>
                     Unmerge

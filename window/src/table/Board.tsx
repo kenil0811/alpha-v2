@@ -6,7 +6,15 @@ import { show } from './values.ts'
 
 // The board: a column per choice, each row a card with its name and a few of its values, moved
 // by setting its choice (the person's own word).
-export function Board({ data, by }: { data: TableData; by: FieldView }) {
+export function Board({
+  data,
+  by,
+  rowsAt = `/api/tables/${data.id}/rows`,
+}: {
+  data: TableData
+  by: FieldView
+  rowsAt?: string // where a moved card's change goes: a kept list's rows when it is one
+}) {
   const { busy, on, problem, act } = useAct()
   const name = data.fields.find((f) => f.kind === 'text')
   // on a card: up to two amounts, then up to two other choices, each only when it has a value
@@ -16,7 +24,7 @@ export function Board({ data, by }: { data: TableData; by: FieldView }) {
     ...others.filter((f) => f.kind === 'choice' && r.values[f.slug] != null).slice(0, 2),
   ]
   const move = (row: string, value: string) =>
-    act(() => api.post(`/api/tables/${data.id}/rows/${row}`, { field: by.name, value }), row)
+    act(() => api.post(`${rowsAt}/${row}`, { field: by.name, value }), row)
   const columns = [...by.choices, '']
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">

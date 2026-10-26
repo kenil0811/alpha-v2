@@ -1,6 +1,7 @@
-// How the rows are shown: one of the eight views (design §14), each offered when the table has
-// what it needs, and what that view goes by (a board's choice, a calendar's date, a chart's bars
-// and what they add up).
+// How the rows are shown, and what that view goes by (a board's choice, a calendar's date, a
+// chart's bars and what they add up). The standard views (Vikas, 25 Oct) are Table, Card,
+// Timeline and Calendar, with Board and Form; each is offered when the table has what it needs.
+// List and Chart are no longer offered, but a view saved as one still opens as it was.
 import type { FieldView, RowView, ViewConfig, ViewKind } from '@alpha/core/api'
 import {
   CalendarDays,
@@ -19,14 +20,17 @@ import { MenuItem, Popover } from '../ui/popover.tsx'
 
 const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
   { kind: 'table', words: 'Table', icon: <Table2 className="size-3.5" /> },
-  { kind: 'board', words: 'Board', icon: <Kanban className="size-3.5" /> },
-  { kind: 'list', words: 'List', icon: <List className="size-3.5" /> },
-  { kind: 'gallery', words: 'Gallery', icon: <LayoutGrid className="size-3.5" /> },
-  { kind: 'calendar', words: 'Calendar', icon: <CalendarDays className="size-3.5" /> },
+  { kind: 'gallery', words: 'Card', icon: <LayoutGrid className="size-3.5" /> },
   { kind: 'timeline', words: 'Timeline', icon: <ChartGantt className="size-3.5" /> },
-  { kind: 'chart', words: 'Chart', icon: <ChartBarBig className="size-3.5" /> },
+  { kind: 'calendar', words: 'Calendar', icon: <CalendarDays className="size-3.5" /> },
+  { kind: 'board', words: 'Board', icon: <Kanban className="size-3.5" /> },
   { kind: 'form', words: 'Form', icon: <ClipboardList className="size-3.5" /> },
+  { kind: 'list', words: 'List', icon: <List className="size-3.5" /> },
+  { kind: 'chart', words: 'Chart', icon: <ChartBarBig className="size-3.5" /> },
 ]
+
+// what the picker offers: all but the last two, kept only to name a view saved as one
+const OFFERED = KINDS.slice(0, 6)
 
 export function KindPicker({
   fields,
@@ -160,7 +164,7 @@ export function KindPicker({
         </>
       )}
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        {KINDS.map((k) => (
+        {OFFERED.map((k) => (
           <MenuItem
             key={k.kind}
             checked={k.kind === config.kind}
