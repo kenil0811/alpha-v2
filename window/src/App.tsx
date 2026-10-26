@@ -397,9 +397,11 @@ export function App() {
       />
       <main className="flex min-w-0 flex-1 flex-col">
         <Bar
-          crumb={itemCrumb ?? crumb}
-          onFind={
-            place.at === 'module' || place.at === 'table' ? undefined : () => setFinding(true)
+          // no way back inside a module: its tabs are the way around
+          crumb={
+            place.at === 'module' || place.at === 'table'
+              ? { parts: crumb.parts.slice(-1) }
+              : (itemCrumb ?? crumb)
           }
           lens={place.at === 'conversation' ? lens : null}
           onClearLens={() => setLens(null)}
