@@ -500,6 +500,25 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   `
   ALTER TABLE cards ADD COLUMN lapsed_at TEXT;
   `,
+  // 21: undo (core step 1, 26 Oct): a removed row's whole state, kept for keep_removed_days so it
+  // can come back whole; each version the journal line that replaced it and what that line
+  // wrote, so a turn's or a run's changes can be put back; and the last line before, since
+  // nothing older can be.
+  `
+  CREATE TABLE removed_rows (
+    record_id TEXT PRIMARY KEY,
+    table_id TEXT NOT NULL,
+    line_id INTEGER NOT NULL,
+    removed_at TEXT NOT NULL,
+    state TEXT NOT NULL
+  );
+  CREATE INDEX removed_rows_line ON removed_rows (line_id);
+  CREATE INDEX removed_rows_table ON removed_rows (table_id);
+  ALTER TABLE versions ADD COLUMN line_id INTEGER;
+  ALTER TABLE versions ADD COLUMN wrote TEXT;
+  CREATE INDEX versions_line ON versions (line_id);
+  INSERT OR REPLACE INTO meta (key, value) SELECT 'undo_since', coalesce(max(id), 0) FROM journal;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

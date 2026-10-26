@@ -6,7 +6,9 @@ import { type Agent, agents, readAgent } from '../modules/agents.ts'
 import { type RunRow, unmetNeeds } from '../modules/runs/index.ts'
 import { pagesOf } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
+import type { Line } from '../world/journal.ts'
 import type { Provenance } from '../world/kinds.ts'
+import { undoable } from '../world/records/index.ts'
 import type { Module } from '../world/shape/index.ts'
 import type { Task } from '../world/tasks/index.ts'
 import type { View } from '../world/views.ts'
@@ -20,6 +22,7 @@ import type {
   SourceView,
   TaskLineView,
   TaskView,
+  UndoTarget,
 } from './types.ts'
 
 export function makeViews(ctx: BaseCtx) {
@@ -267,20 +270,25 @@ export function makeViews(ctx: BaseCtx) {
     if (kind === 'system') return 'Its kit'
     return 'Alpha'
   }
-  // Activity: agents' runs and connections' reads, newest first. A run that ended having changed
-  // nothing is quiet, so the window can fold it.
+  // Activity: agents' runs and connections' reads, newest first, and (core step 1) Alpha's turns
+  // that changed rows, removals outside both, and the person's reverts, each with its Revert or
+  // Bring back where it can be undone. A run that ended having changed nothing is quiet, so the
+  // window can fold it.
+  const ROWS = ['landed', 'wrote', 'changed', 'removed', 'reverted']
+  const clock = (at: string) =>
+    new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const undoOf = (target: UndoTarget, label: 'Revert' | 'Bring back', what: string) =>
+    undoable(world.records, target) ? { target, label, what } : null
   function runOut(r: RunRow): RunView {
-    const CHANGES = new Set(['landed', 'wrote', 'changed', 'removed', 'told', 'card_opened'])
+    const CHANGES = new Set([...ROWS, 'told', 'card_opened'])
     const steps = world
-      .lines({
-        run: r.id,
-        kinds: ['run_step', 'told', 'landed', 'wrote', 'changed', 'removed', 'card_opened', 'task'],
-      })
+      .lines({ run: r.id, kinds: ['run_step', 'told', ...ROWS, 'card_opened', 'task'] })
       .map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words }))
+    const name = (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try'
     return {
       id: r.id,
       kind: 'run',
-      name: (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try',
+      name,
       module: r.module ? (world.shape.module(r.module)?.name ?? null) : null,
       moduleId: r.module,
       startedAt: r.startedAt,
@@ -290,7 +298,51 @@ export function makeViews(ctx: BaseCtx) {
       tokens: r.tokens, // a script's own work uses none; a document read by the model does
       quiet: r.state === 'ok' && !steps.some((st) => CHANGES.has(st.kind)),
       steps,
+      undo:
+        r.state === 'running'
+          ? null
+          : undoOf({ run: r.id }, 'Revert', `what ${name} did at ${clock(r.startedAt)}`),
     }
+  }
+  const lineOut = (
+    l: { id: number; at: string; words: string; kind: string },
+    kind: RunView['kind'],
+    name: string,
+    moduleId: string | null,
+  ): RunView => ({
+    id: `${kind}-${l.id}`,
+    kind,
+    name,
+    module: moduleId ? (world.shape.module(moduleId)?.name ?? null) : null,
+    moduleId,
+    startedAt: l.at,
+    ms: null,
+    state: 'ok',
+    words: l.words,
+    tokens: null,
+    quiet: false,
+    steps: [],
+    undo: null,
+  })
+  // Alpha's turns that wrote rows, each with the person's words and its row lines as steps
+  function turnsOut(rowLines: Line[]): RunView[] {
+    const byTurn = new Map<string, Line[]>()
+    for (const l of rowLines)
+      if (l.turn && !l.run) byTurn.set(l.turn, [...(byTurn.get(l.turn) ?? []), l])
+    return [...byTurn].map(([turn, ls]) => {
+      const said = world.lineById(Number(turn))
+      const at = said?.at ?? (ls[0] as Line).at
+      const asked = said?.words ?? ''
+      return {
+        ...lineOut({ ...(ls[0] as Line), at }, 'turn', 'Alpha', said?.module ?? null),
+        id: `turn-${turn}`,
+        words: asked
+          ? `You asked: “${asked.length > 120 ? `${asked.slice(0, 117)}…` : asked}”`
+          : null,
+        steps: ls.map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words })),
+        undo: undoOf({ turn }, 'Revert', `what Alpha did at ${clock(at)}`),
+      }
+    })
   }
   const activity = (): RunView[] => {
     const runs: RunView[] = (engine.hands?.runner.runs(100) ?? []).map(runOut)
@@ -307,8 +359,28 @@ export function makeViews(ctx: BaseCtx) {
       tokens: null,
       quiet: l.data.quiet === true,
       steps: [],
+      undo: null,
     }))
-    return [...runs, ...reads].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 200)
+    const rowLines = world.lines({ kinds: ROWS, limit: 1000 })
+    // removals and reverts made outside a run or a turn: the person's, mostly
+    const own = rowLines
+      .filter((l) => !l.run && !l.turn && (l.kind === 'reverted' || l.kind === 'removed'))
+      .filter((l) => l.kind === 'reverted' || Array.isArray(l.data.records))
+      .map((l) => {
+        const who = byWords(`${l.actor.kind}:${l.actor.id ?? ''}`)
+        return l.kind === 'removed'
+          ? {
+              ...lineOut(l, 'removal', who, l.module),
+              undo: undoOf({ line: l.id }, 'Bring back', 'the removal'),
+            }
+          : {
+              ...lineOut(l, 'revert', who, l.module),
+              undo: undoOf({ line: l.id }, 'Revert', `the revert at ${clock(l.at)}`),
+            }
+      })
+    return [...runs, ...reads, ...turnsOut(rowLines), ...own]
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+      .slice(0, 200)
   }
 
   function moduleOf(id: string | null): { id: string; name: string } | null {

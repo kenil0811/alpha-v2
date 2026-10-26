@@ -110,7 +110,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | Part | What it holds |
 |---|---|
 | Journal | Append-only lines: when, actor (a person, Alpha, an agent, a connector, the system), source, kind, words, data, and the module, run and card it belongs to. Full-text search. Triggers refuse any update or delete. |
-| Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone). Each is a SQLite table of its own (Kenil, 22 Oct: real tables): STRICT, named by its slug, a typed column per field, a junction table per list relation (`many`), an index on every relation column; `records` is the registry of which table a row is in, `provenance` holds a row per value and `versions` a snapshot per change. A shape change is transactional DDL (add, rename, drop; a kind never changes). Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. A relation holds one row, or a list when the kit says `many`; removing a row clears every pointer at it in the same transaction, journaled with the count; pointers are kept whole by Alpha's own writes, not by SQL foreign keys. |
+| Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone). Each is a SQLite table of its own (Kenil, 22 Oct: real tables): STRICT, named by its slug, a typed column per field, a junction table per list relation (`many`), an index on every relation column; `records` is the registry of which table a row is in, `provenance` holds a row per value and `versions` a snapshot per change. A shape change is transactional DDL (add, rename, drop; a kind never changes). Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. A relation holds one row, or a list when the kit says `many`; removing a row clears every pointer at it in the same transaction, journaled with the count; pointers are kept whole by Alpha's own writes, not by SQL foreign keys. A removed row waits in `removed_rows` (undo, below). |
 | People and companies | Derived from the rows of tables that say how their rows name people (a row that is a person: a contact card, a source's contact, a deal's broker; a row that is an exchange: a message, a meeting) and from the person's own word. Hard keys (email, E.164 phone, profile URL, domain, company name) merge at once: a key belongs to the one whose row first gave it, and a row naming two holders never merges them. Two kinds are not keys (item 25, 25 Oct): a role address (`info@`, `office@`; the list in `core/config/people.yaml`) and a phone held by a row of plainly another name; each puts the pair on the match card instead. On a person's page, Not this person splits a row off with the keys it alone brought, kept apart from then on. From mail, only those the person writes to become people; from meetings, those at meetings of up to twenty (Kenil, 21 Oct). Companies come from work domains and company names, with when someone was there kept. Messages and meetings count by address for whoever holds it now: plain numbers, never a score. Soft matches (the same full name, or the same name at the same company) are proposals on one card per batch, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. Removing a row takes only what it alone brought. A person field holds one of the person's people. |
 | Facts | Two time axes: when true, when recorded. Corrected by a newer fact, never edited. |
 | Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. A file sits on the rows it belongs to (a deal's CIM, a client's export) with its kind, one its table names when its kit names them (Kenil, 20 Oct). |
@@ -131,6 +131,22 @@ sentences land as Alpha's, shown as assumed; the person writes theirs in the col
 (Describe…) or in words, and theirs stands: a kit's update and Alpha's guess never write over it.
 `module.yaml` mirrors them, so Make this a kit carries them. The model reads them with the
 fields of a table on its first touch (§6), not in the start layer.
+
+**Undo** (core step 1, Kenil's yes 26 Oct): a removed row leaves its table at once, so no reader
+learns to skip it, and waits whole in `removed_rows` for `keep_removed_days` (30, in
+`core/config/limits.yaml`, never a setting): its values by field id, their provenance, its
+versions, files and kit row, its own links and the links other rows had to it. Bring back puts it
+back with the same id; links return where the row that held one still points nowhere, a field
+removed since is left out and named, a kit's setup row is the kit's again. Each version keeps the
+journal line that replaced it and what that line wrote, so **Revert** of a run, a turn or one line
+puts back what it did to rows in one transaction, newest line first: rows it added go to the
+trash (one someone changed since stays), values it wrote return where they are still what it
+wrote, rows it removed come back. A revert is a line of its own and can be reverted; a revert of
+an agent's run does not wake that agent. Shape changes, tasks, cards and what left the world stay,
+and the revert says so; nothing from before undo existed (`meta.undo_since`) is revertible. A
+preview runs the same work and rolls it back, so the pop-up says what Revert will do. The daily
+work deletes the trash after its days, with a line; removing a table, a field or a module still
+deletes outright and empties their trash; the archive leaves the trash out.
 Removing something deletes everything related to it and journals the removal; the journal is
 never touched. Backups use SQLite's backup API, daily, never `cp` (a copied WAL file ran a
 stale scheduler for real in v1); beside the world the daily backup mirrors the modules and the
@@ -498,7 +514,9 @@ A **run** is a session that serves a task and reports to Activity. It reaches th
 stream only as a card, or when a standing instruction lets it in. A shipped agent's steps are
 kit scripts (XState for stages) with the model at marked judgement points; a user-made agent is
 a brief the model writes. Tokens and duration are recorded on every run as facts, not a budget.
-**Activity** lists every run with its steps, and stops one that is running; **Settings › Kits and
+**Activity** lists every run with its steps, and stops one that is running; with them, Alpha's
+turns that changed rows, removals and the person's reverts, each with Revert (Bring back on a
+removal) behind its ⋮ where it can be undone (§4, undo); **Settings › Kits and
 agents** shows each module's agents, on or paused, with Run now. **One run of an agent at a
 time**, whoever asks; a paused agent runs only when the person asks for it now (Run now, the
 desk's run), never on its trigger, a follow-up or a sign-in (24 Oct). The due runs go in a lane

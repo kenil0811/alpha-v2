@@ -27,6 +27,7 @@ import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
 import { backupDaily } from './world/backups.ts'
 import { setHomeRegion } from './world/phones.ts'
+import { expire } from './world/records/index.ts'
 import { tenantDir, World } from './world/world.ts'
 
 const home = process.env.ALPHA_HOME
@@ -244,6 +245,8 @@ const scheduler = new Scheduler(world, [
       if (said) engine.events.emit('event', { type: 'lines', user: user.id })
     },
   },
+  // removed rows kept past keep_removed_days deleted for good (core step 1)
+  { run: async () => void expire(world.records, config.limits().keep_removed_days) },
   // the world backed up once a day, the last 7 days and 4 weeks kept
   {
     run: async () => {

@@ -81,11 +81,16 @@ describe('the person’s data', () => {
   it('takes the data as one archive and brings it into a fresh install, refusing a world with rows', async () => {
     const m = world.shape.makeModule('Food', ctx())
     const t = world.shape.makeTable(m.id, 'Meals', [{ name: 'Food', kind: 'text' }], ctx())
-    world.records.add(
+    const [, toast] = world.records.add(
       t.id,
-      [{ values: { Food: 'two eggs' }, provenance: { kind: 'assumed', basis: 'a test' } }],
+      [
+        { values: { Food: 'two eggs' }, provenance: { kind: 'assumed', basis: 'a test' } },
+        { values: { Food: 'toast' }, provenance: { kind: 'assumed', basis: 'a test' } },
+      ],
       ctx(),
     )
+    // a removed row waits in the trash, and the archive leaves it behind
+    world.records.remove(t.id, [toast as string], ctx())
     writeFileSync(join(world.paths.instructions, 'everyone.md'), 'Be brief.\n')
     const out = join(home, 'out')
     const file = await takeData(world, home, out)
@@ -104,6 +109,7 @@ describe('the person’s data', () => {
       const w3 = await World.open(paths.dir)
       const meals = w3.shape.table('Meals')
       expect(meals && w3.records.count(meals.id)).toBe(1)
+      expect(w3.db.prepare('SELECT count(*) AS n FROM removed_rows').get()).toEqual({ n: 0 })
       expect(existsSync(join(paths.instructions, 'everyone.md'))).toBe(true)
       w3.close()
       expect(() => prepareBring(world, join(fresh, 'nothing.tar.gz'))).toThrow(/not there/)

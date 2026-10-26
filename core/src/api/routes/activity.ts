@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { agents, nextRun } from '../../modules/agents.ts'
+import { Refused } from '../../world/kinds.ts'
+import { revert } from '../../world/records/index.ts'
 import type { Ctx } from '../ctx.ts'
-import type { RunView, TodayView } from '../types.ts'
+import type { RunView, TodayView, UndoTarget, UndoView } from '../types.ts'
 
 export function registerActivity(ctx: Ctx): void {
   const { app, world, engine, user } = ctx
@@ -17,7 +19,11 @@ export function registerActivity(ctx: Ctx): void {
     const since = world.preference(user.id, 'seen_at') ?? start.toISOString()
     const changed = activity()
       .filter(
-        (r) => r.startedAt > since && r.state !== 'running' && (!r.quiet || r.state === 'failed'),
+        (r) =>
+          (r.kind === 'run' || r.kind === 'read') &&
+          r.startedAt > since &&
+          r.state !== 'running' &&
+          (!r.quiet || r.state === 'failed'),
       )
       .map((r) => ({ ...r, steps: [] }))
     const now = Date.now()
@@ -38,6 +44,43 @@ export function registerActivity(ctx: Ctx): void {
   app.post('/api/today/seen', async () => {
     world.setPreference(user.id, 'seen_at', new Date().toISOString())
     return { ok: true }
+  })
+
+  // Revert or Bring back (core step 1): what it would do, then doing it, on the person's word in
+  // the one pop-up. The target is an Activity entry's, and so are the words naming it.
+  const Target = z.union([
+    z.object({ run: z.string() }),
+    z.object({ turn: z.string() }),
+    z.object({ line: z.coerce.number().int() }),
+  ])
+  const entry = (target: UndoTarget) =>
+    activity().find((r) => r.undo && JSON.stringify(r.undo.target) === JSON.stringify(target))
+  app.post('/api/undo/preview', async (req): Promise<UndoView> => {
+    const target = Target.parse(req.body)
+    const e = entry(target)
+    if (!e?.undo) throw new Refused('That can’t be reverted.')
+    return revert(
+      world.records,
+      target,
+      { actor: { kind: 'person', id: user.id }, user: user.id },
+      e.undo.what,
+      {
+        preview: true,
+      },
+    )
+  })
+  app.post('/api/undo', async (req): Promise<UndoView> => {
+    const target = Target.parse(req.body)
+    const e = entry(target)
+    if (!e?.undo) throw new Refused('That can’t be reverted.')
+    const done = revert(
+      world.records,
+      target,
+      { actor: { kind: 'person', id: user.id }, user: user.id },
+      e.undo.what,
+    )
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return done
   })
 
   app.post('/api/runs/:id/stop', async (req) => {

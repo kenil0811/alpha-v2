@@ -54,3 +54,7 @@ loop_rounds_per_turn: 60
 # one site (design §8, the human-pace engine).
 browser_pace_min_ms: 4000
 browser_pace_max_ms: 9000
+
+# Days a removed row is kept, out of sight, so Bring back or Revert can put it back whole; then the
+# daily work deletes it for good (core step 1, Kenil 26 Oct). A judgement, never a setting.
+keep_removed_days: 30

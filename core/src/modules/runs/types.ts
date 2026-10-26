@@ -41,7 +41,7 @@ export interface RunRow {
   task: string | null // the task it served
 }
 
-export const CHANGE_KINDS = ['wrote', 'changed', 'landed', 'removed']
+export const CHANGE_KINDS = ['wrote', 'changed', 'landed', 'removed', 'reverted']
 
 // What a filing hands the agents waiting on one: each document read or put on a row since they
 // last looked, with the rows it sits on.

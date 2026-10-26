@@ -139,8 +139,9 @@ export function takeRestartNote(dir: string): string | null {
   return words
 }
 
-// The person's data as one archive in the open format: the world by the backup API, the files by
-// hash, the module folders, the instructions, the connectors they added, and alpha.yaml.
+// The person's data as one archive in the open format: the world by the backup API (its trash
+// left out), the files by hash, the module folders, the instructions, the connectors they added,
+// and alpha.yaml.
 export async function takeData(world: World, home: string, dest = exportsDir()): Promise<string> {
   const p = world.paths
   const stage = mkdtempSync(join(tmpdir(), 'alpha-data-'))
@@ -148,6 +149,13 @@ export async function takeData(world: World, home: string, dest = exportsDir()):
     const root = join(stage, 'alpha-data')
     mkdirSync(root, { recursive: true })
     await backup(world.db, join(root, 'world.sqlite'))
+    // the trash stays behind (docs/data.md): the archive holds what is there
+    const copy = new DatabaseSync(join(root, 'world.sqlite'))
+    try {
+      copy.exec('DELETE FROM removed_rows; VACUUM')
+    } finally {
+      copy.close()
+    }
     for (const [from, to] of [
       [p.files, 'files'],
       [p.modules, 'modules'],

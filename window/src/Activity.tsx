@@ -1,14 +1,19 @@
 // Activity (design §11, Ledger): every run of an agent or a reader and every read of a
-// connection, newest first, in one list by day. A run shows its time, name, module, state, one
-// line of what happened, how long it took and whether the model was used; it opens to its steps.
-// Runs that changed nothing fold into one line per name and day. A running one can be stopped.
-import type { RunView } from '@alpha/core/api'
-import { ChevronRight } from 'lucide-react'
+// connection, newest first, in one list by day, with Alpha's turns that changed rows, removals
+// and reverts (core step 1). A run shows its time, name, module, state, one line of what
+// happened, how long it took and whether the model was used; it opens to its steps. Runs that
+// changed nothing fold into one line per name and day. A running one can be stopped; one that
+// wrote rows has Revert behind its ⋮, a removal Bring back, both said first in the one pop-up.
+import type { RunView, UndoView } from '@alpha/core/api'
+import { ChevronRight, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { api } from './api.ts'
+import { api, wordsOf } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Confirm } from './ui/dialog.tsx'
+import { More } from './ui/more.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
+import { MenuItem } from './ui/popover.tsx'
 import { Segmented } from './ui/segmented.tsx'
 
 const STATE: Record<RunView['state'], [string, Tone]> = {
@@ -100,7 +105,7 @@ export function Activity({ version }: { version: number }) {
           <p className="mt-4 text-ink-2 text-md">
             {only === 'failed'
               ? 'Everything that ran finished.'
-              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here.'}
+              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
           </p>
         )}
         {days.map(([day, list]) => (
@@ -128,6 +133,7 @@ export function Activity({ version }: { version: number }) {
                     open={open === l.run.id}
                     onOpen={() => setOpen(open === l.run.id ? null : l.run.id)}
                     onStop={() => api.post(`/api/runs/${l.run.id}/stop`).then(load, load)}
+                    onUndone={load}
                   />
                 ),
               )}
@@ -144,24 +150,31 @@ export function RunRow({
   open,
   onOpen,
   onStop,
+  onUndone,
 }: {
   run: RunView
   open: boolean
   onOpen: () => void
   onStop: () => void
+  onUndone?: () => void
 }) {
   const [state, tone] = STATE[r.state]
   const words = r.words?.startsWith(`${r.name}: `) ? r.words.slice(r.name.length + 2) : r.words
+  const ran = r.kind === 'run' || r.kind === 'read'
   return (
     <div className="border-hair border-t first:border-t-0">
-      <div className="grid grid-cols-[48px_1fr_auto] items-start gap-3.5 px-4 py-3 hover:bg-hover">
-        <a
-          href={`#/run/${r.id}`}
-          title="Open the run"
-          className="pt-0.5 font-mono text-ink-3 text-sm hover:text-ink hover:underline"
-        >
-          {time(r.startedAt)}
-        </a>
+      <div className="group/row grid grid-cols-[48px_1fr_auto_28px] items-start gap-3.5 px-4 py-3 hover:bg-hover">
+        {ran ? (
+          <a
+            href={`#/run/${r.id}`}
+            title="Open the run"
+            className="pt-0.5 font-mono text-ink-3 text-sm hover:text-ink hover:underline"
+          >
+            {time(r.startedAt)}
+          </a>
+        ) : (
+          <span className="pt-0.5 font-mono text-ink-3 text-sm">{time(r.startedAt)}</span>
+        )}
         <button
           type="button"
           className="min-w-0 text-left"
@@ -199,12 +212,17 @@ export function RunRow({
               Stop
             </Button>
           ) : (
-            <>
-              <span>{took(r.ms)}</span>
-              <span>{r.tokens === null ? 'No model' : `${r.tokens.toLocaleString()} tokens`}</span>
-            </>
+            ran && (
+              <>
+                <span>{took(r.ms)}</span>
+                <span>
+                  {r.tokens === null ? 'No model' : `${r.tokens.toLocaleString()} tokens`}
+                </span>
+              </>
+            )
           )}
         </div>
+        <Undo run={r} onDone={onUndone} />
       </div>
       {open && r.steps.length > 0 && (
         <ol className="mx-4 mb-3 ml-20.5 flex flex-col gap-1.25 border-line border-t border-dashed pt-2.5">
@@ -224,5 +242,74 @@ export function RunRow({
         </ol>
       )}
     </div>
+  )
+}
+
+// Revert (or Bring back) behind ⋮: the pop-up says what it will do and what it leaves before
+// anything happens, from the core's own preview of the same work.
+function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefined }) {
+  const u = r.undo
+  const [open, setOpen] = useState(false)
+  const [view, setView] = useState<UndoView | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  if (!u) return <span />
+  const start = () => {
+    setOpen(true)
+    setView(null)
+    setProblem(null)
+    api.post<UndoView>('/api/undo/preview', u.target).then(setView, (e) => setProblem(wordsOf(e)))
+  }
+  const yes = () => {
+    setBusy(true)
+    api.post<UndoView>('/api/undo', u.target).then(
+      () => {
+        setBusy(false)
+        setOpen(false)
+        onDone?.()
+      },
+      (e) => {
+        setBusy(false)
+        setProblem(wordsOf(e))
+      },
+    )
+  }
+  return (
+    <>
+      <More label="More">
+        {(close) => (
+          <MenuItem
+            onClick={() => {
+              close()
+              start()
+            }}
+          >
+            <RotateCcw className="size-3.5" />
+            {u.label}
+          </MenuItem>
+        )}
+      </More>
+      <Confirm
+        open={open}
+        title={u.label === 'Revert' ? `Revert ${u.what}?` : 'Bring these rows back?'}
+        yes={u.label}
+        busy={busy || !view?.can}
+        onClose={() => setOpen(false)}
+        onYes={yes}
+      >
+        {!view && !problem && <p className="text-ink-3 text-md">Working out what it would do…</p>}
+        {view && (
+          <div className="flex flex-col gap-2 text-md">
+            <p className="text-ink">{view.words}</p>
+            {view.left.map((l) => (
+              <p key={l} className="text-ink-2">
+                {l}
+              </p>
+            ))}
+          </div>
+        )}
+        {problem && <p className="mt-2 text-md text-warn">{problem}</p>}
+      </Confirm>
+    </>
   )
 }

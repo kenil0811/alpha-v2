@@ -66,6 +66,7 @@ held by review. Dates are 2026.
 | R3 | Delete is never one click: behind ⋮, always confirmed in our own pop-up, saying what goes | 26 Oct | — |
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |
+| R6 | Revert, and Bring back on a removal, sit behind an Activity line's ⋮, said first in the one pop-up from the core's own preview of the same work | 26 Oct | — |
 
 ## Assistant and chat
 
@@ -107,7 +108,7 @@ held by review. Dates are 2026.
 
 ## Proposed, waiting on Kenil or the core
 
-- Undo of one change from a cell's History, and bringing deleted rows back (needs the core).
+- Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, renaming a module and choosing its icon (needs the core).
 - What each run costs, shown under Settings › Model (needs the core).
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).

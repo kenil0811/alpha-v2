@@ -550,7 +550,9 @@ export interface ModelView {
 // A run in Activity: an agent's or a reader's, or a connection reading its account.
 export interface RunView {
   id: string
-  kind: 'run' | 'read'
+  // an agent's run, a connection's read, a turn of Alpha's that changed rows, a removal outside
+  // both, or a revert the person made
+  kind: 'run' | 'read' | 'turn' | 'removal' | 'revert'
   name: string
   module: string | null // its name
   moduleId: string | null
@@ -561,6 +563,19 @@ export interface RunView {
   tokens: number | null // null: no model was used
   quiet: boolean // it ended and changed nothing
   steps: { id: number; at: string; kind: string; words: string }[]
+  // Revert (or Bring back, on a removal) where it wrote rows since Alpha could undo; `what` names
+  // it in the pop-up's question and in the line the revert writes
+  undo: { target: UndoTarget; label: 'Revert' | 'Bring back'; what: string } | null
+}
+
+// What a revert puts back: an agent's run, a turn of Alpha's, or one line (a removal, a revert).
+export type UndoTarget = { run: string } | { turn: string } | { line: number }
+
+// What Revert or Bring back would do, said before it does it.
+export interface UndoView {
+  can: boolean
+  words: string
+  left: string[]
 }
 
 // Today, beside the stream on a wide window: what changed since the person last cleared it, and what is coming up; what needs them and what runs come with the stream.

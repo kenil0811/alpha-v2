@@ -199,12 +199,25 @@ export function isDueBy(
       .filter(Boolean),
   )
   if (!tables.size) return false
-  const lines = runner.world
-    .lines({ after: seen, kinds: CHANGE_KINDS })
-    .filter(
-      (l) =>
-        tables.has((l.data as { table?: string }).table) &&
-        !(l.actor.kind === 'agent' && l.actor.id === a.name),
-    )
+  const lines = runner.world.lines({ after: seen, kinds: CHANGE_KINDS }).filter(
+    (l) =>
+      // a revert names every table it put back
+      [
+        (l.data as { table?: string }).table,
+        ...((l.data as { tables?: string[] }).tables ?? []),
+      ].some((id) => tables.has(id)) &&
+      !(l.actor.kind === 'agent' && l.actor.id === a.name) &&
+      !undidOwn(runner, l.data, a),
+  )
   return lines.length > 0
+}
+
+// A revert of the agent's own run does not wake it to do that work again.
+function undidOwn(runner: AgentRunner, data: Record<string, unknown>, a: Agent): boolean {
+  const run = (data.target as { run?: string } | undefined)?.run
+  return (
+    !!run &&
+    one<{ agent_id: string | null }>(runner.world.db, 'SELECT agent_id FROM runs WHERE id = ?', run)
+      ?.agent_id === a.id
+  )
 }

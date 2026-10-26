@@ -1,0 +1,38 @@
+name: revert-a-run
+title: 'a turn and an agent’s run reverted from Activity put the table back; reverting a revert puts the work back'
+why: >
+  Undo, core step 1 (Kenil's yes, 26 Oct): what a turn or a run did to rows is put back in one
+  transaction, the rows it added waiting in the trash, the values it changed returned from the
+  versions its lines replaced; the revert is a line of its own, and reverting it puts the work
+  back. An agent's run never writes over what the person said, so the run adds rows and the
+  person's own turn changes them. The agent is made by chat; the reverts are the person's, as
+  Activity's pop-up does them.
+steps:
+  - say: >
+      In a module called Shop, make a table Deals with a Name and a Stage (New, Won, Lost):
+      Alder Bakery at New and Birch Dental at New.
+    checks:
+      - rows_in: { table: Deals, count: 2 }
+      - errors: 0
+  - say: >
+      Make me an agent in Shop called Opener that, when it runs, adds two deals at New: Cedar
+      Garage and Dune Cafe. Start it now.
+    checks:
+      - last_run: ok
+      - rows_in: { table: Deals, count: 4 }
+  - say: Set Alder Bakery and Birch Dental to Won.
+    checks:
+      - query: { sql: "SELECT name FROM deals WHERE stage = 'Won'", count: 2 }
+  - revert: last_turn
+    checks:
+      - query: { sql: "SELECT name FROM deals WHERE stage = 'Won'", count: 0 }
+      - query: { sql: "SELECT name FROM deals WHERE stage = 'New'", count: 4 }
+  - revert: last_run
+    checks:
+      - rows_in: { table: Deals, count: 2 }
+      - query: { sql: "SELECT name FROM deals WHERE name IN ('Cedar Garage', 'Dune Cafe')", count: 0 }
+  - revert: last_revert
+    checks:
+      - rows_in: { table: Deals, count: 4 }
+      - query: { sql: "SELECT name FROM deals WHERE name IN ('Cedar Garage', 'Dune Cafe')", count: 2 }
+      - errors: 0

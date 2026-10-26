@@ -4,8 +4,8 @@
 // provenance sits in `provenance`, their earlier versions in `versions`, and `records` is the
 // registry that says which table a row is in. The store: rows added, changed, removed and landed;
 // reading them is in reading.ts, storing them in storing.ts, as functions of the store.
-import { all, type Db, newId, now, one, run, tx } from '../db.ts'
-import { junctionName, lit, quote } from '../ddl.ts'
+import { all, type Db, newId, now, one, tx } from '../db.ts'
+import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { checkValue, type Provenance, type ProvenanceInput, Refused, type Said } from '../kinds.ts'
 import { actorName, findField, type Shape, type Table, type WriteCtx } from '../shape/index.ts'
@@ -41,6 +41,7 @@ import {
   unindex,
   update,
 } from './storing.ts'
+import { putInTrash, tagVersions, takeOut } from './trash.ts'
 import type {
   ChangeInput,
   Landed,
@@ -54,7 +55,7 @@ import type {
   Snapshot,
   Stored,
 } from './types.ts'
-import { CHUNK, present, sortKeys } from './types.ts'
+import { present, sortKeys } from './types.ts'
 
 export class Records {
   db: Db
@@ -115,6 +116,7 @@ export class Records {
     tx(this.db, () => {
       const table = this.mustTable(tableId)
       const at = now()
+      const versions: [string, number, Snapshot][] = []
       for (const c of changes) {
         const row = this.readRow(table, c.id)
         if (!row) throw new Refused(`${table.name} has no row ${c.id}.`)
@@ -128,10 +130,11 @@ export class Records {
         )
         const was = this.snapshot(table, row)
         this.keepVersion(row, was, at, actorName(ctx.actor))
+        versions.push([row.id, row.version, { vals, prov }])
         this.update(table, row.id, vals, prov, at)
         this.index(table, row.id, { ...was.vals, ...vals })
       }
-      append(this.db, {
+      const line = append(this.db, {
         actor: ctx.actor,
         kind: 'changed',
         words: `Changed ${changes.length === 1 ? 'a row' : `${changes.length} rows`} in ${table.name}.`,
@@ -145,6 +148,7 @@ export class Records {
         module: table.module.id,
         run: ctx.run ?? null,
       })
+      tagVersions(this, versions, line.id)
       this.watch?.rows(
         table,
         changes.map((c) => c.id),
@@ -153,44 +157,15 @@ export class Records {
     })
   }
 
-  // The journal keeps the removed rows' values, so Activity can say what was here. Rows pointing
-  // at a removed one let go of it in the same transaction, and the words say how many did.
+  // A removed row leaves its table and waits in the trash, whole, for keep_removed_days (core
+  // step 1); the journal keeps its values, so Activity can say what was here. Rows pointing at a
+  // removed one let go of it in the same transaction, and the words say how many did.
   remove(tableId: string, ids: string[], ctx: WriteCtx): number {
     if (!ids.length) throw new Refused('There are no rows to remove.')
     return tx(this.db, () => {
       const table = this.mustTable(tableId)
-      const gone: { id: string; values: Record<string, unknown> }[] = []
-      let cleared = 0
-      for (let i = 0; i < ids.length; i += CHUNK)
-        cleared += this.shape.clearPointers(
-          table.id,
-          `(${ids
-            .slice(i, i + CHUNK)
-            .map(lit)
-            .join(', ')})`,
-        )
-      for (const id of ids) {
-        const row = this.readRow(table, id)
-        if (!row) throw new Refused(`${table.name} has no row ${id}.`)
-        gone.push({ id, values: this.snapshot(table, row).vals })
-        this.watch?.gone([id])
-        // a kit's setup row the person removes stays removed through the kit's updates
-        if (row.item_key && one(this.db, 'SELECT 1 FROM kit_rows WHERE record_id = ?', id))
-          this.shape.tombstone(table.module.id, 'row', row.item_key, ctx)
-        for (const f of table.fields)
-          if (f.kind === 'relation' && f.many)
-            run(
-              this.db,
-              `DELETE FROM ${quote(junctionName(table.slug, f.slug))} WHERE record_id = ?`,
-              id,
-            )
-        this.unindex(id)
-        for (const side of ['versions', 'provenance', 'row_files', 'kit_rows'])
-          run(this.db, `DELETE FROM ${side} WHERE record_id = ?`, id)
-        run(this.db, `DELETE FROM ${quote(table.slug)} WHERE id = ?`, id)
-        run(this.db, 'DELETE FROM records WHERE id = ?', id)
-      }
-      append(this.db, {
+      const { gone, cleared, kept } = takeOut(this, table, ids, ctx)
+      const line = append(this.db, {
         actor: ctx.actor,
         kind: 'removed',
         words: `Removed ${gone.length === 1 ? `a row from ${table.name}: ${this.describeStored(table, gone[0]?.values ?? {})}` : `${gone.length} rows from ${table.name}`}${
@@ -204,6 +179,7 @@ export class Records {
         module: table.module.id,
         run: ctx.run ?? null,
       })
+      for (const [id, k] of kept) putInTrash(this, table, id, k, line)
       return gone.length
     })
   }
@@ -222,6 +198,8 @@ export class Records {
       const at = now()
       const out: Landed = { added: 0, changed: 0, same: 0 }
       const touched: string[] = []
+      const ids = { added: [] as string[], changed: [] as string[] }
+      const versions: [string, number, Snapshot][] = []
       for (const item of items) {
         const row = {
           kind: 'looked_up' as const,
@@ -245,6 +223,7 @@ export class Records {
           const id = newId('r')
           this.insert(table, id, vals, prov, at, actorName(ctx.actor), item.key)
           touched.push(id)
+          ids.added.push(id)
           out.added++
           continue
         }
@@ -263,13 +242,15 @@ export class Records {
           continue
         }
         this.keepVersion(r, was, at, actorName(ctx.actor))
+        versions.push([r.id, r.version, { vals, prov }])
         this.update(table, r.id, vals, prov, at)
         this.index(table, r.id, merged)
         touched.push(r.id)
+        ids.changed.push(r.id)
         out.changed++
       }
-      if (out.added || out.changed)
-        append(this.db, {
+      if (out.added || out.changed) {
+        const line = append(this.db, {
           actor: ctx.actor,
           kind: 'landed',
           words: `${[
@@ -278,11 +259,20 @@ export class Records {
           ]
             .filter(Boolean)
             .join(' and ')} in ${table.name} from ${source.account ?? source.connector}.`,
-          data: { table: table.id, ...out, connector: source.connector, account: source.account },
+          // the rows by id, so the run that landed them can be reverted
+          data: {
+            table: table.id,
+            ...out,
+            connector: source.connector,
+            account: source.account,
+            ids,
+          },
           user: ctx.user ?? null,
           run: ctx.run ?? null,
           module: table.module.id,
         })
+        tagVersions(this, versions, line.id)
+      }
       this.watch?.rows(table, touched, ctx)
       return out
     })

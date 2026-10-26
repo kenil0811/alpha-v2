@@ -8,7 +8,8 @@ import type { Shape } from './shape.ts'
 import type { Field, Table, WriteCtx } from './types.ts'
 import { actorName, findField, spec } from './types.ts'
 
-// Removing a table removes its rows and their versions; the journal keeps that they were here.
+// Removing a table removes its rows and their versions, and empties its trash (core step 1): a
+// table removed is removed outright. The journal keeps that they were here.
 export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void {
   tx(shape.db, () => {
     const table = shape.table(tableId)
@@ -32,6 +33,7 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
     run(shape.db, 'DELETE FROM records_fts WHERE table_id = ?', table.id)
     for (const sql of dropTableSql(table.slug, table.fields.map(spec))) shape.db.exec(sql)
     run(shape.db, 'DELETE FROM records WHERE table_id = ?', table.id)
+    run(shape.db, 'DELETE FROM removed_rows WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM views WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM tables WHERE id = ?', table.id)
@@ -51,7 +53,7 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
 }
 
 // Removing a field drops its column (or its junction table) and its provenance; the versions
-// keep what the rows held under it, and the saved views forget it.
+// keep what the rows held under it, the saved views forget it, and so does the table's trash.
 export function removeField(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
   return tx(shape.db, () => {
     const table = shape.table(tableId)
@@ -78,7 +80,26 @@ export function dropField(shape: Shape, table: Table, f: Field, ctx: WriteCtx): 
   run(shape.db, 'DELETE FROM provenance WHERE field_id = ?', f.id)
   run(shape.db, 'DELETE FROM fields WHERE id = ?', f.id)
   dropFieldFromViews(shape, table.id, f.id)
+  dropFieldFromTrash(shape, table.id, f.id)
   tombstone(shape, table.module.id, 'field', f.key ?? f.name, ctx)
+}
+
+// The rows of a table waiting in the trash forget a field removed from it, with its provenance.
+function dropFieldFromTrash(shape: Shape, tableId: string, fieldId: string): void {
+  for (const r of all<{ record_id: string; state: string }>(
+    shape.db,
+    'SELECT record_id, state FROM removed_rows WHERE table_id = ?',
+    tableId,
+  )) {
+    const kept = parse<{ vals?: Record<string, unknown>; provenance?: { field_id?: string }[] }>(
+      r.state,
+      {},
+    )
+    if (!kept.vals || !(fieldId in kept.vals)) continue
+    delete kept.vals[fieldId]
+    kept.provenance = (kept.provenance ?? []).filter((p) => p.field_id !== fieldId)
+    run(shape.db, 'UPDATE removed_rows SET state = ? WHERE record_id = ?', json(kept), r.record_id)
+  }
 }
 
 // A field a kit no longer uses (decision 4): hidden, its column and rows kept, so the person

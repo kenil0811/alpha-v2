@@ -157,6 +157,7 @@ export function turnLayer(
         'wrote',
         'changed',
         'removed',
+        'reverted',
         'filed',
         'remembered',
         'card_closed',
