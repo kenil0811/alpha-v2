@@ -1,8 +1,9 @@
 // The table view's grid: one scrolling list drawn as it scrolls (TanStack Virtual), with a sticky
 // header and name column, columns that resize by their edge, sort by a click (shift for a second
-// level), a menu in each header, groups that fold, and totals along the foot. Rows are ticked to
-// act on many; a value is changed in place (double-click, Enter or F2) as the person's word; a
-// block pasted from a spreadsheet fills across and down; + at the end adds a field.
+// level), a menu in each header, groups that fold, and totals along the foot. A click on a row's
+// name opens it. Rows are ticked to act on many; a value is changed in place (double-click, Enter
+// or F2) as the person's word; a block pasted from a spreadsheet fills across and down; + at the
+// end adds a field.
 import type { FieldView, RowView, ViewConfig } from '@alpha/core/api'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
@@ -154,6 +155,11 @@ export function Grid({
     window.clearTimeout(soon.current)
     if (picked) onPick(p)
     else soon.current = window.setTimeout(() => onPick(p), 250)
+  }
+  // a click on a row's name opens it, a moment later for the same reason
+  const open = (row: string) => {
+    window.clearTimeout(soon.current)
+    soon.current = window.setTimeout(() => onOpen(row), 250)
   }
   const startEditing = (p: { row: string; field: string }) => {
     window.clearTimeout(soon.current)
@@ -387,7 +393,7 @@ export function Grid({
                               ? () => startEditing(here)
                               : undefined
                           }
-                          onOpen={i === 0 ? () => onOpen(r.id) : undefined}
+                          onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
                     </td>
@@ -838,7 +844,9 @@ function Cell({
         // WebKit does not focus a button on a click; the cell needs it for Enter, F2 and a paste
         onClick={(e) => {
           e.currentTarget.focus({ preventScroll: true })
-          onPick()
+          // the name opens the row; the rest of the cell picks it
+          if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
+          else onPick()
         }}
         onDoubleClick={onEdit}
         onKeyDown={key}
@@ -847,7 +855,6 @@ function Cell({
           'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
-          onOpen && 'pr-8',
           selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
         )}
       >
@@ -868,11 +875,13 @@ function Cell({
               wrap ? 'break-words' : 'truncate',
               'decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
               first && 'font-medium',
+              onOpen && 'cursor-pointer',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
               tone && INK[tone],
             )}
-            title={text.length > 30 ? text : undefined}
+            data-name={onOpen ? '' : undefined}
+            title={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
           >
             {text}
           </span>
@@ -890,17 +899,6 @@ function Cell({
           </span>
         )}
       </button>
-      {onOpen && (
-        <button
-          type="button"
-          aria-label="Open the row"
-          title="Open the row"
-          onClick={onOpen}
-          className="absolute top-1.5 right-1.5 grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
-        >
-          <PanelRightOpen className="size-3.5" />
-        </button>
-      )}
     </div>
   )
 }
