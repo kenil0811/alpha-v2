@@ -10,16 +10,26 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
+  Copy,
+  CopyPlus,
+  EllipsisVertical,
+  Eraser,
   Filter,
+  History,
+  Link,
   ListChecks,
   PanelRightOpen,
+  Pencil,
+  Pin,
   Plus,
+  Trash2,
 } from 'lucide-react'
 import {
   type ClipboardEvent,
   type DragEvent,
   type FormEvent,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
   useEffect,
   useMemo,
@@ -29,6 +39,7 @@ import {
 import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
+import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
@@ -82,6 +93,8 @@ export function Grid({
   onNew,
   counted,
   readOnly = false,
+  onDuplicate,
+  onRemove,
 }: {
   tableId: string
   rows: RowView[] // filtered and sorted
@@ -103,10 +116,32 @@ export function Grid({
   onNew: (() => void) | string // adds a row, or why one can't be added here
   counted?: RowView[] // what the footer totals: every row the view holds, not only this page
   readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
+  onDuplicate?: ((row: RowView) => Promise<boolean>) | undefined
+  onRemove?: ((rows: RowView[]) => Promise<boolean>) | undefined
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [folded, setFolded] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<{ row: string; field: string } | null>(null)
+  // a row's menu: from a right-click on it (with the cell under the pointer), Shift+F10, or its ⋮
+  const [menu, setMenu] = useState<{
+    row: RowView
+    field: FieldView | null
+    x: number
+    y: number
+  } | null>(null)
+  const [removing, setRemoving] = useState<RowView | null>(null)
+  const menuOn = (row: RowView, field: FieldView | null) => ({
+    onContextMenu: (e: MouseEvent) => {
+      e.preventDefault()
+      setMenu({ row, field, x: e.clientX, y: e.clientY })
+    },
+    onKeyDown: (e: KeyboardEvent) => {
+      if (!((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu')) return
+      e.preventDefault()
+      const r = (e.target as HTMLElement).getBoundingClientRect()
+      setMenu({ row, field, x: r.left + 8, y: r.bottom })
+    },
+  })
   // A first click opens the source panel a moment later, so a double-click can change the value
   // instead (the panel would push the table and move the cell under the second click). With the
   // panel already open, a click shows the new value at once.
@@ -288,9 +323,14 @@ export function Grid({
                 className={cn('group/row', r.id === openRow && '[&>td]:bg-accent-soft')}
               >
                 <td
+                  {...menuOn(r, null)}
                   className={cn(
                     'sticky left-0 z-1 border-hair border-b p-0 group-hover/row:bg-hover',
                     bg,
+                    // the tick shows on hover, and on every row once one is ticked
+                    !on &&
+                      ticked.size === 0 &&
+                      '[&_input]:opacity-0 group-hover/row:[&_input]:opacity-100 [&_input:focus]:opacity-100',
                   )}
                 >
                   <Tick
@@ -310,6 +350,7 @@ export function Grid({
                   return (
                     <td
                       key={f.id}
+                      {...menuOn(r, f)}
                       style={stick(i) === undefined ? undefined : { left: stick(i) }}
                       className={cn(
                         'overflow-hidden border-hair border-b p-0 group-hover/row:bg-hover',
@@ -351,7 +392,20 @@ export function Grid({
                     </td>
                   )
                 })}
-                <td className={cn('border-hair border-b p-0', bg)} />
+                <td className={cn('border-hair border-b p-0', bg)}>
+                  <button
+                    type="button"
+                    aria-label="Actions for this row"
+                    title="Open, duplicate, copy a link, delete…"
+                    onClick={(e) => {
+                      const b = e.currentTarget.getBoundingClientRect()
+                      setMenu({ row: r, field: null, x: b.left, y: b.bottom })
+                    }}
+                    className="mx-auto grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
+                  >
+                    <EllipsisVertical className="size-3.5" />
+                  </button>
+                </td>
               </tr>
             )
           })}
@@ -395,7 +449,136 @@ export function Grid({
           </tr>
         </tfoot>
       </table>
+      <Popover point={menu && { x: menu.x, y: menu.y }} open={!!menu} onClose={() => setMenu(null)}>
+        {menu && (
+          <RowMenu
+            tableId={tableId}
+            row={menu.row}
+            field={menu.field}
+            names={names}
+            readOnly={readOnly || !onRemove}
+            onDone={() => setMenu(null)}
+            onEdit={() => menu.field && startEditing({ row: menu.row.id, field: menu.field.slug })}
+            onClear={() => menu.field && onEdit(menu.row, menu.field, null)}
+            onHistory={() => menu.field && onPick({ row: menu.row.id, field: menu.field.slug })}
+            onOpen={() => onOpen(menu.row.id)}
+            onDuplicate={() => onDuplicate?.(menu.row)}
+            onRemove={() => setRemoving(menu.row)}
+          />
+        )}
+      </Popover>
+      <Confirm
+        open={!!removing}
+        title="Delete this row?"
+        yes="Delete row"
+        onClose={() => setRemoving(null)}
+        onYes={async () => {
+          if (removing && (await onRemove?.([removing]))) setRemoving(null)
+        }}
+      >
+        It can’t be brought back; Activity keeps what it held.
+      </Confirm>
     </div>
+  )
+}
+
+// A row's menu, with the cell's own lines first when it was opened on a cell. A line that can't be
+// used here stays, greyed, saying why.
+function RowMenu({
+  tableId,
+  row: r,
+  field: f,
+  names,
+  readOnly,
+  onDone,
+  onEdit,
+  onClear,
+  onHistory,
+  onOpen,
+  onDuplicate,
+  onRemove,
+}: {
+  tableId: string
+  row: RowView
+  field: FieldView | null
+  names: Record<string, string>
+  readOnly: boolean // kept on its own page: changed, copied and deleted there
+  onDone: () => void
+  onEdit: () => void
+  onClear: () => void
+  onHistory: () => void
+  onOpen: () => void
+  onDuplicate: () => void
+  onRemove: () => void
+}) {
+  const then = (fn: () => void) => () => {
+    onDone()
+    fn()
+  }
+  const text = f ? show(f, r.values[f.slug], names) : ''
+  const kept = readOnly ? 'This row is kept on its own page; change it there.' : undefined
+  const fixed =
+    kept ??
+    (f && !CORRECTABLE.has(f.kind)
+      ? 'Alpha works this value out; open where it came from to correct that.'
+      : undefined)
+  return (
+    <>
+      {f && (
+        <>
+          <MenuItem reason={fixed} hint="Enter" onClick={then(onEdit)}>
+            <Pencil className="size-3.5 text-ink-3" />
+            Edit
+          </MenuItem>
+          <MenuItem
+            reason={text ? undefined : 'There is nothing in it to copy.'}
+            onClick={then(() => navigator.clipboard?.writeText(text))}
+          >
+            <Copy className="size-3.5 text-ink-3" />
+            Copy
+          </MenuItem>
+          <MenuItem
+            reason={fixed ?? (text ? undefined : 'It is already empty.')}
+            onClick={then(onClear)}
+          >
+            <Eraser className="size-3.5 text-ink-3" />
+            Clear
+          </MenuItem>
+          <MenuItem onClick={then(onHistory)}>
+            <History className="size-3.5 text-ink-3" />
+            Where it came from, and its history
+          </MenuItem>
+          <MenuLine />
+        </>
+      )}
+      <MenuItem onClick={then(onOpen)}>
+        <PanelRightOpen className="size-3.5 text-ink-3" />
+        Open
+      </MenuItem>
+      <MenuItem reason={kept} onClick={then(onDuplicate)}>
+        <CopyPlus className="size-3.5 text-ink-3" />
+        Duplicate
+      </MenuItem>
+      <MenuItem
+        onClick={then(() =>
+          navigator.clipboard?.writeText(
+            `${location.origin}${location.pathname}#/table/${tableId}/${r.id}`,
+          ),
+        )}
+      >
+        <Link className="size-3.5 text-ink-3" />
+        Copy link
+      </MenuItem>
+      <MenuItem reason="Pinning a row needs Alpha's core to keep it; not yet." onClick={onDone}>
+        <Pin className="size-3.5 text-ink-3" />
+        Pin
+      </MenuItem>
+      <MenuLine />
+      <MenuItem danger reason={kept} onClick={then(onRemove)}>
+        <Trash2 className="size-3.5" />
+        Delete row
+      </MenuItem>
+    </>
   )
 }
 

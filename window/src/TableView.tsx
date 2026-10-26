@@ -486,6 +486,36 @@ export function TableView({
               onTick={setTicked}
               onEdit={edit}
               onOpen={openRowPanel}
+              onDuplicate={
+                kept
+                  ? undefined
+                  : (r) =>
+                      write(() =>
+                        api.post(`/api/tables/${data.id}/rows/many`, {
+                          add: [
+                            {
+                              values: Object.fromEntries(
+                                data.fields
+                                  .filter(
+                                    (f) => CORRECTABLE.has(f.kind) && r.values[f.slug] != null,
+                                  )
+                                  .map((f) => [f.name, r.values[f.slug]]),
+                              ),
+                            },
+                          ],
+                        }),
+                      )
+              }
+              onRemove={
+                kept
+                  ? undefined
+                  : (rs) =>
+                      write(() =>
+                        api.post(`/api/tables/${data.id}/rows/remove`, {
+                          rows: rs.map((r) => r.id),
+                        }),
+                      )
+              }
               onPaste={setPasting}
               onNew={
                 kept
