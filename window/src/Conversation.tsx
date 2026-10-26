@@ -2,15 +2,26 @@
 // important things): the person's sentences and Alpha's replies in order, each with its topic
 // chip as a lens; one live message per turn becoming the outcome; cards inline; the Now strip and
 // the composer at the foot. A module's Conversation tab and Ask (⌘J) show it through a lens.
-import type { AboutRows, CardView, LiveEvent, Stream, WorkingModuleView } from '@alpha/core/api'
+import type {
+  AboutRows,
+  CardView,
+  LiveEvent,
+  ModelView,
+  Stream,
+  WorkingModuleView,
+} from '@alpha/core/api'
 import {
   ArrowUp,
   Bot,
   Check,
+  ChevronLeft,
   ChevronRight,
+  FolderUp,
+  ImageUp,
   KeyRound,
   Mic,
-  Paperclip,
+  Plus,
+  Sparkles,
   TriangleAlert,
   X,
 } from 'lucide-react'
@@ -39,6 +50,7 @@ import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { Topic } from './ui/pill.tsx'
+import { MenuItem, MenuLine, Popover } from './ui/popover.tsx'
 import { Words } from './ui/words.tsx'
 import { answerWords } from './vocabulary.ts'
 
@@ -134,7 +146,7 @@ export function Conversation({
 
   let lastDay = ''
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: a drop target for files; the paperclip is the keyboard way
+    // biome-ignore lint/a11y/noStaticElementInteractions: a drop target for files; the + menu is the keyboard way
     <div
       className="@container relative flex h-full"
       onDragOver={(e) => {
@@ -740,6 +752,11 @@ export function CardBox({
   )
 }
 
+// The route, named short beside "+" when it is not the person's own subscription (the default).
+const ROUTE_WORDS = { key: 'API key', api: "Alpha's own loop" } as const
+export const routeChip = (m: ModelView | null) =>
+  !m || m.route === 'subscription' ? null : ROUTE_WORDS[m.route]
+
 // The words before the caret that address an agent: "@" at the start or after a space, then a name.
 export function mentionAt(text: string): string | null {
   const m = /(?:^|\s)@([^@\n]*)$/.exec(text)
@@ -762,6 +779,41 @@ function Composer({
   compact: boolean
 }) {
   const file = useRef<HTMLInputElement>(null)
+  const folder = useRef<HTMLInputElement>(null)
+  const plus = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState<'main' | 'model' | null>(null)
+  const [model, setModel] = useState<ModelView | null>(null)
+  useEffect(() => {
+    api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
+  }, [])
+  // the menu's first line takes the focus, so the keys work in it at once
+  useEffect(() => {
+    if (open) requestAnimationFrame(() => menu.current?.querySelector('button')?.focus())
+  }, [open])
+  const close = () => setOpen(null)
+  const keys = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') return plus.current?.focus()
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const lines = [...(menu.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+    const at = lines.indexOf(document.activeElement as HTMLButtonElement)
+    const step = e.key === 'ArrowDown' ? 1 : lines.length - 1
+    lines[(at + step) % lines.length]?.focus()
+  }
+  const add = async (files: FileList | null) => {
+    for (const f of Array.from(files ?? []))
+      await api.upload(f).catch(() => onProblem(`${f.name} did not go in.`))
+  }
+  const route = (r: ModelView['route']) => {
+    close()
+    api
+      .post<ModelView>('/api/model', { route: r })
+      .then(setModel, (err: unknown) =>
+        onProblem(err instanceof Problem ? err.message : 'That did not go in.'),
+      )
+  }
+  const chip = routeChip(model)
   // "@" suggests the agents of every module; loaded the first time it is typed
   const [agents, setAgents] = useState<string[] | null>(null)
   const [query, setQuery] = useState<string | null>(null)
@@ -864,34 +916,115 @@ function Composer({
       />
       <div className="flex items-center gap-1">
         <IconButton
-          label="Add a file"
+          ref={plus}
+          label="Add files and more"
           className="rounded-full"
-          onClick={() => file.current?.click()}
+          aria-haspopup="menu"
+          aria-expanded={!!open}
+          onClick={() => setOpen(open ? null : 'main')}
         >
-          <Paperclip className="size-4" />
+          <Plus className="size-4" />
         </IconButton>
+        {chip && (
+          <button
+            type="button"
+            title={model?.providers.find((p) => p.chosen)?.title}
+            onClick={() => setOpen('model')}
+            className="flex h-6.5 items-center gap-1 rounded-full border border-line px-2.5 text-ink-2 text-sm hover:bg-hover hover:text-ink"
+          >
+            <Sparkles className="size-3.5 text-ink-3" />
+            {chip}
+          </button>
+        )}
+        <Popover anchor={plus} open={!!open} onClose={close}>
+          <div ref={menu} role="menu" onKeyDown={keys} className="flex flex-col">
+            {open === 'model' ? (
+              <>
+                <MenuItem onClick={() => setOpen('main')}>
+                  <ChevronLeft className="size-3.5 text-ink-3" />
+                  Model
+                </MenuItem>
+                <MenuLine />
+                {model?.providers.map((p) => {
+                  const keyless = p.needsKey && !model.hasKey
+                  return (
+                    <MenuItem
+                      key={p.route}
+                      checked={p.chosen}
+                      disabled={keyless}
+                      title={keyless ? 'Needs an API key: Settings › Model' : undefined}
+                      onClick={() => route(p.route)}
+                    >
+                      {p.title}
+                    </MenuItem>
+                  )
+                }) ?? (
+                  <MenuItem disabled onClick={close}>
+                    The core did not say
+                  </MenuItem>
+                )}
+              </>
+            ) : (
+              <>
+                <MenuItem
+                  onClick={() => {
+                    close()
+                    file.current?.click()
+                  }}
+                >
+                  <ImageUp className="size-3.5 text-ink-3" />
+                  Add files or images
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    close()
+                    folder.current?.click()
+                  }}
+                >
+                  <FolderUp className="size-3.5 text-ink-3" />
+                  Add a folder
+                </MenuItem>
+                <MenuLine />
+                <MenuItem onClick={() => setOpen('model')}>
+                  <Sparkles className="size-3.5 text-ink-3" />
+                  Model
+                  <ChevronRight className="ml-auto size-3.5 text-ink-3" />
+                </MenuItem>
+                <MenuItem
+                  disabled
+                  title="Not wired yet: the core takes typed words only"
+                  onClick={close}
+                >
+                  <Mic className="size-3.5 text-ink-3" />
+                  Speak
+                </MenuItem>
+              </>
+            )}
+          </div>
+        </Popover>
         <input
           ref={file}
           type="file"
           multiple
           hidden
           onChange={async (e) => {
-            for (const f of Array.from(e.target.files ?? []))
-              await api.upload(f).catch(() => onProblem('That file did not go in.'))
+            await add(e.target.files)
+            e.target.value = ''
+          }}
+        />
+        <input
+          ref={folder}
+          type="file"
+          hidden
+          {...{ webkitdirectory: '' }}
+          onChange={async (e) => {
+            await add(e.target.files)
             e.target.value = ''
           }}
         />
         <span className="ml-auto text-ink-3 text-xs">
           {compact ? '' : 'Return to send · Shift-Return for a new line'}
         </span>
-        <IconButton
-          label="Speak"
-          title="Speaking to Alpha is not wired yet: the core takes typed words only"
-          className="rounded-full"
-          disabled
-        >
-          <Mic className="size-4" />
-        </IconButton>
         <button
           type="button"
           aria-label="Send"

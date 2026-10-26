@@ -82,17 +82,20 @@ export function MenuItem({
   checked,
   disabled,
   danger,
+  title,
 }: {
   children: ReactNode
   onClick: () => void
   checked?: boolean | undefined
   disabled?: boolean | undefined
   danger?: boolean | undefined
+  title?: string | undefined // on hover: why it is disabled, say
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
+      title={title}
       onClick={onClick}
       className={cn(
         'flex h-7.5 w-full items-center gap-2 whitespace-nowrap rounded-sm px-2.5 text-left hover:bg-hover disabled:opacity-50',
