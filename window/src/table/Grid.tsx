@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import {
   type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent,
@@ -30,7 +31,7 @@ import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
-import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
 import { ColumnMenu } from './ColumnMenu.tsx'
 import { cycleSort, setTotal, setWidth } from './edits.ts'
 import {
@@ -44,6 +45,7 @@ import {
   total,
   widthOf,
 } from './engine.ts'
+import { type LayoutNow, useLayout } from './layout.ts'
 import { CORRECTABLE, DOT, INK, MARK, NUMERIC, readValue, show, TINT, typedOf } from './values.ts'
 
 type Item = { kind: 'group'; group: Group } | { kind: 'row'; row: RowView }
@@ -150,6 +152,10 @@ export function Grid({
   }, [openRow, items, virtual])
 
   const widths = shown.map((f, i) => widthOf(f, config, i === 0))
+  const layout = useLayout(tableId)
+  // the columns frozen at the left stay in place as the table scrolls across
+  const lefts = widths.map((_, i) => TICK + widths.slice(0, i).reduce((a, b) => a + b, 0))
+  const stick = (i: number) => (i < layout.frozen ? lefts[i] : undefined)
   const width = TICK + widths.reduce((a, b) => a + b, 0) + ADD
   const vitems = virtual.getVirtualItems()
   const top = vitems[0]?.start ?? 0
@@ -224,7 +230,10 @@ export function Grid({
                 key={f.id}
                 tableId={tableId}
                 field={f}
-                first={i === 0}
+                left={stick(i)}
+                edge={i === layout.frozen - 1}
+                index={i}
+                layout={layout}
                 config={config}
                 shown={shown}
                 rows={allRows}
@@ -274,6 +283,8 @@ export function Grid({
               <tr
                 key={r.id}
                 id={`row-${r.id}`}
+                data-index={v.index}
+                ref={virtual.measureElement}
                 className={cn('group/row', r.id === openRow && '[&>td]:bg-accent-soft')}
               >
                 <td
@@ -299,11 +310,13 @@ export function Grid({
                   return (
                     <td
                       key={f.id}
-                      style={i === 0 ? { left: TICK } : undefined}
+                      style={stick(i) === undefined ? undefined : { left: stick(i) }}
                       className={cn(
-                        'overflow-hidden whitespace-nowrap border-hair border-b p-0 group-hover/row:bg-hover',
+                        'overflow-hidden border-hair border-b p-0 group-hover/row:bg-hover',
+                        layout.wrap.includes(f.id) ? 'whitespace-normal' : 'whitespace-nowrap',
                         bg,
-                        i === 0 && 'sticky z-1 shadow-[inset_-1px_0_0_var(--hair)]',
+                        stick(i) !== undefined && 'sticky z-1',
+                        i === layout.frozen - 1 && 'shadow-[inset_-1px_0_0_var(--hair)]',
                       )}
                     >
                       {isEditing ? (
@@ -322,6 +335,7 @@ export function Grid({
                           row={r}
                           names={names}
                           first={i === 0}
+                          wrap={layout.wrap.includes(f.id)}
                           tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
@@ -369,6 +383,8 @@ export function Grid({
                 key={f.id}
                 field={f}
                 first={i === 0}
+                left={stick(i)}
+                edge={i === layout.frozen - 1}
                 rows={counted ?? rows}
                 config={config}
                 names={names}
@@ -413,7 +429,10 @@ function Tick({
 function Header({
   tableId,
   field: f,
-  first,
+  left,
+  edge,
+  index,
+  layout,
   config,
   shown,
   rows,
@@ -423,7 +442,10 @@ function Header({
 }: {
   tableId: string
   field: FieldView
-  first: boolean
+  left: number | undefined // where it stays when frozen
+  edge: boolean // the last frozen column, with a line at its right
+  index: number
+  layout: LayoutNow
   config: ViewConfig
   shown: FieldView[]
   rows: RowView[]
@@ -432,7 +454,15 @@ function Header({
   onConfig: (c: ViewConfig) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [inserting, setInserting] = useState<'left' | 'right' | null>(null)
+  const [over, setOver] = useState<'left' | 'right' | null>(null)
   const menu = useRef<HTMLButtonElement>(null)
+  const head = useRef<HTMLTableCellElement>(null)
+  const ctx = useContextMenu()
+  const close = () => {
+    setOpen(false)
+    ctx.close()
+  }
   const level = config.sorts.findIndex((s) => s.field === f.id)
   const dir = config.sorts[level]?.dir
   const filtered = config.filters.rules.some((r) => r.field === f.id)
@@ -453,21 +483,62 @@ function Header({
     el.addEventListener('pointermove', moveTo)
     el.addEventListener('pointerup', up)
   }
+  // a column dropped on this one goes to the side of it the pointer is on
+  const side = (e: DragEvent<HTMLTableCellElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return e.clientX < r.left + r.width / 2 ? 'left' : 'right'
+  }
+  const place = (moved: string, at: 'left' | 'right') => {
+    const order = shown.map((x) => x.id).filter((id) => id !== moved)
+    const i = order.indexOf(f.id)
+    if (i < 0) return
+    order.splice(at === 'left' ? i : i + 1, 0, moved)
+    onConfig({ ...config, order: [...order, ...config.order.filter((id) => !order.includes(id))] })
+  }
+  // a new column, put beside this one once it is made
+  const added = async (name: string) => {
+    const at = inserting
+    setInserting(null)
+    const t = await api.get<{ fields: FieldView[] }>(`/api/tables/${tableId}`)
+    const made = t.fields.find((x) => x.name === name && !shown.some((s) => s.id === x.id))
+    if (made && at) place(made.id, at)
+  }
   return (
     <th
-      style={first ? { left: TICK } : undefined}
+      ref={head}
+      style={left === undefined ? undefined : { left }}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/x-alpha-column', f.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('text/x-alpha-column')) return
+        e.preventDefault()
+        setOver(side(e))
+      }}
+      onDragLeave={() => setOver(null)}
+      onDrop={(e) => {
+        const moved = e.dataTransfer.getData('text/x-alpha-column')
+        setOver(null)
+        if (moved && moved !== f.id) place(moved, side(e))
+      }}
+      {...ctx.on}
       className={cn(
         'group/head sticky top-0 z-10 h-9 border-line border-b bg-surface p-0 font-medium text-ink-3 text-sm',
-        first && 'z-20 shadow-[inset_-1px_0_0_var(--hair)]',
+        left !== undefined && 'z-20',
+        edge && 'shadow-[inset_-1px_0_0_var(--hair)]',
+        over === 'left' && 'shadow-[inset_2px_0_0_var(--accent)]',
+        over === 'right' && 'shadow-[inset_-2px_0_0_var(--accent)]',
       )}
     >
       <div className={cn('relative flex h-9 items-center', numeric && 'flex-row-reverse')}>
         <button
           type="button"
-          title={f.about ?? 'Sort by this column; shift-click to add it as the next sort'}
+          title={`${f.about ? `${f.about} ` : ''}Click to sort, shift-click to sort by it next; drag to move it; right-click for more.`}
           onClick={(e) => onConfig(cycleSort(config, f.id, e.shiftKey))}
           className={cn(
-            'flex h-full min-w-0 flex-1 items-center gap-1 px-2.5 hover:text-ink',
+            'flex h-full min-w-0 flex-1 cursor-grab items-center gap-1 px-2.5 hover:text-ink active:cursor-grabbing',
             numeric && 'justify-end',
             (dir || filtered) && 'text-ink',
           )}
@@ -489,10 +560,11 @@ function Header({
           ref={menu}
           type="button"
           aria-label={`${f.name}: sort, filter, group and more`}
+          title={`${f.name}: sort, filter, group and more`}
           onClick={() => setOpen((o) => !o)}
           className={cn(
             'mx-1 grid size-6 shrink-0 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink',
-            open ? 'visible' : 'invisible group-hover/head:visible',
+            open || ctx.open ? 'visible' : 'invisible group-hover/head:visible',
           )}
         >
           <ChevronDown className="size-3.5" />
@@ -506,19 +578,33 @@ function Header({
       </div>
       <Popover
         anchor={menu}
-        open={open}
-        onClose={() => setOpen(false)}
+        point={ctx.point}
+        open={open || ctx.open}
+        onClose={close}
         align={numeric ? 'end' : 'start'}
       >
         <ColumnMenu
           tableId={tableId}
           field={f}
+          index={index}
+          layout={layout}
           config={config}
           shown={shown}
           rows={rows}
           names={names}
           onConfig={onConfig}
-          onClose={() => setOpen(false)}
+          onInsert={(at) => {
+            close()
+            setInserting(at)
+          }}
+          onClose={close}
+        />
+      </Popover>
+      <Popover anchor={head} open={inserting !== null} onClose={() => setInserting(null)}>
+        <AddFieldForm
+          tableId={tableId}
+          title={`Add a column to the ${inserting} of ${f.name}`}
+          onAdded={added}
         />
       </Popover>
     </th>
@@ -530,6 +616,7 @@ function Cell({
   row: r,
   names,
   first,
+  wrap,
   tasks,
   tone,
   selected,
@@ -541,6 +628,7 @@ function Cell({
   row: RowView
   names: Record<string, string>
   first: boolean
+  wrap: boolean
   tasks: number
   tone: string | null
   selected: boolean
@@ -572,7 +660,8 @@ function Cell({
         onKeyDown={key}
         title={onEdit ? 'Double-click, Enter or F2 to change it' : undefined}
         className={cn(
-          'group flex h-9.5 w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
+          'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
+          wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
           onOpen && 'pr-8',
           selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
@@ -592,7 +681,8 @@ function Cell({
         ) : (
           <span
             className={cn(
-              'truncate decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
+              wrap ? 'break-words' : 'truncate',
+              'decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
               first && 'font-medium',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
@@ -776,6 +866,8 @@ function GroupRow({
 function Foot({
   field: f,
   first,
+  left,
+  edge,
   rows,
   config,
   names,
@@ -783,6 +875,8 @@ function Foot({
 }: {
   field: FieldView
   first: boolean
+  left: number | undefined
+  edge: boolean
   rows: RowView[]
   config: ViewConfig
   names: Record<string, string>
@@ -794,10 +888,11 @@ function Foot({
   const numeric = NUMERIC.has(f.kind)
   return (
     <td
-      style={first ? { left: TICK } : undefined}
+      style={left === undefined ? undefined : { left }}
       className={cn(
         'sticky bottom-0 z-10 h-8.5 border-line border-t bg-canvas p-0 text-sm',
-        first && 'z-20 shadow-[inset_-1px_0_0_var(--hair)]',
+        left !== undefined && 'z-20',
+        edge && 'shadow-[inset_-1px_0_0_var(--hair)]',
       )}
     >
       <button
@@ -875,20 +970,49 @@ const KINDS: [string, string][] = [
 // + at the end of the header: a field the person adds, with its kind.
 function AddField({ tableId }: { tableId: string }) {
   const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-label="Add a field"
+        title="Add a field"
+        onClick={() => setOpen((o) => !o)}
+        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink"
+      >
+        <Plus className="size-3.75" />
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <AddFieldForm tableId={tableId} title="Add a field" onAdded={() => setOpen(false)} />
+      </Popover>
+    </>
+  )
+}
+
+// A new column: its name and kind, choices for a choice, the table a relation points at.
+function AddFieldForm({
+  tableId,
+  title,
+  onAdded,
+}: {
+  tableId: string
+  title: string
+  onAdded: (name: string) => void
+}) {
   const [name, setName] = useState('')
   const [kind, setKind] = useState('text')
   const [choices, setChoices] = useState('')
   const [relatesTo, setRelatesTo] = useState('')
   const [tables, setTables] = useState<{ id: string; name: string }[]>([])
   const [problem, setProblem] = useState<string | null>(null)
-  const anchor = useRef<HTMLButtonElement>(null)
   useEffect(() => {
-    if (open && kind === 'relation' && !tables.length)
+    if (kind === 'relation' && !tables.length)
       api.get<{ tables: { id: string; name: string }[] }[]>('/api/modules').then(
         (ms) => setTables(ms.flatMap((m) => m.tables)),
         () => undefined,
       )
-  }, [open, kind, tables.length])
+  }, [kind, tables.length])
   const save = async (e: FormEvent) => {
     e.preventDefault()
     setProblem(null)
@@ -906,7 +1030,7 @@ function AddField({ tableId }: { tableId: string }) {
           : {}),
         ...(kind === 'relation' ? { relatesTo } : {}),
       })
-      setOpen(false)
+      onAdded(name)
       setName('')
       setChoices('')
     } catch (err) {
@@ -914,73 +1038,59 @@ function AddField({ tableId }: { tableId: string }) {
     }
   }
   return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        aria-label="Add a field"
-        title="Add a field"
-        onClick={() => setOpen((o) => !o)}
-        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink"
-      >
-        <Plus className="size-3.75" />
-      </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        <form onSubmit={save} className="flex w-68 flex-col gap-2 p-1.5">
-          <div className="font-medium text-ink">Add a field</div>
-          <Field
-            autoFocus
-            value={name}
-            placeholder="Its name"
-            aria-label="The field’s name"
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Its kind">
-            {KINDS.map(([k, w]) => (
-              <option key={k} value={k}>
-                {w}
-              </option>
-            ))}
-          </Select>
-          {kind === 'choice' && (
-            <Field
-              value={choices}
-              placeholder="Its choices, with commas: New, Looking, Passed"
-              aria-label="Its choices"
-              onChange={(e) => setChoices(e.target.value)}
-            />
-          )}
-          {kind === 'relation' && (
-            <Select
-              value={relatesTo}
-              onChange={(e) => setRelatesTo(e.target.value)}
-              aria-label="The table it points at"
-            >
-              <option value="">Which table?</option>
-              {tables.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-          )}
-          {problem && <div className="text-bad text-sm">{problem}</div>}
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              size="sm"
-              variant="primary"
-              disabled={
-                !name.trim() ||
-                (kind === 'choice' && !choices.trim()) ||
-                (kind === 'relation' && !relatesTo)
-              }
-            >
-              Add it
-            </Button>
-          </div>
-        </form>
-      </Popover>
-    </>
+    <form onSubmit={save} className="flex w-68 flex-col gap-2 p-1.5">
+      <div className="font-medium text-ink">{title}</div>
+      <Field
+        autoFocus
+        value={name}
+        placeholder="Its name"
+        aria-label="The field’s name"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Its kind">
+        {KINDS.map(([k, w]) => (
+          <option key={k} value={k}>
+            {w}
+          </option>
+        ))}
+      </Select>
+      {kind === 'choice' && (
+        <Field
+          value={choices}
+          placeholder="Its choices, with commas: New, Looking, Passed"
+          aria-label="Its choices"
+          onChange={(e) => setChoices(e.target.value)}
+        />
+      )}
+      {kind === 'relation' && (
+        <Select
+          value={relatesTo}
+          onChange={(e) => setRelatesTo(e.target.value)}
+          aria-label="The table it points at"
+        >
+          <option value="">Which table?</option>
+          {tables.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      )}
+      {problem && <div className="text-bad text-sm">{problem}</div>}
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          variant="primary"
+          disabled={
+            !name.trim() ||
+            (kind === 'choice' && !choices.trim()) ||
+            (kind === 'relation' && !relatesTo)
+          }
+        >
+          Add it
+        </Button>
+      </div>
+    </form>
   )
 }

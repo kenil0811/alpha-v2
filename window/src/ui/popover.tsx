@@ -101,7 +101,7 @@ export function Popover({
       onKeyDown={move}
       style={{ top: at?.top ?? -9999, left: at?.left ?? -9999 }}
       className={cn(
-        'fixed z-50 min-w-48 rounded-md border border-line bg-surface p-1 text-md shadow-pop',
+        'fixed z-50 max-h-[calc(100vh-16px)] min-w-48 overflow-y-auto rounded-md border border-line bg-surface p-1 text-md shadow-pop',
         className,
       )}
     >
