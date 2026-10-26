@@ -8,6 +8,7 @@ import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ModuleSummary, ModuleView } from '../types.ts'
+import { livesPeople } from '../views.ts'
 
 export function registerModules(ctx: Ctx): void {
   const { app, world, engine, user, options } = ctx
@@ -45,6 +46,7 @@ export function registerModules(ctx: Ctx): void {
     return {
       id: m.id,
       name: m.name,
+      people: livesPeople(m),
       kit: k ? { name: k.kit, version: k.version } : null,
       agents: agents(world, m.id).map((a) => ({
         id: a.id,

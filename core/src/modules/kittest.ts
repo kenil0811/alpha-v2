@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { BrowserEngine } from '@alpha/connector-sdk'
+import { type BrowserEngine, Problem } from '@alpha/connector-sdk'
 import { parse, stringify } from 'yaml'
 import { z } from 'zod'
 import { askModel } from '../engine/ask.ts'
@@ -25,7 +25,9 @@ const Case = z.object({
   script: z.string().optional(),
   input: z.record(z.string(), z.unknown()).default({}),
   rows: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).default({}),
-  pages: z.record(z.string(), z.unknown()).default({}), // by url: what browser.extract or open gets
+  // by url: what browser.extract or open gets; { fail, kind } makes the call fail as a site would
+  // (a timeout, a 403's blocked), so a reader's way with a failure can be tried
+  pages: z.record(z.string(), z.unknown()).default({}),
   answers: z
     .array(z.object({ key: z.string(), about: z.string(), answer: z.unknown() }))
     .default([]),
@@ -105,15 +107,19 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
         ctx,
       )
     }
+    const page = (url: string) => {
+      if (!(url in c.pages)) throw new Refused(`The case has no page recorded for ${url}.`)
+      const p = c.pages[url] as { fail?: unknown; kind?: unknown } | null
+      if (p && typeof p.fail === 'string')
+        throw new Problem(
+          p.fail,
+          p.kind === 'blocked' || p.kind === 'sign_in' || p.kind === 'gone' ? p.kind : 'other',
+        )
+      return p
+    }
     const engine = {
-      open: async (url: string) => {
-        if (!(url in c.pages)) throw new Refused(`The case has no page recorded for ${url}.`)
-        return c.pages[url]
-      },
-      extract: async (url: string) => {
-        if (!(url in c.pages)) throw new Refused(`The case has no page recorded for ${url}.`)
-        return c.pages[url]
-      },
+      open: async (url: string) => page(url),
+      extract: async (url: string) => page(url),
     } as unknown as BrowserEngine
     const real = record ? askModel(world.paths.dir) : null
     const ask: Ask = async (prompt, schema) => {
