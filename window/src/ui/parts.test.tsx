@@ -28,8 +28,6 @@ describe('the shared parts', () => {
 
   it('shows a person round and an organization square, with their initials', () => {
     expect(renderToString(<Avatar name="Ada Lovelace" />)).toMatch(/rounded-full.*>AL</)
-    expect(renderToString(<Avatar name="Dell Disability Lawyers" organization />)).toMatch(
-      /rounded-md.*>DL</,
-    )
+    expect(renderToString(<Avatar name="Dawn Lumber" organization />)).toMatch(/rounded-md.*>DL</)
   })
 })

@@ -13,6 +13,7 @@ import {
   Ellipsis,
   House,
   ListChecks,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -155,6 +156,12 @@ export function Rail({
         label="Home"
         current={place.at === 'home'}
         extra={waiting > 0 && <Badge n={waiting} />}
+      />
+      <Nav
+        href="#/conversation"
+        icon={<MessageSquare className="size-4" />}
+        label="Conversation"
+        current={place.at === 'conversation'}
       />
       <Nav
         href="#/tasks"

@@ -47,7 +47,7 @@ describe('the window', () => {
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
     expect(html).not.toContain('Alpha is running')
-    expect(html).not.toContain('href="#/conversation"')
+    expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {

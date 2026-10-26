@@ -65,7 +65,7 @@ const SECTIONS = [
   ['data', 'Data'],
   ['appearance', 'Appearance'],
   ['experimental', 'Experimental'],
-] as const
+].filter(([id]) => id !== 'experimental' || EXPERIMENTS.length > 0) as [string, string][]
 
 export function Settings({ open, version }: { open: string | null; version: number }) {
   const [view, setView] = useState<ConnectorsView | null>(null)
@@ -178,7 +178,8 @@ export function Settings({ open, version }: { open: string | null; version: numb
           <div id="settings-appearance" className="scroll-mt-4">
             <Appearance view={view} onChange={load} />
           </div>
-          <div id="settings-experimental" className="scroll-mt-4">
+          {/* only once a feature is being tried: an empty section is a switch with nothing behind it */}
+          <div id="settings-experimental" className="scroll-mt-4" hidden={EXPERIMENTS.length === 0}>
             <Experimental />
           </div>
         </div>
