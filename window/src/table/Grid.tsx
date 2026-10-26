@@ -415,6 +415,13 @@ export function Grid({
               <td colSpan={span} style={{ height: bottom }} />
             </tr>
           )}
+          {/* an empty table keeps its frame: blank rows, the New row, the footer; no sentence */}
+          {items.length === 0 &&
+            [0, 1, 2].map((n) => (
+              <tr key={`blank${n}`} aria-hidden>
+                <td colSpan={span} className="h-9.5 border-hair border-b p-0" />
+              </tr>
+            ))}
           <tr>
             <td colSpan={span} className="border-hair border-b p-0">
               <button
