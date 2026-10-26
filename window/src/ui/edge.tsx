@@ -1,4 +1,4 @@
-// The inner edge of a side panel, to drag it wider or narrower (Bridge and Alpha Brain). It shows
+// The inner edge of a side panel, to drag it wider or narrower. It shows
 // only on hover or keyboard focus. Dragged well past the narrowest width, the panel folds to its
 // strip; arrow keys step it 24px.
 import { useRef, useState } from 'react'

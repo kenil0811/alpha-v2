@@ -1,5 +1,5 @@
 // A record's page, the same for a person, an organization, a task, an agent, a run and a permission
-// (Bridge and Alpha Brain): the bar holds the way back, and the page is one centred column, a small
+// (Vikas, 25 Oct): the bar holds the way back, and the page is one centred column, a small
 // line naming what the record is, its serif title, then its sections as cards.
 import type { ReactNode } from 'react'
 import { InBar } from './Shell.tsx'

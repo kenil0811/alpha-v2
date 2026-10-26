@@ -1,4 +1,4 @@
-// The metric strip over a table (Bridge and Alpha Brain's insights strip, 25 Oct): a few tiles
+// The metric strip over a table (Vikas, 25 Oct): a few tiles
 // counted from what the table already holds: its rows, its first state field's choices (a red
 // icon where the choice says something is wrong), and the rows holding a value Alpha guessed.
 import type { FieldView, RowView } from '@alpha/core/api'

@@ -1,4 +1,4 @@
-# 25 October 2026: a module's page in the shape Bridge and Alpha Brain share
+# 25 October 2026: a module's page in its agreed shape
 
 Items 6, 7, 9 and 10 of `proposals/2026-10-25-visual-coherence.md`, as a PR to `frontend` for
 Kenil. The header holds a centred pill switch (one tab per page and table, icons only when

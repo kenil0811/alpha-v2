@@ -1,4 +1,4 @@
-// A module's screen (design §14, Ledger; the shape Bridge and Alpha Brain share, 25 Oct): a header
+// A module's screen (design §14, Ledger; Vikas, 25 Oct): a header
 // with a centred pill switch, one tab for the Overview of the modules inside it when it holds any
 // (a plain list: each one's name, where it comes from and what goes on in it right now; Kenil,
 // 21 Oct), one per page (design §13), one per table, and its Conversation (Home through the
@@ -415,7 +415,7 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
   },
 ]
 
-// Governance's rules under two tabs, Allowed n and Denied n (Alpha Brain §5): each rule a sentence
+// Governance's rules under two tabs, Allowed n and Denied n: each rule a sentence
 // opening its page, and + Add starting the assistant with the rule's first words, for the person
 // to finish; Alpha keeps it from the conversation.
 function Governance({ m, allowed }: { m: ModuleView; allowed: PermissionView[] | null }) {

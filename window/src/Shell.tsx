@@ -1,4 +1,4 @@
-// The shell, in the shape Bridge and Alpha Brain share (Vikas, 25 Oct; reverses design §14's rail
+// The shell (Vikas, 25 Oct; reverses design §14's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
 // the right, their headers on one line. The rail has the workspace at its top, Home with a badge
 // for what waits on the person, Tasks, the modules by name (People and Organizations are

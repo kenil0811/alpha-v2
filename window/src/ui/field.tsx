@@ -33,7 +33,7 @@ function optionsOf(children: ReactNode): Option[] {
   })
 }
 
-// One dropdown everywhere (Bridge and Alpha Brain): a button that opens a short list, with a search
+// One dropdown everywhere: a button that opens a short list, with a search
 // line when there are more than five. Written as a <select> is, <option>s and onChange alike.
 export function Select({
   className,

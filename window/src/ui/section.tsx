@@ -1,5 +1,5 @@
 // A section of a page, as a card: its title, a line on what it is, then its rows. The same card on
-// Intelligence, Settings and every record's page (Bridge and Alpha Brain). Serif is kept for page
+// Intelligence, Settings and every record's page. Serif is kept for page
 // and record titles, so a section's title is plain.
 import type { ReactNode } from 'react'
 
