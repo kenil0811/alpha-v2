@@ -112,7 +112,7 @@ holds it today, **todo** is written but skipped until the fix lands (turn it on 
 | W2 | Organization, never company; Second Brain, never remembered; Download, never export; Delete, never remove; Decline or Cancel, never "not now" | 25 Oct | test |
 | W3 | Decline, never Veto | 25 Oct | test |
 | W4 | A control that can't act stays, greyed, with the reason on hover; never "Coming soon" | 25 Oct | test |
-| W5 | Sentence case: labels, headers and buttons; no letter-spaced capitals | 25 Oct | test |
+| W5 | Sentence case: labels, headers and buttons; no letter-spaced capitals. Held: Kenil's look on main (26 Oct) differs; waiting on his answer (11px capital labels) | 25 Oct | held |
 | W6 | No explanatory sentences on a screen; a description is a short phrase in a tooltip | 26 Oct | — |
 | W7 | The window never names the apps it learned from | 25 Oct | — |
 | W8 | Plain words: no tool names, no ids | 20 Oct | — |
@@ -123,11 +123,11 @@ holds it today, **todo** is written but skipped until the fix lands (turn it on 
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | L1 | Colours and sizes are the tokens in `app.css`, nothing written out | 20 Oct | test |
-| L2 | Seven text sizes; body 18px | 25 Oct | test |
-| L3 | Nothing under 12px | 26 Oct | test |
+| L2 | Seven text sizes; body 18px. Held: Kenil's look on main (26 Oct) differs; waiting on his answer (14px body) | 25 Oct | test (seven sizes) |
+| L3 | Nothing under 12px. Held: Kenil's look on main (26 Oct) differs; waiting on his answer (11px labels) | 26 Oct | held |
 | L4 | Headings 50% larger: 27px | 26 Oct | todo |
-| L5 | Serif for page and record titles only; section titles plain | 25 Oct | — |
-| L6 | Every section is a card with a plain title; an empty one is a dashed card | 25 Oct | — |
+| L5 | Serif for page and record titles only; section titles plain. Held: Kenil's look on main (26 Oct) differs; waiting on his answer (serif section titles) | 25 Oct | — |
+| L6 | Every section is a card with a plain title; an empty one is a dashed card. Held: Kenil's look on main (26 Oct) differs; waiting on his answer (no cards) | 25 Oct | — |
 | L7 | One avatar for people and organizations | 25 Oct | — |
 
 ## To settle
