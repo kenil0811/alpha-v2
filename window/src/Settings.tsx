@@ -69,20 +69,21 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'What Alpha knows, its agents, the accounts it reads and what it may do.',
+    about: 'The accounts Alpha reads, its agents and what it knows.',
     tabs: [
-      ['brain', 'Second Brain'],
-      ['agents', 'Modules and agents'],
       ['connections', 'Connections'],
-      ['permissions', 'Permissions'],
+      ['agents', 'Agents'],
+      ['brain', 'Second Brain'],
     ],
   },
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs on this Mac: its model, your data, your reports and how it looks.',
+    about: 'How Alpha runs on this Mac: its model, modules, permissions, data and how it looks.',
     tabs: [
       ['model', 'Model'],
+      ['modules', 'Modules'],
+      ['permissions', 'Permissions'],
       ['data', 'Data'],
       ['reports', 'Reports'],
       ['appearance', 'Appearance'],
@@ -176,6 +177,7 @@ export function Settings({
         </Section>
       </>
     ),
+    modules: <ModulesAndAgents version={version} />,
     permissions: <Permissions version={version} />,
     model: <ModelSection />,
     data: <DataSection />,
@@ -1389,18 +1391,15 @@ function Agents({ version }: { version: number }) {
     if (version >= 0) api.get<KeptTable>('/api/kept/agents').then(setData, () => setData(null))
   }, [version])
   return (
-    <>
-      <Section title="Agents" about="Every agent, what it does and when it last ran.">
-        {data && (
-          <Embedded
-            data={data}
-            open={(id) => {
-              window.location.hash = `#/agent/${id}`
-            }}
-          />
-        )}
-      </Section>
-      <ModulesAndAgents version={version} />
-    </>
+    <Section title="Agents" about="Every agent, what it does and when it last ran.">
+      {data && (
+        <Embedded
+          data={data}
+          open={(id) => {
+            window.location.hash = `#/agent/${id}`
+          }}
+        />
+      )}
+    </Section>
   )
 }

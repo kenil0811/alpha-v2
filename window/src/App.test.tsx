@@ -1,5 +1,6 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { placeOf } from './App.tsx'
 import { NO_LAYOUT } from './layout.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
@@ -26,6 +27,15 @@ const modules = [
 const open = NO_LAYOUT
 
 describe('the window', () => {
+  it('takes an old Intelligence › Permissions link to Settings', () => {
+    expect(placeOf('#/intelligence/permissions')).toEqual({
+      at: 'settings',
+      section: 'permissions',
+      open: null,
+    })
+    expect(placeOf('#/intelligence')).toEqual({ at: 'intelligence', section: null, open: null })
+  })
+
   it('lists the modules by name in the rail, inside one another, with what waits, the workspace and New module last', () => {
     const html = renderToString(
       <Rail

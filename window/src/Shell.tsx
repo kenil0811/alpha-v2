@@ -238,15 +238,13 @@ export function Rail({
           href="#/intelligence"
           icon={<Sparkles className="size-4" />}
           label="Intelligence"
-          current={
-            place.at === 'intelligence' || (place.at === 'item' && place.kind === 'permission')
-          }
+          current={place.at === 'intelligence'}
         />
         <Nav
           href="#/settings"
           icon={<SlidersHorizontal className="size-4" />}
           label="Settings"
-          current={place.at === 'settings'}
+          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'permission')}
         />
       </div>
     </nav>
