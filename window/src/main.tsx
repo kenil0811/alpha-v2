@@ -4,6 +4,7 @@ import { App } from './App.tsx'
 import './app.css'
 import { Companion } from './Companion.tsx'
 import { applyTheme, savedTheme } from './theme.ts'
+import { Tooltips } from './ui/tooltip.tsx'
 
 applyTheme(savedTheme())
 
@@ -13,6 +14,7 @@ if (root) {
     <StrictMode>
       {/* the Mac app's companion window opens on #/companion: the face alone, no screens */}
       {window.location.hash.startsWith('#/companion') ? <Companion /> : <App />}
+      <Tooltips />
     </StrictMode>,
   )
 }

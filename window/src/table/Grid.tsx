@@ -397,7 +397,7 @@ export function Grid({
                   <button
                     type="button"
                     aria-label="Actions for this row"
-                    title="Open, duplicate, copy a link, delete…"
+                    data-tip="Open, duplicate, copy a link, delete…"
                     onClick={(e) => {
                       const b = e.currentTarget.getBoundingClientRect()
                       setMenu({ row: r, field: null, x: b.left, y: b.bottom })
@@ -420,7 +420,7 @@ export function Grid({
               <button
                 type="button"
                 disabled={typeof onNew === 'string'}
-                title={typeof onNew === 'string' ? onNew : undefined}
+                data-tip={typeof onNew === 'string' ? onNew : undefined}
                 onClick={typeof onNew === 'string' ? undefined : onNew}
                 className="sticky left-0 flex h-9 items-center gap-1.5 px-3 text-ink-3 hover:text-ink disabled:opacity-50 disabled:hover:text-ink-3"
               >
@@ -744,7 +744,7 @@ function Header({
           ref={menu}
           type="button"
           aria-label={`${f.name}: sort, filter, group and more`}
-          title={`${f.name}: sort, filter, group and more`}
+          data-tip={`${f.name}: sort, filter, group and more`}
           onClick={() => setOpen((o) => !o)}
           className={cn(
             'mx-1 grid size-6 shrink-0 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink',
@@ -894,7 +894,7 @@ function Cell({
         <button
           type="button"
           aria-label="Open the row"
-          title="Open the row"
+          data-tip="Open the row"
           onClick={onOpen}
           className="absolute top-1.5 right-1.5 grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
         >
@@ -1161,7 +1161,7 @@ function AddField({ tableId }: { tableId: string }) {
         ref={anchor}
         type="button"
         aria-label="Add a field"
-        title="Add a field"
+        data-tip="Add a field"
         onClick={() => setOpen((o) => !o)}
         className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink"
       >

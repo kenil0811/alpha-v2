@@ -382,7 +382,7 @@ export function PillSwitch({
           role="tab"
           aria-selected={t.sel}
           href={t.href}
-          title={t.label}
+          data-tip={t.label}
           className={cn(
             'flex h-7 min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-md',
             t.sel ? 'bg-surface font-medium text-ink shadow-btn' : 'text-ink-2 hover:text-ink',

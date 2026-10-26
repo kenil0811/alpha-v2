@@ -255,7 +255,7 @@ function PersonPage({
                 <h1 className="truncate font-serif text-2xl text-ink">{p.name}</h1>
                 <button
                   type="button"
-                  title="Change the name"
+                  data-tip="Change the name"
                   aria-label="Change the name"
                   className="grid size-6 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink"
                   onClick={() => {

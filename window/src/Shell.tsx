@@ -183,7 +183,7 @@ export function Rail({
         <button
           type="button"
           aria-label="Fold the rail"
-          title={'Fold the rail (⌘\\)'}
+          data-tip={'Fold the rail (⌘\\)'}
           onClick={() => onLayout({ railFolded: true })}
           className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
         >
@@ -264,7 +264,7 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   return (
     <a
       href="#/settings"
-      title={label}
+      data-tip={tileOnly ? label : undefined}
       aria-label={tileOnly ? label : undefined}
       className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 hover:bg-rail-hover"
     >
@@ -370,7 +370,7 @@ function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }
         ref={anchor}
         type="button"
         aria-label={`Move ${m.name}`}
-        title={`Move ${m.name}`}
+        data-tip={`Move ${m.name}`}
         onClick={() => {
           setProblem(null)
           setOpen((o) => !o)
@@ -440,7 +440,7 @@ function Strip({
       key={href}
       href={href}
       aria-label={label}
-      title={label}
+      data-tip={label}
       aria-current={current ? 'page' : undefined}
       className={cn(
         'relative grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
@@ -465,7 +465,7 @@ function Strip({
       <button
         type="button"
         aria-label="Open the rail"
-        title={'Open the rail (⌘\\)'}
+        data-tip={'Open the rail (⌘\\)'}
         onClick={onOpen}
         className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
       >
@@ -504,7 +504,7 @@ function Strip({
         <button
           type="button"
           aria-label="New module"
-          title="New module"
+          data-tip="New module"
           onClick={onNew}
           className="grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
         >
@@ -587,7 +587,7 @@ export function Bar({
             <button
               type="button"
               aria-label={`Show all, not only ${lens.name}`}
-              title="Show all"
+              data-tip="Show all"
               onClick={onClearLens}
               className="grid size-5 place-items-center rounded-full hover:bg-accent-line/40"
             >

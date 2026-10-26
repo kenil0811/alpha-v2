@@ -45,7 +45,7 @@ export function IconButton({
     <button
       type={type}
       aria-label={label}
-      title={label}
+      data-tip={label}
       className={cn(
         'grid size-7 shrink-0 place-items-center rounded-sm text-ink-3 transition-colors hover:bg-hover hover:text-ink disabled:opacity-50',
         className,

@@ -334,7 +334,7 @@ export function TableView({
               <button
                 type="button"
                 aria-label={strip ? 'Hide the numbers' : 'Show the numbers'}
-                title={strip ? 'Hide the numbers' : 'Show the numbers'}
+                data-tip={strip ? 'Hide the numbers' : 'Show the numbers'}
                 aria-expanded={strip}
                 onClick={() => fold(!strip)}
                 className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
@@ -685,7 +685,7 @@ function More({
         ref={anchor}
         type="button"
         aria-label="More"
-        title="Sort, group, layout, download and more"
+        data-tip="Sort, group, layout, download and more"
         onClick={() => setOpen((o) => !o)}
         className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >
