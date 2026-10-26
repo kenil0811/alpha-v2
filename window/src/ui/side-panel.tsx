@@ -16,6 +16,7 @@ export function SidePanel({
   onWidth,
   full,
   head,
+  keep,
 }: {
   title: string
   onClose: () => void
@@ -24,6 +25,7 @@ export function SidePanel({
   onWidth?: (w: number | null) => void // the width they left it at
   full?: string // where Open full goes
   head?: ReactNode // a header of its own, in place of the title and its buttons
+  keep?: number // the room it always leaves the rest of the window (the rail and the screen)
 }) {
   const sizable = onWidth !== undefined
   const [room, setRoom] = useState(() => window.innerWidth)
@@ -32,7 +34,11 @@ export function SidePanel({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const widest = Math.max(NARROW, Math.floor((room * 2) / 3))
+  // up to two thirds of the window, and never so wide the screen beside it is squeezed
+  const widest = Math.max(
+    NARROW,
+    Math.min(Math.floor((room * 2) / 3), keep ? room - keep : Number.POSITIVE_INFINITY),
+  )
   const clamp = (w: number) => Math.round(Math.min(widest, Math.max(NARROW, w)))
   const [dragged, setDragged] = useState<number | null>(null)
   const shown = clamp(dragged ?? width ?? NARROW)

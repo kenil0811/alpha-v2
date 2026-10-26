@@ -176,3 +176,24 @@ https://claude.ai/artifact/7iHymTZoEmqGUqVvVgM32R, Kenil's "lets do it" 14:43 UT
   figures and Client figures. Kit tests `reader-timed-out` and `reader-blocked` pass.
 
 Kenil's "ok lets push these" 26 Oct 11:05 UTC on batch 4's test steps: committed and pushed, with alpha-avilo.
+
+## UI pull requests, batch 1 (26 Oct)
+
+Kenil, 26 Oct: review Vikas's open UI pull requests (#1 to #62, stacked on branch `frontend`) and
+`ui changes.md` a few at a time before anything lands. Review https://claude.ai/artifact/N9xeidG8JFRA53YTx7PxuA;
+his calls: 1 and 3 with my fixes, 4, 6, 7 as they are, 8 with the conversation kept as its own
+screen, 5 held, 9 and 10 through 12 in batch 2.
+
+- Merged on branch `ui-batch-1` (real merges, so the later pull requests built on these still
+  merge): 1 (ⓘ, the pop-up, Avatar), 4 (six views offered), 7 with 3 and 6 (Settings and the
+  agreed words, agent/run/permission pages, links), 8 (the assistant on every screen). Batch 4
+  met them in three places: the page view's Not now (Cancel), the row panel's import, App's import.
+- My fixes: a made-up organization in 1's test (it named a prospective client); Experimental shown
+  only once it has an experiment; Conversation kept in the rail; the run retry test on yesterday's
+  clock (item 19 of `ui changes.md`, mine from batch 2: it failed before 08:04); the assistant
+  keeps the rail and 600px of screen (`SidePanel` `keep`): the look in WebKit found Kenil's saved
+  Ask width (937px) squeezing every screen to 200px once the assistant is always open.
+- `pnpm check` 290 tests. Looked at in WebKit on Kenil's Alpha (`.data/shots/ui-batch-1`), reads
+  only. Known: with the assistant open, a table's toolbar runs past its right edge; pull requests
+  19 and 48 rework that toolbar.
+

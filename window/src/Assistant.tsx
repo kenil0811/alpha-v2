@@ -80,6 +80,9 @@ export function Assistant({
       onClose={() => onFold(true)}
       width={width}
       onWidth={onWidth}
+      // always open beside every screen, so it leaves the rail and at least 600px of screen
+      // (a width kept from the old Ask panel squeezed every screen to 200px; 26 Oct)
+      keep={216 + 600}
       head={
         <div className="flex h-12 shrink-0 items-center gap-0.5 border-hair border-b px-2">
           <IconButton label="Fold the assistant (⌘J)" onClick={() => onFold(true)}>

@@ -318,7 +318,7 @@ desk's Write or Edit (item 12's stopgap, 25 Oct; the proper home for a site is a
 with readers-as-connectors). A **standing permission** is a yes given once for one agent's one kind of
 thing (Kenil, 20 Oct): a card offers Always only after three yeses in a row for exactly that, each
 unchanged, and it is confirmed in a second step, stored as a row, shown as a sentence, counted when
-used, and revoked in Settings › Standing permissions. Code holds the wall: only the person grants
+used, and revoked in Settings › Permissions (Always allowed), or on its own page. Code holds the wall: only the person grants
 one, only where the yeses earned it. One may let an email go without asking only when it is one
 agent's one kind of message (DealPilot's CIM requests) **to an address that kind has gone to
 before on the person's yes; a new recipient is a card of its own that says so, under any
@@ -475,7 +475,8 @@ drafted email), or do it now and count it as a change of the person's they have 
 <dir>` runs its cases without the model (§9).
 
 **Make this a kit** (Stage 2, step 1, 24 Oct): a module made in a conversation leaves as a kit in
-one action, in Settings › Kits and agents on a module that came from no kit. Its `module.yaml`
+one action, in Settings › Modules and agents on a module that came from no kit ("Pack it to
+install elsewhere": the window never says kit, 26 Oct). Its `module.yaml`
 already mirrors its shape; the kit adds `version: 0.1.0`, the kit API it was written for, a
 description from the first paragraph of its notes and `uses` for what its relations and agents
 reach of other kits (by name, with the version there) and connectors; a module that reaches a
@@ -483,7 +484,7 @@ plain module's table is refused, with the words to make that one a kit first. It
 skills and pages go with it, never its rows, git history or a tool's folder. The folder is checked
 as `pnpm kit check` does and packed as `pnpm kit pack` does onto the Desktop
 (`<name>-0.1.0.alphakit`), and the journal says so. On a module that came from a kit the same
-action is "Pack the kit as it is now", its version kept, so what the person changed can travel.
+action is "Pack it as it is now", its version kept, so what the person changed can travel.
 
 ## 11. Agents, triggers, runs
 
@@ -589,7 +590,7 @@ page the person asks for.
 space in home is very precious"): one line to ask Alpha, whose answer opens on the right; what
 needs the person, with each card answered right there; what changed since they last looked (kept
 until they clear it); what is running; each agent's next run; and their modules with their tables.
-No conversation on Home.
+The conversation is not in Home's own space: it is the assistant beside it.
 
 **One conversation, and lenses.** The conversation has its own place in the rail: the person's
 sentences and Alpha's replies in order. Work shows as one live message that updates in place and
@@ -597,25 +598,35 @@ becomes the outcome, with a "Show the work" fold built from the journal. Each me
 topic chip that filters it. Above the composer, a "Now" strip shows what is in flight and what
 needs the person, three chips at most; on a wide window a column beside it shows instead what
 waits, what runs and what is next. A module's Conversation tab shows it through the module's
-lens, and Ask (⌘J) opens it on the right of any other screen. Permissions and questions land
-inline with their buttons.
+lens. **The assistant** (Vikas's pull request 8, Kenil's yes 26 Oct: "happy with assistant on
+right but i do want separate screen as well") is the conversation on the right of every screen but
+its own, open unless the person folds it (⌘J, or its fold) to a strip with Alpha's face and the
+bell for Activity; it always leaves the rail and at least 600px of screen. Permissions and
+questions land inline with their buttons.
 
-**The rail is module names only** (Kenil, 20 Oct): Home, Conversation, Tasks, People, Activity, then each module
-by name with the modules inside it folded under it, and a menu to move one into another; its
+**The rail is module names only** (Kenil, 20 Oct; the head and New module from pull request 8, 26
+Oct): the workspace at its head, Home, Conversation, Tasks, People, then each module by name with
+the modules inside it folded under it, and a menu to move one into another, New module last, and
+Settings at the foot; Activity is the assistant's bell. A module's
 pages and tables are its screen's tabs. A module holding others opens on an Overview of them: a
 plain list, a row per module with its name, where it comes from and what goes on in it right now
 (agents on and running, open tasks, what waits on the person), nothing of its tables. The
-rail folds to a strip of icons (⌘\), and the Ask panel drags wider, to two thirds of the window,
-or expands to half of it, or opens as the full Conversation. How the person left them is kept per
+rail folds to a strip of icons (⌘\), and the assistant drags wider, to two thirds of the window
+less what the screen keeps, or expands to half of it, or opens as the full Conversation. How the person left them is kept per
 person in the world, like the theme.
 
-**The other screens:** a Module (the same stream filtered to it; tables in eight views: table,
-list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and agents as text;
-files; activity), People, Activity, Settings (this Mac, data, connections, folders, kits, model
-route, users for a firm). Plain words, no tool names, no ids. **The window says what happened**
+**The other screens:** a Module (the same stream filtered to it; tables in the views offered:
+Table, Card, Timeline, Calendar, Board, Form (Vikas, 25 Oct; a view saved as List or Chart still
+opens); pages; notes, skills and agents as text; files; activity), a page for each agent, run and
+standing permission (`#/agent/…`, `#/run/…`, `#/permission/…`), People, Activity, Settings
+(Connections, Folders, Modules and agents, Second Brain, Permissions, Model, Data, Appearance).
+Plain words, no tool names, no ids: the words a person reads are agreed (`window/src/vocabulary.ts`:
+module not kit, organization not company, Delete not remove, Download not export; a card's Yes and
+No read Approve and Decline), and a test holds them. A section's explanation sits behind an ⓘ. **The window says what happened**
 (items 28 to 30 of the problems list, 25 Oct): a removal that cannot be taken back in a click
-(Disconnect, Remove the view, Forget, a connector, ticked rows, a task) asks on the page first,
-naming what goes; a refusal shows in a line beside the control that was pressed (one hook,
+(Disconnect, Delete the view, Forget, Revoke, a connector, ticked rows, a task, going back to a
+backup, bringing data in, deleting it all) asks first in the one pop-up (`window/src/ui/dialog.tsx`,
+the browser's own dialog, Cancel first; pull requests 1 and 3, 26 Oct), naming what goes; a refusal shows in a line beside the control that was pressed (one hook,
 `window/src/ui/act.tsx`), never dropped; a core that does not answer is "Alpha isn't answering on
 this Mac right now.", and a part of Home that did not load says so, with Try again.
 
