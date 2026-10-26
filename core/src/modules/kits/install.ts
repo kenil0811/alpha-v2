@@ -1,6 +1,7 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { now, one, run, tx } from '../../world/db.ts'
+import { parse, stringify } from 'yaml'
+import { all, now, one, run, tx } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module, WriteCtx } from '../../world/shape/index.ts'
 import type { World } from '../../world/world.ts'
@@ -179,7 +180,49 @@ export async function update(
     })
     return out
   })
+  updateSites(world, module, manifest.network, kitCtx, manifest.people === true)
   world.shape.writeManifest(world.shape.module(module.id) as Module)
   await commitAll(module.dir, `Updated ${kitName}`)
   return report
+}
+
+// The sites a module's readers may read, on update: the kit's list as it is now, and every site
+// the person let a reader reach on a card (its journal line), so a site the kit drops goes and
+// one the person allowed stays (item 44 of the problems list, 25 Oct). module.yaml is not one of
+// a kit's files on update, so without this its list never changed.
+function updateSites(
+  world: World,
+  module: Module,
+  kit: string[],
+  ctx: WriteCtx,
+  people: boolean,
+): void {
+  const file = join(module.dir, 'module.yaml')
+  const m = (existsSync(file) ? parse(readFileSync(file, 'utf8')) : {}) as Record<string, unknown>
+  // where People lives is the kit's to say: module.yaml is not one of a kit's files on update
+  if (people !== (m.people === true)) {
+    if (people) m.people = true
+    else delete m.people
+    writeFileSync(file, stringify(m))
+  }
+  const was = Array.isArray(m.network) ? m.network.map(String) : []
+  const allowed = all<{ host: string }>(
+    world.db,
+    `SELECT DISTINCT json_extract(data, '$.host') AS host FROM journal
+     WHERE kind = 'shaped' AND module_id = ? AND json_extract(data, '$.host') IS NOT NULL`,
+    module.id,
+  ).map((r) => r.host)
+  const sites = [...new Set([...kit, ...allowed])]
+  const gone = was.filter((h) => !sites.includes(h))
+  if (!gone.length && sites.length === was.length) return
+  writeFileSync(file, stringify({ ...m, network: sites }))
+  if (gone.length)
+    world.line({
+      actor: ctx.actor,
+      kind: 'shaped',
+      words: `${module.name}'s readers no longer read ${gone.join(', ')}: the kit's update took ${gone.length === 1 ? 'it' : 'them'} off its sites.`,
+      data: { module: module.id, gone },
+      user: ctx.user ?? null,
+      module: module.id,
+    })
 }

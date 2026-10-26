@@ -3,6 +3,8 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
+import { run } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { history } from './git.ts'
@@ -122,6 +124,83 @@ describe('updating a kit', () => {
       world.shape.table(suppliers)?.fields.find((f) => f.name === name)?.tones
     expect(field('Kind')).toEqual({ Flour: 'accent' })
     expect(field('Grade')).toEqual({ A: 'bad', B: 'good' })
+  })
+
+  it('keeps a renamed agent whole: its id, its state and its last run (matched by its file)', async () => {
+    const m = await install(world, KIT, ctx)
+    const before = agents(world, m.id).find((a) => a.name === 'Counter')
+    if (!before) throw new Error('no Counter')
+    run(
+      world.db,
+      "UPDATE agents SET state = 'on', last_run_at = ? WHERE id = ?",
+      '2026-10-25T07:00:00.000Z',
+      before.id,
+    )
+    const next = join(home, 'kit-0.2.0')
+    cpSync(KIT, next, { recursive: true })
+    writeFileSync(
+      join(next, 'module.yaml'),
+      readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('version: 0.1.0', 'version: 0.2.0'),
+    )
+    writeFileSync(
+      join(next, 'agents', 'counter.md'),
+      readFileSync(join(KIT, 'agents', 'counter.md'), 'utf8').replace(
+        'name: Counter',
+        'name: Order counter',
+      ),
+    )
+    await update(world, 'Bakery', next, ctx)
+    const after = agents(world, m.id)
+    expect(after.map((a) => a.name)).toEqual(['Order counter'])
+    expect(after[0]).toMatchObject({
+      id: before.id,
+      state: 'on',
+      lastRunAt: '2026-10-25T07:00:00.000Z',
+    })
+    expect(world.lines({ kinds: ['shaped'] }).map((l) => l.words)).toContain(
+      'Counter is now called Order counter.',
+    )
+  })
+
+  it('brings the kit’s sites on update, keeping the ones the person allowed on a card', async () => {
+    const withSites = (dir: string, version: string, sites: string[]) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace(
+            'network:\n  - example.com',
+            `network:\n${sites.map((s) => `  - ${s}`).join('\n')}`,
+          ),
+      )
+    const first = join(home, 'kit-0.1.0')
+    cpSync(KIT, first, { recursive: true })
+    withSites(first, '0.1.0', ['mill.example', 'refuses.example'])
+    const m = await install(world, first, ctx)
+    // the person let a reader reach one more site on a card: reach() puts it on the list and says so
+    const file = join(m.dir, 'module.yaml')
+    const y = parse(readFileSync(file, 'utf8')) as { network: string[] }
+    writeFileSync(
+      file,
+      readFileSync(file, 'utf8').replace(/network:\n/, 'network:\n  - flour.example\n'),
+    )
+    world.line({
+      actor: { kind: 'system' },
+      kind: 'shaped',
+      words: 'Bakery may now read flour.example.',
+      data: { module: m.id, host: 'flour.example' },
+      module: m.id,
+    })
+    expect(y.network).toEqual(['mill.example', 'refuses.example'])
+    const next = join(home, 'kit-0.2.0')
+    cpSync(KIT, next, { recursive: true })
+    withSites(next, '0.2.0', ['mill.example'])
+    await update(world, 'Bakery', next, ctx)
+    const sites = (parse(readFileSync(file, 'utf8')) as { network: string[] }).network
+    expect(sites).toEqual(['mill.example', 'flour.example'])
+    expect(world.lines({ kinds: ['shaped'] }).map((l) => l.words)).toContain(
+      "Bakery's readers no longer read refuses.example: the kit's update took it off its sites.",
+    )
   })
 
   it('names the documents a table’s rows take, and a newer version adds kinds', async () => {

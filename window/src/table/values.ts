@@ -40,8 +40,14 @@ export const INK: Record<string, string> = {
   accent: 'text-accent',
 }
 
-// The marks on a value Alpha is not sure of: ≈ estimated, ? assumed.
+// The marks on a value Alpha is not sure of: ≈ estimated, ? assumed. Grey, never amber: unsure
+// is not wrong (item 57 of the problems list, 25 Oct); a table gives the word on hover, a panel
+// writes it out.
 export const MARK: Partial<Record<SourceView['kind'], string>> = { estimated: '≈', assumed: '?' }
+
+// An empty value: a grey dash in a table, Unknown in a panel, for every kind of field.
+export const EMPTY_CELL = '–'
+export const EMPTY_WORDS = 'Unknown'
 
 export const NUMERIC = new Set(['money', 'number'])
 // What can be typed in the window; a relation, a file or a person is changed by asking Alpha.
