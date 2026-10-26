@@ -38,6 +38,7 @@ import { api } from './api.ts'
 import type { FilePlace } from './FileView.tsx'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
+import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Edge } from './ui/edge.tsx'
@@ -253,20 +254,90 @@ export function Rail({
 
 // The workspace at the rail's top: its initial on an accent tile and its name. It opens Settings,
 // where the workspace is kept.
+// The rail's head: the workspace's tile and name, opening a menu of where Alpha is set up and how
+// it looks. One workspace per Mac, so switching is shown with its reason.
 function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   const label = name ? `${name}'s workspace` : 'Your workspace'
+  const anchor = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const [theme, setTheme] = useState<Theme>(savedTheme)
+  const go = (href: string) => {
+    setOpen(false)
+    window.location.hash = href
+  }
+  const look = (t: Theme) => {
+    setTheme(t)
+    applyTheme(t)
+    void api.post('/api/appearance', { theme: t }).catch(() => undefined) // kept here regardless
+  }
+  const tile = (
+    <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
+      {(name.trim()[0] ?? 'A').toUpperCase()}
+    </span>
+  )
   return (
-    <a
-      href="#/settings"
-      title={label}
-      aria-label={tileOnly ? label : undefined}
-      className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 hover:bg-rail-hover"
-    >
-      <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
-        {(name.trim()[0] ?? 'A').toUpperCase()}
-      </span>
-      {!tileOnly && <span className="truncate font-semibold text-md">{label}</span>}
-    </a>
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        title={label}
+        aria-label={tileOnly ? label : undefined}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation() // the folded rail opens on a click
+          setOpen(!open)
+        }}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 text-left hover:bg-rail-hover"
+      >
+        {tile}
+        {!tileOnly && (
+          <>
+            <span className="min-w-0 flex-1 truncate font-semibold text-md">{label}</span>
+            <ChevronDown className="size-3.5 shrink-0 text-rail-ink-3" />
+          </>
+        )}
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
+        <div className="flex min-w-60 flex-col p-1" role="menu" aria-label={label}>
+          <div className="flex items-center gap-2 px-2.5 py-2">
+            {tile}
+            <div className="min-w-0">
+              <div className="truncate font-medium text-ink text-md">{label}</div>
+              <div className="text-ink-3 text-sm">On this Mac</div>
+            </div>
+          </div>
+          <MenuLine />
+          <MenuItem onClick={() => go('#/settings')}>
+            <SlidersHorizontal className="size-3.5 text-ink-3" />
+            Settings
+          </MenuItem>
+          <MenuItem onClick={() => go('#/intelligence')}>
+            <Sparkles className="size-3.5 text-ink-3" />
+            Intelligence
+          </MenuItem>
+          <MenuLine />
+          <div className="px-2.5 pt-1 pb-0.5 text-ink-3 text-sm">Appearance</div>
+          {(
+            [
+              ['mac', 'Match Mac'],
+              ['light', 'Light'],
+              ['dark', 'Dark'],
+            ] as const
+          ).map(([t, words]) => (
+            <MenuItem key={t} checked={theme === t} onClick={() => look(t)}>
+              {words}
+            </MenuItem>
+          ))}
+          <MenuLine />
+          <div title="Alpha keeps one workspace on this Mac.">
+            <MenuItem disabled onClick={() => undefined}>
+              Switch workspace
+            </MenuItem>
+          </div>
+        </div>
+      </Popover>
+    </>
   )
 }
 
