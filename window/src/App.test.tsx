@@ -1,5 +1,6 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { NO_LAYOUT } from './layout.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 
@@ -20,7 +21,7 @@ const modules = [
     tables: [{ id: 't_2', name: 'Meals', rows: 1 }],
   },
 ]
-const open = { railFolded: false, folded: [], panel: null }
+const open = NO_LAYOUT
 
 describe('the window', () => {
   it('lists the modules by name in the rail, inside one another, with what waits, the workspace and New module last', () => {

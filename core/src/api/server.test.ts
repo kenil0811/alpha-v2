@@ -187,18 +187,35 @@ describe('the api over a world', () => {
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: false,
       folded: [],
+      railWidth: null,
       panel: null,
+      assistant: 'open',
+      pageSize: null,
+      strip: true,
     })
+    // all of how the person left the window is kept here, none of it in the browser (26 Oct)
     await a.inject({
       method: 'POST',
       url: '/api/layout',
       headers: ok,
-      payload: { railFolded: true, folded: [shops.id], panel: 560 },
+      payload: {
+        railFolded: true,
+        folded: [shops.id],
+        panel: 560,
+        railWidth: 260,
+        assistant: 'folded',
+        pageSize: 100,
+        strip: false,
+      },
     })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: true,
       folded: [shops.id],
+      railWidth: 260,
       panel: 560,
+      assistant: 'folded',
+      pageSize: 100,
+      strip: false,
     })
     await a.close()
   })

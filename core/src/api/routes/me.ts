@@ -9,10 +9,18 @@ export function registerMe(ctx: Ctx): void {
   const layoutOf = (): Layout => {
     const folded = world.preference(user.id, 'rail_folded_modules')
     const panel = Number(world.preference(user.id, 'panel_width'))
+    const n = (key: string) => {
+      const v = Number(world.preference(user.id, key))
+      return Number.isFinite(v) && v > 0 ? v : null
+    }
     return {
       railFolded: world.preference(user.id, 'rail_folded') === 'yes',
       folded: folded ? (JSON.parse(folded) as string[]) : [],
+      railWidth: n('rail_width'),
       panel: Number.isFinite(panel) && panel > 0 ? panel : null,
+      assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
+      pageSize: n('page_size'),
+      strip: world.preference(user.id, 'strip_off') !== 'yes',
     }
   }
 
@@ -34,8 +42,20 @@ export function registerMe(ctx: Ctx): void {
         railFolded: z.boolean().optional(),
         folded: z.array(z.string()).optional(),
         panel: z.number().int().positive().nullable().optional(),
+        railWidth: z.number().int().positive().nullable().optional(),
+        assistant: z.enum(['open', 'folded']).optional(),
+        pageSize: z.number().int().positive().nullable().optional(),
+        strip: z.boolean().optional(),
       })
       .parse(req.body)
+    const num = (v: number | null | undefined) => (v === null ? null : String(v))
+    if (given.railWidth !== undefined)
+      world.setPreference(user.id, 'rail_width', num(given.railWidth))
+    if (given.pageSize !== undefined) world.setPreference(user.id, 'page_size', num(given.pageSize))
+    if (given.assistant !== undefined)
+      world.setPreference(user.id, 'assistant_folded', given.assistant === 'folded' ? 'yes' : null)
+    if (given.strip !== undefined)
+      world.setPreference(user.id, 'strip_off', given.strip ? null : 'yes')
     if (given.railFolded !== undefined)
       world.setPreference(user.id, 'rail_folded', given.railFolded ? 'yes' : null)
     if (given.folded !== undefined)

@@ -123,21 +123,10 @@ export function Rail({
   onLayout: (change: Partial<Layout>) => void
   onNew: () => void // New module: the assistant makes one from what the person says
 }) {
-  // the rail's width, dragged by its edge, kept in this browser
-  const [width, setWidth] = useState(() => {
-    try {
-      return Number(localStorage.getItem('alpha.rail')) || 216
-    } catch {
-      return 216
-    }
-  })
+  // the rail's width, dragged by its edge, kept by Alpha per person
+  const width = layout.railWidth ?? 216
   const [dragged, setDragged] = useState<number | null>(null)
-  const keepWidth = (w: number) => {
-    setWidth(w)
-    try {
-      localStorage.setItem('alpha.rail', String(w))
-    } catch {}
-  }
+  const keepWidth = (w: number) => onLayout({ railWidth: w })
   if (layout.railFolded)
     return (
       <Strip

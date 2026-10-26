@@ -6,19 +6,7 @@ export interface Health {
   build: string | null // the window this core serves: a window on another build reloads
 }
 
-export interface Me {
-  user: { id: string; name: string }
-  tenant: string
-  theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
-  layout: Layout
-  foldLines: number // a finished reply's lines shown before More (limits.yaml)
-}
-// How the person left the window: the rail folded or not, the modules folded in it, the side conversation's width (none: 320px); kept by Alpha, per person.
-export interface Layout {
-  railFolded: boolean
-  folded: string[]
-  panel: number | null
-}
+export type { Layout, Me } from './me-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
 export interface FoundRow {

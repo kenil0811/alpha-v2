@@ -14,6 +14,7 @@ import type {
 import { ChevronDown, ChevronUp, EllipsisVertical, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { useLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
 import { setRule } from './table/edits.ts'
@@ -109,35 +110,16 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
-  // rows to a page, the person's choice, kept in this browser
-  const [size, setSize] = useState(() => {
-    try {
-      return Number(localStorage.getItem('alpha-page-size')) || PAGE
-    } catch {
-      return PAGE
-    }
-  })
+  // rows to a page and the strip of counts, the person's choices, kept by Alpha per person
+  const { layout, change } = useLayout()
+  const size = layout.pageSize ?? PAGE
   const resize = (n: number) => {
-    setSize(n)
+    change({ pageSize: n })
     setPage(0)
-    try {
-      localStorage.setItem('alpha-page-size', String(n))
-    } catch {}
   }
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
-  const [strip, setStrip] = useState(() => {
-    try {
-      return localStorage.getItem('alpha-strip') !== 'off'
-    } catch {
-      return true
-    }
-  })
-  const fold = (on: boolean) => {
-    setStrip(on)
-    try {
-      localStorage.setItem('alpha-strip', on ? 'on' : 'off')
-    } catch {}
-  }
+  const strip = layout.strip
+  const fold = (on: boolean) => change({ strip: on })
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)

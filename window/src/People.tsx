@@ -12,10 +12,9 @@ import { Record } from './Record.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { peopleTable } from './table/kept.ts'
-import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
-import { Field } from './ui/field.tsx'
 import { Avatar } from './ui/avatar.tsx'
+import { Button } from './ui/button.tsx'
+import { Field } from './ui/field.tsx'
 import { Section } from './ui/section.tsx'
 
 const date = (at: string) =>
