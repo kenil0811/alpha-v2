@@ -8,6 +8,10 @@ import type {
   InstructionView,
   KeptTable,
   ModelView,
+  ModuleSummary,
+  PermissionView,
+  TableView as TableData,
+  WorkingModuleView,
 } from '@alpha/core/api'
 import {
   BookmarkCheck,
@@ -22,6 +26,7 @@ import {
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
+import { BrainGraph, type BrainNode, nodesOf } from './BrainGraph.tsx'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { Reports } from './Reports.tsx'
@@ -245,8 +250,126 @@ export function Settings({
   )
 }
 
-// Second Brain: the standing instructions the person gave, each one forgotten on a yes.
+// Second Brain: all of it as a graph, how to work (the standing instructions), and the Alpha
+// module's two tables, Decisions and Noticed, which are shown here instead of as a module on the
+// rail. The graph first, unless the person picked another part in this browser.
+const PARTS = ['graph', 'work', 'Decisions', 'Noticed'] as const
+type Part = (typeof PARTS)[number]
+
 function SecondBrain({ version }: { version: number }) {
+  const [part, setPart] = useState<Part>(() => {
+    try {
+      const kept = localStorage.getItem('alpha.brain')
+      return PARTS.find((p) => p === kept) ?? 'graph'
+    } catch {
+      return 'graph'
+    }
+  })
+  const pick = (p: Part) => {
+    setPart(p)
+    try {
+      localStorage.setItem('alpha.brain', p)
+    } catch {
+      // a browser that keeps nothing opens on the graph each time
+    }
+  }
+  return (
+    <>
+      <div className="self-start">
+        <Segmented
+          label="Second Brain"
+          value={part}
+          onChange={pick}
+          options={[
+            { value: 'graph', label: 'Graph' },
+            { value: 'work', label: 'How to work' },
+            { value: 'Decisions', label: 'Decisions' },
+            { value: 'Noticed', label: 'Noticed' },
+          ]}
+        />
+      </div>
+      {part === 'graph' ? (
+        <BrainGraphPart version={version} onWork={() => pick('work')} />
+      ) : part === 'work' ? (
+        <HowToWork version={version} />
+      ) : (
+        <AlphaTable key={part} name={part} version={version} />
+      )}
+    </>
+  )
+}
+
+// The graph: the standing instructions and the Alpha module's two tables, read together.
+function BrainGraphPart({ version, onWork }: { version: number; onWork: () => void }) {
+  const [nodes, setNodes] = useState<BrainNode[] | null>(null)
+  useEffect(() => {
+    if (version < 0) return
+    const table = (ms: ModuleSummary[], name: string) => {
+      const id = alphaOf(ms)?.tables.find((t) => t.name === name)?.id
+      return id ? api.get<TableData>(`/api/tables/${id}`).catch(() => null) : null
+    }
+    Promise.all([
+      api.get<InstructionView[]>('/api/instructions').catch(() => []),
+      api
+        .get<ModuleSummary[]>('/api/modules')
+        .then((ms) => Promise.all([table(ms, 'Decisions'), table(ms, 'Noticed')]))
+        .catch(() => [null, null]),
+    ]).then(([lines, [decisions, noticed]]) =>
+      setNodes(nodesOf(lines, decisions ?? null, noticed ?? null)),
+    )
+  }, [version])
+  return (
+    <Section title="Graph" about="The rules at the top, what Alpha noticed at the bottom.">
+      {nodes?.length === 0 && <Empty>Nothing here yet.</Empty>}
+      {nodes && nodes.length > 0 && (
+        <BrainGraph
+          nodes={nodes}
+          onOpen={(n) => {
+            if (n.href) window.location.hash = n.href
+            else onWork()
+          }}
+        />
+      )}
+    </Section>
+  )
+}
+
+const ABOUT_ALPHA = {
+  Decisions: 'What Alpha decided, and the rules you approved for it.',
+  Noticed: 'What Alpha noticed while it worked.',
+}
+
+// One of the Alpha module's tables, found by its name, drawn with the shared table.
+function AlphaTable({ name, version }: { name: keyof typeof ABOUT_ALPHA; version: number }) {
+  const [data, setData] = useState<TableData | null | undefined>(undefined)
+  useEffect(() => {
+    if (version < 0) return
+    api
+      .get<ModuleSummary[]>('/api/modules')
+      .then((ms) => {
+        const id = alphaOf(ms)?.tables.find((t) => t.name === name)?.id
+        return id ? api.get<TableData>(`/api/tables/${id}`) : null
+      })
+      .then(setData, () => setData(null))
+  }, [name, version])
+  return (
+    <Section title={name} about={ABOUT_ALPHA[name]}>
+      {data === null && <Empty>Nothing here yet.</Empty>}
+      {data && (
+        <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
+          <TableView data={data} />
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// The Alpha module: the top-level module named Alpha.
+export const alphaOf = (modules: ModuleSummary[]) =>
+  modules.find((m) => m.name === 'Alpha' && !m.parent)
+
+// How to work: the standing instructions the person gave, each one forgotten on a yes.
+function HowToWork({ version }: { version: number }) {
   const [lines, setLines] = useState<InstructionView[] | null>(null)
   const load = useCallback(() => {
     api.get<InstructionView[]>('/api/instructions').then(setLines, () => setLines([]))
@@ -264,7 +387,7 @@ function SecondBrain({ version }: { version: number }) {
   }
   return (
     <Section
-      title="Second Brain"
+      title="How to work"
       about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
     >
       {lines?.length === 0 && (
