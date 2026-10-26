@@ -90,7 +90,6 @@ export function Grid({
   onEdit,
   onOpen,
   onPaste,
-  onNew,
   counted,
   readOnly = false,
   onDuplicate,
@@ -114,7 +113,6 @@ export function Grid({
   onEdit: (row: RowView, field: FieldView, value: unknown) => Promise<boolean>
   onOpen: (row: string) => void
   onPaste: (plan: PastePlan) => void
-  onNew: (() => void) | string // adds a row, or why one can't be added here
   counted?: RowView[] // what the footer totals: every row the view holds, not only this page
   readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
   onDuplicate?: ((row: RowView) => Promise<boolean>) | undefined
@@ -415,20 +413,6 @@ export function Grid({
               <td colSpan={span} style={{ height: bottom }} />
             </tr>
           )}
-          <tr>
-            <td colSpan={span} className="border-hair border-b p-0">
-              <button
-                type="button"
-                disabled={typeof onNew === 'string'}
-                title={typeof onNew === 'string' ? onNew : undefined}
-                onClick={typeof onNew === 'string' ? undefined : onNew}
-                className="sticky left-0 flex h-9 items-center gap-1.5 px-3 text-ink-3 hover:text-ink disabled:opacity-50 disabled:hover:text-ink-3"
-              >
-                <Plus className="size-3.5" />
-                New
-              </button>
-            </td>
-          </tr>
         </tbody>
         <tfoot>
           <tr>

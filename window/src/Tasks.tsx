@@ -1,6 +1,6 @@
 // Tasks (Kenil's plan, 21 Oct, Ledger): one list of all work, each task on the place it concerns.
 // Saved lists (Today, This week, Overdue, Waiting for you, Agents, All open, Done) in four views:
-// a list, a tree by place, a board by state and a calendar by due date. New task at the top. A
+// a list, a tree by place, a board by state and a calendar by due date. New under the list. A
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
 import type { TaskLineView, TasksView, TaskView } from '@alpha/core/api'
@@ -25,7 +25,7 @@ import { tasksTable } from './table/kept.ts'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Confirm } from './ui/dialog.tsx'
+import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
@@ -87,6 +87,7 @@ function TaskLists({ list, version }: { list: List; version: number }) {
     if (version >= 0) load()
   }, [load, version])
   const data = useMemo(() => view && tasksTable(view.lines), [view])
+  const [adding, setAdding] = useState(false)
   return (
     <div className="flex h-full min-h-0 flex-col">
       <InBar>
@@ -104,9 +105,6 @@ function TaskLists({ list, version }: { list: List; version: number }) {
           }))}
         />
       </InBar>
-      <div className="px-7 pt-3">
-        <NewTask onAdded={load} />
-      </div>
       <div className="min-h-0 flex-1">
         {data ? (
           <TableView
@@ -117,12 +115,21 @@ function TaskLists({ list, version }: { list: List; version: number }) {
               open: (id) => {
                 window.location.hash = `#/tasks/${id}`
               },
+              onNew: () => setAdding(true),
             }}
           />
         ) : (
           <p className="p-7 text-ink-3">Loading…</p>
         )}
       </div>
+      <Dialog open={adding} title="New task" onClose={() => setAdding(false)}>
+        <NewTask
+          onAdded={() => {
+            setAdding(false)
+            load()
+          }}
+        />
+      </Dialog>
     </div>
   )
 }

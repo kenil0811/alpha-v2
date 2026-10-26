@@ -54,6 +54,7 @@ import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
+import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
@@ -85,8 +86,9 @@ export function TableView({
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
   // rows kept elsewhere (people, organizations, tasks) shown the same way: read here, opened on
-  // their own page, changed there; why is said when something would be typed or saved
-  kept?: { why: string; open: (row: string) => void } | null
+  // their own page, changed there; why is said when something would be typed or saved. New adds
+  // one in the page's own way, when it has one.
+  kept?: { why: string; open: (row: string) => void; onNew?: () => void } | null
 }) {
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
@@ -239,6 +241,16 @@ export function TableView({
     setPicked(null)
     setAdding(false)
   }
+  // New adds a row, or says why one can't be added here
+  const onNew = kept
+    ? (kept.onNew ?? kept.why)
+    : data.fields.some((f) => CORRECTABLE.has(f.kind))
+      ? () => {
+          setAdding(true)
+          setOpened(null)
+          setPicked(null)
+        }
+      : 'This table has no columns to fill in.'
   const first = data.fields[0]
   const openedRow = opened ? data.rows.find((r) => r.id === opened) : undefined
   const pickedRow = picked ? data.rows.find((r) => r.id === picked.row) : undefined
@@ -551,65 +563,65 @@ export function TableView({
               }
               layout={layout}
               onPaste={setPasting}
-              onNew={
-                kept
-                  ? kept.why
-                  : quiet
-                    ? 'Close the side panel to add a row.'
-                    : data.fields.some((f) => CORRECTABLE.has(f.kind))
-                      ? () => {
-                          setAdding(true)
-                          setOpened(null)
-                          setPicked(null)
-                        }
-                      : 'This table has no columns to fill in.'
-              }
             />
-            {rows.length > Math.min(size, ...SIZES) && (
-              <div className="-mt-4 flex items-center justify-end gap-1 px-7 pb-3 text-ink-3 text-sm">
-                <span className="mr-2 tabular-nums">
-                  Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
-                </span>
-                <Select
-                  aria-label="Rows to a page"
-                  value={String(size)}
-                  onChange={(e) => resize(Number(e.target.value))}
-                  className="mr-2 w-28"
+            <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
+              <span title={typeof onNew === 'string' ? onNew : undefined} className="mr-auto">
+                <Button
+                  size="sm"
+                  disabled={typeof onNew === 'string'}
+                  onClick={typeof onNew === 'string' ? undefined : onNew}
                 >
-                  {SIZES.map((n) => (
-                    <option key={n} value={n}>
-                      {n} a page
-                    </option>
-                  ))}
-                </Select>
-                {(
-                  [
-                    ['First', 0, at === 0],
-                    ['Previous', at - 1, at === 0],
-                    ['Next', at + 1, at >= pages - 1],
-                    ['Last', pages - 1, at >= pages - 1],
-                  ] as const
-                ).map(([label, to, off]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    disabled={off}
-                    onClick={() => setPage(to)}
-                    className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                  <Plus className="size-3.5" />
+                  New
+                </Button>
+              </span>
+              {rows.length > Math.min(size, ...SIZES) && (
+                <>
+                  <span className="mr-2 tabular-nums">
+                    Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
+                  </span>
+                  <Select
+                    aria-label="Rows to a page"
+                    value={String(size)}
+                    onChange={(e) => resize(Number(e.target.value))}
+                    className="mr-2 w-28"
                   >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
+                    {SIZES.map((n) => (
+                      <option key={n} value={n}>
+                        {n} a page
+                      </option>
+                    ))}
+                  </Select>
+                  {(
+                    [
+                      ['First', 0, at === 0],
+                      ['Previous', at - 1, at === 0],
+                      ['Next', at + 1, at >= pages - 1],
+                      ['Last', pages - 1, at >= pages - 1],
+                    ] as const
+                  ).map(([label, to, off]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={off}
+                      onClick={() => setPage(to)}
+                      className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
           </>
         )}
       </div>
-      {adding && !quiet && (
+      {adding && (
         <AddRow
           tableId={data.id}
           name={data.name}
           fields={data.fields.filter((f) => CORRECTABLE.has(f.kind))}
+          dialog={quiet}
           onClose={() => setAdding(false)}
         />
       )}
