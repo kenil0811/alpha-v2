@@ -187,19 +187,151 @@ describe('the api over a world', () => {
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: false,
       folded: [],
+      railWidth: null,
       panel: null,
+      assistant: 'open',
+      pageSize: null,
     })
+    // all of how the person left the window is kept here, none of it in the browser (26 Oct)
     await a.inject({
       method: 'POST',
       url: '/api/layout',
       headers: ok,
-      payload: { railFolded: true, folded: [shops.id], panel: 560 },
+      payload: {
+        railFolded: true,
+        folded: [shops.id],
+        panel: 560,
+        railWidth: 260,
+        assistant: 'folded',
+        pageSize: 100,
+      },
     })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: true,
       folded: [shops.id],
+      railWidth: 260,
       panel: 560,
+      assistant: 'folded',
+      pageSize: 100,
     })
+    await a.close()
+  })
+
+  it('serves People, Tasks, Agents and Always-allowed as tables, each changed where the core allows it', async () => {
+    const me = world.owner('Kenil')
+    const person = { actor: { kind: 'person' as const, id: me.id }, user: me.id }
+    const connector = { kind: 'connector' as const, id: 'contacts' }
+    const m = world.shape.makeModule('Contacts', { actor: connector })
+    const contacts = world.shape.makeTable(
+      m.id,
+      'Contacts',
+      [
+        { name: 'Name', kind: 'text' },
+        { name: 'Emails', kind: 'text' },
+      ],
+      { actor: connector },
+    )
+    world.people.mapTable(
+      contacts.id,
+      { each: 'person', name: 'Name', emails: 'Emails' },
+      { actor: connector },
+    )
+    world.records.land(
+      contacts.id,
+      [{ key: 'c1', values: { Name: 'Sam Ortiz', Emails: 'sam@grand.com' } }],
+      { connector: 'contacts' },
+      { actor: connector },
+    )
+    const t = world.tasks.add({ title: 'Call Sam' }, person)
+    const a = app()
+    const get = async (path: string) => (await a.inject({ url: path, headers: ok })).json()
+    const post = (path: string, payload: object) =>
+      a.inject({ method: 'POST', url: path, headers: ok, payload })
+
+    const people = await get('/api/kept/people')
+    expect(people.kept).toMatchObject({ name: 'people', editable: ['Name'] })
+    expect(people.fields.map((f: { name: string }) => f.name)).toEqual([
+      'Name',
+      'Organization',
+      'Email',
+      'Phone',
+      'Last',
+      'Talks',
+    ])
+    const sam = people.rows[0]
+    expect(sam.values).toMatchObject({ name: 'Sam Ortiz', email: 'sam@grand.com' })
+    expect(
+      (await post(`/api/kept/people/rows/${sam.id}`, { field: 'Name', value: 'Sam O.' }))
+        .statusCode,
+    ).toBe(200)
+    expect(world.people.get(sam.id)?.name).toBe('Sam O.')
+    // a field the core does not change here says where it changes
+    const email = await post(`/api/kept/people/rows/${sam.id}`, { field: 'Email', value: 'x@y.z' })
+    expect(email.statusCode).toBe(409) // a refusal, in words
+    expect(email.json().problem).toMatch(/Only the name changes here/)
+
+    // a task's state from the board, its words and due in their cells, as the person's word
+    const tasks = await get('/api/kept/tasks?list=open')
+    expect(
+      tasks.rows.map((r: { values: { task: string; state: string } }) => [
+        r.values.task,
+        r.values.state,
+      ]),
+    ).toEqual([['Call Sam', 'To do']])
+    expect(tasks.kept.counts.open).toBe(1)
+    await post(`/api/kept/tasks/rows/${t.id}`, { field: 'State', value: 'Doing' })
+    await post(`/api/kept/tasks/rows/${t.id}`, { field: 'Due', value: '2026-11-02' })
+    await post(`/api/kept/tasks/rows/${t.id}`, { field: 'Task', value: 'Call Sam back' })
+    expect(world.tasks.get(t.id)).toMatchObject({
+      state: 'doing',
+      due: '2026-11-02',
+      title: 'Call Sam back',
+    })
+    expect(
+      (await post(`/api/kept/tasks/rows/${t.id}`, { field: 'State', value: 'Later' })).statusCode,
+    ).toBe(409)
+    expect(
+      (await post(`/api/kept/tasks/rows/${t.id}`, { field: 'Where', value: 'x' })).json().problem,
+    ).toMatch(/change on its page/)
+
+    // Always allowed is read here; Revoke is on its page
+    const perms = await get('/api/kept/permissions')
+    expect(perms.kept).toMatchObject({
+      editable: [],
+      why: 'Open it to revoke it; its page asks first.',
+    })
+    await a.close()
+  })
+
+  it('pauses an agent from its cell, and finds where People lives by its module.yaml', async () => {
+    const m = await install(world, join(import.meta.dirname, '..', 'modules', 'test-kit'), {
+      actor: { kind: 'alpha' },
+    })
+    const a = app()
+    const get = async (path: string) => (await a.inject({ url: path, headers: ok })).json()
+    const agents = await get('/api/kept/agents')
+    const counter = agents.rows.find(
+      (r: { values: { agent: string } }) => r.values.agent === 'Counter',
+    )
+    expect(counter.values.state).toBe('Paused')
+    await a.inject({
+      method: 'POST',
+      url: `/api/kept/agents/rows/${counter.id}`,
+      headers: ok,
+      payload: { field: 'State', value: 'On' },
+    })
+    expect(
+      (await get('/api/kept/agents')).rows.find((r: { id: string }) => r.id === counter.id).values
+        .state,
+    ).toBe('On')
+    // no module says it holds People until its module.yaml does
+    expect((await get('/api/modules')).find((x: { id: string }) => x.id === m.id).people).toBe(
+      false,
+    )
+    const file = join(m.dir, 'module.yaml')
+    writeFileSync(file, `${readFileSync(file, 'utf8')}people: true\n`)
+    expect((await get('/api/modules')).find((x: { id: string }) => x.id === m.id).people).toBe(true)
+    expect((await get(`/api/modules/${m.id}`)).people).toBe(true)
     await a.close()
   })
 
