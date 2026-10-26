@@ -12,7 +12,7 @@ import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
-import { KIND_WORDS, MARK, show } from './values.ts'
+import { EMPTY_WORDS, KIND_WORDS, MARK, show } from './values.ts'
 
 export function RowPanel({
   tableId,
@@ -113,10 +113,10 @@ export function RowPanel({
                     source && MARK[source.kind] && 'italic',
                   )}
                 >
-                  {text || 'None given'}
-                  {source && MARK[source.kind] && (
-                    <span className="ml-1 font-bold text-warn text-xs not-italic">
-                      {MARK[source.kind]}
+                  {text || EMPTY_WORDS}
+                  {text && source && MARK[source.kind] && (
+                    <span className="ml-1.5 text-ink-3 text-sm not-italic">
+                      {MARK[source.kind]} {KIND_WORDS[source.kind]}
                     </span>
                   )}
                 </dd>

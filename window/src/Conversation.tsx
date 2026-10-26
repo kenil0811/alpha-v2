@@ -36,6 +36,7 @@ import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
+import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { Words } from './ui/words.tsx'
 
@@ -352,7 +353,10 @@ function Entry({
       <Meta who="Alpha" module={item.module} at={item.at} onLens={onLens} />
       {text && (
         <div className={cn(item.error && 'text-bad')}>
-          <Words text={text} wideTables />
+          {/* a finished reply folds when long; one still coming in shows whole */}
+          <Fold id={item.turn} whole={working || !item.reply}>
+            <Words text={text} wideTables />
+          </Fold>
         </div>
       )}
       {working && (

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { config } from '../../config.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FoundRow, Layout, Me } from '../types.ts'
 
@@ -22,6 +23,7 @@ export function registerMe(ctx: Ctx): void {
       tenant: world.tenant,
       theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
       layout: layoutOf(),
+      foldLines: config.limits().reply_fold_lines,
     }
   })
 

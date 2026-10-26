@@ -37,6 +37,7 @@ import { Tasks } from './Tasks.tsx'
 import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
+import { setFoldLines } from './ui/fold.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
 function placeOf(hash: string): Place {
@@ -216,6 +217,7 @@ export function App() {
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
         setLayout(me.layout)
+        setFoldLines(me.foldLines)
       },
       () => undefined,
     )

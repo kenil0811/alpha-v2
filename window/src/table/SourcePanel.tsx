@@ -8,7 +8,7 @@ import { cn } from '../ui/cn.ts'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
-import { CORRECTABLE, KIND_TONE, KIND_WORDS, MARK, show, when } from './values.ts'
+import { CORRECTABLE, EMPTY_WORDS, KIND_TONE, KIND_WORDS, MARK, show, when } from './values.ts'
 
 // The source panel: one value, where it came from, and its history; Correct it makes the value
 // the person's own word. A value they typed over keeps Alpha's figure beside it, with Reset.
@@ -58,11 +58,11 @@ export function SourcePanel({
               text.length > 18 ? 'text-xl' : 'text-2xl',
             )}
           >
-            <span className="min-w-0 break-words">{text || 'None given'}</span>
-            {source && MARK[source.kind] && (
-              <span className="pt-1 font-bold font-sans text-sm text-warn">
-                {MARK[source.kind]}
-              </span>
+            <span className={cn('min-w-0 break-words', !text && 'text-ink-3')}>
+              {text || EMPTY_WORDS}
+            </span>
+            {text && source && MARK[source.kind] && (
+              <span className="pt-1 font-sans text-ink-3 text-sm">{MARK[source.kind]}</span>
             )}
           </div>
           {rowName && <div className="mt-1 truncate text-ink-3 text-sm">{rowName}</div>}

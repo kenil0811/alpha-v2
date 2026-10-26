@@ -11,8 +11,8 @@ export interface Me {
   tenant: string
   theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
   layout: Layout
+  foldLines: number // a finished reply's lines shown before More (limits.yaml)
 }
-
 // How the person left the window: the rail folded or not, the modules folded in it, the side conversation's width (none: 320px); kept by Alpha, per person.
 export interface Layout {
   railFolded: boolean
