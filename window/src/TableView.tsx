@@ -6,6 +6,7 @@
 import type {
   FieldView,
   FilterRule,
+  KeptTable,
   RowView,
   SavedView,
   TableView as TableData,
@@ -13,8 +14,6 @@ import type {
 } from '@alpha/core/api'
 import {
   ArrowDownUp,
-  ChevronDown,
-  ChevronUp,
   Columns3,
   Copy,
   Download,
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { useLayout as usePersonLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
 import { setGroup, setRule } from './table/edits.ts'
@@ -42,7 +42,6 @@ import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { type LayoutNow, useLayout } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
-import { Metrics } from './table/Metrics.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
@@ -84,10 +83,15 @@ export function TableView({
   only?: string[] | null // the rows a page opened: only these, until Show all
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
-  // rows kept elsewhere (people, organizations, tasks) shown the same way: read here, opened on
+  // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
+  // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved
-  kept?: { why: string; open: (row: string) => void } | null
+  kept?: { open: (row: string) => void } | null
 }) {
+  const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
+  const why = own?.why ?? ''
+  // where a row's change goes: the module table's own rows, or the kept list's
+  const rowsAt = own ? `/api/kept/${own.name}/rows` : `/api/tables/${data.id}/rows`
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
   useEffect(() => setViews(data.views), [data.views])
@@ -125,35 +129,14 @@ export function TableView({
   const [page, setPage] = useState(0)
   const [searching, setSearching] = useState(false)
   const layout = useLayout(data.id)
-  // rows to a page, the person's choice, kept in this browser
-  const [size, setSize] = useState(() => {
-    try {
-      return Number(localStorage.getItem('alpha-page-size')) || PAGE
-    } catch {
-      return PAGE
-    }
-  })
+  // rows to a page, the person's choice, kept by Alpha per person
+  const { layout: person, change } = usePersonLayout()
+  const size = person.pageSize ?? PAGE
   const resize = (n: number) => {
-    setSize(n)
+    change({ pageSize: n })
     setPage(0)
-    try {
-      localStorage.setItem('alpha-page-size', String(n))
-    } catch {}
   }
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
-  const [strip, setStrip] = useState(() => {
-    try {
-      return localStorage.getItem('alpha-strip') !== 'off'
-    } catch {
-      return true
-    }
-  })
-  const fold = (on: boolean) => {
-    setStrip(on)
-    try {
-      localStorage.setItem('alpha-strip', on ? 'on' : 'off')
-    } catch {}
-  }
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)
@@ -195,7 +178,7 @@ export function TableView({
     choices[0]
 
   const act = async (fn: () => Promise<void>) => {
-    if (kept) return setProblem(kept.why)
+    if (kept) return setProblem(why)
     setProblem(null)
     try {
       await fn()
@@ -216,8 +199,8 @@ export function TableView({
     )
   // what the person changes in the table is their word; a refusal shows in the views' line
   const write = async (fn: () => Promise<unknown>) => {
-    if (kept) {
-      setProblem(kept.why)
+    if (kept && !own?.editable.length) {
+      setProblem(why)
       return false
     }
     setProblem(null)
@@ -230,7 +213,7 @@ export function TableView({
     }
   }
   const edit = (row: RowView, field: FieldView, value: unknown) =>
-    write(() => api.post(`/api/tables/${data.id}/rows/${row.id}`, { field: field.name, value }))
+    write(() => api.post(`${rowsAt}/${row.id}`, { field: field.name, value }))
   const tickedRows = data.rows.filter((r) => ticked.has(r.id))
   const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
   const openRowPanel = (id: string) => {
@@ -252,7 +235,6 @@ export function TableView({
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
-        {strip && <Metrics rows={data.rows} fields={fields} />}
         <ViewTabs
           tools={
             <>
@@ -331,16 +313,6 @@ export function TableView({
                   )
                 }
               />
-              <button
-                type="button"
-                aria-label={strip ? 'Hide the numbers' : 'Show the numbers'}
-                data-tip={strip ? 'Hide the numbers' : 'Show the numbers'}
-                aria-expanded={strip}
-                onClick={() => fold(!strip)}
-                className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
-              >
-                {strip ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-              </button>
             </>
           }
           views={views}
@@ -438,7 +410,7 @@ export function TableView({
           <p className="px-7 text-ink-3">No rows yet.</p>
         ) : config.kind === 'board' && boardBy ? (
           <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
-            <Board data={{ ...data, rows }} by={boardBy} />
+            <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
           </div>
         ) : config.kind === 'form' ? (
           <FormView
@@ -509,7 +481,7 @@ export function TableView({
               picked={picked}
               openRow={openRow ?? null}
               ticked={ticked}
-              readOnly={!!kept}
+              readOnly={!!kept && !own?.editable.length}
               onPick={(p) => {
                 if (kept) return
                 setPicked(p)
@@ -553,7 +525,7 @@ export function TableView({
               onPaste={setPasting}
               onNew={
                 kept
-                  ? kept.why
+                  ? why
                   : quiet
                     ? 'Close the side panel to add a row.'
                     : data.fields.some((f) => CORRECTABLE.has(f.kind))
@@ -574,7 +546,7 @@ export function TableView({
                   aria-label="Rows to a page"
                   value={String(size)}
                   onChange={(e) => resize(Number(e.target.value))}
-                  className="mr-2 w-28"
+                  className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
                 >
                   {SIZES.map((n) => (
                     <option key={n} value={n}>
