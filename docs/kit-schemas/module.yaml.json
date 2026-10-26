@@ -63,6 +63,9 @@
     "core": {
       "type": "boolean"
     },
+    "people": {
+      "type": "boolean"
+    },
     "history": {
       "type": "object",
       "properties": {
