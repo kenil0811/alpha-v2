@@ -254,7 +254,8 @@ this shape exactly.
    > Write to the person in plain words: no tool names, no ids, no code unless they ask.
 
 2. **At session start and after compaction:** the tenant's and the user's standing
-   instructions (files, read whole), each module with its notes and its tables, each table with
+   instructions (files, read whole), each module with its notes, its tables and its skills (a
+   line each from its `SKILL.md`: name and description; item 61, 25 Oct), each table with
    its row count and what a row of it is (its `about`), the files, the people and task counts,
    the connections and the folders. Not the fields: **a table's fields and what each means come
    with the first query, write or change of it in a session** (context by mode, Kenil's yes 24
@@ -443,7 +444,9 @@ the person changed is theirs and kept; nothing is deleted. It is judged by each 
 setup row's hash. Tables and fields are only added; a choice field gains a newer version's new
 choices where the kit has them, and its colours, unless someone other than a kit set them since
 (the journal says who). An older pack than the version installed is refused, with words, and
-nothing changes (item 42, 25 Oct). A kit's Python scripts run in a per-kit environment that Alpha makes with a
+nothing changes (item 42, 25 Oct). An update brings the kit's sites, keeping every site the
+person let a reader reach on a card, so a site the kit drops goes (item 44). An agent is known by
+its file first, so a renamed agent keeps its state, last run and history (item 47). A kit's Python scripts run in a per-kit environment that Alpha makes with a
 bundled `uv` at install, never the Mac's own Python. Kits update by content hash, the app by
 release.
 
@@ -653,6 +656,12 @@ Conversation and its Agents and notes as tabs; on its screens Ask (⌘J) opens t
 conversation on the right, and a message asked there carries the module. Pages other than the stream and tables fill
 the window up to 1200px; the stream's text is 720px, and a table in a reply may run to 960px.
 
+A value Alpha is not sure of carries a small grey mark (≈ estimated, ? assumed), never amber:
+in a table its word on hover, in a panel written out; an empty value is a grey dash in a table and
+"Unknown" in a panel (item 57, 25 Oct). A figure clicked on a page opens its source panel beside
+the page, which stays where it was (item 59). A finished reply longer than `reply_fold_lines`
+(limits.yaml, 4) folds with More, above its first table when that comes sooner; one that opens
+with a table shows whole (item 63).
 A value read from a document opens the document at its place: a sheet with the cell marked, a
 PDF's page drawn with the piece's box marked, a text with its line. A row's panel lists the files on
 it with their kinds and takes a dropped file (Kenil, 20 Oct).
@@ -714,7 +723,11 @@ checks on the world (tables made, rows landed, a card waiting, a value's source)
 read the world, not the model's prose; a judge is used only where nothing else can tell.
 Journeys that would act in a real account run against fixtures, or on Kenil's word; a site is a
 made-up one served on the Mac. A client's journeys live in the client's own repository and run
-with `pnpm journey <name> --from ../<client>/journeys`.
+with `pnpm journey <name> --from ../<client>/journeys`. `--times N` runs one N times, each on a
+fresh world, and says how many passed (`journey_times` in limits.yaml when no number is given);
+`pnpm journeys` runs a whole folder; either writes one summary beside the reports (item 48, 25
+Oct). A kit's test cases (`pnpm kit test`) may record a page that fails as a site would (a
+timeout, a block), to try a reader's way with it.
 
 **Tests** (Vitest) never call the model and never touch a real tenant. A failure becomes a
 journey before it becomes a change.

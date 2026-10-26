@@ -145,3 +145,34 @@ the batch 3 review (https://claude.ai/artifact/BkkgKPE3fMEV15uvLJxP9i): 28, 29, 
   tool), colours kept through an update (kits), an older pack refused (packs).
 
 Kenil's "ok looks good" 25 Oct 14:07 UTC on batch 3's test steps: committed and pushed.
+
+## Batch 4 (items 44 to 63), 25 Oct
+
+Review https://claude.ai/artifact/QQmxVmpHtmJr7PwP3GVVN8, plan
+https://claude.ai/artifact/7iHymTZoEmqGUqVvVgM32R, Kenil's "lets do it" 14:43 UTC: 44 to 48, 57,
+59, 61, 63 done; 60 waits for the Build step; the review's suggestions taken on 57, 59, 63.
+
+- **Core.** `syncAgents` knows an agent by its file first, so a rename keeps its id, state and
+  last run (a line says the new name). `updateSites` in `kits/install.ts`: an update writes the
+  kit's sites plus every host the person allowed on a card (the `shaped` lines with a host), and
+  says which went; before, module.yaml's list never changed on update. `skillsOf` in
+  `engine/context.ts`: each module's skills, a line each, in the start layer. The journeys runner
+  split: `journeys/run.ts` runs one (`runOne`), `journeys/main.ts` the command with `--times [N]`
+  (`journey_times: 3`) and `--all` (`pnpm journeys`), a summary in `docs/journeys`. `kit test`
+  cases may record a failing page (`{ fail, kind }`).
+- **Window.** 57: grey marks with their word on hover (`KIND_WORDS`), `EMPTY_CELL` (a dash) in the
+  grid and `EMPTY_WORDS` (Unknown) in the panels. 59: a page's open of one row's field opens
+  `SourcePanel` beside the page (it follows the world while open); other opens go to the table as
+  before. 63: `ui/fold.tsx`, `reply_fold_lines: 4` carried in `/api/me`. The plan said a reply
+  with a table is never cut; the look showed every long reply of Kenil's is long because of a
+  table, so a reply folds above its first table instead, and one opening with a table stays whole.
+- **alpha-avilo (DealPilot 0.5.4, Accounting 0.3.3).** 44: the four refusing hosts off `network`.
+  45: the Report's referral partners from the export whose period covers the month (`covers()`
+  reads the period's words; a row needs no new field), client section rows laid over everyone's
+  by Section; the Funnel counts a deal at each stage up to its furthest, in the kit's Stage order.
+  46: the listing reader sets Blocked only on the engine's blocked kind (not Chrome being open),
+  else Not read (a new State choice) with "not read: timed out"; a listing with no badge keeps
+  its status. 47: Outreach's local day; Owner is a CPA in `history.removed`; Figures renamed Deal
+  figures and Client figures. Kit tests `reader-timed-out` and `reader-blocked` pass.
+
+Kenil's "ok lets push these" 26 Oct 11:05 UTC on batch 4's test steps: committed and pushed, with alpha-avilo.
