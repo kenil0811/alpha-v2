@@ -25,6 +25,7 @@ import { tasksTable } from './table/kept.ts'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { DateField, parseDay } from './ui/date-field.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -167,11 +168,11 @@ export function NewTask({
           onChange={(e) => setTitle(e.target.value)}
           className="min-w-64 flex-1"
         />
-        <Field
+        <DateField
           aria-label="Due"
-          type="date"
+          placeholder="Due"
           value={due}
-          onChange={(e) => setDue(e.target.value)}
+          onChange={setDue}
           className="w-40"
         />
         <Button type="submit" size="sm" variant="primary" disabled={!title.trim()}>
@@ -685,8 +686,10 @@ function Labelled({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-// A day or a moment, saved once the person has settled on it: when they leave the field, or a
-// moment after they stop changing it, so stepping through the minutes is one change, not ten.
+// A day, or a day and a time, saved once the person has settled on it: a day as soon as it is
+// picked; a time when they leave the field, or a moment after they stop changing it, so stepping
+// through the minutes is one change, not ten. A time with no day yet is today's; a day with no
+// time yet is at 09:00.
 function WhenField({
   type,
   label,
@@ -705,19 +708,31 @@ function WhenField({
     window.clearTimeout(timer.current)
     if (next !== value) onSave(next)
   }
+  const [day = '', time = ''] = v.split('T')
+  const pickDay = (d: string) => {
+    const next = d && type === 'datetime-local' ? `${d}T${time || '09:00'}` : d
+    setV(next)
+    save(next)
+  }
   return (
-    <Field
-      type={type}
-      aria-label={label}
-      value={v}
-      onChange={(e) => {
-        const next = e.target.value
-        setV(next)
-        window.clearTimeout(timer.current)
-        timer.current = window.setTimeout(() => save(next), 1500)
-      }}
-      onBlur={() => save(v)}
-    />
+    <div className="flex gap-2">
+      <DateField aria-label={label} value={day} onChange={pickDay} className="w-40" />
+      {type === 'datetime-local' && (
+        <Field
+          type="time"
+          aria-label={`${label}, time`}
+          value={time}
+          onChange={(e) => {
+            if (!e.target.value) return
+            const next = `${day || parseDay('today')}T${e.target.value}`
+            setV(next)
+            window.clearTimeout(timer.current)
+            timer.current = window.setTimeout(() => save(next), 1500)
+          }}
+          onBlur={() => save(v)}
+        />
+      )}
+    </div>
   )
 }
 
