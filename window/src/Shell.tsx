@@ -215,16 +215,18 @@ export function Rail({
             Modules appear here as you ask for them.
           </div>
         )}
-        {tops(modules).map((m) => (
-          <ModuleItem
-            key={m.id}
-            m={m}
-            modules={modules}
-            here={here}
-            folded={layout.folded}
-            onFold={fold}
-          />
-        ))}
+        <ModuleDrag modules={modules}>
+          {tops(modules).map((m) => (
+            <ModuleItem
+              key={m.id}
+              m={m}
+              modules={modules}
+              here={here}
+              folded={layout.folded}
+              onFold={fold}
+            />
+          ))}
+        </ModuleDrag>
         <button
           type="button"
           onClick={onNew}
@@ -349,6 +351,59 @@ function Badge({ n }: { n: number }) {
   )
 }
 
+// Dragging a module onto another puts it inside; onto Top level, out to the top. The same place
+// route as the ⋮ menu, which stays the keyboard's way to move one.
+type Dragging = {
+  id: string | null
+  start: (id: string | null) => void
+  drop: (within: string | null) => void
+}
+const Drag = createContext<Dragging>({ id: null, start: () => undefined, drop: () => undefined })
+
+function ModuleDrag({ modules, children }: { modules: ModuleSummary[]; children: ReactNode }) {
+  const [id, setId] = useState<string | null>(null)
+  const [over, setOver] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const drop = async (within: string | null) => {
+    setId(null)
+    if (!id) return
+    try {
+      await api.post(`/api/modules/${id}/place`, { within })
+      setProblem(null)
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : 'That did not move.')
+    }
+  }
+  const nested = !!modules.find((m) => m.id === id)?.parent
+  return (
+    <Drag.Provider value={{ id, start: setId, drop: (w) => void drop(w) }}>
+      {nested && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: a drop target; the ⋮ menu moves by keyboard
+        <div
+          onDragOver={(e) => {
+            e.preventDefault()
+            setOver(true)
+          }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setOver(false)
+            void drop(null)
+          }}
+          className={cn(
+            'mb-1 flex h-7.5 items-center rounded-md border border-rail-line border-dashed px-2 text-rail-ink-3 text-sm',
+            over && 'border-accent bg-rail-hover text-rail-ink',
+          )}
+        >
+          Drop here for the top level
+        </div>
+      )}
+      {children}
+      {problem && <p className="px-2 py-1 text-bad text-sm">{problem}</p>}
+    </Drag.Provider>
+  )
+}
+
 // A module in the rail: its name only (its pages and tables are its screen's tabs), the modules
 // inside it under it, and a menu to move it into another.
 function ModuleItem({
@@ -366,9 +421,40 @@ function ModuleItem({
 }) {
   const kids = childrenOf(modules, m.id)
   const open = !folded.includes(m.id)
+  const drag = useContext(Drag)
+  const [over, setOver] = useState(false)
+  // never into itself, one of its own, or where it already sits
+  const can =
+    !!drag.id &&
+    !inside(modules, drag.id).includes(m.id) &&
+    modules.find((x) => x.id === drag.id)?.parent !== m.id
   return (
     <div>
-      <div className="group/item relative flex items-center">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: dragged and dropped on; the ⋮ menu moves by keyboard */}
+      <div
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = 'move'
+          drag.start(m.id)
+        }}
+        onDragEnd={() => drag.start(null)}
+        onDragOver={(e) => {
+          if (!can) return
+          e.preventDefault()
+          setOver(true)
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => {
+          if (!can) return
+          e.preventDefault()
+          setOver(false)
+          drag.drop(m.id)
+        }}
+        className={cn(
+          'group/item relative flex items-center rounded-md',
+          over && 'bg-rail-hover ring-2 ring-accent',
+        )}
+      >
         <Nav
           href={`#/module/${m.id}`}
           icon={<ModuleIcon name={m.name} className="size-4" />}
