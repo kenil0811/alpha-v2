@@ -230,6 +230,7 @@ export interface ModuleSummary {
   name: string
   parent: string | null // the module it sits inside
   people: boolean // People and Organizations are its tabs (module.yaml people: true)
+  alpha: boolean // Alpha's own module (module.yaml core: true): its tables are the Second Brain
   pages: PageSummary[]
   tables: TableSummary[]
 }

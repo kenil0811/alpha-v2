@@ -10,11 +10,10 @@ import type { ModuleView, PermissionView, RunView, TableView as TableData } from
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { startAsk } from './ask.ts'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
-import { Button } from './ui/button.tsx'
-import { cn } from './ui/cn.ts'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -349,45 +348,14 @@ function AgentsAndNotes({
   )
 }
 
-// Governance's rules in two columns, Allowed n and Denied n, each a sentence with its reason. + Add
-// in either column takes a rule typed by the person, an approved rule: kept until the core holds
-// rules of its own (proposals/2026-10-25-rules-marks-revert.md) as a decision of theirs, Kept, in
-// Alpha's Decisions, worded "In <module>, Alpha may …" or "In <module>, Alpha must never …".
+// Governance's rules in two columns, Allowed n and Denied n, each a sentence with its reason: what
+// the core holds and keeps to (the sites its readers may read, what the person said Always to).
+// + Add in either column starts the assistant with the rule's first words, for the person to
+// finish; a rule only lands here once the core holds and enforces it (design §14: a rule for the
+// model is a wall in code, or it is not written).
 type Rule = { key: string; words: string; why: string; href?: string }
-const SAYS = { allowed: 'Alpha may', denied: 'Alpha must never' } as const
-
-function useDecisions() {
-  const [table, setTable] = useState<TableData | null>(null)
-  const load = useCallback(async () => {
-    const alpha = (
-      await api.get<
-        { name: string; parent: string | null; tables: { id: string; name: string }[] }[]
-      >('/api/modules')
-    ).find((x) => x.name === 'Alpha' && !x.parent)
-    const id = alpha?.tables.find((t) => t.name === 'Decisions')?.id
-    setTable(id ? await api.get<TableData>(`/api/tables/${id}`) : null)
-  }, [])
-  useEffect(() => {
-    load().catch(() => setTable(null))
-  }, [load])
-  return { table, load }
-}
 
 function Governance({ m, allowed }: { m: ModuleView; allowed: PermissionView[] | null }) {
-  const { table, load } = useDecisions()
-  const id = (name: string) => table?.fields.find((f) => f.name === name)?.slug ?? name // rows are keyed by slug
-  const typed = (side: keyof typeof SAYS): Rule[] => {
-    const head = `In ${m.name}, ${SAYS[side]} `
-    return (table?.rows ?? [])
-      .filter((r) => r.values[id('State')] === 'Kept')
-      .map((r) => ({ r, words: String(r.values[id('Decision')] ?? '') }))
-      .filter(({ words }) => words.startsWith(head))
-      .map(({ r, words }) => ({
-        key: r.id,
-        words: `${SAYS[side]} ${words.slice(head.length)}`,
-        why: `You approved this rule${r.values[id('Said on')] ? `, ${new Date(`${r.values[id('Said on')]}T12:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}.`,
-      }))
-  }
   const may: Rule[] = [
     {
       key: 'sites',
@@ -402,25 +370,20 @@ function Governance({ m, allowed }: { m: ModuleView; allowed: PermissionView[] |
       why: `You said Always on its card (${p.grantedBy}); it holds across Alpha.`,
       href: `#/permission/${p.id}`,
     })),
-    ...typed('allowed'),
   ]
-  const add = async (side: keyof typeof SAYS, words: string) => {
-    if (!table) throw new Error('Alpha’s Decisions table is not there, so the rule can’t be kept.')
-    await api.post(`/api/tables/${table.id}/rows`, {
-      values: {
-        Decision: `In ${m.name}, ${SAYS[side]} ${words.replace(/\.?$/, '.')}`,
-        'Said on': new Date().toLocaleDateString('en-CA'), // today here, as YYYY-MM-DD
-        State: 'Kept',
-        Why: `Typed in ${m.name}’s Governance.`,
-      },
-    })
-    await load()
-  }
   return (
     <div className="@container">
       <div className="grid items-start gap-6 @min-[600px]:grid-cols-2">
-        <RuleColumn side="allowed" rules={may} onAdd={(w) => add('allowed', w)} />
-        <RuleColumn side="denied" rules={typed('denied')} onAdd={(w) => add('denied', w)} />
+        <RuleColumn
+          side="allowed"
+          rules={may}
+          onAdd={() => startAsk(`From now on, in ${m.name}, you may `)}
+        />
+        <RuleColumn
+          side="denied"
+          rules={[]}
+          onAdd={() => startAsk(`From now on, in ${m.name}, never `)}
+        />
       </div>
     </div>
   )
@@ -431,20 +394,10 @@ function RuleColumn({
   rules,
   onAdd,
 }: {
-  side: keyof typeof SAYS
+  side: 'allowed' | 'denied'
   rules: Rule[]
-  onAdd: (words: string) => Promise<void>
+  onAdd: () => void
 }) {
-  const [adding, setAdding] = useState(false)
-  const [words, setWords] = useState('')
-  const { busy, problem, act } = useAct()
-  const save = async () => {
-    if (!words.trim()) return
-    if (await act(() => onAdd(words.trim()))) {
-      setWords('')
-      setAdding(false)
-    }
-  }
   return (
     <section
       aria-label={side === 'allowed' ? 'Allowed' : 'Denied'}
@@ -479,56 +432,14 @@ function RuleColumn({
           ))}
         </ul>
       )}
-      {adding ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void save()
-          }}
-          className="flex flex-col gap-2"
-        >
-          <label className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
-            <span className="shrink-0 text-ink-3 text-md">{SAYS[side]}</span>
-            <input
-              // biome-ignore lint/a11y/noAutofocus: + Add was pressed to type the rule
-              autoFocus
-              value={words}
-              onChange={(e) => setWords(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault()
-                  setAdding(false)
-                }
-              }}
-              placeholder={
-                side === 'allowed'
-                  ? 'reply to brokers without asking'
-                  : 'email anyone outside the firm'
-              }
-              aria-label={`${SAYS[side]}…`}
-              className="h-8 min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-            />
-          </label>
-          <Refusal words={problem} />
-          <div className="flex gap-1.5">
-            <Button size="sm" type="submit" disabled={busy || !words.trim()}>
-              Save as a rule
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:text-ink"
-        >
-          <Plus className="size-3.5" />
-          {side === 'allowed' ? 'Add allowed action' : 'Add denied action'}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onAdd}
+        className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+      >
+        <Plus className="size-3.5" />
+        {side === 'allowed' ? 'Add allowed action' : 'Add denied action'}
+      </button>
     </section>
   )
 }

@@ -259,3 +259,29 @@ strip stays gone.
 - Design §14: the one header's Find, the table's toolbar, menus and tools.
 - My batch 2 test step to drag a task across the board was wrong: main had no drag; 29 adds it.
 
+## UI pull requests, batch 4 (26 Oct)
+
+Review https://claude.ai/artifact/CviXQjQFdLV4AHVGZBGRTu; Kenil's calls (18:15): 46 as is; 26 and 44
+dropped (44: "fine to drop but we would need later so core changes should follow later"); 20, 21,
+31, 33, 35, 37 and 51 with my fixes. The five tips merged on branch `ui-batch-4` as tried in a
+scratch copy (the pencil and Alpha off the rail beside the per-person layout; 21's Governance in
+the Agents and notes tab; the core's agents table kept over 46's own; 33's bubble folding long
+replies; 18's reason on a menu line for 37).
+
+- Dropped: Settings › Reports and its test (26), the egg graph, its test and its tab kept in the
+  browser (44); Second Brain opens on How to work.
+- The pencil names what it marks with its words spaced as on screen (20).
+- Governance keeps two columns and shows only what the core holds; + Add starts the conversation
+  ("From now on, in DealPilot, you may …"), no rule saved that nothing enforces (21).
+- The serif test allows a section's title and covers the table files again (31).
+- The person's words in a light bubble; Retry, the microphone and Speak gone; Model › on the
+  shared submenu, the route chip opening the same routes (33, 37).
+- Alpha's own module is the one whose module.yaml says `core: true` (`ModuleSummary.alpha`, read
+  like `people`), never found by its name; a test (35).
+- The core reports the version its release wrote (`app/VERSION`), or "from a repository", not a
+  number in its code; Help lists the menus' keys, Escape on ticked rows and the double-click (51).
+- Design §14: the conversation, the pencil, the rail without Alpha, Governance, Intelligence,
+  Settings, the serif rule.
+- For the next plan: rules the core enforces, links between Second Brain items (44), scheduled
+  reports (26), a model per message (37), Retry.
+

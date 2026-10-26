@@ -242,6 +242,7 @@ export function makeViews(ctx: BaseCtx) {
       name: m.name,
       parent: m.parent,
       people: livesPeople(m),
+      alpha: isAlphas(m),
       pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
@@ -486,11 +487,17 @@ export function cardView(c: Card): CardView {
 }
 
 // Whether People and Organizations live in this module, by its module.yaml (Network's says so).
-export function livesPeople(m: Module): boolean {
+export const livesPeople = (m: Module): boolean => saysYes(m, 'people')
+
+// Whether this is Alpha's own module, the kit the core keeps (its module.yaml says core: true):
+// its Decisions and Noticed are the Second Brain.
+export const isAlphas = (m: Module): boolean => saysYes(m, 'core')
+
+function saysYes(m: Module, key: 'people' | 'core'): boolean {
   const file = join(m.dir, 'module.yaml')
   if (!existsSync(file)) return false
   try {
-    return (parseYaml(readFileSync(file, 'utf8')) as { people?: unknown } | null)?.people === true
+    return (parseYaml(readFileSync(file, 'utf8')) as Record<string, unknown> | null)?.[key] === true
   } catch {
     return false
   }

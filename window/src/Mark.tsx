@@ -30,6 +30,11 @@ export function MarkButton() {
   )
 }
 
+// an element's words as the screen shows them, a space between its parts (its text alone runs a
+// heading into the line under it)
+const words = (el: Element | null | undefined) =>
+  el ? ((el as HTMLElement).innerText ?? el.textContent) : null
+
 const short = (s: string | null | undefined, n = 80) => {
   const t = (s ?? '').replace(/\s+/g, ' ').trim()
   return t.length > n ? `${t.slice(0, n - 1)}…` : t
@@ -41,25 +46,25 @@ export function describe(el: Element): string {
   const where = [
     ...document.querySelectorAll('[aria-current="page"], [role="tab"][aria-selected="true"]'),
   ]
-    .map((a) => short(a.getAttribute('aria-label') || a.textContent, 40))
+    .map((a) => short(a.getAttribute('aria-label') || words(a), 40))
     .filter((w, i, all) => w && all.indexOf(w) === i)
   const page = `${where.join(' › ') || 'this screen'} (${window.location.hash || '#/'})`
   const cell = el.closest('td, th')
   const table = cell?.closest('table')
   if (cell && table) {
     const col = (cell as HTMLTableCellElement).cellIndex
-    const column = short(table.querySelector('thead tr')?.children[col]?.textContent, 40)
+    const column = short(words(table.querySelector('thead tr')?.children[col]), 40)
     const row = cell.parentElement as HTMLTableRowElement
-    const name = short(row.cells[1]?.textContent, 60) // cell 0 is the row's number
+    const name = short(words(row.cells[1]), 60) // cell 0 is the row's number
     if (cell.tagName === 'TH') return `On ${page}: the column “${column}”`
-    return `On ${page}: the row “${name}”${column ? `, column “${column}”, value “${short(cell.textContent)}”` : ''}`
+    return `On ${page}: the row “${name}”${column ? `, column “${column}”, value “${short(words(cell))}”` : ''}`
   }
   const named = el.closest('[aria-label], [title], button, a, h1, h2, h3, label')
   const label = short(
-    named?.getAttribute('aria-label') || named?.getAttribute('title') || el.textContent,
+    named?.getAttribute('aria-label') || named?.getAttribute('title') || words(el),
   )
   const heading = short(
-    el.closest('section, aside, [role="dialog"]')?.querySelector('h1, h2, h3')?.textContent,
+    words(el.closest('section, aside, [role="dialog"]')?.querySelector('h1, h2, h3')),
     60,
   )
   return `On ${page}${heading ? `, in “${heading}”` : ''}: “${label || el.tagName.toLowerCase()}”`

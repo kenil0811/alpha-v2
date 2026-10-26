@@ -14,12 +14,10 @@ import {
   ArrowUp,
   Bot,
   Check,
-  ChevronLeft,
   ChevronRight,
   FolderUp,
   ImageUp,
   KeyRound,
-  Mic,
   Plus,
   Sparkles,
   TriangleAlert,
@@ -51,7 +49,7 @@ import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
-import { MenuItem, MenuLine, Popover } from './ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 import { Words } from './ui/words.tsx'
 import { answerWords } from './vocabulary.ts'
 
@@ -339,7 +337,7 @@ function Entry({
 }) {
   if (item.kind === 'said')
     return (
-      <div className="max-w-3/4 self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-accent px-3.5 py-2.25 text-accent-ink">
+      <div className="max-w-3/4 self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-sunk px-3.5 py-2.25 text-ink">
         {item.words}
       </div>
     )
@@ -415,7 +413,7 @@ function Entry({
   )
 }
 
-// The grey line under a reply: who answered, what ran, and Stop while it runs or Retry after.
+// The grey line under a reply: who answered, what ran, and Stop while it runs.
 function Ran({
   module,
   at,
@@ -440,22 +438,13 @@ function Ran({
       <span className="min-w-0 truncate">
         {doing ?? (steps ? `Ran ${steps} step${steps === 1 ? '' : 's'}` : 'Answered')}
       </span>
-      <span className="ml-auto shrink-0">
-        {doing ? (
+      {doing && (
+        <span className="ml-auto shrink-0">
           <Button size="sm" variant="ghost" onClick={() => api.post('/api/stop')}>
             Stop
           </Button>
-        ) : (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled
-            title="Alpha cannot run a reply again yet: the core has no way to retry a turn"
-          >
-            Retry
-          </Button>
-        )}
-      </span>
+        </span>
+      )}
     </div>
   )
 }
@@ -785,26 +774,14 @@ function Composer({
   const file = useRef<HTMLInputElement>(null)
   const folder = useRef<HTMLInputElement>(null)
   const plus = useRef<HTMLButtonElement>(null)
-  const menu = useRef<HTMLDivElement>(null)
-  const [open, setOpen] = useState<'main' | 'model' | null>(null)
+  const chipAt = useRef<HTMLButtonElement>(null)
+  // the + menu, or the routes alone from the chip; the keys are the shared menu's (ui/popover.tsx)
+  const [open, setOpen] = useState<'main' | 'routes' | null>(null)
   const [model, setModel] = useState<ModelView | null>(null)
   useEffect(() => {
     api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
   }, [])
-  // the menu's first line takes the focus, so the keys work in it at once
-  useEffect(() => {
-    if (open) requestAnimationFrame(() => menu.current?.querySelector('button')?.focus())
-  }, [open])
   const close = () => setOpen(null)
-  const keys = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') return plus.current?.focus()
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
-    e.preventDefault()
-    const lines = [...(menu.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
-    const at = lines.indexOf(document.activeElement as HTMLButtonElement)
-    const step = e.key === 'ArrowDown' ? 1 : lines.length - 1
-    lines[(at + step) % lines.length]?.focus()
-  }
   const add = async (files: FileList | null) => {
     for (const f of Array.from(files ?? []))
       await api.upload(f).catch(() => onProblem(`${f.name} did not go in.`))
@@ -818,6 +795,21 @@ function Composer({
       )
   }
   const chip = routeChip(model)
+  // how Alpha reaches Claude, for every conversation (Settings › Model is the same switch)
+  const routes = model?.providers.map((p) => (
+    <MenuItem
+      key={p.route}
+      checked={p.chosen}
+      reason={p.needsKey && !model.hasKey ? 'Needs an API key: Settings › Model' : undefined}
+      onClick={() => route(p.route)}
+    >
+      {p.title}
+    </MenuItem>
+  )) ?? (
+    <MenuItem reason="The core did not say which routes it has." onClick={close}>
+      Model
+    </MenuItem>
+  )
   // "@" suggests the agents of every module; loaded the first time it is typed
   const [agents, setAgents] = useState<string[] | null>(null)
   const [query, setQuery] = useState<string | null>(null)
@@ -924,82 +916,56 @@ function Composer({
           label="Add files and more"
           className="rounded-full"
           aria-haspopup="menu"
-          aria-expanded={!!open}
+          aria-expanded={open === 'main'}
           onClick={() => setOpen(open ? null : 'main')}
         >
           <Plus className="size-4" />
         </IconButton>
         {chip && (
           <button
+            ref={chipAt}
             type="button"
             title={model?.providers.find((p) => p.chosen)?.title}
-            onClick={() => setOpen('model')}
+            onClick={() => setOpen(open === 'routes' ? null : 'routes')}
             className="flex h-6.5 items-center gap-1 rounded-full border border-line px-2.5 text-ink-2 text-sm hover:bg-hover hover:text-ink"
           >
             <Sparkles className="size-3.5 text-ink-3" />
             {chip}
           </button>
         )}
-        <Popover anchor={plus} open={!!open} onClose={close}>
-          <div ref={menu} role="menu" onKeyDown={keys} className="flex flex-col">
-            {open === 'model' ? (
+        <Popover anchor={plus} open={open === 'main'} onClose={close}>
+          <MenuItem
+            onClick={() => {
+              close()
+              file.current?.click()
+            }}
+          >
+            <ImageUp className="size-3.5 text-ink-3" />
+            Add files or images
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              close()
+              folder.current?.click()
+            }}
+          >
+            <FolderUp className="size-3.5 text-ink-3" />
+            Add a folder
+          </MenuItem>
+          <MenuLine />
+          <SubMenu
+            label={
               <>
-                <MenuItem onClick={() => setOpen('main')}>
-                  <ChevronLeft className="size-3.5 text-ink-3" />
-                  Model
-                </MenuItem>
-                <MenuLine />
-                {model?.providers.map((p) => {
-                  const keyless = p.needsKey && !model.hasKey
-                  return (
-                    <MenuItem
-                      key={p.route}
-                      checked={p.chosen}
-                      reason={keyless ? 'Needs an API key: Settings › Model' : undefined}
-                      onClick={() => route(p.route)}
-                    >
-                      {p.title}
-                    </MenuItem>
-                  )
-                }) ?? (
-                  <MenuItem disabled onClick={close}>
-                    The core did not say
-                  </MenuItem>
-                )}
+                <Sparkles className="size-3.5 text-ink-3" />
+                Model
               </>
-            ) : (
-              <>
-                <MenuItem
-                  onClick={() => {
-                    close()
-                    file.current?.click()
-                  }}
-                >
-                  <ImageUp className="size-3.5 text-ink-3" />
-                  Add files or images
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    close()
-                    folder.current?.click()
-                  }}
-                >
-                  <FolderUp className="size-3.5 text-ink-3" />
-                  Add a folder
-                </MenuItem>
-                <MenuLine />
-                <MenuItem onClick={() => setOpen('model')}>
-                  <Sparkles className="size-3.5 text-ink-3" />
-                  Model
-                  <ChevronRight className="ml-auto size-3.5 text-ink-3" />
-                </MenuItem>
-                <MenuItem reason="Not wired yet: the core takes typed words only" onClick={close}>
-                  <Mic className="size-3.5 text-ink-3" />
-                  Speak
-                </MenuItem>
-              </>
-            )}
-          </div>
+            }
+          >
+            {routes}
+          </SubMenu>
+        </Popover>
+        <Popover anchor={chipAt} open={open === 'routes'} onClose={close}>
+          {routes}
         </Popover>
         <input
           ref={file}

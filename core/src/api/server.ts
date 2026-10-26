@@ -30,7 +30,12 @@ import { registerTasks } from './routes/tasks.ts'
 import type { Health } from './types.ts'
 import { deny, makeViews } from './views.ts'
 
-export const VERSION = '0.1.0'
+// The version this core ships as, which a release writes into the app's VERSION file
+// (scripts/release.ts); a core run from a repository has none.
+const versionFile = join(import.meta.dirname, '..', '..', '..', 'VERSION')
+export const VERSION = existsSync(versionFile)
+  ? readFileSync(versionFile, 'utf8').trim()
+  : 'from a repository'
 
 export interface ServerOptions {
   engine?: Engine

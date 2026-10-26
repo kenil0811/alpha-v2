@@ -603,10 +603,17 @@ lens. **The assistant** (Vikas's pull request 8, Kenil's yes 26 Oct: "happy with
 right but i do want separate screen as well") is the conversation on the right of every screen but
 its own, open unless the person folds it (⌘J, or its fold) to a strip with Alpha's face and the
 bell for Activity; it always leaves the rail and at least 600px of screen. Permissions and
-questions land inline with their buttons.
+questions land inline with their buttons. Since UI batch 4 (Kenil's picks, 26 Oct) the person's
+words sit in a light bubble on the right and Alpha's replies on the surface on the left, each with
+a grey line under it (Alpha, the module, the time, what ran, Stop while it runs); the composer is
+round, with + (add files or a folder; Model ›, the same switch as Settings › Model) and @ to name
+an agent. **The pencil**, beside the bell, marks anything on screen and sends a comment on it to
+Alpha with what was marked (the page; a cell's row, column and value; a header; a label and its
+section).
 
 **The rail is module names only** (Kenil, 20 Oct; UI batches 1 and 2, 26 Oct): the workspace at
-its head, Home, Conversation, Tasks, then each module by name with the modules inside it folded
+its head, Home, Conversation, Tasks, then each module by name (Alpha's own, whose module.yaml
+says `core: true`, is not there: its Decisions and Noticed are Second Brain's) with the modules inside it folded
 under it, a menu to move one into another, New module last (it starts the sentence "Make a module
 for "), and Intelligence and Settings at the foot; Activity is the assistant's bell. **One header**
 (48px, across the rail, the screen and the assistant): a way back when inside something, the
@@ -615,7 +622,9 @@ the one box there; ⌘K still finds; UI batch 3). Under it, a screen with parts 
 every label in full (a table's row count beside its name), scrolling sideways when long, never
 cut short or folded to icons (Kenil, 26 Oct). A module's tabs are its pages, its tables, its
 Conversation and its Agents and notes, which holds its agents, the notes Alpha reads first, what
-ran lately and Governance (Allowed and Denied, each a sentence with its reason, and + Add); nothing
+ran lately and Governance (Allowed and Denied side by side, each a sentence with its reason; + Add
+starts the conversation with the rule's first words, and a rule shows only once the core holds and
+enforces it); nothing
 sits under a table or a page (Kenil, 26 Oct). **People and Organizations** are the tabs
 of the module whose `module.yaml` says `people: true` (Network's), beside its own tables. A module holding others opens on an Overview of them: a
 plain list, a row per module with its name, where it comes from and what goes on in it right now
@@ -631,8 +640,9 @@ a 4px thumb shown while the box is under the pointer; a row of tabs shows none.
 Table, Card, Timeline, Calendar, Board, Form (Vikas, 25 Oct; a view saved as List or Chart still
 opens); pages; notes, skills and agents as text; files; activity), a page for each agent, run and
 standing permission (`#/agent/…`, `#/run/…`, `#/permission/…`), Activity, **Intelligence**
-(Second Brain, Modules and agents, Connections with Folders, Permissions, as tabs) and **Settings**
-(Model, Data, Appearance, one at a time; Experimental only once something is being tried).
+(Connections with Folders, Agents, and Second Brain with How to work, Decisions and Noticed, as
+tabs; UI batch 4) and **Settings** (Model, Modules, Permissions, Data, Appearance and Help with the
+keys and the version, one at a time; Experimental only once something is being tried).
 **Every list is the shared table** (UI batch 2, Kenil's yes 26 Oct): People, Organizations, Tasks,
 Agents and Always allowed are served by the core as tables (`/api/kept/…`) and drawn by the same
 table view as a module's tables, each changed in a cell where the core allows it (a task's words,
@@ -681,10 +691,11 @@ tasks shows their count beside its name; Home has Today's tasks; Find (⌘K) has
 
 **The look is Ledger** (Kenil, 20 Oct; the proposal and mock are in the project's
 `design/window-proposal.md`): slate neutrals and one slate-blue accent, Geist with Source Serif 4
-for page and record titles and big numbers, seven text sizes with a 14px body and 11px capital
+for page, record and section titles and big numbers only (a test holds it), seven text sizes with a 14px body and 11px capital
 labels (the 18px body and sentence-case labels were tried and dropped, Kenil, 26 Oct), one module
 icon set, light and dark; the tokens are `window/src/app.css`, the parts are in
-`window/src/ui/`, and `window/src/look.test.ts` fails any colour or size that is not a token.
+`window/src/ui/`, and `window/src/look.test.ts` fails any colour or size that is not a token and
+serif anywhere else.
 `pnpm shots` takes every screen in light and dark. On a module's screens the assistant is the
 module's conversation, and a message asked there carries the module. Pages other than the stream and tables fill
 the window up to 1200px; the stream's text is 720px, and a table in a reply may run to 960px.
