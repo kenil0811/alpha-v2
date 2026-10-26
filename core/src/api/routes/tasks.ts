@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import type { Task } from '../../world/tasks/index.ts'
 import type { Ctx } from '../ctx.ts'
-import type { TasksView, TaskView } from '../types.ts'
+import { keptEdit, keptField, keptTable } from '../kept.ts'
+import type { KeptTable, TasksView, TaskView } from '../types.ts'
 
 export function registerTasks(ctx: Ctx): void {
   const { app, world, engine, user, options, live, asPerson } = ctx
@@ -32,6 +33,79 @@ export function registerTasks(ctx: Ctx): void {
         .sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''))
         .slice(0, 200),
   }
+  // Tasks as a table (UI batch 2, 26 Oct): a saved list's tasks, each changed in a cell or by
+  // dragging it across the board, as the person's word on the task's own record
+  const STATES = {
+    todo: 'To do',
+    doing: 'Doing',
+    waiting: 'Waiting',
+    done: 'Done',
+    dropped: 'Dropped',
+  } as const
+  const PRIORITIES = { high: 'High', normal: 'Normal', low: 'Low' } as const
+  const EDITABLE = ['Task', 'State', 'Due', 'Priority']
+  const WHY = 'Who it is for and where it sits change on its page.'
+  const counts = () =>
+    Object.fromEntries(Object.entries(LISTS).map(([k, f]) => [k, k === 'done' ? 0 : f().length]))
+  app.get('/api/kept/tasks', async (req): Promise<KeptTable> => {
+    const { list } = z.object({ list: z.string().default('open') }).parse(req.query)
+    const waiting = waitingCards()
+    const working = workingOn()
+    return keptTable(
+      'tasks',
+      'Tasks',
+      [
+        keptField('Task', 'text'),
+        keptField('State', 'choice', {
+          'To do': 'accent',
+          Doing: 'accent',
+          Waiting: 'warn',
+          Done: 'good',
+          Dropped: 'bad',
+        }),
+        keptField('Due', 'date'),
+        keptField('Priority', 'choice', { High: 'bad', Normal: 'accent', Low: 'good' }),
+        keptField('Owner', 'text'),
+        keptField('Where', 'text'),
+      ],
+      (LISTS[list] ?? (LISTS.open as () => Task[]))().map((t) => {
+        const l = lineOf(t, waiting, working)
+        return {
+          id: l.id,
+          values: {
+            task: l.title,
+            state: STATES[l.state],
+            due: l.due,
+            priority: PRIORITIES[l.priority],
+            owner: l.owner,
+            where: l.place.words,
+          },
+        }
+      }),
+      { editable: EDITABLE, why: WHY, counts: counts() },
+    )
+  })
+  app.post('/api/kept/tasks/rows/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { field, value } = keptEdit(req.body, EDITABLE, WHY)
+    const words = value === null || value === undefined ? '' : String(value).trim()
+    if (field === 'State') {
+      const state = Object.entries(STATES).find(([, w]) => w === words)?.[0]
+      if (!state) throw new Refused(`A task's state is one of ${Object.values(STATES).join(', ')}.`)
+      world.tasks.setState(id, state as keyof typeof STATES, asPerson)
+    } else if (field === 'Priority') {
+      const p = Object.entries(PRIORITIES).find(([, w]) => w === words)?.[0]
+      if (!p) throw new Refused('A priority is High, Normal or Low.')
+      world.tasks.change(id, { priority: p as keyof typeof PRIORITIES }, asPerson)
+    } else if (field === 'Due') world.tasks.change(id, { due: words || null }, asPerson)
+    else {
+      if (!words) throw new Refused('A task needs its words.')
+      world.tasks.change(id, { title: words }, asPerson)
+    }
+    live()
+    return { ok: true }
+  })
+
   app.get('/api/tasks', async (req): Promise<TasksView> => {
     const q = z
       .object({
@@ -57,9 +131,7 @@ export function registerTasks(ctx: Ctx): void {
     return {
       list: q.list,
       lines: tasks.map((t) => lineOf(t, waiting, working)),
-      counts: Object.fromEntries(
-        Object.entries(LISTS).map(([k, f]) => [k, k === 'done' ? 0 : f().length]),
-      ),
+      counts: counts(),
     }
   })
 

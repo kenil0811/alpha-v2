@@ -1,34 +1,68 @@
 import { z } from 'zod'
-import { config } from '../../config.ts'
+import { Refused } from '../../world/kinds.ts'
 import { phoneWords } from '../../world/phones.ts'
 import type { Ctx } from '../ctx.ts'
-import type { CardView, PeopleView, PersonView } from '../types.ts'
+import { keptEdit, keptField, keptTable } from '../kept.ts'
+import type { CardView, KeptTable, PersonView } from '../types.ts'
 
 export function registerPeople(ctx: Ctx): void {
   const { app, world, live, asPerson } = ctx
   const { cardOut } = ctx.views
 
-  app.get('/api/people', async (req): Promise<PeopleView> => {
-    const { kind, words } = z
-      .object({
-        kind: z.enum(['person', 'company']).default('person'),
-        words: z.string().default(''),
-      })
-      .parse(req.query)
-    return {
-      kind,
-      days: config.people().contact_days,
-      lines: world.people
-        .list(kind, words)
-        .map((p) => ({ ...p, phones: p.phones.map(phoneWords) })),
-      people: world.people.count('person'),
-      companies: world.people.count('company'),
-      sources: world.shape
-        .tables()
-        .filter((t) => t.people)
-        .map((t) => t.name),
-    }
-  })
+  // People and Organizations as tables (UI batch 2, 26 Oct): the name changes in a cell; the rest
+  // comes from where Alpha read them, so it changes there
+  const WHY =
+    'Only the name changes here; the rest comes from where Alpha read it, so change it there.'
+  const keptPeople = (kind: 'person' | 'company'): KeptTable => {
+    const lines = world.people.list(kind, '')
+    if (kind === 'company')
+      return keptTable(
+        'organizations',
+        'Organizations',
+        [keptField('Name', 'text'), keptField('Domain', 'text'), keptField('People', 'number')],
+        lines.map((p) => ({
+          id: p.id,
+          values: { name: p.name, domain: p.domains.join(', '), people: p.people },
+        })),
+        { editable: ['Name'], why: WHY },
+      )
+    return keptTable(
+      'people',
+      'People',
+      [
+        keptField('Name', 'text'),
+        keptField('Organization', 'text'),
+        keptField('Email', 'email'),
+        keptField('Phone', 'phone'),
+        keptField('Last', 'date'),
+        keptField('Talks', 'number'),
+      ],
+      lines.map((p) => ({
+        id: p.id,
+        values: {
+          name: p.name,
+          organization: p.companies.join(', '),
+          email: p.emails[0] ?? null,
+          phone: p.phones[0] ? phoneWords(p.phones[0]) : null,
+          last: p.last,
+          talks: p.count,
+        },
+      })),
+      { editable: ['Name'], why: WHY },
+    )
+  }
+  app.get('/api/kept/people', async () => keptPeople('person'))
+  app.get('/api/kept/organizations', async () => keptPeople('company'))
+  for (const list of ['people', 'organizations'])
+    app.post(`/api/kept/${list}/rows/:id`, async (req) => {
+      const { id } = z.object({ id: z.string() }).parse(req.params)
+      const { value } = keptEdit(req.body, ['Name'], WHY)
+      const name = String(value ?? '').trim()
+      if (!name) throw new Refused('A name is needed.')
+      world.people.name(id, name, asPerson)
+      live()
+      return { ok: true }
+    })
 
   const personOut = (id: string): PersonView | undefined => {
     const p = world.people.get(id)

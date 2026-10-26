@@ -37,6 +37,7 @@ import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
+import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { Words } from './ui/words.tsx'
 import { answerWords } from './vocabulary.ts'
@@ -231,7 +232,7 @@ const keyOf = (i: Item) =>
 
 function DayLine({ day }: { day: string }) {
   return (
-    <div className="flex items-center gap-3 font-semibold text-ink-3 text-xs">
+    <div className="flex items-center gap-3 font-semibold text-ink-3 text-xs uppercase tracking-label">
       <span className="h-px flex-1 bg-hair" />
       {day}
       <span className="h-px flex-1 bg-hair" />
@@ -366,7 +367,10 @@ function Entry({
       <Meta who="Alpha" module={item.module} at={item.at} onLens={onLens} />
       {text && (
         <div className={cn(item.error && 'text-bad')}>
-          <Words text={text} wideTables />
+          {/* a finished reply folds when long; one still coming in shows whole */}
+          <Fold id={item.turn} whole={working || !item.reply}>
+            <Words text={text} wideTables />
+          </Fold>
         </div>
       )}
       {working && (
@@ -435,7 +439,7 @@ function Now({ stream }: { stream: Stream | null }) {
   const shown = [...chips.filter((c) => c.need), ...chips.filter((c) => !c.need)].slice(0, 3)
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-0.5 font-semibold text-ink-3 text-xs">Now</span>
+      <span className="mr-0.5 font-semibold text-ink-3 text-xs uppercase tracking-label">Now</span>
       {shown.map((c) => (
         <button
           key={c.key}

@@ -7,7 +7,9 @@ uses:
   - { connector: mac, tables: [Contacts, Events] }
   - { connector: gmail, tables: [Mail] }
   - { connector: linkedin, tables: [LinkedIn connections] }
-version: 0.3.0
+version: 0.3.1
+# People and Organizations are this module's tabs (UI batch 2, 26 Oct)
+people: true
 description: >
   Who the person knows, in circles they name: who belongs in each, proposed for their yes; how
   close each one is, by rules they can read and change; and who is going quiet in the circles
