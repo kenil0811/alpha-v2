@@ -27,6 +27,7 @@ import {
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
+import { Facts } from './Items.tsx'
 import { PillSwitch } from './Module.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
@@ -41,7 +42,7 @@ import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Switch } from './ui/switch.tsx'
 
@@ -68,7 +69,6 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'What Alpha knows, its agents, the accounts it reads and what it may do.',
     tabs: [
       ['brain', 'Second Brain', <BookmarkCheck key="i" className="size-3.5" />],
       ['agents', 'Modules and agents', <Bot key="i" className="size-3.5" />],
@@ -79,7 +79,6 @@ const PAGES = {
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs on this Mac: its model, your data and how it looks.',
     tabs: [
       ['model', 'Model', null],
       ['data', 'Data', null],
@@ -124,10 +123,7 @@ export function Settings({
     agents: <Agents version={version} />,
     connections: (
       <>
-        <Section
-          title="Connections"
-          about="Your accounts, read by Alpha; what you type stays in the Keychain."
-        >
+        <Section title="Connections" about="Your accounts, read by Alpha">
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
             {accounts.map((c) => (
               <ConnectorTile
@@ -154,10 +150,7 @@ export function Settings({
           ))}
           <AddConnector view={view} onChange={load} />
         </Section>
-        <Section
-          title="Folders"
-          about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
-        >
+        <Section title="Folders" about="Read, never written to">
           {folders.length > 0 && (
             <List>
               {folders.map((k) => (
@@ -197,7 +190,6 @@ export function Settings({
             {p.icon}
           </span>
           <h1 className="font-serif text-ink text-xl">{p.title}</h1>
-          <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
         </div>
       )}
     </InBar>
@@ -267,13 +259,7 @@ function SecondBrain({ version }: { version: number }) {
     void act(() => api.post('/api/instructions/remove', { for: l.for, words: l.words }), keyOf(l))
   }
   return (
-    <Section
-      title="Second Brain"
-      about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
-    >
-      {lines?.length === 0 && (
-        <Empty>Nothing configured yet. Say “from now on…” to Alpha to add one.</Empty>
-      )}
+    <Section title="Second Brain" about="How you asked things to be done from now on">
       {lines && lines.length > 0 && (
         <List>
           {lines.map((l) => (
@@ -322,10 +308,7 @@ function SecondBrain({ version }: { version: number }) {
 function Permissions({ version }: { version: number }) {
   const [view, reload] = useSetup()
   return (
-    <Section
-      title="Permissions"
-      about="What Alpha may reach on this Mac, and what it does without asking because you said Always on a card."
-    >
+    <Section title="Permissions" about="What Alpha may reach, and does without asking">
       <h3 className="font-medium text-ink">On this Mac</h3>
       {view ? (
         <SetupList view={view} onChange={reload} />
@@ -406,28 +389,29 @@ function DataSection() {
   }
   if (!view)
     return (
-      <Section title="Data" about="Your world, its backups, and where it goes.">
+      <Section title="Data" about="Your world, its backups, and where it goes">
         <p className="text-ink-2 text-md">{problem ?? 'Loading…'}</p>
       </Section>
     )
   return (
-    <Section
-      title="Data"
-      about="Your world, its backups, and where it goes. Everything here is yours to take or delete."
-    >
-      {setup && (
-        <p className="text-ink-2 text-md">
-          Alpha for {setup.install.owner}, on port {setup.install.port}. Its data is in{' '}
-          {setup.install.home}; a report goes to{' '}
-          {setup.install.reportTo ?? 'whoever gave you Alpha'}.
-        </p>
-      )}
-      <p className="text-ink-2 text-md">
-        The world holds {view.world.rows.toLocaleString()} rows and{' '}
-        {view.world.lines.toLocaleString()} lines of Activity ({mb(view.world.size)}, shape version{' '}
-        {view.world.version}); {view.files.count.toLocaleString()} files ({mb(view.files.size)});
-        the modules {mb(view.modules.size)}.
-      </p>
+    <Section title="Data" about="Your world, its backups, and where it goes">
+      <Facts
+        lines={[
+          ...(setup
+            ? ([
+                ['For', setup.install.owner],
+                ['Port', setup.install.port],
+                ['Kept in', setup.install.home],
+                ['Reports to', setup.install.reportTo ?? '—'],
+              ] as [string, ReactNode][])
+            : []),
+          ['Rows', `${view.world.rows.toLocaleString()} (${mb(view.world.size)})`],
+          ['Activity lines', view.world.lines.toLocaleString()],
+          ['Shape version', view.world.version],
+          ['Files', `${view.files.count.toLocaleString()} (${mb(view.files.size)})`],
+          ['Modules', mb(view.modules.size)],
+        ]}
+      />
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
@@ -633,7 +617,7 @@ function ModelSection() {
   return (
     <Section
       title="Model"
-      about={`What Alpha thinks with (${model ? (MODEL_NAMES[model.desk] ?? model.desk) : '…'}), and how it reaches it. Each way says what it can do; the key stays in the Keychain.`}
+      about={`Thinks with ${model ? (MODEL_NAMES[model.desk] ?? model.desk) : '…'}; the key stays in the Keychain`}
     >
       {model && (
         <List>
@@ -725,7 +709,6 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
       <List>
         <Row
           title="Look"
-          sub="Match Mac follows your Mac's light or dark setting."
           actions={
             <Segmented
               label="Look"
@@ -746,7 +729,6 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
         {tables.length > 0 && (
           <Row
             title="Connection tables in the sidebar"
-            sub="Mail, events and contacts that connections keep, shown with your own tables."
             actions={
               <Switch
                 checked={shown}
@@ -1222,13 +1204,8 @@ function FolderForm({
 // Experimental: features still being tried, each off until switched on on this computer.
 function Experimental() {
   return (
-    <Section
-      title="Experimental"
-      about="Features still being tried. Each is off until you switch it on, on this computer only."
-    >
-      {EXPERIMENTS.length === 0 ? (
-        <p className="text-ink-2 text-md">Nothing to try right now.</p>
-      ) : (
+    <Section title="Experimental" about="Off until switched on, on this Mac only">
+      {EXPERIMENTS.length > 0 && (
         <List>
           {EXPERIMENTS.map((e) => (
             <ExperimentLine key={e.name} name={e.name} title={e.title} about={e.about} />
@@ -1243,8 +1220,7 @@ function ExperimentLine({ name, title, about }: { name: string; title: string; a
   const on = useExperiment(name)
   return (
     <Row
-      title={title}
-      sub={about}
+      title={<span title={about}>{title}</span>}
       actions={<Switch checked={on} label={title} onChange={(v) => setExperiment(name, v)} />}
     />
   )

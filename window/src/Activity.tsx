@@ -96,13 +96,6 @@ export function Activity({ version }: { version: number }) {
             ]}
           />
         </div>
-        {runs && shown.length === 0 && (
-          <p className="mt-4 text-ink-2 text-md">
-            {only === 'failed'
-              ? 'Everything that ran finished.'
-              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here.'}
-          </p>
-        )}
         {days.map(([day, list]) => (
           <section key={day}>
             <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-xs">{day}</div>

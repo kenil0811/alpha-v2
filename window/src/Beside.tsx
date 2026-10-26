@@ -8,7 +8,7 @@ import { api } from './api.ts'
 import type { Module } from './stream.ts'
 import { dayWords } from './time.ts'
 import { Button } from './ui/button.tsx'
-import { Group, Line, Quiet } from './ui/groups.tsx'
+import { Group, Line } from './ui/groups.tsx'
 
 export function Beside({
   stream,
@@ -39,7 +39,6 @@ export function Beside({
     <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-hair border-l @min-[1100px]:flex">
       <div className="flex flex-col gap-6 px-5 pt-7 pb-6">
         <Group title="Needs you" count={cards.length + signIns.length}>
-          {cards.length + signIns.length === 0 && <Quiet>Nothing waits on you.</Quiet>}
           {cards.map((c) => (
             <Line
               key={c.id}
@@ -77,7 +76,6 @@ export function Beside({
           </Group>
         )}
         <Group title="Coming up">
-          {today && coming.length === 0 && <Quiet>No agent runs on the clock.</Quiet>}
           {coming.map((c) => (
             <div key={c.agent} className="flex items-baseline gap-2 text-md">
               <span className="min-w-0 flex-1 truncate text-ink">{c.name}</span>

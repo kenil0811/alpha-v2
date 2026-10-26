@@ -31,6 +31,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { cn } from './ui/cn.ts'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
+import { Heading } from './ui/section.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Words } from './ui/words.tsx'
 
@@ -233,12 +234,11 @@ function Overview({ m }: { m: ModuleView }) {
   )
 }
 
-// A section card under the table: a small title, a grey line saying what it is, its content.
+// A section card under the table: a small title, what it is behind its (i), its content.
 function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
   return (
     <section className="rounded-lg border border-line bg-surface px-5 py-4">
-      <h2 className="font-medium text-ink text-md">{title}</h2>
-      <p className="mt-0.5 mb-3 text-ink-3 text-sm">{sub}</p>
+      <Heading title={title} about={sub} className="mb-3 text-md" />
       {children}
     </section>
   )
@@ -264,15 +264,12 @@ function Below({ m, version, onChange }: { m: ModuleView; version: number; onCha
 
   return (
     <div className="flex max-w-page flex-col gap-4 px-7 pt-2 pb-8">
-      <Section title="Files" sub="What was dropped on this module’s rows.">
+      <Section title="Files" sub="Files on this module’s rows">
         <p className="text-ink-2 text-md">
           Files sit on the row they belong to: open a row to see its files, or drop one on it.
         </p>
       </Section>
-      <Section
-        title="Intelligence"
-        sub={`The agents that work on ${m.name}, what Alpha reads first, and what ran lately.`}
-      >
+      <Section title="Intelligence" sub="Agents, notes and recent runs">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             {m.agents.length > 1 && (
@@ -280,9 +277,7 @@ function Below({ m, version, onChange }: { m: ModuleView; version: number; onCha
                 <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
               </div>
             )}
-            {m.agents.length === 0 ? (
-              <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
-            ) : (
+            {m.agents.length > 0 && (
               <List>
                 {m.agents.map((a) => (
                   <Row
@@ -314,15 +309,13 @@ function Below({ m, version, onChange }: { m: ModuleView; version: number; onCha
           <div>
             <h3 className="mb-1 font-medium text-ink-2 text-sm">Notes Alpha reads first</h3>
             <div className="text-md">
-              <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
+              <Words text={m.notes.replace(/^# .*\n+/, '')} />
             </div>
           </div>
           <div>
             <h3 className="mb-1 font-medium text-ink-2 text-sm">Recent activity</h3>
             {runs === null ? (
               <p className="text-ink-3 text-md">Loading…</p>
-            ) : runs.length === 0 ? (
-              <p className="text-ink-2 text-md">Nothing has run here yet.</p>
             ) : (
               <ul className="flex flex-col">
                 {runs.map((r) => (
@@ -347,10 +340,7 @@ function Below({ m, version, onChange }: { m: ModuleView; version: number; onCha
           </div>
         </div>
       </Section>
-      <Section
-        title="Governance"
-        sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
-      >
+      <Section title="Governance" sub="What Alpha may and may not do here">
         <Governance m={m} allowed={allowed} />
       </Section>
     </div>
@@ -415,23 +405,25 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
   },
 ]
 
-// Governance's rules under two tabs, Allowed n and Denied n: each rule a sentence
+// Governance's rules under two tabs, Allowed n and Denied n: each rule a sentence, its reason on hover,
 // opening its page, and + Add starting the assistant with the rule's first words, for the person
 // to finish; Alpha keeps it from the conversation.
 function Governance({ m, allowed }: { m: ModuleView; allowed: PermissionView[] | null }) {
   const [tab, setTab] = useState<'allowed' | 'denied'>('allowed')
   const may: { key: string; words: string; why: string; href?: string }[] = [
-    {
-      key: 'sites',
-      words: m.sites
-        ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
-        : 'Its readers read no sites.',
-      why: 'The sites were named when the module was made.',
-    },
+    ...(m.sites
+      ? [
+          {
+            key: 'sites',
+            words: `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`,
+            why: 'Named when the module was made',
+          },
+        ]
+      : []),
     ...(allowed ?? []).map((p) => ({
       key: p.id,
       words: p.sentence,
-      why: `You said Always on its card (${p.grantedBy}); it holds across Alpha.`,
+      why: `Always, on its card (${p.grantedBy})`,
       href: `#/permission/${p.id}`,
     })),
   ]
@@ -467,22 +459,19 @@ function Governance({ m, allowed }: { m: ModuleView; allowed: PermissionView[] |
           Denied <span className="text-ink-3 tabular-nums">{never.length}</span>
         </button>
       </fieldset>
-      {rules.length === 0 ? (
-        <p className="text-ink-3 text-md">
-          {tab === 'allowed' ? 'Nothing allowed.' : 'Nothing denied.'}
-        </p>
-      ) : (
+      {rules.length > 0 && (
         <ul className="flex flex-col gap-2">
           {rules.map((r) => (
             <li key={r.key} className="flex flex-col">
               {r.href ? (
-                <a href={r.href} className="text-ink text-md hover:underline">
+                <a href={r.href} title={r.why} className="text-ink text-md hover:underline">
                   {r.words}
                 </a>
               ) : (
-                <span className="text-ink text-md">{r.words}</span>
+                <span title={r.why} className="text-ink text-md">
+                  {r.words}
+                </span>
               )}
-              <span className="text-ink-3 text-sm">{r.why}</span>
             </li>
           ))}
         </ul>

@@ -44,6 +44,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
     busy?: boolean
     words: string
     sub: string
+    problem?: string | null
     act?: React.ReactNode
   }[] = [
     {
@@ -53,10 +54,10 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         : 'Sign in to Claude',
       sub: view.claude.signedIn
         ? view.route === 'key'
-          ? 'Through the API key kept in the Keychain'
-          : 'On your own Claude subscription; Alpha never sees your sign-in'
-        : (view.claude.problem ??
-          'Sign in opens a page in your browser; sign in with your Claude account there.'),
+          ? 'Through the API key in the Keychain'
+          : 'On your own Claude subscription'
+        : 'Opens in your browser',
+      problem: view.claude.signedIn ? null : view.claude.problem,
       act: view.claude.signedIn ? null : <SignIn onChange={onChange} />,
     },
     {
@@ -93,6 +94,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         {items.map((s) => (
           <div
             key={s.words}
+            title={s.sub}
             className="flex items-center gap-3 border-hair border-t px-4 py-3 first:border-t-0"
           >
             <span
@@ -106,7 +108,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-medium text-ink">{s.words}</span>
-              <span className="block text-ink-3 text-sm">{s.sub}</span>
+              {s.problem && <span className="block text-bad text-sm">{s.problem}</span>}
             </span>
             {s.act && (
               <span className="flex items-center gap-1 text-accent text-sm">
@@ -118,12 +120,12 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         ))}
       </div>
       {view.keepAwake !== null && (
-        <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium text-ink">Keep this Mac awake while plugged in</span>
-            <span className="block text-ink-3 text-sm">
-              So agents run on time; the screen still turns off, and on battery the Mac sleeps
-            </span>
+        <div
+          title="So agents run on time; the screen still turns off"
+          className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3"
+        >
+          <span className="min-w-0 flex-1 font-medium text-ink">
+            Keep this Mac awake while plugged in
           </span>
           <Switch
             checked={view.keepAwake}

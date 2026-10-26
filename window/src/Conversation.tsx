@@ -151,13 +151,6 @@ export function Conversation({
               compact ? 'px-4 pt-4 pb-3 text-md' : 'max-w-stream px-8 pt-7 pb-5',
             )}
           >
-            {items.length === 0 && (
-              <p className="pt-24 text-center text-ink-3">
-                {lens
-                  ? `Nothing about ${lens.name} yet.`
-                  : 'Say what you want kept, tracked or done.'}
-              </p>
-            )}
             {items.map((item) => {
               const day = dayOf(item.at)
               const line = day !== lastDay

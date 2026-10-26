@@ -10,7 +10,7 @@ import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 
 export function when(at: string | null): string {
   if (!at) return 'not yet'
@@ -33,16 +33,8 @@ export function ModulesAndAgents({ version }: { version: number }) {
   }, [load, version])
 
   return (
-    <Section
-      title="Modules"
-      about="Where each module comes from: update it, or pack it to install elsewhere. Its agents are listed above."
-    >
+    <Section title="Modules" about="Where each module comes from">
       {problem && <div className="text-bad text-md">{problem}</div>}
-      {modules?.length === 0 && (
-        <Empty>
-          Nothing configured yet. Modules you install or make in a conversation show here.
-        </Empty>
-      )}
       {modules?.map((m) => (
         <ModuleWork key={m.id} module={m} onChange={load} />
       ))}

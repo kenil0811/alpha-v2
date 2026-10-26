@@ -28,7 +28,7 @@ function Page({ kind, title, children }: { kind: string; title: string; children
 }
 
 // Facts about an item, a term and its value a line each.
-function Facts({ lines }: { lines: [string, ReactNode][] }) {
+export function Facts({ lines }: { lines: [string, ReactNode][] }) {
   return (
     <dl className="grid grid-cols-[160px_1fr] gap-x-4 gap-y-2 rounded-lg border border-line bg-surface px-4.5 py-3.5 text-md">
       {lines.map(([term, value]) => (
@@ -157,9 +157,7 @@ function AgentPage({
         ]}
       />
       <h2 className="font-medium font-serif text-ink text-xl">Runs</h2>
-      {runs.length === 0 ? (
-        <p className="text-ink-2 text-md">No runs yet.</p>
-      ) : (
+      {runs.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-line bg-surface">
           {runs.map((r) => (
             <RunRow

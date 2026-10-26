@@ -78,16 +78,8 @@ export function FileView({ place, onName }: { place: FilePlace; onName: (n: stri
         {data.kind === 'sheet' && <Sheet data={data} place={place} />}
         {data.kind === 'pdf' && <Pages data={data} place={place} />}
         {data.kind === 'text' && <Lines data={data} line={place.line} />}
-        {data.kind === 'reading' && (
-          <p className="p-6 text-ink-3">
-            Alpha is still reading this file; it shows here when it is read.
-          </p>
-        )}
-        {data.kind === 'kept' && (
-          <p className="p-6 text-ink-3">
-            Alpha keeps this file but does not read its kind yet. Open the file to see it.
-          </p>
-        )}
+        {data.kind === 'reading' && <p className="p-6 text-ink-3">Reading…</p>}
+        {data.kind === 'kept' && <p className="p-6 text-ink-3">No preview</p>}
       </div>
     </div>
   )

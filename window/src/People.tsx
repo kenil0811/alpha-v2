@@ -128,14 +128,17 @@ function PeopleList({
         />
       </InBar>
       {none && (
-        <p className="border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
-          No one yet. People come from your contacts, the people you write to and your small
-          meetings, once Contacts, Calendar or Gmail is connected in{' '}
-          <a className="text-accent hover:underline" href="#/intelligence/connections">
-            Intelligence
-          </a>
-          .
-        </p>
+        <div className="border-line border-b bg-accent-soft px-7 py-2">
+          <Button
+            size="sm"
+            title="People come from your contacts, mail and small meetings"
+            onClick={() => {
+              window.location.hash = '#/intelligence/connections'
+            }}
+          >
+            Connect Contacts, Calendar or Gmail
+          </Button>
+        </div>
       )}
       <div className="min-h-0 flex-1">
         {data ? (

@@ -1,7 +1,9 @@
-// A section of a page, as a card: its title, a line on what it is, then its rows. The same card on
-// Intelligence, Settings and every record's page. Serif is kept for page
-// and record titles, so a section's title is plain.
+// A section of a page, as a card: its title, an (i) holding what it is on hover, then its rows. The
+// same card on Intelligence, Settings and every record's page. Serif is kept for page and record
+// titles, so a section's title is plain.
+import { Info } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { cn } from './cn.ts'
 
 export function Section({
   title,
@@ -14,12 +16,31 @@ export function Section({
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-5">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="font-medium text-ink text-lg">{title}</h2>
-        {about && <p className="text-ink-3 text-sm">{about}</p>}
-      </div>
+      <Heading title={title} about={about} className="text-lg" />
       {children}
     </section>
+  )
+}
+
+// A section's title, with its phrase behind an (i) rather than a line under it.
+export function Heading({
+  title,
+  about,
+  className,
+}: {
+  title: string
+  about?: string | undefined
+  className?: string | undefined
+}) {
+  return (
+    <h2 className={cn('flex items-center gap-1.5 font-medium text-ink', className)}>
+      {title}
+      {about && (
+        <span role="img" title={about} aria-label={about} className="text-ink-3">
+          <Info size={14} aria-hidden />
+        </span>
+      )}
+    </h2>
   )
 }
 

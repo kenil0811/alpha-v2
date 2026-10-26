@@ -506,7 +506,8 @@ function TaskPage({
         </Section>
 
         {(t.context.values.length > 0 || t.context.siblings.length > 0) && (
-          <Section title="Where it sits" about={t.place.words}>
+          <Section title="Where it sits">
+            <p className="text-ink-2 text-md">{t.place.words}</p>
             {t.context.values.length > 0 && (
               <div className="overflow-hidden rounded-lg border border-line bg-surface">
                 {t.context.values.slice(0, 14).map((v) => (
@@ -629,19 +630,18 @@ function AgentOnTask({
       onChange()
     }
   }
-  const about = !agent.takes
-    ? `${agent.name} does not take tasks; give it to someone else.`
+  const state = !agent.takes
+    ? `${agent.name} does not take tasks`
     : !agent.on
-      ? `${agent.name} is paused; turn it on in Settings › Modules and agents to start it.`
+      ? `${agent.name} is paused`
       : running
-        ? `${agent.name} is working on it.`
+        ? `${agent.name} is working on it`
         : t.waitingForYou
-          ? `${agent.name} goes on once you decide what it put to you below.`
-          : closed || agent.runs.length
-            ? `Given to ${agent.name}.`
-            : `Given to ${agent.name}. Giving it never starts it; Start does. It is Done when ${agent.name} says so.`
+          ? `${agent.name} waits on you`
+          : `Given to ${agent.name}`
   return (
-    <Section title="Agent" about={about}>
+    <Section title="Agent">
+      <p className="text-ink-2 text-md">{state}</p>
       {agent.said && !running && !t.waitingForYou && (
         <p className="text-ink text-md">{agent.said}</p>
       )}

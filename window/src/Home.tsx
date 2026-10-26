@@ -22,7 +22,7 @@ import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Group, Line, Quiet } from './ui/groups.tsx'
+import { Group, Line } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
@@ -118,9 +118,6 @@ export function Home({
               })}
             </p>
             <h1 className="mt-1 font-serif text-2xl text-ink">{greeting(name)}</h1>
-            <p className="mt-1 text-ink-2 text-md">
-              What needs you, what changed, and your modules.
-            </p>
           </div>
           <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
         </div>
@@ -128,15 +125,12 @@ export function Home({
         {stream?.settingUp && (
           <p className="flex items-center gap-2 text-ink-2 text-md">
             <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
-            Setting up {stream.settingUp}; Alpha works meanwhile, and they appear as they go in.
+            Setting up {stream.settingUp}…
           </p>
         )}
 
         {setup && unready(setup) && (
-          <Group
-            title="Getting this Mac ready"
-            sub="Alpha works meanwhile; these finish setting it up"
-          >
+          <Group title="Getting this Mac ready">
             <SetupList view={setup} onChange={reloadSetup} />
           </Group>
         )}
@@ -154,9 +148,6 @@ export function Home({
           <div className="grid items-start gap-7 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-7">
               <Group title="Needs you" count={cards.length + signIns.length}>
-                {stream && cards.length + signIns.length === 0 && (
-                  <Quiet>Nothing waits on you.</Quiet>
-                )}
                 {cards.map((c) => (
                   <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
                 ))}
@@ -197,7 +188,6 @@ export function Home({
                 }
               >
                 {failed.today && <NotLoaded onTry={load} />}
-                {today && !failed.today && changed.length === 0 && <Quiet>Nothing changed.</Quiet>}
                 {changed.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
                     {changed.slice(0, 10).map((r) => {
@@ -247,9 +237,6 @@ export function Home({
                   </div>
                 )}
                 {failed.tasks && <NotLoaded onTry={load} />}
-                {tasks && !failed.tasks && tasks.lines.length === 0 && (
-                  <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
-                )}
                 {tasks && tasks.lines.length > 0 && (
                   <TaskList lines={tasks.lines} onChange={load} />
                 )}
@@ -292,9 +279,6 @@ export function Home({
 
               <Group title="Coming up">
                 {failed.today && <NotLoaded onTry={load} />}
-                {today && !failed.today && coming.length === 0 && (
-                  <Quiet>No agent runs on the clock.</Quiet>
-                )}
                 {coming.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
                     {/* opened out, the rows scroll inside their box, not the whole screen (Kenil,
@@ -435,16 +419,12 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
     {
       done: view?.kit,
       words: 'Install a module',
-      sub: 'A module made for your work, like a deal tracker or a client report',
+      sub: 'Like a deal tracker or a client report',
       href: '#/intelligence/agents',
     },
   ]
   return (
     <div className="flex max-w-stream flex-col gap-4.5">
-      <p className="text-ink-2">
-        What should Alpha keep for you? Say it in a sentence above. Alpha makes the tables, reads
-        what you point it at, and asks before anything leaves your Mac.
-      </p>
       <div className="flex flex-wrap items-center gap-1.5">
         <Label className="mr-1">Or start with</Label>
         {TRIES.map((t) => (
@@ -463,6 +443,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
           <a
             key={s.words}
             href={s.href}
+            title={s.sub || undefined}
             className="flex items-center gap-3 border-hair border-t px-4 py-3 first:border-t-0 hover:bg-hover"
           >
             <span
@@ -473,10 +454,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
             >
               {s.done && <Check className="size-3" />}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-medium text-ink">{s.words}</span>
-              <span className="block text-ink-3 text-sm">{s.sub}</span>
-            </span>
+            <span className="min-w-0 flex-1 font-medium text-ink">{s.words}</span>
             <ChevronRight className="size-4 text-ink-3" />
           </a>
         ))}
@@ -539,7 +517,7 @@ function ModuleCards({ modules }: { modules: ModuleSummary[] }) {
                 <ModuleIcon name={m.name} className="size-4" />
               </span>
               <span className="font-medium text-base text-ink">{m.name}</span>
-              <span className="text-ink-3 text-sm">{line || 'Empty for now'}</span>
+              <span className="text-ink-3 text-sm">{line}</span>
               <span className="mt-auto text-accent text-sm">Open →</span>
             </a>
           )
