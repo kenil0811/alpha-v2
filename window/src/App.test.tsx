@@ -2,6 +2,7 @@ import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { placeOf } from './App.tsx'
 import { NO_LAYOUT } from './layout.ts'
+import { buildWords, NewModule } from './NewModule.tsx'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 
@@ -110,5 +111,17 @@ describe('the window', () => {
     ])
     expect(inside(modules, 'm_1')).toEqual(['m_1', 'm_2'])
     expect(ancestors(modules, 'm_2').map((m) => m.name)).toEqual(['Shops'])
+  })
+
+  it('opens New module blank: a name, what to keep, Build it waiting on the words, an empty table', () => {
+    const html = renderToString(<NewModule modules={modules} onAsked={() => undefined} />)
+    expect(html).toContain('placeholder="What should it keep track of?"')
+    expect(html).toMatch(/<button type="submit"[^>]*disabled=""[^>]*>Build it/)
+    expect(html).toContain('Cancel')
+    expect(html.match(/<td/g)).toHaveLength(3)
+    expect(buildWords(' Orders ', 'what each shop orders')).toBe(
+      'Make a module called Orders: what each shop orders',
+    )
+    expect(buildWords('', 'invoices')).toBe('Make a module: invoices')
   })
 })
