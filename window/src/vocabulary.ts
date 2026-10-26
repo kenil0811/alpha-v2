@@ -9,6 +9,8 @@ export const NEVER_SAY: [RegExp, string][] = [
   [/\bexport(?:ed|s)?\b/i, 'Download'],
   [/\bremov(?:e|es|ed|ing)\b/i, 'Delete'],
   [/\bnot now\b/i, 'Decline, or Cancel'],
+  [/\bveto(?:es|ed)?\b/i, 'Decline'],
+  [/\bcoming soon\b/i, 'the reason it can’t, on hover'],
 ]
 
 // A card's plain answers, as the person reads them: a yes is Approve, a no is Decline.
