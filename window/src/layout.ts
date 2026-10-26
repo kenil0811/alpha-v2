@@ -10,7 +10,6 @@ export const NO_LAYOUT: Layout = {
   panel: null,
   assistant: 'open',
   pageSize: null,
-  strip: true,
 }
 
 export const LayoutContext = createContext<{

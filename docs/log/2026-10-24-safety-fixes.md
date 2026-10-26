@@ -232,4 +232,10 @@ repo"; plan for the core part https://claude.ai/artifact/6JjTLnrx15iGdVo2Nma6NT,
   Intelligence; the pill switch gone); the module's Agents and notes tab back, holding its agents,
   notes, recent activity and Governance, nothing under a table; the page-size dropdown as quiet as
   the page buttons. Design §14 says so.
+- His second look (12:40, 12:41): no count cards on every table, scrollbars too thick, card inside
+  card inside card, no modules on Home. Done: the strip of counts gone (`table/Metrics.tsx`
+  deleted, `strip` out of the core's layout and its test), thin scrollbars in `app.css` with
+  `scroll-quiet` for the tab rows, sections back to main's (serif title, no card) and the Agents
+  and notes tab the same, the shared tables in Intelligence without a frame of their own,
+  Permissions split into On this Mac and Always allowed, Home's module cards gone.
 

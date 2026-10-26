@@ -1,6 +1,5 @@
-// A section of a page, as a card: its title, a line on what it is, then its rows. The same card on
-// Intelligence, Settings and every record's page (Bridge and Alpha Brain). Serif is kept for page
-// and record titles, so a section's title is plain.
+// A section of a page: its title in serif, an ⓘ with what it is, then its rows; no card around it,
+// so what it holds (a list, a table) is the only frame (Kenil, 26 Oct: no card inside a card).
 import type { ReactNode } from 'react'
 import { Info } from './info.tsx'
 
@@ -14,12 +13,10 @@ export function Section({
   children: ReactNode
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-5">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="flex items-center gap-1.5 font-medium text-ink text-lg">
-          {title}
-          {about && <Info help={about} />}
-        </h2>
+    <section className="flex min-w-0 flex-col gap-2.5">
+      <div className="flex items-center gap-1.5">
+        <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+        {about && <Info help={about} />}
       </div>
       {children}
     </section>

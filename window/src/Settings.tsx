@@ -315,19 +315,21 @@ function SecondBrain({ version }: { version: number }) {
 function Permissions({ version }: { version: number }) {
   const [view, reload] = useSetup()
   return (
-    <Section
-      title="Permissions"
-      about="What Alpha may reach on this Mac, and what it does without asking because you said Always on a card."
-    >
-      <h3 className="font-medium text-ink">On this Mac</h3>
-      {view ? (
-        <SetupList view={view} onChange={reload} />
-      ) : (
-        <p className="text-ink-2 text-md">This core does not say.</p>
-      )}
-      <h3 className="pt-2 font-medium text-ink">Always allowed</h3>
-      <Standing version={version} />
-    </Section>
+    <>
+      <Section title="On this Mac" about="What Alpha may reach on this Mac.">
+        {view ? (
+          <SetupList view={view} onChange={reload} />
+        ) : (
+          <p className="text-ink-2 text-md">This core does not say.</p>
+        )}
+      </Section>
+      <Section
+        title="Always allowed"
+        about="What Alpha does without asking because you said Always on a card."
+      >
+        <Standing version={version} />
+      </Section>
+    </>
   )
 }
 
@@ -1242,10 +1244,11 @@ function ExperimentLine({ name, title, about }: { name: string; title: string; a
   )
 }
 
-// A shared table inside a page that scrolls: a fixed height, framed like a card.
+// A shared table inside a page that scrolls: a fixed height, its own frame and nothing around it,
+// its edges in line with the section's title.
 function Embedded({ data, open }: { data: KeptTable; open: (id: string) => void }) {
   return (
-    <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
+    <div className="-mx-7 h-[min(520px,70vh)]">
       <TableView data={data} kept={{ open }} />
     </div>
   )

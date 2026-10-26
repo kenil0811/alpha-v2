@@ -238,7 +238,35 @@
   margin-inline: calc((100% - var(--wide)) / 2);
 }
 
+/* a scroll box whose scrollbar never shows (a row of tabs scrolls sideways under the fingers) */
+@utility scroll-quiet {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
+  /* scrollbars are thin: a 4px thumb, shown only while the box is under the pointer (Kenil,
+     26 Oct: WebKit's own are thick) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+    background-color: transparent;
+  }
+  :hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--ink-3) 45%, transparent);
+  }
+
   html,
   body {
     background: var(--canvas);

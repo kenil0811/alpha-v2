@@ -191,7 +191,6 @@ describe('the api over a world', () => {
       panel: null,
       assistant: 'open',
       pageSize: null,
-      strip: true,
     })
     // all of how the person left the window is kept here, none of it in the browser (26 Oct)
     await a.inject({
@@ -205,7 +204,6 @@ describe('the api over a world', () => {
         railWidth: 260,
         assistant: 'folded',
         pageSize: 100,
-        strip: false,
       },
     })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
@@ -215,7 +213,6 @@ describe('the api over a world', () => {
       panel: 560,
       assistant: 'folded',
       pageSize: 100,
-      strip: false,
     })
     await a.close()
   })

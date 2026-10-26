@@ -20,7 +20,6 @@ export function registerMe(ctx: Ctx): void {
       panel: Number.isFinite(panel) && panel > 0 ? panel : null,
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
       pageSize: n('page_size'),
-      strip: world.preference(user.id, 'strip_off') !== 'yes',
     }
   }
 
@@ -45,7 +44,6 @@ export function registerMe(ctx: Ctx): void {
         railWidth: z.number().int().positive().nullable().optional(),
         assistant: z.enum(['open', 'folded']).optional(),
         pageSize: z.number().int().positive().nullable().optional(),
-        strip: z.boolean().optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -54,8 +52,6 @@ export function registerMe(ctx: Ctx): void {
     if (given.pageSize !== undefined) world.setPreference(user.id, 'page_size', num(given.pageSize))
     if (given.assistant !== undefined)
       world.setPreference(user.id, 'assistant_folded', given.assistant === 'folded' ? 'yes' : null)
-    if (given.strip !== undefined)
-      world.setPreference(user.id, 'strip_off', given.strip ? null : 'yes')
     if (given.railFolded !== undefined)
       world.setPreference(user.id, 'rail_folded', given.railFolded ? 'yes' : null)
     if (given.folded !== undefined)

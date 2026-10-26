@@ -1,6 +1,6 @@
 // One row of tabs under the bar (design §14, Ledger): every label in full, a table's row count
 // beside its name, the chosen tab underlined in the accent; a row too long for the window scrolls
-// sideways, never folds a label to an icon or cuts it short.
+// sideways with no scrollbar showing, never folds a label to an icon or cuts it short.
 import type { ReactNode } from 'react'
 import { cn } from './cn.ts'
 
@@ -18,7 +18,7 @@ export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
     <div
       role="tablist"
       aria-label={label}
-      className="flex shrink-0 gap-0.5 overflow-x-auto border-line border-b px-5 pt-1.5"
+      className="scroll-quiet flex shrink-0 gap-0.5 overflow-x-auto overflow-y-hidden border-line border-b px-5 pt-1.5"
     >
       {tabs.map((t) => (
         <a
@@ -27,7 +27,7 @@ export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
           aria-selected={t.sel}
           href={t.href}
           className={cn(
-            '-mb-px flex h-9 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-ink-2 text-md hover:text-ink',
+            'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-ink-2 text-md hover:text-ink',
             t.sel ? 'border-accent font-medium text-ink' : 'border-transparent',
           )}
         >

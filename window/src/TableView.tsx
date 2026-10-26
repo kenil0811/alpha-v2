@@ -12,7 +12,7 @@ import type {
   TableView as TableData,
   ViewConfig,
 } from '@alpha/core/api'
-import { ChevronDown, ChevronUp, EllipsisVertical, Search } from 'lucide-react'
+import { EllipsisVertical, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
@@ -31,7 +31,6 @@ import {
 import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { PasteBar, TickedBar } from './table/Many.tsx'
-import { Metrics } from './table/Metrics.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
@@ -116,7 +115,7 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
-  // rows to a page and the strip of counts, the person's choices, kept by Alpha per person
+  // rows to a page, the person's choice, kept by Alpha per person
   const { layout, change } = useLayout()
   const size = layout.pageSize ?? PAGE
   const resize = (n: number) => {
@@ -124,8 +123,6 @@ export function TableView({
     setPage(0)
   }
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
-  const strip = layout.strip
-  const fold = (on: boolean) => change({ strip: on })
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)
@@ -224,7 +221,6 @@ export function TableView({
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
-        {strip && <Metrics rows={data.rows} fields={fields} />}
         <ViewTabs
           right={
             <>
@@ -260,15 +256,6 @@ export function TableView({
                   )
                 }
               />
-              <button
-                type="button"
-                aria-label={strip ? 'Hide the numbers' : 'Show the numbers'}
-                aria-expanded={strip}
-                onClick={() => fold(!strip)}
-                className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
-              >
-                {strip ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-              </button>
             </>
           }
           views={views}

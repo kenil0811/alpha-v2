@@ -209,12 +209,13 @@ function Overview({ m }: { m: ModuleView }) {
   )
 }
 
-// A card on the Agents and notes tab: a small title, a grey line saying what it is, its content.
+// A part of the Agents and notes tab: its title in serif, a grey line saying what it is, its
+// content; no card around it (Kenil, 26 Oct).
 function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-line bg-surface px-5 py-4">
-      <h2 className="font-medium text-ink text-md">{title}</h2>
-      <p className="mt-0.5 mb-3 text-ink-3 text-sm">{sub}</p>
+    <section className="flex flex-col">
+      <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+      <p className="mt-0.5 mb-2.5 text-ink-3 text-sm">{sub}</p>
       {children}
     </section>
   )
@@ -263,7 +264,7 @@ function AgentsAndNotes({
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="flex max-w-page flex-col gap-4 px-7 py-6">
+      <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
           <div className="flex flex-col gap-2">

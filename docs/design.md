@@ -587,8 +587,8 @@ page the person asks for.
 ## 14. The window
 
 **Home is the important things** (Kenil, 20 Oct: "Home should be about all important things, the
-space in home is very precious"): the date, the greeting and one line to ask Alpha; a card per
-module with Open; what needs the person, with each card answered right there; Overdue, Due today
+space in home is very precious"): the date, the greeting and one line to ask Alpha; no modules
+(they are in the rail; Kenil, 26 Oct); what needs the person, with each card answered right there; Overdue, Due today
 and This week as tiles (Overdue red only when it has some); what changed since they last looked
 (kept until they clear it); what is running; each agent's next run (UI batch 2, 26 Oct). The
 conversation is not in Home's own space: it is the assistant beside it.
@@ -622,8 +622,9 @@ plain list, a row per module with its name, where it comes from and what goes on
 rail folds to a strip of icons (⌘\) or drags wider by its edge, and the assistant drags wider,
 to two thirds of the window less what the screen keeps, or expands to half of it, or opens as the
 full Conversation. How the person left them (the rail's width and folds, the assistant's width and
-whether it is folded, a table's rows to a page and its strip of counts) is kept per person in the
-world, like the theme, never in the browser.
+whether it is folded, a table's rows to a page) is kept per person in the world, like the theme,
+never in the browser. A table has no cards of counts above it (Kenil, 26 Oct). Scrollbars are thin,
+a 4px thumb shown while the box is under the pointer; a row of tabs shows none.
 
 **The other screens:** a Module (the same stream filtered to it; tables in the views offered:
 Table, Card, Timeline, Calendar, Board, Form (Vikas, 25 Oct; a view saved as List or Chart still
@@ -636,7 +637,8 @@ Agents and Always allowed are served by the core as tables (`/api/kept/…`) and
 table view as a module's tables, each changed in a cell where the core allows it (a task's words,
 state, due and priority, and its state by dragging it across the board; a person's or an
 organization's name; an agent On or Paused) and refused in words elsewhere; Revoke is on a
-permission's page. Sections are cards; one record layout serves a person, an organization, a task,
+permission's page. A section is its serif title and ⓘ over what it holds, never a card, so nothing
+sits in a card inside a card (Kenil, 26 Oct); one record layout serves a person, an organization, a task,
 an agent, a run and a permission; one dropdown everywhere, by mouse or keyboard.
 Plain words, no tool names, no ids: the words a person reads are agreed (`window/src/vocabulary.ts`:
 module not kit, organization not company, Delete not remove, Download not export; a card's Yes and
