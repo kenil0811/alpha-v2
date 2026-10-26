@@ -42,7 +42,6 @@ import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Edge } from './ui/edge.tsx'
-import { Kbd } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 
 export type Place =
@@ -831,16 +830,14 @@ export function InBar({ children }: { children: ReactNode }) {
 }
 
 // The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
-// another, the screen's switch or name centred, Find on the right.
+// another, the screen's switch or name centred. Find is ⌘K, from anywhere.
 export function Bar({
   crumb,
-  onFind,
   lens,
   onClearLens,
   middle,
 }: {
   crumb: Crumb
-  onFind?: (() => void) | undefined // none inside a module: its own search is the one there; ⌘K still finds
   lens: { id: string; name: string } | null
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
@@ -854,13 +851,17 @@ export function Bar({
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
         {back?.href && (
-          <a
-            href={back.href}
-            className="flex min-w-0 items-center gap-1 text-ink-3 text-md hover:text-ink"
-          >
-            <ChevronLeft className="size-3.5 shrink-0" />
-            <span className="truncate">{back.label}</span>
-          </a>
+          // whole or not at all: an empty first item lets a way back too wide for its room wrap
+          // onto a second line, which is cut off
+          <div className="flex h-6 min-w-0 flex-wrap overflow-hidden before:h-6 before:content-['']">
+            <a
+              href={back.href}
+              className="flex h-6 shrink-0 items-center gap-1 whitespace-nowrap text-ink-3 text-md hover:text-ink"
+            >
+              <ChevronLeft className="size-3.5 shrink-0" />
+              {back.label}
+            </a>
+          </div>
         )}
         {lens && (
           <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
@@ -881,22 +882,7 @@ export function Bar({
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
         <h1 className="hidden truncate font-serif text-ink text-xl peer-empty:block">{last}</h1>
       </div>
-      <div className="flex justify-end" data-tauri-drag-region>
-        {onFind && (
-          <button
-            type="button"
-            onClick={onFind}
-            aria-label="Find anything"
-            className="flex h-7.5 items-center gap-2 rounded-md border border-line bg-surface pr-2 pl-2.5 text-ink-3 text-md transition-colors hover:border-accent-line @min-[760px]:w-52.5"
-          >
-            <Search className="size-3.25 shrink-0" />
-            <span className="hidden flex-1 text-left @min-[760px]:inline">Find anything</span>
-            <span className="hidden @min-[760px]:inline">
-              <Kbd>⌘K</Kbd>
-            </span>
-          </button>
-        )}
-      </div>
+      <div data-tauri-drag-region />
     </div>
   )
 }
