@@ -45,6 +45,8 @@ export const Manifest = z.object({
   // Alpha's own kit (decision 13): installed and kept up to date by the core, never uninstalled;
   // its agents can still be paused
   core: z.boolean().optional(),
+  // the module People and Organizations live in, as its tabs (UI batch 2, 26 Oct): Network's
+  people: z.boolean().optional(),
   // what changed between versions, so an update renames in place and leaves a removal removed
   history: z
     .object({

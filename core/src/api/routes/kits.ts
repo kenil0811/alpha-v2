@@ -16,14 +16,56 @@ import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
-import type { WorkingModuleView, YoursView } from '../types.ts'
+import { keptEdit, keptField, keptTable } from '../kept.ts'
+import type { KeptTable, WorkingModuleView, YoursView } from '../types.ts'
 
 export function registerKits(ctx: Ctx): void {
   const { app, world, engine, user, person, live } = ctx
   const { needsOf } = ctx.views
 
   // Kits and agents (design §10, §11): what each module does on its own.
-  app.get('/api/working', async (): Promise<WorkingModuleView[]> => {
+  app.get('/api/working', async (): Promise<WorkingModuleView[]> => working())
+  // Every module's agents as one table (UI batch 2, 26 Oct): each turned On or Paused in a cell
+  const WHY = 'An agent is turned on or paused here; the rest is in its file.'
+  app.get(
+    '/api/kept/agents',
+    async (): Promise<KeptTable> =>
+      keptTable(
+        'agents',
+        'Agents',
+        [
+          keptField('Agent', 'text'),
+          keptField('Module', 'text'),
+          keptField('State', 'choice', { On: 'good', Paused: 'warn' }),
+          keptField('Runs', 'text'),
+          keptField('Last ran', 'date'),
+          keptField('Needs', 'text'),
+        ],
+        working().flatMap((m) =>
+          m.agents.map((a) => ({
+            id: a.id,
+            values: {
+              agent: a.name,
+              module: m.name,
+              state: a.state === 'on' ? 'On' : 'Paused',
+              runs: a.running ? `${a.when}, running now` : a.when,
+              'last ran': a.lastRunAt,
+              needs: a.needs,
+            },
+          })),
+        ),
+        { editable: ['State'], why: WHY },
+      ),
+  )
+  app.post('/api/kept/agents/rows/:id', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { value } = keptEdit(req.body, ['State'], WHY)
+    if (value !== 'On' && value !== 'Paused') throw new Refused('An agent is On or Paused.')
+    setAgentState(world, id, value === 'On' ? 'on' : 'paused', user.id)
+    live()
+    return { ok: true }
+  })
+  function working(): WorkingModuleView[] {
     const kits = new Map(installedKits(world).map((k) => [k.module, k]))
     const running = new Set(
       (engine.hands?.runner.runs(200) ?? [])
@@ -61,7 +103,7 @@ export function registerKits(ctx: Ctx): void {
         }
       })
       .filter((m) => m.kit || m.agents.length)
-  })
+  }
 
   // A kit is installed from a folder on this Mac, or updated from one by the ownership rule.
   app.post('/api/kits', async (req) => {
