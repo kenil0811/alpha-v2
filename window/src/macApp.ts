@@ -3,7 +3,9 @@
 type Bridge = { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> }
 
 const bridge = (): Bridge | undefined =>
-  (window as unknown as { __TAURI_INTERNALS__?: Bridge }).__TAURI_INTERNALS__
+  typeof window === 'undefined'
+    ? undefined
+    : (window as unknown as { __TAURI_INTERNALS__?: Bridge }).__TAURI_INTERNALS__
 
 export const inMacApp = (): boolean => !!bridge()
 

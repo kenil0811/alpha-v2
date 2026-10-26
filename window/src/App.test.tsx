@@ -23,7 +23,7 @@ const modules = [
 const open = { railFolded: false, folded: [], panel: null }
 
 describe('the window', () => {
-  it('lists the modules by name in the rail, inside one another, with what waits and Alpha’s state', () => {
+  it('lists the modules by name in the rail, inside one another, with what waits, the workspace and New module last', () => {
     const html = renderToString(
       <Rail
         modules={modules}
@@ -31,7 +31,7 @@ describe('the window', () => {
         here={null}
         name="Kenil"
         waiting={2}
-        running={0}
+        onNew={() => undefined}
         tasksDue={0}
         online
         layout={open}
@@ -44,7 +44,10 @@ describe('the window', () => {
     expect(html).not.toContain('Orders')
     expect(html).not.toContain('Meals')
     expect(html).toContain('>2<')
-    expect(html).toContain('Alpha is running')
+    expect(html).toContain('Kenil&#x27;s workspace')
+    expect(html).toContain('New module')
+    expect(html).not.toContain('Alpha is running')
+    expect(html).not.toContain('href="#/conversation"')
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {
@@ -55,7 +58,7 @@ describe('the window', () => {
         here={null}
         name="Kenil"
         waiting={0}
-        running={0}
+        onNew={() => undefined}
         tasksDue={0}
         online
         layout={{ ...open, folded: ['m_1'] }}
@@ -71,7 +74,7 @@ describe('the window', () => {
         here="m_2"
         name="Kenil"
         waiting={0}
-        running={0}
+        onNew={() => undefined}
         tasksDue={0}
         online
         layout={{ ...open, railFolded: true }}
