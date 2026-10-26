@@ -437,6 +437,7 @@ export class World {
     module: string
     within: string | null // the module it sits inside
     notes: string
+    dir: string
     tables: {
       name: string
       view: string
@@ -451,6 +452,7 @@ export class World {
       module: m.name,
       within: modules.find((p) => p.id === m.parent)?.name ?? null,
       notes: join(m.dir, 'NOTES.md'),
+      dir: m.dir,
       tables: this.shape.tables(m.id).map((t) => ({
         name: t.name,
         view: t.slug,
