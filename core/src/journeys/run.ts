@@ -1,7 +1,7 @@
 // The journeys runner (design §16): a journey is a YAML file of steps and checks on the world,
 // run on a fresh tenant of its own with the real model. Checks read the world, not the model's
 // prose. The report goes in docs/journeys/.
-//   node src/journeys/run.ts <name> [--appended] [--keep] [--from <folder of journeys>]
+// One run of one journey is here (runOne); main.ts runs them: one, N times, or a whole folder.
 // A client's journeys live in the client's own repository (--from ../<client>/journeys); their
 // paths are then from that repository's root, and their reports go in its docs/journeys/.
 import {
@@ -356,17 +356,27 @@ function serve(dir: string): Promise<{ server: Server; url: string }> {
   )
 }
 
-async function main() {
-  const args = process.argv.slice(2)
-  const name = args.find((a) => !a.startsWith('--'))
-  if (!name) throw new Error('Name a journey: node src/journeys/run.ts track-what-i-eat')
-  // Alpha's prompt alone is the default since 24 Oct; --appended tries it on Claude Code's own
-  const prompt = args.includes('--appended') ? 'appended' : 'alone'
+// Where the journeys are and where their reports go: this repository's, or a client's (--from).
+export function placesOf(args: string[]): { journeys: string; base: string } {
   const fromAt = args.indexOf('--from')
   const journeys = fromAt >= 0 ? resolve(ROOT, args[fromAt + 1] ?? '') : join(ROOT, 'journeys')
-  const base = fromAt >= 0 ? resolve(journeys, '..') : ROOT
+  return { journeys, base: fromAt >= 0 ? resolve(journeys, '..') : ROOT }
+}
+
+export const stampOf = () =>
+  new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '')
+
+// One run of one journey on a fresh world: whether it passed, and its report.
+export async function runOne(
+  name: string,
+  args: string[],
+  run: { at: number; of: number } = { at: 1, of: 1 },
+): Promise<{ passed: boolean; report: string; seconds: number }> {
+  // Alpha's prompt alone is the default since 24 Oct; --appended tries it on Claude Code's own
+  const prompt = args.includes('--appended') ? 'appended' : 'alone'
+  const { journeys, base } = placesOf(args)
   const journey = Journey.parse(parse(readFileSync(join(journeys, `${name}.yaml`), 'utf8')))
-  const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '')
+  const stamp = `${stampOf()}${run.of > 1 ? `-run${run.at}` : ''}`
   // Outside $TMPDIR, so the sandbox is as it is for the person.
   const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${prompt}`)
   rmSync(home, { recursive: true, force: true })
@@ -579,7 +589,5 @@ async function main() {
   world.close()
   if (!args.includes('--keep')) rmSync(home, { recursive: true, force: true })
   console.log(`${passed ? 'passed' : 'FAILED'}: ${out}`)
-  process.exitCode = passed ? 0 : 1
+  return { passed, report: out, seconds: Math.round((Date.now() - started) / 1000) }
 }
-
-await main()

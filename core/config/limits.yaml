@@ -20,6 +20,10 @@ document_page_chunks: 200
 # judgement, never met by the person.
 journey_step_minutes: 10
 
+# Runs of a journey with --times and no number: enough to tell a flaky pass from a sure one
+# (item 48 of the problems list, 25 Oct). A journeys-runner judgement, never met by the person.
+journey_times: 3
+
 # Attempts after the first, for a connector call that failed in passing (a dropped connection).
 connector_retries: 2
 
@@ -32,6 +36,10 @@ health_quiet_days: 7
 # Runs of an agent that did not finish, one a tick, before a card on Home asks whether to try
 # again or leave it (item 16 of the problems list, 25 Oct).
 run_retries: 3
+
+# Lines of a finished reply shown before More: a long reply stays readable without filling the
+# conversation (item 63 of the problems list, 25 Oct).
+reply_fold_lines: 4
 
 # Hours a one-time yes on a card stays good for: a yes answers the call in front of the person,
 # and the same call hours later is out of that context, so it is asked again (item 39, 25 Oct).
