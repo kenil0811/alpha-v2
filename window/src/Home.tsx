@@ -436,7 +436,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
       done: view?.kit,
       words: 'Install a module',
       sub: 'A module made for your work, like a deal tracker or a client report',
-      href: '#/intelligence/agents',
+      href: '#/settings/modules',
     },
   ]
   return (

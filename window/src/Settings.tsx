@@ -20,7 +20,6 @@ import {
   Mail,
   Network,
   Plug,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   UserRound,
@@ -70,20 +69,21 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'What Alpha knows, its agents, the accounts it reads and what it may do.',
+    about: 'The accounts Alpha reads, its agents and what it knows.',
     tabs: [
-      ['brain', 'Second Brain', <BookmarkCheck key="i" className="size-3.5" />],
-      ['agents', 'Modules and agents', <Bot key="i" className="size-3.5" />],
       ['connections', 'Connections', <Plug key="i" className="size-3.5" />],
-      ['permissions', 'Permissions', <ShieldCheck key="i" className="size-3.5" />],
+      ['agents', 'Agents', <Bot key="i" className="size-3.5" />],
+      ['brain', 'Second Brain', <BookmarkCheck key="i" className="size-3.5" />],
     ],
   },
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs on this Mac: its model, your data, your reports and how it looks.',
+    about: 'How Alpha runs on this Mac: its model, modules, permissions, data and how it looks.',
     tabs: [
       ['model', 'Model', null],
+      ['modules', 'Modules', null],
+      ['permissions', 'Permissions', null],
       ['data', 'Data', null],
       ['reports', 'Reports', null],
       ['appearance', 'Appearance', null],
@@ -174,6 +174,7 @@ export function Settings({
         </Section>
       </>
     ),
+    modules: <ModulesAndAgents version={version} />,
     permissions: <Permissions version={version} />,
     model: <ModelSection />,
     data: <DataSection />,
@@ -1341,19 +1342,16 @@ function Agents({ version }: { version: number }) {
       api.get<WorkingModuleView[]>('/api/working').then(setModules, () => setModules([]))
   }, [version])
   return (
-    <>
-      <Section title="Agents" about="Every agent, what it does and when it last ran.">
-        {modules && (
-          <Embedded
-            data={agentsTable(modules)}
-            why="An agent is turned on or paused on its own page. Open one to change it."
-            open={(id) => {
-              window.location.hash = `#/agent/${id}`
-            }}
-          />
-        )}
-      </Section>
-      <ModulesAndAgents version={version} />
-    </>
+    <Section title="Agents" about="Every agent, what it does and when it last ran.">
+      {modules && (
+        <Embedded
+          data={agentsTable(modules)}
+          why="An agent is turned on or paused on its own page. Open one to change it."
+          open={(id) => {
+            window.location.hash = `#/agent/${id}`
+          }}
+        />
+      )}
+    </Section>
   )
 }

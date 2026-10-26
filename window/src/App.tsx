@@ -43,7 +43,7 @@ import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
 
-function placeOf(hash: string): Place {
+export function placeOf(hash: string): Place {
   const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?$/.exec(hash)
   if (m?.[1]) {
     // ?only=<rows> (the rows a page counted), ?field=<name> (that value's panel)
@@ -80,8 +80,9 @@ function placeOf(hash: string): Place {
   const c = /^#\/settings\?connect=([\w-]+)$/.exec(hash)
   if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
   const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
+  // Permissions moved from Intelligence to Settings: an old link still lands there
   if (s)
-    return s[1] === 'settings'
+    return s[1] === 'settings' || s[2] === 'permissions'
       ? { at: 'settings', section: s[2] ?? null, open: null }
       : { at: 'intelligence', section: s[2] ?? null, open: null }
   if (hash === '#/activity') return { at: 'activity' }
@@ -300,14 +301,14 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
-  // an agent's or a run's page sits under Activity, a standing permission's under Intelligence
+  // an agent's or a run's page sits under Activity, a standing permission's under Settings
   const itemCrumb: Crumb | null =
     place.at !== 'item'
       ? null
       : place.kind === 'permission'
         ? {
-            icon: <Sparkles className={icon} />,
-            parts: [at('Intelligence', '#/intelligence/permissions'), at(itemName || '…')],
+            icon: <SlidersHorizontal className={icon} />,
+            parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
           }
         : {
             icon: <ActivityIcon className={icon} />,

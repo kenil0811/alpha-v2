@@ -1,4 +1,4 @@
-// Settings › Modules and agents (design §10, §11): what each module does on its own, and its
+// Settings › Modules (design §10, §11): what each module does on its own, and its
 // agents, each on or paused, folded under the module until opened. A module is installed from a
 // folder or a file. The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
@@ -35,7 +35,7 @@ export function ModulesAndAgents({ version }: { version: number }) {
   return (
     <Section
       title="Modules"
-      about="Where each module comes from: update it, or pack it to install elsewhere. Its agents are listed above."
+      about="Where each module comes from: install one, update it, or pack it to install elsewhere."
     >
       {problem && <div className="text-bad text-md">{problem}</div>}
       {modules?.length === 0 && (
@@ -126,22 +126,22 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
             {said && <div className="text-ink-2">{said}</div>}
           </>
         }
-        actions={
-          <>
-            {m.agents.length > 1 && (
-              <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
-            )}
-            {m.kit && (
-              <Button size="sm" variant="ghost" disabled={busy} onClick={updateModule}>
-                Update from its folder
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" disabled={busy} onClick={packModule}>
-              {m.kit ? 'Pack it as it is now' : 'Pack it to install elsewhere'}
+      >
+        {/* under the name, not beside it: Settings' column is too narrow for three buttons */}
+        <div className="flex flex-wrap items-center gap-2 px-4 pb-3 pl-15">
+          {m.agents.length > 1 && (
+            <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+          )}
+          {m.kit && (
+            <Button size="sm" variant="ghost" disabled={busy} onClick={updateModule}>
+              Update from its folder
             </Button>
-          </>
-        }
-      />
+          )}
+          <Button size="sm" variant="ghost" disabled={busy} onClick={packModule}>
+            {m.kit ? 'Pack it as it is now' : 'Pack it to install elsewhere'}
+          </Button>
+        </div>
+      </Row>
       {open && m.kit && <Yours module={m} onChange={onChange} />}
     </List>
   )
