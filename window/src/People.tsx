@@ -7,6 +7,7 @@ import type { PeopleView, PersonLineView, PersonView } from '@alpha/core/api'
 import { CalendarDays, ChevronRight, Mail, Pencil, Search } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
@@ -37,28 +38,6 @@ function channelWords(channels: { channel: string; count: number }[], days: numb
 
 const firstWords = (first: 'you' | 'them' | null) =>
   first === 'you' ? 'you wrote first' : first === 'them' ? 'they wrote first' : null
-
-function initials(name: string): string {
-  const words = name
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-  return ((words[0]?.[0] ?? '') + (words.length > 1 ? (words.at(-1)?.[0] ?? '') : '')).toUpperCase()
-}
-
-function Face({ name, company, big }: { name: string; company?: boolean; big?: boolean }) {
-  return (
-    <span
-      className={cn(
-        'grid shrink-0 place-items-center bg-sunk font-semibold text-ink-2',
-        company ? 'rounded-md' : 'rounded-full',
-        big ? 'size-12 text-lg' : 'size-8 text-xs',
-      )}
-    >
-      {initials(name) || '?'}
-    </span>
-  )
-}
 
 export function People({
   kind,
@@ -163,7 +142,7 @@ function PersonRow({ p, days }: { p: PersonLineView; days: number }) {
       href={`#/people/${p.id}`}
       className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
     >
-      <Face name={p.name} company={company} />
+      <Avatar name={p.name} organization={company} />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium text-base text-ink">{p.name}</span>
         {sub.length > 0 && (
@@ -253,7 +232,7 @@ function PersonPage({
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-7 pb-10">
         <div className="flex items-center gap-4">
-          <Face name={p.name} company={company} big />
+          <Avatar name={p.name} organization={company} big />
           <div className="min-w-0 flex-1">
             {naming ? (
               <form
@@ -389,7 +368,7 @@ function PersonPage({
                   href={`#/people/${c.id}`}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
                 >
-                  <Face name={c.name} company />
+                  <Avatar name={c.name} organization />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-base text-ink">{c.name}</span>
                     {c.title && <span className="block text-ink-3 text-sm">{c.title}</span>}
@@ -412,7 +391,7 @@ function PersonPage({
                   href={`#/people/${m.id}`}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
                 >
-                  <Face name={m.name} />
+                  <Avatar name={m.name} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-base text-ink">{m.name}</span>
                     {m.title && <span className="block text-ink-3 text-sm">{m.title}</span>}
@@ -504,7 +483,7 @@ function PersonPage({
                   key={m.id}
                   className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0"
                 >
-                  <Face name={m.name} company={company} />
+                  <Avatar name={m.name} organization={company} />
                   <span className="min-w-0 flex-1 truncate text-base text-ink">{m.name}</span>
                   <Button size="sm" onClick={() => act(`${m.id}/unmerge`)}>
                     Unmerge
