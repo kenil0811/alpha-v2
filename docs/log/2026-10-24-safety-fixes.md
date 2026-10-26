@@ -145,3 +145,97 @@ the batch 3 review (https://claude.ai/artifact/BkkgKPE3fMEV15uvLJxP9i): 28, 29, 
   tool), colours kept through an update (kits), an older pack refused (packs).
 
 Kenil's "ok looks good" 25 Oct 14:07 UTC on batch 3's test steps: committed and pushed.
+
+## Batch 4 (items 44 to 63), 25 Oct
+
+Review https://claude.ai/artifact/QQmxVmpHtmJr7PwP3GVVN8, plan
+https://claude.ai/artifact/7iHymTZoEmqGUqVvVgM32R, Kenil's "lets do it" 14:43 UTC: 44 to 48, 57,
+59, 61, 63 done; 60 waits for the Build step; the review's suggestions taken on 57, 59, 63.
+
+- **Core.** `syncAgents` knows an agent by its file first, so a rename keeps its id, state and
+  last run (a line says the new name). `updateSites` in `kits/install.ts`: an update writes the
+  kit's sites plus every host the person allowed on a card (the `shaped` lines with a host), and
+  says which went; before, module.yaml's list never changed on update. `skillsOf` in
+  `engine/context.ts`: each module's skills, a line each, in the start layer. The journeys runner
+  split: `journeys/run.ts` runs one (`runOne`), `journeys/main.ts` the command with `--times [N]`
+  (`journey_times: 3`) and `--all` (`pnpm journeys`), a summary in `docs/journeys`. `kit test`
+  cases may record a failing page (`{ fail, kind }`).
+- **Window.** 57: grey marks with their word on hover (`KIND_WORDS`), `EMPTY_CELL` (a dash) in the
+  grid and `EMPTY_WORDS` (Unknown) in the panels. 59: a page's open of one row's field opens
+  `SourcePanel` beside the page (it follows the world while open); other opens go to the table as
+  before. 63: `ui/fold.tsx`, `reply_fold_lines: 4` carried in `/api/me`. The plan said a reply
+  with a table is never cut; the look showed every long reply of Kenil's is long because of a
+  table, so a reply folds above its first table instead, and one opening with a table stays whole.
+- **alpha-avilo (DealPilot 0.5.4, Accounting 0.3.3).** 44: the four refusing hosts off `network`.
+  45: the Report's referral partners from the export whose period covers the month (`covers()`
+  reads the period's words; a row needs no new field), client section rows laid over everyone's
+  by Section; the Funnel counts a deal at each stage up to its furthest, in the kit's Stage order.
+  46: the listing reader sets Blocked only on the engine's blocked kind (not Chrome being open),
+  else Not read (a new State choice) with "not read: timed out"; a listing with no badge keeps
+  its status. 47: Outreach's local day; Owner is a CPA in `history.removed`; Figures renamed Deal
+  figures and Client figures. Kit tests `reader-timed-out` and `reader-blocked` pass.
+
+Kenil's "ok lets push these" 26 Oct 11:05 UTC on batch 4's test steps: committed and pushed, with alpha-avilo.
+
+## UI pull requests, batch 1 (26 Oct)
+
+Kenil, 26 Oct: review Vikas's open UI pull requests (#1 to #62, stacked on branch `frontend`) and
+`ui changes.md` a few at a time before anything lands. Review https://claude.ai/artifact/N9xeidG8JFRA53YTx7PxuA;
+his calls: 1 and 3 with my fixes, 4, 6, 7 as they are, 8 with the conversation kept as its own
+screen, 5 held, 9 and 10 through 12 in batch 2.
+
+- Merged on branch `ui-batch-1` (real merges, so the later pull requests built on these still
+  merge): 1 (ⓘ, the pop-up, Avatar), 4 (six views offered), 7 with 3 and 6 (Settings and the
+  agreed words, agent/run/permission pages, links), 8 (the assistant on every screen). Batch 4
+  met them in three places: the page view's Not now (Cancel), the row panel's import, App's import.
+- My fixes: a made-up organization in 1's test (it named a prospective client); Experimental shown
+  only once it has an experiment; Conversation kept in the rail; the run retry test on yesterday's
+  clock (item 19 of `ui changes.md`, mine from batch 2: it failed before 08:04); the assistant
+  keeps the rail and 600px of screen (`SidePanel` `keep`): the look in WebKit found Kenil's saved
+  Ask width (937px) squeezing every screen to 200px once the assistant is always open.
+- `pnpm check` 290 tests. Looked at in WebKit on Kenil's Alpha (`.data/shots/ui-batch-1`), reads
+  only. Known: with the assistant open, a table's toolbar runs past its right edge; pull requests
+  19 and 48 rework that toolbar.
+
+Kenil's "batch 1 looks good, lets push" 26 Oct 11:46 UTC: merged to main and pushed; Vikas's pull requests 1, 3, 4, 6, 7 and 8 closed with a note.
+
+## UI pull requests, batch 2 (26 Oct)
+
+Review https://claude.ai/artifact/1BYotGoq8HbEZLQk7nm98S; Kenil's calls: 11, 14, 15 with my fixes
+(the 18px body in), 12 and 13 with the core updated to match and "i dont want any legacy stuff in
+repo"; plan for the core part https://claude.ai/artifact/6JjTLnrx15iGdVo2Nma6NT, his "yes" 12:08.
+
+- Merged 15 on branch `ui-batch-2` (it brings 9 to 14): Intelligence in the rail, one header,
+  People and Organizations inside Network, every list on the shared table, section cards, one
+  record layout, one dropdown, Home's tiles and module cards, sentence case and an 18px body,
+  Governance as Allowed and Denied, pages of 25 to 250, the rail and assistant dragged and folded.
+  Met batch 1 in three files: the section card keeps the ⓘ, People's table keeps the avatar on the
+  person's page, Settings' Experimental stays hidden while empty.
+- Window fixes: the layout moves into the core (`core/src/api/me-types.ts`, re-exported from
+  `types.ts`; `/api/layout` keeps the rail's width, the assistant folded or open, a table's page
+  size and its strip; `window/src/layout.ts` context); the dropdown by keyboard (arrows, Home and
+  End, Return, Escape, typing to jump).
+- Core to match: `people: true` in the kit schema and Network's module.yaml (Network 0.3.1; an
+  update brings it, as it brings the sites), `ModuleSummary`/`ModuleView.people` from it, every
+  lookup by the name "Network" gone. `core/src/api/kept.ts` and `/api/kept/{people,organizations,
+  tasks,agents,permissions}` serve each list as a `KeptTable` (fields, rows, what may change and
+  why not) with `POST …/rows/:id` landing each change in its own store as the person's word: a
+  task's words, state (also by the board), due and priority; a name; an agent On or Paused;
+  nothing for Always allowed (Revoke is on its page). The window's `table/kept.ts` is deleted, and
+  so are `GET /api/people` and the `PeopleView` and `PersonLineView` types, which nothing calls now.
+- `pnpm check` 292 tests (two new: the kept tables and their edits, an agent paused from its cell
+  and the flag read from module.yaml).
+- His look (12:25): the font, the pill switch in the bar, Files/Intelligence/Governance under every
+  table and the big page-size dropdown "horrible". Undone on the branch: the 14px body and 11px
+  capital labels back (`app.css`, the label classes, pill and badge heights); one row of tabs under
+  the bar in full words with counts (`window/src/ui/tabs.tsx`, for modules, People, Tasks and
+  Intelligence; the pill switch gone); the module's Agents and notes tab back, holding its agents,
+  notes, recent activity and Governance, nothing under a table; the page-size dropdown as quiet as
+  the page buttons. Design §14 says so.
+- His second look (12:40, 12:41): no count cards on every table, scrollbars too thick, card inside
+  card inside card, no modules on Home. Done: the strip of counts gone (`table/Metrics.tsx`
+  deleted, `strip` out of the core's layout and its test), thin scrollbars in `app.css` with
+  `scroll-quiet` for the tab rows, sections back to main's (serif title, no card) and the Agents
+  and notes tab the same, the shared tables in Intelligence without a frame of their own,
+  Permissions split into On this Mac and Always allowed, Home's module cards gone.
+

@@ -15,6 +15,7 @@
     "dev:core": "ALPHA_DEV_WINDOW=1 pnpm --filter @alpha/core dev",
     "dev:window": "pnpm --filter @alpha/window dev",
     "journey": "pnpm --filter @alpha/core journey",
+    "journeys": "pnpm --filter @alpha/core journey --all",
     "start": "pnpm --filter @alpha/window build && pnpm --filter @alpha/core start",
     "shots": "node window/scripts/shots.ts",
     "kit": "node core/src/kit.ts",

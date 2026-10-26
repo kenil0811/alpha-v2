@@ -27,6 +27,8 @@ const Limits = z.object({
   loop_rounds_per_turn: z.number().int().positive(),
   run_retries: z.number().int().min(1),
   yes_hours: z.number().positive(),
+  journey_times: z.number().int().min(1),
+  reply_fold_lines: z.number().int().min(1),
 })
 
 const Words = z.object({
