@@ -361,6 +361,9 @@ export type Tab = { key: string; href: string; label: string; icon: ReactNode; s
 
 // The pill switch in the bar's middle: one tab per page or table, labels folding to icons when the
 // bar is narrow; it never wraps.
+// People and Organizations, Network's own screen, show the same sections under their table
+export { Below }
+
 export function PillSwitch({
   label,
   tabs,

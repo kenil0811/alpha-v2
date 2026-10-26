@@ -3,11 +3,11 @@
 // first), never a score; companies the same way. A page each: how to reach them, where they work
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
-import type { ModuleSummary, PeopleView, PersonView } from '@alpha/core/api'
+import type { ModuleSummary, ModuleView, PeopleView, PersonView } from '@alpha/core/api'
 import { CalendarDays, ChevronRight, LayoutDashboard, Mail, Pencil, Table2 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { PillSwitch, peopleTabs } from './Module.tsx'
+import { Below, PillSwitch, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
@@ -101,6 +101,14 @@ function PeopleList({
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
+  // Network's own view, for its Files, Intelligence and Governance under the table
+  const [m, setM] = useState<ModuleView | null>(null)
+  const loadNet = useCallback(() => {
+    if (net) api.get<ModuleView>(`/api/modules/${net.id}`).then(setM, () => setM(null))
+  }, [net?.id])
+  useEffect(() => {
+    if (version >= 0) loadNet()
+  }, [loadNet, version])
   const data = useMemo(() => view && peopleTable(view.lines, kind), [view, kind])
   const none = view && view.people + view.companies === 0
   return (
@@ -137,21 +145,25 @@ function PeopleList({
           .
         </p>
       )}
-      <div className="min-h-0 flex-1">
-        {data ? (
-          <TableView
-            key={kind}
-            data={data}
-            kept={{
-              why: 'People are changed on their own page. Open one to change it.',
-              open: (id) => {
-                window.location.hash = `#/people/${id}`
-              },
-            }}
-          />
-        ) : (
-          <p className="p-7 text-ink-3">Loading…</p>
-        )}
+      {/* the page scrolls: the table fills the first screen, Network's sections follow */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="h-full">
+          {data ? (
+            <TableView
+              key={kind}
+              data={data}
+              kept={{
+                why: 'People are changed on their own page. Open one to change it.',
+                open: (id) => {
+                  window.location.hash = `#/people/${id}`
+                },
+              }}
+            />
+          ) : (
+            <p className="p-7 text-ink-3">Loading…</p>
+          )}
+        </div>
+        {m && <Below m={m} version={version} onChange={loadNet} />}
       </div>
     </div>
   )
