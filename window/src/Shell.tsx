@@ -48,6 +48,7 @@ export type Place =
   | { at: 'conversation' }
   | { at: 'activity' }
   | { at: 'parts' }
+  | { at: 'new' }
   | { at: 'item'; kind: 'agent' | 'run' | 'permission'; id: string }
   | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
   | {
@@ -120,7 +121,7 @@ export function Rail({
   online: boolean
   layout: Layout
   onLayout: (change: Partial<Layout>) => void
-  onNew: () => void // New module: the assistant makes one from what the person says
+  onNew: () => void // New module: a blank module whose words Alpha builds it from
 }) {
   // the rail's width, dragged by its edge, kept in this browser
   const [width, setWidth] = useState(() => {

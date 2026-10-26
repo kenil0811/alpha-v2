@@ -97,7 +97,7 @@ export function Conversation({
   const [problem, setProblem] = useState<string | null>(null)
   const [words, setWords] = useState('')
   const composer = useRef<HTMLTextAreaElement>(null)
-  // words another screen started the assistant with (Governance's + Add, New module)
+  // words another screen started the assistant with (Governance's + Add)
   useEffect(() => {
     const take = () => {
       const w = takeAsk()

@@ -25,12 +25,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
-import { startAsk } from './ask.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { ModuleScreen } from './Module.tsx'
+import { NewModule } from './NewModule.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
 import { Settings } from './Settings.tsx'
@@ -104,6 +104,7 @@ function placeOf(hash: string): Place {
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
+  if (hash === '#/module/new') return { at: 'new' }
   const it = /^#\/(agent|run|permission)\/([\w-]+)$/.exec(hash)
   if (it?.[1] && it[2])
     return { at: 'item', kind: it[1] as 'agent' | 'run' | 'permission', id: it[2] }
@@ -330,56 +331,61 @@ export function App() {
                 ? { icon: <Sparkles className={icon} />, parts: [at('Intelligence')] }
                 : place.at === 'parts'
                   ? { parts: [at('Parts')] }
-                  : place.at === 'file'
-                    ? {
-                        icon: <FileText className={icon} />,
-                        parts: [at('Documents'), at(fileName || '…')],
-                      }
-                    : place.at === 'table'
+                  : place.at === 'new'
+                    ? { icon: <Briefcase className={icon} />, parts: [at('New module')] }
+                    : place.at === 'file'
                       ? {
-                          icon: <Briefcase className={icon} />,
-                          parts: table
-                            ? [
-                                ...above,
-                                at(table.module.name, `#/module/${table.module.id}`),
-                                // with a row open, the table's name closes it
-                                place.row ? at(table.name, `#/table/${table.id}`) : at(table.name),
-                                ...(place.row
-                                  ? [
-                                      at(
-                                        (() => {
-                                          const r = table.rows.find((x) => x.id === place.row)
-                                          return r ? titleOf(table.fields, r) : '…'
-                                        })(),
-                                      ),
-                                    ]
-                                  : []),
-                              ]
-                            : [at('…')],
+                          icon: <FileText className={icon} />,
+                          parts: [at('Documents'), at(fileName || '…')],
                         }
-                      : place.at === 'module'
+                      : place.at === 'table'
                         ? {
                             icon: <Briefcase className={icon} />,
-                            parts: [
-                              ...above,
-                              at(moduleHere?.name ?? '…', `#/module/${place.id}`),
-                              at(
-                                place.tab === 'agents'
-                                  ? 'Agents and notes'
-                                  : place.tab === 'conversation'
-                                    ? 'Conversation'
-                                    : place.tab === 'overview' ||
-                                        (!place.page && modules.some((x) => x.parent === place.id))
-                                      ? 'Overview'
-                                      : (modules
-                                          .find((x) => x.id === place.id)
-                                          ?.pages.find((p) =>
-                                            place.page ? p.name === place.page : p.front,
-                                          )?.title ?? '…'),
-                              ),
-                            ],
+                            parts: table
+                              ? [
+                                  ...above,
+                                  at(table.module.name, `#/module/${table.module.id}`),
+                                  // with a row open, the table's name closes it
+                                  place.row
+                                    ? at(table.name, `#/table/${table.id}`)
+                                    : at(table.name),
+                                  ...(place.row
+                                    ? [
+                                        at(
+                                          (() => {
+                                            const r = table.rows.find((x) => x.id === place.row)
+                                            return r ? titleOf(table.fields, r) : '…'
+                                          })(),
+                                        ),
+                                      ]
+                                    : []),
+                                ]
+                              : [at('…')],
                           }
-                        : { icon: <House className={icon} />, parts: [at('Home')] }
+                        : place.at === 'module'
+                          ? {
+                              icon: <Briefcase className={icon} />,
+                              parts: [
+                                ...above,
+                                at(moduleHere?.name ?? '…', `#/module/${place.id}`),
+                                at(
+                                  place.tab === 'agents'
+                                    ? 'Agents and notes'
+                                    : place.tab === 'conversation'
+                                      ? 'Conversation'
+                                      : place.tab === 'overview' ||
+                                          (!place.page &&
+                                            modules.some((x) => x.parent === place.id))
+                                        ? 'Overview'
+                                        : (modules
+                                            .find((x) => x.id === place.id)
+                                            ?.pages.find((p) =>
+                                              place.page ? p.name === place.page : p.front,
+                                            )?.title ?? '…'),
+                                ),
+                              ],
+                            }
+                          : { icon: <House className={icon} />, parts: [at('Home')] }
 
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
@@ -391,7 +397,9 @@ export function App() {
         onLayout={changeLayout}
         name={name}
         waiting={stream?.cards.length ?? 0}
-        onNew={() => startAsk('Make a module for ')}
+        onNew={() => {
+          window.location.hash = '#/module/new'
+        }}
         tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
         online={!problem}
       />
@@ -430,6 +438,8 @@ export function App() {
                 />
               ) : place.at === 'parts' ? (
                 <Parts />
+              ) : place.at === 'new' ? (
+                <NewModule modules={modules} onAsked={() => setAsking(true)} />
               ) : place.at === 'file' ? (
                 <FileView place={place.place} onName={setFileName} />
               ) : place.at === 'activity' ? (
