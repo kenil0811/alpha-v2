@@ -41,7 +41,7 @@ import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Edge } from './ui/edge.tsx'
 import { Kbd } from './ui/pill.tsx'
-import { MenuItem, MenuLine, Popover } from './ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 
 export type Place =
   | { at: 'home' }
@@ -131,6 +131,8 @@ export function Rail({
     }
   })
   const [dragged, setDragged] = useState<number | null>(null)
+  const hiding = useHiding()
+  const empty = useContextMenu()
   const keepWidth = (w: number) => {
     setWidth(w)
     try {
@@ -146,6 +148,7 @@ export function Rail({
         name={name}
         waiting={waiting}
         tasksDue={tasksDue}
+        hidden={hiding.hidden}
         onNew={onNew}
         onOpen={() => onLayout({ railFolded: false })}
       />
@@ -212,14 +215,24 @@ export function Rail({
           current={place.at === 'people'}
         />
       )}
-      <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
+      <div
+        className="mt-3 min-h-0 flex-1 overflow-y-auto"
+        onContextMenu={(e) => {
+          if (e.target === e.currentTarget && modules.some((m) => hiding.hidden.includes(m.id)))
+            empty.on.onContextMenu(e)
+        }}
+      >
         {modules.length === 0 && online && (
           <div className="px-2 py-1 text-rail-ink-3 text-sm">
             Modules appear here as you ask for them.
           </div>
         )}
+        <Popover point={empty.point} open={empty.open} onClose={empty.close}>
+          <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
+        </Popover>
         <ModuleDrag modules={modules}>
-          {tops(modules).map((m) => (
+          {shownTops(modules, hiding.hidden).map((m) => (
             <ModuleItem
               key={m.id}
               m={m}
@@ -227,6 +240,7 @@ export function Rail({
               here={here}
               folded={layout.folded}
               onFold={fold}
+              hiding={hiding}
             />
           ))}
         </ModuleDrag>
@@ -339,22 +353,79 @@ function ModuleDrag({ modules, children }: { modules: ModuleSummary[]; children:
   )
 }
 
+// Modules hidden from the rail, in this browser only (the core keeps no such flag), with the
+// modules inside them. A hidden one still opens by its link and by Find.
+type Hiding = { hidden: string[]; set: (ids: string[]) => void }
+
+function useHiding(): Hiding {
+  const [hidden, setHidden] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('alpha.hidden') ?? '[]')
+    } catch {
+      return []
+    }
+  })
+  const set = (ids: string[]) => {
+    setHidden(ids)
+    try {
+      localStorage.setItem('alpha.hidden', JSON.stringify(ids))
+    } catch {}
+  }
+  return { hidden, set }
+}
+
+const shownTops = (modules: ModuleSummary[], hidden: string[]) =>
+  tops(modules).filter((m) => !hidden.includes(m.id))
+
+// Hidden modules ›: each one, to bring back; only when any are hidden.
+function HiddenMenu({
+  modules,
+  hiding,
+  onDone,
+}: {
+  modules: ModuleSummary[]
+  hiding: Hiding
+  onDone: () => void
+}) {
+  const gone = modules.filter((m) => hiding.hidden.includes(m.id))
+  if (!gone.length) return null
+  return (
+    <SubMenu label="Hidden modules">
+      {gone.map((g) => (
+        <MenuItem
+          key={g.id}
+          onClick={() => {
+            hiding.set(hiding.hidden.filter((x) => x !== g.id))
+            onDone()
+          }}
+        >
+          <ModuleIcon name={g.name} className="size-3.5 shrink-0 text-ink-3" />
+          {g.name}
+        </MenuItem>
+      ))}
+    </SubMenu>
+  )
+}
+
 // A module in the rail: its name only (its pages and tables are its screen's tabs), the modules
-// inside it under it, and a menu to move it into another.
+// inside it under it, and its menu on ⋮ or a right-click.
 function ModuleItem({
   m,
   modules,
   here,
   folded,
   onFold,
+  hiding,
 }: {
   m: ModuleSummary
   modules: ModuleSummary[]
   here: string | null
   folded: string[]
   onFold: (id: string) => void
+  hiding: Hiding
 }) {
-  const kids = childrenOf(modules, m.id)
+  const kids = childrenOf(modules, m.id).filter((c) => !hiding.hidden.includes(c.id))
+  const menu = useContextMenu()
   const open = !folded.includes(m.id)
   const drag = useContext(Drag)
   const [over, setOver] = useState(false)
@@ -373,6 +444,7 @@ function ModuleItem({
           drag.start(m.id)
         }}
         onDragEnd={() => drag.start(null)}
+        {...menu.on}
         onDragOver={(e) => {
           if (!can) return
           e.preventDefault()
@@ -398,7 +470,13 @@ function ModuleItem({
           extra={<span className="w-11 shrink-0" />}
         />
         <span className="absolute right-0.5 flex items-center">
-          <MoveMenu m={m} modules={modules} />
+          <ModuleMenu
+            m={m}
+            modules={modules}
+            hiding={hiding}
+            point={menu.point}
+            onShut={menu.close}
+          />
           {kids.length > 0 ? (
             <button
               type="button"
@@ -428,6 +506,7 @@ function ModuleItem({
               here={here}
               folded={folded}
               onFold={onFold}
+              hiding={hiding}
             />
           ))}
         </div>
@@ -436,57 +515,106 @@ function ModuleItem({
   )
 }
 
-// Move into…: every other module it may sit inside (never itself or one of its own), or the top.
-function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }) {
+// A module's menu: Open, Rename and Change icon (waiting on the core), Move to › every other module
+// it may sit inside (never itself or one of its own) or the top, Hide, and Hidden modules ›.
+function ModuleMenu({
+  m,
+  modules,
+  hiding,
+  point,
+  onShut,
+}: {
+  m: ModuleSummary
+  modules: ModuleSummary[]
+  hiding: Hiding
+  point: { x: number; y: number } | null // a right-click's place
+  onShut: () => void
+}) {
   const [open, setOpen] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const anchor = useRef<HTMLButtonElement>(null)
   const own = new Set(inside(modules, m.id))
+  const close = () => {
+    setOpen(false)
+    onShut()
+  }
   const move = async (within: string | null) => {
     try {
       await api.post(`/api/modules/${m.id}/place`, { within })
-      setOpen(false)
+      close()
     } catch (err) {
       setProblem(err instanceof Error ? err.message : 'That did not move.')
     }
   }
+  const shown = shownTops(modules, hiding.hidden)
+  const last = shown.length === 1 && shown[0]?.id === m.id
   return (
     <>
       <button
         ref={anchor}
         type="button"
-        aria-label={`Move ${m.name}`}
-        title={`Move ${m.name}`}
+        aria-label={`${m.name} menu`}
+        title={`${m.name} menu`}
         onClick={() => {
           setProblem(null)
           setOpen((o) => !o)
         }}
         className={cn(
           'grid size-6 shrink-0 place-items-center rounded-md text-rail-ink-3 opacity-0 hover:text-rail-ink focus-visible:opacity-100 group-hover/item:opacity-100',
-          open && 'opacity-100',
+          (open || point) && 'opacity-100',
         )}
       >
         <EllipsisVertical className="size-3.5" />
       </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
-        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs">
-          Move {m.name} into
-        </div>
-        {flat(modules)
-          .filter(({ module }) => !own.has(module.id))
-          .map(({ module, depth }) => (
-            <MenuItem
-              key={module.id}
-              checked={m.parent === module.id}
-              onClick={() => move(module.id)}
-            >
-              <span className={cn(depth === 1 && 'pl-3', depth > 1 && 'pl-6')}>{module.name}</span>
-            </MenuItem>
-          ))}
-        <MenuLine />
-        <MenuItem checked={!m.parent} onClick={() => move(null)}>
-          Top level
+      <Popover anchor={anchor} point={point} open={open || !!point} onClose={close}>
+        <MenuItem
+          onClick={() => {
+            window.location.hash = `#/module/${m.id}`
+            close()
+          }}
+        >
+          Open
         </MenuItem>
+        <MenuItem onClick={() => undefined} reason="Not yet: the core can't rename a module">
+          Rename
+        </MenuItem>
+        <SubMenu label="Change icon" reason="Not yet: the core can't keep a module's icon">
+          {null}
+        </SubMenu>
+        <SubMenu label="Move to">
+          {flat(modules)
+            .filter(({ module }) => !own.has(module.id))
+            .map(({ module, depth }) => (
+              <MenuItem
+                key={module.id}
+                checked={m.parent === module.id}
+                onClick={() => move(module.id)}
+              >
+                <span className={cn(depth === 1 && 'pl-3', depth > 1 && 'pl-6')}>
+                  {module.name}
+                </span>
+              </MenuItem>
+            ))}
+          <MenuLine />
+          <MenuItem checked={!m.parent} onClick={() => move(null)}>
+            Top level
+          </MenuItem>
+        </SubMenu>
+        <MenuItem
+          onClick={() => {
+            hiding.set([...hiding.hidden, m.id])
+            close()
+          }}
+          reason={last ? 'The last module in the rail stays' : undefined}
+        >
+          Hide
+        </MenuItem>
+        {modules.some((x) => hiding.hidden.includes(x.id)) && (
+          <>
+            <MenuLine />
+            <HiddenMenu modules={modules} hiding={hiding} onDone={close} />
+          </>
+        )}
         {problem && <p className="max-w-60 px-2.5 py-1.5 text-bad text-sm">{problem}</p>}
       </Popover>
     </>
@@ -501,6 +629,7 @@ function Strip({
   name,
   waiting,
   tasksDue,
+  hidden,
   onNew,
   onOpen,
 }: {
@@ -510,6 +639,7 @@ function Strip({
   name: string
   waiting: number
   tasksDue: number
+  hidden: string[]
   onNew: () => void
   onOpen: () => void
 }) {
@@ -579,7 +709,7 @@ function Strip({
         icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
       <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
-        {tops(modules).map((m) =>
+        {shownTops(modules, hidden).map((m) =>
           icon(
             `#/module/${m.id}`,
             m.name,
