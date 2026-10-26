@@ -174,13 +174,13 @@ export function PasteBar({
       <span className="min-w-0 flex-1 text-ink">
         {plan.problems.length > 0
           ? `This paste can’t go in: ${plan.problems.slice(0, 2).join(' ')}${plan.problems.length > 2 ? ` And ${plan.problems.length - 2} more.` : ''}`
-          : `Paste ${cells} value${cells === 1 ? '' : 's'} into ${plan.set.length} row${plan.set.length === 1 ? '' : 's'}${plan.add.length ? `, and add ${plan.add.length} new row${plan.add.length === 1 ? '' : 's'}` : ''}? Each value will be yours.`}
+          : `${plan.fill ? 'Fill' : 'Paste'} ${cells} value${cells === 1 ? '' : 's'} into ${plan.set.length} row${plan.set.length === 1 ? '' : 's'}${plan.add.length ? `, and add ${plan.add.length} new row${plan.add.length === 1 ? '' : 's'}` : ''}? Each value will be yours.`}
         {plan.skipped.length > 0 &&
           ` ${plan.skipped.join(', ')} ${plan.skipped.length === 1 ? 'is' : 'are'} set by asking Alpha, so ${plan.skipped.length === 1 ? 'it is' : 'they are'} left out.`}
       </span>
       {ready && (
         <Button size="sm" variant="primary" onClick={onYes}>
-          Paste
+          {plan.fill ? 'Fill' : 'Paste'}
         </Button>
       )}
       <Button size="sm" variant="ghost" onClick={onNo}>
