@@ -370,10 +370,9 @@ export function TableView({
               if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
             })
           }
-          onDefault={(on) =>
+          onDefault={(id, on) =>
             act(async () => {
-              if (viewId)
-                replace(await api.put<SavedView>(`/api/views/${viewId}`, { isDefault: on }))
+              replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
             })
           }
           onRemove={() =>
@@ -442,6 +441,7 @@ export function TableView({
           </div>
         ) : config.kind === 'form' ? (
           <FormView
+            table={data.name}
             rows={rows}
             fields={shown}
             names={data.names}
@@ -632,6 +632,7 @@ export function TableView({
       {!adding && !quiet && !openedRow && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
+          table={data.name}
           row={pickedRow}
           field={pickedField}
           rowName={first ? show(first, pickedRow.values[first.slug], data.names) : ''}

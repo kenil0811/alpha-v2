@@ -5,6 +5,11 @@ let waiting: string | null = null
 
 export function startAsk(words: string) {
   waiting = words
+  showAsk()
+}
+
+// Open the assistant's panel, on what was just said to it.
+export function showAsk() {
   window.dispatchEvent(new Event('alpha:ask'))
 }
 

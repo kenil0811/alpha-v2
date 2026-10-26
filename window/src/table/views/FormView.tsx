@@ -1,18 +1,21 @@
 // The form: one row at a time, every field the person can type in, stepping through the view's
-// rows; or a new row. Saving makes each changed value the person's word.
+// rows; or a new row, whose choices start on their ★ defaults. Saving makes each changed value
+// the person's word.
 import type { FieldView, RowView } from '@alpha/core/api'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { Button, IconButton } from '../../ui/button.tsx'
-import { Field, Select } from '../../ui/field.tsx'
+import { Field, Select, starred } from '../../ui/field.tsx'
 import { CORRECTABLE, readValue, show, titleOf, typedOf } from '../values.ts'
 
 export function FormView({
+  table,
   rows,
   fields,
   names,
   onSave,
 }: {
+  table: string // its name
   rows: RowView[]
   fields: FieldView[]
   names: Record<string, string>
@@ -22,7 +25,12 @@ export function FormView({
   const [adding, setAdding] = useState(rows.length === 0)
   const row = adding ? null : (rows[Math.min(at, rows.length - 1)] ?? null)
   const start = (r: RowView | null) =>
-    Object.fromEntries(fields.map((f) => [f.slug, r ? typedOf(f, r.values[f.slug]) : '']))
+    Object.fromEntries(
+      fields.map((f) => [
+        f.slug,
+        r ? typedOf(f, r.values[f.slug]) : f.kind === 'choice' ? starred(`choice.${f.id}`) : '',
+      ]),
+    )
   const [typed, setTyped] = useState<Record<string, string>>(() => start(row))
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -101,6 +109,8 @@ export function FormView({
                   id={`form-${f.id}`}
                   value={typed[f.slug] ?? ''}
                   onChange={(e) => setTyped({ ...typed, [f.slug]: e.target.value })}
+                  starKey={`choice.${f.id}`}
+                  adds={{ what: 'choice', to: `${f.name} in ${table}` }}
                 >
                   <option value="" />
                   {f.choices.map((c) => (

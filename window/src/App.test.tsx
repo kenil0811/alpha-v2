@@ -2,6 +2,7 @@ import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
+import { MenuItem } from './ui/popover.tsx'
 
 const modules = [
   { id: 'm_1', name: 'Shops', parent: null, pages: [], tables: [] },
@@ -95,5 +96,21 @@ describe('the window', () => {
     ])
     expect(inside(modules, 'm_1')).toEqual(['m_1', 'm_2'])
     expect(ancestors(modules, 'm_2').map((m) => m.name)).toEqual(['Shops'])
+  })
+
+  it('gives a menu line a ★ of its own beside it, filled on the default, so starring never picks it', () => {
+    const line = (on: boolean) =>
+      renderToString(
+        <MenuItem onClick={() => undefined} star={{ on, onClick: () => undefined }}>
+          Won
+        </MenuItem>,
+      )
+    expect(line(true)).toContain('aria-pressed="true"')
+    expect(line(true)).toContain('fill-current')
+    expect(line(false)).toContain('aria-label="Make it the default"')
+    expect(line(false)).not.toContain('fill-current')
+    // two buttons side by side, not one inside the other
+    expect(line(false).match(/<button/g)).toHaveLength(2)
+    expect(line(false)).toMatch(/<\/button><button/)
   })
 })

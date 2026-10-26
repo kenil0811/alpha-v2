@@ -14,6 +14,7 @@ import { CORRECTABLE, KIND_TONE, KIND_WORDS, MARK, show, when } from './values.t
 // the person's own word. A value they typed over keeps Alpha's figure beside it, with Reset.
 export function SourcePanel({
   tableId,
+  table,
   row,
   field,
   rowName,
@@ -21,6 +22,7 @@ export function SourcePanel({
   onClose,
 }: {
   tableId: string
+  table: string // its name
   row: RowView
   field: FieldView
   rowName: string
@@ -130,6 +132,7 @@ export function SourcePanel({
         {correcting && (
           <Correct
             tableId={tableId}
+            table={table}
             rowId={row.id}
             field={field}
             value={value}
@@ -168,12 +171,14 @@ export function SourcePanel({
 // Correct it: the value as the person types it, read for its kind, saved as their word.
 function Correct({
   tableId,
+  table,
   rowId,
   field,
   value,
   onDone,
 }: {
   tableId: string
+  table: string
   rowId: string
   field: FieldView
   value: unknown
@@ -217,7 +222,12 @@ function Correct({
   return (
     <form onSubmit={save} className="flex flex-col gap-2">
       {field.kind === 'choice' ? (
-        <Select value={typed} onChange={(e) => setTyped(e.target.value)} aria-label={field.name}>
+        <Select
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          aria-label={field.name}
+          adds={{ what: 'choice', to: `${field.name} in ${table}` }}
+        >
           {field.choices.map((c) => (
             <option key={c}>{c}</option>
           ))}

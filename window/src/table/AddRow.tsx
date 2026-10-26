@@ -2,10 +2,10 @@ import type { FieldView } from '@alpha/core/api'
 import { type FormEvent, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
-import { Field, Select } from '../ui/field.tsx'
+import { Field, Select, starred } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 
-// Add a row: the person's own values, each saved as theirs.
+// Add a row: the person's own values, each saved as theirs; a choice starts on its ★ default.
 export function AddRow({
   tableId,
   name,
@@ -17,7 +17,11 @@ export function AddRow({
   fields: FieldView[]
   onClose: () => void
 }) {
-  const [values, setValues] = useState<Record<string, string>>({})
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      fields.filter((f) => f.kind === 'choice').map((f) => [f.name, starred(`choice.${f.id}`)]),
+    ),
+  )
   const [problem, setProblem] = useState<string | null>(null)
   const save = async (e: FormEvent) => {
     e.preventDefault()
@@ -52,6 +56,8 @@ export function AddRow({
                 id={`add-${f.id}`}
                 value={values[f.name] ?? ''}
                 onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                starKey={`choice.${f.id}`}
+                adds={{ what: 'choice', to: `${f.name} in ${name}` }}
               >
                 <option value="" />
                 {f.choices.map((c) => (

@@ -83,6 +83,7 @@ export function Board({ data, by }: { data: TableData; by: FieldView }) {
                   disabled={busy && on === r.id}
                   aria-label={`Move to another ${by.name.toLowerCase()}`}
                   onChange={(e) => move(r.id, e.target.value)}
+                  adds={{ what: 'choice', to: `${by.name} in ${data.name}` }}
                 >
                   {choice === '' && <option value="">Move to…</option>}
                   {by.choices.map((c) => (
