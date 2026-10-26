@@ -24,6 +24,7 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useStat
 import { api, Problem, wordsOf } from './api.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
+import { Reports } from './Reports.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
@@ -74,10 +75,11 @@ const PAGES = {
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs on this Mac: its model, your data and how it looks.',
+    about: 'How Alpha runs on this Mac: its model, your data, your reports and how it looks.',
     tabs: [
       ['model', 'Model'],
       ['data', 'Data'],
+      ['reports', 'Reports'],
       ['appearance', 'Appearance'],
       ['experimental', 'Experimental'],
     ],
@@ -172,6 +174,7 @@ export function Settings({
     permissions: <Permissions version={version} />,
     model: <ModelSection />,
     data: <DataSection />,
+    reports: <Reports />,
     appearance: <Appearance view={view} onChange={load} />,
     experimental: <Experimental />,
   }

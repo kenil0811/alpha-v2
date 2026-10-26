@@ -31,6 +31,7 @@ import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
+import { Marker } from './Mark.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
@@ -531,6 +532,7 @@ export function App() {
           </Assistant>
         )}
         {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
+        <Marker from={moduleHere} />
       </div>
     </LayoutContext.Provider>
   )
