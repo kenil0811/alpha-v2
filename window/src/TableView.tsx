@@ -13,14 +13,12 @@ import type {
 } from '@alpha/core/api'
 import {
   ArrowDownUp,
-  ChevronDown,
-  ChevronUp,
   Columns3,
   Copy,
   Download,
   EllipsisVertical,
   Group,
-  Plus,
+  LayoutPanelLeft,
   Search,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -38,7 +36,7 @@ import {
   GROUPABLE,
   sortRows,
 } from './table/engine.ts'
-import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
+import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { type LayoutNow, useLayout } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
@@ -46,7 +44,7 @@ import { Metrics } from './table/Metrics.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
+import { AddFilter, Chips, ColumnsList } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
 import { CORRECTABLE, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -141,19 +139,6 @@ export function TableView({
     } catch {}
   }
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
-  const [strip, setStrip] = useState(() => {
-    try {
-      return localStorage.getItem('alpha-strip') !== 'off'
-    } catch {
-      return true
-    }
-  })
-  const fold = (on: boolean) => {
-    setStrip(on)
-    try {
-      localStorage.setItem('alpha-strip', on ? 'on' : 'off')
-    } catch {}
-  }
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)
@@ -252,7 +237,6 @@ export function TableView({
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
-        {strip && <Metrics rows={data.rows} fields={fields} />}
         <ViewTabs
           tools={
             <>
@@ -289,6 +273,10 @@ export function TableView({
                   Search
                 </button>
               )}
+            </>
+          }
+          right={
+            <>
               <AddFilter
                 fields={fields}
                 config={config}
@@ -296,20 +284,11 @@ export function TableView({
                 names={data.names}
                 onConfig={setConfig}
               />
-            </>
-          }
-          right={
-            <>
-              {config.kind !== 'board' && (
-                <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
-              )}
               <More
-                tableId={data.id}
                 fields={fields}
                 shown={shown}
                 config={config}
                 layout={layout}
-                adding={!kept}
                 onConfig={setConfig}
                 onCopy={() =>
                   navigator.clipboard?.writeText(
@@ -331,16 +310,6 @@ export function TableView({
                   )
                 }
               />
-              <button
-                type="button"
-                aria-label={strip ? 'Hide the numbers' : 'Show the numbers'}
-                title={strip ? 'Hide the numbers' : 'Show the numbers'}
-                aria-expanded={strip}
-                onClick={() => fold(!strip)}
-                className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
-              >
-                {strip ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-              </button>
             </>
           }
           views={views}
@@ -386,6 +355,7 @@ export function TableView({
             })
           }
         />
+        <Metrics rows={data.rows} fields={fields} />
         {only && (
           <div className="flex items-center gap-2 border-line border-b bg-accent-soft px-7 py-2 text-md text-ink-2">
             <span className="flex-1">
@@ -428,11 +398,13 @@ export function TableView({
               onConfig={setConfig}
             />
           )}
-          <span className="text-ink-3 text-sm">
-            {rows.length === data.rows.length
-              ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-              : `${rows.length} of ${data.rows.length}`}
-          </span>
+          {config.kind !== 'table' && (
+            <span className="text-ink-3 text-sm">
+              {rows.length === data.rows.length
+                ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
+                : `${rows.length} of ${data.rows.length}`}
+            </span>
+          )}
         </div>
         {data.rows.length === 0 && config.kind !== 'table' ? (
           <p className="px-7 text-ink-3">No rows yet.</p>
@@ -646,31 +618,26 @@ export function TableView({
 const PAGE = 50
 const SIZES = [25, 50, 100, 250]
 
-// The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
-// The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
+// The ⋮ menu: the view's sort, group, columns and layout, then downloads of exactly the rows and
+// columns shown. A column is added at the table's corner, not here.
 function More({
-  tableId,
   fields,
   shown,
   config,
   layout,
-  adding,
   onConfig,
   onExport,
   onCopy,
 }: {
-  tableId: string
   fields: FieldView[]
   shown: FieldView[]
   config: ViewConfig
   layout: LayoutNow
-  adding: boolean // whether a column can be added here
   onConfig: (c: ViewConfig) => void
   onExport: (as: 'csv' | 'xlsx') => void
   onCopy: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const [add, setAdd] = useState(false)
   const grid = config.kind === 'table' ? undefined : 'Columns are laid out in the table view.'
   const wrapped = shown.length > 0 && shown.every((f) => layout.wrap.includes(f.id))
   const anchor = useRef<HTMLButtonElement>(null)
@@ -737,6 +704,18 @@ function More({
           label={
             <>
               <Columns3 className="size-3.5 text-ink-3" />
+              Columns
+            </>
+          }
+          hint={config.hidden.length ? `${config.hidden.length} hidden` : undefined}
+          reason={config.kind === 'board' ? 'A board shows cards, not columns' : undefined}
+        >
+          <ColumnsList fields={fields} config={config} onConfig={onConfig} />
+        </SubMenu>
+        <SubMenu
+          label={
+            <>
+              <LayoutPanelLeft className="size-3.5 text-ink-3" />
               Layout
             </>
           }
@@ -768,16 +747,6 @@ function More({
             Reset the column widths
           </MenuItem>
         </SubMenu>
-        <MenuItem
-          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
-          onClick={() => {
-            setOpen(false)
-            setAdd(true)
-          }}
-        >
-          <Plus className="size-3.5 text-ink-3" />
-          Add column
-        </MenuItem>
         <MenuLine />
         <SubMenu
           label={
@@ -814,9 +783,6 @@ function More({
             Copy as a table
           </MenuItem>
         </SubMenu>
-      </Popover>
-      <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )

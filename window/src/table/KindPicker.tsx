@@ -58,10 +58,10 @@ export function KindPicker({
     can(k)
       ? undefined
       : k === 'board'
-        ? 'A board needs a choice column. Ask Alpha to add one.'
+        ? 'Board needs a choice column'
         : k === 'chart'
-          ? 'A chart needs a choice or a date column. Ask Alpha to add one.'
-          : `A ${k} needs a date column. Ask Alpha to add one.`
+          ? 'Chart needs a choice or date column'
+          : `${k === 'calendar' ? 'Calendar' : 'Timeline'} needs a date column`
   const current = KINDS.find((k) => k.kind === config.kind) ?? KINDS[0]
   // switching to a view that needs a field gives it one, as the core would
   // a calendar or timeline starts on the date most rows have; a board's columns and a chart's bars
@@ -159,7 +159,7 @@ export function KindPicker({
           )}
         </>
       )}
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
         {KINDS.map((k) => (
           <MenuItem
             key={k.kind}

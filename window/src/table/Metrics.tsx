@@ -1,8 +1,9 @@
-// The metric strip over a table (Vikas, 25 Oct): a few tiles
-// counted from what the table already holds: its rows, its first state field's choices (a red
-// icon where the choice says something is wrong), and the rows holding a value Alpha guessed.
+// The metric strip under a table's toolbar (Vikas, 25 Oct), always shown: a few tiles counted
+// from what the table already holds: its first state field's choices (a red icon where the choice
+// says something is wrong), and the rows holding a value Alpha guessed. The row count is the
+// footer's, not a tile.
 import type { FieldView, RowView } from '@alpha/core/api'
-import { CircleAlert, CircleDot, Rows3, Sparkles } from 'lucide-react'
+import { CircleAlert, CircleDot, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../ui/cn.ts'
 
@@ -14,7 +15,6 @@ export function Metrics({ rows, fields }: { rows: RowView[]; fields: FieldView[]
     Object.values(r.sources).some((s) => s?.kind === 'estimated' || s?.kind === 'assumed'),
   ).length
   const tiles: { label: string; n: number; icon: ReactNode; bad?: boolean }[] = [
-    { label: 'Rows', n: rows.length, icon: <Rows3 className="size-4" /> },
     ...(state?.choices.slice(0, 3).map((c) => {
       const bad = state.tones[c] === 'bad' || state.tones[c] === 'warn'
       return {

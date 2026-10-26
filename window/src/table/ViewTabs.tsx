@@ -1,7 +1,7 @@
 // A table's toolbar, one row that never wraps, in this order: the saved list (a dropdown: All,
 // then each list, shared by everyone, with Add list at its foot), Save and Cancel while the list
-// on screen differs from what was saved, the view, search and filter (`tools`), and on the right
-// the table's actions, ⋮ and the numbers' chevron (`right`). The list's own actions sit in the
+// on screen differs from what was saved, the view and search (`tools`), and on the right Filter,
+// then ⋮ (`right`). The list's own actions sit in the
 // dropdown and on a right-click of it: rename, duplicate, open the table on it, delete.
 import type { SavedView } from '@alpha/core/api'
 import { ChevronDown, Plus, Star } from 'lucide-react'
@@ -26,8 +26,8 @@ export function ViewTabs({
   onRemove,
   onReset,
 }: {
-  tools: ReactNode // the view, search and filter, after the saved list
-  right: ReactNode // the table's own actions, ⋮ and the chevron, at the right end
+  tools: ReactNode // the view and search, after the saved list
+  right: ReactNode // Filter, then ⋮, at the right end
   views: SavedView[]
   current: string | null
   dirty: boolean
