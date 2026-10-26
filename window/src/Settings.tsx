@@ -5,6 +5,7 @@ import type {
   ConnectorsView,
   ConnectorView,
   DataPageView,
+  Health,
   InstructionView,
   KeptTable,
   ModelView,
@@ -40,7 +41,7 @@ import { cn } from './ui/cn.ts'
 import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { Pill, type Tone } from './ui/pill.tsx'
+import { Kbd, Pill, type Tone } from './ui/pill.tsx'
 import { Empty, Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -88,6 +89,7 @@ const PAGES = {
       ['reports', 'Reports'],
       ['appearance', 'Appearance'],
       ['experimental', 'Experimental'],
+      ['help', 'Help'],
     ],
   },
 } as const
@@ -184,6 +186,7 @@ export function Settings({
     reports: <Reports />,
     appearance: <Appearance view={view} onChange={load} />,
     experimental: <Experimental />,
+    help: <Help />,
   }
   // the bar holds Settings' icon tile, title and line; Intelligence has its tabs under the bar
   const head = (
@@ -1369,6 +1372,82 @@ function ExperimentLine({ name, title, about }: { name: string; title: string; a
       sub={about}
       actions={<Switch checked={on} label={title} onChange={(v) => setExperiment(name, v)} />}
     />
+  )
+}
+
+// Help: the keys the window answers to, by where they work (each from its handler: App.tsx, Find
+// in Shell.tsx, the grid, the composers, the pencil, a panel's edge), and the version the core runs.
+const KEYS: [string, [string, string][]][] = [
+  [
+    'Anywhere',
+    [
+      ['⌘K', 'Find anything'],
+      ['⌘J', 'Open or fold the assistant'],
+      ['⌘\\', 'Fold or open the rail'],
+      ['Esc', 'Close what’s open, then fold the assistant a step'],
+    ],
+  ],
+  [
+    'Find',
+    [
+      ['↑ ↓', 'Choose'],
+      ['Enter', 'Open'],
+      ['Esc', 'Close'],
+    ],
+  ],
+  [
+    'Writing to Alpha',
+    [
+      ['Enter', 'Send'],
+      ['Shift Enter', 'New line'],
+      ['Esc', 'Stop marking with the pencil'],
+    ],
+  ],
+  [
+    'Tables',
+    [
+      ['Enter or F2', 'Edit the cell'],
+      ['Enter', 'Save the cell'],
+      ['Esc', 'Leave the cell as it was'],
+      ['Shift click', 'Sort by one more column'],
+    ],
+  ],
+  ['Panels', [['← →', 'Resize, from its edge']]],
+]
+
+function Help() {
+  const [health, setHealth] = useState<Health | null>(null)
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json() as Promise<Health>)
+      .then(setHealth, () => undefined)
+  }, [])
+  return (
+    <>
+      <Section title="Keyboard shortcuts">
+        {KEYS.map(([where, keys]) => (
+          <div key={where} className="flex flex-col gap-2">
+            <h3 className="font-medium text-ink">{where}</h3>
+            <List>
+              {keys.map(([k, what]) => (
+                <Row
+                  key={k + what}
+                  title={<span className="font-normal">{what}</span>}
+                  actions={<Kbd>{k}</Kbd>}
+                />
+              ))}
+            </List>
+          </div>
+        ))}
+      </Section>
+      <Section title="Version">
+        <p className="text-ink-2 text-md">
+          {health
+            ? `Alpha ${health.version}${health.build ? ` · build ${health.build}` : ''}`
+            : 'Loading…'}
+        </p>
+      </Section>
+    </>
   )
 }
 
