@@ -225,4 +225,11 @@ repo"; plan for the core part https://claude.ai/artifact/6JjTLnrx15iGdVo2Nma6NT,
   so are `GET /api/people` and the `PeopleView` and `PersonLineView` types, which nothing calls now.
 - `pnpm check` 292 tests (two new: the kept tables and their edits, an agent paused from its cell
   and the flag read from module.yaml).
+- His look (12:25): the font, the pill switch in the bar, Files/Intelligence/Governance under every
+  table and the big page-size dropdown "horrible". Undone on the branch: the 14px body and 11px
+  capital labels back (`app.css`, the label classes, pill and badge heights); one row of tabs under
+  the bar in full words with counts (`window/src/ui/tabs.tsx`, for modules, People, Tasks and
+  Intelligence; the pill switch gone); the module's Agents and notes tab back, holding its agents,
+  notes, recent activity and Governance, nothing under a table; the page-size dropdown as quiet as
+  the page buttons. Design §14 says so.
 

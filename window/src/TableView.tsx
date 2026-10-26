@@ -471,7 +471,7 @@ export function TableView({
                   aria-label="Rows to a page"
                   value={String(size)}
                   onChange={(e) => resize(Number(e.target.value))}
-                  className="mr-2 w-36"
+                  className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
                 >
                   {SIZES.map((n) => (
                     <option key={n} value={n}>

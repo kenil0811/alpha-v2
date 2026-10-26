@@ -610,10 +610,12 @@ its head, Home, Conversation, Tasks, then each module by name with the modules i
 under it, a menu to move one into another, New module last (it starts the sentence "Make a module
 for "), and Intelligence and Settings at the foot; Activity is the assistant's bell. **One header**
 (48px, across the rail, the screen and the assistant): a way back when inside something, the
-screen's switch (its pages and tables as a pill switch, icons only when narrow) or its name centred,
-Find on the right. A module's pages and tables are its switch's tabs; under a table, as the page
-scrolls, come Files, Intelligence (its agents, notes and recent activity) and Governance (Allowed
-and Denied, each a sentence with its reason, and + Add). **People and Organizations** are the tabs
+screen's name centred, Find on the right. Under it, a screen with parts has **one row of tabs**,
+every label in full (a table's row count beside its name), scrolling sideways when long, never
+cut short or folded to icons (Kenil, 26 Oct). A module's tabs are its pages, its tables, its
+Conversation and its Agents and notes, which holds its agents, the notes Alpha reads first, what
+ran lately and Governance (Allowed and Denied, each a sentence with its reason, and + Add); nothing
+sits under a table or a page (Kenil, 26 Oct). **People and Organizations** are the tabs
 of the module whose `module.yaml` says `people: true` (Network's), beside its own tables. A module holding others opens on an Overview of them: a
 plain list, a row per module with its name, where it comes from and what goes on in it right now
 (agents on and running, open tasks, what waits on the person), nothing of its tables. The
@@ -676,9 +678,9 @@ tasks shows their count beside its name; Home has Today's tasks; Find (⌘K) has
 
 **The look is Ledger** (Kenil, 20 Oct; the proposal and mock are in the project's
 `design/window-proposal.md`): slate neutrals and one slate-blue accent, Geist with Source Serif 4
-for page and record titles and big numbers, seven text sizes with an 18px body (Vikas's call, Kenil's
-yes 26 Oct), sentence case everywhere and no letter-spaced capitals, one module icon set, light and
-dark; the tokens are `window/src/app.css`, the parts are in
+for page and record titles and big numbers, seven text sizes with a 14px body and 11px capital
+labels (the 18px body and sentence-case labels were tried and dropped, Kenil, 26 Oct), one module
+icon set, light and dark; the tokens are `window/src/app.css`, the parts are in
 `window/src/ui/`, and `window/src/look.test.ts` fails any colour or size that is not a token.
 `pnpm shots` takes every screen in light and dark. On a module's screens the assistant is the
 module's conversation, and a message asked there carries the module. Pages other than the stream and tables fill

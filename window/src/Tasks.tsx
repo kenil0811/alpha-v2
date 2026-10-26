@@ -4,14 +4,12 @@
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
 import type { KeptTable, TaskLineView, TaskView } from '@alpha/core/api'
-import { Check, CircleDot, Clock, ListChecks, Repeat2, Trash2, X } from 'lucide-react'
+import { Check, CircleDot, Clock, Repeat2, Trash2, X } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
-import { PillSwitch } from './Module.tsx'
 import { Record } from './Record.tsx'
-import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
@@ -22,6 +20,7 @@ import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { Tabs } from './ui/tabs.tsx'
 import { answerWords } from './vocabulary.ts'
 
 type List = 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
@@ -82,19 +81,16 @@ function TaskLists({ list, version }: { list: List; version: number }) {
   const counts = data?.kept.counts ?? {}
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <InBar>
-        <PillSwitch
-          label="Tasks"
-          tabs={LISTS.map((l) => ({
-            key: l.value,
-            href: `#/tasks?list=${l.value}`,
-            label:
-              l.value !== 'done' && counts[l.value] ? `${l.label} ${counts[l.value]}` : l.label,
-            icon: <ListChecks className="size-3.5" />,
-            sel: l.value === list,
-          }))}
-        />
-      </InBar>
+      <Tabs
+        label="Tasks"
+        tabs={LISTS.map((l) => ({
+          key: l.value,
+          href: `#/tasks?list=${l.value}`,
+          label: l.label,
+          count: l.value !== 'done' && counts[l.value] ? counts[l.value] : undefined,
+          sel: l.value === list,
+        }))}
+      />
       <div className="px-7 pt-3">
         <NewTask onAdded={load} />
       </div>

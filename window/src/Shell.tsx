@@ -274,7 +274,7 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
 
 function Badge({ n }: { n: number }) {
   return (
-    <span className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
+    <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
     </span>
   )
@@ -379,7 +379,7 @@ function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }
         <EllipsisVertical className="size-3.5" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
-        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs">
+        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs uppercase tracking-label">
           Move {m.name} into
         </div>
         {flat(modules)

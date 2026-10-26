@@ -4,17 +4,17 @@
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
 import type { KeptTable, ModuleSummary, PersonView } from '@alpha/core/api'
-import { CalendarDays, ChevronRight, LayoutDashboard, Mail, Pencil, Table2 } from 'lucide-react'
+import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { PillSwitch, peopleTabs } from './Module.tsx'
+import { moduleTabs, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
-import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
 import { Section } from './ui/section.tsx'
+import { Tabs } from './ui/tabs.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, {
@@ -84,28 +84,10 @@ function PeopleList({
   const none = data && data.rows.length === 0 && kind === 'person'
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <InBar>
-        <PillSwitch
-          label={net?.name ?? 'People'}
-          tabs={[
-            ...peopleTabs(kind),
-            ...(net?.pages ?? []).map((p) => ({
-              key: `p:${p.name}`,
-              href: `#/module/${net?.id}/page/${p.name}`,
-              label: p.title,
-              icon: <LayoutDashboard className="size-3.5" />,
-              sel: false,
-            })),
-            ...(net?.tables ?? []).map((t) => ({
-              key: `t:${t.id}`,
-              href: `#/table/${t.id}`,
-              label: t.name,
-              icon: <Table2 className="size-3.5" />,
-              sel: false,
-            })),
-          ]}
-        />
-      </InBar>
+      <Tabs
+        label={net?.name ?? 'People'}
+        tabs={[...peopleTabs(kind), ...(net ? moduleTabs(net, null) : [])]}
+      />
       {none && (
         <p className="border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
           No one yet. People come from your contacts, the people you write to and your small
