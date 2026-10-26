@@ -156,7 +156,7 @@ function AgentPage({
           ['Last ran', a.lastRunAt ? dayWords(a.lastRunAt) : 'not yet'],
         ]}
       />
-      <h2 className="font-medium font-serif text-ink text-xl">Runs</h2>
+      <h2 className="font-medium text-ink text-lg">Runs</h2>
       {runs.length === 0 ? (
         <p className="text-ink-2 text-md">No runs yet.</p>
       ) : (

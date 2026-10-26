@@ -48,6 +48,31 @@ describe('the window’s look', () => {
     expect(found).toEqual([])
   })
 
+  // Serif only for the hero heading, a page's or a record's title and big numbers (Vikas, 25 Oct):
+  // on an h1, at 2xl, on tabular figures, or a reply's own top heading.
+  it('keeps serif to titles and big numbers', () => {
+    const MARK = { 'Conversation.tsx': 'Alpha’s mark, one serif letter' }
+    // ponytail: table/* is held by another session's PRs until they land; then drop this
+    const PENDING = /^table\//
+    const found: string[] = []
+    for (const file of sources(SRC)) {
+      const at = relative(SRC, file)
+      if (at in MARK || PENDING.test(at)) continue
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .forEach((line, i) => {
+          if (!/font-serif/.test(line) || /^\s*\/\//.test(line)) return
+          const ok =
+            /<h1\b/.test(line) ||
+            /\btext-2xl\b/.test(line) ||
+            /\btabular-nums\b/.test(line) ||
+            line.match(/\S*font-serif/g)?.every((t) => t.includes('[&_h1]:'))
+          if (!ok) found.push(`${at}:${i + 1}`)
+        })
+    }
+    expect(found).toEqual([])
+  })
+
   it('says only the agreed words', () => {
     const found: string[] = []
     for (const file of sources(SRC)) {

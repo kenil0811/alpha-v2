@@ -37,7 +37,7 @@ export function Dialog({
     >
       {open && (
         <div className="flex flex-col gap-3 p-5">
-          <h2 className="font-medium font-serif text-ink text-lg">{title}</h2>
+          <h2 className="font-medium text-ink text-lg">{title}</h2>
           {children && <div className="text-ink-2 text-md">{children}</div>}
           {actions && <div className="flex justify-end gap-2 pt-1">{actions}</div>}
         </div>
