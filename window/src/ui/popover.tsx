@@ -82,21 +82,27 @@ export function MenuItem({
   checked,
   disabled,
   danger,
+  active,
+  id,
 }: {
   children: ReactNode
   onClick: () => void
   checked?: boolean | undefined
   disabled?: boolean | undefined
   danger?: boolean | undefined
+  active?: boolean | undefined // the one the keyboard is on
+  id?: string | undefined
 }) {
   return (
     <button
       type="button"
+      id={id}
       disabled={disabled}
       onClick={onClick}
       className={cn(
         'flex h-7.5 w-full items-center gap-2 whitespace-nowrap rounded-sm px-2.5 text-left hover:bg-hover disabled:opacity-50',
         danger ? 'text-bad' : 'text-ink',
+        active && 'bg-hover',
       )}
     >
       <span className="w-3.5 shrink-0 text-accent">{checked ? '✓' : ''}</span>

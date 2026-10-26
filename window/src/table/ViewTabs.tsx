@@ -54,7 +54,7 @@ export function ViewTabs({
           onClick={() => onPick(id)}
           title={isDefault ? 'The table opens on this view' : undefined}
           className={cn(
-            '-mb-px flex h-11 items-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-md',
+            'flex h-11 items-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-md',
             sel
               ? 'border-accent font-medium text-ink'
               : 'border-transparent text-ink-2 hover:text-ink',
@@ -85,7 +85,7 @@ export function ViewTabs({
   }
   return (
     <div className="flex min-h-11 items-center gap-1 border-hair border-b pr-7 pl-5">
-      <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+      <div className="scroll-quiet flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden">
         {tab(null, 'All')}
         {views.map((v) => tab(v.id, v.name, v.isDefault))}
         <button
