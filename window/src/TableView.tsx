@@ -15,9 +15,12 @@ import {
   ArrowDownUp,
   ChevronDown,
   ChevronUp,
+  Columns3,
+  Copy,
   Download,
   EllipsisVertical,
   Group,
+  Plus,
   Search,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -35,8 +38,9 @@ import {
   GROUPABLE,
   sortRows,
 } from './table/engine.ts'
-import { Grid, type PastePlan } from './table/Grid.tsx'
+import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
+import { type LayoutNow, useLayout } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { Metrics } from './table/Metrics.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
@@ -120,6 +124,7 @@ export function TableView({
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
   const [searching, setSearching] = useState(false)
+  const layout = useLayout(data.id)
   // rows to a page, the person's choice, kept in this browser
   const [size, setSize] = useState(() => {
     try {
@@ -299,9 +304,23 @@ export function TableView({
                 <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
               )}
               <More
+                tableId={data.id}
                 fields={fields}
+                shown={shown}
                 config={config}
+                layout={layout}
+                adding={!kept}
                 onConfig={setConfig}
+                onCopy={() =>
+                  navigator.clipboard?.writeText(
+                    [
+                      shown.map((f) => f.name),
+                      ...rows.map((r) => shown.map((f) => show(f, r.values[f.slug], data.names))),
+                    ]
+                      .map((line) => line.map((t) => t.replace(/[\t\n]/g, ' ')).join('\t'))
+                      .join('\n'),
+                  )
+                }
                 onExport={(as) =>
                   write(() =>
                     api.download(
@@ -529,6 +548,7 @@ export function TableView({
                         }),
                       )
               }
+              layout={layout}
               onPaste={setPasting}
               onNew={
                 kept
@@ -627,17 +647,30 @@ const SIZES = [25, 50, 100, 250]
 // The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
 // The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
 function More({
+  tableId,
   fields,
+  shown,
   config,
+  layout,
+  adding,
   onConfig,
   onExport,
+  onCopy,
 }: {
+  tableId: string
   fields: FieldView[]
+  shown: FieldView[]
   config: ViewConfig
+  layout: LayoutNow
+  adding: boolean // whether a column can be added here
   onConfig: (c: ViewConfig) => void
   onExport: (as: 'csv' | 'xlsx') => void
+  onCopy: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [add, setAdd] = useState(false)
+  const grid = config.kind === 'table' ? undefined : 'Columns are laid out in the table view.'
+  const wrapped = shown.length > 0 && shown.every((f) => layout.wrap.includes(f.id))
   const anchor = useRef<HTMLButtonElement>(null)
   const sortedBy = config.sorts
     .map((s) => fields.find((f) => f.id === s.field)?.name)
@@ -650,7 +683,7 @@ function More({
         ref={anchor}
         type="button"
         aria-label="More"
-        title="Sort, group, download and more"
+        title="Sort, group, layout, download and more"
         onClick={() => setOpen((o) => !o)}
         className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >
@@ -698,25 +731,90 @@ function More({
             </MenuItem>
           ))}
         </SubMenu>
+        <SubMenu
+          label={
+            <>
+              <Columns3 className="size-3.5 text-ink-3" />
+              Layout
+            </>
+          }
+          reason={grid}
+        >
+          {[1, 2, 3].map((n) => (
+            <MenuItem
+              key={n}
+              checked={layout.frozen === n}
+              reason={n > shown.length ? `There are only ${shown.length} columns.` : undefined}
+              onClick={() => layout.setFrozen(n)}
+            >
+              {n === 1 ? 'Freeze the first column' : `Freeze the first ${n} columns`}
+            </MenuItem>
+          ))}
+          <MenuLine />
+          <MenuItem
+            checked={wrapped}
+            onClick={() => layout.setWrap(wrapped ? [] : shown.map((f) => f.id))}
+          >
+            Wrap text in every column
+          </MenuItem>
+          <MenuItem
+            reason={
+              Object.keys(config.widths).length ? undefined : 'The columns are at their own widths.'
+            }
+            onClick={() => onConfig({ ...config, widths: {} })}
+          >
+            Reset the column widths
+          </MenuItem>
+        </SubMenu>
+        <MenuItem
+          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
+          onClick={() => {
+            setOpen(false)
+            setAdd(true)
+          }}
+        >
+          <Plus className="size-3.5 text-ink-3" />
+          Add column
+        </MenuItem>
         <MenuLine />
-        <MenuItem
-          onClick={() => {
-            setOpen(false)
-            onExport('xlsx')
-          }}
+        <SubMenu
+          label={
+            <>
+              <Download className="size-3.5 text-ink-3" />
+              Download
+            </>
+          }
         >
-          <Download className="size-3.5 text-ink-3" />
-          Download Excel, as shown
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            setOpen(false)
-            onExport('csv')
-          }}
-        >
-          <Download className="size-3.5 text-ink-3" />
-          Download CSV, as shown
-        </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setOpen(false)
+              onExport('xlsx')
+            }}
+          >
+            Excel, as shown
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setOpen(false)
+              onExport('csv')
+            }}
+          >
+            CSV, as shown
+          </MenuItem>
+          <MenuLine />
+          <MenuItem
+            onClick={() => {
+              setOpen(false)
+              onCopy()
+            }}
+          >
+            <Copy className="size-3.5 text-ink-3" />
+            Copy as a table
+          </MenuItem>
+        </SubMenu>
+      </Popover>
+      <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
+        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )

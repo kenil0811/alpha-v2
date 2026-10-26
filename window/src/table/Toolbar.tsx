@@ -241,6 +241,31 @@ export function ColumnsButton({
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
         <div className="flex max-h-96 w-64 flex-col overflow-y-auto">
+          <div className="flex h-7.5 items-center justify-between px-1.5 text-sm">
+            <button
+              type="button"
+              disabled={!config.hidden.length}
+              onClick={() => onConfig({ ...config, hidden: [] })}
+              className="text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
+            >
+              Show all
+            </button>
+            <button
+              type="button"
+              title="Keeps the first column"
+              disabled={shown.length <= 1}
+              onClick={() =>
+                onConfig({
+                  ...config,
+                  hidden: fields.filter((f) => f.id !== shown[0]?.id).map((f) => f.id),
+                })
+              }
+              className="text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
+            >
+              Hide all
+            </button>
+          </div>
+          <MenuLine />
           {ordered.map((f) => {
             const hidden = config.hidden.includes(f.id)
             const at = shown.findIndex((x) => x.id === f.id)

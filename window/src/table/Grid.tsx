@@ -56,7 +56,7 @@ import {
   total,
   widthOf,
 } from './engine.ts'
-import { type LayoutNow, useLayout } from './layout.ts'
+import type { LayoutNow } from './layout.ts'
 import { CORRECTABLE, DOT, INK, MARK, NUMERIC, readValue, show, TINT, typedOf } from './values.ts'
 
 type Item = { kind: 'group'; group: Group } | { kind: 'row'; row: RowView }
@@ -95,6 +95,7 @@ export function Grid({
   readOnly = false,
   onDuplicate,
   onRemove,
+  layout,
 }: {
   tableId: string
   rows: RowView[] // filtered and sorted
@@ -118,6 +119,7 @@ export function Grid({
   readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
   onDuplicate?: ((row: RowView) => Promise<boolean>) | undefined
   onRemove?: ((rows: RowView[]) => Promise<boolean>) | undefined
+  layout: LayoutNow // frozen and wrapped columns, kept in this browser
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [folded, setFolded] = useState<Set<string>>(new Set())
@@ -187,7 +189,6 @@ export function Grid({
   }, [openRow, items, virtual])
 
   const widths = shown.map((f, i) => widthOf(f, config, i === 0))
-  const layout = useLayout(tableId)
   // the columns frozen at the left stay in place as the table scrolls across
   const lefts = widths.map((_, i) => TICK + widths.slice(0, i).reduce((a, b) => a + b, 0))
   const stick = (i: number) => (i < layout.frozen ? lefts[i] : undefined)
@@ -1174,7 +1175,7 @@ function AddField({ tableId }: { tableId: string }) {
 }
 
 // A new column: its name and kind, choices for a choice, the table a relation points at.
-function AddFieldForm({
+export function AddFieldForm({
   tableId,
   title,
   onAdded,

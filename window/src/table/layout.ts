@@ -31,6 +31,7 @@ export function useLayout(tableId: string) {
         ...now,
         wrap: now.wrap.includes(id) ? now.wrap.filter((x) => x !== id) : [...now.wrap, id],
       }),
+    setWrap: (wrap: string[]) => keep({ ...now, wrap }),
   }
 }
 export type LayoutNow = ReturnType<typeof useLayout>
