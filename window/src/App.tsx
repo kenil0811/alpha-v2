@@ -292,14 +292,14 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
-  // an agent's or a run's page sits under Activity, a standing permission's under Intelligence
+  // a run's page sits under Activity, an agent's and a standing permission's under Intelligence
   const itemCrumb: Crumb | null =
     place.at !== 'item'
       ? null
-      : place.kind === 'permission'
+      : place.kind !== 'run'
         ? {
             icon: <Sparkles className={icon} />,
-            parts: [at('Intelligence', '#/intelligence/permissions'), at(itemName || '…')],
+            parts: [at('Intelligence', `#/intelligence/${place.kind}s`), at(itemName || '…')],
           }
         : {
             icon: <ActivityIcon className={icon} />,
