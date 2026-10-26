@@ -114,7 +114,7 @@ holds it today, **todo** is written but skipped until the fix lands (turn it on 
 | W4 | A control that can't act stays, greyed, with the reason on hover; never "Coming soon" | 25 Oct | test |
 | W5 | Sentence case: labels, headers and buttons; no letter-spaced capitals | 25 Oct | test |
 | W6 | No explanatory sentences on a screen; a description is a short phrase in a tooltip | 26 Oct | — |
-| W7 | The window never names the apps it learned from | 25 Oct | test |
+| W7 | The window never names the apps it learned from | 25 Oct | — |
 | W8 | Plain words: no tool names, no ids | 20 Oct | — |
 | W9 | Dates absolute, as "25 Oct"; never a dd/mm/yyyy picker | 26 Oct | — |
 

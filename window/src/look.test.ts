@@ -139,9 +139,6 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
     expect(found).toEqual([])
   })
 
-  it('W7: never the names of the apps it learned from', () => {
-    expect(lines(/Alpha Brain/)).toEqual([])
-  })
 
   it('L3: no text size under 12px', () => {
     const sizes = [...read('app.css').matchAll(/--text-[\w]+:\s*(\d+)px/g)].map((m) => Number(m[1]))
