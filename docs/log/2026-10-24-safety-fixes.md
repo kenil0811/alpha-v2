@@ -197,3 +197,4 @@ screen, 5 held, 9 and 10 through 12 in batch 2.
   only. Known: with the assistant open, a table's toolbar runs past its right edge; pull requests
   19 and 48 rework that toolbar.
 
+Kenil's "batch 1 looks good, lets push" 26 Oct 11:46 UTC: merged to main and pushed; Vikas's pull requests 1, 3, 4, 6, 7 and 8 closed with a note.
