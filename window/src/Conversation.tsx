@@ -993,7 +993,7 @@ function Composer({
         <button
           type="button"
           aria-label="Send"
-          title="Send"
+          data-tip="Send"
           onClick={send}
           disabled={!words.trim()}
           className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity disabled:opacity-35"

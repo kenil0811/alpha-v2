@@ -102,6 +102,18 @@ describe('the window’s look', () => {
     }
     expect(found).toEqual([])
   })
+
+  // an icon says nothing on its own: its label is what a screen reader and the tooltip say
+  it('names every icon button', () => {
+    const found: string[] = []
+    for (const file of sources(SRC)) {
+      const text = readFileSync(file, 'utf8')
+      for (const m of text.matchAll(/<IconButton\b((?:[^>{]|\{[^}]*\})*)>/g))
+        if (!/\slabel=(?:\{(?!\s*['"`]{2}\s*\})|"[^"\s])/.test(m[1] ?? ''))
+          found.push(`${relative(SRC, file)}:${text.slice(0, m.index).split('\n').length}`)
+    }
+    expect(found).toEqual([])
+  })
 })
 
 // The rules in docs/ui-rules.md that code can check, by their numbers there. A skipped one is a

@@ -14,7 +14,7 @@ function BellLink({ running }: { running: number }) {
     <a
       href="#/activity"
       aria-label={running ? `Activity, ${running} running` : 'Activity'}
-      title={running ? `Activity, ${running} running` : 'Activity'}
+      data-tip={running ? `Activity, ${running} running` : 'Activity'}
       className="relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
     >
       <Bell className="size-4" />
@@ -58,7 +58,7 @@ export function Assistant({
           <button
             type="button"
             aria-label="Open the assistant (⌘J)"
-            title="Open the assistant (⌘J)"
+            data-tip="Open the assistant (⌘J)"
             onClick={(e) => {
               e.stopPropagation()
               onFold(false)

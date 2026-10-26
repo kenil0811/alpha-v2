@@ -172,7 +172,7 @@ export function MenuItem({
       role="menuitem"
       aria-disabled={off || undefined}
       disabled={off}
-      title={reason}
+      data-tip={reason}
       onClick={onClick}
       className={cn(
         'flex h-7.5 w-full items-center gap-2 whitespace-nowrap rounded-sm px-2.5 text-left outline-none hover:bg-hover focus-visible:bg-hover disabled:opacity-50 disabled:hover:bg-transparent',
@@ -217,7 +217,7 @@ export function SubMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={!!reason}
-        title={reason}
+        data-tip={reason}
         onClick={() => setOpen(true)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowRight') {

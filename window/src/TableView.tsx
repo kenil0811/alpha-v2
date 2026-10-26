@@ -653,7 +653,7 @@ function More({
         ref={anchor}
         type="button"
         aria-label="More"
-        title="Sort, group, layout, download and more"
+        data-tip="Sort, group, layout, download and more"
         onClick={() => setOpen((o) => !o)}
         className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >

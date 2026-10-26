@@ -96,7 +96,8 @@ export function SortEditor({
           size="sm"
           variant="ghost"
           disabled={!free.length}
-          title={free.length ? undefined : 'Every column is already sorted.'}
+          className="disabled:pointer-events-auto"
+          data-tip={free.length ? undefined : 'Every column is already sorted.'}
           onClick={() => free[0] && set([...sorts, { field: free[0].id, dir: 'asc' }])}
         >
           <Plus className="size-3.25" />

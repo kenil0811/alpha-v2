@@ -68,7 +68,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
         {pdf && (
           <button
             type="button"
-            title="See the file"
+            data-tip="See the file"
             className="w-28 shrink-0 overflow-hidden rounded-sm border border-line bg-surface"
             onClick={() => window.location.assign(`#/file/${filing.file}`)}
           >

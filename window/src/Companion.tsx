@@ -228,7 +228,7 @@ function Bubble({
         <button
           type="button"
           aria-label="Put it away"
-          title="Put it away"
+          data-tip="Put it away"
           onClick={onAway}
           className="grid size-5 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink"
         >
