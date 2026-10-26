@@ -2,7 +2,7 @@
 // Open, its header has the fold control, Alpha's face and name in the middle and the bell for
 // Activity; its edge drags it wider. Folded, it is a strip with the face, the name and the bell,
 // and a click anywhere on it opens it again. ⌘J folds and opens it.
-import { Bell, Maximize2, Minimize2, PanelRightClose, SquareArrowOutUpRight } from 'lucide-react'
+import { Bell, PanelRightClose } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Face, type Mood } from './Companion.tsx'
 import { IconButton } from './ui/button.tsx'
@@ -35,7 +35,6 @@ export function Assistant({
   running,
   width,
   onWidth,
-  full,
   children,
 }: {
   folded: boolean
@@ -45,7 +44,6 @@ export function Assistant({
   running: number
   width: number | null
   onWidth: (w: number | null) => void
-  full: string // the whole conversation
   children: ReactNode
 }) {
   if (folded)
@@ -73,7 +71,6 @@ export function Assistant({
         <BellLink running={running} />
       </aside>
     )
-  const wide = (width ?? 0) >= Math.floor(window.innerWidth / 2) - 8
   return (
     <SidePanel
       title={title}
@@ -91,20 +88,6 @@ export function Assistant({
             </span>
             <span className="truncate font-semibold text-ink text-md">{title}</span>
           </span>
-          <IconButton
-            label={wide ? 'Make it narrow' : 'Expand to half the window'}
-            onClick={() => onWidth(wide ? null : Math.floor(window.innerWidth / 2))}
-          >
-            {wide ? <Minimize2 className="size-3.75" /> : <Maximize2 className="size-3.75" />}
-          </IconButton>
-          <IconButton
-            label="Open the whole conversation"
-            onClick={() => {
-              window.location.hash = full
-            }}
-          >
-            <SquareArrowOutUpRight className="size-3.75" />
-          </IconButton>
           <BellLink running={running} />
         </div>
       }

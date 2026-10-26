@@ -505,7 +505,6 @@ export function App() {
           running={(stream?.running.length ?? 0) + (stream?.reading.length ?? 0)}
           width={layout.panel}
           onWidth={(panel) => changeLayout({ panel })}
-          full={moduleHere ? `#/module/${moduleHere.id}/conversation` : '#/conversation'}
         >
           <Conversation
             stream={stream}
