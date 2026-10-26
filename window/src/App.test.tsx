@@ -1,14 +1,16 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { NO_LAYOUT } from './layout.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 
 const modules = [
-  { id: 'm_1', name: 'Shops', parent: null, pages: [], tables: [] },
+  { id: 'm_1', name: 'Shops', parent: null, people: false, pages: [], tables: [] },
   {
     id: 'm_2',
     name: 'Bakery',
     parent: 'm_1',
+    people: false,
     pages: [],
     tables: [{ id: 't_1', name: 'Orders', rows: 1 }],
   },
@@ -16,11 +18,12 @@ const modules = [
     id: 'm_3',
     name: 'Food',
     parent: null,
+    people: false,
     pages: [],
     tables: [{ id: 't_2', name: 'Meals', rows: 1 }],
   },
 ]
-const open = { railFolded: false, folded: [], panel: null }
+const open = NO_LAYOUT
 
 describe('the window', () => {
   it('lists the modules by name in the rail, inside one another, with what waits, the workspace and New module last', () => {
@@ -48,7 +51,7 @@ describe('the window', () => {
     expect(html).toContain('New module')
     expect(html).toContain('href="#/intelligence"')
     expect(html).not.toContain('Alpha is running')
-    expect(html).not.toContain('href="#/conversation"')
+    expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {
