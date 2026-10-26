@@ -459,7 +459,9 @@ describe('a run that did not finish', () => {
     const runner = new AgentRunner(world, () => engine)
     const [counter] = agents(world, m.id)
     setAgentState(world, counter?.id as string, 'on', 'u_1')
+    // yesterday at 08:00: Leave it stamps the real clock, which is after it at any time of today
     const at8 = new Date()
+    at8.setDate(at8.getDate() - 1)
     at8.setHours(8, 0, 0, 0)
     for (const minute of [0, 1, 2]) await runner.runDue(at8.getTime() + minute * 60_000)
     expect(runner.runs().map((r) => r.state)).toEqual(['failed', 'failed', 'failed'])

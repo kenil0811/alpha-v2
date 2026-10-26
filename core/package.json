@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node src/main.ts",
     "dev": "node --watch src/main.ts",
-    "journey": "node src/journeys/run.ts"
+    "journey": "node src/journeys/main.ts"
   },
   "dependencies": {
     "@alpha/connector-files": "workspace:*",

@@ -6,21 +6,17 @@ import type {
   ConnectorView,
   DataPageView,
   InstructionView,
+  KeptTable,
   ModelView,
-  PermissionView,
-  TableView as TableData,
-  WorkingModuleView,
 } from '@alpha/core/api'
 import {
   BookmarkCheck,
-  Bot,
   CalendarDays,
   Check,
   Folder,
   Mail,
   Network,
   Plug,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   UserRound,
@@ -28,12 +24,10 @@ import {
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
-import { PillSwitch } from './Module.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
-import { agentsTable, permissionsTable } from './table/kept.ts'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -45,6 +39,7 @@ import { Pill, type Tone } from './ui/pill.tsx'
 import { Empty, Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Switch } from './ui/switch.tsx'
+import { Tabs } from './ui/tabs.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   connected: ['Connected', 'good'],
@@ -71,10 +66,10 @@ const PAGES = {
     title: 'Intelligence',
     about: 'What Alpha knows, its agents, the accounts it reads and what it may do.',
     tabs: [
-      ['brain', 'Second Brain', <BookmarkCheck key="i" className="size-3.5" />],
-      ['agents', 'Modules and agents', <Bot key="i" className="size-3.5" />],
-      ['connections', 'Connections', <Plug key="i" className="size-3.5" />],
-      ['permissions', 'Permissions', <ShieldCheck key="i" className="size-3.5" />],
+      ['brain', 'Second Brain'],
+      ['agents', 'Modules and agents'],
+      ['connections', 'Connections'],
+      ['permissions', 'Permissions'],
     ],
   },
   settings: {
@@ -82,10 +77,10 @@ const PAGES = {
     title: 'Settings',
     about: 'How Alpha runs on this Mac: its model, your data and how it looks.',
     tabs: [
-      ['model', 'Model', null],
-      ['data', 'Data', null],
-      ['appearance', 'Appearance', null],
-      ['experimental', 'Experimental', null],
+      ['model', 'Model'],
+      ['data', 'Data'],
+      ['appearance', 'Appearance'],
+      ['experimental', 'Experimental'],
     ],
   },
 } as const
@@ -111,7 +106,10 @@ export function Settings({
   }, [load, version])
 
   const p = PAGES[page]
-  const at = p.tabs.find(([id]) => id === tab)?.[0] ?? p.tabs[0][0]
+  // Experimental shows once a feature is being tried: an empty section is a switch with nothing
+  // behind it (Kenil, 26 Oct)
+  const tabs = p.tabs.filter(([id]) => id !== 'experimental' || EXPERIMENTS.length > 0)
+  const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
   // a connector that names a place on this Mac (a folder) is a list under Folders; every other
   // is a tile under Connections
@@ -178,29 +176,16 @@ export function Settings({
     appearance: <Appearance view={view} onChange={load} />,
     experimental: <Experimental />,
   }
-  // the bar holds Intelligence's tabs, or Settings' icon tile, title and line
+  // the bar holds Settings' icon tile, title and line; Intelligence has its tabs under the bar
   const head = (
     <InBar>
-      {page === 'intelligence' ? (
-        <PillSwitch
-          label="Intelligence"
-          tabs={PAGES.intelligence.tabs.map(([id, label, icon]) => ({
-            key: id,
-            href: `#/intelligence/${id}`,
-            label,
-            icon,
-            sel: id === at,
-          }))}
-        />
-      ) : (
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
-            {p.icon}
-          </span>
-          <h1 className="font-serif text-ink text-xl">{p.title}</h1>
-          <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
-        </div>
-      )}
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
+          {p.icon}
+        </span>
+        <h1 className="font-serif text-ink text-xl">{p.title}</h1>
+        <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
+      </div>
     </InBar>
   )
   const go = (id: string) => {
@@ -208,10 +193,18 @@ export function Settings({
   }
   if (page === 'intelligence')
     return (
-      <div className="h-full overflow-y-auto">
-        <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
-          {head}
-          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
+      <div className="flex h-full min-h-0 flex-col">
+        <Tabs
+          label="Intelligence"
+          tabs={PAGES.intelligence.tabs.map(([id, label]) => ({
+            key: id,
+            href: `#/intelligence/${id}`,
+            label,
+            sel: id === at,
+          }))}
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex max-w-page flex-col gap-8 px-7 pt-6 pb-12">{body[at]}</div>
         </div>
       </div>
     )
@@ -221,7 +214,7 @@ export function Settings({
         {head}
         <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
           <nav className="flex flex-col gap-px self-start max-md:flex-row max-md:flex-wrap">
-            {p.tabs.map(([id, name]) => (
+            {tabs.map(([id, name]) => (
               <button
                 key={id}
                 type="button"
@@ -323,19 +316,21 @@ function SecondBrain({ version }: { version: number }) {
 function Permissions({ version }: { version: number }) {
   const [view, reload] = useSetup()
   return (
-    <Section
-      title="Permissions"
-      about="What Alpha may reach on this Mac, and what it does without asking because you said Always on a card."
-    >
-      <h3 className="font-medium text-ink">On this Mac</h3>
-      {view ? (
-        <SetupList view={view} onChange={reload} />
-      ) : (
-        <p className="text-ink-2 text-md">This core does not say.</p>
-      )}
-      <h3 className="pt-2 font-medium text-ink">Always allowed</h3>
-      <Standing version={version} />
-    </Section>
+    <>
+      <Section title="On this Mac" about="What Alpha may reach on this Mac.">
+        {view ? (
+          <SetupList view={view} onChange={reload} />
+        ) : (
+          <p className="text-ink-2 text-md">This core does not say.</p>
+        )}
+      </Section>
+      <Section
+        title="Always allowed"
+        about="What Alpha does without asking because you said Always on a card."
+      >
+        <Standing version={version} />
+      </Section>
+    </>
   )
 }
 
@@ -586,18 +581,17 @@ function DataSection() {
 // Standing permissions (design §7): each as its sentence, who gave it and how often it has been
 // used, with Revoke; a revoked one stays listed, greyed, as history. Shown under Permissions.
 function Standing({ version }: { version: number }) {
-  const [list, setList] = useState<PermissionView[] | null>(null)
+  const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
-    api.get<PermissionView[]>('/api/permissions').then(setList, () => setList([]))
+    api.get<KeptTable>('/api/kept/permissions').then(setData, () => setData(null))
   }, [])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  if (!list) return null
+  if (!data) return null
   return (
     <Embedded
-      data={permissionsTable(list)}
-      why="A permission is revoked on its own page. Open one to revoke it."
+      data={data}
       open={(id) => {
         window.location.hash = `#/permission/${id}`
       }}
@@ -1434,19 +1428,12 @@ function ExperimentLine({ name, title, about }: { name: string; title: string; a
   )
 }
 
-// A shared table inside a page that scrolls: a fixed height, framed like a card.
-function Embedded({
-  data,
-  why,
-  open,
-}: {
-  data: TableData
-  why: string
-  open: (id: string) => void
-}) {
+// A shared table inside a page that scrolls: a fixed height, its own frame and nothing around it,
+// its edges in line with the section's title.
+function Embedded({ data, open }: { data: KeptTable; open: (id: string) => void }) {
   return (
-    <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
-      <TableView data={data} kept={{ why, open }} />
+    <div className="-mx-7 h-[min(520px,70vh)]">
+      <TableView data={data} kept={{ open }} />
     </div>
   )
 }
@@ -1454,18 +1441,17 @@ function Embedded({
 // Intelligence's Agents: every agent in one shared table, each opening its page; then the modules
 // they come from, to install, update and pack.
 function Agents({ version }: { version: number }) {
-  const [modules, setModules] = useState<WorkingModuleView[] | null>(null)
+  // every module's agents as one table from the core: On or Paused changes in its cell
+  const [data, setData] = useState<KeptTable | null>(null)
   useEffect(() => {
-    if (version >= 0)
-      api.get<WorkingModuleView[]>('/api/working').then(setModules, () => setModules([]))
+    if (version >= 0) api.get<KeptTable>('/api/kept/agents').then(setData, () => setData(null))
   }, [version])
   return (
     <>
       <Section title="Agents" about="Every agent, what it does and when it last ran.">
-        {modules && (
+        {data && (
           <Embedded
-            data={agentsTable(modules)}
-            why="An agent is turned on or paused on its own page. Open one to change it."
+            data={data}
             open={(id) => {
               window.location.hash = `#/agent/${id}`
             }}
