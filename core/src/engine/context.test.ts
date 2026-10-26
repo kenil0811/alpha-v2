@@ -1,7 +1,7 @@
 // Context by mode (Kenil, 24 Oct): the start layer names modules and tables with their counts;
 // a table's fields and meanings come with its first touch, once per session, again after the
 // start layer is resent; the heavy grammars are fetched with guide.
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -46,6 +46,26 @@ describe('the start layer', () => {
     expect(text).toContain('- Meals (view meals), 0 rows: One meal the person ate.')
     expect(text).not.toContain('Food (text)')
     expect(text).toContain('come with your first query, write or change of it')
+  })
+})
+
+describe('a module’s skills', () => {
+  it('are listed under their module in the start layer, a line each from SKILL.md', () => {
+    meals()
+    const m = world.shape.module('Food')
+    if (!m) throw new Error('no Food')
+    for (const [dir, front] of [
+      ['tally', 'name: tally\ndescription: Adds up the day’s meals by kind.'],
+      ['broken', 'name: [not closed'],
+    ] as const) {
+      mkdirSync(join(m.dir, 'skills', dir), { recursive: true })
+      writeFileSync(join(m.dir, 'skills', dir, 'SKILL.md'), `---\n${front}\n---\nMore words.\n`)
+    }
+    const layer = startLayer(world, 'u_1', home, null)
+    expect(layer).toContain(
+      'Skills (skills/<name>/SKILL.md says more):\n- tally: Adds up the day’s meals by kind.',
+    )
+    expect(layer).not.toContain('not closed')
   })
 })
 
