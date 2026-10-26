@@ -293,6 +293,7 @@ export function dropFieldFromViews(shape: Shape, tableId: string, fieldId: strin
       hidden: c.hidden.filter((x) => x !== fieldId),
       order: c.order.filter((x) => x !== fieldId),
       widths: Object.fromEntries(Object.entries(c.widths).filter(([k]) => k !== fieldId)),
+      wrap: c.wrap.filter((x) => x !== fieldId),
       totals: Object.fromEntries(Object.entries(c.totals).filter(([k]) => k !== fieldId)),
       colours: {
         tint: not(c.colours.tint),

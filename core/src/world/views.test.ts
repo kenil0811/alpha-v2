@@ -98,6 +98,26 @@ describe('a saved view', () => {
     expect(world.views.get(other.id)?.name).toBe('Latest')
   })
 
+  it('keeps the columns frozen at the left and the ones that wrap, by name in module.yaml', () => {
+    const t = deals()
+    const v = world.views.save(
+      { table: t.id, name: 'Wide', config: { frozen: 2, wrap: ['Stage', 'listed_on'] } },
+      person,
+    )
+    const id = (name: string) => t.fields.find((f) => f.name === name)?.id
+    expect(v.config.frozen).toBe(2)
+    expect(v.config.wrap).toEqual([id('Stage'), id('Listed on')])
+    const yaml = readFileSync(join(t.module.dir, 'module.yaml'), 'utf8')
+    expect(yaml).toContain('frozen: 2')
+    expect(yaml).toMatch(/wrap:\s+- Stage\s+- Listed on/)
+    // a field taken away leaves the list's wrap with it
+    world.shape.removeField(t.id, 'Stage', { actor: alpha })
+    expect(world.views.get(v.id)?.config.wrap).toEqual([id('Listed on')])
+    expect(
+      world.views.save({ table: t.id, name: 'Plain', config: {} }, person).config,
+    ).toMatchObject({ frozen: 1, wrap: [] })
+  })
+
   it('goes with its table', () => {
     const t = deals()
     world.views.save({ table: t.id, name: 'Mine', config: {} }, person)

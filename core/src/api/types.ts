@@ -387,6 +387,8 @@ export interface ViewConfig {
   hidden: string[]
   order: string[]
   widths: Record<string, number>
+  frozen: number // the columns that stay at the left as the table scrolls across
+  wrap: string[] // the fields whose words run onto more lines
   totals: Record<string, TotalOp>
   colours: {
     tint: string | null

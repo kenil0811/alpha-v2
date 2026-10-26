@@ -14,8 +14,6 @@ import type {
 } from '@alpha/core/api'
 import {
   ArrowDownUp,
-  ChevronDown,
-  ChevronUp,
   Columns3,
   Copy,
   Download,
@@ -42,7 +40,7 @@ import {
 } from './table/engine.ts'
 import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
-import { type LayoutNow, useLayout as useTableLayout } from './table/layout.ts'
+import { type LayoutNow, layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
@@ -130,10 +128,10 @@ export function TableView({
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
   const [searching, setSearching] = useState(false)
-  const layout = useTableLayout(data.id)
+  const layout = layoutOf(config, setConfig) // frozen and wrapped columns, kept with the list
   // rows to a page, the person's choice, kept by Alpha per person
-  const { layout: kept, change } = useLayout()
-  const size = kept.pageSize ?? PAGE
+  const { layout: left, change } = useLayout()
+  const size = left.pageSize ?? PAGE
   const resize = (n: number) => {
     change({ pageSize: n })
     setPage(0)

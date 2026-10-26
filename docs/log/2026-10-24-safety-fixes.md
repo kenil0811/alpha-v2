@@ -239,3 +239,23 @@ repo"; plan for the core part https://claude.ai/artifact/6JjTLnrx15iGdVo2Nma6NT,
   and notes tab the same, the shared tables in Intelligence without a frame of their own,
   Permissions split into On this Mac and Always allowed, Home's module cards gone.
 
+## UI pull requests, batch 3 (26 Oct)
+
+Review https://claude.ai/artifact/RY5gKCfmrgoLm7PMuyFtPj; Kenil's calls (17:00): all twelve, 17, 18,
+22 and 23 with my fixes. Merged 30 (16 to 29 under it) on branch `ui-batch-3` as tried in a scratch
+copy: today's look kept where its comments and module page still had the old one; 18's menu keys
+for the dropdown too (batch 2's own keys removed); the page size from the core's layout; the count
+strip stays gone.
+
+- Freeze and wrap are kept with the list: `frozen` and `wrap` in the view config
+  (`core/src/world/views.ts`, its type, field removal, the model's view grammar), and
+  `window/src/table/layout.ts` reads them from the config instead of the browser.
+- No menu lines for what Alpha cannot do yet: column Rename, Change type, Duplicate and Delete,
+  and Pin, are out.
+- A kept list's row menu edits and clears where the core allows (tasks, people, agents); only
+  Duplicate and Delete say the row is kept on its own page.
+- The bar's Find is left out on People's and Tasks' lists too, as inside a module.
+- The row menu moved out of `table/Grid.tsx` into `table/RowMenu.tsx`.
+- Design §14: the one header's Find, the table's toolbar, menus and tools.
+- My batch 2 test step to drag a task across the board was wrong: main had no drag; 29 adds it.
+

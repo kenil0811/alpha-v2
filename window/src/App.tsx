@@ -401,7 +401,12 @@ export function App() {
           <Bar
             crumb={itemCrumb ?? crumb}
             onFind={
-              place.at === 'module' || place.at === 'table' ? undefined : () => setFinding(true)
+              // a screen showing a table has the table's own search, the only box on it; ⌘K still finds
+              place.at === 'module' ||
+              place.at === 'table' ||
+              ((place.at === 'people' || place.at === 'tasks') && !place.id)
+                ? undefined
+                : () => setFinding(true)
             }
             lens={place.at === 'conversation' ? lens : null}
             onClearLens={() => setLens(null)}

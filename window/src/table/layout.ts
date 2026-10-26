@@ -1,37 +1,20 @@
-// How a table is laid out in this browser: how many columns stay in place at the left as it
-// scrolls across, and which columns wrap their words onto more lines.
-import { useState } from 'react'
+// How a table is laid out, kept with its saved list in the core (design §14): how many columns
+// stay in place at the left as it scrolls across, and which columns wrap their words onto more
+// lines. Changing either changes the list on screen, saved like a filter or a width.
+import type { ViewConfig } from '@alpha/core/api'
 
-type Layout = { frozen: number; wrap: string[] }
-const BLANK: Layout = { frozen: 1, wrap: [] }
-
-// ponytail: kept in this browser, not in the saved list; move into the view's config when Alpha's
-// core keeps it
-export function useLayout(tableId: string) {
-  const key = `alpha-layout:${tableId}`
-  const [now, setNow] = useState<Layout>(() => {
-    try {
-      return { ...BLANK, ...JSON.parse(localStorage.getItem(key) ?? '{}') }
-    } catch {
-      return BLANK
-    }
-  })
-  const keep = (next: Layout) => {
-    setNow(next)
-    try {
-      localStorage.setItem(key, JSON.stringify(next))
-    } catch {}
-  }
+export function layoutOf(config: ViewConfig, onConfig: (c: ViewConfig) => void) {
+  const { wrap } = config
   return {
-    frozen: Math.max(1, now.frozen), // the first column always stays
-    wrap: now.wrap,
-    setFrozen: (frozen: number) => keep({ ...now, frozen }),
+    frozen: Math.max(1, config.frozen), // the first column always stays
+    wrap,
+    setFrozen: (frozen: number) => onConfig({ ...config, frozen }),
     toggleWrap: (id: string) =>
-      keep({
-        ...now,
-        wrap: now.wrap.includes(id) ? now.wrap.filter((x) => x !== id) : [...now.wrap, id],
+      onConfig({
+        ...config,
+        wrap: wrap.includes(id) ? wrap.filter((x) => x !== id) : [...wrap, id],
       }),
-    setWrap: (wrap: string[]) => keep({ ...now, wrap }),
+    setWrap: (next: string[]) => onConfig({ ...config, wrap: next }),
   }
 }
-export type LayoutNow = ReturnType<typeof useLayout>
+export type LayoutNow = ReturnType<typeof layoutOf>

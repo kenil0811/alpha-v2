@@ -83,6 +83,8 @@ export const ViewConfig = z.object({
   hidden: z.array(z.string()).default([]),
   order: z.array(z.string()).default([]),
   widths: z.record(z.string(), z.number().min(48).max(1200)).default({}),
+  frozen: z.number().int().min(1).max(50).default(1), // columns that stay at the left as it scrolls across
+  wrap: z.array(z.string()).default([]), // fields whose words run onto more lines
   totals: z.record(z.string(), z.enum(TOTAL_OPS)).default({}),
   colours: z
     .object({
@@ -144,6 +146,7 @@ export function resolveConfig(table: Table, input: unknown): ViewConfig {
     hidden: c.hidden.map(id),
     order: c.order.map(id),
     widths: Object.fromEntries(Object.entries(c.widths).map(([k, v]) => [id(k), v])),
+    wrap: c.wrap.map(id),
     totals: Object.fromEntries(Object.entries(c.totals).map(([k, v]) => [id(k), v])),
     colours: {
       tint: opt(c.colours.tint),
@@ -211,6 +214,7 @@ export function namedConfig(table: Table, c: ViewConfig): ViewConfig {
         .filter(([k]) => known(k))
         .map(([k, v]) => [name(k) as string, v]),
     ),
+    wrap: c.wrap.filter(known).map((w) => name(w) as string),
     totals: Object.fromEntries(
       Object.entries(c.totals)
         .filter(([k]) => known(k))

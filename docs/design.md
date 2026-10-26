@@ -610,7 +610,8 @@ its head, Home, Conversation, Tasks, then each module by name with the modules i
 under it, a menu to move one into another, New module last (it starts the sentence "Make a module
 for "), and Intelligence and Settings at the foot; Activity is the assistant's bell. **One header**
 (48px, across the rail, the screen and the assistant): a way back when inside something, the
-screen's name centred, Find on the right. Under it, a screen with parts has **one row of tabs**,
+screen's name centred, Find on the right (left out on a screen showing a table, whose own search is
+the one box there; ⌘K still finds; UI batch 3). Under it, a screen with parts has **one row of tabs**,
 every label in full (a table's row count beside its name), scrolling sideways when long, never
 cut short or folded to icons (Kenil, 26 Oct). A module's tabs are its pages, its tables, its
 Conversation and its Agents and notes, which holds its agents, the notes Alpha reads first, what
@@ -644,7 +645,7 @@ Plain words, no tool names, no ids: the words a person reads are agreed (`window
 module not kit, organization not company, Delete not remove, Download not export; a card's Yes and
 No read Approve and Decline), and a test holds them. A section's explanation sits behind an ⓘ. **The window says what happened**
 (items 28 to 30 of the problems list, 25 Oct): a removal that cannot be taken back in a click
-(Disconnect, Delete the view, Forget, Revoke, a connector, ticked rows, a task, going back to a
+(Disconnect, Delete list, Forget, Revoke, a connector, ticked rows, a task, going back to a
 backup, bringing data in, deleting it all) asks first in the one pop-up (`window/src/ui/dialog.tsx`,
 the browser's own dialog, Cancel first; pull requests 1 and 3, 26 Oct), naming what goes; a refusal shows in a line beside the control that was pressed (one hook,
 `window/src/ui/act.tsx`), never dropped; a core that does not answer is "Alpha isn't answering on
@@ -703,11 +704,22 @@ in the window (a board's column, a Home line's Pass) is the person's word, journ
 value's source.
 A choice may give its choices tones, drawn as a dot; a table filters by a choice's value; a row
 added in the window is the person's; a computed value may carry its figuring as a note. Find (⌘K)
-finds rows too. Appearance is kept per person in the world. Tables have v1's tools (Kenil, 20 Oct):
-saved views as tabs, a menu in each column (sort, filter, group, total, colour, move, hide), sorts
-in levels by shift-click, one level of groups with totals, resizable columns, one scrolling list,
-values changed in place as the person's word, ticked rows set or removed, a pasted block filling
-across and down, Export to CSV or Excel, a field added from the header, and a row opened whole. All
+finds rows too. Appearance is kept per person in the world. Tables have v1's tools (Kenil, 20 Oct),
+and since UI batch 3 (Kenil's picks, 26 Oct) one toolbar line: the saved list (a dropdown of All
+and each list, Add list at its foot; a saved view is called a list), the view, Search (a button
+until clicked), Filter (Clear all after two), Columns and ⋮ (Sort editor, Group, Layout, Add column,
+Download as Excel, CSV or a copied table), with Save and Cancel only while the list on screen
+differs from the saved one. Every menu works from the keyboard (arrows, Home, End, a letter, Escape
+for the innermost), opens on a right-click (or Shift+F10) where it belongs, and greys a line it
+cannot do with the reason on hover; a line for what Alpha cannot do at all yet is left out. A
+column's menu sorts, filters, groups, totals, moves, hides, freezes up to it, wraps its words and
+inserts a column beside it; a header drags to move it. Freezing and wrapping are kept with the
+list in the core, like widths and order. A cell's menu edits, copies, clears and opens where it
+came from; a row's (also its ⋮ on hover) opens, duplicates, copies its link and deletes it, asking
+first. Tick boxes show on hover. Sorts come in levels, one level of groups with totals, resizable
+columns, values changed in place as the person's word (in a row opened whole too, by a
+double-click), ticked rows set or removed (Escape lets go), a pasted block filling across and down,
+a field added from the header, and a board's cards dragged between its columns. All
 eight views are built: table, board, list, gallery, calendar and timeline (on a date), chart (bars
 by a group or a date's months, counting rows or adding up a number; a bar's click shows its rows),
 and form (a row at a time, or a new one).

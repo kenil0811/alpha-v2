@@ -10,19 +10,11 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
-  Copy,
-  CopyPlus,
   EllipsisVertical,
-  Eraser,
   Filter,
-  History,
-  Link,
   ListChecks,
   PanelRightOpen,
-  Pencil,
-  Pin,
   Plus,
-  Trash2,
 } from 'lucide-react'
 import {
   type ClipboardEvent,
@@ -57,6 +49,7 @@ import {
   widthOf,
 } from './engine.ts'
 import type { LayoutNow } from './layout.ts'
+import { RowMenu } from './RowMenu.tsx'
 import {
   CORRECTABLE,
   DOT,
@@ -132,7 +125,7 @@ export function Grid({
   readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
   onDuplicate?: ((row: RowView) => Promise<boolean>) | undefined
   onRemove?: ((rows: RowView[]) => Promise<boolean>) | undefined
-  layout: LayoutNow // frozen and wrapped columns, kept in this browser
+  layout: LayoutNow // frozen and wrapped columns, kept with the list
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [folded, setFolded] = useState<Set<string>>(new Set())
@@ -470,7 +463,8 @@ export function Grid({
             row={menu.row}
             field={menu.field}
             names={names}
-            readOnly={readOnly || !onRemove}
+            readOnly={readOnly}
+            elsewhere={!onRemove}
             onDone={() => setMenu(null)}
             onEdit={() => menu.field && startEditing({ row: menu.row.id, field: menu.field.slug })}
             onClear={() => menu.field && onEdit(menu.row, menu.field, null)}
@@ -493,106 +487,6 @@ export function Grid({
         It can’t be brought back; Activity keeps what it held.
       </Confirm>
     </div>
-  )
-}
-
-// A row's menu, with the cell's own lines first when it was opened on a cell. A line that can't be
-// used here stays, greyed, saying why.
-function RowMenu({
-  tableId,
-  row: r,
-  field: f,
-  names,
-  readOnly,
-  onDone,
-  onEdit,
-  onClear,
-  onHistory,
-  onOpen,
-  onDuplicate,
-  onRemove,
-}: {
-  tableId: string
-  row: RowView
-  field: FieldView | null
-  names: Record<string, string>
-  readOnly: boolean // kept on its own page: changed, copied and deleted there
-  onDone: () => void
-  onEdit: () => void
-  onClear: () => void
-  onHistory: () => void
-  onOpen: () => void
-  onDuplicate: () => void
-  onRemove: () => void
-}) {
-  const then = (fn: () => void) => () => {
-    onDone()
-    fn()
-  }
-  const text = f ? show(f, r.values[f.slug], names) : ''
-  const kept = readOnly ? 'This row is kept on its own page; change it there.' : undefined
-  const fixed =
-    kept ??
-    (f && !CORRECTABLE.has(f.kind)
-      ? 'Alpha works this value out; open where it came from to correct that.'
-      : undefined)
-  return (
-    <>
-      {f && (
-        <>
-          <MenuItem reason={fixed} hint="Enter" onClick={then(onEdit)}>
-            <Pencil className="size-3.5 text-ink-3" />
-            Edit
-          </MenuItem>
-          <MenuItem
-            reason={text ? undefined : 'There is nothing in it to copy.'}
-            onClick={then(() => navigator.clipboard?.writeText(text))}
-          >
-            <Copy className="size-3.5 text-ink-3" />
-            Copy
-          </MenuItem>
-          <MenuItem
-            reason={fixed ?? (text ? undefined : 'It is already empty.')}
-            onClick={then(onClear)}
-          >
-            <Eraser className="size-3.5 text-ink-3" />
-            Clear
-          </MenuItem>
-          <MenuItem onClick={then(onHistory)}>
-            <History className="size-3.5 text-ink-3" />
-            Where it came from, and its history
-          </MenuItem>
-          <MenuLine />
-        </>
-      )}
-      <MenuItem onClick={then(onOpen)}>
-        <PanelRightOpen className="size-3.5 text-ink-3" />
-        Open
-      </MenuItem>
-      <MenuItem reason={kept} onClick={then(onDuplicate)}>
-        <CopyPlus className="size-3.5 text-ink-3" />
-        Duplicate
-      </MenuItem>
-      <MenuItem
-        onClick={then(() =>
-          navigator.clipboard?.writeText(
-            `${location.origin}${location.pathname}#/table/${tableId}/${r.id}`,
-          ),
-        )}
-      >
-        <Link className="size-3.5 text-ink-3" />
-        Copy link
-      </MenuItem>
-      <MenuItem reason="Pinning a row needs Alpha's core to keep it; not yet." onClick={onDone}>
-        <Pin className="size-3.5 text-ink-3" />
-        Pin
-      </MenuItem>
-      <MenuLine />
-      <MenuItem danger reason={kept} onClick={then(onRemove)}>
-        <Trash2 className="size-3.5" />
-        Delete row
-      </MenuItem>
-    </>
   )
 }
 

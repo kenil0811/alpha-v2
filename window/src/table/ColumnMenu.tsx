@@ -8,14 +8,10 @@ import {
   ArrowRight,
   ArrowRightToLine,
   ArrowUp,
-  Copy,
   EyeOff,
   MessageSquareText,
-  Pencil,
   Pin,
   Rows3,
-  Shapes,
-  Trash2,
   WrapText,
 } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
@@ -246,35 +242,6 @@ export function ColumnMenu({
       <MenuItem onClick={() => onInsert('right')}>
         <ArrowRightToLine className="size-3.5 text-ink-3" />
         Insert column right
-      </MenuItem>
-      <MenuItem
-        reason="Changing a column itself goes through Alpha for now: ask in the panel."
-        onClick={onClose}
-      >
-        <Pencil className="size-3.5 text-ink-3" />
-        Rename…
-      </MenuItem>
-      <MenuItem
-        reason="Changing a column itself goes through Alpha for now: ask in the panel."
-        onClick={onClose}
-      >
-        <Shapes className="size-3.5 text-ink-3" />
-        Change type…
-      </MenuItem>
-      <MenuItem
-        reason="Changing a column itself goes through Alpha for now: ask in the panel."
-        onClick={onClose}
-      >
-        <Copy className="size-3.5 text-ink-3" />
-        Duplicate column
-      </MenuItem>
-      <MenuItem
-        danger
-        reason="Changing a column itself goes through Alpha for now: ask in the panel."
-        onClick={onClose}
-      >
-        <Trash2 className="size-3.5" />
-        Delete column
       </MenuItem>
     </div>
   )
