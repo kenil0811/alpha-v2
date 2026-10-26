@@ -81,7 +81,7 @@ export function NewModule({
           placeholder="Name"
           aria-label="Name"
           disabled={busy}
-          className="h-auto max-w-md border-transparent bg-transparent px-0 font-serif text-xl focus:ring-0"
+          className="h-auto max-w-md border-transparent bg-transparent px-0 font-serif text-2xl focus:ring-0"
         />
         <textarea
           // biome-ignore lint/a11y/noAutofocus: the page is for this
