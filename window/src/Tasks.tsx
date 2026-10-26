@@ -27,6 +27,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
@@ -373,15 +374,31 @@ function TaskPage({
               Part of {t.parentTitle}
             </a>
           )}
-          <input
-            aria-label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() =>
-              title.trim() && title.trim() !== t.title && change({ title: title.trim() })
-            }
-            className="h-12 w-full bg-transparent font-serif text-2xl text-ink outline-none"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              aria-label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() =>
+                title.trim() && title.trim() !== t.title && change({ title: title.trim() })
+              }
+              className="h-12 w-full bg-transparent font-serif text-2xl text-ink outline-none"
+            />
+            <More label="More" shown>
+              {(close) => (
+                <MenuItem
+                  danger
+                  onClick={() => {
+                    close()
+                    setRemoving(true)
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </MenuItem>
+              )}
+            </More>
+          </div>
           <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
             <span>
               Made by {t.madeBy}, {new Date(t.createdAt).toLocaleDateString()}
@@ -570,10 +587,6 @@ function TaskPage({
         )}
 
         <div>
-          <Button size="sm" variant="ghost" onClick={() => setRemoving(true)}>
-            <Trash2 className="size-3.5" />
-            Delete
-          </Button>
           <Confirm
             open={removing}
             title={`Delete this task${t.children ? ' and the ones beneath it' : ''}?`}
