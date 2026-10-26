@@ -532,9 +532,8 @@ export interface Crumb {
 // the rail's narrowest and widest
 const RAIL = [180, 360] as const
 
-// Network, the module shipped on install that People and Organizations live in, found by its name.
-export const network = (modules: ModuleSummary[]) =>
-  modules.find((m) => m.name === 'Network' && !m.parent) ?? null
+// The module People and Organizations live in, as its module.yaml says (people: true; Network's).
+export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
 
 // What a screen puts in the middle of the bar: its pill switch, or its title. A screen that puts
 // nothing there gets its name in serif.

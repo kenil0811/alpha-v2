@@ -103,30 +103,6 @@ export interface MatchView {
   samePlace: number // undecided pairs with the same name and company
 }
 
-// Someone, or a company, as the People list shows them.
-export interface PersonLineView {
-  id: string
-  kind: 'person' | 'company'
-  name: string
-  emails: string[]
-  phones: string[]
-  companies: string[]
-  domains: string[]
-  last: string | null // the last message or meeting
-  count: number // messages and meetings in the last days
-  first: 'you' | 'them' | null // who wrote first in those days
-  people: number // a company's
-}
-
-export interface PeopleView {
-  kind: 'person' | 'company'
-  days: number
-  lines: PersonLineView[]
-  people: number
-  companies: number
-  sources: string[] // the tables people come from; none until a connection is read
-}
-
 // A person's or company's page.
 export interface PersonView {
   id: string
@@ -253,6 +229,7 @@ export interface ModuleSummary {
   id: string
   name: string
   parent: string | null // the module it sits inside
+  people: boolean // People and Organizations are its tabs (module.yaml people: true)
   pages: PageSummary[]
   tables: TableSummary[]
 }
@@ -343,6 +320,12 @@ export interface TableView {
   rows: RowView[]
   names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
+}
+
+// A list kept outside a module's tables (people, organizations, tasks, agents, standing
+// permissions), served as a table to draw and edit in place (UI batch 2, 26 Oct).
+export interface KeptTable extends TableView {
+  kept: { name: string; editable: string[]; why: string; counts?: Record<string, number> }
 }
 
 // A saved view (world/views.ts), its fields by id.
@@ -518,6 +501,7 @@ export interface YoursView {
 export interface ModuleView {
   id: string
   name: string
+  people: boolean // People and Organizations are its tabs
   kit: { name: string; version: string } | null
   agents: AgentView[]
   sites: number // how many sites its readers may read

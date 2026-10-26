@@ -3,17 +3,9 @@
 // a list, a tree by place, a board by state and a calendar by due date. New task at the top. A
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
-import type { TaskLineView, TasksView, TaskView } from '@alpha/core/api'
+import type { KeptTable, TaskLineView, TaskView } from '@alpha/core/api'
 import { Check, CircleDot, Clock, ListChecks, Repeat2, Trash2, X } from 'lucide-react'
-import {
-  type FormEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
@@ -21,7 +13,6 @@ import { PillSwitch } from './Module.tsx'
 import { Record } from './Record.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
-import { tasksTable } from './table/kept.ts'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -79,14 +70,16 @@ export function Tasks({
 // The saved lists are the switch in the bar; the tasks are drawn by the shared table view, with its
 // table, board, calendar and grouping, each opening on its own page.
 function TaskLists({ list, version }: { list: List; version: number }) {
-  const [view, setView] = useState<TasksView | null>(null)
+  // the core serves a saved list's tasks as a table: changed in a cell, or by a card dragged
+  // across the board (UI batch 2, 26 Oct)
+  const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
-    api.get<TasksView>(`/api/tasks?list=${list}`).then(setView, () => setView(null))
+    api.get<KeptTable>(`/api/kept/tasks?list=${list}`).then(setData, () => setData(null))
   }, [list])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const data = useMemo(() => view && tasksTable(view.lines), [view])
+  const counts = data?.kept.counts ?? {}
   return (
     <div className="flex h-full min-h-0 flex-col">
       <InBar>
@@ -96,9 +89,7 @@ function TaskLists({ list, version }: { list: List; version: number }) {
             key: l.value,
             href: `#/tasks?list=${l.value}`,
             label:
-              view && l.value !== 'done' && view.counts[l.value]
-                ? `${l.label} ${view.counts[l.value]}`
-                : l.label,
+              l.value !== 'done' && counts[l.value] ? `${l.label} ${counts[l.value]}` : l.label,
             icon: <ListChecks className="size-3.5" />,
             sel: l.value === list,
           }))}
@@ -113,7 +104,6 @@ function TaskLists({ list, version }: { list: List; version: number }) {
             key={list}
             data={data}
             kept={{
-              why: 'Tasks are changed on their own page. Open one to change it.',
               open: (id) => {
                 window.location.hash = `#/tasks/${id}`
               },

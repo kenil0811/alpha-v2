@@ -12,7 +12,8 @@ import { installedKits, recordChange } from '../../modules/kits/index.ts'
 import { PROPOSE_TASKS, RUN_AGAIN } from '../../modules/runs/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
-import type { CardView, PermissionView } from '../types.ts'
+import { keptField, keptTable } from '../kept.ts'
+import type { CardView, KeptTable, PermissionView } from '../types.ts'
 
 export function registerCards(ctx: Ctx): void {
   const { app, world, engine, user, person, live, asPerson } = ctx
@@ -81,18 +82,45 @@ export function registerCards(ctx: Ctx): void {
     return cardOut(out)
   })
   // Standing permissions, as Settings lists them, and Revoke.
+  const permissions = (): PermissionView[] =>
+    world.permissions.list().map((p) => ({
+      id: p.id,
+      sentence: p.sentence,
+      grantedBy: byWords(p.grantedBy),
+      grantedAt: p.grantedAt,
+      uses: p.uses,
+      lastUsedAt: p.lastUsedAt,
+      revokedAt: p.revokedAt,
+    }))
+  app.get('/api/permissions', async (): Promise<PermissionView[]> => permissions())
+  // as a table (UI batch 2, 26 Oct): read here; Revoke is on a permission's page, which asks first
   app.get(
-    '/api/permissions',
-    async (): Promise<PermissionView[]> =>
-      world.permissions.list().map((p) => ({
-        id: p.id,
-        sentence: p.sentence,
-        grantedBy: byWords(p.grantedBy),
-        grantedAt: p.grantedAt,
-        uses: p.uses,
-        lastUsedAt: p.lastUsedAt,
-        revokedAt: p.revokedAt,
-      })),
+    '/api/kept/permissions',
+    async (): Promise<KeptTable> =>
+      keptTable(
+        'permissions',
+        'Always allowed',
+        [
+          keptField('Permission', 'text'),
+          keptField('Given by', 'text'),
+          keptField('Given', 'date'),
+          keptField('Uses', 'number'),
+          keptField('Last used', 'date'),
+          keptField('State', 'choice', { Allowed: 'good', Revoked: 'bad' }),
+        ],
+        permissions().map((p) => ({
+          id: p.id,
+          values: {
+            permission: p.sentence,
+            'given by': p.grantedBy,
+            given: p.grantedAt,
+            uses: p.uses,
+            'last used': p.lastUsedAt,
+            state: p.revokedAt ? 'Revoked' : 'Allowed',
+          },
+        })),
+        { editable: [], why: 'Open it to revoke it; its page asks first.' },
+      ),
   )
   app.post('/api/permissions/:id/revoke', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

@@ -6,10 +6,8 @@ import type {
   ConnectorView,
   DataPageView,
   InstructionView,
+  KeptTable,
   ModelView,
-  PermissionView,
-  TableView as TableData,
-  WorkingModuleView,
 } from '@alpha/core/api'
 import {
   BookmarkCheck,
@@ -32,7 +30,6 @@ import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
-import { agentsTable, permissionsTable } from './table/kept.ts'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -588,18 +585,17 @@ function DataSection() {
 // Standing permissions (design §7): each as its sentence, who gave it and how often it has been
 // used, with Revoke; a revoked one stays listed, greyed, as history. Shown under Permissions.
 function Standing({ version }: { version: number }) {
-  const [list, setList] = useState<PermissionView[] | null>(null)
+  const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
-    api.get<PermissionView[]>('/api/permissions').then(setList, () => setList([]))
+    api.get<KeptTable>('/api/kept/permissions').then(setData, () => setData(null))
   }, [])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  if (!list) return null
+  if (!data) return null
   return (
     <Embedded
-      data={permissionsTable(list)}
-      why="A permission is revoked on its own page. Open one to revoke it."
+      data={data}
       open={(id) => {
         window.location.hash = `#/permission/${id}`
       }}
@@ -1254,18 +1250,10 @@ function ExperimentLine({ name, title, about }: { name: string; title: string; a
 }
 
 // A shared table inside a page that scrolls: a fixed height, framed like a card.
-function Embedded({
-  data,
-  why,
-  open,
-}: {
-  data: TableData
-  why: string
-  open: (id: string) => void
-}) {
+function Embedded({ data, open }: { data: KeptTable; open: (id: string) => void }) {
   return (
     <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
-      <TableView data={data} kept={{ why, open }} />
+      <TableView data={data} kept={{ open }} />
     </div>
   )
 }
@@ -1273,18 +1261,17 @@ function Embedded({
 // Intelligence's Agents: every agent in one shared table, each opening its page; then the modules
 // they come from, to install, update and pack.
 function Agents({ version }: { version: number }) {
-  const [modules, setModules] = useState<WorkingModuleView[] | null>(null)
+  // every module's agents as one table from the core: On or Paused changes in its cell
+  const [data, setData] = useState<KeptTable | null>(null)
   useEffect(() => {
-    if (version >= 0)
-      api.get<WorkingModuleView[]>('/api/working').then(setModules, () => setModules([]))
+    if (version >= 0) api.get<KeptTable>('/api/kept/agents').then(setData, () => setData(null))
   }, [version])
   return (
     <>
       <Section title="Agents" about="Every agent, what it does and when it last ran.">
-        {modules && (
+        {data && (
           <Embedded
-            data={agentsTable(modules)}
-            why="An agent is turned on or paused on its own page. Open one to change it."
+            data={data}
             open={(id) => {
               window.location.hash = `#/agent/${id}`
             }}

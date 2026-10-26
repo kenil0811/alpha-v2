@@ -3,15 +3,14 @@
 // first), never a score; companies the same way. A page each: how to reach them, where they work
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
-import type { ModuleSummary, PeopleView, PersonView } from '@alpha/core/api'
+import type { KeptTable, ModuleSummary, PersonView } from '@alpha/core/api'
 import { CalendarDays, ChevronRight, LayoutDashboard, Mail, Pencil, Table2 } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { PillSwitch, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
-import { peopleTable } from './table/kept.ts'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
@@ -72,15 +71,17 @@ function PeopleList({
   version: number
   net: ModuleSummary | null
 }) {
-  const [view, setView] = useState<PeopleView | null>(null)
+  // the core serves People and Organizations as tables; a name changes in its cell
+  const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
-    api.get<PeopleView>(`/api/people?kind=${kind}&words=`).then(setView, () => setView(null))
+    api
+      .get<KeptTable>(`/api/kept/${kind === 'company' ? 'organizations' : 'people'}`)
+      .then(setData, () => setData(null))
   }, [kind])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const data = useMemo(() => view && peopleTable(view.lines, kind), [view, kind])
-  const none = view && view.people + view.companies === 0
+  const none = data && data.rows.length === 0 && kind === 'person'
   return (
     <div className="flex h-full min-h-0 flex-col">
       <InBar>
@@ -121,7 +122,6 @@ function PeopleList({
             key={kind}
             data={data}
             kept={{
-              why: 'People are changed on their own page. Open one to change it.',
               open: (id) => {
                 window.location.hash = `#/people/${id}`
               },

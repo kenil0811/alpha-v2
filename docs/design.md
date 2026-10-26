@@ -587,10 +587,11 @@ page the person asks for.
 ## 14. The window
 
 **Home is the important things** (Kenil, 20 Oct: "Home should be about all important things, the
-space in home is very precious"): one line to ask Alpha, whose answer opens on the right; what
-needs the person, with each card answered right there; what changed since they last looked (kept
-until they clear it); what is running; each agent's next run; and their modules with their tables.
-The conversation is not in Home's own space: it is the assistant beside it.
+space in home is very precious"): the date, the greeting and one line to ask Alpha; a card per
+module with Open; what needs the person, with each card answered right there; Overdue, Due today
+and This week as tiles (Overdue red only when it has some); what changed since they last looked
+(kept until they clear it); what is running; each agent's next run (UI batch 2, 26 Oct). The
+conversation is not in Home's own space: it is the assistant beside it.
 
 **One conversation, and lenses.** The conversation has its own place in the rail: the person's
 sentences and Alpha's replies in order. Work shows as one live message that updates in place and
@@ -604,22 +605,37 @@ its own, open unless the person folds it (⌘J, or its fold) to a strip with Alp
 bell for Activity; it always leaves the rail and at least 600px of screen. Permissions and
 questions land inline with their buttons.
 
-**The rail is module names only** (Kenil, 20 Oct; the head and New module from pull request 8, 26
-Oct): the workspace at its head, Home, Conversation, Tasks, People, then each module by name with
-the modules inside it folded under it, and a menu to move one into another, New module last, and
-Settings at the foot; Activity is the assistant's bell. A module's
-pages and tables are its screen's tabs. A module holding others opens on an Overview of them: a
+**The rail is module names only** (Kenil, 20 Oct; UI batches 1 and 2, 26 Oct): the workspace at
+its head, Home, Conversation, Tasks, then each module by name with the modules inside it folded
+under it, a menu to move one into another, New module last (it starts the sentence "Make a module
+for "), and Intelligence and Settings at the foot; Activity is the assistant's bell. **One header**
+(48px, across the rail, the screen and the assistant): a way back when inside something, the
+screen's switch (its pages and tables as a pill switch, icons only when narrow) or its name centred,
+Find on the right. A module's pages and tables are its switch's tabs; under a table, as the page
+scrolls, come Files, Intelligence (its agents, notes and recent activity) and Governance (Allowed
+and Denied, each a sentence with its reason, and + Add). **People and Organizations** are the tabs
+of the module whose `module.yaml` says `people: true` (Network's), beside its own tables. A module holding others opens on an Overview of them: a
 plain list, a row per module with its name, where it comes from and what goes on in it right now
 (agents on and running, open tasks, what waits on the person), nothing of its tables. The
-rail folds to a strip of icons (⌘\), and the assistant drags wider, to two thirds of the window
-less what the screen keeps, or expands to half of it, or opens as the full Conversation. How the person left them is kept per
-person in the world, like the theme.
+rail folds to a strip of icons (⌘\) or drags wider by its edge, and the assistant drags wider,
+to two thirds of the window less what the screen keeps, or expands to half of it, or opens as the
+full Conversation. How the person left them (the rail's width and folds, the assistant's width and
+whether it is folded, a table's rows to a page and its strip of counts) is kept per person in the
+world, like the theme, never in the browser.
 
 **The other screens:** a Module (the same stream filtered to it; tables in the views offered:
 Table, Card, Timeline, Calendar, Board, Form (Vikas, 25 Oct; a view saved as List or Chart still
 opens); pages; notes, skills and agents as text; files; activity), a page for each agent, run and
-standing permission (`#/agent/…`, `#/run/…`, `#/permission/…`), People, Activity, Settings
-(Connections, Folders, Modules and agents, Second Brain, Permissions, Model, Data, Appearance).
+standing permission (`#/agent/…`, `#/run/…`, `#/permission/…`), Activity, **Intelligence**
+(Second Brain, Modules and agents, Connections with Folders, Permissions, as tabs) and **Settings**
+(Model, Data, Appearance, one at a time; Experimental only once something is being tried).
+**Every list is the shared table** (UI batch 2, Kenil's yes 26 Oct): People, Organizations, Tasks,
+Agents and Always allowed are served by the core as tables (`/api/kept/…`) and drawn by the same
+table view as a module's tables, each changed in a cell where the core allows it (a task's words,
+state, due and priority, and its state by dragging it across the board; a person's or an
+organization's name; an agent On or Paused) and refused in words elsewhere; Revoke is on a
+permission's page. Sections are cards; one record layout serves a person, an organization, a task,
+an agent, a run and a permission; one dropdown everywhere, by mouse or keyboard.
 Plain words, no tool names, no ids: the words a person reads are agreed (`window/src/vocabulary.ts`:
 module not kit, organization not company, Delete not remove, Download not export; a card's Yes and
 No read Approve and Decline), and a test holds them. A section's explanation sits behind an ⓘ. **The window says what happened**
@@ -643,16 +659,16 @@ and clicks beside it reach what is behind. Its face is a simple stand-in until A
 is chosen (Kenil, 21 Oct: "a cute simple companion look, not an A"); v1's animals stay behind.
 The app opens quietly at login: the face and the mark, no window.
 
-**People** (Kenil, 21 Oct): everyone, and every company, with how many messages and meetings in
-the last 90 days, the last one and who wrote first; a page each with how to reach them, where they
+**People** (Kenil, 21 Oct): everyone, and every organization, as Network's first two tabs, on the
+shared table with how many messages and meetings, the last one; a page each with how to reach them, where they
 work now and before, the mail and meetings with them newest first (each opening its row), the
 rows of the person's modules that name them, where Alpha knows them from, and the ones merged into
 them with Unmerge. Likely matches wait on a card in Needs you, side by side, Merge or Keep apart.
 
-**Tasks** (Kenil, 21 Oct): Tasks in the rail with today's and overdue counted; saved lists (Today,
-This week, Overdue, Waiting for you, Agents, All open, Done) in four views: a list, by place (a
-tree of module, table and row), a board by state to drag between, and a calendar; New task at the
-top. A task's page: its state, due, reminder, repeat, priority, owner, where it sits (with Take
+**Tasks** (Kenil, 21 Oct; on the shared table, UI batch 2, 26 Oct): Tasks in the rail with
+today's and overdue counted; the saved lists (Today, This week, Overdue, Waiting for you, Agents,
+All open, Done) are the switch in the header, each list drawn by the shared table view with its
+table, board (by state, dragged between), calendar and grouping; New task at the top. A task's page: its state, due, reminder, repeat, priority, owner, where it sits (with Take
 off), notes, a checklist of the tasks beneath it, the place's values and the other tasks there,
 what it touches, its agent with Start, the run with Stop and earlier runs, the cards its runs put
 to the person, and its history. A row's panel has its tasks with Add a task, and a row with open
@@ -660,11 +676,12 @@ tasks shows their count beside its name; Home has Today's tasks; Find (⌘K) has
 
 **The look is Ledger** (Kenil, 20 Oct; the proposal and mock are in the project's
 `design/window-proposal.md`): slate neutrals and one slate-blue accent, Geist with Source Serif 4
-titles, seven text sizes, light and dark; the tokens are `window/src/app.css`, the parts are in
+for page and record titles and big numbers, seven text sizes with an 18px body (Vikas's call, Kenil's
+yes 26 Oct), sentence case everywhere and no letter-spaced capitals, one module icon set, light and
+dark; the tokens are `window/src/app.css`, the parts are in
 `window/src/ui/`, and `window/src/look.test.ts` fails any colour or size that is not a token.
-`pnpm shots` takes every screen in light and dark. A module's screen has its tables, its
-Conversation and its Agents and notes as tabs; on its screens Ask (⌘J) opens the module's
-conversation on the right, and a message asked there carries the module. Pages other than the stream and tables fill
+`pnpm shots` takes every screen in light and dark. On a module's screens the assistant is the
+module's conversation, and a message asked there carries the module. Pages other than the stream and tables fill
 the window up to 1200px; the stream's text is 720px, and a table in a reply may run to 960px.
 
 A value Alpha is not sure of carries a small grey mark (≈ estimated, ? assumed), never amber:

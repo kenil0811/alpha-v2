@@ -5,11 +5,12 @@ import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 
 const modules = [
-  { id: 'm_1', name: 'Shops', parent: null, pages: [], tables: [] },
+  { id: 'm_1', name: 'Shops', parent: null, people: false, pages: [], tables: [] },
   {
     id: 'm_2',
     name: 'Bakery',
     parent: 'm_1',
+    people: false,
     pages: [],
     tables: [{ id: 't_1', name: 'Orders', rows: 1 }],
   },
@@ -17,6 +18,7 @@ const modules = [
     id: 'm_3',
     name: 'Food',
     parent: null,
+    people: false,
     pages: [],
     tables: [{ id: 't_2', name: 'Meals', rows: 1 }],
   },

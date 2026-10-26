@@ -6,6 +6,7 @@
 import type {
   FieldView,
   FilterRule,
+  KeptTable,
   RowView,
   SavedView,
   TableView as TableData,
@@ -71,10 +72,15 @@ export function TableView({
   only?: string[] | null // the rows a page opened: only these, until Show all
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
-  // rows kept elsewhere (people, organizations, tasks) shown the same way: read here, opened on
+  // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
+  // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved
-  kept?: { why: string; open: (row: string) => void } | null
+  kept?: { open: (row: string) => void } | null
 }) {
+  const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
+  const why = own?.why ?? ''
+  // where a row's change goes: the module table's own rows, or the kept list's
+  const rowsAt = own ? `/api/kept/${own.name}/rows` : `/api/tables/${data.id}/rows`
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
   useEffect(() => setViews(data.views), [data.views])
@@ -161,7 +167,7 @@ export function TableView({
     choices[0]
 
   const act = async (fn: () => Promise<void>) => {
-    if (kept) return setProblem(kept.why)
+    if (kept) return setProblem(why)
     setProblem(null)
     try {
       await fn()
@@ -182,8 +188,8 @@ export function TableView({
     )
   // what the person changes in the table is their word; a refusal shows in the views' line
   const write = async (fn: () => Promise<unknown>) => {
-    if (kept) {
-      setProblem(kept.why)
+    if (kept && !own?.editable.length) {
+      setProblem(why)
       return false
     }
     setProblem(null)
@@ -196,7 +202,7 @@ export function TableView({
     }
   }
   const edit = (row: RowView, field: FieldView, value: unknown) =>
-    write(() => api.post(`/api/tables/${data.id}/rows/${row.id}`, { field: field.name, value }))
+    write(() => api.post(`${rowsAt}/${row.id}`, { field: field.name, value }))
   const tickedRows = data.rows.filter((r) => ticked.has(r.id))
   const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
   const openRowPanel = (id: string) => {
@@ -360,7 +366,7 @@ export function TableView({
           <p className="px-7 text-ink-3">No rows yet.</p>
         ) : config.kind === 'board' && boardBy ? (
           <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
-            <Board data={{ ...data, rows }} by={boardBy} />
+            <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
           </div>
         ) : config.kind === 'form' ? (
           <FormView
@@ -431,7 +437,7 @@ export function TableView({
               picked={picked}
               openRow={openRow ?? null}
               ticked={ticked}
-              readOnly={!!kept}
+              readOnly={!!kept && !own?.editable.length}
               onPick={(p) => {
                 if (kept) return
                 setPicked(p)
@@ -444,7 +450,7 @@ export function TableView({
               onPaste={setPasting}
               onNew={
                 kept
-                  ? kept.why
+                  ? why
                   : quiet
                     ? 'Close the side panel to add a row.'
                     : data.fields.some((f) => CORRECTABLE.has(f.kind))

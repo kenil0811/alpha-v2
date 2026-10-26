@@ -84,15 +84,14 @@ export function ModuleScreen({
     !tab && m && m.id === moduleId && !front && !holds ? m.tables[0]?.id : undefined
   useEffect(() => {
     // Network opens on its People
-    if (firstTable)
-      window.location.replace(m?.name === 'Network' ? '#/people' : `#/table/${firstTable}`)
+    if (firstTable) window.location.replace(m?.people ? '#/people' : `#/table/${firstTable}`)
   }, [firstTable, m?.name])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
   const single = !!m && !holds && !m.pages.length && m.tables.length === 1
 
   const tabs: Tab[] = m
     ? [
-        ...(m.name === 'Network' && !m.parent ? peopleTabs(null) : []),
+        ...(m.people ? peopleTabs(null) : []),
         ...(holds
           ? [
               {

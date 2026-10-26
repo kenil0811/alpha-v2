@@ -198,3 +198,31 @@ screen, 5 held, 9 and 10 through 12 in batch 2.
   19 and 48 rework that toolbar.
 
 Kenil's "batch 1 looks good, lets push" 26 Oct 11:46 UTC: merged to main and pushed; Vikas's pull requests 1, 3, 4, 6, 7 and 8 closed with a note.
+
+## UI pull requests, batch 2 (26 Oct)
+
+Review https://claude.ai/artifact/1BYotGoq8HbEZLQk7nm98S; Kenil's calls: 11, 14, 15 with my fixes
+(the 18px body in), 12 and 13 with the core updated to match and "i dont want any legacy stuff in
+repo"; plan for the core part https://claude.ai/artifact/6JjTLnrx15iGdVo2Nma6NT, his "yes" 12:08.
+
+- Merged 15 on branch `ui-batch-2` (it brings 9 to 14): Intelligence in the rail, one header,
+  People and Organizations inside Network, every list on the shared table, section cards, one
+  record layout, one dropdown, Home's tiles and module cards, sentence case and an 18px body,
+  Governance as Allowed and Denied, pages of 25 to 250, the rail and assistant dragged and folded.
+  Met batch 1 in three files: the section card keeps the ⓘ, People's table keeps the avatar on the
+  person's page, Settings' Experimental stays hidden while empty.
+- Window fixes: the layout moves into the core (`core/src/api/me-types.ts`, re-exported from
+  `types.ts`; `/api/layout` keeps the rail's width, the assistant folded or open, a table's page
+  size and its strip; `window/src/layout.ts` context); the dropdown by keyboard (arrows, Home and
+  End, Return, Escape, typing to jump).
+- Core to match: `people: true` in the kit schema and Network's module.yaml (Network 0.3.1; an
+  update brings it, as it brings the sites), `ModuleSummary`/`ModuleView.people` from it, every
+  lookup by the name "Network" gone. `core/src/api/kept.ts` and `/api/kept/{people,organizations,
+  tasks,agents,permissions}` serve each list as a `KeptTable` (fields, rows, what may change and
+  why not) with `POST …/rows/:id` landing each change in its own store as the person's word: a
+  task's words, state (also by the board), due and priority; a name; an agent On or Paused;
+  nothing for Always allowed (Revoke is on its page). The window's `table/kept.ts` is deleted, and
+  so are `GET /api/people` and the `PeopleView` and `PersonLineView` types, which nothing calls now.
+- `pnpm check` 292 tests (two new: the kept tables and their edits, an agent paused from its cell
+  and the flag read from module.yaml).
+
