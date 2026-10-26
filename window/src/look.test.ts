@@ -22,6 +22,7 @@ const RULES: [string, RegExp][] = [
   ['a text size that is not one of the seven', /(?<![\w-])text-(?:[3-9]xl|xxs)(?![\w-])/g],
   ['an invented colour', /(?<![\w-])(?:bg|border|ring|fill|stroke|decoration|outline)-\[[^\]]*\]/g],
   ['a colour written out', /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g],
+  ['a text size set in a style', /\bfontSize\b/g],
 ]
 
 function sources(dir: string): string[] {
@@ -46,6 +47,17 @@ describe('the window’s look', () => {
         })
     }
     expect(found).toEqual([])
+  })
+
+  // nothing is read under 12px: every size token, and every size app.css sets, is 12px or more
+  it('keeps text at 12px or more', () => {
+    const css = readFileSync(join(SRC, 'app.css'), 'utf8')
+    const sizes = [
+      ...css.matchAll(/--text-[\w-]+(?<!line-height):\s*([\d.]+)(px|rem)/g),
+      ...css.matchAll(/font-size:\s*([\d.]+)(px|rem)/g),
+    ].map((m) => `${m[0]} = ${Number(m[1]) * (m[2] === 'rem' ? 18 : 1)}px`)
+    expect(sizes.length).toBeGreaterThan(6)
+    expect(sizes.filter((s) => Number(s.split('= ')[1]?.replace('px', '')) < 12)).toEqual([])
   })
 
   it('says only the agreed words', () => {

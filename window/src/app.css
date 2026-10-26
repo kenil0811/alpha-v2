@@ -146,7 +146,7 @@
   Tailwind reads the tokens through @theme inline, so classes follow the theme:
   bg-surface, bg-sunk, text-ink-2, border-line, bg-accent-soft, text-warn …
   Tailwind's own palette and sizes are switched off: bg-neutral-400 draws nothing, and text-sm is now 12px.
-  Arbitrary values like text-[15px] still compile: a test fails any of them, as alpha-brain's size test did.
+  Arbitrary values like text-[15px] still compile: a test fails any of them, and another keeps every size at 12px or more.
 */
 @theme inline {
   --color-*: initial;
