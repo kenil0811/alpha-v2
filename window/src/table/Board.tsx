@@ -1,13 +1,16 @@
 import type { FieldView, RowView, TableView as TableData } from '@alpha/core/api'
+import { useState } from 'react'
 import { api } from '../api.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
+import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
 import { show } from './values.ts'
 
 // The board: a column per choice, each row a card with its name and a few of its values, moved
-// by setting its choice (the person's own word).
+// by setting its choice (the person's own word): dragged onto another column, or picked below it.
 export function Board({ data, by }: { data: TableData; by: FieldView }) {
   const { busy, on, problem, act } = useAct()
+  const [over, setOver] = useState<string | null>(null) // the column a card is dragged over
   const name = data.fields.find((f) => f.kind === 'text')
   // on a card: up to two amounts, then up to two other choices, each only when it has a value
   const others = data.fields.filter((f) => f !== name && f !== by)
@@ -24,16 +27,44 @@ export function Board({ data, by }: { data: TableData; by: FieldView }) {
         const rows = data.rows.filter((r) => (r.values[by.slug] ?? '') === choice)
         if (choice === '' && rows.length === 0) return null
         return (
-          <div key={choice || 'none'} className="flex w-56 shrink-0 flex-col gap-2">
+          // biome-ignore lint/a11y/noStaticElementInteractions: a card dropped here takes this choice; each card's own picker does it by keyboard
+          <div
+            key={choice || 'none'}
+            onDragOver={(e) => {
+              if (!choice || !e.dataTransfer.types.includes('text/x-alpha-row')) return
+              e.preventDefault()
+              setOver(choice)
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null)
+            }}
+            onDrop={(e) => {
+              setOver(null)
+              const [row, from] = e.dataTransfer.getData('text/x-alpha-row').split('\n')
+              if (row && from !== choice) move(row, choice)
+            }}
+            className={cn(
+              'flex w-56 shrink-0 flex-col gap-2 rounded-lg p-1',
+              over === choice && 'bg-accent-soft',
+            )}
+          >
             <div className="flex justify-between px-1 text-sm text-ink-2">
               <span>{choice || `No ${by.name.toLowerCase()}`}</span>
               <span className="text-ink-3">{rows.length}</span>
             </div>
             {rows.map((r) => (
+              // biome-ignore lint/a11y/noStaticElementInteractions: dragged by the pointer; the picker below moves it by keyboard
               <div
                 key={r.id}
                 id={`row-${r.id}`}
-                className="flex flex-col gap-1 rounded-lg border border-line px-3 py-2 text-base"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/x-alpha-row', `${r.id}\n${choice}`)
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                onDragEnd={() => setOver(null)}
+                title={`Drag to another ${by.name.toLowerCase()}`}
+                className="flex cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base active:cursor-grabbing"
               >
                 <div className="text-ink">
                   {name ? show(name, r.values[name.slug]) || 'Untitled' : 'Untitled'}
