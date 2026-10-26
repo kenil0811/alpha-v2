@@ -2,13 +2,14 @@
 // important things): the person's sentences and Alpha's replies in order, each with its topic
 // chip as a lens; one live message per turn becoming the outcome; cards inline; the Now strip and
 // the composer at the foot. A module's Conversation tab and Ask (⌘J) show it through a lens.
-import type { AboutRows, CardView, LiveEvent, Stream } from '@alpha/core/api'
+import type { AboutRows, CardView, LiveEvent, Stream, WorkingModuleView } from '@alpha/core/api'
 import {
   ArrowUp,
   Bot,
   Check,
   ChevronRight,
   KeyRound,
+  Mic,
   Paperclip,
   TriangleAlert,
   X,
@@ -325,7 +326,7 @@ function Entry({
 }) {
   if (item.kind === 'said')
     return (
-      <div className="max-w-3/4 self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-sunk px-3.5 py-2.25 text-ink">
+      <div className="max-w-3/4 self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-accent px-3.5 py-2.25 text-accent-ink">
         {item.words}
       </div>
     )
@@ -363,19 +364,14 @@ function Entry({
   if (!text && !working && !item.cards.length && !item.steps.length) return null
   return (
     <div className="flex flex-col gap-2.25">
-      <Meta who="Alpha" module={item.module} at={item.at} onLens={onLens} />
       {text && (
-        <div className={cn(item.error && 'text-bad')}>
+        <div
+          className={cn(
+            'max-w-full self-start rounded-2xl rounded-bl-sm border border-hair bg-surface px-4 py-3',
+            item.error && 'text-bad',
+          )}
+        >
           <Words text={text} wideTables />
-        </div>
-      )}
-      {working && (
-        <div className="flex items-center gap-2.25 text-ink-2 text-md">
-          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-          <span className="min-w-0 flex-1 truncate">{live?.doing ?? 'Working on it…'}</span>
-          <Button size="sm" variant="ghost" onClick={() => api.post('/api/stop')}>
-            Stop
-          </Button>
         </div>
       )}
       {item.cards.map((id) => {
@@ -392,6 +388,58 @@ function Entry({
         )
       })}
       {item.steps.length > 0 && <Work steps={item.steps} />}
+      <Ran
+        module={item.module}
+        at={item.at}
+        steps={item.steps.length}
+        doing={working ? (live?.doing ?? 'Working on it…') : null}
+        onLens={onLens}
+      />
+    </div>
+  )
+}
+
+// The grey line under a reply: who answered, what ran, and Stop while it runs or Retry after.
+function Ran({
+  module,
+  at,
+  steps,
+  doing,
+  onLens,
+}: {
+  module: Module
+  at: string
+  steps: number
+  doing: string | null
+  onLens: (m: Module) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 text-ink-3 text-sm">
+      {doing && (
+        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+      )}
+      <span className="font-medium text-ink-2">Alpha</span>
+      {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
+      <span>{clock(at)}</span>
+      <span className="min-w-0 truncate">
+        {doing ?? (steps ? `Ran ${steps} step${steps === 1 ? '' : 's'}` : 'Answered')}
+      </span>
+      <span className="ml-auto shrink-0">
+        {doing ? (
+          <Button size="sm" variant="ghost" onClick={() => api.post('/api/stop')}>
+            Stop
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled
+            title="Alpha cannot run a reply again yet: the core has no way to retry a turn"
+          >
+            Retry
+          </Button>
+        )}
+      </span>
     </div>
   )
 }
@@ -692,6 +740,12 @@ export function CardBox({
   )
 }
 
+// The words before the caret that address an agent: "@" at the start or after a space, then a name.
+export function mentionAt(text: string): string | null {
+  const m = /(?:^|\s)@([^@\n]*)$/.exec(text)
+  return m ? (m[1] ?? '') : null
+}
+
 function Composer({
   words,
   setWords,
@@ -708,10 +762,37 @@ function Composer({
   compact: boolean
 }) {
   const file = useRef<HTMLInputElement>(null)
+  // "@" suggests the agents of every module; loaded the first time it is typed
+  const [agents, setAgents] = useState<string[] | null>(null)
+  const [query, setQuery] = useState<string | null>(null)
+  const [pick, setPick] = useState(0)
+  const shown =
+    query === null || !agents
+      ? []
+      : agents.filter((a) => a.toLowerCase().startsWith(query.toLowerCase())).slice(0, 6)
+  const type = (w: string, caret: number) => {
+    setWords(w)
+    const q = mentionAt(w.slice(0, caret))
+    setQuery(q)
+    setPick(0)
+    if (q !== null && !agents)
+      api.get<WorkingModuleView[]>('/api/working').then(
+        (ms) => setAgents([...new Set(ms.flatMap((m) => m.agents.map((a) => a.name)))]),
+        () => setAgents([]),
+      )
+  }
+  const choose = (name: string) => {
+    const caret = area.current?.selectionStart ?? words.length
+    const before = words.slice(0, caret).replace(/@[^@\n]*$/, `@${name} `)
+    setWords(before + words.slice(caret))
+    setQuery(null)
+    requestAnimationFrame(() => area.current?.setSelectionRange(before.length, before.length))
+  }
   const send = async () => {
     const w = words.trim()
     if (!w) return
     setWords('')
+    setQuery(null)
     try {
       await api.post('/api/say', { words: w, ...(from ? { from: from.id } : {}) })
     } catch (err) {
@@ -720,25 +801,73 @@ function Composer({
     }
   }
   const key = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (shown.length) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const step = e.key === 'ArrowDown' ? 1 : shown.length - 1
+        setPick((p) => (p + step) % shown.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        choose(shown[pick] ?? '')
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault() // App's Escape would fold the assistant too
+        setQuery(null)
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       void send()
     }
   }
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-line bg-surface py-2.5 pr-2 pl-3.5 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
+    <div className="relative flex flex-col gap-1 rounded-3xl border border-line bg-surface py-2.5 pr-2.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
+      {shown.length > 0 && (
+        <div
+          role="listbox"
+          aria-label="Agents"
+          className="absolute inset-x-3 bottom-full mb-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-pop"
+        >
+          {shown.map((a, i) => (
+            <button
+              key={a}
+              type="button"
+              role="option"
+              aria-selected={i === pick}
+              onMouseDown={(e) => e.preventDefault()} // the composer keeps the caret
+              onClick={() => choose(a)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 text-left text-ink text-md',
+                i === pick ? 'bg-hover' : 'hover:bg-hover',
+              )}
+            >
+              <Bot className="size-3.5 shrink-0 text-ink-3" />
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         ref={area}
         rows={1}
         value={words}
-        onChange={(e) => setWords(e.target.value)}
+        onChange={(e) => type(e.target.value, e.target.selectionStart)}
         onKeyDown={key}
-        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha'}
+        onBlur={() => setQuery(null)}
+        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha, or @ an agent'}
         aria-label={from ? `Ask about ${from.name}` : 'Message Alpha'}
         className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
       />
-      <div className="flex items-center gap-2">
-        <IconButton label="Add a file" onClick={() => file.current?.click()}>
+      <div className="flex items-center gap-1">
+        <IconButton
+          label="Add a file"
+          className="rounded-full"
+          onClick={() => file.current?.click()}
+        >
           <Paperclip className="size-4" />
         </IconButton>
         <input
@@ -755,13 +884,21 @@ function Composer({
         <span className="ml-auto text-ink-3 text-xs">
           {compact ? '' : 'Return to send · Shift-Return for a new line'}
         </span>
+        <IconButton
+          label="Speak"
+          title="Speaking to Alpha is not wired yet: the core takes typed words only"
+          className="rounded-full"
+          disabled
+        >
+          <Mic className="size-4" />
+        </IconButton>
         <button
           type="button"
           aria-label="Send"
           title="Send"
           onClick={send}
           disabled={!words.trim()}
-          className="grid size-7.5 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity disabled:opacity-35"
+          className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity disabled:opacity-35"
         >
           <ArrowUp className="size-4" />
         </button>
