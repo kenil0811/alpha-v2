@@ -906,7 +906,7 @@ function Cell({
 }
 
 // A value being changed in place: Enter or leaving saves it as the person's word, Escape leaves it.
-function EditCell({
+export function EditCell({
   field,
   value,
   onDone,

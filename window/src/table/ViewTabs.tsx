@@ -109,8 +109,17 @@ export function ViewTabs({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Saved list: ${name}`}
-        title="The saved list: right-click to rename, duplicate or delete it"
+        title={
+          view
+            ? 'The saved list: double-click to rename it; right-click to rename, duplicate or delete it'
+            : 'The saved list: right-click to duplicate it'
+        }
         onClick={() => setOpen((o) => !o)}
+        onDoubleClick={() => {
+          if (!view) return
+          setOpen(false)
+          setNaming('rename')
+        }}
         {...onList.on}
         className="flex h-7.5 max-w-40 shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface pr-1.5 pl-2.5 text-ink text-md hover:border-accent-line"
       >

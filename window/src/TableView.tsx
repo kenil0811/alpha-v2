@@ -334,6 +334,7 @@ export function TableView({
               <button
                 type="button"
                 aria-label={strip ? 'Hide the numbers' : 'Show the numbers'}
+                title={strip ? 'Hide the numbers' : 'Show the numbers'}
                 aria-expanded={strip}
                 onClick={() => fold(!strip)}
                 className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
@@ -619,6 +620,7 @@ export function TableView({
           row={openedRow}
           fields={shown}
           names={data.names}
+          onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
           title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
           onField={(slug) => {
             setPicked({ row: openedRow.id, field: slug })
