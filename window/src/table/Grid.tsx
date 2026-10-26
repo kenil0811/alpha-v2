@@ -2,8 +2,8 @@
 // header and name column, columns that resize by their edge, sort by a click (shift for a second
 // level), a menu in each header, groups that fold, and totals along the foot. A click on a row's
 // name opens it. Rows are ticked to act on many; a value is changed in place (double-click, Enter
-// or F2) as the person's word; a block pasted from a spreadsheet fills across and down; + at the
-// end adds a field.
+// or F2) as the person's word; a block pasted from a spreadsheet fills across and down, ⌘D fills a
+// value down; + at the end adds a field.
 import type { FieldView, RowView, ViewConfig } from '@alpha/core/api'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
@@ -74,6 +74,7 @@ export interface PastePlan {
   add: { values: Record<string, unknown> }[]
   problems: string[]
   skipped: string[] // fields that are set by asking Alpha
+  fill?: boolean // ⌘D: one value filled down
 }
 
 const TICK = 36 // the ticks' column
@@ -156,9 +157,12 @@ export function Grid({
   // instead (the panel would push the table and move the cell under the second click). With the
   // panel already open, a click shows the new value at once.
   const soon = useRef<number | undefined>(undefined)
+  // ⇧↓ and ⇧↑ stretch the picked cell over the next rows down, for ⌘D and a paste
+  const [range, setRange] = useState<{ row: string; field: string; n: number } | null>(null)
   const at = useRef<{ row: string; field: string } | null>(null) // the cell last clicked, at once
   const pick = (p: { row: string; field: string }) => {
     at.current = p
+    setRange(null)
     window.clearTimeout(soon.current)
     if (picked) onPick(p)
     else soon.current = window.setTimeout(() => onPick(p), 250)
@@ -210,11 +214,54 @@ export function Grid({
   const top = vitems[0]?.start ?? 0
   const bottom = virtual.getTotalSize() - (vitems.at(-1)?.end ?? 0)
   const span = shown.length + 2
+  const reach = range ? drawn.findIndex((r) => r.id === range.row) : -1
+  const inRange = (row: string, field: string) => {
+    if (!range?.n || field !== range.field) return false
+    const i = drawn.findIndex((r) => r.id === row)
+    return i > reach && i <= reach + range.n
+  }
   const all = rows.length > 0 && rows.every((r) => ticked.has(r.id))
   const some = !all && rows.some((r) => ticked.has(r.id))
 
+  // the rows a fill or a one-value paste goes over below the picked cell: its ⇧↓ range, or else
+  // the ticked rows under it
+  const below = (from: { row: string; field: string }) => {
+    const i = drawn.findIndex((r) => r.id === from.row)
+    if (range && range.row === from.row && range.field === from.field && range.n)
+      return drawn.slice(i + 1, i + 1 + range.n)
+    return drawn.slice(i + 1).filter((r) => ticked.has(r.id))
+  }
+  const keys = (e: KeyboardEvent<HTMLDivElement>) => {
+    const from = at.current ?? picked
+    if (!from || editing || (e.target as HTMLElement).tagName !== 'BUTTON') return
+    const n = range?.row === from.row && range.field === from.field ? range.n : 0
+    if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault()
+      const room = drawn.length - 1 - drawn.findIndex((r) => r.id === from.row)
+      setRange({ ...from, n: Math.max(0, Math.min(room, n + (e.key === 'ArrowDown' ? 1 : -1))) })
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+      e.preventDefault()
+      const f = shown.find((x) => x.slug === from.field)
+      const row = drawn.find((r) => r.id === from.row)
+      const to = below(from)
+      if (!f || !row || !to.length || readOnly) return
+      if (!CORRECTABLE.has(f.kind))
+        return onPaste({ set: [], add: [], problems: [], skipped: [f.name], fill: true })
+      const value = row.values[f.slug] ?? null
+      onPaste({
+        set: to.map((r) => ({ row: r.id, values: { [f.name]: value } })),
+        add: [],
+        problems: [],
+        skipped: [],
+        fill: true,
+      })
+    }
+  }
+
   // A block from a spreadsheet, from the picked value across and down; lines past the last row
-  // become new rows. Nothing is written until the person says yes.
+  // become new rows. One value goes into every row of the range or ticked below as well. Nothing
+  // is written until the person says yes.
   const paste = (e: ClipboardEvent<HTMLDivElement>) => {
     const from = at.current ?? picked
     if (!from || editing) return
@@ -224,12 +271,16 @@ export function Grid({
     const lines = text.replace(/\r/g, '').split('\n')
     if (lines.at(-1) === '') lines.pop()
     const cells = lines.map((l) => l.split('\t').map((c) => c.replace(/^"(.*)"$/s, '$1')))
+    const one = cells.length === 1 && cells[0]?.length === 1
     const startRow = drawn.findIndex((r) => r.id === from.row)
     const startCol = shown.findIndex((f) => f.slug === from.field)
     if (startRow < 0 || startCol < 0) return
     const plan: PastePlan = { set: [], add: [], problems: [], skipped: [] }
-    cells.forEach((line, i) => {
-      const row = drawn[startRow + i]
+    const rowsFor = one
+      ? [drawn[startRow], ...below(from)]
+      : cells.map((_, i) => drawn[startRow + i])
+    rowsFor.forEach((row, i) => {
+      const line = cells[one ? 0 : i] ?? []
       const values: Record<string, unknown> = {}
       line.forEach((cell, j) => {
         const f = shown[startCol + j]
@@ -251,9 +302,11 @@ export function Grid({
   }
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: the keys come from the focused cell's button
     <div
       ref={box}
       onPaste={paste}
+      onKeyDown={keys}
       className="mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface"
     >
       <table className="table-fixed border-separate border-spacing-0 text-md" style={{ width }}>
@@ -394,6 +447,7 @@ export function Grid({
                           tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
+                          inRange={inRange(r.id, f.slug)}
                           // a row kept on its own page opens there from its name
                           onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
                           onEdit={
@@ -737,6 +791,7 @@ function Cell({
   tasks,
   tone,
   selected,
+  inRange,
   onPick,
   onEdit,
   onOpen,
@@ -749,6 +804,7 @@ function Cell({
   tasks: number
   tone: string | null
   selected: boolean
+  inRange: boolean // under the picked cell, in its ⇧↓ range
   onPick: () => void
   onEdit: (() => void) | undefined
   onOpen: (() => void) | undefined
@@ -783,6 +839,7 @@ function Cell({
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
           selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
+          inRange && 'bg-accent-soft',
         )}
       >
         {empty ? (
