@@ -1,6 +1,7 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FastifyReply } from 'fastify'
+import { parse as parseYaml } from 'yaml'
 import { type Agent, agents, readAgent } from '../modules/agents.ts'
 import { type RunRow, unmetNeeds } from '../modules/runs/index.ts'
 import { pagesOf } from '../pages/pages.ts'
@@ -240,6 +241,7 @@ export function makeViews(ctx: BaseCtx) {
       id: m.id,
       name: m.name,
       parent: m.parent,
+      people: livesPeople(m),
       pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
@@ -480,6 +482,17 @@ export function cardView(c: Card): CardView {
     answer: c.answer,
     restsOn: c.restsOn,
     module: c.module,
+  }
+}
+
+// Whether People and Organizations live in this module, by its module.yaml (Network's says so).
+export function livesPeople(m: Module): boolean {
+  const file = join(m.dir, 'module.yaml')
+  if (!existsSync(file)) return false
+  try {
+    return (parseYaml(readFileSync(file, 'utf8')) as { people?: unknown } | null)?.people === true
+  } catch {
+    return false
   }
 }
 
