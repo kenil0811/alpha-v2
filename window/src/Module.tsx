@@ -21,7 +21,7 @@ import {
   Table2,
   Users,
 } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
@@ -134,7 +134,7 @@ export function ModuleScreen({
       )}
     >
       <MessageSquare className="size-3.5" />
-      <span className="hidden @min-[760px]:inline">Conversation</span>
+      <span className="group-data-[tight]/pill:hidden">Conversation</span>
     </a>
   )
 
@@ -370,11 +370,28 @@ export function PillSwitch({
   tabs: Tab[]
   children?: ReactNode
 }) {
+  // Whole names, or icons only when they don't all fit: never a name cut short. Each change of the
+  // bar's width tries the names again, and a name that overflows turns the whole pill to icons.
+  const box = useRef<HTMLDivElement>(null)
+  const [tight, setTight] = useState(false)
+  useEffect(() => {
+    const bar = box.current?.closest('[data-bar]')
+    if (!bar) return
+    const seen = new ResizeObserver(() => setTight(false))
+    seen.observe(bar)
+    return () => seen.disconnect()
+  }, [])
+  useLayoutEffect(() => {
+    const el = box.current
+    if (el && !tight && el.scrollWidth > el.clientWidth) setTight(true)
+  }, [tight, tabs])
   return (
     <div
+      ref={box}
       role="tablist"
       aria-label={label}
-      className="flex min-w-0 flex-nowrap items-center gap-0.5 overflow-hidden rounded-full bg-sunk p-0.5"
+      data-tight={tight || undefined}
+      className="group/pill flex min-w-0 flex-nowrap items-center gap-0.5 overflow-hidden rounded-full bg-sunk p-0.5"
     >
       {tabs.map((t) => (
         <a
@@ -384,12 +401,12 @@ export function PillSwitch({
           href={t.href}
           title={t.label}
           className={cn(
-            'flex h-7 min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-md',
+            'flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-md',
             t.sel ? 'bg-surface font-medium text-ink shadow-btn' : 'text-ink-2 hover:text-ink',
           )}
         >
           <span className={t.sel ? 'text-accent' : 'text-ink-3'}>{t.icon}</span>
-          <span className="hidden truncate @min-[760px]:inline">{t.label}</span>
+          <span className="group-data-[tight]/pill:hidden">{t.label}</span>
         </a>
       ))}
       {children}

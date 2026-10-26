@@ -569,6 +569,7 @@ export function Bar({
   return (
     <div
       data-tauri-drag-region
+      data-bar
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
