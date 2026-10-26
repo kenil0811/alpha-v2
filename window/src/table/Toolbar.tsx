@@ -128,7 +128,7 @@ function RuleChip({
       >
         {ruleWords(rule, field)}
       </button>
-      <Remove label={`Remove the filter on ${field.name}`} onClick={onRemove} />
+      <Remove label={`Clear the filter on ${field.name}`} onClick={onRemove} />
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
         <RuleEditor
           field={field}

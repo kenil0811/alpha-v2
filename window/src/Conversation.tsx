@@ -39,6 +39,7 @@ import { Field } from './ui/field.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { Words } from './ui/words.tsx'
+import { answerWords } from './vocabulary.ts'
 
 export interface Live {
   [turn: string]: { text: string; doing: string | null }
@@ -266,8 +267,8 @@ function Meta({
 // the card's words on what is left of the line.
 function saidOf(words: string): string {
   const head = words.split(': ')[0] ?? ''
-  if (head === 'Yes') return 'You said yes'
-  if (head === 'No') return 'You said not now'
+  if (head === 'Yes') return 'You approved'
+  if (head === 'No') return 'You declined'
   if (head === 'Withdrawn') return 'Withdrawn'
   if (head.startsWith('Chose ')) return `You chose ${head.slice(6)}`
   if (head.startsWith('Answered ')) return `You answered ${head.slice(9)}`
@@ -563,7 +564,7 @@ export function Preview({ detail }: { detail: string }) {
 // What each gate is called in a card's head.
 const GATE: Record<string, string> = {
   leaves_world: 'Leaves your world',
-  deletes_own: 'Removes your entries',
+  deletes_own: 'Deletes your entries',
   sign_in: 'Sign-in',
   filing: 'A file from your mail',
   match: 'Maybe the same',
@@ -580,8 +581,8 @@ function goToCard(id: string) {
   )
 }
 
-// How an option reads on its button: a plain No is Not now.
-const optionWords = (o: string) => (o === 'No' ? 'Not now' : o)
+// How an option reads on its button: a plain Yes is Approve, a plain No is Decline.
+const optionWords = answerWords
 
 export function CardBox({
   id,

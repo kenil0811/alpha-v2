@@ -451,7 +451,7 @@ export function TableView({
   )
 }
 
-// Export: exactly the rows and columns shown, as an Excel or a CSV file.
+// Download: exactly the rows and columns shown, as an Excel or a CSV file.
 function Export({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
@@ -464,7 +464,7 @@ function Export({ onExport }: { onExport: (as: 'csv' | 'xlsx') => void }) {
         className="flex h-7.5 items-center gap-1.5 rounded-md px-2.5 text-ink-2 text-md hover:bg-hover hover:text-ink"
       >
         <Download className="size-3.5" />
-        Export
+        Download
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
         <MenuItem

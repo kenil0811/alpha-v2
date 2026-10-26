@@ -1,4 +1,4 @@
-// Settings (design §14): connections, folders, and kits with their agents. Connecting is the
+// Settings (design §14): connections, folders, and modules with their agents. Connecting is the
 // person's own act here: what they type goes to the Keychain, never to the model.
 import type {
   ConnectionView,
@@ -22,12 +22,14 @@ import {
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
-import { Kits, when } from './Kits.tsx'
+import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
+import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
@@ -54,15 +56,15 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
 
 // The page's sections, in its index.
 const SECTIONS = [
-  ['mac', 'This Mac'],
-  ['data', 'Data'],
   ['connections', 'Connections'],
   ['folders', 'Folders'],
-  ['kits', 'Kits and agents'],
-  ['remembered', 'Remembered'],
-  ['permissions', 'Standing permissions'],
+  ['modules', 'Modules and agents'],
+  ['brain', 'Second Brain'],
+  ['permissions', 'Permissions'],
   ['model', 'Model'],
+  ['data', 'Data'],
   ['appearance', 'Appearance'],
+  ['experimental', 'Experimental'],
 ] as const
 
 export function Settings({ open, version }: { open: string | null; version: number }) {
@@ -158,26 +160,26 @@ export function Settings({ open, version }: { open: string | null; version: numb
               ))}
             </Section>
           </div>
-          <div id="settings-kits" className="scroll-mt-4">
-            <Kits version={version} />
+          <div id="settings-modules" className="scroll-mt-4">
+            <ModulesAndAgents version={version} />
           </div>
-          <div id="settings-remembered" className="scroll-mt-4">
-            <Remembered version={version} />
-          </div>
-          <div id="settings-mac" className="scroll-mt-4">
-            <ThisMac />
-          </div>
-          <div id="settings-data" className="scroll-mt-4">
-            <DataSection />
+          <div id="settings-brain" className="scroll-mt-4">
+            <SecondBrain version={version} />
           </div>
           <div id="settings-permissions" className="scroll-mt-4">
-            <Standing version={version} />
+            <Permissions version={version} />
           </div>
           <div id="settings-model" className="scroll-mt-4">
             <ModelSection />
           </div>
+          <div id="settings-data" className="scroll-mt-4">
+            <DataSection />
+          </div>
           <div id="settings-appearance" className="scroll-mt-4">
             <Appearance view={view} onChange={load} />
+          </div>
+          <div id="settings-experimental" className="scroll-mt-4">
+            <Experimental />
           </div>
         </div>
       </div>
@@ -185,8 +187,8 @@ export function Settings({ open, version }: { open: string | null; version: numb
   )
 }
 
-// What Alpha remembers: the standing instructions the person gave, each one removable.
-function Remembered({ version }: { version: number }) {
+// Second Brain: the standing instructions the person gave, each one forgotten on a yes.
+function SecondBrain({ version }: { version: number }) {
   const [lines, setLines] = useState<InstructionView[] | null>(null)
   const load = useCallback(() => {
     api.get<InstructionView[]>('/api/instructions').then(setLines, () => setLines([]))
@@ -197,17 +199,18 @@ function Remembered({ version }: { version: number }) {
   const { busy, on, problem, act } = useAct(load)
   const [forgetting, setForgetting] = useState<string | null>(null)
   const keyOf = (l: InstructionView) => `${l.for}${l.words}`
+  const asked = lines?.find((l) => keyOf(l) === forgetting)
   const forget = (l: InstructionView) => {
     setForgetting(null)
     void act(() => api.post('/api/instructions/remove', { for: l.for, words: l.words }), keyOf(l))
   }
   return (
     <Section
-      title="What Alpha remembers"
-      about="How you asked things to be done from now on; tell Alpha in a sentence to add one."
+      title="Second Brain"
+      about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
     >
       {lines?.length === 0 && (
-        <p className="text-ink-2 text-md">Nothing yet. Say “from now on…” and it is kept here.</p>
+        <p className="text-ink-2 text-md">Nothing yet. Say “from now on…” to add one.</p>
       )}
       {lines && lines.length > 0 && (
         <List>
@@ -226,58 +229,55 @@ function Remembered({ version }: { version: number }) {
                   {on === keyOf(l) && <Refusal words={problem} />}
                   <Button
                     size="sm"
-                    variant="warn"
-                    disabled={busy || forgetting === keyOf(l)}
+                    variant="danger"
+                    disabled={busy}
                     onClick={() => setForgetting(keyOf(l))}
                   >
                     Forget
                   </Button>
                 </>
               }
-            >
-              {forgetting === keyOf(l) && (
-                <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 pl-15">
-                  <span className="text-md text-warn">
-                    Forget it? Alpha stops doing this from now on.
-                  </span>
-                  <Button size="sm" variant="warn" disabled={busy} onClick={() => forget(l)}>
-                    Yes, forget it
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setForgetting(null)}>
-                    Keep it
-                  </Button>
-                </div>
-              )}
-            </Row>
+            ></Row>
           ))}
         </List>
       )}
+      <Confirm
+        open={!!asked}
+        title="Forget this?"
+        yes="Forget it"
+        busy={busy}
+        onClose={() => setForgetting(null)}
+        onYes={() => asked && forget(asked)}
+      >
+        Alpha stops doing it from now on: “{asked?.words}”
+      </Confirm>
     </Section>
   )
 }
 
-// This Mac: Claude's sign-in, the readers' downloads, the connections, Chrome.
-function ThisMac() {
+// Permissions: what Alpha has on this Mac (Claude's sign-in, the readers' downloads, Contacts and
+// Calendar, Chrome), then what it does without asking because the person said Always.
+function Permissions({ version }: { version: number }) {
   const [view, reload] = useSetup()
   return (
-    <Section title="This Mac" about="What Alpha needs on this Mac, and whether it has it.">
-      {view && (
-        <p className="text-ink-2 text-md">
-          Alpha for {view.install.owner}, on port {view.install.port}. Its data is in{' '}
-          {view.install.home}; a report goes to {view.install.reportTo ?? 'whoever gave you Alpha'}.
-        </p>
-      )}
+    <Section
+      title="Permissions"
+      about="What Alpha may reach on this Mac, and what it does without asking because you said Always on a card."
+    >
+      <h3 className="font-medium text-ink">On this Mac</h3>
       {view ? (
         <SetupList view={view} onChange={reload} />
       ) : (
         <p className="text-ink-2 text-md">This core does not say.</p>
       )}
+      <h3 className="pt-2 font-medium text-ink">Always allowed</h3>
+      <Standing version={version} />
     </Section>
   )
 }
 
 // The person's own data (decision 12): what the world holds, its backups, a backup now, going
-// back, taking it as one archive, bringing one in, a copy in a folder, and removing it all.
+// back, taking it as one archive, bringing one in, a copy in a folder, and deleting it all.
 const mb = (n: number) => (n < 1e6 ? `${Math.round(n / 1e3)} KB` : `${(n / 1e6).toFixed(1)} MB`)
 
 function DataSection() {
@@ -292,6 +292,7 @@ function DataSection() {
   const [typed, setTyped] = useState('')
   const [goingBack, setGoingBack] = useState<string | null>(null) // the backup asked about
   const [bringing, setBringing] = useState(false)
+  const [setup] = useSetup()
   const load = useCallback(() => {
     api.get<DataPageView>('/api/data').then(
       (v) => {
@@ -350,8 +351,15 @@ function DataSection() {
   return (
     <Section
       title="Data"
-      about="Your world, its backups, and where it goes. Everything here is yours to take or remove."
+      about="Your world, its backups, and where it goes. Everything here is yours to take or delete."
     >
+      {setup && (
+        <p className="text-ink-2 text-md">
+          Alpha for {setup.install.owner}, on port {setup.install.port}. Its data is in{' '}
+          {setup.install.home}; a report goes to{' '}
+          {setup.install.reportTo ?? 'whoever gave you Alpha'}.
+        </p>
+      )}
       <p className="text-ink-2 text-md">
         The world holds {view.world.rows.toLocaleString()} rows and{' '}
         {view.world.lines.toLocaleString()} lines of Activity ({mb(view.world.size)}, shape version{' '}
@@ -390,36 +398,14 @@ function DataSection() {
                       : 'Taken before a shape change'
               }
               actions={
-                goingBack === b.name ? (
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-md text-warn">
-                      Alpha backs up now first, then restarts on this one.
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="warn"
-                      disabled={busy || restarting}
-                      onClick={() => {
-                        setGoingBack(null)
-                        void act(() => api.post('/api/data/restore', { name: b.name }))
-                      }}
-                    >
-                      Yes, go back to this
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setGoingBack(null)}>
-                      Keep as is
-                    </Button>
-                  </span>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy || restarting}
-                    onClick={() => setGoingBack(b.name)}
-                  >
-                    Go back to this
-                  </Button>
-                )
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy || restarting}
+                  onClick={() => setGoingBack(b.name)}
+                >
+                  Go back to this
+                </Button>
               }
             />
           ))}
@@ -451,11 +437,7 @@ function DataSection() {
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          if (!bringing) setBringing(true)
-          else {
-            setBringing(false)
-            void act(() => api.post('/api/data/import', { archive: archive.trim() }))
-          }
+          setBringing(true)
         }}
       >
         <Field
@@ -464,71 +446,82 @@ function DataSection() {
           placeholder="Bring data in from an archive, like /Users/you/Desktop/alpha-data-2026-10-23.tar.gz (a fresh install only)"
           onChange={(e) => setArchive(e.target.value)}
         />
-        <Button
-          type="submit"
-          size="sm"
-          variant={bringing ? 'warn' : 'default'}
-          disabled={busy || restarting || !archive.trim()}
-        >
-          {bringing ? 'Yes, bring it in and restart' : 'Bring data in'}
+        <Button type="submit" size="sm" disabled={busy || restarting || !archive.trim()}>
+          Bring data in
         </Button>
-        {bringing && (
-          <Button size="sm" variant="ghost" onClick={() => setBringing(false)}>
-            Not now
-          </Button>
-        )}
       </form>
+      <Confirm
+        open={!!goingBack}
+        title="Go back to this backup?"
+        yes="Go back to it"
+        busy={busy || restarting}
+        onClose={() => setGoingBack(null)}
+        onYes={() => {
+          const name = goingBack
+          setGoingBack(null)
+          void act(() => api.post('/api/data/restore', { name }))
+        }}
+      >
+        Alpha backs up now first, then restarts on this one.
+      </Confirm>
+      <Confirm
+        open={bringing}
+        title="Bring this data in?"
+        yes="Bring it in and restart"
+        busy={busy || restarting}
+        onClose={() => setBringing(false)}
+        onYes={() => {
+          setBringing(false)
+          void act(() => api.post('/api/data/import', { archive: archive.trim() }))
+        }}
+      >
+        Alpha restarts on the data in {archive.trim()}. This works on a fresh install only.
+      </Confirm>
       {said && <div className="text-ink-2 text-md">{said}</div>}
       {problem && <div className="text-bad text-md">{problem}</div>}
-      {!removing ? (
+      <div>
         <Button
           size="sm"
-          variant="ghost"
+          variant="danger"
           disabled={busy || restarting}
           onClick={() => setRemoving(true)}
         >
-          Remove my data
+          Delete my data
         </Button>
-      ) : (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void act(() => api.post('/api/data/remove', { name: typed }))
-          }}
-        >
-          <p className="text-md text-warn">
-            This removes every world, file, module, backup and sign-in Alpha keeps for you, to the
-            Trash, and takes Alpha back to its first open. Type your name as Alpha knows it to go
-            on.
-          </p>
-          <div className="flex gap-2">
-            <Field
-              className="flex-1"
-              value={typed}
-              placeholder="Your name"
-              onChange={(e) => setTyped(e.target.value)}
-            />
+      </div>
+      <Dialog
+        open={removing}
+        title="Delete all your data?"
+        onClose={() => setRemoving(false)}
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setRemoving(false)}>
+              Cancel
+            </Button>
             <Button
-              type="submit"
-              size="sm"
-              variant="warn"
+              variant="danger"
               disabled={busy || restarting || !typed.trim()}
+              onClick={() => void act(() => api.post('/api/data/remove', { name: typed }))}
             >
-              Remove everything
+              Delete everything
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setRemoving(false)}>
-              Keep it
-            </Button>
-          </div>
-        </form>
-      )}
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <p>
+            Every world, file, module, backup and sign-in Alpha keeps for you goes to the Trash, and
+            Alpha goes back to its first open. Type your name as Alpha knows it to go on.
+          </p>
+          <Field value={typed} placeholder="Your name" onChange={(e) => setTyped(e.target.value)} />
+        </div>
+      </Dialog>
     </Section>
   )
 }
 
 // Standing permissions (design §7): each as its sentence, who gave it and how often it has been
-// used, with Revoke; a revoked one stays listed, greyed, as history.
+// used, with Revoke; a revoked one stays listed, greyed, as history. Shown under Permissions.
 function Standing({ version }: { version: number }) {
   const [list, setList] = useState<PermissionView[] | null>(null)
   const [asking, setAsking] = useState<string | null>(null)
@@ -543,11 +536,9 @@ function Standing({ version }: { version: number }) {
       setAsking(null)
       load()
     }, load)
+  const asked = list?.find((p) => p.id === asking)
   return (
-    <Section
-      title="Standing permissions"
-      about="What Alpha does without asking, because you said Always on a card. Revoke one and it asks again."
-    >
+    <>
       {list?.length === 0 && (
         <p className="text-ink-2 text-md">
           None yet. After three yeses in a row for the same thing, its card offers Always.
@@ -570,22 +561,15 @@ function Standing({ version }: { version: number }) {
                     p.revokedAt && 'text-ink-3 line-through',
                   )}
                 >
-                  {p.sentence}
+                  <a href={`#/permission/${p.id}`} className="hover:underline">
+                    {p.sentence}
+                  </a>
                 </span>
               }
               sub={`${p.grantedBy}, ${when(p.grantedAt)} · used ${p.uses === 1 ? 'once' : `${p.uses} times`}${p.revokedAt ? ` · revoked ${when(p.revokedAt)}` : ''}`}
               actions={
-                p.revokedAt ? null : asking === p.id ? (
-                  <span className="flex gap-1.5">
-                    <Button size="sm" variant="warn" onClick={() => revoke(p.id)}>
-                      Revoke it
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setAsking(null)}>
-                      Keep it
-                    </Button>
-                  </span>
-                ) : (
-                  <Button size="sm" variant="warn" onClick={() => setAsking(p.id)}>
+                p.revokedAt ? null : (
+                  <Button size="sm" variant="danger" onClick={() => setAsking(p.id)}>
                     Revoke
                   </Button>
                 )
@@ -594,7 +578,16 @@ function Standing({ version }: { version: number }) {
           ))}
         </List>
       )}
-    </Section>
+      <Confirm
+        open={!!asked}
+        title="Revoke this?"
+        yes="Revoke it"
+        onClose={() => setAsking(null)}
+        onYes={() => asked && revoke(asked.id)}
+      >
+        Alpha asks you again each time: “{asked?.sentence}”
+      </Confirm>
+    </>
   )
 }
 
@@ -834,36 +827,27 @@ function ConnectionLine({
           Read now
         </Button>
       )}
-      {!leaving && (
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => setLeaving(true)}>
-          Disconnect
-        </Button>
-      )}
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => setLeaving(true)}>
+        Disconnect
+      </Button>
       <Refusal words={problem} />
     </>
   )
   // Disconnect asks first, naming what goes (item 28, 25 Oct)
-  const confirm = leaving && (
-    <span className="flex flex-wrap items-center gap-1.5">
-      <span className="text-md text-warn">
-        Disconnect {k.title}? Alpha stops reading {k.account}; what it read stays, and connecting
-        again starts from scratch.
-      </span>
-      <Button
-        size="sm"
-        variant="warn"
-        disabled={busy}
-        onClick={() => {
-          setLeaving(false)
-          void act(() => api.delete(`/api/connections/${k.id}`))
-        }}
-      >
-        Yes, disconnect
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => setLeaving(false)}>
-        Keep it
-      </Button>
-    </span>
+  const confirm = (
+    <Confirm
+      open={leaving}
+      title={`Disconnect ${k.title}?`}
+      yes="Disconnect"
+      busy={busy}
+      onClose={() => setLeaving(false)}
+      onYes={() => {
+        setLeaving(false)
+        void act(() => api.delete(`/api/connections/${k.id}`))
+      }}
+    >
+      Alpha stops reading {k.account}. What it read stays, and connecting again starts from scratch.
+    </Confirm>
   )
   if (inTile)
     return (
@@ -893,7 +877,7 @@ function ConnectionLine({
         </>
       }
     >
-      {confirm && <div className="px-4 pb-3 pl-15">{confirm}</div>}
+      {confirm}
     </Row>
   )
 }
@@ -973,38 +957,32 @@ function ConnectorTile({
             {connections.length ? 'Add another' : 'Connect'}
           </Button>
         )}
-        {!open && added && connections.length === 0 && !removing && (
+        {!open && added && connections.length === 0 && (
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => setRemoving(true)}>
-            Remove
+            Delete
           </Button>
         )}
-        {removing && (
-          <span className="flex items-center gap-1.5">
-            <span className="text-md text-warn">Its folder goes with it.</span>
-            <Button
-              size="sm"
-              variant="warn"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true)
-                setProblem(null)
-                try {
-                  await api.delete(`/api/connectors/${c.name}`)
-                  setRemoving(false)
-                } catch (err) {
-                  setProblem(wordsOf(err))
-                }
-                setBusy(false)
-                onChange()
-              }}
-            >
-              Yes, remove it
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setRemoving(false)}>
-              Keep it
-            </Button>
-          </span>
-        )}
+        <Confirm
+          open={removing}
+          title={`Delete ${c.title}?`}
+          yes="Delete it"
+          busy={busy}
+          onClose={() => setRemoving(false)}
+          onYes={async () => {
+            setBusy(true)
+            setProblem(null)
+            try {
+              await api.delete(`/api/connectors/${c.name}`)
+              setRemoving(false)
+            } catch (err) {
+              setProblem(wordsOf(err))
+            }
+            setBusy(false)
+            onChange()
+          }}
+        >
+          The connector you added goes, with its folder.
+        </Confirm>
       </div>
       {open && (
         <form onSubmit={submit} className="flex flex-col gap-3">
@@ -1225,5 +1203,36 @@ function FolderForm({
       </div>
       {problem && <div className="text-bad text-md">{problem}</div>}
     </form>
+  )
+}
+
+// Experimental: features still being tried, each off until switched on on this computer.
+function Experimental() {
+  return (
+    <Section
+      title="Experimental"
+      about="Features still being tried. Each is off until you switch it on, on this computer only."
+    >
+      {EXPERIMENTS.length === 0 ? (
+        <p className="text-ink-2 text-md">Nothing to try right now.</p>
+      ) : (
+        <List>
+          {EXPERIMENTS.map((e) => (
+            <ExperimentLine key={e.name} name={e.name} title={e.title} about={e.about} />
+          ))}
+        </List>
+      )}
+    </Section>
+  )
+}
+
+function ExperimentLine({ name, title, about }: { name: string; title: string; about: string }) {
+  const on = useExperiment(name)
+  return (
+    <Row
+      title={title}
+      sub={about}
+      actions={<Switch checked={on} label={title} onChange={(v) => setExperiment(name, v)} />}
+    />
   )
 }

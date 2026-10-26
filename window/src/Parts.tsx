@@ -25,7 +25,7 @@ export function Parts() {
             <div className="flex flex-wrap items-center gap-2">
               <Button>Read now</Button>
               <Button variant="primary">Send it</Button>
-              <Button variant="ghost">Not now</Button>
+              <Button variant="ghost">Decline</Button>
               <Button variant="warn">Disconnect</Button>
               <Button size="sm">Small</Button>
               <Button disabled>Disabled</Button>
@@ -105,7 +105,7 @@ export function Parts() {
               </div>
               <div className="flex gap-2">
                 <Button variant="primary">Send it</Button>
-                <Button>Not now</Button>
+                <Button>Decline</Button>
                 <Button variant="ghost">Change something</Button>
               </div>
             </Card>

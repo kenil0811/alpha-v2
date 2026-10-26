@@ -33,6 +33,7 @@ export type Place =
   | { at: 'conversation' }
   | { at: 'activity' }
   | { at: 'parts' }
+  | { at: 'item'; kind: 'agent' | 'run' | 'permission'; id: string }
   | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
   | {
       at: 'module'
@@ -587,7 +588,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       { label: 'Tasks', hint: '', href: '#/tasks' },
       { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
       { label: 'People', hint: '', href: '#/people' },
-      { label: 'Companies', hint: 'People', href: '#/people?companies' },
+      { label: 'Organizations', hint: 'People', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
