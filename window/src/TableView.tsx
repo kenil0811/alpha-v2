@@ -109,6 +109,7 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
+  const [searching, setSearching] = useState(false)
   // rows to a page, the person's choice, kept in this browser
   const [size, setSize] = useState(() => {
     try {
@@ -238,19 +239,41 @@ export function TableView({
       <div className="flex min-w-0 flex-1 flex-col">
         {strip && <Metrics rows={data.rows} fields={fields} />}
         <ViewTabs
-          right={
+          tools={
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
-              <label className="flex h-7.5 w-40 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-                <Search className="size-3.25 shrink-0" />
-                <input
-                  value={config.search}
-                  onChange={(e) => setConfig({ ...config, search: e.target.value })}
-                  placeholder={`Find in ${data.name}`}
-                  aria-label={`Find in ${data.name}`}
-                  className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-                />
-              </label>
+              {searching || config.search ? (
+                <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                  <Search className="size-3.25 shrink-0" />
+                  <input
+                    // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
+                    autoFocus={searching}
+                    value={config.search}
+                    onChange={(e) => setConfig({ ...config, search: e.target.value })}
+                    onBlur={() => setSearching(false)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Escape') return
+                      e.preventDefault()
+                      setConfig({ ...config, search: '' })
+                      setSearching(false)
+                    }}
+                    placeholder={`Search ${data.name}`}
+                    aria-label={`Search ${data.name}`}
+                    title="Escape clears it"
+                    className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+                  />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSearching(true)}
+                  title={`Search ${data.name}`}
+                  className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
+                >
+                  <Search className="size-3.25 shrink-0" />
+                  Search
+                </button>
+              )}
               <AddFilter
                 fields={fields}
                 config={config}
@@ -258,6 +281,10 @@ export function TableView({
                 names={data.names}
                 onConfig={setConfig}
               />
+            </>
+          }
+          right={
+            <>
               {config.kind !== 'board' && (
                 <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
               )}
