@@ -57,7 +57,20 @@ import {
   widthOf,
 } from './engine.ts'
 import type { LayoutNow } from './layout.ts'
-import { CORRECTABLE, DOT, INK, MARK, NUMERIC, readValue, show, TINT, typedOf } from './values.ts'
+import {
+  CORRECTABLE,
+  DOT,
+  EMPTY_CELL,
+  EMPTY_WORDS,
+  INK,
+  KIND_WORDS,
+  MARK,
+  NUMERIC,
+  readValue,
+  show,
+  TINT,
+  typedOf,
+} from './values.ts'
 
 type Item = { kind: 'group'; group: Group } | { kind: 'row'; row: RowView }
 
@@ -836,9 +849,9 @@ function Cell({
         )}
       >
         {empty ? (
-          NUMERIC.has(f.kind) ? (
-            <span className="text-ink-3">None given</span>
-          ) : null
+          <span className="text-ink-3" title={EMPTY_WORDS}>
+            {EMPTY_CELL}
+          </span>
         ) : f.kind === 'choice' && f.tones[text] ? (
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <span className={cn('size-1.75 shrink-0 rounded-full', DOT[f.tones[text]])} />
@@ -861,8 +874,13 @@ function Cell({
             {text}
           </span>
         )}
-        {mark && !empty && (
-          <span className="self-start pt-2 font-bold text-warn text-xs leading-none">{mark}</span>
+        {mark && !empty && source && (
+          <span
+            title={KIND_WORDS[source.kind]}
+            className="self-start pt-2 text-ink-3 text-xs leading-none"
+          >
+            {mark}
+          </span>
         )}
         {tasks > 0 && (
           <span
