@@ -104,7 +104,7 @@ export function ViewTabs({
         {view ? (
           <>
             <MenuItem
-              disabled={!dirty}
+              reason={dirty ? undefined : 'Nothing has changed since it was saved.'}
               onClick={() => {
                 setMenu(false)
                 onSave()

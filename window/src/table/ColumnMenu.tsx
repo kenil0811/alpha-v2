@@ -169,18 +169,24 @@ export function ColumnMenu({
         </MenuItem>
       )}
       <MenuLine />
-      <MenuItem disabled={at <= 0} onClick={() => apply(move(config, shown, field.id, -1))}>
+      <MenuItem
+        reason={at <= 0 ? 'It is already the first column.' : undefined}
+        onClick={() => apply(move(config, shown, field.id, -1))}
+      >
         <ArrowLeft className="size-3.5 text-ink-3" />
         Move left
       </MenuItem>
       <MenuItem
-        disabled={at < 0 || at >= shown.length - 1}
+        reason={at < 0 || at >= shown.length - 1 ? 'It is already the last column.' : undefined}
         onClick={() => apply(move(config, shown, field.id, 1))}
       >
         <ArrowRight className="size-3.5 text-ink-3" />
         Move right
       </MenuItem>
-      <MenuItem disabled={shown.length <= 1} onClick={() => apply(hide(config, field.id, true))}>
+      <MenuItem
+        reason={shown.length <= 1 ? 'A table keeps at least one column.' : undefined}
+        onClick={() => apply(hide(config, field.id, true))}
+      >
         <EyeOff className="size-3.5 text-ink-3" />
         Hide column
       </MenuItem>
