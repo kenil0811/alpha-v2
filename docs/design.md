@@ -254,7 +254,8 @@ this shape exactly.
    > Write to the person in plain words: no tool names, no ids, no code unless they ask.
 
 2. **At session start and after compaction:** the tenant's and the user's standing
-   instructions (files, read whole), each module with its notes and its tables, each table with
+   instructions (files, read whole), each module with its notes, its tables and its skills (a
+   line each from its `SKILL.md`: name and description; item 61, 25 Oct), each table with
    its row count and what a row of it is (its `about`), the files, the people and task counts,
    the connections and the folders. Not the fields: **a table's fields and what each means come
    with the first query, write or change of it in a session** (context by mode, Kenil's yes 24
@@ -317,7 +318,7 @@ desk's Write or Edit (item 12's stopgap, 25 Oct; the proper home for a site is a
 with readers-as-connectors). A **standing permission** is a yes given once for one agent's one kind of
 thing (Kenil, 20 Oct): a card offers Always only after three yeses in a row for exactly that, each
 unchanged, and it is confirmed in a second step, stored as a row, shown as a sentence, counted when
-used, and revoked in Settings › Standing permissions. Code holds the wall: only the person grants
+used, and revoked in Settings › Permissions (Always allowed), or on its own page. Code holds the wall: only the person grants
 one, only where the yeses earned it. One may let an email go without asking only when it is one
 agent's one kind of message (DealPilot's CIM requests) **to an address that kind has gone to
 before on the person's yes; a new recipient is a card of its own that says so, under any
@@ -443,7 +444,9 @@ the person changed is theirs and kept; nothing is deleted. It is judged by each 
 setup row's hash. Tables and fields are only added; a choice field gains a newer version's new
 choices where the kit has them, and its colours, unless someone other than a kit set them since
 (the journal says who). An older pack than the version installed is refused, with words, and
-nothing changes (item 42, 25 Oct). A kit's Python scripts run in a per-kit environment that Alpha makes with a
+nothing changes (item 42, 25 Oct). An update brings the kit's sites, keeping every site the
+person let a reader reach on a card, so a site the kit drops goes (item 44). An agent is known by
+its file first, so a renamed agent keeps its state, last run and history (item 47). A kit's Python scripts run in a per-kit environment that Alpha makes with a
 bundled `uv` at install, never the Mac's own Python. Kits update by content hash, the app by
 release.
 
@@ -472,7 +475,8 @@ drafted email), or do it now and count it as a change of the person's they have 
 <dir>` runs its cases without the model (§9).
 
 **Make this a kit** (Stage 2, step 1, 24 Oct): a module made in a conversation leaves as a kit in
-one action, in Settings › Kits and agents on a module that came from no kit. Its `module.yaml`
+one action, in Settings › Modules and agents on a module that came from no kit ("Pack it to
+install elsewhere": the window never says kit, 26 Oct). Its `module.yaml`
 already mirrors its shape; the kit adds `version: 0.1.0`, the kit API it was written for, a
 description from the first paragraph of its notes and `uses` for what its relations and agents
 reach of other kits (by name, with the version there) and connectors; a module that reaches a
@@ -480,7 +484,7 @@ plain module's table is refused, with the words to make that one a kit first. It
 skills and pages go with it, never its rows, git history or a tool's folder. The folder is checked
 as `pnpm kit check` does and packed as `pnpm kit pack` does onto the Desktop
 (`<name>-0.1.0.alphakit`), and the journal says so. On a module that came from a kit the same
-action is "Pack the kit as it is now", its version kept, so what the person changed can travel.
+action is "Pack it as it is now", its version kept, so what the person changed can travel.
 
 ## 11. Agents, triggers, runs
 
@@ -583,10 +587,11 @@ page the person asks for.
 ## 14. The window
 
 **Home is the important things** (Kenil, 20 Oct: "Home should be about all important things, the
-space in home is very precious"): one line to ask Alpha, whose answer opens on the right; what
-needs the person, with each card answered right there; what changed since they last looked (kept
-until they clear it); what is running; each agent's next run; and their modules with their tables.
-No conversation on Home.
+space in home is very precious"): the date, the greeting and one line to ask Alpha; no modules
+(they are in the rail; Kenil, 26 Oct); what needs the person, with each card answered right there; Overdue, Due today
+and This week as tiles (Overdue red only when it has some); what changed since they last looked
+(kept until they clear it); what is running; each agent's next run (UI batch 2, 26 Oct). The
+conversation is not in Home's own space: it is the assistant beside it.
 
 **One conversation, and lenses.** The conversation has its own place in the rail: the person's
 sentences and Alpha's replies in order. Work shows as one live message that updates in place and
@@ -594,25 +599,54 @@ becomes the outcome, with a "Show the work" fold built from the journal. Each me
 topic chip that filters it. Above the composer, a "Now" strip shows what is in flight and what
 needs the person, three chips at most; on a wide window a column beside it shows instead what
 waits, what runs and what is next. A module's Conversation tab shows it through the module's
-lens, and Ask (⌘J) opens it on the right of any other screen. Permissions and questions land
-inline with their buttons.
+lens. **The assistant** (Vikas's pull request 8, Kenil's yes 26 Oct: "happy with assistant on
+right but i do want separate screen as well") is the conversation on the right of every screen but
+its own, open unless the person folds it (⌘J, or its fold) to a strip with Alpha's face and the
+bell for Activity; it always leaves the rail and at least 600px of screen. Permissions and
+questions land inline with their buttons.
 
-**The rail is module names only** (Kenil, 20 Oct): Home, Conversation, Tasks, People, Activity, then each module
-by name with the modules inside it folded under it, and a menu to move one into another; its
-pages and tables are its screen's tabs. A module holding others opens on an Overview of them: a
+**The rail is module names only** (Kenil, 20 Oct; UI batches 1 and 2, 26 Oct): the workspace at
+its head, Home, Conversation, Tasks, then each module by name with the modules inside it folded
+under it, a menu to move one into another, New module last (it starts the sentence "Make a module
+for "), and Intelligence and Settings at the foot; Activity is the assistant's bell. **One header**
+(48px, across the rail, the screen and the assistant): a way back when inside something, the
+screen's name centred, Find on the right. Under it, a screen with parts has **one row of tabs**,
+every label in full (a table's row count beside its name), scrolling sideways when long, never
+cut short or folded to icons (Kenil, 26 Oct). A module's tabs are its pages, its tables, its
+Conversation and its Agents and notes, which holds its agents, the notes Alpha reads first, what
+ran lately and Governance (Allowed and Denied, each a sentence with its reason, and + Add); nothing
+sits under a table or a page (Kenil, 26 Oct). **People and Organizations** are the tabs
+of the module whose `module.yaml` says `people: true` (Network's), beside its own tables. A module holding others opens on an Overview of them: a
 plain list, a row per module with its name, where it comes from and what goes on in it right now
 (agents on and running, open tasks, what waits on the person), nothing of its tables. The
-rail folds to a strip of icons (⌘\), and the Ask panel drags wider, to two thirds of the window,
-or expands to half of it, or opens as the full Conversation. How the person left them is kept per
-person in the world, like the theme.
+rail folds to a strip of icons (⌘\) or drags wider by its edge, and the assistant drags wider,
+to two thirds of the window less what the screen keeps, or expands to half of it, or opens as the
+full Conversation. How the person left them (the rail's width and folds, the assistant's width and
+whether it is folded, a table's rows to a page) is kept per person in the world, like the theme,
+never in the browser. A table has no cards of counts above it (Kenil, 26 Oct). Scrollbars are thin,
+a 4px thumb shown while the box is under the pointer; a row of tabs shows none.
 
-**The other screens:** a Module (the same stream filtered to it; tables in eight views: table,
-list, board, gallery, calendar, timeline, chart, form; pages; notes, skills and agents as text;
-files; activity), People, Activity, Settings (this Mac, data, connections, folders, kits, model
-route, users for a firm). Plain words, no tool names, no ids. **The window says what happened**
+**The other screens:** a Module (the same stream filtered to it; tables in the views offered:
+Table, Card, Timeline, Calendar, Board, Form (Vikas, 25 Oct; a view saved as List or Chart still
+opens); pages; notes, skills and agents as text; files; activity), a page for each agent, run and
+standing permission (`#/agent/…`, `#/run/…`, `#/permission/…`), Activity, **Intelligence**
+(Second Brain, Modules and agents, Connections with Folders, Permissions, as tabs) and **Settings**
+(Model, Data, Appearance, one at a time; Experimental only once something is being tried).
+**Every list is the shared table** (UI batch 2, Kenil's yes 26 Oct): People, Organizations, Tasks,
+Agents and Always allowed are served by the core as tables (`/api/kept/…`) and drawn by the same
+table view as a module's tables, each changed in a cell where the core allows it (a task's words,
+state, due and priority, and its state by dragging it across the board; a person's or an
+organization's name; an agent On or Paused) and refused in words elsewhere; Revoke is on a
+permission's page. A section is its serif title and ⓘ over what it holds, never a card, so nothing
+sits in a card inside a card (Kenil, 26 Oct); one record layout serves a person, an organization, a task,
+an agent, a run and a permission; one dropdown everywhere, by mouse or keyboard.
+Plain words, no tool names, no ids: the words a person reads are agreed (`window/src/vocabulary.ts`:
+module not kit, organization not company, Delete not remove, Download not export; a card's Yes and
+No read Approve and Decline), and a test holds them. A section's explanation sits behind an ⓘ. **The window says what happened**
 (items 28 to 30 of the problems list, 25 Oct): a removal that cannot be taken back in a click
-(Disconnect, Remove the view, Forget, a connector, ticked rows, a task) asks on the page first,
-naming what goes; a refusal shows in a line beside the control that was pressed (one hook,
+(Disconnect, Delete the view, Forget, Revoke, a connector, ticked rows, a task, going back to a
+backup, bringing data in, deleting it all) asks first in the one pop-up (`window/src/ui/dialog.tsx`,
+the browser's own dialog, Cancel first; pull requests 1 and 3, 26 Oct), naming what goes; a refusal shows in a line beside the control that was pressed (one hook,
 `window/src/ui/act.tsx`), never dropped; a core that does not answer is "Alpha isn't answering on
 this Mac right now.", and a part of Home that did not load says so, with Try again.
 
@@ -629,16 +663,16 @@ and clicks beside it reach what is behind. Its face is a simple stand-in until A
 is chosen (Kenil, 21 Oct: "a cute simple companion look, not an A"); v1's animals stay behind.
 The app opens quietly at login: the face and the mark, no window.
 
-**People** (Kenil, 21 Oct): everyone, and every company, with how many messages and meetings in
-the last 90 days, the last one and who wrote first; a page each with how to reach them, where they
+**People** (Kenil, 21 Oct): everyone, and every organization, as Network's first two tabs, on the
+shared table with how many messages and meetings, the last one; a page each with how to reach them, where they
 work now and before, the mail and meetings with them newest first (each opening its row), the
 rows of the person's modules that name them, where Alpha knows them from, and the ones merged into
 them with Unmerge. Likely matches wait on a card in Needs you, side by side, Merge or Keep apart.
 
-**Tasks** (Kenil, 21 Oct): Tasks in the rail with today's and overdue counted; saved lists (Today,
-This week, Overdue, Waiting for you, Agents, All open, Done) in four views: a list, by place (a
-tree of module, table and row), a board by state to drag between, and a calendar; New task at the
-top. A task's page: its state, due, reminder, repeat, priority, owner, where it sits (with Take
+**Tasks** (Kenil, 21 Oct; on the shared table, UI batch 2, 26 Oct): Tasks in the rail with
+today's and overdue counted; the saved lists (Today, This week, Overdue, Waiting for you, Agents,
+All open, Done) are the switch in the header, each list drawn by the shared table view with its
+table, board (by state, dragged between), calendar and grouping; New task at the top. A task's page: its state, due, reminder, repeat, priority, owner, where it sits (with Take
 off), notes, a checklist of the tasks beneath it, the place's values and the other tasks there,
 what it touches, its agent with Start, the run with Stop and earlier runs, the cards its runs put
 to the person, and its history. A row's panel has its tasks with Add a task, and a row with open
@@ -646,13 +680,20 @@ tasks shows their count beside its name; Home has Today's tasks; Find (⌘K) has
 
 **The look is Ledger** (Kenil, 20 Oct; the proposal and mock are in the project's
 `design/window-proposal.md`): slate neutrals and one slate-blue accent, Geist with Source Serif 4
-titles, seven text sizes, light and dark; the tokens are `window/src/app.css`, the parts are in
+for page and record titles and big numbers, seven text sizes with a 14px body and 11px capital
+labels (the 18px body and sentence-case labels were tried and dropped, Kenil, 26 Oct), one module
+icon set, light and dark; the tokens are `window/src/app.css`, the parts are in
 `window/src/ui/`, and `window/src/look.test.ts` fails any colour or size that is not a token.
-`pnpm shots` takes every screen in light and dark. A module's screen has its tables, its
-Conversation and its Agents and notes as tabs; on its screens Ask (⌘J) opens the module's
-conversation on the right, and a message asked there carries the module. Pages other than the stream and tables fill
+`pnpm shots` takes every screen in light and dark. On a module's screens the assistant is the
+module's conversation, and a message asked there carries the module. Pages other than the stream and tables fill
 the window up to 1200px; the stream's text is 720px, and a table in a reply may run to 960px.
 
+A value Alpha is not sure of carries a small grey mark (≈ estimated, ? assumed), never amber:
+in a table its word on hover, in a panel written out; an empty value is a grey dash in a table and
+"Unknown" in a panel (item 57, 25 Oct). A figure clicked on a page opens its source panel beside
+the page, which stays where it was (item 59). A finished reply longer than `reply_fold_lines`
+(limits.yaml, 4) folds with More, above its first table when that comes sooner; one that opens
+with a table shows whole (item 63).
 A value read from a document opens the document at its place: a sheet with the cell marked, a
 PDF's page drawn with the piece's box marked, a text with its line. A row's panel lists the files on
 it with their kinds and takes a dropped file (Kenil, 20 Oct).
@@ -714,7 +755,11 @@ checks on the world (tables made, rows landed, a card waiting, a value's source)
 read the world, not the model's prose; a judge is used only where nothing else can tell.
 Journeys that would act in a real account run against fixtures, or on Kenil's word; a site is a
 made-up one served on the Mac. A client's journeys live in the client's own repository and run
-with `pnpm journey <name> --from ../<client>/journeys`.
+with `pnpm journey <name> --from ../<client>/journeys`. `--times N` runs one N times, each on a
+fresh world, and says how many passed (`journey_times` in limits.yaml when no number is given);
+`pnpm journeys` runs a whole folder; either writes one summary beside the reports (item 48, 25
+Oct). A kit's test cases (`pnpm kit test`) may record a page that fails as a site would (a
+timeout, a block), to try a reader's way with it.
 
 **Tests** (Vitest) never call the model and never touch a real tenant. A failure becomes a
 journey before it becomes a change.

@@ -98,7 +98,9 @@ export function Activity({ version }: { version: number }) {
         </div>
         {days.map(([day, list]) => (
           <section key={day}>
-            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-xs">{day}</div>
+            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-xs uppercase tracking-label">
+              {day}
+            </div>
             <div className="overflow-hidden rounded-lg border border-line bg-surface">
               {fold(list).map((l) =>
                 l.kind === 'quiet' ? (

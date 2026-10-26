@@ -1,8 +1,9 @@
 // Home (Kenil, 20 Oct: "Home should be about all important things, the space in home is very
 // precious"): no conversation here. One line to ask Alpha, whose answer opens on the right; then
 // what needs the person (cards answered right here), what changed since they last looked (kept
-// until they clear it), what is running, what is coming up, and their modules. The conversation
-// has its own place in the rail, each module's tab, and Ask (⌘J) on any screen.
+// until they clear it), what is running and what is coming up; the modules are in the rail, not
+// here (Kenil, 26 Oct). The conversation has its own place in the rail, each module's tab, and Ask
+// (⌘J) on any screen.
 import type {
   CardView,
   ConnectorsView,
@@ -16,7 +17,6 @@ import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucid
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
-import { ModuleIcon } from './moduleIcon.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
@@ -134,8 +134,6 @@ export function Home({
             <SetupList view={setup} onChange={reloadSetup} />
           </Group>
         )}
-
-        {!firstOpen && modules.length > 0 && <ModuleCards modules={modules} />}
 
         {firstOpen ? (
           <Welcome
@@ -490,39 +488,5 @@ function TaskTile({
         {n}
       </span>
     </a>
-  )
-}
-
-// The modules at the top level, a card each: its initials, its name, a line on what it holds, Open.
-function ModuleCards({ modules }: { modules: ModuleSummary[] }) {
-  const tops = modules.filter((m) => !m.parent)
-  return (
-    <Group title="Your modules">
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-        {tops.map((m) => {
-          const inside = modules.filter((c) => c.parent === m.id).length
-          const line = [
-            m.tables.length ? `${m.tables.length} table${m.tables.length === 1 ? '' : 's'}` : '',
-            inside ? `${inside} module${inside === 1 ? '' : 's'} inside` : '',
-          ]
-            .filter(Boolean)
-            .join(' · ')
-          return (
-            <a
-              key={m.id}
-              href={`#/module/${m.id}`}
-              className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 hover:border-accent-line"
-            >
-              <span className="grid size-8 place-items-center rounded-md bg-accent-soft text-accent">
-                <ModuleIcon name={m.name} className="size-4" />
-              </span>
-              <span className="font-medium text-base text-ink">{m.name}</span>
-              <span className="text-ink-3 text-sm">{line}</span>
-              <span className="mt-auto text-accent text-sm">Open →</span>
-            </a>
-          )
-        })}
-      </div>
-    </Group>
   )
 }
