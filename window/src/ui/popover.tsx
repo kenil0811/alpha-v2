@@ -158,6 +158,8 @@ export function MenuItem({
   danger,
   hint,
   star,
+  active,
+  id,
 }: {
   children: ReactNode
   onClick: () => void
@@ -168,11 +170,14 @@ export function MenuItem({
   hint?: ReactNode // on the right: a count, a shortcut
   // the ★; with no onClick, this line's default can't be undone here
   star?: { on: boolean; onClick: (() => void) | undefined } | undefined
+  active?: boolean | undefined // the one the keyboard is on
+  id?: string | undefined
 }) {
   const off = disabled || !!reason
   const line = (
     <button
       type="button"
+      id={id}
       role="menuitem"
       aria-disabled={off || undefined}
       disabled={off}
@@ -183,6 +188,7 @@ export function MenuItem({
         danger ? 'text-bad' : 'text-ink',
         // a disabled button gets no pointer events in some browsers; its reason still shows
         off && 'pointer-events-auto cursor-default',
+        active && 'bg-hover',
       )}
     >
       <span className="w-3.5 shrink-0 text-accent">{checked ? '✓' : ''}</span>
