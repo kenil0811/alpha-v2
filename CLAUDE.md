@@ -31,6 +31,7 @@ the per-install token. Prompts, models and judgements live in `core/config/`, no
 - Every change is proposed to Kenil in writing before it is built, built in the design's shape,
   looked at in the app, and committed after his review. The design changes only on his yes.
 - One short dated entry in `docs/log/` per session.
+- Read `docs/ui-rules.md` before any change to `window/`; a new rule from Vikas goes there the same day.
 - Tests never call the model or touch a real tenant; journeys run on a fresh tenant each.
 - Never `cp` a world file: copy it with SQLite's backup API.
 - `../alpha-brain` is v1: read-only reference. Reread what the design names, rewrite it, never

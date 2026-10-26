@@ -3,7 +3,10 @@
 // colour would still draw, which is why this fails both.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { IconButton } from './ui/button.tsx'
 import { NEVER_SAY } from './vocabulary.ts'
 
 const SRC = import.meta.dirname
@@ -74,4 +77,92 @@ describe('the window’s look', () => {
     }
     expect(found).toEqual([])
   })
+})
+
+// The rules in docs/ui-rules.md that code can check, by their numbers there. A skipped one is a
+// rule an open fix is landing: turn it on in the same PR.
+const read = (file: string) => readFileSync(join(SRC, file), 'utf8')
+const lines = (re: RegExp, keep: (file: string) => boolean = () => true) =>
+  sources(SRC)
+    .filter(keep)
+    .flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .flatMap((line, i) =>
+          !/^\s*\/\//.test(line) && re.test(line) ? [`${relative(SRC, file)}:${i + 1}`] : [],
+        ),
+    )
+
+describe('the window’s rules (docs/ui-rules.md)', () => {
+  it('R3: never the browser’s confirm, alert or prompt', () => {
+    expect(lines(/(?<![\w.])(?:window\.)?(?:confirm|alert|prompt)\(/)).toEqual([])
+  })
+
+  it('A4: an icon button is labelled, read aloud and on hover', () => {
+    const html = renderToString(createElement(IconButton, { label: 'Close' }))
+    expect(html).toContain('aria-label="Close"')
+    expect(html).toContain('title="Close"')
+  })
+
+  it('T13: the overflow glyph is the vertical ⋮', () => {
+    expect(lines(/\b(?:MoreHorizontal|Ellipsis)\b/)).toEqual([])
+  })
+
+  it('T17: no bare <select> but the cell editor', () => {
+    expect(lines(/<select\b/, (f) => !f.endsWith(join('table', 'Grid.tsx')))).toEqual([])
+  })
+
+  it('W5: no letter-spaced capitals', () => {
+    expect(
+      lines(/(?<![\w-])(?:uppercase|tracking-wide[rs]?t?)(?![\w-])|text-transform:\s*uppercase/),
+    ).toEqual([])
+    expect(read('app.css')).not.toMatch(/text-transform:\s*uppercase/)
+  })
+
+  it('W5: labels are in sentence case', () => {
+    // a capital after the first word is a name (Alpha, Second Brain…) or starts an example after a comma
+    const NAMES = /^(?:Alpha|Mac|Second|Brain|Monday|Georgia|CSV|Excel|PDF)\b/
+    const found: string[] = []
+    for (const file of sources(SRC)) {
+      if (!file.endsWith('.tsx')) continue
+      for (const m of readFileSync(file, 'utf8').matchAll(
+        /\b(?:label|aria-label|title|placeholder)=(['"])([^'"]+)\1/g,
+      )) {
+        const words = (m[2] ?? '').split(' ')
+        words.slice(1).forEach((w, i) => {
+          if (!/^[A-Z][a-z]/.test(w) || NAMES.test(w) || w.includes('/')) return
+          if (/[,:]$/.test(words[i] ?? '')) return
+          found.push(`${relative(SRC, file)}: “${m[2]}”`)
+        })
+      }
+    }
+    expect(found).toEqual([])
+  })
+
+  it('W7: never the names of the apps it learned from', () => {
+    expect(lines(/Alpha Brain/)).toEqual([])
+  })
+
+  it('L3: no text size under 12px', () => {
+    const sizes = [...read('app.css').matchAll(/--text-[\w]+:\s*(\d+)px/g)].map((m) => Number(m[1]))
+    expect(sizes.length).toBe(7)
+    expect(sizes.filter((px) => px < 12)).toEqual([])
+  })
+
+  it.skip('S10: heights in dvh, never vh', () => {
+    expect(lines(/\d+vh\b|(?<![\w-])(?:min-|max-)?h-screen\b/)).toEqual([])
+  })
+
+  it.skip('H5: no Find box in the header; ⌘K still finds', () => {
+    expect(read('Shell.tsx')).not.toContain('aria-label="Find anything"')
+  })
+
+  it.skip('A1: the assistant’s header has no Expand and no Open whole conversation', () => {
+    expect(read('Assistant.tsx')).not.toMatch(/Expand to half|Open the whole conversation/)
+  })
+
+  it.todo('T1: toolbar has saved list, view, search on the left; Filter, then ⋮, on the right')
+  it.todo('T2: metric tiles sit below the toolbar row')
+  it.todo('L4: headings are 27px')
+  it.todo('A4: every icon button shows one quick tooltip of ours, not the browser’s title')
 })
