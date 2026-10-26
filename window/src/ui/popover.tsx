@@ -79,8 +79,12 @@ export function Popover({
       onClose()
       anchor?.current?.focus()
     }
+    // a scroll that leaves the anchor where it was (a list scrolled to where it already is) keeps it
+    const was = anchor?.current?.getBoundingClientRect()
     const scrolled = (e: Event) => {
-      if (!(e.target as Element).closest?.('[data-popover]')) onClose()
+      if ((e.target as Element).closest?.('[data-popover]')) return
+      const now = anchor?.current?.getBoundingClientRect()
+      if (!was || !now || now.top !== was.top || now.left !== was.left) onClose()
     }
     document.addEventListener('mousedown', down)
     document.addEventListener('keydown', key)

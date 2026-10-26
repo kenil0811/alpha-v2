@@ -1,5 +1,6 @@
 // What a view does, said above its table as chips: each filter (opens to change it), all or any,
-// the sorts, the group; and Filter to add one, Columns to show, hide and order them.
+// Clear all when there are several, the sorts, the group; and Filter to add one, Columns to show,
+// hide and order them.
 import type { FieldView, FilterRule, RowView, ViewConfig } from '@alpha/core/api'
 import { ArrowDown, ArrowUp, Columns3, ListFilter, Rows3, X } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -77,6 +78,15 @@ export function Chips({
           />
         </span>
       ))}
+      {rules.length > 1 && (
+        <button
+          type="button"
+          onClick={() => onConfig({ ...config, filters: { ...config.filters, rules: [] } })}
+          className="h-7.5 rounded-md px-1.5 text-accent text-md hover:underline"
+        >
+          Clear all
+        </button>
+      )}
       {sorts.length > 0 && (
         <span className={chip}>
           {sorts.map((s, i) => (
