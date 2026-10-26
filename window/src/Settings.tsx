@@ -7,6 +7,7 @@ import type {
   DataPageView,
   InstructionView,
   ModelView,
+  ModuleSummary,
   PermissionView,
   TableView as TableData,
   WorkingModuleView,
@@ -252,8 +253,69 @@ export function Settings({
   )
 }
 
-// Second Brain: the standing instructions the person gave, each one forgotten on a yes.
+// Second Brain: how to work (the standing instructions), and the Alpha module's two tables, Decisions
+// and Noticed, which are shown here instead of as a module on the rail.
 function SecondBrain({ version }: { version: number }) {
+  const [part, setPart] = useState<'work' | 'Decisions' | 'Noticed'>('work')
+  return (
+    <>
+      <div className="self-start">
+        <Segmented
+          label="Second Brain"
+          value={part}
+          onChange={setPart}
+          options={[
+            { value: 'work', label: 'How to work' },
+            { value: 'Decisions', label: 'Decisions' },
+            { value: 'Noticed', label: 'Noticed' },
+          ]}
+        />
+      </div>
+      {part === 'work' ? (
+        <HowToWork version={version} />
+      ) : (
+        <AlphaTable key={part} name={part} version={version} />
+      )}
+    </>
+  )
+}
+
+const ABOUT_ALPHA = {
+  Decisions: 'What Alpha decided, and the rules you approved for it.',
+  Noticed: 'What Alpha noticed while it worked.',
+}
+
+// One of the Alpha module's tables, found by its name, drawn with the shared table.
+function AlphaTable({ name, version }: { name: keyof typeof ABOUT_ALPHA; version: number }) {
+  const [data, setData] = useState<TableData | null | undefined>(undefined)
+  useEffect(() => {
+    if (version < 0) return
+    api
+      .get<ModuleSummary[]>('/api/modules')
+      .then((ms) => {
+        const id = alphaOf(ms)?.tables.find((t) => t.name === name)?.id
+        return id ? api.get<TableData>(`/api/tables/${id}`) : null
+      })
+      .then(setData, () => setData(null))
+  }, [name, version])
+  return (
+    <Section title={name} about={ABOUT_ALPHA[name]}>
+      {data === null && <Empty>Nothing here yet.</Empty>}
+      {data && (
+        <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
+          <TableView data={data} />
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// The Alpha module: the top-level module named Alpha.
+export const alphaOf = (modules: ModuleSummary[]) =>
+  modules.find((m) => m.name === 'Alpha' && !m.parent)
+
+// How to work: the standing instructions the person gave, each one forgotten on a yes.
+function HowToWork({ version }: { version: number }) {
   const [lines, setLines] = useState<InstructionView[] | null>(null)
   const load = useCallback(() => {
     api.get<InstructionView[]>('/api/instructions').then(setLines, () => setLines([]))
@@ -271,7 +333,7 @@ function SecondBrain({ version }: { version: number }) {
   }
   return (
     <Section
-      title="Second Brain"
+      title="How to work"
       about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
     >
       {lines?.length === 0 && (

@@ -34,7 +34,7 @@ import { Marker } from './Mark.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
-import { Settings } from './Settings.tsx'
+import { alphaOf, Settings } from './Settings.tsx'
 import { Bar, BarMiddle, type Crumb, Find, network, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
@@ -158,6 +158,13 @@ export function App() {
     setLayout((l) => ({ ...l, ...change }))
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
+  // the Alpha module is not on the rail: its Decisions and Noticed are in Intelligence › Second
+  // Brain, and anything that opens it (Home's cards, Find, a link) lands there
+  const alpha = alphaOf(modules)
+  useEffect(() => {
+    if (alpha && place.at === 'module' && place.id === alpha.id)
+      window.location.replace('#/intelligence/brain')
+  }, [alpha, place])
   // where a screen puts its switch, in the middle of the bar
   const [middle, setMiddle] = useState<HTMLElement | null>(null)
   const placed: Module =
@@ -385,7 +392,7 @@ export function App() {
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
       <Rail
-        modules={modules}
+        modules={modules.filter((m) => m !== alpha)}
         place={place}
         here={moduleHere?.id ?? null}
         layout={layout}
