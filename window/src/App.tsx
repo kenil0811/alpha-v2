@@ -18,12 +18,14 @@ import {
   ListChecks,
   MessageSquare,
   SlidersHorizontal,
+  Sparkles,
   Users,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
+import { startAsk } from './ask.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
@@ -32,7 +34,7 @@ import { ModuleScreen } from './Module.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
 import { Settings } from './Settings.tsx'
-import { Bar, type Crumb, Find, type Place, Rail } from './Shell.tsx'
+import { Bar, BarMiddle, type Crumb, Find, network, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
@@ -74,8 +76,14 @@ function placeOf(hash: string): Place {
       },
     }
   }
-  const s = /^#\/settings(?:\?connect=([\w-]+))?$/.exec(hash)
-  if (s) return { at: 'settings', open: s[1] ?? null }
+  // an old #/settings?connect= link still lands on the connection, now under Intelligence
+  const c = /^#\/settings\?connect=([\w-]+)$/.exec(hash)
+  if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
+  const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
+  if (s)
+    return s[1] === 'settings'
+      ? { at: 'settings', section: s[2] ?? null, open: null }
+      : { at: 'intelligence', section: s[2] ?? null, open: null }
   if (hash === '#/activity') return { at: 'activity' }
   const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+))?$/.exec(hash)
   if (tk)
@@ -150,12 +158,16 @@ export function App() {
     setLayout((l) => ({ ...l, ...change }))
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
+  // where a screen puts its switch, in the middle of the bar
+  const [middle, setMiddle] = useState<HTMLElement | null>(null)
   const placed: Module =
     place.at === 'module'
       ? (modules.find((m) => m.id === place.id) ?? null)
       : place.at === 'table' && table
         ? table.module
-        : null
+        : place.at === 'people'
+          ? network(modules)
+          : null
   // a module's lens takes in the modules inside it
   const moduleHere: Module = useMemo(
     () => placed && { id: placed.id, name: placed.name, ids: inside(modules, placed.id) },
@@ -178,18 +190,37 @@ export function App() {
         setAsking((a) => !a)
       }
     }
+    const onAsk = () => setAsking(true)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('alpha:ask', onAsk)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('alpha:ask', onAsk)
+    }
   }, [])
 
   // ⌘K opens Find anywhere; ⌘\ folds the rail or opens it
   const foldedRef = useRef(layout.railFolded)
   foldedRef.current = layout.railFolded
+  const panelRef = useRef(layout.panel)
+  panelRef.current = layout.panel
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setFinding((f) => !f)
+      }
+      // Escape steps the assistant back one level: wide to normal to folded; never while typing or
+      // with a pop-up open, which Escape closes first
+      if (
+        e.key === 'Escape' &&
+        !e.defaultPrevented &&
+        !typing(e.target) &&
+        !document.querySelector('dialog[open]') &&
+        askableRef.current
+      ) {
+        if (panelRef.current) changeLayout({ panel: null })
+        else setAsking(false)
       }
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault()
@@ -263,14 +294,14 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
-  // an agent's or a run's page sits under Activity, a standing permission's under Settings
+  // an agent's or a run's page sits under Activity, a standing permission's under Intelligence
   const itemCrumb: Crumb | null =
     place.at !== 'item'
       ? null
       : place.kind === 'permission'
         ? {
-            icon: <SlidersHorizontal className={icon} />,
-            parts: [at('Settings', '#/settings'), at(itemName || '…')],
+            icon: <Sparkles className={icon} />,
+            parts: [at('Intelligence', '#/intelligence/permissions'), at(itemName || '…')],
           }
         : {
             icon: <ActivityIcon className={icon} />,
@@ -297,58 +328,60 @@ export function App() {
             ? { icon: <MessageSquare className={icon} />, parts: [at('Conversation')] }
             : place.at === 'settings'
               ? { icon: <SlidersHorizontal className={icon} />, parts: [at('Settings')] }
-              : place.at === 'parts'
-                ? { parts: [at('Parts')] }
-                : place.at === 'file'
-                  ? {
-                      icon: <FileText className={icon} />,
-                      parts: [at('Documents'), at(fileName || '…')],
-                    }
-                  : place.at === 'table'
+              : place.at === 'intelligence'
+                ? { icon: <Sparkles className={icon} />, parts: [at('Intelligence')] }
+                : place.at === 'parts'
+                  ? { parts: [at('Parts')] }
+                  : place.at === 'file'
                     ? {
-                        icon: <Briefcase className={icon} />,
-                        parts: table
-                          ? [
-                              ...above,
-                              at(table.module.name, `#/module/${table.module.id}`),
-                              // with a row open, the table's name closes it
-                              place.row ? at(table.name, `#/table/${table.id}`) : at(table.name),
-                              ...(place.row
-                                ? [
-                                    at(
-                                      (() => {
-                                        const r = table.rows.find((x) => x.id === place.row)
-                                        return r ? titleOf(table.fields, r) : '…'
-                                      })(),
-                                    ),
-                                  ]
-                                : []),
-                            ]
-                          : [at('…')],
+                        icon: <FileText className={icon} />,
+                        parts: [at('Documents'), at(fileName || '…')],
                       }
-                    : place.at === 'module'
+                    : place.at === 'table'
                       ? {
                           icon: <Briefcase className={icon} />,
-                          parts: [
-                            ...above,
-                            at(moduleHere?.name ?? '…', `#/module/${place.id}`),
-                            at(
-                              place.tab === 'agents'
-                                ? 'Agents and notes'
-                                : place.tab === 'conversation'
-                                  ? 'Conversation'
-                                  : place.tab === 'overview' ||
-                                      (!place.page && modules.some((x) => x.parent === place.id))
-                                    ? 'Overview'
-                                    : (modules
-                                        .find((x) => x.id === place.id)
-                                        ?.pages.find((p) =>
-                                          place.page ? p.name === place.page : p.front,
-                                        )?.title ?? '…'),
-                            ),
-                          ],
+                          parts: table
+                            ? [
+                                ...above,
+                                at(table.module.name, `#/module/${table.module.id}`),
+                                // with a row open, the table's name closes it
+                                place.row ? at(table.name, `#/table/${table.id}`) : at(table.name),
+                                ...(place.row
+                                  ? [
+                                      at(
+                                        (() => {
+                                          const r = table.rows.find((x) => x.id === place.row)
+                                          return r ? titleOf(table.fields, r) : '…'
+                                        })(),
+                                      ),
+                                    ]
+                                  : []),
+                              ]
+                            : [at('…')],
                         }
-                      : { icon: <House className={icon} />, parts: [at('Home')] }
+                      : place.at === 'module'
+                        ? {
+                            icon: <Briefcase className={icon} />,
+                            parts: [
+                              ...above,
+                              at(moduleHere?.name ?? '…', `#/module/${place.id}`),
+                              at(
+                                place.tab === 'agents'
+                                  ? 'Agents and notes'
+                                  : place.tab === 'conversation'
+                                    ? 'Conversation'
+                                    : place.tab === 'overview' ||
+                                        (!place.page && modules.some((x) => x.parent === place.id))
+                                      ? 'Overview'
+                                      : (modules
+                                          .find((x) => x.id === place.id)
+                                          ?.pages.find((p) =>
+                                            place.page ? p.name === place.page : p.front,
+                                          )?.title ?? '…'),
+                              ),
+                            ],
+                          }
+                        : { icon: <House className={icon} />, parts: [at('Home')] }
 
   return (
     <div className="flex h-screen bg-canvas text-base text-ink">
@@ -360,7 +393,7 @@ export function App() {
         onLayout={changeLayout}
         name={name}
         waiting={stream?.cards.length ?? 0}
-        onNew={() => setAsking(true)}
+        onNew={() => startAsk('Make a module for ')}
         tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
         online={!problem}
       />
@@ -370,84 +403,98 @@ export function App() {
           onFind={() => setFinding(true)}
           lens={place.at === 'conversation' ? lens : null}
           onClearLens={() => setLens(null)}
+          middle={setMiddle}
         />
         {problem && (
           <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
             {problem}
           </div>
         )}
-        <div className="flex min-h-0 flex-1">
-          <div className="min-w-0 flex-1">
-            {place.at === 'home' ? (
-              <Home stream={stream} modules={modules} name={name} onAsked={() => setAsking(true)} />
-            ) : place.at === 'conversation' ? (
-              <Conversation
-                stream={stream}
-                live={live}
-                busyTurn={busyTurn}
-                lens={lens}
-                onLens={setLens}
-              />
-            ) : place.at === 'parts' ? (
-              <Parts />
-            ) : place.at === 'file' ? (
-              <FileView place={place.place} onName={setFileName} />
-            ) : place.at === 'activity' ? (
-              <Activity version={version} />
-            ) : place.at === 'item' ? (
-              <ItemPage
-                key={`${place.kind}/${place.id}`}
-                kind={place.kind}
-                id={place.id}
-                version={version}
-                onName={setItemName}
-              />
-            ) : place.at === 'tasks' ? (
-              <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
-            ) : place.at === 'people' ? (
-              <People kind={place.kind} id={place.id} version={version} onName={setPersonName} />
-            ) : place.at === 'settings' ? (
-              <Settings open={place.open} version={version} />
-            ) : place.at === 'module' || table ? (
-              <ModuleScreen
-                moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
-                tab={
-                  place.at === 'table'
-                    ? { kind: 'table', id: place.id }
-                    : place.tab
-                      ? { kind: place.tab }
-                      : place.page
-                        ? { kind: 'page', name: place.page }
-                        : null
-                }
-                version={version}
-                table={table}
-                renderTable={(t) => (
-                  <TableView
-                    key={t.id}
-                    data={t}
-                    row={place.at === 'table' ? place.row : null}
-                    only={place.at === 'table' ? place.only : null}
-                    field={place.at === 'table' ? place.field : null}
-                    quiet={asking}
-                  />
-                )}
-                conversation={
-                  <Conversation
-                    stream={stream}
-                    live={live}
-                    busyTurn={busyTurn}
-                    lens={moduleHere}
-                    onLens={() => undefined}
-                    from={moduleHere}
-                  />
-                }
-              />
-            ) : (
-              <p className="p-6 text-ink-3">That table is not there.</p>
-            )}
+        <BarMiddle value={middle}>
+          <div className="flex min-h-0 flex-1">
+            <div className="min-w-0 flex-1">
+              {place.at === 'home' ? (
+                <Home
+                  stream={stream}
+                  modules={modules}
+                  name={name}
+                  onAsked={() => setAsking(true)}
+                />
+              ) : place.at === 'conversation' ? (
+                <Conversation
+                  stream={stream}
+                  live={live}
+                  busyTurn={busyTurn}
+                  lens={lens}
+                  onLens={setLens}
+                />
+              ) : place.at === 'parts' ? (
+                <Parts />
+              ) : place.at === 'file' ? (
+                <FileView place={place.place} onName={setFileName} />
+              ) : place.at === 'activity' ? (
+                <Activity version={version} />
+              ) : place.at === 'item' ? (
+                <ItemPage
+                  key={`${place.kind}/${place.id}`}
+                  kind={place.kind}
+                  id={place.id}
+                  version={version}
+                  onName={setItemName}
+                />
+              ) : place.at === 'tasks' ? (
+                <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
+              ) : place.at === 'people' ? (
+                <People
+                  kind={place.kind}
+                  id={place.id}
+                  version={version}
+                  net={network(modules)}
+                  onName={setPersonName}
+                />
+              ) : place.at === 'settings' || place.at === 'intelligence' ? (
+                <Settings page={place.at} tab={place.section} open={place.open} version={version} />
+              ) : place.at === 'module' || table ? (
+                <ModuleScreen
+                  moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                  tab={
+                    place.at === 'table'
+                      ? { kind: 'table', id: place.id }
+                      : place.tab
+                        ? { kind: place.tab }
+                        : place.page
+                          ? { kind: 'page', name: place.page }
+                          : null
+                  }
+                  version={version}
+                  table={table}
+                  renderTable={(t) => (
+                    <TableView
+                      key={t.id}
+                      data={t}
+                      row={place.at === 'table' ? place.row : null}
+                      only={place.at === 'table' ? place.only : null}
+                      field={place.at === 'table' ? place.field : null}
+                      quiet={asking}
+                    />
+                  )}
+                  conversation={
+                    <Conversation
+                      stream={stream}
+                      live={live}
+                      busyTurn={busyTurn}
+                      lens={moduleHere}
+                      onLens={() => undefined}
+                      from={moduleHere}
+                    />
+                  }
+                />
+              ) : (
+                <p className="p-6 text-ink-3">That table is not there.</p>
+              )}
+            </div>
           </div>
-        </div>
+        </BarMiddle>
       </main>
       {askable && (
         <Assistant
@@ -475,3 +522,7 @@ export function App() {
     </div>
   )
 }
+
+// a key pressed in a field belongs to the field
+const typing = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))

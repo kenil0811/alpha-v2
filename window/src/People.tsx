@@ -3,16 +3,20 @@
 // first), never a score; companies the same way. A page each: how to reach them, where they work
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
-import type { PeopleView, PersonLineView, PersonView } from '@alpha/core/api'
-import { CalendarDays, ChevronRight, Mail, Pencil, Search } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import type { ModuleSummary, PeopleView, PersonView } from '@alpha/core/api'
+import { CalendarDays, ChevronRight, LayoutDashboard, Mail, Pencil, Table2 } from 'lucide-react'
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { Avatar } from './ui/avatar.tsx'
+import { PillSwitch, peopleTabs } from './Module.tsx'
+import { Record } from './Record.tsx'
+import { InBar } from './Shell.tsx'
+import { TableView } from './TableView.tsx'
+import { peopleTable } from './table/kept.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
+import { Avatar } from './ui/avatar.tsx'
 import { Section } from './ui/section.tsx'
-import { Segmented } from './ui/segmented.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, {
@@ -43,128 +47,92 @@ export function People({
   kind,
   id,
   version,
+  net,
   onName,
 }: {
   kind: 'person' | 'company'
   id: string | null
   version: number
+  net: ModuleSummary | null
   onName: (name: string) => void
 }) {
   return id ? (
     <PersonPage id={id} version={version} onName={onName} />
   ) : (
-    <PeopleList kind={kind} version={version} />
+    <PeopleList kind={kind} version={version} net={net} />
   )
 }
 
-function PeopleList({ kind, version }: { kind: 'person' | 'company'; version: number }) {
+// People and Organizations are Network's first two tabs, beside its pages and tables, in the bar.
+function PeopleList({
+  kind,
+  version,
+  net,
+}: {
+  kind: 'person' | 'company'
+  version: number
+  net: ModuleSummary | null
+}) {
   const [view, setView] = useState<PeopleView | null>(null)
-  const [words, setWords] = useState('')
   const load = useCallback(() => {
-    api
-      .get<PeopleView>(`/api/people?kind=${kind}&words=${encodeURIComponent(words.trim())}`)
-      .then(setView, () => setView(null))
-  }, [kind, words])
+    api.get<PeopleView>(`/api/people?kind=${kind}&words=`).then(setView, () => setView(null))
+  }, [kind])
   useEffect(() => {
-    if (version >= 0) {
-      const t = setTimeout(load, words ? 150 : 0)
-      return () => clearTimeout(t)
-    }
-  }, [load, version, words])
-
-  const lines = view?.lines ?? []
+    if (version >= 0) load()
+  }, [load, version])
+  const data = useMemo(() => view && peopleTable(view.lines, kind), [view, kind])
   const none = view && view.people + view.companies === 0
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-4 px-8 pt-7 pb-10">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl text-ink">People</h1>
-          <Segmented
-            label="Show"
-            value={kind}
-            onChange={(k) => {
-              window.location.hash = k === 'company' ? '#/people?companies' : '#/people'
-            }}
-            options={[
-              { value: 'person', label: view ? `People · ${view.people}` : 'People' },
-              {
-                value: 'company',
-                label: view ? `Organizations · ${view.companies}` : 'Organizations',
+    <div className="flex h-full min-h-0 flex-col">
+      <InBar>
+        <PillSwitch
+          label={net?.name ?? 'People'}
+          tabs={[
+            ...peopleTabs(kind),
+            ...(net?.pages ?? []).map((p) => ({
+              key: `p:${p.name}`,
+              href: `#/module/${net?.id}/page/${p.name}`,
+              label: p.title,
+              icon: <LayoutDashboard className="size-3.5" />,
+              sel: false,
+            })),
+            ...(net?.tables ?? []).map((t) => ({
+              key: `t:${t.id}`,
+              href: `#/table/${t.id}`,
+              label: t.name,
+              icon: <Table2 className="size-3.5" />,
+              sel: false,
+            })),
+          ]}
+        />
+      </InBar>
+      {none && (
+        <p className="border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
+          No one yet. People come from your contacts, the people you write to and your small
+          meetings, once Contacts, Calendar or Gmail is connected in{' '}
+          <a className="text-accent hover:underline" href="#/intelligence/connections">
+            Intelligence
+          </a>
+          .
+        </p>
+      )}
+      <div className="min-h-0 flex-1">
+        {data ? (
+          <TableView
+            key={kind}
+            data={data}
+            kept={{
+              why: 'People are changed on their own page. Open one to change it.',
+              open: (id) => {
+                window.location.hash = `#/people/${id}`
               },
-            ]}
+            }}
           />
-          <span className="flex-1" />
-          <div className="relative flex items-center">
-            <Search className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
-            <Field
-              aria-label={kind === 'company' ? 'Find an organization' : 'Find someone'}
-              placeholder={kind === 'company' ? 'Find an organization' : 'Find someone'}
-              className="w-64 pl-8"
-              value={words}
-              onChange={(e) => setWords(e.target.value)}
-            />
-          </div>
-        </div>
-        {view && !none && (
-          <p className="text-ink-3 text-sm">
-            From {view.sources.join(', ') || 'your rows'}; numbers are the last {view.days} days.
-          </p>
-        )}
-        {none && (
-          <p className="text-ink-2 text-md">
-            No one yet. People come from your contacts, the people you write to and your small
-            meetings, once Contacts, Calendar or Gmail is connected in{' '}
-            <a className="text-accent hover:underline" href="#/settings">
-              Settings
-            </a>
-            .
-          </p>
-        )}
-        {view && !none && lines.length === 0 && (
-          <p className="text-ink-2 text-md">No one matches “{words.trim()}”.</p>
-        )}
-        {lines.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
-            {lines.map((p) => (
-              <PersonRow key={p.id} p={p} days={view?.days ?? 90} />
-            ))}
-          </div>
+        ) : (
+          <p className="p-7 text-ink-3">Loading…</p>
         )}
       </div>
     </div>
-  )
-}
-
-function PersonRow({ p, days }: { p: PersonLineView; days: number }) {
-  const company = p.kind === 'company'
-  const sub = company
-    ? [p.domains.join(', '), p.people ? plural(p.people, 'person', 'people') : ''].filter(Boolean)
-    : [p.companies.join(', '), p.emails[0] ?? p.phones[0] ?? ''].filter(Boolean)
-  return (
-    <a
-      href={`#/people/${p.id}`}
-      className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
-    >
-      <Avatar name={p.name} organization={company} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium text-base text-ink">{p.name}</span>
-        {sub.length > 0 && (
-          <span className="block truncate text-ink-3 text-sm">{sub.join(' · ')}</span>
-        )}
-      </span>
-      {!company && (
-        <span className="flex shrink-0 flex-col items-end text-ink-3 text-sm tabular-nums">
-          <span className={p.count ? 'text-ink-2' : undefined}>
-            {p.count ? `${p.count} in ${days} days` : `None in ${days} days`}
-          </span>
-          <span>
-            {p.last ? `Last ${date(p.last)}` : 'No messages or meetings'}
-            {p.count > 0 && firstWords(p.first) ? ` · ${firstWords(p.first)}` : ''}
-          </span>
-        </span>
-      )}
-      <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-    </a>
   )
 }
 
@@ -232,8 +200,8 @@ function PersonPage({
   const past = p.history.filter((h) => h.at <= new Date().toISOString())
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-7 pb-10">
+    <Record kind={company ? 'Organization' : 'Person'}>
+      <div className="flex flex-col gap-7">
         <div className="flex items-center gap-4">
           <Avatar name={p.name} organization={company} big />
           <div className="min-w-0 flex-1">
@@ -497,7 +465,7 @@ function PersonPage({
           </Section>
         )}
       </div>
-    </div>
+    </Record>
   )
 }
 

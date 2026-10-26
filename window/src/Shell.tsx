@@ -1,16 +1,17 @@
 // The shell, in the shape Bridge and Alpha Brain share (Vikas, 25 Oct; reverses design §14's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
 // the right, their headers on one line. The rail has the workspace at its top, Home with a badge
-// for what waits on the person, Tasks, People, the modules by name with the modules inside them,
-// New module last in the list, and Settings at its foot; no headings and no status lines. It
+// for what waits on the person, Tasks, the modules by name (People and Organizations are
+// tabs inside Network; a rail item of their own only when there is no Network) with the modules inside them,
+// New module last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
 // folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
 // buttons.
 import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
-  Briefcase,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
-  Ellipsis,
+  EllipsisVertical,
   House,
   ListChecks,
   MessageSquare,
@@ -19,15 +20,27 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Users,
   X,
 } from 'lucide-react'
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { createPortal } from 'react-dom'
 import { api } from './api.ts'
 import type { FilePlace } from './FileView.tsx'
 import { inMacApp } from './macApp.ts'
+import { ModuleIcon } from './moduleIcon.tsx'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
+import { Edge } from './ui/edge.tsx'
 import { Kbd } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover } from './ui/popover.tsx'
 
@@ -44,7 +57,8 @@ export type Place =
       tab: 'overview' | 'conversation' | 'agents' | null
       page: string | null
     }
-  | { at: 'settings'; open: string | null }
+  | { at: 'settings'; section: string | null; open: null }
+  | { at: 'intelligence'; section: string | null; open: string | null }
   | { at: 'file'; place: FilePlace }
   | { at: 'people'; kind: 'person' | 'company'; id: string | null }
   | {
@@ -109,6 +123,21 @@ export function Rail({
   onLayout: (change: Partial<Layout>) => void
   onNew: () => void // New module: the assistant makes one from what the person says
 }) {
+  // the rail's width, dragged by its edge, kept in this browser
+  const [width, setWidth] = useState(() => {
+    try {
+      return Number(localStorage.getItem('alpha.rail')) || 216
+    } catch {
+      return 216
+    }
+  })
+  const [dragged, setDragged] = useState<number | null>(null)
+  const keepWidth = (w: number) => {
+    setWidth(w)
+    try {
+      localStorage.setItem('alpha.rail', String(w))
+    } catch {}
+  }
   if (layout.railFolded)
     return (
       <Strip
@@ -129,7 +158,19 @@ export function Rail({
         : [...layout.folded, id],
     })
   return (
-    <nav className="flex w-54 shrink-0 flex-col overflow-hidden border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink">
+    <nav
+      style={{ width: dragged ?? width }}
+      className="relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
+    >
+      <Edge
+        side="right"
+        width={dragged ?? width}
+        min={RAIL[0]}
+        max={RAIL[1]}
+        onDrag={setDragged}
+        onDone={keepWidth}
+        onFold={() => onLayout({ railFolded: true })}
+      />
       {/* the rail's head sits on the window's header line; in Alpha's own window it moves the
           window and leaves room for its buttons */}
       <div
@@ -170,12 +211,14 @@ export function Rail({
         current={place.at === 'tasks'}
         extra={tasksDue > 0 && <Badge n={tasksDue} />}
       />
-      <Nav
-        href="#/people"
-        icon={<Users className="size-4" />}
-        label="People"
-        current={place.at === 'people'}
-      />
+      {!network(modules) && (
+        <Nav
+          href="#/people"
+          icon={<Users className="size-4" />}
+          label="People"
+          current={place.at === 'people'}
+        />
+      )}
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
         {modules.length === 0 && online && (
           <div className="px-2 py-1 text-rail-ink-3 text-sm">
@@ -202,6 +245,14 @@ export function Rail({
         </button>
       </div>
       <div className="flex flex-col gap-0.5 pt-2">
+        <Nav
+          href="#/intelligence"
+          icon={<Sparkles className="size-4" />}
+          label="Intelligence"
+          current={
+            place.at === 'intelligence' || (place.at === 'item' && place.kind === 'permission')
+          }
+        />
         <Nav
           href="#/settings"
           icon={<SlidersHorizontal className="size-4" />}
@@ -234,7 +285,7 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
 
 function Badge({ n }: { n: number }) {
   return (
-    <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
+    <span className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
     </span>
   )
@@ -262,7 +313,7 @@ function ModuleItem({
       <div className="group/item relative flex items-center">
         <Nav
           href={`#/module/${m.id}`}
-          icon={<Briefcase className="size-4" />}
+          icon={<ModuleIcon name={m.name} className="size-4" />}
           label={m.name}
           current={here === m.id}
           extra={<span className="w-11 shrink-0" />}
@@ -336,10 +387,10 @@ function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }
           open && 'opacity-100',
         )}
       >
-        <Ellipsis className="size-3.5" />
+        <EllipsisVertical className="size-3.5" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
-        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs uppercase tracking-label">
+        <div className="px-2.5 pt-1 pb-1.5 font-semibold text-ink-3 text-xs">
           Move {m.name} into
         </div>
         {flat(modules)
@@ -361,14 +412,6 @@ function MoveMenu({ m, modules }: { m: ModuleSummary; modules: ModuleSummary[] }
       </Popover>
     </>
   )
-}
-
-// A module's two letters in the folded rail: the first of its first two words, else its first two.
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/)
-  return words.length > 1
-    ? `${words[0]?.[0] ?? ''}${words[1]?.[0] ?? ''}`.toUpperCase()
-    : `${name.slice(0, 1).toUpperCase()}${name.slice(1, 2)}`
 }
 
 // The rail folded to a strip of icons: the same places, each named when hovered.
@@ -453,7 +496,8 @@ function Strip({
         place.at === 'tasks',
         <ListChecks className="size-4" />,
       )}
-      {icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
+      {!network(modules) &&
+        icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
       <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
         {tops(modules).map((m) =>
@@ -461,9 +505,7 @@ function Strip({
             `#/module/${m.id}`,
             m.name,
             top === m.id,
-            <span className="grid h-6 min-w-6 place-items-center rounded-sm bg-rail-hover px-0.5 font-semibold text-rail-ink-2 text-xs">
-              {initials(m.name)}
-            </span>,
+            <ModuleIcon name={m.name} className="size-4" />,
           ),
         )}
         <button
@@ -476,6 +518,12 @@ function Strip({
           <Plus className="size-4" />
         </button>
       </div>
+      {icon(
+        '#/intelligence',
+        'Intelligence',
+        place.at === 'intelligence',
+        <Sparkles className="size-4" />,
+      )}
       {icon(
         '#/settings',
         'Settings',
@@ -492,63 +540,87 @@ export interface Crumb {
   parts: { label: string; href?: string | undefined }[]
 }
 
+// the rail's narrowest and widest
+const RAIL = [180, 360] as const
+
+// Network, the module shipped on install that People and Organizations live in, found by its name.
+export const network = (modules: ModuleSummary[]) =>
+  modules.find((m) => m.name === 'Network' && !m.parent) ?? null
+
+// What a screen puts in the middle of the bar: its pill switch, or its title. A screen that puts
+// nothing there gets its name in serif.
+const Middle = createContext<HTMLElement | null>(null)
+export const BarMiddle = Middle.Provider
+export function InBar({ children }: { children: ReactNode }) {
+  const at = useContext(Middle)
+  return at ? createPortal(children, at) : null
+}
+
+// The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
+// another, the screen's switch or name centred, Find on the right.
 export function Bar({
   crumb,
   onFind,
   lens,
   onClearLens,
+  middle,
 }: {
   crumb: Crumb
   onFind: () => void
   lens: { id: string; name: string } | null
   onClearLens: () => void
+  middle: (at: HTMLElement | null) => void
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
+  const back = crumb.parts.at(-2)
   return (
     <div
       data-tauri-drag-region
-      className="flex h-12 shrink-0 items-center gap-2.5 border-hair border-b bg-canvas pr-3.5 pl-6"
+      className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
-      <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-ink-3 text-md">
-        {crumb.icon && <span className="shrink-0">{crumb.icon}</span>}
-        {crumb.parts.slice(0, -1).map((p) => (
-          <span key={`${p.label}${p.href ?? ''}`} className="flex items-center gap-1.5">
-            {p.href ? (
-              <a href={p.href} className="rounded-sm hover:text-ink hover:underline">
-                {p.label}
-              </a>
-            ) : (
-              <span>{p.label}</span>
-            )}
-            <ChevronRight className="size-3.25" />
-          </span>
-        ))}
-        <b className="truncate font-semibold text-ink">{last}</b>
-      </div>
-      {lens && (
-        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
-          Only {lens.name}
-          <button
-            type="button"
-            aria-label={`Show all, not only ${lens.name}`}
-            title="Show all"
-            onClick={onClearLens}
-            className="grid size-5 place-items-center rounded-full hover:bg-accent-line/40"
+      <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
+        {back?.href && (
+          <a
+            href={back.href}
+            className="flex min-w-0 items-center gap-1 text-ink-3 text-md hover:text-ink"
           >
-            <X className="size-3.25" />
-          </button>
-        </span>
-      )}
-      <span className="flex-1" data-tauri-drag-region />
-      <button
-        type="button"
-        onClick={onFind}
-        className="flex h-7.5 w-52.5 items-center gap-2 rounded-md border border-line bg-surface pr-2 pl-2.5 text-ink-3 text-md transition-colors hover:border-accent-line"
-      >
-        <Search className="size-3.25 shrink-0" />
-        <span className="flex-1 text-left">Find anything</span>
-        <Kbd>⌘K</Kbd>
-      </button>
+            <ChevronLeft className="size-3.5 shrink-0" />
+            <span className="truncate">{back.label}</span>
+          </a>
+        )}
+        {lens && (
+          <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
+            Only {lens.name}
+            <button
+              type="button"
+              aria-label={`Show all, not only ${lens.name}`}
+              title="Show all"
+              onClick={onClearLens}
+              className="grid size-5 place-items-center rounded-full hover:bg-accent-line/40"
+            >
+              <X className="size-3.25" />
+            </button>
+          </span>
+        )}
+      </div>
+      <div className="flex min-w-0 justify-center">
+        <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
+        <h1 className="hidden truncate font-serif text-ink text-xl peer-empty:block">{last}</h1>
+      </div>
+      <div className="flex justify-end" data-tauri-drag-region>
+        <button
+          type="button"
+          onClick={onFind}
+          aria-label="Find anything"
+          className="flex h-7.5 items-center gap-2 rounded-md border border-line bg-surface pr-2 pl-2.5 text-ink-3 text-md transition-colors hover:border-accent-line @min-[760px]:w-52.5"
+        >
+          <Search className="size-3.25 shrink-0" />
+          <span className="hidden flex-1 text-left @min-[760px]:inline">Find anything</span>
+          <span className="hidden @min-[760px]:inline">
+            <Kbd>⌘K</Kbd>
+          </span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -565,9 +637,10 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       { label: 'Conversation', hint: '', href: '#/conversation' },
       { label: 'Tasks', hint: '', href: '#/tasks' },
       { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
-      { label: 'People', hint: '', href: '#/people' },
-      { label: 'Organizations', hint: 'People', href: '#/people?companies' },
+      { label: 'People', hint: 'Network', href: '#/people' },
+      { label: 'Organizations', hint: 'Network', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
+      { label: 'Intelligence', hint: '', href: '#/intelligence' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
         label: m.name,

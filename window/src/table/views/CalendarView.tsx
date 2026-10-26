@@ -78,7 +78,7 @@ export function CalendarView({
           {rows.length - dated.length > 0 && ` · ${rows.length - dated.length} with no date`}
         </span>
       </div>
-      <div className="grid grid-cols-7 border-line border-b text-ink-3 text-xs uppercase tracking-label">
+      <div className="grid grid-cols-7 border-line border-b text-ink-3 text-xs">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
           <div key={d} className="px-2 py-1.5 font-semibold">
             {d}

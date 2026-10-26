@@ -2,7 +2,7 @@
 // agents, each on or paused, folded under the module until opened. A module is installed from a
 // folder or a file. The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
-import { Bot, ChevronDown, ChevronRight, Package } from 'lucide-react'
+import { ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -10,9 +10,7 @@ import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { Pill } from './ui/pill.tsx'
-import { Section } from './ui/section.tsx'
-import { Switch } from './ui/switch.tsx'
+import { Empty, Section } from './ui/section.tsx'
 
 export function when(at: string | null): string {
   if (!at) return 'not yet'
@@ -36,14 +34,14 @@ export function ModulesAndAgents({ version }: { version: number }) {
 
   return (
     <Section
-      title="Modules and agents"
-      about="What each module does on its own: its tables, readers and agents."
+      title="Modules"
+      about="Where each module comes from: update it, or pack it to install elsewhere. Its agents are listed above."
     >
       {problem && <div className="text-bad text-md">{problem}</div>}
       {modules?.length === 0 && (
-        <p className="text-ink-2 text-md">
-          Nothing runs on its own yet. Agents made in a conversation show here too.
-        </p>
+        <Empty>
+          Nothing configured yet. Modules you install or make in a conversation show here.
+        </Empty>
       )}
       {modules?.map((m) => (
         <ModuleWork key={m.id} module={m} onChange={load} />
@@ -102,7 +100,7 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
           </Tile>
         }
         title={
-          m.agents.length ? (
+          m.kit ? (
             <button
               type="button"
               aria-expanded={open}
@@ -144,7 +142,6 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
           </>
         }
       />
-      {open && m.agents.map((a) => <AgentLine key={a.id} agent={a} onChange={onChange} />)}
       {open && m.kit && <Yours module={m} onChange={onChange} />}
     </List>
   )
@@ -189,49 +186,6 @@ export function AllAgents({
         {allOn ? 'Pause all' : 'Turn on all'}
       </Button>
     </>
-  )
-}
-
-function AgentLine({ agent: a, onChange }: { agent: AgentView; onChange: () => void }) {
-  const { busy, problem, act } = useAct(onChange)
-  return (
-    <Row
-      indent
-      lead={<Bot className="size-4 text-ink-3" />}
-      title={
-        <a href={`#/agent/${a.id}`} className="hover:underline">
-          {a.name}
-        </a>
-      }
-      sub={
-        <>
-          {a.description && <div className="text-ink-2">{a.description}</div>}
-          {`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
-        </>
-      }
-      actions={
-        <>
-          <Refusal words={problem} />
-          {a.needs && <Pill tone="warn">{a.needs}</Pill>}
-          {a.running && <Pill tone="accent">Running</Pill>}
-          <Button
-            size="sm"
-            disabled={busy || a.running}
-            onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
-          >
-            Run now
-          </Button>
-          <Switch
-            checked={a.state === 'on'}
-            label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-            disabled={busy}
-            onChange={(on) =>
-              act(() => api.post(`/api/agents/${a.id}`, { state: on ? 'on' : 'paused' }))
-            }
-          />
-        </>
-      }
-    />
   )
 }
 

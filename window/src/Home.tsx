@@ -16,6 +16,7 @@ import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucid
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
+import { ModuleIcon } from './moduleIcon.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
@@ -109,13 +110,16 @@ export function Home({
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-2xl text-ink">{greeting(name)}</h1>
-            <p className="mt-1 text-ink-3 text-sm">
+            <p className="text-ink-3 text-sm">
               {new Date().toLocaleDateString(undefined, {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',
               })}
+            </p>
+            <h1 className="mt-1 font-serif text-2xl text-ink">{greeting(name)}</h1>
+            <p className="mt-1 text-ink-2 text-md">
+              What needs you, what changed, and your modules.
             </p>
           </div>
           <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
@@ -136,6 +140,8 @@ export function Home({
             <SetupList view={setup} onChange={reloadSetup} />
           </Group>
         )}
+
+        {!firstOpen && modules.length > 0 && <ModuleCards modules={modules} />}
 
         {firstOpen ? (
           <Welcome
@@ -233,6 +239,13 @@ export function Home({
                   </a>
                 }
               >
+                {tasks && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <TaskTile label="Overdue" n={tasks.counts.overdue ?? 0} list="overdue" bad />
+                    <TaskTile label="Due today" n={tasks.counts.today ?? 0} list="today" />
+                    <TaskTile label="This week" n={tasks.counts.week ?? 0} list="week" />
+                  </div>
+                )}
                 {failed.tasks && <NotLoaded onTry={load} />}
                 {tasks && !failed.tasks && tasks.lines.length === 0 && (
                   <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
@@ -423,7 +436,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
       done: view?.kit,
       words: 'Install a module',
       sub: 'A module made for your work, like a deal tracker or a client report',
-      href: '#/settings',
+      href: '#/intelligence/agents',
     },
   ]
   return (
@@ -469,5 +482,69 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
         ))}
       </div>
     </div>
+  )
+}
+
+// A tile of Today: a count of tasks, opening their list. Overdue turns red only when it has some.
+function TaskTile({
+  label,
+  n,
+  list,
+  bad,
+}: {
+  label: string
+  n: number
+  list: string
+  bad?: boolean
+}) {
+  return (
+    <a
+      href={`#/tasks?list=${list}`}
+      className={cn(
+        'flex flex-col gap-0.5 rounded-lg border px-3.5 py-2.5 hover:bg-hover',
+        bad && n > 0 ? 'border-bad/40 bg-bad-soft' : 'border-line bg-surface',
+      )}
+    >
+      <span className={cn('text-sm', bad && n > 0 ? 'text-bad' : 'text-ink-3')}>{label}</span>
+      <span
+        className={cn('font-serif text-2xl tabular-nums', bad && n > 0 ? 'text-bad' : 'text-ink')}
+      >
+        {n}
+      </span>
+    </a>
+  )
+}
+
+// The modules at the top level, a card each: its initials, its name, a line on what it holds, Open.
+function ModuleCards({ modules }: { modules: ModuleSummary[] }) {
+  const tops = modules.filter((m) => !m.parent)
+  return (
+    <Group title="Your modules">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+        {tops.map((m) => {
+          const inside = modules.filter((c) => c.parent === m.id).length
+          const line = [
+            m.tables.length ? `${m.tables.length} table${m.tables.length === 1 ? '' : 's'}` : '',
+            inside ? `${inside} module${inside === 1 ? '' : 's'} inside` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+          return (
+            <a
+              key={m.id}
+              href={`#/module/${m.id}`}
+              className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 hover:border-accent-line"
+            >
+              <span className="grid size-8 place-items-center rounded-md bg-accent-soft text-accent">
+                <ModuleIcon name={m.name} className="size-4" />
+              </span>
+              <span className="font-medium text-base text-ink">{m.name}</span>
+              <span className="text-ink-3 text-sm">{line || 'Empty for now'}</span>
+              <span className="mt-auto text-accent text-sm">Open →</span>
+            </a>
+          )
+        })}
+      </div>
+    </Group>
   )
 }

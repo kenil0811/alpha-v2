@@ -4,18 +4,8 @@
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
 import type { TaskLineView, TasksView, TaskView } from '@alpha/core/api'
+import { Check, CircleDot, Clock, ListChecks, Repeat2, Trash2, X } from 'lucide-react'
 import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  CircleDot,
-  Clock,
-  Repeat2,
-  Trash2,
-  X,
-} from 'lucide-react'
-import {
-  type DragEvent,
   type FormEvent,
   type ReactNode,
   useCallback,
@@ -27,6 +17,11 @@ import {
 import { RunRow } from './Activity.tsx'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
+import { PillSwitch } from './Module.tsx'
+import { Record } from './Record.tsx'
+import { InBar } from './Shell.tsx'
+import { TableView } from './TableView.tsx'
+import { tasksTable } from './table/kept.ts'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -39,7 +34,6 @@ import { Segmented } from './ui/segmented.tsx'
 import { answerWords } from './vocabulary.ts'
 
 type List = 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
-type Look = 'list' | 'tree' | 'board' | 'calendar'
 
 const LISTS: { value: List; label: string }[] = [
   { value: 'today', label: 'Today' },
@@ -82,79 +76,52 @@ export function Tasks({
   )
 }
 
+// The saved lists are the switch in the bar; the tasks are drawn by the shared table view, with its
+// table, board, calendar and grouping, each opening on its own page.
 function TaskLists({ list, version }: { list: List; version: number }) {
   const [view, setView] = useState<TasksView | null>(null)
-  const [look, setLook] = useState<Look>(() => {
-    try {
-      return (localStorage.getItem('alpha-tasks-look') as Look | null) ?? 'list'
-    } catch {
-      return 'list'
-    }
-  })
   const load = useCallback(() => {
     api.get<TasksView>(`/api/tasks?list=${list}`).then(setView, () => setView(null))
   }, [list])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const pick = (l: Look) => {
-    setLook(l)
-    try {
-      localStorage.setItem('alpha-tasks-look', l)
-    } catch {
-      // kept for this visit only
-    }
-  }
-  const lines = view?.lines ?? []
+  const data = useMemo(() => view && tasksTable(view.lines), [view])
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-4 px-8 pt-7 pb-10">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl text-ink">Tasks</h1>
-          <span className="flex-1" />
-          <Segmented
-            label="View"
-            value={look}
-            onChange={pick}
-            options={[
-              { value: 'list', label: 'List' },
-              { value: 'tree', label: 'By place' },
-              { value: 'board', label: 'Board' },
-              { value: 'calendar', label: 'Calendar' },
-            ]}
-          />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {LISTS.map((l) => (
-            <a
-              key={l.value}
-              href={`#/tasks?list=${l.value}`}
-              className={cn(
-                'rounded-md border px-2.5 py-1 text-sm transition-colors',
-                l.value === list
-                  ? 'border-accent-line bg-accent-soft font-medium text-accent'
-                  : 'border-line bg-surface text-ink-2 hover:text-ink',
-              )}
-            >
-              {l.label}
-              {view && l.value !== 'done' && view.counts[l.value] ? (
-                <span className="ml-1.5 tabular-nums">{view.counts[l.value]}</span>
-              ) : null}
-            </a>
-          ))}
-        </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <InBar>
+        <PillSwitch
+          label="Tasks"
+          tabs={LISTS.map((l) => ({
+            key: l.value,
+            href: `#/tasks?list=${l.value}`,
+            label:
+              view && l.value !== 'done' && view.counts[l.value]
+                ? `${l.label} ${view.counts[l.value]}`
+                : l.label,
+            icon: <ListChecks className="size-3.5" />,
+            sel: l.value === list,
+          }))}
+        />
+      </InBar>
+      <div className="px-7 pt-3">
         <NewTask onAdded={load} />
-        {view && lines.length === 0 && (
-          <p className="text-ink-3 text-md">
-            {list === 'today'
-              ? 'Nothing due today. Say a task to Alpha, or add one above.'
-              : 'Nothing here.'}
-          </p>
+      </div>
+      <div className="min-h-0 flex-1">
+        {data ? (
+          <TableView
+            key={list}
+            data={data}
+            kept={{
+              why: 'Tasks are changed on their own page. Open one to change it.',
+              open: (id) => {
+                window.location.hash = `#/tasks/${id}`
+              },
+            }}
+          />
+        ) : (
+          <p className="p-7 text-ink-3">Loading…</p>
         )}
-        {lines.length > 0 && look === 'list' && <TaskList lines={lines} onChange={load} />}
-        {lines.length > 0 && look === 'tree' && <TaskTree lines={lines} onChange={load} />}
-        {look === 'board' && <TaskBoard lines={lines} onChange={load} />}
-        {look === 'calendar' && <TaskCalendar lines={lines} />}
       </div>
     </div>
   )
@@ -338,209 +305,6 @@ export function TaskList({ lines, onChange }: { lines: TaskLineView[]; onChange:
   )
 }
 
-// By place: the module, then what is inside it, with the tasks there beneath.
-function TaskTree({ lines, onChange }: { lines: TaskLineView[]; onChange: () => void }) {
-  const groups = useMemo(() => {
-    const out = new Map<string, { path: string[]; href: string | null; tasks: TaskLineView[] }>()
-    for (const t of lines) {
-      const key = t.place.path.join(' › ') || 'Nowhere yet'
-      const g = out.get(key) ?? { path: t.place.path, href: t.place.href, tasks: [] }
-      g.tasks.push(t)
-      out.set(key, g)
-    }
-    return [...out.entries()].sort(([a], [b]) => a.localeCompare(b))
-  }, [lines])
-  const [shut, setShut] = useState<string[]>([])
-  return (
-    <div className="flex flex-col gap-3">
-      {groups.map(([key, g]) => {
-        const folded = shut.includes(key)
-        return (
-          <div key={key} className="overflow-hidden rounded-lg border border-line bg-surface">
-            <div className="flex items-center gap-2 border-line border-b bg-sunk px-4 py-2">
-              <button
-                type="button"
-                aria-label={folded ? `Open ${key}` : `Fold ${key}`}
-                onClick={() => setShut(folded ? shut.filter((k) => k !== key) : [...shut, key])}
-                className="text-ink-3 hover:text-ink"
-              >
-                <ChevronRight
-                  className={cn('size-3.5 transition-transform', !folded && 'rotate-90')}
-                />
-              </button>
-              {g.href ? (
-                <a
-                  href={g.href}
-                  className="min-w-0 flex-1 truncate font-medium text-ink text-md hover:underline"
-                >
-                  {key}
-                </a>
-              ) : (
-                <span className="min-w-0 flex-1 truncate font-medium text-ink-2 text-md">
-                  {key}
-                </span>
-              )}
-              <span className="text-ink-3 text-sm tabular-nums">{g.tasks.length}</span>
-            </div>
-            {!folded &&
-              g.tasks.map((t) => <TaskLine key={t.id} t={t} onChange={onChange} place={false} />)}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function TaskBoard({ lines, onChange }: { lines: TaskLineView[]; onChange: () => void }) {
-  const [over, setOver] = useState<string | null>(null)
-  const drop = (state: TaskLineView['state']) => (e: DragEvent) => {
-    e.preventDefault()
-    setOver(null)
-    const id = e.dataTransfer.getData('text/task')
-    if (id) setState(id, state).then(onChange, onChange)
-  }
-  return (
-    <div className="grid grid-cols-4 gap-3">
-      {STATES.slice(0, 4).map((s) => (
-        // biome-ignore lint/a11y/noStaticElementInteractions: a column a task is dragged to; its state is also set on its page
-        <div
-          key={s.value}
-          onDragOver={(e) => {
-            e.preventDefault()
-            setOver(s.value)
-          }}
-          onDragLeave={() => setOver(null)}
-          onDrop={drop(s.value)}
-          className={cn(
-            'flex min-h-40 flex-col gap-2 rounded-lg border bg-sunk p-2',
-            over === s.value ? 'border-accent-line' : 'border-line',
-          )}
-        >
-          <div className="px-1 font-medium text-ink-2 text-sm">
-            {s.label}{' '}
-            <span className="text-ink-3 tabular-nums">
-              {lines.filter((t) => t.state === s.value).length}
-            </span>
-          </div>
-          {lines
-            .filter((t) => t.state === s.value)
-            .map((t) => (
-              <a
-                key={t.id}
-                href={`#/tasks/${t.id}`}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData('text/task', t.id)}
-                className="flex flex-col gap-1 rounded-md border border-line bg-surface px-3 py-2 hover:border-accent-line"
-              >
-                <span className="text-base text-ink">
-                  {t.priority === 'high' && <span className="mr-1.5 text-warn">●</span>}
-                  {t.title}
-                </span>
-                <Meta t={t} />
-                <Due t={t} />
-              </a>
-            ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function TaskCalendar({ lines }: { lines: TaskLineView[] }) {
-  const [month, setMonth] = useState(() => {
-    const d = new Date()
-    return new Date(d.getFullYear(), d.getMonth(), 1)
-  })
-  const first = new Date(month)
-  const start = new Date(first)
-  start.setDate(1 - ((first.getDay() + 6) % 7)) // weeks start on Monday
-  const days = Array.from({ length: 42 }, (_, i) => {
-    const d = new Date(start)
-    d.setDate(start.getDate() + i)
-    return d
-  })
-  const key = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const byDay = new Map<string, TaskLineView[]>()
-  for (const t of lines)
-    if (t.due) byDay.set(t.due.slice(0, 10), [...(byDay.get(t.due.slice(0, 10)) ?? []), t])
-  const today = key(new Date())
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label="The month before"
-          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-        >
-          <ChevronLeft className="size-3.5" />
-        </Button>
-        <span className="font-medium text-ink text-md">
-          {month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-        </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label="The month after"
-          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-        >
-          <ChevronRight className="size-3.5" />
-        </Button>
-        {lines.some((t) => !t.due) && (
-          <span className="text-ink-3 text-sm">
-            {lines.filter((t) => !t.due).length} with no due day are not shown
-          </span>
-        )}
-      </div>
-      <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-line bg-line">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-          <div key={d} className="bg-sunk px-2 py-1 text-ink-3 text-xs">
-            {d}
-          </div>
-        ))}
-        {days.map((d) => {
-          const k = key(d)
-          const here = byDay.get(k) ?? []
-          return (
-            <div
-              key={k}
-              className={cn(
-                'mt-px mr-px flex min-h-24 flex-col gap-1 bg-surface p-1.5',
-                d.getMonth() !== month.getMonth() && 'bg-canvas',
-              )}
-            >
-              <span
-                className={cn(
-                  'text-xs tabular-nums',
-                  k === today ? 'font-semibold text-accent' : 'text-ink-3',
-                )}
-              >
-                {d.getDate()}
-              </span>
-              {here.slice(0, 4).map((t) => (
-                <a
-                  key={t.id}
-                  href={`#/tasks/${t.id}`}
-                  className={cn(
-                    'truncate rounded-sm px-1 text-xs',
-                    open(t) ? 'bg-accent-soft text-accent' : 'text-ink-3 line-through',
-                  )}
-                >
-                  {t.title}
-                </a>
-              ))}
-              {here.length > 4 && (
-                <span className="text-ink-3 text-xs">{here.length - 4} more</span>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 // ---- a task's page --------------------------------------------------------------------------
 
 function TaskPage({
@@ -601,8 +365,8 @@ function TaskPage({
   const dueDay = t.due?.slice(0, 10) ?? ''
   const remind = t.remindAt ? toLocalInput(t.remindAt) : ''
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-10">
+    <Record kind={t.parent ? 'Subtask' : 'Task'}>
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           {t.parent && (
             <a href={`#/tasks/${t.parent}`} className="text-ink-3 text-sm hover:underline">
@@ -616,7 +380,7 @@ function TaskPage({
             onBlur={() =>
               title.trim() && title.trim() !== t.title && change({ title: title.trim() })
             }
-            className="w-full bg-transparent font-serif text-2xl text-ink outline-none"
+            className="h-12 w-full bg-transparent font-serif text-2xl text-ink outline-none"
           />
           <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
             <span>
@@ -824,7 +588,7 @@ function TaskPage({
           </Confirm>
         </div>
       </div>
-    </div>
+    </Record>
   )
 }
 

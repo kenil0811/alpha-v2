@@ -42,7 +42,9 @@ export function Popover({
       if (!panel.current?.contains(t) && !anchor.current?.contains(t)) onClose()
     }
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      e.preventDefault() // used here: the screen's own Escape leaves it
+      onClose()
     }
     const scrolled = (e: Event) => {
       if (!panel.current?.contains(e.target as Node)) onClose()

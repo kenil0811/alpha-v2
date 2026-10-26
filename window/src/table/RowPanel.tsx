@@ -126,9 +126,7 @@ export function RowPanel({
         </dl>
         {places.size > 0 && (
           <div className="flex flex-col gap-2 p-4.5">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              Read from
-            </div>
+            <div className="font-semibold text-ink-3 text-xs">Read from</div>
             <div className="flex flex-wrap gap-1.5">
               {[...places.values()].map((p) => (
                 <Button
@@ -154,7 +152,7 @@ export function RowPanel({
           </div>
         )}
         <div className="flex flex-col gap-2 p-4.5">
-          <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+          <div className="font-semibold text-ink-3 text-xs">
             Tasks
             {tasks?.lines.length
               ? ` · ${tasks.lines.filter((t) => t.state !== 'done' && t.state !== 'dropped').length} open`
@@ -171,9 +169,7 @@ export function RowPanel({
         </div>
         <div className="flex flex-col gap-2 p-4.5">
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              Documents
-            </div>
+            <div className="font-semibold text-ink-3 text-xs">Documents</div>
             <Button size="sm" variant="ghost" onClick={() => picker.current?.click()}>
               <Paperclip className="size-3.25" />
               Add a file

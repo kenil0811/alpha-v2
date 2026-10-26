@@ -8,23 +8,31 @@ import type {
   InstructionView,
   ModelView,
   PermissionView,
+  TableView as TableData,
+  WorkingModuleView,
 } from '@alpha/core/api'
 import {
   BookmarkCheck,
+  Bot,
   CalendarDays,
   Folder,
   Mail,
   Network,
   Plug,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   UserRound,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
+import { PillSwitch } from './Module.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup } from './SetupPanel.tsx'
+import { InBar } from './Shell.tsx'
+import { TableView } from './TableView.tsx'
+import { agentsTable, permissionsTable } from './table/kept.ts'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -33,7 +41,7 @@ import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
-import { Section } from './ui/section.tsx'
+import { Empty, Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Switch } from './ui/switch.tsx'
 
@@ -54,20 +62,44 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
   plug: <Plug className="size-4" />,
 }
 
-// The page's sections, in its index.
-const SECTIONS = [
-  ['connections', 'Connections'],
-  ['folders', 'Folders'],
-  ['modules', 'Modules and agents'],
-  ['brain', 'Second Brain'],
-  ['permissions', 'Permissions'],
-  ['model', 'Model'],
-  ['data', 'Data'],
-  ['appearance', 'Appearance'],
-  ['experimental', 'Experimental'],
-].filter(([id]) => id !== 'experimental' || EXPERIMENTS.length > 0) as [string, string][]
+// Two pages share this file (proposal item 14, 15). Intelligence: what Alpha knows and does, as
+// tabs. Settings: how Alpha runs, a list of sections on the left and one section at a time.
+const PAGES = {
+  intelligence: {
+    icon: <Sparkles className="size-4" />,
+    title: 'Intelligence',
+    about: 'What Alpha knows, its agents, the accounts it reads and what it may do.',
+    tabs: [
+      ['brain', 'Second Brain', <BookmarkCheck key="i" className="size-3.5" />],
+      ['agents', 'Modules and agents', <Bot key="i" className="size-3.5" />],
+      ['connections', 'Connections', <Plug key="i" className="size-3.5" />],
+      ['permissions', 'Permissions', <ShieldCheck key="i" className="size-3.5" />],
+    ],
+  },
+  settings: {
+    icon: <SlidersHorizontal className="size-4" />,
+    title: 'Settings',
+    about: 'How Alpha runs on this Mac: its model, your data and how it looks.',
+    tabs: [
+      ['model', 'Model', null],
+      ['data', 'Data', null],
+      ['appearance', 'Appearance', null],
+      ['experimental', 'Experimental', null],
+    ],
+  },
+} as const
 
-export function Settings({ open, version }: { open: string | null; version: number }) {
+export function Settings({
+  page,
+  tab,
+  open,
+  version,
+}: {
+  page: keyof typeof PAGES
+  tab: string | null
+  open: string | null
+  version: number
+}) {
   const [view, setView] = useState<ConnectorsView | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
@@ -77,6 +109,11 @@ export function Settings({ open, version }: { open: string | null; version: numb
     if (version >= 0) load()
   }, [load, version])
 
+  const p = PAGES[page]
+  // Experimental shows once a feature is being tried: an empty section is a switch with nothing
+  // behind it (Kenil, 26 Oct)
+  const tabs = p.tabs.filter(([id]) => id !== 'experimental' || EXPERIMENTS.length > 0)
+  const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
   // a connector that names a place on this Mac (a folder) is a list under Folders; every other
   // is a tile under Connections
@@ -85,103 +122,130 @@ export function Settings({ open, version }: { open: string | null; version: numb
   const folders = view.connections.filter((k) => places.some((c) => c.name === k.connector))
   // a connection whose connector is not loaded (its pack not added yet): shown, waiting
   const orphans = view.connections.filter((k) => !k.loaded)
-  const go = (id: string) =>
-    document
-      .getElementById(`settings-${id}`)
-      ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  const body: Record<string, ReactNode> = {
+    brain: <SecondBrain version={version} />,
+    agents: <Agents version={version} />,
+    connections: (
+      <>
+        <Section
+          title="Connections"
+          about="Your accounts, read by Alpha; what you type stays in the Keychain."
+        >
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+            {accounts.map((c) => (
+              <ConnectorTile
+                key={c.name}
+                connector={c}
+                connections={view.connections.filter((k) => k.connector === c.name)}
+                startOpen={open === c.name}
+                added={view.added.includes(c.name)}
+                onChange={load}
+              />
+            ))}
+          </div>
+          {orphans.length > 0 && (
+            <List>
+              {orphans.map((k) => (
+                <ConnectionLine key={k.id} connection={k} onChange={load} />
+              ))}
+            </List>
+          )}
+          {view.failed.map((f) => (
+            <div key={f.folder} className="text-bad text-md">
+              The connector in {f.folder} did not load: {f.why}
+            </div>
+          ))}
+          <AddConnector view={view} onChange={load} />
+        </Section>
+        <Section
+          title="Folders"
+          about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
+        >
+          {folders.length > 0 && (
+            <List>
+              {folders.map((k) => (
+                <ConnectionLine key={k.id} connection={k} onChange={load} />
+              ))}
+            </List>
+          )}
+          {places.map((c) => (
+            <FolderForm key={c.name} connector={c} onChange={load} startOpen={open === c.name} />
+          ))}
+        </Section>
+      </>
+    ),
+    permissions: <Permissions version={version} />,
+    model: <ModelSection />,
+    data: <DataSection />,
+    appearance: <Appearance view={view} onChange={load} />,
+    experimental: <Experimental />,
+  }
+  // the bar holds Intelligence's tabs, or Settings' icon tile, title and line
+  const head = (
+    <InBar>
+      {page === 'intelligence' ? (
+        <PillSwitch
+          label="Intelligence"
+          tabs={PAGES.intelligence.tabs.map(([id, label, icon]) => ({
+            key: id,
+            href: `#/intelligence/${id}`,
+            label,
+            icon,
+            sel: id === at,
+          }))}
+        />
+      ) : (
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
+            {p.icon}
+          </span>
+          <h1 className="font-serif text-ink text-xl">{p.title}</h1>
+          <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
+        </div>
+      )}
+    </InBar>
+  )
+  const go = (id: string) => {
+    window.location.hash = `#/${page}/${id}`
+  }
+  if (page === 'intelligence')
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
+          {head}
+          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
+        </div>
+      </div>
+    )
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto grid max-w-page grid-cols-[170px_1fr] gap-7 px-8 pt-7 pb-12">
-        <nav className="sticky top-0 flex flex-col gap-px self-start pt-15.5">
-          {SECTIONS.map(([id, name]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => go(id)}
-              className="h-7 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink"
-            >
-              {name}
-            </button>
-          ))}
-        </nav>
-        <div className="flex min-w-0 flex-col gap-8">
-          <h1 className="text-2xl text-ink">Settings</h1>
-          <div id="settings-connections" className="scroll-mt-4">
-            <Section
-              title="Connections"
-              about="Your accounts, read by Alpha; what you type stays in the Keychain."
-            >
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
-                {accounts.map((c) => (
-                  <ConnectorTile
-                    key={c.name}
-                    connector={c}
-                    connections={view.connections.filter((k) => k.connector === c.name)}
-                    startOpen={open === c.name}
-                    added={view.added.includes(c.name)}
-                    onChange={load}
-                  />
-                ))}
-              </div>
-              {orphans.length > 0 && (
-                <List>
-                  {orphans.map((k) => (
-                    <ConnectionLine key={k.id} connection={k} onChange={load} />
-                  ))}
-                </List>
-              )}
-              {view.failed.map((f) => (
-                <div key={f.folder} className="text-bad text-md">
-                  The connector in {f.folder} did not load: {f.why}
-                </div>
-              ))}
-              <AddConnector view={view} onChange={load} />
-            </Section>
-          </div>
-          <div id="settings-folders" className="scroll-mt-4">
-            <Section
-              title="Folders"
-              about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
-            >
-              {folders.length > 0 && (
-                <List>
-                  {folders.map((k) => (
-                    <ConnectionLine key={k.id} connection={k} onChange={load} />
-                  ))}
-                </List>
-              )}
-              {places.map((c) => (
-                <FolderForm
-                  key={c.name}
-                  connector={c}
-                  onChange={load}
-                  startOpen={open === c.name}
+      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
+        {head}
+        <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
+          <nav className="flex flex-col gap-px self-start max-md:flex-row max-md:flex-wrap">
+            {tabs.map(([id, name]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={id === at ? 'page' : undefined}
+                onClick={() => go(id)}
+                className={cn(
+                  'flex h-7 items-center gap-2 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink',
+                  id === at &&
+                    'bg-accent-soft font-medium text-accent hover:bg-accent-soft hover:text-accent',
+                )}
+              >
+                <span
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    id === at ? 'bg-accent' : 'bg-transparent',
+                  )}
                 />
-              ))}
-            </Section>
-          </div>
-          <div id="settings-modules" className="scroll-mt-4">
-            <ModulesAndAgents version={version} />
-          </div>
-          <div id="settings-brain" className="scroll-mt-4">
-            <SecondBrain version={version} />
-          </div>
-          <div id="settings-permissions" className="scroll-mt-4">
-            <Permissions version={version} />
-          </div>
-          <div id="settings-model" className="scroll-mt-4">
-            <ModelSection />
-          </div>
-          <div id="settings-data" className="scroll-mt-4">
-            <DataSection />
-          </div>
-          <div id="settings-appearance" className="scroll-mt-4">
-            <Appearance view={view} onChange={load} />
-          </div>
-          {/* only once a feature is being tried: an empty section is a switch with nothing behind it */}
-          <div id="settings-experimental" className="scroll-mt-4" hidden={EXPERIMENTS.length === 0}>
-            <Experimental />
-          </div>
+                {name}
+              </button>
+            ))}
+          </nav>
+          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
       </div>
     </div>
@@ -211,7 +275,7 @@ function SecondBrain({ version }: { version: number }) {
       about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
     >
       {lines?.length === 0 && (
-        <p className="text-ink-2 text-md">Nothing yet. Say “from now on…” to add one.</p>
+        <Empty>Nothing configured yet. Say “from now on…” to Alpha to add one.</Empty>
       )}
       {lines && lines.length > 0 && (
         <List>
@@ -525,70 +589,21 @@ function DataSection() {
 // used, with Revoke; a revoked one stays listed, greyed, as history. Shown under Permissions.
 function Standing({ version }: { version: number }) {
   const [list, setList] = useState<PermissionView[] | null>(null)
-  const [asking, setAsking] = useState<string | null>(null)
   const load = useCallback(() => {
     api.get<PermissionView[]>('/api/permissions').then(setList, () => setList([]))
   }, [])
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const revoke = (id: string) =>
-    api.post(`/api/permissions/${id}/revoke`).then(() => {
-      setAsking(null)
-      load()
-    }, load)
-  const asked = list?.find((p) => p.id === asking)
+  if (!list) return null
   return (
-    <>
-      {list?.length === 0 && (
-        <p className="text-ink-2 text-md">
-          None yet. After three yeses in a row for the same thing, its card offers Always.
-        </p>
-      )}
-      {list && list.length > 0 && (
-        <List>
-          {list.map((p) => (
-            <Row
-              key={p.id}
-              lead={
-                <Tile>
-                  <ShieldCheck className="size-4" />
-                </Tile>
-              }
-              title={
-                <span
-                  className={cn(
-                    'whitespace-normal font-normal',
-                    p.revokedAt && 'text-ink-3 line-through',
-                  )}
-                >
-                  <a href={`#/permission/${p.id}`} className="hover:underline">
-                    {p.sentence}
-                  </a>
-                </span>
-              }
-              sub={`${p.grantedBy}, ${when(p.grantedAt)} · used ${p.uses === 1 ? 'once' : `${p.uses} times`}${p.revokedAt ? ` · revoked ${when(p.revokedAt)}` : ''}`}
-              actions={
-                p.revokedAt ? null : (
-                  <Button size="sm" variant="danger" onClick={() => setAsking(p.id)}>
-                    Revoke
-                  </Button>
-                )
-              }
-            />
-          ))}
-        </List>
-      )}
-      <Confirm
-        open={!!asked}
-        title="Revoke this?"
-        yes="Revoke it"
-        onClose={() => setAsking(null)}
-        onYes={() => asked && revoke(asked.id)}
-      >
-        Alpha asks you again each time: “{asked?.sentence}”
-      </Confirm>
-    </>
+    <Embedded
+      data={permissionsTable(list)}
+      why="A permission is revoked on its own page. Open one to revoke it."
+      open={(id) => {
+        window.location.hash = `#/permission/${id}`
+      }}
+    />
   )
 }
 
@@ -783,7 +798,7 @@ function ConnectionLine({
           </button>
         </span>
       ))}
-      {k.health && <span className="text-warn">{k.health}</span>}
+      {k.health && <Pill tone="warn">{k.health}</Pill>}
     </span>
   )
   const buttons = (
@@ -1235,5 +1250,48 @@ function ExperimentLine({ name, title, about }: { name: string; title: string; a
       sub={about}
       actions={<Switch checked={on} label={title} onChange={(v) => setExperiment(name, v)} />}
     />
+  )
+}
+
+// A shared table inside a page that scrolls: a fixed height, framed like a card.
+function Embedded({
+  data,
+  why,
+  open,
+}: {
+  data: TableData
+  why: string
+  open: (id: string) => void
+}) {
+  return (
+    <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
+      <TableView data={data} kept={{ why, open }} />
+    </div>
+  )
+}
+
+// Intelligence's Agents: every agent in one shared table, each opening its page; then the modules
+// they come from, to install, update and pack.
+function Agents({ version }: { version: number }) {
+  const [modules, setModules] = useState<WorkingModuleView[] | null>(null)
+  useEffect(() => {
+    if (version >= 0)
+      api.get<WorkingModuleView[]>('/api/working').then(setModules, () => setModules([]))
+  }, [version])
+  return (
+    <>
+      <Section title="Agents" about="Every agent, what it does and when it last ran.">
+        {modules && (
+          <Embedded
+            data={agentsTable(modules)}
+            why="An agent is turned on or paused on its own page. Open one to change it."
+            open={(id) => {
+              window.location.hash = `#/agent/${id}`
+            }}
+          />
+        )}
+      </Section>
+      <ModulesAndAgents version={version} />
+    </>
   )
 }
