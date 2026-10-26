@@ -15,6 +15,7 @@ import {
   BookmarkCheck,
   Bot,
   CalendarDays,
+  Check,
   Folder,
   Mail,
   Network,
@@ -29,7 +30,7 @@ import { api, Problem, wordsOf } from './api.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { PillSwitch } from './Module.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
-import { SetupList, useSetup } from './SetupPanel.tsx'
+import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { agentsTable, permissionsTable } from './table/kept.ts'
@@ -610,102 +611,285 @@ const MODEL_NAMES: Record<string, string> = {
   'claude-haiku-5-5': 'Claude Haiku 5.5',
 }
 
+// What Settings › Model asks of the core beyond ModelView, typed here until the core has them
+// (Kenil items, 26 Oct): the kept key's last four characters, and GET /api/usage?range=…
+type Model = ModelView & { keyEnds?: string | null }
+type Range = 'today' | '7d' | '30d' | 'all'
+interface Share {
+  id: string
+  name: string
+  spent: number // US dollars
+}
+export interface UsageView {
+  range: Range
+  spent: number // US dollars over the range, at the API's prices, whichever route it went by
+  charged: number // of it, what went on the API key; the rest the subscription covered
+  today: number
+  yesterday: number
+  limit: { used: number; resetsAt: string } | null // the subscription's window: 0–1 used, and when it resets
+  by: { module: Share[]; conversation: Share[]; agent: Share[] } // most first
+}
+
+const dollars = (n: number | undefined) =>
+  n === undefined
+    ? '—'
+    : n.toLocaleString(undefined, {
+        style: 'currency',
+        currency: 'USD',
+        currencyDisplay: 'narrowSymbol',
+      })
+
 // The route (design §5): the person's own Claude subscription, signed in with Claude's own sign-in
-// on this Mac, or the firm's API key, kept in the Keychain. The choice is this install's.
+// on this Mac, or the firm's API key, kept in the Keychain. The choice is this install's. Each way
+// says its state and acts on its own row; what Alpha has spent shows under them.
 function ModelSection() {
-  const [model, setModel] = useState<ModelView | null>(null)
-  const [key, setKey] = useState('')
-  const [asking, setAsking] = useState<'key' | 'api' | null>(null)
-  const [problem, setProblem] = useState<string | null>(null)
+  const [model, setModel] = useState<Model | null>(null)
+  const [setup, loadSetup] = useSetup()
+  const [waiting, signIn] = useSignIn(loadSetup)
+  const [usage, setUsage] = useState<UsageView | null>(null)
+  const { busy, on, problem, act } = useAct()
   useEffect(() => {
-    api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
+    api.get<Model>('/api/model').then(setModel, () => setModel(null))
   }, [])
-  const choose = (route: 'subscription' | 'key' | 'api', given?: string) =>
-    api.post<ModelView>('/api/model', { route, ...(given ? { key: given } : {}) }).then(
-      (m) => {
-        setModel(m)
-        setKey('')
-        setAsking(null)
-        setProblem(null)
-      },
-      (err: unknown) => setProblem(err instanceof Problem ? err.message : 'That did not go in.'),
+  const choose = (route: ModelView['route'], key?: string) =>
+    act(
+      async () => setModel(await api.post<Model>('/api/model', { route, ...(key ? { key } : {}) })),
+      route,
     )
+  const kept = model?.keyEnds
+    ? `Key kept •••• ${model.keyEnds}`
+    : model?.hasKey
+      ? 'Key kept in the Keychain'
+      : 'No key yet'
   return (
-    <Section
-      title="Model"
-      about={`What Alpha thinks with (${model ? (MODEL_NAMES[model.desk] ?? model.desk) : '…'}), and how it reaches it. Each way says what it can do; the key stays in the Keychain.`}
+    <>
+      <Section
+        title="Model"
+        about={`Alpha thinks with ${model ? (MODEL_NAMES[model.desk] ?? model.desk) : '…'}.`}
+      >
+        {model && (
+          <List>
+            {model.providers.map((p) => {
+              const subscription = p.route === 'subscription'
+              const state = subscription
+                ? setup &&
+                  (setup.claude.signedIn
+                    ? `Signed in${setup.claude.email ? ` as ${setup.claude.email}` : ''}`
+                    : 'Not signed in')
+                : kept
+              const resets = subscription && usage?.limit
+              return (
+                <Row
+                  key={p.route}
+                  className={cn(
+                    p.chosen && 'bg-accent-soft/40 shadow-[inset_3px_0_0_var(--color-accent)]',
+                  )}
+                  lead={
+                    <Tile>
+                      {p.chosen ? (
+                        <Check className="size-4 text-accent" />
+                      ) : (
+                        <Sparkles className="size-4" />
+                      )}
+                    </Tile>
+                  }
+                  title={
+                    <span className="flex items-center gap-2">
+                      {p.title}
+                      {p.chosen && <Pill tone="accent">In use</Pill>}
+                    </span>
+                  }
+                  sub={
+                    <>
+                      <div className="text-ink-2">
+                        {[
+                          state,
+                          resets && `${Math.round(resets.used * 100)}% of the plan used`,
+                          resets && `Resets ${when(resets.resetsAt)}`,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
+                      <div>{p.can}</div>
+                      {p.cannot && <div className="text-warn">{p.cannot}</div>}
+                      {on === p.route && <Refusal words={problem} />}
+                    </>
+                  }
+                  actions={
+                    <>
+                      {subscription && setup && !setup.claude.signedIn && (
+                        <Button size="sm" variant="primary" disabled={waiting} onClick={signIn}>
+                          {waiting ? 'Waiting for the browser…' : 'Sign in'}
+                        </Button>
+                      )}
+                      {!p.chosen && (subscription || model.hasKey) && (
+                        <Button size="sm" disabled={busy} onClick={() => choose(p.route)}>
+                          Use this
+                        </Button>
+                      )}
+                    </>
+                  }
+                >
+                  {p.needsKey && (
+                    <KeyForm
+                      busy={busy}
+                      title={p.chosen ? undefined : 'Saves the key and uses this way'}
+                      onSave={(key) => choose(p.route, key)}
+                    />
+                  )}
+                </Row>
+              )
+            })}
+          </List>
+        )}
+      </Section>
+      <Usage onUsage={setUsage} subscription={model?.route === 'subscription'} />
+    </>
+  )
+}
+
+// A key route's own key: typed on its row, saved to the Keychain on Save.
+function KeyForm({
+  busy,
+  title,
+  onSave,
+}: {
+  busy: boolean
+  title: string | undefined
+  onSave: (key: string) => Promise<boolean>
+}) {
+  const [key, setKey] = useState('')
+  return (
+    <form
+      className="flex items-center gap-2 px-4 pb-3 pl-15"
+      onSubmit={(e) => {
+        e.preventDefault()
+        void onSave(key.trim()).then((ok) => ok && setKey(''))
+      }}
     >
-      {model && (
-        <List>
-          {model.providers.map((p) => (
-            <Row
-              key={p.route}
-              lead={
-                <Tile>
-                  <Sparkles className="size-4" />
-                </Tile>
-              }
-              title={p.title}
-              sub={
-                <>
-                  <div>{p.can}</div>
-                  {p.cannot && <div className="text-warn">{p.cannot}</div>}
-                </>
-              }
-              actions={
-                p.chosen ? (
-                  <Pill tone="good">In use</Pill>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      if (p.route === 'subscription' || model.hasKey) void choose(p.route)
-                      else setAsking(p.route)
-                    }}
-                  >
-                    Use this
-                  </Button>
-                )
-              }
-            />
-          ))}
-        </List>
-      )}
-      {asking && (
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void choose(asking, key)
-          }}
-        >
-          <Field
-            className="flex-1"
-            type="password"
-            autoComplete="off"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder={model?.hasKey ? 'The key kept in the Keychain, or a new one' : 'sk-ant-…'}
-          />
-          <Button type="submit" variant="primary" disabled={!key.trim() && !model?.hasKey}>
-            Use it
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setAsking(null)}>
-            Cancel
-          </Button>
-        </form>
-      )}
-      {model?.hasKey && model.route !== 'subscription' && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setAsking(model.route === 'api' ? 'api' : 'key')}
-        >
-          Change the key
-        </Button>
-      )}
-      {problem && <p className="text-bad text-sm">{problem}</p>}
+      <Field
+        className="w-72"
+        type="password"
+        autoComplete="off"
+        aria-label="API key"
+        placeholder="sk-ant-…"
+        value={key}
+        onChange={(e) => setKey(e.target.value)}
+      />
+      <Button size="sm" type="submit" disabled={busy || !key.trim()} title={title}>
+        Save
+      </Button>
+    </form>
+  )
+}
+
+const RANGES: { value: Range; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: 'all', label: 'All' },
+]
+
+// What Alpha has spent on the model: dashes until the core keeps costs (Kenil item #16).
+function Usage({
+  subscription,
+  onUsage,
+}: {
+  subscription: boolean
+  onUsage: (u: UsageView | null) => void
+}) {
+  const [range, setRange] = useState<Range>('7d')
+  const [usage, setUsage] = useState<UsageView | null>(null)
+  useEffect(() => {
+    api.get<UsageView>(`/api/usage?range=${range}`).then(
+      (u) => {
+        setUsage(u)
+        onUsage(u)
+      },
+      () => {
+        setUsage(null)
+        onUsage(null)
+      },
+    )
+  }, [range, onUsage])
+  return <UsageBody usage={usage} range={range} onRange={setRange} subscription={subscription} />
+}
+
+export function UsageBody({
+  usage,
+  range,
+  onRange,
+  subscription,
+}: {
+  usage: UsageView | null
+  range: Range
+  onRange: (r: Range) => void
+  subscription: boolean
+}) {
+  const change =
+    usage && usage.yesterday > 0 ? (usage.today - usage.yesterday) / usage.yesterday : null
+  const tiles: [string, string, string][] = [
+    ['Spent', dollars(usage?.spent), 'At the API’s prices'],
+    [
+      'Billed',
+      dollars(usage?.charged),
+      subscription ? 'Covered by your plan' : 'Charged to your API key',
+    ],
+    [
+      'Today',
+      dollars(usage?.today),
+      `Yesterday ${dollars(usage?.yesterday)}${change === null ? '' : ` · ${change >= 0 ? '+' : ''}${Math.round(change * 100)}%`}`,
+    ],
+  ]
+  return (
+    <Section title="Usage">
+      <div>
+        <Segmented label="Usage over" value={range} onChange={onRange} options={RANGES} />
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-3">
+        {tiles.map(([label, value, sub]) => (
+          <div key={label} className="rounded-lg border border-line px-4 py-3">
+            <div className="text-ink-3 text-sm">{label}</div>
+            <div className="font-medium text-ink text-lg tabular-nums">{value}</div>
+            <div className="text-ink-3 text-sm">{sub}</div>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-4">
+        {(
+          [
+            ['module', 'By module'],
+            ['conversation', 'By conversation'],
+            ['agent', 'By agent'],
+          ] as const
+        ).map(([by, label]) => {
+          const shares = usage?.by[by] ?? []
+          const most = shares[0]?.spent || 1
+          return (
+            <div key={by} className="flex min-w-0 flex-col gap-1.5">
+              <div className="font-medium text-ink-2 text-sm">{label}</div>
+              {shares.length ? (
+                shares.slice(0, 5).map((s) => (
+                  <div key={s.id} className="flex flex-col gap-0.5">
+                    <div className="flex items-baseline justify-between gap-2 text-sm">
+                      <span className="truncate text-ink">{s.name}</span>
+                      <span className="text-ink-2 tabular-nums">{dollars(s.spent)}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-sunk">
+                      <div
+                        className="h-1 rounded-full bg-accent"
+                        style={{ width: `${(s.spent / most) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-ink-3 text-sm">—</div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </Section>
   )
 }

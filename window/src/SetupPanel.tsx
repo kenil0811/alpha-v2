@@ -145,8 +145,9 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
 }
 
 // Claude's own sign-in, started from here: the browser opens, and the line turns green once the
-// person has signed in there (asked again every few seconds for a while).
-function SignIn({ onChange }: { onChange: () => void }) {
+// person has signed in there (asked again every few seconds for a while). Settings › Model uses it
+// too.
+export function useSignIn(onChange: () => void): [boolean, () => void] {
   const [waiting, setWaiting] = useState(false)
   useEffect(() => {
     if (!waiting) return
@@ -157,15 +158,17 @@ function SignIn({ onChange }: { onChange: () => void }) {
     }, 3000)
     return () => clearInterval(t)
   }, [waiting, onChange])
+  const start = () => {
+    setWaiting(true)
+    api.post('/api/setup/signin').catch(() => setWaiting(false))
+  }
+  return [waiting, start]
+}
+
+function SignIn({ onChange }: { onChange: () => void }) {
+  const [waiting, start] = useSignIn(onChange)
   return (
-    <button
-      type="button"
-      disabled={waiting}
-      onClick={() => {
-        setWaiting(true)
-        api.post('/api/setup/signin').catch(() => setWaiting(false))
-      }}
-    >
+    <button type="button" disabled={waiting} onClick={start}>
       {waiting ? 'Waiting for the browser…' : 'Sign in'}
     </button>
   )
