@@ -406,9 +406,7 @@ export function TableView({
               : `${rows.length} of ${data.rows.length}`}
           </span>
         </div>
-        {data.rows.length === 0 && config.kind !== 'table' ? (
-          <p className="px-7 text-ink-3">No rows yet.</p>
-        ) : config.kind === 'board' && boardBy ? (
+        {config.kind === 'board' && boardBy ? (
           <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
             <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
           </div>
@@ -426,8 +424,6 @@ export function TableView({
               )
             }
           />
-        ) : rows.length === 0 && config.kind !== 'table' ? (
-          <p className="px-7 text-ink-3">No rows meet this view’s filters.</p>
         ) : config.kind === 'list' ? (
           <ListView
             rows={rows}

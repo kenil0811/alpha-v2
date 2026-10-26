@@ -30,8 +30,6 @@ export function TimelineView({
         .sort((a, b) => a.at - b.at),
     [rows, by],
   )
-  if (!dated.length)
-    return <p className="px-7 text-ink-3">No row has a {by.name.toLowerCase()} yet.</p>
   const lo = new Date(dated[0]?.at ?? Date.now())
   const start = new Date(lo.getFullYear(), lo.getMonth(), 1).getTime()
   const hi = new Date(dated.at(-1)?.at ?? Date.now())
