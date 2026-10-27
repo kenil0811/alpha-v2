@@ -175,7 +175,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
           <div className="text-ink text-md">{filing.always}?</div>
           <div className="text-ink-3 text-sm">
             This one is filed now, and the next ones without a card, each shown on Home. Revoke it
-            any time in Settings › Standing permissions.
+            any time in Settings › Permissions.
           </div>
           <div className="flex gap-2">
             <Button

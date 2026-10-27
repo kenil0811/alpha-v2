@@ -11,8 +11,8 @@ import { type Actor, append, type Line, type LineInput, lastId, lines, read } fr
 import { Refused } from './kinds.ts'
 import { ModelSql } from './modelsql.ts'
 import { People } from './people/index.ts'
-import { Permissions } from './permissions.ts'
 import { Records } from './records/index.ts'
+import { Rules } from './rules.ts'
 import { migrate } from './schema.ts'
 import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape/index.ts'
 import { Tasks } from './tasks/index.ts'
@@ -80,7 +80,7 @@ export class World {
   readonly views: Views
   readonly files: Files
   readonly connections: Connections
-  readonly permissions: Permissions
+  readonly rules: Rules
   readonly people: People
   readonly tasks: Tasks
   readonly db: Db
@@ -100,7 +100,7 @@ export class World {
     this.files = new Files(db, paths.files)
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
     this.connections = new Connections(db)
-    this.permissions = new Permissions(db)
+    this.rules = new Rules(db, this.shape)
     this.people = new People(db, this.shape, this.cards)
     this.records.watch = this.people
     this.people.records = this.records

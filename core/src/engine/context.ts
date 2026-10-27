@@ -52,6 +52,11 @@ export function startLayer(
     if (everyone) parts.push(`For everyone:\n${everyone}`)
     if (mine) parts.push(`For this person:\n${mine}`)
   }
+  const rules = world.rules.inForce()
+  if (rules.length)
+    parts.push(
+      `## The person's rules\nCode holds these: a call one denies is refused before it runs, and one it allows needs no card. Plan around them; a rule changes only on the person's word (the rule tool asks, their Save makes it).\n${rules.map((r) => `- ${r}`).join('\n')}`,
+    )
   const map = world.map()
   parts.push('## Modules and tables')
   if (!map.length) parts.push('None yet.')
@@ -158,6 +163,8 @@ export function turnLayer(
         'changed',
         'removed',
         'reverted',
+        'rule_saved',
+        'rule_revoked',
         'filed',
         'remembered',
         'card_closed',

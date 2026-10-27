@@ -4,6 +4,7 @@ import { takeIn } from '../files/documents.ts'
 import { FILING, type Filing } from '../files/intake.ts'
 import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
+import { type RuleSpec, SAVE_RULE } from '../world/rules.ts'
 import type { User, World } from '../world/world.ts'
 import { Desk, type DeskEvent, type DeskOptions } from './desk.ts'
 
@@ -136,6 +137,17 @@ export class Engine {
       this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
       return out
     }
+    // a rule on its Save card: the person's Save makes it, as the card showed it
+    if (
+      waiting?.call?.tool === SAVE_RULE &&
+      waiting.state === 'waiting' &&
+      answer === waiting.options[0]
+    )
+      this.world.rules.save(waiting.call.input as RuleSpec, {
+        actor: { kind: 'person', id: user.id },
+        user: user.id,
+        card: cardId,
+      })
     const card = this.world.cards.answer(cardId, answer, { kind: 'person', id: user.id })
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
     // the desk carries on only with a card its own turn opened, or a run it started; an agent's

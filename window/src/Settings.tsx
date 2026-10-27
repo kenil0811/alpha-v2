@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
+import { startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
@@ -404,8 +405,8 @@ function Permissions({ version }: { version: number }) {
         )}
       </Section>
       <Section
-        title="Always allowed"
-        about="What Alpha does without asking because you said Always on a card."
+        title="Rules"
+        about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule holds once you save it on its card."
       >
         <Standing version={version} />
       </Section>
@@ -657,12 +658,13 @@ function DataSection() {
   )
 }
 
-// Standing permissions (design §7): each as its sentence, who gave it and how often it has been
-// used, with Revoke; a revoked one stays listed, greyed, as history. Shown under Permissions.
+// The rules (core step 2): every allow and deny across Alpha, yours and what Alpha noticed, each
+// with where it holds and how often it was used; a revoked one stays listed as history. A rule's
+// page revokes it, or approves or dismisses what Alpha noticed. Shown under Permissions.
 function Standing({ version }: { version: number }) {
   const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
-    api.get<KeptTable>('/api/kept/permissions').then(setData, () => setData(null))
+    api.get<KeptTable>('/api/kept/rules').then(setData, () => setData(null))
   }, [])
   useEffect(() => {
     if (version >= 0) load()
@@ -672,8 +674,9 @@ function Standing({ version }: { version: number }) {
     <Embedded
       data={data}
       open={(id) => {
-        window.location.hash = `#/permission/${id}`
+        window.location.hash = `#/rule/${id}`
       }}
+      onNew={() => startAsk('From now on, ')}
     />
   )
 }
@@ -1465,10 +1468,18 @@ function Help() {
 
 // A shared table inside a page that scrolls: a fixed height, its own frame and nothing around it,
 // its edges in line with the section's title.
-function Embedded({ data, open }: { data: KeptTable; open: (id: string) => void }) {
+function Embedded({
+  data,
+  open,
+  onNew,
+}: {
+  data: KeptTable
+  open: (id: string) => void
+  onNew?: () => void
+}) {
   return (
     <div className="-mx-7 h-[min(520px,70vh)]">
-      <TableView data={data} kept={{ open }} />
+      <TableView data={data} kept={onNew ? { open, onNew } : { open }} />
     </div>
   )
 }

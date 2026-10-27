@@ -4,10 +4,11 @@
 // sends of one agent's one kind of message the card offers Always: a standing permission that
 // then sends that kind without a card, each one a line on Home. Scripts reach no network: the
 // core sends, through the person's connection.
+import { refusedBy } from '../gates/gates.ts'
 import type { Card } from '../world/cards.ts'
 import { all, one, parse } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
-import type { Covered, Permission } from '../world/permissions.ts'
+import type { Covered, Rule } from '../world/rules.ts'
 import type { User, World } from '../world/world.ts'
 
 export const DRAFT = 'agent_draft'
@@ -108,9 +109,10 @@ export class Drafts {
       throw new Refused('A draft needs a subject and a body.')
     if (d.about && !this.world.records.get(d.about.row))
       throw new Refused('The row the draft is about is not there.')
+    this.denied(d, d.message, { kind: 'agent', id: d.agent }, run)
     // under a standing permission, an address the person has sent this kind to before goes at
     // once; a new recipient is a card of its own, saying so (Kenil, 24 Oct, item 7)
-    const p = this.world.permissions.covering(this.covered(d))
+    const p = this.world.rules.covering(this.covered(d))
     const fresh = !this.approved(d, d.message.to)
     if (p && !fresh) {
       await this.sendNow(d, d.message, false, p, run)
@@ -172,9 +174,11 @@ export class Drafts {
         (edited.cc ?? '').trim() !== (d.message.cc ?? '').trim() ||
         edited.subject.trim() !== d.message.subject.trim() ||
         edited.body.trim() !== d.message.body.trim())
-    if (always && (changed || !this.world.permissions.offers(this.covered(d))))
+    if (always && (changed || !this.world.rules.offers(this.covered(d))))
       throw new Refused('Always is offered only for a draft sent as it is, after three like it.')
     const ctx = { actor: { kind: 'person' as const, id: who.id }, user: who.id }
+    // a deny holds even on the person's own Send (Kenil's call 2, 27 Oct)
+    this.denied(d, m, ctx.actor, null)
     if (this.sending.has(cardId)) throw new Refused('That draft is being sent right now.')
     this.sending.add(cardId)
     try {
@@ -183,10 +187,9 @@ export class Drafts {
       this.sending.delete(cardId)
     }
     const card = this.world.cards.answer(cardId, 'Send it', ctx.actor)
-    this.world.permissions.decided(this.covered(d), { yes: true, changed, card: cardId }, ctx)
+    this.world.rules.decided(this.covered(d), { yes: true, changed, card: cardId }, ctx)
     this.outcome(d, m, 'sent', null, changed, ctx.actor)
-    if (always)
-      this.world.permissions.grant(this.covered(d), this.sentence(d), { ...ctx, card: cardId })
+    if (always) this.world.rules.grant(this.covered(d), this.sentence(d), { ...ctx, card: cardId })
     this.back(d.agent, d.module)
     return card
   }
@@ -197,11 +200,7 @@ export class Drafts {
     if (!REASONS.includes(reason)) throw new Refused(`Say why: ${REASONS.join(', ')}.`)
     const ctx = { actor: { kind: 'person' as const, id: who.id }, user: who.id }
     const card = this.world.cards.answer(cardId, 'Not now', ctx.actor)
-    this.world.permissions.decided(
-      this.covered(d),
-      { yes: false, changed: false, card: cardId },
-      ctx,
-    )
+    this.world.rules.decided(this.covered(d), { yes: false, changed: false, card: cardId }, ctx)
     this.outcome(
       d,
       d.message,
@@ -214,11 +213,38 @@ export class Drafts {
     return card
   }
 
+  // A send a deny rule covers is refused, quoting the rule, and the refusal is journaled.
+  private denied(
+    d: Draft,
+    m: Message,
+    actor: { kind: 'agent' | 'person'; id: string },
+    run: string | null,
+  ): void {
+    const deny = this.world.rules.judge({
+      effect: 'outward',
+      tool: d.connector ? `${d.connector}.send` : 'send',
+      to: [m.to, ...(m.cc ? [m.cc] : [])],
+      site: null,
+      table: null,
+      module: d.module,
+      agent: d.agent,
+      own: false,
+    }).deny
+    if (!deny) return
+    this.world.rules.used(
+      deny,
+      `Refused: the ${d.kind}${this.aboutWords(d)} to ${m.to}. Your rule: ${deny.words}`,
+      { actor, user: this.owner.id, run },
+      true,
+    )
+    throw new Refused(refusedBy(deny))
+  }
+
   // Sent under a standing permission: the person's act through it, a line on Home.
-  private async sendNow(d: Draft, m: Message, changed: boolean, p: Permission, run: string | null) {
+  private async sendNow(d: Draft, m: Message, changed: boolean, p: Rule, run: string | null) {
     await this.sender.send(d.connector, m)
     const actor = { kind: 'person' as const, id: this.owner.id }
-    this.world.permissions.used(
+    this.world.rules.used(
       p,
       `Sent the ${d.kind}${this.aboutWords(d)} to ${m.to} under your standing permission.`,
       { actor, user: this.owner.id, run },
@@ -328,7 +354,7 @@ export class Drafts {
           : null,
       reasons: REASONS,
       always:
-        card.state === 'waiting' && this.world.permissions.offers(this.covered(d))
+        card.state === 'waiting' && this.world.rules.offers(this.covered(d))
           ? this.sentence(d)
           : null,
     }

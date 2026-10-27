@@ -1,8 +1,8 @@
-// A page for each agent, run and standing permission (item 50, 25 Oct), so each can be linked to,
-// reviewed and shared: #/agent/<id>, #/run/<id>, #/permission/<id>. Each is built from what the
-// core already serves (/api/working, /api/activity, /api/permissions) and comes again when the
-// world changes, so a running run's steps arrive as they happen.
-import type { AgentView, PermissionView, RunView, WorkingModuleView } from '@alpha/core/api'
+// A page for each agent, run and rule (item 50, 25 Oct; rules core step 2), so each can be linked
+// to, reviewed and shared: #/agent/<id>, #/run/<id>, #/rule/<id>. Each is built from what the
+// core already serves (/api/working, /api/activity, /api/rules) and comes again when the world
+// changes, so a running run's steps arrive as they happen.
+import type { AgentView, RuleView, RunView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api } from './api.ts'
@@ -15,7 +15,7 @@ import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
 
-export type ItemKind = 'agent' | 'run' | 'permission'
+export type ItemKind = 'agent' | 'run' | 'rule'
 
 // The bar holds the way back (the crumb); the page names what the item is, then its title.
 function Page({ kind, title, children }: { kind: string; title: string; children: ReactNode }) {
@@ -71,16 +71,16 @@ export function ItemPage({
 }) {
   const working = useLoaded<WorkingModuleView[]>('/api/working', version)
   const runs = useLoaded<RunView[]>('/api/activity', version)
-  const permissions = useLoaded<PermissionView[]>('/api/permissions', version)
+  const rules = useLoaded<RuleView[]>('/api/rules', version)
   // what the page is about, found before anything is drawn, so its name reaches the bar
   const agent = kind === 'agent' && working ? findAgent(working, (_, a) => a.id === id) : null
   const run = kind === 'run' ? runs?.find((r) => r.id === id) : undefined
-  const permission = kind === 'permission' ? permissions?.find((p) => p.id === id) : undefined
-  const name = agent?.agent.name ?? run?.name ?? (permission ? 'A standing permission' : undefined)
+  const rule = kind === 'rule' ? rules?.find((r) => r.id === id) : undefined
+  const name = agent?.agent.name ?? run?.name ?? (rule ? 'A rule' : undefined)
   useEffect(() => {
     onName(name ?? '')
   }, [name, onName])
-  const loaded = { agent: working, run: runs, permission: permissions }[kind]
+  const loaded = { agent: working, run: runs, rule: rules }[kind]
   if (loaded === undefined) return <Loading />
   if (agent)
     return (
@@ -98,10 +98,8 @@ export function ItemPage({
       : null
     return <RunPage run={run} agent={by?.agent ?? null} />
   }
-  if (permission) return <PermissionPage permission={permission} />
-  return (
-    <Gone what={{ agent: 'This agent', run: 'This run', permission: 'This permission' }[kind]} />
-  )
+  if (rule) return <RulePage rule={rule} />
+  return <Gone what={{ agent: 'This agent', run: 'This run', rule: 'This rule' }[kind]} />
 }
 
 const Loading = () => <p className="p-6 text-ink-3">Loading…</p>
@@ -218,24 +216,76 @@ function RunPage({ run, agent }: { run: RunView; agent: AgentView | null }) {
   )
 }
 
-function PermissionPage({ permission: p }: { permission: PermissionView }) {
+// A rule: its words as code holds them, where it holds, where it came from and how often it was
+// used. Revoke ends a rule of yours, after a yes; what Alpha noticed is approved or dismissed.
+function RulePage({ rule: r }: { rule: RuleView }) {
   const [asking, setAsking] = useState(false)
   const { busy, problem, act } = useAct()
+  const noticed = r.kind === 'inferred'
   return (
-    <Page kind="Permission" title={p.sentence}>
+    <Page
+      kind={noticed ? 'What Alpha noticed' : r.side === 'deny' ? 'Denied' : 'Allowed'}
+      title={r.words}
+    >
       <Facts
         lines={[
-          ['Given by', `${p.grantedBy}, ${dayWords(p.grantedAt)}`],
-          ['Used', p.uses === 1 ? 'once' : `${p.uses} times`],
-          ['Last used', p.lastUsedAt ? dayWords(p.lastUsedAt) : 'not yet'],
-          ...(p.revokedAt ? ([['Revoked', dayWords(p.revokedAt)]] as [string, ReactNode][]) : []),
+          ['Holds', r.where],
+          [
+            noticed ? 'Noticed' : r.always ? 'Given with Always' : 'Made by',
+            `${r.madeBy}, ${dayWords(r.madeAt)}`,
+          ],
+          ...(r.said ? ([['Asked in', `“${r.said}”`]] as [string, ReactNode][]) : []),
+          ...(r.noticedFrom.length
+            ? ([
+                [
+                  'From',
+                  <span key="from" className="flex flex-col">
+                    {r.noticedFrom.map((l) => (
+                      <span key={l.id}>
+                        {dayWords(l.at)}: {l.words}
+                      </span>
+                    ))}
+                  </span>,
+                ],
+              ] as [string, ReactNode][])
+            : []),
+          ['Used', r.uses === 1 ? 'once' : r.uses ? `${r.uses} times` : 'not yet'],
+          ['Last used', r.lastUsedAt ? dayWords(r.lastUsedAt) : 'not yet'],
+          ...(r.revokedAt
+            ? ([[noticed ? 'Dismissed' : 'Revoked', dayWords(r.revokedAt)]] as [
+                string,
+                ReactNode,
+              ][])
+            : []),
         ]}
       />
-      {!p.revokedAt && (
+      {!r.revokedAt && noticed && (
+        <List>
+          <Row
+            title="Make it your rule"
+            sub="Code holds it from then on, as if you had said it."
+            actions={
+              <Button size="sm" onClick={() => act(() => api.post(`/api/rules/${r.id}/approve`))}>
+                Approve
+              </Button>
+            }
+          />
+          <Row
+            title="Dismiss it"
+            sub="Alpha stops following it; it stays listed as history."
+            actions={
+              <Button size="sm" variant="ghost" onClick={() => setAsking(true)}>
+                Dismiss
+              </Button>
+            }
+          />
+        </List>
+      )}
+      {!r.revokedAt && !noticed && (
         <List>
           <Row
             title="Revoke it"
-            sub="Alpha asks you again each time."
+            sub={r.side === 'deny' ? 'Alpha may do this again.' : 'Alpha asks you again each time.'}
             actions={
               <Button size="sm" variant="danger" onClick={() => setAsking(true)}>
                 Revoke
@@ -246,15 +296,13 @@ function PermissionPage({ permission: p }: { permission: PermissionView }) {
       )}
       <Confirm
         open={asking}
-        title="Revoke this?"
-        yes="Revoke it"
+        title={noticed ? 'Dismiss this?' : 'Revoke this rule?'}
+        yes={noticed ? 'Dismiss it' : 'Revoke it'}
         busy={busy}
         onClose={() => setAsking(false)}
-        onYes={() =>
-          act(() => api.post(`/api/permissions/${p.id}/revoke`)).then(() => setAsking(false))
-        }
+        onYes={() => act(() => api.post(`/api/rules/${r.id}/revoke`)).then(() => setAsking(false))}
       >
-        Alpha asks you again each time: “{p.sentence}”
+        “{r.words}” {noticed ? 'Alpha stops following it.' : 'stops holding.'}
       </Confirm>
       <Refusal words={problem} />
     </Page>

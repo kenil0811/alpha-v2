@@ -74,7 +74,7 @@ describe('the gates', () => {
     }
     const first = decide(world, input)
     expect(first.pass).toBe(false)
-    if (first.pass) return
+    if (first.pass || !first.card) throw new Error('should have waited on a card')
     expect(first.reason).toBe(WAITS)
     expect(first.card.state).toBe('waiting')
     world.cards.answer(first.card.id, 'Yes', { kind: 'person', id: 'u_1' })
@@ -96,7 +96,7 @@ describe('the gates', () => {
     }
     const first = decide(world, input)
     expect(first.pass).toBe(false)
-    if (first.pass) return
+    if (first.pass || !first.card) throw new Error('should have waited on a card')
     world.cards.answer(first.card.id, 'Remove them', { kind: 'person', id: 'u_1' })
     // the yes is seven hours old by the time the call comes again
     run(
@@ -107,7 +107,7 @@ describe('the gates', () => {
     )
     const again = decide(world, input)
     expect(again.pass).toBe(false)
-    if (again.pass) return
+    if (again.pass || !again.card) throw new Error('should have waited on a card')
     expect(again.card.id).not.toBe(first.card.id)
     expect(again.card.state).toBe('waiting')
     expect(world.cards.get(first.card.id)?.lapsedAt).not.toBeNull()
@@ -122,10 +122,10 @@ describe('the gates', () => {
   it('keep a no: the call waits on a new card', () => {
     const input = { call, preview: 'Send it?', actor: alpha, effect: 'outward' as const }
     const first = decide(world, input)
-    if (first.pass) throw new Error('should have waited')
+    if (first.pass || !first.card) throw new Error('should have waited')
     world.cards.answer(first.card.id, 'No', { kind: 'person', id: 'u_1' })
     const again = decide(world, input)
     expect(again.pass).toBe(false)
-    if (!again.pass) expect(again.card.id).not.toBe(first.card.id)
+    if (!again.pass) expect(again.card?.id).not.toBe(first.card.id)
   })
 })

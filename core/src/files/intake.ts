@@ -10,7 +10,7 @@ import type { ItemFile } from '@alpha/connector-sdk'
 import type { Card } from '../world/cards.ts'
 import { all, one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
-import type { Covered, Permission } from '../world/permissions.ts'
+import type { Covered, Rule } from '../world/rules.ts'
 import { rowName, type Table } from '../world/shape/index.ts'
 import type { User, World } from '../world/world.ts'
 import { takeIn } from './documents.ts'
@@ -360,7 +360,7 @@ export class Intake {
         // a standing permission for this sender, row and kind files it without a card
         const covered = this.covered(filing, row, kind)
         const p =
-          covered && filing.sure !== 'unsure' ? this.world.permissions.covering(covered) : undefined
+          covered && filing.sure !== 'unsure' ? this.world.rules.covering(covered) : undefined
         if (p && row) {
           this.fileUnder(filing, row, kind, p)
           return null
@@ -390,17 +390,13 @@ export class Intake {
     return `Always file what @${c.place.from} sends as a ${c.place.kind} on ${where}, without asking`
   }
 
-  private fileUnder(f: Filing, row: string, kind: string | null, p: Permission): void {
+  private fileUnder(f: Filing, row: string, kind: string | null, p: Rule): void {
     const ctx = { actor: { kind: 'person' as const, id: this.owner.id }, user: this.owner.id }
     const rec = this.world.records.get(row)
     const where = rec ? rowName(rec.table, rec.record.values) : 'its row'
     this.world.placeFile(f.file, row, kind, ctx)
     takeIn(this.world, this.world.files.bytes(f.file), f.name, f.mime, ctx)
-    this.world.permissions.used(
-      p,
-      `Filed ${f.name} on ${where} under your standing permission.`,
-      ctx,
-    )
+    this.world.rules.used(p, `Filed ${f.name} on ${where} under your standing permission.`, ctx)
     this.world.line({
       actor: { kind: 'system' },
       kind: 'told',
@@ -449,7 +445,7 @@ export class Intake {
     const ctx = { actor: { kind: 'person' as const, id: who.id }, user: who.id }
     const changed = (choice.row ?? null) !== f.row || (choice.kind ?? null) !== f.kind
     const proposed = this.covered(f, f.row, f.kind)
-    if (choice.always && (changed || !proposed || !this.world.permissions.offers(proposed)))
+    if (choice.always && (changed || !proposed || !this.world.rules.offers(proposed)))
       throw new Refused('Always is offered only for a file filed as proposed, after three like it.')
     if (choice.row) {
       const row = choice.row
@@ -464,9 +460,9 @@ export class Intake {
     takeIn(this.world, this.world.files.bytes(f.file), f.name, f.mime, ctx)
     const out = this.world.cards.answer(cardId, 'File it', ctx.actor)
     const filed = this.covered(f, choice.row, choice.kind)
-    if (filed) this.world.permissions.decided(filed, { yes: true, changed, card: cardId }, ctx)
+    if (filed) this.world.rules.decided(filed, { yes: true, changed, card: cardId }, ctx)
     if (choice.always && proposed)
-      this.world.permissions.grant(proposed, this.sentence(proposed), { ...ctx, card: cardId })
+      this.world.rules.grant(proposed, this.sentence(proposed), { ...ctx, card: cardId })
     return out
   }
 
@@ -479,7 +475,7 @@ export class Intake {
     const out = this.world.cards.answer(cardId, 'Decline', ctx.actor)
     const proposed = this.covered(f, f.row, f.kind)
     if (proposed)
-      this.world.permissions.decided(proposed, { yes: false, changed: false, card: cardId }, ctx)
+      this.world.rules.decided(proposed, { yes: false, changed: false, card: cardId }, ctx)
     this.world.line({
       actor: ctx.actor,
       kind: 'intake',
@@ -509,7 +505,7 @@ export class Intake {
     const proposed = this.covered(f, f.row, f.kind)
     return {
       always:
-        card.state === 'waiting' && proposed && this.world.permissions.offers(proposed)
+        card.state === 'waiting' && proposed && this.world.rules.offers(proposed)
           ? this.sentence(proposed)
           : null,
       file: f.file,

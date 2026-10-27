@@ -128,6 +128,8 @@ export const RESERVED = new Set([
   'chunks',
   'row_files',
   'permissions',
+  'rules',
+  'removed_rows',
   'people',
   'companies',
   'people_keys',

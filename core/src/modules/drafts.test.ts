@@ -113,16 +113,16 @@ describe('an agent’s drafts', () => {
       ),
     ).rejects.toThrow(/Always is offered only/)
     await s.drafts.send(fourth.card as string, null, s.owner, true)
-    const [p] = world.permissions.list()
-    expect(p?.sentence).toBe(view?.always)
+    const [p] = world.rules.list()
+    expect(p?.words).toBe(view?.always)
     const fifth = await s.drafts.propose(s.draft(4), null)
     expect(fifth).toEqual({ sent: true, card: null })
     expect(s.sent).toHaveLength(5)
-    expect(world.permissions.get(p?.id as string)?.uses).toBe(1)
+    expect(world.rules.get(p?.id as string)?.uses).toBe(1)
     expect(world.lines({ kinds: ['told'] }).at(-1)?.words).toBe(
       'Outreach: Sent the quote request for Garage to sam@builders.example (your standing permission).',
     )
-    world.permissions.revoke(p?.id as string, { actor: { kind: 'person', id: s.owner.id } })
+    world.rules.revoke(p?.id as string, { actor: { kind: 'person', id: s.owner.id } })
     const after = await s.drafts.propose(s.draft(0), null)
     expect(after.sent).toBe(false)
     expect(s.drafts.view(world.cards.get(after.card as string) as never)?.always).toBeNull()
@@ -138,7 +138,7 @@ describe('an agent’s drafts', () => {
       s.owner,
       true,
     )
-    expect(world.permissions.list()).toHaveLength(1)
+    expect(world.rules.list()).toHaveLength(1)
     // the same address goes at once; a new one is a card, with no Always offered on it
     const known = await s.drafts.propose(s.draft(4), null)
     expect(known.sent).toBe(true)
@@ -205,11 +205,11 @@ describe('an agent’s drafts', () => {
   it('a standing permission is given only by the person, and only after the yeses that earn it', () => {
     const s = setUp()
     const covered = s.drafts.covered(s.draft(0))
-    expect(() => world.permissions.grant(covered, 'Always', { actor: { kind: 'alpha' } })).toThrow(
+    expect(() => world.rules.grant(covered, 'Always', { actor: { kind: 'alpha' } })).toThrow(
       /Only the person/,
     )
     expect(() =>
-      world.permissions.grant(covered, 'Always', { actor: { kind: 'person', id: s.owner.id } }),
+      world.rules.grant(covered, 'Always', { actor: { kind: 'person', id: s.owner.id } }),
     ).toThrow(/after 3 yeses in a row/)
   })
 })

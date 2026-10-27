@@ -154,6 +154,7 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   keep: () => 'write',
   run: () => 'write',
   guide: () => 'read',
+  rule: () => 'write',
 }
 
 // A stated value that cites a card rests on the person's answer to it: a wall, so a card that is

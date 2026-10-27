@@ -98,7 +98,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
           <div className="text-ink text-md">{draft.always}?</div>
           <div className="text-ink-3 text-sm">
             This one goes now, and the next ones without a card, each shown on Home. Revoke it any
-            time in Settings › Standing permissions.
+            time in Settings › Permissions.
           </div>
           <div className="flex gap-2">
             <Button variant="primary" disabled={busy} onClick={() => act('send', { always: true })}>

@@ -220,7 +220,7 @@ describe('the api over a world', () => {
     await a.close()
   })
 
-  it('serves People, Tasks, Agents and Always-allowed as tables, each changed where the core allows it', async () => {
+  it('serves People, Tasks, Agents and the rules as tables, each changed where the core allows it', async () => {
     const me = world.owner('Kenil')
     const person = { actor: { kind: 'person' as const, id: me.id }, user: me.id }
     const connector = { kind: 'connector' as const, id: 'contacts' }
@@ -297,11 +297,11 @@ describe('the api over a world', () => {
       (await post(`/api/kept/tasks/rows/${t.id}`, { field: 'Where', value: 'x' })).json().problem,
     ).toMatch(/change on its page/)
 
-    // Always allowed is read here; Revoke is on its page
-    const perms = await get('/api/kept/permissions')
-    expect(perms.kept).toMatchObject({
+    // the rules are read here; Revoke is on a rule's page
+    const rules = await get('/api/kept/rules')
+    expect(rules.kept).toMatchObject({
       editable: [],
-      why: 'Open it to revoke it; its page asks first.',
+      why: 'Open a rule to revoke it; its page asks first.',
     })
     await a.close()
   })

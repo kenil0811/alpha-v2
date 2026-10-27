@@ -519,6 +519,38 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   CREATE INDEX versions_line ON versions (line_id);
   INSERT OR REPLACE INTO meta (key, value) SELECT 'undo_since', coalesce(max(id), 0) FROM journal;
   `,
+  // 22: rules (core step 2, 27 Oct): one store of allows and denies, approved by the person or
+  // inferred by Alpha, each scoped to all of Alpha, a module or an agent, with what it covers in
+  // parts code matches against a call. Standing permissions move in as approved allow rules.
+  `
+  CREATE TABLE rules (
+    id TEXT PRIMARY KEY,
+    words TEXT NOT NULL,
+    said TEXT,
+    side TEXT NOT NULL CHECK (side IN ('allow', 'deny')),
+    kind TEXT NOT NULL CHECK (kind IN ('approved', 'inferred')),
+    module_id TEXT,
+    agent TEXT,
+    covers TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '{}',
+    made_by TEXT NOT NULL,
+    made_at TEXT NOT NULL,
+    uses INTEGER NOT NULL DEFAULT 0,
+    last_used_at TEXT,
+    revoked_at TEXT,
+    revoked_by TEXT
+  );
+  CREATE INDEX rules_live ON rules (revoked_at, side);
+  INSERT INTO rules (id, words, side, kind, module_id, agent, covers, source, made_by, made_at,
+    uses, last_used_at, revoked_at, revoked_by)
+    SELECT id, sentence, 'allow', 'approved', module_id, agent,
+      json_object('does', json_array(CASE WHEN action = 'send_email' THEN 'send' ELSE 'change' END),
+        'always', json_object('action', action, 'place', json(place))),
+      json_object('card', card_id), granted_by, granted_at, uses, last_used_at, revoked_at,
+      revoked_by
+    FROM permissions;
+  DROP TABLE permissions;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

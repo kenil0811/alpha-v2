@@ -176,15 +176,23 @@ export interface SetupView {
   }
 }
 
-// A standing permission as Settings lists it.
-export interface PermissionView {
+// A rule as Governance and Settings › Permissions list it (core step 2): its words as code holds
+// them, allow or deny, yours or what Alpha noticed, where it holds, and where it came from.
+export interface RuleView {
   id: string
-  sentence: string
-  grantedBy: string
-  grantedAt: string
+  words: string
+  said: string | null // the words it was asked in
+  side: 'allow' | 'deny'
+  kind: 'approved' | 'inferred'
+  where: string // all of Alpha, a module or an agent, in words
+  module: string | null
+  madeBy: string
+  madeAt: string
   uses: number
   lastUsedAt: string | null
   revokedAt: string | null
+  always: boolean // a standing permission given with Always
+  noticedFrom: { id: number; at: string; words: string }[] // the lines Alpha noticed it in
 }
 
 // A file that came by mail, waiting to be filed: the email, what the file is, the place the model proposed and how sure, and the rows named, to pick another.

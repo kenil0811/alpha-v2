@@ -50,7 +50,7 @@ export type Place =
   | { at: 'activity' }
   | { at: 'parts' }
   | { at: 'new' }
-  | { at: 'item'; kind: 'agent' | 'run' | 'permission'; id: string }
+  | { at: 'item'; kind: 'agent' | 'run' | 'rule'; id: string }
   | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
   | {
       at: 'module'
@@ -261,7 +261,7 @@ export function Rail({
           href="#/settings"
           icon={<SlidersHorizontal className="size-4" />}
           label="Settings"
-          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'permission')}
+          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
         />
       </div>
     </nav>

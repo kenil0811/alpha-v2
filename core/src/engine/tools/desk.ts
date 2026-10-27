@@ -1,5 +1,6 @@
-// The desk's other hands: ask (a card), remember (instructions), connect, look (a page, a
-// module, a row), keep (a file in a module) and run (an agent or a script, for a try).
+// The desk's other hands: ask (a card), remember (instructions), rule (a rule on its Save card),
+// connect, look (a page, a module, a row), keep (a file in a module) and run (an agent or a
+// script, for a try).
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
@@ -10,6 +11,7 @@ import { keep } from '../../modules/keep.ts'
 import { type AgentRunner, PROPOSE_TASKS } from '../../modules/runs/index.ts'
 import { pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
+import { DOES, type RuleSpec, SAVE_RULE } from '../../world/rules.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import {
@@ -20,6 +22,7 @@ import {
   PAGE,
   SCRIPT,
   TASKS,
+  tableOf,
   tool,
   VIEWS,
 } from './common.ts'
@@ -69,6 +72,12 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
                 : hands.intake.file(card.id, { row: f.row, kind: f.kind }, here_.user)
               return ok(`The card is answered: ${done.state}.`)
             }
+            if (card.call?.tool === SAVE_RULE && !no)
+              world.rules.save(card.call.input as RuleSpec, {
+                actor: { kind: 'person', id: here_.user.id },
+                user: here_.user.id,
+                card: card.id,
+              })
             if (card.call?.tool === PROPOSE_TASKS && hands?.runner && !no) {
               const done = hands.runner.adopt(card.id, 'all', here_.user.id)
               return ok(`The card is answered: ${done.state}; its tasks are added.`)
@@ -91,7 +100,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
     ),
     tool(
       'remember',
-      'Keep a standing instruction: how the person wants things done from now on. for: me (this person) or everyone (the whole firm).',
+      'Keep a standing instruction: how the person wants things done from now on (a tone, a format, a habit). for: me (this person) or everyone (the whole firm). Not what Alpha may or may not do (send, email, remove, delete, read, open a site, sign in): that is a rule, which code holds, made with the rule tool; never keep it here as well.',
       { instruction: z.string(), for: z.enum(['me', 'everyone']) },
       async (a) =>
         guard(() => {
@@ -109,6 +118,80 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
             turn: here.current.turn,
           })
           return ok('Kept.')
+        }),
+      { alwaysLoad: true },
+    ),
+    tool(
+      'rule',
+      [
+        'What Alpha may or may not do from now on, when the person says so (“never email anyone outside the firm”, “never delete deals”, “Watson may send follow-ups”), as code will hold it; or one you noticed they keep to without saying it. Use this, never remember, for anything about sending, removing, reading, opening a site or signing in.',
+        'side: deny or allow. does: what Alpha does that it covers (read, change, remove, send, reach a site, sign_in). Then only what narrows it: through (tools or connectors: gmail, gmail.send, change); for a send, to_inside (domains: the addresses at them, as in “anyone at example.com”), to_outside (domains: every address not at them, as in “anyone outside the firm”) or to (whole addresses); sites (hosts) for reach; tables (by name). module: it holds in that module only; agent: that agent only; neither: all of Alpha. words: the person’s own words asking for it.',
+        'It opens a card showing the rule in code’s own words, for the person to Save: only their Save makes it a rule. With noticed (the journal line ids it comes from) it is kept as noticed instead, never approved, for them to approve or dismiss in Governance.',
+        'Words that say none of these (be polite to brokers) are not a rule: say so, and offer to keep them in the module’s notes.',
+      ].join('\n'),
+      {
+        side: z.enum(['allow', 'deny']),
+        does: z.array(z.enum(DOES)).min(1),
+        through: z.array(z.string()).optional(),
+        to_outside: z.array(z.string()).optional(),
+        to_inside: z.array(z.string()).optional(),
+        to: z.array(z.string()).optional(),
+        sites: z.array(z.string()).optional(),
+        tables: z.array(z.string()).optional(),
+        module: z.string().optional(),
+        agent: z.string().optional(),
+        words: z.string().optional(),
+        noticed: z.array(z.number().int()).optional(),
+      },
+      async (a) =>
+        guard(() => {
+          const module = a.module ? world.shape.module(a.module) : undefined
+          if (a.module && !module) throw new Refused(`There is no module called ${a.module}.`)
+          const spec = world.rules.check({
+            side: a.side,
+            module: module?.id ?? null,
+            agent: a.agent?.trim() || null,
+            covers: {
+              does: a.does,
+              ...(a.through ? { through: a.through } : {}),
+              ...(a.to_outside || a.to_inside || a.to
+                ? {
+                    to: {
+                      ...(a.to_outside ? { outside: a.to_outside } : {}),
+                      ...(a.to_inside ? { inside: a.to_inside } : {}),
+                      ...(a.to ? { addresses: a.to } : {}),
+                    },
+                  }
+                : {}),
+              ...(a.sites ? { sites: a.sites } : {}),
+              ...(a.tables ? { tables: a.tables.map((t) => tableOf(world, t).id) } : {}),
+            },
+            said: a.words?.trim() || null,
+          } satisfies RuleSpec)
+          if (a.noticed?.length) {
+            const r = world.rules.infer(spec, a.noticed, ctx())
+            return ok(
+              `Kept as noticed: ${r.words} It shows in Governance for the person to approve or dismiss; it never acts alone on a send, a removal of theirs or a sign-in.`,
+            )
+          }
+          const words = world.rules.describe(spec)
+          // one rule waits on its Save at a time in a turn: a newer one replaces the one before
+          for (const c of world.cards.waiting())
+            if (c.call?.tool === SAVE_RULE && c.turn && c.turn === here.current.turn)
+              world.cards.withdraw(c.id, { kind: 'alpha' }, 'A newer wording replaces it.')
+          const card = world.cards.open({
+            kind: 'question',
+            words: `Save this rule? ${words}`,
+            options: ['Save', 'Not now'],
+            call: { tool: SAVE_RULE, input: spec },
+            actor: { kind: 'alpha' },
+            user: here.current.user.id,
+            turn: here.current.turn,
+            module: spec.module,
+          })
+          return ok(
+            `Asked on a card (${card.id}) to save: ${words} Only their Save makes it a rule; the answer comes as a message.`,
+          )
         }),
       { alwaysLoad: true },
     ),

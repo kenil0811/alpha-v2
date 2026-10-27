@@ -189,12 +189,16 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
       )
     }
   }
-  for (const a of all<{ id: string }>(
+  for (const a of all<{ id: string; name: string }>(
     world.db,
-    'SELECT id FROM agents WHERE module_id = ?',
+    'SELECT id, name FROM agents WHERE module_id = ?',
     module.id,
   ))
-    if (!kept.has(a.id)) run(world.db, 'DELETE FROM agents WHERE id = ?', a.id)
+    if (!kept.has(a.id)) {
+      run(world.db, 'DELETE FROM agents WHERE id = ?', a.id)
+      // its rules go with it (core step 2); the journal keeps them
+      world.rules.removeScoped({ agent: a.name }, { actor: { kind: 'system' } })
+    }
   return kept.size
 }
 

@@ -120,6 +120,7 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | Agents, triggers, runs | §11. |
 | Modules, skills index | What is installed and from which kit version, with each file's hash. |
 | Users, roles, connections | Two roles (owner, member). A connection names its connector, account, auth kind, state and health, and points at a secret it never holds. |
+| Rules | Allows and denies, approved or inferred, each scoped and covering a call in parts code matches (§7); standing permissions are approved allows of exactly one agent's one kind of thing. |
 
 The model reads the world in SQL through a read-only view per table (thin: id, added, the fields' columns; a view per list relation; a `provenance` view) on a read-only connection.
 
@@ -280,9 +281,10 @@ this shape exactly.
 3. **On each message:** the clock, what changed elsewhere since the last turn here, open cards,
    and a three-line hint of what the message matches in the world.
 4. **Everything else the model fetches.** It writes its own memory files and files facts
-   through the world. No pre-pack, no behavioural rules. **Nine small tools are in its hands
+   through the world. No pre-pack, no behavioural rules. **Ten small tools are in its hands
    from the start** (`query`, `search`, `shape`, `write`, `change`, `file`, `ask`, `remember`,
-   `task`) and a one-line `guide` that hands out a grammar when a turn needs it (`scripts`: the
+   `rule`, `task`; `rule` since Kenil's look at rules, 27 Oct, when a rule found only through tool
+   search was kept as a standing instruction) and a one-line `guide` that hands out a grammar when a turn needs it (`scripts`: the
    kit API; `pages`: the page contract; `views`: a saved view's grammar; `tasks`: a task's
    fields and actions); `connect`, `look`, `keep` and `run` are found through tool search on the
    Claude Code route, and sent with their short descriptions on the own loop. A build turn pays
@@ -316,6 +318,26 @@ Every tool and connector action declares its effect (read, write, remove, outwar
 before-call hook maps effects to gates; an undeclared effect counts as outward. The model's own
 web search and fetch are reads.
 
+**Rules** (core step 2, Kenil's yes 27 Oct) come before the gates, in the same `decide()` every
+path goes through (the desk's world and connector calls, a script's reach and a sign-in; an
+agent's drafts and mail filing check the same store where they check Always). One `rules` table
+holds each rule: allow or deny, **approved** by the person or **inferred** by Alpha, scoped to all
+of Alpha, a module or an agent, and covering a call in parts code matches: what it does (read,
+change, remove, send, reach a site, sign in), through which tool or connector, to which addresses
+or domains (inside or outside), which sites, which tables; its words are code's own description of
+what it holds, beside the words it was asked in. Only the person approves a rule (a wall): the
+`rule` tool only opens a Save card showing those words, or keeps what Alpha noticed as inferred
+with the lines it came from; a rule with nothing code can match is refused by the tool's schema,
+so plain words are offered into the module's notes instead. The check: an approved deny refuses
+any call it covers, with no card, quoting the rule, even when the person asked in the moment (their
+call 2); an approved allow lets a gated call through and counts the use; an inferred rule never
+acts alone on a send, a removal or a sign-in (the card says what Alpha noticed), and an inferred
+deny is followed on a read or a write to rows that are not the person's own, and asked about on a
+card (`noticed`) for their own. A deny closes a site even on its module's list; the list stays
+the module's (their call 3). The approved rules' words go in the start layer of every session; a
+rule saved or revoked since reaches the next turn with what changed. Revoking keeps a rule listed
+as history; a removed agent's rules go with it, journaled.
+
 A gate makes a card: a preview, what it rests on, and what cannot be undone. The call does not
 run: it is refused with words saying it waits on the card, and the card holds the exact call.
 The person's yes lets that same call through once when the model makes it again, so a yes
@@ -333,8 +355,9 @@ shape tool, a card's yes or a kit install: never by a script (a deny in its sand
 desk's Write or Edit (item 12's stopgap, 25 Oct; the proper home for a site is a connection,
 with readers-as-connectors). A **standing permission** is a yes given once for one agent's one kind of
 thing (Kenil, 20 Oct): a card offers Always only after three yeses in a row for exactly that, each
-unchanged, and it is confirmed in a second step, stored as a row, shown as a sentence, counted when
-used, and revoked in Settings › Permissions (Always allowed), or on its own page. Code holds the wall: only the person grants
+unchanged, and it is confirmed in a second step, stored as an approved allow rule covering exactly
+that (since 27 Oct; a one-off yes stays a yes, their call 1), shown as a sentence, counted when
+used, and revoked in Settings › Permissions, or on its rule's page. Code holds the wall: only the person grants
 one, only where the yeses earned it. One may let an email go without asking only when it is one
 agent's one kind of message (DealPilot's CIM requests) **to an address that kind has gone to
 before on the person's yes; a new recipient is a card of its own that says so, under any
@@ -641,9 +664,12 @@ anywhere; UI batch 5). Under it, a screen with parts has **one row of tabs**,
 every label in full (a table's row count beside its name), scrolling sideways when long, never
 cut short or folded to icons (Kenil, 26 Oct). A module's tabs are its pages, its tables, its
 Conversation and its Agents and notes, which holds its agents, the notes Alpha reads first, what
-ran lately and Governance (Allowed and Denied side by side, each a sentence with its reason; + Add
-starts the conversation with the rule's first words, and a rule shows only once the core holds and
-enforces it); nothing
+ran lately and Governance (Allowed and Denied side by side, each a sentence with where it came
+from: the sites its readers may read, and the rules that hold there, this module's and all of
+Alpha's (§7); + Add starts the conversation with the rule's first words, and a rule shows only once
+the person saved it on its card; a rule of theirs has Revoke behind its ⋮, after a yes, and one
+Alpha noticed has Approve and Dismiss). Settings › Permissions lists every rule across Alpha in
+the same rows, and each rule has its page (`#/rule/<id>`); nothing
 sits under a table or a page (Kenil, 26 Oct). **People and Organizations** are the tabs
 of the module whose `module.yaml` says `people: true` (Network's), beside its own tables. A module holding others opens on an Overview of them: a
 plain list, a row per module with its name, where it comes from and what goes on in it right now

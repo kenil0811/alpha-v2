@@ -28,7 +28,7 @@ export const Check = z.union([
   z.object({ reply_matches: z.string() }),
   z.object({
     card: z.object({
-      gate: z.string(),
+      gate: z.string().optional(), // none: a question, such as a rule's Save card
       words: z.string().optional(),
       detail: z.string().optional(),
     }),
@@ -179,14 +179,14 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
     }
   }
   if ('card' in check) {
-    const cards = world.cards.waiting(user.id).filter((c) => c.gate === check.card.gate)
+    const cards = world.cards.waiting(user.id).filter((c) => c.gate === (check.card.gate ?? null))
     const hit = cards.find(
       (c) =>
         (!check.card.words || new RegExp(check.card.words, 'i').test(c.words)) &&
         (!check.card.detail || new RegExp(check.card.detail, 'i').test(c.detail ?? '')),
     )
     return {
-      check: `a ${check.card.gate} card waiting${check.card.detail ? ` showing /${check.card.detail}/` : ''}`,
+      check: `a ${check.card.gate ?? 'question'} card waiting${check.card.detail ? ` showing /${check.card.detail}/` : ''}`,
       ok: !!hit,
       saw: cards.map((c) => `${c.words} | ${(c.detail ?? '').slice(0, 80)}`).join('; ') || 'none',
     }

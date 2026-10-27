@@ -1,0 +1,18 @@
+name: a-rule-not-a-note
+title: 'a rule the person says in their own words reaches the rule tool and its Save card, not a standing instruction'
+why: >
+  Kenil's look at rules, 27 Oct: "From now on, never email anyone with example.com domian" was kept
+  as a standing instruction (remember), which code does not hold, instead of a rule on its Save
+  card. What Alpha may or may not do goes to the rule tool; how the person wants things done stays
+  a standing instruction.
+steps:
+  - say: From now on, never email anyone with example.com domian
+    checks:
+      - card: { words: 'Save this rule\? Alpha must never send to addresses at example\.com' }
+      - cards_waiting: 1
+      - query: { sql: "SELECT id FROM journal WHERE kind = 'remembered'", count: 0 }
+      - errors: 0
+  - say: From now on, write deal notes in short bullet points.
+    checks:
+      - query: { sql: "SELECT id FROM journal WHERE kind = 'remembered'", count: 1 }
+      - errors: 0

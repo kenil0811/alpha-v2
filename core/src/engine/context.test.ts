@@ -107,7 +107,7 @@ describe('a table on its first touch', () => {
     expect((first.content[1] as { text: string }).text).toContain('two eggs')
     const second = await query.handler({ sql: 'SELECT food FROM meals' })
     expect(second.content).toHaveLength(1)
-    // the nine in hand, the rest found; guide hands out the grammars
+    // the ten in hand, the rest found; guide hands out the grammars
     const inHand = tools.filter((x) => x.alwaysLoad).map((x) => x.name)
     expect(inHand.sort()).toEqual(
       [
@@ -117,6 +117,7 @@ describe('a table on its first touch', () => {
         'guide',
         'query',
         'remember',
+        'rule',
         'search',
         'shape',
         'task',

@@ -2,7 +2,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse, stringify } from 'yaml'
-import { decide } from '../../gates/gates.ts'
+import { decide, refusedBy } from '../../gates/gates.ts'
+import { one } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module } from '../../world/shape/index.ts'
 import type { AgentRunner } from './runner.ts'
@@ -40,6 +41,33 @@ export function reach(
   } catch {
     throw new Refused(`That is not a link: ${url}`)
   }
+  // the agent whose run it is, by name: a rule may be its own
+  const agent =
+    one<{ name: string }>(
+      runner.world.db,
+      'SELECT a.name FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = ?',
+      runId,
+    )?.name ?? null
+  // a deny rule closes a site even on the module's list
+  const denied = runner.world.rules.judge({
+    effect: 'outward',
+    tool: 'network',
+    to: [],
+    site: host,
+    table: null,
+    module: module.id,
+    agent,
+    own: false,
+  }).deny
+  if (denied) {
+    runner.world.rules.used(
+      denied,
+      `Refused: ${module.name} reading ${host}. Your rule: ${denied.words}`,
+      { actor: { kind: 'agent', id: agent ?? runId }, user: who.user, turn: who.turn, run: runId },
+      true,
+    )
+    throw new Refused(refusedBy(denied))
+  }
   if (onList(moduleNetwork(module), host)) return
   const verdict = decide(runner.world, {
     call: { tool: 'network', input: { module: module.id, host } },
@@ -53,6 +81,7 @@ export function reach(
     user: who.user,
     turn: who.turn,
     module: module.id,
+    agent,
   })
   if (!verdict.pass)
     throw new Refused(

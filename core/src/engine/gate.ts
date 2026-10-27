@@ -58,7 +58,13 @@ export class Gatekeeper {
     })
     this.emit({ type: 'doing', words })
     if (this.connectors?.isTool(toolName))
-      return this.connector(toolName, input, words, call.subagent ? null : cur.message)
+      return this.connector(
+        toolName,
+        input,
+        words,
+        call.subagent ? null : cur.message,
+        call.subagent,
+      )
     if (!toolName.startsWith(`mcp__${SERVER}__`)) return { allow: true }
     return this.worldTool(name, input, words, call)
   }
@@ -80,13 +86,19 @@ export class Gatekeeper {
       name === 'task' && input.action === 'remove'
         ? ((input.ids as string[] | undefined) ?? (typeof input.id === 'string' ? [input.id] : []))
         : []
+    const changing =
+      name === 'change'
+        ? ((input.rows as { id?: string }[] | undefined) ?? []).map((r) => String(r.id))
+        : []
     const ownEntries = remove.length
       ? this.world.records.personsOwn(remove)
-      : removingTable && table
-        ? this.world.records.personsOwn(this.world.records.list(table.id).map((r) => r.id))
-        : removingTasks.length
-          ? this.world.tasks.personsOwn(removingTasks)
-          : false
+      : changing.length
+        ? this.world.records.personsOwn(changing)
+        : removingTable && table
+          ? this.world.records.personsOwn(this.world.records.list(table.id).map((r) => r.id))
+          : removingTasks.length
+            ? this.world.tasks.personsOwn(removingTasks)
+            : false
     const verdict = decide(this.world, {
       call: { tool: name, input },
       effect: effectOf ? effectOf(input) : undefined,
@@ -104,7 +116,9 @@ export class Gatekeeper {
       actor: { kind: 'alpha' },
       user: this.user.id,
       turn: cur.turn,
-      module: table?.module.id ?? null,
+      module: table?.module.id ?? cur.from?.id ?? null,
+      table: table?.id ?? null,
+      agent: call.subagent,
     })
     return this.decision(verdict)
   }
@@ -115,6 +129,7 @@ export class Gatekeeper {
     input: Record<string, unknown>,
     words: string,
     message: string | null,
+    agent: string | null,
   ): Decision {
     const preview = this.connectors?.preview(toolName, input)
     const cur = this.here.current
@@ -143,6 +158,8 @@ export class Gatekeeper {
       actor: { kind: 'alpha' },
       user: this.user.id,
       turn: cur.turn,
+      module: cur.from?.id ?? null,
+      agent,
     })
     return this.decision(verdict)
   }

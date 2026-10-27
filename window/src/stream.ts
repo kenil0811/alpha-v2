@@ -54,6 +54,9 @@ const RESULTS = new Set([
   'wrote',
   'changed',
   'removed',
+  'refused',
+  'rule_saved',
+  'rule_noticed',
   'remembered',
   'filed',
   'kept',
@@ -131,12 +134,18 @@ export function group(lines: StreamLine[]): Item[] {
         })
       } else if (l.kind === 'card_opened' && l.card) {
         items.push({ kind: 'card', id: l.card, at: l.at, module: l.module, answered: null })
-      } else if (l.kind === 'filed' || l.kind === 'card_opened' || l.kind === 'error')
+      } else if (
+        l.kind === 'filed' ||
+        l.kind === 'card_opened' ||
+        l.kind === 'error' ||
+        l.kind === 'refused' ||
+        l.kind === 'rule_saved'
+      )
         items.push({
           kind: 'note',
           id: l.id,
           words: l.words,
-          tone: l.kind === 'error' ? 'warn' : 'plain',
+          tone: l.kind === 'error' || l.kind === 'refused' ? 'warn' : 'plain',
           at: l.at,
         })
       continue

@@ -109,9 +109,14 @@ export function placeOf(hash: string): Place {
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
   if (hash === '#/module/new') return { at: 'new' }
-  const it = /^#\/(agent|run|permission)\/([\w-]+)$/.exec(hash)
+  // a standing permission's old link lands on its rule (core step 2)
+  const it = /^#\/(agent|run|rule|permission)\/([\w-]+)$/.exec(hash)
   if (it?.[1] && it[2])
-    return { at: 'item', kind: it[1] as 'agent' | 'run' | 'permission', id: it[2] }
+    return {
+      at: 'item',
+      kind: it[1] === 'permission' ? 'rule' : (it[1] as 'agent' | 'run' | 'rule'),
+      id: it[2],
+    }
   const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)))?$/.exec(hash)
   if (mod?.[1])
     return {
@@ -303,8 +308,7 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
-  // a run's page sits under Activity, an agent's under Intelligence, a standing permission's under
-  // Settings
+  // a run's page sits under Activity, an agent's under Intelligence, a rule's under Settings
   const itemCrumb: Crumb | null =
     place.at !== 'item'
       ? null
@@ -313,7 +317,7 @@ export function App() {
             icon: <Sparkles className={icon} />,
             parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
           }
-        : place.kind === 'permission'
+        : place.kind === 'rule'
           ? {
               icon: <SlidersHorizontal className={icon} />,
               parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],

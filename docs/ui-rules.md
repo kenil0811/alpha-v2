@@ -36,7 +36,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its tables with their counts, Conversation, Agents and notes | 26 Oct | — |
 | M2 | Nothing sits under a table or a page; agents, notes, recent activity and Governance are the Agents and notes tab | 26 Oct | — |
-| M3 | Governance shows only rules the core holds and enforces; + Add starts the conversation | 26 Oct | — |
+| M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss | 26 Oct, 27 Oct | — |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 
 ## Table and toolbar
@@ -83,6 +83,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
 | I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental only while something is tried | 26 Oct | — |
+| I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions | 27 Oct | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this | 26 Oct | — |
 
 ## Wording
