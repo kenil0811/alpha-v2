@@ -4,6 +4,7 @@ import type { FieldView, RowView } from '@alpha/core/api'
 import { cn } from '../../ui/cn.ts'
 import { Pill } from '../../ui/pill.tsx'
 import { type Group, groupRows } from '../engine.ts'
+import { TagChips } from '../Tags.tsx'
 import { DOT, show, summary, titleOf } from '../values.ts'
 
 function Value({
@@ -16,6 +17,8 @@ function Value({
   names: Record<string, string>
 }) {
   const text = show(field, row.values[field.slug], names)
+  if (field.kind === 'choice' && field.many)
+    return <TagChips field={field} value={row.values[field.slug]} />
   if (field.kind === 'choice')
     return field.tones[text] ? (
       <span className="inline-flex items-center gap-1.5">

@@ -7,6 +7,7 @@ import { all, one, parse } from '../db.ts'
 import { columnsOf, junctionName, OWN_COLUMNS, quote } from '../ddl.ts'
 import { namedConfig, ViewConfig } from '../views.ts'
 import type { Shape } from './shape.ts'
+import { summaryNamed } from './summary.ts'
 import type { Module, Table } from './types.ts'
 import { spec } from './types.ts'
 
@@ -104,8 +105,9 @@ export function writeManifest(shape: Shape, m: Module): void {
         ...(f.choices.length ? { choices: f.choices } : {}),
         ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
         ...(f.relatesTo ? { relates_to: shape.table(f.relatesTo)?.name } : {}),
-        ...(f.many ? { many: true } : {}),
+        ...(f.many || f.tags ? { many: true } : {}),
         ...(f.partOf ? { part_of: true } : {}),
+        ...(f.summary ? { summary: summaryNamed(shape, f.summary) } : {}),
         ...(f.indexed ? { indexed: true } : {}),
         ...(f.key && f.key !== f.name ? { key: f.key } : {}),
       })),

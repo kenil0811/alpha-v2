@@ -38,6 +38,8 @@ export const FILTER_OPS = [
   'this_week',
   'next_days',
   'in',
+  'all_of', // a choice holding several (tags, core step 3c): has every one of these
+  'none_of', // has none of these
   'empty',
   'not_empty',
 ] as const

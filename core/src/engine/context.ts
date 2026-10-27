@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { parse } from 'yaml'
 import { config } from '../config.ts'
 import type { Table } from '../world/shape/index.ts'
+import { summaryWords } from '../world/shape/summary.ts'
 import type { World } from '../world/world.ts'
 import type { Here } from './tools/common.ts'
 import { instructionsFile } from './tools/index.ts'
@@ -114,12 +115,14 @@ export function tableBrief(world: World, t: Table): string {
   const lines = t.fields.map((f) => {
     const kind =
       f.kind === 'choice'
-        ? `choice: ${f.choices.join(', ')}`
-        : f.kind === 'relation'
-          ? `relation to ${f.relatesTo ? (world.shape.table(f.relatesTo)?.name ?? 'a table') : 'a table'}${f.many ? ', a list' : ''}${f.partOf ? '; each row is part of that row, never without one, and goes with it' : ''}`
-          : f.kind === 'notes'
-            ? 'notes: the row’s free notes in Markdown, read in the view row_notes (not in this table’s view), written with change; mention a person as [@Name](person:<id from the view people>) and a row as [Name](row:<id>)'
-            : f.kind
+        ? `choice${f.tags ? ', several a row (a JSON list: read with json_each, write a list)' : ''}: ${f.choices.join(', ')}`
+        : f.summary
+          ? `summary: ${summaryWords(world.shape, f.summary)}; worked out as it is read, never written`
+          : f.kind === 'relation'
+            ? `relation to ${f.relatesTo ? (world.shape.table(f.relatesTo)?.name ?? 'a table') : 'a table'}${f.many ? ', a list' : ''}${f.partOf ? '; each row is part of that row, never without one, and goes with it' : ''}`
+            : f.kind === 'notes'
+              ? 'notes: the row’s free notes in Markdown, read in the view row_notes (not in this table’s view), written with change; mention a person as [@Name](person:<id from the view people>) and a row as [Name](row:<id>)'
+              : f.kind
     return `- ${f.name} (${kind})${f.about ? `: ${f.about}` : ''}`
   })
   const bare = t.fields.filter((f) => !f.about).map((f) => f.name)

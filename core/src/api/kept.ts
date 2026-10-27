@@ -14,6 +14,7 @@ export function keptField(name: string, kind: string, tones: FieldView['tones'] 
     choices: Object.keys(tones),
     tones,
     many: false,
+    summary: null,
     about: null,
     aboutBy: null,
   }

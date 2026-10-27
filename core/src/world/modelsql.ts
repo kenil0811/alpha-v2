@@ -6,6 +6,7 @@ import { constants } from 'node:sqlite'
 import { all, type Db, one, openDb } from './db.ts'
 import { junctionName, lit, quote } from './ddl.ts'
 import { Refused } from './kinds.ts'
+import { summaryColumns } from './records/summary.ts'
 import type { Table } from './shape/index.ts'
 
 export interface QueryResult {
@@ -51,7 +52,7 @@ export class ModelSql {
         {
           view: t.slug,
           table: t.name,
-          columns: ['id', 'added', ...columnsOf(t)],
+          columns: ['id', 'added', ...columnsOf(t), ...summaryNames(t, this.tables())],
         },
         ...t.fields
           .filter((f) => f.kind === 'relation' && f.many)
@@ -142,7 +143,11 @@ export class ModelSql {
   private refreshViews(): void {
     const tables = this.tables()
     const signature = JSON.stringify(
-      tables.map((t) => [t.id, t.slug, t.fields.map((f) => [f.id, f.slug, f.kind, f.many])]),
+      tables.map((t) => [
+        t.id,
+        t.slug,
+        t.fields.map((f) => [f.id, f.slug, f.kind, f.many, f.tags, f.summary]),
+      ]),
     )
     if (signature === this.signature) return
     for (const v of all<{ name: string }>(
@@ -152,9 +157,17 @@ export class ModelSql {
       this.db.exec(`DROP VIEW temp.${quote(v.name)}`)
     this.views.clear()
     for (const t of tables) {
-      const cols = ['id', 'created_at AS added', ...columnsOf(t).map(quote)]
+      // a summary (core step 3c) is a column worked out as it is read
+      const cols = [
+        'id',
+        'created_at AS added',
+        ...columnsOf(t).map(quote),
+        ...t.fields
+          .filter((f) => f.kind === 'summary')
+          .flatMap((f) => summaryColumns((id) => tables.find((x) => x.id === id), f)),
+      ]
       this.db.exec(
-        `CREATE TEMP VIEW ${quote(t.slug)} AS SELECT ${cols.join(', ')} FROM main.${quote(t.slug)}`,
+        `CREATE TEMP VIEW ${quote(t.slug)} AS SELECT ${cols.join(', ')} FROM main.${quote(t.slug)} AS t`,
       )
       this.views.add(t.slug)
       for (const f of t.fields) {
@@ -204,10 +217,23 @@ function columnsOf(t: Table): string[] {
   return t.fields.flatMap((f) =>
     f.kind === 'money'
       ? [f.slug, `${f.slug}_currency`]
-      : (f.kind === 'relation' && f.many) || f.kind === 'notes'
+      : (f.kind === 'relation' && f.many) || f.kind === 'notes' || f.kind === 'summary'
         ? []
         : [f.slug],
   )
+}
+
+// A summary's columns: a money summary has its currency beside it.
+function summaryNames(t: Table, tables: Table[]): string[] {
+  return t.fields
+    .filter((f) => f.kind === 'summary')
+    .flatMap((f) => {
+      const of = tables.find((x) => x.id === f.summary?.of)
+      const kind = of?.fields.find((x) => x.id === f.summary?.field)?.kind
+      return f.summary?.op !== 'count' && kind === 'money'
+        ? [f.slug, `${f.slug}_currency`]
+        : [f.slug]
+    })
 }
 
 // People and companies as the model reads them (design §4): each as one, through merges.

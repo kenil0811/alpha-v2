@@ -5,6 +5,7 @@ import { type FieldKind, Refused } from '../kinds.ts'
 import { ViewConfig } from '../views.ts'
 import { writeManifest } from './manifest.ts'
 import type { Shape } from './shape.ts'
+import { summariesReading } from './summary.ts'
 import type { Field, Table, WriteCtx } from './types.ts'
 import { actorName, findField, spec } from './types.ts'
 
@@ -39,6 +40,7 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
     for (const sql of dropTableSql(table.slug, table.fields.map(spec))) shape.db.exec(sql)
     run(shape.db, 'DELETE FROM records WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM removed_rows WHERE table_id = ?', table.id)
+    const sums = dropSummaries(shape, table.id, undefined, ctx)
     run(shape.db, 'DELETE FROM views WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM tables WHERE id = ?', table.id)
@@ -46,8 +48,8 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
     append(shape.db, {
       actor: ctx.actor,
       kind: 'removed',
-      words: `Removed the table ${table.name}${count ? ` and its ${count} row${count === 1 ? '' : 's'}` : ''}.`,
-      data: { table: table.id, name: table.name, rows: count },
+      words: `Removed the table ${table.name}${count ? ` and its ${count} row${count === 1 ? '' : 's'}` : ''}${sumWords(sums)}.`,
+      data: { table: table.id, name: table.name, rows: count, summaries: sums },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,
       module: table.module.id,
@@ -65,11 +67,12 @@ export function removeField(shape: Shape, tableId: string, field: string, ctx: W
     if (!table) throw new Refused('That table is not there.')
     const f = findField(table, field)
     dropField(shape, table, f, ctx)
+    const sums = dropSummaries(shape, table.id, f.id, ctx)
     append(shape.db, {
       actor: ctx.actor,
       kind: 'removed',
-      words: `Removed the field ${f.name} from ${table.name}.`,
-      data: { table: table.id, field: f.id, name: f.name, kind: f.kind },
+      words: `Removed the field ${f.name} from ${table.name}${sumWords(sums)}.`,
+      data: { table: table.id, field: f.id, name: f.name, kind: f.kind, summaries: sums },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,
       module: table.module.id,
@@ -88,6 +91,24 @@ export function dropField(shape: Shape, table: Table, f: Field, ctx: WriteCtx): 
   dropFieldFromTrash(shape, table.id, f.id)
   tombstone(shape, table.module.id, 'field', f.key ?? f.name, ctx)
 }
+
+// The summaries that read a table or one of its fields go with it (core step 3c, clean
+// removal): a summary of rows no longer there means nothing. Back come their names.
+function dropSummaries(shape: Shape, tableId: string, fieldId: string | undefined, ctx: WriteCtx) {
+  const gone = summariesReading(shape, tableId, fieldId).filter(
+    (x) => fieldId || x.table.id !== tableId,
+  )
+  for (const x of gone) {
+    dropField(shape, x.table, x.field, ctx)
+    writeManifest(shape, x.table.module)
+  }
+  return gone.map((x) => `${x.field.name} in ${x.table.name}`)
+}
+
+const sumWords = (sums: string[]) =>
+  sums.length
+    ? `, and the summar${sums.length === 1 ? 'y' : 'ies'} ${sums.join(' and ')} that read it`
+    : ''
 
 // The rows of a table waiting in the trash forget a field removed from it, with its provenance.
 function dropFieldFromTrash(shape: Shape, tableId: string, fieldId: string): void {
@@ -158,23 +179,28 @@ export function hiddenFields(shape: Shape, tableId: string): (Field & { rows: nu
       aboutBy: null,
       relatesTo: o.relatesTo ?? null,
       many: f.kind === 'relation' && !!o.many,
+      tags: f.kind === 'choice' && !!o.many,
+      summary: null,
       partOf: false,
       indexed: !!o.indexed,
       key: f.key,
     }
-    const rows = field.many
-      ? Number(
-          one<{ n: number }>(
-            shape.db,
-            `SELECT count(DISTINCT record_id) AS n FROM ${quote(junctionName(t.slug, f.slug))}`,
-          )?.n ?? 0,
-        )
-      : Number(
-          one<{ n: number }>(
-            shape.db,
-            `SELECT count(*) AS n FROM ${quote(t.slug)} WHERE ${quote(f.slug)} IS NOT NULL`,
-          )?.n ?? 0,
-        )
+    const rows =
+      field.kind === 'summary'
+        ? 0
+        : field.many
+          ? Number(
+              one<{ n: number }>(
+                shape.db,
+                `SELECT count(DISTINCT record_id) AS n FROM ${quote(junctionName(t.slug, f.slug))}`,
+              )?.n ?? 0,
+            )
+          : Number(
+              one<{ n: number }>(
+                shape.db,
+                `SELECT count(*) AS n FROM ${quote(t.slug)} WHERE ${quote(f.slug)} IS NOT NULL`,
+              )?.n ?? 0,
+            )
     return { ...field, rows }
   })
 }

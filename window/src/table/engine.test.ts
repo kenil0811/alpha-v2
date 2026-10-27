@@ -1,5 +1,6 @@
 // A view over rows: filters by kind, sorts with empty values last, groups, totals and colours.
-import type { FieldView, RowView } from '@alpha/core/api'
+import type { FieldView, FilterRule, RowView } from '@alpha/core/api'
+import { FILTER_CASES } from '@alpha/core/filter-cases'
 import { describe, expect, it } from 'vitest'
 import {
   applyFilters,
@@ -172,5 +173,15 @@ describe('groups, totals and colours', () => {
   it('shows columns in the view’s order, less the hidden', () => {
     const config = { ...BLANK, order: ['stage'], hidden: ['listed'] }
     expect(columns(fields, config).map((f) => f.id)).toEqual(['stage', 'name', 'price'])
+  })
+})
+
+// The window's filter means what a summary's condition means in SQL: both answer these cases
+// (core step 3c).
+describe('the same cases as a summary’s condition', () => {
+  it.each(FILTER_CASES)('$kind $rule.op $rule.value$rule.values on $value is $match', (c) => {
+    const f = field('v', c.kind, { many: !!c.tags })
+    const rule = { field: 'v', ...c.rule } as FilterRule
+    expect(matches(rule, f, c.value, {})).toBe(c.match)
   })
 })

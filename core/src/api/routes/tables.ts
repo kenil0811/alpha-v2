@@ -6,6 +6,7 @@ import { findField } from '../../world/shape/index.ts'
 import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
 import type { HistoryView, SavedView, TableView } from '../types.ts'
+import { fieldViews } from './rows.ts'
 
 export function registerTables(ctx: Ctx): void {
   const { app, world, engine, user, asPerson, live } = ctx
@@ -225,6 +226,7 @@ export function registerTables(ctx: Ctx): void {
         kind: z.enum(FIELD_KINDS),
         choices: z.array(z.string().trim().min(1)).optional(),
         relatesTo: z.string().optional(),
+        many: z.boolean().optional(), // a choice holding several: tags (core step 3c)
       })
       .parse(req.body)
     world.shape.addFields(
@@ -235,6 +237,7 @@ export function registerTables(ctx: Ctx): void {
           kind: f.kind,
           ...(f.choices ? { choices: f.choices } : {}),
           ...(f.relatesTo ? { relatesTo: f.relatesTo } : {}),
+          ...(f.many ? { many: true } : {}),
         },
       ],
       { actor: { kind: 'person', id: user.id }, user: user.id },
@@ -274,8 +277,9 @@ export function registerTables(ctx: Ctx): void {
     const cell = (kind: string, v: unknown): Cell => {
       if (v === null || v === undefined) return null
       if (kind === 'person') return people[String(v)] ?? String(v)
-      if (kind === 'money' && typeof v === 'object') return (v as { amount: number }).amount
-      if (kind === 'number') return Number(v)
+      // money, and a summary of money (core step 3c), by its amount
+      if (typeof v === 'object' && !Array.isArray(v)) return (v as { amount: number }).amount
+      if (kind === 'number' || typeof v === 'number') return Number(v)
       if (kind === 'relation')
         return (Array.isArray(v) ? v : [v]).map((x) => names.get(String(x)) ?? '').join(', ')
       if (Array.isArray(v)) return v.join(', ')
@@ -324,17 +328,7 @@ export function registerTables(ctx: Ctx): void {
       aboutBy: t.aboutBy,
       module: { id: t.module.id, name: t.module.name },
       documents: t.documents,
-      fields: t.fields.map((f) => ({
-        id: f.id,
-        name: f.name,
-        slug: f.slug,
-        kind: f.kind,
-        choices: f.choices,
-        tones: f.tones,
-        many: f.many,
-        about: f.about,
-        aboutBy: f.aboutBy,
-      })),
+      fields: t.fields.map(fieldViews(world.shape)),
       views: world.views.list(t.id).map(savedView),
       rows: world.records.list(t.id).map((r) => ({
         id: r.id,

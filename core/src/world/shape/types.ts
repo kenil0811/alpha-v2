@@ -1,8 +1,10 @@
 import { TONES } from '@alpha/kit-sdk'
 import type { ColumnSpec } from '../ddl.ts'
+import type { Rule } from '../filter-sql.ts'
 import type { Actor } from '../journal.ts'
 import { type FieldKind, Refused } from '../kinds.ts'
 import { MODEL_VIEWS } from '../modelsql.ts'
+import type { SummaryInput } from './summary.ts'
 
 export interface Module {
   id: string
@@ -26,6 +28,8 @@ export interface Field {
   tones: Record<string, Tone> // a choice's colour where it means a state (Fits, Does not fit)
   relatesTo: string | null
   many: boolean // a relation holding a list of rows: a junction table, not a column
+  tags: boolean // a choice holding several (core step 3c): a JSON list in its column
+  summary: SummarySpec | null // worked out from the rows that point here, never stored (3c)
   // a relation whose rows are part of the row they point at (core step 3a): shown on it, removed
   // and brought back with it, never empty
   partOf: boolean
@@ -33,6 +37,18 @@ export interface Field {
   key: string | null // a kit field's stable name, matched on update; none for the person's own
   about: string | null // one sentence on what it means (the semantic layer)
   aboutBy: AboutBy | null // whose sentence: the kit's, Alpha's (assumed), or the person's
+}
+
+// A summary field (core step 3c), by ids: the rows of `of` whose relation `through` points at
+// this row, counted, or one of their fields summed, the least, the most or the latest, where one
+// condition holds, in the words of a view's filter.
+export interface SummarySpec {
+  of: string
+  through: string
+  op: 'count' | 'sum' | 'min' | 'max' | 'latest'
+  field?: string
+  by?: string
+  where?: Rule
 }
 
 // Whose sentence an about is: the person's stands over the kit's and Alpha's.
@@ -89,8 +105,9 @@ export interface FieldInput {
   choices?: string[]
   tones?: Record<string, Tone>
   relatesTo?: string // a table, for a relation
-  many?: boolean // a relation holding a list of rows
+  many?: boolean // a relation holding a list of rows, or a choice holding several (tags)
   partOf?: boolean // its rows are part of the row it points at
+  summary?: SummaryInput // a summary's table, relation, what it takes and its condition
   indexed?: boolean // an index on it, for a field filtered on often
   key?: string // a kit field's stable name
   about?: string // one sentence on what it means

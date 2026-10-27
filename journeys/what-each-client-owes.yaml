@@ -1,0 +1,27 @@
+name: what-each-client-owes
+title: 'a client shows what it owes, worked out from its invoices, and stays right as they are paid'
+why: >
+  Core step 3c (Kenil's yes, 27 Oct): a summary field is worked out from the rows that point at
+  a row, when it is read, so it is never stale. Asked for what each client owes, Alpha makes a
+  summary (the invoices not yet paid, added up) rather than a number it would have to keep in
+  step by hand; paying an invoice changes it with nothing else written.
+steps:
+  - say: >
+      In a module called Billing, make a table Clients with a Name, and a table Invoices with a
+      Number, an Amount in dollars, Paid (Yes or No) and the client it is for. On each client,
+      show what they still owe: their unpaid invoices, added up.
+    checks:
+      - summary: { table: Clients }
+      - errors: 0
+  - say: >
+      Add Acme with invoices A-1 for $100, paid, and A-2 for $250, not paid yet; and Bolt, with no
+      invoices yet.
+    checks:
+      - rows_in: { table: Clients, count: 2 }
+      - rows_in: { table: Invoices, count: 2 }
+      - summary: { table: Clients, row: Acme, equals: 250 }
+      - summary: { table: Clients, row: Bolt, equals: 0 }
+  - say: Acme paid A-2 today.
+    checks:
+      - summary: { table: Clients, row: Acme, equals: 0 }
+      - errors: 0

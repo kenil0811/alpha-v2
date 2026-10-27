@@ -33,6 +33,7 @@ import {
   tombstone,
   tombstoned,
 } from './removal.ts'
+import { summaryOf } from './summary.ts'
 import type {
   AboutBy,
   Field,
@@ -41,6 +42,7 @@ import type {
   ModuleRow,
   PeopleMap,
   PlacedBy,
+  SummarySpec,
   Table,
   Tone,
   WriteCtx,
@@ -237,6 +239,7 @@ export class Shape {
         many?: boolean
         partOf?: boolean
         indexed?: boolean
+        summary?: SummarySpec
       }>(f.options, {})
       return {
         id: f.id,
@@ -247,6 +250,8 @@ export class Shape {
         tones: o.tones ?? {},
         relatesTo: o.relatesTo ?? null,
         many: f.kind === 'relation' && !!o.many,
+        tags: f.kind === 'choice' && !!o.many,
+        summary: f.kind === 'summary' ? (o.summary ?? null) : null,
         partOf: f.kind === 'relation' && !o.many && !!o.partOf,
         indexed: !!o.indexed,
         key: f.key,
@@ -351,6 +356,7 @@ export class Shape {
       throw new Refused(`${f.name} relates to a table that is not there.`)
     const table = this.table(tableId) as Table
     const many = f.kind === 'relation' && !!f.many
+    const summary = f.kind === 'summary' ? summaryOf(this, table, f.summary, f.name) : null
     if (f.kind === 'notes' && table.fields.some((x) => x.kind === 'notes'))
       throw new Refused(`${table.name} has its notes already; a table has one place for notes.`)
     if (f.partOf && (f.kind !== 'relation' || many))
@@ -375,9 +381,10 @@ export class Shape {
       ...(f.choices?.length ? { choices: f.choices } : {}),
       ...(f.tones && Object.keys(f.tones).length ? { tones: f.tones } : {}),
       ...(f.relatesTo ? { relatesTo: (this.table(f.relatesTo) as Table).id } : {}),
-      ...(many ? { many: true } : {}),
+      ...(many || (f.kind === 'choice' && f.many) ? { many: true } : {}),
       ...(f.partOf ? { partOf: true } : {}),
-      ...(f.indexed && f.kind !== 'relation' ? { indexed: true } : {}),
+      ...(f.indexed && f.kind !== 'relation' && !summary ? { indexed: true } : {}),
+      ...(summary ? { summary } : {}),
     }
     const id = newId('f')
     run(

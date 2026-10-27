@@ -62,6 +62,11 @@ export const CORRECTABLE = new Set([
   'phone',
 ])
 
+// What can be typed in this field: a summary is worked out from other rows, never typed (3c).
+export const canType = (f: FieldView) => CORRECTABLE.has(f.kind) && !f.summary
+// A choice holding several (tags, core step 3c): a list, shown as chips.
+export const isTags = (f: FieldView) => f.kind === 'choice' && f.many
+
 export const when = (at: string) =>
   new Date(at).toLocaleString(undefined, {
     day: 'numeric',
@@ -131,6 +136,20 @@ export function readValue(
     const p = (n: number) => String(n).padStart(2, '0')
     return { value: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` }
   }
+  if (isTags(field)) {
+    const said = t
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+    const off = said.filter((x) => !field.choices.some((c) => c.toLowerCase() === x.toLowerCase()))
+    if (off.length)
+      return {
+        problem: `${field.name} takes some of ${field.choices.join(', ')}; “${off[0]}” is not one.`,
+      }
+    return {
+      value: field.choices.filter((c) => said.some((x) => x.toLowerCase() === c.toLowerCase())),
+    }
+  }
   if (field.kind === 'choice') {
     const c = field.choices.find((x) => x.toLowerCase() === t.toLowerCase())
     if (!c)
@@ -146,6 +165,7 @@ export function typedOf(field: FieldView, value: unknown): string {
   if (field.kind === 'money' && typeof value === 'object')
     return String((value as { amount: number }).amount)
   if (field.kind === 'date') return String(value).slice(0, 10)
+  if (Array.isArray(value)) return value.join(', ')
   return String(value)
 }
 

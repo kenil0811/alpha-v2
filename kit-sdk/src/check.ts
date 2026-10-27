@@ -52,6 +52,36 @@ export function kitNotes(dir: string): string[] {
   return notes
 }
 
+// A summary field (core step 3c) names its table's rows and their fields as the kit has them:
+// the core checks the rest (the relation points here, a sum takes a number) when it installs.
+function summaryProblems(
+  m: KitManifest,
+  table: string,
+  f: KitManifest['tables'][number]['fields'][number],
+): string[] {
+  const at = `${table}'s ${f.name}`
+  if ((f.kind === 'summary') !== !!f.summary)
+    return [`${at}: a summary field has a summary, and only a summary field does.`]
+  const s = f.summary
+  if (!s) return []
+  const of = m.tables.find((x) => x.name === s.of)
+  if (!of)
+    return m.uses.some((u) => u.tables.includes(s.of))
+      ? []
+      : [`${at} sums up ${s.of}, which is neither the kit's own table nor one named in uses.`]
+  const out: string[] = []
+  for (const name of [s.through, s.field, s.by, s.where?.field]) {
+    const x = name ? of.fields.find((y) => y.name === name) : undefined
+    if (name && !x) out.push(`${at} names ${name}, which ${s.of} does not have.`)
+    if (x?.kind === 'summary')
+      out.push(`${at} reads ${name}, a summary: a summary takes a stored value.`)
+  }
+  if (!s.through && !of.fields.some((y) => y.kind === 'relation' && y.relates_to === table))
+    out.push(`${at}: no field of ${s.of} relates to ${table}, so it has nothing to sum up.`)
+  if (s.op !== 'count' && !s.field) out.push(`${at}: ${s.op} needs the field it takes.`)
+  return out
+}
+
 export function checkKit(dir: string, options: CheckOptions = {}): string[] {
   const problems: string[] = []
   const file = join(dir, 'module.yaml')
@@ -88,6 +118,9 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
             `${t.name}'s ${f.name} relates to ${f.relates_to}, which is neither the kit's own table nor one named in uses.`,
           )
       }
+      if (f.many && f.kind !== 'relation' && f.kind !== 'choice')
+        problems.push(`${t.name}'s ${f.name}: only a relation or a choice holds several (many).`)
+      problems.push(...summaryProblems(m, t.name, f))
       // a part belongs to one row of a table, never to a list or to itself (core step 3a)
       if (f.part_of && (f.kind !== 'relation' || f.many || f.relates_to === t.name))
         problems.push(

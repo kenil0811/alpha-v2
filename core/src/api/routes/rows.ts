@@ -7,25 +7,32 @@ import { z } from 'zod'
 import { all } from '../../world/db.ts'
 import { junctionName, quote } from '../../world/ddl.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { Field, Table } from '../../world/shape/index.ts'
+import type { Field, Shape, Table } from '../../world/shape/index.ts'
+import { summaryShows, summaryWords } from '../../world/shape/summary.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FieldView, RowAround, RowPageView } from '../types.ts'
 
-export const fieldView = (f: Field): FieldView => ({
-  id: f.id,
-  name: f.name,
-  slug: f.slug,
-  kind: f.kind,
-  choices: f.choices,
-  tones: f.tones,
-  many: f.many,
-  about: f.about,
-  aboutBy: f.aboutBy,
-})
+// A field as the window reads it: a summary as the kind it shows as, with what it is in words.
+export const fieldViews =
+  (shape: Shape) =>
+  (f: Field): FieldView => ({
+    id: f.id,
+    name: f.name,
+    slug: f.slug,
+    kind: f.kind,
+    choices: f.choices,
+    tones: f.tones,
+    ...(f.summary ? summaryShows(shape, f.summary) : {}),
+    many: f.many || f.tags,
+    summary: f.summary ? summaryWords(shape, f.summary) : null,
+    about: f.about,
+    aboutBy: f.aboutBy,
+  })
 
 export function registerRows(ctx: Ctx): void {
   const { app, world } = ctx
   const { sourceView } = ctx.views
+  const fieldView = fieldViews(world.shape)
 
   const named = (t: Table, ids: string[]) =>
     ids.flatMap((id) => {

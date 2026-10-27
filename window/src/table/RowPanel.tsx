@@ -18,7 +18,8 @@ import { SidePanel } from '../ui/side-panel.tsx'
 import { AddRow } from './AddRow.tsx'
 import { EditCell } from './Grid.tsx'
 import { Notes } from './Notes.tsx'
-import { CORRECTABLE, EMPTY_WORDS, KIND_WORDS, MARK, show } from './values.ts'
+import { TagChips } from './Tags.tsx'
+import { canType, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
 
 // The side panel's way in: the row's view, with Open full to its own page.
 export function RowPanel({
@@ -120,7 +121,7 @@ export function RowBody({
             .map((f) => {
               const source = row.sources[f.slug]
               const text = show(f, row.values[f.slug], names)
-              const editable = !!onEdit && CORRECTABLE.has(f.kind)
+              const editable = !!onEdit && canType(f)
               if (editing === f.slug && onEdit)
                 return (
                   <div
@@ -162,7 +163,7 @@ export function RowBody({
                 >
                   <dt
                     className="flex items-center gap-2 text-ink-3 text-sm"
-                    title={f.about ?? undefined}
+                    title={f.about ?? f.summary ?? undefined}
                   >
                     {f.name}
                     {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
@@ -174,7 +175,11 @@ export function RowBody({
                       source && MARK[source.kind] && 'italic',
                     )}
                   >
-                    {text || EMPTY_WORDS}
+                    {isTags(f) && text ? (
+                      <TagChips field={f} value={row.values[f.slug]} />
+                    ) : (
+                      text || EMPTY_WORDS
+                    )}
                     {text && source && MARK[source.kind] && (
                       <span className="ml-1.5 text-ink-3 text-sm not-italic">
                         {MARK[source.kind]} {KIND_WORDS[source.kind]}

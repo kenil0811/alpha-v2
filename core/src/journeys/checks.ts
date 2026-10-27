@@ -28,6 +28,14 @@ export const Check = z.union([
       matches: z.string().optional(),
     }),
   }),
+  // a summary field on a table (core step 3c), and what it comes to on a row named so
+  z.object({
+    summary: z.object({
+      table: z.string(),
+      row: z.string().optional(),
+      equals: z.number().optional(),
+    }),
+  }),
   z.object({ reply_matches: z.string() }),
   z.object({
     card: z.object({
@@ -121,6 +129,29 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `${check.place.table} is ${check.place.is}`,
       ok: is === check.place.is,
       saw: is,
+    }
+  }
+  if ('summary' in check) {
+    const c = check.summary
+    const t = world.shape.table(c.table)
+    const sums = t?.fields.filter((f) => f.kind === 'summary') ?? []
+    const row =
+      t && c.row
+        ? world.records
+            .list(t.id)
+            .find((r) => world.rowName(t, r.values).toLowerCase() === c.row?.toLowerCase())
+        : undefined
+    const amounts = sums.map((f) => {
+      const v = row?.values[f.slug]
+      return v && typeof v === 'object' ? (v as { amount: number }).amount : v
+    })
+    return {
+      check: `${c.table} has a summary${c.row ? ` that comes to ${c.equals} on ${c.row}` : ''}`,
+      ok: sums.length > 0 && (!c.row || amounts.includes(c.equals)),
+      saw:
+        sums
+          .map((f, i) => `${f.name}${c.row ? ` = ${JSON.stringify(amounts[i] ?? null)}` : ''}`)
+          .join(', ') || 'no summary',
     }
   }
   if ('permission_cards' in check) {

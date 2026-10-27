@@ -9,7 +9,19 @@ import { cn } from '../ui/cn.ts'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
-import { CORRECTABLE, EMPTY_WORDS, KIND_TONE, KIND_WORDS, MARK, show, when } from './values.ts'
+import { TagPicker } from './Tags.tsx'
+import {
+  canType,
+  EMPTY_WORDS,
+  isTags,
+  KIND_TONE,
+  KIND_WORDS,
+  MARK,
+  readValue,
+  show,
+  typedOf,
+  when,
+} from './values.ts'
 
 // The source panel: one value, where it came from, and its history; Correct it makes the value
 // the person's own word. A value they typed over keeps Alpha's figure beside it, with Reset.
@@ -124,7 +136,7 @@ export function SourcePanel({
                   : 'See it in the file'}
             </Button>
           )}
-          {CORRECTABLE.has(field.kind) && !correcting && (
+          {canType(field) && !correcting && (
             <Button size="sm" variant="ghost" onClick={() => setCorrecting(true)}>
               Correct it
             </Button>
@@ -188,9 +200,7 @@ function Correct({
   const start =
     field.kind === 'money' && value && typeof value === 'object'
       ? String((value as { amount: number }).amount)
-      : value === null || value === undefined
-        ? ''
-        : String(value)
+      : typedOf(field, value)
   const [typed, setTyped] = useState(start)
   const [problem, setProblem] = useState<string | null>(null)
   const save = async (e: FormEvent) => {
@@ -213,8 +223,13 @@ function Correct({
       setProblem('That is not a number.')
       return
     }
+    const tags = isTags(field) ? readValue(field, typed) : null
+    if (tags && 'problem' in tags) return setProblem(tags.problem)
     try {
-      await api.post(`/api/tables/${tableId}/rows/${rowId}`, { field: field.name, value: read })
+      await api.post(`/api/tables/${tableId}/rows/${rowId}`, {
+        field: field.name,
+        value: tags ? tags.value : read,
+      })
       onDone()
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That was not saved.')
@@ -222,7 +237,9 @@ function Correct({
   }
   return (
     <form onSubmit={save} className="flex flex-col gap-2">
-      {field.kind === 'choice' ? (
+      {isTags(field) ? (
+        <TagPicker field={field} typed={typed} onTyped={setTyped} />
+      ) : field.kind === 'choice' ? (
         <Select
           value={typed}
           onChange={(e) => setTyped(e.target.value)}

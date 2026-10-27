@@ -5,7 +5,8 @@ import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import { slugTaken, writeManifest } from './manifest.ts'
 import type { Shape } from './shape.ts'
-import type { AboutBy, PeopleMap, Table, Tone, WriteCtx } from './types.ts'
+import { summariesReading } from './summary.ts'
+import type { AboutBy, Field, PeopleMap, Table, Tone, WriteCtx } from './types.ts'
 import { findField, freeSlug, slugify, spec } from './types.ts'
 
 export function rename(
@@ -78,12 +79,12 @@ export function setChoices(
     if (!table) throw new Refused('That table is not there.')
     const f = findField(table, field)
     if (f.kind !== 'choice') throw new Refused(`${f.name} is not a choice field.`)
-    run(
-      shape.db,
-      'UPDATE fields SET options = ? WHERE id = ?',
-      json({ choices, ...(Object.keys(f.tones).length ? { tones: f.tones } : {}) }),
-      f.id,
+    // the rest of its options stay: whether it holds several, an index
+    const o = parse<Record<string, unknown>>(
+      one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+      {},
     )
+    run(shape.db, 'UPDATE fields SET options = ? WHERE id = ?', json({ ...o, choices }), f.id)
     append(shape.db, {
       actor: ctx.actor,
       kind: 'shaped',
@@ -303,14 +304,24 @@ export function setHidden(shape: Shape, tableId: string, hidden: boolean, ctx: W
 }
 
 // A relation that held one row comes to hold a list (a kit's newer version says many): its
-// junction table is made, each row's one pointer becomes its first entry, the column goes.
+// junction table is made, each row's one pointer becomes its first entry, the column goes. A
+// choice comes to hold several (tags, core step 3c): each row's one choice becomes a list of it.
 export function setMany(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
     const f = findField(table, field)
-    if (f.kind !== 'relation') throw new Refused(`${f.name} is not a relation.`)
+    if (f.kind === 'choice') return setTags(shape, table, f, ctx)
+    if (f.kind !== 'relation') throw new Refused(`${f.name} is not a relation or a choice.`)
     if (f.many) return table
+    if (f.partOf) throw new Refused(`${f.name} makes ${table.name} part of a row: it holds one.`)
+    const sums = summariesReading(shape, table.id, f.id).filter(
+      (x) => x.field.summary?.through === f.id,
+    )
+    if (sums.length)
+      throw new Refused(
+        `${sums.map((x) => `${x.field.name} in ${x.table.name}`).join(' and ')} sum${sums.length === 1 ? 's' : ''} up ${table.name} through ${f.name}, so it holds one row.`,
+      )
     const next = { ...spec(f), many: true }
     for (const sql of junctionSql(table.slug, next, table.id)) shape.db.exec(sql)
     run(
@@ -337,6 +348,31 @@ export function setMany(shape: Shape, tableId: string, field: string, ctx: Write
     writeManifest(shape, table.module)
     return shape.table(table.id) as Table
   })
+}
+
+function setTags(shape: Shape, table: Table, f: Field, ctx: WriteCtx): Table {
+  if (f.tags) return table
+  run(
+    shape.db,
+    `UPDATE ${quote(table.slug)} SET ${quote(f.slug)} = json_array(${quote(f.slug)}) WHERE ${quote(f.slug)} IS NOT NULL`,
+  )
+  const o = parse<Record<string, unknown>>(
+    one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+    {},
+  )
+  run(shape.db, 'UPDATE fields SET options = ? WHERE id = ?', json({ ...o, many: true }), f.id)
+  append(shape.db, {
+    actor: ctx.actor,
+    kind: 'shaped',
+    words: `${f.name} in ${table.name} now holds several of its choices.`,
+    data: { table: table.id, field: f.id, many: true },
+    user: ctx.user ?? null,
+    turn: ctx.turn ?? null,
+    module: table.module.id,
+    run: ctx.run ?? null,
+  })
+  writeManifest(shape, table.module)
+  return shape.table(table.id) as Table
 }
 
 // A kit field's stable name, set once on a field that had none (a world from before keys).

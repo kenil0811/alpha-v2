@@ -81,7 +81,7 @@ export function ColumnMenu({
   }
   const sorted = config.sorts.find((s) => s.field === field.id)?.dir
   const rule = config.filters.rules.find((r) => r.field === field.id)
-  const fam = family(field.kind)
+  const fam = family(field.kind, field.many)
   const at = shown.findIndex((f) => f.id === field.id)
 
   if (page === 'filter')
@@ -130,6 +130,9 @@ export function ColumnMenu({
           {field.about ?? <span className="text-ink-3">No sentence on what it means yet.</span>}
         </span>
         <span className="text-ink-3 text-xs">{field.aboutBy ? ABOUT_BY[field.aboutBy] : ''}</span>
+        {field.summary && (
+          <span className="text-ink-2 text-xs">Worked out from other rows: {field.summary}</span>
+        )}
       </div>
       <MenuItem onClick={() => setPage('describe')}>
         <MessageSquareText className="size-3.5 text-ink-3" />
@@ -156,7 +159,7 @@ export function ColumnMenu({
       <MenuItem checked={!!rule} onClick={() => setPage('filter')}>
         Filter…
       </MenuItem>
-      {GROUPABLE.has(field.kind) && (
+      {GROUPABLE.has(field.kind) && !field.many && (
         <MenuItem
           checked={config.group === field.id}
           onClick={() => apply(setGroup(config, config.group === field.id ? null : field.id))}
@@ -263,7 +266,7 @@ export function RuleEditor({
   onSave: (r: FilterRule) => void
   onRemove?: (() => void) | undefined
 }) {
-  const fam = family(field.kind)
+  const fam = family(field.kind, field.many)
   const ops = OPS[fam]
   const [op, setOp] = useState<FilterOp>(rule?.op ?? (ops[0] as FilterOp))
   const [value, setValue] = useState(String(rule?.value ?? ''))
@@ -273,9 +276,13 @@ export function RuleEditor({
   const read = (v: string) => (fam === 'number' || op === 'next_days' ? Number(v) : v)
   const kind = op === 'next_days' || fam === 'number' ? 'number' : fam === 'date' ? 'date' : 'text'
   const counts = new Map<string, number>()
+  // how many rows hold each choice; a tags field counts a row under each of its tags
   for (const r of rows) {
-    const v = show(field, r.values[field.slug], names)
-    counts.set(v, (counts.get(v) ?? 0) + 1)
+    const held = r.values[field.slug]
+    for (const v of fam === 'tags' && Array.isArray(held)
+      ? held.map(String)
+      : [show(field, held, names)])
+      counts.set(v, (counts.get(v) ?? 0) + 1)
   }
   const ready =
     need === 0 ||
@@ -299,7 +306,7 @@ export function RuleEditor({
       <Select value={op} onChange={(e) => setOp(e.target.value as FilterOp)} aria-label="How">
         {ops.map((o) => (
           <option key={o} value={o}>
-            {o === 'in' ? 'is any of' : OP_WORDS[o]}
+            {o === 'in' ? (fam === 'tags' ? 'has any of' : 'is any of') : OP_WORDS[o]}
           </option>
         ))}
       </Select>

@@ -6,7 +6,8 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { askForNew } from '../../ask.ts'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { Field, Select } from '../../ui/field.tsx'
-import { CORRECTABLE, readValue, show, titleOf, typedOf } from '../values.ts'
+import { TagPicker } from '../Tags.tsx'
+import { canType, isTags, readValue, show, titleOf, typedOf } from '../values.ts'
 
 export function FormView({
   table,
@@ -35,9 +36,7 @@ export function FormView({
     setProblem(null)
   }, [row?.id, row?.values, adding])
   const changed = fields.filter(
-    (f) =>
-      CORRECTABLE.has(f.kind) &&
-      (typed[f.slug] ?? '') !== (row ? typedOf(f, row.values[f.slug]) : ''),
+    (f) => canType(f) && (typed[f.slug] ?? '') !== (row ? typedOf(f, row.values[f.slug]) : ''),
   )
   const save = async (e: FormEvent) => {
     e.preventDefault()
@@ -95,10 +94,16 @@ export function FormView({
           {fields.map((f) => (
             <label key={f.id} className="flex flex-col gap-1 text-md" htmlFor={`form-${f.id}`}>
               <span className="text-ink-2">{f.name}</span>
-              {!CORRECTABLE.has(f.kind) ? (
+              {!canType(f) ? (
                 <span id={`form-${f.id}`} className="py-1 text-ink-3">
                   {(row && show(f, row.values[f.slug], names)) || 'Set by asking Alpha'}
                 </span>
+              ) : isTags(f) ? (
+                <TagPicker
+                  field={f}
+                  typed={typed[f.slug] ?? ''}
+                  onTyped={(t) => setTyped({ ...typed, [f.slug]: t })}
+                />
               ) : f.kind === 'choice' ? (
                 <Select
                   id={`form-${f.id}`}

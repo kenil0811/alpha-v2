@@ -4,6 +4,7 @@
 import { json, run } from '../db.ts'
 import { junctionName, quote } from '../ddl.ts'
 import {
+  checkTags,
   checkValue,
   type Provenance,
   type ProvenanceInput,
@@ -51,6 +52,7 @@ export function columnValues(_records: Records, f: Field, value: unknown): [stri
       [`${f.slug}_currency`, m ? m.currency : null],
     ]
   }
+  if (f.tags) return [[f.slug, Array.isArray(value) && value.length ? json(value) : null]]
   return [[f.slug, value ?? null]]
 }
 
@@ -204,7 +206,9 @@ export function prepare(
   const prov: Record<string, Provenance> = {}
   for (const [name, value] of Object.entries(values)) {
     const f = findField(table, name)
-    let v = checkValue(f.kind, f.name, value, f.choices)
+    let v = f.tags
+      ? checkTags(f.name, value, f.choices)
+      : checkValue(f.kind, f.name, value, f.choices)
     if (f.kind === 'relation' && v !== null) {
       // a list relation takes a list; one row's relation takes one row
       if (f.many) v = Array.isArray(v) ? v : [v]

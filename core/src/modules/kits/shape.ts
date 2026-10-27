@@ -7,9 +7,14 @@ import { hashOf, resolveConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
 import { rowHash } from './read.ts'
 
-function fieldsOf(spec: KitManifest['tables'][number], withRelations: boolean): FieldInput[] {
+// A table's fields of one sort: plain, relations, or summaries (which read the relations).
+function fieldsOf(
+  spec: KitManifest['tables'][number],
+  sort: 'plain' | 'relation' | 'summary',
+): FieldInput[] {
+  const sortOf = (k: string) => (k === 'relation' || k === 'summary' ? k : 'plain')
   return spec.fields
-    .filter((f) => (f.kind === 'relation') === withRelations)
+    .filter((f) => sortOf(f.kind) === sort)
     .map((f) => ({
       name: f.name,
       kind: f.kind,
@@ -18,6 +23,7 @@ function fieldsOf(spec: KitManifest['tables'][number], withRelations: boolean): 
       ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
       ...(f.many ? { many: true } : {}),
       ...(f.part_of ? { partOf: true } : {}),
+      ...(f.summary ? { summary: f.summary } : {}),
       ...(f.indexed ? { indexed: true } : {}),
       key: f.key ?? f.name,
       ...(f.about ? { about: f.about, aboutBy: 'kit' as const } : {}),
@@ -25,7 +31,7 @@ function fieldsOf(spec: KitManifest['tables'][number], withRelations: boolean): 
 }
 
 // Tables first without their relations, then the relations, so a table can point at one made
-// after it. A kit's field is matched by its key (decision 3), so a rename the kit declares in
+// after it, then the summaries, which read the relations (core step 3c). A kit's field is matched by its key (decision 3), so a rename the kit declares in
 // its history is a rename in place; what the person removed stays removed (tombstones); a field
 // the kit no longer uses is hidden, its rows kept. A newer version never removes data.
 export function shapeTables(
@@ -57,7 +63,7 @@ export function shapeTables(
     const t = world.shape.table(spec.name)
     if (!t) {
       if (world.shape.tombstoned(module.id, 'table', spec.name)) continue
-      world.shape.makeTable(module.id, spec.name, fieldsOf(spec, false), ctx, {
+      world.shape.makeTable(module.id, spec.name, fieldsOf(spec, 'plain'), ctx, {
         ...(spec.about ? { about: spec.about, aboutBy: 'kit' } : {}),
         ...(spec.setup ? { setup: true } : {}),
       })
@@ -74,16 +80,16 @@ export function shapeTables(
         if (sf) world.shape.setKey(f.id, sf.key ?? sf.name)
       }
     const t = world.shape.table(before.id) as Table
-    const missing = [...fieldsOf(spec, false), ...fieldsOf(spec, true)].filter(
+    const missing = [...fieldsOf(spec, 'plain'), ...fieldsOf(spec, 'relation')].filter(
       (f) =>
         !byKey(t, f.key as string) && !world.shape.tombstoned(module.id, 'field', f.key as string),
     )
     if (missing.length) world.shape.addFields(t.id, missing, ctx)
-    // a relation the kit now says holds a list
+    // a relation the kit now says holds a list, a choice that it holds several
     for (const f of spec.fields) {
-      if (f.kind !== 'relation' || !f.many) continue
+      if ((f.kind !== 'relation' && f.kind !== 'choice') || !f.many) continue
       const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
-      if (was && !was.many) world.shape.setMany(t.id, was.name, ctx)
+      if (was && !was.many && !was.tags) world.shape.setMany(t.id, was.name, ctx)
     }
     for (const f of spec.fields) {
       if (f.kind !== 'choice') continue
@@ -144,6 +150,16 @@ export function shapeTables(
     }
     // how its rows name people, as the kit says; its rows are read for them again when it changes
     if (spec.people) world.people.mapTable(t.id, spec.people as PeopleMap, ctx)
+  }
+  // the summaries, once every table has its relations
+  for (const spec of manifest.tables) {
+    const t = world.shape.table(spec.name)
+    if (!t || t.module.id !== module.id) continue
+    const missing = fieldsOf(spec, 'summary').filter(
+      (f) =>
+        !byKey(t, f.key as string) && !world.shape.tombstoned(module.id, 'field', f.key as string),
+    )
+    if (missing.length) world.shape.addFields(t.id, missing, ctx)
   }
   // the fields the kit no longer uses: hidden, their rows kept
   for (const r of manifest.history?.removed ?? [])

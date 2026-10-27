@@ -7,6 +7,8 @@ import { cn } from '../ui/cn.ts'
 import { Dialog } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
+import { TagPicker } from './Tags.tsx'
+import { isTags, readValue } from './values.ts'
 
 // Add a row: the person's own values, each saved as theirs. In the side panel, or in a dialog
 // while the assistant has the side. A part added from its row's view comes with that row given
@@ -26,7 +28,8 @@ export function AddRow({
   fixed?: Record<string, unknown>
   onClose: () => void
 }) {
-  const fields = all.filter((f) => f.kind !== 'notes' && !(f.name in fixed))
+  // a summary is worked out from other rows, never typed (core step 3c)
+  const fields = all.filter((f) => f.kind !== 'notes' && !f.summary && !(f.name in fixed))
   const [values, setValues] = useState<Record<string, string>>({})
   const [problem, setProblem] = useState<string | null>(null)
   const save = async (e: FormEvent) => {
@@ -36,6 +39,12 @@ export function AddRow({
     for (const f of fields) {
       const t = (values[f.name] ?? '').trim()
       if (!t) continue
+      if (isTags(f)) {
+        const tags = readValue(f, t)
+        if ('problem' in tags) return setProblem(tags.problem)
+        read[f.name] = tags.value
+        continue
+      }
       const n = Number(t.replace(/[$,\s]/g, ''))
       if ((f.kind === 'money' || f.kind === 'number') && Number.isNaN(n)) {
         setProblem(`${f.name} is not a number.`)
@@ -57,7 +66,13 @@ export function AddRow({
       {fields.map((f) => (
         <label key={f.id} className="flex flex-col gap-1 text-md" htmlFor={`add-${f.id}`}>
           <span className="text-ink-2">{f.name}</span>
-          {f.kind === 'choice' ? (
+          {isTags(f) ? (
+            <TagPicker
+              field={f}
+              typed={values[f.name] ?? ''}
+              onTyped={(t) => setValues((v) => ({ ...v, [f.name]: t }))}
+            />
+          ) : f.kind === 'choice' ? (
             <Select
               id={`add-${f.id}`}
               value={values[f.name] ?? ''}

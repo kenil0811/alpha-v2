@@ -56,6 +56,8 @@ held by review. Dates are 2026.
 | T11 | No bare `<select>` where a person picks; only the cell editor keeps the native one | 25 Oct | test |
 | T12 | Freezing and wrapping columns are kept with the saved list, like widths | 26 Oct | — |
 | T13 | A cell's History (old → new, who, when) is on its right-click menu; ⇧↓ and ⌘D fill down, after a yes | 26 Oct | — |
+| T14 | A summary shows as the kind it comes to and is never typed; what it is, in words, is on its column's tip and menu | 27 Oct | — |
+| T15 | Tags show as chips and are picked from a tick list; filtered by has any of, all of, none of; never a board's columns or a group | 27 Oct | — |
 
 ## Pages, records and deleting
 

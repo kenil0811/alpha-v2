@@ -9,7 +9,8 @@ import { Field, Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
 import type { PastePlan } from './Grid.tsx'
 import { useGoes } from './goes.ts'
-import { CORRECTABLE, readValue } from './values.ts'
+import { TagPicker } from './Tags.tsx'
+import { canType, isTags, readValue } from './values.ts'
 
 export function TickedBar({
   tableId,
@@ -64,7 +65,7 @@ export function TickedBar({
       </Button>
       <Popover anchor={setAnchor} open={setting} onClose={() => setSetting(false)}>
         <SetForm
-          fields={fields.filter((f) => CORRECTABLE.has(f.kind))}
+          fields={fields.filter((f) => canType(f))}
           count={n}
           onSet={async (f, v) => {
             if (await onSet(f, v)) setSetting(false)
@@ -128,7 +129,9 @@ function SetForm({
           </option>
         ))}
       </Select>
-      {field?.kind === 'choice' ? (
+      {field && isTags(field) ? (
+        <TagPicker field={field} typed={typed} onTyped={setTyped} />
+      ) : field?.kind === 'choice' ? (
         <Select
           value={typed}
           onChange={(e) => setTyped(e.target.value)}

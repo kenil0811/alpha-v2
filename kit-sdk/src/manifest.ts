@@ -2,10 +2,32 @@
 // tables and fields, where it sits, what it uses of other kits, who keeps it, and how its shape
 // changed between versions. The core installs by this schema; `alpha kit check` reads it.
 import { z } from 'zod'
-import { FIELD_KINDS } from './kinds.ts'
+import { CONDITION_OPS, FIELD_KINDS, SUMMARY_OPS } from './kinds.ts'
 
 export const TONES = ['good', 'warn', 'bad', 'accent'] as const
 export type Tone = (typeof TONES)[number]
+
+// A summary field (core step 3c): the rows of `of` that point at this row through `through` (the
+// one relation they have to this table when left out), counted, or their `field` summed, the
+// least, the most or the latest (by the date `by`, or when added), where one condition holds,
+// in the words of a view's filter. Worked out when read; never written.
+const value = z.union([z.string(), z.number()]).nullable().optional()
+export const Summary = z.object({
+  of: z.string(),
+  through: z.string().optional(),
+  op: z.enum(SUMMARY_OPS),
+  field: z.string().optional(),
+  by: z.string().optional(),
+  where: z
+    .object({
+      field: z.string(),
+      op: z.enum(CONDITION_OPS),
+      value,
+      value2: value,
+      values: z.array(z.string()).optional(),
+    })
+    .optional(),
+})
 
 const Field = z.object({
   name: z.string(),
@@ -13,7 +35,8 @@ const Field = z.object({
   choices: z.array(z.string()).optional(),
   tones: z.record(z.string(), z.enum(TONES)).optional(),
   relates_to: z.string().optional(),
-  many: z.boolean().optional(), // a relation holding a list of rows
+  many: z.boolean().optional(), // a relation holding a list of rows, a choice holding several
+  summary: Summary.optional(), // a summary field's: what it sums up
   // a relation to one row whose rows are part of it: shown there, removed and brought back with
   // it, never empty, and no tab of its own (core step 3a)
   part_of: z.boolean().optional(),

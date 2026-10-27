@@ -36,9 +36,10 @@ export function sqlType(kind: FieldKind): 'TEXT' | 'REAL' {
   return kind === 'number' || kind === 'money' ? 'REAL' : 'TEXT'
 }
 
-// The columns a field takes: none for a list relation, two for money, else one.
+// The columns a field takes: none for a list relation or a summary, two for money, else one
+// (a choice holding several keeps them as a JSON list in its one column).
 export function columnsOf(f: ColumnSpec): { name: string; type: 'TEXT' | 'REAL' }[] {
-  if (f.kind === 'relation' && f.many) return []
+  if ((f.kind === 'relation' && f.many) || f.kind === 'summary') return []
   if (f.kind === 'money')
     return [
       { name: f.slug, type: 'REAL' },

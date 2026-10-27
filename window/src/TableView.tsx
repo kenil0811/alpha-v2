@@ -47,7 +47,7 @@ import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
-import { CORRECTABLE, show } from './table/values.ts'
+import { canType, isTags, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
@@ -174,7 +174,10 @@ export function TableView({
       ),
     [base, data.names, fields, config.search, config.filters, config.sorts],
   )
-  const choices = fields.filter((f) => f.kind === 'choice' && f.choices.length)
+  // a board moves a card by setting its one choice: never tags, never a summary
+  const choices = fields.filter(
+    (f) => f.kind === 'choice' && !f.many && !f.summary && f.choices.length,
+  )
   // a board's columns: the view's group when it is a choice, else Stage, else the first choice
   const boardBy =
     choices.find((f) => f.id === config.group) ??
@@ -229,7 +232,7 @@ export function TableView({
   // New adds a row, or says why one can't be added here
   const onNew = kept
     ? (kept.onNew ?? why)
-    : data.fields.some((f) => CORRECTABLE.has(f.kind))
+    : data.fields.some((f) => canType(f))
       ? () => {
           setAdding(true)
           setOpened(null)
@@ -512,9 +515,7 @@ export function TableView({
                             {
                               values: Object.fromEntries(
                                 data.fields
-                                  .filter(
-                                    (f) => CORRECTABLE.has(f.kind) && r.values[f.slug] != null,
-                                  )
+                                  .filter((f) => canType(f) && r.values[f.slug] != null)
                                   .map((f) => [f.name, r.values[f.slug]]),
                               ),
                             },
@@ -591,7 +592,7 @@ export function TableView({
         <AddRow
           tableId={data.id}
           name={data.name}
-          fields={data.fields.filter((f) => CORRECTABLE.has(f.kind))}
+          fields={data.fields.filter((f) => canType(f))}
           dialog={quiet}
           onClose={() => setAdding(false)}
         />
@@ -662,7 +663,7 @@ function More({
     .map((s) => fields.find((f) => f.id === s.field)?.name)
     .filter(Boolean)
   const grouped = fields.find((f) => f.id === config.group)
-  const groupable = fields.filter((f) => GROUPABLE.has(f.kind))
+  const groupable = fields.filter((f) => GROUPABLE.has(f.kind) && !isTags(f))
   return (
     <>
       <button

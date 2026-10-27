@@ -45,7 +45,9 @@ export function KindPicker({
 }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
-  const choices = fields.filter((f) => f.kind === 'choice' && f.choices.length)
+  const choices = fields.filter(
+    (f) => f.kind === 'choice' && !f.many && !f.summary && f.choices.length,
+  )
   const dates = fields.filter((f) => f.kind === 'date')
   const numbers = fields.filter((f) => f.kind === 'number' || f.kind === 'money')
   const groupable = [...choices, ...fields.filter((f) => f.kind === 'text')]

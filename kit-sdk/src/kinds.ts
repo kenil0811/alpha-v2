@@ -20,8 +20,35 @@ export const FIELD_KINDS = [
   // a row's free notes (core step 3b): Markdown, a person or a row mentioned as a link
   // ([@Ann](person:p_1), [Acme](row:r_1)); one per table, shown on the row, not in grids
   'notes',
+  // worked out from the rows of another table that point at this one (core step 3c): their
+  // count, or a field's sum, least, most or latest, with one condition; never written
+  'summary',
 ] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
+
+// What a summary field does with the rows that point at its row, and the ops its one condition
+// may take: a view's filter's, but none relative to today (core step 3c).
+export const SUMMARY_OPS = ['count', 'sum', 'min', 'max', 'latest'] as const
+export const CONDITION_OPS = [
+  'is',
+  'is_not',
+  'contains',
+  'not_contains',
+  'starts',
+  'ends',
+  'eq',
+  'ne',
+  'gt',
+  'lt',
+  'between',
+  'before',
+  'after',
+  'in',
+  'all_of',
+  'none_of',
+  'empty',
+  'not_empty',
+] as const
 
 export const PROVENANCE_KINDS = ['stated', 'looked_up', 'estimated', 'assumed', 'computed'] as const
 export type ProvenanceKind = (typeof PROVENANCE_KINDS)[number]

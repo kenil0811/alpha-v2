@@ -7,6 +7,7 @@ import { isPersonsOwn, type Provenance } from '../kinds.ts'
 import { findField, spec, type Table } from '../shape/index.ts'
 import type { Records } from './records.ts'
 import { snapshot } from './storing.ts'
+import { summaries, summaryProvenance } from './summary.ts'
 import type { ProvRow, RecordOut, Row, Stored } from './types.ts'
 import { CHUNK, resolve } from './types.ts'
 
@@ -15,9 +16,10 @@ export function list(records: Records, tableId: string): RecordOut[] {
   const rows = all<Row>(records.db, `SELECT * FROM ${quote(table.slug)} ORDER BY created_at, rowid`)
   const lists = listsOf(records, table, null)
   const prov = provenanceOfTable(records, table)
+  const sums = summed(records, table, rows)
   return rows.map((r) => {
     const vals = rowVals(records, table, r, lists.get(r.id))
-    return out(records, table, r, vals, resolve(prov.get(r.id), vals))
+    return out(records, table, r, vals, resolve(prov.get(r.id), vals), sums(r.id))
   })
 }
 
@@ -27,7 +29,22 @@ export function get(records: Records, id: string): { table: Table; record: Recor
   const r = readRow(records, table, id)
   if (!r) return undefined
   const s = snapshot(records, table, r)
-  return { table, record: out(records, table, r, s.vals, s.prov) }
+  return { table, record: out(records, table, r, s.vals, s.prov, summed(records, table, [r])(id)) }
+}
+
+// A table's summaries for these rows (core step 3c), each with its computed provenance; they
+// are read out with the row, never kept in it, its versions or its words.
+function summed(records: Records, table: Table, rows: Row[]) {
+  const fields = table.fields.filter((f) => f.kind === 'summary')
+  const sums = fields.length
+    ? summaries(
+        records,
+        table,
+        rows.map((r) => r.id),
+      )
+    : new Map()
+  const prov = Object.fromEntries(fields.map((f) => [f.id, summaryProvenance(records.shape, f)]))
+  return (id: string) => ({ vals: (sums.get(id) ?? {}) as Record<string, unknown>, prov })
 }
 
 // The table a row is in, by the registry.
@@ -66,6 +83,11 @@ export function column(
   const f = findField(table, field)
   if (f.kind === 'relation' && f.many)
     return [...listsOf(records, table, null)].map(([id, by]) => ({ id, value: by[f.id] ?? [] }))
+  if (f.kind === 'summary') {
+    const all = ids(records, table.id)
+    const sums = summaries(records, table, all)
+    return all.map((id) => ({ id, value: sums.get(id)?.[f.id] }))
+  }
   return all<Row>(
     records.db,
     `SELECT id, ${columnsOf(spec(f))
@@ -95,14 +117,17 @@ export function idsWhere(
   if (!values.length) return []
   const table = records.mustTable(tableId)
   const f = findField(table, field)
-  if (f.kind === 'money' || (f.kind === 'relation' && f.many)) return []
+  if (f.kind === 'money' || f.kind === 'summary' || (f.kind === 'relation' && f.many)) return []
+  // a tags field holds a list: a row holding any of the values
   const out: string[] = []
   for (let i = 0; i < values.length; i += CHUNK) {
     const part = values.slice(i, i + CHUNK)
     out.push(
       ...all<{ id: string }>(
         records.db,
-        `SELECT id FROM ${quote(table.slug)} WHERE lower(${quote(f.slug)}) IN (${part.map(() => '?').join(', ')}) ORDER BY updated_at DESC`,
+        f.tags
+          ? `SELECT id FROM ${quote(table.slug)} WHERE EXISTS (SELECT 1 FROM json_each(${quote(f.slug)}) WHERE lower(value) IN (${part.map(() => '?').join(', ')})) ORDER BY updated_at DESC`
+          : `SELECT id FROM ${quote(table.slug)} WHERE lower(${quote(f.slug)}) IN (${part.map(() => '?').join(', ')}) ORDER BY updated_at DESC`,
         ...part.map((v) => v.toLowerCase()),
       ).map((r) => r.id),
     )
@@ -216,6 +241,9 @@ export function rowVals(
       const amount = row[f.slug]
       if (amount !== null && amount !== undefined)
         vals[f.id] = { amount, currency: row[`${f.slug}_currency`] ?? '' }
+    } else if (f.tags) {
+      const l = parse<string[]>(row[f.slug] as string | null, [])
+      if (l.length) vals[f.id] = l
     } else if (row[f.slug] !== null && row[f.slug] !== undefined) vals[f.id] = row[f.slug]
   }
   return vals
@@ -307,12 +335,15 @@ export function out(
   r: Row,
   vals: Record<string, unknown>,
   prov: Record<string, Provenance>,
+  sums?: { vals: Record<string, unknown>; prov: Record<string, Provenance> },
 ): RecordOut {
   const values: Record<string, unknown> = {}
   const provenance: Record<string, Provenance> = {}
   for (const f of table.fields) {
-    if (f.id in vals) values[f.slug] = vals[f.id]
-    if (f.id in prov) provenance[f.slug] = prov[f.id] as Provenance
+    const v = f.kind === 'summary' ? sums?.vals : vals
+    const p = f.kind === 'summary' ? sums?.prov : prov
+    if (v && f.id in v) values[f.slug] = v[f.id]
+    if (p && f.id in p && v && f.id in v) provenance[f.slug] = p[f.id] as Provenance
   }
   return {
     id: r.id,

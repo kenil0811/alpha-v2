@@ -55,6 +55,7 @@ export const FIELD_KINDS = [
   'email',
   'phone',
   'notes',
+  'summary',
 ] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
 

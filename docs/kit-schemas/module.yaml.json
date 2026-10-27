@@ -163,7 +163,8 @@
                     "link",
                     "email",
                     "phone",
-                    "notes"
+                    "notes",
+                    "summary"
                   ]
                 },
                 "choices": {
@@ -192,6 +193,92 @@
                 },
                 "many": {
                   "type": "boolean"
+                },
+                "summary": {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "type": "string"
+                    },
+                    "through": {
+                      "type": "string"
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "count",
+                        "sum",
+                        "min",
+                        "max",
+                        "latest"
+                      ]
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "by": {
+                      "type": "string"
+                    },
+                    "where": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "op": {
+                          "type": "string",
+                          "enum": [
+                            "is",
+                            "is_not",
+                            "contains",
+                            "not_contains",
+                            "starts",
+                            "ends",
+                            "eq",
+                            "ne",
+                            "gt",
+                            "lt",
+                            "between",
+                            "before",
+                            "after",
+                            "in",
+                            "all_of",
+                            "none_of",
+                            "empty",
+                            "not_empty"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "value2": {
+                          "type": [
+                            "string",
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "values": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "op"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "of",
+                    "op"
+                  ]
                 },
                 "part_of": {
                   "type": "boolean"

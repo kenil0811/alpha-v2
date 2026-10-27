@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { MenuItem, MenuLine } from '../ui/popover.tsx'
-import { CORRECTABLE, show } from './values.ts'
+import { canType, show } from './values.ts'
 
 export function RowMenu({
   tableId,
@@ -55,7 +55,7 @@ export function RowMenu({
   const kept = elsewhere ? 'This row is kept on its own page; do that there.' : undefined
   const fixed = readOnly
     ? 'This row changes on its own page.'
-    : f && !CORRECTABLE.has(f.kind)
+    : f && !canType(f)
       ? 'Alpha works this value out; open where it came from to correct that.'
       : undefined
   return (

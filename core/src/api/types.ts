@@ -1,4 +1,5 @@
 // What the window may import from the core: the shapes of the api, never its code.
+import type { FieldView } from './row-types.ts'
 
 export interface Health {
   ok: true
@@ -7,7 +8,7 @@ export interface Health {
 }
 
 export type { Layout, Me } from './me-types.ts'
-export type { RowAround, RowPageView } from './row-types.ts'
+export type { FieldView, RowAround, RowPageView } from './row-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
 export interface FoundRow {
@@ -252,18 +253,6 @@ export interface PageSummary {
   front: boolean
 }
 
-export interface FieldView {
-  id: string
-  name: string
-  slug: string
-  kind: string
-  choices: string[]
-  tones: Record<string, 'good' | 'warn' | 'bad' | 'accent'> // a choice's colour, where it is a state
-  many: boolean // a relation holding a list of rows
-  about: string | null // one sentence on what it means
-  aboutBy: 'kit' | 'alpha' | 'person' | null // whose sentence: the kit's, assumed by Alpha, or yours
-}
-
 // Where a value came from, in words the person reads, with what to open.
 export interface SourceView {
   kind: 'stated' | 'looked_up' | 'estimated' | 'assumed' | 'computed'
@@ -367,6 +356,8 @@ export type FilterOp =
   | 'this_week'
   | 'next_days'
   | 'in'
+  | 'all_of'
+  | 'none_of'
   | 'empty'
   | 'not_empty'
 export type TotalOp =

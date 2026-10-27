@@ -160,7 +160,22 @@ export function checkValue(
       if (typeof value !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value))
         fail('an email address')
       return value
+    case 'summary':
+      throw new Refused(`${name} is worked out from the rows that point here; it is not written.`)
   }
+}
+
+// A tags value (a choice holding several, core step 3c): one choice or a list of them, each one
+// of its choices, kept once each in the order given; none is empty.
+export function checkTags(name: string, value: unknown, choices: string[]): string[] | null {
+  if (value === null) return null
+  const list = Array.isArray(value) ? value : [value]
+  const out: string[] = []
+  for (const v of list) {
+    const c = checkValue('choice', name, v, choices) as string
+    if (!out.includes(c)) out.push(c)
+  }
+  return out.length ? out : null
 }
 
 // Words for full-text search over a record.

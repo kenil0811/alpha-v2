@@ -52,12 +52,14 @@ import {
 import { useGoes } from './goes.ts'
 import type { LayoutNow } from './layout.ts'
 import { RowMenu } from './RowMenu.tsx'
+import { TagChips, TagPicker } from './Tags.tsx'
 import {
-  CORRECTABLE,
+  canType,
   DOT,
   EMPTY_CELL,
   EMPTY_WORDS,
   INK,
+  isTags,
   KIND_WORDS,
   MARK,
   NUMERIC,
@@ -246,7 +248,7 @@ export function Grid({
       const row = drawn.find((r) => r.id === from.row)
       const to = below(from)
       if (!f || !row || !to.length || readOnly) return
-      if (!CORRECTABLE.has(f.kind))
+      if (!canType(f))
         return onPaste({ set: [], add: [], problems: [], skipped: [f.name], fill: true })
       const value = row.values[f.slug] ?? null
       onPaste({
@@ -285,7 +287,7 @@ export function Grid({
       line.forEach((cell, j) => {
         const f = shown[startCol + j]
         if (!f) return
-        if (!CORRECTABLE.has(f.kind)) {
+        if (!canType(f)) {
           if (!plan.skipped.includes(f.name)) plan.skipped.push(f.name)
           return
         }
@@ -450,11 +452,7 @@ export function Grid({
                           inRange={inRange(r.id, f.slug)}
                           // a row kept on its own page opens there from its name
                           onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
-                          onEdit={
-                            !readOnly && CORRECTABLE.has(f.kind)
-                              ? () => startEditing(here)
-                              : undefined
-                          }
+                          onEdit={!readOnly && canType(f) ? () => startEditing(here) : undefined}
                           onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
@@ -692,7 +690,7 @@ function Header({
       <div className={cn('relative flex h-9 items-center', numeric && 'flex-row-reverse')}>
         <button
           type="button"
-          data-tip={`${f.about ? `${f.about} ` : ''}Click to sort, shift-click to sort by it next; drag to move it; right-click for more.`}
+          data-tip={`${f.about ? `${f.about} ` : ''}${f.summary ? `${f.summary}. ` : ''}Click to sort, shift-click to sort by it next; drag to move it; right-click for more.`}
           onClick={(e) => onConfig(cycleSort(config, f.id, e.shiftKey))}
           className={cn(
             'flex h-full min-w-0 flex-1 cursor-grab items-center gap-1 px-2.5 hover:text-ink active:cursor-grabbing',
@@ -832,6 +830,8 @@ function Cell({
           <span className="text-ink-3" title={EMPTY_WORDS}>
             {EMPTY_CELL}
           </span>
+        ) : isTags(f) ? (
+          <TagChips field={f} value={value} />
         ) : f.kind === 'choice' && f.tones[text] ? (
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <span className={cn('size-1.75 shrink-0 rounded-full', DOT[f.tones[text]])} />
@@ -893,6 +893,7 @@ export function EditCell({
   const [problem, setProblem] = useState<string | null>(null)
   const done = useRef(false)
   const input = useRef<HTMLInputElement & HTMLSelectElement>(null)
+  const anchor = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     input.current?.focus()
     if (input.current && 'select' in input.current) input.current.select?.()
@@ -924,6 +925,19 @@ export function EditCell({
     'h-9.5 w-full rounded-none border-0 bg-surface px-2.5 text-md text-ink outline-none ring-2 ring-accent ring-inset',
     problem && 'ring-bad',
   )
+  // tags: a tick list under the cell, saved when it closes
+  if (isTags(field))
+    return (
+      <>
+        <span ref={anchor} className={cn(box, 'flex items-center')} title={problem ?? undefined}>
+          <TagChips field={field} value={typed.split(',').map((x) => x.trim())} />
+        </span>
+        <Popover anchor={anchor} open onClose={() => void save()}>
+          {/* Escape leaves it as it was, as in every other cell; a click away keeps the ticks */}
+          <TagPicker field={field} typed={typed} onTyped={setTyped} onKeyDown={key} />
+        </Popover>
+      </>
+    )
   return field.kind === 'choice' ? (
     <select
       ref={input}
@@ -1116,6 +1130,7 @@ const KINDS: [string, string][] = [
   ['money', 'Money'],
   ['date', 'A date'],
   ['choice', 'A choice'],
+  ['tags', 'Tags (several choices)'],
   ['link', 'A link'],
   ['email', 'An email address'],
   ['phone', 'A phone number'],
@@ -1174,10 +1189,13 @@ export function AddFieldForm({
     e.preventDefault()
     setProblem(null)
     try {
+      // tags are a choice that holds several (core step 3c)
+      const tags = kind === 'tags'
       await api.post(`/api/tables/${tableId}/fields`, {
         name,
-        kind,
-        ...(kind === 'choice'
+        kind: tags ? 'choice' : kind,
+        ...(tags ? { many: true } : {}),
+        ...(kind === 'choice' || tags
           ? {
               choices: choices
                 .split(',')
@@ -1211,7 +1229,7 @@ export function AddFieldForm({
           </option>
         ))}
       </Select>
-      {kind === 'choice' && (
+      {(kind === 'choice' || kind === 'tags') && (
         <Field
           value={choices}
           placeholder="Its choices, with commas: New, Looking, Passed"
@@ -1241,7 +1259,7 @@ export function AddFieldForm({
           variant="primary"
           disabled={
             !name.trim() ||
-            (kind === 'choice' && !choices.trim()) ||
+            ((kind === 'choice' || kind === 'tags') && !choices.trim()) ||
             (kind === 'relation' && !relatesTo)
           }
         >

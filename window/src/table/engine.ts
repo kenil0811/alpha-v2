@@ -34,12 +34,13 @@ export function complete(c: Partial<ViewConfig> | undefined): ViewConfig {
 export const differs = (a: ViewConfig, b: ViewConfig) =>
   JSON.stringify(complete(a)) !== JSON.stringify(complete(b))
 
-export type Family = 'text' | 'number' | 'date' | 'choice' | 'other'
+export type Family = 'text' | 'number' | 'date' | 'choice' | 'tags' | 'other'
 
-export function family(kind: string): Family {
+// A field's family; a choice holding several (tags, core step 3c) is its own.
+export function family(kind: string, many = false): Family {
   if (kind === 'number' || kind === 'money') return 'number'
   if (kind === 'date') return 'date'
-  if (kind === 'choice') return 'choice'
+  if (kind === 'choice') return many ? 'tags' : 'choice'
   if (['text', 'link', 'email', 'phone'].includes(kind)) return 'text'
   return 'other'
 }
@@ -49,6 +50,7 @@ export const OPS: Record<Family, FilterOp[]> = {
   number: ['eq', 'ne', 'gt', 'lt', 'between', 'empty', 'not_empty'],
   date: ['before', 'after', 'between', 'today', 'this_week', 'next_days', 'empty', 'not_empty'],
   choice: ['in', 'empty', 'not_empty'],
+  tags: ['in', 'all_of', 'none_of', 'empty', 'not_empty'],
   other: ['empty', 'not_empty'],
 }
 
@@ -70,6 +72,8 @@ export const OP_WORDS: Record<FilterOp, string> = {
   this_week: 'is this week',
   next_days: 'in the next',
   in: 'is',
+  all_of: 'has all of',
+  none_of: 'has none of',
   empty: 'is empty',
   not_empty: 'is not empty',
 }
@@ -77,7 +81,7 @@ export const OP_WORDS: Record<FilterOp, string> = {
 // What a rule needs beside its op: nothing, a value, two, or a list of choices.
 export function needs(op: FilterOp): 0 | 1 | 2 | 'list' {
   if (op === 'between') return 2
-  if (op === 'in') return 'list'
+  if (op === 'in' || op === 'all_of' || op === 'none_of') return 'list'
   if (['today', 'this_week', 'empty', 'not_empty'].includes(op)) return 0
   return 1
 }
@@ -115,9 +119,17 @@ export function matches(
 ): boolean {
   if (rule.op === 'empty') return isEmpty(value)
   if (rule.op === 'not_empty') return !isEmpty(value)
-  const fam = family(field.kind)
+  const fam = family(field.kind, field.many)
   if (fam === 'choice' && rule.op === 'in')
     return !rule.values?.length || rule.values.includes(String(value ?? ''))
+  if (fam === 'tags') {
+    const held = Array.isArray(value) ? value.map(String) : []
+    const want = rule.values ?? []
+    if (rule.op === 'in') return !want.length || want.some((v) => held.includes(v))
+    if (rule.op === 'all_of') return want.every((v) => held.includes(v))
+    if (rule.op === 'none_of') return !want.some((v) => held.includes(v))
+    return true
+  }
   if (fam === 'number') {
     const n = numberOf(field, value)
     const a = Number(rule.value)
@@ -164,12 +176,15 @@ export function matches(
 
 // A rule in words, for its chip: "Asking price more than $1,000,000".
 export function ruleWords(rule: FilterRule, field: FieldView): string {
-  const fam = family(field.kind)
+  const fam = family(field.kind, field.many)
   const v = (x: unknown) =>
     fam === 'number' && x !== null && x !== undefined && x !== ''
       ? Number(x).toLocaleString()
       : String(x ?? '')
-  if (rule.op === 'in') return `${field.name} is ${(rule.values ?? []).join(' or ') || 'anything'}`
+  if (rule.op === 'in')
+    return `${field.name} ${fam === 'tags' ? 'has any of' : 'is'} ${(rule.values ?? []).join(' or ') || 'anything'}`
+  if (rule.op === 'all_of') return `${field.name} has all of ${(rule.values ?? []).join(' and ')}`
+  if (rule.op === 'none_of') return `${field.name} has none of ${(rule.values ?? []).join(' or ')}`
   if (needs(rule.op) === 0) return `${field.name} ${OP_WORDS[rule.op]}`
   if (rule.op === 'between') return `${field.name} between ${v(rule.value)} and ${v(rule.value2)}`
   if (rule.op === 'next_days') return `${field.name} in the next ${rule.value} days`
@@ -310,6 +325,7 @@ export const TOTALS: Record<Family, TotalOp[]> = {
   date: ['earliest', 'latest', 'count', 'empty', 'filled'],
   text: ['count', 'empty', 'filled', 'unique'],
   choice: ['count', 'empty', 'filled', 'unique'],
+  tags: ['count', 'empty', 'filled'],
   other: ['count', 'empty', 'filled'],
 }
 
