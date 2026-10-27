@@ -87,7 +87,7 @@ const LIST = new Set<Kind>(['todo', 'done', 'bullet', 'number'])
 const LOOK: Record<Kind, string> = {
   p: 'text-base leading-relaxed',
   h1: 'font-serif text-2xl mt-4',
-  h2: 'font-serif text-xl mt-3',
+  h2: 'font-semibold text-xl mt-3',
   h3: 'font-semibold text-lg mt-2',
   todo: 'text-base leading-relaxed',
   done: 'text-base leading-relaxed text-ink-3 line-through',
