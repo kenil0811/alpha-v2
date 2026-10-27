@@ -42,7 +42,9 @@ export function RowBody({
   names,
   onField,
   onEdit,
+  around: aroundOnly = false,
 }: {
+  around?: boolean // only what is around the row: a row's own page draws its fields and notes itself
   tableId: string
   kinds: string[] | null // the kinds of document the table's rows take
   row: RowView
@@ -115,7 +117,7 @@ export function RowBody({
         onDragLeave={() => setDragging(false)}
         onDrop={drop}
       >
-        <dl className="flex flex-col">
+        <dl className={cn('flex flex-col', aroundOnly && 'hidden')}>
           {fields
             .filter((f) => f.kind !== 'notes')
             .map((f) => {
@@ -190,7 +192,7 @@ export function RowBody({
               )
             })}
         </dl>
-        {notes && (
+        {notes && !aroundOnly && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
               {notes.name}

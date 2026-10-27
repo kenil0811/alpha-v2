@@ -38,3 +38,9 @@ bigger picture; it will be redone as phased pull requests.
   module's rows (`world.moduleFiles`); `Me.textSize` with Appearance › Text size, Small, Medium
   or Large, the spacing growing with it.
 - Home: each module's strip; Getting this Mac ready is one line, "2 of 5 done", until opened.
+- A row's own page, full width: title and properties on top (Notion's way: icon, name, value,
+  empties folded), the row's document at its centre as open blocks (`table/Blocks.tsx`: "/" picks
+  a kind, Markdown starts convert as typed, Return and Backspace make and join blocks, a handle
+  drags; saved as Markdown in the notes field a moment after typing stops), its parts, links,
+  files and tasks in a column beside. A table without a notes field offers Start a document,
+  which adds one named Document.

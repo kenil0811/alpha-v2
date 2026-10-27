@@ -115,6 +115,11 @@ held by review. Dates are 2026.
   waits for your yes, hollow optional, green running; each says so on hover (Vikas, 27 Oct).
 - S2 a chart's kinds in one dropdown on its card; every mark opens the rows it counts, filtered,
   with Show original list (Vikas, 27 Oct).
+- A row's own page is the whole width, made for the row: the module's mark, its table, its title
+  (a double-click renames it); its properties a line each with an icon, the empty ones folded;
+  at its centre its document as open blocks ("/" for a kind, Markdown starts, to-dos, drag to
+  move), kept as Markdown in its notes; what is around it in a column beside (Vikas, 27 Oct;
+  replaces R2 for rows if agreed).
 - A module opens on its Overview: the pulse strip, its own work left, the standard column right
   (Interview me, Files, Agents, Intelligence, What Alpha may do, Tables); a card's head is its name
   only (Vikas, 27 Oct; replaces M1 and M2 if agreed).
