@@ -514,6 +514,12 @@ export interface ModuleView {
   pages: PageSummary[]
   tables: TableSummary[]
   modules: InsideModuleView[] // the modules inside it
+  files: ModuleFileView[] // the files on its rows, newest first
+}
+
+// A file on one of a module's rows, with the row it sits on.
+export interface ModuleFileView extends RowFileView {
+  row: { id: string; name: string; table: string }
 }
 
 // A module inside another, as the parent's Overview lists it: where it comes from and what goes on in it now, the modules inside it counted too.

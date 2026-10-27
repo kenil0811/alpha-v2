@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
-import { applyLive, Conversation, type Live } from './Conversation.tsx'
+import { applyLive, Conversation, ConversationNav, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
@@ -33,17 +33,19 @@ import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { Marker } from './Mark.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { NewModule } from './NewModule.tsx'
+import { signalOf } from './Overview.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { alphaOf, Settings } from './Settings.tsx'
-import { Bar, BarMiddle, type Crumb, Find, network, type Place, Rail } from './Shell.tsx'
+import { Bar, BarMiddle, type Crumb, Find, network, type Place, Rail, Signals } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
 import { titleOf } from './table/values.ts'
-import { applyTheme } from './theme.ts'
+import { applyTextSize, applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
+import { type Signal, strongest } from './ui/dot.tsx'
 import { setFoldLines } from './ui/fold.tsx'
 
 export function placeOf(hash: string): Place {
@@ -58,6 +60,7 @@ export function placeOf(hash: string): Place {
       row: m[2] ?? null,
       only: only ? only.split(',').filter(Boolean) : null,
       field: query.get('field'),
+      why: query.get('why'),
     }
   }
   const f = /^#\/file\/([0-9a-f]{16,})(?:\?(.*))?$/.exec(hash)
@@ -158,6 +161,15 @@ export function App() {
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
   const layoutHere = useMemo(() => ({ layout, change: changeLayout }), [layout, changeLayout])
+  // the rail's dot beside each module: the strongest signal of what waits in it
+  const cards = stream?.cards
+  const signals = useMemo(() => {
+    const by: Record<string, Signal[]> = {}
+    for (const c of cards ?? []) if (c.module) by[c.module] = [...(by[c.module] ?? []), signalOf(c)]
+    return Object.fromEntries(
+      Object.entries(by).map(([k, v]) => [k, strongest(v) ?? 'opt']),
+    ) as Record<string, Signal>
+  }, [cards])
   // the assistant on the right: open unless the person folded it
   const asking = layout.assistant !== 'folded'
   const setAsking = useCallback(
@@ -281,6 +293,7 @@ export function App() {
         setName(me.user.name)
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
+        applyTextSize(me.textSize)
         setLayout(me.layout)
         setFoldLines(me.foldLines)
       },
@@ -426,158 +439,170 @@ export function App() {
 
   return (
     <LayoutContext.Provider value={layoutHere}>
-      <div className="flex h-screen bg-canvas text-base text-ink">
-        <Rail
-          modules={modules.filter((m) => m !== alpha)}
-          place={place}
-          here={moduleHere?.id ?? null}
-          layout={layout}
-          onLayout={changeLayout}
-          name={name}
-          waiting={stream?.cards.length ?? 0}
-          onNew={() => {
-            window.location.hash = '#/module/new'
-          }}
-          tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
-          online={!problem}
-        />
-        <main className="flex min-w-0 flex-1 flex-col">
-          <Bar
-            // no way back inside a module: its tabs are the way around
-            crumb={
-              place.at === 'module' || place.at === 'table'
-                ? { parts: crumb.parts.slice(-1) }
-                : (itemCrumb ?? crumb)
-            }
-            lens={place.at === 'conversation' ? lens : null}
-            onClearLens={() => setLens(null)}
-            middle={setMiddle}
+      <Signals.Provider value={signals}>
+        <div className="flex h-screen bg-canvas text-base text-ink">
+          <Rail
+            modules={modules.filter((m) => m !== alpha)}
+            place={place}
+            here={moduleHere?.id ?? null}
+            layout={layout}
+            onLayout={changeLayout}
+            name={name}
+            waiting={stream?.cards.length ?? 0}
+            onNew={() => {
+              window.location.hash = '#/module/new'
+            }}
+            tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
+            online={!problem}
           />
-          {problem && (
-            <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
-              {problem}
-            </div>
-          )}
-          <BarMiddle value={middle}>
-            <div className="flex min-h-0 flex-1">
-              <div className="min-w-0 flex-1">
-                {place.at === 'home' ? (
-                  <Home
-                    stream={stream}
-                    modules={modules}
-                    name={name}
-                    onAsked={() => setAsking(true)}
-                  />
-                ) : place.at === 'conversation' ? (
-                  <Conversation
-                    stream={stream}
-                    live={live}
-                    busyTurn={busyTurn}
-                    lens={lens}
-                    onLens={setLens}
-                  />
-                ) : place.at === 'parts' ? (
-                  <Parts />
-                ) : place.at === 'new' ? (
-                  <NewModule modules={modules} onAsked={() => setAsking(true)} />
-                ) : place.at === 'file' ? (
-                  <FileView place={place.place} onName={setFileName} />
-                ) : place.at === 'activity' ? (
-                  <Activity version={version} />
-                ) : place.at === 'row' ? (
-                  <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
-                ) : place.at === 'item' ? (
-                  <ItemPage
-                    key={`${place.kind}/${place.id}`}
-                    kind={place.kind}
-                    id={place.id}
-                    version={version}
-                    onName={setItemName}
-                  />
-                ) : place.at === 'tasks' ? (
-                  <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
-                ) : place.at === 'people' ? (
-                  <People
-                    kind={place.kind}
-                    id={place.id}
-                    version={version}
-                    net={network(modules)}
-                    onName={setPersonName}
-                  />
-                ) : place.at === 'settings' || place.at === 'intelligence' ? (
-                  <Settings
-                    page={place.at}
-                    tab={place.section}
-                    open={place.open}
-                    version={version}
-                  />
-                ) : place.at === 'module' || table ? (
-                  <ModuleScreen
-                    moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
-                    tab={
-                      place.at === 'table'
-                        ? { kind: 'table', id: place.id }
-                        : place.tab
-                          ? { kind: place.tab }
-                          : place.page
-                            ? { kind: 'page', name: place.page }
-                            : null
-                    }
-                    version={version}
-                    cards={stream?.cards ?? []}
-                    table={table}
-                    renderTable={(t) => (
-                      <TableView
-                        key={t.id}
-                        data={t}
-                        row={place.at === 'table' ? place.row : null}
-                        only={place.at === 'table' ? place.only : null}
-                        field={place.at === 'table' ? place.field : null}
-                        quiet={asking}
-                      />
-                    )}
-                    conversation={
-                      <Conversation
-                        stream={stream}
-                        live={live}
-                        busyTurn={busyTurn}
-                        lens={moduleHere}
-                        onLens={() => undefined}
-                        from={moduleHere}
-                      />
-                    }
-                  />
-                ) : (
-                  <p className="p-6 text-ink-3">That table is not there.</p>
-                )}
-              </div>
-            </div>
-          </BarMiddle>
-        </main>
-        {askable && (
-          <Assistant
-            folded={!asking}
-            onFold={(f) => setAsking(!f)}
-            title={moduleHere ? `Ask about ${moduleHere.name}` : 'Alpha'}
-            mood={stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'}
-            running={(stream?.running.length ?? 0) + (stream?.reading.length ?? 0)}
-            width={layout.panel}
-            onWidth={(panel) => changeLayout({ panel })}
-          >
-            <Conversation
-              stream={stream}
-              live={live}
-              busyTurn={busyTurn}
-              lens={moduleHere}
-              onLens={() => undefined}
-              from={moduleHere}
-              compact
+          <main className="flex min-w-0 flex-1 flex-col">
+            <Bar
+              // no way back inside a module: its tabs are the way around
+              crumb={
+                place.at === 'module' || place.at === 'table'
+                  ? { parts: crumb.parts.slice(-1) }
+                  : (itemCrumb ?? crumb)
+              }
+              lens={place.at === 'conversation' ? lens : null}
+              onClearLens={() => setLens(null)}
+              middle={setMiddle}
             />
-          </Assistant>
-        )}
-        {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
-        <Marker from={moduleHere} />
-      </div>
+            {problem && (
+              <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
+                {problem}
+              </div>
+            )}
+            <BarMiddle value={middle}>
+              <div className="flex min-h-0 flex-1">
+                <div className="min-w-0 flex-1">
+                  {place.at === 'home' ? (
+                    <Home
+                      stream={stream}
+                      modules={modules}
+                      name={name}
+                      onAsked={() => setAsking(true)}
+                    />
+                  ) : place.at === 'conversation' ? (
+                    <div className="flex h-full min-h-0">
+                      <ConversationNav
+                        modules={modules.filter((m) => !m.alpha)}
+                        lens={lens}
+                        onLens={setLens}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <Conversation
+                          stream={stream}
+                          live={live}
+                          busyTurn={busyTurn}
+                          lens={lens}
+                          onLens={setLens}
+                        />
+                      </div>
+                    </div>
+                  ) : place.at === 'parts' ? (
+                    <Parts />
+                  ) : place.at === 'new' ? (
+                    <NewModule modules={modules} onAsked={() => setAsking(true)} />
+                  ) : place.at === 'file' ? (
+                    <FileView place={place.place} onName={setFileName} />
+                  ) : place.at === 'activity' ? (
+                    <Activity version={version} />
+                  ) : place.at === 'row' ? (
+                    <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
+                  ) : place.at === 'item' ? (
+                    <ItemPage
+                      key={`${place.kind}/${place.id}`}
+                      kind={place.kind}
+                      id={place.id}
+                      version={version}
+                      onName={setItemName}
+                    />
+                  ) : place.at === 'tasks' ? (
+                    <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
+                  ) : place.at === 'people' ? (
+                    <People
+                      kind={place.kind}
+                      id={place.id}
+                      version={version}
+                      net={network(modules)}
+                      onName={setPersonName}
+                    />
+                  ) : place.at === 'settings' || place.at === 'intelligence' ? (
+                    <Settings
+                      page={place.at}
+                      tab={place.section}
+                      open={place.open}
+                      version={version}
+                    />
+                  ) : place.at === 'module' || table ? (
+                    <ModuleScreen
+                      moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                      tab={
+                        place.at === 'table'
+                          ? { kind: 'table', id: place.id }
+                          : place.tab
+                            ? { kind: place.tab }
+                            : place.page
+                              ? { kind: 'page', name: place.page }
+                              : null
+                      }
+                      version={version}
+                      cards={stream?.cards ?? []}
+                      table={table}
+                      renderTable={(t) => (
+                        <TableView
+                          key={t.id}
+                          data={t}
+                          row={place.at === 'table' ? place.row : null}
+                          only={place.at === 'table' ? place.only : null}
+                          why={place.at === 'table' ? place.why : null}
+                          field={place.at === 'table' ? place.field : null}
+                          quiet={asking}
+                        />
+                      )}
+                      conversation={
+                        <Conversation
+                          stream={stream}
+                          live={live}
+                          busyTurn={busyTurn}
+                          lens={moduleHere}
+                          onLens={() => undefined}
+                          from={moduleHere}
+                        />
+                      }
+                    />
+                  ) : (
+                    <p className="p-6 text-ink-3">That table is not there.</p>
+                  )}
+                </div>
+              </div>
+            </BarMiddle>
+          </main>
+          {askable && (
+            <Assistant
+              folded={!asking}
+              onFold={(f) => setAsking(!f)}
+              title={moduleHere ? `Ask about ${moduleHere.name}` : 'Alpha'}
+              mood={stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'}
+              running={(stream?.running.length ?? 0) + (stream?.reading.length ?? 0)}
+              width={layout.panel}
+              onWidth={(panel) => changeLayout({ panel })}
+            >
+              <Conversation
+                stream={stream}
+                live={live}
+                busyTurn={busyTurn}
+                lens={moduleHere}
+                onLens={() => undefined}
+                from={moduleHere}
+                compact
+              />
+            </Assistant>
+          )}
+          {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
+          <Marker from={moduleHere} />
+        </div>
+      </Signals.Provider>
     </LayoutContext.Provider>
   )
 }

@@ -111,6 +111,14 @@ held by review. Dates are 2026.
 
 ## Proposed, waiting on Kenil or the core
 
+- S1 signal dots as the one state mark, a bullet before the words: pulsing needs you now, filled
+  waits for your yes, hollow optional, green running; each says so on hover (Vikas, 27 Oct).
+- S2 a chart's kinds in one dropdown on its card; every mark opens the rows it counts, filtered,
+  with Show original list (Vikas, 27 Oct).
+- A module opens on its Overview: the pulse strip, its own work left, the standard column right
+  (Interview me, Files, Agents, Intelligence, What Alpha may do, Tables); a card's head is its name
+  only (Vikas, 27 Oct; replaces M1 and M2 if agreed).
+
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, renaming a module and choosing its icon (needs the core).
 - What each run costs, shown under Settings › Model (needs the core).

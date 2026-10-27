@@ -4,6 +4,7 @@
 // while the person clicks along a row. What the person changes and has not saved stays while they
 // open a row and come back, in this browser; a saved view is shared by everyone.
 import type {
+  AgentView,
   FieldView,
   FilterRule,
   KeptTable,
@@ -20,6 +21,7 @@ import {
   EllipsisVertical,
   Group,
   Plus,
+  RefreshCw,
   Search,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -47,12 +49,13 @@ import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
-import { canType, isTags, show } from './table/values.ts'
+import { canType, isTags, show, titleOf } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
+import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
@@ -75,15 +78,17 @@ export function TableView({
   data,
   row: openRow,
   only = null,
+  why: onlyWhy = null,
   field: openField = null,
   quiet = false,
   kept = null,
 }: {
   data: TableData
   row?: string | null
-  only?: string[] | null // the rows a page opened: only these, until Show all
+  only?: string[] | null // the rows a page or a chart opened: only these, until Show original list
+  why?: string | null // what they are, in words: "Stage is New"
   field?: string | null // with row: that value's panel, by the field's name
-  quiet?: boolean // the Ask panel is open: the source panel gives way to it
+  quiet?: boolean // the Ask panel is open: New opens as a dialog; a row's panel sits beside the table, left of it
   // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
   // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved. New adds
@@ -377,10 +382,11 @@ export function TableView({
         {only && (
           <div className="flex items-center gap-2 border-line border-b bg-accent-soft px-7 py-2 text-md text-ink-2">
             <span className="flex-1">
-              Showing {base.length} of {data.rows.length} rows, the ones a page counted.
+              Showing {base.length.toLocaleString()} of {data.rows.length.toLocaleString()} rows
+              {onlyWhy ? `: ${onlyWhy}` : ', the ones a page counted'}.
             </span>
             <a href={`#/table/${data.id}`} className="font-medium text-accent hover:underline">
-              Show all
+              Show original list
             </a>
           </div>
         )}
@@ -547,6 +553,7 @@ export function TableView({
                   New
                 </Button>
               </span>
+              {!kept && <SyncNow data={data} />}
               {rows.length > Math.min(size, ...SIZES) && (
                 <>
                   <span className="mr-2 tabular-nums">
@@ -597,7 +604,7 @@ export function TableView({
           onClose={() => setAdding(false)}
         />
       )}
-      {!adding && !quiet && openedRow && (
+      {!adding && openedRow && (
         <RowPanel
           tableId={data.id}
           kinds={data.documents}
@@ -613,7 +620,7 @@ export function TableView({
           onClose={() => setOpened(null)}
         />
       )}
-      {!adding && !quiet && !openedRow && pickedRow && pickedField && (
+      {!adding && !openedRow && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
           table={data.name}
@@ -817,4 +824,40 @@ function barRule(field: FieldView, key: string): FilterRule {
     return { field: field.id, op: 'between', value: `${key}-01`, value2: `${key}-${last}` }
   }
   return { field: field.id, op: 'is', value: key }
+}
+
+// Sync now, beside New: runs, now, the module's agents that are on and are named after this
+// table's rows or the rows it points at (a source's reader); shown only while there are such agents.
+function SyncNow({ data }: { data: TableData }) {
+  const [agents, setAgents] = useState<AgentView[]>([])
+  const { busy, problem, act } = useAct()
+  useEffect(() => {
+    api.get<{ agents: AgentView[] }>(`/api/modules/${data.module.id}`).then(
+      (m) => setAgents(m.agents),
+      () => setAgents([]),
+    )
+  }, [data.module.id])
+  // its own rows' names, and the rows its relations point at (a deal's source)
+  const names = new Set([
+    ...data.rows.map((r) => titleOf(data.fields, r)),
+    ...Object.values(data.names),
+  ])
+  const readers = agents.filter((a) => a.state === 'on' && names.has(a.name))
+  if (!readers.length) return null
+  return (
+    <span className="mr-2 flex items-center gap-2">
+      <Refusal words={problem} />
+      <Button
+        size="sm"
+        disabled={busy}
+        data-tip={`Run the ${readers.length} readers of these ${data.name.toLowerCase()} that are on, now`}
+        onClick={() =>
+          act(() => Promise.all(readers.map((a) => api.post(`/api/agents/${a.id}/run`))))
+        }
+      >
+        <RefreshCw className="size-3.5" />
+        Sync now
+      </Button>
+    </span>
+  )
 }

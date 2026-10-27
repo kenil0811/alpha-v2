@@ -21,7 +21,7 @@ import { Notes } from './Notes.tsx'
 import { TagChips } from './Tags.tsx'
 import { canType, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
 
-// The side panel's way in: the row's view, with Open full to its own page.
+// The side panel's way in: the row's view, with Open page to its own page.
 export function RowPanel({
   title,
   onClose,

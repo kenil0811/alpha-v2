@@ -22,15 +22,23 @@ export function registerMe(ctx: Ctx): void {
       panel: Number.isFinite(panel) && panel > 0 ? panel : null,
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
       pageSize: n('page_size'),
+      pins: json('module_pins'),
+      seen: json('seen_counts'),
     }
+  }
+  const json = <T>(key: string): Record<string, T> => {
+    const v = world.preference(user.id, key)
+    return v ? (JSON.parse(v) as Record<string, T>) : {}
   }
 
   app.get('/api/me', async (): Promise<Me> => {
     const theme = world.preference(user.id, 'theme')
+    const size = world.preference(user.id, 'text_size')
     return {
       user: { id: user.id, name: user.name },
       tenant: world.tenant,
       theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
+      textSize: size === 'medium' || size === 'large' ? size : 'small',
       layout: layoutOf(),
       foldLines: config.limits().reply_fold_lines,
     }
@@ -47,6 +55,7 @@ export function registerMe(ctx: Ctx): void {
         railWidth: z.number().int().positive().nullable().optional(),
         assistant: z.enum(['open', 'folded']).optional(),
         pageSize: z.number().int().positive().nullable().optional(),
+        pins: z.record(z.string(), z.array(z.string())).optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -69,14 +78,35 @@ export function registerMe(ctx: Ctx): void {
         'rail_hidden_modules',
         given.hidden.length ? JSON.stringify(given.hidden) : null,
       )
+    if (given.pins !== undefined)
+      world.setPreference(
+        user.id,
+        'module_pins',
+        JSON.stringify({ ...json('module_pins'), ...given.pins }),
+      )
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
     return layoutOf()
   })
 
+  // A screen or card opened: counted per person, so a module's Overview puts what is used first.
+  app.post('/api/seen', async (req): Promise<Layout> => {
+    const { key } = z.object({ key: z.string().min(1).max(120) }).parse(req.body)
+    const seen = json<number>('seen_counts')
+    seen[key] = (seen[key] ?? 0) + 1
+    world.setPreference(user.id, 'seen_counts', JSON.stringify(seen))
+    return layoutOf()
+  })
+
   app.post('/api/appearance', async (req) => {
-    const { theme } = z.object({ theme: z.enum(['mac', 'light', 'dark']) }).parse(req.body)
-    world.setPreference(user.id, 'theme', theme === 'mac' ? null : theme)
+    const { theme, textSize } = z
+      .object({
+        theme: z.enum(['mac', 'light', 'dark']).optional(),
+        textSize: z.enum(['small', 'medium', 'large']).optional(),
+      })
+      .parse(req.body)
+    if (theme) world.setPreference(user.id, 'theme', theme === 'mac' ? null : theme)
+    if (textSize) world.setPreference(user.id, 'text_size', textSize === 'small' ? null : textSize)
     return { ok: true }
   })
 

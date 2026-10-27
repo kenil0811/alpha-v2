@@ -11,6 +11,8 @@ export const NO_LAYOUT: Layout = {
   panel: null,
   assistant: 'open',
   pageSize: null,
+  pins: {},
+  seen: {},
 }
 
 export const LayoutContext = createContext<{

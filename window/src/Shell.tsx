@@ -42,6 +42,7 @@ import { ModuleIcon } from './moduleIcon.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
+import { Dot, type Signal } from './ui/dot.tsx'
 import { Edge } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 
@@ -53,7 +54,14 @@ export type Place =
   | { at: 'new' }
   | { at: 'item'; kind: 'agent' | 'run' | 'rule'; id: string }
   | { at: 'row'; id: string }
-  | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
+  | {
+      at: 'table'
+      id: string
+      row: string | null
+      only: string[] | null
+      field: string | null
+      why: string | null
+    }
   | {
       at: 'module'
       id: string
@@ -102,6 +110,9 @@ function Nav({
     </a>
   )
 }
+
+// The strongest signal of what waits in each module, by its name: the rail's dot beside it.
+export const Signals = createContext<Record<string, Signal>>({})
 
 export function Rail({
   modules,
@@ -466,6 +477,7 @@ function ModuleItem({
   onFold: (id: string) => void
   hiding: Hiding
 }) {
+  const signals = useContext(Signals)
   const kids = childrenOf(modules, m.id).filter((c) => !hiding.hidden.includes(c.id))
   const menu = useContextMenu()
   const open = !folded.includes(m.id)
@@ -509,7 +521,12 @@ function ModuleItem({
           icon={<ModuleIcon name={m.name} className="size-4" />}
           label={m.name}
           current={here === m.id}
-          extra={<span className="w-11 shrink-0" />}
+          extra={
+            <>
+              {signals[m.name] && <Dot s={signals[m.name] as Signal} />}
+              <span className="w-11 shrink-0" />
+            </>
+          }
         />
         <span className="absolute right-0.5 flex items-center">
           <ModuleMenu

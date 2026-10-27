@@ -4,24 +4,36 @@
 // until they clear it), what is running and what is coming up; the modules are in the rail, not
 // here (Kenil, 26 Oct). The conversation has its own place in the rail, each module's tab, and Ask
 // (⌘J) on any screen.
+
 import type {
   CardView,
   ConnectorsView,
   ModuleSummary,
+  SetupView,
   Stream,
   TasksView,
   TodayView,
   WorkingModuleView,
 } from '@alpha/core/api'
-import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucide-react'
+import {
+  ArrowUp,
+  Bot,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  KeyRound,
+  LoaderCircle,
+} from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
+import { ModulePulses } from './Overview.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Dot } from './ui/dot.tsx'
 import { Group, Line, Quiet } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
 
@@ -36,6 +48,16 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
     </p>
   )
 }
+
+// How many of the Mac's steps are done: Claude, the two readers, Chrome and each connection.
+const readyCount = (v: SetupView) =>
+  [
+    v.claude.signedIn,
+    v.readers.browser === 'ready',
+    v.readers.documents === 'ready',
+    v.chrome,
+    ...v.steps.map((x) => x.done),
+  ].filter(Boolean).length
 
 function greeting(name: string): string {
   const h = new Date().getHours()
@@ -64,6 +86,7 @@ export function Home({
   })
   const [words, setWords] = useState('')
   const [allComing, setAllComing] = useState(false)
+  const [readyOpen, setReadyOpen] = useState(false)
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
   const load = useCallback(() => {
@@ -123,6 +146,10 @@ export function Home({
           <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
         </div>
 
+        {/* ponytail: read once on opening Home; the tiles' own figures follow live once the core
+            sends a module's pulse with its stream */}
+        <ModulePulses modules={modules.filter((m) => !m.alpha)} cards={cards} version={0} />
+
         {stream?.settingUp && (
           <p className="flex items-center gap-2 text-ink-2 text-md">
             <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
@@ -130,13 +157,28 @@ export function Home({
           </p>
         )}
 
+        {/* small until opened: how far the Mac is, then the steps (Vikas, 26 Oct) */}
         {setup && unready(setup) && (
-          <Group
-            title="Getting this Mac ready"
-            sub="Alpha works meanwhile; these finish setting it up"
-          >
-            <SetupList view={setup} onChange={reloadSetup} />
-          </Group>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              aria-expanded={readyOpen}
+              onClick={() => setReadyOpen(!readyOpen)}
+              className="flex w-fit items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-md hover:shadow-pop"
+            >
+              <Dot s="yes" tip="Waits for you to finish setting up" />
+              Getting this Mac ready
+              <span className="text-ink-3 tabular-nums">
+                {readyCount(setup)} of {4 + setup.steps.length} done
+              </span>
+              {readyOpen ? (
+                <ChevronDown className="size-3.5 text-ink-3" />
+              ) : (
+                <ChevronRight className="size-3.5 text-ink-3" />
+              )}
+            </button>
+            {readyOpen && <SetupList view={setup} onChange={reloadSetup} />}
+          </div>
         )}
 
         {firstOpen ? (

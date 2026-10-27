@@ -14,7 +14,14 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
-import { Fragment, type ReactNode, useCallback, useEffect, useState } from 'react'
+import {
+  Fragment,
+  type HTMLAttributes,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
@@ -28,7 +35,7 @@ import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
-import { MenuItem } from './ui/popover.tsx'
+import { MenuItem, Popover, useContextMenu } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
 import type { Tab } from './ui/tabs.tsx'
 import { Words } from './ui/words.tsx'
@@ -78,7 +85,7 @@ export function ModuleScreen({
       () => setMain([]),
     )
   }, [mainIds, version])
-  const pins = usePins(m)
+  const { pins } = usePins(m)
 
   // with no tab named, the Overview, or People in the module people live in
   const holds = (m?.modules.length ?? 0) > 0
@@ -91,7 +98,7 @@ export function ModuleScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {m && <ModuleSwitch m={m} main={main} pins={pins} current={current} />}
+      {m && <ModuleSwitch m={m} main={main} pins={pins} current={current} onRenamed={load} />}
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
           m &&
@@ -128,11 +135,13 @@ function ModuleSwitch({
   main,
   pins,
   current,
+  onRenamed,
 }: {
   m: ModuleView
   main: TableData[]
   pins: string[]
   current: ModuleTab
+  onRenamed: () => void
 }) {
   const order = [
     ...lowerFirst(main).map((t) => t.id),
@@ -182,28 +191,111 @@ function ModuleSwitch({
         {groups.map((g, i) => (
           <Fragment key={g[0]?.key ?? i}>
             {i > 0 && <span className="mx-1.5 h-4 w-px shrink-0 bg-line" />}
-            {g.map((t) => (
-              <a
-                key={t.key}
-                href={t.href}
-                aria-current={t.sel ? 'page' : undefined}
-                className={cn(
-                  'flex h-6.5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
-                  t.sel && 'bg-surface font-medium text-ink shadow-btn',
-                )}
-              >
-                {t.label}
-                {t.count !== undefined && (
-                  <span className="font-normal text-ink-3 text-sm tabular-nums">
-                    {t.count.toLocaleString()}
-                  </span>
-                )}
-              </a>
-            ))}
+            {g.map((t) =>
+              shown.some((x) => x.id === t.key) ? (
+                <TablePill key={t.key} m={m} tab={t} onRenamed={onRenamed} />
+              ) : (
+                <SwitchPill key={t.key} tab={t} />
+              ),
+            )}
           </Fragment>
         ))}
       </nav>
     </InBar>
+  )
+}
+
+function SwitchPill({ tab: t, ...rest }: { tab: Tab } & HTMLAttributes<HTMLAnchorElement>) {
+  return (
+    <a
+      href={t.href}
+      aria-current={t.sel ? 'page' : undefined}
+      {...rest}
+      className={cn(
+        'flex h-6.5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
+        t.sel && 'bg-surface font-medium text-ink shadow-btn',
+      )}
+    >
+      {t.label}
+      {t.count !== undefined && (
+        <span className="font-normal text-ink-3 text-sm tabular-nums">
+          {t.count.toLocaleString()}
+        </span>
+      )}
+    </a>
+  )
+}
+
+// A table's pill: a double-click renames it in place (Return keeps it, Escape leaves it); a
+// right-click opens Open, Rename… and Unpin from the bar.
+function TablePill({ m, tab, onRenamed }: { m: ModuleView; tab: Tab; onRenamed: () => void }) {
+  const menu = useContextMenu()
+  const { pins, toggle } = usePins(m)
+  const [naming, setNaming] = useState<string | null>(null)
+  const { problem, act } = useAct(onRenamed)
+  const save = () => {
+    const name = naming?.trim()
+    setNaming(null)
+    if (name && name !== tab.label) act(() => api.post(`/api/tables/${tab.key}/name`, { name }))
+  }
+  return (
+    <>
+      {naming !== null ? (
+        <input
+          // biome-ignore lint/a11y/noAutofocus: opened by a double-click to type the new name
+          autoFocus
+          aria-label={`Rename ${tab.label}`}
+          value={naming}
+          onChange={(e) => setNaming(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') setNaming(null)
+          }}
+          size={Math.max(6, naming.length)}
+          className="h-6.5 shrink-0 rounded-full bg-surface px-3.5 text-ink text-md shadow-btn outline-none ring-2 ring-accent-soft"
+        />
+      ) : (
+        <SwitchPill
+          tab={tab}
+          {...menu.on}
+          onDoubleClick={(e) => {
+            e.preventDefault()
+            setNaming(tab.label)
+          }}
+        />
+      )}
+      {problem && <Refusal words={problem} />}
+      <Popover point={menu.point} open={menu.open} onClose={menu.close}>
+        <div role="menu" className="flex min-w-44 flex-col p-1">
+          <MenuItem
+            onClick={() => {
+              menu.close()
+              window.location.hash = tab.href
+            }}
+          >
+            Open
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              menu.close()
+              setNaming(tab.label)
+            }}
+          >
+            Rename…
+          </MenuItem>
+          <MenuItem
+            reason={pins.includes(tab.key) ? undefined : 'Not pinned: it shows while it is open'}
+            onClick={() => {
+              menu.close()
+              toggle(tab.key)
+            }}
+          >
+            Unpin from the bar
+          </MenuItem>
+        </div>
+      </Popover>
+    </>
   )
 }
 

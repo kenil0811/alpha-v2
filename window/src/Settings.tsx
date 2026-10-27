@@ -34,7 +34,7 @@ import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
-import { applyTheme, savedTheme, type Theme } from './theme.ts'
+import { applyTextSize, applyTheme, savedTheme, type TextSize, type Theme } from './theme.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -817,6 +817,9 @@ function KeyForm({
 
 function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => void }) {
   const [theme, setTheme] = useState<Theme>(savedTheme)
+  const [size, setSize] = useState<TextSize>(
+    () => (document.documentElement.dataset.text as TextSize | undefined) ?? 'small',
+  )
   const tables = view.connections.flatMap((k) => k.tables)
   const shown = tables.some((t) => !t.hidden)
   const { busy, problem, act } = useAct(onChange)
@@ -844,6 +847,26 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
                 { value: 'mac', label: 'Match Mac' },
                 { value: 'light', label: 'Light' },
                 { value: 'dark', label: 'Dark' },
+              ]}
+            />
+          }
+        />
+        <Row
+          title="Text size"
+          sub="Medium and Large make the text and the room around it bigger."
+          actions={
+            <Segmented
+              label="Text size"
+              value={size}
+              onChange={(t) => {
+                setSize(t)
+                applyTextSize(t)
+                void act(() => api.post('/api/appearance', { textSize: t }))
+              }}
+              options={[
+                { value: 'small', label: 'Small' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'large', label: 'Large' },
               ]}
             />
           }

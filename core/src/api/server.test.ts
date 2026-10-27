@@ -192,6 +192,8 @@ describe('the api over a world', () => {
       panel: null,
       assistant: 'open',
       pageSize: null,
+      pins: {},
+      seen: {},
     })
     // all of how the person left the window is kept here, none of it in the browser (26 Oct)
     await a.inject({
@@ -206,8 +208,11 @@ describe('the api over a world', () => {
         railWidth: 260,
         assistant: 'folded',
         pageSize: 100,
+        pins: { [shops.id]: ['t_one'] },
       },
     })
+    await a.inject({ method: 'POST', url: '/api/seen', headers: ok, payload: { key: 'module:x' } })
+    await a.inject({ method: 'POST', url: '/api/seen', headers: ok, payload: { key: 'module:x' } })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
       railFolded: true,
       folded: [shops.id],
@@ -216,6 +221,8 @@ describe('the api over a world', () => {
       panel: 560,
       assistant: 'folded',
       pageSize: 100,
+      pins: { [shops.id]: ['t_one'] },
+      seen: { 'module:x': 2 },
     })
     await a.close()
   })

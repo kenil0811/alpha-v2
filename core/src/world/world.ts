@@ -389,6 +389,11 @@ export class World {
     return this.rowFilesWhere('rf.record_id = ?', recordId)
   }
 
+  // The files on any row of a module's tables, newest first.
+  moduleFiles(moduleId: string): RowFile[] {
+    return this.rowFilesWhere('r.table_id IN (SELECT id FROM tables WHERE module_id = ?)', moduleId)
+  }
+
   rowsOfFile(hash: string): RowFile[] {
     return this.rowFilesWhere('rf.file_hash = ?', hash)
   }

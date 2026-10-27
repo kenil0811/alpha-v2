@@ -241,6 +241,50 @@ export function Conversation({
 const keyOf = (i: Item) =>
   i.kind === 'alpha' ? `a${i.turn}` : i.kind === 'card' ? `c${i.id}` : `${i.kind}${i.id}`
 
+// The Conversation screen's own nav, shaped like Settings': everything, or one module's part of it.
+// ponytail: the core keeps one conversation per person, not a list of them; the nav lists its
+// lenses until the core sends past conversations.
+export function ConversationNav({
+  modules,
+  lens,
+  onLens,
+}: {
+  modules: { id: string; name: string }[]
+  lens: Module
+  onLens: (m: Module) => void
+}) {
+  const all: { key: string; name: string; to: Module }[] = [
+    { key: '', name: 'Everything', to: null },
+    ...modules.map((m) => ({ key: m.id, name: m.name, to: { id: m.id, name: m.name } })),
+  ]
+  return (
+    <nav
+      aria-label="Conversations"
+      className="flex w-44 shrink-0 flex-col gap-px overflow-y-auto border-line border-r px-2.5 py-4"
+    >
+      {all.map((x) => {
+        const sel = (lens?.id ?? '') === x.key
+        return (
+          <button
+            key={x.key}
+            type="button"
+            aria-current={sel ? 'page' : undefined}
+            onClick={() => onLens(x.to)}
+            className={cn(
+              'flex h-7 items-center gap-2 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink',
+              sel &&
+                'bg-accent-soft font-medium text-accent hover:bg-accent-soft hover:text-accent',
+            )}
+          >
+            <span className={cn('size-1.5 rounded-full', sel ? 'bg-accent' : 'bg-transparent')} />
+            {x.name}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
 function DayLine({ day }: { day: string }) {
   return (
     <div className="flex items-center gap-3 font-semibold text-ink-3 text-xs uppercase tracking-label">

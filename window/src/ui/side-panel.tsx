@@ -1,9 +1,10 @@
 // The side panel: detail on the right, 320px, pushing the content rather than covering it. Given
 // `width`, it is the person's to size: its left edge drags it wider (up to two thirds of the
-// window) or, dragged all the way in, closes it, Expand makes it half the window and back, and Open full opens it as a screen.
+// window) or, dragged all the way in, closes it, Expand makes it half the window and back, and Open
+// page at its foot opens it as a screen. It sits in the screen's column, left of the assistant.
 import { Maximize2, Minimize2, SquareArrowOutUpRight, X } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
-import { IconButton } from './button.tsx'
+import { Button, IconButton } from './button.tsx'
 import { cn } from './cn.ts'
 import { Edge } from './edge.tsx'
 
@@ -24,7 +25,7 @@ export function SidePanel({
   children: ReactNode
   width?: number | null // the person's width; none is the usual 320px
   onWidth?: (w: number | null) => void // the width they left it at
-  full?: string // where Open full goes
+  full?: string // where Open page goes
   head?: ReactNode // a header of its own, in place of the title and its buttons
   keep?: number // the room it always leaves the rest of the window (the rail and the screen)
 }) {
@@ -76,22 +77,20 @@ export function SidePanel({
               {wide ? <Minimize2 className="size-3.75" /> : <Maximize2 className="size-3.75" />}
             </IconButton>
           )}
-          {full && (
-            <IconButton
-              label="Open full"
-              onClick={() => {
-                window.location.hash = full
-              }}
-            >
-              <SquareArrowOutUpRight className="size-3.75" />
-            </IconButton>
-          )}
           <IconButton label="Close" onClick={onClose}>
             <X className="size-4" />
           </IconButton>
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      {full && (
+        <div className="flex shrink-0 justify-end border-hair border-t px-4 py-2.5">
+          <Button size="sm" onClick={() => (window.location.hash = full)}>
+            <SquareArrowOutUpRight className="size-3.5" />
+            Open page
+          </Button>
+        </div>
+      )}
     </aside>
   )
 }
