@@ -247,7 +247,7 @@ export function RunRow({
 
 // Revert (or Bring back) behind ⋮: the pop-up says what it will do and what it leaves before
 // anything happens, from the core's own preview of the same work.
-function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefined }) {
+export function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefined }) {
   const u = r.undo
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<UndoView | null>(null)

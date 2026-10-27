@@ -524,6 +524,7 @@ export function App() {
                             : null
                     }
                     version={version}
+                    cards={stream?.cards ?? []}
                     table={table}
                     renderTable={(t) => (
                       <TableView

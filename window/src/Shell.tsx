@@ -20,6 +20,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Sparkle,
   Sparkles,
   Users,
   X,
@@ -254,7 +255,7 @@ export function Rail({
       <div className="flex flex-col gap-0.5 pt-2">
         <Nav
           href="#/intelligence"
-          icon={<Sparkles className="size-4" />}
+          icon={<Sparkle className="size-4" />}
           label="Intelligence"
           current={place.at === 'intelligence'}
         />
@@ -766,7 +767,7 @@ function Strip({
         '#/intelligence',
         'Intelligence',
         place.at === 'intelligence',
-        <Sparkles className="size-4" />,
+        <Sparkle className="size-4" />,
       )}
       {icon(
         '#/settings',

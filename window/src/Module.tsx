@@ -1,27 +1,36 @@
-// A module's screen (design §14, Ledger): its name in the bar, then one row of tabs: People and
-// Organizations when people live in it (module.yaml's people: true), an Overview of the modules
-// inside it when it holds any (a plain list: each one's name, where it comes from and what goes on
-// in it right now; Kenil, 21 Oct), its pages (design §13), its tables with their counts, its
-// Conversation (Home through the module's lens) and its Agents and notes: its agents, the notes
-// Alpha reads first, what ran lately, and what Alpha may do here. Nothing sits under a table or a
-// page (Kenil, 26 Oct). A module holding others opens on its Overview, else on its front page,
-// else its first table.
-import type { ModuleView, RuleView, RunView, TableView as TableData } from '@alpha/core/api'
+// A module's screen (design §14, Ledger; Vikas, 27 Oct): its switch in the middle of the bar, in
+// place of its name: Overview first, then the tables pinned to it, lowest on the spine first (a
+// deal before its source), then after a rule its pages and its Conversation. People and
+// Organizations come first when people live in it. A module opens on its Overview: what waits on
+// the person, its main table as a chart, its tables, agents, notes and what Alpha may do. A module
+// holding others and no tables of its own lists them instead (a plain list: each one's name, where
+// it comes from and what goes on in it right now; Kenil, 21 Oct). Agents and notes keeps the whole
+// of each, reached from the Overview's cards.
+import type {
+  CardView,
+  ModuleView,
+  RuleView,
+  RunView,
+  TableView as TableData,
+} from '@alpha/core/api'
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { Fragment, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
+import { lowerFirst, Overview, usePins } from './Overview.tsx'
 import { PageView } from './PageView.tsx'
+import { InBar } from './Shell.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
+import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
-import { type Tab, Tabs } from './ui/tabs.tsx'
+import type { Tab } from './ui/tabs.tsx'
 import { Words } from './ui/words.tsx'
 
 export type ModuleTab =
@@ -36,6 +45,7 @@ export function ModuleScreen({
   tab,
   version,
   table,
+  cards,
   conversation,
   renderTable,
 }: {
@@ -43,6 +53,7 @@ export function ModuleScreen({
   tab: ModuleTab | null
   version: number
   table: TableData | null
+  cards: CardView[]
   conversation: ReactNode
   renderTable: (t: TableData) => ReactNode
 }) {
@@ -53,54 +64,42 @@ export function ModuleScreen({
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-
-  // with no tab named, the Overview of the modules inside, else the front page, else the first
-  // table, else the conversation
-  const front = m?.pages.find((p) => p.front)
-  const holds = (m?.modules.length ?? 0) > 0
-  // its main tables are its tabs; a part shows on its row, a setup table under Agents and notes
-  const first = m?.tables.find((t) => t.place === 'main')
-  const current: ModuleTab =
-    tab ??
-    (holds
-      ? { kind: 'overview' }
-      : front
-        ? { kind: 'page', name: front.name }
-        : first
-          ? { kind: 'table', id: first.id }
-          : { kind: 'conversation' })
-  // the module's own address opens its first table, as that table's address; only once this
-  // module's own data is here (the last module's, still shown, would send it back there)
-  const firstTable = !tab && m && m.id === moduleId && !front && !holds ? first?.id : undefined
+  // its main tables whole: the switch's order, the Overview's chart and its agents' groups
+  const [main, setMain] = useState<TableData[]>([])
+  const mainIds = (m?.tables ?? [])
+    .filter((t) => t.place === 'main')
+    .map((t) => t.id)
+    .join(',')
   useEffect(() => {
-    // the module people live in opens on its People
-    if (firstTable) window.location.replace(m?.people ? '#/people' : `#/table/${firstTable}`)
-  }, [firstTable, m?.people])
-  const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
+    if (version < 0) return
+    if (!mainIds) return setMain([])
+    Promise.all(mainIds.split(',').map((id) => api.get<TableData>(`/api/tables/${id}`))).then(
+      setMain,
+      () => setMain([]),
+    )
+  }, [mainIds, version])
+  const pins = usePins(m)
 
-  const tabs: Tab[] = m
-    ? [
-        ...(m.people ? peopleTabs(null) : []),
-        ...(holds
-          ? [
-              {
-                key: 'overview',
-                href: `#/module/${moduleId}/overview`,
-                label: 'Overview',
-                sel: current.kind === 'overview',
-              },
-            ]
-          : []),
-        ...moduleTabs(m, current),
-      ]
-    : []
+  // with no tab named, the Overview, or People in the module people live in
+  const holds = (m?.modules.length ?? 0) > 0
+  const current: ModuleTab = tab ?? { kind: 'overview' }
+  const toPeople = !tab && m && m.id === moduleId && m.people
+  useEffect(() => {
+    if (toPeople) window.location.replace('#/people')
+  }, [toPeople])
+  const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs label={m?.name ?? 'Module'} tabs={tabs} />
+      {m && <ModuleSwitch m={m} main={main} pins={pins} current={current} />}
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
-          m && <Overview m={m} />
+          m &&
+          (holds && !m.tables.length ? (
+            <Inside m={m} />
+          ) : (
+            <Overview m={m} main={main} cards={cards} version={version} onChange={load} />
+          ))
         ) : current.kind === 'page' ? (
           m && page ? (
             <PageView key={page.name} m={m} page={page} version={version} />
@@ -118,6 +117,93 @@ export function ModuleScreen({
         )}
       </div>
     </div>
+  )
+}
+
+// The switch in the bar: Overview, the pinned tables (main ones lowest on the spine first, then
+// any part or setup table pinned), a rule, then the pages and the Conversation. A table not
+// pinned but open shows too, so the person sees where they are.
+function ModuleSwitch({
+  m,
+  main,
+  pins,
+  current,
+}: {
+  m: ModuleView
+  main: TableData[]
+  pins: string[]
+  current: ModuleTab
+}) {
+  const order = [
+    ...lowerFirst(main).map((t) => t.id),
+    ...m.tables.map((t) => t.id).filter((id) => !main.some((t) => t.id === id)),
+  ]
+  const shown = m.tables
+    .filter((t) => pins.includes(t.id) || (current.kind === 'table' && current.id === t.id))
+    .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+  const groups: Tab[][] = [
+    [
+      ...(m.people ? peopleTabs(null) : []),
+      {
+        key: 'overview',
+        href: `#/module/${m.id}/overview`,
+        label: 'Overview',
+        sel: current.kind === 'overview',
+      },
+      ...shown.map((t) => ({
+        key: t.id,
+        href: `#/table/${t.id}`,
+        label: t.name,
+        count: t.rows,
+        sel: current.kind === 'table' && current.id === t.id,
+      })),
+    ],
+    [
+      ...m.pages.map((p) => ({
+        key: `p:${p.name}`,
+        href: `#/module/${m.id}/page/${p.name}`,
+        label: p.title,
+        sel: current.kind === 'page' && current.name === p.name,
+      })),
+      {
+        key: 'conversation',
+        href: `#/module/${m.id}/conversation`,
+        label: 'Conversation',
+        sel: current.kind === 'conversation',
+      },
+    ],
+  ]
+  return (
+    <InBar>
+      <nav
+        aria-label={m.name}
+        className="scroll-quiet flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-full bg-sunk p-0.75"
+      >
+        {groups.map((g, i) => (
+          <Fragment key={g[0]?.key ?? i}>
+            {i > 0 && <span className="mx-1.5 h-4 w-px shrink-0 bg-line" />}
+            {g.map((t) => (
+              <a
+                key={t.key}
+                href={t.href}
+                aria-current={t.sel ? 'page' : undefined}
+                className={cn(
+                  'flex h-6.5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
+                  t.sel && 'bg-surface font-medium text-ink shadow-btn',
+                )}
+              >
+                {t.label}
+                {t.count !== undefined && (
+                  <span className="font-normal text-ink-3 text-sm tabular-nums">
+                    {t.count.toLocaleString()}
+                  </span>
+                )}
+              </a>
+            ))}
+          </Fragment>
+        ))}
+      </nav>
+    </InBar>
   )
 }
 
@@ -166,7 +252,7 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
 
 // The modules inside this one, a row each: its name, where it comes from, and what goes on in
 // it right now (agents on and running, open tasks); what waits on the person stands out.
-function Overview({ m }: { m: ModuleView }) {
+function Inside({ m }: { m: ModuleView }) {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-page px-7 py-6">
