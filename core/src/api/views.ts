@@ -9,7 +9,8 @@ import type { Card } from '../world/cards.ts'
 import type { Line } from '../world/journal.ts'
 import type { Provenance } from '../world/kinds.ts'
 import { undoable } from '../world/records/index.ts'
-import type { Module } from '../world/shape/index.ts'
+import type { Module, Table } from '../world/shape/index.ts'
+import { placeOf } from '../world/shape/parts.ts'
 import type { Task } from '../world/tasks/index.ts'
 import type { View } from '../world/views.ts'
 import type { BaseCtx } from './ctx.ts'
@@ -20,10 +21,23 @@ import type {
   RunView,
   SavedView,
   SourceView,
+  TableSummary,
   TaskLineView,
   TaskView,
   UndoTarget,
 } from './types.ts'
+
+// A table as a module lists it: its rows, and where it sits (core step 3a).
+export function tableSummary(world: BaseCtx['world'], t: Table): TableSummary {
+  const part = t.fields.find((f) => f.partOf)
+  return {
+    id: t.id,
+    name: t.name,
+    rows: world.records.count(t.id),
+    place: placeOf(t),
+    of: part ? (world.shape.table(part.relatesTo ?? '')?.name ?? null) : null,
+  }
+}
 
 export function makeViews(ctx: BaseCtx) {
   const { world, engine, user } = ctx
@@ -250,7 +264,7 @@ export function makeViews(ctx: BaseCtx) {
       tables: world.shape
         .tables(m.id)
         .filter((t) => !t.hidden)
-        .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
+        .map((t) => tableSummary(world, t)),
     }))
     const shown = new Set<string>()
     for (const m of all) {

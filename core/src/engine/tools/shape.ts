@@ -23,6 +23,8 @@ const SHAPE_INPUT = {
     'remove_view',
     'place_module',
     'describe',
+    'part_of',
+    'setup',
   ]),
   module: z.string().optional(),
   within: z.string().optional(),
@@ -36,6 +38,8 @@ const SHAPE_INPUT = {
   default: z.boolean().optional(),
   about: z.string().optional(), // one sentence on what a table, a field or a view means
   what: z.enum(['table', 'field', 'view']).optional(), // what describe describes; field when field is given
+  setup: z.boolean().optional(), // make_table and setup: a table the module's agents read
+  part_of: z.boolean().optional(), // part_of: the relation field's rows are part of their row, or not
 }
 export type ShapeAction = z.infer<z.ZodObject<typeof SHAPE_INPUT>>
 
@@ -44,7 +48,8 @@ export const MAINTAINED_SHAPE = 'maintained_shape'
 // The module a shape change is to, and its kit, when someone else maintains it. Arrangement
 // (views, placement) is the person's under any mark; shape is what goes to the maintainer.
 function maintainedKit(world: World, a: ShapeAction) {
-  if (['save_view', 'remove_view', 'place_module'].includes(a.action)) return null
+  // where a table shows (setup) is arrangement, the person's under any mark; part of is shape
+  if (['save_view', 'remove_view', 'place_module', 'setup'].includes(a.action)) return null
   const module =
     a.action === 'make_table'
       ? world.shape.module(a.module?.trim() || a.table || '')
@@ -71,6 +76,8 @@ export function describeShape(a: ShapeAction): string {
       return `remove the table ${a.table}`
     case 'describe':
       return `say what ${a.field ? `${a.field} in ${a.table}` : a.table} means`
+    case 'part_of':
+      return `make a row of ${a.table} ${a.part_of === false ? 'no longer ' : ''}part of the row its ${a.field} names`
     default:
       return a.action.replace('_', ' ')
   }
@@ -88,6 +95,7 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
     ...(f.tones ? { tones: f.tones } : {}),
     ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
     ...(f.many ? { many: true } : {}),
+    ...(f.part_of ? { partOf: true } : {}),
   }))
   if (a.action === 'place_module') {
     if (!a.module) throw new Refused('place_module needs module.')
@@ -107,6 +115,7 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
       const t = world.shape.makeTable(module.id, table, fields, c, {
         about: a.about,
         aboutBy: 'alpha',
+        ...(a.setup ? { setup: true } : {}),
       })
       return say(
         `${existing ? '' : `Made the module ${module.name}. `}Made the table ${t.name} (view ${t.slug}) with ${
@@ -189,6 +198,23 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
           : `${name} keeps the person’s own sentence; theirs stands.`,
       )
     }
+    case 'part_of': {
+      if (!a.field) throw new Refused('part_of needs field: the relation to the row it is part of.')
+      const t = world.shape.setPartOf(tableOf(world, table).id, a.field, a.part_of !== false, c)
+      return say(
+        a.part_of === false
+          ? `A row of ${t.name} is its own now.`
+          : `A row of ${t.name} is part of the row its ${a.field} names: it shows there, and goes and comes back with it.`,
+      )
+    }
+    case 'setup': {
+      const t = world.shape.setSetup(tableOf(world, table).id, a.setup !== false, c)
+      return say(
+        t.setup
+          ? `${t.name} is setup now, under ${t.module.name}'s Agents and notes.`
+          : `${t.name} is one of ${t.module.name}'s main tables again.`,
+      )
+    }
     case 'remove_view': {
       const t = tableOf(world, table)
       const views = world.views.list(t.id)
@@ -218,7 +244,9 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'save_view: a saved view of a table, shared by everyone, shown as a tab over it; give table, field (the view’s name; to renames it), view and default (true to open the table on it). Read the view grammar with guide (about: views) before you save one.',
         'remove_view: give table and field (the view’s name).',
         'place_module: put a module inside another; give module and within (the module it goes inside; leave within out for the top level). A module never goes inside itself or one of its own.',
-        `Field kinds: ${FIELD_KINDS.join(', ')}. A relation names the table it relates_to, and many: true when it holds a list of rows. A choice may carry tones (a choice: good, warn, bad or accent) where it means a state.`,
+        'part_of: give table, field (a relation to one row) and part_of (false to undo): its rows become part of the row they point at, as a deal’s yearly figures are part of the deal. A part shows on its row, not as a tab; it goes and comes back with it; it is never without one. A table whose rows each belong to one row of another is made with that relation part_of: true; then it needs no tab of its own.',
+        'setup: give table and setup (false to undo): a table the module’s agents read (sources, goals, rules, templates), shown under Agents and notes, not as a tab. make_table takes setup: true too.',
+        `Field kinds: ${FIELD_KINDS.join(', ')}. A relation names the table it relates_to, and many: true when it holds a list of rows, or part_of: true when its rows are part of that one row. A choice may carry tones (a choice: good, warn, bad or accent) where it means a state.`,
       ].join('\n'),
       SHAPE_INPUT,
       async (a) =>

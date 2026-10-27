@@ -58,19 +58,20 @@ export function ModuleScreen({
   // table, else the conversation
   const front = m?.pages.find((p) => p.front)
   const holds = (m?.modules.length ?? 0) > 0
+  // its main tables are its tabs; a part shows on its row, a setup table under Agents and notes
+  const first = m?.tables.find((t) => t.place === 'main')
   const current: ModuleTab =
     tab ??
     (holds
       ? { kind: 'overview' }
       : front
         ? { kind: 'page', name: front.name }
-        : m?.tables[0]
-          ? { kind: 'table', id: m.tables[0].id }
+        : first
+          ? { kind: 'table', id: first.id }
           : { kind: 'conversation' })
   // the module's own address opens its first table, as that table's address; only once this
   // module's own data is here (the last module's, still shown, would send it back there)
-  const firstTable =
-    !tab && m && m.id === moduleId && !front && !holds ? m.tables[0]?.id : undefined
+  const firstTable = !tab && m && m.id === moduleId && !front && !holds ? first?.id : undefined
   useEffect(() => {
     // the module people live in opens on its People
     if (firstTable) window.location.replace(m?.people ? '#/people' : `#/table/${firstTable}`)
@@ -120,7 +121,8 @@ export function ModuleScreen({
   )
 }
 
-// A module's own tabs after People and the Overview: its pages, its tables with their counts, its
+// A module's own tabs after People and the Overview: its pages, its main tables with their counts
+// (a table that is part of a row, or setup, is not a tab: core step 3a), its
 // Conversation and its Agents and notes; People's screen shows them too, none chosen.
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
@@ -133,13 +135,15 @@ export const moduleTabs = (
     icon: <LayoutDashboard className="size-3.5" />,
     sel: current?.kind === 'page' && current.name === p.name,
   })),
-  ...m.tables.map((t) => ({
-    key: `t:${t.id}`,
-    href: `#/table/${t.id}`,
-    label: t.name,
-    count: t.rows,
-    sel: current?.kind === 'table' && current.id === t.id,
-  })),
+  ...m.tables
+    .filter((t) => t.place === 'main')
+    .map((t) => ({
+      key: `t:${t.id}`,
+      href: `#/table/${t.id}`,
+      label: t.name,
+      count: t.rows,
+      sel: current?.kind === 'table' && current.id === t.id,
+    })),
   {
     key: 'conversation',
     href: `#/module/${m.id}/conversation`,
@@ -308,6 +312,36 @@ function AgentsAndNotes({
             )}
           </div>
         </Section>
+        {m.tables.some((t) => t.place !== 'main') && (
+          <Section
+            title="Tables"
+            sub="Setup its agents read, and the tables whose rows are part of a row. Each opens on its own too."
+          >
+            <ul className="flex flex-col">
+              {m.tables
+                .filter((t) => t.place !== 'main')
+                .map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                  >
+                    <a
+                      href={`#/table/${t.id}`}
+                      className="min-w-0 flex-1 truncate text-ink hover:underline"
+                    >
+                      {t.name}
+                    </a>
+                    <span className="text-ink-3">
+                      {t.place === 'setup' ? 'Setup' : `Part of ${t.of ?? 'a row'}`}
+                    </span>
+                    <span className="w-14 text-right text-ink-3 tabular-nums">
+                      {t.rows.toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </Section>
+        )}
         <Section
           title="Notes"
           sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}

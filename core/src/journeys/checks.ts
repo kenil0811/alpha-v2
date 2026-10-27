@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { agents } from '../modules/agents.ts'
 import { printPage } from '../pages/pages.ts'
+import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
@@ -17,6 +18,8 @@ export const Check = z.union([
   z.object({ errors: z.number() }),
   z.object({ documents: z.number() }),
   z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
+  // where a table sits in its module (core step 3a): a main table, part of a row, or setup
+  z.object({ place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup']) }) }),
   // what the model's own views say: how many rows a query gives, or words its rows hold
   z.object({
     query: z.object({
@@ -109,6 +112,15 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `a value matching /${check.stated.matches}/ stated in “${check.stated.from}”`,
       ok: found.length > 0,
       saw: found.join('; ') || 'none',
+    }
+  }
+  if ('place' in check) {
+    const t = world.shape.table(check.place.table)
+    const is = t ? placeOf(t) : 'missing'
+    return {
+      check: `${check.place.table} is ${check.place.is}`,
+      ok: is === check.place.is,
+      saw: is,
     }
   }
   if ('permission_cards' in check) {

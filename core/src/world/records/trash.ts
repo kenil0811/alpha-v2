@@ -134,6 +134,29 @@ export function takeOut(
   return { gone: ids.map((id) => ({ id, values: kept.get(id)?.vals ?? {} })), cleared, kept }
 }
 
+// Rows taken out with the rows that are part of them (core step 3a), the deepest parts first so
+// each keeps its pointer to its row: removed together, kept together, brought back together.
+export function takeOutAll(
+  records: Records,
+  table: Table,
+  ids: string[],
+  ctx: WriteCtx,
+): {
+  gone: { id: string; values: Record<string, unknown> }[]
+  cleared: number
+  kept: { table: Table; id: string; kept: Kept }[]
+  parts: { table: Table; ids: string[] }[]
+} {
+  const parts = records.shape.partRows(table.id, ids)
+  const kept: { table: Table; id: string; kept: Kept }[] = []
+  for (const p of parts)
+    for (const [id, k] of takeOut(records, p.table, p.ids, ctx).kept)
+      kept.push({ table: p.table, id, kept: k })
+  const own = takeOut(records, table, ids, ctx)
+  for (const [id, k] of own.kept) kept.push({ table, id, kept: k })
+  return { gone: own.gone, cleared: own.cleared, kept, parts }
+}
+
 // The versions a write kept, tied to the journal line that wrote it, with what it wrote: the
 // values a revert puts back, and only where they are still what it wrote.
 export function tagVersions(

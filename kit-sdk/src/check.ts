@@ -88,7 +88,16 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
             `${t.name}'s ${f.name} relates to ${f.relates_to}, which is neither the kit's own table nor one named in uses.`,
           )
       }
+      // a part belongs to one row of a table, never to a list or to itself (core step 3a)
+      if (f.part_of && (f.kind !== 'relation' || f.many || f.relates_to === t.name))
+        problems.push(
+          `${t.name}'s ${f.name} can be part_of only as a relation to one row of another table.`,
+        )
     }
+    if (t.fields.filter((f) => f.part_of).length > 1)
+      problems.push(`${t.name} is part of more than one table; a row is part of one row.`)
+    if (t.setup && t.fields.some((f) => f.part_of))
+      problems.push(`${t.name} is both setup and part of a row; it is one or the other.`)
   }
   if (options.kits)
     for (const u of m.uses) {

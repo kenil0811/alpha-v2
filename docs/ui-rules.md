@@ -34,8 +34,8 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its tables with their counts, Conversation, Agents and notes | 26 Oct | — |
-| M2 | Nothing sits under a table or a page; agents, notes, recent activity and Governance are the Agents and notes tab | 26 Oct | — |
+| M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its main tables with their counts (a table part of a row, or setup, is not a tab), Conversation, Agents and notes | 26 Oct, 27 Oct | — |
+| M2 | Nothing sits under a table or a page; agents, the module's other tables (setup, and parts with what they are part of), notes, recent activity and Governance are the Agents and notes tab | 26 Oct, 27 Oct | — |
 | M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss | 26 Oct, 27 Oct | — |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 
@@ -63,7 +63,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | R1 | A section is its serif title and ⓘ over what it holds, never a card; nothing sits in a card inside a card | 26 Oct | — |
 | R2 | One record layout: the way back in the bar, a centred column, a line naming the record, its serif title, its sections | 25 Oct | — |
-| R3 | Delete is never one click: behind ⋮, always confirmed in our own pop-up, saying what goes | 26 Oct | — |
+| R3 | Delete is never one click: behind ⋮, always confirmed in our own pop-up, saying what goes, the parts that go with it, and how long Bring back returns them, in the core's words | 26 Oct, 27 Oct | — |
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |
 | R6 | Revert, and Bring back on a removal, sit behind an Activity line's ⋮, said first in the one pop-up from the core's own preview of the same work | 26 Oct | — |

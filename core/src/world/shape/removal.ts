@@ -14,6 +14,11 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
   tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
+    const parts = shape.partsOf(table.id).filter((p) => p.table.id !== table.id)
+    if (parts.length)
+      throw new Refused(
+        `${parts.map((p) => p.table.name).join(' and ')} ${parts.length === 1 ? 'is' : 'are'} part of ${table.name}: remove ${parts.length === 1 ? 'it' : 'them'} first, or make ${parts.length === 1 ? 'it' : 'them'} not part of it.`,
+      )
     const count = Number(
       one<{ n: number }>(shape.db, 'SELECT count(*) AS n FROM records WHERE table_id = ?', table.id)
         ?.n ?? 0,
@@ -153,6 +158,7 @@ export function hiddenFields(shape: Shape, tableId: string): (Field & { rows: nu
       aboutBy: null,
       relatesTo: o.relatesTo ?? null,
       many: f.kind === 'relation' && !!o.many,
+      partOf: false,
       indexed: !!o.indexed,
       key: f.key,
     }

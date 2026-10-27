@@ -1,5 +1,6 @@
 // A row opened: every field with its value and mark, each opening to where it came from (a
-// double-click changes it instead, as the person's word), the
+// double-click changes it instead, as the person's word), the rows that are part of it (a deal's
+// yearly figures; core step 3a), the
 // pages and files its values were read from, and the documents on it (a deal's CIM), which a file
 // dropped on the panel joins at once.
 import type { FieldView, RowFileView, RowView, TasksView } from '@alpha/core/api'
@@ -15,6 +16,13 @@ import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 import { EditCell } from './Grid.tsx'
 import { CORRECTABLE, EMPTY_WORDS, KIND_WORDS, MARK, show } from './values.ts'
+
+// The rows of a table that are part of this row, as the core serves them.
+type Part = {
+  table: { id: string; name: string }
+  fields: FieldView[]
+  rows: { id: string; values: Record<string, unknown> }[]
+}
 
 export function RowPanel({
   tableId,
@@ -43,6 +51,7 @@ export function RowPanel({
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
   const [files, setFiles] = useState<RowFileView[]>([])
   const [tasks, setTasks] = useState<TasksView | null>(null)
+  const [parts, setParts] = useState<Part[]>([])
   const loadTasks = () =>
     api.get<TasksView>(`/api/tasks?row=${row.id}`).then(setTasks, () => setTasks(null))
   const [problem, setProblem] = useState<string | null>(null)
@@ -51,8 +60,12 @@ export function RowPanel({
   // the row comes again whenever the world changes: its files are asked again with it
   useEffect(() => {
     if (row.id) api.get<RowFileView[]>(path).then(setFiles, () => setFiles([]))
+    if (row.id)
+      api
+        .get<Part[]>(`/api/tables/${tableId}/rows/${row.id}/parts`)
+        .then(setParts, () => setParts([]))
     if (row.id) void loadTasks()
-  }, [path, row])
+  }, [path, row, tableId])
   const act = (p: Promise<RowFileView[]>) =>
     p.then(
       (f) => {
@@ -164,6 +177,42 @@ export function RowPanel({
             )
           })}
         </dl>
+        {parts.map((p) => (
+          <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+                {p.table.name} · {p.rows.length}
+              </div>
+              {p.rows.length > 0 && (
+                <a
+                  href={`#/table/${p.table.id}?only=${p.rows.map((r) => r.id).join(',')}`}
+                  className="text-accent text-sm hover:underline"
+                >
+                  Open all
+                </a>
+              )}
+            </div>
+            {p.rows.length === 0 ? (
+              <div className="text-ink-3 text-sm">None yet.</div>
+            ) : (
+              <ul className="flex flex-col">
+                {p.rows.map((r) => (
+                  <li key={r.id} className="border-hair border-t first:border-t-0">
+                    <a
+                      href={`#/table/${p.table.id}/${r.id}`}
+                      className="block truncate py-1.5 text-ink text-md hover:underline"
+                    >
+                      {p.fields
+                        .map((f) => show(f, r.values[f.slug], {}))
+                        .filter((w) => w && w !== '–')
+                        .join(' · ') || 'A row'}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
         {places.size > 0 && (
           <div className="flex flex-col gap-2 p-4.5">
             <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">

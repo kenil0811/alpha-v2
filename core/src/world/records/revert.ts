@@ -10,7 +10,7 @@ import { append, type Line, lines, read } from '../journal.ts'
 import { type Provenance, Refused } from '../kinds.ts'
 import { actorName, type Table, type WriteCtx } from '../shape/index.ts'
 import type { Records } from './records.ts'
-import { bringBack, inTrash, type Kept, putInTrash, tagVersions, takeOut } from './trash.ts'
+import { bringBack, inTrash, type Kept, putInTrash, tagVersions, takeOutAll } from './trash.ts'
 import type { Snapshot } from './types.ts'
 
 export type UndoTarget = { run: string } | { turn: string } | { line: number }
@@ -126,15 +126,18 @@ export function revert(
           leave(`added\t${table.name}`)
           continue
         }
-        const { kept } = takeOut(records, table, [id], ctx)
+        // with the rows that are part of it (core step 3a), into the trash on the same line
+        const out = takeOutAll(records, table, [id], ctx)
         const removal = from[id] !== undefined ? read(db, from[id]) : undefined
-        trash.push({
-          table,
-          id,
-          kept: kept.get(id) as Kept,
-          ...(removal ? { to: { id: removal.id, at: removal.at } } : {}),
-        })
-        tableOf.set(id, table)
+        for (const k of out.kept) {
+          trash.push({
+            table: k.table,
+            id: k.id,
+            kept: k.kept,
+            ...(removal ? { to: { id: removal.id, at: removal.at } } : {}),
+          })
+          tableOf.set(k.id, k.table)
+        }
       }
     }
 

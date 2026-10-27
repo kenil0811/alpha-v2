@@ -96,6 +96,7 @@ export function writeManifest(shape: Shape, m: Module): void {
     tables: shape.tables(m.id).map((t) => ({
       name: t.name,
       ...(t.about ? { about: t.about } : {}),
+      ...(t.setup ? { setup: true } : {}),
       fields: t.fields.map((f) => ({
         name: f.name,
         kind: f.kind,
@@ -104,6 +105,7 @@ export function writeManifest(shape: Shape, m: Module): void {
         ...(Object.keys(f.tones).length ? { tones: f.tones } : {}),
         ...(f.relatesTo ? { relates_to: shape.table(f.relatesTo)?.name } : {}),
         ...(f.many ? { many: true } : {}),
+        ...(f.partOf ? { part_of: true } : {}),
         ...(f.indexed ? { indexed: true } : {}),
         ...(f.key && f.key !== f.name ? { key: f.key } : {}),
       })),

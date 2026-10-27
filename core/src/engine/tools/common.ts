@@ -70,6 +70,7 @@ export const Field = z.object({
   tones: z.record(z.string(), z.enum(TONES)).optional(),
   relates_to: z.string().optional(),
   many: z.boolean().optional(), // a relation holding a list of rows
+  part_of: z.boolean().optional(), // a relation to one row whose rows are part of it (step 3a)
 })
 
 export type Result = ToolResult

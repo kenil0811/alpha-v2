@@ -8,15 +8,18 @@ import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
 import type { PastePlan } from './Grid.tsx'
+import { useGoes } from './goes.ts'
 import { CORRECTABLE, readValue } from './values.ts'
 
 export function TickedBar({
+  tableId,
   rows,
   fields,
   onSet,
   onRemove,
   onClear,
 }: {
+  tableId: string
   rows: RowView[]
   fields: FieldView[]
   onSet: (field: FieldView, value: unknown) => Promise<boolean>
@@ -25,6 +28,7 @@ export function TickedBar({
 }) {
   const [setting, setSetting] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const goes = useGoes(tableId, removing ? rows.map((r) => r.id) : null)
   const setAnchor = useRef<HTMLButtonElement>(null)
   // rows holding a value the person typed: removing them is removing their own word
   const theirs = rows.filter((r) => Object.values(r.sources).some((s) => s?.kind === 'stated'))
@@ -78,7 +82,7 @@ export function TickedBar({
       >
         {theirs.length > 0 &&
           `${theirs.length === n ? (n === 1 ? 'It holds' : 'They hold') : `${theirs.length} of them hold`} values you typed. `}
-        They can’t be brought back; Activity keeps what they held.
+        {goes}
       </Confirm>
     </div>
   )

@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { all, type Db, json, newId, now, one, parse, run, tx } from '../db.ts'
-import { addFieldSql, columnsOf, createTableSql, OWN_COLUMNS } from '../ddl.ts'
+import { addFieldSql, columnsOf, createTableSql, OWN_COLUMNS, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { FIELD_KINDS, type FieldKind, Refused } from '../kinds.ts'
 import {
@@ -21,6 +21,7 @@ import {
   tonesSetByOthers,
 } from './fields.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
+import { partRows, partsOf, setPartOf, setSetup } from './parts.ts'
 import {
   clearPointers,
   hiddenFields,
@@ -200,13 +201,14 @@ export class Shape {
       name: string
       slug: string
       hidden: number
+      setup: number
       documents: string | null
       people: string | null
       about: string | null
       about_by: AboutBy | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, hidden, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, hidden, setup, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -233,6 +235,7 @@ export class Shape {
         tones?: Record<string, Tone>
         relatesTo?: string
         many?: boolean
+        partOf?: boolean
         indexed?: boolean
       }>(f.options, {})
       return {
@@ -244,6 +247,7 @@ export class Shape {
         tones: o.tones ?? {},
         relatesTo: o.relatesTo ?? null,
         many: f.kind === 'relation' && !!o.many,
+        partOf: f.kind === 'relation' && !o.many && !!o.partOf,
         indexed: !!o.indexed,
         key: f.key,
         about: f.about,
@@ -256,6 +260,7 @@ export class Shape {
       name: t.name,
       slug: t.slug,
       hidden: t.hidden === 1,
+      setup: t.setup === 1,
       fields,
       documents: t.documents ? parse<string[]>(t.documents, []) : null,
       people: t.people ? parse<PeopleMap | null>(t.people, null) : null,
@@ -269,7 +274,7 @@ export class Shape {
     name: string,
     fields: FieldInput[],
     ctx: WriteCtx,
-    options: { hidden?: boolean; about?: string; aboutBy?: AboutBy } = {},
+    options: { hidden?: boolean; setup?: boolean; about?: string; aboutBy?: AboutBy } = {},
   ): Table {
     if (!name.trim()) throw new Refused('A table needs a name.')
     return tx(this.db, () => {
@@ -281,7 +286,7 @@ export class Shape {
       const slug = freeSlug(slugify(name), (s) => this.slugTaken(s))
       run(
         this.db,
-        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden, about, about_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden, setup, about, about_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         id,
         module.id,
         name.trim(),
@@ -289,6 +294,7 @@ export class Shape {
         actorName(ctx.actor),
         now(),
         options.hidden ? 1 : 0,
+        options.setup ? 1 : 0,
         options.about?.trim() || null,
         options.about?.trim() ? (options.aboutBy ?? 'person') : null,
       )
@@ -345,6 +351,14 @@ export class Shape {
       throw new Refused(`${f.name} relates to a table that is not there.`)
     const table = this.table(tableId) as Table
     const many = f.kind === 'relation' && !!f.many
+    if (f.partOf && (f.kind !== 'relation' || many))
+      throw new Refused(`${f.name} can be part of a row only as a relation to one row.`)
+    // a part is never without its row: on a table that has rows, an existing relation is made
+    // part of with part_of, once every row has its row
+    if (f.partOf && ddl && one(this.db, `SELECT 1 FROM ${quote(table.slug)} LIMIT 1`))
+      throw new Refused(
+        `${table.name} has rows already; add ${f.name} as a relation, fill it in, then make it part of.`,
+      )
     if (table.fields.some((x) => x.slug === slugify(f.name)))
       throw new Refused(`There is already a field called ${f.name}.`)
     const slug = this.freeFieldSlug(table, f.name, f.kind, many, null)
@@ -360,6 +374,7 @@ export class Shape {
       ...(f.tones && Object.keys(f.tones).length ? { tones: f.tones } : {}),
       ...(f.relatesTo ? { relatesTo: (this.table(f.relatesTo) as Table).id } : {}),
       ...(many ? { many: true } : {}),
+      ...(f.partOf ? { partOf: true } : {}),
       ...(f.indexed && f.kind !== 'relation' ? { indexed: true } : {}),
     }
     const id = newId('f')
@@ -439,6 +454,18 @@ export class Shape {
   }
   setMany(tableId: string, field: string, ctx: WriteCtx): Table {
     return setMany(this, tableId, field, ctx)
+  }
+  setSetup(tableId: string, setup: boolean, ctx: WriteCtx): Table {
+    return setSetup(this, tableId, setup, ctx)
+  }
+  setPartOf(tableId: string, field: string, partOf: boolean, ctx: WriteCtx): Table {
+    return setPartOf(this, tableId, field, partOf, ctx)
+  }
+  partsOf(tableId: string): { table: Table; field: string }[] {
+    return partsOf(this, tableId)
+  }
+  partRows(tableId: string, ids: string[]): { table: Table; ids: string[] }[] {
+    return partRows(this, tableId, ids)
   }
   setKey(fieldId: string, key: string): void {
     setKey(this, fieldId, key)

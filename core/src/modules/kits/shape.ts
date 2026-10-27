@@ -17,6 +17,7 @@ function fieldsOf(spec: KitManifest['tables'][number], withRelations: boolean): 
       ...(f.tones ? { tones: f.tones } : {}),
       ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
       ...(f.many ? { many: true } : {}),
+      ...(f.part_of ? { partOf: true } : {}),
       ...(f.indexed ? { indexed: true } : {}),
       key: f.key ?? f.name,
       ...(f.about ? { about: f.about, aboutBy: 'kit' as const } : {}),
@@ -58,6 +59,7 @@ export function shapeTables(
       if (world.shape.tombstoned(module.id, 'table', spec.name)) continue
       world.shape.makeTable(module.id, spec.name, fieldsOf(spec, false), ctx, {
         ...(spec.about ? { about: spec.about, aboutBy: 'kit' } : {}),
+        ...(spec.setup ? { setup: true } : {}),
       })
     } else if (t.module.id !== module.id)
       throw new Refused(`There is already a table called ${spec.name} in ${t.module.name}.`)
@@ -106,6 +108,28 @@ export function shapeTables(
       if (was && f.tones && !world.shape.tonesSetByOthers(was.id))
         world.shape.setTones(t.id, was.name, f.tones, ctx)
     }
+    // a relation the kit now says is part of its row (core step 3a); one whose rows don't all have
+    // their row yet stays as it is, and says why
+    for (const f of spec.fields) {
+      if (f.kind !== 'relation' || !f.part_of) continue
+      const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
+      if (!was || was.partOf) continue
+      try {
+        world.shape.setPartOf(t.id, was.id, true, ctx)
+      } catch (err) {
+        if (!(err instanceof Refused)) throw err
+        world.line({
+          actor: ctx.actor,
+          kind: 'noted',
+          words: `${t.name} keeps its own tab for now: ${err.message}`,
+          module: module.id,
+        })
+      }
+    }
+    // a new version's setup tables move under Agents and notes; where a table shows is the
+    // person's after that, so a kit never takes one back out
+    if (spec.setup && !(world.shape.table(t.id) as Table).setup)
+      world.shape.setSetup(t.id, true, ctx)
     // what each means, as the kit says it; a sentence the person wrote stands (describe says so)
     if (spec.about) world.shape.describe({ table: t.id }, spec.about, 'kit', ctx)
     for (const f of spec.fields) {

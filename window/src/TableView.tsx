@@ -382,6 +382,7 @@ export function TableView({
         <div className="flex flex-wrap items-center gap-2 px-7 py-2">
           {tickedRows.length > 0 ? (
             <TickedBar
+              tableId={data.id}
               rows={tickedRows}
               fields={fields}
               onClear={() => setTicked(new Set())}

@@ -35,7 +35,7 @@ const modules = [
     people: false,
     alpha: false,
     pages: [],
-    tables: [{ id: 't_1', name: 'Orders', rows: 1 }],
+    tables: [{ id: 't_1', name: 'Orders', rows: 1, place: 'main' as const, of: null }],
   },
   {
     id: 'm_3',
@@ -44,7 +44,7 @@ const modules = [
     people: false,
     alpha: false,
     pages: [],
-    tables: [{ id: 't_2', name: 'Meals', rows: 1 }],
+    tables: [{ id: 't_2', name: 'Meals', rows: 1, place: 'main' as const, of: null }],
   },
 ]
 const open = NO_LAYOUT

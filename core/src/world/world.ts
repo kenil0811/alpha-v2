@@ -15,6 +15,7 @@ import { Records } from './records/index.ts'
 import { Rules } from './rules.ts'
 import { migrate } from './schema.ts'
 import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape/index.ts'
+import { type Place, placeOf } from './shape/parts.ts'
 import { Tasks } from './tasks/index.ts'
 import { Views } from './views.ts'
 
@@ -445,6 +446,8 @@ export class World {
       fields: string[]
       documents: string[] | null
       about: string | null
+      place: Place
+      of: string | null // the table its rows are part of
     }[]
   }[] {
     const modules = this.shape.modules()
@@ -460,6 +463,8 @@ export class World {
         fields: t.fields.map((f) => `${f.name} (${f.kind})`),
         documents: t.documents,
         about: t.about,
+        place: placeOf(t),
+        of: this.shape.table(t.fields.find((f) => f.partOf)?.relatesTo ?? '')?.name ?? null,
       })),
     }))
   }

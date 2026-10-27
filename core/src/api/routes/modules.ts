@@ -8,7 +8,7 @@ import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ModuleSummary, ModuleView } from '../types.ts'
-import { livesPeople } from '../views.ts'
+import { livesPeople, tableSummary } from '../views.ts'
 
 export function registerModules(ctx: Ctx): void {
   const { app, world, engine, user, options } = ctx
@@ -65,7 +65,7 @@ export function registerModules(ctx: Ctx): void {
       tables: world.shape
         .tables(m.id)
         .filter((t) => !t.hidden)
-        .map((t) => ({ id: t.id, name: t.name, rows: world.records.count(t.id) })),
+        .map((t) => tableSummary(world, t)),
       modules: summaries()
         .filter((c) => c.parent === m.id)
         .map((c) => {

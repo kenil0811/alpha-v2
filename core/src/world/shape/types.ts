@@ -26,6 +26,9 @@ export interface Field {
   tones: Record<string, Tone> // a choice's colour where it means a state (Fits, Does not fit)
   relatesTo: string | null
   many: boolean // a relation holding a list of rows: a junction table, not a column
+  // a relation whose rows are part of the row they point at (core step 3a): shown on it, removed
+  // and brought back with it, never empty
+  partOf: boolean
   indexed: boolean // an index the kit asked for
   key: string | null // a kit field's stable name, matched on update; none for the person's own
   about: string | null // one sentence on what it means (the semantic layer)
@@ -45,6 +48,7 @@ export interface Table {
   name: string
   slug: string
   hidden: boolean // out of the sidebar
+  setup: boolean // what the module's agents read: under Agents and notes, not a tab (step 3a)
   fields: Field[]
   documents: string[] | null // the kinds of document its rows take, as its kit names them
   people: PeopleMap | null // how its rows name people
@@ -86,6 +90,7 @@ export interface FieldInput {
   tones?: Record<string, Tone>
   relatesTo?: string // a table, for a relation
   many?: boolean // a relation holding a list of rows
+  partOf?: boolean // its rows are part of the row it points at
   indexed?: boolean // an index on it, for a field filtered on often
   key?: string // a kit field's stable name
   about?: string // one sentence on what it means

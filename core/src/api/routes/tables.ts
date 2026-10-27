@@ -1,5 +1,6 @@
 import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
+import { config } from '../../config.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { findField } from '../../world/shape/index.ts'
 import { namedConfig } from '../../world/views.ts'
@@ -181,6 +182,53 @@ export function registerTables(ctx: Ctx): void {
       : []
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { changed: body.set.length, added: added.length }
+  })
+
+  // A row's parts (core step 3a): for each table whose rows are part of this one, its rows that
+  // point at this row, with their fields but the pointer itself, for the row's view.
+  app.get('/api/tables/:id/rows/:row/parts', async (req) => {
+    const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
+    return world.shape.partsOf(id).map((p) => {
+      const rel = p.table.fields.find((f) => f.id === p.field)
+      const ids = rel ? world.records.idsWhere(p.table.id, rel.name, [row]) : []
+      return {
+        table: { id: p.table.id, name: p.table.name },
+        fields: p.table.fields
+          .filter((f) => f.id !== p.field)
+          .map((f) => ({
+            id: f.id,
+            name: f.name,
+            slug: f.slug,
+            kind: f.kind,
+            choices: f.choices,
+            tones: f.tones,
+            many: f.many,
+            about: f.about,
+            aboutBy: f.aboutBy,
+          })),
+        rows: ids.flatMap((rid) => {
+          const r = world.records.get(rid)
+          return r ? [{ id: rid, values: r.record.values }] : []
+        }),
+      }
+    })
+  })
+
+  // What a removal of these rows takes with it, said in the pop-up before it happens: the rows
+  // that are part of them (core step 3a), and how long Bring back can return them (step 1).
+  app.post('/api/tables/:id/rows/goes', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { rows } = z.object({ rows: z.array(z.string()).min(1) }).parse(req.body)
+    const parts = world.shape.partRows(id, rows)
+    const n = rows.length
+    const list = parts.map(
+      (p) => `${p.ids.length} row${p.ids.length === 1 ? '' : 's'} of ${p.table.name}`,
+    )
+    const and =
+      list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list.at(-1)}`
+    return {
+      words: `${parts.length ? `${n === 1 ? 'Its' : 'Their'} ${and} go with ${n === 1 ? 'it' : 'them'}. ` : ''}Bring back, in Activity, returns ${n === 1 && !parts.length ? 'it' : 'them all'} for ${config.limits().keep_removed_days} days.`,
+    }
   })
 
   // The person removes rows they ticked, having said yes in the window; the journal keeps them.

@@ -41,7 +41,7 @@ import {
   unindex,
   update,
 } from './storing.ts'
-import { putInTrash, tagVersions, takeOut } from './trash.ts'
+import { putInTrash, tagVersions, takeOutAll } from './trash.ts'
 import type {
   ChangeInput,
   Landed,
@@ -56,6 +56,16 @@ import type {
   Stored,
 } from './types.ts'
 import { present, sortKeys } from './types.ts'
+
+// A part is never on its own (core step 3a): a new row gives the row it is part of, and a change
+// never clears it.
+function partOfGiven(table: Table, vals: Record<string, unknown>, fresh: boolean): void {
+  for (const f of table.fields)
+    if (f.partOf && (fresh ? vals[f.id] == null : f.id in vals && vals[f.id] == null))
+      throw new Refused(
+        `A row of ${table.name} is part of the row its ${f.name} names, so it needs one.`,
+      )
+}
 
 export class Records {
   db: Db
@@ -92,6 +102,7 @@ export class Records {
           ctx.said ?? null,
           at,
         )
+        partOfGiven(table, vals, true)
         const id = newId('r')
         this.insert(table, id, vals, prov, at, actorName(ctx.actor), null)
         ids.push(id)
@@ -128,6 +139,7 @@ export class Records {
           ctx.said ?? null,
           at,
         )
+        partOfGiven(table, vals, false)
         const was = this.snapshot(table, row)
         this.keepVersion(row, was, at, actorName(ctx.actor))
         versions.push([row.id, row.version, { vals, prov }])
@@ -164,22 +176,33 @@ export class Records {
     if (!ids.length) throw new Refused('There are no rows to remove.')
     return tx(this.db, () => {
       const table = this.mustTable(tableId)
-      const { gone, cleared, kept } = takeOut(this, table, ids, ctx)
+      const { gone, cleared, kept, parts } = takeOutAll(this, table, ids, ctx)
+      // the rows that were part of them went with them (core step 3a)
+      const with_ = parts.length
+        ? `, with ${parts.map((p) => `${p.ids.length} row${p.ids.length === 1 ? '' : 's'} of ${p.table.name}`).join(' and ')}`
+        : ''
       const line = append(this.db, {
         actor: ctx.actor,
         kind: 'removed',
-        words: `Removed ${gone.length === 1 ? `a row from ${table.name}: ${this.describeStored(table, gone[0]?.values ?? {})}` : `${gone.length} rows from ${table.name}`}${
+        words: `Removed ${gone.length === 1 ? `a row from ${table.name}: ${this.describeStored(table, gone[0]?.values ?? {})}` : `${gone.length} rows from ${table.name}`}${with_}${
           cleared
             ? `, cleared from ${cleared} row${cleared === 1 ? '' : 's'} pointing at ${gone.length === 1 ? 'it' : 'them'}`
             : ''
         }.`,
-        data: { table: table.id, records: gone, cleared },
+        data: {
+          table: table.id,
+          records: gone,
+          cleared,
+          ...(parts.length
+            ? { parts: parts.map((p) => ({ table: p.table.id, records: p.ids })) }
+            : {}),
+        },
         user: ctx.user ?? null,
         turn: ctx.turn ?? null,
         module: table.module.id,
         run: ctx.run ?? null,
       })
-      for (const [id, k] of kept) putInTrash(this, table, id, k, line)
+      for (const k of kept) putInTrash(this, k.table, k.id, k.kept, line)
       return gone.length
     })
   }
@@ -220,6 +243,7 @@ export class Records {
         if (!r && item.row) throw new Refused(`${table.name} has no row ${item.row}.`)
         if (!r && options.existing) continue
         if (!r) {
+          partOfGiven(table, vals, true)
           const id = newId('r')
           this.insert(table, id, vals, prov, at, actorName(ctx.actor), item.key)
           touched.push(id)

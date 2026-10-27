@@ -67,7 +67,7 @@ export function startLayer(
     // tables with their counts and what each is; the fields come with the first touch of a table
     for (const t of m.tables)
       parts.push(
-        `- ${t.name} (view ${t.view}), ${t.rows} row${t.rows === 1 ? '' : 's'}${t.about ? `: ${t.about}` : ''}${t.documents?.length ? ` Its rows take documents: ${t.documents.join(', ')}.` : ''}`,
+        `- ${t.name} (view ${t.view}${t.place === 'setup' ? ', setup' : t.place === 'part' ? `, part of ${t.of}` : ''}), ${t.rows} row${t.rows === 1 ? '' : 's'}${t.about ? `: ${t.about}` : ''}${t.documents?.length ? ` Its rows take documents: ${t.documents.join(', ')}.` : ''}`,
       )
     const skills = skillsOf(m.dir)
     if (skills.length)
@@ -116,7 +116,7 @@ export function tableBrief(world: World, t: Table): string {
       f.kind === 'choice'
         ? `choice: ${f.choices.join(', ')}`
         : f.kind === 'relation'
-          ? `relation to ${f.relatesTo ? (world.shape.table(f.relatesTo)?.name ?? 'a table') : 'a table'}${f.many ? ', a list' : ''}`
+          ? `relation to ${f.relatesTo ? (world.shape.table(f.relatesTo)?.name ?? 'a table') : 'a table'}${f.many ? ', a list' : ''}${f.partOf ? '; each row is part of that row, never without one, and goes with it' : ''}`
           : f.kind
     return `- ${f.name} (${kind})${f.about ? `: ${f.about}` : ''}`
   })

@@ -1,0 +1,30 @@
+name: parts-of-a-deal
+title: 'a table whose rows belong to one row is made part of it, goes with it when it is removed, and comes back with it'
+why: >
+  Core step 3a (Kenil's yes, 27 Oct): a relation can be part of the row it points at. A deal's
+  yearly figures are part of the deal, so they need no tab of their own, they are never without
+  their deal, and removing the deal takes them to the trash with it; bringing it back returns
+  them all.
+steps:
+  - say: >
+      In a module called Deal desk, make a table Deals with a Name, and a table Financials for each
+      deal's figures by year, with a Year and a Revenue in dollars. Each year's figures belong to
+      one deal.
+    checks:
+      - place: { table: Deals, is: main }
+      - place: { table: Financials, is: part }
+      - errors: 0
+  - say: Add Acme Bakery, with revenue of 1,200,000 in 2024 and 1,350,000 in 2025.
+    checks:
+      - rows_in: { table: Deals, count: 1 }
+      - rows_in: { table: Financials, count: 2 }
+  - say: Remove Acme Bakery.
+    checks:
+      - rows_in: { table: Deals, count: 0 }
+      - rows_in: { table: Financials, count: 0 }
+      - permission_cards: 0
+  - revert: last_turn
+    checks:
+      - rows_in: { table: Deals, count: 1 }
+      - rows_in: { table: Financials, count: 2 }
+      - errors: 0

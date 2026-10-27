@@ -49,6 +49,7 @@ import {
   total,
   widthOf,
 } from './engine.ts'
+import { useGoes } from './goes.ts'
 import type { LayoutNow } from './layout.ts'
 import { RowMenu } from './RowMenu.tsx'
 import {
@@ -138,6 +139,7 @@ export function Grid({
     y: number
   } | null>(null)
   const [removing, setRemoving] = useState<RowView | null>(null)
+  const goes = useGoes(tableId, removing ? [removing.id] : null)
   const [past, setPast] = useState<{ row: RowView; field: FieldView } | null>(null) // History
   const menuOn = (row: RowView, field: FieldView | null) => ({
     onContextMenu: (e: MouseEvent) => {
@@ -548,7 +550,7 @@ export function Grid({
           if (removing && (await onRemove?.([removing]))) setRemoving(null)
         }}
       >
-        It can’t be brought back; Activity keeps what it held.
+        {goes}
       </Confirm>
     </div>
   )

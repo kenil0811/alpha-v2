@@ -14,6 +14,9 @@ const Field = z.object({
   tones: z.record(z.string(), z.enum(TONES)).optional(),
   relates_to: z.string().optional(),
   many: z.boolean().optional(), // a relation holding a list of rows
+  // a relation to one row whose rows are part of it: shown there, removed and brought back with
+  // it, never empty, and no tab of its own (core step 3a)
+  part_of: z.boolean().optional(),
   indexed: z.boolean().optional(), // an index on it, for a field filtered on often
   key: z.string().optional(), // the kit's stable name for the field; its name at install when absent
   about: z.string().optional(), // one sentence on what the field means (the semantic layer)
@@ -73,6 +76,8 @@ export const Manifest = z.object({
       z.object({
         name: z.string(),
         about: z.string().optional(), // one sentence on what a row of it is
+        // what the module's agents read (sources, goals, rules): under Agents and notes, not a tab
+        setup: z.boolean().optional(),
         fields: z.array(Field),
         // the kinds of document its rows take (a deal's teaser, CIM, NDA), filed on a row
         documents: z.array(z.string().min(1)).optional(),

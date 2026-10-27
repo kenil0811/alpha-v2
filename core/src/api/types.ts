@@ -176,8 +176,7 @@ export interface SetupView {
   }
 }
 
-// A rule as Governance and Settings › Permissions list it (core step 2): its words as code holds
-// them, allow or deny, yours or what Alpha noticed, where it holds, and where it came from.
+// A rule as Governance and Settings › Permissions list it (core step 2), in code's own words.
 export interface RuleView {
   id: string
   words: string
@@ -231,6 +230,8 @@ export interface TableSummary {
   id: string
   name: string
   rows: number
+  place: 'main' | 'part' | 'setup' // a tab, on its row (`of`), or under Agents and notes (step 3a)
+  of: string | null
 }
 
 export interface ModuleSummary {

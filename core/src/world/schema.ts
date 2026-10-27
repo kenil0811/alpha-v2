@@ -551,6 +551,11 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     FROM permissions;
   DROP TABLE permissions;
   `,
+  // 23: a table can be setup (core step 3a, 27 Oct): what a module's agents read, shown under
+  // Agents and notes, not as a tab. A relation that is part of its row says so in its options.
+  `
+  ALTER TABLE tables ADD COLUMN setup INTEGER NOT NULL DEFAULT 0;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

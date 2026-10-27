@@ -138,6 +138,9 @@
           "about": {
             "type": "string"
           },
+          "setup": {
+            "type": "boolean"
+          },
           "fields": {
             "type": "array",
             "items": {
@@ -187,6 +190,9 @@
                   "type": "string"
                 },
                 "many": {
+                  "type": "boolean"
+                },
+                "part_of": {
                   "type": "boolean"
                 },
                 "indexed": {
