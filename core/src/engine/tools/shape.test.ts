@@ -64,9 +64,11 @@ describe('the shape tool and meaning', () => {
     )
     const t = world.shape.table('Meals')
     expect([t?.about, t?.aboutBy]).toEqual(['One meal the person ate.', 'alpha'])
+    // a main table gets its Notes from the builder (core step 3b)
     expect(t?.fields.map((f) => [f.about, f.aboutBy])).toEqual([
       ['What was eaten.', 'alpha'],
       ['Which meal of the day.', 'alpha'],
+      ['Free notes on this row, with people and rows mentioned in them.', 'alpha'],
     ])
     expect(t?.fields[1]?.tones).toEqual({ Dinner: 'accent' })
     expect(

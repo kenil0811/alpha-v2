@@ -1,0 +1,17 @@
+name: a-note-on-a-row
+title: 'a main table gets notes, and Alpha writes a note on a row that mentions another row'
+why: >
+  Core step 3b (Kenil's yes, 27 Oct): a main table the builder makes keeps a row's free notes in a
+  notes field, in Markdown, with a row mentioned as a link so the mentioned row can show where it
+  is mentioned. The model reads notes in their own view, row_notes, and writes them with change.
+steps:
+  - say: In a module called Clients desk, make a table Clients with a Name. Add Acme and Bolt.
+    checks:
+      - place: { table: Clients, is: main }
+      - rows_in: { table: Clients, count: 2 }
+      - query: { sql: "SELECT row FROM row_notes", count: 0 }
+  - say: On Acme, note that we met them at the trade fair, and that Bolt shares their yard.
+    checks:
+      - query: { sql: "SELECT notes FROM row_notes", count: 1, matches: 'trade fair' }
+      - query: { sql: "SELECT notes FROM row_notes", matches: '\(row:r_' }
+      - errors: 0

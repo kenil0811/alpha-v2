@@ -29,7 +29,7 @@ A script is plain JavaScript run in a sandbox with no network, handed one object
 
 ## The rest of the contract
 
-- Field kinds: text, number, money, date, choice, relation, person, file, link, email, phone.
+- Field kinds: text, number, money, date, choice, relation, person, file, link, email, phone, notes.
 - Provenance kinds: stated, looked_up, estimated, assumed, computed.
 - Trigger kinds: every, cron, changes, filed.
 - Card kinds: permission, question, review, match, suggestion.

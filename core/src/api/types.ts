@@ -7,6 +7,7 @@ export interface Health {
 }
 
 export type { Layout, Me } from './me-types.ts'
+export type { RowAround, RowPageView } from './row-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
 export interface FoundRow {

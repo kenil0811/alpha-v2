@@ -351,6 +351,8 @@ export class Shape {
       throw new Refused(`${f.name} relates to a table that is not there.`)
     const table = this.table(tableId) as Table
     const many = f.kind === 'relation' && !!f.many
+    if (f.kind === 'notes' && table.fields.some((x) => x.kind === 'notes'))
+      throw new Refused(`${table.name} has its notes already; a table has one place for notes.`)
     if (f.partOf && (f.kind !== 'relation' || many))
       throw new Refused(`${f.name} can be part of a row only as a relation to one row.`)
     // a part is never without its row: on a table that has rows, an existing relation is made

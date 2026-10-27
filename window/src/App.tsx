@@ -35,6 +35,7 @@ import { ModuleScreen } from './Module.tsx'
 import { NewModule } from './NewModule.tsx'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
+import { RowPage, type RowPlace } from './RowPage.tsx'
 import { alphaOf, Settings } from './Settings.tsx'
 import { Bar, BarMiddle, type Crumb, Find, network, type Place, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
@@ -109,6 +110,9 @@ export function placeOf(hash: string): Place {
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
   if (hash === '#/module/new') return { at: 'new' }
+  // a row's own page (core step 3b)
+  const rw = /^#\/row\/([\w-]+)$/.exec(hash)
+  if (rw?.[1]) return { at: 'row', id: rw[1] }
   // a standing permission's old link lands on its rule (core step 2)
   const it = /^#\/(agent|run|rule|permission)\/([\w-]+)$/.exec(hash)
   if (it?.[1] && it[2])
@@ -141,6 +145,7 @@ export function App() {
   const [personName, setPersonName] = useState('')
   const [taskName, setTaskName] = useState('')
   const [itemName, setItemName] = useState('')
+  const [rowPlace, setRowPlace] = useState<RowPlace | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [finding, setFinding] = useState(false)
@@ -310,22 +315,34 @@ export function App() {
   const at = (label: string, href?: string) => ({ label, href })
   // a run's page sits under Activity, an agent's under Intelligence, a rule's under Settings
   const itemCrumb: Crumb | null =
-    place.at !== 'item'
-      ? null
-      : place.kind === 'agent'
-        ? {
-            icon: <Sparkles className={icon} />,
-            parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
-          }
-        : place.kind === 'rule'
+    place.at === 'row'
+      ? {
+          // a row's page sits under its module and its table, the way back to each
+          icon: <Briefcase className={icon} />,
+          parts: rowPlace
+            ? [
+                at(rowPlace.module.name, `#/module/${rowPlace.module.id}`),
+                at(rowPlace.table.name, `#/table/${rowPlace.table.id}`),
+                at(rowPlace.title),
+              ]
+            : [at('…')],
+        }
+      : place.at !== 'item'
+        ? null
+        : place.kind === 'agent'
           ? {
-              icon: <SlidersHorizontal className={icon} />,
-              parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
+              icon: <Sparkles className={icon} />,
+              parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
             }
-          : {
-              icon: <ActivityIcon className={icon} />,
-              parts: [at('Activity', '#/activity'), at(itemName || '…')],
-            }
+          : place.kind === 'rule'
+            ? {
+                icon: <SlidersHorizontal className={icon} />,
+                parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
+              }
+            : {
+                icon: <ActivityIcon className={icon} />,
+                parts: [at('Activity', '#/activity'), at(itemName || '…')],
+              }
   const crumb: Crumb =
     place.at === 'activity'
       ? { icon: <ActivityIcon className={icon} />, parts: [at('Activity')] }
@@ -467,6 +484,8 @@ export function App() {
                   <FileView place={place.place} onName={setFileName} />
                 ) : place.at === 'activity' ? (
                   <Activity version={version} />
+                ) : place.at === 'row' ? (
+                  <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
                 ) : place.at === 'item' ? (
                   <ItemPage
                     key={`${place.kind}/${place.id}`}

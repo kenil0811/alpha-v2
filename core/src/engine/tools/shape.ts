@@ -112,6 +112,15 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
       const moduleName = a.module?.trim() || table
       const existing = world.shape.module(moduleName)
       const module = existing ?? world.shape.makeModule(moduleName, c)
+      // a main table keeps notes on each row (core step 3b); a part or a setup table does not
+      const main = !a.setup && !fields.some((f) => f.partOf)
+      if (main && !fields.some((f) => f.kind === 'notes' || f.name.toLowerCase() === 'notes'))
+        fields.push({
+          name: 'Notes',
+          kind: 'notes',
+          about: 'Free notes on this row, with people and rows mentioned in them.',
+          aboutBy: 'alpha',
+        })
       const t = world.shape.makeTable(module.id, table, fields, c, {
         about: a.about,
         aboutBy: 'alpha',
@@ -246,7 +255,7 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'place_module: put a module inside another; give module and within (the module it goes inside; leave within out for the top level). A module never goes inside itself or one of its own.',
         'part_of: give table, field (a relation to one row) and part_of (false to undo): its rows become part of the row they point at, as a deal’s yearly figures are part of the deal. A part shows on its row, not as a tab; it goes and comes back with it; it is never without one. A table whose rows each belong to one row of another is made with that relation part_of: true; then it needs no tab of its own.',
         'setup: give table and setup (false to undo): a table the module’s agents read (sources, goals, rules, templates), shown under Agents and notes, not as a tab. make_table takes setup: true too.',
-        `Field kinds: ${FIELD_KINDS.join(', ')}. A relation names the table it relates_to, and many: true when it holds a list of rows, or part_of: true when its rows are part of that one row. A choice may carry tones (a choice: good, warn, bad or accent) where it means a state.`,
+        `Field kinds: ${FIELD_KINDS.join(', ')}. A main table gets Notes (kind notes) on its own: a row's free notes, one per table. A relation names the table it relates_to, and many: true when it holds a list of rows, or part_of: true when its rows are part of that one row. A choice may carry tones (a choice: good, warn, bad or accent) where it means a state.`,
       ].join('\n'),
       SHAPE_INPUT,
       async (a) =>

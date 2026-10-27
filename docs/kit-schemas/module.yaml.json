@@ -162,7 +162,8 @@
                     "file",
                     "link",
                     "email",
-                    "phone"
+                    "phone",
+                    "notes"
                   ]
                 },
                 "choices": {

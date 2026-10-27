@@ -1,10 +1,11 @@
-// A row opened: every field with its value and mark, each opening to where it came from (a
-// double-click changes it instead, as the person's word), the rows that are part of it (a deal's
-// yearly figures; core step 3a), the
-// pages and files its values were read from, and the documents on it (a deal's CIM), which a file
-// dropped on the panel joins at once.
-import type { FieldView, RowFileView, RowView, TasksView } from '@alpha/core/api'
-import { ExternalLink, FileText, Paperclip, X } from 'lucide-react'
+// A row's view (core step 3b, Kenil's yes 27 Oct), one view drawn in the side panel and, with Open
+// full, as the row's own page: every field with its value and mark, each opening to where it came
+// from (a double-click changes it instead, as the person's word); its notes; the rows that are part
+// of it (a deal's yearly figures, step 3a) as small tables with New; the rows that link to it and
+// the notes that mention it; the pages and files its values were read from; its tasks; and the
+// documents on it (a deal's CIM), which a file dropped on the view joins at once.
+import type { FieldView, RowAround, RowFileView, RowView, TasksView } from '@alpha/core/api'
+import { ExternalLink, FileText, Paperclip, Plus, X } from 'lucide-react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
@@ -14,36 +15,40 @@ import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
+import { AddRow } from './AddRow.tsx'
 import { EditCell } from './Grid.tsx'
+import { Notes } from './Notes.tsx'
 import { CORRECTABLE, EMPTY_WORDS, KIND_WORDS, MARK, show } from './values.ts'
 
-// The rows of a table that are part of this row, as the core serves them.
-type Part = {
-  table: { id: string; name: string }
-  fields: FieldView[]
-  rows: { id: string; values: Record<string, unknown> }[]
+// The side panel's way in: the row's view, with Open full to its own page.
+export function RowPanel({
+  title,
+  onClose,
+  ...rest
+}: Parameters<typeof RowBody>[0] & { title: string; onClose: () => void }) {
+  return (
+    <SidePanel title={title || 'A row'} onClose={onClose} full={`#/row/${rest.row.id}`}>
+      <RowBody {...rest} />
+    </SidePanel>
+  )
 }
 
-export function RowPanel({
+export function RowBody({
   tableId,
   kinds,
   row,
   fields,
   names,
-  title,
   onField,
   onEdit,
-  onClose,
 }: {
   tableId: string
   kinds: string[] | null // the kinds of document the table's rows take
   row: RowView
   fields: FieldView[]
   names: Record<string, string>
-  title: string
   onField: (slug: string) => void
   onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined // none: kept elsewhere
-  onClose: () => void
 }) {
   const [editing, setEditing] = useState<string | null>(null)
   // a click waits a moment, so a double-click can change the value instead of opening its source
@@ -51,7 +56,11 @@ export function RowPanel({
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
   const [files, setFiles] = useState<RowFileView[]>([])
   const [tasks, setTasks] = useState<TasksView | null>(null)
-  const [parts, setParts] = useState<Part[]>([])
+  const [around, setAround] = useState<RowAround | null>(null)
+  const [adding, setAdding] = useState<RowAround['parts'][number] | null>(null)
+  const notes = fields.find((f) => f.kind === 'notes')
+  const loadAround = () =>
+    api.get<RowAround>(`/api/rows/${row.id}/around`).then(setAround, () => setAround(null))
   const loadTasks = () =>
     api.get<TasksView>(`/api/tasks?row=${row.id}`).then(setTasks, () => setTasks(null))
   const [problem, setProblem] = useState<string | null>(null)
@@ -60,10 +69,7 @@ export function RowPanel({
   // the row comes again whenever the world changes: its files are asked again with it
   useEffect(() => {
     if (row.id) api.get<RowFileView[]>(path).then(setFiles, () => setFiles([]))
-    if (row.id)
-      api
-        .get<Part[]>(`/api/tables/${tableId}/rows/${row.id}/parts`)
-        .then(setParts, () => setParts([]))
+    if (row.id) void loadAround()
     if (row.id) void loadTasks()
   }, [path, row, tableId])
   const act = (p: Promise<RowFileView[]>) =>
@@ -97,7 +103,7 @@ export function RowPanel({
       })
   }
   return (
-    <SidePanel title={title || 'A row'} onClose={onClose}>
+    <>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop target for files; Add a file is the keyboard way */}
       <div
         className="relative"
@@ -109,75 +115,90 @@ export function RowPanel({
         onDrop={drop}
       >
         <dl className="flex flex-col">
-          {fields.map((f) => {
-            const source = row.sources[f.slug]
-            const text = show(f, row.values[f.slug], names)
-            const editable = !!onEdit && CORRECTABLE.has(f.kind)
-            if (editing === f.slug && onEdit)
+          {fields
+            .filter((f) => f.kind !== 'notes')
+            .map((f) => {
+              const source = row.sources[f.slug]
+              const text = show(f, row.values[f.slug], names)
+              const editable = !!onEdit && CORRECTABLE.has(f.kind)
+              if (editing === f.slug && onEdit)
+                return (
+                  <div
+                    key={f.id}
+                    className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5"
+                  >
+                    <dt className="text-ink-3 text-sm">{f.name}</dt>
+                    <EditCell
+                      field={f}
+                      value={row.values[f.slug]}
+                      onDone={async (v) => {
+                        const ok = v === undefined || (await onEdit(f, v))
+                        if (ok) setEditing(null)
+                        return ok
+                      }}
+                    />
+                  </div>
+                )
               return (
-                <div
+                <button
                   key={f.id}
-                  className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5"
+                  type="button"
+                  title={
+                    editable
+                      ? 'Click for where it came from; double-click to change it'
+                      : 'Where it came from'
+                  }
+                  onClick={() => {
+                    if (!editable) return onField(f.slug)
+                    if (click.current) clearTimeout(click.current)
+                    click.current = setTimeout(() => onField(f.slug), 250)
+                  }}
+                  onDoubleClick={() => {
+                    if (!editable) return
+                    if (click.current) clearTimeout(click.current)
+                    setEditing(f.slug)
+                  }}
+                  className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
                 >
-                  <dt className="text-ink-3 text-sm">{f.name}</dt>
-                  <EditCell
-                    field={f}
-                    value={row.values[f.slug]}
-                    onDone={async (v) => {
-                      const ok = v === undefined || (await onEdit(f, v))
-                      if (ok) setEditing(null)
-                      return ok
-                    }}
-                  />
-                </div>
+                  <dt
+                    className="flex items-center gap-2 text-ink-3 text-sm"
+                    title={f.about ?? undefined}
+                  >
+                    {f.name}
+                    {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
+                  </dt>
+                  <dd
+                    className={cn(
+                      'whitespace-pre-wrap break-words text-md',
+                      text ? 'text-ink' : 'text-ink-3',
+                      source && MARK[source.kind] && 'italic',
+                    )}
+                  >
+                    {text || EMPTY_WORDS}
+                    {text && source && MARK[source.kind] && (
+                      <span className="ml-1.5 text-ink-3 text-sm not-italic">
+                        {MARK[source.kind]} {KIND_WORDS[source.kind]}
+                      </span>
+                    )}
+                  </dd>
+                </button>
               )
-            return (
-              <button
-                key={f.id}
-                type="button"
-                title={
-                  editable
-                    ? 'Click for where it came from; double-click to change it'
-                    : 'Where it came from'
-                }
-                onClick={() => {
-                  if (!editable) return onField(f.slug)
-                  if (click.current) clearTimeout(click.current)
-                  click.current = setTimeout(() => onField(f.slug), 250)
-                }}
-                onDoubleClick={() => {
-                  if (!editable) return
-                  if (click.current) clearTimeout(click.current)
-                  setEditing(f.slug)
-                }}
-                className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
-              >
-                <dt
-                  className="flex items-center gap-2 text-ink-3 text-sm"
-                  title={f.about ?? undefined}
-                >
-                  {f.name}
-                  {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
-                </dt>
-                <dd
-                  className={cn(
-                    'whitespace-pre-wrap break-words text-md',
-                    text ? 'text-ink' : 'text-ink-3',
-                    source && MARK[source.kind] && 'italic',
-                  )}
-                >
-                  {text || EMPTY_WORDS}
-                  {text && source && MARK[source.kind] && (
-                    <span className="ml-1.5 text-ink-3 text-sm not-italic">
-                      {MARK[source.kind]} {KIND_WORDS[source.kind]}
-                    </span>
-                  )}
-                </dd>
-              </button>
-            )
-          })}
+            })}
         </dl>
-        {parts.map((p) => (
+        {notes && (
+          <div className="flex flex-col gap-2 border-hair border-b p-4.5">
+            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+              {notes.name}
+            </div>
+            <Notes
+              value={
+                typeof row.values[notes.slug] === 'string' ? (row.values[notes.slug] as string) : ''
+              }
+              onSave={onEdit ? (text) => onEdit(notes, text || null) : undefined}
+            />
+          </div>
+        )}
+        {around?.parts.map((p) => (
           <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="flex items-center justify-between">
               <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
@@ -188,31 +209,54 @@ export function RowPanel({
                   href={`#/table/${p.table.id}?only=${p.rows.map((r) => r.id).join(',')}`}
                   className="text-accent text-sm hover:underline"
                 >
-                  Open all
+                  Open as a table
                 </a>
               )}
             </div>
-            {p.rows.length === 0 ? (
-              <div className="text-ink-3 text-sm">None yet.</div>
-            ) : (
-              <ul className="flex flex-col">
-                {p.rows.map((r) => (
-                  <li key={r.id} className="border-hair border-t first:border-t-0">
-                    <a
-                      href={`#/table/${p.table.id}/${r.id}`}
-                      className="block truncate py-1.5 text-ink text-md hover:underline"
-                    >
-                      {p.fields
-                        .map((f) => show(f, r.values[f.slug], {}))
-                        .filter((w) => w && w !== '–')
-                        .join(' · ') || 'A row'}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+            {p.rows.length > 0 && <PartTable part={p} />}
+            {onEdit && (
+              <Button size="sm" variant="ghost" className="w-fit" onClick={() => setAdding(p)}>
+                <Plus className="size-3.25" />
+                New
+              </Button>
             )}
           </div>
         ))}
+        {around && (around.links.length > 0 || around.mentions.length > 0) && (
+          <div className="flex flex-col gap-2 border-hair border-b p-4.5">
+            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+              Linked here
+            </div>
+            {[
+              ...around.links.map((l) => ({
+                key: `l${l.table.id}${l.field}`,
+                what: `${l.table.name} · ${l.field}`,
+                rows: l.rows,
+              })),
+              ...around.mentions.map((m) => ({
+                key: `m${m.table.id}`,
+                what: `Mentioned in ${m.table.name}`,
+                rows: m.rows,
+              })),
+            ].map((g) => (
+              <div key={g.key} className="flex flex-col">
+                <span className="text-ink-3 text-sm">{g.what}</span>
+                {g.rows.slice(0, 12).map((r) => (
+                  <a
+                    key={r.id}
+                    href={`#/row/${r.id}`}
+                    className="truncate py-0.5 text-ink text-md hover:underline"
+                  >
+                    {r.name}
+                  </a>
+                ))}
+                {g.rows.length > 12 && (
+                  <span className="text-ink-3 text-sm">and {g.rows.length - 12} more</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {places.size > 0 && (
           <div className="flex flex-col gap-2 p-4.5">
             <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
@@ -348,6 +392,59 @@ export function RowPanel({
           </div>
         )}
       </div>
-    </SidePanel>
+      {adding && (
+        <AddRow
+          tableId={adding.table.id}
+          name={adding.table.name}
+          fields={adding.fields}
+          fixed={{ [adding.relation]: row.id }}
+          dialog
+          onClose={() => {
+            setAdding(null)
+            void loadAround()
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+// A row's parts as a small table: a column a field, at most four, each row opening its own view.
+function PartTable({ part }: { part: RowAround['parts'][number] }) {
+  const cols = part.fields.slice(0, 4)
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-md">
+        <thead>
+          <tr>
+            {cols.map((f) => (
+              <th
+                key={f.id}
+                className="border-line border-b py-1 pr-3 text-left font-normal text-ink-3 text-sm"
+              >
+                {f.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {part.rows.map((r) => (
+            <tr key={r.id} className="hover:bg-hover">
+              {cols.map((f, i) => (
+                <td key={f.id} className="border-hair border-b py-1.5 pr-3">
+                  {i === 0 ? (
+                    <a href={`#/row/${r.id}`} className="text-ink hover:underline">
+                      {show(f, r.values[f.slug], {}) || EMPTY_WORDS}
+                    </a>
+                  ) : (
+                    <span className="text-ink-2">{show(f, r.values[f.slug], {})}</span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

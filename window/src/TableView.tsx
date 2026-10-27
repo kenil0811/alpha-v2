@@ -151,7 +151,9 @@ export function TableView({
       .then(setTaskCounts, () => setTaskCounts({}))
   }, [data, kept])
 
-  const fields = data.fields
+  // a row's notes are on its view, not a column (core step 3b)
+  const fields = useMemo(() => data.fields.filter((f) => f.kind !== 'notes'), [data.fields])
+  const notes = data.fields.filter((f) => f.kind === 'notes')
   const shown = columns(fields, config)
   const base = useMemo(
     () => (only ? data.rows.filter((r) => only.includes(r.id)) : data.rows),
@@ -599,7 +601,7 @@ export function TableView({
           tableId={data.id}
           kinds={data.documents}
           row={openedRow}
-          fields={shown}
+          fields={[...shown, ...notes]}
           names={data.names}
           onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
           title={first ? show(first, openedRow.values[first.slug], data.names) : ''}

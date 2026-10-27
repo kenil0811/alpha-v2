@@ -72,7 +72,10 @@ export function registerTables(ctx: Ctx): void {
     const line = world.line({
       actor: { kind: 'person', id: user.id },
       kind: 'set',
-      words: `Set ${field} to ${said} on ${world.rowName(t, r.values)}`,
+      words:
+        f.kind === 'notes'
+          ? `Wrote the notes on ${world.rowName(t, r.values)}`
+          : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`,
       data: { table: t.id, row, field, value },
       user: user.id,
       module: t.module.id,
@@ -182,36 +185,6 @@ export function registerTables(ctx: Ctx): void {
       : []
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { changed: body.set.length, added: added.length }
-  })
-
-  // A row's parts (core step 3a): for each table whose rows are part of this one, its rows that
-  // point at this row, with their fields but the pointer itself, for the row's view.
-  app.get('/api/tables/:id/rows/:row/parts', async (req) => {
-    const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
-    return world.shape.partsOf(id).map((p) => {
-      const rel = p.table.fields.find((f) => f.id === p.field)
-      const ids = rel ? world.records.idsWhere(p.table.id, rel.name, [row]) : []
-      return {
-        table: { id: p.table.id, name: p.table.name },
-        fields: p.table.fields
-          .filter((f) => f.id !== p.field)
-          .map((f) => ({
-            id: f.id,
-            name: f.name,
-            slug: f.slug,
-            kind: f.kind,
-            choices: f.choices,
-            tones: f.tones,
-            many: f.many,
-            about: f.about,
-            aboutBy: f.aboutBy,
-          })),
-        rows: ids.flatMap((rid) => {
-          const r = world.records.get(rid)
-          return r ? [{ id: rid, values: r.record.values }] : []
-        }),
-      }
-    })
   })
 
   // What a removal of these rows takes with it, said in the pop-up before it happens: the rows

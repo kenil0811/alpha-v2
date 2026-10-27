@@ -51,6 +51,7 @@ export type Place =
   | { at: 'parts' }
   | { at: 'new' }
   | { at: 'item'; kind: 'agent' | 'run' | 'rule'; id: string }
+  | { at: 'row'; id: string }
   | { at: 'table'; id: string; row: string | null; only: string[] | null; field: string | null }
   | {
       at: 'module'

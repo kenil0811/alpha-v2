@@ -4,7 +4,7 @@
 // columns, without the row's own bookkeeping; a list relation shows as a junction view.
 import { constants } from 'node:sqlite'
 import { all, type Db, one, openDb } from './db.ts'
-import { junctionName, quote } from './ddl.ts'
+import { junctionName, lit, quote } from './ddl.ts'
 import { Refused } from './kinds.ts'
 import type { Table } from './shape/index.ts'
 
@@ -27,6 +27,7 @@ export const MODEL_VIEWS = [
   'people_at',
   'people_at_lines',
   'people_up',
+  'row_notes',
 ] as const
 
 export class ModelSql {
@@ -181,6 +182,20 @@ export class ModelSql {
       this.db.exec(`CREATE TEMP VIEW ${name} AS ${sql}`)
       this.views.add(name)
     }
+    // a row's notes (core step 3b) in a view of their own, kept out of the tables' views so a
+    // long text never swamps a read of the table: row, its table's view, the notes
+    const noted = tables.flatMap((t) =>
+      t.fields
+        .filter((f) => f.kind === 'notes')
+        .map(
+          (f) =>
+            `SELECT id AS row, ${lit(t.slug)} AS "table", ${quote(f.slug)} AS notes FROM main.${quote(t.slug)} WHERE ${quote(f.slug)} IS NOT NULL AND ${quote(f.slug)} <> ''`,
+        ),
+    )
+    this.db.exec(
+      `CREATE TEMP VIEW row_notes AS ${noted.length ? noted.join(' UNION ALL ') : 'SELECT NULL AS row, NULL AS "table", NULL AS notes WHERE 0'}`,
+    )
+    this.views.add('row_notes')
     this.signature = signature
   }
 }
@@ -189,7 +204,7 @@ function columnsOf(t: Table): string[] {
   return t.fields.flatMap((f) =>
     f.kind === 'money'
       ? [f.slug, `${f.slug}_currency`]
-      : f.kind === 'relation' && f.many
+      : (f.kind === 'relation' && f.many) || f.kind === 'notes'
         ? []
         : [f.slug],
   )

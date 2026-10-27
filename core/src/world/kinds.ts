@@ -116,6 +116,7 @@ export function checkValue(
     case 'text':
     case 'person':
     case 'phone':
+    case 'notes':
       if (typeof value !== 'string') fail('words')
       return value
     case 'number':

@@ -9,20 +9,24 @@ import { Field, Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 
 // Add a row: the person's own values, each saved as theirs. In the side panel, or in a dialog
-// while the assistant has the side.
+// while the assistant has the side. A part added from its row's view comes with that row given
+// (`fixed`, by field name), and notes are written on the row, not here.
 export function AddRow({
   tableId,
   name,
-  fields,
+  fields: all,
   dialog = false,
+  fixed = {},
   onClose,
 }: {
   tableId: string
   name: string
   fields: FieldView[]
   dialog?: boolean
+  fixed?: Record<string, unknown>
   onClose: () => void
 }) {
+  const fields = all.filter((f) => f.kind !== 'notes' && !(f.name in fixed))
   const [values, setValues] = useState<Record<string, string>>({})
   const [problem, setProblem] = useState<string | null>(null)
   const save = async (e: FormEvent) => {
@@ -41,7 +45,7 @@ export function AddRow({
         f.kind === 'money' ? { amount: n, currency: 'USD' } : f.kind === 'number' ? n : t
     }
     try {
-      await api.post(`/api/tables/${tableId}/rows`, { values: read })
+      await api.post(`/api/tables/${tableId}/rows`, { values: { ...read, ...fixed } })
       onClose()
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That row was not added.')

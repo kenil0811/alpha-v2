@@ -46,7 +46,7 @@ held by review. Dates are 2026.
 | T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self | 26 Oct | — |
 | T2 | No cards of counts above or below a table | 26 Oct | test |
 | T3 | New sits in the page row under the table and works while the assistant is open | 26 Oct | — |
-| T4 | A click on a row's name opens it; a double-click edits a value, in the grid and in an opened row | 26 Oct | — |
+| T4 | A click on a row's name opens it in the side panel, with Open full to its own page (#/row/…), one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row | 26 Oct, 27 Oct | — |
 | T5 | An empty table keeps its header, blank rows and footer, and says nothing | 26 Oct | — |
 | T6 | Every menu works from the keyboard and opens on a right-click where it belongs; one list, never a second | 26 Oct | — |
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
@@ -62,7 +62,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | R1 | A section is its serif title and ⓘ over what it holds, never a card; nothing sits in a card inside a card | 26 Oct | — |
-| R2 | One record layout: the way back in the bar, a centred column, a line naming the record, its serif title, its sections | 25 Oct | — |
+| R2 | One record layout: the way back in the bar, a centred column, a line naming the record, its serif title, its sections; a row's page too | 25 Oct, 27 Oct | — |
 | R3 | Delete is never one click: behind ⋮, always confirmed in our own pop-up, saying what goes, the parts that go with it, and how long Bring back returns them, in the core's words | 26 Oct, 27 Oct | — |
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |

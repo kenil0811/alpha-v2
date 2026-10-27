@@ -17,6 +17,9 @@ export const FIELD_KINDS = [
   'link',
   'email',
   'phone',
+  // a row's free notes (core step 3b): Markdown, a person or a row mentioned as a link
+  // ([@Ann](person:p_1), [Acme](row:r_1)); one per table, shown on the row, not in grids
+  'notes',
 ] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
 

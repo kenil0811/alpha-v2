@@ -3,7 +3,7 @@
 // first), never a score; companies the same way. A page each: how to reach them, where they work
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
-import type { KeptTable, ModuleSummary, PersonView } from '@alpha/core/api'
+import type { KeptTable, ModuleSummary, PersonView, RowAround } from '@alpha/core/api'
 import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
@@ -132,7 +132,12 @@ function PersonPage({
   const [name, setName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [mine, setMine] = useState(false)
+  // the notes that mention them (core step 3b), under their id or one merged into them
+  const [mentions, setMentions] = useState<RowAround['mentions']>([])
   const load = useCallback(() => {
+    api
+      .get<RowAround['mentions']>(`/api/people/${id}/mentions`)
+      .then(setMentions, () => setMentions([]))
     api.get<PersonView>(`/api/people/${id}`).then(
       (v) => {
         // a merged one opens as the one it joined
@@ -388,6 +393,30 @@ function PersonPage({
                   </a>
                 </div>
               ))}
+            </div>
+          </Section>
+        )}
+
+        {mentions.length > 0 && (
+          <Section title="Mentioned in" about="Notes on rows that mention them; each opens its row">
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {mentions.flatMap((m) =>
+                m.rows.map((r) => (
+                  <a
+                    key={r.id}
+                    href={`#/row/${r.id}`}
+                    className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-base text-ink">
+                        {r.name}
+                      </span>
+                      <span className="block truncate text-ink-3 text-sm">{m.table.name}</span>
+                    </span>
+                    <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+                  </a>
+                )),
+              )}
             </div>
           </Section>
         )}
