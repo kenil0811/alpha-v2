@@ -4,11 +4,14 @@
 // provenance sits in `provenance`, their earlier versions in `versions`, and `records` is the
 // registry that says which table a row is in. The store: rows added, changed, removed and landed;
 // reading them is in reading.ts, storing them in storing.ts, as functions of the store.
+
+import type { CardInput } from '../cards.ts'
 import { all, type Db, newId, now, one, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { checkValue, type Provenance, type ProvenanceInput, Refused, type Said } from '../kinds.ts'
 import { actorName, findField, type Shape, type Table, type WriteCtx } from '../shape/index.ts'
+import { checkPer, perRow } from './fold.ts'
 import {
   byKey,
   column,
@@ -73,6 +76,11 @@ export class Records {
   watch: RowWatch | null = null
   // A person field holds one of the person's people: their id, an address or a name only one has.
   personOf: ((said: string) => string) | null = null
+  // One person through merges (core step 3d): the one they are now, their name; and a question
+  // put to the person, where a fold finds two values of theirs
+  peopleRoot: ((id: string) => string) | null = null
+  personName: ((id: string) => string) | null = null
+  ask: ((card: CardInput) => void) | null = null
 
   // A looked-up value's file must be one the world holds: named, it becomes its hash.
   fileOf: (nameOrHash: string) => string | undefined
@@ -103,6 +111,7 @@ export class Records {
           at,
         )
         partOfGiven(table, vals, true)
+        checkPer(this, table, vals, null)
         const id = newId('r')
         this.insert(table, id, vals, prov, at, actorName(ctx.actor), null)
         ids.push(id)
@@ -140,6 +149,7 @@ export class Records {
           at,
         )
         partOfGiven(table, vals, false)
+        checkPer(this, table, vals, row.id)
         const was = this.snapshot(table, row)
         this.keepVersion(row, was, at, actorName(ctx.actor))
         versions.push([row.id, row.version, { vals, prov }])
@@ -237,13 +247,16 @@ export class Records {
             )
           : undefined
         const { vals, prov } = this.prepare(table, item.values, row, perField, null, at)
+        // in a table of one row per person, the person's row when the key finds none (step 3d)
         const r = item.row
           ? this.readRow(table, item.row)
-          : one<Row>(this.db, `SELECT * FROM ${quote(table.slug)} WHERE item_key = ?`, item.key)
+          : (one<Row>(this.db, `SELECT * FROM ${quote(table.slug)} WHERE item_key = ?`, item.key) ??
+            perRow(this, table, vals))
         if (!r && item.row) throw new Refused(`${table.name} has no row ${item.row}.`)
         if (!r && options.existing) continue
         if (!r) {
           partOfGiven(table, vals, true)
+          checkPer(this, table, vals, null)
           const id = newId('r')
           this.insert(table, id, vals, prov, at, actorName(ctx.actor), item.key)
           touched.push(id)

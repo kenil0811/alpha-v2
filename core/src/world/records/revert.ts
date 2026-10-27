@@ -33,11 +33,13 @@ const ELSE: Record<string, string> = {
   filed: 'files',
   noted: 'notes',
   connector_call: 'what it sent outside Alpha',
+  folded: 'people merged',
 }
 
 // A line that wrote rows: a removal of a table or a field is a shape change, not one.
 const isRowLine = (l: Line) =>
   ROW_KINDS.includes(l.kind) &&
+  !l.data.unfold &&
   ((l.kind !== 'removed' && l.kind !== 'wrote') || Array.isArray(l.data.records))
 
 const forTarget = (t: UndoTarget) =>
@@ -84,11 +86,13 @@ export function revert(
   target: UndoTarget,
   ctx: WriteCtx,
   what: string, // "what Watson did at 07:43", for the line's words
-  options: { preview?: boolean } = {},
+  // unfold: an unmerge reverting its merge's fold (core step 3d), which nothing else reverts
+  options: { preview?: boolean; unfold?: boolean } = {},
 ): Undo {
   const db = records.db
   const work = (): Undo => {
-    const ls = rowLines(records, target)
+    const one_ = 'line' in target && options.unfold ? read(db, target.line) : undefined
+    const ls = one_?.kind === 'folded' ? [one_] : rowLines(records, target)
     if (!ls.length) throw new Refused('That changed no rows, so there is nothing to revert.')
     if (ls.some((l) => l.id <= undoSince(db)))
       throw new Refused('That happened before Alpha could undo, so it can’t be reverted.')
@@ -196,7 +200,8 @@ export function revert(
       const waiting = inTrash(records, l.id)
       const there = new Set(waiting.map((w) => w.id))
       for (const id of rowIds)
-        if (!there.has(id) && !records.tableOf(id)) leave(`forgood\t${nameOf(l)}`)
+        if (!there.has(id) && !records.tableOf(id))
+          leave(`${l.kind === 'folded' ? 'unfolded' : 'forgood'}\t${nameOf(l)}`)
       const { back: came, leftOut } = bringBack(
         records,
         waiting.map((w) => w.id),
@@ -212,7 +217,20 @@ export function revert(
 
     for (const l of [...ls].reverse()) {
       const d = l.data
-      if (l.kind === 'wrote') goAway(ids(d.records), l)
+      if (l.kind === 'folded') {
+        // the folded rows first, so the links moved off them can go back to them; a folded row
+        // gone for good leaves what it held, and what pointed at it, on the row it went into
+        comeBack(ids(d.gone), l)
+        const lost = new Set(
+          ((d.folds ?? []) as { keep: string; other: string; links: string[] }[])
+            .filter((f) => !records.tableOf(f.other))
+            .flatMap((f) => [f.keep, ...f.links]),
+        )
+        putBack(
+          ids(d.changed).filter((id) => !lost.has(id)),
+          l,
+        )
+      } else if (l.kind === 'wrote') goAway(ids(d.records), l)
       else if (l.kind === 'changed') putBack(ids(d.records), l)
       else if (l.kind === 'removed') comeBack(ids(d.records), l)
       else if (l.kind === 'landed') {
@@ -258,6 +276,8 @@ export function revert(
         return `${n(c, 'row')} of ${table} it changed ${c === 1 ? 'was' : 'were'} deleted since.`
       if (kind === 'forgood')
         return `${n(c, 'row')} of ${table} it deleted ${c === 1 ? 'is' : 'are'} gone for good.`
+      if (kind === 'unfolded')
+        return `${n(c, 'row')} of ${table} folded in ${c === 1 ? 'is' : 'are'} gone for good; what ${c === 1 ? 'it' : 'they'} held stays on the row ${c === 1 ? 'it was' : 'they were'} folded into.`
       return `${table} was deleted since, so it is left out.`
     })
     if (!('line' in target)) {
@@ -302,6 +322,7 @@ export function revert(
       }${leftWords.length ? ` ${leftWords.join(' ')}` : ''}`,
       data: {
         target,
+        ...(options.unfold ? { unfold: true } : {}),
         ...(tables.length === 1 ? { table: tables[0] } : {}),
         tables,
         gone: gone.map((t) => t.id),

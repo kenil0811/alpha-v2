@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import { installedKits } from '../../modules/kits/index.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
+import { setPer } from '../../world/records/fold.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
 import { namedConfig, ViewConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
@@ -26,6 +27,7 @@ const SHAPE_INPUT = {
     'part_of',
     'setup',
     'many',
+    'per',
   ]),
   module: z.string().optional(),
   within: z.string().optional(),
@@ -41,6 +43,7 @@ const SHAPE_INPUT = {
   what: z.enum(['table', 'field', 'view']).optional(), // what describe describes; field when field is given
   setup: z.boolean().optional(), // make_table and setup: a table the module's agents read
   part_of: z.boolean().optional(), // part_of: the relation field's rows are part of their row, or not
+  per: z.boolean().optional(), // per: false takes a table's one row per person off
 }
 export type ShapeAction = z.infer<z.ZodObject<typeof SHAPE_INPUT>>
 
@@ -81,6 +84,8 @@ export function describeShape(a: ShapeAction): string {
       return `make a row of ${a.table} ${a.part_of === false ? 'no longer ' : ''}part of the row its ${a.field} names`
     case 'many':
       return `let ${a.field} in ${a.table} hold several`
+    case 'per':
+      return `make ${a.table} one row per person, by ${a.field}`
     default:
       return a.action.replace('_', ' ')
   }
@@ -100,6 +105,7 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
     ...(f.many ? { many: true } : {}),
     ...(f.part_of ? { partOf: true } : {}),
     ...(f.summary ? { summary: f.summary } : {}),
+    ...(f.per ? { per: f.per } : {}),
   }))
   if (a.action === 'place_module') {
     if (!a.module) throw new Refused('place_module needs module.')
@@ -225,6 +231,17 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
       const t = world.shape.setMany(tableOf(world, table).id, a.field, c)
       return say(`${a.field} in ${t.name} holds several now; each row's one value is the first.`)
     }
+    case 'per': {
+      if (!a.field) throw new Refused('per needs field: the person field the rows are one per.')
+      const t = tableOf(world, table)
+      if (a.per === false) world.shape.setPer(t.id, a.field, false, c)
+      else setPer(world.records, t.id, a.field, c)
+      return say(
+        a.per === false
+          ? `${t.name} may hold more than one row per person again.`
+          : `${t.name} holds one row per person now, by ${a.field}; rows that shared a person were folded into one.`,
+      )
+    }
     case 'setup': {
       const t = world.shape.setSetup(tableOf(world, table).id, a.setup !== false, c)
       return say(
@@ -265,6 +282,7 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'part_of: give table, field (a relation to one row) and part_of (false to undo): its rows become part of the row they point at, as a deal’s yearly figures are part of the deal. A part shows on its row, not as a tab; it goes and comes back with it; it is never without one. A table whose rows each belong to one row of another is made with that relation part_of: true; then it needs no tab of its own.',
         'setup: give table and setup (false to undo): a table the module’s agents read (sources, goals, rules, templates), shown under Agents and notes, not as a tab. make_table takes setup: true too.',
         'many: give table and field: a relation comes to hold a list of rows, or a choice several of its choices (tags); each row keeps its one value as the first.',
+        'per: give table and field (a person field), and per: false to undo: the table holds one row per person (how close each one is, their tier); rows that share a person fold into one; a second row for someone is refused, and a merge of two people folds their rows. make_table takes per: person on a person field too.',
         `Field kinds: ${FIELD_KINDS.join(', ')}. A main table gets Notes (kind notes) on its own: a row's free notes, one per table. A relation names the table it relates_to, and many: true when it holds a list of rows, or part_of: true when its rows are part of that one row. A choice may carry tones (a choice: good, warn, bad or accent) where it means a state, and many: true when a row takes several (tags).`,
         'A summary (kind summary) is worked out from the rows of another table that point at this one, never written: summary: { of: the table, through: their relation here (left out when they have one), op: count, sum, min, max or latest, field: what it takes (none for count), by: the date latest goes by (left out: when added), where: one condition, as a view’s filter rule by field name, like { field: "Paid", op: "in", values: ["No"] } }. Make the table it reads first; add the summary to this table after. Prefer a summary to a field kept in step by hand: "Owed" as the sum of Amount in Invoices where Paid is No is never stale.',
       ].join('\n'),

@@ -280,6 +280,12 @@
                     "op"
                   ]
                 },
+                "per": {
+                  "type": "string",
+                  "enum": [
+                    "person"
+                  ]
+                },
                 "part_of": {
                   "type": "boolean"
                 },

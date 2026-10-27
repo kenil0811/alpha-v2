@@ -52,6 +52,18 @@ export function check(shape: Shape): string[] {
   return drift
 }
 
+// Whether a module's module.yaml says yes to one of its marks: people (People and Organizations
+// are its tabs) or core (Alpha's own).
+export function manifestSays(m: Module, key: 'people' | 'core'): boolean {
+  const file = join(m.dir, 'module.yaml')
+  if (!existsSync(file)) return false
+  try {
+    return (parseYaml(readFileSync(file, 'utf8')) as Record<string, unknown> | null)?.[key] === true
+  } catch {
+    return false
+  }
+}
+
 // A name no table in the world or in the file has: the world's own tables, SQL's words, and
 // every kit table and junction table already there.
 export function slugTaken(shape: Shape, slug: string): boolean {
@@ -108,6 +120,7 @@ export function writeManifest(shape: Shape, m: Module): void {
         ...(f.many || f.tags ? { many: true } : {}),
         ...(f.partOf ? { part_of: true } : {}),
         ...(f.summary ? { summary: summaryNamed(shape, f.summary) } : {}),
+        ...(f.per ? { per: f.per } : {}),
         ...(f.indexed ? { indexed: true } : {}),
         ...(f.key && f.key !== f.name ? { key: f.key } : {}),
       })),

@@ -11,11 +11,13 @@ import { type Actor, append, type Line, type LineInput, lastId, lines, read } fr
 import { Refused } from './kinds.ts'
 import { ModelSql } from './modelsql.ts'
 import { People } from './people/index.ts'
+import { FOLD_PICK, foldPeople, pickFolded, unfoldPeople } from './records/fold.ts'
 import { Records } from './records/index.ts'
 import { Rules } from './rules.ts'
 import { migrate } from './schema.ts'
 import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape/index.ts'
 import { type Place, placeOf } from './shape/parts.ts'
+import { peopleTables } from './shape/per.ts'
 import { Tasks } from './tasks/index.ts'
 import { Views } from './views.ts'
 
@@ -106,6 +108,16 @@ export class World {
     this.records.watch = this.people
     this.people.records = this.records
     this.records.personOf = (said) => this.people.ref(said)
+    // one row per person, and the fold of a merge (core step 3d)
+    this.records.peopleRoot = (id) => this.people.root(id)
+    this.records.personName = (id) => this.people.names([id])[id] ?? 'them'
+    this.records.ask = (card) => this.cards.open(card)
+    this.people.onMerge = (keep, other, names, ctx) =>
+      foldPeople(this.records, keep, other, names, ctx)
+    this.people.onUnmerge = (id, ctx) => unfoldPeople(this.records, id, ctx)
+    this.cards.onAnswered = (card, answer, by) => {
+      if (card.call?.tool === FOLD_PICK) pickFolded(this.records, card, answer, by)
+    }
     this.tasks = new Tasks(db, this.shape, (id) => this.user(id)?.name ?? null)
     this.shape.onGone = (ids) => this.people.gone(ids)
   }
@@ -129,7 +141,12 @@ export class World {
   }
 
   get sql(): ModelSql {
-    this.modelSql ??= new ModelSql(this.paths.world, () => this.shape.tables(), this.pageRows)
+    this.modelSql ??= new ModelSql(
+      this.paths.world,
+      () => this.shape.tables(),
+      this.pageRows,
+      () => peopleTables(this.shape),
+    )
     return this.modelSql
   }
 

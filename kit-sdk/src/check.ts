@@ -121,12 +121,16 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
       if (f.many && f.kind !== 'relation' && f.kind !== 'choice')
         problems.push(`${t.name}'s ${f.name}: only a relation or a choice holds several (many).`)
       problems.push(...summaryProblems(m, t.name, f))
+      if (f.per && f.kind !== 'person')
+        problems.push(`${t.name}'s ${f.name}: only a person field holds one row per person (per).`)
       // a part belongs to one row of a table, never to a list or to itself (core step 3a)
       if (f.part_of && (f.kind !== 'relation' || f.many || f.relates_to === t.name))
         problems.push(
           `${t.name}'s ${f.name} can be part_of only as a relation to one row of another table.`,
         )
     }
+    if (t.fields.filter((f) => f.per).length > 1)
+      problems.push(`${t.name} says per on more than one field; a table is one row per one person.`)
     if (t.fields.filter((f) => f.part_of).length > 1)
       problems.push(`${t.name} is part of more than one table; a row is part of one row.`)
     if (t.setup && t.fields.some((f) => f.part_of))

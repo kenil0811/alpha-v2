@@ -38,10 +38,19 @@ export class ModelSql {
   private signature = ''
   private views = new Set<string>()
 
-  constructor(file: string, tables: () => Table[], pageRows: number) {
+  // the one-row-per-person tables of People's module, whose columns join the people view (3d)
+  private perTables: () => Table[]
+
+  constructor(
+    file: string,
+    tables: () => Table[],
+    pageRows: number,
+    perTables: () => Table[] = () => [],
+  ) {
     this.db = openDb(file, { readOnly: true })
     this.tables = tables
     this.pageRows = pageRows
+    this.perTables = perTables
   }
 
   // What the model sees: one view per table, named as the table, a view per list relation,
@@ -72,7 +81,11 @@ export class ModelSql {
         table: 'the journal',
         columns: ['id', 'at', 'actor', 'kind', 'words', 'module'],
       },
-      ...PEOPLE_VIEWS,
+      ...PEOPLE_VIEWS.map((v) =>
+        v.view === 'people'
+          ? { ...v, columns: [...v.columns, ...perColumns(this.perTables()).map((c) => c.name)] }
+          : v,
+      ),
     ]
   }
 
@@ -149,7 +162,9 @@ export class ModelSql {
         t.fields.map((f) => [f.id, f.slug, f.kind, f.many, f.tags, f.summary]),
       ]),
     )
-    if (signature === this.signature) return
+    const per = perColumns(this.perTables())
+    const signed = `${signature}${JSON.stringify(per.map((c) => c.sql))}`
+    if (signed === this.signature) return
     for (const v of all<{ name: string }>(
       this.db,
       "SELECT name FROM temp.sqlite_master WHERE type = 'view'",
@@ -192,7 +207,11 @@ export class ModelSql {
     )
     this.views.add('journal')
     for (const [name, sql] of PEOPLE_SQL) {
-      this.db.exec(`CREATE TEMP VIEW ${name} AS ${sql}`)
+      const cols =
+        name === 'people' ? per.map((c) => `, ${c.sql} AS ${quote(c.name)}`).join('') : ''
+      this.db.exec(
+        `CREATE TEMP VIEW ${name} AS ${cols ? sql.replace(' FROM main.people p WHERE', `${cols} FROM main.people p WHERE`) : sql}`,
+      )
       this.views.add(name)
     }
     // a row's notes (core step 3b) in a view of their own, kept out of the tables' views so a
@@ -209,7 +228,7 @@ export class ModelSql {
       `CREATE TEMP VIEW row_notes AS ${noted.length ? noted.join(' UNION ALL ') : 'SELECT NULL AS row, NULL AS "table", NULL AS notes WHERE 0'}`,
     )
     this.views.add('row_notes')
-    this.signature = signature
+    this.signature = signed
   }
 }
 
@@ -234,6 +253,29 @@ function summaryNames(t: Table, tables: Table[]): string[] {
         ? [f.slug, `${f.slug}_currency`]
         : [f.slug]
     })
+}
+
+// The columns of the one-row-per-person tables in the people view: each person's row's value,
+// through merges; a name the view or another table has already takes its table's in front.
+function perColumns(tables: Table[]): { name: string; sql: string }[] {
+  const own = ['id', 'name', 'emails', 'phones', 'profile', 'companies', 'added']
+  const fields = tables.flatMap((t) => {
+    const per = t.fields.find((f) => f.per === 'person')
+    return per
+      ? columnsOf({ ...t, fields: t.fields.filter((f) => f.id !== per.id) }).map((col) => ({
+          t,
+          per,
+          col,
+        }))
+      : []
+  })
+  return fields.map(({ t, per, col }) => {
+    const clash = own.includes(col) || fields.filter((x) => x.col === col).length > 1
+    return {
+      name: clash ? `${t.slug}_${col}` : col,
+      sql: `(SELECT c.${quote(col)} FROM main.${quote(t.slug)} c JOIN people_up u ON u.id = c.${quote(per.slug)} WHERE u.root = p.id LIMIT 1)`,
+    }
+  })
 }
 
 // People and companies as the model reads them (design §4): each as one, through merges.

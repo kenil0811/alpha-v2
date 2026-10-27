@@ -63,6 +63,9 @@ const Journey = z.object({
       review: z.object({ choice: z.string(), words: z.string().optional() }).optional(),
       // Revert from Activity, as the person: the newest run or turn that wrote rows, or revert
       revert: z.enum(['last_run', 'last_turn', 'last_revert']).optional(),
+      // two people merged by the person, by their names (core step 3d), and one merged in let go
+      merge: z.object({ keep: z.string(), other: z.string() }).optional(),
+      unmerge: z.string().optional(),
       checks: z.array(Check).default([]),
     }),
   ),
@@ -257,6 +260,22 @@ export async function runOne(
       const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
       const undone = revert(world.records, target, person, `the ${step.revert.replace('_', ' ')}`)
       what = `Reverted the ${step.revert.replace('_', ' ')}: ${[undone.words, ...undone.left].join(' ')}`
+    } else if (step.merge || step.unmerge) {
+      const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
+      const named = (name: string) => {
+        const p = world.db
+          .prepare("SELECT id FROM people WHERE kind = 'person' AND lower(name) = lower(?)")
+          .get(name) as { id: string } | undefined
+        if (!p) throw new Error(`No one called ${name} to merge.`)
+        return p.id
+      }
+      if (step.merge) {
+        world.people.merge(named(step.merge.keep), named(step.merge.other), person)
+        what = `Merged ${step.merge.other} into ${step.merge.keep}`
+      } else {
+        world.people.unmerge(named(step.unmerge as string), person)
+        what = `Unmerged ${step.unmerge}`
+      }
     } else throw new Error(`Step ${i + 1} neither says, answers, nor connects.`)
     const finished = await done
     // an agent's run the turn started (on a task, say) ends before the world is judged

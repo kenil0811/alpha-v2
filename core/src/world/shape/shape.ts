@@ -22,6 +22,7 @@ import {
 } from './fields.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
 import { partRows, partsOf, setPartOf, setSetup } from './parts.ts'
+import { perAllowed, setPer } from './per.ts'
 import {
   clearPointers,
   hiddenFields,
@@ -240,6 +241,7 @@ export class Shape {
         partOf?: boolean
         indexed?: boolean
         summary?: SummarySpec
+        per?: 'person'
       }>(f.options, {})
       return {
         id: f.id,
@@ -252,6 +254,7 @@ export class Shape {
         many: f.kind === 'relation' && !!o.many,
         tags: f.kind === 'choice' && !!o.many,
         summary: f.kind === 'summary' ? (o.summary ?? null) : null,
+        per: f.kind === 'person' && o.per === 'person' ? ('person' as const) : null,
         partOf: f.kind === 'relation' && !o.many && !!o.partOf,
         indexed: !!o.indexed,
         key: f.key,
@@ -361,6 +364,7 @@ export class Shape {
       throw new Refused(`${table.name} has its notes already; a table has one place for notes.`)
     if (f.partOf && (f.kind !== 'relation' || many))
       throw new Refused(`${f.name} can be part of a row only as a relation to one row.`)
+    if (f.per) perAllowed(this, table, f.name, f.kind, ddl)
     // a part is never without its row: on a table that has rows, an existing relation is made
     // part of with part_of, once every row has its row
     if (f.partOf && ddl && one(this.db, `SELECT 1 FROM ${quote(table.slug)} LIMIT 1`))
@@ -385,6 +389,7 @@ export class Shape {
       ...(f.partOf ? { partOf: true } : {}),
       ...(f.indexed && f.kind !== 'relation' && !summary ? { indexed: true } : {}),
       ...(summary ? { summary } : {}),
+      ...(f.per ? { per: 'person' } : {}),
     }
     const id = newId('f')
     run(
@@ -469,6 +474,9 @@ export class Shape {
   }
   setPartOf(tableId: string, field: string, partOf: boolean, ctx: WriteCtx): Table {
     return setPartOf(this, tableId, field, partOf, ctx)
+  }
+  setPer(tableId: string, field: string, per: boolean, ctx: WriteCtx): Table {
+    return setPer(this, tableId, field, per, ctx)
   }
   partsOf(tableId: string): { table: Table; field: string }[] {
     return partsOf(this, tableId)

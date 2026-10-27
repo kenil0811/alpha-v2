@@ -1,13 +1,16 @@
 import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import { phoneWords } from '../../world/phones.ts'
+import { peopleTables, perField } from '../../world/shape/per.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptEdit, keptField, keptTable } from '../kept.ts'
+import { perColumns, perRows, setForPerson, typed } from '../per.ts'
 import type { CardView, KeptTable, PersonView } from '../types.ts'
+import { fieldViews } from './rows.ts'
 
 export function registerPeople(ctx: Ctx): void {
-  const { app, world, live, asPerson } = ctx
-  const { cardOut } = ctx.views
+  const { app, world, live, asPerson, user } = ctx
+  const { cardOut, sourceView } = ctx.views
 
   // People and Organizations as tables (UI batch 2, 26 Oct): the name changes in a cell; the rest
   // comes from where Alpha read them, so it changes there
@@ -26,6 +29,9 @@ export function registerPeople(ctx: Ctx): void {
         })),
         { editable: ['Name'], why: WHY },
       )
+    // after its own columns, the fields of the one-row-per-person tables (core step 3d)
+    const cols = perColumns(world)
+    const rows = perRows(world, [...new Set(cols.map((c) => c.table))])
     return keptTable(
       'people',
       'People',
@@ -36,6 +42,7 @@ export function registerPeople(ctx: Ctx): void {
         keptField('Phone', 'phone'),
         keptField('Last', 'date'),
         keptField('Talks', 'number'),
+        ...cols.map((c) => c.view),
       ],
       lines.map((p) => ({
         id: p.id,
@@ -46,9 +53,18 @@ export function registerPeople(ctx: Ctx): void {
           phone: p.phones[0] ? phoneWords(p.phones[0]) : null,
           last: p.last,
           talks: p.count,
+          ...Object.fromEntries(
+            cols.map((c) => [
+              c.view.slug,
+              rows.get(c.table.id)?.get(p.id)?.values[c.field.slug] ?? null,
+            ]),
+          ),
         },
       })),
-      { editable: ['Name'], why: WHY },
+      {
+        editable: ['Name', ...cols.filter((c) => typed(c.field)).map((c) => c.view.name)],
+        why: WHY,
+      },
     )
   }
   app.get('/api/kept/people', async () => keptPeople('person'))
@@ -56,7 +72,14 @@ export function registerPeople(ctx: Ctx): void {
   for (const list of ['people', 'organizations'])
     app.post(`/api/kept/${list}/rows/:id`, async (req) => {
       const { id } = z.object({ id: z.string() }).parse(req.params)
-      const { value } = keptEdit(req.body, ['Name'], WHY)
+      const cols = list === 'people' ? perColumns(world).filter((c) => typed(c.field)) : []
+      const { field, value } = keptEdit(req.body, ['Name', ...cols.map((c) => c.view.name)], WHY)
+      const col = cols.find((c) => c.view.name === field)
+      if (col) {
+        setForPerson(world, user, col.table, id, col.field, value)
+        live()
+        return { ok: true }
+      }
       const name = String(value ?? '').trim()
       if (!name) throw new Refused('A name is needed.')
       world.people.name(id, name, asPerson)
@@ -87,6 +110,8 @@ export function registerPeople(ctx: Ctx): void {
       people: p.people,
       from: [...from.values()],
       contact: p.contact,
+      // their row in each one-row-per-person table of People's module, or none yet (core step 3d)
+      per: perOf(p.id),
       rows: world.people.rowsNaming(p.id).flatMap((r) => {
         const rec = world.records.get(r.record)
         return rec
@@ -112,6 +137,39 @@ export function registerPeople(ctx: Ctx): void {
       createdAt: p.createdAt,
     }
   }
+
+  const perOf = (id: string): PersonView['per'] => {
+    const tables = peopleTables(world.shape)
+    const rows = perRows(world, tables)
+    const view = fieldViews(world.shape)
+    return tables.map((t) => {
+      const r = rows.get(t.id)?.get(world.people.root(id))
+      return {
+        table: { id: t.id, name: t.name },
+        fields: t.fields.filter((f) => f.id !== perField(t)?.id).map(view),
+        row: r
+          ? {
+              id: r.id,
+              values: r.values,
+              sources: Object.fromEntries(
+                Object.entries(r.provenance).map(([k, pv]) => [k, sourceView(pv)]),
+              ),
+            }
+          : null,
+      }
+    })
+  }
+  // a value typed on a person's page for one of those tables: on their row, made if need be
+  app.post('/api/people/:id/per/:table', async (req) => {
+    const { id, table } = z.object({ id: z.string(), table: z.string() }).parse(req.params)
+    const { field, value } = z.object({ field: z.string(), value: z.unknown() }).parse(req.body)
+    const t = peopleTables(world.shape).find((x) => x.id === table)
+    const f = t?.fields.find((x) => x.name === field)
+    if (!t || !f) throw new Refused('That field is not there.')
+    setForPerson(world, user, t, id, f, value)
+    live()
+    return { ok: true }
+  })
 
   app.get('/api/people/:id', async (req, reply): Promise<PersonView | undefined> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

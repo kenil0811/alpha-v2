@@ -108,6 +108,8 @@ export interface MatchView {
 // A person's or company's page.
 export interface PersonView {
   id: string
+  // their rows in the one-row-per-person tables of People's module (core step 3d)
+  per: { table: { id: string; name: string }; fields: FieldView[]; row: RowView | null }[]
   kind: 'person' | 'company'
   name: string
   emails: string[]

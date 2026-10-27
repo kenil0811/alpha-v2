@@ -7,7 +7,7 @@ uses:
   - { connector: mac, tables: [Contacts, Events] }
   - { connector: gmail, tables: [Mail] }
   - { connector: linkedin, tables: [LinkedIn connections] }
-version: 0.3.1
+version: 0.3.2
 # People and Organizations are this module's tabs (UI batch 2, 26 Oct)
 people: true
 description: >
@@ -41,7 +41,8 @@ tables:
   - name: Closeness
     about: "How close the person is to each person they know, worked out from their emails and meetings by the Closeness rules."
     fields:
-      - { name: Person, kind: person, about: "The person, one of the people Alpha knows." }
+      # one row per person (core step 3d): a merge of two people folds their rows into one
+      - { name: Person, kind: person, per: person, about: "The person, one of the people Alpha knows." }
       - { name: Circles, kind: text, about: "The circles they are in, by name." }
       - name: Closeness
         kind: choice

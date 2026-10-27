@@ -2,6 +2,7 @@ import type { KitManifest, Setup } from '@alpha/kit-sdk'
 import type { z } from 'zod'
 import { run } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
+import { setPer } from '../../world/records/fold.ts'
 import type { FieldInput, Module, PeopleMap, Table, WriteCtx } from '../../world/shape/index.ts'
 import { hashOf, resolveConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
@@ -24,6 +25,7 @@ function fieldsOf(
       ...(f.many ? { many: true } : {}),
       ...(f.part_of ? { partOf: true } : {}),
       ...(f.summary ? { summary: f.summary } : {}),
+      ...(f.per ? { per: f.per } : {}),
       ...(f.indexed ? { indexed: true } : {}),
       key: f.key ?? f.name,
       ...(f.about ? { about: f.about, aboutBy: 'kit' as const } : {}),
@@ -128,6 +130,24 @@ export function shapeTables(
           actor: ctx.actor,
           kind: 'noted',
           words: `${t.name} keeps its own tab for now: ${err.message}`,
+          module: module.id,
+        })
+      }
+    }
+    // a person field the kit now says is one row per person (core step 3d): rows that share a
+    // person fold into one; a table some of whose rows name no one stays as it is, and says why
+    for (const f of spec.fields) {
+      if (f.kind !== 'person' || !f.per) continue
+      const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
+      if (!was || was.per) continue
+      try {
+        setPer(world.records, t.id, was.id, ctx)
+      } catch (err) {
+        if (!(err instanceof Refused)) throw err
+        world.line({
+          actor: ctx.actor,
+          kind: 'noted',
+          words: `${t.name} may hold more than one row per person for now: ${err.message}`,
           module: module.id,
         })
       }

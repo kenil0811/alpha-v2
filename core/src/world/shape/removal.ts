@@ -181,6 +181,7 @@ export function hiddenFields(shape: Shape, tableId: string): (Field & { rows: nu
       many: f.kind === 'relation' && !!o.many,
       tags: f.kind === 'choice' && !!o.many,
       summary: null,
+      per: null,
       partOf: false,
       indexed: !!o.indexed,
       key: f.key,

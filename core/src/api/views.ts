@@ -1,7 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FastifyReply } from 'fastify'
-import { parse as parseYaml } from 'yaml'
 import { type Agent, agents, readAgent } from '../modules/agents.ts'
 import { type RunRow, unmetNeeds } from '../modules/runs/index.ts'
 import { pagesOf } from '../pages/pages.ts'
@@ -10,6 +9,7 @@ import type { Line } from '../world/journal.ts'
 import type { Provenance } from '../world/kinds.ts'
 import { undoable } from '../world/records/index.ts'
 import type { Module, Table } from '../world/shape/index.ts'
+import { manifestSays } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { Task } from '../world/tasks/index.ts'
 import type { View } from '../world/views.ts'
@@ -573,21 +573,11 @@ export function cardView(c: Card): CardView {
 }
 
 // Whether People and Organizations live in this module, by its module.yaml (Network's says so).
-export const livesPeople = (m: Module): boolean => saysYes(m, 'people')
+export const livesPeople = (m: Module): boolean => manifestSays(m, 'people')
 
 // Whether this is Alpha's own module, the kit the core keeps (its module.yaml says core: true):
 // its Decisions and Noticed are the Second Brain.
-export const isAlphas = (m: Module): boolean => saysYes(m, 'core')
-
-function saysYes(m: Module, key: 'people' | 'core'): boolean {
-  const file = join(m.dir, 'module.yaml')
-  if (!existsSync(file)) return false
-  try {
-    return (parseYaml(readFileSync(file, 'utf8')) as Record<string, unknown> | null)?.[key] === true
-  } catch {
-    return false
-  }
-}
+export const isAlphas = (m: Module): boolean => manifestSays(m, 'core')
 
 // The window gets words, not the tools' inputs.
 export function shown(kind: string, data: Record<string, unknown>): Record<string, unknown> {

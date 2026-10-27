@@ -30,6 +30,9 @@ export interface Field {
   many: boolean // a relation holding a list of rows: a junction table, not a column
   tags: boolean // a choice holding several (core step 3c): a JSON list in its column
   summary: SummarySpec | null // worked out from the rows that point here, never stored (3c)
+  // a person field whose table holds one row per person (core step 3d): a second is refused,
+  // and a merge of two people folds their rows into one
+  per: 'person' | null
   // a relation whose rows are part of the row they point at (core step 3a): shown on it, removed
   // and brought back with it, never empty
   partOf: boolean
@@ -108,6 +111,7 @@ export interface FieldInput {
   many?: boolean // a relation holding a list of rows, or a choice holding several (tags)
   partOf?: boolean // its rows are part of the row it points at
   summary?: SummaryInput // a summary's table, relation, what it takes and its condition
+  per?: 'person' // on a person field: one row per person in its table
   indexed?: boolean // an index on it, for a field filtered on often
   key?: string // a kit field's stable name
   about?: string // one sentence on what it means

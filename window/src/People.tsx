@@ -10,6 +10,7 @@ import { api, Problem } from './api.ts'
 import { moduleTabs, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
+import { FieldList } from './table/RowPanel.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
@@ -338,6 +339,42 @@ function PersonPage({
             </div>
           </Section>
         )}
+
+        {/* their row in each one-row-per-person table of this module (core step 3d); a value
+            typed for someone with no row yet makes it */}
+        {p.per.map((t) => (
+          <Section
+            key={t.table.id}
+            title={t.table.name}
+            about="One row each; double-click to change"
+          >
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              <FieldList
+                fields={t.fields}
+                row={t.row ?? { id: '', values: {}, sources: {} }}
+                names={{}}
+                onField={(slug) => {
+                  if (t.row)
+                    window.location.hash = `#/table/${t.table.id}/${t.row.id}?field=${slug}`
+                }}
+                onEdit={async (f, value) => {
+                  try {
+                    await api.post(`/api/people/${p.id}/per/${t.table.id}`, {
+                      field: f.name,
+                      value,
+                    })
+                    setProblem(null)
+                    load()
+                    return true
+                  } catch (err) {
+                    setProblem(err instanceof Problem ? err.message : 'That was not saved.')
+                    return false
+                  }
+                }}
+              />
+            </div>
+          </Section>
+        ))}
 
         {company && p.people.length > 0 && (
           <Section title="People there">

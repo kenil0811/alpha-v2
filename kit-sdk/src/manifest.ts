@@ -37,6 +37,9 @@ const Field = z.object({
   relates_to: z.string().optional(),
   many: z.boolean().optional(), // a relation holding a list of rows, a choice holding several
   summary: Summary.optional(), // a summary field's: what it sums up
+  // a person field whose table holds one row per person (core step 3d): a second is refused, and
+  // a merge of two people folds their rows into one
+  per: z.enum(['person']).optional(),
   // a relation to one row whose rows are part of it: shown there, removed and brought back with
   // it, never empty, and no tab of its own (core step 3a)
   part_of: z.boolean().optional(),

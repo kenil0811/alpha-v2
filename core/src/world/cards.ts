@@ -119,6 +119,8 @@ export function callKey(call: Call): string {
 
 export class Cards {
   private db: Db
+  // told of every answer, in its transaction: a card whose answer writes a value (a fold's pick)
+  onAnswered: ((card: Card, answer: string, by: Actor) => void) | null = null
 
   constructor(db: Db) {
     this.db = db
@@ -222,7 +224,9 @@ export class Cards {
         answer === (card.options[1] ?? 'No') || (card.kind === 'permission' && answer === 'No')
       const state: CardState = yesNo ? (isYes ? 'yes' : isNo ? 'no' : 'answered') : 'answered'
       this.close(id, state, said ?? answer, by, null)
-      return this.get(id) as Card
+      const out = this.get(id) as Card
+      this.onAnswered?.(out, answer, by)
+      return out
     })
   }
 

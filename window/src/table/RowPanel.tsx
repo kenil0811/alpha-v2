@@ -51,9 +51,6 @@ export function RowBody({
   onField: (slug: string) => void
   onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined // none: kept elsewhere
 }) {
-  const [editing, setEditing] = useState<string | null>(null)
-  // a click waits a moment, so a double-click can change the value instead of opening its source
-  const click = useRef<ReturnType<typeof setTimeout> | null>(null)
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
   const [files, setFiles] = useState<RowFileView[]>([])
   const [tasks, setTasks] = useState<TasksView | null>(null)
@@ -115,81 +112,7 @@ export function RowBody({
         onDragLeave={() => setDragging(false)}
         onDrop={drop}
       >
-        <dl className="flex flex-col">
-          {fields
-            .filter((f) => f.kind !== 'notes')
-            .map((f) => {
-              const source = row.sources[f.slug]
-              const text = show(f, row.values[f.slug], names)
-              const editable = !!onEdit && canType(f)
-              if (editing === f.slug && onEdit)
-                return (
-                  <div
-                    key={f.id}
-                    className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5"
-                  >
-                    <dt className="text-ink-3 text-sm">{f.name}</dt>
-                    <EditCell
-                      field={f}
-                      value={row.values[f.slug]}
-                      onDone={async (v) => {
-                        const ok = v === undefined || (await onEdit(f, v))
-                        if (ok) setEditing(null)
-                        return ok
-                      }}
-                    />
-                  </div>
-                )
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  title={
-                    editable
-                      ? 'Click for where it came from; double-click to change it'
-                      : 'Where it came from'
-                  }
-                  onClick={() => {
-                    if (!editable) return onField(f.slug)
-                    if (click.current) clearTimeout(click.current)
-                    click.current = setTimeout(() => onField(f.slug), 250)
-                  }}
-                  onDoubleClick={() => {
-                    if (!editable) return
-                    if (click.current) clearTimeout(click.current)
-                    setEditing(f.slug)
-                  }}
-                  className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
-                >
-                  <dt
-                    className="flex items-center gap-2 text-ink-3 text-sm"
-                    title={f.about ?? f.summary ?? undefined}
-                  >
-                    {f.name}
-                    {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
-                  </dt>
-                  <dd
-                    className={cn(
-                      'whitespace-pre-wrap break-words text-md',
-                      text ? 'text-ink' : 'text-ink-3',
-                      source && MARK[source.kind] && 'italic',
-                    )}
-                  >
-                    {isTags(f) && text ? (
-                      <TagChips field={f} value={row.values[f.slug]} />
-                    ) : (
-                      text || EMPTY_WORDS
-                    )}
-                    {text && source && MARK[source.kind] && (
-                      <span className="ml-1.5 text-ink-3 text-sm not-italic">
-                        {MARK[source.kind]} {KIND_WORDS[source.kind]}
-                      </span>
-                    )}
-                  </dd>
-                </button>
-              )
-            })}
-        </dl>
+        <FieldList fields={fields} row={row} names={names} onField={onField} onEdit={onEdit} />
         {notes && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
@@ -451,5 +374,99 @@ function PartTable({ part }: { part: RowAround['parts'][number] }) {
         </tbody>
       </table>
     </div>
+  )
+}
+
+// A row's fields, each with where it came from; a double-click changes one that can be typed. The
+// row's view draws it, and a person's page draws their rows of one-row-per-person tables with it.
+export function FieldList({
+  fields,
+  row,
+  names,
+  onField,
+  onEdit,
+}: {
+  fields: FieldView[]
+  row: RowView
+  names: Record<string, string>
+  onField: (slug: string) => void
+  onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined
+}) {
+  const [editing, setEditing] = useState<string | null>(null)
+  // a click waits a moment, so a double-click can change the value instead of opening its source
+  const click = useRef<ReturnType<typeof setTimeout> | null>(null)
+  return (
+    <dl className="flex flex-col">
+      {fields
+        .filter((f) => f.kind !== 'notes')
+        .map((f) => {
+          const source = row.sources[f.slug]
+          const text = show(f, row.values[f.slug], names)
+          const editable = !!onEdit && canType(f)
+          if (editing === f.slug && onEdit)
+            return (
+              <div key={f.id} className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5">
+                <dt className="text-ink-3 text-sm">{f.name}</dt>
+                <EditCell
+                  field={f}
+                  value={row.values[f.slug]}
+                  onDone={async (v) => {
+                    const ok = v === undefined || (await onEdit(f, v))
+                    if (ok) setEditing(null)
+                    return ok
+                  }}
+                />
+              </div>
+            )
+          return (
+            <button
+              key={f.id}
+              type="button"
+              title={
+                editable
+                  ? 'Click for where it came from; double-click to change it'
+                  : 'Where it came from'
+              }
+              onClick={() => {
+                if (!editable) return onField(f.slug)
+                if (click.current) clearTimeout(click.current)
+                click.current = setTimeout(() => onField(f.slug), 250)
+              }}
+              onDoubleClick={() => {
+                if (!editable) return
+                if (click.current) clearTimeout(click.current)
+                setEditing(f.slug)
+              }}
+              className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
+            >
+              <dt
+                className="flex items-center gap-2 text-ink-3 text-sm"
+                title={f.about ?? f.summary ?? undefined}
+              >
+                {f.name}
+                {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
+              </dt>
+              <dd
+                className={cn(
+                  'whitespace-pre-wrap break-words text-md',
+                  text ? 'text-ink' : 'text-ink-3',
+                  source && MARK[source.kind] && 'italic',
+                )}
+              >
+                {isTags(f) && text ? (
+                  <TagChips field={f} value={row.values[f.slug]} />
+                ) : (
+                  text || EMPTY_WORDS
+                )}
+                {text && source && MARK[source.kind] && (
+                  <span className="ml-1.5 text-ink-3 text-sm not-italic">
+                    {MARK[source.kind]} {KIND_WORDS[source.kind]}
+                  </span>
+                )}
+              </dd>
+            </button>
+          )
+        })}
+    </dl>
   )
 }

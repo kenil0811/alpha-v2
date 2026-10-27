@@ -326,6 +326,8 @@ export function merge(people: People, keepId: string, otherId: string, ctx: Writ
       turn: ctx.turn ?? null,
       run: ctx.run ?? null,
     })
+    // their rows: one row per person where a table says so, and every row names the kept one
+    people.onMerge?.(keep.id, other.id, [keep.name, other.name], ctx)
     return get(people, keep.id) as PersonOut
   })
 }
@@ -342,10 +344,12 @@ export function unmerge(people: People, id: string, ctx: WriteCtx): PersonOut {
     recount(people, p.merged_into)
     recount(people, p.id)
     const [x, y] = twoNames(people, people.row(p.id) ?? p, people.row(was.id) ?? was)
+    // the rows the merge folded or re-pointed, back where nobody changed them since
+    const rows = people.onUnmerge?.(p.id, ctx) ?? ''
     append(people.db, {
       actor: ctx.actor,
       kind: 'people',
-      words: `${x} is not ${y}.`,
+      words: `${x} is not ${y}.${rows ? ` Their rows: ${rows}` : ''}`,
       data: { unmerged: p.id, from: p.merged_into },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,

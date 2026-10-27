@@ -36,6 +36,11 @@ export const Check = z.union([
       equals: z.number().optional(),
     }),
   }),
+  // the rows of a table that name someone, through any merge (core step 3d): each under their
+  // own id, and so many of them
+  z.object({
+    person_rows: z.object({ table: z.string(), person: z.string(), count: z.number().optional() }),
+  }),
   z.object({ reply_matches: z.string() }),
   z.object({
     card: z.object({
@@ -129,6 +134,25 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `${check.place.table} is ${check.place.is}`,
       ok: is === check.place.is,
       saw: is,
+    }
+  }
+  if ('person_rows' in check) {
+    const c = check.person_rows
+    const t = world.shape.table(c.table)
+    const p = world.db
+      .prepare("SELECT id FROM people WHERE kind = 'person' AND lower(name) = lower(?)")
+      .get(c.person) as { id: string } | undefined
+    const f = t?.fields.find((x) => x.kind === 'person')
+    const values = t && f && p ? world.records.column(t.id, f.name) : []
+    const through = values.filter((v) => v.value && world.people.root(String(v.value)) === p?.id)
+    const own = through.filter((v) => v.value === p?.id)
+    return {
+      check: `${c.table} names ${c.person}${c.count !== undefined ? ` on ${c.count} row(s)` : ''}, each under their own id`,
+      ok:
+        !!p &&
+        own.length === through.length &&
+        (c.count === undefined || through.length === c.count),
+      saw: `${through.length} row(s), ${own.length} under their own id`,
     }
   }
   if ('summary' in check) {
