@@ -15,7 +15,7 @@ import {
 } from 'node:fs'
 import { createServer, type Server } from 'node:http'
 import { homedir } from 'node:os'
-import { join, normalize, resolve } from 'node:path'
+import { extname, join, normalize, resolve } from 'node:path'
 import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
@@ -47,6 +47,14 @@ const Journey = z.object({
       answer: z.object({ choice: z.string(), always: z.boolean().optional() }).optional(),
       // a folder of files given to Alpha, copied from the repository so the journey owns it
       folder: z.object({ from: z.string(), only: z.string().optional() }).optional(),
+      // files dropped on a row in the window, as the person drops them (a client's exports)
+      drop: z
+        .object({
+          from: z.string(),
+          only: z.string().optional(),
+          on: z.object({ table: z.string(), row: z.string() }),
+        })
+        .optional(),
       // an account connected on recorded answers (journeys/fixtures), never a real one
       connect: z.object({ connector: z.string(), account: z.string() }).optional(),
       // a made-up site served on this Mac from the repository; later steps say it as {site}
@@ -71,6 +79,13 @@ const Journey = z.object({
     }),
   ),
 })
+
+// What a dropped file is, by its name, as the window's drop says it.
+const MIME: Record<string, string> = {
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.csv': 'text/csv',
+  '.pdf': 'application/pdf',
+}
 
 // A folder served on loopback, for a journey's made-up site.
 function serve(dir: string): Promise<{ server: Server; url: string }> {
@@ -223,6 +238,29 @@ export async function runOne(
       await engine.connect(user, place, dir, null)
       await connectors.sync(world.connections.find(place, dir)?.id ?? '')
       await stillReading()
+    } else if (step.drop) {
+      const d = step.drop
+      const t = world.shape.table(d.on.table)
+      const row = t
+        ? world.records.list(t.id).find((r) => world.rowName(t, r.values) === d.on.row)
+        : undefined
+      if (!t || !row) throw new Error(`No row ${d.on.row} in ${d.on.table} to drop files on.`)
+      const from = resolve(base, d.from)
+      const names = readdirSync(from).filter((n) => !d.only || n.includes(d.only))
+      for (const n of names) {
+        const out = engine.drop(
+          user,
+          readFileSync(join(from, n)),
+          n,
+          MIME[extname(n)] ?? 'application/octet-stream',
+        )
+        world.placeFile(out.file.hash, row.id, null, {
+          actor: { kind: 'person', id: user.id },
+          user: user.id,
+        })
+      }
+      await stillReading()
+      what = `Dropped ${names.length} file${names.length === 1 ? '' : 's'} from ${d.from} on ${d.on.row} in ${d.on.table}`
     } else if (step.connect) {
       what = `Connected ${step.connect.connector} for ${step.connect.account}, on recorded answers`
       await engine.connect(user, step.connect.connector, step.connect.account, 'recorded')
