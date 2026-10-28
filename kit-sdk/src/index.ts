@@ -392,7 +392,7 @@ export function reference(): string {
     `- Trigger kinds: ${TRIGGER_KINDS.join(', ')}.`,
     `- Card kinds: ${CARD_KINDS.join(', ')}.`,
     `- The sandbox runs Node ${NODE_MAJOR}.`,
-    '- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Activity and in Settings › Kits.',
+    '- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Activity and in Settings › Modules.',
     '',
   ].join('\n')
 }

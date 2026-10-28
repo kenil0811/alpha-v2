@@ -204,13 +204,18 @@ export async function runOne(
       engine.say(user, words)
     } else if (step.answer) {
       const card = world.cards.waiting(user.id)[0]
-      if (!card) throw new Error(`Step ${i + 1}: no card is waiting to answer.`)
-      what = `Answered “${card.words}” with ${step.answer.choice}${step.answer.always ? ', and always' : ''}`
-      if (card.call?.tool === DRAFT)
-        await (step.answer.always
-          ? drafts.send(card.id, null, user, true)
-          : engine.answerDraft(user, card.id, step.answer.choice))
-      else engine.answer(user, card.id, step.answer.choice)
+      // no card to answer fails the journey, and the journeys after it still run
+      if (!card) {
+        passed = false
+        what = `**No card was waiting to answer with ${step.answer.choice}.**`
+      } else {
+        what = `Answered “${card.words}” with ${step.answer.choice}${step.answer.always ? ', and always' : ''}`
+        if (card.call?.tool === DRAFT)
+          await (step.answer.always
+            ? drafts.send(card.id, null, user, true)
+            : engine.answerDraft(user, card.id, step.answer.choice))
+        else engine.answer(user, card.id, step.answer.choice)
+      }
     } else if (step.review) {
       const review = step.review
       const cards = world.cards

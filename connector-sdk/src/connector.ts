@@ -6,7 +6,7 @@ import type { BrowserEngine } from './browser.ts'
 import type { Effect } from './effects.ts'
 
 // secret: an app password or API key the person types in Alpha's own form, never the model.
-// oauth: Alpha's own app, the person consenting in their browser.
+// oauth: the client's own sign-in app, the person consenting in their browser.
 // browser: a browser profile the person signs into.
 // system: the Mac asks the person itself (Calendar, Contacts).
 // path: a place on this Mac the person names (a watched folder); nothing to sign in to.

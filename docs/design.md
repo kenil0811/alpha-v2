@@ -379,7 +379,7 @@ before on the person's yes; a new recipient is a card of its own that says so, u
 standing permission** (Kenil, 24 Oct). A send card from the desk says "a new recipient" too when
 nothing has gone to that address from here (item 39, 25 Oct). A draft card sends only on its Send
 it, and once: any other answer holds it, the words typed kept as the reason (item 41); a second
-Send it while one is going is turned away, and a send that fails leaves the card waiting. Each thing it lets through is a line on
+Send it while one is going is turned away, and a send that fails leaves the card waiting. The same thing (an agent's kind and key) to the same address goes once on its own: drafted again after it went (a run retried after its send), it waits on a card saying when it went (28 Oct). Each thing it lets through is a line on
 Home. Everything else is done and said in a line.
 
 **Cards that are not gates:** the model's questions, reviews of what an agent pulls in (§12),

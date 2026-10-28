@@ -162,6 +162,28 @@ describe('an agent’s drafts', () => {
     expect(s.sent).toHaveLength(7)
   })
 
+  it('never sends the same thing twice on its own: a run retried after a send asks first (28 Oct)', async () => {
+    const s = setUp()
+    for (const i of [0, 1, 2])
+      await s.drafts.send((await s.drafts.propose(s.draft(i), null)).card as string, null, s.owner)
+    await s.drafts.send(
+      (await s.drafts.propose(s.draft(3), null)).card as string,
+      null,
+      s.owner,
+      true,
+    )
+    // under Always, the Garage request goes at once; the run stops before its agent writes it down
+    expect(await s.drafts.propose(s.draft(4), null)).toEqual({ sent: true, card: null })
+    // the retried run drafts it again: it waits on a card saying when it went, and nothing goes
+    const again = await s.drafts.propose(s.draft(4), null)
+    expect(again.sent).toBe(false)
+    const card = world.cards.get(again.card as string)
+    expect(card?.restsOn[1]).toMatch(
+      /^It went to sam@builders\.example on \d{4}-\d{2}-\d{2} already\.$/,
+    )
+    expect(s.sent).toHaveLength(5)
+  })
+
   it('sends a draft once, even when two Send its arrive together, and keeps the card when the send fails', async () => {
     const s = setUp()
     let release: () => void = () => undefined

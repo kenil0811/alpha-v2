@@ -114,7 +114,10 @@ export class Drafts {
     // once; a new recipient is a card of its own, saying so (Kenil, 24 Oct, item 7)
     const p = this.world.rules.covering(this.covered(d))
     const fresh = !this.approved(d, d.message.to)
-    if (p && !fresh) {
+    // the same thing to the same address, sent already (a run retried after its send, 28 Oct):
+    // never again on its own; it waits on a card saying when it went
+    const went = this.wentOn(d, d.message.to)
+    if (p && !fresh && !went) {
       await this.sendNow(d, d.message, false, p, run)
       return { sent: true, card: null }
     }
@@ -138,7 +141,8 @@ export class Drafts {
       detail: `To: ${m.to}${m.cc ? `\nCc: ${m.cc}` : ''}\nSubject: ${m.subject}\n\n${m.body}`,
       restsOn: [
         `${d.agent}'s draft${d.note ? ` (${d.note})` : ''}`,
-        ...(p
+        ...(went ? [`It went to ${m.to} on ${went.slice(0, 10)} already.`] : []),
+        ...(p && !went
           ? [
               `Your standing permission covers ${plural(d.kind)}, but nothing has gone to ${m.to} before.`,
             ]
@@ -308,6 +312,25 @@ export class Drafts {
       d.agent,
       d.kind,
       to.trim(),
+    )
+  }
+
+  // When this agent sent this thing (its kind and key) to this address, if it did.
+  private wentOn(d: Pick<Draft, 'agent' | 'module' | 'kind' | 'key'>, to: string): string | null {
+    if (!d.key) return null
+    return (
+      one<{ at: string }>(
+        this.world.db,
+        `SELECT at FROM journal WHERE kind = 'draft_decided' AND module_id = ?
+           AND json_extract(data, '$.agent') = ? AND json_extract(data, '$.kind') = ?
+           AND json_extract(data, '$.key') = ? AND json_extract(data, '$.outcome') = 'sent'
+           AND lower(json_extract(data, '$.to')) = lower(?) ORDER BY id DESC LIMIT 1`,
+        d.module,
+        d.agent,
+        d.kind,
+        d.key,
+        to.trim(),
+      )?.at ?? null
     )
   }
 

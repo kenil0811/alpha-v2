@@ -7,7 +7,7 @@ uses:
   - { connector: mac, tables: [Contacts, Events] }
   - { connector: gmail, tables: [Mail] }
   - { connector: linkedin, tables: [LinkedIn connections] }
-version: 0.4.0
+version: 0.4.1
 # what it is for (core step 3e)
 business_case:
   for: The person, about everyone they know

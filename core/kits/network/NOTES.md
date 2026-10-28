@@ -18,7 +18,7 @@ notes (Network 0.4.0).
 - **Follow-ups:** in the circles kept warm, someone with an address and no message or meeting for
   longer than the circle's days, once per quiet spell. Draft a note drafts the words in **Notes** for the person's
   yes ({first}, {company} filled in); Not now leaves it. Note says what became of it.
-- **LinkedIn:** the LinkedIn connection (Settings › Connections) reads the person's connections
+- **LinkedIn:** the LinkedIn connection (Intelligence › Connections) reads the person's connections
   into LinkedIn connections. When it can't (blocked, or not connected), LinkedIn's own export
   (Connections.csv) dropped in is read into LinkedIn here. Either way each connection is one of
   their people, at their company, by their profile link.
