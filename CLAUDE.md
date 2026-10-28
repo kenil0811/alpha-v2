@@ -7,9 +7,13 @@ the design first, then the newest entries in `docs/log/`.
 
 ## The repository
 
-- `core/`: the service (world, engine, gates, scheduler, api, journeys runner)
+- `core/`: the service (world, engine, gates, scheduler, api, journeys runner); `core/kits/`
+  holds Alpha's own modules (Alpha, Network), `core/config/` its prompts, models and limits
 - `window/`: the web app the core serves
-- `connector-sdk/` and `connectors/<name>/`: the connectors
+- `kit-sdk/`: the kit contract; `docs/kit-api.md` is generated from it (`pnpm kit-api`), never
+  edited by hand
+- `connector-sdk/`, `connectors/<name>/` and `connectors-extra/`: the connectors
+- `mac/`: the Tauri Mac shell; `release/` and `scripts/`: the installer, the release and the walls
 - `journeys/`: journeys as YAML; their reports go in `docs/journeys/`
 
 Imports go one way (design §3). Internal packages are not built: Node runs their TypeScript
@@ -18,7 +22,9 @@ directly, so use erasable syntax only (no enums, no namespaces, no parameter pro
 Node 26 (`.nvmrc`) and pnpm 11. Commands: `pnpm install`, `pnpm check` (typecheck, lint,
 test), `pnpm format`, `pnpm start` (builds the window; the core serves it; needs `ALPHA_HOME`),
 `pnpm dev:core` with `pnpm dev:window` (Vite on the next port), `pnpm journey <name>`
-(`--appended`: Alpha's prompt on Claude Code's own, instead of alone). The core prints the address to open, with
+(`--appended`: Alpha's prompt on Claude Code's own, instead of alone; `--times N`; a client's
+with `--from ../<client>/journeys`), `pnpm journeys` (every one), `pnpm kit check|test|pack <dir>`,
+`pnpm connector check|pack <dir>`, `pnpm shots`. The core prints the address to open, with
 the per-install token. Prompts, models and judgements live in `core/config/`, not in code.
 
 ## Rules

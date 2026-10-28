@@ -6,7 +6,7 @@ The steps to install Alpha from the file Kenil sends you.
 
 - A Mac with Apple silicon (M1 or later) on macOS 14 Sonoma or newer, signed in as an
   administrator, with about 3 GB free.
-- The Alpha file Kenil sent you, for example Alpha-0.4.3.dmg, in your Downloads folder.
+- The Alpha file Kenil sent you, for example Alpha-0.5.1.dmg, in your Downloads folder.
 - Your own Claude account, on a Pro or Max subscription.
 - Your Gmail address, with 2-Step Verification turned on.
 - Google Chrome, only if one of your sources needs you to sign in (Kumo does).
@@ -32,18 +32,18 @@ The steps to install Alpha from the file Kenil sends you.
    green. Alpha works on your own Claude subscription and never sees your password or your
    sign-in.
 7. **Connect Gmail.** At myaccount.google.com/apppasswords, make an app password named Alpha and
-   copy its 16 letters. In Alpha, open Settings › Connections › Gmail and enter your address and
-   those letters.
+   copy its 16 letters. In Alpha, open Intelligence (at the foot of the rail) › Connections ›
+   Gmail and enter your address and those letters.
 8. **Calendar and contacts.** If your Google account isn't on the Mac yet, add it in System
    Settings › Internet Accounts with Calendars and Contacts on. Then connect Calendar and Contacts
-   in Alpha's Settings; macOS asks once for each, and you choose Allow.
-9. **Your kits are already there.** Your modules are in the rail, and their agents start paused.
+   in Alpha's Intelligence › Connections; macOS asks once for each, and you choose Allow.
+9. **Your modules are already there.** They are in the rail, and their agents start paused.
    Check their settings (a deal search's sources and thesis, say), then press Turn on all in
-   Settings › Kits and agents.
+   Settings › Modules.
 10. **Sites that need your sign-in.** When a Sign in card appears, press Sign in. Chrome opens
     that site in a separate Alpha window; sign in there yourself, then quit Chrome with ⌘Q. Alpha
     never sees your password.
-11. **Let it prepare.** Home and Settings › This Mac show the reading browser and the document
+11. **Let it prepare.** Home and Settings › Permissions (On this Mac) show the reading browser and the document
     reader downloading, about 1.8 GB. Alpha works meanwhile; reading sites and PDFs starts when
     they are ready.
 

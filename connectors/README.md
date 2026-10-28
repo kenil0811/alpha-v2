@@ -8,12 +8,12 @@ for the card and its words for Activity), sync, `GUIDE.md`, fixtures and tests. 
 
 The core names no connector. At start it loads every package in this folder (the standard set
 the release ships), then every folder under Alpha's own `connectors/` beside the kits (the added
-set: what the person added in Settings › Connections from a folder or an `.alphaconnector`
+set: what the person added in Intelligence › Connections from a folder or an `.alphaconnector`
 file). A folder that does not load is said on Home and left out.
 
 `connectors-extra/` holds the ones that come with Alpha but load only once added (LinkedIn,
 whose manifest carries a warning the person reads first): the release packs each into a file
-offered in Settings.
+offered in Intelligence › Connections.
 
 - `pnpm connector check <folder>`: what is wrong with a connector before Alpha loads it.
 - `pnpm connector pack <folder> [out]`: its folder as one file, with its own packages inside

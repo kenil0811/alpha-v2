@@ -30,6 +30,13 @@ held by review. Dates are 2026.
 | H2 | A screen with parts has one row of tabs under the bar, every label in full, scrolling sideways; never cut short or folded to icons | 26 Oct | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
+## Home
+
+| # | Rule | Date | Held by |
+|---|---|---|---|
+| O1 | Home is the important things: the date, the greeting and one line to ask Alpha; what needs the person, each card answered there; Overdue, Due today and This week as tiles (Overdue red only when it has some); what changed since they last looked, kept until they clear it; what is running; each agent's next run | 20 Oct, 26 Oct | — |
+| O2 | No modules on Home (they are in the rail); the conversation is the assistant beside it, never in Home's own space | 26 Oct | — |
+
 ## Module page
 
 | # | Rule | Date | Held by |
@@ -46,7 +53,7 @@ held by review. Dates are 2026.
 | T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self | 26 Oct | — |
 | T2 | No cards of counts above or below a table | 26 Oct | test |
 | T3 | New sits in the page row under the table and works while the assistant is open | 26 Oct | — |
-| T4 | A click on a row's name opens it in the side panel, with Open full to its own page (#/row/…), one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row | 26 Oct, 27 Oct | — |
+| T4 | A click on a row's name opens it in the side panel, with Open full to its own page (#/row/…), one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row. A part's small table: its first three fields, one line a row, names never ids, long words cut with the whole on the tip; its twelve changed most lately with how many in all, and Open as a table for the rest | 26 Oct, 27 Oct, 28 Oct | — |
 | T5 | An empty table keeps its header, blank rows and footer, and says nothing | 26 Oct | — |
 | T6 | Every menu works from the keyboard and opens on a right-click where it belongs; one list, never a second | 26 Oct | — |
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
@@ -70,6 +77,7 @@ held by review. Dates are 2026.
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |
 | R6 | Revert, and Bring back on a removal, sit behind an Activity line's ⋮, said first in the one pop-up from the core's own preview of the same work | 26 Oct | — |
+| R7 | A value Alpha is not sure of has a small grey mark (≈ estimated, ? assumed), never amber: its word on hover in a table, written out in a panel; an empty value is a grey dash in a table and "Unknown" in a panel | 25 Oct | — |
 
 ## Assistant and chat
 
@@ -79,6 +87,8 @@ held by review. Dates are 2026.
 | A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
 | A3 | The composer's +: files, a folder, Model ›; @ names an agent | 26 Oct | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
+| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J or its fold) to a strip with the face and the bell; it always leaves the rail and at least 600px of screen | 26 Oct | — |
+| A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
 
 ## Intelligence and Settings
 
@@ -86,8 +96,8 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
 | I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental only while something is tried | 26 Oct | — |
-| I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions | 27 Oct | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this | 26 Oct | — |
+| I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions | 27 Oct | — |
 
 ## Wording
 

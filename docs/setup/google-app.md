@@ -1,9 +1,12 @@
 # Registering Alpha's Google app
 
-*Not now (Kenil, 19 Oct 2026): kept for when a client needs Google's own access. Until then a
-Google calendar and contacts come through the Mac's Calendar and Contacts.*
+*Not used (Kenil, 19 Oct 2026, and again 25 Oct): Alpha has no Google app of its own. A firm on
+Google Workspace that needs Google's own access registers the sign-in app in its own Workspace,
+as an Internal app, which Google does not verify; the connector platform step builds that sign-in
+(design §8). A person on personal Gmail keeps the Mac's Calendar and Contacts and an app password.
+This page is kept only in case a public app is ever wanted.*
 
-Design §8: register a Google OAuth app now, in the background, with only the calendar and
+The brief's decision 10 was: register a Google OAuth app now, in the background, with only the calendar and
 contacts scopes, so Google's verification runs while the rest is built. These are **sensitive**
 scopes: verification needs a review but no CASA security assessment (only Gmail's restricted
 scopes need that). Gmail stays on app passwords until a client needs more.

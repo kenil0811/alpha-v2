@@ -4,6 +4,15 @@
 whole of what the first session in this folder knows. It stands until `docs/design.md` is
 written from it and agreed; after that the design document is the reference.*
 
+*Kept as history since 19 October; where it and the design differ, the design wins. What has
+changed since, as of 28 October: Dell's Total Office runs on Microsoft SQL Server, not MySQL
+(corrected below; Kenil, 25 Oct); three gates, not four, since money is part of leaving the world
+(19 Oct); OAuth with a sign-in app the client owns, never our own, and no Google OAuth app (19 and
+25 Oct); kit scripts are JavaScript and no kit uses XState; what an agent pulls in lands at once,
+marked with its source (25 Oct); Watson and Morning run at fixed times of the day (24 Oct); readers
+and connectors are one concept (24 Oct); Dell runs on a VM on its own server, not on our hosted
+shape (25 Oct).*
+
 You are starting Alpha v2 in this folder, `alpha-v2`. It is a full redesign and a new
 repository. The previous codebase, `../alpha-brain`, is read-only reference: read it when this
 brief names a piece worth porting, never build on it, never edit it. Open sessions on this
@@ -27,7 +36,8 @@ no API. They get all four as kits and use Alpha as a whole; the requirements and
 analysis live in the client's own repository.
 
 **Second client: Dell Disability Lawyers**, several users on Windows, Microsoft 365, a Total
-Office case system on MySQL with a read-only database user available; their documents are
+Office case system on Microsoft SQL Server (this said MySQL until 28 Oct) with a read-only
+database user available; their documents are
 `~/Downloads/Dell_Disability_*.docx`. Dell comes after the first client, on the hosted shape, intake first.
 
 ## Decisions, fixed

@@ -20,9 +20,11 @@ personalises. The runtime is the same for every client.
   reminders, watches and ad hoc requests. It never builds or patches a connector.
 - **The user owns their data and customisations**, protected by the kit ownership rule (§10).
 
-First client: one person on a Mac with personal Gmail and four kits, which live in the client's
-own repository with their requirements. Second: **Dell Disability Lawyers** (several Windows
-users, Microsoft 365, Total Office on MySQL), hosted, after the first.
+First client: one person on a Mac with personal Gmail and four projects: two kits of their own,
+which live in the client's own repository with their requirements, and Alpha's own Network and
+Tasks. Second: **Dell Disability Lawyers** (5 to 15 users on Windows, Microsoft 365, Total Office
+on Microsoft SQL Server, not MySQL as the brief had it; Kenil, 25 Oct), after the first and only
+once its contract is signed, read-only first, on a Linux VM on its own Windows server (§15).
 
 ## 2. The shape
 
@@ -36,7 +38,7 @@ users, Microsoft 365, Total Office on MySQL), hosted, after the first.
  │  connector runtime: connector packages on the connector SDK                    │
  └────────────────────────────────────────────────────────────────────────────────┘
    children, each under the sandbox: Claude Code (one per live session, started by the
-   Agent SDK) · kit Python scripts · Docling · Playwright browsers · skill scripts
+   Agent SDK) · kit and skill scripts (JavaScript) · Docling · Playwright browsers
 ```
 
 One service process. Everything that runs code it did not ship (the model's shell, scripts,
@@ -46,14 +48,19 @@ browsers) is a child process under the sandbox.
 
 ```
 alpha-v2/
-  CLAUDE.md  BRIEF.md (history once this is agreed)  docs/design.md  docs/log/
+  CLAUDE.md  BRIEF.md (history)  docs/design.md  docs/ui-rules.md  docs/kit-api.md  docs/log/
   package.json  pnpm-workspace.yaml  tsconfig.base.json  biome.json  .nvmrc
-  core/             the service: world, engine, gates, scheduler, api, journeys runner
+  core/             the service: world, engine, gates, scheduler, api, journeys runner; its
+                    kits/ (Alpha's own modules) and config/ (prompts, models, limits, words)
   window/           the web app the core serves
+  kit-sdk/          the kit contract (§10); docs/kit-api.md is generated from it
   connector-sdk/    what every connector is built on
-  connectors/<name>/   one package per connector
+  connectors/<name>/   one package per connector: the standard set the release ships
+  connectors-extra/    the ones that load only once added (LinkedIn)
   journeys/         journeys as YAML; reports in docs/journeys/
-  shell/            the Tauri Mac shell (week 6; not made at step 0)
+  mac/              the Tauri Mac shell and the companion
+  release/          the installer and the `alpha` command
+  scripts/          the release, the kit API's page and the walls `pnpm check` runs
 ```
 
 Inside `core/src/`: `world/` ← `engine/` ← `api/`, with `gates/`, `modules/`, `scheduler/`
@@ -110,9 +117,9 @@ the world that writes its journal line in the same transaction. Nothing else wri
 | Part | What it holds |
 |---|---|
 | Journal | Append-only lines: when, actor (a person, Alpha, an agent, a connector, the system), source, kind, words, data, and the module, run and card it belongs to. Full-text search. Triggers refuse any update or delete. |
-| Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone, notes, summary). Each is a SQLite table of its own (Kenil, 22 Oct: real tables): STRICT, named by its slug, a typed column per field, a junction table per list relation (`many`), an index on every relation column; `records` is the registry of which table a row is in, `provenance` holds a row per value and `versions` a snapshot per change. A shape change is transactional DDL (add, rename, drop; a kind never changes, save one: a text field a kit's newer version declares `notes` becomes its table's notes, values kept, core step 4). Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. A relation holds one row, or a list when the kit says `many`; a list no one made (the move to real tables left some) comes back to one when a kit says one and no row holds two (core plan step 4); removing a row clears every pointer at it in the same transaction, journaled with the count; pointers are kept whole by Alpha's own writes, not by SQL foreign keys. A removed row waits in `removed_rows` (undo, below). A relation to one row may be **part of** it (core step 3a, Kenil's yes 27 Oct): a deal's yearly figures are part of the deal, so each such row is never without its row (adding one without it, or clearing it, is refused), it shows on that row rather than as a tab, and removing the row takes its parts (and theirs, deepest first) to the trash on the same line, so Bring back and Revert return them together; a table with parts can't be removed from under them. A table may be **setup**: what its module's agents read (sources, goals, rules), shown under Agents and notes. Neither is a role to keep: a table's place falls out of what its rows are. A **notes** field (core step 3b) holds a row's free notes in Markdown, a person or a row mentioned as a link (`[@Ann](person:p_1)`, `[Acme](row:r_1)`); one per table, the builder gives each main table one and kits declare theirs; being a field, it has versions, provenance, undo, the trash and Find; it is not a column of the grid or of the model's table views, and "mentioned in" is read from the notes themselves, so nothing is kept in step. A **summary** field (core step 3c) is worked out from the rows of another table that point at its row through a relation to one row: their count, or one field's sum, least, most or latest (by a date, or when added), where at most one condition holds, said in a view filter's words and meaning what the window's filter means (`filter-cases.ts` holds the cases both answer). It has no column and is never written: one grouped query per summary when its table is read, a sub-select in the model's view, provenance computed with what it is in words. A count or a sum of none is 0 (money in the currency most of its amounts are in); amounts in two currencies are not added. A summary never takes a summary, a list, notes, a row, a person or a file, and goes with the table or field it reads (said in the removal's words). A **choice** may hold several (`many`, tags): a JSON list in its column, read with `json_each`, filtered with has any of, all of, none of; a choice that held one becomes a list of it. A person field may say **`per: person`** (core step 3d): its table holds one row for each person. A second row for someone, or a row with no one, is refused; a land finds the person's row when its key finds none; setting `per` on a table with rows folds the rows that share a person. **Every merge of two people** writes one `folded` line: every person field naming the merged-in person names the kept one, in any table; in each per-person table their rows fold into the kept person's (a value on one only: it; notes: both; tags: every tag; your value over Alpha's; of two of Alpha's, the newer; two of yours that differ: the kept row's, and a card asks which stays); what pointed at the folded row, its files and its tasks move to the kept row; the folded row goes to the trash on that line. Unmerge reverts the line with the undo of core step 1 (`records/fold.ts`); a folded row gone for good leaves what it held where it went, and the words say so. Nothing else reverts a fold. The fold is a general row merge, ready for duplicate deals. |
+| Tables and records | The person's tables (fields with kinds: text, number, money, date, choice, relation, person, file, link, email, phone, notes, summary). Each is a SQLite table of its own (Kenil, 22 Oct: real tables): STRICT, named by its slug, a typed column per field, a junction table per list relation (`many`), an index on every relation column; `records` is the registry of which table a row is in, `provenance` holds a row per value and `record_versions` a snapshot per change. A shape change is transactional DDL (add, rename, drop; a kind never changes, save one: a text field a kit's newer version declares `notes` becomes its table's notes, values kept, core step 4). Every value carries provenance: kind (stated, looked up, estimated, assumed, computed), a source (a document's page and box, a sheet's cell, a URL with the time fetched, the person, a formula with its inputs) and a time. What the person said stands: a connection's or a reader's rows, and a script's figures, never write over a stated value. A relation holds one row, or a list when the kit says `many`; a list no one made (the move to real tables left some) comes back to one when a kit says one and no row holds two (core plan step 4); removing a row clears every pointer at it in the same transaction, journaled with the count; pointers are kept whole by Alpha's own writes, not by SQL foreign keys. A removed row waits in `removed_rows` (undo, below). A relation to one row may be **part of** it (core step 3a, Kenil's yes 27 Oct): a deal's yearly figures are part of the deal, so each such row is never without its row (adding one without it, or clearing it, is refused), it shows on that row rather than as a tab, and removing the row takes its parts (and theirs, deepest first) to the trash on the same line, so Bring back and Revert return them together; a table with parts can't be removed from under them. A table may be **setup**: what its module's agents read (sources, goals, rules), shown under Agents and notes. Neither is a role to keep: a table's place falls out of what its rows are. A **notes** field (core step 3b) holds a row's free notes in Markdown, a person or a row mentioned as a link (`[@Ann](person:p_1)`, `[Acme](row:r_1)`); one per table, the builder gives each main table one and kits declare theirs; being a field, it has versions, provenance, undo, the trash and Find; it is not a column of the grid or of the model's table views, and "mentioned in" is read from the notes themselves, so nothing is kept in step. A **summary** field (core step 3c) is worked out from the rows of another table that point at its row through a relation to one row: their count, or one field's sum, least, most or latest (by a date, or when added), where at most one condition holds, said in a view filter's words and meaning what the window's filter means (`filter-cases.ts` holds the cases both answer). It has no column and is never written: one grouped query per summary when its table is read, a sub-select in the model's view, provenance computed with what it is in words. A count or a sum of none is 0 (money in the currency most of its amounts are in); amounts in two currencies are not added. A summary never takes a summary, a list, notes, a row, a person or a file, and goes with the table or field it reads (said in the removal's words). A **choice** may hold several (`many`, tags): a JSON list in its column, read with `json_each`, filtered with has any of, all of, none of; a choice that held one becomes a list of it. A person field may say **`per: person`** (core step 3d): its table holds one row for each person. A second row for someone, or a row with no one, is refused; a land finds the person's row when its key finds none; setting `per` on a table with rows folds the rows that share a person. **Every merge of two people** writes one `folded` line: every person field naming the merged-in person names the kept one, in any table; in each per-person table their rows fold into the kept person's (a value on one only: it; notes: both; tags: every tag; your value over Alpha's; of two of Alpha's, the newer; two of yours that differ: the kept row's, and a card asks which stays); what pointed at the folded row, its files and its tasks move to the kept row; the folded row goes to the trash on that line. Unmerge reverts the line with the undo of core step 1 (`records/fold.ts`); a folded row gone for good leaves what it held where it went, and the words say so. Nothing else reverts a fold. The fold is a general row merge, ready for duplicate deals. |
 | People and companies | Derived from the rows of tables that say how their rows name people (a row that is a person: a contact card, a source's contact, a deal's broker; a row that is an exchange: a message, a meeting) and from the person's own word. Hard keys (email, E.164 phone, profile URL, domain, company name) merge at once: a key belongs to the one whose row first gave it, and a row naming two holders never merges them. Two kinds are not keys (item 25, 25 Oct): a role address (`info@`, `office@`; the list in `core/config/people.yaml`) and a phone held by a row of plainly another name; each puts the pair on the match card instead. On a person's page, Not this person splits a row off with the keys it alone brought, kept apart from then on. From mail, only those the person writes to become people; from meetings, those at meetings of up to twenty (Kenil, 21 Oct). Companies come from work domains and company names, with when someone was there kept. Messages and meetings count by address for whoever holds it now: plain numbers, never a score. Soft matches (the same full name, or the same name at the same company) are proposals on one card per batch, never merged by code. A decided pair never comes back; Unmerge gives each its keys back. Removing a row takes only what it alone brought. A person field holds one of the person's people. |
-| Facts | Two time axes: when true, when recorded. Corrected by a newer fact, never edited. |
+| Facts | Not a part of their own yet: a fact the person states is kept, once they confirm it, as a row of Alpha's own kit's Noticed table with the words it was read from (Watson, §11). Two time axes (when true, when recorded), a newer fact correcting an older one that is never edited, wait for the linking work (Kenil, 24 Oct: ask, then build, then link). |
 | Documents | Chunks with positions: page and box for a PDF, sheet and cell for a spreadsheet, a hash per file, so the same bytes are the same document. A file sits on the rows it belongs to (a deal's CIM, a client's export) with its kind, one its table names when its kit names them (Kenil, 20 Oct). |
 | Tasks | Title, state (To do, In progress, Waiting, Done, Dropped), anchor (a module, table, record, field or page) and what else it touches (rows, people, files), owner (the person, Alpha, or an agent that takes tasks), due and reminder, repeat in words (each occurrence its own task), priority (High, Normal, Low), parent, made by, and the runs that served it (Kenil's plan, 21 Oct). |
 | Cards | Every question, permission and review as a durable row with one state (waiting, yes, no, answered, withdrawn, allowed), opened and closed with a journal line. |
@@ -187,26 +194,34 @@ route's background subagents where it has them; the desk sends follow-ups to run
 and reports each outcome into the one stream in its own words, as a paragraph. The detail stays
 in the journal. No router, no work items, no cards for sessions.
 
-**Agents.** One session per agent, resumed across its runs (§11).
+**Agents.** An agent's run is its script in the sandbox, with the model only at the named calls
+(§9, §11); no agent has a session of its own. The brief-driven agent (a brief the model follows,
+as a desk subagent under the gate adapter with its `touches` and `effects` held; Kenil's yes, 24
+Oct) is decided and not built.
 
 **Tools.**
 - The SDK's own: shell, files, web search and fetch, subagents.
-- About ten world tools served in process:
+- Fifteen world tools served in process (`engine/tools/`):
 
 | Tool | Does |
 |---|---|
-| `query` | read the world in SQL over the views |
+| `query` | read the world in SQL over the views; a table's fields and what each means come with its first read |
 | `search` | full-text over the journal, records and documents |
 | `write` | add rows, each value with its provenance |
 | `change` | change or remove rows (removing the person's own entries asks, unless they asked for it) |
-| `shape` | make or change tables, fields and views |
-| `file` | take in a file or document (read with positions), import a sheet into a table, put it on the row it belongs to or take it off |
-| `remember` | facts, tasks and standing instructions |
-| `ask` | a question card |
-| `tell` | a line in the person's stream (an agent's run uses it for what is worth telling; a script's is `alpha.tell`) |
-| `keep` | save a page, skill, agent or view in a module, as a commit; an agent kept here starts on |
-| `look` | open a page as a person sees it, through the browser engine; with a selector, what it finds |
+| `shape` | make or change tables, fields, views and a module's business case, and place a module; the builder's walls (§7) |
+| `file` | read a dropped file with positions, import a sheet into a table, put a file on the row it belongs to or take it off |
+| `task` | the person's tasks: add, change, start, wait, done, drop, reopen, remove, find (§12) |
+| `remember` | standing instructions, the person's or the whole firm's; never what Alpha may or may not do |
+| `rule` | what Alpha may or may not do, put on a Save card for the person's yes (§7) |
+| `ask` | a question card, or the person's answer, in their words, to a card that waits |
+| `guide` | a grammar when a turn needs it: scripts, pages, views, tasks (§6) |
+| `connect` | open the sign-in for one of the person's accounts or folders |
+| `keep` | save a page, skill, agent or the notes in a module, as a commit; an agent kept here starts on |
+| `look` | open a page as a person sees it, through the browser engine; with a selector, what it finds; a module's page drawn as the person will see it |
 | `run` | run a module's agent or script now, to try it; a new site waits on its card |
+
+The brief's `tell` was never made: a script says a line to the person with `alpha.tell`.
 
 - Connector tools, one server per connector (`mcp__gmail__send`), found through the SDK's tool
   search on the Claude Code route, sent whole on the own loop.
@@ -247,15 +262,15 @@ this shape exactly.
 
 ## 6. Context, four layers
 
-1. **The system prompt.** Alpha's own words alone, about 150 of them, on both routes
+1. **The system prompt.** Alpha's own words alone (`core/config/system.md`), about 150 of them, on both routes
    (measured 24 Oct: the six journeys three times each way; alone passed 17 of 18 to appended's
    18, the one miss an ordering choice inside a two-step journey, 8% faster and 9% fewer input
    tokens; one prompt makes the Claude Code route and the own loop behave as one). Appended to
    Claude Code's own prompt stays a choice (`prompt: appended`, `pnpm journey --appended`):
 
-   > You are Alpha, working for {person}. Their world is kept in Alpha: tables, people,
-   > documents, tasks and a journal of everything that happened. Read and change it with the
-   > world tools; reach their accounts through their connections.
+   > You are Alpha, working for {person}. Their world is kept in Alpha: tables, documents and a
+   > journal of everything that happened. Read and change it with the world tools; reach their
+   > accounts through their connections.
    >
    > Three things wait for the person's yes, and Alpha's code asks them for you: anything that
    > leaves their world (a message, a payment, a file shared), deleting their own entries when
@@ -388,8 +403,10 @@ retries for reads only (a send or a write whose fate is unknown is never tried a
 tool's effect; a service asking to wait, a 429 or "too many requests", is waited out for as long
 as it asked, `connector_busy_wait_seconds` in all; final plan call A, 28 Oct); pagination and cursors; a cache; a journal line for every call; provenance on every
 value it lands; a health judgement ("fewer rows than last time", "nothing new for a week");
-three auth kinds (app password or API key; OAuth with our own app; a browser profile) and the
-secret store (the Mac keychain, or an encrypted file under a server key); fixture recording and
+the auth kinds a manifest names (below; OAuth is declared and not built: the connector platform
+step builds it with a sign-in app the client owns in its own Microsoft or Google tenant, and no
+hosted service in the path; Kenil, 25 Oct) and the secret store (the Mac keychain; an encrypted
+file under a server key comes with the server, §15); fixture recording and
 replay; and the human-pace browser engine: one Playwright profile per account, delays, a stop
 on any friction page (a login wall, a CAPTCHA, a rate-limit page), never stealth. It reads what a
 site's robots rules allow, except a site **read as the person** (Kenil, 21 Oct): one they signed
@@ -413,7 +430,7 @@ first-open step, a warning the person reads before connecting; each tool its eff
 for the card and its words for Activity. The model sees one server per connector. `pnpm connector
 check` says what is wrong with a folder; `pnpm connector pack` makes the `.alphaconnector` file it
 travels as (its packages as real files; the SDK and zod linked to the core's own copies on
-unpacking, so one of each runs); Settings › Connections adds one from a folder or a file without
+unpacking, so one of each runs); Intelligence › Connections adds one from a folder or a file without
 a restart, offers the packs that came with the release, and removes an added one with nothing
 connected. LinkedIn is such a pack (`connectors-extra/`), not loaded until added, its warning in
 front.
@@ -434,20 +451,37 @@ with people, by its fields' names), and the world keeps its people from them (§
 The adapter underneath is pluggable: an Activepieces piece, a remote or local MCP server, a
 browser session, a SQL mapping.
 
+**Readers and connectors are one concept** (Kenil, 24 Oct; agreed, and built in the connector
+platform step, §19). A connector is of one of three kinds by who can make it: **code**, shipped
+and signed by Kenil (Gmail, Calendar, Outlook, SQL); a **site spec** (a list, its fields, its next
+page, its id and its status words), made in conversation and run by one generic engine; or a
+**scripted site**, a script in the sandbox written by the model and reviewed. A kit never owns a
+fetcher: it declares an **intake contract** (a table, its key, its fields, its status words) and
+depends on connectors that map their site onto it, each saying what it does not supply, and its
+Sources fold into the person's connections. Until that step a site reader is still a kit's skill
+and agent (§9), and DealPilot's Sources are setup rows. The same step runs connectors in
+sandboxed processes from signed packs, checks their effects at the proxy against the rules store
+(§7), marks each outward action undoable, a counter-action or final, chains the journal so a
+changed line shows, and is designed so that every kind a client may need fits: an OAuth app, an
+app with its own key, a database, a Windows desktop app (Total Office's writes), files, a
+website, and mail by app password (Kenil, 25 Oct).
+
 **Order (chosen):** for the first client, in week 2 and as their kits need them: Gmail by IMAP and SMTP with
 an app password; the Mac's calendar and contacts (a small signed native helper, since Node
 cannot reach EventKit; iCal and vCard on a server); LinkedIn in the browser (the
 person's `Connections.csv` once, then only what is new); files with positions (Docling for PDFs, SheetJS
 for sheets); a watched folder. Outlook by Graph and the generic read-only SQL connector come
-with Dell, who has asked for them; the first client hasn't.
+with Dell, who has asked for them; the first client hasn't. Dell's reads go straight to its SQL
+Server with a read-only login; its writes go through Total Office's own client on that server,
+read back by SQL (25 Oct).
 
 ## 9. Skills
 
 Agent Skills directories (`skills/<name>/SKILL.md`), model-written or shipped in a kit, with a
 form in the front matter: by reading, or by script. A site reader is a skill whose script calls
 the connector SDK's browser engine, so pacing and health come from the SDK and the model writes
-only the extraction. Model-written scripts are JavaScript run by the core's Node under the
-sandbox; Python stays inside kits. A script imports nothing of Alpha's: the core hands it `alpha`
+only the extraction. Scripts, the model's and a kit's alike, are JavaScript run by the core's
+Node under the sandbox; the only Python is the document reader's Docling (§10). A script imports nothing of Alpha's: the core hands it `alpha`
 (rows by field name, the person's people with their contact numbers, the browser engine, `tell`,
 `log`) over its process's pipes, so the network,
 the world and the gates stay with the core; a row it lands keeps the web page it was read from as
@@ -497,9 +531,10 @@ choices where the kit has them, and its colours, unless someone other than a kit
 (the journal says who). An older pack than the version installed is refused, with words, and
 nothing changes (item 42, 25 Oct). An update brings the kit's sites, keeping every site the
 person let a reader reach on a card, so a site the kit drops goes (item 44). An agent is known by
-its file first, so a renamed agent keeps its state, last run and history (item 47). A kit's Python scripts run in a per-kit environment that Alpha makes with a
-bundled `uv` at install, never the Mac's own Python. Kits update by content hash, the app by
-release.
+its file first, so a renamed agent keeps its state, last run and history (item 47). A kit's
+scripts are JavaScript (§9); no kit uses Python. The one Python Alpha runs is the document
+reader's Docling, in an environment Alpha makes with a bundled `uv`, never the Mac's own Python.
+Kits update by content hash, the app by release.
 
 **A module may sit inside another** (Kenil, 20 Oct): a parent holds its modules as well as any
 tables and pages of its own, to any depth, never inside itself or one of its own. A kit's
@@ -518,7 +553,7 @@ connectors whose tables it reads, relates to or triggers on, checked at install;
 says whose kit it is to keep. A kit field has a stable `key` (its name at install when the kit
 gives none), so an update matches on it; `history.renamed` renames in place, `history.removed`
 hides a field with its rows kept; what the person removed (a field, a table, a setup row, a
-kit's view) is a tombstone and stays removed. Settings › Kits shows what is the person's now
+kit's view) is a tombstone and stays removed. Settings › Modules shows what is the person's now
 (changed files, rows, views, fields; the fields a kit no longer uses) with the kit's version back,
 and on a maintained kit a shape change from the desk goes on a card: ask the maintainer (a
 drafted email), or do it now and count it as a change of the person's they have not seen.
@@ -526,7 +561,7 @@ drafted email), or do it now and count it as a change of the person's they have 
 <dir>` runs its cases without the model (§9).
 
 **Make this a kit** (Stage 2, step 1, 24 Oct): a module made in a conversation leaves as a kit in
-one action, in Settings › Modules and agents on a module that came from no kit ("Pack it to
+one action, in Settings › Modules on a module that came from no kit ("Pack it to
 install elsewhere": the window never says kit, 26 Oct). Its `module.yaml`
 already mirrors its shape; the kit adds `version: 0.1.0`, the kit API it was written for, a
 description from the first paragraph of its notes and `uses` for what its relations and agents
@@ -545,14 +580,15 @@ document filed, a card decided), a folder change, mail arriving, a webhook, the 
 machine woken, before a calendar event. The scheduler ticks once a minute; a run skipped while
 the Mac slept is journaled, and one catch-up runs on wake.
 
-A **run** is a session that serves a task and reports to Activity. It reaches the person's
-stream only as a card, or when a standing instruction lets it in. A shipped agent's steps are
-kit scripts (XState for stages) with the model at marked judgement points; a user-made agent is
-a brief the model writes. Tokens and duration are recorded on every run as facts, not a budget.
+A **run** is one go of an agent's script (§5), serving a task when it was given one, and
+reports to Activity. It reaches the person's stream only as a card, or when a standing
+instruction lets it in. A shipped agent's steps are kit scripts (plain JavaScript; the brief's
+XState was never needed) with the model at marked judgement points; a user-made agent is a script
+the model writes and keeps (a brief the model follows waits on the brief-driven agent, §5). Tokens and duration are recorded on every run as facts, not a budget.
 **Activity** lists every run with its steps, and stops one that is running; with them, Alpha's
 turns that changed rows, removals and the person's reverts, each with Revert (Bring back on a
-removal) behind its ⋮ where it can be undone (§4, undo); **Settings › Kits and
-agents** shows each module's agents, on or paused, with Run now. **One run of an agent at a
+removal) behind its ⋮ where it can be undone (§4, undo); **Settings › Modules** and
+Intelligence › Agents show each module's agents, on or paused, with Run now. **One run of an agent at a
 time**, whoever asks; a paused agent runs only when the person asks for it now (Run now, the
 desk's run), never on its trigger, a follow-up or a sign-in (24 Oct). The due runs go in a lane
 of their own: the minute tick starts them and goes on, so reminders, mail intake and the backup
@@ -810,12 +846,12 @@ Add new…, which asks Alpha for one more (UI batch 5). Sorts come in levels, on
 columns, values changed in place as the person's word (in a row opened whole too, by a
 double-click), ticked rows set or removed (Escape lets go), a pasted block filling across and down,
 a field added from the header, and a board's cards dragged between its columns. All
-eight views are built: table, board, list, gallery, calendar and timeline (on a date), chart (bars
+eight views are built, six of them offered (above): table, board, list, gallery, calendar and timeline (on a date), chart (bars
 by a group or a date's months, counting rows or adding up a number; a bar's click shows its rows),
 and form (a row at a time, or a new one).
 
 On a Mac the core listens on loopback and the shell passes it a per-install token. Hosted, the
-window signs in with better-auth.
+window will sign in with better-auth (not built yet).
 
 ## 15. Deployment, security, observability
 
@@ -823,8 +859,8 @@ window signs in with better-auth.
 keeping the machine awake, its settings panes, the person's name and the region sit behind one
 `Platform` interface (`core/src/platform/`): the Mac's implementation, and a plain one that runs
 the core for the tests and says in words what it cannot do. `process.platform` is read in one
-file, and `pnpm check` refuses a Mac call anywhere else in the core. The server shape below is a
-`linux.ts` there. **An install** is one file, `alpha.yaml` in the data folder (owner, tenant,
+file, and `pnpm check` refuses a Mac call anywhere else in the core. The server shape below will
+be a `linux.ts` there (not made yet). **An install** is one file, `alpha.yaml` in the data folder (owner, tenant,
 port, the report address, the helper, uv and log paths, keep awake, the readers), written by the
 installer and at first start, read at every start, the environment overriding it for a
 development run; `ALPHA_HOME` is the one variable, the token its own file.
@@ -834,8 +870,15 @@ and never starts a core of its own, shows the two windows, and opens quietly at 
 second login item. Signed ad hoc, or with the self-signed "Alpha Code Signing" certificate once
 it is made (Kenil, 21 Oct: later); Developer ID signing and notarization need an Apple Developer
 account.
-**Server:** one container per tenant group, one volume, backups off-box, TLS, the tenant's key
-in the secret store.
+**Server** (Kenil's answers, 25 Oct; not built): one Linux image, in two homes. A firm with a
+server of its own runs it as a VM there: Dell, on its Windows server, reading its SQL Server with
+a read-only login, where the only Windows piece is a small signed Total Office writer in a
+signed-in session on that server, asking Alpha for approved writes and opening no port. A firm
+without one gets a private server in our US cloud, with a thin outbound Bridge for its reads.
+Every Alpha connects outward only (signed updates, heartbeats; support only on the client's yes,
+for Dell through its own VPN), people reach it in the browser (a Windows app later), and a firm
+pays its own model key. One volume, encrypted backups off-box, TLS, the tenant's key in the
+secret store.
 
 **Security floor:** per-tenant files, no shared process across tenant groups, an access log in
 the journal, secrets never in the world, scripts sandboxed, outside content marked as data in
@@ -845,8 +888,9 @@ every hook. Encryption at rest with a tenant key, and retention rules, when Dell
 never rows.
 
 **CI** (decision 12, 23 Oct): every push and pull request runs `pnpm check` on Linux (the tests on
-the plain platform), `pnpm kit check` on Alpha's own kit and `pnpm connector check` on every
-connector in the repository; a tag `v<version>` runs `pnpm release` on a Mac runner, smoke test
+the plain platform), `pnpm kit check` on Network (`core/kits/network`; Alpha's own kit,
+`core/kits/alpha`, is not checked there yet) and `pnpm connector check` on every connector in the
+repository; a tag `v<version>` runs `pnpm release` on a Mac runner, smoke test
 included, and puts the disk image on the GitHub release page. The client image stays by hand.
 
 ## 16. Journeys and tests
@@ -877,7 +921,8 @@ Reread in `../alpha-brain` and rewritten, never copied: the world store's schema
 idea (`journeys/`); the avatar (`desktop/src/avatar/`).
 
 Left behind: the five agents as characters, the pre-pack, the Haiku router, the workflow page,
-the interview, work items and their cards, the map, Intelligence, voice, the Codex route, the
+the interview, work items and their cards, the map, v1's Intelligence page (v2's Intelligence
+screen, §14, is another thing), voice, the Codex route, the
 kits channel, every behavioural prompt rule.
 
 ## 18. A client's kits against the platform
@@ -906,13 +951,32 @@ client's own repository, where its fit analysis lives.
 4. **Week 6.** The Mac shell and companion, Watson and Morning, signing, the person's key or
    sign-in, their first run with Kenil present, the feedback report.
 
-Then Dell: the hosted shape, Graph and SQL connectors, the Total Office mirror, the intake kit.
+Then Dell, once its contract is signed (final plan, 28 Oct): read-only first, on a VM on its own
+server (§15), with the SQL and Graph connectors, then Total Office's writes through its own client.
+What Alpha does for Dell beyond that waits on Kenil's talk with Dell about its brief of 28 Oct.
 
 **Stage 1 (22–23 Oct), done:** after the checkpoint review's platform decisions, the open core's
 promises in code: the world on real tables (§4), the kit and agent contracts (§10, §11),
 connectors as plugins and the model as a provider (§5, §8), then the install file, the platform
 interface, Settings › Data, CI and the split of the two long files (§15). Each step a plan for
 Kenil's yes, built, checked, restarted in his Alpha with test steps, committed on his looks good.
+
+**Stage 2 (24 Oct), done:** Make this a kit (§10), the 600-line wall (§3) and an `about` on every
+table, field and view (§4).
+
+**The core plan (Kenil's yes, 26 Oct;** each step a detail doc, his yes, built, tested by him,
+pushed on his looks good): 1 undo and the trash (§4), done 26 Oct; 2 one rules store (§7), done 27
+Oct; 3 the data shape: part of and setup, a row's own view and notes, summaries and tags, one row
+per person with merges that fold, the business case and the builder's walls (§4, §7, §10, §14),
+done 28 Oct; 4 each kit in that shape (Network 0.4.0, DealPilot 0.6.0, Accounting 0.4.0, then
+Alpha's own tables under Intelligence), under way 28 Oct; 5 what the model costs by module, agent
+and conversation, in Settings › Model, after 4. Beside it, from the final plan: no send or write
+tried again (§8, 28 Oct).
+
+**After it** (the final plan, 25 Oct, reconciled 28 Oct): the connector platform (§8), with the
+build work beside it (Alpha's own loop made fit, journeys on the key route, a survey of
+harnesses), then linking. The first client gets a build signed on Kenil's Apple account; Dell as
+above; later work comes as each client signs.
 
 ## 20. Working rules
 
@@ -925,6 +989,9 @@ Kenil's yes, built, checked, restarted in his Alpha with test steps, committed o
 
 ## Still open
 
-- Claude Code's system prompt with Alpha's appended, measured in week 1 (§6).
+- The email to Anthropic describing the subscription route (§5), before the first client's build
+  ships.
 - Claude's GitHub access to github.com/kenil0811/alpha-v2, for pushing.
-- An Apple Developer account before week 6, for signing and notarization.
+- An Apple Developer account, for signing and notarization.
+- A company before Dell's contract, since Dell's signed Windows writer needs one (parked by
+  Kenil, 28 Oct).
