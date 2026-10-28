@@ -160,6 +160,7 @@ export class Gatekeeper {
       turn: cur.turn,
       module: cur.from?.id ?? null,
       agent,
+      named: this.connectors?.ruleName(toolName) ?? null,
     })
     return this.decision(verdict)
   }

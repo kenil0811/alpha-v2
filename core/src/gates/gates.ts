@@ -32,6 +32,7 @@ export interface GateInput {
   module?: string | null
   table?: string | null // the table it writes, removes from or reads, by id
   agent?: string | null // the agent making the call, by name
+  named?: string | null // what a rule calls the tool, where its gate key differs (gmail.send)
 }
 
 // A refusal by a rule has no card: nothing the person can say yes to on the spot.
@@ -90,7 +91,7 @@ export function factsOf(input: GateInput): CallFacts {
     .filter(Boolean)
   return {
     effect: input.effect,
-    tool: input.call.tool,
+    tool: input.named ?? input.call.tool,
     to,
     site,
     table: input.table ?? null,

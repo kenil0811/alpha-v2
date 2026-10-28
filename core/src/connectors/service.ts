@@ -453,6 +453,13 @@ export class ConnectorService {
     return t ? gateKey(t.c.manifest.name, t.tool) : undefined
   }
 
+  // What a rule calls the tool (gmail.send; a rule through gmail covers all of Gmail's), as an
+  // agent's draft names its send: never the gate's key, which a rule's words never hold.
+  ruleName(name: string): string | undefined {
+    const t = this.toolOf(name)
+    return t ? `${t.c.manifest.name}.${t.tool}` : undefined
+  }
+
   // Every loaded connector's tools, always, so the desk's tools never change when an account is
   // connected (a session is resumed only with the same tools). They load through tool search.
   toolNames(): string[] {

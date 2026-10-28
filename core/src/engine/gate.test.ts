@@ -90,6 +90,36 @@ describe('the gate adapter', () => {
     expect(gate.after({ callId: 'c5', ok: true })).toEqual([])
   })
 
+  it('refuses a send a rule forbids when the rule names Gmail or its send (28 Oct)', async () => {
+    const connectors = new ConnectorService(world, {
+      secrets: new MemorySecrets(),
+      known: (await loadSet(STANDARD_DIR)).connectors,
+    })
+    const gate = new Gatekeeper(world, here, user, { connectors })
+    const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
+    const mail = { to: 'priya@harbor.example', subject: 'The CIM', body: 'Could you send it?' }
+    for (const through of [['gmail'], ['gmail.send']]) {
+      const r = world.rules.save(
+        {
+          side: 'deny',
+          module: null,
+          agent: null,
+          said: 'never email outside',
+          covers: { does: ['send'], through, to: { outside: ['example.com'] } },
+        },
+        person,
+      )
+      const out = gate.before('mcp__gmail__send', mail, {
+        callId: `c-${through[0]}`,
+        subagent: null,
+      })
+      expect(out.allow).toBe(false)
+      expect(out.reason).toMatch(/^Refused by the person's rule/)
+      world.rules.revoke(r.id, person)
+    }
+    expect(world.cards.waiting(user.id).filter((c) => c.call?.tool === 'gmail_send')).toEqual([])
+  })
+
   it('lets a route’s own tool through: the sandbox and the file walls judge those', () => {
     const gate = new Gatekeeper(world, here, user)
     expect(gate.before('Bash', { command: 'ls' }, { callId: 'c6', subagent: null })).toEqual({
