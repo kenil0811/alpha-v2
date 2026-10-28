@@ -87,6 +87,12 @@ export function shapeTables(
         !byKey(t, f.key as string) && !world.shape.tombstoned(module.id, 'field', f.key as string),
     )
     if (missing.length) world.shape.addFields(t.id, missing, ctx)
+    // a text field the kit now says is notes (core plan step 4): the same column, its values kept
+    for (const f of spec.fields) {
+      if (f.kind !== 'notes') continue
+      const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
+      if (was && was.kind === 'text') world.shape.toNotes(t.id, was.id, ctx)
+    }
     // a relation the kit now says holds a list, a choice that it holds several
     for (const f of spec.fields) {
       if ((f.kind !== 'relation' && f.kind !== 'choice') || !f.many) continue

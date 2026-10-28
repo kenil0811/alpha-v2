@@ -18,6 +18,7 @@ import {
   setMany,
   setPeople,
   setTones,
+  toNotes,
   tonesSetByOthers,
 } from './fields.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
@@ -468,6 +469,9 @@ export class Shape {
   }
   setMany(tableId: string, field: string, ctx: WriteCtx): Table {
     return setMany(this, tableId, field, ctx)
+  }
+  toNotes(tableId: string, field: string, ctx: WriteCtx): Table {
+    return toNotes(this, tableId, field, ctx)
   }
   setSetup(tableId: string, setup: boolean, ctx: WriteCtx): Table {
     return setSetup(this, tableId, setup, ctx)

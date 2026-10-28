@@ -375,6 +375,39 @@ function setTags(shape: Shape, table: Table, f: Field, ctx: WriteCtx): Table {
   return shape.table(table.id) as Table
 }
 
+// A text field becomes the row's notes (core plan step 4, DealPilot's Notes): the same column,
+// its values kept, now Markdown on the row's page and out of the grid. No other kind ever changes.
+export function toNotes(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
+  return tx(shape.db, () => {
+    const table = shape.table(tableId)
+    if (!table) throw new Refused('That table is not there.')
+    const f = findField(table, field)
+    if (f.kind === 'notes') return table
+    if (f.kind !== 'text')
+      throw new Refused(`${f.name} is ${f.kind}: only a text field becomes notes.`)
+    if (table.fields.some((x) => x.kind === 'notes'))
+      throw new Refused(`${table.name} has its notes already; a table has one place for notes.`)
+    const sums = summariesReading(shape, table.id, f.id)
+    if (sums.length)
+      throw new Refused(
+        `${sums.map((x) => `${x.field.name} in ${x.table.name}`).join(' and ')} read ${f.name}, and a summary never reads notes.`,
+      )
+    run(shape.db, "UPDATE fields SET kind = 'notes' WHERE id = ?", f.id)
+    append(shape.db, {
+      actor: ctx.actor,
+      kind: 'shaped',
+      words: `${f.name} in ${table.name} is the row's notes now: written on its page, out of the grid.`,
+      data: { table: table.id, field: f.id, kind: { from: 'text', to: 'notes' } },
+      user: ctx.user ?? null,
+      turn: ctx.turn ?? null,
+      module: table.module.id,
+      run: ctx.run ?? null,
+    })
+    writeManifest(shape, table.module)
+    return shape.table(table.id) as Table
+  })
+}
+
 // A kit field's stable name, set once on a field that had none (a world from before keys).
 export function setKey(shape: Shape, fieldId: string, key: string): void {
   run(shape.db, 'UPDATE fields SET key = ? WHERE id = ? AND key IS NULL', key, fieldId)
