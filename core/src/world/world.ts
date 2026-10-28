@@ -18,6 +18,7 @@ import { migrate } from './schema.ts'
 import { actorName, rowName, Shape, type Table, type WriteCtx } from './shape/index.ts'
 import { type Place, placeOf } from './shape/parts.ts'
 import { peopleTables } from './shape/per.ts'
+import { Spend } from './spend.ts'
 import { Tasks } from './tasks/index.ts'
 import { Views } from './views.ts'
 
@@ -84,6 +85,7 @@ export class World {
   readonly files: Files
   readonly connections: Connections
   readonly rules: Rules
+  readonly spend: Spend
   readonly people: People
   readonly tasks: Tasks
   readonly db: Db
@@ -104,6 +106,7 @@ export class World {
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
     this.connections = new Connections(db)
     this.rules = new Rules(db, this.shape)
+    this.spend = new Spend(db)
     this.people = new People(db, this.shape, this.cards)
     this.records.watch = this.people
     this.people.records = this.records

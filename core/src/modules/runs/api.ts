@@ -1,5 +1,5 @@
 import type { ExtractSpec } from '@alpha/connector-sdk'
-import { inReadingOrder, type ReadSpec, readInto } from '../../files/reading.ts'
+import { type Ask, inReadingOrder, type ReadSpec, readInto } from '../../files/reading.ts'
 import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module, Table } from '../../world/shape/index.ts'
@@ -19,6 +19,17 @@ export function api(
   walls: Walls | null = null,
 ) {
   const actor = { kind: 'agent' as const, id: label }
+  // what the run's asks spend is the run's, under its agent and module (core plan step 5)
+  const spending =
+    (ask: Ask): Ask =>
+    async (prompt, schema) => {
+      const out = await ask(prompt, schema)
+      runner.world.spend.add(
+        { kind: 'run', run: runId, module: module.id, agent: label },
+        out.uses ?? [],
+      )
+      return out
+    }
   const ctx = { actor, run: runId }
   const tableOf = (name: unknown): Table => {
     const t = runner.world.shape.table(String(name))
@@ -152,7 +163,7 @@ export function api(
       const chunks = runner.world.files.chunks(d.id)
       const pieces = d.kind === 'pdf' ? inReadingOrder(chunks) : chunks
       const name = runner.world.files.file(d.fileHash)?.name ?? d.title
-      const out = await readInto(p.spec as ReadSpec, pieces, runner.ask)
+      const out = await readInto(p.spec as ReadSpec, pieces, spending(runner.ask))
       runner.tokens.set(runId, (runner.tokens.get(runId) ?? 0) + out.tokens)
       const found =
         Object.values(out.values).filter(Boolean).length +
@@ -188,7 +199,7 @@ export function api(
     // the model sorts items into the groups the person named, each with why; nothing is kept
     // from it until the script lands rows the person then decides
     judge: async (p: Record<string, unknown>) => {
-      const out = await judge(p as unknown as JudgeSpec, runner.judgeAsk)
+      const out = await judge(p as unknown as JudgeSpec, spending(runner.judgeAsk))
       runner.tokens.set(runId, (runner.tokens.get(runId) ?? 0) + out.tokens)
       const sorted = out.judged.filter((j) => j.group).length
       runner.world.line({

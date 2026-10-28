@@ -16,6 +16,7 @@ import { Gatekeeper } from './gate.ts'
 import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
 import { Registry } from './registry.ts'
 import type { ModelRoute } from './route.ts'
+import { costOf, turnSpent } from './spent.ts'
 import { type Hands, type Here, TOOL_NAMES, worldTools } from './tools/index.ts'
 
 export type { QueryFn } from './claudecode.ts'
@@ -355,6 +356,12 @@ export class Desk {
     }
     if (e.type === 'result') {
       const stopped = this.stopping || e.stopped
+      // what the turn spent, under the module it was asked in (core plan step 5)
+      const spent = turnSpent(this.world, this.user.id, e.data)
+      this.world.spend.add(
+        { kind: 'turn', turn: running.turn, module: running.from?.id ?? null },
+        spent,
+      )
       this.world.line({
         actor: { kind: 'alpha' },
         kind: e.ok || stopped ? 'replied' : 'error',
@@ -363,7 +370,7 @@ export class Desk {
           : e.ok
             ? e.text || 'Done.'
             : 'Something went wrong, and nothing more was done.',
-        data: e.data,
+        data: { ...e.data, spent: costOf(spent) },
         user: this.user.id,
         turn: running.turn,
       })

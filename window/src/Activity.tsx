@@ -8,6 +8,7 @@ import type { RunView, UndoView } from '@alpha/core/api'
 import { ChevronRight, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import { usdWords } from './Usage.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
@@ -212,14 +213,18 @@ export function RunRow({
               Stop
             </Button>
           ) : (
-            ran && (
-              <>
-                <span>{took(r.ms)}</span>
-                <span>
-                  {r.tokens === null ? 'No model' : `${r.tokens.toLocaleString()} tokens`}
-                </span>
-              </>
-            )
+            <>
+              {ran && (
+                <>
+                  <span>{took(r.ms)}</span>
+                  <span>
+                    {r.tokens === null ? 'No model' : `${r.tokens.toLocaleString()} tokens`}
+                  </span>
+                </>
+              )}
+              {/* what its uses of the model cost (core plan step 5) */}
+              {r.usd !== null && <span>{usdWords(r.usd)}</span>}
+            </>
           )}
         </div>
         <Undo run={r} onDone={onUndone} />

@@ -5,6 +5,7 @@ import { type Options, query, type SDKMessage } from '@anthropic-ai/claude-agent
 import { config } from '../config.ts'
 import type { Ask } from '../files/reading.ts'
 import { Refused } from '../world/kinds.ts'
+import { type Use, usesOfModelUsage } from '../world/spend.ts'
 
 export function askModel(
   cwd: string,
@@ -20,7 +21,7 @@ export async function askOnce(
   system: string,
   prompt: string,
   schema: Record<string, unknown>,
-): Promise<{ answer: unknown; tokens: number }> {
+): Promise<{ answer: unknown; tokens: number; uses: Use[] }> {
   const options: Options = {
     model: config.models().desk,
     cwd: realpathSync(cwd),
@@ -47,6 +48,7 @@ export async function askOnce(
   }
   let answer: unknown = null
   let tokens = 0
+  let uses: Use[] = []
   let failed: string | null = null
   for await (const m of query({ prompt, options }) as AsyncIterable<SDKMessage>) {
     if (m.type !== 'result') continue
@@ -55,6 +57,7 @@ export async function askOnce(
       (m.usage.output_tokens ?? 0) +
       (m.usage.cache_read_input_tokens ?? 0) +
       (m.usage.cache_creation_input_tokens ?? 0)
+    uses = usesOfModelUsage(m.modelUsage)
     if (m.subtype === 'success') answer = m.structured_output ?? null
     else failed = m.subtype
   }
@@ -62,5 +65,5 @@ export async function askOnce(
     throw new Refused(
       `The model gave no answer in the shape asked${failed ? ` (${failed.replace(/_/g, ' ')})` : ''}.`,
     )
-  return { answer, tokens }
+  return { answer, tokens, uses }
 }

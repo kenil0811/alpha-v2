@@ -1,0 +1,17 @@
+name: what-it-cost
+title: 'what each turn spent is kept, under the module it was asked in, and shows in Settings'
+why: >
+  Core plan step 5 (Kenil's yes, 28 Oct): every use of the model keeps what it spent, counted from
+  the day it shipped. A turn asked on Home is Alpha's; one asked in a module's Conversation is
+  that module's. On the subscription the cost is the one Claude Code says, at API prices.
+steps:
+  - say: In a module called Garden, make a table Plants with a Name and the day each was planted.
+    checks:
+      - spent: { module: Alpha }
+      - errors: 0
+  - say: Add Basil, planted today.
+    in: Garden
+    checks:
+      - rows_in: { table: Plants, count: 1 }
+      - spent: { module: Garden }
+      - errors: 0

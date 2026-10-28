@@ -5,6 +5,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { config } from '../config.ts'
 import { Refused } from '../world/kinds.ts'
+import { usesOfTokens } from '../world/spend.ts'
 import type { World } from '../world/world.ts'
 import { type Chat, Limited, OwnLoop } from './loop.ts'
 import type { Capabilities, Provider, Session, SessionSpec } from './provider.ts'
@@ -99,7 +100,11 @@ export class ClaudeApiProvider implements Provider {
       (m.usage.cache_read_input_tokens ?? 0) +
       (m.usage.cache_creation_input_tokens ?? 0)
     try {
-      return { answer: JSON.parse(text) as unknown, tokens }
+      return {
+        answer: JSON.parse(text) as unknown,
+        tokens,
+        uses: usesOfTokens(config.models().desk, m.usage),
+      }
     } catch {
       throw new Refused('The model gave no answer in the shape asked.')
     }

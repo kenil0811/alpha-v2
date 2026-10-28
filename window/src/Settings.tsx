@@ -35,6 +35,7 @@ import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
+import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -182,7 +183,12 @@ export function Settings({
     ),
     modules: <ModulesAndAgents version={version} />,
     permissions: <Permissions version={version} />,
-    model: <ModelSection />,
+    model: (
+      <div className="flex flex-col gap-7">
+        <ModelSection />
+        <UsageSection />
+      </div>
+    ),
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
     experimental: <Experimental />,
@@ -679,12 +685,6 @@ function Standing({ version }: { version: number }) {
       onNew={() => startAsk('From now on, ')}
     />
   )
-}
-
-const MODEL_NAMES: Record<string, string> = {
-  'claude-opus-5-5': 'Claude Opus 5.5',
-  'claude-sonnet-5-5': 'Claude Sonnet 5.5',
-  'claude-haiku-5-5': 'Claude Haiku 5.5',
 }
 
 // The route (design §5): the person's own Claude subscription, signed in with Claude's own sign-in

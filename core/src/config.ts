@@ -7,9 +7,17 @@ import { z } from 'zod'
 
 const DIR = join(import.meta.dirname, '..', 'config')
 
+const Price = z.object({
+  input: z.number().min(0),
+  output: z.number().min(0),
+  cache_read: z.number().min(0),
+  cache_write: z.number().min(0),
+})
+
 const Models = z.object({
   desk: z.string().min(1),
   eyes: z.string().min(1),
+  prices: z.record(z.string(), Price).optional(),
 })
 
 const Limits = z.object({

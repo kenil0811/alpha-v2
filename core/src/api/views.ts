@@ -311,6 +311,7 @@ export function makeViews(ctx: BaseCtx) {
       state: r.state,
       words: r.words,
       tokens: r.tokens, // a script's own work uses none; a document read by the model does
+      usd: world.spend.of({ run: r.id }),
       quiet: r.state === 'ok' && !steps.some((st) => CHANGES.has(st.kind)),
       steps,
       undo:
@@ -335,6 +336,7 @@ export function makeViews(ctx: BaseCtx) {
     state: 'ok',
     words: l.words,
     tokens: null,
+    usd: null,
     quiet: false,
     steps: [],
     undo: null,
@@ -351,6 +353,7 @@ export function makeViews(ctx: BaseCtx) {
       return {
         ...lineOut({ ...(ls[0] as Line), at }, 'turn', 'Alpha', said?.module ?? null),
         id: `turn-${turn}`,
+        usd: world.spend.of({ turn }),
         words: asked
           ? `You asked: “${asked.length > 120 ? `${asked.slice(0, 117)}…` : asked}”`
           : null,
@@ -372,6 +375,7 @@ export function makeViews(ctx: BaseCtx) {
       state: l.data.state === 'failed' ? 'failed' : 'ok',
       words: l.words,
       tokens: null,
+      usd: null,
       quiet: l.data.quiet === true,
       steps: [],
       undo: null,

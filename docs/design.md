@@ -189,7 +189,14 @@ kept in the world (`desk_messages`). The own loop has the world's tools and the 
 shell, no files beyond the world, no web and no subagents; the prompt leaves those out. Later
 providers (OpenAI by key, a local model through an OpenAI-compatible endpoint) are the same loop
 with another client. The person picks the route in Settings › Model, each provider with what it
-can do in a line; the model names live in `core/config/models.yaml`. Longer work runs as the
+can do in a line; the model names live in `core/config/models.yaml`. **What each use of the model
+spent** is kept (core plan step 5, Kenil's yes 28 Oct), from the day it shipped: a row per model
+per use in `spend`, with its tokens and cost, and what it served. A desk turn's share is its
+session's running total, as Claude Code says it, less the one said at the turn before, under the
+module it was asked in (Alpha's, asked on Home); an agent's run's asks are under the agent; an API
+key's own loop says only tokens, priced from `prices` in `models.yaml`. Settings › Model shows a
+month by module, agent and model, "at API prices" on the subscription; Activity shows a run's or
+a turn's cost on its line. Nothing is capped. Longer work runs as the
 route's background subagents where it has them; the desk sends follow-ups to running work itself
 and reports each outcome into the one stream in its own words, as a paragraph. The detail stays
 in the journal. No router, no work items, no cards for sessions.
@@ -970,7 +977,7 @@ Oct; 3 the data shape: part of and setup, a row's own view and notes, summaries 
 per person with merges that fold, the business case and the builder's walls (§4, §7, §10, §14),
 done 28 Oct; 4 each kit in that shape (Network 0.4.0, DealPilot 0.6.0, Accounting 0.4.0, then
 Alpha's own tables under Intelligence), under way 28 Oct; 5 what the model costs by module, agent
-and conversation, in Settings › Model, after 4. Beside it, from the final plan: no send or write
+and model, in Settings › Model, built 28 Oct. Beside it, from the final plan: no send or write
 tried again (§8, 28 Oct).
 
 **After it** (the final plan, 25 Oct, reconciled 28 Oct): the connector platform (§8), with the

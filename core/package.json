@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./api": "./src/api/types.ts",
+    "./usage": "./src/api/usage-types.ts",
     "./filter-cases": "./src/world/filter-cases.ts"
   },
   "scripts": {

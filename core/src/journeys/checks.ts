@@ -23,6 +23,15 @@ export const Check = z.union([
   z.object({
     place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup', 'people']) }),
   }),
+  // what the model's use cost, kept (core plan step 5): under a module (Alpha's, asked on Home),
+  // an agent or a model, more than nothing
+  z.object({
+    spent: z.object({
+      module: z.string().optional(),
+      agent: z.string().optional(),
+      model: z.string().optional(),
+    }),
+  }),
   // a table kept as a tab of its module, wherever it sits (28 Oct)
   z.object({ tab: z.object({ table: z.string(), is: z.boolean() }) }),
   // what the model's own views say: how many rows a query gives, or words its rows hold
@@ -146,6 +155,43 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `${check.place.table} is ${check.place.is}`,
       ok: is === check.place.is,
       saw: is,
+    }
+  }
+  if ('spent' in check) {
+    const c = check.spent
+    const kept = !!world.db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'spend'")
+      .get()
+    const rows = kept
+      ? (world.db
+          .prepare(
+            'SELECT module_id, agent, model, input + output + cache_read + cache_write AS tokens, usd FROM spend',
+          )
+          .all() as {
+          module_id: string | null
+          agent: string | null
+          model: string
+          tokens: number
+          usd: number | null
+        }[])
+      : []
+    const mine = rows.filter(
+      (r) =>
+        (!c.module ||
+          ((r.module_id && world.shape.module(r.module_id)?.name) || 'Alpha') === c.module) &&
+        (!c.agent || r.agent === c.agent) &&
+        (!c.model || r.model === c.model),
+    )
+    const usd = mine.reduce((s, r) => s + (r.usd ?? 0), 0)
+    const tokens = mine.reduce((s, r) => s + r.tokens, 0)
+    return {
+      check: `spent ${
+        Object.entries(c)
+          .map(([k, v]) => `by ${k} ${v}`)
+          .join(', ') || 'in all'
+      }`,
+      ok: usd > 0 && tokens > 0,
+      saw: kept ? `${tokens} tokens, $${usd.toFixed(4)}` : 'no spend kept',
     }
   }
   if ('tab' in check) {

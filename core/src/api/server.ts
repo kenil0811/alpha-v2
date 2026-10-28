@@ -29,6 +29,7 @@ import { registerSettings } from './routes/settings.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerTables } from './routes/tables.ts'
 import { registerTasks } from './routes/tasks.ts'
+import { registerUsage } from './routes/usage.ts'
 import type { Health } from './types.ts'
 import { deny, makeViews } from './views.ts'
 
@@ -132,6 +133,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerKits(ctx)
   registerModules(ctx)
   registerSettings(ctx)
+  registerUsage(ctx)
   registerActivity(ctx)
 
   void app.register(websocket)

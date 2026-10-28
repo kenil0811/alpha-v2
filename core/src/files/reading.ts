@@ -5,6 +5,7 @@
 // nothing is filed from nowhere: whatever fails comes back as not given, with the reason kept.
 import type { Position } from '../world/files.ts'
 import { Refused } from '../world/kinds.ts'
+import type { Use } from '../world/spend.ts'
 
 export type WantKind = 'text' | 'number' | 'money' | 'percent' | 'date' | 'choice'
 
@@ -259,7 +260,7 @@ export function throughWall(
 export type Ask = (
   prompt: string,
   schema: Record<string, unknown>,
-) => Promise<{ answer: unknown; tokens: number }>
+) => Promise<{ answer: unknown; tokens: number; uses?: Use[] }>
 
 // One document read into what the kit wants.
 export async function readInto(spec: ReadSpec, pieces: Piece[], ask: Ask): Promise<ReadOut> {

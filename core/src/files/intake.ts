@@ -323,7 +323,8 @@ export class Intake {
         .join('\n\n'),
       `The places:\n${placesText}`,
     ].join('\n\n')
-    const { answer } = await this.ask(prompt, schema)
+    const { answer, uses } = await this.ask(prompt, schema)
+    this.world.spend.add({ kind: 'ask' }, uses ?? [])
     const got = ((answer as { files?: unknown[] }).files ?? []) as {
       file: number
       about: string

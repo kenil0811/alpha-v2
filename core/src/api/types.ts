@@ -571,10 +571,10 @@ export interface RunView {
   state: 'running' | 'ok' | 'failed' | 'stopped'
   words: string | null
   tokens: number | null // null: no model was used
+  usd: number | null // what its uses of the model cost (core plan step 5); null: none, or unknown
   quiet: boolean // it ended and changed nothing
   steps: { id: number; at: string; kind: string; words: string }[]
-  // Revert (or Bring back, on a removal) where it wrote rows since Alpha could undo; `what` names
-  // it in the pop-up's question and in the line the revert writes
+  // Revert, or Bring back a removal, where it wrote rows; `what` names it in the pop-up and line
   undo: { target: UndoTarget; label: 'Revert' | 'Bring back'; what: string } | null
 }
 
