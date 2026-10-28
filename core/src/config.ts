@@ -26,6 +26,7 @@ const Limits = z.object({
   browser_pace_max_ms: z.number().int().min(0),
   loop_rounds_per_turn: z.number().int().positive(),
   run_retries: z.number().int().min(1),
+  connector_busy_wait_seconds: z.number().int().min(0),
   yes_hours: z.number().positive(),
   keep_removed_days: z.number().int().min(1),
   journey_times: z.number().int().min(1),

@@ -384,7 +384,9 @@ what to make instead; kits are checked, not walled.
 ## 8. The connector SDK and connectors
 
 **The SDK gives every connector:** pacing per account (a token bucket and a daily budget);
-retries; pagination and cursors; a cache; a journal line for every call; provenance on every
+retries for reads only (a send or a write whose fate is unknown is never tried again, by its
+tool's effect; a service asking to wait, a 429 or "too many requests", is waited out for as long
+as it asked, `connector_busy_wait_seconds` in all; final plan call A, 28 Oct); pagination and cursors; a cache; a journal line for every call; provenance on every
 value it lands; a health judgement ("fewer rows than last time", "nothing new for a week");
 three auth kinds (app password or API key; OAuth with our own app; a browser profile) and the
 secret store (the Mac keychain, or an encrypted file under a server key); fixture recording and

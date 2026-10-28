@@ -56,6 +56,10 @@ export function gateKey(connector: string, tool: string): string {
   return `${connector}_${tool}`
 }
 
+// A tool's effect for this input: a tool may say it by what it is asked.
+const effectOf = (spec: Tool, input: Record<string, unknown>): Effect =>
+  typeof spec.effect === 'function' ? spec.effect(input as never) : spec.effect
+
 export class ConnectorService {
   private world: World
   private options: ServiceOptions
@@ -120,6 +124,7 @@ export class ConnectorService {
     const l = config.limits()
     return {
       retries: l.connector_retries,
+      busyWaitMs: l.connector_busy_wait_seconds * 1000,
       fewerRowsRatio: l.health_fewer_rows_ratio,
       quietDays: l.health_quiet_days,
     }
@@ -194,11 +199,14 @@ export class ConnectorService {
     }
   }
 
-  call(c: Connector, conn: Connection): Call {
+  // A tool's call, by its effect: one that changes something is never tried again when its fate
+  // is unknown (call A); a read keeps its retries.
+  call(c: Connector, conn: Connection, effect: Effect = 'read'): Call {
     const fixtures = this.fixtures(c)
     return makeCall(c.manifest, this.host(c, conn), {
       judgements: this.judgements(),
       ...(fixtures ? { fixtures } : {}),
+      ...(effect !== 'read' ? { once: true } : {}),
     })
   }
 
@@ -390,7 +398,7 @@ export class ConnectorService {
     const c = this.connector(named)
     const spec = c.tools[name]
     if (!spec) throw new Refused(`${c.manifest.title} has no ${name}.`)
-    return spec.run(this.call(c, this.connectionFor(c)), input as never)
+    return spec.run(this.call(c, this.connectionFor(c), effectOf(spec, input)), input as never)
   }
 
   // The connections whose items carry files (an email's attachments), and an item's files.
@@ -468,7 +476,7 @@ export class ConnectorService {
             try {
               const { account, ...rest } = input
               const conn = this.connectionFor(c, typeof account === 'string' ? account : undefined)
-              const out = await spec.run(this.call(c, conn), rest as never)
+              const out = await spec.run(this.call(c, conn, effectOf(spec, rest)), rest as never)
               return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 1) }] }
             } catch (err) {
               const words =

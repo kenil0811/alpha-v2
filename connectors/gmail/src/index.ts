@@ -1,6 +1,7 @@
 // Gmail by IMAP and SMTP with an app password (design §8, decision 10). Headers of the last 90
 // days land in the Mail table; a message's body is read when asked. A draft is saved in the
 // person's own Drafts (a write: it goes nowhere); a send leaves their world and waits on a card.
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { type Call, type Connector, defineTool, Problem } from '@alpha/connector-sdk'
 import { type FetchMessageObject, ImapFlow, type MessageStructureObject } from 'imapflow'
@@ -102,13 +103,81 @@ async function withImap<T>(c: Call, fn: (client: ImapFlow) => Promise<T>): Promi
   )
 }
 
-async function mailbox(client: ImapFlow, use: '\\All' | '\\Drafts'): Promise<string> {
+async function mailbox(client: ImapFlow, use: '\\All' | '\\Drafts' | '\\Sent'): Promise<string> {
   const found = (await client.list()).find((m) => m.specialUse === use)
   if (!found)
     throw new Problem(
-      `This Gmail account has no ${use === '\\All' ? 'All Mail' : 'Drafts'} folder over IMAP.`,
+      `This Gmail account has no ${{ '\\All': 'All Mail', '\\Drafts': 'Drafts', '\\Sent': 'Sent Mail' }[use]} folder over IMAP.`,
     )
   return found.path
+}
+
+// One send, once (final plan, call A, 28 Oct). The email carries a Message-ID of Alpha's own, so
+// when the connection drops before Gmail answers, Sent is looked in (now, and again a few seconds
+// later, as Gmail files a sent message a moment after it takes it): there, it went; not there, it
+// did not, and nothing is sent again. Gmail asking to slow down (421, 4.7.x) did nothing, so it is
+// a busy problem the runtime waits out; a refusal (5xx, the day's sending limit) is said as it is.
+export interface SendHands {
+  send: (mail: Record<string, unknown>) => Promise<unknown>
+  inSent: (id: string) => Promise<boolean>
+  wait: (ms: number) => Promise<void>
+}
+
+const DROPPED =
+  /ECONNRESET|ETIMEDOUT|EPIPE|ECONNREFUSED|EAI_AGAIN|ESOCKET|ECONNECTION|socket hang up|timed? ?out|closed/i
+
+export async function sendOnce(
+  account: string,
+  m: Parameters<typeof compose>[1],
+  hands: SendHands,
+): Promise<{ sent: true; to: string; subject: string; id: string; words?: string }> {
+  const id = `<alpha-${randomUUID()}@${account.split('@')[1] ?? 'alpha.local'}>`
+  try {
+    await hands.send({ ...compose(account, m), messageId: id })
+    return { sent: true, to: m.to, subject: m.subject, id }
+  } catch (err) {
+    const e = err as { responseCode?: number; code?: string; message?: string }
+    const said = e.message ?? String(err)
+    if (
+      e.responseCode === 421 ||
+      (e.responseCode && e.responseCode < 500 && /\b4\.7\.\d/.test(said))
+    )
+      throw new Problem(`Gmail asked to slow down: ${said}`, 'busy')
+    if (e.responseCode && e.responseCode >= 500)
+      throw new Problem(
+        /5\.4\.5|sending limit|quota/i.test(said)
+          ? `Gmail's sending limit for today is reached on ${account}, so the email to ${m.to} was not sent.`
+          : `Gmail refused the email to ${m.to}: ${said}`,
+      )
+    if (!DROPPED.test(`${e.code ?? ''} ${said}`)) throw err
+    for (const ms of [0, 5000]) {
+      await hands.wait(ms)
+      if (await hands.inSent(id))
+        return {
+          sent: true,
+          to: m.to,
+          subject: m.subject,
+          id,
+          words: 'Gmail took it before the connection dropped; it is in Sent.',
+        }
+    }
+    throw new Problem(
+      `The email to ${m.to} was not sent: the connection to Gmail dropped and Sent has no such message. Nothing went, so it can be sent again.`,
+    )
+  }
+}
+
+async function inSent(client: ImapFlow, id: string): Promise<boolean> {
+  const lock = await client.getMailboxLock(await mailbox(client, '\\Sent'))
+  try {
+    const found = await client.search(
+      { header: { 'message-id': id.replace(/^<|>$/g, '') } },
+      { uid: true },
+    )
+    return Array.isArray(found) && found.length > 0
+  } finally {
+    lock.release()
+  }
 }
 
 // Only the values a message has: a recorded answer from an older shape lacks the newer ones.
@@ -366,16 +435,21 @@ export const gmail: Connector = {
       preview,
       words: (m) => `Send an email to ${m.to}`,
       run: async (c, m) =>
-        c.call('send', { to: m.to, subject: m.subject }, async () => {
-          const transport = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
-            auth: { user: c.host.account, pass: await secret(c) },
-          })
-          const info = await transport.sendMail(compose(c.host.account, m))
-          return { sent: true, to: m.to, subject: m.subject, id: info.messageId }
-        }),
+        c.call('send', { to: m.to, subject: m.subject }, async () =>
+          sendOnce(c.host.account, m, {
+            send: async (mail) => {
+              const transport = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,
+                auth: { user: c.host.account, pass: await secret(c) },
+              })
+              return transport.sendMail(mail)
+            },
+            inSent: (id) => withImap(c, (client) => inSent(client, id)),
+            wait: (ms) => new Promise((ok) => setTimeout(ok, ms)),
+          }),
+        ),
     }),
   },
   check: async (c) => {

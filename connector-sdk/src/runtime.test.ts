@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { type Host, type Manifest, Problem } from './connector.ts'
 import { judgeHealth, makeCall } from './runtime.ts'
 
-const judgements = { retries: 2, fewerRowsRatio: 0.5, quietDays: 7 }
+const judgements = { retries: 2, busyWaitMs: 300_000, fewerRowsRatio: 0.5, quietDays: 7 }
 let dir: string
 let lines: { words: string; data?: Record<string, unknown> }[]
 
@@ -61,6 +61,50 @@ describe('a connection’s calls', () => {
     ).rejects.toThrow(/not accepted/)
     expect(tries).toBe(1)
     expect(lines[0]?.words).toBe('Test: login did not work')
+  })
+
+  it('never try again a call that changes something, when its fate is unknown', async () => {
+    const c = makeCall(manifest(), host(), { judgements, sleep: async () => {}, once: true })
+    let tries = 0
+    await expect(
+      c.call('send', { to: 'a@b.example' }, async () => {
+        tries++
+        throw new Error('Connection timed out')
+      }),
+    ).rejects.toThrow(/timed out/)
+    expect(tries).toBe(1)
+  })
+
+  it('wait out a service that asks to wait, as long as it asked, a send too', async () => {
+    const slept: number[] = []
+    const c = makeCall(manifest(), host(), {
+      judgements,
+      sleep: async (ms) => {
+        slept.push(ms)
+      },
+      once: true,
+    })
+    let tries = 0
+    const out = await c.call('send', {}, async () => {
+      tries++
+      if (tries === 1)
+        throw Object.assign(new Error('Too Many Requests'), {
+          status: 429,
+          headers: new Headers({ 'retry-after': '12' }),
+        })
+      if (tries === 2) throw new Problem('Try again later.', 'busy')
+      return 'sent'
+    })
+    expect([out, tries, slept]).toEqual(['sent', 3, [12_000, 10_000]])
+    // past the bound, it says so and stops
+    const d = makeCall(manifest(), host(), { judgements, sleep: async () => {} })
+    await expect(
+      d.call('read', {}, async () => {
+        throw new Problem('Slow down.', 'busy', { retryAfterMs: 400_000 })
+      }),
+    ).rejects.toThrow(
+      'Test asked Alpha to wait longer than 5 minutes, so read was not done. Try again later.',
+    )
   })
 
   it('stop for the day when the day’s budget is used', async () => {

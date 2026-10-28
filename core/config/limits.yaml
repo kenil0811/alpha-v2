@@ -24,8 +24,14 @@ journey_step_minutes: 10
 # (item 48 of the problems list, 25 Oct). A journeys-runner judgement, never met by the person.
 journey_times: 3
 
-# Attempts after the first, for a connector call that failed in passing (a dropped connection).
+# Attempts after the first, for a connector call that reads and failed in passing (a dropped
+# connection). A send or a write is never tried again: whether it was done is unknown (call A,
+# 28 Oct).
 connector_retries: 2
+
+# The most, in all, a connector call waits for a service that asked it to (429, "too many
+# requests"), before it says so and stops. A runtime judgement, never met by the person.
+connector_busy_wait_seconds: 300
 
 # A sync that holds less than this share of last time's rows is suspect: said, not hidden.
 health_fewer_rows_ratio: 0.5

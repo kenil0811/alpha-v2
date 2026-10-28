@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { gmail } from '@alpha/connector-gmail'
 import { type Connector, MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import type { Connection } from '../world/connections.ts'
 import { World } from '../world/world.ts'
 import { loadSet, STANDARD_DIR } from './discover.ts'
 import { ConnectorService } from './service.ts'
@@ -159,6 +160,24 @@ describe('a Gmail connection on recorded answers', () => {
     expect(Object.keys(svc.servers()).sort()).toEqual(['calendar', 'contacts', 'gmail'])
     expect(svc.connector('calendar').manifest.auth).toBe('system')
     expect(svc.connector('calendar').manifest.system?.pane).toBe('Calendars')
+  })
+
+  it('never tries a send again when its fate is unknown (call A)', async () => {
+    const svc = new ConnectorService(world, { secrets, known: [gmail] })
+    const conn = {
+      id: 'k_1',
+      account: 'kenil@example.com',
+      secretRef: null,
+    } as unknown as Connection
+    let tries = 0
+    const send = svc.call(gmail, conn, 'outward')
+    await expect(
+      send.call('send', { to: 'priya@harbor.example' }, async () => {
+        tries++
+        throw new Error('Connection timed out')
+      }),
+    ).rejects.toThrow(/timed out/)
+    expect(tries).toBe(1)
   })
 
   it('answers for the set it was given, and refuses a name the model’s own servers use', () => {

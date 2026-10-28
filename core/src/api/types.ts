@@ -234,8 +234,7 @@ export interface TableSummary {
   id: string
   name: string
   rows: number
-  // a tab, on its row (`of`), under Agents and notes (step 3a), or People's columns (step 4)
-  place: 'main' | 'part' | 'setup' | 'people'
+  place: 'main' | 'part' | 'setup' | 'people' // a tab, on its row (`of`), setup, People's columns
   of: string | null
 }
 
