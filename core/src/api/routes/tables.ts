@@ -205,6 +205,15 @@ export function registerTables(ctx: Ctx): void {
     }
   })
 
+  // The person keeps a part or a setup table as a tab of its module, or takes it away (28 Oct).
+  app.post('/api/tables/:id/tab', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { tab } = z.object({ tab: z.boolean() }).parse(req.body)
+    const t = world.shape.setTab(id, tab, { actor: { kind: 'person', id: user.id }, user: user.id })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { tab: t.tab }
+  })
+
   // The person removes rows they ticked, having said yes in the window; the journal keeps them.
   app.post('/api/tables/:id/rows/remove', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

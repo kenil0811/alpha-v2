@@ -23,6 +23,8 @@ export const Check = z.union([
   z.object({
     place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup', 'people']) }),
   }),
+  // a table kept as a tab of its module, wherever it sits (28 Oct)
+  z.object({ tab: z.object({ table: z.string(), is: z.boolean() }) }),
   // what the model's own views say: how many rows a query gives, or words its rows hold
   z.object({
     query: z.object({
@@ -144,6 +146,15 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `${check.place.table} is ${check.place.is}`,
       ok: is === check.place.is,
       saw: is,
+    }
+  }
+  if ('tab' in check) {
+    const t = world.shape.table(check.tab.table)
+    const is = !!t?.tab
+    return {
+      check: `${check.tab.table} is ${check.tab.is ? '' : 'not '}a tab`,
+      ok: !!t && is === check.tab.is,
+      saw: t ? (is ? 'a tab' : 'not a tab') : 'no such table',
     }
   }
   if ('no_table' in check) {

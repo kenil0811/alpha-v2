@@ -109,6 +109,8 @@ export const Manifest = z.object({
         about: z.string().optional(), // one sentence on what a row of it is
         // what the module's agents read (sources, goals, rules): under Agents and notes, not a tab
         setup: z.boolean().optional(),
+        // a part or a setup table kept as a tab too, every row of it; the person's choice stands
+        tab: z.boolean().optional(),
         fields: z.array(Field),
         // the kinds of document its rows take (a deal's teaser, CIM, NDA), filed on a row
         documents: z.array(z.string().min(1)).optional(),

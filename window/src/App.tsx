@@ -527,10 +527,11 @@ export function App() {
                     }
                     version={version}
                     table={table}
-                    renderTable={(t) => (
+                    renderTable={(t, summary) => (
                       <TableView
                         key={t.id}
                         data={t}
+                        summary={summary}
                         row={place.at === 'table' ? place.row : null}
                         only={place.at === 'table' ? place.only : null}
                         of={place.at === 'table' ? place.of : null}

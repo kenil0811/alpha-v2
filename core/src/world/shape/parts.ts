@@ -55,6 +55,37 @@ export function setSetup(shape: Shape, tableId: string, setup: boolean, ctx: Wri
   })
 }
 
+// A table kept as a tab of its module, or not (28 Oct): a part or a setup table shown among the
+// tabs too, every row of it; where it sits and what goes with its rows don't change. A main table
+// is a tab already, and People's columns live on People.
+export function setTab(shape: Shape, tableId: string, tab: boolean, ctx: WriteCtx): Table {
+  return tx(shape.db, () => {
+    const table = shape.table(tableId)
+    if (!table) throw new Refused('That table is not there.')
+    const place = placeOf(table)
+    if (place === 'main')
+      throw new Refused(`${table.name} is one of ${table.module.name}'s tabs already.`)
+    if (place === 'people')
+      throw new Refused(`${table.name} is People's columns: it shows on People, not as a tab.`)
+    if (table.tab === tab) return table
+    run(shape.db, 'UPDATE tables SET tab = ? WHERE id = ?', tab ? 1 : 0, table.id)
+    append(shape.db, {
+      actor: ctx.actor,
+      kind: 'shaped',
+      words: tab
+        ? `${table.name} is a tab of ${table.module.name} now, every row of it; its rows stay where they are.`
+        : `${table.name} is no longer a tab of ${table.module.name}.`,
+      data: { table: table.id, tab },
+      user: ctx.user ?? null,
+      turn: ctx.turn ?? null,
+      module: table.module.id,
+      run: ctx.run ?? null,
+    })
+    writeManifest(shape, table.module)
+    return shape.table(table.id) as Table
+  })
+}
+
 // A relation made part of its row, or not. Made part of only when every row has its row: a part
 // is never on its own.
 export function setPartOf(

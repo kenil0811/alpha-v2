@@ -182,6 +182,7 @@ export function writeManifest(shape: Shape, m: Module): void {
       name: t.name,
       ...(t.about ? { about: t.about } : {}),
       ...(t.setup ? { setup: true } : {}),
+      ...(t.tab ? { tab: true } : {}),
       fields: t.fields.map((f) => ({
         name: f.name,
         kind: f.kind,

@@ -236,6 +236,7 @@ export interface TableSummary {
   rows: number
   place: 'main' | 'part' | 'setup' | 'people' // a tab, on its row (`of`), setup, People's columns
   of: string | null
+  tab: boolean // a part or setup table kept as a tab too (28 Oct)
 }
 
 export interface ModuleSummary {
@@ -560,8 +561,7 @@ export interface ModelView {
 // A run in Activity: an agent's or a reader's, or a connection reading its account.
 export interface RunView {
   id: string
-  // an agent's run, a connection's read, a turn of Alpha's that changed rows, a removal outside
-  // both, or a revert the person made
+  // an agent's run, a connection's read, Alpha's turn changing rows, a removal, a person's revert
   kind: 'run' | 'read' | 'turn' | 'removal' | 'revert'
   name: string
   module: string | null // its name

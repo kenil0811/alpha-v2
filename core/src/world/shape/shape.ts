@@ -23,7 +23,7 @@ import {
   tonesSetByOthers,
 } from './fields.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
-import { partRows, partsOf, setPartOf, setSetup } from './parts.ts'
+import { partRows, partsOf, setPartOf, setSetup, setTab } from './parts.ts'
 import { perAllowed, setPer } from './per.ts'
 import {
   clearPointers,
@@ -207,13 +207,14 @@ export class Shape {
       slug: string
       hidden: number
       setup: number
+      tab: number
       documents: string | null
       people: string | null
       about: string | null
       about_by: AboutBy | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, hidden, setup, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, hidden, setup, tab, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -271,6 +272,7 @@ export class Shape {
       slug: t.slug,
       hidden: t.hidden === 1,
       setup: t.setup === 1,
+      tab: t.tab === 1,
       fields,
       documents: t.documents ? parse<string[]>(t.documents, []) : null,
       people: t.people ? parse<PeopleMap | null>(t.people, null) : null,
@@ -479,6 +481,9 @@ export class Shape {
   }
   setSetup(tableId: string, setup: boolean, ctx: WriteCtx): Table {
     return setSetup(this, tableId, setup, ctx)
+  }
+  setTab(tableId: string, tab: boolean, ctx: WriteCtx): Table {
+    return setTab(this, tableId, tab, ctx)
   }
   setPartOf(tableId: string, field: string, partOf: boolean, ctx: WriteCtx): Table {
     return setPartOf(this, tableId, field, partOf, ctx)

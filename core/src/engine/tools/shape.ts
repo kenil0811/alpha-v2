@@ -28,6 +28,7 @@ const SHAPE_INPUT = {
     'describe',
     'part_of',
     'setup',
+    'keep_tab',
     'many',
     'per',
     'business_case',
@@ -46,6 +47,7 @@ const SHAPE_INPUT = {
   what: z.enum(['table', 'field', 'view']).optional(), // what describe describes; field when field is given
   setup: z.boolean().optional(), // make_table and setup: a table the module's agents read
   part_of: z.boolean().optional(), // part_of: the relation field's rows are part of their row, or not
+  tab: z.boolean().optional(), // keep_tab: a part or setup table shown as a tab too, or not
   per: z.boolean().optional(), // per: false takes a table's one row per person off
   // a module's business case (core step 3e): who it is for, what it keeps, the decisions it serves
   business_case: z
@@ -59,8 +61,9 @@ export const MAINTAINED_SHAPE = 'maintained_shape'
 // The module a shape change is to, and its kit, when someone else maintains it. Arrangement
 // (views, placement) is the person's under any mark; shape is what goes to the maintainer.
 function maintainedKit(world: World, a: ShapeAction) {
-  // where a table shows (setup) is arrangement, the person's under any mark; part of is shape
-  if (['save_view', 'remove_view', 'place_module', 'setup'].includes(a.action)) return null
+  // where a table shows (setup, a tab) is arrangement, the person's under any mark; part of is shape
+  if (['save_view', 'remove_view', 'place_module', 'setup', 'keep_tab'].includes(a.action))
+    return null
   const module =
     a.action === 'make_table'
       ? world.shape.module(a.module?.trim() || a.table || '')
@@ -275,6 +278,14 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
           : `${t.name} is one of ${t.module.name}'s main tables again.`,
       )
     }
+    case 'keep_tab': {
+      const t = world.shape.setTab(tableOf(world, table).id, a.tab !== false, c)
+      return say(
+        t.tab
+          ? `${t.name} is a tab of ${t.module.name} now, every row of it; each row is still where it was.`
+          : `${t.name} is no longer a tab of ${t.module.name}.`,
+      )
+    }
     case 'remove_view': {
       const t = tableOf(world, table)
       const views = world.views.list(t.id)
@@ -308,6 +319,7 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'place_module: put a module inside another; give module and within (the module it goes inside; leave within out for the top level). A module never goes inside itself or one of its own.',
         'part_of: give table, field (a relation to one row) and part_of (false to undo): its rows become part of the row they point at, as a deal’s yearly figures are part of the deal. A part shows on its row, not as a tab; it goes and comes back with it; it is never without one. A table whose rows each belong to one row of another is made with that relation part_of: true; then it needs no tab of its own.',
         'setup: give table and setup (false to undo): a table the module’s agents read (sources, goals, rules, templates), shown under Agents and notes, not as a tab. make_table takes setup: true too.',
+        'keep_tab: give table and tab (false to undo): a part or a setup table kept as a tab of its module too, every row of it, when the person asks for it to be always there. Its rows stay part of their row, or setup: when a part should be a tab, this is the way, never part_of: false.',
         'many: give table and field: a relation comes to hold a list of rows, or a choice several of its choices (tags); each row keeps its one value as the first.',
         'per: give table and field (a person field), and per: false to undo: the table holds one row per person (how close each one is, their tier); rows that share a person fold into one; a second row for someone is refused, and a merge of two people folds their rows. make_table takes per: person on a person field too.',
         `Field kinds: ${FIELD_KINDS.join(', ')}. A main table gets Notes (kind notes) on its own: a row's free notes, one per table. A relation names the table it relates_to, and many: true when it holds a list of rows, or part_of: true when its rows are part of that one row. A choice may carry tones (a choice: good, warn, bad or accent) where it means a state, and many: true when a row takes several (tags).`,

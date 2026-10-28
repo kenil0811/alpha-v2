@@ -111,6 +111,11 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
   const usedTables = new Set(m.uses.flatMap((u) => u.tables))
   const keys = new Set<string>()
   for (const t of m.tables) {
+    // a tab kept is a part's or a setup table's: a main table is a tab already
+    if (t.tab && !t.setup && !t.fields.some((f) => f.part_of))
+      problems.push(
+        `${t.name} is one of the module's tabs already: tab is for a part or a setup table.`,
+      )
     for (const f of t.fields) {
       const key = `${t.name}:${f.key ?? f.name}`
       if (keys.has(key)) problems.push(`${t.name} has two fields keyed ${f.key ?? f.name}.`)

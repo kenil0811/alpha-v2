@@ -10,6 +10,7 @@ import type {
   RowView,
   SavedView,
   TableView as TableData,
+  TableSummary,
   ViewConfig,
 } from '@alpha/core/api'
 import {
@@ -76,6 +77,7 @@ export function TableView({
   row: openRow,
   only = null,
   of = null,
+  summary = null,
   field: openField = null,
   quiet = false,
   kept = null,
@@ -84,6 +86,7 @@ export function TableView({
   row?: string | null
   only?: string[] | null // the rows a page opened: only these, until Show all
   of?: string | null // a row whose parts these are, from its view: only those, until Show all
+  summary?: TableSummary | null // where it sits in its module, and whether it is kept as a tab
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
   // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
@@ -320,6 +323,12 @@ export function TableView({
                 layout={layout}
                 adding={!kept}
                 onConfig={setConfig}
+                tab={
+                  summary && (summary.place === 'part' || summary.place === 'setup')
+                    ? summary.tab
+                    : null
+                }
+                onTab={(tab) => write(() => api.post(`/api/tables/${data.id}/tab`, { tab }))}
                 onCopy={() =>
                   navigator.clipboard?.writeText(
                     [
@@ -654,6 +663,8 @@ function More({
   onConfig,
   onExport,
   onCopy,
+  tab = null,
+  onTab,
 }: {
   tableId: string
   fields: FieldView[]
@@ -664,6 +675,8 @@ function More({
   onConfig: (c: ViewConfig) => void
   onExport: (as: 'csv' | 'xlsx') => void
   onCopy: () => void
+  tab?: boolean | null // a part or setup table: whether it is kept as a tab; null for the rest
+  onTab?: (tab: boolean) => void
 }) {
   const [open, setOpen] = useState(false)
   const [add, setAdd] = useState(false)
@@ -774,6 +787,17 @@ function More({
           <Plus className="size-3.5 text-ink-3" />
           Add column
         </MenuItem>
+        {tab !== null && (
+          <MenuItem
+            checked={tab}
+            onClick={() => {
+              setOpen(false)
+              onTab?.(!tab)
+            }}
+          >
+            Keep as a tab
+          </MenuItem>
+        )}
         <MenuLine />
         <SubMenu
           label={

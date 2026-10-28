@@ -28,3 +28,9 @@ steps:
       - rows_in: { table: Deals, count: 1 }
       - rows_in: { table: Financials, count: 2 }
       - errors: 0
+  # kept as a tab on the person's word (28 Oct): still part of each deal, and a tab of its own too
+  - say: Keep Financials as a tab in Deal desk.
+    checks:
+      - tab: { table: Financials, is: true }
+      - place: { table: Financials, is: part }
+      - errors: 0

@@ -6,7 +6,13 @@
 // Alpha reads first, what ran lately, and what Alpha may do here. Nothing sits under a table or a
 // page (Kenil, 26 Oct). A module holding others opens on its Overview, else on its front page,
 // else its first table.
-import type { ModuleView, RuleView, RunView, TableView as TableData } from '@alpha/core/api'
+import type {
+  ModuleView,
+  RuleView,
+  RunView,
+  TableView as TableData,
+  TableSummary,
+} from '@alpha/core/api'
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
@@ -45,7 +51,7 @@ export function ModuleScreen({
   version: number
   table: TableData | null
   conversation: ReactNode
-  renderTable: (t: TableData) => ReactNode
+  renderTable: (t: TableData, summary: TableSummary | null) => ReactNode
 }) {
   const [m, setM] = useState<ModuleView | null>(null)
   const load = useCallback(() => {
@@ -113,7 +119,7 @@ export function ModuleScreen({
         ) : current.kind === 'agents' ? (
           m && <AgentsAndNotes m={m} version={version} onChange={load} />
         ) : table && table.id === current.id ? (
-          renderTable(table)
+          renderTable(table, m?.tables.find((x) => x.id === table.id) ?? null)
         ) : (
           <p className="p-7 text-ink-3">Loading…</p>
         )}
@@ -123,7 +129,8 @@ export function ModuleScreen({
 }
 
 // A module's own tabs after People and the Overview: its pages, its main tables with their counts
-// (a table that is part of a row, or setup, is not a tab: core step 3a), its
+// (a table that is part of a row, or setup, is not a tab: core step 3a), then the parts and setup
+// tables kept as tabs (28 Oct), its
 // Conversation and its Agents and notes; People's screen shows them too, none chosen.
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
@@ -136,15 +143,16 @@ export const moduleTabs = (
     icon: <LayoutDashboard className="size-3.5" />,
     sel: current?.kind === 'page' && current.name === p.name,
   })),
-  ...m.tables
-    .filter((t) => t.place === 'main')
-    .map((t) => ({
-      key: `t:${t.id}`,
-      href: `#/table/${t.id}`,
-      label: t.name,
-      count: t.rows,
-      sel: current?.kind === 'table' && current.id === t.id,
-    })),
+  ...[
+    ...m.tables.filter((t) => t.place === 'main'),
+    ...m.tables.filter((t) => t.place !== 'main' && t.tab),
+  ].map((t) => ({
+    key: `t:${t.id}`,
+    href: `#/table/${t.id}`,
+    label: t.name,
+    count: t.rows,
+    sel: current?.kind === 'table' && current.id === t.id,
+  })),
   {
     key: 'conversation',
     href: `#/module/${m.id}/conversation`,
@@ -340,6 +348,22 @@ function AgentsAndNotes({
                           ? "People's columns"
                           : `Part of ${t.of ?? 'a row'}`}
                     </span>
+                    {t.place !== 'people' && (
+                      <button
+                        type="button"
+                        disabled={busy && on === t.id}
+                        onClick={() =>
+                          act(() => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }), t.id)
+                        }
+                        className={
+                          t.tab
+                            ? 'text-accent hover:underline'
+                            : 'text-ink-3 hover:text-ink hover:underline'
+                        }
+                      >
+                        {t.tab ? 'A tab' : 'Keep as a tab'}
+                      </button>
+                    )}
                     <span className="w-14 text-right text-ink-3 tabular-nums">
                       {t.rows.toLocaleString()}
                     </span>

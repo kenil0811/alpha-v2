@@ -4,6 +4,7 @@ import { run } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import { setPer } from '../../world/records/fold.ts'
 import type { FieldInput, Module, PeopleMap, Table, WriteCtx } from '../../world/shape/index.ts'
+import { placeOf } from '../../world/shape/parts.ts'
 import { hashOf, resolveConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
 import { rowHash } from './read.ts'
@@ -175,6 +176,11 @@ export function shapeTables(
     // person's after that, so a kit never takes one back out
     if (spec.setup && !(world.shape.table(t.id) as Table).setup)
       world.shape.setSetup(t.id, true, ctx)
+    // a table the kit keeps as a tab, the first time it says so: whether it stays one is the
+    // person's after that, so a line saying someone chose leaves it as they left it
+    const now = world.shape.table(t.id) as Table
+    if (spec.tab && !now.tab && !tabChosen(world, t.id) && ['part', 'setup'].includes(placeOf(now)))
+      world.shape.setTab(t.id, true, ctx)
     // what each means, as the kit says it; a sentence the person wrote stands (describe says so)
     if (spec.about) world.shape.describe({ table: t.id }, spec.about, 'kit', ctx)
     for (const f of spec.fields) {
@@ -334,4 +340,13 @@ function madeAList(world: World, field: string): boolean {
       "SELECT 1 FROM journal WHERE kind = 'shaped' AND json_extract(data, '$.field') = ? AND json_extract(data, '$.many') = 1 LIMIT 1",
     )
     .get(field)
+}
+
+// Whether a table was ever kept as a tab or taken off the tabs, by anyone: theirs from then on.
+function tabChosen(world: World, table: string): boolean {
+  return !!world.db
+    .prepare(
+      "SELECT 1 FROM journal WHERE kind = 'shaped' AND json_extract(data, '$.table') = ? AND json_extract(data, '$.tab') IS NOT NULL LIMIT 1",
+    )
+    .get(table)
 }

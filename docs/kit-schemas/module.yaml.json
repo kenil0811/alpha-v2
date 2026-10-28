@@ -163,6 +163,9 @@
           "setup": {
             "type": "boolean"
           },
+          "tab": {
+            "type": "boolean"
+          },
           "fields": {
             "type": "array",
             "items": {

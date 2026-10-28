@@ -556,6 +556,11 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   `
   ALTER TABLE tables ADD COLUMN setup INTEGER NOT NULL DEFAULT 0;
   `,
+  // 24: a table kept as a tab of its module wherever it sits (28 Oct): the person's choice or its
+  // kit's; its rows stay where they are
+  `
+  ALTER TABLE tables ADD COLUMN tab INTEGER NOT NULL DEFAULT 0;
+  `,
 ]
 
 // Bring a world up to the newest schema; back it up first when it already holds a schema.

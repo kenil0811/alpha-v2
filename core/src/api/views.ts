@@ -36,6 +36,7 @@ export function tableSummary(world: BaseCtx['world'], t: Table): TableSummary {
     rows: world.records.count(t.id),
     place: placeOf(t),
     of: part ? (world.shape.table(part.relatesTo ?? '')?.name ?? null) : null,
+    tab: t.tab,
   }
 }
 
