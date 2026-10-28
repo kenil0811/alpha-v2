@@ -33,6 +33,7 @@ export interface RowAround {
     relation: string // the part's field naming this row
     fields: FieldView[]
     rows: { id: string; values: Record<string, unknown> }[]
+    names: Record<string, string> // the people and rows its fields name, by name
   }[]
   links: {
     table: { id: string; name: string }

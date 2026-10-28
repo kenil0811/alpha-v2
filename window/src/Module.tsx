@@ -317,7 +317,7 @@ function AgentsAndNotes({
         {m.tables.some((t) => t.place !== 'main') && (
           <Section
             title="Tables"
-            sub="Setup its agents read, and the tables whose rows are part of a row. Each opens on its own too."
+            sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
           >
             <ul className="flex flex-col">
               {m.tables
@@ -334,7 +334,11 @@ function AgentsAndNotes({
                       {t.name}
                     </a>
                     <span className="text-ink-3">
-                      {t.place === 'setup' ? 'Setup' : `Part of ${t.of ?? 'a row'}`}
+                      {t.place === 'setup'
+                        ? 'Setup'
+                        : t.place === 'people'
+                          ? "People's columns"
+                          : `Part of ${t.of ?? 'a row'}`}
                     </span>
                     <span className="w-14 text-right text-ink-3 tabular-nums">
                       {t.rows.toLocaleString()}

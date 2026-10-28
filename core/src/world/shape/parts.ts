@@ -6,16 +6,21 @@ import { all, json, one, parse, run, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
-import { writeManifest } from './manifest.ts'
+import { manifestSays, writeManifest } from './manifest.ts'
 import type { Shape } from './shape.ts'
 import type { Table, WriteCtx } from './types.ts'
 import { findField } from './types.ts'
 
-export type Place = 'main' | 'part' | 'setup'
+// people: a one-row-per-person table of the module People lives in (step 4, Network): its rows
+// are People's columns and a person's page, so it is no tab of its own either
+export type Place = 'main' | 'part' | 'setup' | 'people'
 
 export function placeOf(t: Table): Place {
   if (t.setup) return 'setup'
-  return t.fields.some((f) => f.partOf) ? 'part' : 'main'
+  if (t.fields.some((f) => f.partOf)) return 'part'
+  return t.fields.some((f) => f.per === 'person') && manifestSays(t.module, 'people')
+    ? 'people'
+    : 'main'
 }
 
 // The tables whose rows are part of this one's, each with the relation that says so.

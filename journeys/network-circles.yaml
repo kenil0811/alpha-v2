@@ -28,3 +28,11 @@ steps:
     checks:
       - card: { gate: leaves_world, detail: 'Hi Sam' }
       - errors: 0
+      # Network 0.4.0 (step 4): its tables in the places step 3 built, its rows where they were
+      - place: { table: Members, is: part }
+      - place: { table: Circles, is: setup }
+      - place: { table: Closeness rules, is: setup }
+      - place: { table: Notes, is: setup }
+      - place: { table: LinkedIn, is: setup }
+      - place: { table: Closeness, is: people }
+      - place: { table: Follow-ups, is: main }

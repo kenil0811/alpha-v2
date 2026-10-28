@@ -2,7 +2,10 @@
 
 Who the person knows, in circles they name. The people themselves are Alpha's own (view `people`:
 from Contacts, the people they write to, small meetings, LinkedIn, and the rows of their modules
-that name someone); this module is the person's way of keeping them.
+that name someone); this module is the person's way of keeping them. Its tabs are People,
+Organizations and Follow-ups: Closeness is People's columns, each Member is part of its circle (on
+the circle's row), and Circles, Closeness rules, Notes and LinkedIn are setup, under Agents and
+notes (Network 0.4.0).
 
 - **Circles:** the person's own groups, each with who belongs in it in their words, whether they
   keep it warm and how often (Every (days)). Rename, change or remove any; add one in a sentence.

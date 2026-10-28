@@ -77,7 +77,7 @@ export function startLayer(
     // tables with their counts and what each is; the fields come with the first touch of a table
     for (const t of m.tables)
       parts.push(
-        `- ${t.name} (view ${t.view}${t.place === 'setup' ? ', setup' : t.place === 'part' ? `, part of ${t.of}` : ''}), ${t.rows} row${t.rows === 1 ? '' : 's'}${t.about ? `: ${t.about}` : ''}${t.documents?.length ? ` Its rows take documents: ${t.documents.join(', ')}.` : ''}`,
+        `- ${t.name} (view ${t.view}${t.place === 'setup' ? ', setup' : t.place === 'part' ? `, part of ${t.of}` : t.place === 'people' ? ", one row per person, People's columns" : ''}), ${t.rows} row${t.rows === 1 ? '' : 's'}${t.about ? `: ${t.about}` : ''}${t.documents?.length ? ` Its rows take documents: ${t.documents.join(', ')}.` : ''}`,
       )
     const skills = skillsOf(m.dir)
     if (skills.length)

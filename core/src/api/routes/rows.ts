@@ -98,14 +98,37 @@ export function registerRows(ctx: Ctx): void {
     const parts = world.shape.partsOf(t.id).map((p) => {
       const rel = p.table.fields.find((f) => f.id === p.field)
       const ids = rel ? world.records.idsWhere(p.table.id, rel.name, [row]) : []
+      const rows = ids.flatMap((rid) => {
+        const r = world.records.get(rid)
+        return r ? [{ id: rid, values: r.record.values }] : []
+      })
+      // the people and rows its fields name, so the small table shows names, not ids
+      const said = (kind: string) =>
+        p.table.fields
+          .filter((f) => f.kind === kind)
+          .flatMap((f) => rows.map((r) => r.values[f.slug]))
+          .flatMap((v) => (Array.isArray(v) ? v : v ? [v] : []))
+          .map(String)
+      const names: Record<string, string> = world.people.names(said('person'))
+      for (const f of p.table.fields)
+        if (f.kind === 'relation' && f.relatesTo && f.id !== p.field) {
+          const other = world.shape.table(f.relatesTo)
+          if (other)
+            for (const x of named(
+              other,
+              rows.flatMap((r) => {
+                const v = r.values[f.slug]
+                return (Array.isArray(v) ? v : v ? [v] : []).map(String)
+              }),
+            ))
+              names[x.id] = x.name
+        }
       return {
         table: { id: p.table.id, name: p.table.name },
         relation: rel?.name ?? '',
         fields: p.table.fields.filter((f) => f.id !== p.field && f.kind !== 'notes').map(fieldView),
-        rows: ids.flatMap((rid) => {
-          const r = world.records.get(rid)
-          return r ? [{ id: rid, values: r.record.values }] : []
-        }),
+        rows,
+        names,
       }
     })
     // the rows of other tables that link here, not as their part

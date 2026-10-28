@@ -9,7 +9,7 @@ import { Engine } from '../engine/engine.ts'
 import type { Table } from '../world/shape/index.ts'
 import { World } from '../world/world.ts'
 import { buildServer } from './server.ts'
-import type { KeptTable, PersonView } from './types.ts'
+import type { KeptTable, ModuleView, PersonView } from './types.ts'
 
 const alpha = { actor: { kind: 'alpha' as const } }
 const looked = { kind: 'looked_up' as const, source: { url: 'https://example.com' } }
@@ -100,6 +100,12 @@ it('joins People, a person’s page and the people view, and a typed value makes
   expect(world.sql.query('SELECT name, tier, tiers_name FROM people ORDER BY name').rows).toEqual([
     { name: 'Ann Lee', tier: 'Gold', tiers_name: null },
     { name: 'Bo Chu', tier: 'Gold', tiers_name: null },
+  ])
+  // the table is People's columns, not a tab of its own (step 4), and the start layer says so
+  const mod = (await a.inject({ url: `/api/modules/${m.id}`, headers: ok })).json() as ModuleView
+  expect(mod.tables.map((t) => [t.name, t.place])).toEqual([
+    ['Cards', 'main'],
+    ['Tiers', 'people'],
   ])
   await a.close()
 })

@@ -20,7 +20,9 @@ export const Check = z.union([
   z.object({ documents: z.number() }),
   z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
   // where a table sits in its module (core step 3a): a main table, part of a row, or setup
-  z.object({ place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup']) }) }),
+  z.object({
+    place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup', 'people']) }),
+  }),
   // what the model's own views say: how many rows a query gives, or words its rows hold
   z.object({
     query: z.object({

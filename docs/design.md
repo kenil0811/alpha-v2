@@ -673,7 +673,8 @@ when inside something other than a module, the screen's name centred, and no Fin
 anywhere; UI batch 5). Under it, a screen with parts has **one row of tabs**,
 every label in full (a table's row count beside its name), scrolling sideways when long, never
 cut short or folded to icons (Kenil, 26 Oct). A module's tabs are its pages, its main tables (neither
-part of a row nor setup; core step 3a, no cap), its Conversation and its Agents and notes, which
+part of a row nor setup, nor in the module People lives in one row per person, which are People's
+columns; core step 3a and step 4, no cap), its Conversation and its Agents and notes, which
 holds its agents, its other tables (setup, and parts with the table they are part of, each opening
 on its own), the notes Alpha reads first, what ran lately and Governance (Allowed and Denied side by side, each a sentence with where it came
 from: the sites its readers may read, and the rules that hold there, this module's and all of

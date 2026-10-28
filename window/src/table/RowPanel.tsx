@@ -338,11 +338,13 @@ export function RowBody({
 }
 
 // A row's parts as a small table: a column a field, at most four, each row opening its own view.
+// A row's parts as a small table: its first three fields, one line a row, long words cut with the
+// whole on the tip; Open as a table shows them all.
 function PartTable({ part }: { part: RowAround['parts'][number] }) {
-  const cols = part.fields.slice(0, 4)
+  const cols = part.fields.slice(0, 3)
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-md">
+    <div>
+      <table className="w-full table-fixed border-collapse text-md">
         <thead>
           <tr>
             {cols.map((f) => (
@@ -359,13 +361,17 @@ function PartTable({ part }: { part: RowAround['parts'][number] }) {
           {part.rows.map((r) => (
             <tr key={r.id} className="hover:bg-hover">
               {cols.map((f, i) => (
-                <td key={f.id} className="border-hair border-b py-1.5 pr-3">
+                <td
+                  key={f.id}
+                  className="truncate border-hair border-b py-1.5 pr-3"
+                  title={show(f, r.values[f.slug], part.names) || undefined}
+                >
                   {i === 0 ? (
                     <a href={`#/row/${r.id}`} className="text-ink hover:underline">
-                      {show(f, r.values[f.slug], {}) || EMPTY_WORDS}
+                      {show(f, r.values[f.slug], part.names) || EMPTY_WORDS}
                     </a>
                   ) : (
-                    <span className="text-ink-2">{show(f, r.values[f.slug], {})}</span>
+                    <span className="text-ink-2">{show(f, r.values[f.slug], part.names)}</span>
                   )}
                 </td>
               ))}
