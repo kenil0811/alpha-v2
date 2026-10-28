@@ -130,11 +130,11 @@ export function RowBody({
           <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="flex items-center justify-between">
               <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-                {p.table.name} · {p.rows.length}
+                {p.table.name} · {p.count}
               </div>
-              {p.rows.length > 0 && (
+              {p.count > 0 && (
                 <a
-                  href={`#/table/${p.table.id}?only=${p.rows.map((r) => r.id).join(',')}`}
+                  href={`#/table/${p.table.id}?of=${row.id}`}
                   className="text-accent text-sm hover:underline"
                 >
                   Open as a table
@@ -142,6 +142,9 @@ export function RowBody({
               )}
             </div>
             {p.rows.length > 0 && <PartTable part={p} />}
+            {p.count > p.rows.length && (
+              <span className="text-ink-3 text-sm">and {p.count - p.rows.length} more</span>
+            )}
             {onEdit && (
               <Button size="sm" variant="ghost" className="w-fit" onClick={() => setAdding(p)}>
                 <Plus className="size-3.25" />

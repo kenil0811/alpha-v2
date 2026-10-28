@@ -147,6 +147,28 @@ describe('notes', () => {
 })
 
 describe('a row on its own', () => {
+  it('shows its newest parts with how many in all (core plan step 4)', async () => {
+    const { acme } = firm()
+    const invoices = world.shape.table('Invoices') as Table
+    world.records.add(
+      invoices.id,
+      Array.from({ length: 20 }, (_, i) => ({
+        values: { Number: `INV-${i + 2}`, Client: acme },
+        provenance: looked,
+      })),
+      { actor: alpha },
+    )
+    const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
+    const around = (
+      await a.inject({ url: `/api/rows/${acme}/around`, headers: ok })
+    ).json() as RowAround
+    expect(around.parts[0]?.count).toBe(21)
+    // the twelve changed most lately: the first invoice, the oldest, waits in Open as a table
+    const shown = around.parts[0]?.rows.map((r) => r.values.number)
+    expect(shown).toHaveLength(12)
+    expect(shown).not.toContain('INV-1')
+  })
+
   it('comes with its fields and title, and what is around it', async () => {
     const { clients, acme, bolt } = firm()
     world.records.change(
@@ -175,6 +197,7 @@ describe('a row on its own', () => {
         table: expect.objectContaining({ name: 'Invoices' }),
         relation: 'Client',
         rows: [expect.objectContaining({ values: expect.objectContaining({ number: 'INV-1' }) })],
+        count: 1,
       }),
     ])
     expect(around.parts[0]?.fields.map((f) => f.name)).toEqual(['Number'])

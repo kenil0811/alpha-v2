@@ -4,6 +4,7 @@
 // here is stored: links are the relations the rows already hold, mentions are read from the
 // notes themselves, so there is nothing to keep in step.
 import { z } from 'zod'
+import { config } from '../../config.ts'
 import { all } from '../../world/db.ts'
 import { junctionName, quote } from '../../world/ddl.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -98,7 +99,8 @@ export function registerRows(ctx: Ctx): void {
     const parts = world.shape.partsOf(t.id).map((p) => {
       const rel = p.table.fields.find((f) => f.id === p.field)
       const ids = rel ? world.records.idsWhere(p.table.id, rel.name, [row]) : []
-      const rows = ids.flatMap((rid) => {
+      // the ones changed most lately, with how many in all: Open as a table shows the rest
+      const rows = ids.slice(0, config.limits().parts_shown).flatMap((rid) => {
         const r = world.records.get(rid)
         return r ? [{ id: rid, values: r.record.values }] : []
       })
@@ -128,6 +130,7 @@ export function registerRows(ctx: Ctx): void {
         relation: rel?.name ?? '',
         fields: p.table.fields.filter((f) => f.id !== p.field && f.kind !== 'notes').map(fieldView),
         rows,
+        count: ids.length,
         names,
       }
     })

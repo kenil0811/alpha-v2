@@ -237,19 +237,26 @@ export async function runOne(
       const ran = runner.runs(5).filter((r) => r.startedAt >= new Date(t0).toISOString())
       what = `The scheduler's tick: ${ran.map((r) => r.words).join('; ') || 'nothing was due'}`
     } else if (step.kit) {
-      const m = await install(world, resolve(base, step.kit.from), {
-        actor: { kind: 'person', id: user.id },
-        user: user.id,
-      })
-      const on = step.kit.agents
-      for (const a of agents(world, m.id))
-        setAgentState(
-          world,
-          a.id,
-          Array.isArray(on) ? (on.includes(a.name) ? 'on' : 'paused') : on,
-          user.id,
-        )
-      what = `Installed the kit ${step.kit.from}, ${Array.isArray(on) ? `${on.join(', ')} on` : `its agents ${on}`}`
+      // a kit the core refuses fails the journey, and the journeys after it still run
+      try {
+        const m = await install(world, resolve(base, step.kit.from), {
+          actor: { kind: 'person', id: user.id },
+          user: user.id,
+        })
+        const on = step.kit.agents
+        for (const a of agents(world, m.id))
+          setAgentState(
+            world,
+            a.id,
+            Array.isArray(on) ? (on.includes(a.name) ? 'on' : 'paused') : on,
+            user.id,
+          )
+        what = `Installed the kit ${step.kit.from}, ${Array.isArray(on) ? `${on.join(', ')} on` : `its agents ${on}`}`
+      } catch (err) {
+        if (!(err instanceof Refused)) throw err
+        passed = false
+        what = `**Could not install the kit ${step.kit.from}:** ${err.message}`
+      }
     } else if (step.revert) {
       const rows = world.lines({ kinds: ['wrote', 'changed', 'removed', 'landed'] })
       const target =

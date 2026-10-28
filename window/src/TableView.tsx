@@ -75,6 +75,7 @@ export function TableView({
   data,
   row: openRow,
   only = null,
+  of = null,
   field: openField = null,
   quiet = false,
   kept = null,
@@ -82,6 +83,7 @@ export function TableView({
   data: TableData
   row?: string | null
   only?: string[] | null // the rows a page opened: only these, until Show all
+  of?: string | null // a row whose parts these are, from its view: only those, until Show all
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: the source panel gives way to it
   // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
@@ -155,10 +157,18 @@ export function TableView({
   const fields = useMemo(() => data.fields.filter((f) => f.kind !== 'notes'), [data.fields])
   const notes = data.fields.filter((f) => f.kind === 'notes')
   const shown = columns(fields, config)
-  const base = useMemo(
-    () => (only ? data.rows.filter((r) => only.includes(r.id)) : data.rows),
-    [data.rows, only],
-  )
+  const base = useMemo(() => {
+    if (only) return data.rows.filter((r) => only.includes(r.id))
+    if (!of) return data.rows
+    // the rows naming it in a relation: a part names the row it is part of
+    const rel = data.fields.filter((f) => f.kind === 'relation')
+    return data.rows.filter((r) =>
+      rel.some((f) => {
+        const v = r.values[f.slug]
+        return v === of || (Array.isArray(v) && v.includes(of))
+      }),
+    )
+  }, [data.rows, data.fields, only, of])
   const rows = useMemo(
     () =>
       sortRows(
@@ -374,10 +384,11 @@ export function TableView({
             })
           }
         />
-        {only && (
+        {(only || of) && (
           <div className="flex items-center gap-2 border-line border-b bg-accent-soft px-7 py-2 text-md text-ink-2">
             <span className="flex-1">
-              Showing {base.length} of {data.rows.length} rows, the ones a page counted.
+              Showing {base.length} of {data.rows.length} rows,{' '}
+              {only ? 'the ones a page counted.' : 'the ones part of the row you came from.'}
             </span>
             <a href={`#/table/${data.id}`} className="font-medium text-accent hover:underline">
               Show all

@@ -1,6 +1,6 @@
 import { TONES } from '@alpha/kit-sdk'
 import { json, one, parse, run, tx } from '../db.ts'
-import { columnsOf, dropFieldSql, junctionName, junctionSql, quote } from '../ddl.ts'
+import { addFieldSql, columnsOf, dropFieldSql, junctionName, junctionSql, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import { slugTaken, writeManifest } from './manifest.ts'
@@ -340,6 +340,53 @@ export function setMany(shape: Shape, tableId: string, field: string, ctx: Write
       kind: 'shaped',
       words: `${f.name} in ${table.name} now holds a list of rows.`,
       data: { table: table.id, field: f.id, many: true },
+      user: ctx.user ?? null,
+      turn: ctx.turn ?? null,
+      module: table.module.id,
+      run: ctx.run ?? null,
+    })
+    writeManifest(shape, table.module)
+    return shape.table(table.id) as Table
+  })
+}
+
+// A relation that held a list comes back to holding one row (a kit says one where an installed copy
+// holds a list, core plan step 4): only when no row holds more than one, so nothing is lost; each
+// row's one entry becomes its pointer, the junction table goes.
+export function setOne(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
+  return tx(shape.db, () => {
+    const table = shape.table(tableId)
+    if (!table) throw new Refused('That table is not there.')
+    const f = findField(table, field)
+    if (f.kind !== 'relation') throw new Refused(`${f.name} is not a relation.`)
+    if (!f.many) return table
+    const junction = quote(junctionName(table.slug, f.slug))
+    const two = one<{ n: number }>(
+      shape.db,
+      `SELECT count(*) AS n FROM (SELECT record_id FROM ${junction} GROUP BY record_id HAVING count(*) > 1)`,
+    )?.n
+    if (two)
+      throw new Refused(
+        `${two} row${two === 1 ? '' : 's'} of ${table.name} name${two === 1 ? 's' : ''} more than one in ${f.name}, so it keeps its list.`,
+      )
+    const next = { ...spec(f), many: false }
+    for (const sql of addFieldSql(table.slug, table.id, next)) shape.db.exec(sql)
+    run(
+      shape.db,
+      `UPDATE ${quote(table.slug)} SET ${quote(f.slug)} =
+         (SELECT other_id FROM ${junction} j WHERE j.record_id = ${quote(table.slug)}.id)`,
+    )
+    for (const sql of dropFieldSql(table.slug, table.id, spec(f))) shape.db.exec(sql)
+    const { many: _, ...o } = parse<Record<string, unknown>>(
+      one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+      {},
+    )
+    run(shape.db, 'UPDATE fields SET options = ? WHERE id = ?', json(o), f.id)
+    append(shape.db, {
+      actor: ctx.actor,
+      kind: 'shaped',
+      words: `${f.name} in ${table.name} holds one row again.`,
+      data: { table: table.id, field: f.id, many: false },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,
       module: table.module.id,

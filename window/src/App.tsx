@@ -49,7 +49,8 @@ import { setFoldLines } from './ui/fold.tsx'
 export function placeOf(hash: string): Place {
   const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?$/.exec(hash)
   if (m?.[1]) {
-    // ?only=<rows> (the rows a page counted), ?field=<name> (that value's panel)
+    // ?only=<rows> (the rows a page counted), ?of=<row> (the parts of a row), ?field=<name>
+    // (that value's panel)
     const query = new URLSearchParams(m[3] ?? '')
     const only = query.get('only')
     return {
@@ -57,6 +58,7 @@ export function placeOf(hash: string): Place {
       id: m[1],
       row: m[2] ?? null,
       only: only ? only.split(',').filter(Boolean) : null,
+      of: query.get('of'),
       field: query.get('field'),
     }
   }
@@ -531,6 +533,7 @@ export function App() {
                         data={t}
                         row={place.at === 'table' ? place.row : null}
                         only={place.at === 'table' ? place.only : null}
+                        of={place.at === 'table' ? place.of : null}
                         field={place.at === 'table' ? place.field : null}
                         quiet={asking}
                       />

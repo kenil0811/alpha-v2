@@ -32,7 +32,8 @@ export interface RowAround {
     table: { id: string; name: string }
     relation: string // the part's field naming this row
     fields: FieldView[]
-    rows: { id: string; values: Record<string, unknown> }[]
+    rows: { id: string; values: Record<string, unknown> }[] // the ones changed most lately
+    count: number // how many in all
     names: Record<string, string> // the people and rows its fields name, by name
   }[]
   links: {

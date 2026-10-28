@@ -16,6 +16,7 @@ import {
   setHidden,
   setKey,
   setMany,
+  setOne,
   setPeople,
   setTones,
   toNotes,
@@ -469,6 +470,9 @@ export class Shape {
   }
   setMany(tableId: string, field: string, ctx: WriteCtx): Table {
     return setMany(this, tableId, field, ctx)
+  }
+  setOne(tableId: string, field: string, ctx: WriteCtx): Table {
+    return setOne(this, tableId, field, ctx)
   }
   toNotes(tableId: string, field: string, ctx: WriteCtx): Table {
     return toNotes(this, tableId, field, ctx)
