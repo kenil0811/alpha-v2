@@ -122,6 +122,28 @@
     "description": {
       "type": "string"
     },
+    "business_case": {
+      "type": "object",
+      "properties": {
+        "for": {
+          "type": "string",
+          "minLength": 1
+        },
+        "keeps": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decides": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "for",
+        "keeps",
+        "decides"
+      ]
+    },
     "within": {
       "type": "string",
       "minLength": 1

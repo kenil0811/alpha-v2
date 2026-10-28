@@ -4,8 +4,13 @@
 # (the semantic layer, 24 Oct).
 name: Alpha
 api: 1
-version: 0.3.0
+version: 0.3.1
 core: true
+# what it is for (core step 3e)
+business_case:
+  for: The person, and only them
+  keeps: The decisions and facts they said in conversation, kept once they say yes
+  decides: What to start the day with, which promises become tasks, and what Alpha should remember
 description: >
   Alpha's own agents. Morning, at 07:30: what is due, what changed overnight, what comes, and one
   or two suggestions on a card. Watson, at 12:30 and 18:30: what the person said since last time,

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { parse } from 'yaml'
 import { config } from '../config.ts'
 import type { Table } from '../world/shape/index.ts'
+import { businessCase } from '../world/shape/manifest.ts'
 import { summaryWords } from '../world/shape/summary.ts'
 import type { World } from '../world/world.ts'
 import type { Here } from './tools/common.ts'
@@ -63,6 +64,14 @@ export function startLayer(
   if (!map.length) parts.push('None yet.')
   for (const m of map) {
     parts.push(`### ${m.module}${m.within ? ` (inside ${m.within})` : ''}`)
+    // what it is for, before anything in it (core step 3e)
+    const mod = world.shape.module(m.module)
+    const bc = mod ? businessCase(mod) : null
+    parts.push(
+      bc
+        ? `Business case (${bc.by === 'person' ? "the person's words" : bc.by === 'kit' ? "the kit's" : 'yours, assumed until the person changes it'}): for ${bc.for}; keeps ${bc.keeps}; decides ${bc.decides}.`
+        : 'No business case yet: write one (shape business_case) before its next table.',
+    )
     const notes = readWhole(m.notes)
     if (notes && notes.split('\n').length > 1) parts.push(`Notes:\n${notes}`)
     // tables with their counts and what each is; the fields come with the first touch of a table

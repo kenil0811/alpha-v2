@@ -49,6 +49,11 @@ describe('the shape tool and meaning', () => {
         module: 'Food',
         table: 'Meals',
         about: 'One meal the person ate.',
+        business_case: {
+          for: 'The person',
+          keeps: 'What they eat',
+          decides: 'What to eat less of',
+        },
         fields: [
           { name: 'Food', kind: 'text', about: 'What was eaten.' },
           {

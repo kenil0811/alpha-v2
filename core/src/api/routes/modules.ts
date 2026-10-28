@@ -6,6 +6,7 @@ import { installedKits } from '../../modules/kits/index.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
+import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ModuleSummary, ModuleView } from '../types.ts'
 import { livesPeople, tableSummary } from '../views.ts'
@@ -26,6 +27,26 @@ export function registerModules(ctx: Ctx): void {
     })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { id: m.id, parent: m.parent }
+  })
+
+  // the person's own business case for a module (core step 3e): theirs from then on
+  app.post('/api/modules/:id/case', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const c = z
+      .object({
+        for: z.string().trim().min(1),
+        keeps: z.string().trim().min(1),
+        decides: z.string().trim().min(1),
+      })
+      .parse(req.body)
+    const m = world.shape.module(id)
+    if (!m) throw new Refused('That module is not there.')
+    setBusinessCase(world.shape, m, c, 'person', {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { ok: true }
   })
 
   app.get('/api/modules/:id', async (req, reply): Promise<ModuleView | undefined> => {
@@ -60,6 +81,7 @@ export function registerModules(ctx: Ctx): void {
       })),
       sites: moduleNetwork(m).length,
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
+      businessCase: businessCase(m),
       parent: m.parent,
       pages: pagesOf(m),
       tables: world.shape

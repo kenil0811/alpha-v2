@@ -6,11 +6,13 @@ import { installedKits } from '../../modules/kits/index.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { setPer } from '../../world/records/fold.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
+import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
 import { namedConfig, ViewConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import { Field, guard, ok, tableOf, tool } from './common.ts'
+import { caseFirst, notAPeriod, notOnlyAName } from './walls.ts'
 
 // A shape change as the desk's tool takes it.
 const SHAPE_INPUT = {
@@ -28,6 +30,7 @@ const SHAPE_INPUT = {
     'setup',
     'many',
     'per',
+    'business_case',
   ]),
   module: z.string().optional(),
   within: z.string().optional(),
@@ -44,6 +47,10 @@ const SHAPE_INPUT = {
   setup: z.boolean().optional(), // make_table and setup: a table the module's agents read
   part_of: z.boolean().optional(), // part_of: the relation field's rows are part of their row, or not
   per: z.boolean().optional(), // per: false takes a table's one row per person off
+  // a module's business case (core step 3e): who it is for, what it keeps, the decisions it serves
+  business_case: z
+    .object({ for: z.string().min(1), keeps: z.string().min(1), decides: z.string().min(1) })
+    .optional(),
 }
 export type ShapeAction = z.infer<z.ZodObject<typeof SHAPE_INPUT>>
 
@@ -107,6 +114,17 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
     ...(f.summary ? { summary: f.summary } : {}),
     ...(f.per ? { per: f.per } : {}),
   }))
+  if (a.action === 'business_case') {
+    const m = world.shape.module(a.module?.trim() || '')
+    if (!m || !a.business_case)
+      throw new Refused('business_case needs module and business_case (for, keeps, decides).')
+    const by = c.actor.kind === 'person' ? 'person' : 'alpha'
+    return say(
+      setBusinessCase(world.shape, m, a.business_case, by, c)
+        ? `${m.name} is for ${a.business_case.for}; it keeps ${a.business_case.keeps}, for deciding ${a.business_case.decides}.`
+        : `${m.name} keeps the person's own business case; theirs stands.`,
+    )
+  }
   if (a.action === 'place_module') {
     if (!a.module) throw new Refused('place_module needs module.')
     const m = world.shape.place(a.module, a.within?.trim() || null, c)
@@ -121,7 +139,13 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
         throw new Refused(`make_table needs about: one sentence on what a row of ${table} is.`)
       const moduleName = a.module?.trim() || table
       const existing = world.shape.module(moduleName)
+      // the builder's walls (core step 3e)
+      notAPeriod(table)
+      notOnlyAName(table, fields)
+      caseFirst(existing, moduleName, a.business_case)
       const module = existing ?? world.shape.makeModule(moduleName, c)
+      if (a.business_case && !businessCase(module))
+        setBusinessCase(world.shape, module, a.business_case, 'alpha', c)
       // a main table keeps notes on each row (core step 3b); a part or a setup table does not
       const main = !a.setup && !fields.some((f) => f.partOf)
       if (main && !fields.some((f) => f.kind === 'notes' || f.name.toLowerCase() === 'notes'))
@@ -148,6 +172,7 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
     }
     case 'rename': {
       if (!a.to) throw new Refused('rename needs to.')
+      if (!a.field) notAPeriod(a.to)
       const t = world.shape.rename(
         { table: tableOf(world, table).id, ...(a.field ? { field: a.field } : {}) },
         a.to,
@@ -270,7 +295,9 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
       'shape',
       [
         'Make or change tables, and place modules. Every table and field carries an about: one sentence on what a row or a value means, in the person’s own terms; you write it when you make one (it shows as assumed until they edit it), and the person’s own sentence always stands. Actions:',
-        'make_table: a table with its fields, in a module (made if it is not there yet); give module, table, about, fields (each with about).',
+        'make_table: a table with its fields, in a module (made if it is not there yet); give module, table, about, fields (each with about). A module without a business case takes business_case with its first table: for (who it serves), keeps (what it keeps track of) and decides (the decisions it serves), in the person’s own terms; it shows as assumed until they change it.',
+        'business_case: give module and business_case, to set or change a module’s; the person’s own stands.',
+        'Walls: a table that would hold only a name is a choice field on the table that would point at it; a table named for a period (October, Q3, 2025) is one table with a date on each row.',
         'add_fields: give table and fields (each with about).',
         'describe: give table and about for the table; table, field and about for a field; table, field (the view’s name), what: view and about for a view.',
         'rename: give table, and field if it is a field, and to.',

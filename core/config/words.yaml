@@ -16,3 +16,14 @@ removal:
   - throw away
   - discard
   - purge
+
+# A table named for a period splits one table into many (core step 3e, Vikas's item 6): the shape
+# tool refuses a table's name holding one of these words, or matching one of these patterns, as a
+# whole word, and says to keep one table with a date on each row instead.
+periods:
+  words: [january, february, march, april, may, june, july, august, september, october, november, december,
+    jan, feb, mar, apr, jun, jul, aug, sep, sept, oct, nov, dec, q1, q2, q3, q4, h1, h2]
+  patterns:
+    - '\b(19[9]\d|20\d\d)\b'
+    - '\bweek\s*\d{1,2}\b'
+    - '\bfy\s*\d{2,4}\b'

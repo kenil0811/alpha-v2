@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { agents } from '../modules/agents.ts'
 import { printPage } from '../pages/pages.ts'
+import { businessCase } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
 
@@ -41,6 +42,13 @@ export const Check = z.union([
   z.object({
     person_rows: z.object({ table: z.string(), person: z.string(), count: z.number().optional() }),
   }),
+  // the builder's walls (core step 3e): no table named so, none that is only a name, a field of a
+  // kind somewhere, a choice field holding these, and a module's business case (each module's)
+  z.object({ no_table: z.string() }),
+  z.object({ name_only_tables: z.number() }),
+  z.object({ field_kind: z.string() }),
+  z.object({ choices: z.array(z.string()) }),
+  z.object({ business_case: z.object({ module: z.string().optional() }) }),
   z.object({ reply_matches: z.string() }),
   z.object({
     card: z.object({
@@ -134,6 +142,70 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `${check.place.table} is ${check.place.is}`,
       ok: is === check.place.is,
       saw: is,
+    }
+  }
+  if ('no_table' in check) {
+    const re = new RegExp(check.no_table, 'i')
+    const names = world.shape.tables().map((t) => t.name)
+    return {
+      check: `no table named /${check.no_table}/`,
+      ok: !names.some((n) => re.test(n)),
+      saw: names.join(', ') || 'no tables',
+    }
+  }
+  if ('name_only_tables' in check) {
+    const only = world.shape
+      .tables()
+      .filter((t) => {
+        const fs = t.fields.filter((f) => f.kind !== 'notes')
+        return fs.length === 1 && fs[0]?.kind === 'text'
+      })
+      .map((t) => t.name)
+    return {
+      check: `${check.name_only_tables} table(s) that are only a name`,
+      ok: only.length === check.name_only_tables,
+      saw: only.join(', ') || 'none',
+    }
+  }
+  if ('field_kind' in check) {
+    const has = world.shape
+      .tables()
+      .flatMap((t) =>
+        t.fields.filter((f) => f.kind === check.field_kind).map((f) => `${t.name}.${f.name}`),
+      )
+    return {
+      check: `a ${check.field_kind} field`,
+      ok: has.length > 0,
+      saw: has.join(', ') || 'none',
+    }
+  }
+  if ('choices' in check) {
+    const want = check.choices.map((c) => c.toLowerCase())
+    const fields = world.shape
+      .tables()
+      .flatMap((t) => t.fields.filter((f) => f.kind === 'choice').map((f) => ({ t, f })))
+    const hit = fields.find(({ f }) =>
+      want.every((w) => f.choices.some((c) => c.toLowerCase() === w)),
+    )
+    return {
+      check: `a choice field holding ${check.choices.join(', ')}`,
+      ok: !!hit,
+      saw:
+        fields.map(({ t, f }) => `${t.name}.${f.name}: ${f.choices.join(', ')}`).join('; ') ||
+        'none',
+    }
+  }
+  if ('business_case' in check) {
+    const ms = world.shape
+      .modules()
+      .filter((m) => !check.business_case.module || m.name === check.business_case.module)
+    const without = ms.filter((m) => !businessCase(m)).map((m) => m.name)
+    return {
+      check: `${check.business_case.module ?? 'every module'} has a business case`,
+      ok: ms.length > 0 && !without.length,
+      saw: without.length
+        ? `none on ${without.join(', ')}`
+        : ms.map((m) => `${m.name}: ${businessCase(m)?.keeps}`).join('; '),
     }
   }
   if ('person_rows' in check) {

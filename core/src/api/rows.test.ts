@@ -43,7 +43,11 @@ function firm() {
       module: 'Firm',
       table: 'Clients',
       about: 'A client.',
-      fields: [{ name: 'Name', kind: 'text', about: 'Its name.' }],
+      business_case: { for: 'The owner', keeps: 'Their clients', decides: 'Whom to call' },
+      fields: [
+        { name: 'Name', kind: 'text', about: 'Its name.' },
+        { name: 'Since', kind: 'date', about: 'A client since when.' },
+      ],
     },
     c,
   )
@@ -162,7 +166,7 @@ describe('a row on its own', () => {
       title: 'Acme',
       table: { name: 'Clients', module: { name: 'Firm' } },
     })
-    expect(page.fields.map((f) => f.name)).toEqual(['Name', 'Notes'])
+    expect(page.fields.map((f) => f.name)).toEqual(['Name', 'Since', 'Notes'])
     const around = (
       await a.inject({ url: `/api/rows/${acme}/around`, headers: ok })
     ).json() as RowAround

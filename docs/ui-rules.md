@@ -35,7 +35,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its main tables with their counts (a table part of a row, or setup, is not a tab), Conversation, Agents and notes | 26 Oct, 27 Oct | — |
-| M2 | Nothing sits under a table or a page; agents, the module's other tables (setup, and parts with what they are part of), notes, recent activity and Governance are the Agents and notes tab | 26 Oct, 27 Oct | — |
+| M2 | Nothing sits under a table or a page; what the module is for (its business case, Edit beside it, assumed while Alpha's), agents, the module's other tables (setup, and parts with what they are part of), notes, recent activity and Governance are the Agents and notes tab | 26 Oct, 27 Oct | — |
 | M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss | 26 Oct, 27 Oct | — |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 

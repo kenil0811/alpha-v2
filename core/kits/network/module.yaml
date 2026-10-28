@@ -7,7 +7,12 @@ uses:
   - { connector: mac, tables: [Contacts, Events] }
   - { connector: gmail, tables: [Mail] }
   - { connector: linkedin, tables: [LinkedIn connections] }
-version: 0.3.2
+version: 0.3.3
+# what it is for (core step 3e)
+business_case:
+  for: The person, about everyone they know
+  keeps: Who is in which of their circles, and how close each one is by their own rules
+  decides: Whom to stay in touch with this week, and who is going quiet in a circle they keep warm
 # People and Organizations are this module's tabs (UI batch 2, 26 Oct)
 people: true
 description: >

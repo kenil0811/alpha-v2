@@ -140,6 +140,7 @@ describe('a kit’s sentences', () => {
 
   it('kit check notes what has no sentence yet, and refuses nothing for it', () => {
     expect(kitNotes(KIT)).toEqual([
+      'module.yaml has no business_case: say who the module is for, what it keeps track of, and the decisions it serves.',
       "Orders's Item, Supplier have no about: say what each means.",
       'Suppliers has no about: say in a sentence what a row of it is.',
       "Suppliers's Name, Email have no about: say what each means.",

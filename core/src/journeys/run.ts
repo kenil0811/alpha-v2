@@ -29,6 +29,7 @@ import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
 import { AgentRunner } from '../modules/runs/index.ts'
+import { Refused } from '../world/kinds.ts'
 import { revert, undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
@@ -258,8 +259,15 @@ export async function runOne(
             ? { turn: rows.filter((l) => l.turn && !l.run).at(-1)?.turn ?? '' }
             : { line: world.lines({ kinds: ['reverted'] }).at(-1)?.id ?? 0 }
       const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
-      const undone = revert(world.records, target, person, `the ${step.revert.replace('_', ' ')}`)
-      what = `Reverted the ${step.revert.replace('_', ' ')}: ${[undone.words, ...undone.left].join(' ')}`
+      // a revert refused fails the journey, and the journeys after it still run
+      try {
+        const undone = revert(world.records, target, person, `the ${step.revert.replace('_', ' ')}`)
+        what = `Reverted the ${step.revert.replace('_', ' ')}: ${[undone.words, ...undone.left].join(' ')}`
+      } catch (err) {
+        if (!(err instanceof Refused)) throw err
+        passed = false
+        what = `**Could not revert the ${step.revert.replace('_', ' ')}:** ${err.message}`
+      }
     } else if (step.merge || step.unmerge) {
       const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
       const named = (name: string) => {

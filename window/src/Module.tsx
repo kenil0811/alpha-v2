@@ -11,6 +11,7 @@ import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
+import { ModuleCase } from './ModuleCase.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
 import { dayWords } from './time.ts'
@@ -273,6 +274,7 @@ function AgentsAndNotes({
     <div className="h-full overflow-y-auto">
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
+        <ModuleCase m={m} onChange={onChange} />
         <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
           <div className="flex flex-col gap-2">
             {m.agents.length > 1 && (

@@ -1,0 +1,26 @@
+name: the-builder-asks-why
+title: "the builder writes a module's business case first, never makes a table that is only a name, and never one named for a period"
+why: >
+  Core step 3e (Kenil's yes, 27 Oct), from Vikas's notes (item 6): structure was the model's
+  judgement alone. Asked in the words that lead to a table per month and a list of names, Alpha
+  makes one table with a date and a choice field instead, and writes down what each module is
+  for, who it serves and the decisions it serves, before its first table.
+steps:
+  - say: I want to keep track of what I spend. Make me a table for October.
+    checks:
+      - no_table: '\b(october|oct)\b'
+      - field_kind: date
+      - business_case: {}
+      - errors: 0
+  - say: >
+      Make me a module for the businesses I look at to buy, and keep a list of the industries I
+      look at: healthcare, logistics and retail.
+    checks:
+      - name_only_tables: 0
+      - choices: [Healthcare, Logistics, Retail]
+      - business_case: {}
+      - errors: 0
+  - say: What is the module for the businesses I look at for?
+    checks:
+      - reply_matches: 'buy|acqui|purchase'
+      - errors: 0

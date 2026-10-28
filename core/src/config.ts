@@ -34,6 +34,10 @@ const Limits = z.object({
 
 const Words = z.object({
   removal: z.array(z.string().min(1)).min(1),
+  periods: z.object({
+    words: z.array(z.string().min(1)).min(1),
+    patterns: z.array(z.string().min(1)),
+  }),
 })
 
 const People = z.object({

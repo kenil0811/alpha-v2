@@ -41,6 +41,10 @@ export function kitNotes(dir: string): string[] {
   }
   if (!parsed.success) return []
   const notes: string[] = []
+  if (!parsed.data.business_case)
+    notes.push(
+      'module.yaml has no business_case: say who the module is for, what it keeps track of, and the decisions it serves.',
+    )
   for (const t of parsed.data.tables) {
     if (!t.about) notes.push(`${t.name} has no about: say in a sentence what a row of it is.`)
     const bare = t.fields.filter((f) => !f.about).map((f) => f.name)

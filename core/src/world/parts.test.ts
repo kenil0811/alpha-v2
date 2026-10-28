@@ -218,7 +218,18 @@ describe('the shape tool', () => {
     const c = { actor: alpha }
     applyShape(
       world,
-      { action: 'make_table', module: 'Firm', table: 'Clients', about: 'A client.', fields: [] },
+      {
+        action: 'make_table',
+        module: 'Firm',
+        table: 'Clients',
+        about: 'A client.',
+        fields: [],
+        business_case: {
+          for: 'The owner',
+          keeps: 'Their clients and what they bill',
+          decides: 'Whom to chase',
+        },
+      },
       c,
     )
     applyShape(

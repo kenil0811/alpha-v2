@@ -373,7 +373,13 @@ soft matches, and Morning's suggestions.
 **Walls:** the sandbox's paths and network; the model's SQL is read-only; the journal refuses
 change; an agent can never answer a card; one waiting card per identical step (a newer twin
 withdraws the older); secrets never in the world; the model's writes never reach a connector's
-code.
+code. **The builder's walls** (core step 3e, from Vikas's notes, item 6), in the shape tool
+(`engine/tools/walls.ts`): a module's first table waits for its business case, given with it; a
+table whose fields, notes aside, are one text field is refused (a list to pick from is a choice
+field on the table that would point at it; a thing of its own is made with what it keeps beyond
+its name, assumed and said); a table made or renamed with a period in its name is refused (one table, a
+date on each row; the period words and patterns in `core/config/words.yaml`). Each refusal says
+what to make instead; kits are checked, not walled.
 
 ## 8. The connector SDK and connectors
 
@@ -464,7 +470,10 @@ keeps its answers. Journeys stay the end-to-end test with the real model.
 
 ## 10. Modules and kits
 
-A **module** is a directory: `module.yaml` (tables, with `setup`, a relation's `part_of`, a
+A **module** is a directory: `module.yaml` (its **business case**: who it is for, what it keeps
+track of and the decisions it serves, with whose words they are, the kit's, Alpha's as assumed or
+the person's, which stand over the others, read at the top of the module in every start layer and
+shown at the top of Agents and notes with Edit; tables, with `setup`, a relation's `part_of`, a
 choice's or a relation's `many`, a summary's `summary` (by names) and a person field's `per` where they apply, views, pages, agents, skills, setup rows, network allowlist, what it reaches
 outside itself), `NOTES.md`, `pages/`, `skills/`, `agents/`,
 `files/`, kept as a git repository. The model may make a module when a request needs a home,

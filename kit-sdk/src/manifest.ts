@@ -95,6 +95,11 @@ export const Manifest = z.object({
     })
     .optional(),
   description: z.string().optional(),
+  // what the module is for (core step 3e): who it is for, what it keeps track of, and the decisions
+  // it serves; read by Alpha before anything in it, shown at the top of Agents and notes
+  business_case: z
+    .object({ for: z.string().min(1), keeps: z.string().min(1), decides: z.string().min(1) })
+    .optional(),
   // the module it sits inside, by name; made empty when there is none (Kenil, 20 Oct)
   within: z.string().min(1).optional(),
   tables: z

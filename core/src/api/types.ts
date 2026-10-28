@@ -512,6 +512,13 @@ export interface ModuleView {
   agents: AgentView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written
+  // what it is for (core step 3e), and whose words: the kit's, Alpha's (assumed) or the person's
+  businessCase: {
+    for: string
+    keeps: string
+    decides: string
+    by: 'kit' | 'alpha' | 'person'
+  } | null
   parent: string | null
   pages: PageSummary[]
   tables: TableSummary[]

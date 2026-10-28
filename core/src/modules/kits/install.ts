@@ -4,6 +4,7 @@ import { parse, stringify } from 'yaml'
 import { all, now, one, run, tx } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module, WriteCtx } from '../../world/shape/index.ts'
+import { setBusinessCase } from '../../world/shape/manifest.ts'
 import type { World } from '../../world/world.ts'
 import { syncAgents } from '../agents.ts'
 import { commitAll } from '../git.ts'
@@ -38,6 +39,9 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
       )
     }
     copyFileSync(join(kitDir, 'module.yaml'), join(m.dir, 'module.yaml'))
+    // what it is for, as the kit says it (core step 3e)
+    if (manifest.business_case)
+      setBusinessCase(world.shape, m, manifest.business_case, 'kit', kitCtx)
     placeModule(world, m, manifest.within, kitCtx)
     shapeTables(world, m, manifest, kitCtx)
     shapeViews(world, manifest, kitCtx)
@@ -181,6 +185,9 @@ export async function update(
     return out
   })
   updateSites(world, module, manifest.network, kitCtx, manifest.people === true)
+  // the kit's newer business case, unless the person wrote their own (core step 3e)
+  if (manifest.business_case)
+    setBusinessCase(world.shape, module, manifest.business_case, 'kit', kitCtx)
   world.shape.writeManifest(world.shape.module(module.id) as Module)
   await commitAll(module.dir, `Updated ${kitName}`)
   return report

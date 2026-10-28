@@ -5,10 +5,12 @@ import { join } from 'node:path'
 import { parse as parseYaml, stringify } from 'yaml'
 import { all, one, parse } from '../db.ts'
 import { columnsOf, junctionName, OWN_COLUMNS, quote } from '../ddl.ts'
+import { append } from '../journal.ts'
+import { Refused } from '../kinds.ts'
 import { namedConfig, ViewConfig } from '../views.ts'
 import type { Shape } from './shape.ts'
 import { summaryNamed } from './summary.ts'
-import type { Module, Table } from './types.ts'
+import type { Module, Table, WriteCtx } from './types.ts'
 import { spec } from './types.ts'
 
 // Only the parts of a view that say something, so module.yaml stays short to read.
@@ -62,6 +64,76 @@ export function manifestSays(m: Module, key: 'people' | 'core'): boolean {
   } catch {
     return false
   }
+}
+
+// A module's business case (core step 3e): who it is for, what it keeps track of, the decisions it
+// serves, and whose words they are. Kept in its module.yaml, beside what the file mirrors.
+export interface BusinessCase {
+  for: string
+  keeps: string
+  decides: string
+  by: 'kit' | 'alpha' | 'person'
+}
+
+export function businessCase(m: Module): BusinessCase | null {
+  const file = join(m.dir, 'module.yaml')
+  if (!existsSync(file)) return null
+  try {
+    const c = (parseYaml(readFileSync(file, 'utf8')) as Record<string, unknown> | null)
+      ?.business_case as Partial<BusinessCase> | undefined
+    if (!c?.for || !c.keeps || !c.decides) return null
+    return {
+      for: String(c.for),
+      keeps: String(c.keeps),
+      decides: String(c.decides),
+      by: c.by === 'kit' || c.by === 'person' ? c.by : 'alpha',
+    }
+  } catch {
+    return null
+  }
+}
+
+// A module's business case set: the kit's, Alpha's (from the person's words, shown as assumed) or
+// the person's, which stands over the other two. False when theirs stood.
+export function setBusinessCase(
+  shape: Shape,
+  m: Module,
+  c: Omit<BusinessCase, 'by'>,
+  by: BusinessCase['by'],
+  ctx: WriteCtx,
+): boolean {
+  const was = businessCase(m)
+  if (was?.by === 'person' && by !== 'person') return false
+  const next = { for: c.for.trim(), keeps: c.keeps.trim(), decides: c.decides.trim(), by }
+  if (!next.for || !next.keeps || !next.decides)
+    throw new Refused(
+      `${m.name}'s business case needs all three: who it is for, what it keeps track of, and the decisions it serves.`,
+    )
+  if (
+    was &&
+    was.by === by &&
+    was.for === next.for &&
+    was.keeps === next.keeps &&
+    was.decides === next.decides
+  )
+    return true
+  mkdirSync(m.dir, { recursive: true })
+  const file = join(m.dir, 'module.yaml')
+  const kept = existsSync(file)
+    ? ((parseYaml(readFileSync(file, 'utf8')) ?? {}) as Record<string, unknown>)
+    : { name: m.name }
+  writeFileSync(file, stringify({ ...kept, business_case: next }))
+  append(shape.db, {
+    actor: ctx.actor,
+    kind: 'shaped',
+    words: `${m.name} is for ${next.for}; it keeps ${next.keeps}, for deciding ${next.decides}${by === 'alpha' ? ' (as Alpha read it, until you change it)' : ''}.`,
+    data: { module: m.id, business_case: next },
+    user: ctx.user ?? null,
+    turn: ctx.turn ?? null,
+    module: m.id,
+    run: ctx.run ?? null,
+  })
+  return true
 }
 
 // A name no table in the world or in the file has: the world's own tables, SQL's words, and
