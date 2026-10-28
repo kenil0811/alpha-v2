@@ -440,6 +440,7 @@ export function api(
           who: l.actor.id ? `${l.actor.kind} ${l.actor.id}` : l.actor.kind,
           kind: l.kind,
           words: l.words,
+          turn: l.turn ?? null,
         }))
     },
     // What the person's Home shows today, for an agent that speaks for Alpha (Morning).

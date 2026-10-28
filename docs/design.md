@@ -627,7 +627,9 @@ none is kept before the yes.
 Alpha's proactiveness: at 07:30, what is due, what changed overnight, what comes, in one line on
 Home and in the companion, and one or two suggestions as tasks on one card the person takes or
 leaves (`alpha.home.today()` is what it reads). **Watson** notices what the person said, at 12:30
-and 18:30: promises as proposed tasks, decisions and facts for the person's yes. **Doc** repairs
+and 18:30: promises as proposed tasks, decisions and facts for the person's yes; what they told
+Alpha to do is left out in code, a line whose turn wrote rows, changed a table, made a task or
+opened a card (28 Oct). **Doc** repairs
 skills and readers (later). No other characters.
 
 **Schema v1** (decision 6, 22 Oct): an agent's front matter is `name`, `description`, a `trigger`

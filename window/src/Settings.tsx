@@ -290,9 +290,11 @@ function SecondBrain({ version }: { version: number }) {
   )
 }
 
+// What each holds: the person's own words, noticed by Watson and kept once they say so; rules are
+// in Settings › Permissions
 const ABOUT_ALPHA = {
-  Decisions: 'What Alpha decided, and the rules you approved for it.',
-  Noticed: 'What Alpha noticed while it worked.',
+  Decisions: 'Decisions you made in conversation, noticed by Watson and kept once you say so.',
+  Noticed: 'Facts you stated about people and organizations, kept once you confirm them.',
 }
 
 // One of the Alpha module's tables, found by its name, drawn with the shared table.

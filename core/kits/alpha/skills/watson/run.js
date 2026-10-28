@@ -4,8 +4,20 @@ const short = (w, n = 80) => (w.length > n ? `${w.slice(0, n - 1)}…` : w)
 const dateIn = (why) => (/(\d{4}-\d{2}-\d{2})/.exec(why ?? '') ?? [])[1] ?? null
 
 export default async (alpha) => {
+  // what the person told Alpha to do is done, not noticed: a turn that wrote rows, changed a
+  // table, made a task or opened a card (a rule's Save among them) acted on its words (28 Oct)
+  const acted = new Set(
+    (
+      await alpha.journal.list({
+        since: alpha.input.lastRun,
+        kinds: ['wrote', 'changed', 'landed', 'removed', 'shaped', 'task', 'card_opened'],
+      })
+    )
+      .map((l) => l.turn)
+      .filter(Boolean),
+  )
   const lines = (await alpha.journal.list({ since: alpha.input.lastRun, kinds: ['said'] })).filter(
-    (l) => l.words.trim().length > 12,
+    (l) => l.words.trim().length > 12 && !acted.has(String(l.id)),
   )
   if (!lines.length) return { words: 'Nothing said since last time.' }
   const judged = await alpha.judge({

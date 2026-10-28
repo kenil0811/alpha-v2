@@ -38,9 +38,9 @@ const fakeJudge: Ask = async (prompt) => {
           ? { id, group: 'Promise', why: 'a promise to Priya, due 2026-10-30' }
           : /promised Mark/i.test(l)
             ? { id, group: 'Promise', why: 'a promise to Mark, no date said' }
-            : /decided/i.test(l)
+            : /decided|from now on/i.test(l)
               ? { id, group: 'Decision', why: 'a decision on the office' }
-              : /is our/i.test(l)
+              : /is our|revenue/i.test(l)
                 ? { id, group: 'Fact', why: 'Priya Nair: the CFO at Harbor' }
                 : { id, group: null, why: 'nothing' },
       ),
@@ -117,5 +117,41 @@ describe('Watson', () => {
     // a second run notices nothing new
     const again = await runner().runAgent(watson as never)
     expect(again.words).toMatch(/Nothing said since last time/)
+  }, 60_000)
+
+  it('leaves out what the person told Alpha to do: its turn acted on it (28 Oct)', async () => {
+    const owner = world.owner()
+    const said = (words: string) =>
+      world.line({ actor: { kind: 'person', id: owner.id }, kind: 'said', words, user: owner.id })
+    // a turn that wrote a row, and one that opened a rule's Save card: instructions, acted on
+    const add = said('Add Acme Bakery, with revenue of 1,200,000 in 2024')
+    world.line({
+      actor: { kind: 'alpha' },
+      kind: 'wrote',
+      words: 'Added 1 row to Deals.',
+      user: owner.id,
+      turn: String(add.id),
+    })
+    const rule = said('From now on, copy me on every CIM request')
+    world.line({
+      actor: { kind: 'alpha' },
+      kind: 'card_opened',
+      words: 'Save this rule?',
+      user: owner.id,
+      turn: String(rule.id),
+    })
+    said('we decided to keep the office in Clayton')
+    const alpha = world.shape.module('Alpha')
+    const watson = alpha && agents(world, alpha.id).find((a) => a.name === 'Watson')
+    const out = await runner().runAgent(watson as never)
+    expect(out.words).toBe('Watson: Noticed 1 decision, for your yes.')
+    const decisions = world.shape.table('Decisions')
+    expect(decisions && world.records.list(decisions.id).map((r) => r.values.decision)).toEqual([
+      'we decided to keep the office in Clayton',
+    ])
+    expect(
+      world.shape.table('Noticed') &&
+        world.records.list(world.shape.table('Noticed')?.id as string),
+    ).toEqual([])
   }, 60_000)
 })

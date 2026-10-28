@@ -4,7 +4,7 @@
 # (the semantic layer, 24 Oct).
 name: Alpha
 api: 1
-version: 0.3.1
+version: 0.3.2
 core: true
 # what it is for (core step 3e)
 business_case:
