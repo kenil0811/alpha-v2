@@ -16,6 +16,7 @@ import { Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
 import type { BaseCtx, Ctx } from './ctx.ts'
 import { registerActivity } from './routes/activity.ts'
+import { registerBrain } from './routes/brain.ts'
 import { registerCards } from './routes/cards.ts'
 import { registerConnectors } from './routes/connectors.ts'
 import { registerFiles } from './routes/files.ts'
@@ -29,6 +30,7 @@ import { registerSettings } from './routes/settings.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerTables } from './routes/tables.ts'
 import { registerTasks } from './routes/tasks.ts'
+import { registerUsage } from './routes/usage.ts'
 import type { Health } from './types.ts'
 import { deny, makeViews } from './views.ts'
 
@@ -133,6 +135,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerModules(ctx)
   registerSettings(ctx)
   registerActivity(ctx)
+  registerUsage(ctx)
+  registerBrain(ctx)
 
   void app.register(websocket)
   void app.register(async (scope) => {

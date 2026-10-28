@@ -1,12 +1,12 @@
 // The side panel: detail on the right, 320px, pushing the content rather than covering it. Given
-// `width`, it is the person's to size: its left edge drags it wider (up to two thirds of the
-// window) or, dragged all the way in, closes it, Expand makes it half the window and back, and Open
+// `width`, it is the person's to size: its left edge drags it from the narrowest both panels share
+// to two thirds of the window, and past the narrowest closes it, Expand makes it half the window and back, and Open
 // page at its foot opens it as a screen. It sits in the screen's column, left of the assistant.
 import { Maximize2, Minimize2, SquareArrowOutUpRight, X } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Button, IconButton } from './button.tsx'
 import { cn } from './cn.ts'
-import { Edge } from './edge.tsx'
+import { Edge, SIDE_MIN } from './edge.tsx'
 
 const NARROW = 320
 
@@ -38,10 +38,10 @@ export function SidePanel({
   }, [])
   // up to two thirds of the window, and never so wide the screen beside it is squeezed
   const widest = Math.max(
-    NARROW,
+    SIDE_MIN,
     Math.min(Math.floor((room * 2) / 3), keep ? room - keep : Number.POSITIVE_INFINITY),
   )
-  const clamp = (w: number) => Math.round(Math.min(widest, Math.max(NARROW, w)))
+  const clamp = (w: number) => Math.round(Math.min(widest, Math.max(SIDE_MIN, w)))
   const [dragged, setDragged] = useState<number | null>(null)
   const shown = clamp(dragged ?? width ?? NARROW)
   const half = clamp(room / 2)
@@ -59,10 +59,9 @@ export function SidePanel({
         <Edge
           side="left"
           width={shown}
-          min={NARROW}
           max={widest}
           onDrag={setDragged}
-          onDone={(w) => onWidth?.(w <= NARROW ? null : w)}
+          onDone={(w) => onWidth?.(w === NARROW ? null : w)}
           onFold={onClose}
         />
       )}

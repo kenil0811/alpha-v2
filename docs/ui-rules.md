@@ -123,6 +123,14 @@ held by review. Dates are 2026.
 - A module opens on its Overview: the pulse strip, its own work left, the standard column right
   (Interview me, Files, Agents, Intelligence, What Alpha may do, Tables); a card's head is its name
   only (Vikas, 27 Oct; replaces M1 and M2 if agreed).
+- Intelligence has Connections, Second Brain, Agents and Governance. Second Brain is the layer
+  across modules. Governance is what Alpha keeps about itself: notes, rules and decisions
+  (Vikas, 27 Oct).
+- Settings › Usage shows what the model cost by day, model, module and agent, with the prices it
+  counts at. An estimate is marked ≈ (Vikas, 27 Oct; replaces "What each run costs" below).
+- The rail and the assistant fold and open the same way: one narrowest width, a fold mid-drag
+  past it, a drag out from the folded strip, an Open button on each strip, and mirrored shortcuts
+  (Vikas, 27 Oct).
 
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, renaming a module and choosing its icon (needs the core).

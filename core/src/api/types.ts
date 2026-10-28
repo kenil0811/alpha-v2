@@ -654,3 +654,74 @@ export interface TaskView extends TaskLineView {
   } | null
   cards: CardView[] // what its runs put to the person: waiting first, then the decided
 }
+
+// What the model's use cost over some days (Settings › Usage): by day, model, module and agent,
+// with the costliest replies and runs. A reply's cost is the model's own; a run's is estimated
+// from its tokens at the desk model's list price.
+export interface UsageView {
+  days: { day: string; chat: number; runs: number }[] // US dollars
+  total: number
+  models: {
+    model: string
+    usd: number
+    input: number
+    output: number
+    cacheRead: number
+    cacheWrite: number
+    estimated: boolean // some of it counted from tokens at list price
+  }[]
+  modules: {
+    id: string | null
+    name: string
+    usd: number
+    tokens: number
+    turns: number
+    runs: number
+  }[]
+  agents: {
+    id: string | null
+    name: string
+    module: string | null
+    usd: number
+    tokens: number
+    runs: number
+  }[]
+  costly: {
+    kind: 'reply' | 'run'
+    id: string
+    at: string
+    words: string
+    usd: number
+    tokens: number
+    module: string | null
+  }[]
+  cacheShare: number | null // of the tokens read in, how many came from the cache
+  prices: {
+    model: string
+    input: number
+    output: number
+    cache_read: number
+    cache_write: number
+  }[]
+  desk: string // the model chat and runs use
+}
+
+// The Second Brain (GET /api/brain): what each module holds, and the links between modules.
+export interface BrainView {
+  modules: {
+    id: string
+    name: string
+    rows: number
+    tables: number
+    agents: number
+    documents: number
+  }[]
+  links: { from: string; to: string; field: string; fromTable: string; toTable: string }[]
+  totals: {
+    people: number
+    organizations: number
+    decisions: number
+    noticed: number
+    followUps: number
+  }
+}

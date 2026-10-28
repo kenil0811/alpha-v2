@@ -12,6 +12,17 @@ const Models = z.object({
   eyes: z.string().min(1),
 })
 
+// per million tokens, by model (prices.yaml)
+const Prices = z.record(
+  z.string(),
+  z.object({
+    input: z.number().nonnegative(),
+    output: z.number().nonnegative(),
+    cache_read: z.number().nonnegative(),
+    cache_write: z.number().nonnegative(),
+  }),
+)
+
 const Limits = z.object({
   query_page_rows: z.number().int().positive(),
   search_hits: z.number().int().positive(),
@@ -71,6 +82,7 @@ function yamlOf<S extends z.ZodType>(schema: S, name: string) {
 export const config = {
   models: (dir?: string) => load('models.yaml', yamlOf(Models, 'models.yaml'), dir),
   limits: (dir?: string) => load('limits.yaml', yamlOf(Limits, 'limits.yaml'), dir),
+  prices: (dir?: string) => load('prices.yaml', yamlOf(Prices, 'prices.yaml'), dir),
   people: (dir?: string) => load('people.yaml', yamlOf(People, 'people.yaml'), dir),
   words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
   systemPrompt: (person: string, dir?: string) =>

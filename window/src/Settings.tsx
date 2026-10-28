@@ -31,10 +31,12 @@ import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
+import { SecondBrain } from './SecondBrain.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { applyTextSize, applyTheme, savedTheme, type TextSize, type Theme } from './theme.ts'
+import { Usage } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -72,11 +74,13 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'The accounts Alpha reads, its agents and what it knows.',
+    about:
+      'The accounts Alpha reads, what it knows across your modules, its agents and the rules it keeps.',
     tabs: [
       ['connections', 'Connections'],
-      ['agents', 'Agents'],
       ['brain', 'Second Brain'],
+      ['agents', 'Agents'],
+      ['governance', 'Governance'],
     ],
   },
   settings: {
@@ -85,6 +89,7 @@ const PAGES = {
     about: 'How Alpha runs on this Mac: its model, modules, permissions, data and how it looks.',
     tabs: [
       ['model', 'Model'],
+      ['usage', 'Usage'],
       ['modules', 'Modules'],
       ['permissions', 'Permissions'],
       ['data', 'Data'],
@@ -130,6 +135,8 @@ export function Settings({
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
     brain: <SecondBrain version={version} />,
+    governance: <Governance version={version} />,
+    usage: <Usage version={version} />,
     agents: <Agents version={version} />,
     connections: (
       <>
@@ -255,17 +262,17 @@ export function Settings({
   )
 }
 
-// Second Brain: how to work (the standing instructions), and the Alpha module's two tables,
-// Decisions and Noticed, which are shown here instead of as a module on the rail.
+// Governance (Vikas, 27 Oct): the rules Alpha keeps — how to work (the standing instructions),
+// and the Alpha module's two tables, Decisions and Noticed, shown here instead of on the rail.
 type Part = 'work' | 'Decisions' | 'Noticed'
 
-function SecondBrain({ version }: { version: number }) {
+function Governance({ version }: { version: number }) {
   const [part, setPart] = useState<Part>('work')
   return (
     <>
       <div className="self-start">
         <Segmented
-          label="Second Brain"
+          label="Governance"
           value={part}
           onChange={setPart}
           options={[

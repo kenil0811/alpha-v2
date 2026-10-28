@@ -49,9 +49,13 @@ export function KindPicker({
   )
 }
 
-export function Chart({ kind, marks }: { kind: ChartKind; marks: Mark[] }) {
-  if (kind === 'donut') return <Donut marks={marks} />
-  if (kind === 'rings') return <Rings marks={marks} />
+// how a mark's number reads: a count by default, or dollars
+export type Fmt = (n: number) => string
+const count: Fmt = (n) => n.toLocaleString()
+
+export function Chart({ kind, marks, fmt = count }: { kind: ChartKind; marks: Mark[]; fmt?: Fmt }) {
+  if (kind === 'donut') return <Donut marks={marks} fmt={fmt} />
+  if (kind === 'rings') return <Rings marks={marks} fmt={fmt} />
   const most = Math.max(1, ...marks.map((m) => m.target ?? m.n), ...marks.map((m) => m.n))
   return (
     <div className="flex flex-col gap-1 pt-1">
@@ -68,7 +72,7 @@ export function Chart({ kind, marks }: { kind: ChartKind; marks: Mark[] }) {
             key={m.label}
             type="button"
             onClick={() => open(m)}
-            data-tip={`${m.label}: ${m.n.toLocaleString()}${m.target !== undefined ? ` of ${m.target.toLocaleString()}` : ''}`}
+            data-tip={`${m.label}: ${fmt(m.n)}${m.target !== undefined ? ` of ${fmt(m.target)}` : ''}`}
             className="group grid grid-cols-[minmax(6rem,10rem)_1fr_auto] items-center gap-2 text-left text-md"
           >
             <span className="truncate text-ink-2 group-hover:text-accent">{m.label}</span>
@@ -87,9 +91,9 @@ export function Chart({ kind, marks }: { kind: ChartKind; marks: Mark[] }) {
               />
             </span>
             <span className="text-right font-medium tabular-nums">
-              {m.n.toLocaleString()}
+              {fmt(m.n)}
               {m.target !== undefined && (
-                <span className="font-normal text-ink-3"> / {m.target.toLocaleString()}</span>
+                <span className="font-normal text-ink-3"> / {fmt(m.target)}</span>
               )}
             </span>
           </button>
@@ -99,7 +103,7 @@ export function Chart({ kind, marks }: { kind: ChartKind; marks: Mark[] }) {
   )
 }
 
-function Donut({ marks }: { marks: Mark[] }) {
+function Donut({ marks, fmt }: { marks: Mark[]; fmt: Fmt }) {
   const shown = marks.filter((m) => m.n > 0)
   const total = shown.reduce((a, m) => a + m.n, 0) || 1
   const R = 52
@@ -115,13 +119,13 @@ function Donut({ marks }: { marks: Mark[] }) {
           const d = `M${at(a0, R)}A${R} ${R} 0 ${big} 1 ${at(a1, R)}L${at(a1, r)}A${r} ${r} 0 ${big} 0 ${at(a0, r)}Z`
           a0 = a1
           return (
-            <a key={m.label} href={m.href} aria-label={`${m.label}: ${m.n.toLocaleString()}`}>
+            <a key={m.label} href={m.href} aria-label={`${m.label}: ${fmt(m.n)}`}>
               <path
                 d={d}
                 className="fill-accent hover:opacity-70"
                 style={{ fillOpacity: STEPS[i % STEPS.length] }}
               >
-                <title>{`${m.label}: ${m.n.toLocaleString()}`}</title>
+                <title>{`${m.label}: ${fmt(m.n)}`}</title>
               </path>
             </a>
           )
@@ -130,25 +134,26 @@ function Donut({ marks }: { marks: Mark[] }) {
           x="60"
           y="66"
           textAnchor="middle"
-          className="fill-ink font-serif text-xl tabular-nums"
+          className="fill-ink font-serif text-md tabular-nums"
         >
-          {total.toLocaleString()}
+          {fmt(total)}
         </text>
       </svg>
-      <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         {shown.slice(0, 8).map((m, i) => (
           <button
             key={m.label}
             type="button"
             onClick={() => open(m)}
-            className="flex items-center gap-2 text-left text-md hover:text-accent"
+            data-tip={`${m.label}: ${fmt(m.n)}`}
+            className="flex min-w-0 items-center gap-2 text-left text-md hover:text-accent"
           >
             <span
               className="size-2.5 shrink-0 rounded-xs bg-accent"
               style={{ opacity: STEPS[i % STEPS.length] }}
             />
             <span className="truncate text-ink-2">{m.label}</span>
-            <span className="font-medium tabular-nums">{m.n.toLocaleString()}</span>
+            <span className="font-medium tabular-nums">{fmt(m.n)}</span>
           </button>
         ))}
       </div>
@@ -156,7 +161,7 @@ function Donut({ marks }: { marks: Mark[] }) {
   )
 }
 
-function Rings({ marks }: { marks: Mark[] }) {
+function Rings({ marks, fmt }: { marks: Mark[]; fmt: Fmt }) {
   const c = 2 * Math.PI * 22
   return (
     <div className="flex flex-wrap gap-3 pt-1">
@@ -184,7 +189,7 @@ function Rings({ marks }: { marks: Mark[] }) {
                 className={met ? 'stroke-good' : 'stroke-accent'}
               />
               <text x="28" y="32" textAnchor="middle" className="fill-ink text-xs">
-                {m.n.toLocaleString()}
+                {fmt(m.n)}
               </text>
             </svg>
             <span className="line-clamp-2 text-ink-2 text-xs">{m.label}</span>

@@ -44,3 +44,19 @@ bigger picture; it will be redone as phased pull requests.
   drags; saved as Markdown in the notes field a moment after typing stops), its parts, links,
   files and tasks in a column beside. A table without a notes field offers Start a document,
   which adds one named Document.
+- Missed, noted and corrected (Vikas, 27 Oct):
+  - The Second Brain tab held Alpha's own notes, rules and decisions. That is now Intelligence ›
+    Governance. Second Brain is now the layer across modules: ask across them, what changed since
+    you looked, what each module holds, how they link (`GET /api/brain`). The proposal for the rest
+    is in `proposals/2026-10-27-second-brain.md`.
+  - The cost page, asked for on 23 Oct, was never built. It is now Settings › Usage
+    (`GET /api/usage`, prices in `core/config/prices.yaml`). It shows cost by day, model, module
+    and agent, and the costliest replies and runs. A run's cost is estimated from its tokens and
+    marked ≈.
+  - The rail and the assistant behaved differently when folded. Both now share one edge
+    (`ui/edge.tsx`):
+    - the narrowest width is 200;
+    - dragging past it folds the panel straight away;
+    - dragging out from the folded strip opens it at the dragged width;
+    - each folded strip has its own Open button;
+    - ⌘\ folds the rail and ⌘⇧\ folds the assistant.

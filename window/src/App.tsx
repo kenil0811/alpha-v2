@@ -187,7 +187,7 @@ export function App() {
   const alpha = alphaOf(modules)
   useEffect(() => {
     if (alpha && place.at === 'module' && place.id === alpha.id)
-      window.location.replace('#/intelligence/brain')
+      window.location.replace('#/intelligence/governance')
   }, [alpha, place])
   // where a screen puts its switch, in the middle of the bar
   const [middle, setMiddle] = useState<HTMLElement | null>(null)
@@ -216,7 +216,13 @@ export function App() {
   askableRef.current = askable
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j' && askableRef.current) {
+      // ⌘J, or ⌘⇧\ (the rail's ⌘\ mirrored), folds the assistant or opens it
+      const mirrored = e.shiftKey && (e.key === '\\' || e.key === '|')
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        (e.key.toLowerCase() === 'j' || mirrored) &&
+        askableRef.current
+      ) {
         e.preventDefault()
         setAsking((a) => !a)
       }
@@ -253,7 +259,7 @@ export function App() {
         if (panelRef.current) changeLayout({ panel: null })
         else setAsking(false)
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === '\\') {
         e.preventDefault()
         changeLayout({ railFolded: !foldedRef.current })
       }

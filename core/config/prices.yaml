@@ -1,0 +1,8 @@
+# What a model costs, in US dollars per million tokens, at the provider's list price: what the
+# Usage page counts a run's tokens at when the model did not say its own cost. A chat reply says
+# its own cost, and that is used instead. Check against the provider's price page when a model
+# is added.
+claude-opus-5-5: { input: 5, output: 25, cache_read: 0.5, cache_write: 6.25 }
+claude-sonnet-5-5: { input: 3, output: 15, cache_read: 0.3, cache_write: 3.75 }
+claude-haiku-5-5: { input: 1, output: 5, cache_read: 0.1, cache_write: 1.25 }
+claude-fable-5-1: { input: 5, output: 25, cache_read: 0.5, cache_write: 6.25 }

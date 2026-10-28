@@ -43,7 +43,7 @@ import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal } from './ui/dot.tsx'
-import { Edge } from './ui/edge.tsx'
+import { Edge, Opening, SIDE_MIN, STRIP } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 
 export type Place =
@@ -154,7 +154,7 @@ export function Rail({
         tasksDue={tasksDue}
         hidden={hiding.hidden}
         onNew={onNew}
-        onOpen={() => onLayout({ railFolded: false })}
+        onOpen={(w) => onLayout({ railFolded: false, ...(w ? { railWidth: w } : {}) })}
       />
     )
   const fold = (id: string) =>
@@ -694,8 +694,9 @@ function Strip({
   tasksDue: number
   hidden: string[]
   onNew: () => void
-  onOpen: () => void
+  onOpen: (width?: number) => void // a drag out of its edge opens it at that width
 }) {
+  const [opening, setOpening] = useState<number | null>(null)
   // a module inside another lights the one at the top that holds it
   const top = here ? (ancestors(modules, here)[0]?.id ?? here) : null
   const icon = (
@@ -721,7 +722,17 @@ function Strip({
     </a>
   )
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+    <nav className="relative flex w-14 shrink-0 flex-col items-center gap-1 border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+      <Edge
+        side="right"
+        folded
+        width={STRIP}
+        max={RAIL[1]}
+        onDrag={setOpening}
+        onDone={(w) => onOpen(w)}
+        onFold={() => undefined}
+      />
+      <Opening side="left" width={opening} />
       <div
         data-tauri-drag-region
         className={cn(
@@ -735,7 +746,7 @@ function Strip({
         type="button"
         aria-label="Open the rail"
         data-tip={'Open the rail (⌘\\)'}
-        onClick={onOpen}
+        onClick={() => onOpen()}
         className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
       >
         <PanelLeftOpen className="size-4" />
@@ -803,7 +814,7 @@ export interface Crumb {
 }
 
 // the rail's narrowest and widest
-const RAIL = [180, 360] as const
+const RAIL = [SIDE_MIN, 360] as const
 
 // The module People and Organizations live in, as its module.yaml says (people: true; Network's).
 export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
