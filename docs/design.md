@@ -941,10 +941,11 @@ every hook. Encryption at rest with a tenant key, and retention rules, when Dell
 never rows.
 
 **CI** (decision 12, 23 Oct): every push and pull request runs `pnpm check` on Linux (the tests on
-the plain platform), `pnpm kit check` on Network (`core/kits/network`; Alpha's own kit,
-`core/kits/alpha`, is not checked there yet) and `pnpm connector check` on every connector in the
-repository; a tag `v<version>` runs `pnpm release` on a Mac runner, smoke test
-included, and puts the disk image on the GitHub release page. The client image stays by hand.
+the plain platform, the script and connector sandboxes under bubblewrap among them: step 2, part
+1, slice 4), `pnpm kit check` on Network and Alpha's own kit, and `pnpm connector check` on every
+connector in the repository. A release is made on Kenil's Mac, where his signing key is (29 Oct):
+`pnpm release` signs every pack and runs its smoke test, and the disk image goes on the GitHub
+release page with `gh release create`; the client image is made the same way, with `--client`.
 
 ## 16. Journeys and tests
 

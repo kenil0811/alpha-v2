@@ -2,6 +2,8 @@
 // a stand-in built from what the process says of it, and every call goes over the pipe, the
 // connector's host answered by the core.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MemorySecrets } from '@alpha/connector-sdk'
@@ -124,3 +126,59 @@ it('names a host by itself, by its port, or under a wildcard', () => {
   expect(named(list, 'example.com', '443')).toBe(false)
   expect(named(list, 'a.example.org', '443')).toBe(true)
 })
+
+// Slice 2's wall, in every push's checks on macOS and Linux (slice 4, Kenil's yes 29 Oct): a
+// connector reaches a site by the host it names, is refused it by another name, and the refusal
+// is listed under it (the journey connector-reaches, without the runner).
+it('reaches a site by the host it names and is refused it by another, listed', async () => {
+  const site = createServer((_, res) => res.end('<p>Reached.</p>')).listen(0, '127.0.0.1')
+  await new Promise((r) => site.once('listening', r))
+  const port = (site.address() as AddressInfo).port
+  const root = join(home, 'connectors')
+  const dir = join(root, 'reacher')
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(
+    join(dir, 'package.json'),
+    JSON.stringify({ name: 'reacher', type: 'module', exports: './index.js' }),
+  )
+  writeFileSync(
+    join(dir, 'index.js'),
+    `const page = async (url) => {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    return r.ok ? await r.text() : 'refused'
+  } catch {
+    return 'refused'
+  }
+}
+export const connector = {
+  manifest: { name: 'reacher', title: 'Reacher', auth: 'path', account: { label: 'Folder' }, pace: { perMinute: 600 }, reaches: ['127.0.0.1:${port}'] },
+  guide: '# Reacher', module: 'Reacher', tables: [{ name: 'Reached', fields: [{ name: 'Which', kind: 'text' }, { name: 'Answer', kind: 'text' }] }], tools: {},
+  sync: async (c) => {
+    await c.host.land('Reached', [
+      { key: 'named', values: { Which: 'named', Answer: await page('http://127.0.0.1:${port}/') } },
+      { key: 'unnamed', values: { Which: 'unnamed', Answer: await page('http://localhost:${port}/') } },
+    ])
+    return { rows: 2, sawNew: true }
+  },
+}
+`,
+  )
+  const svc = new ConnectorService(world, {
+    secrets: new MemorySecrets(),
+    known: (await loadSet(root)).connectors,
+  })
+  const user = world.owner('Kenil')
+  const conn = await svc.connect('reacher', '/tmp', null, user.id)
+  await svc.sync(conn.id)
+  const t = world.shape.table('Reached')
+  const answers = Object.fromEntries(
+    (t ? world.records.list(t.id) : []).map((r) => [r.values.which, r.values.answer]),
+  )
+  expect(answers).toEqual({ named: '<p>Reached.</p>', unnamed: 'refused' })
+  expect(world.lines({ kinds: ['reach_refused'] }).map((l) => l.words)).toEqual([
+    `Reacher tried to reach localhost:${port}: refused.`,
+  ])
+  svc.close()
+  site.close()
+}, 30_000)

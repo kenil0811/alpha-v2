@@ -22,7 +22,11 @@ pnpm journey track-what-i-eat
 
 A journey runs on a fresh tenant with the real model and writes its report to `docs/journeys/`.
 
-Every push runs the same checks on GitHub (`.github/workflows/check.yml`), plus `pnpm kit check`
-on Network (`core/kits/network`) and `pnpm connector check` on every connector. A tag `v<version>` makes the
-release (`.github/workflows/release.yml`): `pnpm release` with its smoke test, and the disk
-image on the release page.
+Every push runs the same checks on GitHub (`.github/workflows/check.yml`, on Linux with the
+sandbox), plus `pnpm kit check` on Network (`core/kits/network`) and `pnpm connector check` on
+every connector. A release is made on Kenil's Mac, where his signing key is (29 Oct): `pnpm release
+<version>` signs every pack and runs its smoke test, then the disk image goes on the release page:
+
+```
+gh release create v<version> .data/release/Alpha-<version>.dmg --title "Alpha <version>"
+```
