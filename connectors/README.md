@@ -10,8 +10,10 @@ The core names no connector. At start it loads every package in this folder (the
 the release ships), then every folder under Alpha's own `connectors/` beside the kits (the added
 set: what the person added in Intelligence › Connections from a folder or an `.alphaconnector`
 file), each package in a Node process of its own that the core talks to over its pipe
-(`core/src/connectors/process.ts`). A connector awaits each of its host's calls (`land`, `keys`,
-`keepFile`, the browser's), since the core answers them. A folder that does not load is said on
+(`core/src/connectors/process.ts`), under the sandbox. A connector awaits each of its host's calls
+(`land`, `keys`, `keepFile`, the browser's, `helper`), since the core answers them. Its manifest's
+`reaches` names every host it dials; nothing else gets through, and a library that dials out
+itself is given `proxy()` from the SDK. A folder that does not load is said on
 Home and left out.
 
 `connectors-extra/` holds the ones that come with Alpha but load only once added (LinkedIn,

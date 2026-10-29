@@ -1,0 +1,15 @@
+name: connector-reaches
+title: A connector reaches only the hosts it names; anything else is refused and listed
+why: >
+  Step 2, part 1, slice 2 (Kenil's yes, 29 Oct): each connector runs in the sandbox with the hosts
+  its manifest names, plus those the person approved, and nothing else. A made-up connector names
+  the journey's made-up site by one name and reads it by that name (allowed) and by another it does
+  not name (refused at the proxy, and listed under the connector).
+steps:
+  - site: { from: journeys/fixtures/sites/reach }
+  - connector: { from: journeys/fixtures/connectors/reacher, account: /tmp }
+    checks:
+      - field: { table: Reached, key: named, field: Answer, equals: Reached. }
+      - field: { table: Reached, key: unnamed, field: Answer, equals: refused }
+      - refused: { connector: reacher, host: localhost, count: 1 }
+      - errors: 0

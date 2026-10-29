@@ -12,7 +12,7 @@ export function helperBinary(app: string): string {
   return join(app, 'Contents', 'MacOS', 'alpha-helper')
 }
 
-interface Options {
+export interface HelperOptions {
   stdin?: string
   raw?: boolean // the answer is the bytes themselves (a secret), not JSON
   asApp?: boolean // through `open`, for what macOS asks the person about
@@ -21,7 +21,7 @@ interface Options {
 export async function runHelper(
   app: string,
   args: string[],
-  options: Options = {},
+  options: HelperOptions = {},
 ): Promise<unknown> {
   if (options.asApp) return runAsApp(app, args)
   const text = await new Promise<string>((resolve, reject) => {

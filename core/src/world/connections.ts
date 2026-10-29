@@ -18,6 +18,7 @@ export interface Connection {
   lastSyncAt: string | null
   lastRows: number | null
   lastNewAt: string | null
+  hosts: string[] // what the person approved beyond its connector's own hosts
 }
 
 interface ConnectionRow {
@@ -31,6 +32,7 @@ interface ConnectionRow {
   last_sync_at: string | null
   last_rows: number | null
   last_new_at: string | null
+  hosts: string
 }
 
 function toConnection(r: ConnectionRow): Connection {
@@ -45,6 +47,7 @@ function toConnection(r: ConnectionRow): Connection {
     lastSyncAt: r.last_sync_at,
     lastRows: r.last_rows,
     lastNewAt: r.last_new_at,
+    hosts: JSON.parse(r.hosts || '[]') as string[],
   }
 }
 
@@ -142,6 +145,28 @@ export class Connections {
         kind: 'connection',
         words,
         data: { connection: id, state, health },
+      })
+    })
+  }
+
+  // A host the person approved for this connection, from a refusal beside it (call 2: only a
+  // connector that reads sites they choose offers it).
+  approve(id: string, host: string, ctx: WriteCtx): void {
+    tx(this.db, () => {
+      const c = this.get(id)
+      if (!c) throw new Refused('That connection is not there.')
+      if (c.hosts.includes(host)) return
+      run(
+        this.db,
+        'UPDATE connections SET hosts = ? WHERE id = ?',
+        JSON.stringify([...c.hosts, host]),
+        id,
+      )
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'connection',
+        words: `${actorName(ctx.actor)} allowed ${c.account} to reach ${host}.`,
+        data: { connection: id, host },
       })
     })
   }

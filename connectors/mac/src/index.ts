@@ -1,14 +1,23 @@
 // The Mac's own Calendar and Contacts, read-only, through Alpha's helper (design §8). macOS asks
 // the person the first time; nothing is ever written back.
 import { readFileSync } from 'node:fs'
-import { type Call, type Connector, defineTool, Problem, runHelper } from '@alpha/connector-sdk'
+import {
+  type Call,
+  type Connector,
+  defineTool,
+  type HelperOptions,
+  Problem,
+  runHelper,
+} from '@alpha/connector-sdk'
 import { z } from 'zod'
 
-// Where the helper app is: the core says, through the environment it gives this process.
-function helper(): string {
+// Alpha's helper, asked: by the core, which runs it so macOS keeps its permission with Alpha's own
+// app (step 2, part 1, slice 2); a connector in the core's own process runs it itself.
+function ask(c: Call, args: string[], options: HelperOptions): Promise<unknown> {
+  if (c.host.helper) return c.host.helper(args, options)
   const app = process.env.ALPHA_HELPER_APP
   if (!app) throw new Problem("Alpha's helper is not built on this Mac.")
-  return app
+  return runHelper(app, args, options)
 }
 
 interface Attendee {
@@ -46,7 +55,7 @@ const DAY = 86_400_000
 async function events(c: Call, from: Date, to: Date): Promise<Event[]> {
   const args = { from: from.toISOString(), to: to.toISOString() }
   const out = await c.call('events', args, async () => {
-    const answer = (await runHelper(helper(), ['calendar', args.from, args.to], {
+    const answer = (await ask(c, ['calendar', args.from, args.to], {
       asApp: true,
     })) as {
       events: Event[]
@@ -58,7 +67,7 @@ async function events(c: Call, from: Date, to: Date): Promise<Event[]> {
 
 async function contacts(c: Call): Promise<Contact[]> {
   return c.call('contacts', {}, async () => {
-    const answer = (await runHelper(helper(), ['contacts'], { asApp: true })) as {
+    const answer = (await ask(c, ['contacts'], { asApp: true })) as {
       contacts: Contact[]
     }
     return answer.contacts

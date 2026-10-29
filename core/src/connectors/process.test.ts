@@ -8,6 +8,7 @@ import { MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
 import { loadSet } from './discover.ts'
+import { isRemote, named } from './process.ts'
 import { ConnectorService } from './service.ts'
 
 let home: string
@@ -66,3 +67,60 @@ it('runs a connector in its own process, its host answered by the core over the 
   expect(pids && world.records.list(pids.id).map((r) => r.values.pid)).toEqual([pid])
   svc.close()
 }, 30_000)
+
+// Step 2, part 1, slice 2: the browser a connector asks for opens only the hosts it may reach, and
+// a host the person approved joins them.
+it('opens in the browser only the hosts a connector may reach, and those the person approved', async () => {
+  const root = join(home, 'connectors')
+  const dir = join(root, 'browsing')
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(
+    join(dir, 'package.json'),
+    JSON.stringify({ name: 'browsing', type: 'module', exports: './index.js' }),
+  )
+  writeFileSync(
+    join(dir, 'index.js'),
+    `export const connector = {
+  manifest: { name: 'browsing', title: 'Browsing', auth: 'path', account: { label: 'Folder' }, pace: { perMinute: 600 }, reaches: ['www.example.com'], chosenSites: true },
+  guide: '# Browsing', module: 'Browsing', tables: [], tools: {},
+  sync: async (c) => {
+    await c.host.browser().signedIn('https://www.example.com/in')
+    await c.host.browser().signedIn('https://tracker.example.net/x')
+    return { rows: 0, sawNew: false }
+  },
+}
+`,
+  )
+  const opened: string[] = []
+  const svc = new ConnectorService(world, {
+    secrets: new MemorySecrets(),
+    known: (await loadSet(root)).connectors,
+    browser: () => ({ signedIn: async (url: string) => opened.push(url) > 0 }) as never,
+  })
+  const user = world.owner('Kenil')
+  const conn = await svc.connect('browsing', '/tmp', null, user.id)
+  await svc.sync(conn.id)
+  expect(opened).toEqual(['https://www.example.com/in'])
+  expect(world.lines({ kinds: ['reach_refused'] }).map((l) => l.words)).toEqual([
+    'Browsing tried to reach tracker.example.net: refused.',
+  ])
+  const c = svc.find('browsing')
+  world.connections.approve(conn.id, 'tracker.example.net', {
+    actor: { kind: 'person', id: user.id },
+    user: user.id,
+  })
+  expect(c && isRemote(c) && c.remote.process.hosts()).toEqual([
+    'www.example.com',
+    'tracker.example.net',
+  ])
+  svc.close()
+}, 30_000)
+
+it('names a host by itself, by its port, or under a wildcard', () => {
+  const list = ['imap.gmail.com:993', 'www.example.com', '*.example.org']
+  expect(named(list, 'imap.gmail.com', '993')).toBe(true)
+  expect(named(list, 'imap.gmail.com', '143')).toBe(false)
+  expect(named(list, 'www.example.com', '443')).toBe(true)
+  expect(named(list, 'example.com', '443')).toBe(false)
+  expect(named(list, 'a.example.org', '443')).toBe(true)
+})

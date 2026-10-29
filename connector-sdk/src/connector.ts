@@ -4,6 +4,7 @@
 import type { z } from 'zod'
 import type { BrowserEngine } from './browser.ts'
 import type { Effect } from './effects.ts'
+import type { HelperOptions } from './helper.ts'
 
 // secret: an app password or API key the person types in Alpha's own form, never the model.
 // oauth: the client's own sign-in app, the person consenting in their browser.
@@ -38,6 +39,12 @@ export interface Manifest {
   // What the person reads before connecting it, when there is something to weigh (a site that
   // asks not to be read automatically).
   warning?: string
+  // The hosts it reaches (host, or host:port): its process may reach these and the hosts the
+  // person approved on a connection, nothing else (step 2, part 1, slice 2). A library that dials
+  // out itself is handed `proxy()`.
+  reaches?: string[]
+  // It reads sites the person chooses: a host it was refused can be allowed beside the refusal.
+  chosenSites?: boolean
 }
 
 // The kinds a table's fields can have: the kit API's list, said again here so a connector imports
@@ -123,6 +130,8 @@ export interface Host {
   browser?: () => BrowserEngine
   // The item keys a table keeps already (a read that stops at what it knows).
   keys?: (table: string) => string[] | Promise<string[]>
+  // Alpha's Mac helper, run by the core so macOS keeps its permission with Alpha's own app.
+  helper?: (args: string[], options?: HelperOptions) => Promise<unknown>
   journal(words: string, data?: Record<string, unknown>): void
 }
 

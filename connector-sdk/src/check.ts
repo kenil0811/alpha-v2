@@ -24,6 +24,12 @@ const ManifestSchema = z.object({
   system: z.object({ pane: z.string().min(1) }).optional(),
   setup: z.object({ sub: z.string().min(1) }).optional(),
   warning: z.string().min(1).optional(),
+  reaches: z
+    .array(
+      z.string().regex(/^(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d{1,5})?$/i, 'a host, or host:port'),
+    )
+    .optional(),
+  chosenSites: z.boolean().optional(),
 })
 
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null

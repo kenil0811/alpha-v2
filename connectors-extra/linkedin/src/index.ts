@@ -69,6 +69,7 @@ export const linkedin: Connector = {
     pace: { perMinute: 6 },
     syncEveryMinutes: 24 * 60,
     signIn: `${SITE}/login`,
+    reaches: ['www.linkedin.com'],
   },
   guide: readFileSync(new URL('../GUIDE.md', import.meta.url), 'utf8'),
   module: 'LinkedIn',

@@ -580,4 +580,9 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   CREATE INDEX spend_at ON spend (at);
   CREATE INDEX spend_turn ON spend (turn);
   `,
+  // 26: the hosts the person approved for a connection beyond what its connector names (step 2,
+  // part 1, slice 2, 29 Oct), a JSON list
+  `
+  ALTER TABLE connections ADD COLUMN hosts TEXT NOT NULL DEFAULT '[]';
+  `,
 ]

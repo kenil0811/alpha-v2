@@ -90,7 +90,7 @@ describe('connectors found in their folders', () => {
 
   it('packs LinkedIn, unpacks it beside the kits with the SDK linked, and loads it', async () => {
     const file = await pack(join(EXTRA, 'linkedin'), dir)
-    expect(file.endsWith('/linkedin-1.1.0.alphaconnector')).toBe(true)
+    expect(file.endsWith('/linkedin-1.2.0.alphaconnector')).toBe(true)
     const home = join(dir, 'connectors')
     const { name, dir: unpacked } = unpack(file, home)
     expect(name).toBe('linkedin')
@@ -108,11 +108,11 @@ describe('connectors found in their folders', () => {
     // the packs that came with the release, offered until added
     mkdirSync(join(home, 'available'))
     writeFileSync(
-      join(home, 'available', 'linkedin-1.1.0.alphaconnector'),
+      join(home, 'available', 'linkedin-1.2.0.alphaconnector'),
       await import('node:fs').then((fs) => fs.readFileSync(file)),
     )
     expect(available(home).map((p) => [p.name, p.title, p.version])).toEqual([
-      ['linkedin', 'LinkedIn', '1.1.0'],
+      ['linkedin', 'LinkedIn', '1.2.0'],
     ])
     removeFolder(home, 'linkedin')
     expect(existsSync(unpacked)).toBe(false)

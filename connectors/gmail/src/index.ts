@@ -3,7 +3,7 @@
 // person's own Drafts (a write: it goes nowhere); a send leaves their world and waits on a card.
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { type Call, type Connector, defineTool, Problem } from '@alpha/connector-sdk'
+import { type Call, type Connector, defineTool, Problem, proxy } from '@alpha/connector-sdk'
 import { type FetchMessageObject, ImapFlow, type MessageStructureObject } from 'imapflow'
 import { simpleParser } from 'mailparser'
 import nodemailer from 'nodemailer'
@@ -98,6 +98,8 @@ async function withImap<T>(c: Call, fn: (client: ImapFlow) => Promise<T>): Promi
       secure: true,
       auth: { user: c.host.account, pass: await secret(c) },
       logger: false,
+      // out of its sandbox only through the proxy (step 2, part 1, slice 2)
+      ...(proxy() ? { proxy: proxy() } : {}),
     }),
     fn,
   )
@@ -521,6 +523,7 @@ export const gmail: Connector = {
     },
     pace: { perMinute: 60 },
     syncEveryMinutes: 10,
+    reaches: ['imap.gmail.com:993', 'smtp.gmail.com:465'],
   },
   guide: readFileSync(new URL('../GUIDE.md', import.meta.url), 'utf8'),
   module: 'Mail',
@@ -659,6 +662,7 @@ export const gmail: Connector = {
                   port: 465,
                   secure: true,
                   auth: { user: c.host.account, pass: await secret(c) },
+                  ...(proxy() ? { proxy: proxy() } : {}),
                 })
                 return transport.sendMail(mail)
               },

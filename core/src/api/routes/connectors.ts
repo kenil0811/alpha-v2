@@ -15,9 +15,23 @@ import type { Ctx } from '../ctx.ts'
 import type { ConnectorsView } from '../types.ts'
 
 export function registerConnectors(ctx: Ctx): void {
-  const { app, world, engine, user, options, person, live, connectorOf } = ctx
+  const { app, world, engine, user, options, person, live, connectorOf, asPerson } = ctx
+
+  // the hosts each connector was refused, newest first, once each (step 2, part 1, slice 2)
+  const refusals = () => {
+    const by = new Map<string, { host: string; at: string }[]>()
+    for (const l of world.lines({ kinds: ['reach_refused'], limit: 500 }).reverse()) {
+      const name = String(l.data.connector)
+      const list = by.get(name) ?? []
+      if (!list.some((r) => r.host === l.data.host) && list.length < 5)
+        list.push({ host: String(l.data.host), at: l.at })
+      by.set(name, list)
+    }
+    return by
+  }
 
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
+    const refused = refusals()
     return {
       connectors: (engine.connectors?.known() ?? []).map((c) => ({
         name: c.manifest.name,
@@ -49,6 +63,9 @@ export function registerConnectors(ctx: Ctx): void {
             const t = world.shape.table(spec.name)
             return t ? [{ id: t.id, name: t.name, hidden: t.hidden }] : []
           }),
+          reaches: [...new Set([...(c?.manifest.reaches ?? []), ...k.hosts])],
+          refused: refused.get(k.connector) ?? [],
+          canAllow: !!c?.manifest.chosenSites,
         }
       }),
       available: options.connectorsDir ? available(options.connectorsDir) : [],
@@ -59,6 +76,22 @@ export function registerConnectors(ctx: Ctx): void {
         : [],
       failed: options.failedConnectors ?? [],
     }
+  })
+
+  // A host the person allows a connection to reach, from a refusal beside it: only for a connector
+  // that reads sites they choose (call 2 of step 2, part 1).
+  app.post('/api/connections/:id/allow', async (req) => {
+    const { id } = req.params as { id: string }
+    const { host } = z
+      .object({ host: z.string().regex(/^[a-z0-9.-]+(:\d{1,5})?$/i) })
+      .parse(req.body)
+    const k = world.connections.get(id)
+    if (!k) throw new Refused('That connection is not there.')
+    if (!engine.connectors?.find(k.connector)?.manifest.chosenSites)
+      throw new Refused('This connector reaches only the hosts it names.')
+    world.connections.approve(id, host, asPerson)
+    live()
+    return { ok: true }
   })
 
   // A connector added without a restart (decision 10): from a folder, from a pack sent as a

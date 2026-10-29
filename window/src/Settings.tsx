@@ -31,6 +31,7 @@ import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
+import { Reach } from './Reach.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
@@ -903,6 +904,7 @@ function ConnectionLine({
         </span>
       ))}
       {k.health && <Pill tone="warn">{k.health}</Pill>}
+      <Reach connection={k} busy={busy} act={act} />
     </span>
   )
   const buttons = (

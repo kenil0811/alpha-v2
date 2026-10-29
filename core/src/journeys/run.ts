@@ -6,21 +6,23 @@
 // paths are then from that repository's root, and their reports go in its docs/journeys/.
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
 import { createServer, type Server } from 'node:http'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { extname, join, normalize, resolve } from 'node:path'
 import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { config } from '../config.ts'
-import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
+import { loadConnector, loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import { Engine } from '../engine/engine.ts'
 import { stillReading } from '../files/documents.ts'
@@ -61,6 +63,9 @@ const Journey = z.object({
       connect: z.object({ connector: z.string(), account: z.string() }).optional(),
       // a made-up site served on this Mac from the repository; later steps say it as {site}
       site: z.object({ from: z.string() }).optional(),
+      // a made-up connector added from a folder, its {site}, {other} and {host} said as the site's
+      // (by its name, by another, and its host), connected and read once
+      connector: z.object({ from: z.string(), account: z.string() }).optional(),
       // a kit installed from a folder, its agents on when the journey says so (all, or those named)
       kit: z
         .object({
@@ -276,6 +281,29 @@ export async function runOne(
       await connectors.sync(
         world.connections.find(step.connect.connector, step.connect.account)?.id ?? '',
       )
+    } else if (step.connector) {
+      const c = step.connector
+      const dir = mkdtempSync(join(tmpdir(), 'alpha-journey-connector-'))
+      cpSync(resolve(base, c.from), dir, { recursive: true })
+      const url = site?.url ?? 'http://127.0.0.1:9'
+      for (const f of readdirSync(dir, { recursive: true, encoding: 'utf8' }))
+        if (/\.(js|json)$/.test(f))
+          writeFileSync(
+            join(dir, f),
+            readFileSync(join(dir, f), 'utf8')
+              .replaceAll('{site}', url)
+              .replaceAll('{other}', url.replace('127.0.0.1', 'localhost'))
+              .replaceAll('{host}', new URL(url).host),
+          )
+      const loaded = await loadConnector(
+        dir,
+        connectors.known().map((k) => k.manifest.name),
+      )
+      for (const k of loaded) connectors.add(k)
+      const name = loaded[0]?.manifest.name ?? ''
+      what = `Added the made-up connector ${name} and connected it for ${c.account}`
+      await engine.connect(user, name, c.account, null)
+      await connectors.sync(world.connections.find(name, c.account)?.id ?? '')
     } else if (step.site) {
       site = await serve(resolve(base, step.site.from))
       what = `Served the made-up site ${step.site.from} at ${site.url}`

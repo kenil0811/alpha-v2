@@ -1,5 +1,5 @@
 // A kit's or a skill's script, run in a child process under Anthropic's sandbox runtime (design
-// §5, §9): no network at all, writes only in its module's folder, reads only there and in Alpha's
+// §5, §9): no network at all (it is given no list of hosts), writes only in its module's folder, reads only there and in Alpha's
 // own code. Everything it needs from outside it asks the core for, through `alpha`.
 
 import { spawn } from 'node:child_process'
@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { callNamed } from '@alpha/kit-sdk'
 import { SandboxManager } from '@anthropic-ai/sandbox-runtime'
+import { CODE, sandbox } from '../sandbox.ts'
 
 export type ScriptApi = Record<string, (params: Record<string, unknown>) => Promise<unknown>>
 
@@ -20,25 +21,6 @@ export interface ScriptRun {
 }
 
 const HOST = join(import.meta.dirname, 'host.ts')
-const CODE = realpathSync(join(import.meta.dirname, '..', '..', '..')) // alpha-v2: node_modules and core
-
-let ready: Promise<void> | null = null
-
-// A start that fails is forgotten, so the next run tries again rather than failing for ever
-// (item 14 of the problems list, 25 Oct).
-function sandbox(): Promise<void> {
-  if (!ready) {
-    const starting = SandboxManager.initialize({
-      network: { allowedDomains: [], deniedDomains: [], strictAllowlist: true },
-      filesystem: { denyRead: [homedir()], allowRead: [CODE], allowWrite: [], denyWrite: [] },
-    })
-    ready = starting
-    starting.catch(() => {
-      if (ready === starting) ready = null
-    })
-  }
-  return ready
-}
 
 const quote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
 

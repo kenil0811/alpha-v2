@@ -114,22 +114,38 @@ export function activityView(
   }
   const activity = (): RunView[] => {
     const runs: RunView[] = (engine.hands?.runner.runs(100) ?? []).map(runOut)
-    const reads: RunView[] = world.lines({ kinds: ['connection_read'], limit: 200 }).map((l) => ({
-      id: `read-${l.id}`,
-      kind: 'read',
-      name: String(l.data.name ?? 'A connection'),
-      module: null,
-      moduleId: null,
-      startedAt: new Date(Date.parse(l.at) - Number(l.data.ms ?? 0)).toISOString(),
-      ms: Number(l.data.ms ?? 0),
-      state: l.data.state === 'failed' ? 'failed' : 'ok',
-      words: l.words,
-      tokens: null,
-      usd: null,
-      quiet: l.data.quiet === true,
-      steps: [],
-      undo: null,
-    }))
+    // a connector's refused reach (step 2, part 1, slice 2) is a step of the read that made it,
+    // or an entry of its own when no read did
+    const refusals = world.lines({ kinds: ['reach_refused'], limit: 200 })
+    const placed = new Set<number>()
+    const reads: RunView[] = world.lines({ kinds: ['connection_read'], limit: 200 }).map((l) => {
+      const startedAt = new Date(Date.parse(l.at) - Number(l.data.ms ?? 0)).toISOString()
+      const steps = refusals
+        .filter((r) => r.actor.id === l.actor.id && r.at >= startedAt && r.at <= l.at)
+        .map((r) => {
+          placed.add(r.id)
+          return { id: r.id, at: r.at, kind: r.kind, words: r.words }
+        })
+      return {
+        id: `read-${l.id}`,
+        kind: 'read',
+        name: String(l.data.name ?? 'A connection'),
+        module: null,
+        moduleId: null,
+        startedAt,
+        ms: Number(l.data.ms ?? 0),
+        state: l.data.state === 'failed' ? 'failed' : 'ok',
+        words: l.words,
+        tokens: null,
+        usd: null,
+        quiet: l.data.quiet === true && !steps.length,
+        steps,
+        undo: null,
+      }
+    })
+    const alone: RunView[] = refusals
+      .filter((r) => !placed.has(r.id))
+      .map((r) => lineOut(r, 'read', String(r.data.title ?? r.actor.id ?? 'A connector'), null))
     const rowLines = world.lines({ kinds: ROWS, limit: 1000 })
     // removals and reverts made outside a run or a turn: the person's, mostly
     const own = rowLines
@@ -147,7 +163,7 @@ export function activityView(
               undo: undoOf({ line: l.id }, 'Revert', `the revert at ${clock(l.at)}`),
             }
       })
-    return [...runs, ...reads, ...turnsOut([...rowLines, ...actionsOut()]), ...own]
+    return [...runs, ...reads, ...alone, ...turnsOut([...rowLines, ...actionsOut()]), ...own]
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
       .slice(0, 200)
   }

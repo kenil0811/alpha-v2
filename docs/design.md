@@ -39,12 +39,13 @@ once its contract is signed, read-only first, on a Linux VM on its own Windows s
  └────────────────────────────────────────────────────────────────────────────────┘
    children, each under the sandbox: Claude Code (one per live session, started by the
    Agent SDK) · kit and skill scripts (JavaScript) · Docling · Playwright browsers
-   children of their own: one per connector package, its host answered over its pipe
+   children under the sandbox too: one per connector package, its host answered over its pipe
 ```
 
 One service process. Everything that runs code it did not ship (the model's shell, scripts,
-browsers) is a child process under the sandbox. A connector package runs in a process of its own
-(29 Oct; under the sandbox with the hosts it names once part 1's network slice is built, §8).
+browsers, connectors) is a child process under the sandbox. The sandbox's proxy runs in the core:
+a child reaches only the hosts listed for its own process, so a script, given none, reaches
+nothing, and a connector reaches the hosts it names and those the person approved (29 Oct, §8).
 
 ## 3. The repository
 
@@ -486,6 +487,20 @@ asks the process what a call is (its effect for this input, its card, its words)
 holds the core up only while a call waits on it, ends with its pipe, and starts again on the next
 call if it ended. An added connector that came with Alpha is updated at start to the newest pack
 the release brought, as Alpha's own kits are.
+
+**Its network** (slice 2, Kenil's yes 29 Oct): the process runs under the same sandbox as scripts.
+A manifest names the hosts it reaches (`reaches`: Gmail `imap.gmail.com:993` and
+`smtp.gmail.com:465`, LinkedIn `www.linkedin.com`); a connection adds the hosts the person
+approved. That list is the proxy's for that one process, given again before each call; anything
+else is refused at the proxy and is a line (`reach_refused`): under the connection in Intelligence
+› Connections ("Tried to reach …: refused, 29 Oct") and on the read that made it in Activity. Web
+calls go through the proxy by themselves; a library that dials out itself is handed `proxy()` (Gmail's
+IMAP and SMTP). A connection that skips the proxy is blocked outright. A connector reads Alpha's
+code, its own and, for a connector of folders, the folders its connections are (it starts again
+when they change); it writes only the temporary folder; its environment holds no secret of the
+core's. The browser it asks for opens only its hosts, and Alpha's Mac helper is run by the core for
+it, so macOS keeps the permission with Alpha's own app. Allow beside a refusal is offered only on
+a connector of sites the person chooses (`chosenSites`; none yet).
 
 **Order (chosen):** for the first client, in week 2 and as their kits need them: Gmail by IMAP and SMTP with
 an app password (a draft is saved in the person's Drafts under its own Message-ID; a send that
@@ -1000,7 +1015,8 @@ and model, in Settings › Model, built 28 Oct. Beside it, from the final plan: 
 tried again (§8, 28 Oct).
 
 **After it** (the final plan, 25 Oct, reconciled 28 Oct): the connector platform (§8; part 1,
-connectors in a sandbox and signed, under way 29 Oct: slice 1, each in its own process), with the
+connectors in a sandbox and signed, under way 29 Oct: slice 1, each in its own process; slice 2,
+its network), with the
 build work beside it (Alpha's own loop made fit, journeys on the key route, a survey of
 harnesses), then linking. The first client gets a build signed on Kenil's Apple account; Dell as
 above; later work comes as each client signs.

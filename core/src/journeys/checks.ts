@@ -71,6 +71,10 @@ export const Check = z.union([
     }),
   }),
   z.object({ connector_calls: z.object({ words: z.string(), count: z.number() }) }),
+  // a connector's attempts the sandbox refused, listed under it (step 2, part 1, slice 2)
+  z.object({
+    refused: z.object({ connector: z.string(), host: z.string(), count: z.number() }),
+  }),
   z.object({ agents_on: z.number() }),
   z.object({ last_run: z.enum(['ok', 'failed', 'stopped']) }),
   z.object({ looked_up_from: z.object({ table: z.string(), url: z.string() }) }),
@@ -396,6 +400,19 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
     return {
       check: `“${check.connector_calls.words}” ${check.connector_calls.count} time(s)`,
       ok: n === check.connector_calls.count,
+      saw: String(n),
+    }
+  }
+  if ('refused' in check) {
+    const r = check.refused
+    const n = world
+      .lines({ kinds: ['reach_refused'] })
+      .filter(
+        (l) => l.data.connector === r.connector && String(l.data.host).startsWith(r.host),
+      ).length
+    return {
+      check: `${r.connector} refused reaching ${r.host} ${r.count} time(s)`,
+      ok: n === r.count,
       saw: String(n),
     }
   }

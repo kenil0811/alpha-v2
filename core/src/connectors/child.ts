@@ -1,8 +1,8 @@
 // A connector's own process (step 2, part 1): it imports the connector's code, says what the
 // connectors in it are (their manifest, tables, tools with their inputs as JSON schemas, guide),
 // then answers the core's calls one line at a time. Its host is the core's, over the same pipe: a
-// secret, landing rows, keeping a file, the keys a table holds and the browser are asked of the
-// core; the cursor is the one the core gave with the call, kept here as it is set.
+// secret, landing rows, keeping a file, the keys a table holds, the browser and Alpha's Mac helper
+// are asked of the core; the cursor is the one the core gave with the call, kept here as it is set.
 import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
 import {
@@ -93,6 +93,7 @@ function hostFor(req: number, account: string, cursor: string | null): Host {
     keepFile: (name, bytes, mime) =>
       ask(req, 'keepFile', { name, bytes: b64(bytes), mime }) as never,
     keys: (table) => ask(req, 'keys', table) as never,
+    helper: (args, options) => ask(req, 'helper', { args, options: options ?? {} }),
     browser: () => browser as never,
     journal: (words, data) => tell(req, 'journal', { words, data }),
   }

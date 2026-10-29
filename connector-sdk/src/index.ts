@@ -31,7 +31,8 @@ export {
   type Tool,
 } from './connector.ts'
 export { EFFECTS, type Effect, isEffect } from './effects.ts'
-export { helperBinary, runHelper } from './helper.ts'
+export { type HelperOptions, helperBinary, runHelper } from './helper.ts'
+export { proxy } from './proxy.ts'
 export {
   type CallOptions,
   type Fixtures,

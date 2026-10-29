@@ -1,9 +1,14 @@
 // A connector folder's own process, as the core holds it (step 2, part 1, Kenil's yes 29 Oct): the
 // connectors it holds, built from what it says of them, each call sent down its pipe, and its
 // host's asks answered with the core's own host for that call. A process that ends is started
-// again on the next call; one the core leaves ends with its pipe.
+// again on the next call; one the core leaves ends with its pipe. It runs in the sandbox (slice 2):
+// it reaches only the hosts its rules give, through the proxy; it reads its own code, Alpha's and
+// the folders its rules give, and writes only the temporary folder. The browser it asks for opens
+// only those hosts, and Alpha's Mac helper is run here, for it.
 import { type ChildProcess, spawn } from 'node:child_process'
-import { join } from 'node:path'
+import { existsSync, realpathSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { createInterface } from 'node:readline'
 import {
   type Call,
@@ -13,10 +18,13 @@ import {
   type Host,
   type Manifest,
   Problem,
+  runHelper,
   type TableSpec,
   type Tool,
 } from '@alpha/connector-sdk'
+import { SandboxManager } from '@anthropic-ai/sandbox-runtime'
 import { z } from 'zod'
+import { allow, CODE, forget, newId, sandbox } from '../sandbox.ts'
 
 const CHILD = join(import.meta.dirname, 'child.ts')
 
@@ -54,7 +62,50 @@ export type RemoteConnector = Connector & {
 
 export const isRemote = (c: Connector): c is RemoteConnector => 'remote' in c
 
-type Answer = { ok: (v: unknown) => void; fail: (e: unknown) => void; host: Host | null }
+type Answer = {
+  ok: (v: unknown) => void
+  fail: (e: unknown) => void
+  host: Host | null
+  name: string
+}
+
+// What a process may reach and read, asked again at each call (the person's approved hosts, the
+// folders the Files connector watches), and where a refusal is said.
+export interface ProcessRules {
+  hosts: (described: Described[]) => string[]
+  reads: (described: Described[]) => string[]
+  refused: (host: string, connector: string) => void
+}
+
+const OWN: ProcessRules = {
+  hosts: (described) => [...new Set(described.flatMap((d) => d.manifest.reaches ?? []))],
+  reads: () => [],
+  refused: () => undefined,
+}
+
+// Whether host (and port) is one a list names: a host, a host:port, or *.example.com.
+export function named(list: string[], host: string, port: string): boolean {
+  return list.some((entry) => {
+    const [h = '', p] = entry.toLowerCase().split(':')
+    const fits = h.startsWith('*.') ? host.endsWith(h.slice(1)) : host === h
+    return fits && (p === undefined || p === port)
+  })
+}
+
+// The package folder an entry is in: its own code, which its process reads.
+function packageOf(entry: string): string {
+  let dir = dirname(entry)
+  while (!existsSync(join(dir, 'package.json')) && dirname(dir) !== dir) dir = dirname(dir)
+  return realpathSync(dir)
+}
+
+const quote = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`
+
+// What the process's environment holds: enough to run, never a secret of the core's.
+function envOf(): NodeJS.ProcessEnv {
+  const keep = ['PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'TMPDIR', 'TZ']
+  return Object.fromEntries(keep.flatMap((k) => (process.env[k] ? [[k, process.env[k]]] : [])))
+}
 
 const problemOf = (e: { message: string; kind?: string; retryAfterMs?: number | null }) =>
   e.kind
@@ -71,22 +122,77 @@ export class ConnectorProcess {
   private ready: Promise<Described[]> | null = null
   private next = 1
   private pending = new Map<number, Answer>()
+  private rules: ProcessRules = OWN
+  private described: Described[] = []
+  private id = ''
+  private reading = '[]' // the folders it was started with
+  private last = '' // the connector whose call came last, for a refusal's line
   stderr = ''
 
   constructor(entry: string) {
     this.entry = entry
   }
 
+  // Its rules, from the service that holds its connectors.
+  govern(rules: ProcessRules): void {
+    this.rules = rules
+  }
+
+  // The hosts it may reach now, as the proxy holds them.
+  hosts(): string[] {
+    return this.rules.hosts(this.described)
+  }
+
   // The connectors in it, once its process has said what they are.
   start(): Promise<Described[]> {
     if (this.ready) return this.ready
-    const child = spawn(process.execPath, [CHILD, this.entry], { stdio: ['pipe', 'pipe', 'pipe'] })
+    this.ready = this.spawn()
+    this.ready.then(
+      (d) => {
+        this.described = d
+        allow(this.id, this.hosts(), (host) => this.rules.refused(host, this.refusedBy()))
+        this.hold()
+      },
+      () => undefined,
+    )
+    return this.ready
+  }
+
+  private refusedBy(): string {
+    return this.last || this.described[0]?.manifest.name || ''
+  }
+
+  private async spawn(): Promise<Described[]> {
+    await sandbox()
+    const id = newId()
+    this.id = id
+    // nothing yet: what it reaches is given once it has said what it is
+    allow(id, [], (host) => this.rules.refused(host, this.refusedBy()))
+    const reads = this.rules.reads(this.described)
+    this.reading = JSON.stringify(reads)
+    // web calls through the proxy, local ones too, so the proxy judges every host
+    const command = `NO_PROXY= no_proxy= NODE_USE_ENV_PROXY=1 ${[process.execPath, CHILD, this.entry].map(quote).join(' ')}`
+    const wrapped = await SandboxManager.wrapWithSandbox(
+      command,
+      undefined,
+      {
+        filesystem: {
+          denyRead: [homedir()],
+          allowRead: [CODE, packageOf(this.entry), ...reads],
+          allowWrite: [realpathSync(tmpdir())],
+          denyWrite: [],
+        },
+      },
+      undefined,
+      { commandId: id },
+    )
+    const child = spawn(wrapped, { shell: true, stdio: ['pipe', 'pipe', 'pipe'], env: envOf() })
     this.child = child
     child.stderr?.on('data', (d) => {
       this.stderr = (this.stderr + String(d)).slice(-4000)
     })
     child.stdin?.on('error', () => undefined)
-    this.ready = new Promise<Described[]>((ok, fail) => {
+    return new Promise<Described[]>((ok, fail) => {
       createInterface({ input: child.stdout as NodeJS.ReadableStream }).on('line', (line) =>
         this.read(line, ok, fail),
       )
@@ -98,6 +204,7 @@ export class ConnectorProcess {
         if (this.child === child) {
           this.child = null
           this.ready = null
+          forget(id)
         }
         fail(
           new Error(
@@ -106,12 +213,6 @@ export class ConnectorProcess {
         )
       })
     })
-    // held while it says what it is; then only while a call waits on it
-    this.ready.then(
-      () => this.hold(),
-      () => undefined,
-    )
-    return this.ready
   }
 
   // A process the core waits on keeps the core up; an idle one never does, and ends with it.
@@ -176,13 +277,27 @@ export class ConnectorProcess {
           p.mime as string,
         )
       } else if (method === 'keys') result = (await host.keys?.(params as string)) ?? []
-      else if (method.startsWith('browser.')) {
+      else if (method === 'helper') {
+        const app = process.env.ALPHA_HELPER_APP
+        if (!app) throw new Problem("Alpha's helper is not built on this Mac.")
+        result = await runHelper(app, p.args as string[], (p.options ?? {}) as never)
+      } else if (method.startsWith('browser.')) {
         const b = host.browser?.() as unknown as
           | Record<string, (...a: unknown[]) => unknown>
           | undefined
         const fn = b?.[method.slice('browser.'.length)]
         if (!b || typeof fn !== 'function')
           throw new Problem("Alpha's browser is not set up in this core.")
+        // the browser opens only the hosts the connector may reach
+        const first = (params as unknown[])[0]
+        if (typeof first === 'string' && /^https?:/.test(first)) {
+          const u = new URL(first)
+          const port = u.port || (u.protocol === 'https:' ? '443' : '80')
+          if (!named(this.hosts(), u.hostname, port)) {
+            this.rules.refused(u.host, this.refusedBy())
+            throw new Problem(`It may not open ${u.host}: that is not one of its hosts.`, 'blocked')
+          }
+        }
         result = await fn.apply(b, params as unknown[])
       } else throw new Error(`The host has no ${method}.`)
       reply({ result: result ?? null })
@@ -199,15 +314,25 @@ export class ConnectorProcess {
   }
 
   // One call down the pipe; host, when given, answers what the connector asks while it runs.
+  // Its folders changed since it started (one watched more or less): it starts again with them.
   async request(
     op: string,
     fields: Record<string, unknown>,
     host: Host | null = null,
   ): Promise<unknown> {
+    if (
+      this.child &&
+      !this.pending.size &&
+      JSON.stringify(this.rules.reads(this.described)) !== this.reading
+    )
+      this.close()
     await this.start()
+    allow(this.id, this.hosts(), (h) => this.rules.refused(h, this.refusedBy()))
+    const name = String(fields.name ?? '')
+    if (name) this.last = name
     const id = this.next++
     return new Promise((ok, fail) => {
-      this.pending.set(id, { ok, fail, host })
+      this.pending.set(id, { ok, fail, host, name })
       this.hold()
       this.child?.stdin?.write(`${JSON.stringify({ t: 'req', id, op, ...fields })}\n`)
     })
@@ -218,6 +343,7 @@ export class ConnectorProcess {
     this.child?.kill()
     this.child = null
     this.ready = null
+    if (this.id) forget(this.id)
   }
 }
 

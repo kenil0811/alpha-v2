@@ -4,6 +4,7 @@
 // runs. The core names no connector: each describes itself in its manifest, and the service
 // answers for the set it was given (decision 10).
 import { createHash } from 'node:crypto'
+import { existsSync, realpathSync } from 'node:fs'
 import {
   type BrowserEngine,
   type Call,
@@ -28,7 +29,7 @@ import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
-import { type CallSays, isRemote } from './process.ts'
+import { type CallSays, type Described, isRemote, type ProcessRules } from './process.ts'
 
 export interface ServiceOptions {
   secrets: SecretStore
@@ -83,6 +84,41 @@ export class ConnectorService {
     )
     if (problems.length) throw new Refused(problems.join(' '))
     this.set.push(c)
+    if (isRemote(c)) c.remote.process.govern(this.rules())
+  }
+
+  // What a connector's process may reach and read (step 2, part 1, slice 2): the hosts its
+  // connectors name and those the person approved on their connections; the folders their
+  // connections are, for a connector of folders. A host it was refused is a line where the
+  // person sees it.
+  private rules(): ProcessRules {
+    const of = (described: Described[]) => {
+      const names = described.map((d) => d.manifest.name)
+      return this.world.connections.list().filter((k) => names.includes(k.connector))
+    }
+    return {
+      hosts: (described) => [
+        ...new Set([
+          ...described.flatMap((d) => d.manifest.reaches ?? []),
+          ...of(described).flatMap((k) => k.hosts),
+        ]),
+      ],
+      reads: (described) =>
+        of(described.filter((d) => d.manifest.auth === 'path'))
+          .map((k) => k.account)
+          .filter((dir) => existsSync(dir))
+          .map((dir) => realpathSync(dir))
+          .sort(),
+      refused: (host, name) => {
+        const title = this.find(name)?.manifest.title ?? name
+        this.world.line({
+          actor: { kind: 'connector', id: name },
+          kind: 'reach_refused',
+          words: `${title} tried to reach ${host}: refused.`,
+          data: { connector: name, host, title },
+        })
+      },
+    }
   }
 
   // A connector leaves the loaded set, when nothing is connected through it.
