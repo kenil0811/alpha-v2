@@ -69,6 +69,7 @@ export async function runScript(options: {
   })
   const done = new Promise<ScriptRun>((resolve) => {
     let settled = false
+    let answered: { result: unknown; error: string | null } | null = null
     const finish = (r: ScriptRun) => {
       if (!settled) {
         settled = true
@@ -90,8 +91,12 @@ export async function runScript(options: {
         stderr += `${line}\n`
         return
       }
-      if (m.done)
-        return finish({ result: m.result ?? null, error: m.error ?? null, stderr, stopped })
+      // its answer, given once its process has closed: what it wrote to stderr is all read by
+      // then (on Linux it can come after the answer)
+      if (m.done) {
+        answered = { result: m.result ?? null, error: m.error ?? null }
+        return
+      }
       if (m.id === undefined || !m.method) return
       const fn = options.api[m.method]
       try {
@@ -118,12 +123,16 @@ export async function runScript(options: {
       }
     })
     child.on('close', (code) =>
-      finish({
-        result: null,
-        error: stopped ? 'Stopped.' : `The script ended without an answer (exit ${code}).`,
-        stderr,
-        stopped,
-      }),
+      finish(
+        answered
+          ? { ...answered, stderr, stopped }
+          : {
+              result: null,
+              error: stopped ? 'Stopped.' : `The script ended without an answer (exit ${code}).`,
+              stderr,
+              stopped,
+            },
+      ),
     )
   })
   return done
