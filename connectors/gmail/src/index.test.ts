@@ -1,7 +1,7 @@
 // A dropped IMAP connection ends the call it was in, with the error, and never the process.
 import { EventEmitter } from 'node:events'
 import { describe, expect, it } from 'vitest'
-import { type Draft, sendOnce, withImapClient } from './index.ts'
+import { type Draft, discardDraft, sendOnce, withImapClient } from './index.ts'
 
 class FakeImap extends EventEmitter {
   loggedOut = false
@@ -171,3 +171,56 @@ describe('sendOnce', () => {
   })
 })
 
+// Kenil, 29 Oct: "why does it have to go to trash? ... lets do discard". Gmail keeps a message taken
+// out of a folder (archived, or in Trash), so a sent draft is moved to Trash and deleted for good
+// there, found by Gmail's own id for it: the sent copy shares its Message-ID and is never touched.
+describe('discardDraft', () => {
+  function gmailBox(labels: string[]) {
+    let open = ''
+    const did: string[] = []
+    const client = {
+      list: async () => [
+        { specialUse: '\\Drafts', path: '[Gmail]/Drafts' },
+        { specialUse: '\\Trash', path: '[Gmail]/Trash' },
+      ],
+      getMailboxLock: async (path: string) => {
+        open = path
+        return { release: () => undefined }
+      },
+      search: async (q: { header?: Record<string, string>; emailId?: string }) =>
+        open === '[Gmail]/Drafts' && q.header?.['message-id'] === 'd1@gmail.com'
+          ? [7]
+          : open === '[Gmail]/Trash' && q.emailId === 'gm-7'
+            ? [42]
+            : [],
+      fetch: async function* (uids: number[]) {
+        for (const uid of uids) yield { uid, emailId: `gm-${uid}`, labels: new Set(labels) }
+      },
+      messageMove: async (uids: number[], to: string) => {
+        did.push(`move ${uids} from ${open} to ${to}`)
+      },
+      messageDelete: async (uids: number[]) => {
+        did.push(`delete ${uids} in ${open}`)
+      },
+      messageFlagsRemove: async (uids: number[], flags: string[]) => {
+        did.push(`unlabel ${uids} ${flags} in ${open}`)
+      },
+    }
+    return { client, did }
+  }
+
+  it('moves the sent draft to Trash and deletes it there for good', async () => {
+    const g = gmailBox(['\\Draft'])
+    await discardDraft(g.client as never, '<d1@gmail.com>')
+    expect(g.did).toEqual([
+      'move 7 from [Gmail]/Drafts to [Gmail]/Trash',
+      'delete 42 in [Gmail]/Trash',
+    ])
+  })
+
+  it('only takes the Drafts label off a draft Gmail filed as the sent email itself', async () => {
+    const g = gmailBox(['\\Draft', '\\Sent'])
+    await discardDraft(g.client as never, '<d1@gmail.com>')
+    expect(g.did).toEqual(['unlabel 7 \\Draft in [Gmail]/Drafts'])
+  })
+})

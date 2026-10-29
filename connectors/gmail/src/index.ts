@@ -177,15 +177,39 @@ async function sameDraftIn(
   return null
 }
 
-// A sent draft taken out of Drafts, into Trash as Gmail keeps a discarded one.
-async function dropDraft(client: ImapFlow, id: string): Promise<void> {
+// A sent draft discarded, as Gmail's own Send leaves none (Kenil, 29 Oct: "lets do discard"). Over
+// IMAP Gmail keeps a message taken out of a folder (archived, or in Trash, by the account's
+// settings), so it is moved to Trash and deleted for good there, found by Gmail's own id for it:
+// the sent copy shares its Message-ID and is never touched. A draft Gmail filed as the sent email
+// itself only loses its Drafts label.
+export async function discardDraft(client: ImapFlow, id: string): Promise<void> {
   const trash = await mailbox(client, '\\Trash')
+  const gone: string[] = []
   const lock = await client.getMailboxLock(await mailbox(client, '\\Drafts'))
   try {
     const uids = await uidsOf(client, id)
-    if (uids.length) await client.messageMove(uids, trash, { uid: true })
+    if (!uids.length) return
+    const sent: number[] = []
+    for await (const m of client.fetch(uids, { emailId: true, labels: true }, { uid: true }))
+      if (m.labels?.has('\\Sent')) sent.push(m.uid)
+      else if (m.emailId) gone.push(m.emailId)
+    if (sent.length) {
+      await client.messageFlagsRemove(sent, ['\\Draft'], { uid: true, useLabels: true })
+      return
+    }
+    await client.messageMove(uids, trash, { uid: true })
   } finally {
     lock.release()
+  }
+  if (!gone.length) return
+  const inTrash = await client.getMailboxLock(trash)
+  try {
+    for (const emailId of gone) {
+      const uids = (await client.search({ emailId }, { uid: true })) || []
+      if (uids.length) await client.messageDelete(uids, { uid: true })
+    }
+  } finally {
+    inTrash.release()
   }
 }
 
@@ -628,7 +652,7 @@ export const gmail: Connector = {
             sendOnce(c.host.account, m, {
               draft: (id) => withImap(c, (client) => draftIn(client, id)),
               sameDraft: (mail) => withImap(c, (client) => sameDraftIn(client, mail)),
-              removeDraft: (id) => withImap(c, (client) => dropDraft(client, id)),
+              removeDraft: (id) => withImap(c, (client) => discardDraft(client, id)),
               send: async (mail) => {
                 const transport = nodemailer.createTransport({
                   host: 'smtp.gmail.com',
