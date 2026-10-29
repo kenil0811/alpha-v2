@@ -502,6 +502,18 @@ core's. The browser it asks for opens only its hosts, and Alpha's Mac helper is 
 it, so macOS keeps the permission with Alpha's own app. Allow beside a refusal is offered only on
 a connector of sites the person chooses (`chosenSites`; none yet).
 
+**Signed packs** (slice 3, Kenil's yes 29 Oct): a kit's or a connector's pack carries SIGNATURE
+beside its PACK.json, an Ed25519 signature over PACK.json's bytes (every file and its hash), made
+with Kenil's key (`pnpm sign <pack>`; `pnpm sign --new-key` makes it once, the private half in his
+Keychain and one offline copy, the public half in `core/config/signing-key.pub`, which every
+release carries; the release signs every pack it builds). A pack installed from a file, from
+kits/inbox or from the packs a release offers goes in only signed by that key; an installed
+connector keeps PACK.json and SIGNATURE in its `.pack/` and is checked at every start, so one
+changed afterwards does not load and says what changed. An installed kit is the person's to
+change (the ownership rule) and is checked when it comes, not after. Alpha's own kits and the
+standard connectors are the app itself. The **developer switch** (Settings › Experimental, kept in
+the world, off on a fresh install) lets folders and unsigned packs load.
+
 **Order (chosen):** for the first client, in week 2 and as their kits need them: Gmail by IMAP and SMTP with
 an app password (a draft is saved in the person's Drafts under its own Message-ID; a send that
 names it, or that is the very email a draft already is, sends that draft as it is and takes it out
@@ -1016,7 +1028,7 @@ tried again (§8, 28 Oct).
 
 **After it** (the final plan, 25 Oct, reconciled 28 Oct): the connector platform (§8; part 1,
 connectors in a sandbox and signed, under way 29 Oct: slice 1, each in its own process; slice 2,
-its network), with the
+its network; slice 3, signed packs), with the
 build work beside it (Alpha's own loop made fit, journeys on the key route, a survey of
 harnesses), then linking. The first client gets a build signed on Kenil's Apple account; Dell as
 above; later work comes as each client signs.

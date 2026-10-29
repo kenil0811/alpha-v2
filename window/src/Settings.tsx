@@ -118,9 +118,8 @@ export function Settings({
   }, [load, version])
 
   const p = PAGES[page]
-  // Experimental shows once a feature is being tried: an empty section is a switch with nothing
-  // behind it (Kenil, 26 Oct)
-  const tabs = p.tabs.filter(([id]) => id !== 'experimental' || EXPERIMENTS.length > 0)
+  // Experimental always shows: the developer switch lives there (step 2, part 1, slice 3, 29 Oct)
+  const tabs = p.tabs
   const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
   // a connector that names a place on this Mac (a folder) is a list under Folders; every other
@@ -1350,23 +1349,62 @@ function FolderForm({
   )
 }
 
-// Experimental: features still being tried, each off until switched on on this computer.
+// Experimental: the developer switch, kept in Alpha (step 2, part 1, slice 3), then the features
+// still being tried, each off until switched on on this computer.
 function Experimental() {
+  const [on, setOn] = useState<boolean | null>(null)
+  const { busy, problem, act } = useAct(() =>
+    api.get<{ on: boolean }>('/api/developer').then((d) => setOn(d.on)),
+  )
+  useEffect(() => {
+    api.get<{ on: boolean }>('/api/developer').then(
+      (d) => setOn(d.on),
+      () => setOn(null),
+    )
+  }, [])
   return (
-    <Section
-      title="Experimental"
-      about="Features still being tried. Each is off until you switch it on, on this computer only."
-    >
-      {EXPERIMENTS.length === 0 ? (
-        <p className="text-ink-2 text-md">Nothing to try right now.</p>
-      ) : (
+    <>
+      <Section
+        title="Developer"
+        about="Modules and connectors from a folder, and packs not signed by Kenil, load only while this is on."
+      >
         <List>
-          {EXPERIMENTS.map((e) => (
-            <ExperimentLine key={e.name} name={e.name} title={e.title} about={e.about} />
-          ))}
+          <Row
+            title="Developer switch"
+            sub={
+              on
+                ? 'On: folders and packs not signed by Kenil load.'
+                : 'Off: only packs signed by Kenil load.'
+            }
+            actions={
+              on !== null && (
+                <Switch
+                  checked={on}
+                  label="Developer switch"
+                  disabled={busy}
+                  onChange={(v) => act(() => api.post('/api/developer', { on: v }))}
+                />
+              )
+            }
+          />
         </List>
-      )}
-    </Section>
+        <Refusal words={problem} />
+      </Section>
+      <Section
+        title="Experimental"
+        about="Features still being tried. Each is off until you switch it on, on this computer only."
+      >
+        {EXPERIMENTS.length === 0 ? (
+          <p className="text-ink-2 text-md">Nothing to try right now.</p>
+        ) : (
+          <List>
+            {EXPERIMENTS.map((e) => (
+              <ExperimentLine key={e.name} name={e.name} title={e.title} about={e.about} />
+            ))}
+          </List>
+        )}
+      </Section>
+    </>
   )
 }
 

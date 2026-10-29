@@ -10,6 +10,7 @@ import {
   removeFolder,
   unpack,
 } from '../../connectors/discover.ts'
+import { FOLDERS, isDeveloper } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ConnectorsView } from '../types.ts'
@@ -131,6 +132,7 @@ export function registerConnectors(ctx: Ctx): void {
   }
   app.post('/api/connectors', async (req) => {
     const { folder } = z.object({ folder: z.string().trim().min(1) }).parse(req.body)
+    if (!isDeveloper(world, user.id)) throw new Refused(FOLDERS)
     return addConnector(() => addFolder(folder, options.connectorsDir ?? ''))
   })
   app.post('/api/connectors/pack', async (req) => {
@@ -141,7 +143,9 @@ export function registerConnectors(ctx: Ctx): void {
     try {
       const file = join(dir, name.replace(/[^\w.-]/g, '_'))
       writeFileSync(file, req.body as Buffer)
-      return await addConnector(() => unpack(file, options.connectorsDir ?? ''))
+      return await addConnector(() =>
+        unpack(file, options.connectorsDir ?? '', { developer: isDeveloper(world, user.id) }),
+      )
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -152,7 +156,9 @@ export function registerConnectors(ctx: Ctx): void {
       (p) => p.name === name,
     )
     if (!found) throw new Refused('That pack is not among the ones that came with Alpha.')
-    return addConnector(() => unpack(found.file, options.connectorsDir ?? ''))
+    return addConnector(() =>
+      unpack(found.file, options.connectorsDir ?? '', { developer: isDeveloper(world, user.id) }),
+    )
   })
   app.delete('/api/connectors/:name', async (req) => {
     const { name } = z.object({ name: z.string() }).parse(req.params)

@@ -31,6 +31,19 @@ import { dirname, join, relative } from 'node:path'
 import { pack as packConnector } from '../core/src/connectors/discover.ts'
 import { pack } from '../core/src/modules/packs.ts'
 
+// Every pack the release carries is signed with Kenil's key from this Mac's Keychain (step 2,
+// part 1, slice 3): a Mac without it cannot make a release.
+const signed = (file: string): string => {
+  execFileSync(
+    process.execPath,
+    [join(import.meta.dirname, '..', 'core', 'src', 'sign.ts'), file],
+    {
+      stdio: 'inherit',
+    },
+  )
+  return file
+}
+
 const ROOT = join(import.meta.dirname, '..')
 const NODE = readFileSync(join(ROOT, '.nvmrc'), 'utf8').trim() // 26.12.0
 const UV = '0.12.17'
@@ -241,6 +254,8 @@ const call = async (path: string, body?: unknown) => {
 }
 const page = await fetch(`${base}/?t=${token}`).then((r) => r.text())
 if (!page.includes('<div id="root">')) fail('the window was not served')
+// a kit from a folder loads only with the developer switch, on in this throwaway core
+if (!(await call('/api/developer', { on: true })).ok) fail('the developer switch did not turn on')
 const kit = await call('/api/kits', { folder: join(app, 'core', 'src', 'modules', 'test-kit') })
 if (!kit.ok) fail(`a made-up kit did not install: ${JSON.stringify(kit.data)}`)
 const view = await call(`/api/modules/${String(kit.data.module)}`)
@@ -286,7 +301,7 @@ if (client) {
   const kits = [...bundle.matchAll(/^\s*-\s*(\S+)\s*$/gm)].map((m) => m[1] as string)
   if (!clientName || !kits.length) throw new Error(`${client}/bundle.yaml names no client or kits.`)
   const kitsDir = join(appDir, 'Contents', 'Resources', 'kits')
-  for (const k of kits) say(`Packed ${relative(appDir, pack(join(repo, k), kitsDir))}`)
+  for (const k of kits) say(`Packed ${relative(appDir, signed(pack(join(repo, k), kitsDir)))}`)
 }
 // the connectors that come with Alpha but are not loaded until the person adds one (LinkedIn):
 // connectors-extra/*, each packed beside the kits; install.sh puts them in Alpha's
@@ -296,7 +311,9 @@ if (existsSync(extra))
   for (const name of readdirSync(extra).sort()) {
     const dir = join(extra, name)
     if (!existsSync(join(dir, 'package.json'))) continue
-    const file = await packConnector(dir, join(appDir, 'Contents', 'Resources', 'connectors'))
+    const file = signed(
+      await packConnector(dir, join(appDir, 'Contents', 'Resources', 'connectors')),
+    )
     say(`Packed ${relative(appDir, file)}`)
   }
 // The hash of every file the app carries, written once install.sh, the kits and the connector

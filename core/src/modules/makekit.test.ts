@@ -95,7 +95,7 @@ describe('Make this a kit', () => {
     expect(made.words).toMatch(
       /^Made Rentals 0\.1\.0 as a kit: 2 tables, 1 agent, 1 skill, no rows\./,
     )
-    const { dir } = unpack(made.file, join(home, 'kits'))
+    const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     const manifest = parse(readFileSync(join(dir, 'module.yaml'), 'utf8'))
     expect(manifest).toMatchObject({
       name: 'Rentals',
@@ -174,7 +174,7 @@ describe('Make this a kit', () => {
       alpha,
     )
     const made = makeKit(world, m.id, join(home, 'Desktop'), ctx)
-    const { dir } = unpack(made.file, join(home, 'kits'))
+    const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     const manifest = parse(readFileSync(join(dir, 'module.yaml'), 'utf8'))
     expect(manifest.uses).toEqual([
       { kit: 'Bakery', min: '0.1.0', tables: ['Suppliers'] },
@@ -208,7 +208,7 @@ describe('Make this a kit', () => {
     expect(made.words).toMatch(
       /^Packed Bakery 0\.1\.0 as a kit: 2 tables, 1 agent, 2 skills, no rows\./,
     )
-    const { dir } = unpack(made.file, join(home, 'kits'))
+    const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     expect(readFileSync(join(dir, 'NOTES.md'), 'utf8')).toContain('Changed by the person')
     expect(existsSync(join(dir, 'setup.yaml'))).toBe(false)
     expect(checkKit(dir)).toEqual([])

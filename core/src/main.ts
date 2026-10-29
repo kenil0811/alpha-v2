@@ -25,6 +25,7 @@ import { AgentRunner } from './modules/runs/index.ts'
 import { platformHere } from './platform/index.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
+import { isDeveloper, type Trust } from './signing.ts'
 import { backupDaily } from './world/backups.ts'
 import { setHomeRegion } from './world/phones.ts'
 import { expire } from './world/records/index.ts'
@@ -127,8 +128,12 @@ if (install.uv) process.env.ALPHA_UV = install.uv
 // The connectors: the standard set the release ships, then every folder under Alpha's own
 // connectors/ (added from Settings); a folder that does not load is said on Home and left out.
 const connectorsDir = join(home, 'connectors')
-for (const u of updateOwn(connectorsDir)) {
-  const words = `Updated the connector ${u.title} to ${u.version}, Alpha's own.`
+// what an install trusts: Kenil's signature, or everything while the developer switch is on
+const trust = (): Trust => ({ developer: isDeveloper(world, user.id) })
+for (const u of updateOwn(connectorsDir, trust())) {
+  const words = u.refused
+    ? `The connector ${u.title} ${u.version} was not taken: ${u.refused}`
+    : `Updated the connector ${u.title} to ${u.version}, Alpha's own.`
   console.log(words)
   world.line({
     actor: { kind: 'system' },
@@ -141,6 +146,7 @@ const standard = await loadSet(STANDARD_DIR)
 const added = await loadSet(
   connectorsDir,
   standard.connectors.map((c) => c.manifest.name),
+  trust(),
 )
 // the browser is made on first use (below): a site read as the person is read with it
 const connectors = new ConnectorService(world, {
@@ -339,7 +345,8 @@ try {
     kitsNow.now = 'your kits'
     engine.events.emit('event', { type: 'lines', user: user.id })
     try {
-      for (const said of await installInbox(world, join(home, 'kits'), ctx)) console.log(said)
+      for (const said of await installInbox(world, join(home, 'kits'), ctx, trust()))
+        console.log(said)
       kitsNow.now = "Alpha's own modules"
       for (const said of await keepDefaults(world, ctx)) console.log(said)
     } catch (err) {

@@ -29,6 +29,8 @@ import {
 import { ConnectorService } from './service.ts'
 
 const EXTRA = join(STANDARD_DIR, '..', 'connectors-extra')
+// these packs are unsigned: the developer switch is on (signing is tested in signing.test.ts)
+const DEV = { developer: true }
 let dir: string
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'alpha-discover-'))
@@ -92,7 +94,7 @@ describe('connectors found in their folders', () => {
     const file = await pack(join(EXTRA, 'linkedin'), dir)
     expect(file.endsWith('/linkedin-1.2.0.alphaconnector')).toBe(true)
     const home = join(dir, 'connectors')
-    const { name, dir: unpacked } = unpack(file, home)
+    const { name, dir: unpacked } = unpack(file, home, DEV)
     expect(name).toBe('linkedin')
     expect(unpacked).toBe(join(home, 'linkedin'))
     // one SDK and one zod: linked to the core's own copies, never a second copy inside
@@ -129,7 +131,7 @@ describe('connectors found in their folders', () => {
       }
     ).version
     // the copy the person added from an older release: the same connector, an older version
-    const { dir: added } = unpack(now, home)
+    const { dir: added } = unpack(now, home, DEV)
     const pkg = JSON.parse(readFileSync(join(added, 'package.json'), 'utf8'))
     writeFileSync(join(added, 'package.json'), JSON.stringify({ ...pkg, version: '0.9.0' }))
     writeFileSync(join(added, 'OLD'), 'from before')
@@ -137,16 +139,16 @@ describe('connectors found in their folders', () => {
     renameSync(old, join(avail, 'linkedin-0.9.0.alphaconnector'))
     // offered once, at its newest
     expect(available(home).map((p) => [p.name, p.version])).toEqual([['linkedin', version]])
-    expect(updateOwn(home)).toEqual([{ name: 'linkedin', title: 'LinkedIn', version }])
+    expect(updateOwn(home, DEV)).toEqual([{ name: 'linkedin', title: 'LinkedIn', version }])
     expect(existsSync(join(added, 'OLD'))).toBe(false)
     expect(JSON.parse(readFileSync(join(added, 'package.json'), 'utf8')).version).toBe(version)
     // the newest already: nothing to do; a folder of the person's own of that name is theirs
-    expect(updateOwn(home)).toEqual([])
+    expect(updateOwn(home, DEV)).toEqual([])
     writeFileSync(
       join(added, 'package.json'),
       JSON.stringify({ name: 'my-linkedin', version: '0.1.0' }),
     )
-    expect(updateOwn(home)).toEqual([])
+    expect(updateOwn(home, DEV)).toEqual([])
   })
 
   it('adds a folder as a copy Alpha keeps, and refuses one that is not a connector', async () => {
@@ -157,6 +159,8 @@ describe('connectors found in their folders', () => {
     mkdirSync(join(dir, 'notes'))
     writeFileSync(join(dir, 'notes', 'package.json'), '{"name":"notes"}')
     await expect(addFolder(join(dir, 'notes'), home)).rejects.toThrow(/not a connector/)
-    expect(() => unpack(join(dir, 'notes', 'package.json'), home)).toThrow(/not a connector pack/)
+    expect(() => unpack(join(dir, 'notes', 'package.json'), home, DEV)).toThrow(
+      /not a connector pack/,
+    )
   })
 })

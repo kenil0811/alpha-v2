@@ -3,7 +3,9 @@
 // kept unpacked in Alpha's folder (kits/<name>/<version>), so later updates have the kit's own
 // files to compare with, and installed or updated as installing from a folder does: within its
 // module's parent, agents paused, the ownership rule on update. Packs dropped in kits/inbox are
-// installed when the core starts; Settings takes one from a file.
+// installed when the core starts; Settings takes one from a file. A pack goes in only signed by
+// Kenil, or while the developer switch is on (step 2, part 1, slice 3); once in, its module is the
+// person's to change, by the ownership rule, so it is not checked again.
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
@@ -18,6 +20,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
+import { mustBeSigned, type Trust } from '../signing.ts'
 import { one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
@@ -83,6 +86,7 @@ function refuseLinks(dir: string): void {
 export function unpack(
   file: string,
   kitsDir: string,
+  trust: Trust,
 ): { name: string; version: string; dir: string } {
   const stage = mkdtempSync(join(tmpdir(), 'alpha-unpack-'))
   try {
@@ -100,6 +104,8 @@ export function unpack(
       throw new Refused('That kit pack’s version is not a version like 1.2.3.')
     if (typeof m.name !== 'string' || !/[a-z0-9]/i.test(m.name))
       throw new Refused('That kit pack has no name.')
+    // signed by Kenil, or the developer switch is on (step 2, part 1, slice 3)
+    mustBeSigned(stage, trust)
     const kit = join(stage, 'kit')
     if (existsSync(kit)) refuseLinks(kit)
     const there = existsSync(kit) ? filesOf(kit) : []
@@ -128,8 +134,9 @@ export async function installPack(
   file: string,
   kitsDir: string,
   ctx: WriteCtx,
+  trust: Trust,
 ): Promise<string> {
-  const { name, version, dir } = unpack(file, kitsDir)
+  const { name, version, dir } = unpack(file, kitsDir, trust)
   const m = world.shape.module(name)
   const fromKit =
     m && one<{ version: string }>(world.db, 'SELECT version FROM kits WHERE module_id = ?', m.id)
@@ -154,6 +161,7 @@ export async function installInbox(
   world: World,
   kitsDir: string,
   ctx: WriteCtx,
+  trust: Trust,
 ): Promise<string[]> {
   const inbox = join(kitsDir, 'inbox')
   if (!existsSync(inbox)) return []
@@ -163,7 +171,7 @@ export async function installInbox(
     .sort()) {
     const file = join(inbox, n)
     try {
-      said.push(await installPack(world, file, kitsDir, ctx))
+      said.push(await installPack(world, file, kitsDir, ctx, trust))
       mkdirSync(join(inbox, 'done'), { recursive: true })
       renameSync(file, join(inbox, 'done', n))
     } catch (err) {

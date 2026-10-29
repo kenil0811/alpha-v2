@@ -95,7 +95,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
-| I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental only while something is tried | 26 Oct | — |
+| I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this; under them Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions | 27 Oct | — |
 

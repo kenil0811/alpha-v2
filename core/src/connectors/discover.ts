@@ -8,6 +8,7 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
+  copyFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -26,6 +27,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { type Connector, checkConnector } from '@alpha/connector-sdk'
+import { mustBeSigned, SIGNATURE, type Trust, UNSIGNED } from '../signing.ts'
 import { Refused } from '../world/kinds.ts'
 import { ConnectorProcess, type Described, isRemote, remoteConnectors } from './process.ts'
 
@@ -92,8 +94,37 @@ function named(s: Started, taken: string[]): Connector[] {
   return remoteConnectors(s.proc, s.described)
 }
 
-// Every folder directly under dir that is a connector, in name order.
-export async function loadSet(dir: string, taken: string[] = []): Promise<Loaded> {
+// Where an installed connector keeps the PACK.json and SIGNATURE it came with.
+const KEPT = '.pack'
+
+// What of an installed connector is not as it was packed, in words; none when every file is.
+function changedSince(folder: string): string | null {
+  const m = JSON.parse(readFileSync(join(folder, KEPT, 'PACK.json'), 'utf8')) as PackManifest
+  const there = filesOf(folder)
+  for (const f of Object.keys(m.files))
+    if (!there.includes(f)) return `${f} is gone since it was installed`
+  for (const f of there) {
+    if (!(f in m.files)) return `${f} was added since it was installed`
+    if (sha(readFileSync(join(folder, f))) !== m.files[f])
+      return `${f} changed since it was installed`
+  }
+  return null
+}
+
+// An added connector loads as Kenil signed it, unchanged, or while the developer switch is on.
+function vouched(folder: string, trust: Trust | undefined): void {
+  if (!trust || trust.developer) return
+  const kept = join(folder, KEPT)
+  if (!existsSync(join(kept, 'PACK.json'))) throw new Refused(UNSIGNED)
+  const changed = changedSince(folder)
+  if (changed) throw new Refused(`${changed}: it loads only as it was signed. ${UNSIGNED}`)
+  mustBeSigned(kept, trust)
+}
+
+// Every folder directly under dir that is a connector, in name order. The added set is given its
+// trust (step 2, part 1, slice 3): a folder loads as Kenil signed it, or while the developer
+// switch is on; the standard set ships with the app and is given none.
+export async function loadSet(dir: string, taken: string[] = [], trust?: Trust): Promise<Loaded> {
   const out: Loaded = { connectors: [], failed: [] }
   if (!existsSync(dir)) return out
   const names = () => [...taken, ...out.connectors.map((c) => c.manifest.name)]
@@ -108,7 +139,13 @@ export async function loadSet(dir: string, taken: string[] = []): Promise<Loaded
         existsSync(join(folder, 'package.json')),
     )
   // their processes start together; a name is judged in folder order, as before
-  const started = folders.map(({ folder }) => ({ folder, s: startConnector(folder) }))
+  const started = folders.map(({ folder }) => ({
+    folder,
+    s: (async () => {
+      vouched(folder, trust)
+      return startConnector(folder)
+    })(),
+  }))
   for (const { folder, s } of started) {
     try {
       out.connectors.push(...named(await s, names()))
@@ -238,7 +275,11 @@ export function peek(file: string): { name: string; title: string; version: stri
 
 // A pack opened and checked into Alpha's connectors/<name>: every file there with the hash it
 // was packed with, nothing more; then the shared packages linked to the core's own copies.
-export function unpack(file: string, connectorsDir: string): { name: string; dir: string } {
+export function unpack(
+  file: string,
+  connectorsDir: string,
+  trust: Trust,
+): { name: string; dir: string } {
   const stage = mkdtempSync(join(tmpdir(), 'alpha-cunpack-'))
   try {
     try {
@@ -259,10 +300,16 @@ export function unpack(file: string, connectorsDir: string): { name: string; dir
       if (sha(readFileSync(join(folder, f))) !== m.files[f])
         throw new Refused(`That pack's ${f} is not as it was packed.`)
     if (!/^[a-z][a-z0-9-]{0,39}$/.test(m.name)) throw new Refused('That pack names no connector.')
+    // signed by Kenil, or the developer switch is on (step 2, part 1, slice 3)
+    mustBeSigned(stage, trust)
     const dir = join(connectorsDir, m.name)
     rmSync(dir, { recursive: true, force: true })
     mkdirSync(connectorsDir, { recursive: true })
     renameSync(folder, dir)
+    // what it came with, kept beside it: each start checks it is still as it was signed
+    mkdirSync(join(dir, KEPT))
+    for (const f of ['PACK.json', SIGNATURE])
+      if (existsSync(join(stage, f))) copyFileSync(join(stage, f), join(dir, KEPT, f))
     linkShared(dir)
     return { name: m.name, dir }
   } finally {
@@ -278,7 +325,8 @@ export async function addFolder(
 ): Promise<{ name: string; dir: string }> {
   const stage = mkdtempSync(join(tmpdir(), 'alpha-cadd-'))
   try {
-    return unpack(await pack(dir, stage), connectorsDir)
+    // a folder is the developer's own: the switch is asked for before this
+    return unpack(await pack(dir, stage), connectorsDir, { developer: true })
   } finally {
     rmSync(stage, { recursive: true, force: true })
   }
@@ -346,16 +394,22 @@ function newer(a: string, b: string): boolean {
 // they are the world's. A folder of the person's own of that name is left as it is.
 export function updateOwn(
   connectorsDir: string,
-): { name: string; title: string; version: string }[] {
-  const out: { name: string; title: string; version: string }[] = []
+  trust: Trust,
+): { name: string; title: string; version: string; refused?: string }[] {
+  const out: { name: string; title: string; version: string; refused?: string }[] = []
   for (const p of available(connectorsDir)) {
     const file = join(connectorsDir, p.name, 'package.json')
     if (!existsSync(file)) continue
     const pkg = JSON.parse(readFileSync(file, 'utf8')) as { name?: string; version?: string }
     if (!pkg.name?.startsWith('@alpha/connector-') || !newer(p.version, pkg.version ?? '0.0.0'))
       continue
-    unpack(p.file, connectorsDir)
-    out.push({ name: p.name, title: p.title, version: p.version })
+    try {
+      unpack(p.file, connectorsDir, trust)
+      out.push({ name: p.name, title: p.title, version: p.version })
+    } catch (err) {
+      const refused = err instanceof Error ? err.message : String(err)
+      out.push({ name: p.name, title: p.title, version: p.version, refused })
+    }
   }
   return out
 }

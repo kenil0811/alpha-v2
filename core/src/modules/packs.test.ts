@@ -33,6 +33,8 @@ function filesIn(root: string, dir = root, out: string[] = []): string[] {
 let home: string
 let world: World
 const ctx = { actor: { kind: 'system' as const } }
+// these packs are unsigned: the developer switch is on (signing is tested in signing.test.ts)
+const DEV = { developer: true }
 
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'alpha-packs-'))
@@ -48,7 +50,7 @@ describe('kit packs', () => {
   it('pack a kit into one file that unpacks to the same files', () => {
     const file = pack(KIT, join(home, 'out'))
     expect(file.endsWith('bakery-0.1.0.alphakit')).toBe(true)
-    const { name, version, dir } = unpack(file, join(home, 'kits'))
+    const { name, version, dir } = unpack(file, join(home, 'kits'), DEV)
     expect([name, version]).toEqual(['Bakery', '0.1.0'])
     expect(readFileSync(join(dir, 'module.yaml'), 'utf8')).toBe(
       readFileSync(join(KIT, 'module.yaml'), 'utf8'),
@@ -63,7 +65,7 @@ describe('kit packs', () => {
     writeFileSync(join(open, 'kit', 'NOTES.md'), 'changed\n')
     const bad = join(home, 'bad.alphakit')
     execFileSync('tar', ['-czf', bad, '-C', open, 'PACK.json', 'kit'])
-    expect(() => unpack(bad, join(home, 'kits'))).toThrow(/NOTES.md is not as it was packed/)
+    expect(() => unpack(bad, join(home, 'kits'), DEV)).toThrow(/NOTES.md is not as it was packed/)
   })
 
   it('refuse a version that is a path, before any folder is touched, and a link inside', () => {
@@ -84,7 +86,7 @@ describe('kit packs', () => {
     )
     const bad = join(home, 'bad.alphakit')
     execFileSync('tar', ['-czf', bad, '-C', open, 'PACK.json', 'kit'])
-    expect(() => unpack(bad, kits)).toThrow(/not a version like 1.2.3/)
+    expect(() => unpack(bad, kits, DEV)).toThrow(/not a version like 1.2.3/)
     expect(readFileSync(join(keep, 'mine.txt'), 'utf8')).toBe('keep me')
     // a pack carrying a link
     symlinkSync('/etc/hosts', join(open, 'kit', 'hosts'))
@@ -94,7 +96,7 @@ describe('kit packs', () => {
     )
     const linked = join(home, 'linked.alphakit')
     execFileSync('tar', ['-czf', linked, '-C', open, 'PACK.json', 'kit'])
-    expect(() => unpack(linked, kits)).toThrow(/holds a link/)
+    expect(() => unpack(linked, kits, DEV)).toThrow(/holds a link/)
     expect(existsSync(join(kits, 'bakery'))).toBe(false)
   })
 
@@ -103,7 +105,7 @@ describe('kit packs', () => {
     mkdirSync(join(kits, 'inbox'), { recursive: true })
     pack(KIT, join(kits, 'inbox'))
     writeFileSync(join(kits, 'inbox', 'broken.alphakit'), 'not a pack')
-    const said = await installInbox(world, kits, ctx)
+    const said = await installInbox(world, kits, ctx, DEV)
     expect(said).toEqual([
       'Installed Bakery 0.1.0, its agents paused.',
       'broken.alphakit did not go in: That file is not a kit pack.',
@@ -119,17 +121,17 @@ describe('kit packs', () => {
       readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('version: 0.1.0', 'version: 0.2.0'),
     )
     writeFileSync(join(next, 'NOTES.md'), '# Bakery\nNewer.\n')
-    const words = await installPack(world, pack(next, join(home, 'out')), kits, ctx)
+    const words = await installPack(world, pack(next, join(home, 'out')), kits, ctx, DEV)
     expect(words).toBe('Updated Bakery to 0.2.0: 1 files new or replaced, 0 of your changes kept.')
     expect(existsSync(join(kits, 'bakery', '0.2.0', 'NOTES.md'))).toBe(true)
     // the same kit again (every install refills the inbox) is nothing to do
-    expect(await installPack(world, pack(next, join(home, 'again')), kits, ctx)).toBe(
+    expect(await installPack(world, pack(next, join(home, 'again')), kits, ctx, DEV)).toBe(
       'Bakery 0.2.0 is already there.',
     )
     // an older one never takes it back: refused with words, set aside with the reason
     mkdirSync(join(kits, 'inbox'), { recursive: true })
     pack(KIT, join(kits, 'inbox'))
-    expect(await installInbox(world, kits, ctx)).toEqual([
+    expect(await installInbox(world, kits, ctx, DEV)).toEqual([
       'bakery-0.1.0.alphakit did not go in: Bakery 0.2.0 is already there, newer than 0.1.0; nothing changed.',
     ])
     expect(existsSync(join(kits, 'inbox', 'failed', 'bakery-0.1.0.alphakit'))).toBe(true)

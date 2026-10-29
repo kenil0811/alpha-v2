@@ -14,6 +14,7 @@ import {
 } from '../../modules/kits/index.ts'
 import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
+import { FOLDERS, isDeveloper } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptEdit, keptField, keptTable } from '../kept.ts'
@@ -108,6 +109,7 @@ export function registerKits(ctx: Ctx): void {
   // A kit is installed from a folder on this Mac, or updated from one by the ownership rule.
   app.post('/api/kits', async (req) => {
     const { folder } = z.object({ folder: z.string().trim().min(1) }).parse(req.body)
+    if (!isDeveloper(world, user.id)) throw new Refused(FOLDERS)
     const m = await install(world, folder, {
       actor: { kind: 'person', id: user.id },
       user: user.id,
@@ -123,10 +125,13 @@ export function registerKits(ctx: Ctx): void {
     try {
       const file = join(dir, name.replace(/[^\w.-]/g, '_'))
       writeFileSync(file, req.body as Buffer)
-      const words = await installPack(world, file, join(world.paths.dir, '..', '..', 'kits'), {
-        actor: person,
-        user: user.id,
-      })
+      const words = await installPack(
+        world,
+        file,
+        join(world.paths.dir, '..', '..', 'kits'),
+        { actor: person, user: user.id },
+        { developer: isDeveloper(world, user.id) },
+      )
       live()
       return { words }
     } finally {
@@ -140,6 +145,8 @@ export function registerKits(ctx: Ctx): void {
     const m = world.shape.module(module)
     const k = installedKits(world).find((x) => x.module === m?.id)
     if (!m || !k) throw new Refused('That module did not come from a kit.')
+    // an update from a folder is the developer's: a pack updates through installing it
+    if (!isDeveloper(world, user.id)) throw new Refused(FOLDERS)
     const report = await update(world, m.name, folder || k.source, {
       actor: { kind: 'person', id: user.id },
       user: user.id,

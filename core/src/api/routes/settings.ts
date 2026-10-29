@@ -16,6 +16,7 @@ import {
 import type { Capabilities } from '../../engine/provider.ts'
 import { instructionsFile } from '../../engine/tools/index.ts'
 import { PlainPlatform } from '../../platform/index.ts'
+import { DEVELOPER, isDeveloper } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { DataPageView, InstructionView, ModelView, SetupView } from '../types.ts'
@@ -108,6 +109,25 @@ export function registerSettings(ctx: Ctx): void {
       })),
     }
   }
+  // The developer switch (step 2, part 1, slice 3): kits and connectors from folders, and packs
+  // not signed by Kenil, load while it is on. Kept in the world, as the core holds to it.
+  app.get('/api/developer', async () => ({ on: isDeveloper(world, user.id) }))
+  app.post('/api/developer', async (req) => {
+    const { on } = z.object({ on: z.boolean() }).parse(req.body)
+    if (on === isDeveloper(world, user.id)) return { on }
+    world.setPreference(user.id, DEVELOPER, on ? 'on' : null)
+    world.line({
+      actor: person,
+      kind: 'developer',
+      words: on
+        ? 'Turned the developer switch on: folders and packs not signed by Kenil load.'
+        : 'Turned the developer switch off: only packs signed by Kenil load.',
+      user: user.id,
+    })
+    live()
+    return { on }
+  })
+
   app.get('/api/model', async (): Promise<ModelView> => modelView())
   // This Mac's setup, for the first open and Settings, and the readers' downloads started on asking.
   app.get(
