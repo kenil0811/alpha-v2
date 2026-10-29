@@ -24,6 +24,10 @@ journey_step_minutes: 10
 # (item 48 of the problems list, 25 Oct). A journeys-runner judgement, never met by the person.
 journey_times: 3
 
+# Journeys run at once by pnpm journeys, each on its own fresh world (Kenil, 29 Oct: a round one at
+# a time took twenty minutes). A journeys-runner judgement, never met by the person.
+journeys_at_once: 3
+
 # Attempts after the first, for a connector call that reads and failed in passing (a dropped
 # connection). A send or a write is never tried again: whether it was done is unknown (call A,
 # 28 Oct).

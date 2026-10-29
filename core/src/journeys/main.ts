@@ -2,8 +2,9 @@
 //   node src/journeys/main.ts <name> [--times [N]] [--appended] [--keep] [--from <folder of journeys>]
 //   node src/journeys/main.ts --all [--times [N]] [--from <folder of journeys>]   (pnpm journeys)
 // --times runs each N times, each on a fresh world (N from limits.yaml journey_times when not
-// given), and says how many passed; --all runs every journey in the folder; either writes one
-// summary beside the reports (item 48 of the problems list, 25 Oct).
+// given), and says how many passed; --all runs every journey in the folder, a few at once
+// (limits.yaml journeys_at_once, Kenil 29 Oct); either writes one summary beside the reports
+// (item 48 of the problems list, 25 Oct), in the journeys' order whatever order they end in.
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { config } from '../config.ts'
@@ -25,20 +26,29 @@ async function main(): Promise<void> {
         ),
       ]
   if (!names[0]) throw new Error('Name a journey: node src/journeys/run.ts track-what-i-eat')
-  const lines: string[] = []
+  const done = new Map<string, string[]>()
   let all = true
-  for (const name of names as string[]) {
+  const one = async (name: string) => {
     const runs: { passed: boolean; report: string; seconds: number }[] = []
     for (let at = 1; at <= times; at++) runs.push(await runOne(name, args, { at, of: times }))
     const k = runs.filter((r) => r.passed).length
     all &&= k === times
     const said = times > 1 ? `passed ${k} of ${times}` : k ? 'passed' : 'FAILED'
     console.log(`${name}: ${said}`)
-    lines.push(
+    done.set(name, [
       `- **${name}**: ${said}, ${runs.map((r) => `${r.seconds} s`).join(', ')}`,
       ...runs.map((r) => `  - ${r.passed ? 'passed' : 'failed'}: ${r.report}`),
-    )
+    ])
   }
+  // a few at once, each on its own world: the next starts as one ends
+  const waiting = [...(names as string[])]
+  const lanes = Math.min(names.length, config.limits().journeys_at_once)
+  await Promise.all(
+    Array.from({ length: lanes }, async () => {
+      for (let name = waiting.shift(); name; name = waiting.shift()) await one(name)
+    }),
+  )
+  const lines = (names as string[]).flatMap((n) => done.get(n) ?? [])
   // a folder's run, or a journey run many times: one summary beside the reports
   if (names.length > 1 || times > 1) {
     const { base } = placesOf(args)

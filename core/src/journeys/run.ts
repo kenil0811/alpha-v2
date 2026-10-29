@@ -200,9 +200,11 @@ export async function runOne(
   const started = Date.now()
   for (const [i, step] of journey.steps.entries()) {
     const t0 = Date.now()
-    // a said sentence and an answered question start a desk turn; an agent's draft answered does not
+    // a said sentence and an answered question start a desk turn; an agent's draft answered does
+    // not, nor an answer with no card to answer, which is waited on no longer (it waited out the
+    // step's ten minutes, 29 Oct)
     const first = step.answer ? world.cards.waiting(user.id)[0] : undefined
-    const turns = !!step.say || (!!step.answer && first?.call?.tool !== DRAFT)
+    const turns = !!step.say || (!!first && first.call?.tool !== DRAFT)
     const done = turns ? idle() : Promise.resolve(true)
     let what: string
     if (step.say) {

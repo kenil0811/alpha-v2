@@ -38,6 +38,7 @@ const Limits = z.object({
   yes_hours: z.number().positive(),
   keep_removed_days: z.number().int().min(1),
   journey_times: z.number().int().min(1),
+  journeys_at_once: z.number().int().min(1),
   reply_fold_lines: z.number().int().min(1),
   parts_shown: z.number().int().min(1),
 })
