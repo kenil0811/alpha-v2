@@ -140,7 +140,7 @@ export const calendar: Connector = {
   sync: async (c) => {
     const now = Date.now()
     const all = await events(c, new Date(now - 90 * DAY), new Date(now + 60 * DAY))
-    const landed = c.host.land(
+    const landed = await c.host.land(
       'Events',
       all.map((e) => ({
         key: `${e.id}@${e.start}`,
@@ -224,7 +224,7 @@ export const contactsConnector: Connector = {
   },
   sync: async (c) => {
     const all = await contacts(c)
-    const landed = c.host.land(
+    const landed = await c.host.land(
       'Contacts',
       all.map((p) => ({
         key: p.id,

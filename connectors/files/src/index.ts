@@ -72,7 +72,7 @@ export const folder: Connector = {
       if (seen[key] === mark) continue
       const keep = c.host.keepFile
       if (!keep) throw new Problem('This connection cannot keep files.')
-      const kept = keep(key, readFileSync(path), mimeOf(path))
+      const kept = await keep(key, readFileSync(path), mimeOf(path))
       fresh ||= kept.isNew
       seen[key] = mark
     }

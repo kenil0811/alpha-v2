@@ -142,10 +142,14 @@ export class ClaudeCodeProvider implements Provider {
     // Before a call: the journal line and the gate.
     const beforeCall: HookCallback = async (input) => {
       if (input.hook_event_name !== 'PreToolUse') return {}
-      const d = gate.before(input.tool_name, (input.tool_input ?? {}) as Record<string, unknown>, {
-        callId: input.tool_use_id,
-        subagent: input.agent_id ?? null,
-      })
+      const d = await gate.before(
+        input.tool_name,
+        (input.tool_input ?? {}) as Record<string, unknown>,
+        {
+          callId: input.tool_use_id,
+          subagent: input.agent_id ?? null,
+        },
+      )
       return {
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',

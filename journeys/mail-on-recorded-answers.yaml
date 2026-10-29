@@ -22,3 +22,16 @@ steps:
       - connector_calls: { words: 'Gmail: send', count: 1 }
       - cards_waiting: 0
       - errors: 0
+  # Kenil, 29 Oct: "send it" after a draft sends that draft, not a new email beside it
+  - say: draft an email to Marco thanking him for the call, and don't send it
+    checks:
+      - cards_waiting: 0
+  - say: now send it
+    checks:
+      - card: { gate: leaves_world, words: 'Send your draft to marco@brokerage' }
+      - connector_calls: { words: 'Gmail: send', count: 1 }
+  - answer: { choice: 'Yes' }
+    checks:
+      - connector_calls: { words: 'Gmail: send', count: 2 }
+      - cards_waiting: 0
+      - errors: 0

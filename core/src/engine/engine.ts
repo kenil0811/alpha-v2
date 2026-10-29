@@ -173,5 +173,6 @@ export class Engine {
   close(): void {
     for (const d of this.desks.values()) d.close()
     this.desks.clear()
+    this.connectors?.close()
   }
 }

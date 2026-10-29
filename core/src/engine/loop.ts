@@ -247,7 +247,7 @@ export class OwnLoop implements Session {
   // the result goes back to the model as the tool's own answer.
   private async call(call: Anthropic.ToolUseBlock): Promise<Anthropic.ToolResultBlockParam> {
     const input = (call.input ?? {}) as Record<string, unknown>
-    const d = this.spec.gate.before(call.name, input, { callId: call.id, subagent: null })
+    const d = await this.spec.gate.before(call.name, input, { callId: call.id, subagent: null })
     if (!d.allow) {
       this.spec.gate.after({ callId: call.id, ok: false, error: d.reason ?? 'refused' })
       return {

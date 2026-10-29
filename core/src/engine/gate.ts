@@ -2,6 +2,8 @@
 // whatever runs the loop. The Agent SDK's hooks call it, and so does Alpha's own loop. A world
 // tool's effect comes from its table (tools.ts); a connector tool's from its connector; the shell's
 // reach outside from the sandbox's ask. The verdict is the gates' (gates.ts): pass, or a card.
+
+import type { CallSays } from '../connectors/process.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { decide, gateOf } from '../gates/gates.ts'
 import type { User, World } from '../world/world.ts'
@@ -27,6 +29,7 @@ export class Gatekeeper {
   private connectors: ConnectorService | null
   private emit: NonNullable<GateOptions['emit']>
   private networkWaits: string[] = []
+  private onYes = new Map<string, string>()
 
   constructor(world: World, here: Here, user: User, options: GateOptions = {}) {
     this.world = world
@@ -36,23 +39,39 @@ export class Gatekeeper {
     this.emit = options.emit ?? (() => {})
   }
 
-  // What a call is called where the person reads it: the connector's words, or Alpha's.
+  // What a call of Alpha's or the route's own is called where the person reads it; a connector's
+  // tool says its own (`says`).
   words(toolName: string, input: Record<string, unknown>): string {
-    return this.connectors?.words(toolName, input) ?? stepWords(toolName, input)
+    return stepWords(toolName, input)
   }
 
   // Before a call: the journal line, then the gate. A tool of neither the world nor a connector
   // (the route's own: the shell, files, the web) passes here; the sandbox and the file walls
   // judge those.
-  before(toolName: string, input: Record<string, unknown>, call: CallContext): Decision {
-    const words = this.words(toolName, input)
+  async before(
+    toolName: string,
+    input: Record<string, unknown>,
+    call: CallContext,
+  ): Promise<Decision> {
     const cur = this.here.current
+    // a connector's tool says what it is, from its own process when it runs in one (step 2)
+    const says = this.connectors?.isTool(toolName)
+      ? await this.connectors.says(toolName, input)
+      : undefined
+    const words = says?.words ?? this.words(toolName, input)
     const name = toolName.replace(`mcp__${SERVER}__`, '')
     this.world.line({
       actor: { kind: 'alpha' },
       kind: 'call',
       words,
-      data: { tool: name, input, call: call.callId, subagent: call.subagent },
+      // a connector's call says what it is, so Activity can show the writes and sends that went
+      data: {
+        tool: name,
+        input,
+        call: call.callId,
+        subagent: call.subagent,
+        ...(says ? { effect: says.effect } : {}),
+      },
       user: this.user.id,
       turn: cur.turn,
     })
@@ -64,6 +83,8 @@ export class Gatekeeper {
         words,
         call.subagent ? null : cur.message,
         call.subagent,
+        says,
+        call.callId,
       )
     if (!toolName.startsWith(`mcp__${SERVER}__`)) return { allow: true }
     return this.worldTool(name, input, words, call)
@@ -130,11 +151,13 @@ export class Gatekeeper {
     words: string,
     message: string | null,
     agent: string | null,
+    says: CallSays | undefined,
+    callId: string,
   ): Decision {
-    const preview = this.connectors?.preview(toolName, input)
+    const preview = says?.preview ?? undefined
     const cur = this.here.current
     const tool = this.connectors?.keyOf(toolName) ?? toolName
-    const effect = this.connectors?.effect(toolName, input)
+    const effect = says?.effect
     // a send to an address nothing has gone to from here is said on the card, as an agent's
     // draft says it (item 39 of the problems list, 25 Oct)
     const to = typeof input.to === 'string' ? input.to.trim() : ''
@@ -162,6 +185,8 @@ export class Gatekeeper {
       agent,
       named: this.connectors?.ruleName(toolName) ?? null,
     })
+    // went on the person's yes: said with how it went, so Activity puts it under that card's turn
+    if (verdict.pass && verdict.card) this.onYes.set(callId, verdict.card.id)
     return this.decision(verdict)
   }
 
@@ -202,10 +227,12 @@ export class Gatekeeper {
         ok: call.ok,
         ...(call.ms !== undefined ? { ms: call.ms } : {}),
         ...(call.ok ? {} : { error: call.error ?? '' }),
+        ...(this.onYes.has(call.callId) ? { card: this.onYes.get(call.callId) } : {}),
       },
       user: this.user.id,
       turn: this.here.current.turn,
     })
+    this.onYes.delete(call.callId)
     this.emit({ type: 'lines' })
     return this.networkWaits.splice(0)
   }

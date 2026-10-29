@@ -27,6 +27,7 @@ import { dirname, join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { type Connector, checkConnector } from '@alpha/connector-sdk'
 import { Refused } from '../world/kinds.ts'
+import { ConnectorProcess, type Described, isRemote, remoteConnectors } from './process.ts'
 
 export const PACK_SUFFIX = '.alphaconnector'
 // The repository's connectors, shipped with every release.
@@ -59,24 +60,36 @@ function entryOf(dir: string): string {
   return join(dir, entry)
 }
 
-// The connectors one folder exports, checked; throws in plain words when it is not one.
+// The connectors one folder exports, checked; throws in plain words when it is not one. Its code
+// runs in its own process (step 2, part 1): the core holds what that process says of it.
 export async function loadConnector(dir: string, taken: string[] = []): Promise<Connector[]> {
+  return named(await startConnector(dir), taken)
+}
+
+type Started = { proc: ConnectorProcess; described: Described[] } | { failed: unknown }
+
+async function startConnector(dir: string): Promise<Started> {
   const entry = entryOf(dir)
-  if (!existsSync(entry)) throw new Error(`its entry ${relative(dir, entry)} is not there`)
-  const mod = (await import(pathToFileURL(entry).href)) as Record<string, unknown>
-  const found = Array.isArray(mod.connectors)
-    ? mod.connectors
-    : mod.connector !== undefined
-      ? [mod.connector]
-      : []
-  if (!found.length) throw new Error('its entry exports no connector (export const connector)')
-  const out: Connector[] = []
-  for (const x of found) {
-    const problems = checkConnector(x, [...taken, ...out.map((c) => c.manifest.name)])
-    if (problems.length) throw new Error(problems.join('; '))
-    out.push(x as Connector)
+  if (!existsSync(entry))
+    return { failed: new Error(`its entry ${relative(dir, entry)} is not there`) }
+  const proc = new ConnectorProcess(entry)
+  try {
+    return { proc, described: await proc.start() }
+  } catch (err) {
+    proc.close()
+    return { failed: err }
   }
-  return out
+}
+
+// A started folder's connectors, unless one's name is taken already.
+function named(s: Started, taken: string[]): Connector[] {
+  if ('failed' in s) throw s.failed
+  const twice = s.described.find((d) => taken.includes(d.manifest.name))
+  if (twice) {
+    s.proc.close()
+    throw new Error(`a connector called ${twice.manifest.name} is loaded already`)
+  }
+  return remoteConnectors(s.proc, s.described)
 }
 
 // Every folder directly under dir that is a connector, in name order.
@@ -84,12 +97,21 @@ export async function loadSet(dir: string, taken: string[] = []): Promise<Loaded
   const out: Loaded = { connectors: [], failed: [] }
   if (!existsSync(dir)) return out
   const names = () => [...taken, ...out.connectors.map((c) => c.manifest.name)]
-  for (const name of readdirSync(dir).sort()) {
-    const folder = join(dir, name)
-    if (name.startsWith('.') || name === 'available' || !lstatSync(folder).isDirectory()) continue
-    if (!existsSync(join(folder, 'package.json'))) continue
+  const folders = readdirSync(dir)
+    .sort()
+    .map((name) => ({ name, folder: join(dir, name) }))
+    .filter(
+      ({ name, folder }) =>
+        !name.startsWith('.') &&
+        name !== 'available' &&
+        lstatSync(folder).isDirectory() &&
+        existsSync(join(folder, 'package.json')),
+    )
+  // their processes start together; a name is judged in folder order, as before
+  const started = folders.map(({ folder }) => ({ folder, s: startConnector(folder) }))
+  for (const { folder, s } of started) {
     try {
-      out.connectors.push(...(await loadConnector(folder, names())))
+      out.connectors.push(...named(await s, names()))
     } catch (err) {
       out.failed.push({ folder, why: err instanceof Error ? err.message : String(err) })
     }
@@ -169,6 +191,7 @@ export async function pack(dir: string, outDir: string): Promise<string> {
   if (problems.length) throw new Refused(`That folder is not a connector: ${problems.join('; ')}`)
   const loaded = await loadConnector(dir)
   const first = loaded[0] as Connector
+  if (isRemote(first)) first.remote.process.close()
   const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as { version?: string }
   const version = pkg.version ?? '0.0.0'
   const stage = mkdtempSync(join(tmpdir(), 'alpha-cpack-'))
@@ -293,7 +316,7 @@ export function available(
 ): { file: string; name: string; title: string; version: string }[] {
   const dir = join(connectorsDir, 'available')
   if (!existsSync(dir)) return []
-  return readdirSync(dir)
+  const packs = readdirSync(dir)
     .filter((n) => n.endsWith(PACK_SUFFIX))
     .sort()
     .flatMap((n) => {
@@ -303,6 +326,38 @@ export function available(
         return []
       }
     })
+  // a release that brings a newer one leaves the older beside it: each is offered at its newest
+  return packs.filter((p) => !packs.some((q) => q.name === p.name && newer(q.version, p.version)))
+}
+
+// Whether version a (1.2.0) is after b.
+function newer(a: string, b: string): boolean {
+  const x = a.split('.').map(Number)
+  const y = b.split('.').map(Number)
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] || 0) - (y[i] || 0)
+    if (d) return d > 0
+  }
+  return false
+}
+
+// An added connector that came with Alpha (one of its packs in available/, an @alpha package)
+// updated to the newest the release brought, as Alpha's own kits are: its connections stay, as
+// they are the world's. A folder of the person's own of that name is left as it is.
+export function updateOwn(
+  connectorsDir: string,
+): { name: string; title: string; version: string }[] {
+  const out: { name: string; title: string; version: string }[] = []
+  for (const p of available(connectorsDir)) {
+    const file = join(connectorsDir, p.name, 'package.json')
+    if (!existsSync(file)) continue
+    const pkg = JSON.parse(readFileSync(file, 'utf8')) as { name?: string; version?: string }
+    if (!pkg.name?.startsWith('@alpha/connector-') || !newer(p.version, pkg.version ?? '0.0.0'))
+      continue
+    unpack(p.file, connectorsDir)
+    out.push({ name: p.name, title: p.title, version: p.version })
+  }
+  return out
 }
 
 // A folder of Alpha's connectors/ removed for good, when nothing is connected through it.

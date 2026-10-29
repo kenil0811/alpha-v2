@@ -1,7 +1,7 @@
 // A dropped IMAP connection ends the call it was in, with the error, and never the process.
 import { EventEmitter } from 'node:events'
 import { describe, expect, it } from 'vitest'
-import { sendOnce, withImapClient } from './index.ts'
+import { type Draft, sendOnce, withImapClient } from './index.ts'
 
 class FakeImap extends EventEmitter {
   loggedOut = false
@@ -93,4 +93,81 @@ describe('sendOnce', () => {
       "Gmail's sending limit for today is reached on me@gmail.com, so the email to sam@grandbb.example was not sent.",
     )
   })
+
+  // Kenil, 29 Oct: "send it" after a draft sends that draft, not a new email beside it.
+  const saved = (over: Partial<Draft> = {}): Draft => ({
+    to: ['sam@grandbb.example'],
+    cc: [],
+    bcc: [],
+    subject: 'Catching up',
+    body: 'Hi Sam\n',
+    attachments: [],
+    raw: Buffer.from(
+      'Date: Thu, 1 Oct 2026 09:00:00 +0000\r\nMessage-ID: <d1@gmail.com>\r\nTo: sam@grandbb.example\r\nSubject: Catching up\r\n\r\nHi Sam\r\n',
+    ),
+    ...over,
+  })
+  function drafts(d: Draft | null) {
+    const g = gmail({ takes: true })
+    const removed: string[] = []
+    return {
+      ...g,
+      removed,
+      hands: {
+        ...g.hands,
+        draft: async (id: string) => (id === '<d1@gmail.com>' ? d : null),
+        removeDraft: async (id: string) => {
+          removed.push(id)
+        },
+      },
+    }
+  }
+
+  it('sends a named draft as it is in Drafts, under its own Message-ID, then takes it out of Drafts', async () => {
+    const g = drafts(saved())
+    const out = await sendOnce('me@gmail.com', { ...m, draft: '<d1@gmail.com>' }, g.hands)
+    expect(out).toMatchObject({ sent: true, to: m.to, id: '<d1@gmail.com>' })
+    expect(g.sent).toHaveLength(1)
+    const mail = g.sent[0] as { raw: Buffer; envelope: { from: string; to: string[] } }
+    expect(mail.envelope).toEqual({ from: 'me@gmail.com', to: ['sam@grandbb.example'] })
+    // the draft's own words and Message-ID, dated when it goes
+    expect(String(mail.raw)).toContain('Message-ID: <d1@gmail.com>')
+    expect(String(mail.raw)).toContain('\r\n\r\nHi Sam')
+    expect(String(mail.raw)).not.toContain('1 Oct 2026')
+    expect(g.removed).toEqual(['<d1@gmail.com>'])
+  })
+
+  // Kenil's run, 29 Oct 16:22: Alpha had the draft's id and still sent a new email beside it, so
+  // Gmail itself sends the draft in Drafts that is this very email
+  it('sends the draft in Drafts that is the same email when the send names none', async () => {
+    const g = drafts(saved())
+    const same = { ...g.hands, sameDraft: async () => ({ ...saved(), id: '<d1@gmail.com>' }) }
+    const out = await sendOnce('me@gmail.com', m, same)
+    expect(out).toMatchObject({ id: '<d1@gmail.com>' })
+    expect(out.words).toMatch(/your draft/)
+    expect(String((g.sent[0] as { raw: Buffer }).raw)).toContain('Message-ID: <d1@gmail.com>')
+    expect(g.removed).toEqual(['<d1@gmail.com>'])
+    // no such draft: a new email, as before
+    const none = drafts(null)
+    const fresh = await sendOnce('me@gmail.com', m, { ...none.hands, sameDraft: async () => null })
+    expect(fresh.id).toMatch(/^<alpha-/)
+    expect(none.removed).toEqual([])
+  })
+
+  it('refuses a draft changed since the card, or gone, and sends nothing', async () => {
+    const changed = drafts(saved({ body: 'Hi Sam, see you Friday' }))
+    await expect(
+      sendOnce('me@gmail.com', { ...m, draft: '<d1@gmail.com>' }, changed.hands),
+    ).rejects.toThrow(/not what the card showed \(its text\)/)
+    const more = drafts(saved({ cc: ['ann@grandbb.example'], attachments: ['menu.pdf'] }))
+    await expect(
+      sendOnce('me@gmail.com', { ...m, draft: '<d1@gmail.com>' }, more.hands),
+    ).rejects.toThrow(/its Cc, its attachments/)
+    const gone = drafts(null)
+    await expect(
+      sendOnce('me@gmail.com', { ...m, draft: '<d1@gmail.com>' }, gone.hands),
+    ).rejects.toMatchObject({ kind: 'gone' })
+    expect([changed.sent, more.sent, gone.sent, changed.removed]).toEqual([[], [], [], []])
+  })
 })
+

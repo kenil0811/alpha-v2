@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto'
 import {
   type BrowserEngine,
   type Call,
+  type CallOptions,
   type Connector,
   checkConnector,
   type Effect,
@@ -27,6 +28,7 @@ import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
+import { type CallSays, isRemote } from './process.ts'
 
 export interface ServiceOptions {
   secrets: SecretStore
@@ -89,7 +91,11 @@ export class ConnectorService {
     if (at < 0) throw new Refused(`Alpha has no connector called ${name}.`)
     if (this.world.connections.list().some((k) => k.connector === name))
       throw new Refused(`${this.set[at]?.manifest.title} is connected: disconnect it first.`)
-    return this.set.splice(at, 1)[0] as Connector
+    const c = this.set.splice(at, 1)[0] as Connector
+    // its process ends with the last connector it held
+    if (isRemote(c) && !this.set.some((k) => isRemote(k) && k.remote.process === c.remote.process))
+      c.remote.process.close()
+    return c
   }
 
   // The loaded connectors, as they describe themselves.
@@ -203,11 +209,34 @@ export class ConnectorService {
   // is unknown (call A); a read keeps its retries.
   call(c: Connector, conn: Connection, effect: Effect = 'read'): Call {
     const fixtures = this.fixtures(c)
-    return makeCall(c.manifest, this.host(c, conn), {
+    const options: CallOptions = {
       judgements: this.judgements(),
       ...(fixtures ? { fixtures } : {}),
       ...(effect !== 'read' ? { once: true } : {}),
-    })
+    }
+    // a connector in its own process paces and retries there, by the same options (step 2)
+    return Object.assign(makeCall(c.manifest, this.host(c, conn), options), { options })
+  }
+
+  // What a call of a connector's tool is, by the tool's model-facing name, before the gates: its
+  // effect, what a card shows and the step's words in Activity (its own, or "Reached Gmail"). A
+  // connector in its own process is asked; one in the core answers here.
+  async says(name: string, input: Record<string, unknown>): Promise<CallSays | undefined> {
+    const t = this.toolOf(name)
+    if (!t) return undefined
+    const says = isRemote(t.c)
+      ? await t.c.remote.says(t.tool, input)
+      : {
+          effect: effectOf(t.spec, input),
+          preview: t.spec.preview ? t.spec.preview(input as never) : null,
+          words: t.spec.words ? t.spec.words(input as never) : null,
+        }
+    return { ...says, words: says.words ?? `Reached ${t.c.manifest.title}` }
+  }
+
+  // The connectors' own processes, ended (a core that stops, a test that ends).
+  close(): void {
+    for (const c of this.set) if (isRemote(c)) c.remote.process.close()
   }
 
   // The person's own act in Alpha's form: the sign-in gate is answered by doing it (design §7).
@@ -398,7 +427,8 @@ export class ConnectorService {
     const c = this.connector(named)
     const spec = c.tools[name]
     if (!spec) throw new Refused(`${c.manifest.title} has no ${name}.`)
-    return spec.run(this.call(c, this.connectionFor(c), effectOf(spec, input)), input as never)
+    const effect = (await this.says(mcpName(c.manifest.name, name), input))?.effect ?? 'outward'
+    return spec.run(this.call(c, this.connectionFor(c), effect), input as never)
   }
 
   // The connections whose items carry files (an email's attachments), and an item's files.
@@ -429,25 +459,7 @@ export class ConnectorService {
     return c.files.fetch(this.call(c, conn), item)
   }
 
-  // What a tool's connector says of a call, by the tool's model-facing name: its effect for the
-  // gates, what a card shows, the step's words in Activity, and the gate's key for it.
-  effect(name: string, input: Record<string, unknown>): Effect | undefined {
-    const t = this.toolOf(name)
-    if (!t) return undefined
-    return typeof t.spec.effect === 'function' ? t.spec.effect(input as never) : t.spec.effect
-  }
-
-  preview(name: string, input: Record<string, unknown>): Preview | undefined {
-    const t = this.toolOf(name)
-    return t?.spec.preview ? t.spec.preview(input as never) : undefined
-  }
-
-  words(name: string, input: Record<string, unknown>): string | undefined {
-    const t = this.toolOf(name)
-    if (!t) return undefined
-    return t.spec.words ? t.spec.words(input as never) : `Reached ${t.c.manifest.title}`
-  }
-
+  // The gate's key for a tool, by its model-facing name.
   keyOf(name: string): string | undefined {
     const t = this.toolOf(name)
     return t ? gateKey(t.c.manifest.name, t.tool) : undefined
@@ -483,7 +495,8 @@ export class ConnectorService {
             try {
               const { account, ...rest } = input
               const conn = this.connectionFor(c, typeof account === 'string' ? account : undefined)
-              const out = await spec.run(this.call(c, conn, effectOf(spec, rest)), rest as never)
+              const effect = (await this.says(mcpName(c.manifest.name, t), rest))?.effect
+              const out = await spec.run(this.call(c, conn, effect ?? 'outward'), rest as never)
               return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 1) }] }
             } catch (err) {
               const words =

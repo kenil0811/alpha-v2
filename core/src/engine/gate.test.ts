@@ -35,10 +35,10 @@ afterEach(() => {
 })
 
 describe('the gate adapter', () => {
-  it('journals a world tool’s call, lets a write on the person’s message through, and says how it went', () => {
+  it('journals a world tool’s call, lets a write on the person’s message through, and says how it went', async () => {
     const events: string[] = []
     const gate = new Gatekeeper(world, here, user, { emit: (e) => events.push(e.type) })
-    const d = gate.before(
+    const d = await gate.before(
       'mcp__alpha__write',
       { table: 'Meals', rows: [{ Food: 'two eggs' }] },
       { callId: 'c1', subagent: null },
@@ -60,10 +60,10 @@ describe('the gate adapter', () => {
     })
     const gate = new Gatekeeper(world, here, user, { connectors })
     const mail = { to: 'priya@harbor.example', subject: 'The CIM', body: 'Could you send it?' }
-    expect(gate.before('mcp__gmail__draft', mail, { callId: 'c2', subagent: null }).allow).toBe(
-      true,
-    )
-    const send = gate.before('mcp__gmail__send', mail, { callId: 'c3', subagent: null })
+    expect(
+      (await gate.before('mcp__gmail__draft', mail, { callId: 'c2', subagent: null })).allow,
+    ).toBe(true)
+    const send = await gate.before('mcp__gmail__send', mail, { callId: 'c3', subagent: null })
     expect(send.allow).toBe(false)
     expect(send.reason).toMatch(/waits/i)
     const card = world.cards.waiting(user.id).find((c) => c.call?.tool === 'gmail_send')
@@ -72,7 +72,7 @@ describe('the gate adapter', () => {
     expect(card?.restsOn).toContain('Nothing has gone to this address from here before.')
     expect(card?.options[0]).toBe('Send it')
     world.cards.answer(card?.id as string, 'Send it', { kind: 'person', id: user.id })
-    gate.before(
+    await gate.before(
       'mcp__gmail__send',
       { ...mail, subject: 'The NDA' },
       { callId: 'c3b', subagent: null },
@@ -109,7 +109,7 @@ describe('the gate adapter', () => {
         },
         person,
       )
-      const out = gate.before('mcp__gmail__send', mail, {
+      const out = await gate.before('mcp__gmail__send', mail, {
         callId: `c-${through[0]}`,
         subagent: null,
       })
@@ -120,9 +120,9 @@ describe('the gate adapter', () => {
     expect(world.cards.waiting(user.id).filter((c) => c.call?.tool === 'gmail_send')).toEqual([])
   })
 
-  it('lets a route’s own tool through: the sandbox and the file walls judge those', () => {
+  it('lets a route’s own tool through: the sandbox and the file walls judge those', async () => {
     const gate = new Gatekeeper(world, here, user)
-    expect(gate.before('Bash', { command: 'ls' }, { callId: 'c6', subagent: null })).toEqual({
+    expect(await gate.before('Bash', { command: 'ls' }, { callId: 'c6', subagent: null })).toEqual({
       allow: true,
     })
     expect(gate.words('Bash', { description: 'List files' })).toBe('Ran: List files')

@@ -142,16 +142,17 @@ describe('a Gmail connection on recorded answers', () => {
     expect(world.connections.get(conn.id)?.health).toMatch(/No recorded answer/)
   })
 
-  it('declares a send outward with the whole message to show, and a draft a write', () => {
+  it('declares a send outward with the whole message to show, and a draft a write', async () => {
     const svc = new ConnectorService(world, { secrets, known })
     const m = { to: 'priya@harbor.example', subject: 'The CIM', body: 'Could you send it over?' }
-    expect(svc.effect('mcp__gmail__send', m)).toBe('outward')
-    expect(svc.effect('mcp__gmail__draft', m)).toBe('write')
-    expect(svc.effect('mcp__gmail__search', { query: 'from:priya' })).toBe('read')
-    expect(svc.effect('mcp__alpha__write', {})).toBeUndefined()
-    expect(svc.words('mcp__gmail__send', m)).toBe('Send an email to priya@harbor.example')
+    const send = await svc.says('mcp__gmail__send', m)
+    expect(send?.effect).toBe('outward')
+    expect((await svc.says('mcp__gmail__draft', m))?.effect).toBe('write')
+    expect((await svc.says('mcp__gmail__search', { query: 'from:priya' }))?.effect).toBe('read')
+    expect(await svc.says('mcp__alpha__write', {})).toBeUndefined()
+    expect(send?.words).toBe('Send an email to priya@harbor.example')
     expect(svc.keyOf('mcp__gmail__send')).toBe('gmail_send')
-    expect(svc.preview('mcp__gmail__send', m)).toEqual({
+    expect(send?.preview).toEqual({
       words: 'Send an email to priya@harbor.example: “The CIM”',
       detail: 'To: priya@harbor.example\nSubject: The CIM\n\nCould you send it over?',
       yes: 'Send it',

@@ -35,14 +35,16 @@ once its contract is signed, read-only first, on a Linux VM on its own Windows s
  │  api (HTTP, websocket, sign-in)    scheduler (triggers, ticks, catch-up)       │
  │  engine: desk sessions, runs, world tools, hooks, gates, context layers        │
  │  world: one SQLite file per tenant + files + module directories               │
- │  connector runtime: connector packages on the connector SDK                    │
+ │  connector runtime: the connectors as the core holds them, each call piped     │
  └────────────────────────────────────────────────────────────────────────────────┘
    children, each under the sandbox: Claude Code (one per live session, started by the
    Agent SDK) · kit and skill scripts (JavaScript) · Docling · Playwright browsers
+   children of their own: one per connector package, its host answered over its pipe
 ```
 
 One service process. Everything that runs code it did not ship (the model's shell, scripts,
-browsers) is a child process under the sandbox.
+browsers) is a child process under the sandbox. A connector package runs in a process of its own
+(29 Oct; under the sandbox with the hosts it names once part 1's network slice is built, §8).
 
 ## 3. The repository
 
@@ -473,8 +475,22 @@ changed line shows, and is designed so that every kind a client may need fits: a
 app with its own key, a database, a Windows desktop app (Total Office's writes), files, a
 website, and mail by app password (Kenil, 25 Oct).
 
+**A connector's own process** (step 2, part 1, slice 1, Kenil's yes 29 Oct): the core starts one
+Node process per connector package (`connectors/child.ts`), which imports it, checks it and says
+what its connectors are (manifest, guide, tables, each tool's input as a JSON schema, and whether
+its effect is fixed). The core holds stand-ins built from that (`connectors/process.ts`) and sends
+each check, sync, file fetch and tool run down the pipe with its account, cursor and pacing; the
+connector's host (a secret, landing rows, keeping a file, a table's keys, the browser) is asked
+of the core, so the world, the secrets and the browser stay with it. Before the gates, the core
+asks the process what a call is (its effect for this input, its card, its words). A process
+holds the core up only while a call waits on it, ends with its pipe, and starts again on the next
+call if it ended. An added connector that came with Alpha is updated at start to the newest pack
+the release brought, as Alpha's own kits are.
+
 **Order (chosen):** for the first client, in week 2 and as their kits need them: Gmail by IMAP and SMTP with
-an app password; the Mac's calendar and contacts (a small signed native helper, since Node
+an app password (a draft is saved in the person's Drafts under its own Message-ID; a send that
+names it, or that is the very email a draft already is, sends that draft as it is and takes it out
+of Drafts, and one changed since its card is refused: Kenil, 29 Oct); the Mac's calendar and contacts (a small signed native helper, since Node
 cannot reach EventKit; iCal and vCard on a server); LinkedIn in the browser (the
 person's `Connections.csv` once, then only what is new); files with positions (Docling for PDFs, SheetJS
 for sheets); a watched folder. Outlook by Graph and the generic read-only SQL connector come
@@ -593,8 +609,9 @@ instruction lets it in. A shipped agent's steps are kit scripts (plain JavaScrip
 XState was never needed) with the model at marked judgement points; a user-made agent is a script
 the model writes and keeps (a brief the model follows waits on the brief-driven agent, §5). Tokens and duration are recorded on every run as facts, not a budget.
 **Activity** lists every run with its steps, and stops one that is running; with them, Alpha's
-turns that changed rows, removals and the person's reverts, each with Revert (Bring back on a
-removal) behind its ⋮ where it can be undone (§4, undo); **Settings › Modules** and
+turns that changed rows or did something through a connector (a write or a send that went, one on
+a card's yes under the turn that asked for it: Kenil, 29 Oct), removals and the person's reverts,
+each with Revert (Bring back on a removal) behind its ⋮ where it can be undone (§4, undo); **Settings › Modules** and
 Intelligence › Agents show each module's agents, on or paused, with Run now. **One run of an agent at a
 time**, whoever asks; a paused agent runs only when the person asks for it now (Run now, the
 desk's run), never on its trigger, a follow-up or a sign-in (24 Oct). The due runs go in a lane
@@ -982,7 +999,8 @@ Alpha's own tables under Intelligence), under way 28 Oct; 5 what the model costs
 and model, in Settings › Model, built 28 Oct. Beside it, from the final plan: no send or write
 tried again (§8, 28 Oct).
 
-**After it** (the final plan, 25 Oct, reconciled 28 Oct): the connector platform (§8), with the
+**After it** (the final plan, 25 Oct, reconciled 28 Oct): the connector platform (§8; part 1,
+connectors in a sandbox and signed, under way 29 Oct: slice 1, each in its own process), with the
 build work beside it (Alpha's own loop made fit, journeys on the key route, a survey of
 harnesses), then linking. The first client gets a build signed on Kenil's Apple account; Dell as
 above; later work comes as each client signs.

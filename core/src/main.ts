@@ -6,7 +6,7 @@ import { basename, join } from 'node:path'
 import { BrowserEngine } from '@alpha/connector-sdk'
 import { buildServer } from './api/server.ts'
 import { config } from './config.ts'
-import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
+import { loadSet, STANDARD_DIR, updateOwn } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
 import { copyNewestBackup, takeRestartNote } from './data.ts'
 import { ClaudeApiProvider } from './engine/claudeapi.ts'
@@ -127,6 +127,16 @@ if (install.uv) process.env.ALPHA_UV = install.uv
 // The connectors: the standard set the release ships, then every folder under Alpha's own
 // connectors/ (added from Settings); a folder that does not load is said on Home and left out.
 const connectorsDir = join(home, 'connectors')
+for (const u of updateOwn(connectorsDir)) {
+  const words = `Updated the connector ${u.title} to ${u.version}, Alpha's own.`
+  console.log(words)
+  world.line({
+    actor: { kind: 'system' },
+    kind: 'connector_updated',
+    words,
+    data: { name: u.name, version: u.version },
+  })
+}
 const standard = await loadSet(STANDARD_DIR)
 const added = await loadSet(
   connectorsDir,

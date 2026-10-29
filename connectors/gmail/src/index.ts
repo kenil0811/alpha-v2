@@ -103,13 +103,90 @@ async function withImap<T>(c: Call, fn: (client: ImapFlow) => Promise<T>): Promi
   )
 }
 
-async function mailbox(client: ImapFlow, use: '\\All' | '\\Drafts' | '\\Sent'): Promise<string> {
+async function mailbox(
+  client: ImapFlow,
+  use: '\\All' | '\\Drafts' | '\\Sent' | '\\Trash',
+): Promise<string> {
   const found = (await client.list()).find((m) => m.specialUse === use)
   if (!found)
     throw new Problem(
-      `This Gmail account has no ${{ '\\All': 'All Mail', '\\Drafts': 'Drafts', '\\Sent': 'Sent Mail' }[use]} folder over IMAP.`,
+      `This Gmail account has no ${{ '\\All': 'All Mail', '\\Drafts': 'Drafts', '\\Sent': 'Sent Mail', '\\Trash': 'Trash' }[use]} folder over IMAP.`,
     )
   return found.path
+}
+
+// The uids of a message in a folder, by its Message-ID.
+async function uidsOf(client: ImapFlow, id: string): Promise<number[]> {
+  const found = await client.search(
+    { header: { 'message-id': id.replace(/^<|>$/g, '') } },
+    { uid: true },
+  )
+  return Array.isArray(found) ? found : []
+}
+
+// A draft as it is in Drafts, by its Message-ID; none when it is no longer there.
+async function draftIn(client: ImapFlow, id: string): Promise<Draft | null> {
+  const lock = await client.getMailboxLock(await mailbox(client, '\\Drafts'))
+  try {
+    const uid = (await uidsOf(client, id)).at(-1)
+    if (!uid) return null
+    const source = ((await client.fetchOne(String(uid), { source: true }, { uid: true })) || null)
+      ?.source
+    if (!source) return null
+    const p = await simpleParser(source)
+    const list = (a: typeof p.to) =>
+      (Array.isArray(a) ? a : a ? [a] : []).flatMap((x) =>
+        x.value.map((v) => (v.address ?? '').toLowerCase()).filter(Boolean),
+      )
+    return {
+      to: list(p.to),
+      cc: list(p.cc),
+      bcc: list(p.bcc),
+      subject: p.subject ?? '',
+      body: p.text ?? '',
+      attachments: p.attachments.map((a) => a.filename ?? 'unnamed'),
+      raw: source,
+    }
+  } finally {
+    lock.release()
+  }
+}
+
+// The draft in Drafts that is this very email (the newest of those to its first address with its
+// subject), with its Message-ID; none when there is none.
+async function sameDraftIn(
+  client: ImapFlow,
+  m: Parameters<typeof compose>[1],
+): Promise<(Draft & { id: string }) | null> {
+  const to = emailsIn(m.to)[0]
+  if (!to) return null
+  const ids: string[] = []
+  const lock = await client.getMailboxLock(await mailbox(client, '\\Drafts'))
+  try {
+    const uids = (await client.search({ to, subject: m.subject }, { uid: true })) || []
+    if (uids.length)
+      for await (const x of client.fetch(uids.slice(-5), { envelope: true }, { uid: true }))
+        if (x.envelope?.messageId) ids.unshift(x.envelope.messageId)
+  } finally {
+    lock.release()
+  }
+  for (const id of ids) {
+    const d = await draftIn(client, id)
+    if (d && !unlike(d, m).length) return { ...d, id }
+  }
+  return null
+}
+
+// A sent draft taken out of Drafts, into Trash as Gmail keeps a discarded one.
+async function dropDraft(client: ImapFlow, id: string): Promise<void> {
+  const trash = await mailbox(client, '\\Trash')
+  const lock = await client.getMailboxLock(await mailbox(client, '\\Drafts'))
+  try {
+    const uids = await uidsOf(client, id)
+    if (uids.length) await client.messageMove(uids, trash, { uid: true })
+  } finally {
+    lock.release()
+  }
 }
 
 // One send, once (final plan, call A, 28 Oct). The email carries a Message-ID of Alpha's own, so
@@ -117,23 +194,124 @@ async function mailbox(client: ImapFlow, use: '\\All' | '\\Drafts' | '\\Sent'): 
 // later, as Gmail files a sent message a moment after it takes it): there, it went; not there, it
 // did not, and nothing is sent again. Gmail asking to slow down (421, 4.7.x) did nothing, so it is
 // a busy problem the runtime waits out; a refusal (5xx, the day's sending limit) is said as it is.
+// A send that names a draft (Kenil, 29 Oct) sends that draft as it is in Drafts, under its own
+// Message-ID and dated now, then takes it out of Drafts; a draft that is not what the card showed,
+// or is gone, is refused and nothing goes. A send that names none, of an email a draft in Drafts
+// already is, sends that draft the same way (his run, 16:22: Alpha had the id and sent anew).
 export interface SendHands {
   send: (mail: Record<string, unknown>) => Promise<unknown>
   inSent: (id: string) => Promise<boolean>
   wait: (ms: number) => Promise<void>
+  draft?: (id: string) => Promise<Draft | null>
+  sameDraft?: (m: Parameters<typeof compose>[1]) => Promise<(Draft & { id: string }) | null>
+  removeDraft?: (id: string) => Promise<void>
+}
+
+// A draft as it is in Drafts: its recipients' addresses, words, files and the message itself.
+export interface Draft {
+  to: string[]
+  cc: string[]
+  bcc: string[]
+  subject: string
+  body: string
+  attachments: string[]
+  raw: Buffer
+}
+
+const emailsIn = (v: string | undefined) =>
+  (v ?? '').match(/[^\s<>,;"']+@[^\s<>,;"']+/g)?.map((a) => a.toLowerCase()) ?? []
+const sameList = (a: string[], b: string[]) =>
+  JSON.stringify([...a].map((x) => x.toLowerCase()).sort()) === JSON.stringify([...b].sort())
+const words = (v: string) =>
+  v
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim()
+
+// What of a draft is not what the card shows, in words; none: it is the same email.
+function unlike(
+  d: Draft,
+  m: { to: string; cc?: string | undefined; subject: string; body: string },
+) {
+  return [
+    !sameList(d.to, emailsIn(m.to)) && 'its To',
+    !sameList(d.cc, emailsIn(m.cc)) && 'its Cc',
+    d.bcc.length > 0 && 'its Bcc',
+    d.subject.trim() !== m.subject.trim() && 'its subject',
+    words(d.body) !== words(m.body) && 'its text',
+    d.attachments.length > 0 && 'its attachments',
+  ].filter((x): x is string => !!x)
+}
+
+// The draft's own message, dated when it goes.
+function datedNow(raw: Buffer): Buffer {
+  const text = raw.toString('latin1')
+  const end = text.search(/\r?\n\r?\n/)
+  const head = end < 0 ? text : text.slice(0, end)
+  const date = `Date: ${new Date().toUTCString().replace('GMT', '+0000')}`
+  const dated = /^Date:/im.test(head)
+    ? head.replace(/^Date:.*(?:\r?\n[ \t].*)*/im, date)
+    : `${date}\r\n${head}`
+  return Buffer.from(dated + (end < 0 ? '' : text.slice(end)), 'latin1')
 }
 
 const DROPPED =
   /ECONNRESET|ETIMEDOUT|EPIPE|ECONNREFUSED|EAI_AGAIN|ESOCKET|ECONNECTION|socket hang up|timed? ?out|closed/i
 
+export const messageIdFor = (account: string) =>
+  `<alpha-${randomUUID()}@${account.split('@')[1] ?? 'alpha.local'}>`
+
+type Sent = { sent: true; to: string; subject: string; id: string; words?: string }
+
 export async function sendOnce(
   account: string,
-  m: Parameters<typeof compose>[1],
+  m: Parameters<typeof compose>[1] & { draft?: string | undefined },
   hands: SendHands,
-): Promise<{ sent: true; to: string; subject: string; id: string; words?: string }> {
-  const id = `<alpha-${randomUUID()}@${account.split('@')[1] ?? 'alpha.local'}>`
+): Promise<Sent> {
+  let id = m.draft
+  let d: Draft | null = null
+  if (id) {
+    d = (await hands.draft?.(id)) ?? null
+    if (!d)
+      throw new Problem(
+        `That draft to ${m.to} is no longer in Drafts (sent or deleted), so nothing was sent.`,
+        'gone',
+      )
+    const off = unlike(d, m)
+    if (off.length)
+      throw new Problem(
+        `The draft in Gmail is not what the card showed (${off.join(', ')}), so nothing was sent. Read it again, then ask again.`,
+      )
+  } else {
+    const same = (await hands.sameDraft?.(m)) ?? null
+    if (same && !unlike(same, m).length) [id, d] = [same.id, same]
+  }
+  if (!id || !d) return sendMail(account, m, messageIdFor(account), hands, null)
+  const out = await sendMail(account, m, id, hands, {
+    envelope: { from: account, to: [...d.to, ...d.cc] },
+    raw: datedNow(d.raw),
+  })
   try {
-    await hands.send({ ...compose(account, m), messageId: id })
+    await hands.removeDraft?.(id)
+    return { ...out, words: out.words ?? 'It was your draft: sent as it is, and out of Drafts.' }
+  } catch (err) {
+    const why = err instanceof Error ? err.message : String(err)
+    return {
+      ...out,
+      words: `Sent your draft; it stays in Drafts, as it could not be taken out: ${why}`,
+    }
+  }
+}
+
+async function sendMail(
+  account: string,
+  m: Parameters<typeof compose>[1],
+  id: string,
+  hands: SendHands,
+  draft: Record<string, unknown> | null,
+): Promise<Sent> {
+  try {
+    await hands.send(draft ?? { ...compose(account, m), messageId: id })
     return { sent: true, to: m.to, subject: m.subject, id }
   } catch (err) {
     const e = err as { responseCode?: number; code?: string; message?: string }
@@ -170,11 +348,7 @@ export async function sendOnce(
 async function inSent(client: ImapFlow, id: string): Promise<boolean> {
   const lock = await client.getMailboxLock(await mailbox(client, '\\Sent'))
   try {
-    const found = await client.search(
-      { header: { 'message-id': id.replace(/^<|>$/g, '') } },
-      { uid: true },
-    )
-    return Array.isArray(found) && found.length > 0
+    return (await uidsOf(client, id)).length > 0
   } finally {
     lock.release()
   }
@@ -296,8 +470,14 @@ function compose(
 
 const short = (v: string, n = 80) => (v.length > n ? `${v.slice(0, n - 1)}…` : v)
 
-const preview = (m: { to: string; cc?: string | undefined; subject: string; body: string }) => ({
-  words: `Send an email to ${m.to}: “${m.subject}”`,
+const preview = (m: {
+  to: string
+  cc?: string | undefined
+  subject: string
+  body: string
+  draft?: string | undefined
+}) => ({
+  words: `${m.draft ? 'Send your draft to' : 'Send an email to'} ${m.to}: “${m.subject}”`,
   detail: `To: ${m.to}${m.cc ? `\nCc: ${m.cc}` : ''}\nSubject: ${m.subject}\n\n${m.body}`,
   yes: 'Send it',
 })
@@ -415,40 +595,52 @@ export const gmail: Connector = {
     }),
     draft: defineTool({
       description:
-        'Save a draft in the person’s Gmail Drafts, for them to send themselves. It goes to no one.',
+        'Save a draft in the person’s Gmail Drafts. It goes to no one. Its draft id is what send takes to send this very draft.',
       input: Message,
       effect: 'write',
       words: (m) => `Saved a draft to ${m.to}`,
-      run: async (c, m) =>
-        c.call('draft', { to: m.to, subject: m.subject }, () =>
+      run: async (c, m) => {
+        const id = messageIdFor(c.host.account)
+        const saved = await c.call('draft', { to: m.to, subject: m.subject }, () =>
           withImap(c, async (client) => {
-            const raw = await new MailComposer(compose(c.host.account, m)).compile().build()
+            const raw = await new MailComposer({ ...compose(c.host.account, m), messageId: id })
+              .compile()
+              .build()
             await client.append(await mailbox(client, '\\Drafts'), raw, ['\\Draft'])
             return { saved: true, to: m.to, subject: m.subject }
           }),
-        ),
+        )
+        return { ...(saved as object), draft: id }
+      },
     }),
     send: defineTool({
-      description: 'Send an email from the person’s Gmail. It waits for their yes on a card first.',
-      input: Message,
+      description:
+        'Send an email from the person’s Gmail. It waits for their yes on a card first. To send a draft (one saved with draft, or one found in Drafts with search in:drafts, then read), give its id as draft and its to, cc, subject and body as the draft has them: that draft goes and leaves Drafts, and one changed since is refused.',
+      input: { ...Message, draft: z.string().optional() },
       effect: 'outward',
       preview,
-      words: (m) => `Send an email to ${m.to}`,
+      words: (m) => `${m.draft ? 'Send your draft to' : 'Send an email to'} ${m.to}`,
       run: async (c, m) =>
-        c.call('send', { to: m.to, subject: m.subject }, async () =>
-          sendOnce(c.host.account, m, {
-            send: async (mail) => {
-              const transport = nodemailer.createTransport({
-                host: 'smtp.gmail.com',
-                port: 465,
-                secure: true,
-                auth: { user: c.host.account, pass: await secret(c) },
-              })
-              return transport.sendMail(mail)
-            },
-            inSent: (id) => withImap(c, (client) => inSent(client, id)),
-            wait: (ms) => new Promise((ok) => setTimeout(ok, ms)),
-          }),
+        c.call(
+          'send',
+          { to: m.to, subject: m.subject, ...(m.draft ? { draft: m.draft } : {}) },
+          async () =>
+            sendOnce(c.host.account, m, {
+              draft: (id) => withImap(c, (client) => draftIn(client, id)),
+              sameDraft: (mail) => withImap(c, (client) => sameDraftIn(client, mail)),
+              removeDraft: (id) => withImap(c, (client) => dropDraft(client, id)),
+              send: async (mail) => {
+                const transport = nodemailer.createTransport({
+                  host: 'smtp.gmail.com',
+                  port: 465,
+                  secure: true,
+                  auth: { user: c.host.account, pass: await secret(c) },
+                })
+                return transport.sendMail(mail)
+              },
+              inSent: (id) => withImap(c, (client) => inSent(client, id)),
+              wait: (ms) => new Promise((ok) => setTimeout(ok, ms)),
+            }),
         ),
     }),
   },
@@ -544,7 +736,7 @@ export const gmail: Connector = {
       }),
     )
     const yesNo = (b: boolean | undefined) => (b === undefined ? undefined : b ? 'yes' : 'no')
-    const landed = c.host.land(
+    const landed = await c.host.land(
       'Mail',
       out.headers.map((h) => ({
         key: h.id,
@@ -567,7 +759,7 @@ export const gmail: Connector = {
         }),
       })),
     )
-    c.host.land(
+    await c.host.land(
       'Mail',
       (out.marks ?? []).map((m) => ({
         key: m.id,

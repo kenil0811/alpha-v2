@@ -95,13 +95,13 @@ export const linkedin: Connector = {
   ],
   tools: {},
   check: async (c) => {
-    if (!browser(c).signedIn(CONNECTIONS))
+    if (!(await browser(c).signedIn(CONNECTIONS)))
       throw new Problem('Sign in to LinkedIn in Google Chrome first.', 'sign_in')
   },
   // The newest first: once one read has reached the end of the list, a round of only connections
   // already kept ends the next.
   sync: async (c) => {
-    const kept = c.host.keys?.('LinkedIn connections') ?? []
+    const kept = (await c.host.keys?.('LinkedIn connections')) ?? []
     const whole = c.host.cursor()?.startsWith('whole:') ?? false
     const known = whole ? kept : []
     const read = await c.call('connections', { known: known.length }, () =>
@@ -112,7 +112,7 @@ export const linkedin: Connector = {
       .map(connectionOf)
       .filter((i): i is Item => !!i)
       .filter((i, n, all) => all.findIndex((x) => x.key === i.key) === n)
-    const landed = c.host.land('LinkedIn connections', items)
+    const landed = await c.host.land('LinkedIn connections', items)
     c.host.journal(
       `Read ${items.length} connections in ${read.rounds} scrolls${read.ended === 'end' ? ', to the end of the list' : read.ended === 'known' ? ', up to those already kept' : ''}.`,
     )

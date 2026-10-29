@@ -102,20 +102,27 @@ export interface Landed {
   same: number
 }
 
-// What the core gives a connection.
+// What the core gives a connection. A connector in its own process (step 2, 29 Oct) asks the core
+// for what it lands, keeps, knows and browses, so those answer later: await each. Its cursor is
+// the one given with the call, and a journal line or a new cursor is said and not waited on.
 export interface Host {
   account: string
   secret(): Promise<string | null>
   cursor(): string | null
   setCursor(cursor: string | null): void
   // existing: change only rows already kept (a mark on an older message is not a new row).
-  land(table: string, items: Item[], options?: { existing?: boolean }): Landed
+  land(table: string, items: Item[], options?: { existing?: boolean }): Landed | Promise<Landed>
   // A file kept and read into a document, as if the person had dropped it in.
-  keepFile?: (name: string, bytes: Uint8Array, mime: string) => { isNew: boolean }
-  // The human-pace browser, for a site the person signed in to (auth: browser).
+  keepFile?: (
+    name: string,
+    bytes: Uint8Array,
+    mime: string,
+  ) => { isNew: boolean } | Promise<{ isNew: boolean }>
+  // The human-pace browser, for a site the person signed in to (auth: browser); await each of
+  // its methods, as the browser stays with the core.
   browser?: () => BrowserEngine
   // The item keys a table keeps already (a read that stops at what it knows).
-  keys?: (table: string) => string[]
+  keys?: (table: string) => string[] | Promise<string[]>
   journal(words: string, data?: Record<string, unknown>): void
 }
 
