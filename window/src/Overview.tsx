@@ -16,6 +16,8 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import {
+  ChevronDown,
+  ChevronRight,
   FileText,
   Image,
   LoaderCircle,
@@ -1361,7 +1363,7 @@ export function Overview({
       name: 'Governance',
       node: (
         <div id="ov-governance" className="rounded-lg border border-line bg-surface px-3 py-3">
-          <GovernanceSection module={m.id} version={version} />
+          <GovernanceSection module={m.id} version={version} small />
         </div>
       ),
     },
@@ -1998,7 +2000,7 @@ export function Agents({
           {(fn && !big ? rest.slice(0, 8) : rest).map((a, i) => (
             <Fragment key={a.id}>
               {fn && a.function !== rest[i - 1]?.function && (
-                <p className="pt-2 pb-1 text-ink-3 text-xs">{a.function}</p>
+                <p className="pt-2 pb-1 font-medium text-ink text-sm">{a.function}</p>
               )}
               <Line s={agentSignal(a)} actions={toggle(a)}>
                 <a href={`#/agent/${a.id}`} className="hover:text-accent hover:underline">
@@ -2105,25 +2107,65 @@ export function Tables({ ms, href }: { ms: TablesOf[]; href: string }) {
       () => undefined,
     )
   }, [])
-  const shown = ms.filter((m) => m.tables.length)
+  // across modules, each module is a line that opens to its tables, all closed at first, in
+  // their numbers' order (Vikas, 30 Oct: "expand and collapse… in default, collapsed")
+  const [open, setOpen] = useState<Set<string>>(new Set())
+  const order = (m: TablesOf) => (numbers.get(m.id) ?? '99').split('.').map(Number)
+  const shown = ms
+    .filter((m) => m.tables.length)
+    .sort((a, b) => {
+      const [x, y] = [order(a), order(b)]
+      for (let i = 0; i < Math.max(x.length, y.length); i++)
+        if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0)
+      return 0
+    })
   return (
     <Card
       id="tables"
       title="Tables"
       href={href}
       count={shown.reduce((a, m) => a + m.tables.length, 0)}
-      grows={ms.length > 1}
+      grows={ms.length === 1 && !!ms[0]?.tables.some((t) => t.of)}
     >
-      {(big) => (
-        <div>
-          {shown.map((m) => (
-            <div key={m.id}>
-              {ms.length > 1 && <p className="pt-2 pb-1 text-ink-3 text-xs">{m.name}</p>}
-              <TableRows m={m} number={numbers.get(m.id) ?? ''} all={big || ms.length === 1} />
-            </div>
-          ))}
-        </div>
-      )}
+      {(big) =>
+        ms.length === 1 ? (
+          <TableRows m={ms[0] as TablesOf} number={numbers.get(ms[0]?.id ?? '') ?? ''} all={big} />
+        ) : (
+          <div>
+            {shown.map((m) => {
+              const on = open.has(m.id)
+              return (
+                <div key={m.id}>
+                  <button
+                    type="button"
+                    aria-expanded={on}
+                    onClick={() => {
+                      const next = new Set(open)
+                      on ? next.delete(m.id) : next.add(m.id)
+                      setOpen(next)
+                    }}
+                    className="flex h-8 w-full items-center gap-1.5 border-hair border-t text-left text-md hover:bg-hover"
+                  >
+                    {on ? (
+                      <ChevronDown className="size-3.5 shrink-0 text-ink-3" />
+                    ) : (
+                      <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+                    )}
+                    <span className="text-ink-3 text-sm tabular-nums">{numbers.get(m.id)}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{m.name}</span>
+                    <span className="text-ink-3 text-sm tabular-nums">{m.tables.length}</span>
+                  </button>
+                  {on && (
+                    <div className="pl-5">
+                      <TableRows m={m} number={numbers.get(m.id) ?? ''} all />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      }
     </Card>
   )
 }

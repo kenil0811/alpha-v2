@@ -23,7 +23,9 @@ export function EntryList<T>({
   onAdd,
   onEdit,
   onRemove,
+  small,
 }: {
+  small?: boolean | undefined // inside a card: a step smaller, as the card's other lists
   head: ReactNode // the heading's words; Add sits at its right
   items: T[]
   idOf: (t: T) => string
@@ -47,7 +49,12 @@ export function EntryList<T>({
   }
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <h3 className="flex h-9 items-center gap-1.5 border-line border-b font-medium text-ink text-md">
+      <h3
+        className={cn(
+          'flex items-center gap-1.5 border-line border-b font-medium text-ink',
+          small ? 'h-8 text-sm' : 'h-9 text-md',
+        )}
+      >
         {head}
         <span className="flex-1" />
         {items.length > 0 && !adding && (
@@ -91,7 +98,11 @@ export function EntryList<T>({
                 )}
               >
                 <span className="flex min-w-0 flex-1 flex-col">
-                  {line ? line(t) : <span className="text-md">{textOf(t)}</span>}
+                  {line ? (
+                    line(t)
+                  ) : (
+                    <span className={small ? 'text-sm' : 'text-md'}>{textOf(t)}</span>
+                  )}
                 </span>
                 {after?.(t)}
                 {onRemove && (

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { moduleNumbers, numberTables } from './Parts.tsx'
 
 describe('numbering', () => {
-  it('numbers modules in rail order and tables as a tree under them', () => {
+  it('numbers Alpha 1, then modules in rail order from 2, and tables as a tree under them', () => {
     const ms = [
       { id: 'a', name: 'Alpha', parent: null, alpha: true },
       { id: 'x', name: 'Avilo', parent: null },
@@ -10,9 +10,10 @@ describe('numbering', () => {
       { id: 'c', name: 'CRM', parent: 'x' },
     ]
     expect([...moduleNumbers(ms)]).toEqual([
-      ['x', '1'],
-      ['d', '1.1'],
-      ['c', '1.2'],
+      ['a', '1'],
+      ['x', '2'],
+      ['d', '2.1'],
+      ['c', '2.2'],
     ])
     const t = (id: string, place: 'main' | 'part' | 'setup', of: string | null = null) => ({
       id,

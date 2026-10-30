@@ -223,14 +223,18 @@ type Placed = Pick<ModuleSummary, 'id' | 'name' | 'parent'> & { alpha?: boolean 
 export function moduleNumbers(modules: Placed[]): Map<string, string> {
   const out = new Map<string, string>()
   const shown = modules.filter((m) => !m.alpha) // Alpha's own module is not on the rail
-  const walk = (list: Placed[], prefix: string) =>
+  // Alpha's own module is 1 and the rail's start at 2 (Vikas, 30 Oct: "Alpha numbered 1,
+  // Decisions 1.1, Noticed 1.2, Network 2, LinkedIn 2.1")
+  const alpha = modules.find((m) => m.alpha)
+  if (alpha) out.set(alpha.id, '1')
+  const walk = (list: Placed[], prefix: string, from = 1) =>
     list.forEach((m, i) => {
-      const n = `${prefix}${i + 1}`
+      const n = `${prefix}${i + from}`
       if (out.has(m.id)) return
       out.set(m.id, n)
       walk(childrenOf(shown, m.id), `${n}.`)
     })
-  walk(tops(shown), '')
+  walk(tops(shown), '', alpha ? 2 : 1)
   return out
 }
 

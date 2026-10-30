@@ -361,7 +361,7 @@ export function Home({
       name: 'Governance',
       node: (
         <div id="ov-governance" className="rounded-lg border border-line bg-surface px-3 py-3">
-          <GovernanceSection title="Governance" version={last ?? 0} />
+          <GovernanceSection title="Governance" version={last ?? 0} small />
         </div>
       ),
     },

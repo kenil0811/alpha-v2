@@ -211,8 +211,13 @@ put it there and on the parts page (#/parts).
   approved is solid, waiting is greyed on dots with Approve; agents' rules sit under the agent's
   name. A rule is added with the one list control (New, or Add at the column's head; below) or by
   asking Alpha. Figures and connection states are never rules.
-- A module's page goes Agents, Governance, Tables, Second Brain. Modules are numbered in rail
-  order and tables under them (2, 2.2, 2.2.1); every table counted is listed.
+- A module's page goes Agents, Governance, Tables, Second Brain. Alpha's own module is 1
+  (Decisions 1.1, Noticed 1.2), the rail's modules follow in rail order from 2, and tables under
+  them (2, 2.1, 2.1.1); every table counted is listed. Across modules, the Tables card is a line
+  per module, closed at first, opened and closed by a click (Vikas, 30 Oct).
+- One level, one font: what stands at the same level (a card's title; a group's head inside a
+  card, as Agents' "Sourcing" and Governance's "Can do") reads the same size and weight wherever it
+  is (Vikas, 30 Oct).
 - A page that only analyses a module's tables is charts on its Overview, not a page.
 - Every block on Home and an Overview has a handle on hover: drop it beside, above or below
   another; the arrangement is kept per person by the core.

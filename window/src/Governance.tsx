@@ -61,10 +61,12 @@ export function GovernanceSection({
   module,
   version = 0,
   title = module ? 'Governance' : 'Can and cannot do',
+  small,
 }: {
   module?: string
   version?: number
   title?: string
+  small?: boolean // a card on Home or an Overview: sized as the Agents card beside it (Vikas, 30 Oct)
 }) {
   const [rules, setRules] = useState<RuleView[] | null>(null)
   const [m, setM] = useState<ModuleView | null>(null)
@@ -101,6 +103,7 @@ export function GovernanceSection({
 
   return (
     <Section
+      small={small}
       title={title}
       about="What agents can and cannot do here, held by the core. Solid rules are yours; greyed ones wait for your approval. Anything else that changes your data or reaches someone, Alpha asks first."
     >
@@ -121,6 +124,7 @@ export function GovernanceSection({
                 onForget={(turn) => setSent((now) => now.filter((x) => x.turn !== turn))}
                 m={m}
                 onChange={load}
+                small={small}
               />
             ))}
           </div>
@@ -146,7 +150,9 @@ function Column({
   onForget,
   m,
   onChange,
+  small,
 }: (typeof SIDES)[number] & {
+  small?: boolean | undefined
   rules: RuleView[]
   sent: Sent[]
   onSent: (s: Sent) => void
@@ -194,6 +200,7 @@ function Column({
   return (
     <section aria-label={title} className="flex min-w-0 flex-col">
       <EntryList
+        small={small}
         head={
           <>
             <Icon className={cn('size-3.5', tone)} />
@@ -213,15 +220,18 @@ function Column({
         line={(r) =>
           r.sent ? (
             <>
-              <span className="text-md">{r.words}</span>
+              <span className={small ? 'text-sm' : 'text-md'}>{r.words}</span>
               <span className="text-ink-3 text-sm">{r.sent.answer ?? 'Waiting for Alpha…'}</span>
             </>
           ) : (
             <>
               {r.card ? (
-                <span className="text-md">{r.words}</span>
+                <span className={small ? 'text-sm' : 'text-md'}>{r.words}</span>
               ) : (
-                <a href={`#/rule/${r.id}`} className="text-md hover:underline">
+                <a
+                  href={`#/rule/${r.id}`}
+                  className={small ? 'text-sm hover:underline' : 'text-md hover:underline'}
+                >
                   {r.words}
                 </a>
               )}

@@ -6,16 +6,24 @@ import { Info } from './info.tsx'
 export function Section({
   title,
   about,
+  small,
   children,
 }: {
   title: string
   about?: string
+  small?: boolean | undefined // inside a card: its head the size of the card's (Agents)
   children: ReactNode
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-2.5">
       <div data-head className="flex items-center gap-1.5">
-        <h2 className="font-medium font-serif text-2xl text-ink">{title}</h2>
+        <h2
+          className={
+            small ? 'font-semibold text-base text-ink' : 'font-medium font-serif text-2xl text-ink'
+          }
+        >
+          {title}
+        </h2>
         {about && <Info help={about} />}
       </div>
       {children}
