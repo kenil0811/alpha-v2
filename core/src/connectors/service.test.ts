@@ -158,7 +158,7 @@ describe('a Gmail connection on recorded answers', () => {
       yes: 'Send it',
     })
     expect(svc.toolNames()).toContain('mcp__gmail__send')
-    expect(Object.keys(svc.servers()).sort()).toEqual(['calendar', 'contacts', 'gmail'])
+    expect(Object.keys(svc.servers()).sort()).toEqual(['calendar', 'contacts', 'gmail', 'outlook'])
     expect(svc.connector('calendar').manifest.auth).toBe('system')
     expect(svc.connector('calendar').manifest.system?.pane).toBe('Calendars')
   })

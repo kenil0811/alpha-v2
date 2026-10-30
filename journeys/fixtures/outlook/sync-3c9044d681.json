@@ -1,0 +1,106 @@
+{
+  "rows": [
+    {
+      "key": "<lease-1@ellisproperty.example>",
+      "values": {
+        "From": "Jordan Ellis <jordan@ellisproperty.example>",
+        "From address": "jordan@ellisproperty.example",
+        "To": "Owner <owner@northside.example>",
+        "Cc": "",
+        "Subject": "Lease renewal for Unit 4B",
+        "Date": "2026-10-21T14:05:00.000Z",
+        "Labels": "Inbox",
+        "Thread": "conv-lease",
+        "Message ID": "<lease-1@ellisproperty.example>",
+        "Direction": "received",
+        "To addresses": "owner@northside.example",
+        "Cc addresses": "",
+        "Attachments": "Unit 4B renewal.pdf",
+        "Unread": "no",
+        "Starred": "no"
+      }
+    },
+    {
+      "key": "<inv-883@brightplumbing.example>",
+      "values": {
+        "From": "Bright Plumbing <billing@brightplumbing.example>",
+        "From address": "billing@brightplumbing.example",
+        "To": "Owner <owner@northside.example>",
+        "Cc": "",
+        "Subject": "Invoice 883 for the Elm Street repair",
+        "Date": "2026-10-22T09:30:00.000Z",
+        "Labels": "Inbox",
+        "Thread": "<inv-883@brightplumbing.example>",
+        "Message ID": "<inv-883@brightplumbing.example>",
+        "Direction": "received",
+        "To addresses": "owner@northside.example",
+        "Cc addresses": "",
+        "Attachments": "",
+        "Unread": "yes",
+        "Starred": "no"
+      }
+    },
+    {
+      "key": "<lease-2@northside.example>",
+      "values": {
+        "From": "Owner <owner@northside.example>",
+        "From address": "owner@northside.example",
+        "To": "Jordan Ellis <jordan@ellisproperty.example>",
+        "Cc": "",
+        "Subject": "Re: Lease renewal for Unit 4B",
+        "Date": "2026-10-22T16:40:00.000Z",
+        "Labels": "Sent Items",
+        "Thread": "conv-lease",
+        "Message ID": "<lease-2@northside.example>",
+        "Direction": "sent",
+        "To addresses": "jordan@ellisproperty.example",
+        "Cc addresses": "",
+        "Attachments": "",
+        "Unread": "no",
+        "Starred": "no"
+      }
+    },
+    {
+      "key": "<tenant-7@gmail.example>",
+      "values": {
+        "From": "Casey Morgan <casey.morgan@mail.example>",
+        "From address": "casey.morgan@mail.example",
+        "To": "Owner <owner@northside.example>",
+        "Cc": "",
+        "Subject": "Heating in 2A is out again",
+        "Date": "2026-10-23T07:55:00.000Z",
+        "Labels": "Inbox",
+        "Thread": "<tenant-7@gmail.example>",
+        "Message ID": "<tenant-7@gmail.example>",
+        "Direction": "received",
+        "To addresses": "owner@northside.example",
+        "Cc addresses": "",
+        "Attachments": "",
+        "Unread": "yes",
+        "Starred": "yes"
+      }
+    },
+    {
+      "key": "<news-12@landlords.example>",
+      "values": {
+        "From": "Landlords Weekly <news@landlords.example>",
+        "From address": "news@landlords.example",
+        "To": "Owner <owner@northside.example>",
+        "Cc": "",
+        "Subject": "This week: new deposit rules",
+        "Date": "2026-10-24T06:00:00.000Z",
+        "Labels": "Inbox",
+        "Thread": "<news-12@landlords.example>",
+        "Message ID": "<news-12@landlords.example>",
+        "Direction": "received",
+        "To addresses": "owner@northside.example",
+        "Cc addresses": "",
+        "Attachments": "",
+        "Unread": "no",
+        "Starred": "no"
+      }
+    }
+  ],
+  "next": "{\"shape\": \"o1\", \"inbox\": \"https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=recorded-in\", \"sentitems\": \"https://graph.microsoft.com/v1.0/me/mailFolders/sentitems/messages/delta?$deltatoken=recorded-sent\"}",
+  "total": 5
+}

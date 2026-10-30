@@ -553,7 +553,12 @@ and PKCE), which says the outcome there and in Alpha. The long-lived token is ke
 Keychain under the connection's secret reference and out of every journal line; the core renews
 the short-lived one, one renewal at a time, and hands only that to the connector's process as
 `host.secret()`. Read now renews first, so a revoked sign-in shows at once. A core on a server
-(Dell) needs an https return address of its own: that comes with the server.
+(Dell) needs an https return address of its own: that comes with the server. **Outlook** (slice 2)
+reads Inbox and Sent Items through Graph into the same Mail table as Gmail, with the same fields
+(the first read 90 days back, then each folder's changes by Graph's delta, its next address kept
+as the cursor), searches and reads a message by its Message ID, and fetches its files; it writes
+nothing yet. Where two accounts land in one table, mail's files are asked of the account that
+brought each row (its provenance).
 
 **Signed packs** (slice 3, Kenil's yes 29 Oct): a kit's or a connector's pack carries SIGNATURE
 beside its PACK.json, an Ed25519 signature over PACK.json's bytes (every file and its hash), made

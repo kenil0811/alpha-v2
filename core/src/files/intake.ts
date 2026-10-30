@@ -22,6 +22,10 @@ export interface FileSource {
   title: string // Gmail
   table: string // Mail
   field: string // Attachments
+  // the connection's connector and account: it is asked only about the rows it landed, when two
+  // accounts land in one table (Gmail and Outlook in Mail)
+  connector?: string
+  account?: string
 }
 
 export interface Mailbox {
@@ -131,6 +135,13 @@ export class Intake {
       for (const r of this.world.records.landed(t.id, since)) {
         const v = r.vals
         if (!v[field.id] || done.has(`${s.connection}:${r.key}`)) continue
+        if (
+          s.connector &&
+          r.from &&
+          (r.from.connector !== s.connector ||
+            r.from.account.toLowerCase() !== (s.account ?? '').toLowerCase())
+        )
+          continue
         if (date && typeof v[date.id] === 'string' && (v[date.id] as string) < since) continue
         await this.take(s, r.key, {
           from: String((from && v[from.id]) ?? ''),

@@ -1,0 +1,21 @@
+name: outlook-on-recorded-answers
+title: Work mail signed in as the person lands in Mail, and a question is answered from it
+why: >
+  Step 2, part 5, slice 2 (Kenil's yes, 30 Oct): Outlook, signed in as the person, reads Inbox and
+  Sent Items into the same Mail table as Gmail, and a message's text is read when it is needed.
+  On recorded answers (journeys/fixtures/outlook), never a real tenant.
+steps:
+  - connect: { connector: outlook, account: owner@northside.example }
+    checks:
+      - rows_in: { table: Mail, count: 5 }
+      - connection: { connector: outlook, state: connected }
+  - say: who emailed me about the lease renewal, and did I answer?
+    checks:
+      - reply_matches: 'Jordan'
+      - permission_cards: 0
+  - say: what rent and deposit did Jordan's renewal email ask for?
+    checks:
+      - reply_matches: '1,?850'
+      - connector_calls: { words: 'Outlook: read', count: 1 }
+      - permission_cards: 0
+      - errors: 0

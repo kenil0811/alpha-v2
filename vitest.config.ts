@@ -8,6 +8,7 @@ export default defineConfig({
       'connector-sdk',
       'connectors/files',
       'connectors/gmail',
+      'connectors/outlook',
       'connectors/mac',
       'connectors-extra/linkedin',
     ],

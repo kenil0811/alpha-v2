@@ -1,0 +1,36 @@
+[
+  {
+    "From": "Jordan Ellis <jordan@ellisproperty.example>",
+    "From address": "jordan@ellisproperty.example",
+    "To": "Owner <owner@northside.example>",
+    "Cc": "",
+    "Subject": "Lease renewal for Unit 4B",
+    "Date": "2026-10-21T14:05:00.000Z",
+    "Labels": "Inbox",
+    "Thread": "conv-lease",
+    "Message ID": "<lease-1@ellisproperty.example>",
+    "Direction": "received",
+    "To addresses": "owner@northside.example",
+    "Cc addresses": "",
+    "Attachments": "Unit 4B renewal.pdf",
+    "Unread": "no",
+    "Starred": "no"
+  },
+  {
+    "From": "Owner <owner@northside.example>",
+    "From address": "owner@northside.example",
+    "To": "Jordan Ellis <jordan@ellisproperty.example>",
+    "Cc": "",
+    "Subject": "Re: Lease renewal for Unit 4B",
+    "Date": "2026-10-22T16:40:00.000Z",
+    "Labels": "Sent Items",
+    "Thread": "conv-lease",
+    "Message ID": "<lease-2@northside.example>",
+    "Direction": "sent",
+    "To addresses": "jordan@ellisproperty.example",
+    "Cc addresses": "",
+    "Attachments": "",
+    "Unread": "no",
+    "Starred": "no"
+  }
+]

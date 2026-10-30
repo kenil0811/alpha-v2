@@ -1,0 +1,8 @@
+{
+  "from": "Jordan Ellis <jordan@ellisproperty.example>",
+  "to": "Owner <owner@northside.example>",
+  "subject": "Lease renewal for Unit 4B",
+  "date": "2026-10-21T14:05:00.000Z",
+  "text": "Hi,\n\nThe tenants in Unit 4B want to renew for another twelve months starting 1 December. They asked to keep the rent at $1,850 a month, and the deposit of $1,850 stays as it is. The renewal is attached for your signature by 15 November.\n\nThanks,\nJordan Ellis\nEllis Property Services",
+  "attachments": ["Unit 4B renewal.pdf"]
+}

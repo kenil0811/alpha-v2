@@ -23,6 +23,7 @@ import {
 import { config } from '../config.ts'
 import { Registry, type ToolEntry } from '../engine/registry.ts'
 import { takeIn } from '../files/documents.ts'
+import type { FileSource } from '../files/intake.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape/index.ts'
@@ -501,7 +502,7 @@ export class ConnectorService {
   }
 
   // The connections whose items carry files (an email's attachments), and an item's files.
-  fileSources(): { connection: string; title: string; table: string; field: string }[] {
+  fileSources(): FileSource[] {
     return this.world.connections
       .list()
       .filter((k) => k.state === 'connected')
@@ -514,6 +515,8 @@ export class ConnectorService {
                 title: c.manifest.title,
                 table: c.files.table,
                 field: c.files.field,
+                connector: k.connector,
+                account: k.account,
               },
             ]
           : []

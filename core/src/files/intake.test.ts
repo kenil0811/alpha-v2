@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import type { ItemFile } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
-import { FILING, type Filing, Intake } from './intake.ts'
+import { FILING, type FileSource, type Filing, Intake } from './intake.ts'
 import type { Ask } from './reading.ts'
 
 let home: string
@@ -23,7 +23,14 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true })
 })
 
-function setUp(files: Record<string, ItemFile[]>, answer: (prompt: string) => unknown) {
+function setUp(
+  files: Record<string, ItemFile[]>,
+  answer: (prompt: string) => unknown,
+  sources: FileSource[] = [
+    { connection: 'k1', title: 'Gmail', table: 'Mail', field: 'Attachments' },
+  ],
+  asked: string[] = [],
+) {
   const owner = world.owner('Kenil')
   const desk = world.shape.makeModule('Desk', alpha)
   const deals = world.shape.makeTable(desk.id, 'Deals', [{ name: 'Name', kind: 'text' }], alpha)
@@ -53,13 +60,21 @@ function setUp(files: Record<string, ItemFile[]>, answer: (prompt: string) => un
   const intake = new Intake(
     world,
     {
-      sources: () => [{ connection: 'k1', title: 'Gmail', table: 'Mail', field: 'Attachments' }],
-      fetch: async (_c, item) => files[item] ?? [],
+      sources: () => sources,
+      fetch: async (c, item) => {
+        asked.push(`${c}:${item}`)
+        return files[item] ?? []
+      },
     },
     ask,
     owner,
   )
-  const arrives = (key: string, subject: string, attachments: string) =>
+  const arrives = (
+    key: string,
+    subject: string,
+    attachments: string,
+    from: { connector: string; account: string } = { connector: 'gmail', account: 'me' },
+  ) =>
     world.records.land(
       mail.id,
       [
@@ -73,8 +88,8 @@ function setUp(files: Record<string, ItemFile[]>, answer: (prompt: string) => un
           },
         },
       ],
-      { connector: 'gmail', account: 'me' },
-      { actor: { kind: 'connector', id: 'gmail' } },
+      from,
+      { actor: { kind: 'connector', id: from.connector } },
     )
   return { owner, deals, harbor: harbor as string, intake, arrives, prompts }
 }
@@ -88,6 +103,42 @@ const cim: ItemFile = {
 const logo: ItemFile = { name: 'logo.png', mime: 'image/png', bytes: csv('png'), inline: true }
 
 describe('files that come by mail', () => {
+  it('asks each mail account only about the messages it brought, when two share the Mail table', async () => {
+    const asked: string[] = []
+    const s = setUp(
+      { g1: [cim], o1: [cim] },
+      () => ({ files: [] }),
+      [
+        {
+          connection: 'kg',
+          title: 'Gmail',
+          table: 'Mail',
+          field: 'Attachments',
+          connector: 'gmail',
+          account: 'me@gmail.com',
+        },
+        {
+          connection: 'ko',
+          title: 'Outlook',
+          table: 'Mail',
+          field: 'Attachments',
+          connector: 'outlook',
+          account: 'me@work.example',
+        },
+      ],
+      asked,
+    )
+    await s.intake.due()
+    s.arrives('g1', 'From Gmail', 'Harbor CIM.csv', { connector: 'gmail', account: 'me@gmail.com' })
+    s.arrives('o1', 'From Outlook', 'Harbor CIM.csv', {
+      connector: 'outlook',
+      account: 'me@work.example',
+    })
+    await s.intake.due()
+    expect(asked.sort()).toEqual(['kg:g1', 'ko:o1'])
+    expect(world.lines({ kinds: ['intake'] }).filter((l) => l.data.failed)).toEqual([])
+  })
+
   it('starts with the mail that comes after it is on, and proposes a place per file on a card', async () => {
     const s = setUp({ m1: [cim, logo], m0: [cim] }, () => ({
       files: [

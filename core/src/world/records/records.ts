@@ -319,11 +319,18 @@ export class Records {
   landed(
     tableId: string,
     since: string,
-  ): { id: string; key: string; createdAt: string; vals: Record<string, unknown> }[] {
+  ): {
+    id: string
+    key: string
+    createdAt: string
+    vals: Record<string, unknown>
+    from: { connector: string; account: string } | null // the connection that landed it
+  }[] {
     const table = this.mustTable(tableId)
     const rows = all<Row>(
       this.db,
-      `SELECT * FROM ${quote(table.slug)} WHERE item_key IS NOT NULL AND created_at >= ? ORDER BY created_at, rowid`,
+      `SELECT t.*, (SELECT p.source FROM provenance p WHERE p.record_id = t.id ORDER BY p.field_id LIMIT 1) AS landed_from
+       FROM ${quote(table.slug)} t WHERE t.item_key IS NOT NULL AND t.created_at >= ? ORDER BY t.created_at, t.rowid`,
       since,
     )
     const lists = this.lists(
@@ -335,6 +342,7 @@ export class Records {
       key: x.item_key as string,
       createdAt: x.created_at,
       vals: this.rowVals(table, x, lists.get(x.id)),
+      from: landedFrom(x.landed_from),
     }))
   }
 
@@ -482,5 +490,18 @@ export class Records {
   }
   describeStored(table: Table, vals: Record<string, unknown>): string {
     return describeStored(this, table, vals)
+  }
+}
+
+// A landed row's connection, from its provenance's source ({connector, account, item}).
+function landedFrom(source: unknown): { connector: string; account: string } | null {
+  if (typeof source !== 'string') return null
+  try {
+    const s = JSON.parse(source) as { connector?: unknown; account?: unknown }
+    return typeof s.connector === 'string' && typeof s.account === 'string'
+      ? { connector: s.connector, account: s.account }
+      : null
+  } catch {
+    return null
   }
 }

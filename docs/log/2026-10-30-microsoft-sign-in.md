@@ -27,3 +27,18 @@ the person (delegated) rather than with an app's key; his test tenant is bridge0
   first; the return page let through without the token from this computer only.
 - On the way: the desk's tool entries and the start layer's words moved to `connectors/served.ts`,
   as `service.ts` passed its wall.
+
+## Slice 2: Outlook reads mail
+
+Pushed slice 1 at 15:31 on Kenil's "yes this worked" (he connected kenil@bridge08 as its admin);
+he asked for reading, which is this slice.
+
+- `connectors/outlook`: Inbox and Sent Items into Mail with Gmail's fields (the first read 90 days
+  back by `receivedDateTime ge`, then Graph's delta per folder, the delta addresses as the cursor;
+  removed messages not landed), the attachments' names twenty messages to a `$batch`, the folders'
+  counts for the health judgement; `search` (Graph's `$search`), `read` (by `internetMessageId`,
+  as text), `files` (file attachments only). Every ten minutes. Five tests on made-up Graph
+  answers, four failing first; journey `outlook-on-recorded-answers` (`journeys/fixtures/outlook`).
+- Mail's files with two accounts in one table: intake asked every connection about every row (each
+  failing on the other's). `records.landed` now says which connection landed a row (its
+  provenance) and each file source carries its connector and account; a test failed first.
