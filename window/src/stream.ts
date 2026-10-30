@@ -34,6 +34,7 @@ export type Item =
       answered: Record<string, Answered>
       at: string
       module: Module
+      who: string | null // the agent it speaks as (the Interviewer); none: Alpha
     }
   | { kind: 'note'; id: number; words: string; tone: 'plain' | 'warn'; at: string }
   | {
@@ -90,6 +91,7 @@ export function group(lines: StreamLine[]): Item[] {
         answered: {},
         at,
         module: null,
+        who: null,
       }
       turns.set(turn, a)
       items.push(a)
@@ -168,6 +170,7 @@ export function group(lines: StreamLine[]): Item[] {
     }
     const a = alpha(l.turn, l.at)
     if (!a.module && l.module) a.module = l.module
+    if (!a.who && l.agent) a.who = l.agent.name
     if (l.kind === 'call') {
       const step: Step = { id: l.id, words: l.words, ok: null, results: [] }
       a.steps.push(step)

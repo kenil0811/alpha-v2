@@ -2,7 +2,7 @@
 // the person to finish and send. Kept here until a composer takes them, since a folded panel has
 // none yet.
 import type { InterviewView } from '@alpha/core/api'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 
 let waiting: string | null = null
@@ -31,51 +31,15 @@ export function takeAsk(): string | null {
 }
 
 // Interview me (Vikas, 30 Oct): Alpha's questions, the most useful first, as many as are worth
-// asking; never a fixed prompt or count. Start asks the first in the conversation; with the pool
-// not ranked today it is ranked first, and the button says it is preparing until it is.
+// asking; never a fixed prompt or count. The button only says what is prepared; the sitting runs
+// in the Interviewer's thread under Agents, which useSitting drives.
 export function useInterview(module: string | null) {
   const [view, setView] = useState<InterviewView | null>(null)
-  const [preparing, setPreparing] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
   const path = `/api/interview${module ? `?module=${encodeURIComponent(module)}` : ''}`
-  const look = useCallback(
-    () =>
-      api
-        .get<InterviewView>(path)
-        .then((v) => {
-          setView(v)
-          return v
-        })
-        .catch(() => null),
-    [path],
-  )
   useEffect(() => {
-    void look()
-  }, [look])
-  const start = async () => {
-    setProblem(null)
-    try {
-      const said = () => api.post<{ preparing: boolean }>('/api/interview', { module })
-      let out = await said()
-      if (out.preparing) {
-        setPreparing(true)
-        // ponytail: polls every 2s, at most 3 minutes; a live event when runs end would do better
-        for (let i = 0; i < 90 && out.preparing; i++) {
-          await new Promise((r) => setTimeout(r, 2000))
-          const v = await look()
-          if (v?.today && !v.preparing) out = await said()
-        }
-        setPreparing(false)
-        if (out.preparing) throw new Problem('The questions are still being prepared; try again.')
-      }
-      void look()
-      showAsk()
-    } catch (err) {
-      setPreparing(false)
-      setProblem(wordsOf(err))
-    }
-  }
-  const busy = preparing || !!view?.preparing
+    api.get<InterviewView>(path).then(setView, () => undefined)
+  }, [path])
+  const busy = !!view?.preparing
   const tip = busy
     ? 'Preparing today’s questions…'
     : view?.today
@@ -83,5 +47,66 @@ export function useInterview(module: string | null) {
         ? `A few questions today, starting with the most useful: ${view.first}`
         : 'Nothing worth asking today'
       : 'Not prepared yet today: Alpha prepares the questions first'
-  return { view, busy, start, tip, problem }
+  return { view, busy, tip }
+}
+
+// The Interviewer's thread (Vikas, 30 Oct: "Interview me should take me to the Agents page with
+// one of the agents named Interviewer"): a skill of Alpha's shown as an agent, by this id.
+export const INTERVIEWER = { id: 'interviewer', name: 'Interviewer' } as const
+let sitting: { module: string | null } | null = null
+
+// Interview me, from Home (module: null) or a module's Overview: open the Interviewer's thread,
+// which starts the sitting, scoped to the module.
+export function interviewMe(module: string | null) {
+  sitting = { module }
+  const at = `#/conversation/${INTERVIEWER.id}`
+  if (window.location.hash === at) window.dispatchEvent(new Event('alpha:interview'))
+  else window.location.hash = at
+}
+
+// The sitting asked for, once: the Interviewer's thread takes it when it opens.
+export function takeSitting(): { module: string | null } | null {
+  const s = sitting
+  sitting = null
+  return s
+}
+
+// Start a sitting: with the pool not ranked today it is ranked first, and the thread says
+// Preparing… with Stop until the first question is in. Stop stops waiting and the thread says so.
+export function useSitting() {
+  const [preparing, setPreparing] = useState<{ module: string | null } | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  const run = useRef(0)
+  const start = useCallback(async (module: string | null) => {
+    const me = ++run.current
+    const live = () => run.current === me
+    setProblem(null)
+    setPreparing({ module })
+    const said = () => api.post<{ preparing: boolean }>('/api/interview', module ? { module } : {})
+    try {
+      let out = await said()
+      // ponytail: polls every 2s, at most 3 minutes; a live event when the pool is ranked would do better
+      for (let i = 0; i < 90 && out.preparing && live(); i++) {
+        await new Promise((r) => setTimeout(r, 2000))
+        if (!live()) return
+        const v = await api.get<InterviewView>('/api/interview')
+        if (v.today && !v.preparing && live()) out = await said()
+      }
+      if (out.preparing && live())
+        throw new Problem('The questions are still being prepared; try again.')
+    } catch (err) {
+      if (live()) setProblem(wordsOf(err))
+    } finally {
+      if (live()) setPreparing(null)
+    }
+  }, [])
+  const stop = useCallback(() => {
+    if (!preparing) return
+    run.current++
+    setPreparing(null)
+    void api
+      .post('/api/interview/stop', preparing.module ? { module: preparing.module } : {})
+      .catch((err) => setProblem(wordsOf(err)))
+  }, [preparing])
+  return { preparing: !!preparing, problem, start, stop }
 }

@@ -447,7 +447,7 @@ describe('the api over a world', () => {
       method: 'POST',
       url: '/api/say',
       headers: ok,
-      payload: { words: 'skip' },
+      payload: { words: 'skip', agent: 'interviewer' },
     })
     const next = world.lines({ kinds: ['replied'] }).at(-1)
     expect(next?.data.interview).not.toMatchObject({ key: 'goals' })
@@ -458,10 +458,18 @@ describe('the api over a world', () => {
       method: 'POST',
       url: '/api/say',
       headers: ok,
-      payload: { words: 'Done for today' },
+      payload: { words: 'Done for today', agent: 'interviewer' },
     })
     expect(world.lines({ kinds: ['replied'] }).at(-1)?.words).toMatch(/^Thank you\. That is enough/)
     expect(pending(world, me.id)).toBeNull()
+    // every line of the sitting is in the Interviewer's thread, which no kit agent is
+    const stream = (await server.inject({ url: '/api/stream', headers: ok })).json() as Stream
+    const sitting = stream.lines.filter((l) => l.kind === 'said' || l.turn?.startsWith('iv'))
+    expect(sitting.length).toBeGreaterThan(3)
+    expect(sitting.every((l) => l.agent?.id === 'interviewer')).toBe(true)
+    // Stop while preparing: the thread says so, and nothing is pending
+    await server.inject({ method: 'POST', url: '/api/interview/stop', headers: ok, payload: {} })
+    expect(world.lines({ kinds: ['replied'] }).at(-1)?.words).toBe('Stopped.')
     await server.close()
   })
 
@@ -645,9 +653,11 @@ describe('the api over a world', () => {
       method: 'POST',
       url: `/api/tables/${t.id}/rows/${row?.id}`,
       headers: ok,
-      payload: { field: 'Sources', value: [] },
+      payload: { field: 'Sources', value: ['r_not_there'] },
     })
+    // a relation is picked in the window now (30 Oct), but only rows of the table it points at
     expect(relation.statusCode).toBe(409)
+    expect(relation.json().problem).toMatch(/takes a row of/)
     await a.close()
   })
   it('keeps Alpha’s figure beside a value the person types over, and resets to it', async () => {

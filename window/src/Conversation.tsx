@@ -35,7 +35,7 @@ import {
   useState,
 } from 'react'
 import { api, Problem } from './api.ts'
-import { takeAsk } from './ask.ts'
+import { INTERVIEWER, takeAsk, takeSitting, useSitting } from './ask.ts'
 import { Beside } from './Beside.tsx'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
@@ -91,6 +91,7 @@ export function Conversation({
   from = null,
   compact = false,
   thread,
+  top,
 }: {
   stream: Stream | null
   live: Live
@@ -102,6 +103,7 @@ export function Conversation({
   // one thread on the Agents screen: one agent's, or Alpha's (to: null) with its own agents'
   // (Morning, Watson); none, everything
   thread?: Thread | undefined
+  top?: ReactNode // above the composer: the Interviewer's Preparing… and Stop
 }) {
   const to = thread?.to ?? null
   const all = useMemo(() => {
@@ -248,6 +250,7 @@ export function Conversation({
               <Now stream={beside} />
             </div>
           )}
+          {top}
           <Composer
             words={words}
             setWords={setWords}
@@ -313,11 +316,25 @@ export function Agents({
       new Set((working ?? []).filter((m) => m.kit?.core).flatMap((m) => m.agents.map((a) => a.id))),
     [working],
   )
-  const chosen = agent ? agents.find((a) => a.id === agent) : undefined
+  const interviewer = agent === INTERVIEWER.id
+  const chosen = interviewer ? INTERVIEWER : agent ? agents.find((a) => a.id === agent) : undefined
   const thread = useMemo(
     () => ({ to: chosen ? { id: chosen.id, name: chosen.name } : null, own }),
     [chosen, own],
   )
+  // Interview me lands here and starts the sitting, scoped to where it was pressed
+  const sitting = useSitting()
+  const { start } = sitting
+  useEffect(() => {
+    if (!interviewer) return
+    const take = () => {
+      const s = takeSitting()
+      if (s) void start(s.module)
+    }
+    take()
+    window.addEventListener('alpha:interview', take)
+    return () => window.removeEventListener('alpha:interview', take)
+  }, [interviewer, start])
   return (
     <div className="flex h-full min-h-0">
       <AgentsNav stream={stream} agents={agents} own={own} chosen={agent} />
@@ -335,9 +352,36 @@ export function Agents({
               if (m) window.location.hash = `#/module/${m.id}`
             }}
             thread={thread}
+            top={interviewer && <Sitting {...sitting} />}
           />
         )}
       </div>
+    </div>
+  )
+}
+
+// While the Interviewer prepares the day's questions: Preparing… and Stop (Vikas, 30 Oct: "there
+// is no way for me to cancel my request"); a problem in its place once it has one.
+function Sitting({
+  preparing,
+  problem,
+  stop,
+}: {
+  preparing: boolean
+  problem: string | null
+  stop: () => void
+}) {
+  if (!preparing) return <Refusal words={problem} />
+  return (
+    <div className="flex items-center gap-2 text-ink-3 text-sm" role="status">
+      <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+      <span className="font-medium text-ink-2">{INTERVIEWER.name}</span>
+      <span>Preparing…</span>
+      <span className="ml-auto">
+        <Button size="sm" variant="ghost" onClick={stop}>
+          Stop
+        </Button>
+      </span>
     </div>
   )
 }
@@ -419,7 +463,16 @@ function AgentsNav({
       label="Agents"
       className="w-72 shrink-0 overflow-y-auto border-line border-r px-2.5 py-4"
     >
+      <Button
+        size="sm"
+        className="mb-2 self-start"
+        onClick={() => (window.location.hash = '#/agent/new')}
+      >
+        <Plus className="size-3.5" />
+        New agent
+      </Button>
       {one(null, 'Alpha', 'Ask anything, across every module')}
+      {one(INTERVIEWER.id, INTERVIEWER.name, 'Asks what Alpha needs to know from you')}
       {[...groups].map(([fn, list]) => (
         <div key={fn} className="flex flex-col gap-px">
           <SideHeading>{fn}</SideHeading>
@@ -615,6 +668,7 @@ function Entry({
       })}
       {item.steps.length > 0 && <Work steps={item.steps} />}
       <Ran
+        who={item.who ?? 'Alpha'}
         module={item.module}
         at={item.at}
         steps={item.steps.length}
@@ -627,12 +681,14 @@ function Entry({
 
 // The grey line under a reply: who answered, what ran, and Stop while it runs.
 function Ran({
+  who,
   module,
   at,
   steps,
   doing,
   onLens,
 }: {
+  who: string
   module: Module
   at: string
   steps: number
@@ -644,7 +700,7 @@ function Ran({
       {doing && (
         <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
       )}
-      <span className="font-medium text-ink-2">Alpha</span>
+      <span className="font-medium text-ink-2">{who}</span>
       {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
       <span>{clock(at)}</span>
       <span className="min-w-0 truncate">

@@ -31,12 +31,23 @@ import { EditCell } from './table/Grid.tsx'
 import { opens } from './table/Notes.tsx'
 import { RowBody } from './table/RowPanel.tsx'
 import { TagChips } from './table/Tags.tsx'
-import { canType, hrefOf, isTags, KIND_WORDS, MARK, show } from './table/values.ts'
+import {
+  canChange,
+  canType,
+  hrefOf,
+  isTags,
+  KIND_WORDS,
+  MARK,
+  show,
+  whyFixed,
+} from './table/values.ts'
 import { Refusal } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Pill } from './ui/pill.tsx'
+import { Choice, optionClass, Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
+import { Title } from './ui/title.tsx'
+import { tipNow } from './ui/tooltip.tsx'
 
 export interface RowPlace {
   module: { id: string; name: string }
@@ -139,7 +150,7 @@ export function RowPage({
           title={view.title}
           onRename={titled && canType(titled) ? (t) => edit(titled, t) : undefined}
         />
-        <States view={view} />
+        <States view={view} onEdit={edit} />
         <Refusal words={problem} />
         <div className="mt-8 grid items-start gap-x-12 gap-y-10 @4xl:grid-cols-[minmax(0,1fr)_20rem]">
           <main className="flex min-w-0 flex-col">
@@ -193,17 +204,47 @@ export function RowPage({
 // The row's states in one line under its title: each choice that carries a tone (Stage, Risk,
 // Benefit), as the coloured word it is everywhere.
 const toned = (f: FieldView) => f.kind === 'choice' && !f.many && Object.keys(f.tones).length > 0
-function States({ view }: { view: RowPageView }) {
+// A double-click on one changes it in the one dropdown, as every value does (Vikas, 30 Oct: Dell's
+// Contact and Prior contact showed only here, and nothing changed them).
+function States({
+  view,
+  onEdit,
+}: {
+  view: RowPageView
+  onEdit: (f: FieldView, v: unknown) => Promise<boolean>
+}) {
+  const [editing, setEditing] = useState<string | null>(null)
   const shown = view.fields.filter((f) => toned(f) && view.row.values[f.slug])
   if (!shown.length) return null
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
       {shown.map((f) => {
         const v = String(view.row.values[f.slug])
-        return (
-          <Pill key={f.id} tone={f.tones[v] ?? 'neutral'}>
-            <span className="font-normal opacity-70">{f.name}</span> {v}
-          </Pill>
+        return editing === f.slug ? (
+          <span key={f.id} className="w-56">
+            <EditCell
+              field={f}
+              value={view.row.values[f.slug]}
+              onDone={async (value) => {
+                const ok = value === undefined || (await onEdit(f, value))
+                if (ok) setEditing(null)
+                return ok
+              }}
+            />
+          </span>
+        ) : (
+          <button
+            key={f.id}
+            type="button"
+            data-tip={`Double-click to change ${f.name}`}
+            onDoubleClick={() => setEditing(f.slug)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === 'F2') && setEditing(f.slug)}
+            className="rounded-full"
+          >
+            <Pill colour={optionClass(f, v)}>
+              <span className="font-normal opacity-70">{f.name}</span> {v}
+            </Pill>
+          </button>
         )
       })}
     </div>
@@ -239,7 +280,7 @@ function PartSections({ id }: { id: string }) {
                     <span className="min-w-0 flex-1 truncate text-ink">
                       {(head && show(head, r.values[head.slug], {})) || p.table.name}
                     </span>
-                    {state && v && <Pill tone={state.tones[v] ?? 'neutral'}>{v}</Pill>}
+                    {state && v && <Choice of={state} value={v} />}
                     {when && (
                       <span className="shrink-0 text-ink-3 text-sm tabular-nums">
                         {show(when, r.values[when.slug], {})}
@@ -261,45 +302,6 @@ function PartSections({ id }: { id: string }) {
         )
       })}
     </>
-  )
-}
-
-// The row's title, large; a double-click changes it where it is kept.
-function Title({
-  title,
-  onRename,
-}: {
-  title: string
-  onRename: ((t: string) => Promise<boolean>) | undefined
-}) {
-  const [typing, setTyping] = useState<string | null>(null)
-  if (typing !== null)
-    return (
-      <input
-        // biome-ignore lint/a11y/noAutofocus: a double-click opened it to type in
-        autoFocus
-        aria-label="Title"
-        value={typing}
-        onChange={(e) => setTyping(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') setTyping(null)
-          if (e.key === 'Enter') e.currentTarget.blur()
-        }}
-        onBlur={async () => {
-          const t = typing.trim()
-          if (!t || t === title || (await onRename?.(t))) setTyping(null)
-        }}
-        className="mt-1 w-full bg-transparent font-serif text-2xl text-ink outline-none"
-      />
-    )
-  return (
-    <h1
-      className="mt-1 font-serif text-2xl text-ink"
-      onDoubleClick={() => onRename && setTyping(title)}
-      data-tip={onRename ? 'Double-click to rename' : undefined}
-    >
-      {title}
-    </h1>
   )
 }
 
@@ -336,7 +338,7 @@ function Properties({
         const value = view.row.values[f.slug]
         const text = show(f, value, view.names)
         const src = view.row.sources[f.slug]
-        const editable = canType(f)
+        const editable = canChange(f)
         return (
           <div
             key={f.id}
@@ -369,7 +371,7 @@ function Properties({
                     ? `${KIND_WORDS[src.kind]}: click for where it came from${editable ? ', double-click to change it' : ''}`
                     : editable
                       ? 'Double-click to change it'
-                      : undefined
+                      : whyFixed(f)
                 }
                 onClick={(e) => {
                   const link = (e.target as HTMLElement).closest<HTMLElement>('[data-href]')
@@ -385,8 +387,8 @@ function Properties({
                   if (click.current) clearTimeout(click.current)
                   click.current = setTimeout(() => onSource(f), 250)
                 }}
-                onDoubleClick={() => {
-                  if (!editable) return
+                onDoubleClick={(e) => {
+                  if (!editable) return void tipNow(e.currentTarget)
                   if (click.current) clearTimeout(click.current)
                   setEditing(f.slug)
                 }}

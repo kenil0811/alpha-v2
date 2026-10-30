@@ -84,7 +84,11 @@ export function Notes({
     return (
       <div className="flex flex-col gap-2">
         {value.trim() ? (
-          <div className="flex flex-col gap-2 text-md leading-relaxed [&_a]:text-accent [&_a]:hover:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5">
+          // biome-ignore lint/a11y/noStaticElementInteractions: a double-click writes, as everywhere; Edit is the keyboard's way
+          <div
+            onDoubleClick={(e) => onSave && !(e.target as Element).closest('a') && setWriting(true)}
+            className="flex flex-col gap-2 text-md leading-relaxed [&_a]:text-accent [&_a]:hover:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+          >
             <Markdown
               remarkPlugins={[remarkGfm]}
               urlTransform={opens}

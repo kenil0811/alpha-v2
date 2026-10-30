@@ -16,11 +16,12 @@ import { cn } from '../ui/cn.ts'
 import { DropZone } from '../ui/drop-zone.tsx'
 import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
+import { tipNow } from '../ui/tooltip.tsx'
 import { AddRow } from './AddRow.tsx'
 import { EditCell } from './Grid.tsx'
 import { Notes } from './Notes.tsx'
 import { TagChips } from './Tags.tsx'
-import { canType, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
+import { canChange, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show, whyFixed } from './values.ts'
 
 // The side panel's way in: the row's view, with Open page to its own page.
 export function RowPanel({
@@ -125,7 +126,7 @@ export function RowBody({
             .map((f) => {
               const source = row.sources[f.slug]
               const text = show(f, row.values[f.slug], names)
-              const editable = !!onEdit && canType(f)
+              const editable = !!onEdit && canChange(f)
               if (editing === f.slug && onEdit)
                 return (
                   <div
@@ -148,18 +149,20 @@ export function RowBody({
                 <button
                   key={f.id}
                   type="button"
-                  title={
+                  data-tip={
                     editable
                       ? 'Click for where it came from; double-click to change it'
-                      : 'Where it came from'
+                      : onEdit
+                        ? whyFixed(f)
+                        : 'Where it came from'
                   }
                   onClick={() => {
                     if (!editable) return onField(f.slug)
                     if (click.current) clearTimeout(click.current)
                     click.current = setTimeout(() => onField(f.slug), 250)
                   }}
-                  onDoubleClick={() => {
-                    if (!editable) return
+                  onDoubleClick={(e) => {
+                    if (!editable) return void (onEdit && tipNow(e.currentTarget))
                     if (click.current) clearTimeout(click.current)
                     setEditing(f.slug)
                   }}

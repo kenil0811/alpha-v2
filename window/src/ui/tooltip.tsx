@@ -8,6 +8,11 @@ import { floatRoot } from './popover.tsx'
 
 const WAIT = 150
 
+// Show an element's tip now, as if the pointer had just come to it: a double-click on what does
+// not change says why (Vikas, 30 Oct).
+export const tipNow = (el: Element) =>
+  el.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
+
 export function Tooltips() {
   const [on, setOn] = useState<HTMLElement | null>(null)
   const [at, setAt] = useState<{ top: number; left: number } | null>(null)

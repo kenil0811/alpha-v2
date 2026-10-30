@@ -1,0 +1,6 @@
+# A made-up firm's targets: how many claims at a stage or past it; the person types over any of them.
+Targets:
+  - { key: records, values: { Measure: Records requested, Counts when a claim reaches: Records requested, Target: 60 } }
+  - { key: filed, values: { Measure: Claims filed, Counts when a claim reaches: Filed, Target: 30 } }
+  - { key: appeals, values: { Measure: Appeals sent, Counts when a claim reaches: Appeal, Target: 6 } }
+  - { key: decided, values: { Measure: Claims decided, Counts when a claim reaches: Decided, Target: 6 } }

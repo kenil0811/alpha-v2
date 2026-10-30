@@ -16,6 +16,7 @@ import { useLayout } from '../layout.ts'
 import { Refusal, useAct } from './act.tsx'
 import { Button } from './button.tsx'
 import { cn } from './cn.ts'
+import { Choice, type Choices } from './pill.tsx'
 import { MenuItem, MenuLine, Popover } from './popover.tsx'
 
 const FIELD =
@@ -130,12 +131,14 @@ export function Select({
   title,
   adds,
   stars,
+  of,
   startOpen,
   onDismiss,
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & {
   adds?: Adds | undefined // Add new… at the list's foot, where a choice can grow
   stars?: string | undefined // a ★ on each line, kept per person under this key (a field's id)
+  of?: Choices | undefined // a field's choices: each line in its own colour (Vikas, 30 Oct)
   startOpen?: boolean | undefined // opened at once: a cell being changed
   onDismiss?: (() => void) | undefined // closed without a pick (a click away, Escape)
 }) {
@@ -223,7 +226,7 @@ export function Select({
                 onClick={() => pick(o.value)}
                 star={o.value ? star(o.value) : undefined}
               >
-                {o.label || '—'}
+                {of && o.value ? <Choice of={of} value={o.value} /> : o.label || '—'}
               </MenuItem>
             ))}
             {shown.length === 0 && <p className="px-2.5 py-1.5 text-ink-3 text-md">No match.</p>}

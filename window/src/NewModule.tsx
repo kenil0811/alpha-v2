@@ -53,12 +53,15 @@ export function NewAgent({
   onAsked: () => void
 }) {
   const [what, setWhat] = useState('')
-  const [module, setModule] = useState(modules[0]?.id ?? '')
+  // from a module's Agents card (#/agent/new?module=<id>), that module
+  const [module, setModule] = useState(
+    () => /[?&]module=([\w-]+)/.exec(window.location.hash)?.[1] ?? modules[0]?.id ?? '',
+  )
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const page = useRef<HTMLFormElement>(null)
   useEscapeBack(page)
-  const at = module || modules[0]?.id || ''
+  const at = (modules.some((m) => m.id === module) && module) || modules[0]?.id || ''
 
   const send = async (e: FormEvent) => {
     e.preventDefault()

@@ -31,30 +31,75 @@ export const sizeOf = (entry: string): Size => {
   return { w: m?.[1] ? Number(m[1]) : null, h: m?.[2] ? Number(m[2]) : null }
 }
 
-// The rows a page shows: the person's, with what is gone left out and what is new at the foot.
-export function rowsOf(saved: string[][] | undefined, start: string[][], keys: string[]) {
+// The columns a page shows, each rows (Vikas, 30 Oct: "I want cross column moves"): the
+// person's, with what is gone left out and what is new at the foot of the column it starts in.
+// Each column is kept as its own page, so a page of one column keeps its rows as before.
+export function columnsOf(
+  saved: (string[][] | undefined)[],
+  start: string[][][],
+  keys: string[],
+): string[][][] {
   const here = new Set(keys)
-  const rows = (saved ?? start)
-    .map((r) => r.filter((k) => here.has(keyOf(k))))
-    .filter((r) => r.length)
-  const placed = new Set(rows.flat().map(keyOf))
-  for (const k of keys) if (!placed.has(k)) rows.push([k])
-  return rows
+  const placed = new Set<string>()
+  const cols = start.map((s, i) =>
+    (saved[i] ?? s)
+      .map((r) =>
+        r.filter((k) => {
+          const key = keyOf(k)
+          if (!here.has(key) || placed.has(key)) return false
+          placed.add(key)
+          return true
+        }),
+      )
+      .filter((r) => r.length),
+  )
+  for (const k of keys)
+    if (!placed.has(k))
+      (
+        cols[
+          Math.max(
+            0,
+            start.findIndex((c) => c.flat().includes(k)),
+          )
+        ] as string[][]
+      ).push([k])
+  return cols
 }
+export const rowsOf = (saved: string[][] | undefined, start: string[][], keys: string[]) =>
+  columnsOf([saved], [start], keys)[0] as string[][]
 
-// One block moved beside, above or below another.
-export function moved(rows: string[][], key: string, to: string, side: Side): string[][] {
-  if (key === to) return rows
-  const entry = rows.flat().find((k) => keyOf(k) === key) ?? key
-  const out = rows.map((r) => r.filter((k) => keyOf(k) !== key)).filter((r) => r.length)
-  const at = out.findIndex((r) => r.some((k) => keyOf(k) === to))
-  if (at < 0) return rows
-  const row = out[at] as string[]
+// On a narrow page the columns stack, the first on top: their rows in that order.
+export const stacked = (cols: string[][][]) => cols.flat(1)
+
+// One block moved beside, above or below another, in its column or another; or, given a
+// column's number, to that column's foot.
+export function movedIn(
+  cols: string[][][],
+  key: string,
+  to: string | number,
+  side: Side = 'bottom',
+): string[][][] {
+  if (key === to) return cols
+  const entry = cols.flat(2).find((k) => keyOf(k) === key) ?? key
+  const out = cols.map((c) =>
+    c.map((r) => r.filter((k) => keyOf(k) !== key)).filter((r) => r.length),
+  )
+  if (typeof to === 'number') {
+    if (!out[to]) return cols
+    out[to].push([entry])
+    return out
+  }
+  const col = out.find((c) => c.some((r) => r.some((k) => keyOf(k) === to)))
+  if (!col) return cols
+  const at = col.findIndex((r) => r.some((k) => keyOf(k) === to))
+  const row = col[at] as string[]
   if (side === 'left' || side === 'right')
     row.splice(row.findIndex((k) => keyOf(k) === to) + (side === 'right' ? 1 : 0), 0, entry)
-  else out.splice(at + (side === 'bottom' ? 1 : 0), 0, [entry])
+  else col.splice(at + (side === 'bottom' ? 1 : 0), 0, [entry])
   return out
 }
+export const moved = (rows: string[][], key: string, to: string, side: Side) =>
+  movedIn([rows], key, to, side)[0] as string[][]
 
 // One block's size set: its width a share of its row from 20 to 100 per cent, its height at least
 // 80px; null gives it back.
@@ -84,25 +129,38 @@ const NUDGE: Record<string, [number, number]> = {
   ArrowUp: [0, -20],
 }
 
+// A page's blocks in rows, or in columns of rows ("columns", each kept as its own page, laid out
+// by "className"; on a narrow page they stack in their order). A block moves within or across
+// the columns; dropped below a column's last block it goes to that column's foot.
 export function Arranged({
-  page,
   blocks,
-  start,
-}: {
-  page: string
-  blocks: Block[]
-  start: string[][]
-}) {
+  className,
+  ...one
+}: { blocks: Block[]; className?: string } & (
+  | { page: string; start: string[][] }
+  | { columns: { page: string; start: string[][] }[] }
+)) {
   const { layout, change } = useLayout()
   const dragging = useRef<string | null>(null)
-  const [over, setOver] = useState<{ key: string; side: Side } | null>(null)
+  // a block's key and side, or a column's number for its foot
+  const [over, setOver] = useState<{ key: string | number; side: Side } | null>(null)
+  const columns = 'columns' in one ? one.columns : [one]
   const byKey = new Map(blocks.map((b) => [b.key, b]))
-  const saved = layout.arrange?.[page]
+  const saved = columns.map((c) => layout.arrange?.[c.page])
+  const start = columns.map((c) => c.start)
   const here = blocks.map((b) => b.key)
-  const rows = rowsOf(saved, start, here)
+  const cols = columnsOf(saved, start, here)
+  const rows = stacked(cols)
   // what is kept holds the blocks not shown just now (a list with nothing in it) in their places
-  const all = rowsOf(saved, start, [...new Set([...(saved ?? start).flat().map(keyOf), ...here])])
-  const keep = (next: string[][]) => change({ arrange: { ...layout.arrange, [page]: next } })
+  const ever = columns.flatMap((c, i) => (saved[i] ?? c.start).flat().map(keyOf))
+  const all = columnsOf(saved, start, [...new Set([...ever, ...here])])
+  const keep = (next: string[][][]) =>
+    change({
+      arrange: {
+        ...layout.arrange,
+        ...Object.fromEntries(columns.map((c, i) => [c.page, next[i] ?? []])),
+      },
+    })
   const sideOf = (e: DragEvent, el: HTMLElement): Side => {
     const r = el.getBoundingClientRect()
     const x = (e.clientX - r.left) / r.width
@@ -110,28 +168,71 @@ export function Arranged({
     if (x > 0.75) return 'right'
     return e.clientY - r.top < r.height / 2 ? 'top' : 'bottom'
   }
-  // the arrows on a handle: up and down past the next row, left and right within its row
+  // the arrows on a handle: up and down past the next row, in the order the columns stack (into
+  // the next column at its top, the one before at its foot), left and right within its row
+  const colOf = cols.flatMap((c, i) => c.map(() => i))
   const nudge = (key: string, k: string) => {
     const at = rows.findIndex((r) => r.some((e) => keyOf(e) === key))
     const row = (rows[at] as string[]).map(keyOf)
     const i = row.indexOf(key)
+    const crosses = (n: number) => colOf[n] !== colOf[at]
     const to: [string | undefined, Side] | null =
       k === 'ArrowLeft'
         ? [row[i - 1], 'left']
         : k === 'ArrowRight'
           ? [row[i + 1], 'right']
           : k === 'ArrowUp'
-            ? [keyOf(rows[at - 1]?.[0] ?? ''), 'top']
+            ? [keyOf(rows[at - 1]?.[0] ?? ''), crosses(at - 1) ? 'bottom' : 'top']
             : k === 'ArrowDown'
-              ? [keyOf(rows[at + 1]?.[0] ?? ''), 'bottom']
+              ? [keyOf(rows[at + 1]?.[0] ?? ''), crosses(at + 1) ? 'top' : 'bottom']
               : null
     if (!to?.[0]) return
-    keep(moved(all, key, to[0], to[1]))
+    keep(movedIn(all, key, to[0], to[1]))
   }
-  return (
-    <div className="flex flex-col gap-4">
-      {rows.map((row) => (
-        <div key={row.map(keyOf).join('|')} className="flex flex-wrap items-start gap-4">
+  const line = (side: Side) => (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'pointer-events-none absolute z-1 rounded-full bg-accent',
+        side === 'left' && '-left-2.5 inset-y-0 w-1',
+        side === 'right' && '-right-2.5 inset-y-0 w-1',
+        side === 'top' && '-top-2.5 inset-x-0 h-1',
+        side === 'bottom' && '-bottom-2.5 inset-x-0 h-1',
+      )}
+    />
+  )
+  const column = (col: string[][], c: number) => (
+    <div
+      key={columns[c]?.page}
+      className="relative flex min-w-0 flex-col gap-4"
+      {...(columns.length > 1 && {
+        onDragOver: (e: DragEvent) => {
+          if (!dragging.current) return
+          e.preventDefault()
+          if (over?.key !== c) setOver({ key: c, side: col.length ? 'bottom' : 'top' })
+        },
+        onDragLeave: (e: DragEvent<HTMLElement>) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null)
+        },
+        onDrop: (e: DragEvent) => {
+          e.preventDefault()
+          const from = dragging.current
+          dragging.current = null
+          setOver(null)
+          if (from) keep(movedIn(all, from, c))
+        },
+      })}
+    >
+      {!col.length && over?.key === c && line('top')}
+      {col.map((row, r) => (
+        <div
+          key={row.map(keyOf).join('|')}
+          className={cn(
+            'flex flex-wrap items-start gap-4',
+            r === col.length - 1 && over?.key === c && 'relative',
+          )}
+        >
+          {r === col.length - 1 && over?.key === c && line('bottom')}
           {row.map((entry) => {
             const key = keyOf(entry)
             const { w: width, h: height } = sizeOf(entry)
@@ -151,7 +252,9 @@ export function Arranged({
                   minWidth: width ? '16rem' : undefined,
                 }}
                 onDragOver={(e) => {
-                  if (!dragging.current || dragging.current === key) return
+                  if (!dragging.current) return
+                  e.stopPropagation()
+                  if (dragging.current === key) return
                   e.preventDefault()
                   const s = sideOf(e, e.currentTarget)
                   if (over?.key !== key || over.side !== s) setOver({ key, side: s })
@@ -161,10 +264,11 @@ export function Arranged({
                 }}
                 onDrop={(e) => {
                   e.preventDefault()
+                  e.stopPropagation()
                   const from = dragging.current
                   dragging.current = null
                   setOver(null)
-                  if (from) keep(moved(all, from, key, sideOf(e, e.currentTarget)))
+                  if (from) keep(movedIn(all, from, key, sideOf(e, e.currentTarget)))
                 }}
               >
                 <button
@@ -230,12 +334,12 @@ export function Arranged({
                       if (!last) return
                       el.style.cssText = was[0]
                       body.style.cssText = was[1]
-                      keep(sized(all, key, last))
+                      keep(all.map((c) => sized(c, key, last)))
                     }
                     window.addEventListener('pointermove', move)
                     window.addEventListener('pointerup', up)
                   }}
-                  onDoubleClick={() => keep(sized(all, key, null))}
+                  onDoubleClick={() => keep(all.map((c) => sized(c, key, null)))}
                   onKeyDown={(e) => {
                     const d = NUDGE[e.key]
                     if (!d) return
@@ -245,27 +349,21 @@ export function Arranged({
                     const whole = el?.parentElement?.getBoundingClientRect().width ?? 1
                     const w = width ?? ((r?.width ?? 0) / whole) * 100
                     const h = height ?? r?.height ?? 0
-                    keep(sized(all, key, { w: w + d[0], h: h + d[1] }))
+                    keep(all.map((c) => sized(c, key, { w: w + d[0], h: h + d[1] })))
                   }}
                   className="absolute right-0 bottom-0 z-1 size-4 cursor-nwse-resize rounded-br-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-line"
                 />
-                {side && (
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'pointer-events-none absolute z-1 rounded-full bg-accent',
-                      side === 'left' && '-left-2.5 inset-y-0 w-1',
-                      side === 'right' && '-right-2.5 inset-y-0 w-1',
-                      side === 'top' && '-top-2.5 inset-x-0 h-1',
-                      side === 'bottom' && '-bottom-2.5 inset-x-0 h-1',
-                    )}
-                  />
-                )}
+                {side && line(side)}
               </div>
             )
           })}
         </div>
       ))}
     </div>
+  )
+  return columns.length > 1 ? (
+    <div className={className}>{cols.map(column)}</div>
+  ) : (
+    column(cols[0] ?? [], 0)
   )
 }

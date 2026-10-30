@@ -1,0 +1,83 @@
+# A made-up sample module for the demo: a small firm's clients, the claims it files for them, the
+# people asking to become clients, and the payments it expects. Nobody's real firm.
+name: Case desk
+version: 0.1.0
+api: 1
+description: >
+  A small firm's clients and the claims it files for them, from a first enquiry to a decision,
+  with the payments each client's claim brings in.
+tables:
+  - name: Clients
+    about: One person the firm acts for.
+    people: { each: person, emails: Email }
+    fields:
+      - { name: Name, kind: text }
+      - { name: Email, kind: email }
+      - { name: Phone, kind: text }
+      - name: Risk
+        kind: choice
+        choices: [Stable, Watch, Critical]
+        tones: { Watch: warn, Critical: bad, Stable: good }
+      - { name: Handler, kind: choice, choices: [A. Morrow, B. Castellan, C. Okonjo, D. Whitfield, E. Saranne] }
+      - { name: Monthly benefit, kind: money }
+      - { name: Next step, kind: text }
+      - { name: Next step due, kind: date }
+      - { name: Client since, kind: date }
+  - name: Carriers
+    about: One company a claim is made against.
+    fields:
+      - { name: Name, kind: text }
+      - { name: Days to answer, kind: number }
+      - { name: Contact email, kind: email }
+  - name: Claims
+    about: One claim filed for a client, from records to a decision.
+    fields:
+      - { name: Claim, kind: text }
+      - { name: Client, kind: relation, relates_to: Clients }
+      - { name: Carrier, kind: relation, relates_to: Carriers }
+      - name: Stage
+        kind: choice
+        choices: [Intake, Records requested, Drafting, Filed, Under review, Appeal, Decided]
+      - name: Outcome
+        kind: choice
+        choices: [Pending, Approved, Denied]
+        tones: { Approved: good, Denied: bad }
+      - { name: Amount claimed, kind: money }
+      - { name: Opened, kind: date }
+      - { name: Due, kind: date }
+      - { name: Record pages, kind: number }
+    views:
+      - { name: By stage, kind: board, group: Stage }
+      - { name: Overdue, kind: list, sorts: [{ field: Due, dir: asc }], filters: { rules: [{ field: Due, op: due }] } }
+  - name: Leads
+    about: One person asking to become a client.
+    people: { each: person, emails: Email }
+    fields:
+      - { name: Name, kind: text }
+      - { name: Email, kind: email }
+      - { name: Source, kind: choice, choices: [Website form, Email, Phone, Referral] }
+      - name: Stage
+        kind: choice
+        choices: [New, Contacted, Consultation, Agreement sent, Signed, Declined]
+        tones: { Signed: good, Declined: bad }
+      - { name: Received, kind: date }
+      - { name: Likely monthly value, kind: money }
+  - name: Payments
+    about: One payment a client's claim is expected to bring in.
+    fields:
+      - { name: Payment, kind: text }
+      - { name: Client, kind: relation, relates_to: Clients }
+      - { name: Expected, kind: date }
+      - { name: Amount, kind: money }
+      - name: State
+        kind: choice
+        choices: [Expected, Arrived, Late, Chasing]
+        tones: { Arrived: good, Late: bad, Chasing: warn }
+  - name: Targets
+    setup: true
+    fields:
+      - { name: Measure, kind: text }
+      - name: Counts when a claim reaches
+        kind: choice
+        choices: [Records requested, Drafting, Filed, Under review, Appeal, Decided]
+      - { name: Target, kind: number, about: How many claims should be at that stage or past it. }

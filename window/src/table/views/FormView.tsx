@@ -110,6 +110,7 @@ export function FormView({
                   id={`form-${f.id}`}
                   value={typed[f.slug] ?? ''}
                   onChange={(e) => setTyped({ ...typed, [f.slug]: e.target.value })}
+                  of={f}
                   stars={f.id}
                   adds={{
                     what: 'choice',

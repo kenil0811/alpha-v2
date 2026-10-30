@@ -1,0 +1,13 @@
+# A made-up buyer's criteria and weekly goals; the person types over any of them.
+Criteria:
+  - { key: loan, values: { Criterion: Loan amount, Kind: Gate, Deals field: Loan needed, Test: At most, Value: 1500000 } }
+  - { key: sde-after-debt, values: { Criterion: SDE after loan payments, Kind: Gate, Deals field: SDE after debt service, Test: At least, Value: 150000 } }
+  - { key: team, values: { Criterion: Team in place, Kind: Gate, Deals field: Staff, Test: At least, Value: 3 } }
+  - { key: down-payment, values: { Criterion: Down payment (% of price), Kind: Financing, Value: 10 } }
+  - { key: interest, values: { Criterion: Interest rate (% a year), Kind: Financing, Value: 10.5 } }
+  - { key: term, values: { Criterion: Loan term (years), Kind: Financing, Value: 10 } }
+Goals:
+  - { key: reviewed, values: { Measure: Listings reviewed, Counts when a deal reaches: Reviewed, Per week: 12.5, Per month: 50 } }
+  - { key: cims, values: { Measure: CIMs reviewed, Counts when a deal reaches: CIM reviewed, Per week: 5, Per month: 20 } }
+  - { key: calls, values: { Measure: Broker calls held, Counts when a deal reaches: Call, Per week: 1.5, Per month: 6 } }
+  - { key: lois, values: { Measure: LOIs sent, Counts when a deal reaches: LOI sent, Per week: 0.5, Per month: 2 } }

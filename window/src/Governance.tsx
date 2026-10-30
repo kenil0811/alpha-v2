@@ -2,9 +2,9 @@
 // do and Cannot do, of the rules the core holds and enforces (design §7). A rule the person
 // approved is solid; one waiting on their approval (noticed by Alpha, or asked for and not saved
 // on its card yet) is greyed on a dotted ground with Approve. Rules for one agent sit under its
-// name. A rule is added by typing it at the foot of a column: the words go to Alpha, whose rule
-// tool opens the Save card (a rule is made only there, a wall); words code cannot match go to the
-// module's notes instead. Figures, counts and connection states are not rules and are not here.
+// name. A rule is added with New (empty) or Add (at the column's heading), and its words changed
+// with a double-click: the words go to Alpha, whose rule tool opens the Save card (a rule is made
+// only there, a wall); words code cannot match go to the module's notes instead. Figures, counts and connection states are not rules and are not here.
 import type { ModuleView, RuleView } from '@alpha/core/api'
 import { Ban, Check } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -15,8 +15,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
-import { More } from './ui/more.tsx'
-import { MenuItem } from './ui/popover.tsx'
+import { EntryList } from './ui/entry-list.tsx'
 import { Section } from './ui/section.tsx'
 
 type Side = RuleView['side']
@@ -74,8 +73,10 @@ export function GovernanceSection({ module, version = 0 }: { module?: string; ve
   )
 }
 
-// One column: its rules grouped where they hold (the module or Alpha first, then each agent), then
-// a line to type a new one.
+// One column: its rules grouped where they hold (the module or Alpha first, then each agent), kept
+// as every list is (ui/entry-list.tsx): New when empty, Add at the heading's right, ✕ on a hover
+// (Revoke or Decline, asked first: a rule has no undo), a double-click to change one's words. A
+// rule is made only on its Save card (a wall), so what is typed goes to Alpha in words.
 function Column({
   side,
   title,
@@ -86,140 +87,98 @@ function Column({
   m,
   onChange,
 }: (typeof SIDES)[number] & { rules: RuleView[]; m: ModuleView | null; onChange: () => void }) {
-  const groups = new Map<string, RuleView[]>()
-  for (const r of [...rules].sort((a, b) => Number(!!a.agent) - Number(!!b.agent)))
-    groups.set(r.agent ?? r.where, [...(groups.get(r.agent ?? r.where) ?? []), r])
+  const { busy, on, problem, act } = useAct(onChange)
+  const [asking, setAsking] = useState<RuleView | null>(null)
+  const sorted = [...rules].sort((a, b) => Number(!!a.agent) - Number(!!b.agent))
   const approved = rules.filter((r) => r.kind === 'approved' && !r.card).length
+  // words to Alpha, whose rule tool opens the Save card in the assistant
+  const say = (words: string) =>
+    act(async () => {
+      await api.post('/api/say', { words, ...(m ? { from: m.id } : {}) })
+      showAsk()
+    }, 'new')
+  const rule = (w: string) => `Alpha ${lead} ${w}`
+  const approve = (r: RuleView) =>
+    act(
+      () =>
+        r.card
+          ? api.post(`/api/rules/waiting/${r.card}/approve`)
+          : api.post(`/api/rules/${r.id}/approve`),
+      r.id,
+    )
+  const drop = (r: RuleView) =>
+    act(
+      () =>
+        r.card
+          ? api.post(`/api/rules/waiting/${r.card}/decline`)
+          : api.post(`/api/rules/${r.id}/revoke`),
+      r.id,
+    ).then(() => setAsking(null))
+  const pending = asking ? waits(asking) : false
   return (
-    <section aria-label={title} className="flex min-w-0 flex-col gap-2">
-      <h3 className="flex h-9 items-center gap-1.5 border-line border-b font-medium text-ink text-md">
-        <Icon className={cn('size-3.5', tone)} />
-        {title}
-        {approved > 0 && <span className="font-normal text-ink-3 tabular-nums">{approved}</span>}
-      </h3>
-      {[...groups].map(([where, list]) => (
-        <div key={where} className="flex flex-col gap-1.5">
-          {groups.size > 1 && <div className="pt-1 text-ink-3 text-sm">{where}</div>}
-          {list.map((r) => (
-            <RuleLine key={r.id} r={r} onChange={onChange} />
-          ))}
-        </div>
-      ))}
-      <TypeRule lead={lead} m={m} side={side} />
+    <section aria-label={title} className="flex min-w-0 flex-col">
+      <EntryList
+        head={
+          <>
+            <Icon className={cn('size-3.5', tone)} />
+            {title}
+            {approved > 0 && (
+              <span className="font-normal text-ink-3 tabular-nums">{approved}</span>
+            )}
+          </>
+        }
+        items={sorted}
+        idOf={(r) => r.id}
+        textOf={(r) => r.words.replace(new RegExp(`^Alpha ${lead}\\s+`, 'i'), '')}
+        groupOf={(r) => r.agent ?? r.where}
+        waits={waits}
+        placeholder={side === 'allow' ? 'Type what agents can do' : 'Type what agents cannot do'}
+        removeLabel={(r) => (waits(r) ? 'Decline' : 'Revoke')}
+        line={(r) => (
+          <>
+            {r.card ? (
+              <span className="text-md">{r.words}</span>
+            ) : (
+              <a href={`#/rule/${r.id}`} className="text-md hover:underline">
+                {r.words}
+              </a>
+            )}
+            <span className="text-ink-3 text-sm">
+              {r.card
+                ? `Asked ${dayWords(r.madeAt)}; needs approval`
+                : r.kind === 'inferred'
+                  ? `Alpha noticed, ${dayWords(r.madeAt)}; needs approval`
+                  : `${r.always ? 'You said Always' : 'You approved'}, ${dayWords(r.madeAt)}${r.module ? '' : '; across Alpha'}`}
+            </span>
+            {on === r.id && <Refusal words={problem} />}
+          </>
+        )}
+        after={(r) =>
+          waits(r) && (
+            <Button size="sm" disabled={busy} onClick={() => void approve(r)}>
+              Approve
+            </Button>
+          )
+        }
+        onAdd={(w) => say(`A rule${m ? ` for ${m.name}` : ''}: ${rule(w)}`)}
+        onEdit={(r, w) =>
+          say(`Change the rule${m ? ` for ${m.name}` : ''} “${r.words}” to: ${rule(w)}`)
+        }
+        onRemove={setAsking}
+      />
+      {on === 'new' && <Refusal words={problem} />}
+      <Confirm
+        open={!!asking}
+        title={pending ? 'Decline this rule?' : 'Revoke this rule?'}
+        yes={pending ? 'Decline it' : 'Revoke it'}
+        busy={busy}
+        onClose={() => setAsking(null)}
+        onYes={() => asking && void drop(asking)}
+      >
+        “{asking?.words}” {pending ? 'will not hold.' : 'stops holding.'}
+      </Confirm>
     </section>
   )
 }
 
 const waits = (r: RuleView) => !!r.card || r.kind === 'inferred'
-
-// A rule: solid when approved; greyed on dots, with Approve, while it waits.
-function RuleLine({ r, onChange }: { r: RuleView; onChange: () => void }) {
-  const { busy, problem, act } = useAct(onChange)
-  const [asking, setAsking] = useState(false)
-  const pending = waits(r)
-  const approve = () =>
-    act(() =>
-      r.card
-        ? api.post(`/api/rules/waiting/${r.card}/approve`)
-        : api.post(`/api/rules/${r.id}/approve`),
-    )
-  const drop = () =>
-    act(() =>
-      r.card
-        ? api.post(`/api/rules/waiting/${r.card}/decline`)
-        : api.post(`/api/rules/${r.id}/revoke`),
-    ).then(() => setAsking(false))
-  return (
-    <div
-      data-waits={pending || undefined}
-      className={cn(
-        'flex items-start gap-2 rounded-md border px-3 py-2',
-        pending
-          ? 'border-line border-dashed text-ink-3 [background-image:radial-gradient(var(--line)_1px,transparent_0)] [background-size:6px_6px]'
-          : 'border-line bg-surface text-ink',
-      )}
-    >
-      <span className="flex min-w-0 flex-1 flex-col">
-        {r.card ? (
-          <span className="text-md">{r.words}</span>
-        ) : (
-          <a href={`#/rule/${r.id}`} className="text-md hover:underline">
-            {r.words}
-          </a>
-        )}
-        <span className="text-ink-3 text-sm">
-          {r.card
-            ? `Asked ${dayWords(r.madeAt)}; needs approval`
-            : r.kind === 'inferred'
-              ? `Alpha noticed, ${dayWords(r.madeAt)}; needs approval`
-              : `${r.always ? 'You said Always' : 'You approved'}, ${dayWords(r.madeAt)}${r.module ? '' : '; across Alpha'}`}
-        </span>
-        <Refusal words={problem} />
-      </span>
-      {pending && (
-        <Button size="sm" disabled={busy} onClick={() => void approve()}>
-          Approve
-        </Button>
-      )}
-      <More label="More" disabled={busy}>
-        {(close) => (
-          <MenuItem
-            danger={!pending}
-            onClick={() => {
-              close()
-              setAsking(true)
-            }}
-          >
-            {pending ? 'Decline' : 'Revoke'}
-          </MenuItem>
-        )}
-      </More>
-      <Confirm
-        open={asking}
-        title={pending ? 'Decline this rule?' : 'Revoke this rule?'}
-        yes={pending ? 'Decline it' : 'Revoke it'}
-        busy={busy}
-        onClose={() => setAsking(false)}
-        onYes={() => void drop()}
-      >
-        “{r.words}” {pending ? 'will not hold.' : 'stops holding.'}
-      </Confirm>
-    </div>
-  )
-}
-
-// The foot of a column: a rule typed in words goes to Alpha, which opens its Save card in the
-// assistant; it shows here greyed until saved.
-function TypeRule({ lead, m, side }: { lead: string; m: ModuleView | null; side: Side }) {
-  const [words, setWords] = useState('')
-  const { busy, problem, act } = useAct()
-  const send = () => {
-    const w = words.trim()
-    if (!w) return
-    void act(async () => {
-      await api.post('/api/say', {
-        words: `A rule${m ? ` for ${m.name}` : ''}: Alpha ${lead} ${w}`,
-        ...(m ? { from: m.id } : {}),
-      })
-      setWords('')
-      showAsk()
-    })
-  }
-  return (
-    <div className="flex flex-col">
-      <input
-        value={words}
-        disabled={busy}
-        aria-label={side === 'allow' ? 'Type what agents can do' : 'Type what agents cannot do'}
-        placeholder={side === 'allow' ? 'Type what agents can do…' : 'Type what agents cannot do…'}
-        onChange={(e) => setWords(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') send()
-          if (e.key === 'Escape') setWords('')
-        }}
-        className="h-8 border-hair border-b bg-transparent text-ink text-md outline-none placeholder:text-ink-3 focus:border-accent"
-      />
-      <Refusal words={problem} />
-    </div>
-  )
-}

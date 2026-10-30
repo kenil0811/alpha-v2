@@ -24,6 +24,7 @@ export const fieldViews =
     tones: f.tones,
     ...(f.summary ? summaryShows(shape, f.summary) : {}),
     many: f.many || f.tags,
+    relatesTo: f.relatesTo,
     summary: f.summary ? summaryWords(shape, f.summary) : null,
     about: f.about,
     aboutBy: f.aboutBy,

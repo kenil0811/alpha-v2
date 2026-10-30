@@ -21,6 +21,10 @@ import { installedKits } from './kits/index.ts'
 
 const POOL = 'interview_pool'
 export const OPENING = 'A few questions today, starting with the most useful.'
+// Interview me's thread under Agents (Vikas, 30 Oct: "for the end user it's an agent"): a skill of
+// Alpha's underneath (decision 13), shown as an agent by this id, which no kit agent can take.
+// Its lines are Alpha's own turns keyed "iv…", and what the person says in it.
+export const INTERVIEWER = { id: 'interviewer', name: 'Interviewer' } as const
 
 // Something to ask, with code's own words for it until the model words it.
 export interface Unresolved {
@@ -487,14 +491,14 @@ export function askLine(
   })
 }
 
-// The question the person has not answered yet, when it is the last thing Alpha said to them.
+// The question the person has not answered yet, when it is the last thing the Interviewer said.
 export function pending(
   world: World,
   user: string,
 ): { key: string; module: string | null; ask: string } | null {
   const r = one<{ data: string }>(
     world.db,
-    "SELECT data FROM journal WHERE kind = 'replied' AND user_id = ? ORDER BY id DESC LIMIT 1",
+    "SELECT data FROM journal WHERE kind = 'replied' AND user_id = ? AND turn_id LIKE 'iv%' ORDER BY id DESC LIMIT 1",
     user,
   )
   const iv = r

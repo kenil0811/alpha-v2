@@ -10,6 +10,7 @@ export interface FieldView {
   choices: string[]
   tones: Record<string, 'good' | 'warn' | 'bad' | 'accent'> // a choice's colour, where it is a state
   many: boolean // a relation holding a list of rows, or a choice holding several (tags)
+  relatesTo?: string | null // a relation's table, whose rows its picker lists
   // a summary (core step 3c): what it is in words; worked out from other rows, never written
   summary: string | null
   about: string | null // one sentence on what it means

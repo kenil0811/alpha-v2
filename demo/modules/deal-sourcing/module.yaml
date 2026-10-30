@@ -1,0 +1,103 @@
+# A made-up sample module for the demo: deals found on brokers' listings, measured against a
+# buyer's criteria. Nobody's real search.
+name: Deal sourcing
+version: 0.1.0
+api: 1
+description: >
+  Businesses for sale found on brokers' and marketplaces' listings, each kept on its listing ID
+  and measured against the buyer's criteria.
+tables:
+  - name: Sources
+    about: One broker or marketplace whose listings are read.
+    people: { each: person, name: Contact, emails: Contact email, company: Name }
+    fields:
+      - { name: Name, kind: text }
+      - name: Kind
+        kind: choice
+        choices: [Practice broker, Business broker, M&A adviser, Marketplace, Aggregator]
+      - { name: Link, kind: link }
+      - { name: 'On', kind: choice, choices: ['On', 'Off'] }
+      - name: State
+        kind: choice
+        choices: [Not read yet, Working, Needs your sign-in, Blocked]
+        tones: { Needs your sign-in: warn, Blocked: bad, Working: good }
+      - { name: Last checked, kind: date }
+      - { name: Deals found, kind: number }
+      - { name: Contact, kind: text }
+      - { name: Contact email, kind: email }
+  - name: Deals
+    about: One business for sale, from one or more sources.
+    documents: [Teaser, CIM, Financial statement]
+    fields:
+      - { name: Name, kind: text }
+      - { name: Listing ID, kind: text }
+      - { name: Sources, kind: relation, relates_to: Sources }
+      - { name: Link, kind: link }
+      - name: Stage
+        kind: choice
+        choices: [New, Pending questions, CIM requested, CIM reviewed, Call, LOI sent, Diligence, Closed, Passed]
+        tones: { Passed: bad }
+      - name: Status at source
+        kind: choice
+        choices: [Listed, Under LOI, On hold, Sold, Gone]
+        tones: { Under LOI: warn, On hold: warn, Sold: bad, Gone: bad }
+      - { name: Location, kind: text }
+      - { name: Asking price, kind: money }
+      - { name: Revenue, kind: money }
+      - { name: SDE, kind: money, about: Seller's discretionary earnings, as listed. }
+      - { name: Staff, kind: number }
+      - { name: Multiple of SDE, kind: number }
+      - { name: Loan needed, kind: money }
+      - { name: Debt service, kind: money, about: A year of loan payments. }
+      - { name: SDE after debt service, kind: money }
+      - name: Fit
+        kind: choice
+        choices: [Fits, Does not fit, Not enough to say]
+        tones: { Fits: good, Does not fit: bad, Not enough to say: warn }
+      - { name: Why, kind: text }
+      - { name: First seen, kind: date }
+      - { name: Reviewed, kind: date }
+      - { name: Broker email, kind: email }
+    views:
+      - { name: Fits, filters: { rules: [{ field: Fit, op: is, value: Fits }] } }
+      - { name: By stage, kind: board, group: Stage }
+  - name: Criteria
+    setup: true
+    about: The buyer's criteria; Fit measures each deal against the gates.
+    fields:
+      - { name: Criterion, kind: text }
+      - { name: Kind, kind: choice, choices: [Gate, Financing] }
+      - { name: Deals field, kind: text }
+      - { name: Test, kind: choice, choices: [At most, At least] }
+      - { name: Value, kind: number }
+  - name: Goals
+    setup: true
+    fields:
+      - { name: Measure, kind: text }
+      - name: Counts when a deal reaches
+        kind: choice
+        choices: [Reviewed, Pending questions, CIM requested, CIM reviewed, Call, LOI sent, Diligence, Closed]
+      - { name: Per week, kind: number }
+      - { name: Per month, kind: number }
+  - name: Financials
+    about: A year of a deal's figures, from its CIM.
+    fields:
+      - { name: Deal, kind: relation, relates_to: Deals, part_of: true }
+      - { name: Year, kind: number }
+      - { name: Revenue, kind: money }
+      - { name: Net income, kind: money }
+      - { name: Add-backs, kind: money }
+      - { name: SDE, kind: money }
+  - name: Outreach
+    about: One email to a broker about a deal, and what became of it.
+    fields:
+      - { name: Deal, kind: relation, relates_to: Deals, part_of: true }
+      - { name: To, kind: email }
+      - { name: Subject, kind: text }
+      - name: State
+        kind: choice
+        choices: [Waiting for you, Sent, Replied, Not sent]
+        tones: { Waiting for you: warn, Sent: good, Replied: good }
+      - { name: When, kind: date }
+network:
+  - example.com

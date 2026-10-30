@@ -54,6 +54,7 @@ describe('the stream', () => {
       answered: {},
       at,
       module: null,
+      who: null,
     })
   })
 

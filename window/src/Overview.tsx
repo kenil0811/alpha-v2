@@ -23,13 +23,13 @@ import {
   MessageCircleQuestion,
   Minimize2,
   Pin,
-  RefreshCw,
+  Plus,
   Sheet,
 } from 'lucide-react'
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged, type Block, pairs } from './arrange.tsx'
-import { useInterview } from './ask.ts'
+import { interviewMe, useInterview } from './ask.ts'
 import { GovernanceSection } from './Governance.tsx'
 import { useLayout } from './layout.ts'
 import { when } from './ModulesAndAgents.tsx'
@@ -50,7 +50,10 @@ import {
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
+import { IconTile } from './ui/icon-tile.tsx'
+import { Popover } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 
 type Field = TableData['fields'][number]
 
@@ -398,13 +401,25 @@ function goalsOf(setup: TableData[], main: TableData[]) {
       )
       if (!stage) continue
       const stageOf = (x: RowView) => stage.choices.indexOf(String(val(x, stage) ?? ''))
+      // a row that left (Passed, Lost) reached no later stage, though its choice comes after them
+      const left = (x: RowView) => {
+        const c = String(val(x, stage) ?? '')
+        return stage.tones[c] === 'bad' || /pass|lost|drop|declin|gone|cancel/i.test(c)
+      }
+      const weekly = /week/i.test(target.name)
+      // a weekly goal counts the rows whose stage was set this week, not every row ever there
+      // (Vikas, 30 Oct: "13 broker calls held of 2 this week")
+      const recent = (x: RowView) => {
+        const at = x.sources[stage.slug]?.at
+        return !weekly || (at != null && Date.now() - Date.parse(at) < WEEK)
+      }
       const marks: Goal[] = g.rows.map((r) => {
         const at = String(val(r, pick) ?? '')
         const i = stage.choices.indexOf(at)
         const dated = t.fields.find((f) => f.kind === 'date' && f.name === at)
         const rows =
           i >= 0
-            ? t.rows.filter((x) => stageOf(x) >= i)
+            ? t.rows.filter((x) => stageOf(x) >= i && !left(x) && recent(x))
             : dated
               ? t.rows.filter((x) => Date.now() - Date.parse(String(val(x, dated))) < WEEK)
               : []
@@ -420,7 +435,7 @@ function goalsOf(setup: TableData[], main: TableData[]) {
         const goal = Math.ceil(num(val(r, target)) ?? 0)
         const { verb, thing } = verbOf(label, at)
         const need = Math.max(0, Math.ceil(goal - rows.length))
-        const week = /week/i.test(target.name) ? ' this week' : ''
+        const week = weekly ? ' this week' : ''
         // the tile says what it counts and what its button opens, each as the view shows it
         // (Vikas, 30 Oct: "0 of 13 reviewed, but on that page I see too many listings")
         const things = thing || t.name.toLowerCase()
@@ -429,7 +444,11 @@ function goalsOf(setup: TableData[], main: TableData[]) {
           label,
           n: rows.length,
           target: goal,
-          href: rowsHref(t, rows, i >= 0 ? `${stage.name} at ${at} or past it` : `${at} this week`),
+          href: rowsHref(
+            t,
+            rows,
+            i >= 0 ? `${stage.name} at ${at} or past it${week}` : `${at} this week`,
+          ),
           row: r.id,
           verb: thing ? `${verb} ${thing}` : verb,
           task: thing ? `${verb} ${need} more ${thing}${week}` : `${verb}: ${need} more${week}`,
@@ -564,15 +583,19 @@ export interface Tile {
   key: string
   label: string
   signal: Signal
-  big: string
-  small: string
+  big: string // the number, or '' for a tile of words alone
+  small: string // the words after the number: "listings reviewed · of 13 this week"
   spark?: number[]
   lines: { s: Signal; words: string; href?: string }[]
   go: string // the card it stands for, scrolled to on a second click
   // what to do about it, said as the verb (Vikas, 29 Oct: "everything to be made actionable"):
-  // a place to go, or the card to scroll to
-  act?: { label: string; href?: string; go?: string }
+  // a place to go, or the card to scroll to. Every tile has one; with nothing to do it is greyed
+  // (`off`) and says it is done, its tip saying why (Vikas, 30 Oct)
+  act: { label: string; href?: string; go?: string; off?: boolean; tip?: string }
 }
+
+// A label as the words after a number: "Listings reviewed" → "listings reviewed"; "CIMs" kept.
+const asWords = (w: string) => (/^.[a-z]/.test(w) ? w[0]?.toLowerCase() + w.slice(1) : w)
 
 export function pulseOf({
   m,
@@ -595,7 +618,7 @@ export function pulseOf({
       label: 'Waiting on you',
       signal: strongest(waiting.map(signalOf)) ?? 'yes',
       big: String(waiting.length),
-      small: waiting.length === 1 ? 'thing' : 'things',
+      small: 'waiting on you',
       lines: waiting.slice(0, 4).map((c) => ({ s: signalOf(c), words: c.words, href: '#/' })),
       go: 'needs',
       act: { label: 'Review', go: 'needs' },
@@ -609,7 +632,7 @@ export function pulseOf({
         label: g.label,
         signal: g.met ? 'done' : 'yes',
         big: g.n.toLocaleString(),
-        small: g.of,
+        small: `${asWords(g.label)} · ${g.of.split(' · ')[0]}`,
         // a link to no rows would open the whole table: only rows there are
         lines: [
           ...(g.met
@@ -622,7 +645,15 @@ export function pulseOf({
             : []),
         ],
         go: 'goals',
-        ...(g.met || !g.left ? {} : { act: { label: g.verb, href: g.todo } }),
+        act: g.met
+          ? {
+              label: `All ${g.label.split(' ').at(-1)?.toLowerCase()}`,
+              off: true,
+              tip: `On target: ${g.n.toLocaleString()} ${g.of.split(' · ')[0]}`,
+            }
+          : g.left
+            ? { label: g.verb, href: g.todo, tip: g.of.split(' · ')[1] ?? g.task }
+            : { label: g.verb, off: true, tip: 'Nothing waits for this now' },
       })
   else if (goals) {
     const met = goals.marks.filter((g) => g.met).length
@@ -632,14 +663,16 @@ export function pulseOf({
       label: 'Goals',
       signal: met === goals.marks.length ? 'done' : 'yes',
       big: String(met),
-      small: `of ${goals.marks.length} on target`,
+      small: `of ${goals.marks.length} goals on target`,
       lines: goals.marks.map((g) => ({
         s: g.met ? 'done' : 'yes',
         words: g.met ? `${g.label}: on target` : g.task,
         href: (g.met ? g.href : g.todo) ?? '',
       })),
       go: 'goals',
-      ...(behind ? { act: { label: behind.verb, href: behind.todo } } : {}),
+      act: behind
+        ? { label: behind.verb, href: behind.todo, tip: behind.task }
+        : { label: 'All on target', off: true, tip: 'Every goal is on target' },
     })
   }
   const big = [...main].sort((a, b) => b.rows.length - a.rows.length)[0]
@@ -654,7 +687,7 @@ export function pulseOf({
       label: `New ${big.name.toLowerCase()} this week`,
       signal: 'opt',
       big: (now?.n ?? 0).toLocaleString(),
-      small: `${more >= 0 ? '+' : ''}${more.toLocaleString()}`,
+      small: `new ${big.name.toLowerCase()} this week · ${more >= 0 ? '+' : ''}${more.toLocaleString()} on last week`,
       spark: weeks.weeks.map((w) => w.n),
       lines: [
         ...(why
@@ -665,7 +698,9 @@ export function pulseOf({
             }))
           : []),
       ],
-      ...(now?.n ? { act: { label: `Review ${now.n} new`, href: now.href } } : {}),
+      act: now?.n
+        ? { label: `Review ${now.n.toLocaleString()} new`, href: now.href }
+        : { label: 'Nothing new', off: true, tip: `No new ${big.name.toLowerCase()} this week` },
       go: `weeks:${big.id}`,
     })
   }
@@ -674,8 +709,10 @@ export function pulseOf({
     key: 'questions',
     label: questions.length ? 'Questions for you' : 'Interview me',
     signal: questions.length ? 'yes' : 'opt',
-    big: questions.length ? String(questions.length) : 'Start',
-    small: questions.length ? 'to answer' : 'a short one',
+    big: questions.length ? String(questions.length) : '',
+    small: questions.length
+      ? `${questions.length === 1 ? 'question' : 'questions'} for you`
+      : 'Interview me: Alpha asks one question at a time',
     lines: questions.length
       ? questions.slice(0, 3).map((c) => ({ s: 'yes' as const, words: c.words }))
       : [{ s: 'opt', words: 'Alpha asks one question at a time' }],
@@ -696,7 +733,7 @@ export function pulseOf({
       label: 'Agents',
       signal: needs.length ? 'now' : on.length ? 'done' : 'opt',
       big: String(on.length),
-      small: `of ${m.agents.length} active`,
+      small: `of ${m.agents.length} agents active`,
       lines: [
         ...needs.slice(0, 2).map((a) => ({
           s: 'now' as const,
@@ -723,7 +760,7 @@ export function pulseOf({
       label: 'Alpha changed',
       signal: 'opt',
       big: String(changed.length),
-      small: changed.length === 1 ? 'thing this week' : 'things this week',
+      small: `${changed.length === 1 ? 'thing' : 'things'} Alpha changed this week`,
       lines: changed
         .slice(0, 3)
         .map((r) => ({ s: 'opt' as const, words: r.words ?? r.name, href: `#/run/${r.id}` })),
@@ -747,127 +784,191 @@ export function folded(lines: Tile['lines']) {
   return out.slice(0, 5)
 }
 
+// One row of square tiles that scrolls sideways inside itself (Vikas, 30 Oct: "I don't see a point
+// in so much width"); a tile's name wraps to three lines. What a hover or a click opens (the whole
+// name, the lines it counts) floats over the page in a popover, so the scrolling row never clips it.
 export function Strip({ tiles, onGo }: { tiles: Tile[]; onGo: (go: string) => void }) {
-  const [open, setOpen] = useState<string | null>(null)
-  const box = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const away = (e: MouseEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(null)
-    }
-    document.addEventListener('mousedown', away)
-    return () => document.removeEventListener('mousedown', away)
-  }, [open])
-  // as many tiles to a row as fit, then evened out across the rows, so no tile sits alone on a
-  // row of its own (Vikas, 30 Oct)
-  const [fit, setFit] = useState(4)
-  useLayoutEffect(() => {
-    const el = box.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const seen = new ResizeObserver(() => setFit(Math.max(1, Math.floor(el.clientWidth / 150))))
-    seen.observe(el)
-    return () => seen.disconnect()
-  }, [])
+  const [open, setOpen] = useState<string | null>(null) // opened by a click, kept until a click away
+  const [hover, setHover] = useState<string | null>(null)
+  const leave = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const stay = () => clearTimeout(leave.current)
+  const away = () => {
+    stay()
+    leave.current = setTimeout(() => setHover(null), 120) // time to cross into the popover
+  }
+  useEffect(() => stay, [])
   if (!tiles.length) return null
-  const cols = Math.ceil(tiles.length / Math.ceil(tiles.length / Math.min(fit, tiles.length)))
   return (
-    // raised above what follows it as a whole: an opened tile spills over the blocks below, and a
-    // dot there (positioned, so painted after an unraised strip) would show through it
+    // keyed by its tiles: a snapping row keeps to the tile it snapped to, so tiles coming in
+    // ahead of it would leave the row scrolled past the first
     <div
-      ref={box}
-      // what a tile opens (Review listings, the rows it counts) opens beside, in the side panel
-      data-peek-all
-      className="relative z-(--z-raised) grid gap-3"
-      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      key={tiles.map((t) => t.key).join()}
+      className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1"
     >
-      {tiles.map((t) => {
-        const on = open === t.key
-        const lines = folded(t.lines)
-        return (
-          <div key={t.key} className="group/tile relative h-19">
-            {/* biome-ignore lint/a11y/useSemanticElements: it holds links of its own */}
-            <div
-              role="button"
-              tabIndex={0}
-              aria-expanded={on}
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest('a')) return
-                // nothing to open: straight to what it stands for
-                if (on || !lines.length) {
-                  setOpen(null)
-                  onGo(t.go)
-                } else setOpen(t.key)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : setOpen(t.key)
-                if (e.key === 'Escape') setOpen(null)
-              }}
+      {tiles.map((t) => (
+        <StripTile
+          key={t.key}
+          t={t}
+          shown={(open ?? hover) === t.key}
+          on={open === t.key}
+          onOpen={(o) => setOpen(o ? t.key : null)}
+          onHover={(h) => {
+            if (h) {
+              stay()
+              setHover(t.key)
+            } else away()
+          }}
+          onGo={onGo}
+        />
+      ))}
+    </div>
+  )
+}
+
+function StripTile({
+  t,
+  shown,
+  on,
+  onOpen,
+  onHover,
+  onGo,
+}: {
+  t: Tile
+  shown: boolean
+  on: boolean
+  onOpen: (open: boolean) => void
+  onHover: (hover: boolean) => void
+  onGo: (go: string) => void
+}) {
+  const tile = useRef<HTMLDivElement>(null)
+  const lines = folded(t.lines)
+  // the tile's one button wears its signal as a small dot before its words: the dot is this
+  // action's state (Vikas, 30 Oct: "the dot belongs to the call to action")
+  const button =
+    'flex min-w-0 max-w-full items-center gap-1.5 rounded-sm border border-line px-2 py-0.5 text-left text-accent text-sm leading-5 hover:border-accent-line hover:bg-accent-soft'
+  const dot = t.act.off ? (t.signal === 'done' ? 'done' : 'opt') : t.signal
+  const words = (
+    <>
+      <Dot s={dot} className="size-1.5" />
+      <span className="line-clamp-2">{t.act.label}</span>
+    </>
+  )
+  // the popover is the tile's sibling, not its child: a portal's events bubble to its React parent
+  return (
+    <>
+      {/* biome-ignore lint/a11y/useSemanticElements: it holds links of its own */}
+      <div
+        ref={tile}
+        role="button"
+        tabIndex={0}
+        aria-expanded={on}
+        onPointerEnter={() => onHover(true)}
+        onPointerLeave={() => onHover(false)}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('a, button')) return
+          // nothing to open: straight to what it stands for
+          if (on || !lines.length) {
+            onOpen(false)
+            onGo(t.go)
+          } else onOpen(true)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : onOpen(true)
+        }}
+        className={cn(
+          'flex size-40 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
+          on && 'border-accent-line shadow-pop',
+        )}
+      >
+        {/* the number big, its words after it on the same line; a number of four characters or
+            more ("1,016") stands on its own line above them (Vikas, 30 Oct) */}
+        {t.big.length >= 4 ? (
+          <>
+            <div className="font-serif text-2xl leading-none">{t.big}</div>
+            <p className="mt-1 line-clamp-3 text-ink-2 text-sm">{t.small}</p>
+          </>
+        ) : (
+          <p className="line-clamp-3 text-ink-2 text-sm">
+            {t.big && (
+              <span className="mr-1.5 font-serif text-2xl text-ink leading-none">{t.big}</span>
+            )}
+            {t.small}
+          </p>
+        )}
+        {t.spark && <Spark points={t.spark} />}
+        <div className="mt-auto flex pt-1.5">
+          {t.act.off ? (
+            <span
+              aria-disabled="true"
+              data-tip={t.act.tip}
               className={cn(
-                'absolute inset-x-0 top-0 min-h-19 cursor-pointer overflow-hidden rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow',
-                'group-hover/tile:z-(--z-raised) group-hover/tile:shadow-pop',
-                on && 'z-(--z-raised) border-accent-line shadow-pop',
+                button,
+                'cursor-default border-transparent bg-sunk text-ink-3 hover:border-transparent hover:bg-sunk',
               )}
             >
-              <div className="flex items-center gap-2 text-ink-3 text-sm">
-                <Dot s={t.signal} />
-                <span className="min-w-0 flex-1 truncate">{t.label}</span>
-                {t.act &&
-                  (t.act.href ? (
-                    <a
-                      href={t.act.href}
-                      className="shrink-0 rounded-sm border border-line px-1.5 text-accent text-xs leading-5 hover:border-accent-line hover:bg-accent-soft"
-                    >
-                      {t.act.label}
+              {words}
+            </span>
+          ) : t.act.href ? (
+            <a href={t.act.href} data-tip={t.act.tip} className={button}>
+              {words}
+            </a>
+          ) : (
+            <button
+              type="button"
+              data-tip={t.act.tip}
+              onClick={() => {
+                onOpen(false)
+                onGo(t.act.go ?? t.go)
+              }}
+              className={button}
+            >
+              {words}
+            </button>
+          )}
+        </div>
+      </div>
+      <Popover
+        anchor={tile}
+        open={shown}
+        onClose={() => {
+          onOpen(false)
+          onHover(false)
+        }}
+        className="w-64 p-0"
+      >
+        {/* what a tile opens (Review listings, the rows it counts) opens beside, in the side panel */}
+        <div
+          data-peek-all
+          className="px-3 py-2"
+          onPointerEnter={() => onHover(true)}
+          onPointerLeave={() => onHover(false)}
+        >
+          <div className="text-ink-3 text-sm">{t.label}</div>
+          <div className="text-sm">
+            {t.big} {t.small}
+          </div>
+          {lines.length > 0 && (
+            <div className="mt-2 border-hair border-t pt-1.5">
+              {lines.map((l) => (
+                <div key={l.words} className="flex items-center gap-2 py-0.5 text-sm">
+                  <Dot s={l.s} />
+                  {l.href ? (
+                    <a href={l.href} className="truncate hover:text-accent hover:underline">
+                      {l.words}
                     </a>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onGo(t.act?.go ?? t.go)
-                      }}
-                      className="shrink-0 rounded-sm border border-line px-1.5 text-accent text-xs leading-5 hover:border-accent-line hover:bg-accent-soft"
-                    >
-                      {t.act.label}
-                    </button>
-                  ))}
-              </div>
-              <div className="flex items-end justify-between gap-2">
-                <div className="flex min-w-0 items-baseline gap-1.5">
-                  <span className="font-serif text-2xl">{t.big}</span>
-                  <span className="truncate text-ink-3 text-sm">{t.small}</span>
-                </div>
-                {t.spark && <Spark points={t.spark} />}
-              </div>
-              {lines.length > 0 && (
-                <div
-                  className={cn(
-                    'mt-2 hidden border-hair border-t pt-1.5 group-hover/tile:block',
-                    on && 'block',
+                    <span className="truncate">{l.words}</span>
                   )}
-                >
-                  {lines.map((l) => (
-                    <div key={l.words} className="flex items-center gap-2 py-0.5 text-sm">
-                      <Dot s={l.s} />
-                      {l.href ? (
-                        <a href={l.href} className="truncate hover:text-accent hover:underline">
-                          {l.words}
-                        </a>
-                      ) : (
-                        <span className="truncate">{l.words}</span>
-                      )}
-                      {l.n > 1 && (
-                        <span className="ml-auto shrink-0 text-ink-3 tabular-nums">×{l.n}</span>
-                      )}
-                    </div>
-                  ))}
+                  {l.n > 1 && (
+                    <span className="ml-auto shrink-0 text-ink-3 tabular-nums">×{l.n}</span>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
-          </div>
-        )
-      })}
-    </div>
+          )}
+        </div>
+      </Popover>
+    </>
   )
 }
 
@@ -875,7 +976,7 @@ function Spark({ points }: { points: number[] }) {
   const most = Math.max(1, ...points)
   const d = points.map((p, i) => `${i * 12},${22 - (p / most) * 20}`).join(' ')
   return (
-    <svg viewBox="0 0 62 24" className="h-6 w-16 shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 62 24" className="h-6 w-16 min-w-0 shrink" aria-hidden="true">
       <polyline points={d} fill="none" strokeWidth="1.75" className="stroke-accent" />
     </svg>
   )
@@ -1221,6 +1322,8 @@ export function Overview({
     })
   // the standard blocks, in this order in every module (Vikas, 29 Oct)
   const standard: Block[] = [
+    // Interview me first, a square smaller than the strip's (Vikas, 30 Oct)
+    { key: 'interview', name: 'Interview me', node: <InterviewTile m={m} /> },
     ...(questions
       ? [
           {
@@ -1231,7 +1334,20 @@ export function Overview({
         ]
       : []),
     ...(m.agents.length
-      ? [{ key: 'agents', name: 'Agents', node: <Agents m={m} main={main} onChange={onChange} /> }]
+      ? [
+          {
+            key: 'agents',
+            name: 'Agents',
+            node: (
+              <Agents
+                m={m}
+                main={main}
+                onChange={onChange}
+                onNew={() => (window.location.hash = `#/agent/new?module=${m.id}`)}
+              />
+            ),
+          },
+        ]
       : []),
     {
       key: 'governance',
@@ -1252,29 +1368,23 @@ export function Overview({
     // its own width decides the columns, not the window's: it is drawn in the side panel too
     <div className="@container h-full overflow-y-auto">
       <div className="flex flex-col gap-4 px-7 py-4">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <Strip tiles={tiles} onGo={go} />
-          </div>
-          <InterviewButton m={m} className="shrink-0" />
-        </div>
+        <Strip tiles={tiles} onGo={go} />
         {/* the work left and the standard column right, in every module (27 Oct, kept when
-            blocks became movable on 29 Oct); each moves and resizes within its column */}
-        <div className="grid items-start gap-4 @4xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-          <Arranged
-            page={`overview:${m.id}:work`}
-            blocks={[...lead, ...work]}
-            start={pairs(
-              [...lead, ...work].map((b) => b.key),
-              (k) => wide.has(k),
-            )}
-          />
-          <Arranged
-            page={`overview:${m.id}:side`}
-            blocks={standard}
-            start={standard.map((b) => [b.key])}
-          />
-        </div>
+            blocks became movable on 29 Oct); a block moves within or across them (30 Oct) */}
+        <Arranged
+          className="grid gap-4 @4xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]"
+          blocks={[...lead, ...work, ...standard]}
+          columns={[
+            {
+              page: `overview:${m.id}:work`,
+              start: pairs(
+                [...lead, ...work].map((b) => b.key),
+                (k) => wide.has(k),
+              ),
+            },
+            { page: `overview:${m.id}:side`, start: standard.map((b) => [b.key]) },
+          ]}
+        />
       </div>
     </div>
   )
@@ -1406,14 +1516,12 @@ function Insights({ a, onChange }: { a: AgentView; onChange: () => void }) {
       signal={a.lastResult && !a.lastResult.ok ? 'now' : null}
       extra={
         a.state === 'on' ? (
-          <Button
-            size="sm"
-            disabled={busy || a.running}
+          <UpdateNow
+            at={a.lastResult?.at ?? a.lastRunAt}
+            busy={busy || a.running}
+            tip={`${a.name} looks at the rows again now`}
             onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
-          >
-            <RefreshCw className={cn('size-3.5', a.running && 'animate-spin')} />
-            Look again
-          </Button>
+          />
         ) : (
           <Button
             size="sm"
@@ -1442,7 +1550,6 @@ function Insights({ a, onChange }: { a: AgentView; onChange: () => void }) {
                 : `No insights yet: ${a.name} writes what it finds here, ${a.when}.`}
             </p>
           )}
-          {a.lastResult?.ok && <p className="pt-1.5 text-ink-3 text-sm">{when(a.lastResult.at)}</p>}
         </div>
       )}
     </Card>
@@ -1609,35 +1716,31 @@ function NeedsYou({ cards, onChange }: { cards: CardView[]; onChange: () => void
 
 // --- The standard column ------------------------------------------------------------------
 
-// Interview me (Vikas, 30 Oct): the Interviewer's questions for this module today, never a fixed
-// prompt; on a hover, what it prepared and its first question; Preparing while it runs.
-function InterviewButton({
-  m,
-  label = 'Interview me',
-  className,
-}: {
-  m: ModuleView
-  label?: string
-  className?: string
-}) {
+// Interview me (Vikas, 30 Oct): opens the Interviewer's thread under Agents, scoped to this
+// module, where it prepares (with Stop) and asks; on a hover, what it prepared and its first one.
+function InterviewButton({ m, label = 'Interview me' }: { m: ModuleView; label?: string }) {
   const interview = useInterview(m.id)
   return (
-    <span className={cn('flex flex-col items-end gap-1', className)}>
-      <Button
-        size="sm"
-        onClick={() => void interview.start()}
-        disabled={interview.busy}
-        data-tip={interview.tip}
-      >
-        {interview.busy ? (
-          <LoaderCircle className="size-3.5 animate-spin" />
-        ) : (
-          <MessageCircleQuestion className="size-3.5" />
-        )}
-        {interview.busy ? 'Preparing…' : label}
-      </Button>
-      <Refusal words={interview.problem} />
-    </span>
+    <Button size="sm" onClick={() => interviewMe(m.id)} data-tip={interview.tip}>
+      {interview.busy ? (
+        <LoaderCircle className="size-3.5 animate-spin" />
+      ) : (
+        <MessageCircleQuestion className="size-3.5" />
+      )}
+      {label}
+    </Button>
+  )
+}
+
+// The same as a square at the head of the standard column: its name is its tooltip.
+function InterviewTile({ m }: { m: ModuleView }) {
+  const interview = useInterview(m.id)
+  return (
+    <div className="w-13">
+      <IconTile label={`Interview me. ${interview.tip}`} onClick={() => interviewMe(m.id)}>
+        {interview.busy ? <LoaderCircle className="animate-spin" /> : <MessageCircleQuestion />}
+      </IconTile>
+    </div>
   )
 }
 
@@ -1759,7 +1862,17 @@ function groupsOf(agents: AgentView[], main: TableData[]) {
 }
 const agentSignal = (a: AgentView): Signal => (a.needs ? 'now' : a.state === 'on' ? 'done' : 'opt')
 
-function Agents({ m, main, onChange }: { m: ModuleView; main: TableData[]; onChange: () => void }) {
+function Agents({
+  m,
+  main,
+  onChange,
+  onNew,
+}: {
+  m: ModuleView
+  main: TableData[]
+  onChange: () => void
+  onNew?: () => void
+}) {
   const { busy, problem, act } = useAct(onChange)
   if (!m.agents.length) return null
   const { groups, rest } = groupsOf(m.agents, main)
@@ -1802,23 +1915,12 @@ function Agents({ m, main, onChange }: { m: ModuleView; main: TableData[]; onCha
                 <Line
                   s={strongest(g.agents.map(agentSignal)) ?? 'opt'}
                   actions={
-                    <>
-                      <Button
-                        size="sm"
-                        disabled={busy || !gon.length}
-                        onClick={() => sync(g.agents)}
-                        data-tip={`Run every ${g.name.toLowerCase().replace(/s$/, '')} that is on, now`}
-                      >
-                        <RefreshCw className="size-3.5" />
-                        Sync now
-                      </Button>
-                      <Switch
-                        checked={gon.length > 0}
-                        disabled={busy}
-                        label={gon.length ? `Pause every ${g.name}` : `Turn on every ${g.name}`}
-                        onChange={(v) => turn(g.agents, v)}
-                      />
-                    </>
+                    <Switch
+                      checked={gon.length > 0}
+                      disabled={busy}
+                      label={gon.length ? `Pause every ${g.name}` : `Turn on every ${g.name}`}
+                      onChange={(v) => turn(g.agents, v)}
+                    />
                   }
                 >
                   {g.name}{' '}
@@ -1829,6 +1931,20 @@ function Agents({ m, main, onChange }: { m: ModuleView; main: TableData[]; onCha
                     <span
                       className="bg-good"
                       style={{ width: `${(gon.length / g.agents.length) * 100}%` }}
+                    />
+                  </div>
+                  {/* when they last updated, beside the one button that updates them now */}
+                  <div className="mt-1.5 flex">
+                    <UpdateNow
+                      at={g.agents
+                        .map((a) => a.lastRunAt)
+                        .filter(Boolean)
+                        .sort()
+                        .at(-1)}
+                      busy={busy || gon.some((a) => a.running)}
+                      disabled={!gon.length}
+                      onClick={() => sync(g.agents)}
+                      tip={`Run every ${g.name.toLowerCase().replace(/s$/, '')} that is on, now`}
                     />
                   </div>
                 </Line>
@@ -1857,6 +1973,16 @@ function Agents({ m, main, onChange }: { m: ModuleView; main: TableData[]; onCha
               <span className="text-ink-3 text-sm">{a.when}</span>
             </Line>
           ))}
+          {onNew && (
+            <button
+              type="button"
+              onClick={onNew}
+              className="mt-1 flex items-center gap-1.5 py-1 text-ink-3 text-sm hover:text-accent"
+            >
+              <Plus className="size-3.5" />
+              New agent
+            </button>
+          )}
         </div>
       )}
     </Card>

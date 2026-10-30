@@ -4,6 +4,7 @@ import { agents } from '../../modules/agents.ts'
 import {
   alphaModule,
   askLine,
+  INTERVIEWER,
   loadPool,
   markSkipped,
   pending,
@@ -55,6 +56,12 @@ export function registerStream(ctx: Ctx): void {
   // that wrote it, an agent's line by its name in its module, or the agent the person spoke to.
   const agentOfLines = (lines: Line[]) => {
     const list = agents(world)
+    // the Interviewer's thread: its questions and closings (turns "iv…"), what the person said in
+    // it (or, before it had a thread, in answer to it), and Alpha's replies to that
+    const said = (l: Line) =>
+      l.kind === 'said' &&
+      (l.data.agent === INTERVIEWER.id || !!l.data.answers || !!l.data.ends || !!l.data.skips)
+    const iv = new Set(lines.filter(said).map((l) => String(l.id)))
     const runs = [...new Set(lines.map((l) => l.run).filter((r): r is string => !!r))]
     const byRun = new Map(
       runs.length
@@ -66,6 +73,7 @@ export function registerStream(ctx: Ctx): void {
         : [],
     )
     return (l: Line): StreamLine['agent'] => {
+      if (said(l) || (l.turn && (l.turn.startsWith('iv') || iv.has(l.turn)))) return INTERVIEWER
       const a =
         (l.run && list.find((x) => x.id === byRun.get(l.run as string))) ||
         (l.kind === 'said' && list.find((x) => x.id === l.data.agent)) ||
@@ -150,20 +158,21 @@ export function registerStream(ctx: Ctx): void {
         agent: z.string().optional(),
       })
       .parse(req.body)
-    const to = agent ? agents(world).find((a) => a.id === agent) : undefined
-    if (agent && !to) throw new Refused('That agent is not there any more.')
+    const toInterviewer = agent === INTERVIEWER.id
+    const to = agent && !toInterviewer ? agents(world).find((a) => a.id === agent) : undefined
+    if (agent && !toInterviewer && !to) throw new Refused('That agent is not there any more.')
     const m = world.shape.module(to?.module ?? from ?? '')
     // the person's words after an interview question: they are done, they pass on it, or it is
     // their answer, kept against it (so no later pool asks it until it is stale); a brief answer
     // ends the sitting once kept, any other has Alpha decide whether one more is worth asking
-    const p = to ? null : pending(world, user.id)
+    const p = toInterviewer ? pending(world, user.id) : null
     const reply = p ? readReply(words) : null
     if (p && (reply === 'done' || reply === 'skip')) {
       const line = world.line({
         actor: { kind: 'person', id: user.id },
         kind: 'said',
         words,
-        data: { [reply === 'done' ? 'ends' : 'skips']: p.key },
+        data: { agent: INTERVIEWER.id, [reply === 'done' ? 'ends' : 'skips']: p.key },
         user: user.id,
         module: m?.id ?? null,
       })
@@ -183,7 +192,7 @@ export function registerStream(ctx: Ctx): void {
         to ? { id: to.id, name: to.name } : null,
         p
           ? {
-              data: { answers: p.key },
+              data: { agent: INTERVIEWER.id, answers: p.key },
               note: config
                 .interviewAnswer()
                 .replaceAll('{ask}', p.ask)
@@ -193,7 +202,9 @@ export function registerStream(ctx: Ctx): void {
                   ? close(p.module, 'Kept. I will leave the rest for another day.')
                   : askNext(p.module, false),
             }
-          : {},
+          : toInterviewer
+            ? { data: { agent: INTERVIEWER.id } }
+            : {},
       ),
     }
   })
@@ -261,6 +272,16 @@ export function registerStream(ctx: Ctx): void {
     askNext(module ?? null, true)
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { preparing: false }
+  })
+
+  // Stop while preparing: the window stops waiting and the thread says so; no question follows.
+  // ponytail: the pool's ranking is one model call with no abort; it finishes in the background
+  // (it is the day's pool, Morning's anyway). Thread a signal through Ask if it ever runs long.
+  app.post('/api/interview/stop', async (req) => {
+    const { module } = z.object({ module: z.string().optional() }).parse(req.body ?? {})
+    close(module ?? null, 'Stopped.')
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { ok: true }
   })
 
   // One card in full for the side panel: where it came from, the runs it rests on (its own run,

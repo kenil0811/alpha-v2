@@ -14,7 +14,6 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import {
-  BookmarkCheck,
   Brain,
   CalendarDays,
   Check,
@@ -32,7 +31,7 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from
 import { AgentList } from './AgentList.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { Arranged, pairs } from './arrange.tsx'
-import { startAsk } from './ask.ts'
+import { showAsk, startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { GovernanceSection } from './Governance.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
@@ -48,6 +47,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm, Dialog } from './ui/dialog.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
+import { EntryList } from './ui/entry-list.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
@@ -337,7 +337,8 @@ function AlphaTable({ name, version }: { name: keyof typeof ABOUT_ALPHA; version
 // Alpha's own module, as the core marks it (its module.yaml says core: true), whatever its name.
 export const alphaOf = (modules: ModuleSummary[]) => modules.find((m) => m.alpha)
 
-// How to work: the standing instructions the person gave, each one forgotten on a yes.
+// How to work: the standing instructions the person gave, kept as every list is
+// (ui/entry-list.tsx): one is added or changed by telling Alpha in words, forgotten on a yes.
 function HowToWork({ version }: { version: number }) {
   const [lines, setLines] = useState<InstructionView[] | null>(null)
   const load = useCallback(() => {
@@ -347,62 +348,54 @@ function HowToWork({ version }: { version: number }) {
     if (version >= 0) load()
   }, [load, version])
   const { busy, on, problem, act } = useAct(load)
-  const [forgetting, setForgetting] = useState<string | null>(null)
+  const [forgetting, setForgetting] = useState<InstructionView | null>(null)
   const keyOf = (l: InstructionView) => `${l.for}${l.words}`
-  const asked = lines?.find((l) => keyOf(l) === forgetting)
   const forget = (l: InstructionView) => {
     setForgetting(null)
     void act(() => api.post('/api/instructions/remove', { for: l.for, words: l.words }), keyOf(l))
   }
+  const say = (words: string) =>
+    act(async () => {
+      await api.post('/api/say', { words })
+      showAsk()
+    }, 'new')
   return (
     <Section
       title="How to work"
-      about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
+      about="How you asked things to be done from now on. New or Add tells Alpha in a sentence."
     >
-      {lines && lines.length > 0 && (
-        <List>
-          {lines.map((l) => (
-            <Row
-              key={keyOf(l)}
-              lead={
-                <Tile>
-                  <BookmarkCheck className="size-4" />
-                </Tile>
-              }
-              title={<span className="whitespace-normal font-normal">{l.words}</span>}
-              sub={l.for === 'me' ? 'For you' : 'For everyone here'}
-              actions={
-                <>
-                  {on === keyOf(l) && <Refusal words={problem} />}
-                  <More label="More" disabled={busy}>
-                    {(close) => (
-                      <MenuItem
-                        danger
-                        onClick={() => {
-                          close()
-                          setForgetting(keyOf(l))
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                        Forget
-                      </MenuItem>
-                    )}
-                  </More>
-                </>
-              }
-            ></Row>
-          ))}
-        </List>
+      {lines && (
+        <EntryList
+          head="Instructions"
+          items={lines}
+          idOf={keyOf}
+          textOf={(l) => l.words}
+          line={(l) => (
+            <>
+              <span className="text-md">{l.words}</span>
+              <span className="text-ink-3 text-sm">
+                {l.for === 'me' ? 'For you' : 'For everyone here'}
+              </span>
+              {on === keyOf(l) && <Refusal words={problem} />}
+            </>
+          )}
+          placeholder="How should things be done from now on?"
+          removeLabel="Forget"
+          onAdd={(w) => say(`From now on: ${w}`)}
+          onEdit={(l, w) => say(`Change how I asked things to be done, “${l.words}”, to: ${w}`)}
+          onRemove={setForgetting}
+        />
       )}
+      {on === 'new' && <Refusal words={problem} />}
       <Confirm
-        open={!!asked}
+        open={!!forgetting}
         title="Forget this?"
         yes="Forget it"
         busy={busy}
         onClose={() => setForgetting(null)}
-        onYes={() => asked && forget(asked)}
+        onYes={() => forgetting && forget(forgetting)}
       >
-        Alpha stops doing it from now on: “{asked?.words}”. Saying it again brings it back.
+        Alpha stops doing it from now on: “{forgetting?.words}”. Saying it again brings it back.
       </Confirm>
     </Section>
   )

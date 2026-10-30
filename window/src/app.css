@@ -50,6 +50,25 @@
   --bad: #ad3d36;
   --bad-soft: #f8e6e4;
 
+  /* a choice's own colour (Vikas, 30 Oct): words on their soft ground, 4.5:1 or more, in this
+     order of the field's choices, then round again (ui/pill.tsx optionClass) */
+  --opt-1: #2f5f8a;
+  --opt-1-soft: #e5eef7;
+  --opt-2: #85540f;
+  --opt-2-soft: #f6ecdb;
+  --opt-3: #6a4a9c;
+  --opt-3-soft: #eee8f7;
+  --opt-4: #2f6b45;
+  --opt-4-soft: #e3f0e7;
+  --opt-5: #9a3a6b;
+  --opt-5-soft: #f7e4ee;
+  --opt-6: #21676a;
+  --opt-6-soft: #ddefef;
+  --opt-7: #a53a33;
+  --opt-7-soft: #f8e4e2;
+  --opt-8: #66553f;
+  --opt-8-soft: #eee9e2;
+
   /* series that are told apart, in this order, never cycled: at most four, the rest "Other" */
   --series-1: #2a78d6;
   --series-2: #eb6834;
@@ -74,6 +93,9 @@
   --face-needs: #f0a92e;
 
   --elev-pop: 0 1px 2px rgb(22 32 43 / 0.06), 0 8px 22px rgb(22 32 43 / 0.09);
+  /* the side panel's edge (Vikas, 30 Oct): a firmer line and a soft shadow cast on the page */
+  --edge: #c7ced6;
+  --elev-side: -10px 0 24px -12px rgb(22 32 43 / 0.3);
   --scrim: rgb(22 32 43 / 0.28);
   --elev-btn: 0 1px 2px rgb(22 32 43 / 0.1);
 
@@ -108,11 +130,29 @@
     --warn-soft: #32271a;
     --bad: #e78a83;
     --bad-soft: #38201f;
+    --opt-1: #8db4dc;
+    --opt-1-soft: #1b2b3b;
+    --opt-2: #e0b373;
+    --opt-2-soft: #33271a;
+    --opt-3: #b9a0e6;
+    --opt-3-soft: #2a2238;
+    --opt-4: #8fc8a0;
+    --opt-4-soft: #17291e;
+    --opt-5: #e79cc2;
+    --opt-5-soft: #381f2c;
+    --opt-6: #7ccaca;
+    --opt-6-soft: #152d2e;
+    --opt-7: #ec8f87;
+    --opt-7-soft: #3a201e;
+    --opt-8: #cbb89c;
+    --opt-8-soft: #2e2820;
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
     --series-4: #c98500;
     --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
+    --edge: #3b4550;
+    --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
     --scrim: rgb(0 0 0 / 0.5);
     --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
     color-scheme: dark;
@@ -146,11 +186,29 @@
   --warn-soft: #32271a;
   --bad: #e78a83;
   --bad-soft: #38201f;
+  --opt-1: #8db4dc;
+  --opt-1-soft: #1b2b3b;
+  --opt-2: #e0b373;
+  --opt-2-soft: #33271a;
+  --opt-3: #b9a0e6;
+  --opt-3-soft: #2a2238;
+  --opt-4: #8fc8a0;
+  --opt-4-soft: #17291e;
+  --opt-5: #e79cc2;
+  --opt-5-soft: #381f2c;
+  --opt-6: #7ccaca;
+  --opt-6-soft: #152d2e;
+  --opt-7: #ec8f87;
+  --opt-7-soft: #3a201e;
+  --opt-8: #cbb89c;
+  --opt-8-soft: #2e2820;
   --series-1: #3987e5;
   --series-2: #d95926;
   --series-3: #199e70;
   --series-4: #c98500;
   --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
+  --edge: #3b4550;
+  --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
   --scrim: rgb(0 0 0 / 0.5);
   --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
   color-scheme: dark;
@@ -233,6 +291,7 @@
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
   --color-hair: var(--hair);
+  --color-edge: var(--edge);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
@@ -243,6 +302,22 @@
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
+  --color-opt-1: var(--opt-1);
+  --color-opt-1-soft: var(--opt-1-soft);
+  --color-opt-2: var(--opt-2);
+  --color-opt-2-soft: var(--opt-2-soft);
+  --color-opt-3: var(--opt-3);
+  --color-opt-3-soft: var(--opt-3-soft);
+  --color-opt-4: var(--opt-4);
+  --color-opt-4-soft: var(--opt-4-soft);
+  --color-opt-5: var(--opt-5);
+  --color-opt-5-soft: var(--opt-5-soft);
+  --color-opt-6: var(--opt-6);
+  --color-opt-6-soft: var(--opt-6-soft);
+  --color-opt-7: var(--opt-7);
+  --color-opt-7-soft: var(--opt-7-soft);
+  --color-opt-8: var(--opt-8);
+  --color-opt-8-soft: var(--opt-8-soft);
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
   --color-series-3: var(--series-3);
@@ -274,6 +349,7 @@
 
   --shadow-pop: var(--elev-pop);
   --shadow-btn: var(--elev-btn);
+  --shadow-side: var(--elev-side);
 }
 
 /*

@@ -1,5 +1,15 @@
 import { expect, it } from 'vitest'
-import { keyOf, moved, pairs, rowsOf, sized, sizeOf } from './arrange.tsx'
+import {
+  columnsOf,
+  keyOf,
+  moved,
+  movedIn,
+  pairs,
+  rowsOf,
+  sized,
+  sizeOf,
+  stacked,
+} from './arrange.tsx'
 import { verbOf } from './Overview.tsx'
 
 it('moves a block beside, above or below another, and keeps new blocks at the foot', () => {
@@ -30,6 +40,46 @@ it('keeps a block’s size with it as it moves, and gives it back', () => {
   // a block not shown just now keeps its place in what is kept
   const all = rowsOf([['gone', 'a'], ['b']], [], ['gone', 'a', 'b'])
   expect(sized(all, 'a', { w: 40, h: 300 })).toEqual([['gone', 'a@40x300'], ['b']])
+})
+
+it('moves a block within or across columns, and stacks the columns in order', () => {
+  const cols = [
+    [['a', 'b'], ['c']],
+    [['ask'], ['gov@50x200'], ['files']],
+  ]
+  // across: Governance beside a, its size with it; and back to the foot of the right column
+  const left = movedIn(cols, 'gov', 'a', 'right')
+  expect(left).toEqual([
+    [['a', 'gov@50x200', 'b'], ['c']],
+    [['ask'], ['files']],
+  ])
+  expect(movedIn(left, 'gov', 1)).toEqual([
+    [['a', 'b'], ['c']],
+    [['ask'], ['files'], ['gov@50x200']],
+  ])
+  // within: files above ask, the left column untouched
+  expect(movedIn(cols, 'files', 'ask', 'top')).toEqual([
+    cols[0],
+    [['files'], ['ask'], ['gov@50x200']],
+  ])
+  // a column emptied stays, to take a block back
+  expect(movedIn([[['a']], [['b']]], 'b', 'a', 'bottom')).toEqual([[['a'], ['b']], []])
+  expect(movedIn([[['a'], ['b']], []], 'b', 1)).toEqual([[['a']], [['b']]])
+  // what is kept in either column wins; a new block goes to the foot of the column it starts in
+  expect(
+    columnsOf(
+      [[['a', 'gov']], [['ask']]],
+      [[['a']], [['ask'], ['gov'], ['new']]],
+      ['a', 'gov', 'ask', 'new'],
+    ),
+  ).toEqual([[['a', 'gov']], [['ask'], ['new']]])
+  // narrow: the work first, then the standard column
+  expect(stacked(left).map((r) => r.map(keyOf))).toEqual([
+    ['a', 'gov', 'b'],
+    ['c'],
+    ['ask'],
+    ['files'],
+  ])
 })
 
 it('says a goal as what to do', () => {

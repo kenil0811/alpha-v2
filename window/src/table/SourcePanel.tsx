@@ -242,6 +242,7 @@ function Correct({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           aria-label={field.name}
+          of={field}
           stars={field.id}
           adds={{
             what: 'choice',

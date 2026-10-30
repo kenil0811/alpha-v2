@@ -107,3 +107,69 @@ limits.yaml.
 block in one flow, two to a row, so the 27 Oct standard column was lost. The Overview is again the
 work left and the standard column right, each its own arranged column with its own saved layout
 (`overview:<id>:work`, `overview:<id>:side`); layouts saved under the old key are left unread.
+
+**The strip in one row, the chart's box held.** The pulse strip (an Overview's and Home's) is now
+one row of square tiles that scrolls sideways with snapping; a name wraps to three lines and the
+whole of it, with the lines a tile counts, opens in a popover over the page, so the row never
+clips it. The evening-out into rows from this morning is gone. A drag on a chart's y-axis now
+changes only the drawing: the box keeps its height and the drawing scrolls inside it, as a wider
+one scrolls sideways; the corner still changes the box, and a double-click on the y-axis fits the
+drawing back to it (Vikas, 30 Oct).
+
+**Across the two columns.** `Arranged` takes columns: each column is saved as its own page, so a
+block moves within or across the work and standard columns and keeps its size; the old two-page
+layouts read as the columns. Narrow, the columns stack, work first.
+
+**Lists dropdown and choice colours.** Vikas saw the list's actions in the "All" dropdown and the
+lists themselves in a row under the toolbar. The dropdown (`table/ViewTabs.tsx`) now holds All,
+the saved lists and the values of the table's list choice (Clients, Insurers, Leads, My team) with
+counts, search past six and Add new…; Rename, Duplicate, Open the table on this list and Delete
+moved to a right-click of the dropdown or of a list's line, and the row under the toolbar is gone
+in every table (Tasks' own due cuts stay). Every choice now has a stable colour: the field's tone,
+else `--opt-1…8` (new tokens in `app.css`, light and dark, all 4.5:1 or more) by its place among
+the field's choices, through one helper (`optionClass` and `Choice` in `ui/pill.tsx`) used by grid
+cells, tag chips, cards, the row page, every choice `Select`, the tag picker, the filter's value
+list and the lists dropdown. Rules under "Lists dropdown and choice colours (Vikas, 30 Oct)" in
+`docs/ui-rules.md`, waiting on Kenil.
+
+**The Interviewer under Agents, Stop while preparing, New agent in sight** (Vikas: "Interview me
+should take me to the Agents page with one of the agents named Interviewer"; "while it is loading
+there is no way for me to cancel"; "I still don't see a New agent option"). Decision 13 holds in
+code: the Interviewer is no kit agent but a fixed thread id, `interviewer`, which the core puts on
+the sitting's lines (its "iv…" turns, what the person says in it, Alpha's replies to that) and
+accepts as `agent` on `/api/say`. Only words said in that thread answer a pending question. Interview
+me on Home and on each Overview opens `#/conversation/interviewer` and starts the sitting there,
+scoped to the module; while the pool is ranked the thread says "Interviewer Preparing…" with Stop,
+which stops the window's polling and posts `/api/interview/stop`, so the thread says "Stopped.".
+The ranking's one model call has no abort and finishes in the background (the day's pool). On an
+Overview, Interview me is now a small square at the head of the standard column, not beside the
+strip. New agent sits atop the Agents list and as a line at the foot of a module's Agents card
+(`#/agent/new?module=<id>` chooses that module). Checked with Playwright on Avilo, the preparing
+state stood in, since the running core predates the change; needs a core restart.
+
+Lists, double-click and editable cells (Vikas, 30 Oct). Dell's Intake: Contact and Prior contact
+are toned choices, which a row's page (and the side panel, which draws it) shows only as the states
+under the title, and those pills changed nothing; a double-click on one now opens the choice's
+dropdown. The core refused a relation or a person from the window ("set by asking Alpha"); it now
+takes a pick, checked against the relation's table or the person's people, and the window picks
+from those rows (Attorney lists My team); `FieldView.relatesTo` says which table. A summary, a file
+or a list of rows stays fixed, and a double-click says why in the tip. Governance's columns and
+How to work are one list control (`ui/entry-list.tsx`): New when empty, Add on the heading, ✕ on a
+hover (asked first), a double-click to change an entry's words, which go to Alpha since a rule is
+made only on its card. A task's title and notes no longer edit on a click: a double-click, as a
+row's title (`ui/title.tsx`) and notes do. The side panel has a firmer edge and a soft shadow. Core
+test in `api/rows.test.ts`. The running cores predate the relation and person change: restart them.
+
+Strip tiles and Update now (Vikas, 30 Oct). Every strip tile, on an Overview and on Home, is one
+layout: the number big and left with its words after it ("0 listings reviewed · of 13 this week"),
+a number of four characters or more ("1,016") on its own line above them, a spark under the words,
+and one button at the foot carrying the signal as a small dot before its words; the dot beside the
+tile's name is gone, and so is the name, which the words now say. Every tile has its button: with
+nothing to do it stays greyed and says it is done ("All engaged", "Nothing new"), its hover saying
+why. 200px square, the least size at which the common tiles show whole (180 cut "Review 1,016
+new"). The row is keyed by its tiles, since a snapping row kept to the tile it first snapped to and
+opened scrolled past the first. Sync now (an agent group's line and a table's readers), Insights'
+Look again and an agent page's Run now are one `UpdateNow` (`ui/update-now.tsx`): "Updated 12:42"
+just before the button, Updating… and a turning icon while it runs; Insights' date at its foot is
+gone, and an agent group's button sits under its bar so the name keeps its room. Checked with
+Playwright on Avilo (DealPilot's Overview and Home).

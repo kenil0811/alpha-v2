@@ -22,6 +22,7 @@ import { CardBox } from './Conversation.tsx'
 import { peek } from './Peek.tsx'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
+import { Notes } from './table/Notes.tsx'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -34,6 +35,7 @@ import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { Title } from './ui/title.tsx'
 import { answerWords, NEEDS_YOU } from './vocabulary.ts'
 import {
   actCell,
@@ -508,15 +510,11 @@ export function TaskPage({
   const [t, setT] = useState<TaskView | null>(null)
   const [missing, setMissing] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
-  const [notes, setNotes] = useState('')
   const [removing, setRemoving] = useState(false)
   const load = useCallback(() => {
     api.get<TaskView>(`/api/tasks/${id}`).then(
       (v) => {
         setT(v)
-        setTitle(v.title)
-        setNotes(v.notes ?? '')
         setMissing(false)
         onName(v.title)
       },
@@ -530,8 +528,10 @@ export function TaskPage({
     setProblem(null)
     try {
       setT(await api.post<TaskView>(`/api/tasks/${id}`, body))
+      return true
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That did not go in.')
+      return false
     }
   }
   const state = async (s: TaskLineView['state']) => {
@@ -563,15 +563,7 @@ export function TaskPage({
             </a>
           )}
           <div className="flex items-center gap-2">
-            <input
-              aria-label="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() =>
-                title.trim() && title.trim() !== t.title && change({ title: title.trim() })
-              }
-              className="h-12 w-full bg-transparent font-serif text-2xl text-ink outline-none"
-            />
+            <Title title={t.title} onRename={(x) => change({ title: x })} className="flex-1" />
             <More label="More" shown>
               {(close) => (
                 <MenuItem
@@ -688,15 +680,7 @@ export function TaskPage({
         )}
 
         <Section title="Notes">
-          <textarea
-            aria-label="Notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            onBlur={() => notes !== (t.notes ?? '') && change({ notes: notes || null })}
-            rows={4}
-            placeholder="Anything worth keeping with it"
-            className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink text-md outline-none focus:border-accent-line"
-          />
+          <Notes value={t.notes ?? ''} onSave={(n) => change({ notes: n || null })} />
         </Section>
 
         <Section title="Checklist" about="The steps beneath it, each a task of its own">

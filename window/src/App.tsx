@@ -129,7 +129,8 @@ export function placeOf(hash: string): Place {
   if (talk) return { at: 'conversation', agent: talk[1] ?? null }
   if (hash === '#/parts') return { at: 'parts' }
   if (hash === '#/module/new') return { at: 'new', what: 'module' }
-  if (hash === '#/agent/new') return { at: 'new', what: 'agent' }
+  // ?module=<id>: from a module's Agents card, that module chosen
+  if (/^#\/agent\/new(?:\?module=[\w-]+)?$/.test(hash)) return { at: 'new', what: 'agent' }
   // a row's own page (core step 3b)
   const rw = /^#\/row\/([\w-]+)$/.exec(hash)
   if (rw?.[1]) return { at: 'row', id: rw[1] }

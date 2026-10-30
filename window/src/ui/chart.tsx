@@ -8,10 +8,11 @@ import { Select } from './field.tsx'
 // A drawing's box (Vikas, 29 and 30 Oct): nothing drawn to resize it, only the cursor. Over the
 // x-axis (the strip it and its labels are drawn in, below) it shows ↔ and a drag stretches the
 // drawing wider or compresses it; over the y-axis (the strip at the left) ↕ and a drag heightens or
-// shortens it; at the box's bottom-right corner ↘↖ and a drag does both. Redrawn at its new size,
-// never below its least; wider than its box, it scrolls sideways inside it, never the page. A
-// double-click on an axis or the corner fits it back; a focused axis takes the arrows. A drawing
-// with no axes drawn (bars, donut, rings, heat) has only the corner.
+// shortens the drawing while the box keeps its height (Vikas, 30 Oct: "I want the section size to
+// be fixed"); at the box's bottom-right corner ↘↖ and a drag changes the box, the drawing with it.
+// Redrawn at its new size, never below its least; wider or taller than its box, it scrolls inside
+// it, never the page. A double-click on an axis or the corner fits it back to the box; a focused
+// axis takes the arrows. A drawing with no axes drawn (bars, donut, rings, heat) has only the corner.
 type Axis = 'x' | 'y' | 'xy'
 const CORNER = 14
 const CURSOR: Record<Axis, string> = { x: 'ew-resize', y: 'ns-resize', xy: 'nwse-resize' }
@@ -40,6 +41,7 @@ export function Stretch({
   const [fit, setFit] = useState(640) // the box's width
   const [wide, setWide] = useState<number | null>(null) // the person's width, once stretched
   const [tall, setTall] = useState<number | undefined>(height)
+  const [frame, setFrame] = useState<number | undefined>() // the box's height, held once the y-axis moves
   const [zone, setZone] = useState<Axis | null>(null) // what the pointer is over
   useLayoutEffect(() => {
     const el = box.current
@@ -62,11 +64,19 @@ export function Stretch({
   }
   const grow = (axis: Axis, r: DOMRect, dx: number, dy: number) => {
     if (axis !== 'y') setWide(Math.max(least[0], r.width + dx))
+    if (axis === 'y') setFrame((f) => f ?? box.current?.offsetHeight)
+    if (axis === 'xy') setFrame(undefined) // the corner is the box's: it follows the drawing again
     if (axis !== 'x') setTall(Math.max(least[1], r.height + dy))
   }
   const fitBack = (axis: Axis) => {
     if (axis !== 'y') setWide(null)
-    if (axis !== 'x') setTall(height)
+    if (axis === 'xy' || frame === undefined) {
+      if (axis !== 'x') setTall(height)
+      setFrame(undefined)
+    } else if (axis === 'y' && box.current) {
+      // the drawing back to the box it is held in (less a sideways scrollbar, if any)
+      setTall(box.current.clientHeight)
+    }
   }
   // a focused axis: invisible, the arrows stretch it, the app's focus ring the only mark
   const keys = (axis: 'x' | 'y', at: { width?: number; height?: number }) => (
@@ -96,9 +106,10 @@ export function Stretch({
     <div
       ref={box}
       data-zone={zone ?? undefined}
-      style={zone ? { cursor: CURSOR[zone] } : undefined}
+      style={{ height: frame, cursor: zone ? CURSOR[zone] : undefined }}
       className={cn(
-        'max-w-full overflow-x-auto overflow-y-hidden data-zone:**:cursor-[inherit]!',
+        'max-w-full data-zone:**:cursor-[inherit]!',
+        frame === undefined ? 'overflow-x-auto overflow-y-hidden' : 'overflow-auto',
         className,
       )}
       onPointerMove={(e) => {
@@ -405,6 +416,7 @@ export interface Bubble {
   tone?: 'good' | 'warn' | 'bad' | 'accent' | undefined
   label: string // what the hover says
   href?: string
+  count?: number // how many rows it stands for, when several fall together
 }
 const FILL = { good: 'fill-good', warn: 'fill-warn', bad: 'fill-bad', accent: 'fill-accent' }
 const SWATCH = { good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad', accent: 'bg-accent' }
@@ -421,11 +433,15 @@ export function Bubbles({
   tones: { label: string; tone: keyof typeof FILL }[] // the colour's legend
 }) {
   const { hot, setHot, order } = useFront()
+  // rows on the same day in the same lane are one bubble with their count on it, never a bubble
+  // drawn over another (Vikas, 30 Oct: "circles inside circles" read as nothing)
+  points = together(points)
   const from = Math.min(...points.map((p) => p.at))
   const to = Math.max(...points.map((p) => p.at))
   const span = Math.max(to - from, 864e5)
   const most = Math.max(1, ...points.map((p) => p.size))
-  const r = (n: number) => 4 + 10 * Math.sqrt(Math.max(n, 0) / most) // area, not radius, follows the amount
+  // area, not radius, follows the amount; a bubble holding several is big enough for its number
+  const r = (n: number, k = 1) => Math.max(k > 1 ? 9 : 0, 4 + 10 * Math.sqrt(Math.max(n, 0) / most))
   const ticks = Array.from({ length: 5 }, (_, i) => from + (span * i) / 4)
   const day = (t: number) =>
     new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
@@ -465,17 +481,19 @@ export function Bubbles({
             </text>
           </g>
         ))}
-        {ticks.map((t, i) => (
-          <text
-            key={t}
-            x={x(t)}
-            y={H - 6}
-            textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}
-            className="fill-ink-3 text-xs tabular-nums"
-          >
-            {day(t)}
-          </text>
-        ))}
+        {ticks.map((t, i) =>
+          i > 0 && day(t) === day(ticks[i - 1] as number) ? null : (
+            <text
+              key={t}
+              x={x(t)}
+              y={H - 6}
+              textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}
+              className="fill-ink-3 text-xs tabular-nums"
+            >
+              {day(t)}
+            </text>
+          ),
+        )}
         {today > from && today < to && (
           <line
             x1={x(today)}
@@ -504,7 +522,7 @@ export function Bubbles({
               <circle
                 cx={x(p.at)}
                 cy={(lane + 0.5) * LANE}
-                r={r(p.size)}
+                r={r(p.size, p.count)}
                 className={cn(
                   FILL[p.tone ?? 'accent'],
                   hot === i ? 'stroke-ink' : 'stroke-surface',
@@ -514,6 +532,16 @@ export function Bubbles({
               >
                 <title>{p.label}</title>
               </circle>
+              {(p.count ?? 1) > 1 && (
+                <text
+                  x={x(p.at)}
+                  y={(lane + 0.5) * LANE + 4}
+                  textAnchor="middle"
+                  className="pointer-events-none fill-surface font-medium text-xs tabular-nums"
+                >
+                  {p.count}
+                </text>
+              )}
             </a>
           )
         })}
@@ -541,7 +569,10 @@ export function Bubbles({
           <span className="size-3 rounded-full bg-ink-3" />
           bigger is more {size.toLowerCase()}
         </span>
-        <span className="text-ink-3">dashed line is today</span>
+        {points.some((p) => (p.count ?? 1) > 1) && (
+          <span className="text-ink-3">a number is how many on that day</span>
+        )}
+        {today > from && today < to && <span className="text-ink-3">dashed line is today</span>}
       </div>
     </div>
   )
@@ -567,6 +598,33 @@ export interface Dot {
   tone?: keyof typeof FILL | undefined
   label: string
   href?: string | undefined
+}
+
+// Bubbles on the same day in the same lane, as one: amounts added, the most common colour, every
+// row named on the hover, and opening the row when there is only one.
+export function together(points: Bubble[]): Bubble[] {
+  const groups = new Map<string, Bubble[]>()
+  for (const p of points) {
+    const k = `${p.lane}|${new Date(p.at).toDateString()}`
+    groups.set(k, [...(groups.get(k) ?? []), p])
+  }
+  return [...groups.values()].map((g) => {
+    const first = g[0] as Bubble
+    if (g.length === 1) return first
+    const tones = new Map<Bubble['tone'], number>()
+    for (const p of g) tones.set(p.tone, (tones.get(p.tone) ?? 0) + 1)
+    const tone = [...tones].sort((a, b) => b[1] - a[1])[0]?.[0]
+    const named = g.slice(0, 6).map((p) => p.label)
+    const more = g.length > 6 ? `\nand ${g.length - 6} more` : ''
+    return {
+      at: first.at,
+      lane: first.lane,
+      size: g.reduce((n, p) => n + p.size, 0),
+      tone,
+      count: g.length,
+      label: `${g.length} on this day:\n${named.join('\n')}${more}`,
+    }
+  })
 }
 
 export function Scatter({

@@ -76,6 +76,20 @@ export const CORRECTABLE = new Set([
 
 // What can be typed in this field: a summary is worked out from other rows, never typed (3c).
 export const canType = (f: FieldView) => CORRECTABLE.has(f.kind) && !f.summary
+// What is picked rather than typed (Vikas, 30 Oct): a row it points at, or one of your people.
+export const canPick = (f: FieldView) =>
+  !f.summary && ((f.kind === 'relation' && !f.many) || f.kind === 'person')
+// Whether a double-click changes it: everything a person may be asked to fill, by design.
+export const canChange = (f: FieldView) => canType(f) || canPick(f)
+// Why a double-click does not change it, said in the tip in its place.
+export const whyFixed = (f: FieldView) =>
+  f.summary
+    ? `${f.name} is worked out (${f.summary}), so it is never typed.`
+    : f.kind === 'file'
+      ? `${f.name} is added from the row's files.`
+      : f.kind === 'notes'
+        ? `${f.name} is written in the row's notes.`
+        : `${f.name} holds a list of rows; ask Alpha to change it.`
 // A choice holding several (tags, core step 3c): a list, shown as chips.
 export const isTags = (f: FieldView) => f.kind === 'choice' && f.many
 

@@ -36,7 +36,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its main tables with their counts (a table part of a row, or setup, is not a tab), Conversation, Agents and notes | 26 Oct, 27 Oct | — |
 | M2 | Nothing sits under a table or a page; agents, the module's other tables (setup, and parts with what they are part of), notes, recent activity and Governance are the Agents and notes tab | 26 Oct, 27 Oct | — |
-| M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss | 26 Oct, 27 Oct | — |
+| M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; New or Add (the one list control, 30 Oct) starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss | 26 Oct, 27 Oct | — |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 
 ## Table and toolbar
@@ -124,8 +124,8 @@ held by review. Dates are 2026.
 - A module opens on its Overview: the pulse strip, its own work left, the standard column right
   (Interview me, Files, Agents, Intelligence, What Alpha may do, Tables); a card's head is its name
   only; nothing on it twice (Vikas, 27 Oct; replaces M1 and M2 if agreed).
-- The standard column is the default, not a suggestion: blocks that move (29 Oct) move within the
-  work column or within the standard column, which opens on the right in every module (Vikas, 30 Oct).
+- The standard column is the default, not a suggestion: it opens on the right in every module, and
+  blocks move within or across the two columns (Vikas, 30 Oct).
 - Intelligence has Connections, Second Brain, Agents and Governance. Second Brain is the layer
   across modules. Governance is what Alpha keeps about itself: notes, rules and decisions
   (Vikas, 27 Oct).
@@ -138,13 +138,15 @@ held by review. Dates are 2026.
 - Home: greeting and date in the bar, Find on top, one strip across every module (Needs you,
   Interview me with its top questions, Agents, Tasks, What changed), two columns, no box to ask
   Alpha (Vikas, 28 Oct).
-- Interview me never sends a fixed prompt: it asks the next question the Interviewer prepared
-  today, with its why and "n of N"; on a hover it says "Prepared today: 7 questions, first: …";
-  while the questions are being prepared it says Preparing… (Vikas, 30 Oct; proposed).
+- Interview me never sends a fixed prompt and never a fixed count: it opens the Interviewer's
+  thread and asks the most useful question in today's ranked pool first, with its why, stopping
+  when the next is worth too little or the person is done; on a hover it says what was prepared
+  and the first question; while the questions are being prepared it says Preparing… with Stop
+  (Vikas, 30 Oct; proposed).
 - No Conversation tab in a module; Conversation is its own screen with the list view (Vikas, 26
   and 28 Oct).
-- Toolbar: search first and wide, Filter right beside ⋮, Columns inside ⋮, quick filters under it,
-  no row count under it; the count sits just above New (Vikas, 26 and 28 Oct; replaces T1 if agreed).
+- Toolbar: search first and wide, Filter right beside ⋮, Columns inside ⋮, nothing under it (the
+  lists are in the lists dropdown, below), no row count under it; the count sits just above New (Vikas, 26 and 28 Oct; replaces T1 if agreed).
 - People has Lists: Clients, Insurers, My team and the like from the tables whose rows are
   people, My contacts for the rest (Vikas, 28 Oct).
 - A chart shows only when it says something (its bars differ, eight rows or more); a hover adds
@@ -207,8 +209,8 @@ put it there and on the parts page (#/parts).
   page's name inside.
 - Governance is its own section, two columns, Can do and Cannot do, of enforced rules only:
   approved is solid, waiting is greyed on dots with Approve; agents' rules sit under the agent's
-  name. A rule is added by typing at the foot of a column or by asking Alpha; never an Add a rule
-  button. Figures and connection states are never rules.
+  name. A rule is added with the one list control (New, or Add at the column's head; below) or by
+  asking Alpha. Figures and connection states are never rules.
 - A module's page goes Agents, Governance, Tables, Second Brain. Modules are numbered in rail
   order and tables under them (2, 2.2, 2.2.1); every table counted is listed.
 - A page that only analyses a module's tables is charts on its Overview, not a page.
@@ -229,7 +231,7 @@ put it there and on the parts page (#/parts).
   often each runs (a dropdown, written into its file), when it last ran ("12 min ago", the time on
   hover), and Running or Paused beside the switch. New agent is the first control.
 - A blocked agent is red: a red dot, the reason in words, the one button that unblocks it.
-- Turning an agent on runs it now; "Running now…" until it ends. Sync now says when it last synced.
+- Turning an agent on runs it now; "Running now…" until it ends. Update now (below) re-runs it.
 - The rail's head is the workspace: picture and name, each changed by a double-click. Its menu
   holds who is signed in, Appearance on one line, Switch account and Log out; never a place the
   rail already has. Every count on the rail says on hover what it is made of.
@@ -250,9 +252,19 @@ put it there and on the parts page (#/parts).
   own Try again and Leave it, plus Try again all and Leave all; a new failure joins it.
 - An agent's post repeated unchanged shows once, at the time it was last said. A newer proposal
   from an agent stands for its earlier ones still waiting.
+- The Interviewer is listed under Agents after Alpha, as an agent (it is a skill of Alpha's
+  underneath). Interview me, on Home and on every Overview, opens its thread (scoped to the
+  module it was pressed in); its lines are labelled Interviewer.
+- Anything that loads past a moment says what it is doing ("Preparing…") with Stop beside it;
+  Stop ends the wait and the thread says "Stopped." An Alpha turn has Stop while it works.
+- New agent is the first control wherever agents are listed: atop the Agents list, atop the
+  agents table, and a "New agent" line at the foot of a module's Agents card (that module
+  chosen). The word a person sees is "agent", never "automation".
+- On a module's Overview, Interview me is a square, smaller than the strip's tiles, first in the
+  standard column above Agents; nothing sits beside the strip.
 - Tasks opens on the first list that holds something. Needs you holds every card waiting
   on the person, then the tasks waiting on them, each with its button.
-- Needs you switches List and Card with the tables' view dropdown; Card is a
+- Needs you switches List, Card and Slides with the tables' view dropdown; Card is a
   grid of tiles: what it is, its state, its module, its title, what it's about, its buttons. Every
   card's first button is the one thing to do; a click elsewhere opens it whole.
 
@@ -274,11 +286,14 @@ put it there and on the parts page (#/parts).
 - Resizing adds no chrome (Vikas, 30 Oct: "minimalistic UI rather than so many new elements"):
   no handles, bars or borders, only the cursor. A chart's x-axis (the strip it and its labels are
   drawn in) shows ↔ and a drag stretches the drawing wider or compresses it; its y-axis shows ↕
-  and a drag heightens or shortens it; the box's bottom-right corner shows ↘↖ and does both
+  and a drag heightens or shortens the drawing while its box keeps its height, the drawing then
+  scrolling up and down inside the box as a wider one scrolls sideways; the box's bottom-right
+  corner shows ↘↖ and is the one way to change the box, the drawing with it
   (`Stretch` in `ui/chart.tsx`). Bars and heat take their label strips as axes; donut and rings
   have the corner alone. A click on an axis strip is the strip's, so a double-click fits it back
-  and never opens what is beneath; a focused axis takes the arrows. A drawing wider than its box
-  scrolls sideways inside the box, never the page. Replaces the edge handles of the same
+  and never opens what is beneath; a focused axis takes the arrows. A drawing wider or taller
+  than its box scrolls inside the box, never the page; a double-click on the y-axis fits the
+  drawing back to the box. Replaces the edge handles of the same
   day and "stretches from its corner".
 - What opens on a hover is the top layer: a box that lets a tile or a list spill over what follows
   is raised as a whole (`relative z-(--z-raised)`), never `isolate` alone, since a positioned dot
@@ -293,7 +308,21 @@ put it there and on the parts page (#/parts).
   to Needs you without listing it; Interview me is a tile only while no question waits.
 - A task row is one grid: state, title and where, the date (a fixed column, at the right), the
   state pill (a fixed column), the button; the same place on every row.
-- A strip of tiles is even: as many to a row as fit, evened over the rows, never one alone.
+- A strip of tiles is one row of square tiles (`Strip` in `Overview.tsx`, Home's too) that scrolls
+  sideways inside itself, snapping to a tile, its scrollbar shown only under the pointer; a hover or
+  a click opens the whole name and what it counts in a popover over the page, never clipped by the
+  row. Replaces "evened over the rows" of the same day. Every tile is one layout, 200px square: the
+  number big and left, its words after it on the same line ("0 listings reviewed · of 13 this
+  week"), up to three lines; a number of four characters or more ("1,016") on its own line above
+  its words; a spark under the words; its one button at the foot. The signal is a small dot on the
+  button, before its words, and nowhere else on the tile. With nothing to do the button stays,
+  greyed, saying it is done ("All engaged"), its hover saying why (Vikas, 30 Oct; for Kenil's
+  review).
+- Wherever something can run again now (an agent's line, Insights, a table's readers, an agent's
+  page) it is one button, Update now, with when it last updated just before it ("Updated 12 min
+  ago", "Updated 12:42", "Updated 29 Oct, 13:34"; the full time on hover) and Updating… with the
+  icon turning while it runs (`ui/update-now.tsx`). Replaces Sync now, Look again and Run now
+  (Vikas, 30 Oct; for Kenil's review).
 - Every card is a block the person moves (its handle on hover) and resizes from its bottom-right
   corner alone, the ↘↖ cursor its only mark (width a share of its row, height in pixels, kept as
   "key@40x320"; double-click gives it back), kept per person by the core: Home, an
@@ -317,7 +346,40 @@ put it there and on the parts page (#/parts).
   list narrows every view to that agent, with Clear filters.
 - Every table and slideshow pages with the one Pager (`ui/pager.tsx`): ‹ and ›, each page's number
   while there are seven or fewer, else "3 of 12"; replaces T8's First and Last.
-- A goal's tile says what it counts and what its button opens, as the view shows them ("0 of 13
-  this week · 1,015 listings to review"); its links open in the side panel, filtered; a link to no
+- A goal's tile says what it counts ("0 listings reviewed · of 13 this week") and its button's
+  hover what it opens, as the view shows it ("1,015 listings to review"). A weekly goal counts the
+  rows whose stage was set this week, and never a row that left (Passed, Lost); its links open in the side panel, filtered; a link to no
   rows is not offered. A table opened in the panel shows just the rows a figure counted.
 - Under 64rem, task and card rows fold state, module and owner, so the title keeps its room.
+
+### Lists dropdown and choice colours (Vikas, 30 Oct)
+
+- The lists dropdown, named for the list on screen, holds the lists to choose: All and the saved
+  lists (★ on hover for the one the table opens on), then the values of the table's list choice
+  (Clients, Insurers, Leads, My team; else the board's choice), each with its count; search past
+  six, Add new… at its foot. Nothing repeats the lists under the toolbar (`ViewTabs`).
+- A list's actions (Rename, Duplicate, Open the table on this list, Delete; a value's Keep as a
+  saved list) are on a right-click of the dropdown or of the list's line in it, never in the
+  dropdown itself.
+- Every single and multi-select choice wears its own colour, the same in cells, chips, dropdown
+  lines, filters and the lists dropdown: the tone the field gives it, else `--opt-1…8` in
+  `app.css` by its place among the field's choices (words that are no choice, by their letters);
+  never random. Each pair passes 4.5:1 in light and dark. One helper: `optionClass` and `Choice`
+  in `ui/pill.tsx`.
+
+### Lists, double-click, editable by design, the panel's edge (Vikas, 30 Oct; for Kenil's review)
+
+- Every list a person keeps (Governance's Can do and Cannot do, How to work) is one control,
+  `EntryList` in `ui/entry-list.tsx`: empty, its only line is New, which opens a box; with entries,
+  a small Add at the right of its heading. A hover shows ✕ at an entry's right: undone as a removed
+  row is, or asked first where nothing undoes it (Revoke, Decline, Forget). A double-click edits an
+  entry, Enter saves, Escape lets it be. Replaces "a rule is added by typing at the foot of a
+  column; never an Add a rule button" (29 Oct) and M3's "+ Add".
+- A double-click edits, everywhere: a cell, a property, a state under a row's title, a title, a
+  name, notes. A single click selects or opens and never edits.
+- Editable by design: anything a card, an agent's line or a goal asks the person to fill, they can
+  change where they see it. A choice is the one dropdown; a relation picks from its table's rows;
+  a person field picks from the people; a date takes a date. Only what is worked out (a summary),
+  a file and a list of rows stay fixed, and a double-click on one says why in the tip.
+- The side panel stands apart from the page it opened over: a firmer left edge (`--edge`) and a
+  soft shadow cast on the page (`--shadow-side`), in both themes; nothing more.

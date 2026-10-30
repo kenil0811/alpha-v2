@@ -18,7 +18,7 @@ import { Bot, Check, ChevronDown, ChevronRight, LoaderCircle, Search } from 'luc
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged, type Block } from './arrange.tsx'
-import { useInterview } from './ask.ts'
+import { interviewMe, useInterview } from './ask.ts'
 import { isQuestion, Strip, signalOf, type Tile } from './Overview.tsx'
 import { peek } from './Peek.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
@@ -279,7 +279,7 @@ export function Home({
           tiles={homeTiles({ cards, signIns: signIns.length, agents, tasks, changed, interview })}
           onGo={(go) => {
             // the Interviewer's questions for today, never a fixed prompt (Vikas, 30 Oct)
-            if (go === 'ask' && !cards.some(isQuestion)) void interview.start()
+            if (go === 'ask' && !cards.some(isQuestion)) interviewMe(null)
             else if (go === 'ask') document.getElementById('home-needs')?.scrollIntoView()
             else if (go === 'tasks') peek('#/tasks?list=today')
             else if (go === 'agents') peek('#/intelligence/agents')
@@ -474,14 +474,16 @@ function homeTiles({
       label: 'Needs you',
       signal: signIns ? 'now' : (strongest(cards.map(signalOf)) ?? 'opt'),
       big: String(all),
-      small: questions.length
-        ? `${all === 1 ? 'thing' : 'things'}, ${questions.length} ${questions.length === 1 ? 'question' : 'questions'}`
-        : all === 1
-          ? 'thing'
-          : 'things',
+      small: `${all === 1 ? 'thing needs' : 'things need'} you${
+        questions.length
+          ? `, ${questions.length} ${questions.length === 1 ? 'question' : 'questions'}`
+          : ''
+      }`,
       lines: [],
       go: 'needs',
-      ...(all ? { act: { label: 'Review', go: 'needs' } } : {}),
+      act: all
+        ? { label: 'Review', go: 'needs' }
+        : { label: 'All done', off: true, tip: 'Nothing needs you now' },
     },
     ...(questions.length
       ? []
@@ -490,12 +492,19 @@ function homeTiles({
             key: 'ask',
             label: 'Interview me',
             signal: 'opt' as const,
-            big: interviewBig(interview),
-            small: interview.view?.today ? 'prepared' : 'a short one',
+            big: interview.view?.today && interview.view.left ? String(interview.view.left) : '',
+            small: interview.busy
+              ? "Interview me: preparing today's questions"
+              : interview.view?.today && interview.view.left
+                ? `${interview.view.left === 1 ? 'question' : 'questions'} prepared for you today`
+                : 'Interview me: a short one',
             // on a hover: what the Interviewer prepared today, and its first question
-            lines: [{ s: 'opt' as const, words: interview.problem ?? interview.tip }],
+            lines: [{ s: 'opt' as const, words: interview.tip }],
             go: 'ask',
-            act: { label: 'Start', go: 'ask' },
+            // busy while the Interviewer prepares (Vikas, 30 Oct)
+            act: interview.busy
+              ? { label: 'Preparing…', off: true, tip: "Today's questions are being prepared" }
+              : { label: 'Start', go: 'ask' },
           },
         ]),
     {
@@ -503,7 +512,7 @@ function homeTiles({
       label: 'Agents',
       signal: needs.length ? 'now' : on.length ? 'done' : 'opt',
       big: String(on.length),
-      small: `of ${agents.length} active`,
+      small: `of ${agents.length} agents active`,
       lines: [
         ...needs.slice(0, 3).map((a) => ({
           s: 'now' as const,
@@ -529,7 +538,7 @@ function homeTiles({
       label: 'Tasks',
       signal: tasks?.counts.overdue ? 'now' : due ? 'yes' : 'opt',
       big: String(due),
-      small: tasks?.counts.overdue ? `${tasks.counts.overdue} overdue` : 'due today',
+      small: `${due === 1 ? 'task' : 'tasks'} due${tasks?.counts.overdue ? `, ${tasks.counts.overdue} overdue` : ' today'}`,
       lines: (tasks?.lines ?? []).slice(0, 4).map((t) => ({
         s: (t.overdue ? 'now' : 'yes') as Signal,
         words: t.title,
@@ -543,18 +552,16 @@ function homeTiles({
       label: 'What changed',
       signal: 'opt',
       big: String(changed.length),
-      small: changed.length === 1 ? 'thing' : 'things',
+      small: `${changed.length === 1 ? 'thing' : 'things'} changed`,
       lines: changed.slice(0, 20).map((r) => ({
         s: 'opt' as const,
         words: r.words ?? r.name,
         href: `#/run/${r.id}`,
       })),
       go: 'changed',
-      ...(changed.length ? { act: { label: 'See changes', go: 'changed' } } : {}),
+      act: changed.length
+        ? { label: 'See changes', go: 'changed' }
+        : { label: 'Nothing new', off: true, tip: 'Nothing changed since you last looked' },
     },
   ]
 }
-
-// Interview me's figure: the questions left today, or Start until they are prepared.
-export const interviewBig = (i: ReturnType<typeof useInterview>): string =>
-  i.busy ? 'Preparing' : i.view?.today && i.view.left ? String(i.view.left) : 'Start'

@@ -53,7 +53,7 @@ export function SidePanel({
     <aside
       style={sizable ? { width: shown } : undefined}
       className={cn(
-        'relative flex min-h-0 shrink-0 flex-col border-line border-l bg-surface',
+        'relative flex min-h-0 shrink-0 flex-col border-edge border-l bg-surface shadow-side',
         !sizable && 'w-80',
       )}
     >

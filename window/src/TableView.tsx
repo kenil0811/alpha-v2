@@ -21,14 +21,11 @@ import {
   EllipsisVertical,
   Group,
   Plus,
-  RefreshCw,
   Search,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
-import { agoWords } from './AgentList.tsx'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
-import { when } from './ModulesAndAgents.tsx'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
 import { removeRule, setGroup, setRule } from './table/edits.ts'
@@ -50,7 +47,7 @@ import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsList } from './table/Toolbar.tsx'
-import { ViewTabs } from './table/ViewTabs.tsx'
+import { type QuickLists, ViewTabs } from './table/ViewTabs.tsx'
 import { canType, isTags, show, titleOf } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
@@ -60,10 +57,10 @@ import { TimelineView } from './table/views/TimelineView.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { cutClass } from './ui/cut.tsx'
 import { Select } from './ui/field.tsx'
 import { Pager } from './ui/pager.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 
 interface Working {
   view: string | null
@@ -346,6 +343,23 @@ export function TableView({
             </>
           }
           views={views}
+          counts={(id) =>
+            applyFilters(
+              base,
+              fields,
+              complete(views.find((v) => v.id === id)?.config ?? start).filters,
+              data.names,
+            ).length
+          }
+          quick={quickLists(quick, config, data.rows, setConfig, (value, rule) =>
+            act(async () => {
+              const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
+                name: value,
+                config: setRule(complete(start), rule),
+              })
+              setViews((vs) => [...vs, v])
+            }),
+          )}
           current={viewId}
           dirty={dirty}
           saveAt={saveAt}
@@ -357,20 +371,23 @@ export function TableView({
               if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
             })
           }
-          onSaveAs={(name) =>
+          onSaveAs={(name, from) =>
             act(async () => {
               const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
                 name,
-                config,
+                config:
+                  from === undefined
+                    ? config
+                    : complete(views.find((x) => x.id === from)?.config ?? start),
               })
               setViews((vs) => [...vs, v])
               setViewId(v.id)
               setConfig(complete(v.config))
             })
           }
-          onRename={(name) =>
+          onRename={(id, name) =>
             act(async () => {
-              if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
+              replace(await api.put<SavedView>(`/api/views/${id}`, { name }))
             })
           }
           onDefault={(id, on) =>
@@ -378,11 +395,11 @@ export function TableView({
               replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
             })
           }
-          onRemove={() =>
+          onRemove={(id) =>
             act(async () => {
-              if (!viewId) return
-              await api.delete(`/api/views/${viewId}`)
-              setViews((vs) => vs.filter((v) => v.id !== viewId))
+              await api.delete(`/api/views/${id}`)
+              setViews((vs) => vs.filter((v) => v.id !== id))
+              if (id !== viewId) return
               setViewId(null)
               setConfig(BLANK)
             })
@@ -426,31 +443,6 @@ export function TableView({
           ) : (
             <>
               {filters}
-              {/* a table's saved lists, one click each, with how many each holds (Vikas, 27 Oct:
-                  filters as buttons) */}
-              {views.length > 1 &&
-                views.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    className={cutClass(v.id === viewId)}
-                    onClick={() => pick(v.id)}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      {v.name}
-                      <span className="text-ink-3 tabular-nums">
-                        {applyFilters(base, fields, complete(v.config).filters, data.names).length}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              {/* a table's lists are its quick filters; a choice's buttons only where it has none */}
-              <Quick
-                field={views.length > 1 && !quickBy ? undefined : quick}
-                config={config}
-                rows={data.rows}
-                onConfig={setConfig}
-              />
               <Chips
                 fields={fields}
                 config={config}
@@ -857,9 +849,9 @@ function barRule(field: FieldView, key: string): FilterRule {
   return { field: field.id, op: 'is', value: key }
 }
 
-// Sync now, beside New: runs, now, the module's agents that are on and are named after this
+// Update now, beside New: runs, now, the module's agents that are on and are named after this
 // table's rows or the rows it points at (a source's reader); shown only while there are such agents.
-// Beside it, when they last synced (Vikas, 29 Oct), or Syncing… while one runs.
+// Beside it, when they last updated (Vikas, 29 and 30 Oct), or Updating… while one runs.
 function SyncNow({ data }: { data: TableData }) {
   const [agents, setAgents] = useState<AgentView[]>([])
   const [tick, setTick] = useState(0)
@@ -877,7 +869,7 @@ function SyncNow({ data }: { data: TableData }) {
   ])
   const readers = agents.filter((a) => a.state === 'on' && names.has(a.name))
   const syncing = readers.some((a) => a.running)
-  // while one runs, ask again every few seconds, so Syncing… ends when it does
+  // while one runs, ask again every few seconds, so Updating… ends when it does
   useEffect(() => {
     if (!syncing) return
     const t = setTimeout(() => setTick((n) => n + 1), 4000)
@@ -892,75 +884,46 @@ function SyncNow({ data }: { data: TableData }) {
   return (
     <span className="mr-2 flex items-center gap-2">
       <Refusal words={problem} />
-      <span className="text-ink-3 text-sm" data-tip={last && !syncing ? when(last) : undefined}>
-        {syncing ? 'Syncing…' : last ? `Last synced ${agoWords(last)}` : 'Not synced yet'}
-      </span>
-      <Button
-        size="sm"
-        disabled={busy}
-        data-tip={`Run the ${readers.length} readers of these ${data.name.toLowerCase()} that are on, now`}
+      <UpdateNow
+        at={last}
+        busy={busy || syncing}
+        tip={`Run the ${readers.length} readers of these ${data.name.toLowerCase()} that are on, now`}
         onClick={() =>
           act(() => Promise.all(readers.map((a) => api.post(`/api/agents/${a.id}/run`))))
         }
-      >
-        <RefreshCw className="size-3.5" />
-        Sync now
-      </Button>
+      />
     </span>
   )
 }
 
-// Quick filters under the toolbar (Vikas, 27 Oct): All, then each of one choice's values with its
-// count, one click to keep to it; the same rule a Filter makes, so it shows and saves the same way.
-// a quick filter's button: the same everywhere a list is cut one click at a time
-function Quick({
-  field,
-  config,
-  rows,
-  onConfig,
-}: {
-  field: FieldView | undefined
-  config: ViewConfig
-  rows: RowView[]
-  onConfig: (c: ViewConfig) => void
-}) {
+// The values of the table's list choice (a list's tags, Clients and Insurers, else the board's
+// choice) as lists in the lists dropdown (Vikas, 27 and 30 Oct): each with its count, one click to
+// keep to it; the same rule a Filter makes, so it shows and saves the same way. Under two, none.
+function quickLists(
+  field: FieldView | undefined,
+  config: ViewConfig,
+  rows: RowView[],
+  onConfig: (c: ViewConfig) => void,
+  keep: (value: string, rule: FilterRule) => void,
+): QuickLists | null {
   if (!field) return null
   const held = (r: RowView) => {
     const v = r.values[field.slug]
     return Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)]
   }
-  // picked only when the rule is this one button's: one choice, not a list of them
+  // picked only when the rule is this one value's: one choice, not a list of them
   const rule = config.filters.rules.find((r) => r.field === field.id && r.op === 'in')
   const on = rule?.values?.length === 1 ? rule.values[0] : undefined
-  const counts = field.choices
-    .map((c) => ({ c, n: rows.filter((r) => held(r).includes(c)).length }))
-    .filter((x) => x.n)
-  if (counts.length < 2) return null
-  return (
-    <>
-      <button
-        type="button"
-        className={cutClass(!on)}
-        onClick={() => onConfig(removeRule(config, field.id))}
-      >
-        All
-      </button>
-      {counts.map(({ c, n }) => (
-        <button
-          key={c}
-          type="button"
-          className={cutClass(on === c)}
-          onClick={() =>
-            onConfig(
-              on === c
-                ? removeRule(config, field.id)
-                : setRule(config, { field: field.id, op: 'in', values: [c] }),
-            )
-          }
-        >
-          {c} <span className="text-ink-3 tabular-nums">{n}</span>
-        </button>
-      ))}
-    </>
-  )
+  const items = field.choices
+    .map((value) => ({ value, count: rows.filter((r) => held(r).includes(value)).length }))
+    .filter((x) => x.count)
+  if (items.length < 2) return null
+  const ruleOf = (value: string): FilterRule => ({ field: field.id, op: 'in', values: [value] })
+  return {
+    of: field,
+    items,
+    on,
+    pick: (value) => onConfig(setRule(removeRule(config, field.id), ruleOf(value))),
+    keep: (value) => keep(value, ruleOf(value)),
+  }
 }

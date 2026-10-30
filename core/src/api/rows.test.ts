@@ -233,3 +233,56 @@ describe('a row on its own', () => {
     await a.close()
   })
 })
+
+// What the person is asked to fill, they can (Vikas, 30 Oct): a relation is picked from its
+// table's rows and a person from their people, in the window; anything else is refused in words.
+describe('picking a row or a person', () => {
+  it('sets a relation to a row of its table and a person field to one of the people', async () => {
+    const { clients, acme, bolt } = firm()
+    world.shape.addFields(clients.id, [{ name: 'Lead', kind: 'person' }], { actor: alpha })
+    const cm = world.shape.makeModule('Contacts', { actor: alpha })
+    const cards = world.shape.makeTable(
+      cm.id,
+      'Cards',
+      [
+        { name: 'Name', kind: 'text' },
+        { name: 'Email', kind: 'email' },
+      ],
+      { actor: alpha },
+    )
+    world.people.mapTable(
+      cards.id,
+      { each: 'person', name: 'Name', emails: 'Email' },
+      { actor: alpha },
+    )
+    world.records.add(
+      cards.id,
+      [{ values: { Name: 'Ann Lee', Email: 'ann@lee.example' }, provenance: looked }],
+      { actor: alpha },
+    )
+    const ann = world.people.list('person', 'Ann')[0] as { id: string }
+    const visits = world.shape.table('Visits') as Table
+    const visit = world.records.list(visits.id)[0]?.id as string
+    const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
+    const set = (table: string, row: string, field: string, value: unknown) =>
+      a.inject({
+        method: 'POST',
+        url: `/api/tables/${table}/rows/${row}`,
+        headers: ok,
+        payload: { field, value },
+      })
+    expect((await set(visits.id, visit, 'Client', bolt)).statusCode).toBe(200)
+    expect(world.records.get(visit)?.record.values.client).toBe(bolt)
+    // a row of another table is not one it can point at
+    const wrong = await set(visits.id, visit, 'Client', visit)
+    expect(wrong.statusCode).toBe(409)
+    expect(wrong.json().problem).toMatch(/takes a row of Clients/)
+    expect((await set(clients.id, acme, 'Lead', ann.id)).statusCode).toBe(200)
+    expect(world.records.get(acme)?.record.values.lead).toBe(ann.id)
+    expect((await set(clients.id, acme, 'Lead', 'p_nobody')).statusCode).toBe(409)
+    // the window's own list of rows says what each relation points at
+    const page = (await a.inject({ url: `/api/rows/${visit}`, headers: ok })).json() as RowPageView
+    expect(page.fields.find((f) => f.name === 'Client')?.relatesTo).toBe(clients.id)
+    await a.close()
+  })
+})

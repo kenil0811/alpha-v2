@@ -72,8 +72,17 @@ export function registerTables(ctx: Ctx): void {
     const t = world.shape.table(id)
     const f = t?.fields.find((x) => x.name === field)
     if (!t || !f) throw new Refused('That field is not there.')
-    if (f.kind === 'relation' || f.kind === 'file' || f.kind === 'person')
-      throw new Refused(`${f.name} is set by asking Alpha, not from here.`)
+    // a row or a person is picked (Vikas, 30 Oct: what the person is asked to fill, they can):
+    // each pick must be a row of the table it points at, or one of the person's people
+    if (f.kind === 'file') throw new Refused(`${f.name} is added from the row's files.`)
+    for (const v of value == null ? [] : Array.isArray(value) ? value : [value]) {
+      if (f.kind === 'relation' && world.records.tableOf(String(v))?.id !== f.relatesTo)
+        throw new Refused(
+          `${f.name} takes a row of ${world.shape.table(f.relatesTo ?? '')?.name ?? 'its table'}.`,
+        )
+      if (f.kind === 'person' && !world.people.names([String(v)])[String(v)])
+        throw new Refused(`${f.name} takes one of your people.`)
+    }
     const r = world.records.list(t.id).find((x) => x.id === row)
     if (!r) throw new Refused(`${t.name} has no such row.`)
     const said =

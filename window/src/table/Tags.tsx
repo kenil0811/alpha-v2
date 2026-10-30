@@ -8,9 +8,8 @@ import { type KeyboardEvent, useState } from 'react'
 import { askForNew } from '../ask.ts'
 import { cn } from '../ui/cn.ts'
 import { AddNew, useStars } from '../ui/field.tsx'
-import { Pill } from '../ui/pill.tsx'
+import { Choice } from '../ui/pill.tsx'
 import { MenuLine } from '../ui/popover.tsx'
-import { DOT } from './values.ts'
 
 // Chips in the room there is: the first two, the second cut with an ellipsis if it must be, and
 // how many more; the whole list is on the tip.
@@ -23,12 +22,7 @@ export function TagChips({ field, value }: { field: FieldView; value: unknown })
       data-tip={held.length > 1 ? held.join(', ') : undefined}
     >
       {held.slice(0, 2).map((t, i) => (
-        <Pill key={t} className={i ? 'min-w-0 shrink' : 'max-w-full'}>
-          {field.tones[t] && (
-            <span className={cn('size-1.75 shrink-0 rounded-full', DOT[field.tones[t]])} />
-          )}
-          <span className="truncate">{t}</span>
-        </Pill>
+        <Choice key={t} of={field} value={t} className={i ? 'min-w-0 shrink' : undefined} />
       ))}
       {more > 0 && <span className="shrink-0 text-ink-3 text-sm">+{more}</span>}
     </span>
@@ -93,10 +87,9 @@ export function TagPicker({
                 checked={now.includes(c)}
                 onChange={(e) => flip(c, e.target.checked)}
               />
-              {field.tones[c] && (
-                <span className={cn('size-1.75 shrink-0 rounded-full', DOT[field.tones[c]])} />
-              )}
-              <span className="min-w-0 flex-1 truncate text-ink">{c}</span>
+              <span className="min-w-0 flex-1">
+                <Choice of={field} value={c} />
+              </span>
               {s && (
                 <button
                   type="button"

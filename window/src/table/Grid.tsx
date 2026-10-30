@@ -34,8 +34,9 @@ import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
-import { Pill } from '../ui/pill.tsx'
+import { Choice } from '../ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
+import { tipNow } from '../ui/tooltip.tsx'
 import { CellHistory } from './CellHistory.tsx'
 import { ColumnMenu } from './ColumnMenu.tsx'
 import { cycleSort, setTotal, setWidth } from './edits.ts'
@@ -55,8 +56,9 @@ import type { LayoutNow } from './layout.ts'
 import { RowMenu } from './RowMenu.tsx'
 import { TagChips, TagPicker } from './Tags.tsx'
 import {
+  canChange,
+  canPick,
   canType,
-  DOT,
   EMPTY_CELL,
   EMPTY_WORDS,
   hrefOf,
@@ -68,7 +70,9 @@ import {
   readValue,
   show,
   TINT,
+  titleOf,
   typedOf,
+  whyFixed,
 } from './values.ts'
 
 type Item = { kind: 'group'; group: Group } | { kind: 'row'; row: RowView }
@@ -454,7 +458,8 @@ export function Grid({
                           inRange={inRange(r.id, f.slug)}
                           // a row kept on its own page opens there from its name
                           onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
-                          onEdit={!readOnly && canType(f) ? () => startEditing(here) : undefined}
+                          onEdit={!readOnly && canChange(f) ? () => startEditing(here) : undefined}
+                          fixed={readOnly || canChange(f) ? undefined : whyFixed(f)}
                           onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
@@ -781,6 +786,7 @@ function Cell({
   onPick,
   onEdit,
   onOpen,
+  fixed,
 }: {
   field: FieldView
   row: RowView
@@ -794,6 +800,7 @@ function Cell({
   onPick: () => void
   onEdit: (() => void) | undefined
   onOpen: (() => void) | undefined
+  fixed?: string | undefined // why a double-click does not change it (a summary, a file)
 }) {
   const value = r.values[f.slug]
   const source = r.sources[f.slug]
@@ -820,9 +827,9 @@ function Cell({
           else if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
           else onPick()
         }}
-        onDoubleClick={onEdit}
+        onDoubleClick={onEdit ?? (fixed ? (e) => tipNow(e.currentTarget) : undefined)}
         onKeyDown={key}
-        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : undefined}
+        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : fixed}
         className={cn(
           'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
@@ -837,13 +844,8 @@ function Cell({
           </span>
         ) : isTags(f) ? (
           <TagChips field={f} value={value} />
-        ) : f.kind === 'choice' && f.tones[text] ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <span className={cn('size-1.75 shrink-0 rounded-full', DOT[f.tones[text]])} />
-            <span className="truncate">{text}</span>
-          </span>
         ) : f.kind === 'choice' ? (
-          <Pill>{text}</Pill>
+          <Choice of={f} value={text} />
         ) : (
           <span
             className={cn(
@@ -947,6 +949,17 @@ export function EditCell({
         </Popover>
       </>
     )
+  // a row or a person: the same dropdown, of the rows it can point at or of your people
+  if (canPick(field))
+    return (
+      <PickCell
+        field={field}
+        value={value}
+        onPick={(v) => void save(v)}
+        onKeyDown={key}
+        box={box}
+      />
+    )
   // a choice: the one dropdown, open at once (a double-click shows the list), saved on a pick
   return field.kind === 'choice' ? (
     <Select
@@ -956,6 +969,7 @@ export function EditCell({
       title={problem ?? undefined}
       onChange={(e) => void save(e.target.value)}
       onDismiss={() => void save()}
+      of={field}
       stars={field.id}
       adds={{
         what: 'choice',
@@ -984,6 +998,49 @@ export function EditCell({
       onKeyDown={key}
       className={cn(box, NUMERIC.has(field.kind) && 'text-right tabular-nums')}
     />
+  )
+}
+
+// The rows a relation can point at, or the person's people, as the one dropdown, open at once.
+function PickCell({
+  field,
+  value,
+  onPick,
+  onKeyDown,
+  box,
+}: {
+  field: FieldView
+  value: unknown
+  onPick: (id: string) => void
+  onKeyDown: (e: KeyboardEvent) => void
+  box: string
+}) {
+  const [picks, setPicks] = useState<{ id: string; label: string }[] | null>(null)
+  useEffect(() => {
+    const to = field.kind === 'person' ? '/api/kept/people' : `/api/tables/${field.relatesTo}`
+    api
+      .get<{ fields: FieldView[]; rows: RowView[] }>(to)
+      .then((t) => t.rows.map((r) => ({ id: r.id, label: titleOf(t.fields, r) })))
+      .then(setPicks, () => setPicks([]))
+  }, [field])
+  if (!picks) return <span className={cn(box, 'flex items-center text-ink-3')}>Loading…</span>
+  return (
+    <Select
+      startOpen
+      value={typeof value === 'string' ? value : ''}
+      aria-label={field.name}
+      onChange={(e) => onPick(e.target.value)}
+      onDismiss={() => onPick(typeof value === 'string' ? value : '')}
+      onKeyDown={onKeyDown}
+      className={box}
+    >
+      <option value="" />
+      {picks.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.label}
+        </option>
+      ))}
+    </Select>
   )
 }
 

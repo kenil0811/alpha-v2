@@ -99,6 +99,7 @@ export function Board({
                   disabled={busy && on === r.id}
                   aria-label={`Move to another ${by.name.toLowerCase()}`}
                   onChange={(e) => move(r.id, e.target.value)}
+                  of={by}
                   stars={by.id}
                   adds={{
                     what: 'choice',

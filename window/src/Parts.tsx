@@ -9,6 +9,7 @@ import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { Cut } from './ui/cut.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
+import { EntryList } from './ui/entry-list.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { IconTile, IconTiles } from './ui/icon-tile.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
@@ -25,6 +26,7 @@ export function Parts() {
   const [on, setOn] = useState(true)
   const [cut, setCut] = useState('today')
   const [side, setSide] = useState('general')
+  const [entries, setEntries] = useState(['Draft follow-ups', 'File what it reads'])
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
@@ -120,6 +122,34 @@ export function Parts() {
                 <MessageCircleQuestion className="size-4" />
                 Interview me
               </Button>
+            </div>
+          </Section>
+          <Section title="A kept list">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <EntryList
+                head="Kept"
+                items={entries}
+                idOf={(e) => e}
+                textOf={(e) => e}
+                placeholder="A new entry"
+                onAdd={async (w) => {
+                  setEntries([...entries, w])
+                  return true
+                }}
+                onEdit={async (e, w) => {
+                  setEntries(entries.map((x) => (x === e ? w : x)))
+                  return true
+                }}
+                onRemove={(e) => setEntries(entries.filter((x) => x !== e))}
+              />
+              <EntryList
+                head="Empty"
+                items={[] as string[]}
+                idOf={(e) => e}
+                textOf={(e) => e}
+                placeholder="A new entry"
+                onAdd={async () => true}
+              />
             </div>
           </Section>
           <Section title="A list">

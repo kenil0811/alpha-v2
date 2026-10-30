@@ -6,7 +6,7 @@
 import type { AgentView, RuleView, RunView, UsageView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
-import { Blocked, costHref, OnCell, RunsCell, resultWords } from './AgentList.tsx'
+import { Blocked, costHref, lastRun, OnCell, RunsCell, resultWords } from './AgentList.tsx'
 import { api } from './api.ts'
 import { Arranged } from './arrange.tsx'
 import { startAsk } from './ask.ts'
@@ -19,8 +19,8 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row } from './ui/list.tsx'
-import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 import { Words } from './ui/words.tsx'
 
 export type ItemKind = 'agent' | 'run' | 'rule'
@@ -172,14 +172,12 @@ function AgentPage({
     <Page kind={`Agent in ${m.name}`} title={a.name}>
       <div className="flex flex-wrap items-center gap-2">
         <OnCell agent={a} />
-        <Button
-          size="sm"
-          disabled={busy || a.running}
+        <UpdateNow
+          at={lastRun(a)}
+          busy={busy || a.running}
+          tip={`Run ${a.name} now`}
           onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
-        >
-          Run now
-        </Button>
-        {a.running && <Pill tone="accent">Running now…</Pill>}
+        />
         <Refusal words={problem} />
       </div>
       {a.blocked && (
