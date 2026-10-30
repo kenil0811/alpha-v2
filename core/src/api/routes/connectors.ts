@@ -31,6 +31,13 @@ export function registerConnectors(ctx: Ctx): void {
     return by
   }
 
+  // who set a connection up, in words (step 2, part 4)
+  const ownerWords = (madeBy: string) => {
+    const [kind, id] = madeBy.split(/:(.*)/s)
+    if (kind === 'person') return id === user.id ? 'You' : (world.user(id ?? '')?.name ?? 'Someone')
+    return 'Alpha'
+  }
+
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
     const refused = refusals()
     return {
@@ -55,6 +62,7 @@ export function registerConnectors(ctx: Ctx): void {
           inBrowser: c?.manifest.auth === 'browser',
           loaded: !!c,
           state: k.state,
+          owner: ownerWords(k.madeBy),
           health: c
             ? k.health
             : 'Its connector is not loaded: add it below, and this connection reads again.',

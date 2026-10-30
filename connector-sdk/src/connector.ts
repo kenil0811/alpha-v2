@@ -201,11 +201,11 @@ export function defineTool<S extends z.ZodRawShape>(t: Tool<S>): Tool<S> {
 // busy: the service asked to wait ("too many requests"), so nothing was done and the runtime waits
 // and tries again, for as long as it asked (retryAfterMs) when it said
 export class Problem extends Error {
-  readonly kind: 'sign_in' | 'blocked' | 'gone' | 'busy' | 'other'
+  readonly kind: 'sign_in' | 'blocked' | 'gone' | 'busy' | 'waiting' | 'other'
   readonly retryAfterMs: number | undefined
   constructor(
     words: string,
-    kind: 'sign_in' | 'blocked' | 'gone' | 'busy' | 'other' = 'other',
+    kind: 'sign_in' | 'blocked' | 'gone' | 'busy' | 'waiting' | 'other' = 'other',
     options: { retryAfterMs?: number } = {},
   ) {
     super(words)

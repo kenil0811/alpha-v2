@@ -21,7 +21,8 @@ export interface ConnectionView {
   account: string
   inBrowser: boolean // signed in to in Google Chrome, and read as the person
   loaded: boolean // its connector is in the loaded set; else it waits until that is added
-  state: 'connected' | 'needs_sign_in' | 'broken' | 'paused'
+  state: 'connected' | 'needs_sign_in' | 'broken' | 'paused' | 'waiting' // waiting: for the customer's own step, said in health
+  owner: string // who set it up: You, a name, or Alpha
   health: string | null
   lastSyncAt: string | null
   tables: { id: string; name: string; hidden: boolean }[] // what it keeps, maybe out of the sidebar

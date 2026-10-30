@@ -1,0 +1,23 @@
+name: connection-waits
+title: A connection waits for the customer, is not retried, and connects once their step is done
+why: >
+  Step 2, part 4 (Kenil's ok, 30 Oct): a setup step only the client can do (their IT approving
+  Alpha for the tenant) is a state of its own, Waiting for the customer, with what they must do
+  in words; Alpha stops retrying it on its schedule; Try again checks once more and connects when
+  the step is done. Each connection names who set it up.
+steps:
+  - connector: { from: journeys/fixtures/connectors/tenant, account: '{tmp}' }
+    checks:
+      - connection: { connector: tenant, state: waiting, health: 'Your IT has to approve Alpha' }
+      - connection: { connector: tenant, owner: 'person' }
+      - rows_in: { table: Tenant rows, count: 0 }
+      - errors: 0
+  - due: true
+    checks:
+      - connector_calls: { words: 'Tenant: sync', count: 0 }
+  - customer_does: approved
+  - try_again: tenant
+    checks:
+      - connection: { connector: tenant, state: connected }
+      - rows_in: { table: Tenant rows, count: 1 }
+      - errors: 0

@@ -160,19 +160,23 @@ export function Home({
                   <Line
                     key={a.connector}
                     icon={<KeyRound className="size-3.5 text-warn" />}
-                    head="Sign-in"
+                    head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
                     words={
-                      a.inBrowser
-                        ? `${a.title} needs you to sign in: it opens in Chrome`
-                        : `${a.title} needs you to sign in again`
+                      a.waiting
+                        ? `${a.title}: ${a.waiting}`
+                        : a.inBrowser
+                          ? `${a.title} needs you to sign in: it opens in Chrome`
+                          : `${a.title} needs you to sign in again`
                     }
-                    {...(a.inBrowser
-                      ? {
-                          onClick: () => {
-                            void api.post(`/api/connections/${a.connection}/sign-in`)
-                          },
-                        }
-                      : { href: `#/settings?connect=${a.connector}` })}
+                    {...(a.waiting
+                      ? { href: '#/intelligence/connections' }
+                      : a.inBrowser
+                        ? {
+                            onClick: () => {
+                              void api.post(`/api/connections/${a.connection}/sign-in`)
+                            },
+                          }
+                        : { href: `#/settings?connect=${a.connector}` })}
                   />
                 ))}
               </Group>

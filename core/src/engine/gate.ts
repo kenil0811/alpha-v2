@@ -5,6 +5,7 @@
 
 import type { CallSays } from '../connectors/process.ts'
 import type { ConnectorService } from '../connectors/service.ts'
+import { undoOf } from '../connectors/takeback.ts'
 import { decide, gateOf } from '../gates/gates.ts'
 import type { User, World } from '../world/world.ts'
 import type { Decision } from './provider.ts'
@@ -239,7 +240,7 @@ export class Gatekeeper {
     const result = resultOf(call.result)
     const undo =
       made && call.ok && this.connectors
-        ? await this.connectors.undoOf(made.tool, made.input, result)
+        ? await undoOf(this.connectors, made.tool, made.input, result)
         : null
     this.world.line({
       actor: { kind: 'alpha' },

@@ -5,7 +5,9 @@ import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
 import { actorName, type WriteCtx } from './shape/index.ts'
 
-export type ConnectionState = 'connected' | 'needs_sign_in' | 'broken' | 'paused'
+// waiting: a setup step only the customer can do (step 2, part 4); health says what, and syncs
+// are not retried until Try again
+export type ConnectionState = 'connected' | 'needs_sign_in' | 'broken' | 'paused' | 'waiting'
 
 export interface Connection {
   id: string
@@ -19,6 +21,7 @@ export interface Connection {
   lastRows: number | null
   lastNewAt: string | null
   hosts: string[] // what the person approved beyond its connector's own hosts
+  madeBy: string // who set it up (person:<id>, system): its owner
 }
 
 interface ConnectionRow {
@@ -33,6 +36,7 @@ interface ConnectionRow {
   last_rows: number | null
   last_new_at: string | null
   hosts: string
+  made_by: string
 }
 
 function toConnection(r: ConnectionRow): Connection {
@@ -48,6 +52,7 @@ function toConnection(r: ConnectionRow): Connection {
     lastRows: r.last_rows,
     lastNewAt: r.last_new_at,
     hosts: JSON.parse(r.hosts || '[]') as string[],
+    madeBy: r.made_by,
   }
 }
 

@@ -56,6 +56,7 @@ const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   needs_sign_in: ['Needs you to sign in again', 'warn'],
   broken: ['Not working', 'bad'],
   paused: ['Paused', 'neutral'],
+  waiting: ['Waiting for the customer', 'warn'],
 }
 
 // The pictures a connector can ask for (its manifest's icon).
@@ -885,6 +886,7 @@ function ConnectionLine({
   const about = (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span>Last read {when(k.lastSyncAt)}</span>
+      <span>Set up by {k.owner}</span>
       {k.tables.map((t) => (
         <span key={t.id}>
           Kept in{' '}
@@ -945,7 +947,7 @@ function ConnectionLine({
           disabled={busy}
           onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
         >
-          Read now
+          {k.state === 'waiting' ? 'Try again' : 'Read now'}
         </Button>
       )}
       <More label="More" disabled={busy}>

@@ -79,12 +79,13 @@ export function registerStream(ctx: Ctx): void {
         })),
       attention: world.connections
         .list()
-        .filter((k) => k.state === 'needs_sign_in')
+        .filter((k) => k.state === 'needs_sign_in' || k.state === 'waiting')
         .map((k) => ({
           connector: k.connector,
           title: engine.connectors?.find(k.connector)?.manifest.title ?? k.connector,
           connection: k.id,
           inBrowser: engine.connectors?.find(k.connector)?.manifest.auth === 'browser',
+          waiting: k.state === 'waiting' ? k.health : null,
         })),
       tasks: world.tasks.counts(),
       reading: engine.connectors?.reading() ?? [],

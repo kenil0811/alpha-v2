@@ -225,7 +225,14 @@ export interface Stream {
   running: { id: string; name: string; module: string | null }[] // agents' runs going now
   reading: { connection: string; title: string; account: string }[] // connections being read now
   // connections that need the person to sign in; one read as them signs in in Chrome
-  attention: { connector: string; title: string; connection: string; inBrowser: boolean }[]
+  // connections that need the person: a sign-in, or the customer's own step (waiting, with what)
+  attention: {
+    connector: string
+    title: string
+    connection: string
+    inBrowser: boolean
+    waiting: string | null
+  }[]
   tasks: { open: number; overdue: number; today: number } // for the rail's badge
   settingUp: string | null // what the core is still putting in after it started (the kits)
   lastId: number

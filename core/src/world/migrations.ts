@@ -4,6 +4,7 @@
 import { chainJournal } from './audit.ts'
 import type { Db } from './db.ts'
 import { addSeq, foldProvenance, toRealTables } from './migrate13.ts'
+import { connectionStates } from './migrate29.ts'
 
 // A migration is SQL, or code where the shape of the data decides the statements.
 export const MIGRATIONS: (string | ((db: Db) => void))[] = [
@@ -592,7 +593,7 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   `
   ALTER TABLE tables ADD COLUMN added_on TEXT;
   `,
-  // 28: the audit journal (step 2, part 3, 30 Oct): every line's hash over its content and the
-  // line before's; the lines there already chained once, oldest first
-  chainJournal,
+  chainJournal, // 28: the audit journal (step 2, part 3): every line chained to the one before
+
+  connectionStates, // 29: a connection waiting for the customer (step 2, part 4; migrate29.ts)
 ]

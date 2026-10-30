@@ -57,6 +57,8 @@ async function main(): Promise<void> {
     all &&= k === times
     const said = times > 1 ? `passed ${k} of ${times}` : k ? 'passed' : 'FAILED'
     console.log(`${name}: ${said}`)
+    // a crash is said here too, as a single journey writes no summary
+    for (const r of own) if (r.report.startsWith('it crashed')) console.log(`  ${r.report}`)
     done.set(name, [
       `- **${name}**: ${said}, ${own.map((r) => `${r.seconds} s`).join(', ')}`,
       ...own.map((r) => `  - ${r.passed ? 'passed' : 'failed'}: ${r.report}`),

@@ -116,7 +116,7 @@ export class ConnectorService {
   }
 
   // The tool a model-facing name stands for, when it is a connector's.
-  private toolOf(name: string): { c: Connector; tool: string; spec: Tool } | null {
+  toolOf(name: string): { c: Connector; tool: string; spec: Tool } | null {
     const parts = splitMcpName(name)
     if (!parts) return null
     const c = this.set.find((k) => k.manifest.name === parts.connector)
@@ -237,52 +237,6 @@ export class ConnectorService {
     return { ...says, words: says.words ?? `Reached ${t.c.manifest.title}` }
   }
 
-  // What a done call's take-back would do, in words (step 2, part 2); none when it is final.
-  async undoOf(
-    name: string,
-    input: Record<string, unknown>,
-    result: unknown,
-  ): Promise<{
-    kind: 'final' | 'undoable' | 'counter'
-    said: string | null
-    words: string | null
-  } | null> {
-    const t = this.toolOf(name)
-    if (!t) return null
-    const says = await this.says(name, input)
-    if (!says?.undo) return null
-    if (says.undo.kind === 'final') return { ...says.undo, words: null }
-    const words = isRemote(t.c)
-      ? await t.c.remote.undoWords(t.tool, input, result)
-      : t.spec.undo && t.spec.undo !== 'final'
-        ? t.spec.undo.words(input as never, result)
-        : null
-    return { ...says.undo, words }
-  }
-
-  // A done call taken back, from the line that said it was done (Revert, step 2, part 2): its
-  // tool's take-back runs with what the call returned, journaled as any call; the words say it.
-  async takeBack(line: { data: Record<string, unknown> }): Promise<{ words: string }> {
-    const undo = line.data.undo as { words?: string; result?: unknown } | undefined
-    const call = line.data.call as string | undefined
-    const from = this.world
-      .lines({ kinds: ['call'], limit: 5000 })
-      .find((l) => l.data.call === call)
-    const t = from ? this.toolOf(String(from.data.tool)) : undefined
-    if (!t?.spec.undo || t.spec.undo === 'final' || !undo)
-      throw new Refused('That cannot be taken back.')
-    const c = this.connector(t.c.manifest.name)
-    await t.spec.undo.run(
-      this.call(c, this.connectionFor(c), 'write'),
-      from?.data.input as never,
-      undo.result,
-    )
-    const words = (undo.words ?? 'Taken back').replace(/^(\w+)s\b/, (_m, v: string) =>
-      v.endsWith('e') ? `${v}d` : `${v}ed`,
-    )
-    return { words }
-  }
-
   // The connectors' own processes, ended (a core that stops, a test that ends).
   close(): void {
     for (const c of this.set) if (isRemote(c)) c.remote.process.close()
@@ -308,8 +262,12 @@ export class ConnectorService {
       await c.check?.(this.call(c, conn))
     } catch (err) {
       this.fail(c, conn, err)
-      // a site the person signs in to is connected waiting on their sign-in, in Chrome
-      if (c.manifest.auth === 'browser' && err instanceof Problem && err.kind === 'sign_in') {
+      // a site the person signs in to is connected waiting on their sign-in, in Chrome; one
+      // waiting on the customer's own step is kept, waiting
+      if (
+        err instanceof Problem &&
+        ((c.manifest.auth === 'browser' && err.kind === 'sign_in') || err.kind === 'waiting')
+      ) {
         this.tables(c)
         return this.world.connections.get(conn.id) as Connection
       }
@@ -362,6 +320,15 @@ export class ConnectorService {
     if (!conn || conn.state === 'paused') return
     const c = this.find(conn.connector)
     if (!c?.sync) return
+    // waiting for the customer: Try again checks once more, and reads only once that is done
+    if (conn.state === 'waiting') {
+      try {
+        await c.check?.(this.call(c, conn))
+      } catch (err) {
+        this.fail(c, conn, err)
+        return
+      }
+    }
     const started = Date.now()
     // each read is a line for Activity: how long it took and whether it brought anything
     const read = (state: 'ok' | 'failed', words: string, quiet: boolean) =>
@@ -414,7 +381,7 @@ export class ConnectorService {
   async syncDue(now = Date.now()): Promise<void> {
     for (const conn of this.world.connections.list()) {
       const every = this.find(conn.connector)?.manifest.syncEveryMinutes
-      if (!every || conn.state === 'paused' || conn.state === 'needs_sign_in') continue
+      if (!every || ['paused', 'needs_sign_in', 'waiting'].includes(conn.state)) continue
       const last = conn.lastSyncAt ? Date.parse(conn.lastSyncAt) : 0
       const tried = this.tried.get(conn.id) ?? 0
       const again = Math.min(every, 30) * 60_000
@@ -425,9 +392,11 @@ export class ConnectorService {
   private fail(c: Connector, conn: Connection, err: unknown): void {
     const words = err instanceof Error ? err.message : String(err)
     const signIn = err instanceof Problem && err.kind === 'sign_in'
+    // a step only the customer can do (step 2, part 4): waited on, not retried
+    const waiting = err instanceof Problem && err.kind === 'waiting'
     this.world.connections.setState(
       conn.id,
-      signIn ? 'needs_sign_in' : 'broken',
+      signIn ? 'needs_sign_in' : waiting ? 'waiting' : 'broken',
       words,
       `${c.manifest.title} for ${conn.account}: ${words}`,
       { actor: { kind: 'connector', id: c.manifest.name } },
@@ -444,7 +413,7 @@ export class ConnectorService {
   }
 
   // Which connection a tool call is for: the one account, or the one named.
-  private connectionFor(c: Connector, account?: string): Connection {
+  connectionFor(c: Connector, account?: string): Connection {
     const conns = this.world.connections.list().filter((k) => k.connector === c.manifest.name)
     const conn = account
       ? conns.find((k) => k.account.toLowerCase() === account.toLowerCase())

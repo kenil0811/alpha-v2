@@ -71,6 +71,15 @@ export const Check = z.union([
     }),
   }),
   z.object({ connector_calls: z.object({ words: z.string(), count: z.number() }) }),
+  // a connection's state, what it says, or who set it up (step 2, part 4)
+  z.object({
+    connection: z.object({
+      connector: z.string(),
+      state: z.string().optional(),
+      health: z.string().optional(),
+      owner: z.string().optional(),
+    }),
+  }),
   // what the newest revert said, in part (step 2, part 2: a take-back outside Alpha)
   z.object({ reverted: z.string() }),
   // a connector's attempts the sandbox refused, listed under it (step 2, part 1, slice 2)
@@ -403,6 +412,21 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `“${check.connector_calls.words}” ${check.connector_calls.count} time(s)`,
       ok: n === check.connector_calls.count,
       saw: String(n),
+    }
+  }
+  if ('connection' in check) {
+    const c = check.connection
+    const k = world.connections.list().find((x) => x.connector === c.connector)
+    const saw = k ? `${k.state} | ${k.health ?? ''} | ${k.madeBy}` : 'no connection'
+    const ok =
+      !!k &&
+      (c.state === undefined || k.state === c.state) &&
+      (c.health === undefined || new RegExp(c.health, 'i').test(k.health ?? '')) &&
+      (c.owner === undefined || k.madeBy.startsWith(c.owner))
+    return {
+      check: `the ${c.connector} connection ${[c.state && `is ${c.state}`, c.health && `says /${c.health}/`, c.owner && `was set up by ${c.owner}`].filter(Boolean).join(', ')}`,
+      ok,
+      saw,
     }
   }
   if ('reverted' in check) {

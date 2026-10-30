@@ -528,6 +528,14 @@ line a day, which keeps each folded run's last hash so the chain verifies across
 fold is the one thing that deletes journal lines, and it journals itself. Everything else is kept
 for ever.
 
+**Connection states and owners** (step 2, part 4, Kenil's ok 30 Oct): a connection is connected,
+needs sign-in, not working, paused, or **waiting for the customer**: its connector's check said
+(a Problem of kind `waiting`) that a step only the customer can do is left, in words the
+connection shows ("Your IT has to approve Alpha for the tenant"). It is not read on its schedule;
+Try again (Read now) checks once more and reads once the step is done. Home lists it under Needs
+you, as a sign-in. Each connection says who set it up (its `made_by`: "Set up by You"), the
+owner that Dell's step, with users, builds on.
+
 **Signed packs** (slice 3, Kenil's yes 29 Oct): a kit's or a connector's pack carries SIGNATURE
 beside its PACK.json, an Ed25519 signature over PACK.json's bytes (every file and its hash), made
 with Kenil's key (`pnpm sign <pack>`; `pnpm sign --new-key` makes it once, the private half in his

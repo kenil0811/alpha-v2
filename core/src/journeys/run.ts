@@ -22,7 +22,7 @@ import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { config } from '../config.ts'
-import { loadConnector, loadSet, STANDARD_DIR } from '../connectors/discover.ts'
+import { linkShared, loadConnector, loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import { revertAll } from '../connectors/takeback.ts'
 import { Engine } from '../engine/engine.ts'
@@ -67,6 +67,11 @@ const Journey = z.object({
       // a made-up connector added from a folder, its {site}, {other} and {host} said as the site's
       // (by its name, by another, and its host), connected and read once
       connector: z.object({ from: z.string(), account: z.string() }).optional(),
+      // the customer's own step done (step 2, part 4): a file of this name in the journey's own
+      // folder ({tmp}, the account a made-up connector is connected to)
+      customer_does: z.string().optional(),
+      // Try again on a connection waiting for the customer, by its connector
+      try_again: z.string().optional(),
       // a kit installed from a folder, its agents on when the journey says so (all, or those named)
       kit: z
         .object({
@@ -172,6 +177,8 @@ export async function runOne(
     hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
   })
   let site: { server: Server; url: string } | null = null
+  // the journey's own folder, for a made-up connector's account ({tmp})
+  const tmp = mkdtempSync(join(tmpdir(), 'alpha-journey-tmp-'))
   const limit = config.limits().journey_step_minutes * 60_000
   const idle = () =>
     new Promise<boolean>((resolve) => {
@@ -303,15 +310,26 @@ export async function runOne(
               .replaceAll('{other}', url.replace('127.0.0.1', 'localhost'))
               .replaceAll('{host}', new URL(url).host),
           )
+      // the SDK and zod, linked to the core's own copies, as an added connector's are
+      linkShared(dir)
       const loaded = await loadConnector(
         dir,
         connectors.known().map((k) => k.manifest.name),
       )
       for (const k of loaded) connectors.add(k)
       const name = loaded[0]?.manifest.name ?? ''
-      what = `Added the made-up connector ${name} and connected it for ${c.account}`
-      await engine.connect(user, name, c.account, null)
-      await connectors.sync(world.connections.find(name, c.account)?.id ?? '')
+      const account = c.account.replaceAll('{tmp}', tmp)
+      what = `Added the made-up connector ${name} and connected it for ${account}`
+      const made = await engine.connect(user, name, account, null)
+      if (made.state === 'connected') await connectors.sync(made.id)
+    } else if (step.customer_does) {
+      writeFileSync(join(tmp, step.customer_does), 'done\n')
+      what = `The customer did their step: ${step.customer_does}`
+    } else if (step.try_again) {
+      const k = world.connections.list().find((x) => x.connector === step.try_again)
+      if (!k) throw new Error(`No connection of ${step.try_again} to try again.`)
+      await connectors.sync(k.id)
+      what = `Tried ${step.try_again} again`
     } else if (step.site) {
       site = await serve(resolve(base, step.site.from))
       what = `Served the made-up site ${step.site.from} at ${site.url}`
