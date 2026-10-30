@@ -26,28 +26,42 @@ async function main(): Promise<void> {
         ),
       ]
   if (!names[0]) throw new Error('Name a journey: node src/journeys/run.ts track-what-i-eat')
-  const done = new Map<string, string[]>()
+  // every run of every journey, a few at once, each on its own world: the next starts as one ends
+  type Run = { passed: boolean; report: string; seconds: number }
+  const runs = new Map<string, Run[]>()
+  const waiting = (names as string[]).flatMap((name) =>
+    Array.from({ length: times }, (_, i) => ({ name, at: i + 1 })),
+  )
+  const lanes = Math.min(waiting.length, config.limits().journeys_at_once)
+  await Promise.all(
+    Array.from({ length: lanes }, async () => {
+      for (let next = waiting.shift(); next; next = waiting.shift()) {
+        // one that crashes fails, with its words, and the others run on
+        const t0 = Date.now()
+        const r = await runOne(next.name, args, { at: next.at, of: times }).catch((err) => ({
+          passed: false,
+          report: `it crashed: ${err instanceof Error ? err.message : String(err)}`,
+          seconds: Math.round((Date.now() - t0) / 1000),
+        }))
+        runs.set(next.name, [...(runs.get(next.name) ?? []), r])
+        if (times > 1)
+          console.log(`  ${next.name} run ${next.at}: ${r.passed ? 'passed' : 'failed'}`)
+      }
+    }),
+  )
   let all = true
-  const one = async (name: string) => {
-    const runs: { passed: boolean; report: string; seconds: number }[] = []
-    for (let at = 1; at <= times; at++) runs.push(await runOne(name, args, { at, of: times }))
-    const k = runs.filter((r) => r.passed).length
+  const done = new Map<string, string[]>()
+  for (const name of names as string[]) {
+    const own = runs.get(name) ?? []
+    const k = own.filter((r) => r.passed).length
     all &&= k === times
     const said = times > 1 ? `passed ${k} of ${times}` : k ? 'passed' : 'FAILED'
     console.log(`${name}: ${said}`)
     done.set(name, [
-      `- **${name}**: ${said}, ${runs.map((r) => `${r.seconds} s`).join(', ')}`,
-      ...runs.map((r) => `  - ${r.passed ? 'passed' : 'failed'}: ${r.report}`),
+      `- **${name}**: ${said}, ${own.map((r) => `${r.seconds} s`).join(', ')}`,
+      ...own.map((r) => `  - ${r.passed ? 'passed' : 'failed'}: ${r.report}`),
     ])
   }
-  // a few at once, each on its own world: the next starts as one ends
-  const waiting = [...(names as string[])]
-  const lanes = Math.min(names.length, config.limits().journeys_at_once)
-  await Promise.all(
-    Array.from({ length: lanes }, async () => {
-      for (let name = waiting.shift(); name; name = waiting.shift()) await one(name)
-    }),
-  )
   const lines = (names as string[]).flatMap((n) => done.get(n) ?? [])
   // a folder's run, or a journey run many times: one summary beside the reports
   if (names.length > 1 || times > 1) {

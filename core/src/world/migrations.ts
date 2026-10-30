@@ -585,4 +585,9 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   `
   ALTER TABLE connections ADD COLUMN hosts TEXT NOT NULL DEFAULT '[]';
   `,
+  // 27: a table Alpha adds to only once the person has answered this word on a card (its kit's
+  // `added_on`, 29 Oct): DealPilot's sources, after their page is read and shown
+  `
+  ALTER TABLE tables ADD COLUMN added_on TEXT;
+  `,
 ]

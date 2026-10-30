@@ -4,6 +4,7 @@
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
+import { config } from '../../config.ts'
 import { FILING, type Filing } from '../../files/intake.ts'
 import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
@@ -31,9 +32,10 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
   return [
     tool(
       'ask',
-      'Put a question to the person as a card in their window, with options if there are a few clear ones. Or, when the person has just answered a waiting card in their own words, answer that card for them: answer_card, choice (one of its options) and words (theirs, quoted from their message).',
+      'Put a question to the person as a card in their window: question is one short line, and what it rests on (a preview, the rows it would add, their figures) goes in detail, in Markdown with lists, shown under it; options when there are a few clear ones. Or, when the person has just answered a waiting card in their own words, answer that card for them: answer_card, choice (one of its options) and words (theirs, quoted from their message).',
       {
         question: z.string().optional(),
+        detail: z.string().optional(),
         options: z.array(z.string()).optional(),
         answer_card: z.string().optional(),
         choice: z.string().optional(),
@@ -86,9 +88,16 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
             return ok(`The card is answered: ${done.state}.`)
           }
           if (!a.question?.trim()) throw new Refused('A question is needed.')
+          // a wall: the question is read at a glance; the rest is the card's detail (30 Oct)
+          const most = config.limits().question_characters
+          if (a.question.trim().length > most)
+            throw new Refused(
+              `The question is too long for a card (${a.question.trim().length} characters; ${most} at most): ask in one short line, and put what it rests on (the preview, the rows, their figures) in detail, as Markdown with a list.`,
+            )
           const card = world.cards.open({
             kind: 'question',
             words: a.question.trim(),
+            detail: a.detail?.trim() || null,
             options: a.options ?? [],
             actor: { kind: 'alpha' },
             user: here_.user.id,

@@ -166,6 +166,10 @@
           "tab": {
             "type": "boolean"
           },
+          "added_on": {
+            "type": "string",
+            "minLength": 1
+          },
           "fields": {
             "type": "array",
             "items": {

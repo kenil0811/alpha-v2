@@ -111,6 +111,9 @@ export const Manifest = z.object({
         setup: z.boolean().optional(),
         // a part or a setup table kept as a tab too, every row of it; the person's choice stands
         tab: z.boolean().optional(),
+        // Alpha adds a row only once the person has answered this word on a card (Add): a row
+        // that should be looked at and shown first (a source's page), never written on a hunch
+        added_on: z.string().min(1).optional(),
         fields: z.array(Field),
         // the kinds of document its rows take (a deal's teaser, CIM, NDA), filed on a row
         documents: z.array(z.string().min(1)).optional(),

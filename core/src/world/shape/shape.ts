@@ -208,13 +208,14 @@ export class Shape {
       hidden: number
       setup: number
       tab: number
+      added_on: string | null
       documents: string | null
       people: string | null
       about: string | null
       about_by: AboutBy | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, hidden, setup, tab, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, hidden, setup, tab, added_on, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -273,6 +274,7 @@ export class Shape {
       hidden: t.hidden === 1,
       setup: t.setup === 1,
       tab: t.tab === 1,
+      addedOn: t.added_on,
       fields,
       documents: t.documents ? parse<string[]>(t.documents, []) : null,
       people: t.people ? parse<PeopleMap | null>(t.people, null) : null,
@@ -482,6 +484,11 @@ export class Shape {
   setSetup(tableId: string, setup: boolean, ctx: WriteCtx): Table {
     return setSetup(this, tableId, setup, ctx)
   }
+  // The word its kit says lets Alpha add a row (added_on), or none: the kit's, on every install.
+  setAddedOn(tableId: string, word: string | null): void {
+    run(this.db, 'UPDATE tables SET added_on = ? WHERE id = ?', word, tableId)
+  }
+
   setTab(tableId: string, tab: boolean, ctx: WriteCtx): Table {
     return setTab(this, tableId, tab, ctx)
   }

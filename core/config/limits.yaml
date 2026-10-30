@@ -28,6 +28,11 @@ journey_times: 3
 # a time took twenty minutes). A journeys-runner judgement, never met by the person.
 journeys_at_once: 3
 
+# Characters a question card's question may run to: one short line, read at a glance (Kenil, 30
+# Oct: a question holding a whole preview). What it rests on goes in the card's detail. A wall on
+# the model, never met by the person.
+question_characters: 140
+
 # Attempts after the first, for a connector call that reads and failed in passing (a dropped
 # connection). A send or a write is never tried again: whether it was done is unknown (call A,
 # 28 Oct).

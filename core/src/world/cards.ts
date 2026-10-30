@@ -257,6 +257,34 @@ export class Cards {
     })
   }
 
+  // The person's answer that lets one row into a table its module adds to only on that word
+  // (added_on, 29 Oct): a card they answered with it, within its hours, taken once.
+  takeAnswer(user: string, word: string, hours: number): Card | undefined {
+    return tx(this.db, () => {
+      const r = one<CardRow>(
+        this.db,
+        `SELECT * FROM cards WHERE user_id = ? AND lower(answer) = lower(?) AND state IN ('yes', 'answered')
+         AND used_at IS NULL AND decided_at >= ? ORDER BY decided_at DESC LIMIT 1`,
+        user,
+        word,
+        new Date(Date.now() - hours * 3_600_000).toISOString(),
+      )
+      if (!r) return undefined
+      run(this.db, 'UPDATE cards SET used_at = ? WHERE id = ?', now(), r.id)
+      append(this.db, {
+        actor: { kind: 'system' },
+        kind: 'card_used',
+        words: `Went ahead: ${r.words}`,
+        data: { card: r.id },
+        user: r.user_id,
+        turn: r.turn_id,
+        module: r.module_id,
+        card: r.id,
+      })
+      return toCard({ ...r, used_at: now() })
+    })
+  }
+
   // The yes that lets one call through: found by the call itself, used once, and only within
   // its hours (limits.yaml yes_hours): a yes answers the call in front of the person, and the same
   // call hours later is out of that context (item 39 of the problems list, 25 Oct). An older yes

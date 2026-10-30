@@ -260,23 +260,28 @@ export async function runOne(
       const row = t
         ? world.records.list(t.id).find((r) => world.rowName(t, r.values) === d.on.row)
         : undefined
-      if (!t || !row) throw new Error(`No row ${d.on.row} in ${d.on.table} to drop files on.`)
-      const from = resolve(base, d.from)
-      const names = readdirSync(from).filter((n) => !d.only || n.includes(d.only))
-      for (const n of names) {
-        const out = engine.drop(
-          user,
-          readFileSync(join(from, n)),
-          n,
-          MIME[extname(n)] ?? 'application/octet-stream',
-        )
-        world.placeFile(out.file.hash, row.id, null, {
-          actor: { kind: 'person', id: user.id },
-          user: user.id,
-        })
+      // no row to drop on fails the journey, and the journeys after it still run
+      if (!t || !row) {
+        passed = false
+        what = `**No row ${d.on.row} in ${d.on.table} to drop files on.**`
+      } else {
+        const from = resolve(base, d.from)
+        const names = readdirSync(from).filter((n) => !d.only || n.includes(d.only))
+        for (const n of names) {
+          const out = engine.drop(
+            user,
+            readFileSync(join(from, n)),
+            n,
+            MIME[extname(n)] ?? 'application/octet-stream',
+          )
+          world.placeFile(out.file.hash, row.id, null, {
+            actor: { kind: 'person', id: user.id },
+            user: user.id,
+          })
+        }
+        await stillReading()
+        what = `Dropped ${names.length} file${names.length === 1 ? '' : 's'} from ${d.from} on ${d.on.row} in ${d.on.table}`
       }
-      await stillReading()
-      what = `Dropped ${names.length} file${names.length === 1 ? '' : 's'} from ${d.from} on ${d.on.row} in ${d.on.table}`
     } else if (step.connect) {
       what = `Connected ${step.connect.connector} for ${step.connect.account}, on recorded answers`
       await engine.connect(user, step.connect.connector, step.connect.account, 'recorded')

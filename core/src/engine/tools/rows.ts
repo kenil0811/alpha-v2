@@ -7,6 +7,7 @@ import { firstTouch } from '../context.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import { cardsCited, guard, ok, Provenance, tableOf, tool } from './common.ts'
+import { addedOnAnswer } from './walls.ts'
 
 export function rowTools({ world, here, ctx }: Tooling): ToolEntry[] {
   // a table's fields and meanings, the first time this session touches it
@@ -54,6 +55,7 @@ export function rowTools({ world, here, ctx }: Tooling): ToolEntry[] {
         guard(() => {
           const t = tableOf(world, table)
           cardsCited(world, rows)
+          addedOnAnswer(world, t, ctx().user ?? null)
           const ids = world.records.add(
             t.id,
             rows.map((r) => ({

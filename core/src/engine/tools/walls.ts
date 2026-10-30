@@ -5,8 +5,9 @@
 // instead, so the model builds the better shape in the same turn. Kits are checked, not walled.
 import { config } from '../../config.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { FieldInput, Module } from '../../world/shape/index.ts'
+import type { FieldInput, Module, Table } from '../../world/shape/index.ts'
 import { businessCase } from '../../world/shape/manifest.ts'
+import type { World } from '../../world/world.ts'
 
 export interface CaseInput {
   for: string
@@ -41,5 +42,17 @@ export function notAPeriod(name: string) {
   if (!hit) return
   throw new Refused(
     `${name} names a period (${hit}): make one table for every period, with a date on each row, and read ${hit} with a filter, by month in a grouped view, or as a summary.`,
+  )
+}
+
+// A table its module adds to only on the person's word (added_on, Kenil 29 Oct: DealPilot's
+// sources, added twice without their page read): Alpha's row waits for a card they answered with
+// it, and one answer lets one write in.
+export function addedOnAnswer(world: World, table: Table, user: string | null) {
+  const word = table.addedOn
+  if (!word) return
+  if (user && world.cards.takeAnswer(user, word, config.limits().yes_hours)) return
+  throw new Refused(
+    `${table.name} takes a row only after the person answers ${word} on a card: show them first what the row would be (its module's notes say how, and what to look at before asking), ask with ${word} as an option, then add it.`,
   )
 }

@@ -688,7 +688,15 @@ export function CardBox({
       waits="Waits for you"
     >
       <div className="font-medium text-ink text-lg">{card.words}</div>
-      {card.detail && <Preview detail={card.detail} />}
+      {/* a question's detail is words, in Markdown; a gate's is what would go, as it would go */}
+      {card.detail &&
+        (card.kind === 'question' ? (
+          <div className="rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
+            <Words text={card.detail} />
+          </div>
+        ) : (
+          <Preview detail={card.detail} />
+        ))}
       {card.restsOn.length > 0 && (
         <div className="text-ink-3 text-sm">Rests on {card.restsOn.join(' and ')}</div>
       )}

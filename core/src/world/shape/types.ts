@@ -69,6 +69,7 @@ export interface Table {
   hidden: boolean // out of the sidebar
   setup: boolean // what the module's agents read: under Agents and notes, not a tab (step 3a)
   tab: boolean // kept as a tab of its module wherever it sits, by the person or its kit (28 Oct)
+  addedOn: string | null // Alpha adds a row only once the person has answered this on a card
   fields: Field[]
   documents: string[] | null // the kinds of document its rows take, as its kit names them
   people: PeopleMap | null // how its rows name people

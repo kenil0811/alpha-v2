@@ -181,6 +181,8 @@ export function shapeTables(
     const now = world.shape.table(t.id) as Table
     if (spec.tab && !now.tab && !tabChosen(world, t.id) && ['part', 'setup'].includes(placeOf(now)))
       world.shape.setTab(t.id, true, ctx)
+    // the word that lets Alpha add a row, as the kit's version says it now
+    world.shape.setAddedOn(t.id, spec.added_on ?? null)
     // what each means, as the kit says it; a sentence the person wrote stands (describe says so)
     if (spec.about) world.shape.describe({ table: t.id }, spec.about, 'kit', ctx)
     for (const f of spec.fields) {
