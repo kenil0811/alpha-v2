@@ -34,6 +34,7 @@ import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { Reach } from './Reach.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
+import { SignInApps, signInWith } from './SignInApps.tsx'
 import { TableView } from './TableView.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { MODEL_NAMES, UsageSection } from './Usage.tsx'
@@ -53,7 +54,7 @@ import { Tabs } from './ui/tabs.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   connected: ['Connected', 'good'],
-  needs_sign_in: ['Needs you to sign in again', 'warn'],
+  needs_sign_in: ['Needs you to sign in', 'warn'],
   broken: ['Not working', 'bad'],
   paused: ['Paused', 'neutral'],
   waiting: ['Waiting for the customer', 'warn'],
@@ -147,6 +148,11 @@ export function Settings({
                 connections={view.connections.filter((k) => k.connector === c.name)}
                 startOpen={open === c.name}
                 added={view.added.includes(c.name)}
+                appSet={
+                  c.signsInWith
+                    ? !!view.signInApps.find((a) => a.provider === c.signsInWith?.provider)?.set
+                    : null
+                }
                 onChange={load}
               />
             ))}
@@ -165,6 +171,7 @@ export function Settings({
           ))}
           <AddConnector view={view} onChange={load} />
         </Section>
+        <SignInApps apps={view.signInApps} onChange={load} />
         <Section
           title="Folders"
           about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
@@ -934,12 +941,18 @@ function ConnectionLine({
           size="sm"
           variant="primary"
           onClick={() => {
-            // a site read as the person opens in Chrome; a password goes in Alpha's own form
+            // a site read as the person opens in Chrome; a provider's sign-in opens its own page
+            // in the browser; a password goes in Alpha's own form
             if (k.inBrowser) void act(() => api.post(`/api/connections/${k.id}/sign-in`))
+            else if (k.signsInWith) void act(() => signInWith(k.id))
             else window.location.hash = `#/settings?connect=${k.connector}`
           }}
         >
-          {k.inBrowser ? 'Sign in with Chrome' : 'Sign in'}
+          {k.inBrowser
+            ? 'Sign in with Chrome'
+            : k.signsInWith
+              ? `Sign in with ${k.signsInWith}`
+              : 'Sign in'}
         </Button>
       ) : (
         <Button
@@ -1022,16 +1035,19 @@ function ConnectorTile({
   connections,
   startOpen,
   added,
+  appSet,
   onChange,
 }: {
   connector: ConnectorView
   connections: ConnectionView[]
   startOpen: boolean
   added: boolean // loaded from Alpha's own connectors/: it can be removed again
+  appSet: boolean | null // signed in as the person: whether the organisation's sign-in app is set
   onChange: () => void
 }) {
   const system = c.auth === 'system'
   const inBrowser = c.auth === 'browser'
+  const asPerson = c.signsInWith ?? null
   const [open, setOpen] = useState(startOpen)
   const [account, setAccount] = useState(
     system
@@ -1056,9 +1072,11 @@ function ConnectorTile({
         account,
         ...(c.secret ? { secret } : {}),
       })
-      // a site read as the person: they sign in themselves, in its own window of Chrome
+      // a site read as the person: they sign in themselves, in its own window of Chrome; signed
+      // in as the person: on the provider's own page, in their browser
       if (inBrowser && made.state === 'needs_sign_in')
         await api.post(`/api/connections/${made.id}/sign-in`)
+      if (asPerson && made.state === 'needs_sign_in') await signInWith(made.id)
       setSecret('')
       setOpen(false)
       onChange()
@@ -1153,6 +1171,13 @@ function ConnectorTile({
               />
             </label>
           )}
+          {asPerson && (
+            <p className="text-ink-3 text-sm">
+              {appSet
+                ? `${asPerson.title}’s sign-in page opens in your browser. Sign in there as this address; Alpha never sees your password.`
+                : `Set up ${asPerson.title}’s sign-in app under Sign-in apps first, with your IT if you are not its admin.`}
+            </p>
+          )}
           {c.secret && (
             <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
               <span className="text-ink-2">{c.secret.label}</span>
@@ -1196,9 +1221,17 @@ function ConnectorTile({
               type="submit"
               size="sm"
               variant="primary"
-              disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}
+              disabled={
+                busy || !account.trim() || (!!c.secret && !secret.trim()) || appSet === false
+              }
             >
-              {busy ? 'Connecting…' : inBrowser ? 'Sign in with Chrome' : 'Connect'}
+              {busy
+                ? 'Connecting…'
+                : inBrowser
+                  ? 'Sign in with Chrome'
+                  : asPerson
+                    ? `Sign in with ${asPerson.title}`
+                    : 'Connect'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
               Cancel

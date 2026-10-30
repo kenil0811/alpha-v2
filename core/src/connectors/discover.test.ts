@@ -50,6 +50,7 @@ describe('connectors found in their folders', () => {
       'gmail',
       'calendar',
       'contacts',
+      'outlook',
     ])
   })
 

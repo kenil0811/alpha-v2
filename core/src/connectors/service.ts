@@ -20,9 +20,8 @@ import {
   type SecretStore,
   type Tool,
 } from '@alpha/connector-sdk'
-import { z } from 'zod'
 import { config } from '../config.ts'
-import { entry, Registry, type ToolEntry } from '../engine/registry.ts'
+import { Registry, type ToolEntry } from '../engine/registry.ts'
 import { takeIn } from '../files/documents.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
@@ -30,12 +29,15 @@ import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { type CallSays, isRemote, undoSaid } from './process.ts'
 import { rulesFor } from './rules.ts'
+import { describeConnections, entriesOf } from './served.ts'
+import type { SignIn } from './signin.ts'
 
 export interface ServiceOptions {
   secrets: SecretStore
   fixtures?: string // a directory of recorded answers, one folder per connector: never a real account
   browser?: () => BrowserEngine // the human-pace browser, for a site the person signs in to
   known?: Connector[] // the loaded set (discover.ts); none when not given
+  signIn?: SignIn // signing in as the person (step 2, part 5)
 }
 
 // The name a tool has for the model, and back.
@@ -68,10 +70,12 @@ export class ConnectorService {
   private options: ServiceOptions
   private running = new Map<string, Promise<void>>()
   private readonly set: Connector[] = []
+  readonly signIn: SignIn | undefined
 
   constructor(world: World, options: ServiceOptions) {
     this.world = world
     this.options = options
+    this.signIn = options.signIn
     for (const c of options.known ?? []) this.add(c)
   }
 
@@ -172,7 +176,13 @@ export class ConnectorService {
     const actor = { kind: 'connector' as const, id: c.manifest.name }
     return {
       account: conn.account,
-      secret: async () => (conn.secretRef ? this.options.secrets.get(conn.secretRef) : null),
+      // signed in as the person: a short-lived token, renewed by the core (step 2, part 5)
+      secret: async () => {
+        if (c.manifest.auth !== 'oauth')
+          return conn.secretRef ? this.options.secrets.get(conn.secretRef) : null
+        if (!this.signIn) throw new Problem('Signing in is not set up in this core.')
+        return this.signIn.token(conn, c)
+      },
       cursor: () => this.world.connections.get(conn.id)?.cursor ?? null,
       setCursor: (cursor) => this.world.connections.setCursor(conn.id, cursor),
       land: (tableName, items, options) => {
@@ -252,12 +262,21 @@ export class ConnectorService {
     const c = this.connector(name)
     if (c.manifest.auth === 'secret' && !secret?.trim())
       throw new Refused(`${c.manifest.title} needs its ${c.manifest.secret?.label ?? 'password'}.`)
-    const ref = c.manifest.auth === 'secret' ? `${name}:${account.trim().toLowerCase()}` : null
-    if (ref && secret) await this.options.secrets.set(ref, secret.trim())
+    const ref = ['secret', 'oauth'].includes(c.manifest.auth)
+      ? `${name}:${account.trim().toLowerCase()}`
+      : null
+    if (ref && secret && c.manifest.auth === 'secret')
+      await this.options.secrets.set(ref, secret.trim())
     const conn = this.world.connections.add(name, account, ref, c.manifest.title, {
       actor: { kind: 'person', id: user },
       user,
     })
+    // signed in as the person: connected once they sign in, in their own browser
+    if (c.manifest.auth === 'oauth') {
+      this.signIn?.forget(conn.id)
+      this.failed(conn.id, new Problem('Sign in to finish connecting.', 'sign_in'))
+      return this.world.connections.get(conn.id) as Connection
+    }
     try {
       await c.check?.(this.call(c, conn))
     } catch (err) {
@@ -278,10 +297,42 @@ export class ConnectorService {
     return this.world.connections.get(conn.id) as Connection
   }
 
+  // A connection checked now (back from signing in, or Try again): connected when its check holds,
+  // and read; else in the state its failure says.
+  async checkNow(id: string): Promise<Connection> {
+    const conn = this.world.connections.get(id)
+    if (!conn) throw new Refused('That connection is not there.')
+    const c = this.connector(conn.connector)
+    try {
+      await c.check?.(this.call(c, conn))
+    } catch (err) {
+      this.fail(c, conn, err)
+      return this.world.connections.get(id) as Connection
+    }
+    if (conn.state !== 'connected')
+      this.world.connections.setState(
+        id,
+        'connected',
+        null,
+        `${c.manifest.title} for ${conn.account} is connected.`,
+        { actor: { kind: 'connector', id: c.manifest.name } },
+      )
+    this.tables(c)
+    if (c.sync) void this.sync(id)
+    return this.world.connections.get(id) as Connection
+  }
+
+  // A connection's state from a failure found outside a call (a sign-in that came back with no).
+  failed(id: string, err: unknown): void {
+    const conn = this.world.connections.get(id)
+    if (conn) this.fail(this.connector(conn.connector), conn, err)
+  }
+
   async disconnect(id: string, user: string): Promise<void> {
     const conn = this.world.connections.get(id)
     if (!conn) throw new Refused('That connection is not there.')
     if (conn.secretRef) await this.options.secrets.delete(conn.secretRef)
+    this.signIn?.forget(id)
     this.world.connections.remove(id, this.find(conn.connector)?.manifest.title ?? conn.connector, {
       actor: { kind: 'person', id: user },
       user,
@@ -498,35 +549,9 @@ export class ConnectorService {
       .sort()
   }
 
-  // Every connector's tools as entries of the tool registry (decision 11), each under its
-  // connector's server: the model sees mcp__<connector>__<tool>, and what Gmail can do is
-  // Gmail's list.
+  // Every connector's tools as entries of the tool registry (decision 11): served.ts.
   entries(): ToolEntry[] {
-    return this.set.flatMap((c) =>
-      Object.entries(c.tools).map(([t, spec]) =>
-        entry(
-          c.manifest.name,
-          t,
-          `${c.manifest.title}: ${spec.description}`,
-          { ...spec.input, account: z.string().optional() },
-          async (input: Record<string, unknown>) => {
-            try {
-              const { account, ...rest } = input
-              const conn = this.connectionFor(c, typeof account === 'string' ? account : undefined)
-              const effect = (await this.says(mcpName(c.manifest.name, t), rest))?.effect
-              const out = await spec.run(this.call(c, conn, effect ?? 'outward'), rest as never)
-              return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 1) }] }
-            } catch (err) {
-              const words =
-                err instanceof Refused || err instanceof Problem
-                  ? err.message
-                  : `Something went wrong: ${err instanceof Error ? err.message : String(err)}`
-              return { content: [{ type: 'text' as const, text: words }], isError: true }
-            }
-          },
-        ),
-      ),
-    )
+    return entriesOf(this)
   }
 
   // One MCP server per connector, named after it, from the same entries.
@@ -534,25 +559,9 @@ export class ConnectorService {
     return new Registry(this.entries()).servers()
   }
 
-  // What the start layer says about connections.
+  // What the start layer says about connections: served.ts.
   describe(): string {
-    const conns = this.world.connections.list()
-    if (!conns.length)
-      return 'None yet. The person connects accounts and folders in Settings › Connections.'
-    return conns
-      .map((k) => {
-        const c = this.find(k.connector)
-        if (!c)
-          return `### ${k.connector}: ${k.account} (its connector is not loaded; the person adds it in Settings › Connections)`
-        const state =
-          k.state === 'connected'
-            ? 'connected'
-            : k.state === 'needs_sign_in'
-              ? 'needs the person to sign in again'
-              : k.state
-        return `### ${c.manifest.title}: ${k.account} (${state}${k.health ? `; ${k.health}` : ''})\n${c.guide.replace(/^# .*\n+/, '').trim()}`
-      })
-      .join('\n\n')
+    return describeConnections(this, this.world)
   }
 }
 

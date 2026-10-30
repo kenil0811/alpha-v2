@@ -75,6 +75,31 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('lets the sign-in page send the person back without the token, from this computer only', async () => {
+    const a = app()
+    const back = await a.inject({
+      url: '/api/sign-in/back?state=x&code=y',
+      headers: { host: 'localhost:4700' },
+    })
+    expect(back.statusCode).toBe(200)
+    expect(back.headers['content-type']).toMatch(/text\/html/)
+    expect(
+      (await a.inject({ url: '/api/sign-in/back', headers: { host: 'evil.example:4700' } }))
+        .statusCode,
+    ).toBe(403)
+    // nothing else under it is let through
+    expect(
+      (
+        await a.inject({
+          url: '/api/sign-in-apps/microsoft',
+          method: 'POST',
+          headers: { host: 'localhost:4700' },
+        })
+      ).statusCode,
+    ).toBe(403)
+    await a.close()
+  })
+
   it('turns away a request without the token, from another host or from another page', async () => {
     const a = app()
     expect(

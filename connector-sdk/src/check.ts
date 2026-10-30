@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import { type Connector, FIELD_KINDS, type Manifest } from './connector.ts'
 import { EFFECTS } from './effects.ts'
+import { PROVIDERS } from './signin.ts'
 
 export const NAME = /^[a-z][a-z0-9-]{0,39}$/
 // The model's own servers, and the one every connector once shared.
@@ -18,6 +19,7 @@ const ManifestSchema = z.object({
   secret: z
     .object({ label: z.string().min(1), help: z.string(), url: z.string().optional() })
     .optional(),
+  oauth: z.object({ provider: z.string(), scopes: z.array(z.string().min(1)).min(1) }).optional(),
   pace: z.object({ perMinute: z.number().positive(), perDay: z.number().positive().optional() }),
   syncEveryMinutes: z.number().positive().optional(),
   signIn: z.string().url().optional(),
@@ -53,6 +55,19 @@ export function checkConnector(x: unknown, taken: string[] = []): string[] {
       out.push('manifest.secret: a connector that signs in with a secret says what it is called.')
     if (manifest.auth === 'browser' && !manifest.signIn)
       out.push('manifest.signIn: a connector the person signs in to in a browser says where.')
+    if (manifest.auth === 'oauth') {
+      const p = manifest.oauth ? PROVIDERS[manifest.oauth.provider] : undefined
+      if (!manifest.oauth || !p)
+        out.push(
+          `manifest.oauth: a connector that signs in as the person names one of ${Object.keys(PROVIDERS).join(', ')}.`,
+        )
+      else
+        for (const s of manifest.oauth.scopes)
+          if (!p.scopes.includes(s))
+            out.push(
+              `manifest.oauth.scopes: ${s} is not one of the permissions ${p.title}'s setup sheet has IT approve (${p.scopes.join(', ')}).`,
+            )
+    }
     if (manifest.auth === 'system' && !manifest.system)
       out.push('manifest.system: a connector the Mac asks about names its System Settings pane.')
   }

@@ -413,9 +413,9 @@ retries for reads only (a send or a write whose fate is unknown is never tried a
 tool's effect; a service asking to wait, a 429 or "too many requests", is waited out for as long
 as it asked, `connector_busy_wait_seconds` in all; final plan call A, 28 Oct); pagination and cursors; a cache; a journal line for every call; provenance on every
 value it lands; a health judgement ("fewer rows than last time", "nothing new for a week");
-the auth kinds a manifest names (below; OAuth is declared and not built: the connector platform
-step builds it with a sign-in app the client owns in its own Microsoft or Google tenant, and no
-hosted service in the path; Kenil, 25 Oct) and the secret store (the Mac keychain; an encrypted
+the auth kinds a manifest names (below; signing in as the person with a sign-in app the client
+owns in its own tenant, no hosted service in the path, Kenil, 25 Oct: Microsoft built in step 2,
+part 5) and the secret store (the Mac keychain; an encrypted
 file under a server key comes with the server, §15); fixture recording and
 replay; and the human-pace browser engine: one Playwright profile per account, delays, a stop
 on any friction page (a login wall, a CAPTCHA, a rate-limit page), never stealth. It reads what a
@@ -535,6 +535,25 @@ connection shows ("Your IT has to approve Alpha for the tenant"). It is not read
 Try again (Read now) checks once more and reads once the step is done. Home lists it under Needs
 you, as a sign-in. Each connection says who set it up (its `made_by`: "Set up by You"), the
 owner that Dell's step, with users, builds on.
+
+**Signing in as the person** (step 2, part 5, slice 1, Kenil's yes 30 Oct): Alpha acts as the
+person, so it reaches only what they can, and a mail it sends goes from their own address; an
+app's own key is kept for server jobs with no person behind them. A provider (`connector-sdk`'s
+`signin.ts`; Microsoft first) says where the person signs in and where the answer is traded for
+tokens, for the app the client's IT registered in their own tenant; the permissions IT approves at
+once (Microsoft: read, drafts and send), of which a connector's manifest (`auth: 'oauth'`,
+`oauth: {provider, scopes}`) asks only for some, never more; the setup sheet IT follows, shown
+under Intelligence › Connections › Sign-in apps, where the app's two ids are entered once for the
+organisation (the world's `meta`); and what its errors mean (IT's approval missing is waiting for
+the customer; a revoked or expired sign-in is a sign-in again; a wrongly registered app says what
+to fix). Connect opens the provider's own page in the person's browser (macOS's `open`; the window
+where the core cannot); it sends them back to the core's own address on this computer
+(`/api/sign-in/back`, the one route under /api without Alpha's token, proved by a one-time state
+and PKCE), which says the outcome there and in Alpha. The long-lived token is kept in the
+Keychain under the connection's secret reference and out of every journal line; the core renews
+the short-lived one, one renewal at a time, and hands only that to the connector's process as
+`host.secret()`. Read now renews first, so a revoked sign-in shows at once. A core on a server
+(Dell) needs an https return address of its own: that comes with the server.
 
 **Signed packs** (slice 3, Kenil's yes 29 Oct): a kit's or a connector's pack carries SIGNATURE
 beside its PACK.json, an Ed25519 signature over PACK.json's bytes (every file and its hash), made

@@ -78,6 +78,10 @@ const secrets = new Set<string>()
 export function keepOut(secret: string): void {
   if (secret.trim().length >= 4) secrets.add(secret)
 }
+// one that no longer works (a short-lived token renewed): no longer looked for
+export function letGo(secret: string): void {
+  secrets.delete(secret)
+}
 
 export function append(db: Db, line: LineInput): Line {
   const at = now()

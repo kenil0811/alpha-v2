@@ -23,6 +23,9 @@
       "path": "connectors/gmail"
     },
     {
+      "path": "connectors/outlook"
+    },
+    {
       "path": "connectors/files"
     },
     {

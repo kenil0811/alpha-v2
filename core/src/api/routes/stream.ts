@@ -85,6 +85,11 @@ export function registerStream(ctx: Ctx): void {
           title: engine.connectors?.find(k.connector)?.manifest.title ?? k.connector,
           connection: k.id,
           inBrowser: engine.connectors?.find(k.connector)?.manifest.auth === 'browser',
+          signsInWith: (() => {
+            const o = engine.connectors?.find(k.connector)?.manifest.oauth
+            const s = engine.connectors?.signIn
+            return o && s ? s.provider(o.provider).title : null
+          })(),
           waiting: k.state === 'waiting' ? k.health : null,
         })),
       tasks: world.tasks.counts(),

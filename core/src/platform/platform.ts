@@ -22,6 +22,9 @@ export interface Platform {
   personName(): string
   // The region phone numbers are read in (SG), else none.
   region(): string | null
+  // A web address opened in the person's own browser (a provider's sign-in page); false where
+  // the core cannot, and the window opens it instead.
+  openLink(url: string): boolean
   // A file or folder of the person's discarded on their word: the Mac's Trash where there is one.
   discard(path: string): void
 }

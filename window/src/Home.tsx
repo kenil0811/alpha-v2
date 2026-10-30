@@ -18,6 +18,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
+import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
@@ -166,7 +167,9 @@ export function Home({
                         ? `${a.title}: ${a.waiting}`
                         : a.inBrowser
                           ? `${a.title} needs you to sign in: it opens in Chrome`
-                          : `${a.title} needs you to sign in again`
+                          : a.signsInWith
+                            ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
+                            : `${a.title} needs you to sign in again`
                     }
                     {...(a.waiting
                       ? { href: '#/intelligence/connections' }
@@ -176,7 +179,13 @@ export function Home({
                               void api.post(`/api/connections/${a.connection}/sign-in`)
                             },
                           }
-                        : { href: `#/settings?connect=${a.connector}` })}
+                        : a.signsInWith
+                          ? {
+                              onClick: () => {
+                                void signInWith(a.connection)
+                              },
+                            }
+                          : { href: `#/settings?connect=${a.connector}` })}
                   />
                 ))}
               </Group>

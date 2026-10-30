@@ -26,6 +26,7 @@ import { registerPeople } from './routes/people.ts'
 import { registerRows } from './routes/rows.ts'
 import { registerRules } from './routes/rules.ts'
 import { registerSettings } from './routes/settings.ts'
+import { BACK, registerSignIn } from './routes/signin.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerTables } from './routes/tables.ts'
 import { registerTasks } from './routes/tasks.ts'
@@ -103,13 +104,16 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     const path = pathOf(req)
     if (!path.startsWith('/api') && !path.startsWith('/ws')) return
     if (path === '/api/health') return
+    // the provider's page sends the person back here, without Alpha's token: its one-time state
+    // is the proof (step 2, part 5); Host is still checked
+    const back = path === BACK
     const host = req.headers.host ?? ''
     const origin = req.headers.origin
     const given = req.headers['x-alpha-token'] ?? (req.query as { t?: string }).t
     if (hosts.size && !hosts.has(host)) return deny(reply, 'This address is not Alpha’s.')
     if (origin && hosts.size && !hosts.has(origin.replace(/^https?:\/\//, '')))
       return deny(reply, 'This page is not Alpha’s.')
-    if (token && given !== token)
+    if (token && given !== token && !back)
       return deny(reply, 'Open Alpha from the address the core printed.')
   })
 
@@ -130,6 +134,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerRows(ctx)
   registerFiles(ctx)
   registerConnectors(ctx)
+  registerSignIn(ctx)
   registerKits(ctx)
   registerModules(ctx)
   registerSettings(ctx)

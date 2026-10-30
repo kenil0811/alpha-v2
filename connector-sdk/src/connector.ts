@@ -7,7 +7,8 @@ import type { Effect } from './effects.ts'
 import type { HelperOptions } from './helper.ts'
 
 // secret: an app password or API key the person types in Alpha's own form, never the model.
-// oauth: the client's own sign-in app, the person consenting in their browser.
+// oauth: the client's own sign-in app, the person signing in in their browser; `oauth` names the
+// provider (signin.ts) and the permissions it asks for, and host.secret() is a short-lived token.
 // browser: a browser profile the person signs into.
 // system: the Mac asks the person itself (Calendar, Contacts).
 // path: a place on this Mac the person names (a watched folder); nothing to sign in to.
@@ -26,6 +27,9 @@ export interface Manifest {
   icon?: Icon
   account: { label: string; placeholder?: string }
   secret?: { label: string; help: string; url?: string }
+  // oauth: whose sign-in, and the permissions it asks for, within what the provider's sheet has IT
+  // approve
+  oauth?: { provider: string; scopes: string[] }
   // Pacing per account: calls a minute, and a day's budget where the service has one.
   pace: { perMinute: number; perDay?: number }
   // How often its sync runs, when it has one.
@@ -114,6 +118,8 @@ export interface Landed {
 // the one given with the call, and a journal line or a new cursor is said and not waited on.
 export interface Host {
   account: string
+  // the secret the person typed; for a connector that signs in as the person (oauth), a
+  // short-lived token the core renews, never the one it keeps
   secret(): Promise<string | null>
   cursor(): string | null
   setCursor(cursor: string | null): void

@@ -10,10 +10,12 @@ import {
   removeFolder,
   unpack,
 } from '../../connectors/discover.ts'
+import { PlainPlatform } from '../../platform/index.ts'
 import { FOLDERS, isDeveloper } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ConnectorsView } from '../types.ts'
+import { signInApps } from './signin.ts'
 
 export function registerConnectors(ctx: Ctx): void {
   const { app, world, engine, user, options, person, live, connectorOf, asPerson } = ctx
@@ -38,6 +40,7 @@ export function registerConnectors(ctx: Ctx): void {
     return 'Alpha'
   }
 
+  const signIn = engine.connectors?.signIn
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
     const refused = refusals()
     return {
@@ -51,6 +54,14 @@ export function registerConnectors(ctx: Ctx): void {
         ...(c.manifest.system ? { system: c.manifest.system } : {}),
         ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
         ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
+        ...(c.manifest.oauth && signIn
+          ? {
+              signsInWith: {
+                provider: c.manifest.oauth.provider,
+                title: signIn.provider(c.manifest.oauth.provider).title,
+              },
+            }
+          : {}),
       })),
       connections: world.connections.list().map((k) => {
         const c = engine.connectors?.find(k.connector)
@@ -60,6 +71,8 @@ export function registerConnectors(ctx: Ctx): void {
           title: c?.manifest.title ?? k.connector,
           account: k.account,
           inBrowser: c?.manifest.auth === 'browser',
+          signsInWith:
+            c?.manifest.oauth && signIn ? signIn.provider(c.manifest.oauth.provider).title : null,
           loaded: !!c,
           state: k.state,
           owner: ownerWords(k.madeBy),
@@ -84,6 +97,7 @@ export function registerConnectors(ctx: Ctx): void {
             .map((c) => c.manifest.name)
         : [],
       failed: options.failedConnectors ?? [],
+      signInApps: signInApps(ctx),
     }
   })
 
@@ -201,6 +215,11 @@ export function registerConnectors(ctx: Ctx): void {
       .parse(req.body)
     // a secret the person signs in with never reaches a journal line (step 2, part 3)
     if (b.secret) world.keepOut(b.secret)
+    const known = connectorOf(b.connector)
+    if (known.manifest.auth === 'oauth') {
+      if (!signIn) throw new Refused('Signing in is not set up in this core.')
+      signIn.ready(known)
+    }
     const c = await engine.connect(user, b.connector, b.account, b.secret ?? null)
     return { id: c.id, state: c.state }
   })
@@ -218,6 +237,13 @@ export function registerConnectors(ctx: Ctx): void {
     const conn = world.connections.get(id)
     if (!conn) throw new Refused('That connection is not there.')
     const c = connectorOf(conn.connector)
+    // signed in as the person (step 2, part 5): the provider's own page, in their own browser;
+    // the window opens it where the core could not
+    if (c.manifest.auth === 'oauth') {
+      if (!signIn) throw new Refused('Signing in is not set up in this core.')
+      const at = signIn.start(conn, c)
+      return { url: at, opened: (options.platform ?? new PlainPlatform()).openLink(at) }
+    }
     const url = c.manifest.signIn
     if (c.manifest.auth !== 'browser' || !url)
       throw new Refused(`${c.manifest.title} is not signed in to in a browser.`)
@@ -232,9 +258,16 @@ export function registerConnectors(ctx: Ctx): void {
     return { opened: true }
   })
 
+  // Read now, and Try again: a connection signed in as the person renews its token first, so a
+  // sign-in revoked since shows at once; one with nothing to read is checked.
   app.post('/api/connections/:id/sync', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
-    await engine.sync(user, id)
+    const conn = world.connections.get(id)
+    const c = conn ? engine.connectors?.find(conn.connector) : undefined
+    if (c?.manifest.auth === 'oauth') signIn?.forget(id)
+    if (c && !c.sync) await engine.connectors?.checkNow(id)
+    else await engine.sync(user, id)
+    live()
     return { ok: true }
   })
 }

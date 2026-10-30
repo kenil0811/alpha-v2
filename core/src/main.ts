@@ -4,10 +4,12 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { BrowserEngine } from '@alpha/connector-sdk'
+import { BACK } from './api/routes/signin.ts'
 import { buildServer } from './api/server.ts'
 import { config } from './config.ts'
 import { loadSet, STANDARD_DIR, updateOwn } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
+import { SignIn } from './connectors/signin.ts'
 import { copyNewestBackup, takeRestartNote } from './data.ts'
 import { ClaudeApiProvider } from './engine/claudeapi.ts'
 import { ClaudeCodeProvider } from './engine/claudecode.ts'
@@ -161,6 +163,8 @@ const connectors = new ConnectorService(world, {
   secrets,
   browser: () => browserEngine(),
   known: [...standard.connectors, ...added.connectors],
+  // signing in as the person: the provider sends them back to this core (step 2, part 5)
+  signIn: new SignIn(world, { secrets, back: () => `http://localhost:${port}${BACK}` }),
 })
 for (const f of [...standard.failed, ...added.failed]) {
   const words = `The connector in ${f.folder} did not load: ${f.why}`

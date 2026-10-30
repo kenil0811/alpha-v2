@@ -42,3 +42,15 @@ export {
   makeCall,
 } from './runtime.ts'
 export { MacKeychain, MemorySecrets, NoSecrets, type SecretStore } from './secrets.ts'
+export {
+  codesIn,
+  type Explained,
+  firstSentence,
+  microsoft,
+  PROVIDERS,
+  type Provider,
+  type ProviderError,
+  type SheetStep,
+  type SignInApp,
+  type SignInField,
+} from './signin.ts'

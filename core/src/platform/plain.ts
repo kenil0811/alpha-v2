@@ -31,6 +31,10 @@ export class PlainPlatform implements Platform {
     throw new Refused(`This computer has no settings pane for ${pane} that Alpha can open.`)
   }
 
+  openLink(_url: string): boolean {
+    return false
+  }
+
   personName(): string {
     return userInfo().username
   }

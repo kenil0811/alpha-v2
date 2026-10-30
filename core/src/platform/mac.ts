@@ -69,6 +69,13 @@ export class MacPlatform implements Platform {
     )
   }
 
+  // The person's default browser, with macOS's own open: only a web address.
+  openLink(url: string): boolean {
+    if (!/^https:\/\//.test(url)) return false
+    execFile('/usr/bin/open', [url], () => undefined)
+    return true
+  }
+
   // The Mac's own name for its user ("Kenil Shah"), else the account name.
   personName(): string {
     try {

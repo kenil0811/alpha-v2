@@ -7,7 +7,12 @@ export interface Health {
   build: string | null // the window this core serves: a window on another build reloads
 }
 
-export type { ConnectionView, ConnectorsView, ConnectorView } from './connector-types.ts'
+export type {
+  ConnectionView,
+  ConnectorsView,
+  ConnectorView,
+  SignInAppView,
+} from './connector-types.ts'
 export type { Layout, Me } from './me-types.ts'
 export type { FieldView, RowAround, RowPageView } from './row-types.ts'
 
@@ -231,6 +236,7 @@ export interface Stream {
     title: string
     connection: string
     inBrowser: boolean
+    signsInWith: string | null // signed in as the person with a provider (Microsoft)
     waiting: string | null
   }[]
   tasks: { open: number; overdue: number; today: number } // for the rail's badge

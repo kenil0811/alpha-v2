@@ -12,6 +12,18 @@ export interface ConnectorView {
   system?: { pane: string } // the System Settings pane that turns Alpha on after a no
   setup?: { sub: string } // its step on the first open, when it asks for one
   warning?: string // what the person reads before connecting it
+  signsInWith?: { provider: string; title: string } // oauth: whose sign-in (step 2, part 5)
+}
+
+// An organisation's sign-in app for a provider (step 2, part 5): set once by its IT, from the
+// setup sheet, before anyone signs in with it.
+export interface SignInAppView {
+  provider: string
+  title: string // Microsoft
+  set: { app: string; directory: string } | null
+  fields: { app: { label: string; example: string }; directory: { label: string; example: string } }
+  sheet: { words: string; copy?: string[] }[]
+  console: string // where IT manages the app
 }
 
 export interface ConnectionView {
@@ -20,6 +32,7 @@ export interface ConnectionView {
   title: string
   account: string
   inBrowser: boolean // signed in to in Google Chrome, and read as the person
+  signsInWith: string | null // signed in as the person with a provider (Microsoft): its sign-in page
   loaded: boolean // its connector is in the loaded set; else it waits until that is added
   state: 'connected' | 'needs_sign_in' | 'broken' | 'paused' | 'waiting' // waiting: for the customer's own step, said in health
   owner: string // who set it up: You, a name, or Alpha
@@ -41,4 +54,5 @@ export interface ConnectorsView {
   available: { file: string; name: string; title: string; version: string }[]
   added: string[] // the connectors loaded from Alpha's own connectors/, by name
   failed: { folder: string; why: string }[] // folders that did not load at start
+  signInApps: SignInAppView[] // for the providers the loaded connectors sign in with
 }
