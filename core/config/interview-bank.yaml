@@ -1,0 +1,28 @@
+# Interview me's standing bank (Vikas, 30 Oct: "the agent has a huge list of questions which it
+# rank orders and evaluates on a daily basis"). Code adds these to the pool beside what it finds
+# unresolved, once for the business and once for each module ({module} is its name), and ranks
+# them all together by value. The spine is the onboarding research's (28 Oct, UiPath Cartographer
+# and the question library): framing, roles and tools, steps, exceptions, gaps, goals, numbers.
+# Ask for the last real example, never the ideal process; a number as a number.
+# kind: its weight's name in limits.yaml interview_weights. reach: how much the answer helps.
+business:
+  - { id: goals, kind: goals, reach: 9, ask: "What are the three things you most want the business to get done this year, and what keeps you from them?", why: "Nothing Alpha keeps says what matters most to you yet.", unblocks: "What Alpha prepares and suggests, ranked by what you want." }
+  - { id: revenue, kind: goals, reach: 6, ask: "What brings the money in, and what admin work wraps around every dollar of it?", why: "The work around revenue is where time leaks cost most.", unblocks: "Which module to make first." }
+  - { id: leaks, kind: goals, reach: 6, ask: "Which two tasks eat most of your week without needing your judgement?", why: "Repetitive work is what Alpha can take off you first.", unblocks: "The first agent worth turning on." }
+  - { id: tried, kind: framing, reach: 3, ask: "What have you already tried to automate or hand off, and why did it not stick?", why: "What failed before says what to avoid.", unblocks: "Not repeating what did not work." }
+  - { id: people, kind: roles, reach: 5, ask: "Who works with you, and what does each of them look after?", why: "Alpha places tasks and questions on the person who knows.", unblocks: "Asking the right person, and tasks with owners." }
+  - { id: tools, kind: tools, reach: 6, ask: "Which systems and sheets does the business run on: accounts, email, a CRM, spreadsheets, anything else?", why: "Alpha reads and connects what you already use.", unblocks: "Connections to set up, and where rows come from." }
+  - { id: customers, kind: framing, reach: 4, ask: "Who are your customers, and how does a new one usually find you?", why: "Most modules start from the customer.", unblocks: "Shaping your clients and their sources." }
+  - { id: volume, kind: numbers, reach: 4, ask: "Roughly how many new customers or jobs come in a month: under 10, 10 to 50, 50 to 200, or more?", why: "Volume says which work is worth automating.", unblocks: "The yearly cost of each process." }
+  - { id: hourly, kind: numbers, reach: 3, ask: "What does an hour of your team's time cost you, roughly: $25, $50, $100, or something else?", why: "Time saved is worth what an hour costs.", unblocks: "What each module saves, in money." }
+  - { id: approvals, kind: roles, reach: 3, ask: "What needs your yes before it goes out: quotes, refunds, emails to clients, payments?", why: "Alpha asks before what you approve, and only then.", unblocks: "The rules for what Alpha may do alone." }
+module:
+  - { id: aim, kind: framing, reach: 3, ask: "What is {module} for, and what starts a piece of its work: an email, a call, a date?", why: "Every step follows from what starts it.", unblocks: "Agents for {module} that start when the work does." }
+  - { id: walk, kind: steps, reach: 3, ask: "Walk me through the last real time you did this work in {module}: what came first, who did what, and where it got stuck?", why: "The last real example shows the steps as they are.", unblocks: "Which steps of {module} Alpha could do, and which it should only draft." }
+  - { id: who, kind: roles, reach: 2, ask: "Who does the work in {module}, and who signs it off?", why: "Alpha asks the person who knows, and drafts for the one who approves.", unblocks: "Tasks in {module} with owners." }
+  - { id: where, kind: tools, reach: 2, ask: "Where is {module}'s work kept today: a sheet, a system, an inbox, paper?", why: "Alpha reads from where the work already lives.", unblocks: "Filling {module} without typing." }
+  - { id: when, kind: exceptions, reach: 2, ask: "In {module}, what do you do when something is missing or wrong, like a date or an amount?", why: "Exceptions are where work stalls.", unblocks: "Rules for {module}'s exceptions." }
+  - { id: delays, kind: exceptions, reach: 2, ask: "What causes most of the delays in {module}?", why: "A delay shows where help is worth most.", unblocks: "What {module}'s agents watch for." }
+  - { id: unknown, kind: gaps, reach: 1, ask: "Is there a part of {module}'s work only one person knows how to do? Who?", why: "A gap is worth closing before it costs a week.", unblocks: "Who to ask about {module} next." }
+  - { id: count, kind: numbers, reach: 2, ask: "How many of {module}'s items come in a month, and how many minutes does each take: under 5, 5 to 30, or longer?", why: "The numbers say what {module} is worth automating.", unblocks: "{module}'s yearly cost, and its first agent." }
+  - { id: vision, kind: goals, reach: 3, ask: "If {module} worked perfectly a year from now, what would be different?", why: "A goal says what to build toward.", unblocks: "What Alpha suggests for {module}." }

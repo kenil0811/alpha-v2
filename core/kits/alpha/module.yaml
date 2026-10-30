@@ -1,15 +1,20 @@
 # Alpha's own kit (decision 13, 24 Oct): the agents that speak for Alpha, installed and kept up to
 # date by the core; never uninstalled, each can be paused. Morning is all of Alpha's
-# proactiveness; Watson notices what the person said. Every table and field says what it means
-# (the semantic layer, 24 Oct).
+# proactiveness; Watson notices what the person said. No other characters: Alpha's workspace
+# skills (30 Oct) are skills, not agents: the Interviewer, Research, Governance and the Builder,
+# used by Alpha's desk in any module and by any module's agents through the kit API.
+# Every table and field says what it means (the semantic layer, 24 Oct).
 name: Alpha
 api: 1
-version: 0.3.0
+version: 0.5.0
 core: true
 description: >
   Alpha's own agents. Morning, at 07:30: what is due, what changed overnight, what comes, and one
   or two suggestions on a card. Watson, at 12:30 and 18:30: what the person said since last time,
-  the promises as proposed tasks, the decisions and facts for their yes.
+  the promises as proposed tasks, the decisions and facts for their yes. And Alpha's workspace
+  skills, for every module: the Interviewer (Interview me's questions, ranked daily by Morning),
+  Research (a bounded, cited web look), Governance (noticed rules put to you, refusals explained)
+  and the Builder (a build with its business case, on one card for your yes).
 tables:
   - name: Decisions
     about: "A decision the person made in conversation, noticed by Watson and kept once they say so."

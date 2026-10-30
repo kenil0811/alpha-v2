@@ -29,6 +29,7 @@ import {
   useState,
 } from 'react'
 import { api, Problem } from '../api.ts'
+import { askForNew } from '../ask.ts'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
@@ -58,6 +59,7 @@ import {
   DOT,
   EMPTY_CELL,
   EMPTY_WORDS,
+  hrefOf,
   INK,
   isTags,
   KIND_WORDS,
@@ -309,7 +311,7 @@ export function Grid({
       ref={box}
       onPaste={paste}
       onKeyDown={keys}
-      className="mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface"
+      className="isolate mx-7 mb-3 min-h-0 shrink overflow-auto rounded-lg border border-line bg-surface"
     >
       <table className="table-fixed border-separate border-spacing-0 text-md" style={{ width }}>
         <colgroup>
@@ -796,6 +798,7 @@ function Cell({
   const value = r.values[f.slug]
   const source = r.sources[f.slug]
   const text = show(f, value, names)
+  const href = f.kind === 'relation' || f.kind === 'person' ? null : hrefOf(f.kind, text)
   const mark = source ? MARK[source.kind] : undefined
   const empty = value === null || value === undefined || text === ''
   const key = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -811,8 +814,10 @@ function Cell({
         // WebKit does not focus a button on a click; the cell needs it for Enter, F2 and a paste
         onClick={(e) => {
           e.currentTarget.focus({ preventScroll: true })
-          // the name opens the row; the rest of the cell picks it
-          if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
+          // a link opens; the name opens the row; the rest of the cell picks it
+          const link = (e.target as HTMLElement).closest<HTMLElement>('[data-href]')?.dataset.href
+          if (link) window.open(link, link.startsWith('http') ? '_blank' : '_self', 'noreferrer')
+          else if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
           else onPick()
         }}
         onDoubleClick={onEdit}
@@ -849,7 +854,9 @@ function Cell({
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
               tone && INK[tone],
+              href && 'cursor-pointer text-accent underline decoration-solid',
             )}
+            data-href={href ?? undefined}
             data-name={onOpen ? '' : undefined}
             data-tip={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
           >
@@ -883,10 +890,12 @@ export function EditCell({
   field,
   value,
   onDone,
+  table,
 }: {
   field: FieldView
   value: unknown
   onDone: (value: unknown) => Promise<boolean> // undefined: left as it was
+  table?: string | undefined // its table's name, for a choice's Add new…
 }) {
   const start = typedOf(field, value)
   const [typed, setTyped] = useState(start)
@@ -898,14 +907,14 @@ export function EditCell({
     input.current?.focus()
     if (input.current && 'select' in input.current) input.current.select?.()
   }, [])
-  const save = async () => {
+  const save = async (t = typed) => {
     if (done.current) return
-    if (typed === start) {
+    if (t === start) {
       done.current = true
       await onDone(undefined)
       return
     }
-    const read = readValue(field, typed, value)
+    const read = readValue(field, t, value)
     if ('problem' in read) return setProblem(read.problem)
     done.current = true
     if (!(await onDone(read.value))) done.current = false
@@ -934,26 +943,31 @@ export function EditCell({
         </span>
         <Popover anchor={anchor} open onClose={() => void save()}>
           {/* Escape leaves it as it was, as in every other cell; a click away keeps the ticks */}
-          <TagPicker field={field} typed={typed} onTyped={setTyped} onKeyDown={key} />
+          <TagPicker field={field} typed={typed} onTyped={setTyped} onKeyDown={key} table={table} />
         </Popover>
       </>
     )
+  // a choice: the one dropdown, open at once (a double-click shows the list), saved on a pick
   return field.kind === 'choice' ? (
-    <select
-      ref={input}
+    <Select
+      startOpen
       value={typed}
       aria-label={field.name}
       title={problem ?? undefined}
-      onChange={(e) => setTyped(e.target.value)}
-      onBlur={() => void save()}
-      onKeyDown={key}
+      onChange={(e) => void save(e.target.value)}
+      onDismiss={() => void save()}
+      stars={field.id}
+      adds={{
+        what: 'choice',
+        send: (w) => askForNew('choice', table ? `${field.name} in ${table}` : field.name, w),
+      }}
       className={box}
     >
       <option value="" />
       {field.choices.map((c) => (
         <option key={c}>{c}</option>
       ))}
-    </select>
+    </Select>
   ) : (
     <input
       ref={input}

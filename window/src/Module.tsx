@@ -1,6 +1,6 @@
 // A module's screen (design §14, Ledger; Vikas, 27 Oct): its switch in the middle of the bar, in
 // place of its name: Overview first, then the tables pinned to it, lowest on the spine first (a
-// deal before its source), then after a rule its pages and its Conversation. People and
+// deal before its source), then after a rule its pages. People and
 // Organizations come first when people live in it. A module opens on its Overview: what waits on
 // the person, its main table as a chart, its tables, agents, notes and what Alpha may do. A module
 // holding others and no tables of its own lists them instead (a plain list: each one's name, where
@@ -8,36 +8,31 @@
 // of each, reached from the Overview's cards.
 import type {
   CardView,
+  ModuleSummary,
   ModuleView,
   RuleView,
   RunView,
   TableView as TableData,
 } from '@alpha/core/api'
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
-import {
-  Fragment,
-  type HTMLAttributes,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
+import { Fragment, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { startAsk } from './ask.ts'
+import { Arranged } from './arrange.tsx'
+import { GovernanceSection } from './Governance.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { lowerFirst, Overview, usePins } from './Overview.tsx'
 import { PageView } from './PageView.tsx'
+import { moduleNumbers, numberTables } from './Parts.tsx'
 import { InBar } from './Shell.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
-import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
+import { PillSwitch, SwitchPill, type Tab } from './ui/pill-switch.tsx'
 import { MenuItem, Popover, useContextMenu } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
-import type { Tab } from './ui/tabs.tsx'
 import { Words } from './ui/words.tsx'
 
 export type ModuleTab =
@@ -128,7 +123,8 @@ export function ModuleScreen({
 }
 
 // The switch in the bar: Overview, the pinned tables (main ones lowest on the spine first, then
-// any part or setup table pinned), a rule, then the pages and the Conversation. A table not
+// any part or setup table pinned), a rule, then the pages; Conversation is in the rail, filtered
+// to the module there, never a tab of each module (Vikas, 27 Oct). A table not
 // pinned but open shows too, so the person sees where they are.
 function ModuleSwitch({
   m,
@@ -150,44 +146,36 @@ function ModuleSwitch({
   const shown = m.tables
     .filter((t) => pins.includes(t.id) || (current.kind === 'table' && current.id === t.id))
     .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
-  const groups: Tab[][] = [
-    [
-      ...(m.people ? peopleTabs(null) : []),
-      {
-        key: 'overview',
-        href: `#/module/${m.id}/overview`,
-        label: 'Overview',
-        sel: current.kind === 'overview',
-      },
-      ...shown.map((t) => ({
-        key: t.id,
-        href: `#/table/${t.id}`,
-        label: t.name,
-        count: t.rows,
-        sel: current.kind === 'table' && current.id === t.id,
-      })),
-    ],
-    [
-      ...m.pages.map((p) => ({
-        key: `p:${p.name}`,
-        href: `#/module/${m.id}/page/${p.name}`,
-        label: p.title,
-        sel: current.kind === 'page' && current.name === p.name,
-      })),
-      {
-        key: 'conversation',
-        href: `#/module/${m.id}/conversation`,
-        label: 'Conversation',
-        sel: current.kind === 'conversation',
-      },
-    ],
-  ]
+  const overview: Tab = {
+    key: 'overview',
+    href: `#/module/${m.id}/overview`,
+    label: 'Overview',
+    sel: current.kind === 'overview',
+  }
+  // the module people live in (Network): Overview, People and Organizations only
+  const groups: Tab[][] = m.people
+    ? [[overview, ...peopleTabs(null)]]
+    : [
+        [
+          overview,
+          ...shown.map((t) => ({
+            key: t.id,
+            href: `#/table/${t.id}`,
+            label: t.name,
+            count: t.rows,
+            sel: current.kind === 'table' && current.id === t.id,
+          })),
+        ],
+        m.pages.map((p) => ({
+          key: `p:${p.name}`,
+          href: `#/module/${m.id}/page/${p.name}`,
+          label: p.title,
+          sel: current.kind === 'page' && current.name === p.name,
+        })),
+      ].filter((g) => g.length)
   return (
     <InBar>
-      <nav
-        aria-label={m.name}
-        className="scroll-quiet flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-full bg-sunk p-0.75"
-      >
+      <PillSwitch label={m.name}>
         {groups.map((g, i) => (
           <Fragment key={g[0]?.key ?? i}>
             {i > 0 && <span className="mx-1.5 h-4 w-px shrink-0 bg-line" />}
@@ -200,29 +188,8 @@ function ModuleSwitch({
             )}
           </Fragment>
         ))}
-      </nav>
+      </PillSwitch>
     </InBar>
-  )
-}
-
-function SwitchPill({ tab: t, ...rest }: { tab: Tab } & HTMLAttributes<HTMLAnchorElement>) {
-  return (
-    <a
-      href={t.href}
-      aria-current={t.sel ? 'page' : undefined}
-      {...rest}
-      className={cn(
-        'flex h-6.5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
-        t.sel && 'bg-surface font-medium text-ink shadow-btn',
-      )}
-    >
-      {t.label}
-      {t.count !== undefined && (
-        <span className="font-normal text-ink-3 text-sm tabular-nums">
-          {t.count.toLocaleString()}
-        </span>
-      )}
-    </a>
   )
 }
 
@@ -301,7 +268,7 @@ function TablePill({ m, tab, onRenamed }: { m: ModuleView; tab: Tab; onRenamed: 
 
 // A module's own tabs after People and the Overview: its pages, its main tables with their counts
 // (a table that is part of a row, or setup, is not a tab: core step 3a), its
-// Conversation and its Agents and notes; People's screen shows them too, none chosen.
+// Agents and notes; People's screen shows them too, none chosen.
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
@@ -322,12 +289,6 @@ export const moduleTabs = (
       count: t.rows,
       sel: current?.kind === 'table' && current.id === t.id,
     })),
-  {
-    key: 'conversation',
-    href: `#/module/${m.id}/conversation`,
-    label: 'Conversation',
-    sel: current?.kind === 'conversation',
-  },
   {
     key: 'agents',
     href: `#/module/${m.id}/agents`,
@@ -406,8 +367,9 @@ function Section({ title, sub, children }: { title: string; sub: string; childre
   )
 }
 
-// The Agents and notes tab: where the module comes from, then its agents, the notes Alpha reads
-// first, what ran lately and what Alpha may do here.
+// The Agents and notes tab, in the module page's order (Vikas, 29 Oct): where the module comes
+// from, its agents, Governance (what they can and cannot do), every table numbered, then the notes
+// Alpha reads first and what ran lately.
 function AgentsAndNotes({
   m,
   version,
@@ -418,16 +380,16 @@ function AgentsAndNotes({
   onChange: () => void
 }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
-  const [rules, setRules] = useState<RuleView[] | null>(null)
+  const [number, setNumber] = useState('')
   useEffect(() => {
     if (version < 0) return
     api.get<RunView[]>('/api/activity').then(
       (all) => setRuns(all.filter((r) => r.moduleId === m.id).slice(0, 5)),
       () => setRuns([]),
     )
-    api.get<RuleView[]>(`/api/rules?module=${encodeURIComponent(m.id)}`).then(
-      (all) => setRules(all.filter((r) => !r.revokedAt)),
-      () => setRules([]),
+    api.get<ModuleSummary[]>('/api/modules').then(
+      (ms) => setNumber(moduleNumbers(ms).get(m.id) ?? ''),
+      () => setNumber(''),
     )
   }, [m.id, version])
   const { busy, on, problem, act } = useAct(onChange)
@@ -451,179 +413,161 @@ function AgentsAndNotes({
     <div className="h-full overflow-y-auto">
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
-        <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
-          <div className="flex flex-col gap-2">
-            {m.agents.length > 1 && (
-              <div className="flex justify-end">
-                <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
-              </div>
-            )}
-            {m.agents.length === 0 ? (
-              <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
-            ) : (
-              <List>
-                {m.agents.map((a) => (
-                  <Row
-                    key={a.id}
-                    lead={<Bot className="size-4 text-ink-3" />}
-                    title={
-                      <a href={`#/agent/${a.id}`} className="hover:underline">
-                        {a.name}
-                      </a>
-                    }
-                    sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
-                    actions={
-                      <>
-                        {on === a.id && <Refusal words={problem} />}
-                        {a.running && <Pill tone="accent">Running</Pill>}
-                        <Switch
-                          checked={a.state === 'on'}
-                          disabled={busy && on === a.id}
-                          label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-                          onChange={(on) => turn(a.id, on)}
-                        />
-                      </>
-                    }
-                  />
-                ))}
-              </List>
-            )}
-          </div>
-        </Section>
-        {m.tables.some((t) => t.place !== 'main') && (
-          <Section
-            title="Tables"
-            sub="Setup its agents read, and the tables whose rows are part of a row. Each opens on its own too."
-          >
-            <ul className="flex flex-col">
-              {m.tables
-                .filter((t) => t.place !== 'main')
-                .map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
-                  >
-                    <a
-                      href={`#/table/${t.id}`}
-                      className="min-w-0 flex-1 truncate text-ink hover:underline"
-                    >
-                      {t.name}
-                    </a>
-                    <span className="text-ink-3">
-                      {t.place === 'setup' ? 'Setup' : `Part of ${t.of ?? 'a row'}`}
-                    </span>
-                    <span className="w-14 text-right text-ink-3 tabular-nums">
-                      {t.rows.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </Section>
-        )}
-        <Section
-          title="Notes"
-          sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
-        >
-          <div className="text-md">
-            <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
-          </div>
-        </Section>
-        <Section title="Recent activity" sub={`What ran in ${m.name} lately.`}>
-          {runs === null ? (
-            <p className="text-ink-3 text-md">Loading…</p>
-          ) : runs.length === 0 ? (
-            <p className="text-ink-2 text-md">Nothing has run here yet.</p>
-          ) : (
-            <ul className="flex flex-col">
-              {runs.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+        {/* each section a block the person moves and resizes, one arrangement for every module (Vikas, 30 Oct) */}
+        <Arranged
+          page="module:agents-and-notes"
+          start={[['agents'], ['governance'], ['tables'], ['notes'], ['activity']]}
+          blocks={[
+            {
+              key: 'agents',
+              name: 'Agents',
+              node: (
+                <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
+                  <div className="flex flex-col gap-2">
+                    {m.agents.length > 1 && (
+                      <div className="flex justify-end">
+                        <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+                      </div>
+                    )}
+                    {m.agents.length === 0 ? (
+                      <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
+                    ) : (
+                      <List>
+                        {m.agents.map((a) => (
+                          <Row
+                            key={a.id}
+                            lead={<Bot className="size-4 text-ink-3" />}
+                            title={
+                              <a href={`#/agent/${a.id}`} className="hover:underline">
+                                {a.name}
+                              </a>
+                            }
+                            sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
+                            actions={
+                              <>
+                                {on === a.id && <Refusal words={problem} />}
+                                {a.running && <Pill tone="accent">Running</Pill>}
+                                <Switch
+                                  checked={a.state === 'on'}
+                                  disabled={busy && on === a.id}
+                                  label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
+                                  onChange={(on) => turn(a.id, on)}
+                                />
+                              </>
+                            }
+                          />
+                        ))}
+                      </List>
+                    )}
+                  </div>
+                </Section>
+              ),
+            },
+            {
+              key: 'governance',
+              name: 'Governance',
+              node: <GovernanceSection module={m.id} version={version} />,
+            },
+            ...(m.tables.length > 0
+              ? [
+                  {
+                    key: 'tables',
+                    name: 'Tables',
+                    node: (
+                      <Section
+                        title="Tables"
+                        sub={`Every table of ${m.name}, numbered: the tables that are part of a row sit under it.`}
+                      >
+                        <ul className="flex flex-col">
+                          {numberTables(m.tables, number).map(({ table: t, n, depth }) => (
+                            <li
+                              key={t.id}
+                              className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                              style={{ paddingLeft: depth * 20 }}
+                            >
+                              <span className="w-14 shrink-0 text-ink-3 tabular-nums">{n}</span>
+                              <a
+                                href={`#/table/${t.id}`}
+                                className="min-w-0 flex-1 truncate text-ink hover:underline"
+                              >
+                                {t.name}
+                              </a>
+                              {t.place === 'setup' && <span className="text-ink-3">Setup</span>}
+                              <span className="w-14 text-right text-ink-3 tabular-nums">
+                                {t.rows.toLocaleString()}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </Section>
+                    ),
+                  },
+                ]
+              : []),
+            {
+              key: 'notes',
+              name: 'Notes',
+              node: (
+                <Section
+                  title="Notes"
+                  sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
                 >
-                  <span className="w-28 shrink-0 text-ink-3 tabular-nums">{when(r.startedAt)}</span>
-                  <span className="min-w-0 flex-1 truncate text-ink">
-                    {r.name}
-                    {r.words && <span className="text-ink-3"> · {r.words}</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <a href="#/activity" className="mt-1 inline-block text-accent text-sm hover:underline">
-            All activity
-          </a>
-        </Section>
-        <Section
-          title="Governance"
-          sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
-        >
-          <Governance m={m} rules={rules} onChange={onChange} />
-        </Section>
+                  <div className="text-md">
+                    <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
+                  </div>
+                </Section>
+              ),
+            },
+            {
+              key: 'activity',
+              name: 'Recent activity',
+              node: (
+                <Section title="Recent activity" sub={`What ran in ${m.name} lately.`}>
+                  {runs === null ? (
+                    <p className="text-ink-3 text-md">Loading…</p>
+                  ) : runs.length === 0 ? null : (
+                    <ul className="flex flex-col">
+                      {runs.map((r) => (
+                        <li
+                          key={r.id}
+                          className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                        >
+                          <span className="w-28 shrink-0 text-ink-3 tabular-nums">
+                            {when(r.startedAt)}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-ink">
+                            {r.name}
+                            {r.words && <span className="text-ink-3"> · {r.words}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <a
+                    href="#/activity"
+                    className="mt-1 inline-block text-accent text-sm hover:underline"
+                  >
+                    All activity
+                  </a>
+                </Section>
+              ),
+            },
+          ]}
+        />
       </div>
     </div>
   )
 }
 
-// Governance's rules in two columns, Allowed n and Denied n (core step 2), each a sentence with
-// where it came from: the sites the module's readers may read, and the rules the core holds here
-// (this module's and all of Alpha's), yours and what Alpha noticed. + Add in either column starts
-// the assistant with the rule's first words for the person to finish; the rule lands here only on
-// their Save on its card (design §14: a rule for the model is a wall in code, or it is not written).
-type Rule = { key: string; words: string; why: string; href?: string; rule?: RuleView }
+// The agent page's rule columns (Items.tsx); a module's Governance is GovernanceSection.
+export type Rule = { key: string; words: string; why: string; href?: string; rule?: RuleView }
 
-function why(r: RuleView): string {
+export function why(r: RuleView): string {
   const day = dayWords(r.madeAt)
   const across = r.module ? '' : '; it holds across Alpha'
   if (r.kind === 'inferred') return `Alpha noticed, ${day}; approve or dismiss it`
   if (r.always) return `You said Always on its card, ${day}${across}`
   return `You said, ${day}${across}`
-}
-
-function Governance({
-  m,
-  rules,
-  onChange,
-}: {
-  m: ModuleView
-  rules: RuleView[] | null
-  onChange: () => void
-}) {
-  const line = (r: RuleView): Rule => ({
-    key: r.id,
-    words: r.words,
-    why: why(r),
-    href: `#/rule/${r.id}`,
-    rule: r,
-  })
-  const may: Rule[] = [
-    {
-      key: 'sites',
-      words: m.sites
-        ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
-        : 'Its readers read no sites.',
-      why: 'The sites were named when the module was made.',
-    },
-    ...(rules ?? []).filter((r) => r.side === 'allow').map(line),
-  ]
-  const never = (rules ?? []).filter((r) => r.side === 'deny').map(line)
-  return (
-    <div className="@container">
-      <div className="grid items-start gap-6 @min-[600px]:grid-cols-2">
-        <RuleColumn
-          side="allowed"
-          rules={may}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, you may `)}
-        />
-        <RuleColumn
-          side="denied"
-          rules={never}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, never `)}
-        />
-      </div>
-    </div>
-  )
 }
 
 // A rule's ⋮: Revoke for yours, after a yes; Approve or Dismiss for what Alpha noticed.
@@ -673,7 +617,7 @@ function RuleMenu({ rule: r, onChange }: { rule: RuleView; onChange: () => void 
   )
 }
 
-function RuleColumn({
+export function RuleColumn({
   side,
   rules,
   onAdd,
@@ -698,11 +642,7 @@ function RuleColumn({
         {side === 'allowed' ? 'Allowed' : 'Denied'}
         <span className="font-normal text-ink-3 tabular-nums">{rules.length}</span>
       </h3>
-      {rules.length === 0 ? (
-        <p className="text-ink-3 text-md">
-          {side === 'allowed' ? 'Nothing allowed.' : 'Nothing denied.'}
-        </p>
-      ) : (
+      {rules.length === 0 ? null : (
         <ul className="flex flex-col gap-2">
           {rules.map((r) => (
             <li key={r.key} className="group/row flex items-start gap-2">
@@ -724,7 +664,7 @@ function RuleColumn({
       <button
         type="button"
         onClick={onAdd}
-        className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+        className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:bg-accent-soft hover:text-accent"
       >
         <Plus className="size-3.5" />
         {side === 'allowed' ? 'Add allowed action' : 'Add denied action'}

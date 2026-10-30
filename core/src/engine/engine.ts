@@ -2,9 +2,10 @@
 import { EventEmitter } from 'node:events'
 import { takeIn } from '../files/documents.ts'
 import { FILING, type Filing } from '../files/intake.ts'
+import { saveOnCard } from '../modules/governance.ts'
 import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
-import { type RuleSpec, SAVE_RULE } from '../world/rules.ts'
+import { SAVE_RULE } from '../world/rules.ts'
 import type { User, World } from '../world/world.ts'
 import { Desk, type DeskEvent, type DeskOptions } from './desk.ts'
 
@@ -97,8 +98,14 @@ export class Engine {
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
   }
 
-  say(user: User, words: string, from: { id: string; name: string } | null = null): string {
-    return this.desk(user).say(words, from)
+  say(
+    user: User,
+    words: string,
+    from: { id: string; name: string } | null = null,
+    to: { id: string; name: string } | null = null,
+    also: Parameters<Desk['say']>[3] = {},
+  ): string {
+    return this.desk(user).say(words, from, to, also)
   }
 
   stop(user: User): Promise<void> {
@@ -143,7 +150,7 @@ export class Engine {
       waiting.state === 'waiting' &&
       answer === waiting.options[0]
     )
-      this.world.rules.save(waiting.call.input as RuleSpec, {
+      saveOnCard(this.world, waiting.call.input, {
         actor: { kind: 'person', id: user.id },
         user: user.id,
         card: cardId,

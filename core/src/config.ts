@@ -41,10 +41,38 @@ const Limits = z.object({
   keep_removed_days: z.number().int().min(1),
   journey_times: z.number().int().min(1),
   reply_fold_lines: z.number().int().min(1),
+  agent_cards_waiting: z.number().int().min(1),
+  interview_stop_value: z.number().nonnegative(),
+  interview_skip_decay: z.number().min(0).max(1),
+  interview_brief_words: z.number().int().min(0),
+  interview_word_per_day: z.number().int().min(0),
+  interview_answer_stale_days: z.number().positive(),
+  interview_age_boost: z.number().nonnegative(),
+  interview_stale_days: z.number().positive(),
+  interview_weights: z.record(z.string(), z.number()),
+  research_searches: z.number().int().min(1),
+  research_pages: z.number().int().min(0),
+  research_minutes: z.number().positive(),
+  research_search_url: z.string().includes('{q}'),
+  research_page_chars: z.number().int().positive(),
+  governance_wall_runs: z.number().int().min(1),
+  governance_days: z.number().positive(),
 })
+
+const BankItem = z.object({
+  id: z.string().min(1),
+  kind: z.string().min(1),
+  reach: z.number().int().min(0),
+  ask: z.string().min(1),
+  why: z.string().min(1),
+  unblocks: z.string().min(1),
+})
+const Bank = z.object({ business: z.array(BankItem), module: z.array(BankItem) })
 
 const Words = z.object({
   removal: z.array(z.string().min(1)).min(1),
+  interview_done: z.array(z.string().min(1)).min(1),
+  interview_skip: z.array(z.string().min(1)).min(1),
 })
 
 const People = z.object({
@@ -91,4 +119,16 @@ export const config = {
   reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
   // how the model sorts a person's items into the groups they named
   judging: (dir?: string) => load('judging.md', (t) => t.trim(), dir),
+  // how the model words the day's interview questions from what is unresolved
+  interviewing: (dir?: string) => load('interviewing.md', (t) => t.trim(), dir),
+  // the standing questions of Interview me's pool, for the business and for each module
+  interviewBank: (dir?: string) =>
+    load('interview-bank.yaml', yamlOf(Bank, 'interview-bank.yaml'), dir),
+  // what the model is told with an answer to a prepared question
+  interviewAnswer: (dir?: string) => load('interview-answer.md', (t) => t.trim(), dir),
+  // Alpha's workspace skills (30 Oct): Research plans and writes its brief; Governance explains
+  // a refusal; the Builder's brief for the desk
+  research: (dir?: string) => load('research.md', (t) => t.trim(), dir),
+  governance: (dir?: string) => load('governance.md', (t) => t.trim(), dir),
+  builder: (dir?: string) => load('builder.md', (t) => t.trim(), dir),
 }

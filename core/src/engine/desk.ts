@@ -51,6 +51,7 @@ interface Turn {
   said: { message: number; user: string } | null
   message: string | null // the person's own words, when the turn is on their message
   from?: { id: string; name: string } | null // the module they asked from
+  after?: () => void // what code does once the reply is in (the interview's next question)
 }
 
 // A kept session is resumed only with the same tools (v1 crashed resuming one made on others).
@@ -147,21 +148,33 @@ export class Desk {
 
   // The person's sentence: journaled at once, answered in order. Asked from a module (Ask, ⌘J),
   // the line carries the module and the turn's context says so.
-  say(words: string, from: { id: string; name: string } | null = null): string {
+  // Said in an agent's thread, the line keeps the agent and the model reads "@<agent> …".
+  say(
+    words: string,
+    from: { id: string; name: string } | null = null,
+    to: { id: string; name: string } | null = null,
+    // an answer to a prepared interview question: kept against it, the model told so, and the
+    // next question asked once the reply is in
+    also: { data?: Record<string, unknown>; note?: string; after?: () => void } = {},
+  ): string {
+    const data = { ...(to ? { agent: to.id } : {}), ...also.data }
     const line = this.world.line({
       actor: { kind: 'person', id: this.user.id },
       kind: 'said',
       words,
       user: this.user.id,
       module: from?.id ?? null,
+      ...(Object.keys(data).length ? { data } : {}),
     })
     const turn = String(line.id)
+    const text = to ? `@${to.name} ${words}` : words
     this.queue.push({
       turn,
-      text: words,
+      text: also.note ? `${text}\n\n(${also.note})` : text,
       said: { message: line.id, user: this.user.id },
       message: words,
       from,
+      ...(also.after ? { after: also.after } : {}),
     })
     this.emit({ type: 'lines' })
     this.pump()
@@ -367,6 +380,7 @@ export class Desk {
         user: this.user.id,
         turn: running.turn,
       })
+      if (e.ok && !stopped) running.after?.()
       this.world.markSeen(this.user.id, this.world.lastLineId())
       this.running = null
       this.stopping = false

@@ -6,10 +6,11 @@
 import type { UsageView } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { Arranged } from './arrange.tsx'
 import { when } from './ModulesAndAgents.tsx'
 import { Chart, type ChartKind, KindPicker } from './ui/chart.tsx'
+import { Cut } from './ui/cut.tsx'
 import { Empty, Section } from './ui/section.tsx'
-import { Segmented } from './ui/segmented.tsx'
 
 export const usd = (n: number) =>
   n === 0
@@ -25,13 +26,17 @@ export const usd = (n: number) =>
 const tokens = (n: number) =>
   n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n)
 
-export function Usage({ version }: { version: number }) {
-  const [days, setDays] = useState<'7' | '30' | '90'>('30')
+// `agent`: only that agent's runs, as its Cost on the Agents list and its page opens it; this week
+// first, as they show it
+export function Usage({ version, agent = null }: { version: number; agent?: string | null }) {
+  const [days, setDays] = useState<'7' | '30' | '90'>(agent ? '7' : '30')
   const [view, setView] = useState<UsageView | null | undefined>(undefined)
   useEffect(() => {
     if (version >= 0)
-      api.get<UsageView>(`/api/usage?days=${days}`).then(setView, () => setView(null))
-  }, [days, version])
+      api
+        .get<UsageView>(`/api/usage?days=${days}${agent ? `&agent=${agent}` : ''}`)
+        .then(setView, () => setView(null))
+  }, [days, version, agent])
   if (view === undefined) return <p className="text-ink-3">Loading…</p>
   if (view === null) return <Empty>Usage could not be read just now.</Empty>
   const spent = view.days.filter((d) => d.chat + d.runs > 0).length
@@ -54,16 +59,18 @@ export function Usage({ version }: { version: number }) {
             ? `Alpha used the model on ${spent} of the last ${days} days.`
             : `Nothing used in the last ${days} days.`}
         </p>
-        <Segmented
-          label="Days"
-          value={days}
-          onChange={setDays}
-          options={[
-            { value: '7', label: '7 days' },
-            { value: '30', label: '30 days' },
-            { value: '90', label: '90 days' },
-          ]}
-        />
+        <div className="flex gap-1.5">
+          {agent && (
+            <Cut sel onClick={() => (window.location.hash = '#/settings/usage')}>
+              {view.agents[0]?.name ?? 'One agent'} · Clear filters
+            </Cut>
+          )}
+          {(['7', '30', '90'] as const).map((d) => (
+            <Cut key={d} sel={days === d} onClick={() => setDays(d)}>
+              {d} days
+            </Cut>
+          ))}
+        </div>
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
         {tiles.map((t) => (
@@ -85,28 +92,44 @@ export function Usage({ version }: { version: number }) {
         <Days view={view} />
       </Section>
 
-      <div className="grid gap-8 xl:grid-cols-2">
-        <Charted
-          title="By model"
-          about="What each model cost; a model marked ≈ counts some runs at its list price."
-          kinds={['donut', 'bar']}
-          marks={view.models.map((m) => ({
-            label: `${m.model}${m.estimated ? ' ≈' : ''}`,
-            n: m.usd,
-            href: '#/settings/model',
-          }))}
-        />
-        <Charted
-          title="By module"
-          about="Chat with no module open counts as Conversation."
-          kinds={['bar', 'donut']}
-          marks={view.modules.map((m) => ({
-            label: m.name,
-            n: m.usd,
-            href: m.id ? `#/module/${m.id}` : '#/conversation',
-          }))}
-        />
-      </div>
+      <Arranged
+        page="usage:charts"
+        start={[['by-model', 'by-module']]}
+        blocks={[
+          {
+            key: 'by-model',
+            name: 'By model',
+            node: (
+              <Charted
+                title="By model"
+                about="What each model cost; a model marked ≈ counts some runs at its list price."
+                kinds={['donut', 'bar']}
+                marks={view.models.map((m) => ({
+                  label: `${m.model}${m.estimated ? ' ≈' : ''}`,
+                  n: m.usd,
+                  href: '#/settings/model',
+                }))}
+              />
+            ),
+          },
+          {
+            key: 'by-module',
+            name: 'By module',
+            node: (
+              <Charted
+                title="By module"
+                about="Chat with no module open counts as Conversation."
+                kinds={['bar', 'donut']}
+                marks={view.modules.map((m) => ({
+                  label: m.name,
+                  n: m.usd,
+                  href: m.id ? `#/module/${m.id}` : '#/conversation',
+                }))}
+              />
+            ),
+          },
+        ]}
+      />
 
       <Section
         title="Tokens by model"
@@ -141,61 +164,78 @@ export function Usage({ version }: { version: number }) {
         </div>
       </Section>
 
-      <div className="grid gap-8 xl:grid-cols-2">
-        <Section
-          title="By agent"
-          about="Each agent's runs, counted at the list price of the model they use."
-        >
-          <div className="flex flex-col rounded-lg border border-line bg-surface">
-            {view.agents.map((a) => (
-              <a
-                key={a.id ?? a.name}
-                href={a.id ? `#/agent/${a.id}` : '#/intelligence/agents'}
-                className="flex items-center gap-3 border-hair border-b px-4 py-2 text-md last:border-b-0 hover:bg-hover"
+      <Arranged
+        page="usage:lists"
+        start={[['by-agent', 'costliest']]}
+        blocks={[
+          {
+            key: 'by-agent',
+            name: 'By agent',
+            node: (
+              <Section
+                title="By agent"
+                about="Each agent's runs, counted at the list price of the model they use."
               >
-                <span className="min-w-0 flex-1 truncate">
-                  {a.name}
-                  {a.module && <span className="text-ink-3 text-sm"> · {a.module}</span>}
-                </span>
-                <span className="text-ink-3 text-sm tabular-nums">
-                  {a.runs} {a.runs === 1 ? 'run' : 'runs'} · {tokens(a.tokens)}
-                </span>
-                <span className="w-16 text-right font-medium tabular-nums">≈ {usd(a.usd)}</span>
-              </a>
-            ))}
-            {!view.agents.length && (
-              <p className="px-4 py-3 text-ink-3 text-md">No agent used the model.</p>
-            )}
-          </div>
-        </Section>
-        <Section
-          title="Costliest"
-          about="The replies and runs that cost the most; each opens where it happened."
-        >
-          <div className="flex flex-col rounded-lg border border-line bg-surface">
-            {view.costly.map((c) => (
-              <a
-                key={c.kind + c.id}
-                href={c.kind === 'run' ? `#/run/${c.id}` : '#/conversation'}
-                className="flex items-center gap-3 border-hair border-b px-4 py-2 text-md last:border-b-0 hover:bg-hover"
+                <div className="flex flex-col rounded-lg border border-line bg-surface">
+                  {view.agents.map((a) => (
+                    <a
+                      key={a.id ?? a.name}
+                      href={a.id ? `#/agent/${a.id}` : '#/intelligence/agents'}
+                      className="flex items-center gap-3 border-hair border-b px-4 py-2 text-md last:border-b-0 hover:bg-hover"
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {a.name}
+                        {a.module && <span className="text-ink-3 text-sm"> · {a.module}</span>}
+                      </span>
+                      <span className="text-ink-3 text-sm tabular-nums">
+                        {a.runs} {a.runs === 1 ? 'run' : 'runs'} · {tokens(a.tokens)}
+                      </span>
+                      <span className="w-16 text-right font-medium tabular-nums">
+                        ≈ {usd(a.usd)}
+                      </span>
+                    </a>
+                  ))}
+                  {!view.agents.length && (
+                    <p className="px-4 py-3 text-ink-3 text-md">No agent used the model.</p>
+                  )}
+                </div>
+              </Section>
+            ),
+          },
+          {
+            key: 'costliest',
+            name: 'Costliest',
+            node: (
+              <Section
+                title="Costliest"
+                about="The replies and runs that cost the most; each opens where it happened."
               >
-                <span className="min-w-0 flex-1">
-                  <span className="line-clamp-1">{c.words}</span>
-                  <span className="text-ink-3 text-sm">
-                    {c.kind === 'run' ? 'Run' : 'Reply'} · {when(c.at)}
-                    {c.module ? ` · ${c.module}` : ''} · {tokens(c.tokens)} tokens
-                  </span>
-                </span>
-                <span className="w-16 text-right font-medium tabular-nums">
-                  {c.kind === 'run' ? '≈ ' : ''}
-                  {usd(c.usd)}
-                </span>
-              </a>
-            ))}
-            {!view.costly.length && <p className="px-4 py-3 text-ink-3 text-md">Nothing yet.</p>}
-          </div>
-        </Section>
-      </div>
+                <div className="flex flex-col rounded-lg border border-line bg-surface">
+                  {view.costly.map((c) => (
+                    <a
+                      key={c.kind + c.id}
+                      href={c.kind === 'run' ? `#/run/${c.id}` : '#/conversation'}
+                      className="flex items-center gap-3 border-hair border-b px-4 py-2 text-md last:border-b-0 hover:bg-hover"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="line-clamp-1">{c.words}</span>
+                        <span className="text-ink-3 text-sm">
+                          {c.kind === 'run' ? 'Run' : 'Reply'} · {when(c.at)}
+                          {c.module ? ` · ${c.module}` : ''} · {tokens(c.tokens)} tokens
+                        </span>
+                      </span>
+                      <span className="w-16 text-right font-medium tabular-nums">
+                        {c.kind === 'run' ? '≈ ' : ''}
+                        {usd(c.usd)}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </Section>
+            ),
+          },
+        ]}
+      />
 
       <Section
         title="Prices"
@@ -241,11 +281,7 @@ function Charted({
         <div className="mb-2 flex justify-end">
           <KindPicker kinds={kinds} kind={kind} onKind={setKind} />
         </div>
-        {marks.length ? (
-          <Chart kind={kind} marks={marks} fmt={usd} />
-        ) : (
-          <p className="text-ink-3 text-md">Nothing yet.</p>
-        )}
+        {marks.length > 0 && <Chart kind={kind} marks={marks} fmt={usd} />}
       </div>
     </Section>
   )

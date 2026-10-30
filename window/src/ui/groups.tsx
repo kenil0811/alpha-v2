@@ -3,12 +3,14 @@ import type { ReactNode } from 'react'
 import { cn } from './cn.ts'
 
 export function Group({
+  id,
   title,
   sub,
   count,
   action,
   children,
 }: {
+  id?: string
   title: string
   sub?: string | undefined
   count?: number | undefined
@@ -16,10 +18,10 @@ export function Group({
   children: ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-2.5">
+    <section id={id} className="flex scroll-mt-4 flex-col gap-2.5">
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-ink-3 text-xs uppercase tracking-label">{title}</h2>
+          <h2 className="font-semibold text-ink-2 text-sm">{title}</h2>
           {!!count && (
             <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-warn-soft px-1.5 font-semibold text-warn text-xs">
               {count}

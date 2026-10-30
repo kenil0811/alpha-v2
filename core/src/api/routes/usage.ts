@@ -20,8 +20,12 @@ export function registerUsage(ctx: Ctx): void {
   const { app, world } = ctx
 
   app.get('/api/usage', async (req): Promise<UsageView> => {
-    const { days } = z
-      .object({ days: z.coerce.number().int().min(1).max(366).default(30) })
+    // `agent`: only that agent's runs, for its page and the Agents list's Cost (one sum, here)
+    const { days, agent: only } = z
+      .object({
+        days: z.coerce.number().int().min(1).max(366).default(30),
+        agent: z.string().optional(),
+      })
       .parse(req.query)
     const since = new Date(Date.now() - days * 864e5).toISOString()
     const prices = config.prices()
@@ -90,6 +94,7 @@ export function registerUsage(ctx: Ctx): void {
       "SELECT id, at, data, module_id, turn_id FROM journal WHERE kind IN ('replied', 'error') AND at >= ? ORDER BY id",
       since,
     )) {
+      if (only) break
       const data = JSON.parse(l.data) as { cost?: number; usage?: Record<string, Said> }
       if (typeof data.cost !== 'number') continue
       let tokens = 0
@@ -132,8 +137,9 @@ export function registerUsage(ctx: Ctx): void {
       data: string
     }>(
       world.db,
-      'SELECT id, agent_id, module_id, started_at, words, data FROM runs WHERE started_at >= ?',
+      `SELECT id, agent_id, module_id, started_at, words, data FROM runs WHERE started_at >= ?${only ? ' AND agent_id = ?' : ''}`,
       since,
+      ...(only ? [only] : []),
     )) {
       const tokens = (JSON.parse(r.data) as { tokens?: number | null }).tokens ?? 0
       if (!tokens) continue

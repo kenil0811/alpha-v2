@@ -7,9 +7,10 @@ import {
   type ShapeAction,
 } from '../../engine/tools/index.ts'
 import { agents } from '../../modules/agents.ts'
+import { BUILD, type BuildInput, build } from '../../modules/builder.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { installedKits, recordChange } from '../../modules/kits/index.ts'
-import { PROPOSE_TASKS, RUN_AGAIN } from '../../modules/runs/index.ts'
+import { PROPOSE_TASKS, RUN_AGAIN, settleStuck } from '../../modules/runs/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { CardView } from '../types.ts'
@@ -17,14 +18,37 @@ import type { CardView } from '../types.ts'
 export function registerCards(ctx: Ctx): void {
   const { app, world, engine, user, person, live, asPerson } = ctx
   const { cardOut } = ctx.views
+  const who = () => ({ user: user.id, turn: null })
 
-  // An agent's proposed tasks: those the person kept are added (by their place in the card).
-  app.post('/api/cards/:id/tasks', async (req): Promise<CardView | null> => {
-    const { id } = z.object({ id: z.string() }).parse(req.params)
-    const { take } = z.object({ take: z.array(z.number().int().min(0)) }).parse(req.body)
+  // One agent on the card of those that did not finish: Try again now, or Leave it.
+  app.post('/api/cards/:id/agents/:agent', async (req, reply) => {
+    const { id, agent } = z.object({ id: z.string(), agent: z.string() }).parse(req.params)
+    const { again } = z.object({ again: z.boolean() }).parse(req.body)
     const runner = engine.hands?.runner
     if (!runner) throw new Refused('Agents are not set up in this core.')
-    const out = runner.adopt(id, take, user.id)
+    try {
+      const out = settleStuck(runner, id, agent, again, who(), person)
+      live()
+      return cardOut(out)
+    } catch (err) {
+      if (err instanceof Refused) return reply.code(409).send({ problem: err.message })
+      throw err
+    }
+  })
+
+  // An agent's proposed tasks: those the person kept are added (by their place in the card);
+  // with `decline`, a word on some rows only, the card waiting until each has one.
+  app.post('/api/cards/:id/tasks', async (req): Promise<CardView | null> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { take, decline } = z
+      .object({
+        take: z.array(z.number().int().min(0)),
+        decline: z.array(z.number().int().min(0)).optional(),
+      })
+      .parse(req.body)
+    const runner = engine.hands?.runner
+    if (!runner) throw new Refused('Agents are not set up in this core.')
+    const out = runner.adopt(id, take, user.id, decline)
     live()
     return cardOut(out)
   })
@@ -114,20 +138,23 @@ export function registerCards(ctx: Ctx): void {
     try {
       const c = world.cards.get(id)
       if (c?.call?.tool === DRAFT) return cardOut(await engine.answerDraft(user, id, answer))
-      // an agent that did not finish three times: one more run now, or left as if it had run
+      // agents that did not finish: all of them run again now, or are left as if they had run
       if (c?.call?.tool === RUN_AGAIN && engine.hands?.runner) {
-        const runner = engine.hands.runner
-        const input = c.call.input as { agent: string; cursor: string | null }
-        if (answer === c.options[0])
-          void runner.retry(input.agent, { user: user.id, turn: null }).catch(() => undefined)
-        else runner.leave(input.agent, input.cursor)
-        const out = world.cards.answer(id, answer, person)
+        const again = answer === c.options[0]
+        const out = settleStuck(engine.hands.runner, id, null, again, who(), person)
         live()
         return cardOut(out)
       }
       // a yes on proposed tasks adds them all; the card's own list keeps some
       if (c?.call?.tool === PROPOSE_TASKS && answer === c.options[0] && engine.hands?.runner) {
         const out = engine.hands.runner.adopt(id, 'all', user.id)
+        live()
+        return cardOut(out)
+      }
+      // the Builder's card (30 Oct): Build it applies the changes as proposed, nothing before
+      if (c?.call?.tool === BUILD && c.state === 'waiting' && answer === c.options[0]) {
+        const said = await build(world, c.call.input as unknown as BuildInput, asPerson)
+        const out = world.cards.answer(id, answer, person, said)
         live()
         return cardOut(out)
       }

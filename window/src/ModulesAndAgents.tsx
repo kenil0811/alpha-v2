@@ -3,16 +3,17 @@
 // folder or a file. The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
 import { ChevronDown, ChevronRight, Package, Trash2 } from 'lucide-react'
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 
 export function when(at: string | null): string {
   if (!at) return 'not yet'
@@ -40,11 +41,6 @@ export function ModulesAndAgents({ version }: { version: number }) {
       about="Where each module comes from: install one, update it, or pack it to install elsewhere."
     >
       {problem && <div className="text-bad text-md">{problem}</div>}
-      {modules?.length === 0 && (
-        <Empty>
-          Nothing configured yet. Modules you install or make in a conversation show here.
-        </Empty>
-      )}
       {modules?.map((m) => (
         <ModuleWork key={m.id} module={m} onChange={load} />
       ))}
@@ -305,7 +301,6 @@ function InstallModule({ onChange }: { onChange: () => void }) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [said, setSaid] = useState<string | null>(null)
-  const picker = useRef<HTMLInputElement>(null)
   // a module sent as a file: installed, or updated (what the person changed stays)
   const fromFile = async (file: File | undefined) => {
     if (!file) return
@@ -347,20 +342,8 @@ function InstallModule({ onChange }: { onChange: () => void }) {
         <Button type="submit" disabled={busy || !folder.trim()}>
           {busy ? 'Installing…' : 'Install module'}
         </Button>
-        <Button variant="ghost" disabled={busy} onClick={() => picker.current?.click()}>
-          Install or update from a file
-        </Button>
-        <input
-          ref={picker}
-          type="file"
-          accept=".alphakit"
-          className="hidden"
-          onChange={(e) => {
-            void fromFile(e.target.files?.[0])
-            e.target.value = ''
-          }}
-        />
       </div>
+      <DropZone accept=".alphakit" busy={busy} onFiles={(files) => void fromFile(files[0])} />
       {said && <div className="text-ink-2 text-md">{said}</div>}
       {problem && <div className="text-bad text-md">{problem}</div>}
     </form>

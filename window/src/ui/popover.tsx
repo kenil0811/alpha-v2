@@ -17,6 +17,17 @@ import {
 import { createPortal } from 'react-dom'
 import { cn } from './cn.ts'
 
+// Where what floats is drawn: in the open modal dialog it belongs to (the browser draws a modal
+// dialog in its top layer, over anything in the page, so a menu in the body would sit behind it),
+// else against the window.
+export function floatRoot(from?: Element | null): Element {
+  return (
+    from?.closest('dialog[open]') ??
+    [...document.querySelectorAll('dialog[open]')].at(-1) ??
+    document.body
+  )
+}
+
 export function Popover({
   anchor,
   point,
@@ -105,13 +116,13 @@ export function Popover({
       onKeyDown={move}
       style={{ top: at?.top ?? -9999, left: at?.left ?? -9999 }}
       className={cn(
-        'fixed z-50 max-h-[calc(100vh-16px)] min-w-48 overflow-y-auto rounded-md border border-line bg-surface p-1 text-md shadow-pop',
+        'fixed z-(--z-pop) max-h-[calc(100vh-16px)] min-w-48 overflow-y-auto rounded-md border border-line bg-surface p-1 text-md shadow-pop',
         className,
       )}
     >
       {children}
     </div>,
-    document.body,
+    floatRoot(anchor?.current),
   )
 }
 
@@ -166,7 +177,8 @@ export function MenuItem({
   reason?: string | undefined // why it can't be used, shown on hover
   danger?: boolean | undefined
   hint?: ReactNode // on the right: a count, a shortcut
-  star?: { on: boolean; onClick: (() => void) | undefined } | undefined // no onClick: kept as it is
+  // no onClick: kept as it is; tip: what the ★ means here, where it is not the default
+  star?: { on: boolean; onClick: (() => void) | undefined; tip?: string } | undefined
 }) {
   const off = disabled || !!reason
   const line = (
@@ -197,8 +209,8 @@ export function MenuItem({
       <button
         type="button"
         aria-pressed={star.on}
-        aria-label={star.on ? 'The default' : 'Make it the default'}
-        data-tip={star.on ? 'The default' : 'Make it the default'}
+        aria-label={star.tip ?? (star.on ? 'The default' : 'Make it the default')}
+        data-tip={star.tip ?? (star.on ? 'The default' : 'Make it the default')}
         disabled={!star.onClick}
         onClick={star.onClick}
         className={cn(

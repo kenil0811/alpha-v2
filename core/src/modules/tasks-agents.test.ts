@@ -166,4 +166,24 @@ describe('an agent on tasks', () => {
     expect(said(t.id).at(-1)).toBe('Helper finished “Plan the week”: the person kept them')
     expect(runner.runsOf(t.id)).toHaveLength(2)
   }, 60_000)
+
+  it('takes a word on each proposed task, and closes the card once every one has one', async () => {
+    const mill = world.records.list(world.shape.table('Suppliers')?.id as string)[0]?.id as string
+    const t = give('Plan the month', null, [{ kind: 'row', ref: mill }])
+    await runner.startTask(t.id, who).run
+    const [card] = world.cards.waiting()
+    const id = card?.id as string
+    expect(runner.adopt(id, [0], 'u_1', [])).toMatchObject({ state: 'waiting' })
+    expect(world.tasks.list().some((x) => x.title === 'Order flour')).toBe(true)
+    // a word twice on one row changes nothing
+    runner.adopt(id, [0], 'u_1', [])
+    expect(world.tasks.list().filter((x) => x.title === 'Order flour')).toHaveLength(1)
+    const view = runner.proposedView(world.cards.get(id) as never)
+    expect(view?.tasks.map((x) => x.word)).toEqual(['add', null])
+    expect(runner.adopt(id, [], 'u_1', [1])).toMatchObject({
+      state: 'yes',
+      answer: 'Added 1 of 2',
+    })
+    expect(world.tasks.list().some((x) => x.title === 'Check the oven')).toBe(false)
+  }, 60_000)
 })

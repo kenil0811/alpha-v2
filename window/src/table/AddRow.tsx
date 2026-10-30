@@ -71,12 +71,14 @@ export function AddRow({
               field={f}
               typed={values[f.name] ?? ''}
               onTyped={(t) => setValues((v) => ({ ...v, [f.name]: t }))}
+              table={name}
             />
           ) : f.kind === 'choice' ? (
             <Select
               id={`add-${f.id}`}
               value={values[f.name] ?? ''}
               onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+              stars={f.id}
               adds={{ what: 'choice', send: (w) => askForNew('choice', `${f.name} in ${name}`, w) }}
             >
               <option value="" />

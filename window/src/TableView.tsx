@@ -24,12 +24,14 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { agoWords } from './AgentList.tsx'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
+import { when } from './ModulesAndAgents.tsx'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
-import { setGroup, setRule } from './table/edits.ts'
+import { removeRule, setGroup, setRule } from './table/edits.ts'
 import {
   applyFilters,
   applySearch,
@@ -47,7 +49,7 @@ import { PasteBar, TickedBar } from './table/Many.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
+import { AddFilter, Chips, ColumnsList } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
 import { canType, isTags, show, titleOf } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -57,7 +59,10 @@ import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
+import { cutClass } from './ui/cut.tsx'
 import { Select } from './ui/field.tsx'
+import { Pager } from './ui/pager.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
 interface Working {
@@ -82,10 +87,13 @@ export function TableView({
   field: openField = null,
   quiet = false,
   kept = null,
+  start,
+  filters,
+  quickBy,
 }: {
   data: TableData
   row?: string | null
-  only?: string[] | null // the rows a page or a chart opened: only these, until Show original list
+  only?: string[] | null // the rows a page or a chart opened: only these, until Clear filters
   why?: string | null // what they are, in words: "Stage is New"
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // the Ask panel is open: New opens as a dialog; a row's panel sits beside the table, left of it
@@ -94,6 +102,9 @@ export function TableView({
   // their own page, changed there; why is said when something would be typed or saved. New adds
   // one in the page's own way, when it has one.
   kept?: { open: (row: string) => void; onNew?: () => void } | null
+  start?: Partial<ViewConfig> // how it opens with no saved list chosen: a board for tasks
+  filters?: ReactNode // a page's own quick filters, first under the toolbar (Tasks' due lists)
+  quickBy?: string // the choice the quick filters go by, by name, when not the usual
 }) {
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
@@ -107,7 +118,7 @@ export function TableView({
     if (was && (was.view === null || data.views.some((v) => v.id === was.view))) return was.view
     return data.views.find((v) => v.isDefault)?.id ?? null
   })
-  const saved = complete(views.find((v) => v.id === viewId)?.config ?? BLANK)
+  const saved = complete(views.find((v) => v.id === viewId)?.config ?? { ...BLANK, ...start })
   const [config, setConfig] = useState<ViewConfig>(() => {
     const was = stored(key)
     return was && was.view === viewId ? complete(was.config) : saved
@@ -134,7 +145,6 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
-  const [searching, setSearching] = useState(false)
   const layout = layoutOf(config, setConfig) // frozen and wrapped columns, kept with the list
   // rows to a page, the person's choice, kept by Alpha per person
   const { layout: left, change } = useLayout()
@@ -145,6 +155,7 @@ export function TableView({
   }
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
   const [ticked, setTicked] = useState<Set<string>>(new Set())
+  const [saveAt, setSaveAt] = useState<HTMLElement | null>(null)
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)
   // the open tasks on each row, drawn beside its name
@@ -188,6 +199,13 @@ export function TableView({
     choices.find((f) => f.id === config.group) ??
     choices.find((f) => f.name === 'Stage') ??
     choices[0]
+
+  // quick filters under the toolbar: a list's tags (Clients, Insurers), else the board's choice
+  // while it is not the board itself
+  const quick =
+    fields.find((f) => f.name === quickBy) ??
+    fields.find((f) => isTags(f) && f.choices.length > 1) ??
+    (config.kind === 'board' ? undefined : boardBy)
 
   const act = async (fn: () => Promise<void>) => {
     if (kept) return setProblem(why)
@@ -254,6 +272,14 @@ export function TableView({
   const at = Math.min(page, pages - 1)
   const paged = rows.slice(at * size, (at + 1) * size)
 
+  // the grid is the view a kind falls back to
+  const grid = !(
+    (config.kind === 'board' && boardBy) ||
+    (config.kind === 'calendar' && dateBy) ||
+    (config.kind === 'timeline' && dateBy) ||
+    ['form', 'list', 'gallery', 'chart'].includes(config.kind)
+  )
+
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
@@ -261,38 +287,27 @@ export function TableView({
           tools={
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
-              {searching || config.search ? (
-                <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-                  <Search className="size-3.25 shrink-0" />
-                  <input
-                    // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
-                    autoFocus={searching}
-                    value={config.search}
-                    onChange={(e) => setConfig({ ...config, search: e.target.value })}
-                    onBlur={() => setSearching(false)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Escape') return
-                      e.preventDefault()
-                      setConfig({ ...config, search: '' })
-                      setSearching(false)
-                    }}
-                    placeholder={`Search ${data.name}`}
-                    aria-label={`Search ${data.name}`}
-                    title="Escape clears it"
-                    className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-                  />
-                </label>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setSearching(true)}
-                  data-tip={`Search ${data.name}`}
-                  className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
-                >
-                  <Search className="size-3.25 shrink-0" />
-                  Search
-                </button>
-              )}
+              {/* search first, wide, always a box (Vikas, 27 Oct) */}
+              <label className="flex h-7.5 w-80 min-w-32 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                <Search className="size-3.25 shrink-0" />
+                <input
+                  value={config.search}
+                  onChange={(e) => setConfig({ ...config, search: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Escape') return
+                    e.preventDefault()
+                    setConfig({ ...config, search: '' })
+                  }}
+                  placeholder={`Search ${data.name.toLowerCase()}`}
+                  aria-label={`Search ${data.name}`}
+                  className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+                />
+              </label>
+            </>
+          }
+          right={
+            <>
+              {/* Filter on the right, just left of ⋮; Columns inside ⋮ (Vikas, 27 Oct) */}
               <AddFilter
                 fields={fields}
                 config={config}
@@ -300,13 +315,6 @@ export function TableView({
                 names={data.names}
                 onConfig={setConfig}
               />
-            </>
-          }
-          right={
-            <>
-              {config.kind !== 'board' && (
-                <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
-              )}
               <More
                 tableId={data.id}
                 fields={fields}
@@ -340,6 +348,7 @@ export function TableView({
           views={views}
           current={viewId}
           dirty={dirty}
+          saveAt={saveAt}
           problem={problem}
           onPick={pick}
           onReset={() => setConfig(saved)}
@@ -386,11 +395,11 @@ export function TableView({
               {onlyWhy ? `: ${onlyWhy}` : ', the ones a page counted'}.
             </span>
             <a href={`#/table/${data.id}`} className="font-medium text-accent hover:underline">
-              Show original list
+              Clear filters
             </a>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2 px-7 py-2">
+        <div className="flex flex-wrap items-center gap-2 px-7 py-2 empty:hidden">
           {tickedRows.length > 0 ? (
             <TickedBar
               tableId={data.id}
@@ -415,23 +424,46 @@ export function TableView({
               }}
             />
           ) : (
-            <Chips
-              fields={fields}
-              config={config}
-              rows={data.rows}
-              names={data.names}
-              onConfig={setConfig}
-            />
+            <>
+              {filters}
+              {/* a table's saved lists, one click each, with how many each holds (Vikas, 27 Oct:
+                  filters as buttons) */}
+              {views.length > 1 &&
+                views.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    className={cutClass(v.id === viewId)}
+                    onClick={() => pick(v.id)}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {v.name}
+                      <span className="text-ink-3 tabular-nums">
+                        {applyFilters(base, fields, complete(v.config).filters, data.names).length}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              {/* a table's lists are its quick filters; a choice's buttons only where it has none */}
+              <Quick
+                field={views.length > 1 && !quickBy ? undefined : quick}
+                config={config}
+                rows={data.rows}
+                onConfig={setConfig}
+              />
+              <Chips
+                fields={fields}
+                config={config}
+                rows={data.rows}
+                names={data.names}
+                onConfig={setConfig}
+              />
+            </>
           )}
-          <span className="text-ink-3 text-sm">
-            {rows.length === data.rows.length
-              ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-              : `${rows.length} of ${data.rows.length}`}
-          </span>
         </div>
         {config.kind === 'board' && boardBy ? (
           <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
-            <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
+            <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />
           </div>
         ) : config.kind === 'form' ? (
           <FormView
@@ -454,7 +486,6 @@ export function TableView({
             fields={shown}
             group={fields.find((f) => f.id === config.group)}
             names={data.names}
-            onOpen={openRowPanel}
           />
         ) : config.kind === 'gallery' ? (
           <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
@@ -542,58 +573,46 @@ export function TableView({
               layout={layout}
               onPaste={setPasting}
             />
-            <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
-              <span data-tip={typeof onNew === 'string' ? onNew : undefined} className="mr-auto">
-                <Button
-                  size="sm"
-                  disabled={typeof onNew === 'string'}
-                  onClick={typeof onNew === 'string' ? undefined : onNew}
-                >
-                  <Plus className="size-3.5" />
-                  New
-                </Button>
-              </span>
-              {!kept && <SyncNow data={data} />}
-              {rows.length > Math.min(size, ...SIZES) && (
-                <>
-                  <span className="mr-2 tabular-nums">
-                    Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
-                  </span>
-                  <Select
-                    aria-label="Rows to a page"
-                    value={String(size)}
-                    onChange={(e) => resize(Number(e.target.value))}
-                    className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
-                  >
-                    {SIZES.map((n) => (
-                      <option key={n} value={n}>
-                        {n} a page
-                      </option>
-                    ))}
-                  </Select>
-                  {(
-                    [
-                      ['First', 0, at === 0],
-                      ['Previous', at - 1, at === 0],
-                      ['Next', at + 1, at >= pages - 1],
-                      ['Last', pages - 1, at >= pages - 1],
-                    ] as const
-                  ).map(([label, to, off]) => (
-                    <button
-                      key={label}
-                      type="button"
-                      disabled={off}
-                      onClick={() => setPage(to)}
-                      className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
           </>
         )}
+        {/* New, then Save and Cancel while the list differs from what was saved, under every
+            view (Vikas, 27 Oct); a table's pages to its right */}
+        <div
+          className={cn('flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm', grid && '-mt-4')}
+        >
+          <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
+            <Button
+              size="sm"
+              disabled={typeof onNew === 'string'}
+              onClick={typeof onNew === 'string' ? undefined : onNew}
+            >
+              <Plus className="size-3.5" />
+              New
+            </Button>
+          </span>
+          <span ref={setSaveAt} className="mr-auto flex items-center gap-1 empty:hidden" />
+          {!kept && <SyncNow data={data} />}
+          {grid && rows.length > Math.min(size, ...SIZES) && (
+            <>
+              <span className="mr-2 tabular-nums">
+                Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
+              </span>
+              <Select
+                aria-label="Rows to a page"
+                value={String(size)}
+                onChange={(e) => resize(Number(e.target.value))}
+                className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+              >
+                {SIZES.map((n) => (
+                  <option key={n} value={n}>
+                    {n} a page
+                  </option>
+                ))}
+              </Select>
+              <Pager at={at} count={pages} onAt={setPage} />
+            </>
+          )}
+        </div>
       </div>
       {adding && (
         <AddRow
@@ -638,8 +657,8 @@ export function TableView({
 const PAGE = 50
 const SIZES = [25, 50, 100, 250]
 
-// The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
-// The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
+// The ⋮ menu: the view's columns, sort and group, then downloads of exactly the rows and columns
+// shown.
 function More({
   tableId,
   fields,
@@ -684,6 +703,18 @@ function More({
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <SubMenu
+          label={
+            <>
+              <Columns3 className="size-3.5 text-ink-3" />
+              Columns
+            </>
+          }
+          hint={config.hidden.length ? `${config.hidden.length} hidden` : undefined}
+          reason={config.kind === 'board' ? 'A board shows its cards, not columns.' : undefined}
+        >
+          <ColumnsList fields={fields} config={config} onConfig={onConfig} />
+        </SubMenu>
         <SubMenu
           label={
             <>
@@ -828,25 +859,42 @@ function barRule(field: FieldView, key: string): FilterRule {
 
 // Sync now, beside New: runs, now, the module's agents that are on and are named after this
 // table's rows or the rows it points at (a source's reader); shown only while there are such agents.
+// Beside it, when they last synced (Vikas, 29 Oct), or Syncing… while one runs.
 function SyncNow({ data }: { data: TableData }) {
   const [agents, setAgents] = useState<AgentView[]>([])
-  const { busy, problem, act } = useAct()
+  const [tick, setTick] = useState(0)
+  const { busy, problem, act } = useAct(() => setTick((n) => n + 1))
   useEffect(() => {
     api.get<{ agents: AgentView[] }>(`/api/modules/${data.module.id}`).then(
       (m) => setAgents(m.agents),
       () => setAgents([]),
     )
-  }, [data.module.id])
+  }, [data.module.id, tick])
   // its own rows' names, and the rows its relations point at (a deal's source)
   const names = new Set([
     ...data.rows.map((r) => titleOf(data.fields, r)),
     ...Object.values(data.names),
   ])
   const readers = agents.filter((a) => a.state === 'on' && names.has(a.name))
+  const syncing = readers.some((a) => a.running)
+  // while one runs, ask again every few seconds, so Syncing… ends when it does
+  useEffect(() => {
+    if (!syncing) return
+    const t = setTimeout(() => setTick((n) => n + 1), 4000)
+    return () => clearTimeout(t)
+  }, [syncing, agents])
   if (!readers.length) return null
+  const last = readers
+    .map((a) => a.lastRunAt)
+    .filter((x): x is string => !!x)
+    .sort()
+    .at(-1)
   return (
     <span className="mr-2 flex items-center gap-2">
       <Refusal words={problem} />
+      <span className="text-ink-3 text-sm" data-tip={last && !syncing ? when(last) : undefined}>
+        {syncing ? 'Syncing…' : last ? `Last synced ${agoWords(last)}` : 'Not synced yet'}
+      </span>
       <Button
         size="sm"
         disabled={busy}
@@ -859,5 +907,60 @@ function SyncNow({ data }: { data: TableData }) {
         Sync now
       </Button>
     </span>
+  )
+}
+
+// Quick filters under the toolbar (Vikas, 27 Oct): All, then each of one choice's values with its
+// count, one click to keep to it; the same rule a Filter makes, so it shows and saves the same way.
+// a quick filter's button: the same everywhere a list is cut one click at a time
+function Quick({
+  field,
+  config,
+  rows,
+  onConfig,
+}: {
+  field: FieldView | undefined
+  config: ViewConfig
+  rows: RowView[]
+  onConfig: (c: ViewConfig) => void
+}) {
+  if (!field) return null
+  const held = (r: RowView) => {
+    const v = r.values[field.slug]
+    return Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)]
+  }
+  // picked only when the rule is this one button's: one choice, not a list of them
+  const rule = config.filters.rules.find((r) => r.field === field.id && r.op === 'in')
+  const on = rule?.values?.length === 1 ? rule.values[0] : undefined
+  const counts = field.choices
+    .map((c) => ({ c, n: rows.filter((r) => held(r).includes(c)).length }))
+    .filter((x) => x.n)
+  if (counts.length < 2) return null
+  return (
+    <>
+      <button
+        type="button"
+        className={cutClass(!on)}
+        onClick={() => onConfig(removeRule(config, field.id))}
+      >
+        All
+      </button>
+      {counts.map(({ c, n }) => (
+        <button
+          key={c}
+          type="button"
+          className={cutClass(on === c)}
+          onClick={() =>
+            onConfig(
+              on === c
+                ? removeRule(config, field.id)
+                : setRule(config, { field: field.id, op: 'in', values: [c] }),
+            )
+          }
+        >
+          {c} <span className="text-ink-3 tabular-nums">{n}</span>
+        </button>
+      ))}
+    </>
   )
 }

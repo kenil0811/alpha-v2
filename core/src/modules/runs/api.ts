@@ -1,11 +1,18 @@
 import type { ExtractSpec } from '@alpha/connector-sdk'
 import { inReadingOrder, type ReadSpec, readInto } from '../../files/reading.ts'
-import { all } from '../../world/db.ts'
+import { callKey } from '../../world/cards.ts'
+import { all, run as exec, json, parse } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module, Table } from '../../world/shape/index.ts'
 import { agents, nextRun } from '../agents.ts'
+import { propose as proposeBuild } from '../builder.ts'
+import { explain, review as governanceReview } from '../governance.ts'
+import { alphaModule, refresh as refreshInterview, worthAsking } from '../interview.ts'
 import { type JudgeSpec, judge } from '../judging.ts'
+import { research } from '../research.ts'
+import { REVIEW, type ReviewInput } from '../reviews.ts'
 import type { AgentRunner } from './runner.ts'
+import { lastTold, sameJson, TOLD_AGAIN } from './told.ts'
 import { PROPOSE_TASKS, type ProposedTask, type RunFor } from './types.ts'
 import type { Walls } from './walls.ts'
 
@@ -55,11 +62,72 @@ export function api(
       refuse(`${t.name} is not one of ${module.name}'s tables.`)
     return t
   }
+  const step = (words: string, tokens?: number): void => {
+    runner.world.line({
+      actor,
+      kind: 'run_step',
+      words,
+      ...(tokens ? { data: { tokens } } : {}),
+      run: runId,
+      module: module.id,
+    })
+    runner.notify()
+  }
+  const spent = (tokens: number): void => {
+    runner.tokens.set(runId, (runner.tokens.get(runId) ?? 0) + tokens)
+  }
+  const isAlpha = (): boolean => alphaModule(runner.world) === module.id
   const affecting = (call: string): void => {
     if (walls?.effects && !walls.effects.has(call))
       refuse(
         `${label} may not ${call}: its file names no such effect (effects: [${[...walls.effects].join(', ') || 'none'}]).`,
       )
+  }
+  // Like asks come on one card (Vikas, 29 Oct): rows an agent puts to the person for a table, a
+  // field and choices its card still waiting already asks go onto that card, so a backlog grows
+  // one card's rows, not the cards.
+  const onWaiting = (t: Table, p: Record<string, unknown>): { card: string } | null => {
+    const choices = Array.isArray(p.choices) ? p.choices.map(String) : []
+    const note = p.note ? String(p.note) : null
+    const twin = all<{ id: string; call: string }>(
+      runner.world.db,
+      `SELECT id, call FROM cards WHERE state = 'waiting' AND json_extract(call, '$.tool') = ?
+         AND run_id IN (SELECT id FROM runs WHERE agent_id = ?) ORDER BY created_at LIMIT 50`,
+      REVIEW,
+      agentId,
+    )
+      .map((c) => ({ id: c.id, input: parse<{ input: ReviewInput }>(c.call, {} as never).input }))
+      .find(
+        (c) =>
+          c.input?.table === t.id &&
+          c.input.field === String(p.field ?? '') &&
+          c.input.note === note &&
+          c.input.choices.join('\n') === choices.join('\n'),
+      )
+    if (!twin) return null
+    const known = new Set(runner.world.records.list(t.id).map((r) => r.id))
+    const fresh = (Array.isArray(p.rows) ? p.rows.map(String) : []).filter(
+      (r) => known.has(r) && !twin.input.rows.includes(r),
+    )
+    if (fresh.length) {
+      const call = { tool: REVIEW, input: { ...twin.input, rows: [...twin.input.rows, ...fresh] } }
+      exec(
+        runner.world.db,
+        'UPDATE cards SET call = ?, call_key = ? WHERE id = ?',
+        json(call),
+        callKey(call),
+        twin.id,
+      )
+      runner.world.line({
+        actor,
+        kind: 'run_step',
+        words: `Put ${fresh.length} more row${fresh.length === 1 ? '' : 's'} of ${t.name} on the card already waiting for you, ${call.input.rows.length} in all.`,
+        run: runId,
+        module: module.id,
+      })
+    }
+    runner.notify()
+    return { card: twin.id }
   }
   return {
     'rows.list': async (p: Record<string, unknown>) => {
@@ -207,6 +275,8 @@ export function api(
       const t = writable(tableOf(p.table))
       if (!runner.world.shape.within(module.id).includes(t.module.id))
         throw new Refused(`${t.name} is not one of ${module.name}'s tables.`)
+      const merged = agentId ? onWaiting(t, p) : null
+      if (merged) return merged
       const card = runner.reviews.open(
         {
           words: String(p.words ?? '').trim() || `Rows of ${t.name} for you to decide`,
@@ -354,10 +424,27 @@ export function api(
         }
         rows = { table: t.id, rows: ids, ...(choice ? { choice } : {}) }
       }
+      // the same words on the same rows as its last post: the earlier post is said again, not
+      // posted twice (Vikas, 30 Oct: "Lead aging" posting the same line every hour)
+      const told = `${label}: ${words}`
+      const before = lastTold(runner.world, label)
+      if (before && before.words === told && sameJson(before.data.about ?? null, rows)) {
+        runner.world.line({
+          actor,
+          kind: TOLD_AGAIN,
+          words: told,
+          data: { agent: label, again: before.id, ...(rows ? { about: rows } : {}) },
+          run: runId,
+          module: module.id,
+          user: who.user ?? runner.owner,
+        })
+        runner.notify()
+        return null
+      }
       runner.world.line({
         actor,
         kind: 'told',
-        words: `${label}: ${words}`,
+        words: told,
         data: { agent: label, ...(rows ? { about: rows } : {}) },
         run: runId,
         module: module.id,
@@ -482,6 +569,92 @@ export function api(
         coming,
       }
     },
+    // Interview me's pool, refreshed and re-ranked (Alpha's interview skill; Morning runs it):
+    // what is unresolved and the standing bank, valued in code, the most valuable worded by the
+    // model. Alpha's own module is never asked about.
+    'interview.prepare': async () => {
+      const own = alphaModule(runner.world) ?? module.id
+      const out = await refreshInterview(runner.world, runner.interviewAsk, own)
+      spent(out.tokens)
+      const top = worthAsking(runner.world)
+      const words = top.length
+        ? `${top.length} question${top.length === 1 ? '' : 's'} worth asking, the most useful first: ${top[0]?.ask}`
+        : 'Nothing worth asking about today.'
+      step(
+        out.worded || !top.length
+          ? words
+          : `${words} (in code's own words: the model did not answer)`,
+        out.tokens,
+      )
+      return {
+        words,
+        count: top.length,
+        top: top.slice(0, 20).map((q) => ({
+          key: q.key,
+          module: q.module,
+          ask: q.ask,
+          why: q.why,
+          unblocks: q.unblocks,
+          value: q.value,
+        })),
+      }
+    },
+    // The workspace skills (30 Oct), Alpha's, for any module's agent. Research: a bounded web
+    // look, reading only, every line of its brief cited by a source that resolves.
+    research: async (p: Record<string, unknown>) => {
+      affecting('research')
+      const out = await research(
+        runner.researchAsk,
+        runner.web,
+        { ask: String(p.ask ?? ''), about: p.about ? String(p.about) : null },
+        (w) => step(w),
+      )
+      spent(out.tokens)
+      step(out.words, out.tokens)
+      return { words: out.words, lines: out.lines, dropped: out.dropped }
+    },
+    // Governance: noticed rules put to the person on their Save cards, agents walled, said; an
+    // agent outside Alpha's own module looks at its own module only. It never approves a rule.
+    'governance.review': async () => {
+      const out = governanceReview(runner.world, {
+        user: who.user ?? runner.owner,
+        actor,
+        run: runId,
+        module: isAlpha() ? null : module.id,
+      })
+      step(out.words)
+      runner.notify()
+      return out
+    },
+    'governance.explain': async (p: Record<string, unknown>) => {
+      const out = await explain(runner.world, runner.governanceAsk, {
+        refusal: String(p.refusal ?? ''),
+        module: module.id,
+        agent: p.agent ? String(p.agent) : label,
+      })
+      spent(out.tokens)
+      return { words: out.words }
+    },
+    // The Builder: a build with its business case, researched when not exact, on one card for the
+    // person's yes; an agent outside Alpha's own module builds inside its module only.
+    'builder.propose': async (p: Record<string, unknown>) => {
+      const out = await proposeBuild(
+        runner.world,
+        { ask: runner.researchAsk, web: runner.web },
+        p as never,
+        {
+          user: who.user ?? runner.owner,
+          actor,
+          run: runId,
+          within: isAlpha() ? null : module.id,
+        },
+        (w) => step(w),
+      )
+      if (out.brief) spent(out.brief.tokens)
+      step(out.words)
+      runner.notify()
+      return { card: out.card, words: out.words }
+    },
     // Tasks the agent thinks need doing, on one card for the person's yes; none is kept before.
     'task.propose': async (p: Record<string, unknown>) => {
       const items = Array.isArray(p.tasks) ? (p.tasks as Record<string, unknown>[]) : []
@@ -508,6 +681,14 @@ export function api(
         return out
       })
       const n = tasks.length
+      // a newer proposal from the same agent stands for its earlier ones still waiting (Vikas,
+      // 30 Oct: five "Morning suggests" piled up, each a day older than the next)
+      for (const old of runner.world.cards.waiting(who.user ?? runner.owner ?? undefined))
+        if (
+          old.call?.tool === PROPOSE_TASKS &&
+          (old.call.input as { agent?: string }).agent === agentId
+        )
+          runner.world.cards.withdraw(old.id, actor, `${label} proposed again.`)
       const card = runner.world.cards.open({
         kind: 'suggestion',
         words:

@@ -10,16 +10,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Cut } from './ui/cut.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { More } from './ui/more.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
-import { Segmented } from './ui/segmented.tsx'
 
 const STATE: Record<RunView['state'], [string, Tone]> = {
   running: ['Running', 'accent'],
   ok: ['Done', 'good'],
-  failed: ["Didn't finish", 'bad'],
+  failed: ['Failed', 'bad'],
   stopped: ['Stopped', 'neutral'],
 }
 
@@ -69,8 +69,18 @@ export function Activity({ version }: { version: number }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [only, setOnly] = useState<'all' | 'failed'>('all')
+  const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
-    api.get<RunView[]>('/api/activity').then(setRuns, () => setRuns([]))
+    api.get<RunView[]>('/api/activity').then(
+      (r) => {
+        setRuns(r)
+        setProblem(null)
+      },
+      (err) => {
+        setRuns([])
+        setProblem(wordsOf(err))
+      },
+    )
   }, [])
   useEffect(() => {
     if (version >= 0) load()
@@ -91,28 +101,28 @@ export function Activity({ version }: { version: number }) {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl text-ink">Activity</h1>
           <span className="flex-1" />
-          <Segmented
-            label="Show"
-            value={only}
-            onChange={setOnly}
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'failed', label: "Didn't finish" },
-            ]}
-          />
+          <div className="flex gap-1.5">
+            <Cut sel={only === 'all'} onClick={() => setOnly('all')}>
+              All
+            </Cut>
+            <Cut sel={only === 'failed'} onClick={() => setOnly('failed')}>
+              Failed
+            </Cut>
+          </div>
         </div>
-        {runs && shown.length === 0 && (
+        {/* never a blank page (Vikas, 29 Oct): still loading, or nothing to show, says so */}
+        {!runs && <p className="mt-4 text-ink-3 text-md">Loading…</p>}
+        {problem && <p className="mt-4 text-md text-warn">{problem}</p>}
+        {runs && !problem && shown.length === 0 && (
           <p className="mt-4 text-ink-2 text-md">
             {only === 'failed'
               ? 'Everything that ran finished.'
-              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
+              : 'Nothing has run yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
           </p>
         )}
         {days.map(([day, list]) => (
           <section key={day}>
-            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-xs uppercase tracking-label">
-              {day}
-            </div>
+            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-sm">{day}</div>
             <div className="overflow-hidden rounded-lg border border-line bg-surface">
               {fold(list).map((l) =>
                 l.kind === 'quiet' ? (

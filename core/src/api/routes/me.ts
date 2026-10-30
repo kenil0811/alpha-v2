@@ -24,6 +24,14 @@ export function registerMe(ctx: Ctx): void {
       pageSize: n('page_size'),
       pins: json('module_pins'),
       seen: json('seen_counts'),
+      docked: (() => {
+        const v = world.preference(user.id, 'rail_docked')
+        return v ? (JSON.parse(v) as string[]) : null
+      })(),
+      // only once something was dragged: a page never arranged keeps its own order
+      ...(world.preference(user.id, 'block_arrange')
+        ? { arrange: json<string[][]>('block_arrange') }
+        : {}),
     }
   }
   const json = <T>(key: string): Record<string, T> => {
@@ -56,6 +64,17 @@ export function registerMe(ctx: Ctx): void {
         assistant: z.enum(['open', 'folded']).optional(),
         pageSize: z.number().int().positive().nullable().optional(),
         pins: z.record(z.string(), z.array(z.string())).optional(),
+        docked: z.array(z.string().max(200)).max(12).nullable().optional(),
+        // a page's arrangement, or null to give it back its own order
+        arrange: z
+          .record(
+            z.string().max(120),
+            z
+              .array(z.array(z.string().max(120)).min(1).max(6))
+              .max(80)
+              .nullable(),
+          )
+          .optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -83,6 +102,23 @@ export function registerMe(ctx: Ctx): void {
         user.id,
         'module_pins',
         JSON.stringify({ ...json('module_pins'), ...given.pins }),
+      )
+    if (given.arrange !== undefined) {
+      const kept: Record<string, string[][]> = json('block_arrange')
+      for (const [page, rows] of Object.entries(given.arrange))
+        if (rows) kept[page] = rows
+        else delete kept[page]
+      world.setPreference(
+        user.id,
+        'block_arrange',
+        Object.keys(kept).length ? JSON.stringify(kept) : null,
+      )
+    }
+    if (given.docked !== undefined)
+      world.setPreference(
+        user.id,
+        'rail_docked',
+        given.docked === null ? null : JSON.stringify(given.docked),
       )
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))

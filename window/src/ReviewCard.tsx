@@ -24,8 +24,10 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
     }
   }
   return (
-    <Card label="For you to decide" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="For you to decide" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
         <span>
           {review.open} of {review.rows.length} to decide
@@ -44,7 +46,7 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
           >
             <span className="min-w-0 flex-1">
               <a
-                href={`#/table/${review.table}/${r.id}`}
+                href={`#/row/${r.id}`}
                 className="block truncate font-medium text-base text-ink hover:underline"
               >
                 {r.name}

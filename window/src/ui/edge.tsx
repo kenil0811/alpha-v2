@@ -8,7 +8,16 @@ import { cn } from './cn.ts'
 // Both panels' narrowest open width, and how far past it a drag goes before the panel folds.
 export const SIDE_MIN = 200
 const FOLD_PAST = 48
-export const STRIP = 56 // a folded panel's strip
+export const STRIP = 80 // a folded panel's strip
+
+// A place on a folded strip, the rail's and the assistant's alike (Vikas, 28 Oct): its icon with
+// its name under it, so a folded panel still reads without hovering.
+export const stripItem = (current = false) =>
+  cn(
+    'relative flex w-full shrink-0 flex-col items-center gap-0.5 rounded-md px-0.5 py-1.5 text-xs',
+    current ? 'bg-accent-soft text-accent' : 'text-ink-3 hover:bg-hover hover:text-ink',
+  )
+export const stripName = 'w-full truncate text-center leading-tight'
 
 export function Edge({
   side,
@@ -54,7 +63,7 @@ export function Edge({
       tabIndex={0}
       data-tip={label}
       className={cn(
-        'absolute inset-y-0 z-10 w-2 cursor-col-resize outline-none transition-colors hover:bg-accent-line/40 focus-visible:bg-accent-line/40',
+        'absolute inset-y-0 z-(--z-raised) w-2 cursor-col-resize outline-none transition-colors hover:bg-accent-line/40 focus-visible:bg-accent-line/40',
         side === 'left' ? '-left-1' : '-right-1',
         on && 'bg-accent-line/40',
       )}
@@ -110,7 +119,7 @@ export function Opening({ side, width }: { side: 'left' | 'right'; width: number
       aria-hidden="true"
       style={{ width }}
       className={cn(
-        'pointer-events-none fixed inset-y-0 z-30 border-accent-line bg-accent-soft/60',
+        'pointer-events-none fixed inset-y-0 z-(--z-overlay) border-accent-line bg-accent-soft/60',
         side === 'left' ? 'left-0 border-r' : 'right-0 border-l',
       )}
     />

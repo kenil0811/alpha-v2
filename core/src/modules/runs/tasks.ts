@@ -180,6 +180,7 @@ export function proposedView(
     priority: 'high' | 'normal' | 'low'
     place: string
     owner: string
+    word: 'add' | 'decline' | null
   }[]
 } | null {
   if (card.call?.tool !== PROPOSE_TASKS) return null
@@ -197,41 +198,86 @@ export function proposedView(
       return 'a place no longer there'
     }
   }
+  const words = wordsOn(runner, card.id)
   return {
     agent: p.label,
-    tasks: p.tasks.map((t) => ({
+    tasks: p.tasks.map((t, i) => ({
       title: t.title,
       notes: t.notes,
       due: t.due,
       priority: t.priority,
       place: where(t.on),
       owner: t.owner === 'agent' ? p.label : 'You',
+      word: words.get(i) ?? null,
     })),
   }
 }
 
-// The person's yes on an agent's proposed tasks: those they kept are added, made by the agent
-// on their word; the card closes with how many.
+// The person's word on each proposed task so far, by its place on the card (Vikas, 30 Oct: one
+// task, one row, each with Add and Decline).
+const TASK_WORD = 'proposed_task'
+function wordsOn(runner: AgentRunner, cardId: string): Map<number, 'add' | 'decline'> {
+  return new Map(
+    all<{ data: string }>(
+      runner.world.db,
+      'SELECT data FROM journal WHERE card_id = ? AND kind = ? ORDER BY id',
+      cardId,
+      TASK_WORD,
+    ).map((r) => {
+      const d = JSON.parse(r.data) as { index: number; word: 'add' | 'decline' }
+      return [d.index, d.word] as const
+    }),
+  )
+}
+
+// The person's word on an agent's proposed tasks: those taken are added, made by the agent on
+// their word, those declined are let go. With `decline` given, the words are on some rows and the
+// card closes once every task has one, as rows put to the person do (design §12); without it,
+// every task not taken is declined, so the card closes at once.
 export function adopt(
   runner: AgentRunner,
   cardId: string,
   take: number[] | 'all',
   user: string,
+  decline?: number[],
 ): Card {
   const card = runner.world.cards.get(cardId)
   if (card?.call?.tool !== PROPOSE_TASKS) throw new Refused('That card proposes no tasks.')
   if (card.state !== 'waiting') throw new Refused('That card has already been answered.')
   const p = card.call.input as { agent: string | null; label: string; tasks: ProposedTask[] }
-  const picked = take === 'all' ? p.tasks.map((_, i) => i) : take.filter((i) => p.tasks[i])
+  const words = wordsOn(runner, cardId)
+  const fresh = (i: number) => !!p.tasks[i] && !words.has(i)
+  const taken = (take === 'all' ? p.tasks.map((_, i) => i) : take).filter(fresh)
+  const dropped = (decline ?? p.tasks.map((_, i) => i).filter((i) => !taken.includes(i))).filter(
+    (i) => fresh(i) && !taken.includes(i),
+  )
   const ctx = { actor: { kind: 'agent' as const, id: p.label }, user, run: card.run }
-  for (const i of picked)
+  const say = (i: number, word: 'add' | 'decline') => {
+    const t = p.tasks[i] as ProposedTask
+    runner.world.line({
+      actor: { kind: 'person', id: user },
+      kind: TASK_WORD,
+      words: `${word === 'add' ? 'Added' : 'Declined'} “${t.title}” from ${p.label}`,
+      data: { card: cardId, index: i, word },
+      user,
+      module: card.module,
+      card: cardId,
+    })
+    words.set(i, word)
+  }
+  for (const i of taken) {
     runner.world.tasks.add(runner.asInput(p.tasks[i] as ProposedTask, p.agent), ctx)
+    say(i, 'add')
+  }
+  for (const i of dropped) say(i, 'decline')
   const n = p.tasks.length
+  if (words.size < n) return runner.world.cards.get(cardId) as Card
+  const added = [...words.values()].filter((w) => w === 'add').length
   return runner.world.cards.answer(
     cardId,
-    picked.length ? 'Add them' : 'Not now',
+    added ? 'Add them' : 'Not now',
     { kind: 'person', id: user },
-    picked.length && picked.length < n ? `Added ${picked.length} of ${n}` : undefined,
+    added && added < n ? `Added ${added} of ${n}` : undefined,
   )
 }
 

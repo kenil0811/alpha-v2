@@ -48,7 +48,17 @@ export function family(kind: string, many = false): Family {
 export const OPS: Record<Family, FilterOp[]> = {
   text: ['contains', 'not_contains', 'is', 'is_not', 'starts', 'ends', 'empty', 'not_empty'],
   number: ['eq', 'ne', 'gt', 'lt', 'between', 'empty', 'not_empty'],
-  date: ['before', 'after', 'between', 'today', 'this_week', 'next_days', 'empty', 'not_empty'],
+  date: [
+    'before',
+    'after',
+    'between',
+    'today',
+    'due',
+    'this_week',
+    'next_days',
+    'empty',
+    'not_empty',
+  ],
   choice: ['in', 'empty', 'not_empty'],
   tags: ['in', 'all_of', 'none_of', 'empty', 'not_empty'],
   other: ['empty', 'not_empty'],
@@ -69,6 +79,7 @@ export const OP_WORDS: Record<FilterOp, string> = {
   before: 'before',
   after: 'after',
   today: 'is today',
+  due: 'is due by today',
   this_week: 'is this week',
   next_days: 'in the next',
   in: 'is',
@@ -82,7 +93,7 @@ export const OP_WORDS: Record<FilterOp, string> = {
 export function needs(op: FilterOp): 0 | 1 | 2 | 'list' {
   if (op === 'between') return 2
   if (op === 'in' || op === 'all_of' || op === 'none_of') return 'list'
-  if (['today', 'this_week', 'empty', 'not_empty'].includes(op)) return 0
+  if (['today', 'due', 'this_week', 'empty', 'not_empty'].includes(op)) return 0
   return 1
 }
 
@@ -148,6 +159,7 @@ export function matches(
     const day = dayStart(new Date(t))
     const today = dayStart(now)
     if (rule.op === 'today') return day === today
+    if (rule.op === 'due') return day <= today
     if (rule.op === 'this_week') {
       const monday = today - ((now.getDay() + 6) % 7) * 86_400_000
       return day >= monday && day < monday + 7 * 86_400_000

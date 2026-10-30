@@ -58,3 +58,72 @@ browser_pace_max_ms: 9000
 # Days a removed row is kept, out of sight, so Bring back or Revert can put it back whole; then the
 # daily work deletes it for good (core step 1, Kenil 26 Oct). A judgement, never a setting.
 keep_removed_days: 30
+
+# Cards of one agent's runs left waiting on the person before its runs wait too, rather than add
+# more: past this, a run is skipped and says so, and like rows go onto the card already waiting
+# (Vikas, 29 Oct).
+agent_cards_waiting: 10
+
+# Interview me, dynamic (Vikas, 30 Oct: "the number of questions, durations, everything should be
+# dynamically decided"): a pool of questions, re-ranked each morning by expected value; a sitting
+# asks the most useful first and stops when the next one is worth less than this, or the person
+# says they are done or answers briefly. No count, no duration.
+interview_stop_value: 4
+
+# A skipped question's value is multiplied by this for each skip, so it sinks without vanishing.
+interview_skip_decay: 0.5
+
+# An answer of this many words or fewer ends the sitting after it is kept: the person is busy.
+interview_brief_words: 2
+
+# Questions the model words in one morning, the most valuable first; the rest keep code's words
+# until their turn comes.
+interview_word_per_day: 20
+
+# An answer older than this many days is stale: its question comes back to the pool, once.
+interview_answer_stale_days: 120
+
+# How much a question's age adds: a question not asked for interview_stale_days gains this share
+# of its value, so the pool turns over instead of asking the same top few forever.
+interview_age_boost: 0.5
+
+# A table nobody changed for this many days is worth one question: still used, or kept elsewhere?
+interview_stale_days: 30
+
+# How much each kind of question weighs: a question's value is its weight, times what it holds up
+# (rows blank, modules and agents it helps), times its age, times its skips. The business's aims
+# come first (the research, 28 Oct: the owner's goals, then where time leaks), then what already
+# waits on the person; the standing bank's kinds (interview-bank.yaml) sit among them.
+interview_weights:
+  goals: 6
+  card: 5
+  agent: 5
+  rule: 4
+  aim: 4
+  walk: 3
+  empty: 3
+  blank: 2
+  stale: 2
+  meaning: 1
+  framing: 4
+  roles: 3
+  tools: 3
+  steps: 3
+  exceptions: 2
+  gaps: 2
+  numbers: 3
+
+# Research, Alpha's workspace skill (30 Oct): a bounded web look, reading only. At most this many
+# searches, this many pages read, this many minutes; past any, it writes the brief from what it has.
+research_searches: 12
+research_pages: 20
+research_minutes: 10
+# Where a search is read, {q} the words; a page of links the browser opens as a person would.
+research_search_url: 'https://html.duckduckgo.com/html/?q={q}'
+# Characters of each page the model reads for the brief.
+research_page_chars: 4000
+
+# Governance, Alpha's workspace skill (30 Oct): an agent whose runs hit a wall this many times in
+# governance_days is flagged to the person, with what refused it.
+governance_wall_runs: 3
+governance_days: 7

@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { FILING, type Filing } from '../../files/intake.ts'
 import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
+import { saveOnCard } from '../../modules/governance.ts'
 import { keep } from '../../modules/keep.ts'
 import { type AgentRunner, PROPOSE_TASKS } from '../../modules/runs/index.ts'
 import { pagesOf, printPage } from '../../pages/pages.ts'
@@ -73,7 +74,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
               return ok(`The card is answered: ${done.state}.`)
             }
             if (card.call?.tool === SAVE_RULE && !no)
-              world.rules.save(card.call.input as RuleSpec, {
+              saveOnCard(world, card.call.input, {
                 actor: { kind: 'person', id: here_.user.id },
                 user: here_.user.id,
                 card: card.id,

@@ -12,7 +12,7 @@ import type { Tooling } from './common.ts'
 import { Field, guard, ok, tableOf, tool } from './common.ts'
 
 // A shape change as the desk's tool takes it.
-const SHAPE_INPUT = {
+export const SHAPE_INPUT = {
   action: z.enum([
     'make_table',
     'add_fields',

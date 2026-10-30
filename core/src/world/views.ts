@@ -35,6 +35,7 @@ export const FILTER_OPS = [
   'before',
   'after',
   'today',
+  'due', // today or before: late or due now (Vikas, 27 Oct)
   'this_week',
   'next_days',
   'in',

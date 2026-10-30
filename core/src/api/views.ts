@@ -1,11 +1,26 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { triggersOf } from '@alpha/kit-sdk'
 import type { FastifyReply } from 'fastify'
 import { parse as parseYaml } from 'yaml'
-import { type Agent, agents, readAgent } from '../modules/agents.ts'
-import { type RunRow, unmetNeeds } from '../modules/runs/index.ts'
+import { config } from '../config.ts'
+import {
+  type Agent,
+  type AgentFile,
+  agents,
+  cardsWaiting,
+  everOn,
+  functionOf,
+  lastResult,
+  nextRun,
+  readAgent,
+  triggerWords,
+  whenWords,
+} from '../modules/agents.ts'
+import { type RunRow, stuckView, unmetNeeds } from '../modules/runs/index.ts'
 import { pagesOf } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
+import { all } from '../world/db.ts'
 import type { Line } from '../world/journal.ts'
 import type { Provenance } from '../world/kinds.ts'
 import { undoable } from '../world/records/index.ts'
@@ -16,6 +31,7 @@ import type { View } from '../world/views.ts'
 import type { BaseCtx } from './ctx.ts'
 import type {
   AboutRows,
+  AgentView,
   CardView,
   ModuleSummary,
   RunView,
@@ -50,7 +66,31 @@ export function makeViews(ctx: BaseCtx) {
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
     review: engine.hands?.runner?.reviews.view(c) ?? null,
     proposed: engine.hands?.runner?.proposedView(c) ?? null,
+    failed: stuckView(c),
+    ...cardSource(c),
   })
+  // The agent a card came from and the run that opened it, so what it rests on opens: the run
+  // itself, or the agent's runs (a "did not finish" card names the agent in its call).
+  const cardSource = (c: Card): Pick<CardView, 'agent' | 'run' | 'task'> => {
+    const ofRun = c.run
+      ? all<{ agent_id: string | null; task_id: string | null }>(
+          world.db,
+          'SELECT agent_id, task_id FROM runs WHERE id = ?',
+          c.run,
+        )[0]
+      : undefined
+    // a card of agents that did not finish holds them as a list: one of them is its agent
+    const input = c.call?.input as
+      | { agent?: unknown; agents?: { agent: string }[]; task?: unknown }
+      | undefined
+    const named = input?.agent ?? (input?.agents?.length === 1 ? input.agents[0]?.agent : undefined)
+    const id = ofRun?.agent_id ?? (typeof named === 'string' ? named : null)
+    const a = id ? agents(world).find((x) => x.id === id) : undefined
+    // the task it waits on the person for, as waitingCards() reads it (Vikas, 30 Oct: a task
+    // waiting on cards is not a second row)
+    const task = typeof input?.task === 'string' ? input.task : (ofRun?.task_id ?? null)
+    return { agent: a ? { id: a.id, name: a.name } : null, run: c.run, task }
+  }
   // Tasks (Kenil's plan, 21 Oct): the saved lists, a task's page, and the person's own word on
   // them: added, changed, moved, done, removed.
   const today = () => {
@@ -241,22 +281,112 @@ export function makeViews(ctx: BaseCtx) {
 
   // The modules the window shows: each with a page or a table in sight, and the modules they sit
   // inside (a module only of a connection's hidden tables stays out).
-  // What an agent needs that is not there, in words, from its file.
-  const needsOf = (m: Module, a: Agent): string | null => {
+  // An agent as every list and its page show it, from its row, its file and its runs; `running`
+  // is the ids of the agents running now.
+  const agentOut = (m: Module, a: Agent, running: Set<string | null>): AgentView => {
     const path = join(m.dir, a.file)
-    if (!existsSync(path)) return null
+    let file: AgentFile | null = null
     try {
-      const missing = unmetNeeds(world, readAgent(path))
-      return missing.length ? `needs ${missing.join(' and ')}` : null
+      file = existsSync(path) ? readAgent(path) : null
     } catch {
-      return null
+      file = null
     }
+    const tables = world.shape.tables(m.id)
+    const table = (name: string) => {
+      const t = tables.find((x) => x.slug === name || x.name === name || x.id === name)
+      return { id: t?.id ?? null, name: t?.name ?? name }
+    }
+    const missing = file ? unmetNeeds(world, file) : []
+    const next = a.state === 'on' ? nextRun(a.trigger, a.lastRunAt, Date.now()) : null
+    const result = lastResult(world, a.id)
+    const runner = engine.hands?.runner
+    // on the clock at one time: the person can change how often (none of the cron sort)
+    const times = triggersOf(a.trigger).filter((t) => 'every' in t || 'cron' in t)
+    const one = times.length === 1 && times[0] && 'every' in times[0] ? times[0] : null
+    return {
+      function: functionOf({
+        name: a.name,
+        description: a.description,
+        brief: file?.brief ?? '',
+        function: file?.function ?? null,
+      }),
+      blocked: blockedOf(a, missing, result, runner?.held.has(a.id) ?? false),
+      schedule: one ? { every: one.every, at: one.at ?? null } : null,
+      id: a.id,
+      name: a.name,
+      state: a.state,
+      description: a.description,
+      needs: missing.length ? `needs ${missing.join(' and ')}` : null,
+      when: whenWords(a.trigger),
+      lastRunAt: a.lastRunAt,
+      running: running.has(a.id),
+      module: { id: m.id, name: m.name },
+      triggers: triggerWords(a.trigger, (n) => table(n).name, m.name),
+      nextRunAt: next?.toISOString() ?? null,
+      lastResult: result,
+      fresh: a.state === 'paused' && !everOn(world, a.id),
+      brief: file?.brief ?? '',
+      reads: (file?.needs.tables ?? []).map(table),
+      writes: (file?.touches ?? []).map(table),
+      effects: file?.effects ?? null,
+      connectors: file?.needs.connectors ?? [],
+      tasks: a.tasks,
+    }
+  }
+
+  // Why an agent is not doing its work, in words, with the one action that unblocks it; read in
+  // the order the person can act on (Vikas, 29 Oct). Null while nothing stands in its way.
+  const blockedOf = (
+    a: Agent,
+    missing: string[],
+    result: AgentView['lastResult'],
+    held: boolean,
+  ): AgentView['blocked'] => {
+    if (missing.length) {
+      const connector = missing.find((x) => x.endsWith(' connected'))?.replace(/ connected$/, '')
+      return {
+        words: `It needs ${missing.join(' and ')}`,
+        action: connector
+          ? { label: `Connect ${connector}`, href: '#/settings/connections', run: false }
+          : { label: 'Open its module', href: `#/module/${a.module}`, run: false },
+      }
+    }
+    if (held)
+      return {
+        words: `It stopped after ${config.limits().run_retries} runs that did not finish${result && !result.ok ? `: ${result.words}` : ''}`,
+        action: { label: 'Try again', href: null, run: true },
+      }
+    const asks = all<{ words: string }>(
+      world.db,
+      `SELECT words FROM cards WHERE state = 'waiting' AND kind = 'permission'
+         AND run_id IN (SELECT id FROM runs WHERE agent_id = ?) ORDER BY created_at LIMIT 1`,
+      a.id,
+    )[0]
+    if (asks)
+      return {
+        words: `Waiting for your yes: ${asks.words}`,
+        action: { label: 'Review it', href: '#/', run: false },
+      }
+    const waiting = cardsWaiting(world, a.id)
+    if (waiting > config.limits().agent_cards_waiting)
+      return {
+        words: `${waiting} cards from ${a.name} need you`,
+        action: {
+          label: 'Go through them',
+          href: `#/tasks?list=waiting&agent=${a.id}`,
+          run: false,
+        },
+      }
+    if (result && !result.ok)
+      return { words: result.words, action: { label: 'Run again', href: null, run: true } }
+    return null
   }
 
   const summaries = (): ModuleSummary[] => {
     const all = world.shape.modules().map((m) => ({
       id: m.id,
       name: m.name,
+      about: aboutOf(m),
       parent: m.parent,
       people: livesPeople(m),
       alpha: isAlphas(m),
@@ -511,7 +641,7 @@ export function makeViews(ctx: BaseCtx) {
     taskOut,
     taskOfRun,
     given,
-    needsOf,
+    agentOut,
     summaries,
     byWords,
     runOut,
@@ -569,6 +699,7 @@ export function cardView(c: Card): CardView {
     answer: c.answer,
     restsOn: c.restsOn,
     module: c.module,
+    createdAt: c.createdAt,
   }
 }
 
@@ -579,13 +710,21 @@ export const livesPeople = (m: Module): boolean => saysYes(m, 'people')
 // its Decisions and Noticed are the Second Brain.
 export const isAlphas = (m: Module): boolean => saysYes(m, 'core')
 
-function saysYes(m: Module, key: 'people' | 'core'): boolean {
+// What a module is for, in its module.yaml's own words: the rail says it on a hover (Vikas, 27 Oct).
+export const aboutOf = (m: Module): string | null => {
+  const said = manifestOf(m).description
+  return typeof said === 'string' ? said.trim() : null
+}
+
+const saysYes = (m: Module, key: 'people' | 'core'): boolean => manifestOf(m)[key] === true
+
+function manifestOf(m: Module): Record<string, unknown> {
   const file = join(m.dir, 'module.yaml')
-  if (!existsSync(file)) return false
+  if (!existsSync(file)) return {}
   try {
-    return (parseYaml(readFileSync(file, 'utf8')) as Record<string, unknown> | null)?.[key] === true
+    return (parseYaml(readFileSync(file, 'utf8')) as Record<string, unknown> | null) ?? {}
   } catch {
-    return false
+    return {}
   }
 }
 

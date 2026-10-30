@@ -18,6 +18,7 @@ export function SidePanel({
   onWidth,
   full,
   head,
+  lead,
   keep,
 }: {
   title: string
@@ -27,6 +28,7 @@ export function SidePanel({
   onWidth?: (w: number | null) => void // the width they left it at
   full?: string // where Open page goes
   head?: ReactNode // a header of its own, in place of the title and its buttons
+  lead?: ReactNode // before the title: Back, when the panel went a step further
   keep?: number // the room it always leaves the rest of the window (the rail and the screen)
 }) {
   const sizable = onWidth !== undefined
@@ -66,7 +68,8 @@ export function SidePanel({
         />
       )}
       {head ?? (
-        <div className="flex h-11.5 shrink-0 items-center gap-0.5 border-hair border-b pr-2 pl-4.5 font-semibold text-ink text-md">
+        <div className="flex h-11.5 shrink-0 items-center gap-0.5 border-hair border-b pr-2 pl-4.5 font-semibold text-base text-ink">
+          {lead && <span className="-ml-2.5 mr-1">{lead}</span>}
           <span className="flex-1 truncate">{title}</span>
           {sizable && (
             <IconButton
@@ -82,10 +85,15 @@ export function SidePanel({
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      {/* the next step from the panel, large at its foot (Vikas, 26 and 28 Oct) */}
       {full && (
-        <div className="flex shrink-0 justify-end border-hair border-t px-4 py-2.5">
-          <Button size="sm" onClick={() => (window.location.hash = full)}>
-            <SquareArrowOutUpRight className="size-3.5" />
+        <div className="shrink-0 border-hair border-t p-3">
+          <Button
+            variant="soft"
+            className="h-11 w-full justify-center text-base"
+            onClick={() => (window.location.hash = full)}
+          >
+            <SquareArrowOutUpRight className="size-4" />
             Open page
           </Button>
         </div>

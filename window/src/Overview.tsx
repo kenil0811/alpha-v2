@@ -3,11 +3,12 @@
 // then its charts, the most opened first) and the standard column on the right, the same cards in
 // the same order in every module: Interview me, Files, Agents, Intelligence, What Alpha may do,
 // Tables. Every line, bar, slice and count opens what it counts: a table filtered to those rows,
-// with Show original list. A card's head is its name only; a card with nothing to show is not drawn.
+// with Clear filters. A card's head is its name only; a card with nothing to show is not drawn.
 import type {
   AgentView,
   CardView,
   ModuleFileView,
+  ModuleSummary,
   ModuleView,
   RowView,
   RuleView,
@@ -15,31 +16,42 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import {
-  ChevronDown,
-  ChevronRight,
   FileText,
   Image,
+  LoaderCircle,
   Maximize2,
+  MessageCircleQuestion,
   Minimize2,
   Pin,
   RefreshCw,
   Sheet,
-  Upload,
 } from 'lucide-react'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
-import { Undo } from './Activity.tsx'
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
-import { startAsk } from './ask.ts'
+import { Arranged, type Block, pairs } from './arrange.tsx'
+import { useInterview } from './ask.ts'
+import { GovernanceSection } from './Governance.tsx'
 import { useLayout } from './layout.ts'
 import { when } from './ModulesAndAgents.tsx'
+import { moduleNumbers, numberTables } from './Parts.tsx'
+import { Stack, stacksOf } from './stack.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import { Chart, type ChartKind, KindPicker, type Mark } from './ui/chart.tsx'
+import {
+  Bubbles,
+  Chart,
+  type ChartKind,
+  Heat,
+  KindPicker,
+  Lines,
+  type Mark,
+  Scatter,
+} from './ui/chart.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
 import { Switch } from './ui/switch.tsx'
 
-type Table = ModuleView['tables'][number]
 type Field = TableData['fields'][number]
 
 // A table's rows, filtered to the ones a mark counts; the table says why and offers the whole.
@@ -105,7 +117,13 @@ export const signalOf = (c: CardView): Signal =>
       ? 'yes'
       : 'opt'
 export const isQuestion = (c: CardView) =>
-  c.options.length > 0 && !c.draft && !c.proposed && !c.review && !c.match && !c.filing
+  c.options.length > 0 &&
+  !c.draft &&
+  !c.proposed &&
+  !c.review &&
+  !c.match &&
+  !c.filing &&
+  !c.failed?.length
 
 // --- What the module's tables say: read from their shape, never named --------------------
 
@@ -122,6 +140,189 @@ function spreadOf(t: TableData) {
     }))
     .filter((x) => x.marks.filter((m) => m.n).length >= 2)
     .sort((a, b) => b.marks.filter((m) => m.n).length - a.marks.filter((m) => m.n).length)
+}
+
+// Rows as bubbles (Vikas, 27 Oct): along the date most of them have, in lanes by their main
+// choice, sized by their first amount, coloured by a choice whose words carry a tone (Risk). Only
+// when the table has all three, and enough rows dated to read.
+function bubblesOf(t: TableData) {
+  const dated = (f: Field) => t.rows.filter((r) => typeof val(r, f) === 'string').length
+  const date = t.fields.filter((f) => f.kind === 'date').sort((a, b) => dated(b) - dated(a))[0]
+  const size = t.fields.find((f) => f.kind === 'money') ?? t.fields.find((f) => f.kind === 'number')
+  const lane = spreadOf(t)[0]?.f
+  const tone = toneOf(t, lane)
+  if (!date || !size || !lane || dated(date) < 8) return null
+  const name = nameOf(t)
+  const points = t.rows.flatMap((r) => {
+    const d = val(r, date)
+    const lanes = val(r, lane)
+    if (typeof d !== 'string' || typeof lanes !== 'string') return []
+    const said = tone ? String(val(r, tone) ?? '') : ''
+    const n = num(val(r, size)) ?? 0
+    return [
+      {
+        at: Date.parse(d),
+        lane: lanes,
+        size: n,
+        tone: tone?.tones[said],
+        label: [
+          name ? String(val(r, name) ?? '') : '',
+          `${date.name} ${d}`,
+          `${size.name} ${n.toLocaleString()}`,
+          said && tone ? `${tone.name} ${said}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        href: `#/row/${r.id}`,
+      },
+    ]
+  })
+  const lanes = lane.choices.filter((c) => points.some((p) => p.lane === c))
+  return { date, size, lane, points, lanes, tones: tonesOf(tone) }
+}
+
+const toneOf = (t: TableData, not?: Field) =>
+  t.fields.find((f) => f.kind === 'choice' && !f.many && f !== not && Object.keys(f.tones).length)
+const tonesOf = (tone: Field | undefined) =>
+  tone
+    ? tone.choices
+        .filter((c) => tone.tones[c])
+        .map((c) => ({ label: `${tone.name} ${c}`, tone: tone.tones[c] as 'good' }))
+    : []
+const nameOf = (t: TableData) => t.fields.find((f) => f.kind === 'text')
+
+// Rows as dots on two of their amounts (Vikas, 28 Oct): the first and the last amount the table
+// has, a middle one as the size, a toned choice as the colour. Only amounts that vary.
+function scatterOf(t: TableData) {
+  // amounts that vary and are mostly not zero
+  const nums = t.fields.filter((f) => {
+    if (f.kind !== 'number' && f.kind !== 'money' && f.kind !== 'summary') return false
+    const ns = t.rows.map((r) => num(val(r, f))).filter((n) => n !== null)
+    return new Set(ns).size >= 3 && ns.filter((n) => n !== 0).length > ns.length / 2
+  })
+  const x = nums[0]
+  const y = nums.at(-1)
+  if (!x || !y || x === y) return null
+  const size = nums.length >= 3 ? nums[1] : undefined
+  const tone = toneOf(t)
+  const name = nameOf(t)
+  const points = t.rows.flatMap((r) => {
+    const a = num(val(r, x))
+    const b = num(val(r, y))
+    if (a === null || b === null) return []
+    const said = tone ? String(val(r, tone) ?? '') : ''
+    const n = size ? (num(val(r, size)) ?? 0) : undefined
+    return [
+      {
+        x: a,
+        y: b,
+        size: n,
+        tone: tone?.tones[said],
+        label: [
+          name ? String(val(r, name) ?? '') : '',
+          `${x.name} ${a.toLocaleString()}`,
+          `${y.name} ${b.toLocaleString()}`,
+          size && n !== undefined ? `${size.name} ${n.toLocaleString()}` : '',
+          said && tone ? `${tone.name} ${said}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        href: `#/row/${r.id}`,
+      },
+    ]
+  })
+  if (points.length < 5) return null // five people's load still reads; fewer is a list
+  // two amounts that move together (a fee is a share of the amount) draw a line that says nothing
+  const mean = (ns: number[]) => ns.reduce((a, b) => a + b, 0) / ns.length
+  const [ax, ay] = [mean(points.map((p) => p.x)), mean(points.map((p) => p.y))]
+  const [sxy, sxx, syy] = points.reduce(
+    ([a, b, c], p) => [a + (p.x - ax) * (p.y - ay), b + (p.x - ax) ** 2, c + (p.y - ay) ** 2],
+    [0, 0, 0],
+  )
+  if (Math.abs(sxy) / Math.sqrt(sxx * syy || 1) > 0.95) return null
+  return { x, y, size, points, tones: tonesOf(tone) }
+}
+
+// Rows arriving over time, one line per kind (Vikas, 28 Oct): counted by week along a date that is
+// mostly past (received, denied; a due date is the bubbles'), by a twelfth of the span when that is
+// longer; one line per value of the main choice, the four biggest in colour and the rest as Other.
+function linesOf(t: TableData, not?: Field) {
+  const today = new Date().toISOString().slice(0, 10)
+  const days = (f: Field) => t.rows.map((r) => val(r, f)).filter((v) => typeof v === 'string')
+  const date = t.fields
+    .filter((f) => f.kind === 'date' && f !== not)
+    .filter((f) => days(f).filter((d) => d <= today).length > days(f).length / 2)
+    .sort((a, b) => days(b).length - days(a).length)[0]
+  const by = spreadOf(t)[0]?.f
+  if (!date || !by || days(date).length < 8) return null
+  const rows = t.rows.filter((r) => typeof val(r, date) === 'string')
+  const at = (r: RowView) => Date.parse(String(val(r, date)))
+  const from = Math.min(...rows.map(at))
+  const span = Math.max(...rows.map(at)) - from
+  const width = Math.max(WEEK, span / 11)
+  const count = Math.floor(span / width) + 1
+  if (count < 4) return null // three points make a zigzag, not a trend
+  const bin = (r: RowView) => Math.min(Math.floor((at(r) - from) / width), count - 1)
+  const periods = Array.from({ length: count }, (_, i) => {
+    const label = new Date(from + i * width).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+    })
+    const these = rows.filter((r) => bin(r) === i)
+    return {
+      label,
+      href: these.length ? rowsHref(t, these, `${date.name} from ${label}`) : undefined,
+    }
+  })
+  const line = (label: string, has: (v: unknown) => boolean) => {
+    const n = Array<number>(count).fill(0)
+    for (const r of rows) if (has(val(r, by))) n[bin(r)] = (n[bin(r)] ?? 0) + 1
+    return { label, n }
+  }
+  const kinds = by.choices
+    .map((c) => ({ c, n: rows.filter((r) => val(r, by) === c).length }))
+    .filter((k) => k.n)
+    .sort((a, b) => b.n - a.n)
+  const top = kinds.slice(0, 4).map((k) => k.c)
+  const series = top.map((c) => line(c, (v) => v === c))
+  if (kinds.length > 4) series.push(line('Other', (v) => !top.includes(String(v))))
+  if (series.length < 2) return null
+  return { date, by, series, periods }
+}
+
+// Rows counted on two things at once (Vikas, 28 Oct): down the side what they point at (an
+// insurer, a person) or a second choice, along the top the main choice.
+function heatOf(t: TableData) {
+  const col = spreadOf(t)[0]?.f
+  if (!col) return null
+  const one = (r: RowView, f: Field) => {
+    const v = val(r, f)
+    const id = Array.isArray(v) ? v[0] : v
+    return id === null || id === undefined || id === '' ? null : String(id)
+  }
+  const used = (f: Field) => new Set(t.rows.map((r) => one(r, f)).filter(Boolean)).size
+  const row =
+    t.fields.find((f) => f.kind === 'relation' && !f.many && used(f) >= 2 && used(f) <= 12) ??
+    t.fields.find(
+      (f) => f.kind === 'choice' && !f.many && f !== col && used(f) >= 2 && used(f) <= 12,
+    )
+  if (!row) return null
+  const said = (id: string) => (row.kind === 'relation' ? String(t.names[id] ?? id) : id)
+  const rowIds = [...new Set(t.rows.map((r) => one(r, row)).filter((v) => v !== null))]
+  const cols = col.choices.filter((c) => t.rows.some((r) => val(r, col) === c))
+  const cells = rowIds.map((id) =>
+    cols.map((c) => {
+      const these = t.rows.filter((r) => one(r, row) === id && val(r, col) === c)
+      return {
+        n: these.length,
+        href: these.length
+          ? rowsHref(t, these, `${row.name} is ${said(id)}, ${col.name} is ${c}`)
+          : undefined,
+      }
+    }),
+  )
+  if (cols.length < 2) return null
+  return { row, col, rows: rowIds.map(said), cols, cells }
 }
 
 // Rows counted by the row of another main table they point at: deals by source.
@@ -173,7 +374,18 @@ function weeksOf(t: TableData) {
 
 // Goals: a setup table whose choice names a point on a main table's choice (a stage), with a
 // number per week. Measured by the rows at or past that point now, or dated this week by a date
-// field of the same name.
+// field of the same name. Each says what to do next (Vikas, 29 Oct: "it should say Review
+// listings"): its verb, read from its measure, and the rows to do it on, the ones just short of it.
+export interface Goal extends Mark {
+  row: string // the goal's own row, which its task sits on
+  verb: string // "Review listings"
+  task: string // "Review 10 more listings this week"
+  todo: string // the rows to act on, filtered
+  left: number // how many those are, said on its tile as the view it opens shows them
+  of: string // "of 13 this week · 214 listings to review"
+  met: boolean
+  date: Field | null // the date that says when a row counted, where the table has one
+}
 function goalsOf(setup: TableData[], main: TableData[]) {
   for (const g of setup) {
     const pick = g.fields.find((f) => f.kind === 'choice')
@@ -185,27 +397,128 @@ function goalsOf(setup: TableData[], main: TableData[]) {
         (f) => f.kind === 'choice' && f.choices.filter((c) => pick.choices.includes(c)).length >= 3,
       )
       if (!stage) continue
-      const marks: Mark[] = g.rows.map((r) => {
+      const stageOf = (x: RowView) => stage.choices.indexOf(String(val(x, stage) ?? ''))
+      const marks: Goal[] = g.rows.map((r) => {
         const at = String(val(r, pick) ?? '')
         const i = stage.choices.indexOf(at)
         const dated = t.fields.find((f) => f.kind === 'date' && f.name === at)
         const rows =
           i >= 0
-            ? t.rows.filter((x) => stage.choices.indexOf(String(val(x, stage) ?? '')) >= i)
+            ? t.rows.filter((x) => stageOf(x) >= i)
             : dated
               ? t.rows.filter((x) => Date.now() - Date.parse(String(val(x, dated))) < WEEK)
               : []
+        // just short of it: the stage before, or not yet dated and still at the first stage
+        const todo =
+          i > 0
+            ? t.rows.filter((x) => stageOf(x) === i - 1)
+            : dated
+              ? t.rows.filter((x) => !val(x, dated) && stageOf(x) <= 0)
+              : []
+        const label = String(val(r, name) ?? at)
+        // a weekly share of a monthly goal can be 12.5: nobody reviews half a listing
+        const goal = Math.ceil(num(val(r, target)) ?? 0)
+        const { verb, thing } = verbOf(label, at)
+        const need = Math.max(0, Math.ceil(goal - rows.length))
+        const week = /week/i.test(target.name) ? ' this week' : ''
+        // the tile says what it counts and what its button opens, each as the view shows it
+        // (Vikas, 30 Oct: "0 of 13 reviewed, but on that page I see too many listings")
+        const things = thing || t.name.toLowerCase()
+        const doing = `${verb.toLowerCase()}${thing ? '' : ` ${at.toLowerCase()}`}`
         return {
-          label: String(val(r, name) ?? at),
+          label,
           n: rows.length,
-          target: num(val(r, target)) ?? 0,
+          target: goal,
           href: rowsHref(t, rows, i >= 0 ? `${stage.name} at ${at} or past it` : `${at} this week`),
+          row: r.id,
+          verb: thing ? `${verb} ${thing}` : verb,
+          task: thing ? `${verb} ${need} more ${thing}${week}` : `${verb}: ${need} more${week}`,
+          todo: rowsHref(
+            t,
+            todo,
+            i > 0 ? `${stage.name} is ${stage.choices[i - 1]}` : `not yet ${at.toLowerCase()}`,
+          ),
+          left: todo.length,
+          of: `of ${goal}${week}${todo.length ? ` · ${todo.length.toLocaleString()} ${things} to ${doing}` : ''}`,
+          met: rows.length >= goal,
+          date: dated ?? null,
         }
       })
       if (marks.length) return { goals: g, table: t, marks }
     }
   }
   return null
+}
+
+// A measure said as what to do: "Listings reviewed" is "Review listings", "LOIs sent" is "Send
+// LOIs"; one that is not a thing done is "Move to" its stage.
+// ponytail: English verbs by a few endings and a short list; a goal's own verb field replaces it
+const IRREGULAR: Record<string, string> = { sent: 'send', made: 'make', held: 'hold', won: 'win' }
+export function verbOf(measure: string, stage: string): { verb: string; thing: string } {
+  const words = measure.trim().split(/\s+/)
+  const last = (words.at(-1) ?? '').toLowerCase()
+  const base =
+    IRREGULAR[last] ??
+    (/ied$/.test(last)
+      ? `${last.slice(0, -3)}y`
+      : /[^s][svzcu]ed$/.test(last)
+        ? last.slice(0, -1)
+        : /ed$/.test(last)
+          ? last.slice(0, -2)
+          : null)
+  if (!base || words.length < 2) return { verb: 'Move to', thing: stage.toLowerCase() }
+  const thing = words.slice(0, -1).join(' ')
+  return {
+    verb: base[0]?.toUpperCase() + base.slice(1),
+    // sentence case, but CIMs and LOIs keep their capitals
+    thing: /^[A-Z][a-z]/.test(thing) ? thing[0]?.toLowerCase() + thing.slice(1) : thing,
+  }
+}
+
+// The way some rows split that says the most (Vikas, 29 Oct: "not 'listed under LOI', maybe
+// location based"): a choice, or a short text (a place by what follows its last comma, its
+// state), whose values spread the rows most evenly; never the main stage or a toned status.
+export function explainOf(t: TableData, rows: RowView[], about = '') {
+  if (rows.length < 3) return null
+  const main = spreadOf(t)[0]?.f
+  const keyOf = (f: Field, r: RowView) => {
+    const v = val(r, f)
+    if (typeof v !== 'string' || !v.trim()) return null
+    return f.kind === 'text' && v.includes(',') ? (v.split(',').at(-1) ?? v).trim() : v.trim()
+  }
+  let best: { f: Field; score: number; groups: Map<string, RowView[]> } | null = null
+  for (const f of t.fields) {
+    const fits =
+      f !== main &&
+      ((f.kind === 'choice' && !f.many && !Object.keys(f.tones).length) || f.kind === 'text')
+    if (!fits) continue
+    const groups = new Map<string, RowView[]>()
+    for (const r of rows) {
+      const k = keyOf(f, r)
+      if (k) groups.set(k, [...(groups.get(k) ?? []), r])
+    }
+    const had = [...groups.values()].reduce((a, g) => a + g.length, 0)
+    if (groups.size < 2 || groups.size > 8 || had < rows.length / 2) continue
+    // how evenly it spreads them (entropy), times the share of rows it says something about
+    const h = [...groups.values()].reduce(
+      (a, g) => a - (g.length / had) * Math.log(g.length / had),
+      0,
+    )
+    const score = (h * had) / rows.length
+    if (!best || score > best.score) best = { f, score, groups }
+  }
+  if (!best) return null
+  const { f, groups } = best
+  return {
+    field: f,
+    marks: [...groups.entries()]
+      .map(([label, these]) => ({
+        label,
+        n: these.length,
+        href: rowsHref(t, these, `${about}${f.name} is ${label}`),
+      }))
+      .sort((a, b) => b.n - a.n),
+  }
 }
 
 // Criteria: a setup table of tests on a main table's fields (at most, at least a value): each
@@ -256,6 +569,9 @@ export interface Tile {
   spark?: number[]
   lines: { s: Signal; words: string; href?: string }[]
   go: string // the card it stands for, scrolled to on a second click
+  // what to do about it, said as the verb (Vikas, 29 Oct: "everything to be made actionable"):
+  // a place to go, or the card to scroll to
+  act?: { label: string; href?: string; go?: string }
 }
 
 export function pulseOf({
@@ -282,22 +598,48 @@ export function pulseOf({
       small: waiting.length === 1 ? 'thing' : 'things',
       lines: waiting.slice(0, 4).map((c) => ({ s: signalOf(c), words: c.words, href: '#/' })),
       go: 'needs',
+      act: { label: 'Review', go: 'needs' },
     })
   const goals = goalsOf(setup, main)
-  if (goals) {
-    const met = goals.marks.filter((g) => g.n >= (g.target ?? 0)).length
+  // a few goals are each their own tile with its next step; many are one tile (Vikas, 29 Oct)
+  if (goals && goals.marks.length <= 6)
+    for (const g of goals.marks)
+      tiles.push({
+        key: `goal:${g.row}`,
+        label: g.label,
+        signal: g.met ? 'done' : 'yes',
+        big: g.n.toLocaleString(),
+        small: g.of,
+        // a link to no rows would open the whole table: only rows there are
+        lines: [
+          ...(g.met
+            ? [{ s: 'done' as const, words: 'On target' }]
+            : g.left
+              ? [{ s: 'yes' as const, words: g.task, href: g.todo }]
+              : []),
+          ...(g.n && g.href
+            ? [{ s: 'opt' as const, words: `The ${g.n} counted`, href: g.href }]
+            : []),
+        ],
+        go: 'goals',
+        ...(g.met || !g.left ? {} : { act: { label: g.verb, href: g.todo } }),
+      })
+  else if (goals) {
+    const met = goals.marks.filter((g) => g.met).length
+    const behind = goals.marks.find((g) => !g.met)
     tiles.push({
       key: 'goals',
       label: 'Goals',
-      signal: met === goals.marks.length ? 'done' : 'opt',
+      signal: met === goals.marks.length ? 'done' : 'yes',
       big: String(met),
       small: `of ${goals.marks.length} on target`,
       lines: goals.marks.map((g) => ({
-        s: g.n >= (g.target ?? 0) ? 'done' : 'opt',
-        words: `${g.label}: ${g.n} of ${g.target}`,
-        ...(g.href ? { href: g.href } : {}),
+        s: g.met ? 'done' : 'yes',
+        words: g.met ? `${g.label}: on target` : g.task,
+        href: (g.met ? g.href : g.todo) ?? '',
       })),
       go: 'goals',
+      ...(behind ? { act: { label: behind.verb, href: behind.todo } } : {}),
     })
   }
   const big = [...main].sort((a, b) => b.rows.length - a.rows.length)[0]
@@ -305,8 +647,8 @@ export function pulseOf({
   if (big && weeks) {
     const now = weeks.weeks.at(-1)
     const last = weeks.weeks.at(-2)
-    const spread = spreadOf(big)[0]
     const more = (now?.n ?? 0) - (last?.n ?? 0)
+    const why = explainOf(big, now?.rows ?? [], 'new this week, ')
     tiles.push({
       key: 'new',
       label: `New ${big.name.toLowerCase()} this week`,
@@ -315,21 +657,15 @@ export function pulseOf({
       small: `${more >= 0 ? '+' : ''}${more.toLocaleString()}`,
       spark: weeks.weeks.map((w) => w.n),
       lines: [
-        ...(now ? [{ s: 'opt' as const, words: `All ${now.n} new`, href: now.href }] : []),
-        ...(spread?.marks ?? []).flatMap((x) => {
-          const rows = (now?.rows ?? []).filter((r) => val(r, spread?.f as Field) === x.label)
-          const why = `new this week, ${spread?.f.name} is ${x.label}`
-          return rows.length
-            ? [
-                {
-                  s: 'opt' as const,
-                  words: `${rows.length} ${x.label}`,
-                  href: rowsHref(big, rows, why),
-                },
-              ]
-            : []
-        }),
-      ].slice(0, 4),
+        ...(why
+          ? why.marks.slice(0, 4).map((x) => ({
+              s: 'opt' as const,
+              words: why.field.kind === 'text' ? `${x.n} in ${x.label}` : `${x.n} ${x.label}`,
+              href: x.href,
+            }))
+          : []),
+      ],
+      ...(now?.n ? { act: { label: `Review ${now.n} new`, href: now.href } } : {}),
       go: `weeks:${big.id}`,
     })
   }
@@ -344,6 +680,7 @@ export function pulseOf({
       ? questions.slice(0, 3).map((c) => ({ s: 'yes' as const, words: c.words }))
       : [{ s: 'opt', words: 'Alpha asks one question at a time' }],
     go: 'ask',
+    act: { label: questions.length ? 'Answer' : 'Start', go: 'ask' },
   })
   if (m.agents.length) {
     const on = m.agents.filter((a) => a.state === 'on')
@@ -359,7 +696,7 @@ export function pulseOf({
       label: 'Agents',
       signal: needs.length ? 'now' : on.length ? 'done' : 'opt',
       big: String(on.length),
-      small: `of ${m.agents.length} on`,
+      small: `of ${m.agents.length} active`,
       lines: [
         ...needs.slice(0, 2).map((a) => ({
           s: 'now' as const,
@@ -372,6 +709,9 @@ export function pulseOf({
         { s: 'done' as const, words: `Last ran ${when(last)}` },
       ],
       go: 'agents',
+      act: needs[0]
+        ? { label: 'Fix', href: `#/agent/${needs[0].id}` }
+        : { label: 'Open agents', go: 'agents' },
     })
   }
   const changed = (runs ?? []).filter(
@@ -388,12 +728,25 @@ export function pulseOf({
         .slice(0, 3)
         .map((r) => ({ s: 'opt' as const, words: r.words ?? r.name, href: `#/run/${r.id}` })),
       go: 'maydo',
+      act: { label: 'See changes', href: '#/activity' },
     })
-  return tiles.slice(0, 5)
+  return tiles.slice(0, 8)
 }
 
 // Hover a tile and it opens a little to list what it counts; a click keeps it open; a second
 // click goes to its card.
+// A tile's lines with the same words said once, with how many times (Vikas, 30 Oct: "Lead aging
+// finished." four times over), at most five.
+export function folded(lines: Tile['lines']) {
+  const out: (Tile['lines'][number] & { n: number })[] = []
+  for (const l of lines) {
+    const had = out.find((o) => o.words === l.words)
+    if (had) had.n++
+    else out.push({ ...l, n: 1 })
+  }
+  return out.slice(0, 5)
+}
+
 export function Strip({ tiles, onGo }: { tiles: Tile[]; onGo: (go: string) => void }) {
   const [open, setOpen] = useState<string | null>(null)
   const box = useRef<HTMLDivElement>(null)
@@ -405,11 +758,31 @@ export function Strip({ tiles, onGo }: { tiles: Tile[]; onGo: (go: string) => vo
     document.addEventListener('mousedown', away)
     return () => document.removeEventListener('mousedown', away)
   }, [open])
+  // as many tiles to a row as fit, then evened out across the rows, so no tile sits alone on a
+  // row of its own (Vikas, 30 Oct)
+  const [fit, setFit] = useState(4)
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const seen = new ResizeObserver(() => setFit(Math.max(1, Math.floor(el.clientWidth / 150))))
+    seen.observe(el)
+    return () => seen.disconnect()
+  }, [])
   if (!tiles.length) return null
+  const cols = Math.ceil(tiles.length / Math.ceil(tiles.length / Math.min(fit, tiles.length)))
   return (
-    <div ref={box} className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
+    // raised above what follows it as a whole: an opened tile spills over the blocks below, and a
+    // dot there (positioned, so painted after an unraised strip) would show through it
+    <div
+      ref={box}
+      // what a tile opens (Review listings, the rows it counts) opens beside, in the side panel
+      data-peek-all
+      className="relative z-(--z-raised) grid gap-3"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
       {tiles.map((t) => {
         const on = open === t.key
+        const lines = folded(t.lines)
         return (
           <div key={t.key} className="group/tile relative h-19">
             {/* biome-ignore lint/a11y/useSemanticElements: it holds links of its own */}
@@ -419,24 +792,45 @@ export function Strip({ tiles, onGo }: { tiles: Tile[]; onGo: (go: string) => vo
               aria-expanded={on}
               onClick={(e) => {
                 if ((e.target as HTMLElement).closest('a')) return
-                if (on) {
+                // nothing to open: straight to what it stands for
+                if (on || !lines.length) {
                   setOpen(null)
                   onGo(t.go)
                 } else setOpen(t.key)
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') on ? onGo(t.go) : setOpen(t.key)
+                if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : setOpen(t.key)
                 if (e.key === 'Escape') setOpen(null)
               }}
               className={cn(
                 'absolute inset-x-0 top-0 min-h-19 cursor-pointer overflow-hidden rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow',
-                'group-hover/tile:z-10 group-hover/tile:shadow-pop',
-                on && 'z-10 border-accent-line shadow-pop',
+                'group-hover/tile:z-(--z-raised) group-hover/tile:shadow-pop',
+                on && 'z-(--z-raised) border-accent-line shadow-pop',
               )}
             >
               <div className="flex items-center gap-2 text-ink-3 text-sm">
                 <Dot s={t.signal} />
-                <span className="truncate">{t.label}</span>
+                <span className="min-w-0 flex-1 truncate">{t.label}</span>
+                {t.act &&
+                  (t.act.href ? (
+                    <a
+                      href={t.act.href}
+                      className="shrink-0 rounded-sm border border-line px-1.5 text-accent text-xs leading-5 hover:border-accent-line hover:bg-accent-soft"
+                    >
+                      {t.act.label}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onGo(t.act?.go ?? t.go)
+                      }}
+                      className="shrink-0 rounded-sm border border-line px-1.5 text-accent text-xs leading-5 hover:border-accent-line hover:bg-accent-soft"
+                    >
+                      {t.act.label}
+                    </button>
+                  ))}
               </div>
               <div className="flex items-end justify-between gap-2">
                 <div className="flex min-w-0 items-baseline gap-1.5">
@@ -445,25 +839,30 @@ export function Strip({ tiles, onGo }: { tiles: Tile[]; onGo: (go: string) => vo
                 </div>
                 {t.spark && <Spark points={t.spark} />}
               </div>
-              <div
-                className={cn(
-                  'mt-2 hidden border-hair border-t pt-1.5 group-hover/tile:block',
-                  on && 'block',
-                )}
-              >
-                {t.lines.map((l) => (
-                  <div key={l.words} className="flex items-center gap-2 py-0.5 text-sm">
-                    <Dot s={l.s} />
-                    {l.href ? (
-                      <a href={l.href} className="truncate hover:text-accent hover:underline">
-                        {l.words}
-                      </a>
-                    ) : (
-                      <span className="truncate">{l.words}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {lines.length > 0 && (
+                <div
+                  className={cn(
+                    'mt-2 hidden border-hair border-t pt-1.5 group-hover/tile:block',
+                    on && 'block',
+                  )}
+                >
+                  {lines.map((l) => (
+                    <div key={l.words} className="flex items-center gap-2 py-0.5 text-sm">
+                      <Dot s={l.s} />
+                      {l.href ? (
+                        <a href={l.href} className="truncate hover:text-accent hover:underline">
+                          {l.words}
+                        </a>
+                      ) : (
+                        <span className="truncate">{l.words}</span>
+                      )}
+                      {l.n > 1 && (
+                        <span className="ml-auto shrink-0 text-ink-3 tabular-nums">×{l.n}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )
@@ -532,17 +931,39 @@ export function Overview({
   }, [m.id, version])
   useEffect(() => seen(`module:${m.id}`), [m.id])
 
-  const tiles = pulseOf({ m, main, setup, cards, runs })
+  // a tile only for what no card below says: Interview me, Agents and what Alpha changed each
+  // have their card (Vikas, 27 Oct: nothing twice)
+  const tiles = pulseOf({ m, main, setup, cards, runs }).filter(
+    (t) =>
+      !['agents', 'changed'].includes(t.key) &&
+      !(t.key === 'questions' && t.big === 'Start') &&
+      !(t.key === 'new' && t.big === '0'),
+  )
   const go = (id: string) =>
     document.getElementById(`ov-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
-  // the module's own cards, the most opened first
-  const work: { key: string; node: ReactNode }[] = []
+  // the module's own cards, the most opened first; a chart only where it says something (Vikas,
+  // 27 Oct): enough rows to read, and bars that differ
+  const says = (marks: { n: number }[]) =>
+    marks.length > 1 && new Set(marks.map((x) => x.n)).size > 1
+  const work: (Block & { wide?: boolean })[] = []
+  // a table whose rows report to its own rows draws as an organization chart, first and whole width
   for (const t of main) {
+    const org = orgOf(t)
+    if (org)
+      work.push({
+        key: `org:${t.id}`,
+        name: 'Organization',
+        wide: true,
+        node: <OrgChart t={t} {...org} />,
+      })
+  }
+  for (const t of main.filter((x) => x.rows.length >= 8)) {
     const spread = spreadOf(t)[0]
-    if (spread)
+    if (spread && says(spread.marks))
       work.push({
         key: `chart:${t.id}`,
+        name: `${t.name} by ${spread.f.name.toLowerCase()}`,
         node: (
           <ChartCard
             id={`chart:${t.id}`}
@@ -553,10 +974,122 @@ export function Overview({
           />
         ),
       })
+    // a stage as a funnel (Vikas, 29 Oct: the Funnel page's analytics on the Overview): the rows
+    // at or past each stage, the ones that left (Passed, Lost) out
+    if (spread && /stage|step|phase/i.test(spread.f.name)) {
+      const f = spread.f
+      const left = (c: string) =>
+        f.tones[c] === 'bad' || /pass|lost|drop|declin|gone|cancel/i.test(c)
+      const steps = f.choices.filter((c) => !left(c))
+      const at = (r: RowView) => steps.indexOf(String(val(r, f) ?? ''))
+      const marks = steps.map((c, i) => {
+        const rows = t.rows.filter((r) => at(r) >= i)
+        return { label: c, n: rows.length, href: rowsHref(t, rows, `${f.name} at ${c} or past it`) }
+      })
+      if (marks.filter((x) => x.n).length >= 2)
+        work.push({
+          key: `funnel:${t.id}`,
+          name: `${t.name} funnel`,
+          node: (
+            <ChartCard
+              id={`funnel:${t.id}`}
+              title={`${t.name} funnel`}
+              href={`#/table/${t.id}`}
+              kinds={['funnel', 'bar']}
+              marks={marks}
+            />
+          ),
+        })
+    }
+    const bubbles = bubblesOf(t)
+    if (bubbles)
+      work.push({
+        key: `bubbles:${t.id}`,
+        name: `${t.name} by ${bubbles.date.name.toLowerCase()}`,
+        wide: true,
+        node: (
+          <Card
+            id={`bubbles:${t.id}`}
+            title={`${t.name} by ${bubbles.date.name.toLowerCase()}`}
+            href={`#/table/${t.id}`}
+            wide
+          >
+            {() => (
+              <Bubbles
+                points={bubbles.points}
+                lanes={bubbles.lanes}
+                size={bubbles.size.name}
+                tones={bubbles.tones}
+              />
+            )}
+          </Card>
+        ),
+      })
+    // on another date than the bubbles': on the same one they would say it twice
+    const lines = linesOf(t, bubbles?.date)
+    if (lines)
+      work.push({
+        key: `lines:${t.id}`,
+        name: `${t.name} per week`,
+        wide: true,
+        node: (
+          <Card
+            id={`lines:${t.id}`}
+            title={`${t.name} per week of ${lines.date.name.toLowerCase()}, by ${lines.by.name.toLowerCase()}`}
+            href={`#/table/${t.id}`}
+            wide
+          >
+            {() => <Lines series={lines.series} periods={lines.periods} />}
+          </Card>
+        ),
+      })
+    const scatter = scatterOf(t)
+    if (scatter)
+      work.push({
+        key: `scatter:${t.id}`,
+        name: `${t.name}: ${scatter.y.name.toLowerCase()} against ${scatter.x.name.toLowerCase()}`,
+        wide: true,
+        node: (
+          <Card
+            id={`scatter:${t.id}`}
+            title={`${t.name}: ${scatter.y.name.toLowerCase()} against ${scatter.x.name.toLowerCase()}`}
+            href={`#/table/${t.id}`}
+            wide
+          >
+            {() => (
+              <Scatter
+                points={scatter.points}
+                x={scatter.x.name}
+                y={scatter.y.name}
+                size={scatter.size?.name}
+                tones={scatter.tones}
+              />
+            )}
+          </Card>
+        ),
+      })
+    const heat = heatOf(t)
+    if (heat)
+      work.push({
+        key: `heat:${t.id}`,
+        name: `${t.name} by ${heat.row.name.toLowerCase()} and ${heat.col.name.toLowerCase()}`,
+        wide: true,
+        node: (
+          <Card
+            id={`heat:${t.id}`}
+            title={`${t.name} by ${heat.row.name.toLowerCase()} and ${heat.col.name.toLowerCase()}`}
+            href={`#/table/${t.id}`}
+            wide
+          >
+            {() => <Heat rows={heat.rows} cols={heat.cols} cells={heat.cells} />}
+          </Card>
+        ),
+      })
     const from = fromOf(t, main)
-    if (from)
+    if (from && says(from.marks))
       work.push({
         key: `from:${t.id}`,
+        name: `Where ${t.name.toLowerCase()} come from`,
         node: (
           <ChartCard
             id={`from:${t.id}`}
@@ -573,6 +1106,7 @@ export function Overview({
   if (goals)
     work.push({
       key: 'goals',
+      name: 'Goals',
       node: (
         <ChartCard
           id="goals"
@@ -583,10 +1117,36 @@ export function Overview({
         />
       ),
     })
+  // each goal week by week and month by month, and the first one's weeks against its target
+  // ponytail: by the date a row carries for the goal (Reviewed); a stage reached has no date
+  // until the core gives a row's stage history, so those goals show only where they stand
+  if (goals?.marks.some((g) => g.date)) {
+    const first = goals.marks.find((g) => g.date) as Goal
+    work.push({
+      key: 'goal-weeks',
+      name: 'Goals by week',
+      wide: true,
+      node: <GoalWeeks t={goals.table} goals={goals.marks} href={`#/table/${goals.goals.id}`} />,
+    })
+    work.push({
+      key: 'goal-first',
+      name: `${first.label} per week`,
+      node: (
+        <ChartCard
+          id="goal-first"
+          title={`${first.label} per week`}
+          href={`#/table/${goals.table.id}`}
+          kinds={['bullet', 'bar']}
+          marks={periodsOf(goals.table, first).weeks}
+        />
+      ),
+    })
+  }
   const criteria = criteriaOf(setup, main)
   if (criteria)
     work.push({
       key: 'criteria',
+      name: `What rules ${criteria.table.name.toLowerCase()} out`,
       node: (
         <ChartCard
           id="criteria"
@@ -599,9 +1159,10 @@ export function Overview({
     })
   const big = [...main].sort((a, b) => b.rows.length - a.rows.length)[0]
   const weeks = big && weeksOf(big)
-  if (big && weeks && weeks.weeks.filter((w) => w.n).length >= 2)
+  if (big && weeks && weeks.weeks.filter((w) => w.n).length >= 2 && says(weeks.weeks))
     work.push({
       key: `weeks:${big.id}`,
+      name: `New ${big.name.toLowerCase()} by week`,
       node: (
         <ChartCard
           id={`weeks:${big.id}`}
@@ -616,36 +1177,270 @@ export function Overview({
   work.sort((a, b) => count(b.key) - count(a.key))
   const waiting = cards.filter((c) => c.module === m.name && !isQuestion(c))
 
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="flex flex-col gap-4 px-7 py-4">
-        <Strip tiles={tiles} onGo={go} />
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-          <div className="flex min-w-0 flex-col gap-4">
-            {waiting.length > 0 && <NeedsYou cards={waiting} />}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] items-start gap-4">
-              {work.map((w) => (
-                <div
-                  key={w.key}
-                  className="contents"
-                  onClickCapture={() => seen(`card:${m.id}:${w.key}`)}
-                >
-                  {w.node}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-col gap-4">
-            <InterviewMe m={m} cards={cards} onChange={onChange} />
-            <Files m={m} onChange={onChange} />
-            <Agents m={m} main={main} onChange={onChange} />
-            <Intelligence m={m} rules={rules} />
-            <MayDo m={m} runs={runs} rules={rules} onChange={onChange} />
-            <Tables m={m} />
-          </div>
+  // a goal behind has its task, made once and kept to its numbers; met, the task is done
+  const goalKey = goals ? JSON.stringify(goals.marks.map((g) => [g.row, g.task, g.met])) : ''
+  useEffect(() => {
+    if (!goals) return
+    const sunday = new Date()
+    sunday.setDate(sunday.getDate() + ((7 - sunday.getDay()) % 7))
+    const weekly = goals.marks.some((g) => g.task.endsWith('this week'))
+    for (const g of goals.marks)
+      api
+        .post('/api/tasks/ensure', {
+          title: g.task,
+          met: g.met,
+          ...(weekly ? { due: sunday.toISOString().slice(0, 10) } : {}),
+          on: { module: m.id, table: goals.goals.id, row: g.row },
+        })
+        .catch(() => undefined)
+  }, [goalKey, m.id])
+
+  const insights = m.agents.find((a) => /insight/i.test(a.name))
+  const questions = cards.some((c) => c.module === m.name && isQuestion(c))
+  const lead: (Block & { wide?: boolean })[] = [
+    ...(insights
+      ? [{ key: 'insights', name: 'Insights', node: <Insights a={insights} onChange={onChange} /> }]
+      : []),
+    ...(waiting.length
+      ? [
+          {
+            key: 'needs',
+            name: 'Needs you',
+            node: <NeedsYou cards={waiting} onChange={onChange} />,
+          },
+        ]
+      : []),
+  ]
+  // nothing to show yet says what will be here and how it comes (Vikas, 29 Oct: never blank)
+  if (!lead.length && !work.length)
+    lead.push({
+      key: 'empty',
+      name: 'No data yet',
+      wide: true,
+      node: <NoData m={m} main={main} />,
+    })
+  // the standard blocks, in this order in every module (Vikas, 29 Oct)
+  const standard: Block[] = [
+    ...(questions
+      ? [
+          {
+            key: 'ask',
+            name: 'Interview me',
+            node: <InterviewMe m={m} cards={cards} onChange={onChange} />,
+          },
+        ]
+      : []),
+    ...(m.agents.length
+      ? [{ key: 'agents', name: 'Agents', node: <Agents m={m} main={main} onChange={onChange} /> }]
+      : []),
+    {
+      key: 'governance',
+      name: 'Governance',
+      node: (
+        <div id="ov-governance" className="rounded-lg border border-line bg-surface px-3 py-3">
+          <GovernanceSection module={m.id} version={version} />
         </div>
+      ),
+    },
+    { key: 'tables', name: 'Tables', node: <Tables m={m} /> },
+    { key: 'brain', name: 'Second Brain', node: <Intelligence m={m} rules={rules} /> },
+    { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
+  ]
+  const blocks = [...lead, ...work, ...standard]
+  const wide = new Set(blocks.filter((b) => 'wide' in b && b.wide).map((b) => b.key))
+
+  return (
+    // its own width decides the columns, not the window's: it is drawn in the side panel too
+    <div className="@container h-full overflow-y-auto">
+      <div className="flex flex-col gap-4 px-7 py-4">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <Strip tiles={tiles} onGo={go} />
+          </div>
+          <InterviewButton m={m} className="shrink-0" />
+        </div>
+        <Arranged
+          page={`overview:${m.id}`}
+          blocks={blocks}
+          start={[
+            ...pairs(
+              [...lead, ...work].map((b) => b.key),
+              (k) => wide.has(k),
+            ),
+            ...pairs(standard.map((b) => b.key)),
+          ]}
+        />
       </div>
     </div>
+  )
+}
+
+// A goal's rows counted by its date: the last six weeks, this month and last month, each with
+// the rows it counts.
+function periodsOf(t: TableData, g: Goal) {
+  const at = (r: RowView) => (g.date ? Date.parse(String(val(r, g.date) ?? '')) : Number.NaN)
+  const count = (label: string, from: number, to: number, target?: number) => {
+    const rows = t.rows.filter((r) => at(r) >= from && at(r) < to)
+    return {
+      label,
+      n: rows.length,
+      href: rowsHref(t, rows, `${g.label}: ${label.toLowerCase()}`),
+      ...(target !== undefined ? { target } : {}),
+    }
+  }
+  const monday = new Date()
+  monday.setHours(0, 0, 0, 0)
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+  const weeks = [5, 4, 3, 2, 1, 0].map((ago) => {
+    const from = monday.getTime() - ago * WEEK
+    const label =
+      ago === 0
+        ? 'This week'
+        : new Date(from).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+    return count(label, from, from + WEEK, g.target)
+  })
+  const d = new Date()
+  const month = new Date(d.getFullYear(), d.getMonth(), 1).getTime()
+  const last = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime()
+  return {
+    weeks,
+    months: [count('Last month', last, month), count('This month', month, Date.now() + 864e5)],
+  }
+}
+
+function GoalWeeks({ t, goals, href }: { t: TableData; goals: Goal[]; href: string }) {
+  const dated = goals.filter((g) => g.date)
+  const head = periodsOf(t, dated[0] as Goal)
+  const cols = [...head.weeks, ...head.months].map((c) => c.label)
+  return (
+    <Card id="goal-weeks" title="Goals by week" href={href} wide>
+      {() => (
+        <div className="overflow-x-auto">
+          <table className="w-full text-md tabular-nums">
+            <thead>
+              <tr className="text-ink-3 text-sm">
+                <th className="py-1 pr-3 text-left font-normal">Goal</th>
+                {cols.map((c) => (
+                  <th key={c} className="px-2 py-1 text-right font-normal">
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dated.map((g) => {
+                const p = periodsOf(t, g)
+                return (
+                  <tr key={g.row} className="border-hair border-t">
+                    <td className="py-1.5 pr-3">{g.label}</td>
+                    {[...p.weeks, ...p.months].map((c) => (
+                      <td key={c.label} className="px-2 py-1.5 text-right">
+                        <a
+                          href={c.href}
+                          className={cn(
+                            'hover:text-accent hover:underline',
+                            c.target !== undefined && c.n >= c.target && 'text-good',
+                          )}
+                        >
+                          {c.n}
+                        </a>
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// An Overview with nothing to show says what will be here and how it comes.
+function NoData({ m, main }: { m: ModuleView; main: TableData[] }) {
+  const names = main.map((t) => t.name)
+  const listed =
+    names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names.at(-1)}` : (names[0] ?? '')
+  return (
+    <section id="ov-empty" className="rounded-lg border border-line border-dashed px-4 py-5">
+      <p className="font-semibold text-ink">No data yet</p>
+      <p className="mt-1 text-ink-2 text-md">
+        {names.length
+          ? `Rows added to ${listed} show here: charts of them, the goals they count towards and what needs you.`
+          : `${m.name} keeps no rows yet. Tell Alpha what to keep, or add files, and what it keeps shows here.`}
+      </p>
+      <div className="mt-3 flex gap-2">
+        {main[0] && (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => (window.location.hash = `#/table/${main[0]?.id}`)}
+          >
+            Open {main[0].name}
+          </Button>
+        )}
+        <InterviewButton m={m} />
+      </div>
+    </section>
+  )
+}
+
+// What the module's Insights agent last found (Vikas, 29 Oct: "a particular agent handling all
+// this analysis… proactively working on the overview page"): its last run's words, a line each.
+// ponytail: an agent's only output to the window is its run's words; insights as rows of their
+// own, each with its chart and the rows it rests on, need the core to keep them
+function Insights({ a, onChange }: { a: AgentView; onChange: () => void }) {
+  const { busy, problem, act } = useAct(onChange)
+  const said = a.lastResult?.ok ? a.lastResult.words.split(/\n+/).filter((l) => l.trim()) : []
+  return (
+    <Card
+      id="insights"
+      title="Insights"
+      href={`#/agent/${a.id}`}
+      signal={a.lastResult && !a.lastResult.ok ? 'now' : null}
+      extra={
+        a.state === 'on' ? (
+          <Button
+            size="sm"
+            disabled={busy || a.running}
+            onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
+          >
+            <RefreshCw className={cn('size-3.5', a.running && 'animate-spin')} />
+            Look again
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy}
+            onClick={() => act(() => api.post(`/api/agents/${a.id}`, { state: 'on' }))}
+          >
+            Turn on
+          </Button>
+        )
+      }
+    >
+      {() => (
+        <div>
+          <Refusal words={problem} />
+          {said.length ? (
+            said.map((l) => (
+              <Line key={l} s="opt">
+                {l}
+              </Line>
+            ))
+          ) : (
+            <p className="text-ink-3 text-md">
+              {a.lastResult && !a.lastResult.ok
+                ? `${a.name} did not finish: ${a.lastResult.words}`
+                : `No insights yet: ${a.name} writes what it finds here, ${a.when}.`}
+            </p>
+          )}
+          {a.lastResult?.ok && <p className="pt-1.5 text-ink-3 text-sm">{when(a.lastResult.at)}</p>}
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -659,6 +1454,7 @@ function Card({
   signal,
   grows,
   extra,
+  wide,
   children,
 }: {
   id: string
@@ -668,6 +1464,7 @@ function Card({
   signal?: Signal | null
   grows?: boolean
   extra?: ReactNode
+  wide?: boolean // the whole width: a chart that needs it to read
   children: (big: boolean) => ReactNode
 }) {
   const [big, setBig] = useState(false)
@@ -676,7 +1473,7 @@ function Card({
       id={`ov-${id}`}
       className={cn(
         'flex min-w-0 flex-col rounded-lg border border-line bg-surface transition-shadow hover:shadow-pop',
-        big && 'col-span-full',
+        (big || wide) && 'col-span-full',
       )}
     >
       <div className="flex h-11 items-center gap-2 px-3">
@@ -758,8 +1555,9 @@ function ChartCard({
 }
 
 // What waits on the person here, each with its signal; its primary opens it on Home, where it is
-// answered.
-function NeedsYou({ cards }: { cards: CardView[] }) {
+// answered. Cards of one kind are one line, a stack: "1 of N" with previous and next, and one
+// answer for all where the cards allow it (Vikas, 29 Oct).
+function NeedsYou({ cards, onChange }: { cards: CardView[]; onChange: () => void }) {
   const verb = (c: CardView) =>
     c.gate === 'sign_in' || c.site || c.connector
       ? 'Sign in'
@@ -768,6 +1566,7 @@ function NeedsYou({ cards }: { cards: CardView[] }) {
         : c.review || c.match || c.filing || c.proposed
           ? 'Review'
           : 'Open'
+  const stacks = stacksOf(cards)
   return (
     <Card
       id="needs"
@@ -775,21 +1574,28 @@ function NeedsYou({ cards }: { cards: CardView[] }) {
       href="#/"
       count={cards.length}
       signal={strongest(cards.map(signalOf))}
-      grows={cards.length > 5}
+      grows={stacks.length > 5}
     >
       {(big) =>
-        (big ? cards : cards.slice(0, 5)).map((c) => (
-          <Line
-            key={c.id}
-            s={signalOf(c)}
-            actions={
-              <Button size="sm" variant="primary" onClick={() => (window.location.hash = '#/')}>
-                {verb(c)}
-              </Button>
-            }
-          >
-            <span className="line-clamp-2">{c.words}</span>
-          </Line>
+        (big ? stacks : stacks.slice(0, 5)).map((st) => (
+          <Stack
+            key={st[0]?.id}
+            cards={st}
+            onChange={onChange}
+            render={(c, head) => (
+              <Line
+                s={signalOf(c)}
+                actions={
+                  <Button size="sm" variant="primary" onClick={() => (window.location.hash = '#/')}>
+                    {verb(c)}
+                  </Button>
+                }
+              >
+                <span className="line-clamp-2">{c.words}</span>
+                {head}
+              </Line>
+            )}
+          />
         ))
       }
     </Card>
@@ -797,6 +1603,38 @@ function NeedsYou({ cards }: { cards: CardView[] }) {
 }
 
 // --- The standard column ------------------------------------------------------------------
+
+// Interview me (Vikas, 30 Oct): the Interviewer's questions for this module today, never a fixed
+// prompt; on a hover, what it prepared and its first question; Preparing while it runs.
+function InterviewButton({
+  m,
+  label = 'Interview me',
+  className,
+}: {
+  m: ModuleView
+  label?: string
+  className?: string
+}) {
+  const interview = useInterview(m.id)
+  return (
+    <span className={cn('flex flex-col items-end gap-1', className)}>
+      <Button
+        size="sm"
+        onClick={() => void interview.start()}
+        disabled={interview.busy}
+        data-tip={interview.tip}
+      >
+        {interview.busy ? (
+          <LoaderCircle className="size-3.5 animate-spin" />
+        ) : (
+          <MessageCircleQuestion className="size-3.5" />
+        )}
+        {interview.busy ? 'Preparing…' : label}
+      </Button>
+      <Refusal words={interview.problem} />
+    </span>
+  )
+}
 
 // Alpha's questions for the person, each answered in place; Start begins an interview.
 function InterviewMe({
@@ -810,21 +1648,14 @@ function InterviewMe({
 }) {
   const { busy, problem, act } = useAct(onChange)
   const questions = cards.filter((c) => c.module === m.name && isQuestion(c))
-  const interview = () =>
-    startAsk(
-      `Interview me about ${m.name}: ask me one short question at a time about how I work and what I want from it, and keep what you learn in its notes.`,
-    )
+  if (!questions.length) return null
   return (
     <Card
       id="ask"
       title="Interview me"
       href={`#/module/${m.id}/conversation`}
       count={questions.length}
-      extra={
-        <Button size="sm" variant={questions.length ? 'default' : 'primary'} onClick={interview}>
-          {questions.length ? 'Ask me more' : 'Start'}
-        </Button>
-      }
+      extra={<InterviewButton m={m} label="Ask me more" />}
     >
       {() => (
         <div>
@@ -848,13 +1679,6 @@ function InterviewMe({
               {c.words}
             </Line>
           ))}
-          {!questions.length && (
-            <Line s="opt">
-              <span className="text-ink-2">
-                One question at a time; each answer goes into {m.name}'s notes.
-              </span>
-            </Line>
-          )}
         </div>
       )}
     </Card>
@@ -865,7 +1689,6 @@ function InterviewMe({
 // to add it; Alpha reads it and files it.
 function Files({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   const { busy, problem, act } = useAct(onChange)
-  const [over, setOver] = useState(false)
   const icon = (f: ModuleFileView) =>
     f.mime.startsWith('image/') ? Image : /sheet|csv|excel/.test(f.mime) ? Sheet : FileText
   const drop = (files: FileList) => act(() => Promise.all([...files].map((f) => api.upload(f))))
@@ -880,25 +1703,9 @@ function Files({ m, onChange }: { m: ModuleView; onChange: () => void }) {
       grows={m.files.length > 8}
     >
       {(big) => (
-        // biome-ignore lint/a11y/noStaticElementInteractions: a drop target; the files are links
-        <div
-          onDragOver={(e) => {
-            e.preventDefault()
-            setOver(true)
-          }}
-          onDragLeave={() => setOver(false)}
-          onDrop={(e) => {
-            e.preventDefault()
-            setOver(false)
-            drop(e.dataTransfer.files)
-          }}
-          className={cn(
-            'rounded-md border border-dashed p-1.5',
-            over ? 'border-accent bg-accent-soft' : 'border-line',
-          )}
-        >
+        <DropZone onFiles={drop} busy={busy}>
           <Refusal words={problem} />
-          {m.files.length > 0 ? (
+          {m.files.length > 0 && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(5rem,1fr))] gap-1">
               {(big ? m.files : m.files.slice(0, 8)).map((f) => {
                 const Icon = icon(f)
@@ -922,13 +1729,8 @@ function Files({ m, onChange }: { m: ModuleView; onChange: () => void }) {
                 )
               })}
             </div>
-          ) : (
-            <div className="flex flex-col items-center gap-1 py-4 text-ink-3 text-sm">
-              <Upload className="size-5" />
-              {busy ? 'Adding…' : 'Drop files here'}
-            </div>
           )}
-        </div>
+        </DropZone>
       )}
     </Card>
   )
@@ -1061,30 +1863,32 @@ function Agents({ m, main, onChange }: { m: ModuleView; main: TableData[]; onCha
 function Intelligence({ m, rules }: { m: ModuleView; rules: RuleView[] }) {
   const notes = m.notes.split('\n').filter((l) => !l.startsWith('#') && l.trim().length > 20)
   const here = `#/module/${m.id}/agents`
+  // only what it has: a nought says nothing (Vikas, 27 Oct)
   const tiles = [
     { n: notes.length, label: 'notes', href: here },
     { n: m.files.filter((f) => f.read === 'read').length, label: 'documents read', href: here },
-    { n: rules.length + 1, label: 'rules', href: here },
-    { n: m.agents.length, label: 'agents', href: here },
-  ]
+    { n: rules.length, label: 'rules', href: here },
+  ].filter((t) => t.n > 0)
   const kept = m.tables.filter((t) => t.rows).sort((a, b) => b.rows - a.rows)
   const total = kept.reduce((a, t) => a + t.rows, 0) || 1
   return (
-    <Card id="intelligence" title="Intelligence" href="#/intelligence/brain">
+    <Card id="intelligence" title="Second Brain" href="#/intelligence/brain">
       {() => (
         <div className="flex flex-col gap-2.5">
-          <div className="grid grid-cols-4 gap-2">
-            {tiles.map((t) => (
-              <a
-                key={t.label}
-                href={t.href}
-                className="flex flex-col rounded-md bg-sunk px-2 py-1.5 hover:bg-hover"
-              >
-                <span className="font-serif text-xl tabular-nums">{t.n.toLocaleString()}</span>
-                <span className="truncate text-ink-3 text-xs">{t.label}</span>
-              </a>
-            ))}
-          </div>
+          {tiles.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {tiles.map((t) => (
+                <a
+                  key={t.label}
+                  href={t.href}
+                  className="flex flex-col rounded-md bg-sunk px-2 py-1.5 hover:bg-hover"
+                >
+                  <span className="font-serif text-xl tabular-nums">{t.n.toLocaleString()}</span>
+                  <span className="truncate text-ink-3 text-xs">{t.label}</span>
+                </a>
+              ))}
+            </div>
+          )}
           <div className="flex h-2 overflow-hidden rounded-full bg-sunk">
             {kept.slice(0, 6).map((t, i) => (
               <a
@@ -1116,144 +1920,55 @@ function Intelligence({ m, rules }: { m: ModuleView; rules: RuleView[] }) {
   )
 }
 
-// What Alpha may do here: its rules as one bar (allowed, never; anything else asks first), then
-// what it changed lately, each with Revert.
-function MayDo({
-  m,
-  runs,
-  rules,
-  onChange,
-}: {
-  m: ModuleView
-  runs: RunView[] | null
-  rules: RuleView[]
-  onChange: () => void
-}) {
-  const changed = (runs ?? []).filter((r) => !r.quiet)
-  const allow = rules.filter((r) => r.side === 'allow').length
-  const deny = rules.filter((r) => r.side === 'deny').length
-  const parts = [
-    { n: allow, label: `${allow} allowed`, cls: 'bg-good' },
-    { n: 1, label: 'Anything else asks first', cls: 'bg-accent' },
-    { n: deny, label: `${deny} never`, cls: 'bg-bad' },
-  ].filter((p) => p.n)
-  const total = parts.reduce((a, p) => a + p.n, 0)
-  return (
-    <Card
-      id="maydo"
-      title="What Alpha may do"
-      href={`#/module/${m.id}/agents`}
-      grows={changed.length > 3}
-    >
-      {(big) => (
-        <div>
-          <a href={`#/module/${m.id}/agents`} className="block">
-            <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
-              {parts.map((p) => (
-                <span
-                  key={p.label}
-                  className={p.cls}
-                  style={{ width: `${(p.n / total) * 100}%` }}
-                />
-              ))}
-            </div>
-            <div className="mt-1.5 mb-1 flex flex-wrap gap-x-3 text-ink-2 text-sm hover:text-accent">
-              {parts.map((p) => (
-                <span key={p.label} className="flex items-center gap-1.5">
-                  <span className={cn('size-2 rounded-xs', p.cls)} />
-                  {p.label}
-                </span>
-              ))}
-            </div>
-          </a>
-          {(big ? changed.slice(0, 12) : changed.slice(0, 3)).map((r) => (
-            <Line key={r.id} s="opt" actions={<Undo run={r} onDone={onChange} />}>
-              <a href={`#/run/${r.id}`} className="line-clamp-2 hover:text-accent hover:underline">
-                {r.words ?? r.name}
-              </a>
-              <span className="text-ink-3 text-sm">{when(r.startedAt)}</span>
-            </Line>
-          ))}
-        </div>
-      )}
-    </Card>
-  )
-}
-
-// Every table of the module as a tree: main tables, the parts of a row under it, the setup tables
-// last. The pin puts a table in the bar's switch, or takes it out.
+// Every table of the module, numbered as the rail numbers its modules (2.2, its parts 2.2.1),
+// all of them in sight. The pin puts a table in the bar's switch, or takes it out.
 function Tables({ m }: { m: ModuleView }) {
   const { pins, toggle } = usePins(m)
-  const [open, setOpen] = useState<string[]>([])
-  const main = m.tables.filter((t) => t.place === 'main')
-  const setup = m.tables.filter((t) => t.place === 'setup')
-  const partsOf = (name: string) => m.tables.filter((t) => t.place === 'part' && t.of === name)
-  const row = (t: Table, depth: number, lead?: ReactNode) => (
-    <div
-      key={t.id}
-      className="group/t flex h-8 items-center gap-1.5 border-hair border-t text-md"
-      style={{ paddingLeft: depth * 16 }}
-    >
-      <span className="grid w-4 place-items-center text-ink-3">{lead}</span>
-      <a
-        href={`#/table/${t.id}`}
-        className="min-w-0 truncate text-ink hover:text-accent hover:underline"
-      >
-        {t.name}
-      </a>
-      <span className="flex-1 text-ink-3 text-sm tabular-nums">{t.rows.toLocaleString()}</span>
-      <button
-        type="button"
-        aria-label={
-          pins.includes(t.id) ? `Unpin ${t.name} from the bar` : `Pin ${t.name} to the bar`
-        }
-        data-tip={pins.includes(t.id) ? 'Unpin from the bar' : 'Pin to the bar'}
-        onClick={() => toggle(t.id)}
-        className={cn(
-          'grid size-6 place-items-center rounded-sm hover:bg-hover',
-          pins.includes(t.id) ? 'text-accent' : 'text-ink-3 opacity-0 group-hover/t:opacity-100',
-        )}
-      >
-        <Pin className="size-3.5" />
-      </button>
-    </div>
-  )
+  const [number, setNumber] = useState('')
+  useEffect(() => {
+    api.get<ModuleSummary[]>('/api/modules').then(
+      (ms) => setNumber(moduleNumbers(ms).get(m.id) ?? ''),
+      () => undefined,
+    )
+  }, [m.id])
   return (
     <Card id="tables" title="Tables" href={`#/module/${m.id}/agents`} count={m.tables.length}>
       {() => (
         <div>
-          {main.map((t) => {
-            const parts = partsOf(t.name)
-            const shut = !open.includes(t.id)
-            return (
-              <div key={t.id}>
-                {row(
-                  t,
-                  0,
-                  parts.length > 0 && (
-                    <button
-                      type="button"
-                      aria-label={shut ? `Show the parts of ${t.name}` : 'Hide the parts'}
-                      onClick={() =>
-                        setOpen(shut ? [...open, t.id] : open.filter((x) => x !== t.id))
-                      }
-                    >
-                      {shut ? (
-                        <ChevronRight className="size-3.5" />
-                      ) : (
-                        <ChevronDown className="size-3.5" />
-                      )}
-                    </button>
-                  ),
+          {numberTables(m.tables, number).map(({ table: t, n, depth }) => (
+            <div
+              key={t.id}
+              className="group/t flex h-8 items-center gap-1.5 border-hair border-t text-md"
+              style={{ paddingLeft: depth * 16 }}
+            >
+              <span className="text-ink-3 text-sm tabular-nums">{n}</span>
+              <a
+                href={`#/table/${t.id}`}
+                className="min-w-0 truncate text-ink hover:text-accent hover:underline"
+              >
+                {t.name}
+              </a>
+              <span className="flex-1 text-ink-3 text-sm tabular-nums">
+                {t.rows.toLocaleString()}
+              </span>
+              <button
+                type="button"
+                aria-label={
+                  pins.includes(t.id) ? `Unpin ${t.name} from the bar` : `Pin ${t.name} to the bar`
+                }
+                data-tip={pins.includes(t.id) ? 'Unpin from the bar' : 'Pin to the bar'}
+                onClick={() => toggle(t.id)}
+                className={cn(
+                  'grid size-6 place-items-center rounded-sm hover:bg-hover',
+                  pins.includes(t.id)
+                    ? 'text-accent'
+                    : 'text-ink-3 opacity-0 group-hover/t:opacity-100',
                 )}
-                {!shut && parts.map((p) => row(p, 1))}
-              </div>
-            )
-          })}
-          {setup.length > 0 && (
-            <div className="pt-2 pb-0.5 text-ink-3 text-sm">What you set up</div>
-          )}
-          {setup.map((t) => row(t, 0))}
+              >
+                <Pin className="size-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </Card>
@@ -1343,5 +2058,98 @@ function ModulePulse({
         }}
       />
     </section>
+  )
+}
+
+// The organization chart (Vikas, 28 Oct): a table with a relation to its own rows ("Reports to",
+// "Manager") drawn as a tree, each person under the one they report to; a click opens the row.
+function orgOf(t: TableData) {
+  const ids = new Set(t.rows.map((r) => r.id))
+  const up = t.fields
+    .filter(
+      (f) =>
+        f.kind === 'relation' &&
+        !f.many &&
+        t.rows.some((r) => ids.has(r.values[f.slug] as string)) &&
+        t.rows.every((r) => r.values[f.slug] == null || ids.has(r.values[f.slug] as string)),
+    )
+    .sort(
+      (a, b) =>
+        Number(/report|manager|lead/i.test(b.name)) - Number(/report|manager|lead/i.test(a.name)),
+    )[0]
+  if (!up) return null
+  const name = t.fields.find((f) => f.kind === 'text') ?? t.fields[0]
+  const role = t.fields.find((f) => f.kind === 'choice' && /role|title|position/i.test(f.name))
+  return name ? { up: up.slug, name: name.slug, role: role?.slug ?? null, upName: up.name } : null
+}
+
+function OrgChart({
+  t,
+  up,
+  name,
+  role,
+  upName,
+}: {
+  t: TableData
+  up: string
+  name: string
+  role: string | null
+  upName: string
+}) {
+  const under = (id: string | null) =>
+    t.rows.filter((r) => ((r.values[up] as string | undefined) ?? null) === id)
+  const node = (r: TableData['rows'][number], depth: number): ReactNode => {
+    const kids = depth < 6 ? under(r.id) : []
+    return (
+      <li key={r.id} className="flex flex-col items-center">
+        <a
+          href={`#/row/${r.id}`}
+          className="flex min-w-32 flex-col items-center rounded-md border border-line bg-surface px-3 py-1.5 text-center shadow-btn hover:border-accent-line hover:bg-accent-soft"
+        >
+          <span className="font-medium text-ink text-sm">{String(r.values[name] ?? '…')}</span>
+          {role && r.values[role] != null && (
+            <span className="text-ink-3 text-xs">{String(r.values[role])}</span>
+          )}
+        </a>
+        {kids.length > 0 && (
+          <>
+            <span className="h-3 w-px bg-line" />
+            {/* those who manage no one stand in a column under their manager, so it stays narrow */}
+            <ul
+              className={cn(
+                'flex gap-3',
+                kids.some((k) => under(k.id).length)
+                  ? 'border-line border-t pt-3'
+                  : 'flex-col items-center gap-1.5',
+              )}
+            >
+              {kids.map((k) => node(k, depth + 1))}
+            </ul>
+          </>
+        )}
+      </li>
+    )
+  }
+  return (
+    <Card
+      id={`org:${t.id}`}
+      title="Organization"
+      href={`#/table/${t.id}`}
+      count={t.rows.length}
+      wide
+    >
+      {() => (
+        <div
+          // a wide chart opens on its top, in the middle
+          ref={(el) => {
+            if (el) el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
+          }}
+          className="overflow-x-auto px-3 pb-3"
+          title={`By ${upName.toLowerCase()}`}
+        >
+          <ul className="mx-auto flex w-max gap-6">{under(null).map((r) => node(r, 0))}</ul>
+        </div>
+      )}
+    </Card>
   )
 }

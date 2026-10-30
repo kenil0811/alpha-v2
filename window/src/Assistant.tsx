@@ -9,18 +9,24 @@ import { type ReactNode, useState } from 'react'
 import { Face, type Mood } from './Companion.tsx'
 import { MarkButton } from './Mark.tsx'
 import { IconButton } from './ui/button.tsx'
-import { Edge, Opening, STRIP } from './ui/edge.tsx'
+import { cn } from './ui/cn.ts'
+import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
-function BellLink({ running }: { running: number }) {
+function BellLink({ running, labelled = false }: { running: number; labelled?: boolean }) {
   return (
     <a
       href="#/activity"
       aria-label={running ? `Activity, ${running} running` : 'Activity'}
       data-tip={running ? `Activity, ${running} running` : 'Activity'}
-      className="relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
+      className={
+        labelled
+          ? stripItem()
+          : 'relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
+      }
     >
       <Bell className="size-4" />
+      {labelled && <span className={stripName}>Activity</span>}
       {running > 0 && (
         <span
           className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
@@ -56,7 +62,7 @@ export function Assistant({
       // biome-ignore lint/a11y/useKeyWithClickEvents: the face is the keyboard's way in
       <aside
         onClick={() => onFold(false)}
-        className="relative flex w-14 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface"
+        className="relative flex w-20 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface px-1"
       >
         <Edge
           side="left"
@@ -93,13 +99,13 @@ export function Assistant({
             e.stopPropagation()
             onFold(false)
           }}
-          className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
+          className={cn(stripItem(), 'mt-1 mb-2')}
         >
           <PanelRightOpen className="size-4" />
+          <span className={stripName}>Open</span>
         </button>
-        <span className="text-ink-3 text-xs">Alpha</span>
-        <MarkButton />
-        <BellLink running={running} />
+        <MarkButton labelled />
+        <BellLink running={running} labelled />
       </aside>
     )
   return (

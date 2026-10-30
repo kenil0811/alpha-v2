@@ -7,7 +7,7 @@ export type Signal = 'now' | 'yes' | 'opt' | 'done'
 
 export const SIGNAL_WORDS: Record<Signal, string> = {
   now: 'Needs you now',
-  yes: 'Waits for your yes',
+  yes: 'Needs approval',
   opt: 'Optional, for your information',
   done: 'Running as it should',
 }

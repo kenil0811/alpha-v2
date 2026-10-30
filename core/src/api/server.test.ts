@@ -4,10 +4,12 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Engine } from '../engine/engine.ts'
 import { MAINTAINED_SHAPE } from '../engine/tools/index.ts'
+import { DEFAULT_KITS, keepDefaults } from '../modules/defaults.ts'
+import { loadPool, pending, ranked, refresh } from '../modules/interview.ts'
 import { install } from '../modules/kits/index.ts'
 import { World } from '../world/world.ts'
 import { buildServer, VERSION } from './server.ts'
-import type { Stream, TableView } from './types.ts'
+import type { CardAbout, InterviewView, Stream, TableView } from './types.ts'
 
 describe('the api', () => {
   it('answers its health check', async () => {
@@ -194,6 +196,7 @@ describe('the api over a world', () => {
       pageSize: null,
       pins: {},
       seen: {},
+      docked: null,
     })
     // all of how the person left the window is kept here, none of it in the browser (26 Oct)
     await a.inject({
@@ -209,6 +212,7 @@ describe('the api over a world', () => {
         assistant: 'folded',
         pageSize: 100,
         pins: { [shops.id]: ['t_one'] },
+        docked: ['#/', '#/tasks'],
       },
     })
     await a.inject({ method: 'POST', url: '/api/seen', headers: ok, payload: { key: 'module:x' } })
@@ -223,6 +227,7 @@ describe('the api over a world', () => {
       pageSize: 100,
       pins: { [shops.id]: ['t_one'] },
       seen: { 'module:x': 2 },
+      docked: ['#/', '#/tasks'],
     })
     await a.close()
   })
@@ -262,6 +267,7 @@ describe('the api over a world', () => {
     expect(people.kept).toMatchObject({ name: 'people', editable: ['Name'] })
     expect(people.fields.map((f: { name: string }) => f.name)).toEqual([
       'Name',
+      'Lists',
       'Organization',
       'Email',
       'Phone',
@@ -300,9 +306,35 @@ describe('the api over a world', () => {
     expect(
       (await post(`/api/kept/tasks/rows/${t.id}`, { field: 'State', value: 'Later' })).statusCode,
     ).toBe(409)
+    // a task needs your input while its cards wait: its cards set that, never a hand
+    expect(
+      (
+        await post(`/api/kept/tasks/rows/${t.id}`, { field: 'State', value: 'Needs your input' })
+      ).json().problem,
+    ).toMatch(/while its cards wait/)
     expect(
       (await post(`/api/kept/tasks/rows/${t.id}`, { field: 'Where', value: 'x' })).json().problem,
     ).toMatch(/change on its page/)
+    // a card waiting on the person is a task row of All open, the person's, from Alpha, until
+    // it is answered; it is answered on the card, never in a cell
+    const card = world.cards.open({
+      kind: 'question',
+      words: 'Which Sam?',
+      options: ['Sam Oat', 'Sam Mill'],
+      actor: { kind: 'alpha' },
+    })
+    const withCard = await get('/api/kept/tasks?list=open')
+    expect(withCard.rows[0]).toMatchObject({
+      id: `card:${card.id}`,
+      values: { task: 'Which Sam?', state: 'Needs your input', owner: 'You', from: 'Alpha' },
+    })
+    expect(withCard.kept.counts.open).toBe(2)
+    expect(
+      (await post(`/api/kept/tasks/rows/card:${card.id}`, { field: 'Task', value: 'x' })).json()
+        .problem,
+    ).toMatch(/answered on the card/)
+    world.cards.answer(card.id, 'Sam Oat', { kind: 'person', id: 'u_1' })
+    expect((await get('/api/kept/tasks?list=open')).rows).toHaveLength(1)
 
     // the rules are read here; Revoke is on a rule's page
     const rules = await get('/api/kept/rules')
@@ -313,27 +345,32 @@ describe('the api over a world', () => {
     await a.close()
   })
 
-  it('pauses an agent from its cell, and finds where People lives and Alpha’s own module by module.yaml', async () => {
+  it('shows a new agent with Activate until it is turned on, and finds where People lives and Alpha’s own module by module.yaml', async () => {
     const m = await install(world, join(import.meta.dirname, '..', 'modules', 'test-kit'), {
       actor: { kind: 'alpha' },
     })
     const a = app()
     const get = async (path: string) => (await a.inject({ url: path, headers: ok })).json()
-    const agents = await get('/api/kept/agents')
-    const counter = agents.rows.find(
-      (r: { values: { agent: string } }) => r.values.agent === 'Counter',
-    )
-    expect(counter.values.state).toBe('Paused')
+    const counter = async () =>
+      (await get('/api/working'))
+        .flatMap((x: { agents: { name: string }[] }) => x.agents)
+        .find((x: { name: string }) => x.name === 'Counter')
+    const was = await counter()
+    expect([was.state, was.fresh, was.nextRunAt, was.module.id]).toEqual([
+      'paused',
+      true,
+      null,
+      m.id,
+    ])
+    expect(was.triggers.length).toBeGreaterThan(0)
     await a.inject({
       method: 'POST',
-      url: `/api/kept/agents/rows/${counter.id}`,
+      url: `/api/agents/${was.id}`,
       headers: ok,
-      payload: { field: 'State', value: 'On' },
+      payload: { state: 'on' },
     })
-    expect(
-      (await get('/api/kept/agents')).rows.find((r: { id: string }) => r.id === counter.id).values
-        .state,
-    ).toBe('On')
+    const now = await counter()
+    expect([now.state, now.fresh]).toEqual(['on', false])
     // no module says it holds People until its module.yaml does
     expect((await get('/api/modules')).find((x: { id: string }) => x.id === m.id).people).toBe(
       false,
@@ -376,6 +413,94 @@ describe('the api over a world', () => {
       ['said', 'log two eggs'],
       ['wrote', 'Added a row to Meals: Food eggs.'],
     ])
+    await a.close()
+  })
+
+  it('starts Interview me with the most useful question, and goes on while one is worth asking', async () => {
+    const me = world.owner('Kenil')
+    await keepDefaults(world, { actor: { kind: 'system' }, user: me.id }, DEFAULT_KITS)
+    await refresh(world, async () => ({ answer: { questions: [] }, tokens: 0 }), null)
+    const server = app()
+    const view = (
+      await server.inject({ url: '/api/interview', headers: ok })
+    ).json() as InterviewView
+    expect(view.today).toBe(true)
+    expect(view.left).toBeGreaterThan(1)
+    expect(view.first).toBe(ranked(world)[0]?.ask)
+    const started = await server.inject({
+      method: 'POST',
+      url: '/api/interview',
+      headers: ok,
+      payload: {},
+    })
+    expect(started.json()).toEqual({ preparing: false })
+    const asked = world.lines({ kinds: ['replied'] }).at(-1)
+    // no count: the sitting opens with its line, then the question, its why and what it unblocks
+    expect(asked?.words).toMatch(
+      /^A few questions today, starting with the most useful\.\n\nWhat are the three things/,
+    )
+    expect(asked?.words).not.toMatch(/\d+ of \d+/)
+    expect(asked?.data.interview).toMatchObject({ key: 'goals' })
+    expect(pending(world, me.id)?.key).toBe('goals')
+    // a pass: it sinks, and Alpha asks the next without the model
+    await server.inject({
+      method: 'POST',
+      url: '/api/say',
+      headers: ok,
+      payload: { words: 'skip' },
+    })
+    const next = world.lines({ kinds: ['replied'] }).at(-1)
+    expect(next?.data.interview).not.toMatchObject({ key: 'goals' })
+    expect(next?.words).not.toMatch(/^A few questions/)
+    expect(loadPool(world).items.find((q) => q.key === 'goals')?.skips).toBe(1)
+    // done: the sitting ends, and nothing is pending
+    await server.inject({
+      method: 'POST',
+      url: '/api/say',
+      headers: ok,
+      payload: { words: 'Done for today' },
+    })
+    expect(world.lines({ kinds: ['replied'] }).at(-1)?.words).toMatch(/^Thank you\. That is enough/)
+    expect(pending(world, me.id)).toBeNull()
+    await server.close()
+  })
+
+  it('opens one card in full with its history, and refuses words to an agent not there', async () => {
+    const me = world.owner('Kenil')
+    const card = world.cards.open({
+      kind: 'question',
+      words: 'Which listing first?',
+      actor: { kind: 'alpha' },
+      user: me.id,
+    })
+    const a = app()
+    const about = (
+      await a.inject({ url: `/api/cards/${card.id}/about`, headers: ok })
+    ).json() as CardAbout
+    expect(about.card.words).toBe('Which listing first?')
+    expect(about.agent).toBeNull()
+    expect(about.runs).toEqual([])
+    expect(about.history.map((h) => h.words)).toEqual(['Which listing first?'])
+    expect(about.card.task).toBeNull()
+    // a card about a task says which, so the task is not a second row beside it
+    const onTask = world.cards.open({
+      kind: 'question',
+      words: 'Which oven?',
+      call: { tool: 'ask', input: { task: 't_bake' } },
+      actor: { kind: 'alpha' },
+      user: me.id,
+    })
+    const of = (
+      await a.inject({ url: `/api/cards/${onTask.id}/about`, headers: ok })
+    ).json() as CardAbout
+    expect(of.card.task).toBe('t_bake')
+    const said = await a.inject({
+      method: 'POST',
+      url: '/api/say',
+      headers: ok,
+      payload: { words: 'why did you stop?', agent: 'ag_none' },
+    })
+    expect(said.statusCode).toBeGreaterThanOrEqual(400)
     await a.close()
   })
 

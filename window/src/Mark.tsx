@@ -1,6 +1,7 @@
 // The pencil (Vikas, 25 Oct): click it, click anything on screen (a cell, a row, a tab, a chart),
 // and a small box opens there for a comment. The comment goes to Alpha with what was marked,
 // in words: the page, and for a table cell its table, row, column and value.
+
 import { Pencil } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
@@ -8,12 +9,13 @@ import { startAsk } from './ask.ts'
 import type { Module } from './stream.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { stripItem, stripName } from './ui/edge.tsx'
 
 export function startMark() {
   window.dispatchEvent(new Event('alpha:mark'))
 }
 
-export function MarkButton() {
+export function MarkButton({ labelled = false }: { labelled?: boolean }) {
   return (
     <button
       type="button"
@@ -23,9 +25,14 @@ export function MarkButton() {
       }}
       aria-label="Mark something and comment"
       data-tip="Mark something and comment"
-      className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
+      className={
+        labelled
+          ? stripItem()
+          : 'grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
+      }
     >
       <Pencil className="size-4" />
+      {labelled && <span className={stripName}>Mark</span>}
     </button>
   )
 }
@@ -159,19 +166,27 @@ export function Marker({ from }: { from: Module | null }) {
   const below = picked ? picked.box.bottom + 8 + 170 < window.innerHeight : true
   return (
     <div ref={own}>
+      {/* while marking, the window dims a little and the thing under the pointer stands out
+          in the accent, lit (Vikas, 29 Oct): marking is never missed */}
+      {!shown && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-(--z-tip) bg-ink/12"
+        />
+      )}
       {shown && (
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed z-50 rounded-sm outline-2 outline-accent outline-offset-1"
+          className="pointer-events-none fixed z-(--z-tip) rounded-sm shadow-[0_0_0_100vmax_color-mix(in_srgb,var(--color-ink)_12%,transparent)] outline-2 outline-accent outline-offset-2 transition-[top,left,width,height] duration-75"
           style={{ top: shown.top, left: shown.left, width: shown.width, height: shown.height }}
         />
       )}
       {!picked && (
         <div
           role="status"
-          className="fixed top-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-surface py-1 pr-1 pl-3 text-md shadow-pop"
+          className="fixed top-2 left-1/2 z-(--z-tip) flex -translate-x-1/2 items-center gap-2 rounded-full border border-accent bg-surface py-1.5 pr-1.5 pl-3.5 font-medium text-ink text-md shadow-pop ring-4 ring-accent-soft"
         >
-          <Pencil className="size-3.5 text-accent" />
+          <Pencil className="size-4 text-accent" />
           Click anything to mark it
           <Button size="sm" variant="ghost" onClick={stop}>
             Stop (Esc)
@@ -183,7 +198,7 @@ export function Marker({ from }: { from: Module | null }) {
           role="dialog"
           aria-label="Comment on what you marked"
           className={cn(
-            'fixed z-50 flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-pop',
+            'fixed z-(--z-tip) flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-pop',
           )}
           style={{
             width: W,

@@ -282,6 +282,7 @@ export function list(people: People, kind: Kind = 'person', words = ''): PersonL
     count: number | null
     first: string | null
     people: number | null
+    tables: string | null
   }>(
     people.db,
     `WITH RECURSIVE up (id, root) AS (
@@ -324,13 +325,19 @@ export function list(people: People, kind: Kind = 'person', words = ''): PersonL
          SELECT DISTINCT person, title FROM links WHERE title IS NOT NULL
        ) GROUP BY person
      ),
-     staff AS (SELECT company AS root, count(DISTINCT person) AS n FROM links GROUP BY company)
+     staff AS (SELECT company AS root, count(DISTINCT person) AS n FROM links GROUP BY company),
+     said AS (
+       SELECT root, group_concat(coalesce(table_id, ''), char(31)) AS tables FROM (
+         SELECT DISTINCT up.root, s.table_id FROM people_sources s JOIN up ON up.id = s.person_id
+       ) GROUP BY root
+     )
      SELECT p.id, p.name, kagg.emails, kagg.phones, kagg.domains, works.companies, titled.titles,
-       eagg.last, eagg.count, efirst.started_by AS first, staff.n AS people
+       eagg.last, eagg.count, efirst.started_by AS first, staff.n AS people, said.tables
      FROM people p
        LEFT JOIN kagg ON kagg.root = p.id LEFT JOIN eagg ON eagg.root = p.id
        LEFT JOIN efirst ON efirst.root = p.id LEFT JOIN works ON works.root = p.id
        LEFT JOIN titled ON titled.root = p.id LEFT JOIN staff ON staff.root = p.id
+       LEFT JOIN said ON said.root = p.id
      WHERE p.merged_into IS NULL AND p.kind = ?`,
     until,
     since,
@@ -360,6 +367,7 @@ export function list(people: People, kind: Kind = 'person', words = ''): PersonL
       count: Number(r.count ?? 0),
       first: (r.first as 'you' | 'them' | null) ?? null,
       people: Number(r.people ?? 0),
+      tables: r.tables === null ? [] : r.tables.split('\u001f').map((t) => t || null),
     }))
     .sort((a, b) => (b.last ?? '').localeCompare(a.last ?? '') || a.name.localeCompare(b.name))
 }

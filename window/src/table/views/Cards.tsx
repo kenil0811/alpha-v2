@@ -1,8 +1,12 @@
-// The list and the gallery: a row as a line with its title and a few values, or as a card. Either
-// opens the row whole. The list keeps the view's groups.
+// The list and the gallery. The list is rows down the left and the picked row's page beside them,
+// like a folder of files (Vikas, 27 Oct); it keeps the view's groups. The gallery is a card a row,
+// each opening the row whole.
 import type { FieldView, RowView } from '@alpha/core/api'
+import { Fragment, useCallback, useRef, useState } from 'react'
+import { RowPage } from '../../RowPage.tsx'
 import { cn } from '../../ui/cn.ts'
 import { Pill } from '../../ui/pill.tsx'
+import { SideHeading, SideItem, SideList } from '../../ui/side-list.tsx'
 import { type Group, groupRows } from '../engine.ts'
 import { TagChips } from '../Tags.tsx'
 import { DOT, show, summary, titleOf } from '../values.ts'
@@ -31,55 +35,71 @@ function Value({
   return <span className="tabular-nums">{text}</span>
 }
 
+// what a line of the list says under its title: the first coloured state (Risk, Stage) and the
+// first date, else the card's own summary
+function glance(fields: FieldView[], r: RowView, group: FieldView | undefined): FieldView[] {
+  const has = (f: FieldView) => f !== group && r.values[f.slug] != null && r.values[f.slug] !== ''
+  const picked = [
+    fields.find((f) => f.kind === 'choice' && !f.many && Object.keys(f.tones).length && has(f)),
+    fields.find((f) => f.kind === 'date' && has(f)),
+  ].filter((f) => f !== undefined)
+  return picked.length ? picked : summary(fields, r, 2, group ? [group.id] : [])
+}
+
 export function ListView({
   rows,
   fields,
   group,
   names,
-  onOpen,
 }: {
   rows: RowView[]
   fields: FieldView[]
   group: FieldView | undefined
   names: Record<string, string>
-  onOpen: (id: string) => void
 }) {
   const groups: Group[] = group ? groupRows(rows, group, names) : [{ key: '', label: '', rows }]
+  const [picked, setPicked] = useState<string | null>(null)
+  const open = rows.some((r) => r.id === picked) ? picked : (groups[0]?.rows[0]?.id ?? null)
+  // the page comes again whenever the rows do: the world changed
+  const version = useRef(0)
+  const seen = useRef(rows)
+  if (seen.current !== rows) {
+    seen.current = rows
+    version.current++
+  }
+  const keep = useCallback(() => undefined, [])
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
-      {groups.map((g) => (
-        <section key={g.key || 'all'} className="mb-4">
-          {group && (
-            <div className="mb-1.5 flex items-center gap-2 px-1 font-medium text-ink text-md">
-              {g.label}
-              <span className="font-normal text-ink-3 text-sm">{g.rows.length}</span>
-            </div>
-          )}
-          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+    <div className="mx-7 mb-6 flex min-h-0 flex-1 overflow-hidden rounded-lg border border-line bg-surface">
+      <SideList label="Rows" className="w-80 shrink-0 overflow-y-auto border-line border-r p-1.5">
+        {groups.map((g) => (
+          <Fragment key={g.key || 'all'}>
+            {group && (
+              <SideHeading>
+                {g.label}
+                <span className="font-normal">{g.rows.length}</span>
+              </SideHeading>
+            )}
             {g.rows.map((r) => (
-              <button
+              <SideItem
                 key={r.id}
-                type="button"
                 id={`row-${r.id}`}
-                onClick={() => onOpen(r.id)}
-                className="flex w-full flex-col gap-1 border-hair border-t px-4 py-2.5 text-left first:border-t-0 hover:bg-hover"
+                sel={r.id === open}
+                onClick={() => setPicked(r.id)}
+                sub={glance(fields, r, group).map((f) => (
+                  <span key={f.id} className="truncate">
+                    <Value field={f} row={r} names={names} />
+                  </span>
+                ))}
               >
-                <span className="truncate font-medium text-base text-ink">
-                  {titleOf(fields, r)}
-                </span>
-                <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
-                  {summary(fields, r, 5, group ? [group.id] : []).map((f) => (
-                    <span key={f.id} className="inline-flex items-center gap-1.5">
-                      <span className="text-ink-3">{f.name}</span>
-                      <Value field={f} row={r} names={names} />
-                    </span>
-                  ))}
-                </span>
-              </button>
+                {titleOf(fields, r)}
+              </SideItem>
             ))}
-          </div>
-        </section>
-      ))}
+          </Fragment>
+        ))}
+      </SideList>
+      <div className="min-w-0 flex-1">
+        {open && <RowPage key={open} id={open} version={version.current} onPlace={keep} inside />}
+      </div>
     </div>
   )
 }

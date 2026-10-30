@@ -14,7 +14,7 @@ import {
 import { Cron } from 'croner'
 import { parse } from 'yaml'
 import { z } from 'zod'
-import { all, json, newId, run } from '../world/db.ts'
+import { all, json, newId, one, run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Module } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
@@ -35,6 +35,129 @@ function oneWhen(t: Trigger): string {
   if ('filed' in t) return 'when a document is filed'
   const tables = Array.isArray(t.changes) ? t.changes : [t.changes]
   return `when ${tables.join(' or ')} change${tables.length === 1 ? 's' : ''}`
+}
+
+// Each trigger as the Agents list reads it, said whole and marked on a time or on an event:
+// "Weekdays 07:30", "When a row is added or changed in Leads". `table` names a table as the
+// module calls it.
+export function triggerWords(
+  t: Trigger | Trigger[] | null,
+  table: (name: string) => string,
+  module: string,
+): { words: string; on: 'time' | 'event' }[] {
+  return triggersOf(t).map((x) => {
+    if ('every' in x)
+      return {
+        words:
+          x.every === 'hour'
+            ? 'Every hour'
+            : `${x.every === 'day' ? 'Daily' : 'Weekly'}${x.at ? ` ${x.at}` : ''}`,
+        on: 'time',
+      }
+    if ('cron' in x) return { words: cronWords(x.cron), on: 'time' }
+    if ('filed' in x) return { words: `When a document is filed in ${module}`, on: 'event' }
+    const tables = (Array.isArray(x.changes) ? x.changes : [x.changes]).map(table)
+    const names =
+      tables.length > 1 ? `${tables.slice(0, -1).join(', ')} or ${tables.at(-1)}` : tables[0]
+    return { words: `When a row is added or changed in ${names}`, on: 'event' }
+  })
+}
+
+// A plain five-part schedule in words where it is one a person says ("30 7 * * 1-5" is
+// "Weekdays 07:30"); anything else as written.
+// ponytail: only minute-hour-day-of-week schedules are put in words; add more when one shows
+function cronWords(cron: string): string {
+  const m = /^(\d{1,2}) (\d{1,2}) \* \* (\*|1-5|0,6|6,0|[0-6])$/.exec(cron.trim())
+  if (!m) return `On the schedule ${cron}`
+  const at = `${m[2]?.padStart(2, '0')}:${m[1]?.padStart(2, '0')}`
+  const days: Record<string, string> = { '*': 'Daily', '1-5': 'Weekdays', '0,6': 'Weekends' }
+  const dayNames = [
+    'Sundays',
+    'Mondays',
+    'Tuesdays',
+    'Wednesdays',
+    'Thursdays',
+    'Fridays',
+    'Saturdays',
+  ]
+  const d = m[3] as string
+  return `${days[d] ?? (d === '6,0' ? 'Weekends' : dayNames[Number(d)])} ${at}`
+}
+
+// How an agent's last run ended: what it did, or since when it has failed (every run since then
+// failed). Read from its runs; a running one is not an end yet.
+export function lastResult(
+  world: World,
+  agent: string,
+): { words: string; ok: boolean; at: string; failedSince: string | null } | null {
+  const ended = all<{ state: string; words: string | null; started_at: string }>(
+    world.db,
+    "SELECT state, words, started_at FROM runs WHERE agent_id = ? AND state != 'running' ORDER BY started_at DESC LIMIT 50",
+    agent,
+  )
+  const last = ended[0]
+  if (!last) return null
+  if (last.state !== 'failed')
+    return {
+      words: last.words ?? (last.state === 'stopped' ? 'Stopped' : 'Done'),
+      ok: true,
+      at: last.started_at,
+      failedSince: null,
+    }
+  let since = last.started_at
+  for (const r of ended) {
+    if (r.state !== 'failed') break
+    since = r.started_at
+  }
+  return { words: last.words ?? 'Failed', ok: false, at: last.started_at, failedSince: since }
+}
+
+// What an agent does, as the Agents list groups it (Vikas, 29 Oct): its file's `function:`, or
+// read from its name and words with a plain keyword map; never the model.
+// ponytail: a keyword map; a kit that groups wrongly says `function:` in its file
+const FUNCTION_WORDS: [string, RegExp][] = [
+  ['Outreach', /outreach|e-?mail|draft|follow.?up|reach out|letter/i],
+  ['Sourcing', /listing|broker|marketplace|sourc|deal search/i],
+  ['Intake', /intake|filed|document|application|onboard|new client|export|import|reader/i],
+  ['Finance', /financ|invoice|payment|accounting|ledger|billing/i],
+  ['Analysis & insights', /figure|analy|insight|benchmark|measur|score|report|thesis|metric/i],
+]
+export function functionOf(a: {
+  name: string
+  description: string | null
+  brief: string
+  function: string | null
+}): string {
+  if (a.function) return a.function
+  // its name and one line first: a brief says much in passing
+  for (const words of [`${a.name} ${a.description ?? ''}`, a.brief]) {
+    const hit = FUNCTION_WORDS.find(([, re]) => re.test(words))
+    if (hit) return hit[0]
+  }
+  return 'Admin'
+}
+
+// The cards an agent's runs opened that still wait on the person: past the limit in
+// limits.yaml its runs wait for them rather than add more (Vikas, 29 Oct).
+export function cardsWaiting(world: World, agent: string): number {
+  return (
+    one<{ n: number }>(
+      world.db,
+      "SELECT count(*) AS n FROM cards WHERE state = 'waiting' AND run_id IN (SELECT id FROM runs WHERE agent_id = ?)",
+      agent,
+    )?.n ?? 0
+  )
+}
+
+// Whether the person has ever turned the agent on: one never turned on shows Activate.
+export function everOn(world: World, agent: string): boolean {
+  return (
+    all(
+      world.db,
+      "SELECT 1 FROM journal WHERE kind = 'agent' AND json_extract(data, '$.agent') = ? AND json_extract(data, '$.state') = 'on' LIMIT 1",
+      agent,
+    ).length > 0
+  )
 }
 
 // When a trigger on the clock next fires, after its last run; a trigger on changes has no time.
@@ -98,6 +221,7 @@ export interface AgentFile {
   input: AgentFrontMatter['input'] | null
   budget: { minutes: number; runs: number }
   brief: string
+  function: string | null // what it does, as the Agents list groups it: Sourcing, Outreach…
 }
 
 export function readAgent(file: string): AgentFile {
@@ -111,7 +235,10 @@ export function parseAgent(text: string, file: string): AgentFile {
   if (!front.success)
     throw new Refused(`The agent ${file} is not right: ${z.prettifyError(front.error)}`)
   const name = front.data.name ?? (file.split('/').pop() as string).replace(/\.md$/, '')
+  // `function:` is read as written; the kit API's schema does not hold it yet
+  const fn = (parse(m[1] as string) as { function?: unknown } | null)?.function
   return {
+    function: typeof fn === 'string' && fn.trim() ? fn.trim() : null,
     name,
     description: front.data.description ?? null,
     trigger: front.data.trigger ?? null,
@@ -195,6 +322,8 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
     module.id,
   ))
     if (!kept.has(a.id)) {
+      // its runs stay in Activity, under its module, with no agent to point at
+      run(world.db, 'UPDATE runs SET agent_id = NULL WHERE agent_id = ?', a.id)
       run(world.db, 'DELETE FROM agents WHERE id = ?', a.id)
       // its rules go with it (core step 2); the journal keeps them
       world.rules.removeScoped({ agent: a.name }, { actor: { kind: 'system' } })

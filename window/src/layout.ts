@@ -13,6 +13,7 @@ export const NO_LAYOUT: Layout = {
   pageSize: null,
   pins: {},
   seen: {},
+  docked: null,
 }
 
 export const LayoutContext = createContext<{

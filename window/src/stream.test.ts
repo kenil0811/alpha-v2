@@ -1,6 +1,6 @@
 import type { StreamLine } from '@alpha/core/api'
 import { describe, expect, it } from 'vitest'
-import { group } from './stream.ts'
+import { group, threadOf } from './stream.ts'
 
 const at = '2026-10-19T20:00:00.000Z'
 let n = 0
@@ -14,6 +14,8 @@ const line = (kind: string, words: string, more: Partial<StreamLine> = {}): Stre
   card: null,
   module: null,
   data: {},
+  agent: null,
+  run: null,
   ...more,
 })
 
@@ -91,6 +93,25 @@ describe('the stream', () => {
         module: deals,
       }),
     ])
-    expect(items).toEqual([{ kind: 'card', id: 'c_9', at, module: deals, answered: null }])
+    expect(items).toEqual([
+      { kind: 'card', id: 'c_9', at, module: deals, answered: null, agent: null },
+    ])
+  })
+
+  it('keeps each agent to its own thread: its lines, what was said to it and the turn after', () => {
+    n = 0
+    const aps = { id: 'a_1', name: 'APS' }
+    const said = line('said', 'why did you stop?', { actor: 'person', agent: aps })
+    const turn = String(said.id)
+    const lines = [
+      line('said', 'hello', { actor: 'person' }),
+      said,
+      line('replied', 'It could not reach the site.', { turn }),
+      line('told', 'APS: 3 new listings', { actor: 'agent', agent: aps, run: 'r_1' }),
+      line('card_opened', 'Try again?', { actor: 'agent', card: 'c_2', agent: aps }),
+      line('card_closed', 'Yes: Try again?', { card: 'c_2', data: { state: 'yes' } }),
+    ]
+    const of = threadOf(lines)
+    expect(lines.map(of)).toEqual([null, 'a_1', 'a_1', 'a_1', 'a_1', 'a_1'])
   })
 })

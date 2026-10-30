@@ -50,6 +50,12 @@
   --bad: #ad3d36;
   --bad-soft: #f8e6e4;
 
+  /* series that are told apart, in this order, never cycled: at most four, the rest "Other" */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+
   /* a document's page as Alpha read it: paper stays paper in both themes */
   --paper: #ffffff;
   --paper-ink: #272c33;
@@ -102,6 +108,10 @@
     --warn-soft: #32271a;
     --bad: #e78a83;
     --bad-soft: #38201f;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
     --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
     --scrim: rgb(0 0 0 / 0.5);
     --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
@@ -136,6 +146,10 @@
   --warn-soft: #32271a;
   --bad: #e78a83;
   --bad-soft: #38201f;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
   --elev-pop: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.4);
   --scrim: rgb(0 0 0 / 0.5);
   --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
@@ -149,6 +163,21 @@
 :root {
   --text-scale: 1;
 }
+
+/*
+  One scale for what floats, written z-(--z-pop) and so on, never a bare number past z-1. Inside a
+  box (a sticky header, a hovered tile) a screen keeps z-1 to z-10; a side panel or overlay sits at
+  --z-panel; menus, dropdowns and pickers at --z-pop, in a portal against the window; the one tooltip
+  and the link status above them. A modal dialog is the browser's top layer, over all of these, so
+  a menu opened inside one is portalled into it (ui/popover.tsx, floatRoot).
+*/
+:root {
+  --z-raised: 10;
+  --z-panel: 20;
+  --z-overlay: 30;
+  --z-pop: 50;
+  --z-tip: 60;
+}
 :root[data-text="medium"] {
   --text-scale: 1.07;
 }
@@ -156,27 +185,26 @@
   --text-scale: 1.15;
 }
 @theme {
-  /* seven sizes and no others; text-sm is 12px here, not Tailwind's 14px */
+  /* five sizes and no others (Vikas, 28 Oct): 10, 14, 18, 24 and 32. sm and md are both 14, base and
+     lg both 18, until the screens use one name each; text-sm is not Tailwind's here */
   --text-*: initial;
-  --text-xs: calc(11px * var(--text-scale));
-  --text-xs--line-height: calc(16px * var(--text-scale));
-  --text-sm: calc(12px * var(--text-scale));
-  --text-sm--line-height: calc(16px * var(--text-scale));
-  --text-md: calc(13px * var(--text-scale));
+  --text-xs: calc(10px * var(--text-scale));
+  --text-xs--line-height: calc(14px * var(--text-scale));
+  --text-sm: calc(14px * var(--text-scale));
+  --text-sm--line-height: calc(20px * var(--text-scale));
+  --text-md: calc(14px * var(--text-scale));
   --text-md--line-height: calc(20px * var(--text-scale));
-  --text-base: calc(14px * var(--text-scale));
-  --text-base--line-height: calc(22px * var(--text-scale));
-  --text-lg: calc(16px * var(--text-scale));
-  --text-lg--line-height: calc(22px * var(--text-scale));
-  --text-xl: calc(20px * var(--text-scale));
-  --text-xl--line-height: calc(26px * var(--text-scale));
-  --text-2xl: calc(26px * var(--text-scale));
-  --text-2xl--line-height: calc(30px * var(--text-scale));
+  --text-base: calc(18px * var(--text-scale));
+  --text-base--line-height: calc(26px * var(--text-scale));
+  --text-lg: calc(18px * var(--text-scale));
+  --text-lg--line-height: calc(26px * var(--text-scale));
+  --text-xl: calc(24px * var(--text-scale));
+  --text-xl--line-height: calc(30px * var(--text-scale));
+  --text-2xl: calc(32px * var(--text-scale));
+  --text-2xl--line-height: calc(38px * var(--text-scale));
 
-  /* labels: 11px uppercase with this tracking; nothing else is uppercase */
-
-  /* one step of spacing is 4px, as in the mock; the root's 14px text would make it 3.5px */
-  --spacing: calc(4px * var(--text-scale));
+  /* one step of spacing is 5px: it grew with the text from 4px (Vikas, 26 and 28 Oct) */
+  --spacing: calc(5px * var(--text-scale));
 }
 
 /*
@@ -215,6 +243,10 @@
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
   --color-paper: var(--paper);
   --color-paper-ink: var(--paper-ink);
   --color-paper-mute: var(--paper-mute);
@@ -288,7 +320,7 @@
     background: var(--canvas);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: calc(14px * var(--text-scale));
+    font-size: calc(18px * var(--text-scale));
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }

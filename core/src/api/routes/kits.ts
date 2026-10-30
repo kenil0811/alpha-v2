@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { exportsDir } from '../../data.ts'
-import { agents, setAgentState, whenWords } from '../../modules/agents.ts'
+import { agents, setAgentState } from '../../modules/agents.ts'
+import { keepWhen } from '../../modules/keep.ts'
 import {
   install,
   installedKits,
@@ -16,55 +17,14 @@ import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
-import { keptEdit, keptField, keptTable } from '../kept.ts'
-import type { KeptTable, WorkingModuleView, YoursView } from '../types.ts'
+import type { WorkingModuleView, YoursView } from '../types.ts'
 
 export function registerKits(ctx: Ctx): void {
   const { app, world, engine, user, person, live } = ctx
-  const { needsOf } = ctx.views
+  const { agentOut } = ctx.views
 
   // Kits and agents (design §10, §11): what each module does on its own.
   app.get('/api/working', async (): Promise<WorkingModuleView[]> => working())
-  // Every module's agents as one table (UI batch 2, 26 Oct): each turned On or Paused in a cell
-  const WHY = 'An agent is turned on or paused here; the rest is in its file.'
-  app.get(
-    '/api/kept/agents',
-    async (): Promise<KeptTable> =>
-      keptTable(
-        'agents',
-        'Agents',
-        [
-          keptField('Agent', 'text'),
-          keptField('Module', 'text'),
-          keptField('State', 'choice', { On: 'good', Paused: 'warn' }),
-          keptField('Runs', 'text'),
-          keptField('Last ran', 'date'),
-          keptField('Needs', 'text'),
-        ],
-        working().flatMap((m) =>
-          m.agents.map((a) => ({
-            id: a.id,
-            values: {
-              agent: a.name,
-              module: m.name,
-              state: a.state === 'on' ? 'On' : 'Paused',
-              runs: a.running ? `${a.when}, running now` : a.when,
-              'last ran': a.lastRunAt,
-              needs: a.needs,
-            },
-          })),
-        ),
-        { editable: ['State'], why: WHY },
-      ),
-  )
-  app.post('/api/kept/agents/rows/:id', async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params)
-    const { value } = keptEdit(req.body, ['State'], WHY)
-    if (value !== 'On' && value !== 'Paused') throw new Refused('An agent is On or Paused.')
-    setAgentState(world, id, value === 'On' ? 'on' : 'paused', user.id)
-    live()
-    return { ok: true }
-  })
   function working(): WorkingModuleView[] {
     const kits = new Map(installedKits(world).map((k) => [k.module, k]))
     const running = new Set(
@@ -90,16 +50,7 @@ export function registerKits(ctx: Ctx): void {
                 changes: k.maintainer ? unseenChanges(world, m.id) : 0,
               }
             : null,
-          agents: agents(world, m.id).map((a) => ({
-            id: a.id,
-            name: a.name,
-            state: a.state,
-            description: a.description,
-            needs: needsOf(m, a),
-            when: whenWords(a.trigger),
-            lastRunAt: a.lastRunAt,
-            running: running.has(a.id),
-          })),
+          agents: agents(world, m.id).map((a) => agentOut(m, a, running)),
         }
       })
       .filter((m) => m.kit || m.agents.length)
@@ -191,9 +142,36 @@ export function registerKits(ctx: Ctx): void {
   app.post('/api/agents/:id', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { state } = z.object({ state: z.enum(['on', 'paused']) }).parse(req.body)
+    const was = agents(world).find((a) => a.id === id)?.state
     setAgentState(world, id, state, user.id)
+    // turned on: its first run starts now, not at its next time (Vikas, 29 Oct)
+    const runner = engine.hands?.runner
+    if (runner && state === 'on' && was !== 'on') {
+      runner.woken.add(id)
+      runner.startDue()
+    }
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
+  })
+
+  // How often an agent runs, picked in the Agents list: written into its file (Vikas, 29 Oct).
+  app.post('/api/agents/:id/when', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const when = z
+      .object({
+        every: z.enum(['hour', 'day', 'week']),
+        at: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/)
+          .optional(),
+      })
+      .parse(req.body)
+    const a = agents(world).find((x) => x.id === id)
+    const m = a ? world.shape.module(a.module) : undefined
+    if (!a || !m) throw new Refused('That agent is not there.')
+    const words = await keepWhen(world, m, a, when, { actor: person, user: user.id })
+    live()
+    return { words }
   })
 
   // Every agent of a module on, or paused, at once (a kit's readers start paused).
@@ -217,9 +195,11 @@ export function registerKits(ctx: Ctx): void {
     // the person asked for it now: a paused agent runs this once; a busy one says so at once,
     // beside the button (item 29, 25 Oct), and the run goes on behind
     runner.refuseRun(a, { asked: true })
-    void runner
-      .runAgent(a, { user: user.id, turn: null }, {}, { asked: true })
-      .catch(() => undefined)
+    const who = { user: user.id, turn: null }
+    // one held after runs that did not finish starts afresh: the one action that unblocks it
+    void (
+      runner.held.has(a.id) ? runner.retry(a.id, who) : runner.runAgent(a, who, {}, { asked: true })
+    ).catch(() => undefined)
     return { ok: true }
   })
 }

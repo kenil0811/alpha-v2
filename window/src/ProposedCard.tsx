@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { api, Problem } from './api.ts'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Actions, Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 
 export function ProposedCard({ card, proposed }: { card: CardView; proposed: ProposedView }) {
@@ -33,8 +33,10 @@ export function ProposedCard({ card, proposed }: { card: CardView; proposed: Pro
     })
   const n = kept.size
   return (
-    <Card label={`${proposed.agent} proposes`} waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label={`${proposed.agent} proposes`} waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="overflow-hidden rounded-md border border-line">
         {proposed.tasks.map((t, i) => (
           <label
@@ -68,14 +70,14 @@ export function ProposedCard({ card, proposed }: { card: CardView; proposed: Pro
         ))}
       </div>
       {problem && <p className="text-bad text-sm">{problem}</p>}
-      <div className="flex gap-2">
+      <Actions>
         <Button variant="primary" disabled={busy || n === 0} onClick={() => take([...kept])}>
           {n === proposed.tasks.length ? 'Add them' : `Add ${n === 1 ? 'this one' : `these ${n}`}`}
         </Button>
         <Button disabled={busy} onClick={() => take([])}>
           Decline
         </Button>
-      </div>
+      </Actions>
     </Card>
   )
 }

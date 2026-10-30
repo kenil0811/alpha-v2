@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { stillBeingRead } from '../../files/documents.ts'
-import { agents, whenWords } from '../../modules/agents.ts'
+import { agents } from '../../modules/agents.ts'
 import { installedKits } from '../../modules/kits/index.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
@@ -13,7 +13,7 @@ import { livesPeople, tableSummary } from '../views.ts'
 
 export function registerModules(ctx: Ctx): void {
   const { app, world, engine, user, options } = ctx
-  const { needsOf, summaries, byWords } = ctx.views
+  const { agentOut, summaries, byWords } = ctx.views
 
   app.get('/api/modules', async (): Promise<ModuleSummary[]> => summaries())
 
@@ -49,16 +49,7 @@ export function registerModules(ctx: Ctx): void {
       name: m.name,
       people: livesPeople(m),
       kit: k ? { name: k.kit, version: k.version } : null,
-      agents: agents(world, m.id).map((a) => ({
-        id: a.id,
-        name: a.name,
-        state: a.state,
-        description: a.description,
-        needs: needsOf(m, a),
-        when: whenWords(a.trigger),
-        lastRunAt: a.lastRunAt,
-        running: running.has(a.id),
-      })),
+      agents: agents(world, m.id).map((a) => agentOut(m, a, running)),
       sites: moduleNetwork(m).length,
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
       parent: m.parent,

@@ -1,32 +1,34 @@
 // The shell (Vikas, 25 Oct; reverses design §14's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
 // the right, their headers on one line. The rail has the workspace at its top, Home with a badge
-// for what waits on the person, Tasks, the modules by name (People and Organizations are
+// for what waits on the person, Agents, Tasks, the modules by name (People and Organizations are
 // tabs inside Network; a rail item of their own only when there is no Network) with the modules inside them,
-// New module last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
+// New module last in the list, and Settings at its foot with the Second Brain beside it (Vikas,
+// 28 Oct); no headings and no status lines. It
 // folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
 // buttons.
-import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
+import type { CardView, FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
+  ArrowLeftRight,
+  Bot,
+  Brain,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   EllipsisVertical,
   House,
   ListChecks,
-  MessageSquare,
+  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Search,
   SlidersHorizontal,
-  Sparkle,
-  Sparkles,
   Users,
   X,
 } from 'lucide-react'
 import {
   createContext,
+  type MouseEvent,
   type ReactNode,
   useContext,
   useEffect,
@@ -35,24 +37,31 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { api } from './api.ts'
+import { api, Problem, wordsOf } from './api.ts'
 import type { FilePlace } from './FileView.tsx'
+import { useLayout } from './layout.ts'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
+import { Back } from './ui/back.tsx'
+import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal } from './ui/dot.tsx'
-import { Edge, Opening, SIDE_MIN, STRIP } from './ui/edge.tsx'
+import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
+import { Field } from './ui/field.tsx'
+import { IconTile, IconTiles } from './ui/icon-tile.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
+import { Segmented } from './ui/segmented.tsx'
+import { needsCount } from './Waiting.tsx'
 
 export type Place =
   | { at: 'home' }
-  | { at: 'conversation' }
+  | { at: 'conversation'; agent: string | null } // Alpha's thread, or one agent's
   | { at: 'activity' }
   | { at: 'parts' }
-  | { at: 'new' }
-  | { at: 'item'; kind: 'agent' | 'run' | 'rule'; id: string }
+  | { at: 'new'; what: 'module' | 'agent' }
+  | { at: 'item'; kind: 'agent' | 'run' | 'rule' | 'card'; id: string }
   | { at: 'row'; id: string }
   | {
       at: 'table'
@@ -68,7 +77,7 @@ export type Place =
       tab: 'overview' | 'conversation' | 'agents' | null
       page: string | null
     }
-  | { at: 'settings'; section: string | null; open: null }
+  | { at: 'settings'; section: string | null; open: string | null }
   | { at: 'intelligence'; section: string | null; open: string | null }
   | { at: 'file'; place: FilePlace }
   | { at: 'people'; kind: 'person' | 'company'; id: string | null }
@@ -85,21 +94,27 @@ function Nav({
   current,
   extra,
   small,
+  tip,
+  onContextMenu,
 }: {
   href: string
   icon: ReactNode
   label: string
+  tip?: string | null // said on a hover: what a module is for
   current: boolean
   extra?: ReactNode
   small?: boolean
+  onContextMenu?: (e: MouseEvent) => void
 }) {
   return (
     <a
       href={href}
+      onContextMenu={onContextMenu}
+      data-tip={tip ?? undefined}
       aria-current={current ? 'page' : undefined}
       className={cn(
-        'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-        small ? 'h-7' : 'h-7.5',
+        'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-base text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+        small ? 'h-7.5' : 'h-8',
         current &&
           'bg-accent-soft font-medium text-accent before:absolute before:inset-y-1.5 before:left-0 before:w-0.75 before:rounded-full before:bg-accent hover:bg-accent-soft hover:text-accent',
       )}
@@ -118,7 +133,8 @@ export function Rail({
   modules,
   place,
   name,
-  waiting,
+  cards,
+  signIns = 0,
   tasksDue,
   online,
   here,
@@ -129,8 +145,9 @@ export function Rail({
   modules: ModuleSummary[]
   place: Place
   here: string | null // the module whose screen or table is open
-  name: string
-  waiting: number
+  name: string // the person's: the workspace's name until it has its own
+  cards: CardView[] // what waits on the person: Home's badge
+  signIns?: number // connections waiting on a sign-in, counted with them
   tasksDue: number // tasks due today or overdue
   online: boolean
   layout: Layout
@@ -142,7 +159,10 @@ export function Rail({
   const [dragged, setDragged] = useState<number | null>(null)
   const hiding: Hiding = { hidden: layout.hidden, set: (ids) => onLayout({ hidden: ids }) }
   const empty = useContextMenu()
+  const pin = useContextMenu()
+  const [pinning, setPinning] = useState<string | null>(null)
   const keepWidth = (w: number) => onLayout({ railWidth: w })
+  const waiting = needsCount(cards, signIns)
   if (layout.railFolded)
     return (
       <Strip
@@ -197,34 +217,35 @@ export function Rail({
           <PanelLeftClose className="size-4" />
         </button>
       </div>
-      <Nav
-        href="#/"
-        icon={<House className="size-4" />}
-        label="Home"
-        current={place.at === 'home'}
-        extra={waiting > 0 && <Badge n={waiting} />}
-      />
-      <Nav
-        href="#/conversation"
-        icon={<MessageSquare className="size-4" />}
-        label="Conversation"
-        current={place.at === 'conversation'}
-      />
-      <Nav
-        href="#/tasks"
-        icon={<ListChecks className="size-4" />}
-        label="Tasks"
-        current={place.at === 'tasks'}
-        extra={tasksDue > 0 && <Badge n={tasksDue} />}
-      />
-      {!network(modules) && (
-        <Nav
-          href="#/people"
-          icon={<Users className="size-4" />}
-          label="People"
-          current={place.at === 'people'}
-        />
-      )}
+      <Dock modules={modules} place={place} here={here} waiting={waiting} tasksDue={tasksDue} />
+      <div className="flex flex-col gap-0.5">
+        {fixedPlaces(place, waiting, tasksDue, modules)
+          .filter((f) => !(layout.docked ?? []).includes(f.href))
+          .map((f) => (
+            <Nav
+              key={f.href}
+              href={f.href}
+              icon={f.icon('size-4')}
+              label={f.label}
+              current={f.current}
+              extra={
+                f.count > 0 &&
+                (f.href === '#/' ? (
+                  <Waiting cards={cards} n={waiting} modules={modules} />
+                ) : (
+                  <Badge n={f.count} />
+                ))
+              }
+              onContextMenu={(e) => {
+                setPinning(f.href)
+                pin.on.onContextMenu(e)
+              }}
+            />
+          ))}
+        <Popover point={pin.point} open={pin.open} onClose={pin.close}>
+          {pinning && <DockItem href={pinning} onDone={pin.close} />}
+        </Popover>
+      </div>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
       <div
         className="mt-3 min-h-0 flex-1 overflow-y-auto"
@@ -242,120 +263,438 @@ export function Rail({
           <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
         </Popover>
         <ModuleDrag modules={modules}>
-          {shownTops(modules, hiding.hidden).map((m) => (
-            <ModuleItem
-              key={m.id}
-              m={m}
-              modules={modules}
-              here={here}
-              folded={layout.folded}
-              onFold={fold}
-              hiding={hiding}
-            />
-          ))}
+          {shownTops(modules, hiding.hidden)
+            .filter((m) => !dockedOf(layout, modules).includes(`#/module/${m.id}`))
+            .map((m) => (
+              <ModuleItem
+                key={m.id}
+                m={m}
+                modules={modules}
+                here={here}
+                folded={layout.folded}
+                onFold={fold}
+                hiding={hiding}
+              />
+            ))}
         </ModuleDrag>
         <button
           type="button"
           onClick={onNew}
-          className="flex h-7.5 w-full items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink"
+          className="flex h-8 w-full items-center gap-2.25 rounded-md px-2 text-base text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink"
         >
           <Plus className="size-4 shrink-0" />
           New module
         </button>
       </div>
-      <div className="flex flex-col gap-0.5 pt-2">
-        <Nav
+      <div className="flex items-center gap-1 pt-2">
+        <div className="min-w-0 flex-1">
+          <Nav
+            href="#/settings"
+            icon={<SlidersHorizontal className="size-4" />}
+            label="Settings"
+            current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
+          />
+        </div>
+        <a
           href="#/intelligence"
-          icon={<Sparkle className="size-4" />}
-          label="Intelligence"
-          current={place.at === 'intelligence'}
-        />
-        <Nav
-          href="#/settings"
-          icon={<SlidersHorizontal className="size-4" />}
-          label="Settings"
-          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
-        />
+          aria-label="Second Brain"
+          data-tip="Second Brain"
+          aria-current={place.at === 'intelligence' ? 'page' : undefined}
+          className={cn(
+            'grid size-8 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+            place.at === 'intelligence' &&
+              'bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent',
+          )}
+        >
+          <Brain className="size-4" />
+        </a>
       </div>
     </nav>
   )
 }
 
-// The rail's head: the workspace's initial on an accent tile and its name, opening a menu of where
-// Alpha is set up (Settings, Intelligence) and how it looks.
+// The places pinned atop the rail as square tiles (Vikas, 28 Oct): none to start; up to 12, a
+// module's or a place's menu pins it, a tile's right-click takes it off. Past 12 modules Alpha asks,
+// as a task, whether to pin some. The network module's tile is its People screen.
+export const DOCK_MAX = 12
+// Home, Agents and Tasks (and People with no Network): rail items until pinned
+const fixedPlaces = (place: Place, waiting: number, tasksDue: number, modules: ModuleSummary[]) =>
+  [
+    { href: '#/', label: 'Home', icon: House, current: place.at === 'home', count: waiting },
+    {
+      href: '#/conversation',
+      label: 'Agents',
+      icon: Bot,
+      current: place.at === 'conversation',
+      count: 0,
+    },
+    {
+      href: '#/tasks',
+      label: 'Tasks',
+      icon: ListChecks,
+      current: place.at === 'tasks',
+      count: tasksDue,
+    },
+    ...(network(modules)
+      ? []
+      : [
+          {
+            href: '#/people',
+            label: 'People',
+            icon: Users,
+            current: place.at === 'people',
+            count: 0,
+          },
+        ]),
+  ].map(({ icon: I, ...f }) => ({ ...f, icon: (c: string) => <I className={c} /> }))
+export const dockedOf = (layout: Layout, modules: ModuleSummary[]) => {
+  const d = layout.docked ?? []
+  const net = network(modules)
+  return net && d.includes('#/people') ? [...d, `#/module/${net.id}`] : d
+}
+
+function Dock({
+  modules,
+  place,
+  here,
+  waiting,
+  tasksDue,
+}: {
+  modules: ModuleSummary[]
+  place: Place
+  here: string | null
+  waiting: number
+  tasksDue: number
+}) {
+  const { layout, change } = useLayout()
+  const menu = useContextMenu()
+  const [picked, setPicked] = useState<string | null>(null)
+  const top = here ? (ancestors(modules, here)[0]?.id ?? here) : null
+  const fixed = [
+    {
+      href: '#/people',
+      label: 'Network',
+      icon: (c: string) => <Users className={c} />,
+      current: place.at === 'people',
+      count: 0,
+    },
+    ...fixedPlaces(place, waiting, tasksDue, []),
+  ]
+  const tiles = (layout.docked ?? []).flatMap((href) => {
+    const f = fixed.find((x) => x.href === href)
+    if (f) return [{ ...f, icon: f.icon('size-5') }]
+    const m = modules.find((x) => href === `#/module/${x.id}`)
+    return m
+      ? [
+          {
+            href,
+            label: m.name,
+            icon: <ModuleIcon name={m.name} className="size-5" />,
+            current: top === m.id,
+            count: 0,
+          },
+        ]
+      : []
+  })
+  if (tiles.length === 0) return null
+  return (
+    <div className="mb-1">
+      <IconTiles>
+        {tiles.map((t) => (
+          <IconTile
+            key={t.href}
+            href={t.href}
+            label={t.label}
+            current={t.current}
+            rail
+            badge={t.count > 0 && <Badge n={t.count} />}
+            onContextMenu={(e) => {
+              setPicked(t.href)
+              menu.on.onContextMenu(e)
+            }}
+          >
+            {t.icon}
+          </IconTile>
+        ))}
+      </IconTiles>
+      <Popover point={menu.point} open={menu.open} onClose={menu.close}>
+        <MenuItem
+          onClick={() => {
+            change({ docked: (layout.docked ?? []).filter((h) => h !== picked) })
+            menu.close()
+          }}
+        >
+          Unpin from top
+        </MenuItem>
+      </Popover>
+    </div>
+  )
+}
+
+function DockItem({ href, onDone }: { href: string; onDone: () => void }) {
+  const { layout, change } = useLayout()
+  const d = layout.docked ?? []
+  const on = d.includes(href)
+  return (
+    <MenuItem
+      onClick={() => {
+        change({ docked: on ? d.filter((h) => h !== href) : [...d, href] })
+        onDone()
+      }}
+      reason={!on && d.length >= DOCK_MAX ? `Up to ${DOCK_MAX} pinned at the top` : undefined}
+    >
+      {on ? 'Unpin from top' : 'Pin to top'}
+    </MenuItem>
+  )
+}
+
+// The rail's head (Vikas, 29 Oct): the workspace's picture (or initial) and name. A click opens
+// the account's menu, as Notion's does: the workspace and who is signed in, Appearance on one
+// line, Switch account and Log out; Settings and the Second Brain are on the rail already. A
+// double-click on the name renames the workspace, on the picture picks a new one.
+type WorkspaceView = { name: string; image: string | null; person: string }
+
+// a picked picture, cropped square and made small before it is kept
+const shrink = (file: File) =>
+  new Promise<string>((ok, no) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = c.height = 128
+      const k = Math.max(128 / img.width, 128 / img.height)
+      c.getContext('2d')?.drawImage(
+        img,
+        (128 - img.width * k) / 2,
+        (128 - img.height * k) / 2,
+        img.width * k,
+        img.height * k,
+      )
+      URL.revokeObjectURL(url)
+      ok(c.toDataURL('image/png'))
+    }
+    img.onerror = () => no(new Problem('That file is not a picture.'))
+    img.src = url
+  })
+
 function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
-  const label = name ? `${name}'s workspace` : 'Your workspace'
-  const anchor = useRef<HTMLButtonElement>(null)
+  const [w, setW] = useState<WorkspaceView | null>(null)
   const [open, setOpen] = useState(false)
+  const [naming, setNaming] = useState<string | null>(null)
+  const [switching, setSwitching] = useState<string | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
   const [theme, setTheme] = useState<Theme>(savedTheme)
-  const go = (href: string) => {
-    setOpen(false)
-    window.location.hash = href
+  const anchor = useRef<HTMLButtonElement>(null)
+  const picker = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    api.get<WorkspaceView>('/api/workspace').then(setW, () => undefined)
+  }, [])
+  const label = w?.name ?? (name ? `${name}'s workspace` : 'Your workspace')
+  const save = async (change: { name?: string; image?: string }) => {
+    try {
+      setW(await api.post<WorkspaceView>('/api/workspace', change))
+      setProblem(null)
+    } catch (err) {
+      setProblem(wordsOf(err))
+    }
   }
   const look = (t: Theme) => {
     setTheme(t)
     applyTheme(t)
     void api.post('/api/appearance', { theme: t }).catch(() => undefined) // kept here regardless
   }
+  const rename = () => {
+    setOpen(false)
+    setNaming(label)
+  }
+  const pick = (e: MouseEvent) => {
+    e.stopPropagation()
+    setOpen(false)
+    picker.current?.click()
+  }
   const tile = (
-    <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
-      {(name.trim()[0] ?? 'A').toUpperCase()}
+    // biome-ignore lint/a11y/noStaticElementInteractions: a double-click picks a picture; the name's menu is the keyboard's way
+    <span
+      onDoubleClick={pick}
+      data-tip="Double-click to change the picture"
+      className="grid size-6.5 shrink-0 place-items-center overflow-hidden rounded-md bg-accent font-semibold text-accent-ink text-md leading-none"
+    >
+      {w?.image ? (
+        <img src={w.image} alt="" className="size-full object-cover" />
+      ) : (
+        (label.trim()[0] ?? 'A').toUpperCase()
+      )}
     </span>
   )
+  // Log out: this browser forgets the per-install token, and the window shows the core's own
+  // words for opening Alpha again from the address it printed
+  const logOut = () => {
+    try {
+      sessionStorage.removeItem('alpha-token')
+    } catch {
+      // a private window keeps nothing
+    }
+    window.location.replace(window.location.pathname)
+  }
+  // Switch account: another Alpha (another install, another person) is another address with its
+  // own token, the one its core printed
+  const go = (address: string) => {
+    try {
+      const u = new URL(address.trim())
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error()
+      window.location.assign(u.href)
+    } catch {
+      setProblem('Paste the whole address the core printed, starting http.')
+    }
+  }
   return (
     <>
-      <button
-        ref={anchor}
-        type="button"
-        data-tip={label}
-        aria-label={tileOnly ? label : undefined}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={(e) => {
-          e.stopPropagation() // the folded rail opens on a click
-          setOpen(!open)
+      <input
+        ref={picker}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          e.target.value = ''
+          if (f)
+            shrink(f).then(
+              (image) => save({ image }),
+              (err) => setProblem(wordsOf(err)),
+            )
         }}
-        className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 text-left hover:bg-rail-hover"
+      />
+      {naming !== null && !tileOnly ? (
+        <div className="flex min-w-0 flex-1 items-center gap-2 p-1">
+          {tile}
+          <input
+            // biome-ignore lint/a11y/noAutofocus: a double-click asked to type the name
+            autoFocus
+            aria-label="The workspace's name"
+            value={naming}
+            maxLength={80}
+            onChange={(e) => setNaming(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+              if (e.key === 'Escape') setNaming(null)
+            }}
+            onBlur={() => {
+              const n = naming.trim()
+              setNaming(null)
+              if (n && n !== label) void save({ name: n })
+            }}
+            className="h-6.5 min-w-0 flex-1 rounded-sm border border-accent-line bg-surface px-1.5 font-semibold text-ink text-md outline-none ring-3 ring-accent-soft"
+          />
+        </div>
+      ) : (
+        <button
+          ref={anchor}
+          type="button"
+          data-tip={tileOnly ? label : 'Double-click to rename'}
+          aria-label={tileOnly ? label : undefined}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation() // the folded rail opens on a click
+            if (e.detail < 2) setOpen(!open) // the second click of a double-click renames
+          }}
+          onDoubleClick={tileOnly ? undefined : rename}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 text-left hover:bg-rail-hover"
+        >
+          {tile}
+          {!tileOnly && (
+            <>
+              <span className="min-w-0 flex-1 truncate font-semibold text-md">{label}</span>
+              <ChevronDown className="size-3.5 shrink-0 text-rail-ink-3" />
+            </>
+          )}
+        </button>
+      )}
+      {problem && !open && (
+        <p role="alert" className="sr-only">
+          {problem}
+        </p>
+      )}
+      <Popover
+        anchor={anchor}
+        open={open}
+        onClose={() => {
+          setOpen(false)
+          setSwitching(null)
+        }}
       >
-        {tile}
-        {!tileOnly && (
-          <>
-            <span className="min-w-0 flex-1 truncate font-semibold text-md">{label}</span>
-            <ChevronDown className="size-3.5 shrink-0 text-rail-ink-3" />
-          </>
-        )}
-      </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
-        <div className="flex min-w-60 flex-col p-1" role="menu" aria-label={label}>
-          <div className="flex items-center gap-2 px-2.5 py-2">
+        <div className="flex min-w-72 flex-col p-1" role="menu" aria-label={label}>
+          <div className="flex items-center gap-2.5 px-2.5 py-2">
             {tile}
             <div className="min-w-0">
-              <div className="truncate font-medium text-ink text-md">{label}</div>
-              <div className="text-ink-3 text-sm">On this Mac</div>
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: a double-click renames; Rename is the keyboard's way */}
+              <div
+                onDoubleClick={rename}
+                data-tip="Double-click to rename"
+                className="truncate font-medium text-ink text-md"
+              >
+                {label}
+              </div>
+              <div className="truncate text-ink-3 text-sm">
+                {w?.person ? `${w.person} · on this Mac` : 'On this Mac'}
+              </div>
             </div>
           </div>
+          <MenuItem onClick={rename}>Rename the workspace</MenuItem>
+          <MenuItem onClick={() => picker.current?.click()}>Change the picture</MenuItem>
           <MenuLine />
-          <MenuItem onClick={() => go('#/settings')}>
-            <SlidersHorizontal className="size-3.5 text-ink-3" />
-            Settings
-          </MenuItem>
-          <MenuItem onClick={() => go('#/intelligence')}>
-            <Sparkles className="size-3.5 text-ink-3" />
-            Intelligence
-          </MenuItem>
+          <div className="flex items-center gap-3 px-2.5 py-1.5">
+            <span className="flex-1 text-ink-2 text-md">Appearance</span>
+            <Segmented
+              label="Appearance"
+              value={theme}
+              onChange={look}
+              options={[
+                { value: 'mac', label: 'Match Mac' },
+                { value: 'light', label: 'Light' },
+                { value: 'dark', label: 'Dark' },
+              ]}
+            />
+          </div>
           <MenuLine />
-          <div className="px-2.5 pt-1 pb-0.5 text-ink-3 text-sm">Appearance</div>
-          {(
-            [
-              ['mac', 'Match Mac'],
-              ['light', 'Light'],
-              ['dark', 'Dark'],
-            ] as const
-          ).map(([t, words]) => (
-            <MenuItem key={t} checked={theme === t} onClick={() => look(t)}>
-              {words}
+          {switching === null ? (
+            <MenuItem onClick={() => setSwitching('')}>
+              <ArrowLeftRight className="size-3.5 text-ink-3" />
+              Switch account
             </MenuItem>
-          ))}
+          ) : (
+            <form
+              className="flex flex-col gap-1.5 px-2.5 py-1.5"
+              onSubmit={(e) => {
+                e.preventDefault()
+                go(switching)
+              }}
+            >
+              <span className="text-ink-3 text-sm">The address another Alpha's core printed</span>
+              <div className="flex gap-1.5">
+                <Field
+                  autoFocus
+                  aria-label="The address to open"
+                  placeholder="http://localhost:4700/?t=…"
+                  value={switching}
+                  onChange={(e) => setSwitching(e.target.value)}
+                  className="h-7 min-w-0 flex-1"
+                />
+                <Button size="sm" variant="primary" type="submit" disabled={!switching.trim()}>
+                  Open
+                </Button>
+              </div>
+            </form>
+          )}
+          <MenuItem
+            onClick={logOut}
+            reason={inMacApp() ? "Alpha's own window is signed in by the Mac" : undefined}
+          >
+            <LogOut className="size-3.5 text-ink-3" />
+            Log out
+          </MenuItem>
+          {problem && <p className="max-w-72 px-2.5 py-1.5 text-bad text-sm">{problem}</p>}
         </div>
       </Popover>
     </>
@@ -366,6 +705,94 @@ function Badge({ n }: { n: number }) {
   return (
     <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
+    </span>
+  )
+}
+
+// What Home's count is made of (Vikas, 29 Oct): on a hover, the cards waiting for the person by
+// module, each line opening that module's Overview, where its Needs you is; Alpha's own on Home.
+const cardWord = (c: CardView) =>
+  c.gate === 'sign_in' || c.site || c.connector
+    ? 'sign-in'
+    : c.draft
+      ? 'draft'
+      : c.proposed
+        ? 'proposed task'
+        : c.review
+          ? 'review'
+          : c.match
+            ? 'possible match'
+            : c.filing
+              ? 'file to put away'
+              : c.options.length
+                ? 'question'
+                : 'note'
+
+export function waitingLines(cards: CardView[], modules: ModuleSummary[]) {
+  const by = new Map<string, Map<string, number>>()
+  for (const c of cards) {
+    const kinds = by.get(c.module ?? '') ?? new Map<string, number>()
+    kinds.set(cardWord(c), (kinds.get(cardWord(c)) ?? 0) + needsCount([c]))
+    by.set(c.module ?? '', kinds)
+  }
+  return [...by]
+    .map(([id, kinds]) => {
+      const m = modules.find((x) => x.id === id)
+      return {
+        name: m?.name ?? 'Alpha',
+        count: [...kinds.values()].reduce((a, b) => a + b, 0),
+        words: [...kinds]
+          .sort((a, b) => b[1] - a[1])
+          .map(([k, n]) => `${n} ${n === 1 ? k : `${k}s`}`)
+          .join(', '),
+        href: m ? `#/module/${m.id}/overview` : '#/',
+      }
+    })
+    .sort((a, b) => b.count - a.count)
+}
+
+function Waiting({
+  cards,
+  n,
+  modules,
+}: {
+  cards: CardView[]
+  n: number
+  modules: ModuleSummary[]
+}) {
+  const anchor = useRef<HTMLSpanElement>(null)
+  const [open, setOpen] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const hover = (on: boolean) => {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setOpen(on), on ? 150 : 250)
+  }
+  useEffect(() => () => clearTimeout(timer.current), [])
+  return (
+    <span ref={anchor} onPointerEnter={() => hover(true)} onPointerLeave={() => hover(false)}>
+      <Badge n={n} />
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
+        <div
+          className="flex min-w-64 max-w-80 flex-col p-1"
+          onPointerEnter={() => hover(true)}
+          onPointerLeave={() => hover(false)}
+        >
+          <div className="px-2.5 pt-1.5 pb-1 font-medium text-ink text-md">{n} need you</div>
+          {waitingLines(cards, modules).map((l) => (
+            <a
+              key={l.name}
+              href={l.href}
+              onClick={() => setOpen(false)}
+              className="flex flex-col rounded-md px-2.5 py-1.5 hover:bg-hover"
+            >
+              <span className="text-ink text-md">
+                {l.count} in {l.name}
+              </span>
+              <span className="text-ink-3 text-sm">{l.words}</span>
+            </a>
+          ))}
+        </div>
+      </Popover>
     </span>
   )
 }
@@ -520,6 +947,7 @@ function ModuleItem({
           href={`#/module/${m.id}`}
           icon={<ModuleIcon name={m.name} className="size-4" />}
           label={m.name}
+          tip={m.about}
           current={here === m.id}
           extra={
             <>
@@ -634,6 +1062,7 @@ function ModuleMenu({
         >
           Open
         </MenuItem>
+        <DockItem href={`#/module/${m.id}`} onDone={close} />
         <SubMenu label="Move to">
           {flat(modules)
             .filter(({ module }) => !own.has(module.id))
@@ -713,16 +1142,17 @@ function Strip({
       data-tip={label}
       aria-current={current ? 'page' : undefined}
       className={cn(
-        'relative grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-        current && 'bg-accent-soft text-accent',
+        stripItem(current),
+        !current && 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink',
       )}
     >
       {child}
+      <span className={stripName}>{label.split(',')[0]}</span>
       {extra}
     </a>
   )
   return (
-    <nav className="relative flex w-14 shrink-0 flex-col items-center gap-1 border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+    <nav className="relative flex w-20 shrink-0 flex-col items-center gap-1 border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
       <Edge
         side="right"
         folded
@@ -747,13 +1177,17 @@ function Strip({
         aria-label="Open the rail"
         data-tip={'Open the rail (⌘\\)'}
         onClick={() => onOpen()}
-        className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+        className={cn(
+          stripItem(),
+          'mt-1 mb-2 text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink',
+        )}
       >
         <PanelLeftOpen className="size-4" />
+        <span className={stripName}>Open</span>
       </button>
       {icon(
         '#/',
-        waiting ? `Home, ${waiting} waiting for you` : 'Home',
+        waiting ? `Home, ${waiting} need you` : 'Home',
         place.at === 'home',
         <House className="size-4" />,
         waiting > 0 && (
@@ -763,6 +1197,7 @@ function Strip({
           />
         ),
       )}
+      {icon('#/conversation', 'Agents', place.at === 'conversation', <Bot className="size-4" />)}
       {icon(
         '#/tasks',
         tasksDue ? `Tasks, ${tasksDue} due` : 'Tasks',
@@ -772,7 +1207,7 @@ function Strip({
       {!network(modules) &&
         icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+      <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {shownTops(modules, hidden).map((m) =>
           icon(
             `#/module/${m.id}`,
@@ -786,17 +1221,13 @@ function Strip({
           aria-label="New module"
           data-tip="New module"
           onClick={onNew}
-          className="grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+          className={cn(stripItem(), 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink')}
         >
           <Plus className="size-4" />
+          <span className={stripName}>New</span>
         </button>
       </div>
-      {icon(
-        '#/intelligence',
-        'Intelligence',
-        place.at === 'intelligence',
-        <Sparkle className="size-4" />,
-      )}
+      {icon('#/intelligence', 'Brain', place.at === 'intelligence', <Brain className="size-4" />)}
       {icon(
         '#/settings',
         'Settings',
@@ -843,25 +1274,15 @@ export function Bar({
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
   const back = crumb.parts.at(-2)
+  const home = !crumb.parts.length || (crumb.parts.length === 1 && last === 'Home')
   return (
     <div
       data-tauri-drag-region
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {back?.href && (
-          // whole or not at all: an empty first item lets a way back too wide for its room wrap
-          // onto a second line, which is cut off
-          <div className="flex h-6 min-w-0 flex-wrap overflow-hidden before:h-6 before:content-['']">
-            <a
-              href={back.href}
-              className="flex h-6 shrink-0 items-center gap-1 whitespace-nowrap text-ink-3 text-md hover:text-ink"
-            >
-              <ChevronLeft className="size-3.5 shrink-0" />
-              {back.label}
-            </a>
-          </div>
-        )}
+        {/* every screen but Home: Back to the place above it, or Home */}
+        {!home && <Back href={back?.href ?? '#/'} to={back?.href ? back.label : 'Home'} />}
         {lens && (
           <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
             Only {lens.name}
@@ -879,7 +1300,7 @@ export function Bar({
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        <h1 className="hidden truncate font-serif text-ink text-xl peer-empty:block">{last}</h1>
+        <h1 className="hidden truncate font-serif text-2xl text-ink peer-empty:block">{last}</h1>
       </div>
       <div data-tauri-drag-region />
     </div>
@@ -895,13 +1316,13 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
   const places = useMemo(
     () => [
       { label: 'Home', hint: '', href: '#/' },
-      { label: 'Conversation', hint: '', href: '#/conversation' },
+      { label: 'Agents', hint: '', href: '#/conversation' },
       { label: 'Tasks', hint: '', href: '#/tasks' },
       { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
       { label: 'People', hint: 'Network', href: '#/people' },
       { label: 'Organizations', hint: 'Network', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
-      { label: 'Intelligence', hint: '', href: '#/intelligence' },
+      { label: 'Second Brain', hint: '', href: '#/intelligence' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
         label: m.name,
@@ -945,7 +1366,10 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: the backdrop closes Find; Escape does too
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape is handled by the field
-    <div className="fixed inset-0 z-20 flex justify-center bg-ink/20 pt-24" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-(--z-overlay) flex justify-center bg-ink/20 pt-24"
+      onClick={onClose}
+    >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: stops a click inside from closing it */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: the field takes the keys */}
       <div
