@@ -379,7 +379,7 @@ function FaceButton({ mood, onToggle }: { mood: Mood; onToggle: () => void }) {
 }
 
 const MOOD_WORDS: Record<Mood, string> = {
-  quiet: 'Alpha · nothing waits on you',
+  quiet: 'Alpha · nothing needs approval',
   working: 'Alpha is working',
   needs: 'Something needs you',
   typing: 'Alpha is listening',

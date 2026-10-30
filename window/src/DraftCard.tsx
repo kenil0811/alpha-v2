@@ -6,7 +6,7 @@ import { TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Actions, Card } from './ui/card.tsx'
 import { Field } from './ui/field.tsx'
 
 export function DraftCard({ card, draft }: { card: CardView; draft: DraftView }) {
@@ -38,17 +38,25 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
     : null
 
   return (
-    <Card label="Leaves your world" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="Leaves your world" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="text-ink-3 text-sm">
-        {draft.agent}'s {draft.kind}
+        {card.run || card.agent ? (
+          <a
+            className="text-ink-2 hover:underline"
+            href={card.run ? `#/run/${card.run}` : `#/agent/${card.agent?.id}`}
+          >
+            {draft.agent}'s {draft.kind}
+          </a>
+        ) : (
+          `${draft.agent}'s ${draft.kind}`
+        )}
         {draft.about && (
           <>
             {' for '}
-            <a
-              className="text-ink-2 hover:underline"
-              href={`#/table/${draft.about.table}?only=${draft.about.row}`}
-            >
+            <a className="text-ink-2 hover:underline" href={`#/row/${draft.about.row}`}>
               {draft.about.name}
             </a>
           </>
@@ -100,14 +108,14 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
             This one goes now, and the next ones without a card, each shown on Home. Revoke it any
             time in Settings › Permissions.
           </div>
-          <div className="flex gap-2">
+          <Actions>
             <Button variant="primary" disabled={busy} onClick={() => act('send', { always: true })}>
               Send it, and always
             </Button>
             <Button variant="ghost" onClick={() => setAlways(false)}>
               Back
             </Button>
-          </div>
+          </Actions>
         </div>
       ) : holding ? (
         <form
@@ -145,7 +153,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
           </div>
         </form>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <Actions>
           <Button variant="primary" disabled={busy} onClick={() => act('send', { message })}>
             {changed ? 'Send it as changed' : 'Send it'}
           </Button>
@@ -157,7 +165,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
               Always…
             </Button>
           )}
-        </div>
+        </Actions>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}
     </Card>

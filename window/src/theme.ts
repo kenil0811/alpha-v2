@@ -23,3 +23,11 @@ export function applyTheme(t: Theme): void {
     // a private window: the choice lasts until the window closes
   }
 }
+
+// Text size: Small is the plain size; Medium and Large scale the text and spacing (app.css).
+export type TextSize = 'small' | 'medium' | 'large'
+
+export function applyTextSize(t: TextSize): void {
+  if (t === 'small') delete document.documentElement.dataset.text
+  else document.documentElement.dataset.text = t
+}

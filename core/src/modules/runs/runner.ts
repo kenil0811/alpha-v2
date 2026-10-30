@@ -18,6 +18,7 @@ import type { Task, TaskInput } from '../../world/tasks/index.ts'
 import type { World } from '../../world/world.ts'
 import { type Agent, type AgentFile, agents } from '../agents.ts'
 import type { Drafts } from '../drafts.ts'
+import { type Web, webOf } from '../research.ts'
 import { Reviews } from '../reviews.ts'
 import * as apiOf from './api.ts'
 import * as dueOf from './due.ts'
@@ -25,6 +26,7 @@ import * as reachOf from './reach.ts'
 import * as tasksOf from './tasks.ts'
 import {
   type Filed,
+  PROPOSE_TASKS,
   type ProposedTask,
   type RunFor,
   type RunOutcome,
@@ -43,6 +45,10 @@ export class AgentRunner {
   owner: string | null
   ask: Ask
   judgeAsk: Ask
+  interviewAsk: Ask // the model wording the day's interview questions
+  researchAsk: Ask // Research: the model planning its searches and writing its brief
+  governanceAsk: Ask // Governance: the model explaining a refusal
+  web: Web // what Research reads the web through: the browser engine, by default
   tokens = new Map<string, number>() // a run's model tokens, while it runs
   budgetSaid = new Map<string, number>() // when an agent's runs budget was last said
   // the agents' own lane (item 15): the minute tick starts the due runs and goes on; while they
@@ -50,6 +56,7 @@ export class AgentRunner {
   lane: Promise<void> | null = null
   failures = new Map<string, number>() // an agent's runs that did not finish, in a row
   held = new Map<string, string>() // agents waiting on a Try again card, by the card's id
+  woken = new Set<string>() // agents just turned on: due at once, whatever their trigger says
   drafts: Drafts | null = null // an agent's drafts, sent from the person's mail on their yes
   readonly reviews: Reviews // rows an agent puts to the person, on a card
 
@@ -61,6 +68,10 @@ export class AgentRunner {
       owner?: string | null
       ask?: Ask // the model reading a document
       judge?: Ask // the model sorting items into the person's groups
+      interview?: Ask // the model wording the day's interview questions
+      research?: Ask
+      governance?: Ask
+      web?: Web
     } = {},
   ) {
     this.world = world
@@ -70,8 +81,22 @@ export class AgentRunner {
     this.ask = options.ask ?? askModel(world.paths.dir)
     this.judgeAsk =
       options.judge ?? options.ask ?? askModel(world.paths.dir, undefined, () => config.judging())
+    this.interviewAsk =
+      options.interview ??
+      options.ask ??
+      askModel(world.paths.dir, undefined, () => config.interviewing())
+    this.researchAsk =
+      options.research ??
+      options.ask ??
+      askModel(world.paths.dir, undefined, () => config.research())
+    this.governanceAsk =
+      options.governance ??
+      options.ask ??
+      askModel(world.paths.dir, undefined, () => config.governance())
+    this.web = options.web ?? webOf(engine)
     this.reviews = new Reviews(world, this.owner)
     this.endOrphans()
+    this.retractStale()
   }
 
   // The rest of the runner lives in the files beside this one, each a function of it.
@@ -153,13 +178,14 @@ export class AgentRunner {
       priority: 'high' | 'normal' | 'low'
       place: string
       owner: string
+      word: 'add' | 'decline' | null
     }[]
   } | null {
     return tasksOf.proposedView(this, card)
   }
 
-  adopt(cardId: string, take: number[] | 'all', user: string): Card {
-    return tasksOf.adopt(this, cardId, take, user)
+  adopt(cardId: string, take: number[] | 'all', user: string, decline?: number[]): Card {
+    return tasksOf.adopt(this, cardId, take, user, decline)
   }
 
   runsOf(task: string): RunRow[] {
@@ -416,6 +442,23 @@ export class AgentRunner {
 
   // The runs a core that stopped left running (a crash, a restore): nothing runs them now, so
   // each ends as failed with its words, at the next start, rather than showing as running for ever.
+  // Morning's "Answer the N cards waiting on Home" (Alpha kit before 0.4.1) stood for cards that
+  // are each their own row now: still waiting, they are withdrawn, never declined for the person
+  // (Vikas, 30 Oct).
+  private retractStale(): void {
+    const stale = /^Answer the \d+ cards? waiting on Home$/
+    for (const c of this.world.cards.waiting()) {
+      const tasks = (c.call?.input as { tasks?: { title?: unknown }[] } | undefined)?.tasks
+      if (c.call?.tool !== PROPOSE_TASKS || !tasks?.length) continue
+      if (tasks.every((t) => stale.test(String(t.title ?? '').trim())))
+        this.world.cards.withdraw(
+          c.id,
+          { kind: 'alpha' },
+          'each card waiting on Home is its own row in Needs you now, so a task to answer them is not needed',
+        )
+    }
+  }
+
   private endOrphans(): void {
     for (const row of this.runs(1000).filter((r) => r.state === 'running'))
       this.end(row, 'failed', `${this.labelOf(row)} was cut short when the core stopped.`)

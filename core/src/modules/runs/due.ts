@@ -3,15 +3,17 @@ import { type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { config } from '../../config.ts'
 import { all, run as exec, one } from '../../world/db.ts'
-import { type Agent, agents } from '../agents.ts'
+import { type Agent, agents, cardsWaiting } from '../agents.ts'
 import type { AgentRunner } from './runner.ts'
-import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome, type RunRowDb } from './types.ts'
+import { holdStuck, rehold } from './stuck.ts'
+import { CHANGE_KINDS, type Filed, type RunOutcome, type RunRowDb } from './types.ts'
 
 // What is due by each agent's trigger, and tasks whose cards are all decided. One run of an
 // agent at a time.
 export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<void> {
   runner.resumeTasks()
   resumeRuns(runner)
+  rehold(runner)
   for (const a of agents(runner.world)) {
     if (a.state !== 'on' || !triggersOf(a.trigger).length) continue
     if (one(runner.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
@@ -21,8 +23,26 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
     // where the journal stands as the agent is judged: its place moves here only after a run
     // that ended well, so a failed run is handed the same things again (item 16, 25 Oct)
     const cursorTo = readsJournal(a) ? String(runner.world.lastLineId()) : null
-    const given = runner.due(a, nowMs)
+    // turned on just now: it runs at once, not at its next time (Vikas, 29 Oct)
+    const woken = runner.woken.delete(a.id)
+    const given = runner.due(a, nowMs) || (woken ? {} : false)
     if (!given) continue
+    // its cards wait on the person past the limit: it waits for them rather than add more, and
+    // what it would have been handed is still there when it runs (Vikas, 29 Oct)
+    const waiting = cardsWaiting(runner.world, a.id)
+    if (waiting > config.limits().agent_cards_waiting) {
+      const said = runner.budgetSaid.get(`${a.id}:cards`) ?? 0
+      if (nowMs - said >= 86_400_000) {
+        runner.budgetSaid.set(`${a.id}:cards`, nowMs)
+        runner.world.line({
+          actor: { kind: 'agent', id: a.name },
+          kind: 'run_step',
+          words: `${a.name} is waiting for you to go through ${waiting} cards before it does more.`,
+          module: a.module,
+        })
+      }
+      continue
+    }
     const module = runner.world.shape.module(a.module)
     const file = module ? runner.fileOf(a.id, module) : null
     if (module && file && runner.overRuns(a, file, nowMs)) {
@@ -63,19 +83,20 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
     runner.failures.set(a.id, failed)
     const limit = config.limits().run_retries
     if (failed < limit) continue
-    // enough: the person decides on a card, and the agent waits on it
+    // enough: the person decides, on the one card of the module's agents that did not finish
     const files = given.filed?.map((f) => f.name) ?? []
-    const card = runner.world.cards.open({
-      kind: 'suggestion',
-      words: `${a.name} did not finish ${failed} times${files.length ? ` on ${files.join(', ')}` : ''}: ${out.words}`,
-      restsOn: [`${a.name}'s last ${failed} runs`],
-      options: ['Try again', 'Leave it'],
-      call: { tool: RUN_AGAIN, input: { agent: a.id, cursor: cursorTo } },
-      actor: { kind: 'agent', id: a.name },
-      user: runner.owner,
-      module: a.module,
-    })
-    runner.held.set(a.id, card.id)
+    holdStuck(
+      runner,
+      a.module,
+      {
+        agent: a.id,
+        name: a.name,
+        cursor: cursorTo,
+        words: `${out.words}${files.length ? ` (on ${files.join(', ')})` : ''}`,
+        times: failed,
+      },
+      { kind: 'agent', id: a.name },
+    )
     runner.notify()
   }
 }

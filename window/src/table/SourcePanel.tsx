@@ -116,9 +116,7 @@ export function SourcePanel({
               </div>
             )}
           </>
-        ) : (
-          <p className="text-ink-3 text-md">Nothing is kept here yet.</p>
-        )}
+        ) : null}
         <div className="flex flex-wrap gap-1.5">
           {open && 'url' in open && (
             <Button size="sm" onClick={() => window.open(open.url, '_blank', 'noreferrer')}>
@@ -154,7 +152,7 @@ export function SourcePanel({
         )}
         {history.length > 1 && (
           <div>
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">History</div>
+            <div className="font-semibold text-ink-3 text-sm">History</div>
             <ol className="mt-1.5">
               {history.map((h, i) => (
                 <li
@@ -238,12 +236,13 @@ function Correct({
   return (
     <form onSubmit={save} className="flex flex-col gap-2">
       {isTags(field) ? (
-        <TagPicker field={field} typed={typed} onTyped={setTyped} />
+        <TagPicker field={field} typed={typed} onTyped={setTyped} table={table} />
       ) : field.kind === 'choice' ? (
         <Select
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           aria-label={field.name}
+          stars={field.id}
           adds={{
             what: 'choice',
             send: (w) => askForNew('choice', `${field.name} in ${table}`, w),

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
 import { history } from './git.ts'
-import { keep } from './keep.ts'
+import { keep, keepWhen } from './keep.ts'
 
 let home: string
 let world: World
@@ -26,7 +26,7 @@ const AGENT =
   '---\nname: Reader\ntrigger: { every: day, at: "06:30" }\nruns: { script: skills/read/run.js }\n---\nReads the list each morning.\n'
 
 describe('keep', () => {
-  it('keeps a reader and its agent as commits, and the agent is on', async () => {
+  it('keeps a reader and its agent as commits, and the new agent starts paused', async () => {
     const m = world.shape.makeModule('Listings', ctx)
     await expect(keep(world, m, 'agents/reader.md', AGENT, ctx)).rejects.toThrow(
       /skills\/read\/run.js, which is not kept yet/,
@@ -46,8 +46,10 @@ describe('keep', () => {
       ctx,
     )
     const said = await keep(world, m, 'agents/reader.md', AGENT, ctx)
-    expect(said).toBe('Kept agents/reader.md in Listings; Reader is on, every day at 06:30.')
-    expect(agents(world, m.id).map((a) => [a.name, a.state])).toEqual([['Reader', 'on']])
+    expect(said).toBe(
+      'Kept agents/reader.md in Listings; Reader is new and paused: it runs every day at 06:30 once the person presses Activate on its card or page.',
+    )
+    expect(agents(world, m.id).map((a) => [a.name, a.state])).toEqual([['Reader', 'paused']])
     expect((await history(m.dir)).map((c) => c.message)).toEqual([
       'Kept agents/reader.md',
       'Kept skills/read/run.js',
@@ -57,6 +59,13 @@ describe('keep', () => {
     expect(await keep(world, m, 'agents/reader.md', undefined, ctx)).toBe(
       'agents/reader.md in Listings was already kept as it is.',
     )
+    // how often, picked in the Agents list, is written into its file
+    const reader = agents(world, m.id)[0] as never
+    expect(await keepWhen(world, m, reader, { every: 'hour' }, ctx)).toMatch(/every hour/)
+    expect(readFileSync(join(m.dir, 'agents/reader.md'), 'utf8')).toContain(
+      'trigger: { every: hour }',
+    )
+    expect(agents(world, m.id)[0]?.trigger).toEqual({ every: 'hour' })
   })
 
   it('keeps only in a module’s places, and checks what it can', async () => {
@@ -91,7 +100,7 @@ describe('keep', () => {
       ctx,
     )
     expect(await keep(world, m, 'agents/clerk.md', agent, ctx)).toMatch(
-      /Clerk is on call for the tasks given to it/,
+      /Clerk is new and paused: it runs on call for the tasks given to it/,
     )
   })
 })

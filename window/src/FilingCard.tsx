@@ -7,7 +7,7 @@ import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Actions, Card } from './ui/card.tsx'
 import { Field, Select } from './ui/field.tsx'
 
 const SURE: Record<FilingView['sure'], string> = {
@@ -58,8 +58,10 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
   }
 
   return (
-    <Card label="A file from your mail" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="A file from your mail" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="text-ink-3 text-sm">
         From {filing.from}: “{filing.subject}”
         {filing.date ? `, ${new Date(filing.date).toLocaleDateString()}` : ''}
@@ -177,7 +179,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
             This one is filed now, and the next ones without a card, each shown on Home. Revoke it
             any time in Settings › Permissions.
           </div>
-          <div className="flex gap-2">
+          <Actions>
             <Button
               variant="primary"
               disabled={busy}
@@ -188,7 +190,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
             <Button variant="ghost" onClick={() => setAlways(false)}>
               Back
             </Button>
-          </div>
+          </Actions>
         </div>
       ) : declining ? (
         <form
@@ -226,7 +228,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
           </div>
         </form>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <Actions>
           <Button
             variant="primary"
             disabled={busy}
@@ -254,7 +256,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
               Always…
             </Button>
           )}
-        </div>
+        </Actions>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}
     </Card>

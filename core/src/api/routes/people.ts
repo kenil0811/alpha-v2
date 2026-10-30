@@ -32,11 +32,28 @@ export function registerPeople(ctx: Ctx): void {
     // after its own columns, the fields of the one-row-per-person tables (core step 3d)
     const cols = perColumns(world)
     const rows = perRows(world, [...new Set(cols.map((c) => c.table))])
+    // a person's lists (Vikas, 27 Oct): the module tables whose rows are people (Clients,
+    // Insurers, Team), and My contacts for everyone known any other way
+    // ponytail: a connector's own contact card counts as My contacts by its table's name
+    // A table naming people only by a role's address (Deals' Broker email) puts them in that
+    // role's list, Brokers, not the table's (Vikas, 29 Oct)
+    const listOf = (t: string | null) => {
+      const table = t ? world.shape.table(t) : null
+      const map = table?.people
+      if (!table || map?.each !== 'person' || table.name === 'Contacts') return 'My contacts'
+      const role = !map.name && /^(.+?)\s+e-?mails?$/i.exec(map.emails ?? '')?.[1]
+      return role ? `${role[0]?.toUpperCase()}${role.slice(1)}s` : table.name
+    }
+    const lists = lines.map((p) => [...new Set(p.tables.map(listOf))])
+    const names = [...new Set(lists.flat())].sort((a, b) =>
+      a === 'My contacts' ? -1 : b === 'My contacts' ? 1 : a.localeCompare(b),
+    )
     return keptTable(
       'people',
       'People',
       [
         keptField('Name', 'text'),
+        { ...keptField('Lists', 'choice'), choices: names, many: true },
         keptField('Organization', 'text'),
         keptField('Email', 'email'),
         keptField('Phone', 'phone'),
@@ -44,10 +61,11 @@ export function registerPeople(ctx: Ctx): void {
         keptField('Talks', 'number'),
         ...cols.map((c) => c.view),
       ],
-      lines.map((p) => ({
+      lines.map((p, i) => ({
         id: p.id,
         values: {
           name: p.name,
+          lists: lists[i],
           organization: p.companies.join(', '),
           email: p.emails[0] ?? null,
           phone: p.phones[0] ? phoneWords(p.phones[0]) : null,
@@ -67,6 +85,33 @@ export function registerPeople(ctx: Ctx): void {
       },
     )
   }
+  // The workspace's own name and picture (Vikas, 29 Oct): a double-click in the rail's head
+  // changes either. ponytail: kept with the install's one person; per tenant when one has many
+  const workspaceOut = () => ({
+    name:
+      world.preference(user.id, 'workspace_name') ??
+      (user.name ? `${user.name}'s workspace` : 'Your workspace'),
+    image: world.preference(user.id, 'workspace_image'),
+    person: user.name,
+  })
+  app.get('/api/workspace', async () => workspaceOut())
+  app.post('/api/workspace', async (req) => {
+    const given = z
+      .object({
+        name: z.string().trim().min(1).max(80).optional(),
+        image: z
+          .string()
+          .max(300_000)
+          .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/)
+          .nullable()
+          .optional(),
+      })
+      .parse(req.body)
+    if (given.name !== undefined) world.setPreference(user.id, 'workspace_name', given.name)
+    if (given.image !== undefined) world.setPreference(user.id, 'workspace_image', given.image)
+    return workspaceOut()
+  })
+
   app.get('/api/kept/people', async () => keptPeople('person'))
   app.get('/api/kept/organizations', async () => keptPeople('company'))
   for (const list of ['people', 'organizations'])

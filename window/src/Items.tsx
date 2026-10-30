@@ -2,18 +2,26 @@
 // to, reviewed and shared: #/agent/<id>, #/run/<id>, #/rule/<id>. Each is built from what the
 // core already serves (/api/working, /api/activity, /api/rules) and comes again when the world
 // changes, so a running run's steps arrive as they happen.
+
 import type { AgentView, RuleView, RunView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
+import { Blocked, costHref, OnCell, RunsCell, resultWords } from './AgentList.tsx'
 import { api } from './api.ts'
+import { Arranged } from './arrange.tsx'
+import { startAsk } from './ask.ts'
+import { type Rule, RuleColumn, why } from './Module.tsx'
+import { peek } from './Peek.tsx'
 import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
+import { usdWords as usd } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
-import { Switch } from './ui/switch.tsx'
+import { Section } from './ui/section.tsx'
+import { Words } from './ui/words.tsx'
 
 export type ItemKind = 'agent' | 'run' | 'rule'
 
@@ -90,6 +98,12 @@ export function ItemPage({
         runs={(runs ?? []).filter(
           (r) => r.moduleId === agent.module.id && r.name === agent.agent.name,
         )}
+        rules={(rules ?? []).filter(
+          (r) =>
+            !r.revokedAt &&
+            r.agent === agent.agent.name &&
+            (!r.module || r.module === agent.module.id),
+        )}
       />
     )
   if (run) {
@@ -107,30 +121,57 @@ const Gone = ({ what }: { what: string }) => (
   <p className="p-6 text-ink-2">{what} is not there any more.</p>
 )
 
+// An agent, one level deeper (proposal 28 Oct §2 #3), read from its file and journal only: what
+// it does, when (with its next run), where it works, its tools, its rules (§1 #1), its cost this
+// week from Usage (§1 #4) and its runs. One never turned on shows Activate (§1 #3).
 function AgentPage({
   module: m,
   agent: a,
   runs,
+  rules,
 }: {
   module: WorkingModuleView
   agent: AgentView
   runs: RunView[]
+  rules: RuleView[]
 }) {
   // what changes comes back through the world's next change, which loads the page again
   const { busy, problem, act } = useAct()
+  const [cost, setCost] = useState<number | null>(null)
+  useEffect(() => {
+    api.get<Record<string, number>>('/api/usage/agents').then(
+      (u) => setCost(u[a.id] ?? 0),
+      () => setCost(null),
+    )
+  }, [a.id])
+  const tables = (ts: AgentView['reads']) =>
+    ts.length
+      ? ts.map((t, i) => (
+          <span key={t.name}>
+            {i > 0 && ', '}
+            {t.id ? (
+              <a href={`#/table/${t.id}`} className="hover:underline">
+                {t.name}
+              </a>
+            ) : (
+              t.name
+            )}
+          </span>
+        ))
+      : 'None'
+  const line = (r: RuleView): Rule => ({
+    key: r.id,
+    words: r.words,
+    why: why(r),
+    href: `#/rule/${r.id}`,
+    rule: r,
+  })
+  const ask = (side: string) => () =>
+    startAsk(`From now on, when ${a.name} works in ${m.name}, ${side} `)
   return (
     <Page kind={`Agent in ${m.name}`} title={a.name}>
-      {a.description && <p className="text-ink-2 text-md">{a.description}</p>}
       <div className="flex flex-wrap items-center gap-2">
-        <Switch
-          checked={a.state === 'on'}
-          label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-          disabled={busy}
-          onChange={(on) =>
-            act(() => api.post(`/api/agents/${a.id}`, { state: on ? 'on' : 'paused' }))
-          }
-        />
-        <span className="text-ink-2 text-md">{a.state === 'on' ? 'On' : 'Paused'}</span>
+        <OnCell agent={a} />
         <Button
           size="sm"
           disabled={busy || a.running}
@@ -138,40 +179,194 @@ function AgentPage({
         >
           Run now
         </Button>
-        {a.running && <Pill tone="accent">Running</Pill>}
-        {a.needs && <Pill tone="warn">{a.needs}</Pill>}
+        {a.running && <Pill tone="accent">Running now…</Pill>}
         <Refusal words={problem} />
       </div>
-      <Facts
-        lines={[
-          [
-            'Module',
-            <a key="m" href={`#/module/${m.id}`} className="hover:underline">
-              {m.name}
-            </a>,
-          ],
-          [a.state === 'on' ? 'Runs' : 'Would run', a.when],
-          ['Last ran', a.lastRunAt ? dayWords(a.lastRunAt) : 'not yet'],
-        ]}
-      />
-      <h2 className="font-medium font-serif text-ink text-xl">Recent runs</h2>
-      {runs.length === 0 ? (
-        <p className="text-ink-2 text-md">No runs yet.</p>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
-          {runs.map((r) => (
-            <RunRow
-              key={r.id}
-              run={r}
-              open={false}
-              onOpen={() => {
-                window.location.hash = `#/run/${r.id}`
-              }}
-              onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
-            />
-          ))}
+      {a.blocked && (
+        <div className="text-md">
+          <Blocked agent={a} />
         </div>
       )}
+      {/* each section a block the person moves and resizes, kept for every agent's page (Vikas, 30 Oct) */}
+      <Arranged
+        page="agent"
+        start={[['does'], ['when'], ['works'], ['tools'], ['rules'], ['cost'], ['runs']]}
+        blocks={[
+          {
+            key: 'does',
+            name: 'What it does',
+            node: (
+              <Section title="What it does">
+                {a.description && <p className="text-ink text-md">{a.description}</p>}
+                {a.brief && (
+                  <div className="text-ink-2 text-md">
+                    <Words text={a.brief} />
+                  </div>
+                )}
+              </Section>
+            ),
+          },
+          {
+            key: 'when',
+            name: 'When',
+            node: (
+              <Section title="When">
+                <Facts
+                  lines={[
+                    ...(a.schedule
+                      ? ([['Runs', <RunsCell key="r" agent={a} />]] as [string, ReactNode][])
+                      : []),
+                    [
+                      a.triggers.length === 1 ? 'Trigger' : 'Triggers',
+                      a.triggers.length ? (
+                        <span key="t" className="flex flex-col">
+                          {a.triggers.map((t) => (
+                            <span key={t.words}>
+                              {t.words}
+                              <span className="text-ink-3">
+                                {' '}
+                                · {t.on === 'time' ? 'on a time' : 'on an event'}
+                              </span>
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        'When given a task'
+                      ),
+                    ],
+                    ...(a.tasks && a.triggers.length
+                      ? ([['Tasks', 'Also takes the tasks given to it']] as [string, ReactNode][])
+                      : []),
+                    [
+                      'Next run',
+                      a.running
+                        ? 'Running now'
+                        : a.state !== 'on'
+                          ? 'Paused'
+                          : a.nextRunAt
+                            ? dayWords(a.nextRunAt)
+                            : 'On its next event',
+                    ],
+                  ]}
+                />
+              </Section>
+            ),
+          },
+          {
+            key: 'works',
+            name: 'Works in',
+            node: (
+              <Section title="Works in">
+                <Facts
+                  lines={[
+                    [
+                      'Module',
+                      <a key="m" href={`#/module/${m.id}`} className="hover:underline">
+                        {m.name}
+                      </a>,
+                    ],
+                    ['Reads', tables(a.reads)],
+                    ['Writes', tables(a.writes)],
+                  ]}
+                />
+              </Section>
+            ),
+          },
+          {
+            key: 'tools',
+            name: 'Tools',
+            node: (
+              <Section
+                title="Tools"
+                about="The gated calls it may make, and the connections it needs."
+              >
+                <Facts
+                  lines={[
+                    [
+                      'Calls',
+                      a.effects === null
+                        ? 'Any, as its file names none'
+                        : a.effects.length
+                          ? a.effects.join(', ')
+                          : 'None',
+                    ],
+                    ['Connections', a.connectors.length ? a.connectors.join(', ') : 'None'],
+                  ]}
+                />
+              </Section>
+            ),
+          },
+          {
+            key: 'rules',
+            name: 'Rules',
+            node: (
+              <Section
+                title="Rules"
+                about={`What ${a.name} may and may not do, held by the core. Anything else that changes your data or reaches someone, it asks you first.`}
+              >
+                <div className="@container">
+                  <div className="grid items-start gap-6 @min-[600px]:grid-cols-2">
+                    <RuleColumn
+                      side="allowed"
+                      rules={rules.filter((r) => r.side === 'allow').map(line)}
+                      onChange={() => undefined}
+                      onAdd={ask('you may')}
+                    />
+                    <RuleColumn
+                      side="denied"
+                      rules={rules.filter((r) => r.side === 'deny').map(line)}
+                      onChange={() => undefined}
+                      onAdd={ask('never')}
+                    />
+                  </div>
+                </div>
+              </Section>
+            ),
+          },
+          {
+            key: 'cost',
+            name: 'Cost',
+            node: (
+              <Section
+                title="Cost"
+                about="Its runs in the last 7 days, as Settings › Usage counts them."
+              >
+                <a href={costHref(a.id)} className="w-fit text-ink text-md hover:underline">
+                  {cost === null ? '…' : `≈ ${usd(cost)} this week`}
+                </a>
+              </Section>
+            ),
+          },
+          {
+            key: 'runs',
+            name: 'Runs',
+            node: (
+              <Section title="Runs">
+                {a.lastResult && (
+                  <p className={a.lastResult.ok ? 'text-ink-2 text-md' : 'text-bad text-md'}>
+                    Last result: {resultWords(a.lastResult)}
+                  </p>
+                )}
+                {runs.length > 0 && (
+                  <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                    {runs.map((r) => (
+                      <RunRow
+                        key={r.id}
+                        run={r}
+                        open={false}
+                        onOpen={() => {
+                          peek(`#/run/${r.id}`)
+                        }}
+                        onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Section>
+            ),
+          },
+        ]}
+      />
     </Page>
   )
 }

@@ -43,11 +43,15 @@ export function Words({ text, wideTables }: { text: string; wideTables?: boolean
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ href, children }) => (
-            <a href={href} target="_blank" rel="noreferrer">
-              {children}
-            </a>
-          ),
+          // a place in Alpha opens here (the side panel first); anything else in a new tab
+          a: ({ href, children }) =>
+            href?.startsWith('#') ? (
+              <a href={href}>{children}</a>
+            ) : (
+              <a href={href} target="_blank" rel="noreferrer">
+                {children}
+              </a>
+            ),
           table: ({ children }) =>
             wideTables ? (
               <WideTable>{children}</WideTable>

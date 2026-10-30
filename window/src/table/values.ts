@@ -2,6 +2,18 @@
 import type { FieldView, SourceView } from '@alpha/core/api'
 import type { Tone } from '../ui/pill.tsx'
 
+// Where a value goes when clicked (Vikas, 28 Oct: every link opens): a link or a web address in
+// words to its page, an email to a new message, a phone number to a call.
+export function hrefOf(kind: string, text: string): string | null {
+  const t = text.trim()
+  if (!t || /\s/.test(t)) return kind === 'phone' && t ? `tel:${t.replace(/[^\d+]/g, '')}` : null
+  if (/^https?:\/\//i.test(t)) return t
+  if (kind === 'link' || /^www\./i.test(t)) return `https://${t}`
+  if (kind === 'email' || /^[^@]+@[^@]+\.\w+$/.test(t)) return `mailto:${t}`
+  if (kind === 'phone') return `tel:${t.replace(/[^\d+]/g, '')}`
+  return null
+}
+
 export const KIND_TONE: Record<SourceView['kind'], Tone> = {
   stated: 'accent',
   looked_up: 'neutral',

@@ -9,6 +9,7 @@ import { EFFECTS, type Hands, type Here, type Tooling } from './common.ts'
 import { deskTools } from './desk.ts'
 import { rowTools } from './rows.ts'
 import { shapeTools } from './shape.ts'
+import { skillTools } from './skills.ts'
 import { taskTools } from './task.ts'
 
 export {
@@ -42,9 +43,17 @@ export function worldTools(
   // in the order the model has always read them
   const [query, search, ...rows] = rowTools(t)
   const [ask, remember, ...rest] = deskTools(t)
-  return [query, search, ...shapeTools(t), ...rows, ask, remember, ...taskTools(t), ...rest].filter(
-    (x): x is ToolEntry => !!x,
-  )
+  return [
+    query,
+    search,
+    ...shapeTools(t),
+    ...rows,
+    ask,
+    remember,
+    ...taskTools(t),
+    ...rest,
+    ...skillTools(t),
+  ].filter((x): x is ToolEntry => !!x)
 }
 
 export const TOOL_NAMES = Object.keys(EFFECTS).sort()

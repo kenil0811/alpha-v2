@@ -8,6 +8,13 @@ import type { UsageRow, UsageView } from '../usage-types.ts'
 export function registerUsage(ctx: Ctx): void {
   const { app, world, engine } = ctx
 
+  // the last 7 days by agent id, for the Agents list and an agent's page
+  app.get(
+    '/api/usage/agents',
+    async (): Promise<Record<string, number>> =>
+      world.spend.byAgentSince(new Date(Date.now() - 7 * 864e5).toISOString()),
+  )
+
   app.get('/api/usage', async (req): Promise<UsageView> => {
     const { month } = z
       .object({

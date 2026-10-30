@@ -40,6 +40,9 @@ export interface StreamLine {
   card: string | null
   module: { id: string; name: string } | null // the module it belongs to, for topic chips
   data: Record<string, unknown>
+  // the agent whose thread it is in: its run's agent, or the agent the person spoke to
+  agent: { id: string; name: string } | null
+  run: string | null
 }
 
 export interface CardView {
@@ -61,6 +64,22 @@ export interface CardView {
   match?: MatchView | null // people or companies that may be one, side by side
   review?: ReviewView | null // rows an agent puts to the person, a choice on each
   proposed?: ProposedView | null // tasks an agent proposes, for the person's yes
+  // agents of a module that did not finish, each with its reason: Try again or Leave it on each
+  failed?: { agent: string; name: string; words: string; times: number }[] | null
+  agent?: { id: string; name: string } | null // the agent it came from
+  run?: string | null // the run that opened it
+  // the task it waits on the person for: named in its call, or the task its run serves
+  task?: string | null
+  createdAt?: string // when it was put to the person
+}
+
+// One card in full, for the side panel: the card, where it came from, the runs it rests on and
+// its history in the journal.
+export interface CardAbout {
+  card: CardView
+  agent: { id: string; name: string } | null
+  runs: { id: string; state: string; words: string | null; startedAt: string }[]
+  history: { id: number; at: string; words: string }[]
 }
 
 // Tasks an agent proposes on one card: each as it would be added, where and for whom.
@@ -73,6 +92,7 @@ export interface ProposedView {
     priority: 'high' | 'normal' | 'low'
     place: string // in words
     owner: string // You, or the agent's name
+    word: 'add' | 'decline' | null // the person's word on it so far
   }[]
 }
 
@@ -195,6 +215,7 @@ export interface RuleView {
   kind: 'approved' | 'inferred'
   where: string // all of Alpha, a module or an agent, in words
   module: string | null
+  agent: string | null // the agent it holds for, by name
   madeBy: string
   madeAt: string
   uses: number
@@ -202,6 +223,7 @@ export interface RuleView {
   revokedAt: string | null
   always: boolean // a standing permission given with Always
   noticedFrom: { id: number; at: string; words: string }[] // the lines Alpha noticed it in
+  card?: string // not a rule yet: the Save card it waits on (GET /api/rules/waiting); Save makes it one
 }
 
 // A file that came by mail, waiting to be filed: the email, what the file is, the place the model proposed and how sure, and the rows named, to pick another.
@@ -221,6 +243,17 @@ export interface FilingView {
   already: string[] // the row's files of that kind already, which File it keeps and Replace takes off
   always: string | null // the standing permission's sentence, when offered
   places: { table: string; name: string; kinds: string[]; rows: { id: string; name: string }[] }[]
+}
+
+// Interview me (Vikas, 30 Oct): the pool as it stands for the business or a module, as the button
+// says it on a hover. No count is fixed: questions and left are those worth asking now.
+export interface InterviewView {
+  at: string | null // when the pool was last ranked
+  today: boolean
+  preparing: boolean // the pool is being ranked now
+  questions: number
+  left: number
+  first: string | null // the most useful question, the one it would ask
 }
 
 export interface Stream {
@@ -256,6 +289,7 @@ export interface TableSummary {
 export interface ModuleSummary {
   id: string
   name: string
+  about: string | null // what it is for, its module.yaml's description
   parent: string | null // the module it sits inside
   people: boolean // People and Organizations are its tabs (module.yaml people: true)
   alpha: boolean // Alpha's own module (module.yaml core: true): its tables are the Second Brain
@@ -370,6 +404,7 @@ export type FilterOp =
   | 'before'
   | 'after'
   | 'today'
+  | 'due'
   | 'this_week'
   | 'next_days'
   | 'in'
@@ -455,6 +490,28 @@ export interface AgentView {
   when: string
   lastRunAt: string | null
   running: boolean
+  module: { id: string; name: string }
+  // each trigger in words, on a time or on an event (proposal 28 Oct §2 #1)
+  triggers: { words: string; on: 'time' | 'event' }[]
+  nextRunAt: string | null // worked out here from its triggers; null while paused or on events only
+  // how its last run ended: what it did, or since when every run has failed
+  lastResult: { words: string; ok: boolean; at: string; failedSince: string | null } | null
+  fresh: boolean // never turned on: it shows Activate
+  // from its file: what it is for, where it works and what it may call (§2 #3)
+  brief: string
+  reads: { id: string | null; name: string }[] // its needs.tables
+  writes: { id: string | null; name: string }[] // its touches
+  effects: string[] | null // null: the file says nothing, an older one
+  connectors: string[]
+  tasks: boolean
+  function: string // what it does, as the Agents list groups it: Sourcing, Outreach, Admin…
+  // why it is not doing its work, with the one action that unblocks it (Vikas, 29 Oct)
+  blocked: {
+    words: string
+    action: { label: string; href: string | null; run: boolean }
+  } | null
+  // how often it runs, where that is one time on the clock the person can change
+  schedule: { every: 'hour' | 'day' | 'week'; at: string | null } | null
 }
 
 // A module that does work on its own: from a kit or made in the desk.
@@ -502,6 +559,12 @@ export interface ModuleView {
   pages: PageSummary[]
   tables: TableSummary[]
   modules: InsideModuleView[] // the modules inside it
+  files: ModuleFileView[] // the files on its rows, newest first
+}
+
+// A file on one of a module's rows, with the row it sits on.
+export interface ModuleFileView extends RowFileView {
+  row: { id: string; name: string; table: string }
 }
 
 // A module inside another, as the parent's Overview lists it: where it comes from and what goes on in it now, the modules inside it counted too.
@@ -634,4 +697,24 @@ export interface TaskView extends TaskLineView {
     runs: RunView[]
   } | null
   cards: CardView[] // what its runs put to the person: waiting first, then the decided
+}
+
+// The Second Brain (GET /api/brain): what each module holds, and the links between modules.
+export interface BrainView {
+  modules: {
+    id: string
+    name: string
+    rows: number
+    tables: number
+    agents: number
+    documents: number
+  }[]
+  links: { from: string; to: string; field: string; fromTable: string; toTable: string }[]
+  totals: {
+    people: number
+    organizations: number
+    decisions: number
+    noticed: number
+    followUps: number
+  }
 }

@@ -132,7 +132,7 @@ export function propose(people: People): string | null {
     people.cards.open({
       kind: 'match',
       gate: 'match',
-      words: 'These may be the same person or company',
+      words: 'Possible duplicate person or organization',
       options: [],
       actor: { kind: 'alpha' },
     }).id

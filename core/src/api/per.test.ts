@@ -69,9 +69,9 @@ it('joins People, a person’s page and the people view, and a typed value makes
   )
   const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
   const people = (await a.inject({ url: '/api/kept/people', headers: ok })).json() as KeptTable
-  expect(people.fields.slice(6).map((f) => f.name)).toEqual(['Tier', 'Tiers · Name'])
+  expect(people.fields.slice(7).map((f) => f.name)).toEqual(['Tier', 'Tiers · Name'])
   expect(people.kept?.editable).toEqual(['Name', 'Tier', 'Tiers · Name'])
-  const tier = people.fields[6]?.slug as string
+  const tier = people.fields[7]?.slug as string
   expect(people.rows.map((r) => [r.values.name, r.values[tier]])).toEqual([
     ['Ann Lee', 'Gold'],
     ['Bo Chu', null],

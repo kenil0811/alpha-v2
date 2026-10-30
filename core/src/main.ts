@@ -220,6 +220,9 @@ const runner = new AgentRunner(world, browserEngine, {
   owner: user.id,
   ask,
   judge: (prompt, schema) => provider().ask(config.judging(), prompt, schema),
+  interview: (prompt, schema) => provider().ask(config.interviewing(), prompt, schema),
+  research: (prompt, schema) => provider().ask(config.research(), prompt, schema),
+  governance: (prompt, schema) => provider().ask(config.governance(), prompt, schema),
   notify: () => started?.events.emit('event', { type: 'lines', user: user.id }),
 })
 // Files that come by mail, proposed for filing on a card each.

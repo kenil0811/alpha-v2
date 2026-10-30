@@ -78,6 +78,7 @@ export interface PersonLine {
   count: number
   first: 'you' | 'them' | null
   people: number // a company's, now
+  tables: (string | null)[] // the tables whose rows said them; none: the person's own word
 }
 
 export interface Pair {

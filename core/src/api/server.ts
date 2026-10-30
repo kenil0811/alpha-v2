@@ -16,6 +16,7 @@ import { Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
 import type { BaseCtx, Ctx } from './ctx.ts'
 import { registerActivity } from './routes/activity.ts'
+import { registerBrain } from './routes/brain.ts'
 import { registerCards } from './routes/cards.ts'
 import { registerConnectors } from './routes/connectors.ts'
 import { registerFiles } from './routes/files.ts'
@@ -140,6 +141,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerSettings(ctx)
   registerUsage(ctx)
   registerActivity(ctx)
+  registerBrain(ctx)
 
   void app.register(websocket)
   void app.register(async (scope) => {

@@ -27,3 +27,23 @@ periods:
     - '\b(19[9]\d|20\d\d)\b'
     - '\bweek\s*\d{1,2}\b'
     - '\bfy\s*\d{2,4}\b'
+# Interview me: words that end a sitting, and words that pass on one question. A reply that is one
+# of these, alone or opening a reply of four words or fewer ("done, thanks"), is read so; anything
+# else is an answer ("I don't know" is an answer too: a gap, with who would know).
+interview_done:
+  - done
+  - stop
+  - that's enough
+  - thats enough
+  - enough
+  - later
+  - not now
+  - no more
+  - i'm done
+  - im done
+  - finish
+interview_skip:
+  - skip
+  - pass
+  - next
+  - next question

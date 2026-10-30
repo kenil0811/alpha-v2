@@ -13,9 +13,9 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| S1 | The rail is module names only: Home, Conversation, Tasks, then each module, with modules inside one folded under it; Alpha's own module is not there | 20 Oct, 26 Oct | — |
-| S2 | Intelligence and Settings are pinned at the foot of the rail, Intelligence above | 25 Oct | — |
-| S3 | The rail's head is the workspace: a menu of Settings, Intelligence and Appearance | 26 Oct | — |
+| S1 | The rail is module names only: Home, Agents, Tasks (until pinned), then each module, with modules inside one folded under it; Alpha's own module is not there | 20 Oct, 26 Oct | — |
+| S2 | Settings at the foot of the rail with a small brain icon for the Second Brain beside it; folded, the brain sits above Settings. Intelligence is not on the rail | 25 Oct, 28 Oct | — |
+| S3 | The rail's head is the workspace: a menu of Settings, Second Brain and Appearance | 26 Oct | — |
 | S4 | A module's menu (⋮ or right-click): Open, Move to, Hide, Hidden modules; modules drag into one another or out to the top | 26 Oct | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
 | S6 | Both side panels drag by one edge and fold; the rail folds to a strip of icons (⌘\\) | 25 Oct | — |
@@ -59,7 +59,7 @@ held by review. Dates are 2026.
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
 | T8 | Rows come 25, 50, 100 or 250 a page, with First and Last | 25 Oct | — |
 | T9 | Ticked rows show "n selected"; Escape lets them go after any menu closes | 26 Oct | — |
-| T10 | Every dropdown is one of ours: search past five, Add new… at the foot where a choice can grow | 26 Oct | — |
+| T10 | Every dropdown is one of ours: search past six, ★ to keep an option on top, Add new… at the foot where a choice can grow; a double-click on a choice opens it | 26 Oct, 29 Oct | — |
 | T11 | No bare `<select>` where a person picks; only the cell editor keeps the native one | 25 Oct | test |
 | T12 | Freezing and wrapping columns are kept with the saved list, like widths | 26 Oct | — |
 | T13 | A cell's History (old → new, who, when) is on its right-click menu; ⇧↓ and ⌘D fill down, after a yes | 26 Oct | — |
@@ -94,9 +94,9 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
+| I1 | Second Brain: Graph (the default: Alpha, every module sized by its rows, its main tables and agents, the connections, the links between modules), Across modules, Connections, Agents. Settings holds Governance (How to work, Decisions, Noticed) and Connections too | 26 Oct, 28 Oct | — |
 | I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct | — |
-| I3 | Settings › Model: each way on its row with its state, its key and Use this; under them Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
+| I3 | Settings › Model: each way on its row with its state, its key and Use this (Kenil, 28 Oct); Usage is its own section, Settings › Usage (Vikas, 27 Oct), a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions | 27 Oct | — |
 
 ## Wording
@@ -122,9 +122,213 @@ held by review. Dates are 2026.
 
 ## Proposed, waiting on Kenil or the core
 
+- S1 signal dots as the one state mark, a bullet before the words: pulsing needs you now, filled
+  waits for your yes, hollow optional, green running; each says so on hover (Vikas, 27 Oct).
+- S2 a chart's kinds in one dropdown on its card; every mark opens the rows it counts, filtered,
+  with Show original list (Vikas, 27 Oct).
+- A row's own page is the whole width, made for the row: the module's mark, its table, its title
+  (a double-click renames it), its states (each toned choice) in a line under it; its properties
+  a line each with an icon, the empty ones folded, and under them its document as open blocks
+  ("/" for a kind, Markdown starts, to-dos, drag to move), kept as Markdown in its notes; beside
+  them one column of what hangs off it: each part a short list, links, files, tasks (Vikas, 27 and
+  28 Oct; replaces R2 for rows if agreed).
+- A module opens on its Overview: the pulse strip, its own work left, the standard column right
+  (Interview me, Files, Agents, Intelligence, What Alpha may do, Tables); a card's head is its name
+  only; nothing on it twice (Vikas, 27 Oct; replaces M1 and M2 if agreed).
+- The standard column is the default, not a suggestion: blocks that move (29 Oct) move within the
+  work column or within the standard column, which opens on the right in every module (Vikas, 30 Oct).
+- Intelligence has Connections, Second Brain, Agents and Governance. Second Brain is the layer
+  across modules. Governance is what Alpha keeps about itself: notes, rules and decisions
+  (Vikas, 27 Oct).
+- Settings › Usage shows what the model cost by day, model, module and agent, with the prices it
+  counts at. An estimate is marked ≈ (Vikas, 27 Oct; replaces "What each run costs" below).
+- The rail and the assistant fold and open the same way: one narrowest width, a fold mid-drag
+  past it, a drag out from the folded strip, an Open button on each strip, and mirrored shortcuts
+  (Vikas, 27 Oct). Folded, each is a strip of icons with their names under them (`stripItem` in
+  `ui/edge.tsx`; Vikas, 28 Oct).
+- Home: greeting and date in the bar, Find on top, one strip across every module (Needs you,
+  Interview me with its top questions, Agents, Tasks, What changed), two columns, no box to ask
+  Alpha (Vikas, 28 Oct).
+- Interview me never sends a fixed prompt: it asks the next question the Interviewer prepared
+  today, with its why and "n of N"; on a hover it says "Prepared today: 7 questions, first: …";
+  while the questions are being prepared it says Preparing… (Vikas, 30 Oct; proposed).
+- No Conversation tab in a module; Conversation is its own screen with the list view (Vikas, 26
+  and 28 Oct).
+- Toolbar: search first and wide, Filter right beside ⋮, Columns inside ⋮, quick filters under it,
+  no row count under it; the count sits just above New (Vikas, 26 and 28 Oct; replaces T1 if agreed).
+- People has Lists: Clients, Insurers, My team and the like from the tables whose rows are
+  people, My contacts for the rest (Vikas, 28 Oct).
+- A chart shows only when it says something (its bars differ, eight rows or more); a hover adds
+  what the mark does not already show (Vikas, 28 Oct).
+- A module's name says on hover what it is for (Vikas, 28 Oct).
+
+### One library (Vikas, 28 Oct)
+
+Use the control in `window/src/ui/` that does the job; make a new one only when none does, and
+put it there and on the parts page (#/parts).
+
+| Control | File | Where |
+|---|---|---|
+| Pill switch | `ui/pill-switch.tsx` | The bar of every screen whose pages each hold their own data: a module's tables and pages, Network, Second Brain. Nothing else; underlined tabs are gone |
+| List view | `ui/side-list.tsx` | A list left, the chosen page right, as Settings: Settings, Conversation, Governance, a table's List view |
+| Cut buttons | `ui/cut.tsx` | Cuts of one list (Today, This week, a saved list, 30 days), with counts, under the toolbar |
+| Segmented | `ui/segmented.tsx` | Only picking a value in a form (Look, Text size, a task's state) |
+| Drop zone | `ui/drop-zone.tsx` | Every place files are added, one kind (`accept`) or many |
+| New, Save, Cancel | `TableView.tsx` | New under every view; Save and Cancel beside it |
+| Square icon tile | `ui/icon-tile.tsx` | Places pinned atop the rail (Home, Conversation, Tasks, Network to start; up to 12) and a module's actions atop its Overview's standard column |
+| Pager | `ui/pager.tsx` | Every way through pages: a table's pages and Needs you's Slides. ‹ and ›, each page's number while there are seven or fewer, else "3 of 12"; nothing for one page |
+| Side panel | `ui/side-panel.tsx`, `Peek.tsx` | What a click opens first: an element (row, agent, run, rule, task, person) from anywhere, and from Home or inside the panel any screen too (a module, a table, a list, Activity, Intelligence); editable there, Back to the step before, a large Open page at its foot. The rail goes to the page |
+
+- Nothing on screen twice, and no card, tile or bar that says nothing (a nought, a single-colour
+  bar, an empty heading). An empty group is not shown; no "Nothing due" lines. Where an empty
+  state has a next step, it is a button (Connect Contacts, Review listings) (Vikas, 28 Oct).
+- Text comes in five sizes: 10, 14, 18 (body), 24 and 32; spacing grows with them, one step 5px.
+  Nothing is in capitals (Vikas, 28 Oct; replaces the 12px floor).
+- Everything that asks for action has a button saying the action: an open task says Start,
+  Done or Review (Vikas, 28 Oct).
+- One word for one thing, the words any business app uses, kept in `window/src/vocabulary.ts`
+  and checked by `look.test.ts`: Needs approval, Possible duplicate, Not a duplicate, Failed,
+  Clear filters, Restore, Related, active (Vikas, 28 Oct).
+
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, renaming a module and choosing its icon (needs the core).
 - What each run costs, shown under Settings › Model (needs the core).
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.
+- Nothing is pinned atop the rail to start; past 12 modules Alpha asks once, as a task, which
+  places to pin. Right-click a place or a module to pin it (Vikas, 28 Oct).
+- Header and rail text one step up: rail items 18, the bar's crumb 18, a screen's title 32,
+  section titles 32, the side panel's title 18 (Vikas, 28 Oct).
+- A table whose rows report to its own rows ("Reports to") shows an organization chart first on its
+  module's Overview; those who manage no one stand in a column under their manager (Vikas, 28 Oct).
+- Every link opens: a link, email or phone value, a web address or email in words, a linked row's
+  name and the Related list; places in Alpha open in the side panel (Vikas, 28 Oct).
+- One Back (`ui/back.tsx`): an arrow and "Back" at the left of the header on every screen but
+  Home, the same in the side panel (Vikas, 28 Oct).
+
+### Everything actionable, Governance apart (Vikas, 29 Oct)
+
+- Every chart stretches from its corner, is redrawn at its box's size, and scrolls both ways
+  below its least size. What the pointer is on in a chart or graph is drawn last and outlined.
+- Anything that floats is portalled to the window, or into the open dialog, on one scale
+  (`--z-raised` 10 to `--z-tip` 60 in `app.css`); never a bare z number. A scrolling box with
+  sticky parts is `isolate`.
+- Over a link, the foot of the window says where it goes: the address with ↗ outside Alpha, the
+  page's name inside.
+- Governance is its own section, two columns, Can do and Cannot do, of enforced rules only:
+  approved is solid, waiting is greyed on dots with Approve; agents' rules sit under the agent's
+  name. A rule is added by typing at the foot of a column or by asking Alpha; never an Add a rule
+  button. Figures and connection states are never rules.
+- A module's page goes Agents, Governance, Tables, Second Brain. Modules are numbered in rail
+  order and tables under them (2, 2.2, 2.2.1); every table counted is listed.
+- A page that only analyses a module's tables is charts on its Overview, not a page.
+- Every block on Home and an Overview has a handle on hover: drop it beside, above or below
+  another; the arrangement is kept per person by the core.
+- Every figure has a button saying what to do about it, going to the exact rows. Up to six goals
+  show one each; a goal that is behind has one task, kept to its numbers, closed when met.
+- A figure's hover splits it along the field that best explains it, never its own stage.
+- One card, one row: Needs you lists each waiting card as its own row with its own buttons,
+  under a heading per agent ("Morning 4") that carries Approve all where its cards share options;
+  a proposal's tasks are a row each, with Add and Decline; drafts are never sent in bulk. An agent
+  past its limit of waiting cards (`core/config/limits.yaml`) waits and says so, and like rows
+  join the card already waiting (Vikas, 30 Oct; for Kenil's review; replaces "Cards of one kind
+  in one module are one card, 1 of N", 29 Oct).
+- An Overview, a list or a screen is never blank: Loading…, a line saying what will show and how,
+  or the refusal. No row of icon tiles at the top; a lone action is a button with its words.
+- Agents are grouped by what they do; the module is a column and a filter. Their list says how
+  often each runs (a dropdown, written into its file), when it last ran ("12 min ago", the time on
+  hover), and Running or Paused beside the switch. New agent is the first control.
+- A blocked agent is red: a red dot, the reason in words, the one button that unblocks it.
+- Turning an agent on runs it now; "Running now…" until it ends. Sync now says when it last synced.
+- The rail's head is the workspace: picture and name, each changed by a double-click. Its menu
+  holds who is signed in, Appearance on one line, Switch account and Log out; never a place the
+  rail already has. Every count on the rail says on hover what it is made of.
+- Marking dims the window and lights what is under the pointer; its banner wears the accent ring.
+- Network's switch is Overview, People, Organizations, nothing else. A table that names people by
+  a role's address ("Broker email") puts them in that role's list (Brokers).
+
+### Agents as threads, Tasks never empty (Vikas, 30 Oct)
+
+- Agents is a list of whom to talk to: Alpha first, then each agent grouped by what it does, each
+  with its last line and what waits on you; each opens its own thread. A module is never a thread.
+- A message's author is who said it, Alpha or the agent by name; the module is a small chip.
+- Every card and agent's post opens whole in the side panel (`#/card/<id>` or its run): the card
+  with its actions, the runs it rests on, its history.
+- A card's source line ("Rests on…", "<agent>'s email", a row's name) links to what it names;
+  plain only when nothing in Alpha holds it.
+- Agents of one module that did not finish are one card: each with its reason in words and its
+  own Try again and Leave it, plus Try again all and Leave all; a new failure joins it.
+- An agent's post repeated unchanged shows once, at the time it was last said. A newer proposal
+  from an agent stands for its earlier ones still waiting.
+- Tasks opens on the first list that holds something. Needs you holds every card waiting
+  on the person, then the tasks waiting on them, each with its button.
+- Needs you switches List and Card with the tables' view dropdown; Card is a
+  grid of tiles: what it is, its state, its module, its title, what it's about, its buttons. Every
+  card's first button is the one thing to do; a click elsewhere opens it whole.
+
+### Needs you, one list (Vikas, 30 Oct; for Kenil's review)
+
+- Needs you is one list, drawn by one component on Home and in Tasks: sign-ins, every card under
+  who it is from, then the tasks waiting on the person that no card there stands for. A task
+  waiting on cards is not a second row: each card says "For <task>", the task's state reads
+  Needs your input, and its Review opens its first card.
+- Task and card rows share one fixed grid with a header: state, title (what it's about under it),
+  state in words, module, owner, date, buttons. The date is right-aligned at the same place on
+  every row; narrow, module, owner and state words fold. The one thing to do is the rightmost
+  button.
+- An agent's state is the task's state: Needs your input, "<agent> working"; no extra pills.
+- Every task and card opens in the side panel; its page is Open page at the panel's foot.
+
+### Stretch, layers, buttons, Home and blocks (Vikas, 30 Oct)
+
+- Resizing adds no chrome (Vikas, 30 Oct: "minimalistic UI rather than so many new elements"):
+  no handles, bars or borders, only the cursor. A chart's x-axis (the strip it and its labels are
+  drawn in) shows ↔ and a drag stretches the drawing wider or compresses it; its y-axis shows ↕
+  and a drag heightens or shortens it; the box's bottom-right corner shows ↘↖ and does both
+  (`Stretch` in `ui/chart.tsx`). Bars and heat take their label strips as axes; donut and rings
+  have the corner alone. A click on an axis strip is the strip's, so a double-click fits it back
+  and never opens what is beneath; a focused axis takes the arrows. A drawing wider than its box
+  scrolls sideways inside the box, never the page. Replaces the edge handles of the same
+  day and "stretches from its corner".
+- What opens on a hover is the top layer: a box that lets a tile or a list spill over what follows
+  is raised as a whole (`relative z-(--z-raised)`), never `isolate` alone, since a positioned dot
+  after it paints over it. Anything clipped is portalled (`floatRoot`).
+- The same line said again in one list is said once with ×N.
+- Every button changes colour under the pointer: the plain one and the ghost turn to the accent's
+  soft tint, the primary darkens; the focus ring is `app.css`'s, for every kind. A raw `<button>`
+  that looks like a button does the same.
+- A row of buttons (a card's actions, a dialog's foot, a task's button) sits at the right, the one
+  thing to do first: `Actions` in `ui/card.tsx`, the Dialog's `actions`.
+- Home says each thing once: the Needs you tile counts all that waits, questions with it, and goes
+  to Needs you without listing it; Interview me is a tile only while no question waits.
+- A task row is one grid: state, title and where, the date (a fixed column, at the right), the
+  state pill (a fixed column), the button; the same place on every row.
+- A strip of tiles is even: as many to a row as fit, evened over the rows, never one alone.
+- Every card is a block the person moves (its handle on hover) and resizes from its bottom-right
+  corner alone, the ↘↖ cursor its only mark (width a share of its row, height in pixels, kept as
+  "key@40x320"; double-click gives it back), kept per person by the core: Home, an
+  Overview, a module's Agents and notes, an agent's page, Second Brain, Usage, Connections.
+  A table's own views are not blocks.
+
+### Needs you as tasks, Slides, one pager (Vikas, 30 Oct; for Kenil's review)
+
+- Everything that needs the person is a task: each waiting card is a row of Tasks › Today, This
+  week and All open, state Needs your input, owner You, From the agent that raised it (or Alpha),
+  read from the cards and gone once answered; a click opens the card. A card serving a task in
+  the list is that task's state, not a second row.
+- One count for what waits: a row per sign-in, per card, per proposed task still wanting a word
+  (`needsCount` in `Waiting.tsx`); Home's tile and block, the rail's badge and Tasks' cut agree.
+  Tasks' Needs you holds only what waits on the person; a task waiting on someone else is not there.
+- A card shown as a card says what it asks, written out: the agents that did not finish by their
+  reasons ("It ran past its 15 minutes for 10 of them; the Mac was offline for 5"), a proposal's
+  tasks, a review's rows, a draft's message. Its buttons sit at the bottom right.
+- Needs you's view switch is List, Card and Slides. Slides is one card large, the pager beside
+  its buttons, ← and →; an answered card gives its place to the next. A heading's name in the
+  list narrows every view to that agent, with Clear filters.
+- Every table and slideshow pages with the one Pager (`ui/pager.tsx`): ‹ and ›, each page's number
+  while there are seven or fewer, else "3 of 12"; replaces T8's First and Last.
+- A goal's tile says what it counts and what its button opens, as the view shows them ("0 of 13
+  this week · 1,015 listings to review"); its links open in the side panel, filtered; a link to no
+  rows is not offered. A table opened in the panel shows just the rows a figure counted.
+- Under 64rem, task and card rows fold state, module and owner, so the title keeps its room.

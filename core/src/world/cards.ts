@@ -175,6 +175,40 @@ export class Cards {
     })
   }
 
+  // A waiting card that more joins (another agent that did not finish): its words, options and
+  // call change in place, said in the journal, rather than a second card beside it (Vikas, 30 Oct).
+  amend(
+    id: string,
+    change: { words: string; options: string[]; call: Call; restsOn?: string[] },
+    by: Actor,
+    said: string,
+  ): Card {
+    return tx(this.db, () => {
+      const card = this.get(id)
+      if (card?.state !== 'waiting') throw new Refused('That card is not waiting any more.')
+      run(
+        this.db,
+        'UPDATE cards SET words = ?, options = ?, call = ?, call_key = ?, rests_on = ? WHERE id = ?',
+        change.words,
+        json(change.options),
+        json(change.call),
+        callKey(change.call),
+        json(change.restsOn ?? card.restsOn),
+        id,
+      )
+      append(this.db, {
+        actor: by,
+        kind: 'card_joined',
+        words: said,
+        data: { card: id },
+        user: card.user,
+        module: card.module,
+        card: id,
+      })
+      return this.get(id) as Card
+    })
+  }
+
   get(id: string): Card | undefined {
     const r = one<CardRow>(this.db, 'SELECT * FROM cards WHERE id = ?', id)
     return r ? toCard(r) : undefined

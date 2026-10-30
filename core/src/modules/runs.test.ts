@@ -23,7 +23,15 @@ import { run as exec } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { type Agent, agents, setAgentState, syncAgents } from './agents.ts'
 import { install } from './kits/index.ts'
-import { AgentRunner } from './runs/index.ts'
+import {
+  AgentRunner,
+  foldTold,
+  rehold,
+  settleStuck,
+  stuckOn,
+  stuckView,
+  TOLD_AGAIN,
+} from './runs/index.ts'
 
 let home: string
 let world: World
@@ -87,6 +95,30 @@ describe('a run', () => {
     expect(runner.stop('n_left3')).toBe(true)
     expect(runner.runs(10).find((r) => r.id === 'n_left3')?.state).toBe('stopped')
     expect(runner.stop('n_nothing')).toBe(false)
+  })
+
+  it('withdraws, at start, a waiting proposal only to answer the cards on Home; never one with other tasks', () => {
+    const propose = (titles: string[]) =>
+      world.cards.open({
+        kind: 'suggestion',
+        words: 'Morning suggests',
+        options: ['Add them', 'Not now'],
+        call: {
+          tool: 'propose_tasks',
+          input: { agent: 'a_m', tasks: titles.map((title) => ({ title })) },
+        },
+        actor: { kind: 'alpha' },
+      })
+    const stale = propose(['Answer the 4 cards waiting on Home'])
+    const mixed = propose(['Answer the 1 card waiting on Home', 'Call Oat Mill'])
+    new AgentRunner(world, () => engine)
+    expect(world.cards.get(stale.id)?.state).toBe('withdrawn')
+    expect(world.cards.get(mixed.id)?.state).toBe('waiting')
+    expect(world.lines({ kinds: ['card_closed'] }).map((l) => l.words)).toEqual([
+      expect.stringMatching(
+        /^Withdrawn: Morning suggests \(each card waiting on Home is its own row/,
+      ),
+    ])
   })
 
   it('runs an agent’s script in its sandbox and reports its outcome', async () => {
@@ -168,6 +200,35 @@ describe('a run', () => {
     expect(world.lines({ user: 'u_1', kinds: ['told'] }).map((l) => l.words)).toEqual([
       'Reader: 2 new suppliers.',
     ])
+  }, 60_000)
+})
+
+describe('an agent that says the same again', () => {
+  it('is said again, not posted twice: the stream shows the one post at the time last said', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    for (const n of [5, 6]) {
+      mkdirSync(join(m.dir, 'skills', `say${n}`), { recursive: true })
+      writeFileSync(
+        join(m.dir, 'skills', `say${n}`, 'run.js'),
+        `export default async (alpha) => { await alpha.tell('${n} leads not yet called.') }`,
+      )
+    }
+    const runner = new AgentRunner(world, () => engine, { owner: 'u_1' })
+    const say = (n: number) => runner.runScript(m, `skills/say${n}/run.js`, {}, 'Lead aging', null)
+    for (const n of [5, 5, 6, 6]) await say(n)
+    expect(world.lines({ kinds: ['told'] }).map((l) => l.words)).toEqual([
+      'Lead aging: 5 leads not yet called.',
+      'Lead aging: 6 leads not yet called.',
+    ])
+    const all = world.lines({ kinds: ['told', TOLD_AGAIN] })
+    expect(all).toHaveLength(4)
+    const folded = foldTold(all)
+    expect(folded.map((l) => [l.kind, l.words, l.at])).toEqual([
+      ['told', 'Lead aging: 5 leads not yet called.', all[1]?.at],
+      ['told', 'Lead aging: 6 leads not yet called.', all[3]?.at],
+    ])
+    // posts from before: two alike in a row fold too, and a repeat whose post is gone stands for it
+    expect(foldTold(all.slice(1)).map((l) => l.kind)).toEqual(['told', 'told'])
   }, 60_000)
 })
 
@@ -466,7 +527,7 @@ describe('a run that did not finish', () => {
     for (const minute of [0, 1, 2]) await runner.runDue(at8.getTime() + minute * 60_000)
     expect(runner.runs().map((r) => r.state)).toEqual(['failed', 'failed', 'failed'])
     const card = world.cards.waiting().find((c) => c.call?.tool === 'run_again')
-    expect(card?.words).toMatch(/^Counter did not finish 3 times: Counter did not finish: /)
+    expect(card?.words).toBe('Counter did not finish 3 times: boom')
     expect(card?.options).toEqual(['Try again', 'Leave it'])
     // held while the card waits
     await runner.runDue(at8.getTime() + 3 * 60_000)
@@ -479,6 +540,73 @@ describe('a run that did not finish', () => {
     runner.leave(counter?.id as string, null)
     await runner.runDue(at8.getTime() + 4 * 60_000)
     expect(runner.runs()).toHaveLength(4)
+  }, 60_000)
+
+  it('puts every agent of a module that did not finish on one card: Leave it on one, Try again all on the rest', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    writeFileSync(
+      join(m.dir, 'skills', 'count', 'run.js'),
+      'export default async () => { throw new Error("boom") }',
+    )
+    writeFileSync(
+      join(m.dir, 'agents', 'tally.md'),
+      '---\nname: Tally\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/count/run.js }\ntouches: [Orders]\n---\nTallies.\n',
+    )
+    syncAgents(world, world.shape.module(m.id) as never, 'paused')
+    const runner = new AgentRunner(world, () => engine)
+    for (const a of agents(world, m.id)) setAgentState(world, a.id, 'on', 'u_1')
+    const at8 = new Date()
+    at8.setDate(at8.getDate() - 1)
+    at8.setHours(8, 0, 0, 0)
+    for (const minute of [0, 1, 2]) await runner.runDue(at8.getTime() + minute * 60_000)
+    const cards = world.cards.waiting().filter((c) => c.call?.tool === 'run_again')
+    expect(cards).toHaveLength(1)
+    const card = cards[0] as NonNullable<(typeof cards)[0]>
+    expect(card.words).toBe('2 agents did not finish: Counter and Tally')
+    expect(card.options).toEqual(['Try again all', 'Leave all'])
+    expect(stuckOn(card).map((s) => [s.name, s.times])).toEqual([
+      ['Counter', 3],
+      ['Tally', 3],
+    ])
+    // held while the card waits, even by a runner that starts afresh (a restarted core)
+    const fresh = new AgentRunner(world, () => engine)
+    await fresh.runDue(at8.getTime() + 3 * 60_000)
+    expect(fresh.runs()).toHaveLength(6)
+    // Leave it on Tally: the card keeps Counter alone, in its words
+    const tally = stuckOn(card).find((s) => s.name === 'Tally')?.agent as string
+    const after = settleStuck(fresh, card.id, tally, false, { user: 'u_1', turn: null }, ctx.actor)
+    expect(after.state).toBe('waiting')
+    expect(after.words).toBe('Counter did not finish 3 times: boom')
+    expect(after.options).toEqual(['Try again', 'Leave it'])
+    // Try again all: the card closes and Counter runs once more
+    const done = settleStuck(fresh, card.id, null, true, { user: 'u_1', turn: null }, ctx.actor)
+    expect(done.state).toBe('yes')
+    await vi.waitFor(() => expect(fresh.runs()).toHaveLength(7), { timeout: 20_000 })
+    // cards from before, one an agent, become the module's one card at the next tick
+    for (const [name, why] of [
+      ['Counter', 'page.goto: net::ERR_INTERNET_DISCONNECTED at https://x.example'],
+      ['Tally', 'Tally was stopped at 15 minutes, its budget.'],
+    ]) {
+      world.cards.open({
+        kind: 'suggestion',
+        words: `${name} did not finish 3 times: ${name} did not finish: ${why}`,
+        options: ['Try again', 'Leave it'],
+        call: {
+          tool: 'run_again',
+          input: { agent: agents(world, m.id).find((a) => a.name === name)?.id, cursor: null },
+        },
+        actor: { kind: 'agent', id: name as string },
+        module: m.id,
+      })
+    }
+    rehold(fresh)
+    const [one, ...none] = world.cards.waiting().filter((c) => c.call?.tool === 'run_again')
+    expect(none).toHaveLength(0)
+    expect(one?.words).toBe('2 agents did not finish: Counter and Tally')
+    expect(stuckView(one as never)?.map((s) => s.words)).toEqual([
+      'the Mac was offline',
+      'it ran past its 15 minutes',
+    ])
   }, 60_000)
 
   it('runs the due agents in a lane of their own: the tick is back at once', async () => {

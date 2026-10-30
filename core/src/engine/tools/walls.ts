@@ -15,11 +15,17 @@ export interface CaseInput {
   decides: string
 }
 
-// A module's first table needs its business case, given now if it has none.
-export function caseFirst(module: Module | undefined, name: string, given: CaseInput | undefined) {
+// A module's first table needs its business case, given now if it has none. The shape tool and
+// the Builder's proposals (modules/builder.ts) both ask this one wall; `give` names where it goes.
+export function caseFirst(
+  module: Module | undefined,
+  name: string,
+  given: CaseInput | undefined,
+  give = 'business_case with the table',
+) {
   if (given || (module && businessCase(module))) return
   throw new Refused(
-    `${module?.name ?? name} has no business case yet. Give business_case with the table: who it is for, what it keeps track of, and the decisions it serves, from the person’s words.`,
+    `${module?.name ?? name} has no business case yet. Give ${give}: who it is for, what it keeps track of, and the decisions it serves, from the person’s words.`,
   )
 }
 

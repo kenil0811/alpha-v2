@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import { all, now, one, run, tx } from '../../world/db.ts'
@@ -78,6 +78,7 @@ export interface UpdateReport {
   replaced: string[]
   kept: string[]
   added: string[]
+  dropped: string[] // files the kit no longer ships, gone where the person left them as they were
   rowsLanded: number
   rowsKept: number
 }
@@ -109,7 +110,14 @@ export async function update(
   // sees no change of the person's where there is none
   const copies: string[] = []
   const report: UpdateReport = tx(world.db, () => {
-    const out: UpdateReport = { replaced: [], kept: [], added: [], rowsLanded: 0, rowsKept: 0 }
+    const out: UpdateReport = {
+      replaced: [],
+      kept: [],
+      added: [],
+      dropped: [],
+      rowsLanded: 0,
+      rowsKept: 0,
+    }
     for (const f of files) {
       const target = join(module.dir, f)
       const installed = one<{ installed_hash: string }>(
@@ -146,6 +154,20 @@ export async function update(
         fresh,
       )
     }
+    // a file the kit no longer ships (the Interviewer's agent file, 30 Oct) goes, unless the person
+    // changed it: then it is theirs
+    const shipped = new Set(files)
+    for (const r of all<{ path: string; installed_hash: string }>(
+      world.db,
+      'SELECT path, installed_hash FROM module_files WHERE module_id = ?',
+      module.id,
+    )) {
+      if (shipped.has(r.path)) continue
+      const target = join(module.dir, r.path)
+      if (existsSync(target) && sha(readFileSync(target)) !== r.installed_hash) continue
+      out.dropped.push(r.path)
+      run(world.db, 'DELETE FROM module_files WHERE module_id = ? AND path = ?', module.id, r.path)
+    }
     placeModule(world, module, manifest.within, kitCtx)
     shapeTables(world, module, manifest, kitCtx)
     shapeViews(world, manifest, kitCtx)
@@ -173,11 +195,12 @@ export async function update(
       mkdirSync(dirname(join(module.dir, f)), { recursive: true })
       copyFileSync(join(kitDir, f), join(module.dir, f))
     }
+    for (const f of out.dropped) rmSync(join(module.dir, f), { force: true })
     syncAgents(world, module, 'paused')
     world.line({
       actor: ctx.actor,
       kind: 'installed',
-      words: `Updated ${module.name} from ${kit.version} to ${manifest.version}: ${out.replaced.length + out.added.length} file${out.replaced.length + out.added.length === 1 ? '' : 's'} new or replaced${out.kept.length ? `, ${out.kept.length} of your changes kept` : ''}${out.rowsKept ? `, ${out.rowsKept} changed setup row${out.rowsKept === 1 ? '' : 's'} kept` : ''}.`,
+      words: `Updated ${module.name} from ${kit.version} to ${manifest.version}: ${out.replaced.length + out.added.length} file${out.replaced.length + out.added.length === 1 ? '' : 's'} new or replaced${out.dropped.length ? `, ${out.dropped.length} no longer shipped removed` : ''}${out.kept.length ? `, ${out.kept.length} of your changes kept` : ''}${out.rowsKept ? `, ${out.rowsKept} changed setup row${out.rowsKept === 1 ? '' : 's'} kept` : ''}.`,
       data: { module: module.id, ...out, from: kit.version, to: manifest.version },
       user: ctx.user ?? null,
       module: module.id,

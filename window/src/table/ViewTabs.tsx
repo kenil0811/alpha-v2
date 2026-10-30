@@ -1,12 +1,14 @@
 // A table's toolbar, one row that never wraps, in this order: the saved list (a dropdown: the one
 // the table opens on first, its ★ filled, then All and each list, shared by everyone, a ★ on hover
-// making one the default, with Add list at its foot), Save and Cancel while the list
-// on screen differs from what was saved, the view, search and filter (`tools`), and on the right
+// making one the default, with Add list at its foot), the view, search and filter (`tools`), and on the right
 // the table's actions, ⋮ and the numbers' chevron (`right`). The list's own actions sit in the
-// dropdown and on a right-click of it: rename, duplicate, open the table on it, delete.
+// dropdown and on a right-click of it: rename, duplicate, open the table on it, delete. Save and
+// Cancel, while the list on screen differs from what was saved, sit beside New (`saveAt`; Vikas,
+// 27 Oct).
 import type { SavedView } from '@alpha/core/api'
 import { ChevronDown, Plus } from 'lucide-react'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '../ui/button.tsx'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field } from '../ui/field.tsx'
@@ -26,6 +28,7 @@ export function ViewTabs({
   onDefault,
   onRemove,
   onReset,
+  saveAt,
 }: {
   tools: ReactNode // the view, search and filter, after the saved list
   right: ReactNode // the table's own actions, ⋮ and the chevron, at the right end
@@ -40,11 +43,13 @@ export function ViewTabs({
   onDefault: (id: string, on: boolean) => void // the core keeps the list the table opens on
   onRemove: () => void
   onReset: () => void
+  saveAt: HTMLElement | null // where Save and Cancel go: beside New
 }) {
   const [open, setOpen] = useState(false)
   const [removing, setRemoving] = useState(false) // Delete the list asks first, in the pop-up
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null)
   const picker = useRef<HTMLButtonElement>(null)
+  const saver = useRef<HTMLButtonElement>(null)
   const onList = useContextMenu()
   const view = views.find((v) => v.id === current)
   const name = view?.name ?? 'All'
@@ -124,7 +129,7 @@ export function ViewTabs({
           setNaming('rename')
         }}
         {...onList.on}
-        className="flex h-7.5 max-w-40 shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface pr-1.5 pl-2.5 text-ink text-md hover:border-accent-line"
+        className="flex h-7.5 max-w-40 shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface pr-1.5 pl-2.5 text-ink text-md hover:border-accent-line hover:bg-accent-soft"
       >
         <span className="truncate">{name}</span>
         {dirty && (
@@ -136,23 +141,6 @@ export function ViewTabs({
         )}
         <ChevronDown className="size-3.5 shrink-0 text-ink-3" />
       </button>
-      {dirty && (
-        <>
-          <Button size="sm" variant="ghost" onClick={onReset} title="Go back to what was saved">
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => (view ? onSave() : setNaming('new'))}
-            data-tip={
-              view ? `Save the changes to ${view.name}` : 'Keep what is on screen as a new list'
-            }
-          >
-            {view ? 'Save' : 'Save as list'}
-          </Button>
-        </>
-      )}
       {tools}
       {problem && <span className="min-w-0 truncate text-bad text-sm">{problem}</span>}
       <span className="ml-auto flex shrink-0 items-center gap-1">{right}</span>
@@ -197,7 +185,32 @@ export function ViewTabs({
       <Popover point={onList.point} open={onList.open} onClose={onList.close}>
         {actions}
       </Popover>
-      <Popover anchor={picker} open={naming !== null} onClose={() => setNaming(null)}>
+      {dirty &&
+        saveAt &&
+        createPortal(
+          <>
+            <Button
+              ref={saver}
+              size="sm"
+              variant="primary"
+              onClick={() => (view ? onSave() : setNaming('new'))}
+              data-tip={
+                view ? `Save the changes to ${view.name}` : 'Keep what is on screen as a new list'
+              }
+            >
+              {view ? 'Save' : 'Save as list'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onReset} title="Go back to what was saved">
+              Cancel
+            </Button>
+          </>,
+          saveAt,
+        )}
+      <Popover
+        anchor={naming === 'new' && dirty && saveAt ? saver : picker}
+        open={naming !== null}
+        onClose={() => setNaming(null)}
+      >
         <NameForm
           start={naming === 'rename' ? (view?.name ?? '') : ''}
           label={naming === 'rename' ? 'Rename' : 'Save'}

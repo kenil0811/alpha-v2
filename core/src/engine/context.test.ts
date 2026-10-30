@@ -129,7 +129,7 @@ describe('a table on its first touch', () => {
         .filter((x) => !x.alwaysLoad)
         .map((x) => x.name)
         .sort(),
-    ).toEqual(['connect', 'keep', 'look', 'run'])
+    ).toEqual(['build', 'connect', 'governance', 'keep', 'look', 'research', 'run'])
     const guide = tools.find((x) => x.name === 'guide') as ToolEntry
     const views = await guide.handler({ about: 'views' })
     expect((views.content[0] as { text: string }).text).toContain('view.kind: table, board')

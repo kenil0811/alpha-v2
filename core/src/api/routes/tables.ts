@@ -44,6 +44,16 @@ export function registerTables(ctx: Ctx): void {
     return { ok: true }
   })
 
+  // The person renames a table (a double-click on its pill): its rows and links stay.
+  app.post('/api/tables/:id/name', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { name } = z.object({ name: z.string().trim().min(1).max(80) }).parse(req.body)
+    if (!world.shape.table(id)) throw new Refused('That table is not there.')
+    const t = world.shape.rename({ table: id }, name, asPerson)
+    live()
+    return { id: t.id, name: t.name }
+  })
+
   app.post('/api/tables/:id/sidebar', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { shown } = z.object({ shown: z.boolean() }).parse(req.body)

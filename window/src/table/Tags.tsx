@@ -3,9 +3,13 @@
 // The pick is kept as the typed words ("Rush, Late"), as every other editor keeps its value, and
 // read back with readValue.
 import type { FieldView } from '@alpha/core/api'
-import type { KeyboardEvent } from 'react'
+import { Search, Star } from 'lucide-react'
+import { type KeyboardEvent, useState } from 'react'
+import { askForNew } from '../ask.ts'
 import { cn } from '../ui/cn.ts'
+import { AddNew, useStars } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
+import { MenuLine } from '../ui/popover.tsx'
 import { DOT } from './values.ts'
 
 // Chips in the room there is: the first two, the second cut with an ellipsis if it must be, and
@@ -37,40 +41,95 @@ const held = (typed: string) =>
     .map((x) => x.trim())
     .filter(Boolean)
 
+// The field's choices, ticked or not: a search past five, ★ to keep one at the top, Add new… at
+// the foot (asked of Alpha, as every dropdown's is).
 export function TagPicker({
   field,
   typed,
   onTyped,
   onKeyDown,
+  table,
 }: {
   field: FieldView
   typed: string
   onTyped: (typed: string) => void
   onKeyDown?: (e: KeyboardEvent) => void // a cell's Enter and Escape
+  table?: string | undefined // its table's name, for Add new…
 }) {
   const now = held(typed)
+  const [words, setWords] = useState('')
+  const { first, star } = useStars(field.id)
   const flip = (c: string, on: boolean) =>
     onTyped(field.choices.filter((x) => (x === c ? on : now.includes(x))).join(', '))
+  const shown = first(
+    field.choices.filter((c) => c.toLowerCase().includes(words.trim().toLowerCase())),
+    (c) => c,
+  )
   return (
-    <fieldset
-      className="flex max-h-60 flex-col overflow-y-auto"
-      aria-label={field.name}
-      onKeyDown={onKeyDown}
-    >
-      {field.choices.map((c) => (
-        <label key={c} className="flex h-7.5 items-center gap-2 rounded-sm px-1.5 hover:bg-hover">
+    <fieldset className="flex flex-col" aria-label={field.name} onKeyDown={onKeyDown}>
+      {field.choices.length > 6 && (
+        <label className="mb-1 flex items-center gap-1.5 border-line border-b px-2 pb-1.5">
+          <Search className="size-3.25 text-ink-3" />
           <input
-            type="checkbox"
-            className="accent-accent"
-            checked={now.includes(c)}
-            onChange={(e) => flip(c, e.target.checked)}
+            value={words}
+            onChange={(e) => setWords(e.target.value)}
+            placeholder="Search"
+            aria-label="Search"
+            className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
           />
-          {field.tones[c] && (
-            <span className={cn('size-1.75 shrink-0 rounded-full', DOT[field.tones[c]])} />
-          )}
-          <span className="min-w-0 flex-1 truncate text-ink">{c}</span>
         </label>
-      ))}
+      )}
+      <div className="flex max-h-60 flex-col overflow-y-auto">
+        {shown.map((c) => {
+          const s = star(c)
+          return (
+            <label
+              key={c}
+              className="group flex h-7.5 items-center gap-2 rounded-sm px-1.5 hover:bg-hover"
+            >
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={now.includes(c)}
+                onChange={(e) => flip(c, e.target.checked)}
+              />
+              {field.tones[c] && (
+                <span className={cn('size-1.75 shrink-0 rounded-full', DOT[field.tones[c]])} />
+              )}
+              <span className="min-w-0 flex-1 truncate text-ink">{c}</span>
+              {s && (
+                <button
+                  type="button"
+                  aria-pressed={s.on}
+                  aria-label={s.tip}
+                  data-tip={s.tip}
+                  onClick={(e) => {
+                    e.preventDefault() // not a tick
+                    s.onClick()
+                  }}
+                  className={cn(
+                    'grid size-5 place-items-center rounded-sm text-ink-3 outline-none hover:text-accent focus-visible:ring-2 focus-visible:ring-accent-soft',
+                    s.on
+                      ? 'text-accent'
+                      : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+                  )}
+                >
+                  <Star className={cn('size-3.25', s.on && 'fill-current')} />
+                </button>
+              )}
+            </label>
+          )
+        })}
+        {shown.length === 0 && <p className="px-2.5 py-1.5 text-ink-3 text-md">No match.</p>}
+      </div>
+      <MenuLine />
+      <AddNew
+        adds={{
+          what: 'choice',
+          send: (w) => askForNew('choice', table ? `${field.name} in ${table}` : field.name, w),
+        }}
+        onDone={() => undefined}
+      />
     </fieldset>
   )
 }

@@ -49,13 +49,9 @@ export function Topic({ className, ...props }: ButtonHTMLAttributes<HTMLButtonEl
   )
 }
 
-// An 11px uppercase label: the only uppercase there is.
+// A small label in sentence case: nothing is in capitals (Vikas, 25 and 28 Oct).
 export function Label({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <span className={cn('font-semibold text-ink-3 text-xs uppercase tracking-label', className)}>
-      {children}
-    </span>
-  )
+  return <span className={cn('font-semibold text-ink-3 text-sm', className)}>{children}</span>
 }
 
 export function Kbd({ children }: { children: ReactNode }) {

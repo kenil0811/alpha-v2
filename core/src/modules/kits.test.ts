@@ -358,6 +358,7 @@ describe('updating a kit', () => {
       replaced: ['NOTES.md'],
       kept: ['skills/count/SKILL.md'],
       added: ['skills/count/README.md'],
+      dropped: [],
       rowsLanded: 1,
       rowsKept: 1,
     })

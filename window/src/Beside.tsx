@@ -39,7 +39,6 @@ export function Beside({
     <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-hair border-l @min-[1100px]:flex">
       <div className="flex flex-col gap-6 px-5 pt-7 pb-6">
         <Group title="Needs you" count={cards.length + signIns.length}>
-          {cards.length + signIns.length === 0 && <Quiet>Nothing waits on you.</Quiet>}
           {cards.map((c) => (
             <Line
               key={c.id}

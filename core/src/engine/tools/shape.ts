@@ -15,7 +15,7 @@ import { Field, guard, ok, tableOf, tool } from './common.ts'
 import { caseFirst, notAPeriod, notOnlyAName } from './walls.ts'
 
 // A shape change as the desk's tool takes it.
-const SHAPE_INPUT = {
+export const SHAPE_INPUT = {
   action: z.enum([
     'make_table',
     'add_fields',

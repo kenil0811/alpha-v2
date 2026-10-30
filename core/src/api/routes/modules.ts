@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { agents, whenWords } from '../../modules/agents.ts'
+import { stillBeingRead } from '../../files/documents.ts'
+import { agents } from '../../modules/agents.ts'
 import { installedKits } from '../../modules/kits/index.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
@@ -13,7 +14,7 @@ import { livesPeople, tableSummary } from '../views.ts'
 
 export function registerModules(ctx: Ctx): void {
   const { app, world, engine, user, options } = ctx
-  const { needsOf, summaries } = ctx.views
+  const { agentOut, summaries, byWords } = ctx.views
 
   app.get('/api/modules', async (): Promise<ModuleSummary[]> => summaries())
 
@@ -69,16 +70,7 @@ export function registerModules(ctx: Ctx): void {
       name: m.name,
       people: livesPeople(m),
       kit: k ? { name: k.kit, version: k.version } : null,
-      agents: agents(world, m.id).map((a) => ({
-        id: a.id,
-        name: a.name,
-        state: a.state,
-        description: a.description,
-        needs: needsOf(m, a),
-        when: whenWords(a.trigger),
-        lastRunAt: a.lastRunAt,
-        running: running.has(a.id),
-      })),
+      agents: agents(world, m.id).map((a) => agentOut(m, a, running)),
       sites: moduleNetwork(m).length,
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
       businessCase: businessCase(m),
@@ -88,6 +80,27 @@ export function registerModules(ctx: Ctx): void {
         .tables(m.id)
         .filter((t) => !t.hidden)
         .map((t) => tableSummary(world, t)),
+      files: world
+        .moduleFiles(m.id)
+        .slice(0, 60)
+        .map((f) => {
+          const rec = world.records.get(f.record)
+          return {
+            hash: f.file.hash,
+            name: f.file.name,
+            size: f.file.size,
+            mime: f.file.mime,
+            kind: f.kind,
+            by: byWords(f.placedBy),
+            at: f.placedAt,
+            read: f.document ? 'read' : stillBeingRead(f.file.hash) ? 'reading' : 'kept',
+            row: {
+              id: f.record,
+              name: rec ? world.rowName(rec.table, rec.record.values) : 'a row',
+              table: rec?.table.name ?? '',
+            },
+          }
+        }),
       modules: summaries()
         .filter((c) => c.parent === m.id)
         .map((c) => {

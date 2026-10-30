@@ -154,6 +154,19 @@ export class Spend {
     ).map((r) => r.m)
   }
 
+  // What each agent's runs spent since a time, by agent id: its Cost on the Agents list and its
+  // page (Vikas, 28 Oct). The same rows Usage sums, never a second store.
+  byAgentSince(since: string): Record<string, number> {
+    return Object.fromEntries(
+      all<{ agent: string; usd: number }>(
+        this.db,
+        `SELECT r.agent_id AS agent, SUM(s.usd) AS usd FROM spend s JOIN runs r ON r.id = s.run
+         WHERE s.at >= ? AND r.agent_id IS NOT NULL AND s.usd IS NOT NULL GROUP BY r.agent_id`,
+        since,
+      ).map((r) => [r.agent, r.usd]),
+    )
+  }
+
   // What one turn or one run spent, for its line in Activity.
   of(what: { turn: string } | { run: string }): number | null {
     const rows = all<{ usd: number | null }>(

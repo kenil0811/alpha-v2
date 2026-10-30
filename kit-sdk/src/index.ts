@@ -267,6 +267,68 @@ export const CALLS: Call[] = [
     since: 1,
   },
   {
+    name: 'interview.prepare',
+    signature: 'alpha.interview.prepare()',
+    params: [],
+    args: z.looseObject({}),
+    answer:
+      '{ words, count, top: [{ key, module, ask, why, unblocks, value }] }: how many are worth asking today, and the most valuable twenty, best first',
+    words:
+      'Interview me’s pool refreshed and re-ranked: everything unresolved (open questions, failed agents, rules waiting, empty, blank or stale tables) and the standing bank (goals, roles and tools, steps, exceptions, gaps, numbers, for the business and each module), each valued by what it unblocks, how much it helps, its age and its skips; the most valuable worded by the model; what was answered leaves until its answer is stale. Interview me asks from it, as many as are worth asking',
+    effect: null,
+    since: 1,
+  },
+  {
+    name: 'research',
+    signature: 'alpha.research({ ask, about })',
+    params: 'object',
+    args: z.looseObject({ ask: z.string().min(1), about: z.string().optional() }),
+    answer:
+      '{ words, lines: [{ kind competitor or open_source or practice, name, line, licence, activity, better, worse, use learn or reuse, impact, reach, effort, value, sources }], dropped }, best value first',
+    words:
+      'Alpha’s Research skill: a bounded web look (searches, pages and minutes set by the core), reading only, at competitors and new startups, open-source alternatives with their licence and activity, and common practice; a short brief ranked by impact × reach ÷ effort (1–5 each), every line kept only when a source it cites resolves. An agent whose file names effects names research',
+    effect: 'leaves_world',
+    since: 1,
+  },
+  {
+    name: 'governance.review',
+    signature: 'alpha.governance.review()',
+    params: [],
+    args: z.looseObject({}),
+    answer: '{ words, noticed, walls: [{ agent, module, runs, last }] }',
+    words:
+      'Alpha’s Governance skill: the rules Alpha noticed and nobody decided, each put to the person on its Save card (never approved by it), and the agents whose runs hit a wall several times this week; for an agent outside Alpha’s module, its own module only',
+    effect: null,
+    since: 1,
+  },
+  {
+    name: 'governance.explain',
+    signature: 'alpha.governance.explain({ refusal, agent })',
+    params: 'object',
+    args: z.looseObject({ refusal: z.string().min(1), agent: z.string().optional() }),
+    answer: '{ words }',
+    words:
+      'Alpha’s Governance skill: a refusal (a rule’s or a wall’s words) in plain words, with what the person could do; the refusal stands whatever it says',
+    effect: null,
+    since: 1,
+  },
+  {
+    name: 'builder.propose',
+    signature: 'alpha.builder.propose({ ask, case: { for, keeps, decides }, exact, changes })',
+    params: 'object',
+    args: z.looseObject({
+      ask: z.string().min(1),
+      case: z.looseObject({ for: z.string(), keeps: z.string(), decides: z.string() }).optional(),
+      exact: z.boolean().optional(),
+      changes: z.array(z.looseObject({ action: z.string() })),
+    }),
+    answer: '{ card, words }',
+    words:
+      'Alpha’s Builder skill: a build (tables and fields as the shape tool takes them, or { action: keep, module, path, content } for an agent or a skill) with its business case, refused without one; researched first unless exact; on one card for the person’s Build it, nothing applied before; an agent outside Alpha’s module builds inside its own module only',
+    effect: null,
+    since: 1,
+  },
+  {
     name: 'journal.list',
     signature: 'alpha.journal.list({ since, kinds, limit })',
     params: 'object',

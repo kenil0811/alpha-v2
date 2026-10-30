@@ -1,13 +1,14 @@
 // Keeping a file in a module (design §5, `keep`): a skill, an agent, a page or the module's notes.
-// Each keep is a commit in the module's folder, so its versions can be read back; an agent kept
-// from the desk starts on, since the person asked for it.
+// Each keep is a commit in the module's folder, so its versions can be read back; a new agent
+// starts paused, and runs once the person presses Activate (Vikas, 28 Oct).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
-import { parse } from 'yaml'
+import { triggersOf } from '@alpha/kit-sdk'
+import { parse, parseDocument } from 'yaml'
 import { Refused } from '../world/kinds.ts'
 import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
-import { parseAgent, syncAgents, whenWords } from './agents.ts'
+import { type Agent, agents, parseAgent, syncAgents, type Trigger, whenWords } from './agents.ts'
 import { commitAll } from './git.ts'
 
 const PLACES = ['skills/', 'agents/', 'pages/', 'files/']
@@ -24,7 +25,7 @@ export function placeOf(path: string): string {
   return rel
 }
 
-function check(module: Module, rel: string, text: string): string | null {
+function check(world: World, module: Module, rel: string, text: string): string | null {
   if (/^agents\/[^/]+\.md$/.test(rel)) {
     const a = parseAgent(text, rel)
     if (!existsSync(join(module.dir, a.runs.script)))
@@ -34,8 +35,13 @@ function check(module: Module, rel: string, text: string): string | null {
       throw new Refused(
         `${a.name} takes tasks, but ${a.runs.script} never calls alpha.task.done(words): only that makes a task Done, with what was done (a returned done: true does nothing). Its task is alpha.input.task: place.row is the row's id, values that row's values by field name.`,
       )
-    if (!a.trigger) return `${a.name} is on call for the tasks given to it`
-    return `${a.name} is on, ${whenWords(a.trigger)}${a.tasks ? ', and takes tasks' : ''}`
+    const what = !a.trigger
+      ? 'on call for the tasks given to it'
+      : `${whenWords(a.trigger)}${a.tasks ? ', and takes tasks' : ''}`
+    const known = agents(world, module.id).find((x) => x.file === rel || x.name === a.name)
+    if (!known)
+      return `${a.name} is new and paused: it runs ${what} once the person presses Activate on its card or page`
+    return `${a.name} is ${known.state === 'on' ? 'on' : 'paused'}, ${what}`
   }
   if (/^skills\/[^/]+\/SKILL\.md$/.test(rel)) {
     const m = /^---\n([\s\S]*?)\n---/.exec(text)
@@ -59,13 +65,14 @@ export async function keep(
   const full = join(module.dir, rel)
   const text = content ?? (existsSync(full) ? readFileSync(full, 'utf8') : null)
   if (text === null) throw new Refused(`${rel} is not in ${module.name} yet: give its words.`)
-  const agent = check(module, rel, text)
+  const agent = check(world, module, rel, text)
   if (content !== undefined) {
     mkdirSync(dirname(full), { recursive: true })
     writeFileSync(full, content)
   }
   const commit = await commitAll(module.dir, `Kept ${rel}`)
-  syncAgents(world, module, 'on')
+  // a new agent starts paused, with Activate in view (Vikas, 28 Oct); a known one keeps its state
+  syncAgents(world, module, 'paused')
   const words = commit
     ? `Kept ${rel} in ${module.name}${agent ? `; ${agent}` : ''}.`
     : `${rel} in ${module.name} was already kept as it is.`
@@ -79,4 +86,27 @@ export async function keep(
     turn: ctx.turn ?? null,
   })
   return words
+}
+
+// How often an agent runs, as the person picks it in the Agents list (Vikas, 29 Oct): written into
+// its file's trigger, which stays the truth, and kept like any other keep. Its times on the clock
+// become the one picked; what it waits on (a filing, a change) stays.
+export async function keepWhen(
+  world: World,
+  module: Module,
+  agent: Agent,
+  when: { every: 'hour' | 'day' | 'week'; at?: string | undefined },
+  ctx: WriteCtx,
+): Promise<string> {
+  const text = readFileSync(join(module.dir, agent.file), 'utf8')
+  const m = /^---\n([\s\S]*?)\n---(\n?[\s\S]*)$/.exec(text)
+  if (!m) throw new Refused(`${agent.file} has no front matter.`)
+  const doc = parseDocument(m[1] as string)
+  const events = triggersOf(doc.toJS().trigger as Trigger | Trigger[] | undefined).filter(
+    (t) => !('every' in t) && !('cron' in t),
+  )
+  const time: Trigger =
+    when.every === 'hour' ? { every: 'hour' } : { every: when.every, at: when.at ?? '08:00' }
+  doc.set('trigger', doc.createNode(events.length ? [time, ...events] : time, { flow: true }))
+  return keep(world, module, agent.file, `---\n${String(doc).trimEnd()}\n---${m[2]}`, ctx)
 }

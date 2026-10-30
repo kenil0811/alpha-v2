@@ -12,6 +12,10 @@ import { AgentRunner } from './runs/index.ts'
 
 let home: string
 let world: World
+// no model in tests: the Interviewer's wording falls back to code's own words
+const noModel = async () => {
+  throw new Error('no model in tests')
+}
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'alpha-morning-'))
   world = await World.open(join(home, 'tenants', 't_test'))
@@ -36,16 +40,18 @@ describe('Morning', () => {
       profiles: join(home, 'p'),
       pace: { minMs: 0, maxMs: 0 },
     })
-    const runner = new AgentRunner(world, () => engine, { owner: world.owner().id })
+    const runner = new AgentRunner(world, () => engine, { owner: world.owner().id, ask: noModel })
     const out = await runner.runAgent(morning as never)
     expect(out.state).toBe('ok')
     const told = world.lines({ kinds: ['told'] }).map((l) => l.words)
-    // Watson is the next run, at its first fixed time
-    expect(told[0]).toMatch(/^Morning: Nothing is due; next up Watson at \d\d:\d\d\.$/)
+    // the next of Alpha's own runs, at its first fixed time
+    expect(told[0]).toMatch(
+      /^Morning: Nothing is due; \d+ questions worth asking in Interview me; next up Watson at \d\d:\d\d\.$/,
+    )
     expect(world.cards.waiting(world.owner().id)).toHaveLength(0)
   }, 60_000)
 
-  it('suggests a quiet task and the cards waiting, as tasks on one card', async () => {
+  it('suggests a quiet task, never one to answer the cards waiting', async () => {
     const ctx = { actor: { kind: 'system' as const }, user: world.owner().id }
     await keepDefaults(world, ctx, DEFAULT_KITS)
     const owner = world.owner()
@@ -68,7 +74,7 @@ describe('Morning', () => {
       profiles: join(home, 'p'),
       pace: { minMs: 0, maxMs: 0 },
     })
-    const runner = new AgentRunner(world, () => engine, { owner: owner.id })
+    const runner = new AgentRunner(world, () => engine, { owner: owner.id, ask: noModel })
     const out = await runner.runAgent(morning as never)
     expect(out.words).not.toMatch(/did not finish/)
     expect(out.state).toBe('ok')
@@ -78,9 +84,7 @@ describe('Morning', () => {
     expect(card?.words).toBe('Morning suggests')
     const input = card?.call?.input as { tasks: { title: string }[] }
     const tasks = input.tasks.map((x) => x.title)
-    expect(tasks).toEqual([
-      'Pick up or drop: Call the landlord',
-      'Answer the 2 cards waiting on Home',
-    ])
+    // never a task to answer cards: each card is its own row in Needs you (Vikas, 30 Oct)
+    expect(tasks).toEqual(['Pick up or drop: Call the landlord'])
   }, 60_000)
 })
