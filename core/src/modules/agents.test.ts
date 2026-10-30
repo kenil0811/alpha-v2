@@ -92,9 +92,9 @@ describe('an agent’s triggers in words', () => {
 describe('an agent’s function', () => {
   it('is what its file says, else read from its name and words, else Admin', () => {
     const a = { description: null, brief: '', function: null }
-    expect(functionOf({ ...a, name: 'Fusion', function: 'Sourcing' })).toBe('Sourcing')
+    expect(functionOf({ ...a, name: 'Harbor', function: 'Sourcing' })).toBe('Sourcing')
     expect(functionOf({ ...a, name: 'Outreach' })).toBe('Outreach')
-    expect(functionOf({ ...a, name: 'Fusion', brief: 'Reads the listings each morning.' })).toBe(
+    expect(functionOf({ ...a, name: 'Harbor', brief: 'Reads the listings each morning.' })).toBe(
       'Sourcing',
     )
     expect(functionOf({ ...a, name: 'Morning' })).toBe('Admin')

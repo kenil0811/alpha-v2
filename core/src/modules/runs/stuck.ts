@@ -54,7 +54,7 @@ export function reasonOf(name: string, words: string): string {
   return own.replace(/\.$/, '')
 }
 
-// "APS, Fusion, Kumo and 12 more"
+// "North Ledger, Harbor, Kestrel and 12 more"
 function named(list: Stuck[]): string {
   const names = list.map((s) => s.name)
   if (names.length <= 3) return names.join(', ').replace(/, ([^,]*)$/, ' and $1')

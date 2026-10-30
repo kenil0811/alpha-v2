@@ -100,14 +100,14 @@ describe('the stream', () => {
 
   it('keeps each agent to its own thread: its lines, what was said to it and the turn after', () => {
     n = 0
-    const aps = { id: 'a_1', name: 'APS' }
+    const aps = { id: 'a_1', name: 'Listings' }
     const said = line('said', 'why did you stop?', { actor: 'person', agent: aps })
     const turn = String(said.id)
     const lines = [
       line('said', 'hello', { actor: 'person' }),
       said,
       line('replied', 'It could not reach the site.', { turn }),
-      line('told', 'APS: 3 new listings', { actor: 'agent', agent: aps, run: 'r_1' }),
+      line('told', 'Listings: 3 new listings', { actor: 'agent', agent: aps, run: 'r_1' }),
       line('card_opened', 'Try again?', { actor: 'agent', card: 'c_2', agent: aps }),
       line('card_closed', 'Yes: Try again?', { card: 'c_2', data: { state: 'yes' } }),
     ]
