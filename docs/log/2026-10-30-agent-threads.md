@@ -102,3 +102,8 @@ limits.yaml.
   modules and the desk, with no model and no web. The proposal is rewritten as "Workspace skills"
   for Kenil.
 
+
+**The standard column back on the right.** Making Overview blocks movable (29 Oct) had put every
+block in one flow, two to a row, so the 27 Oct standard column was lost. The Overview is again the
+work left and the standard column right, each its own arranged column with its own saved layout
+(`overview:<id>:work`, `overview:<id>:side`); layouts saved under the old key are left unread.

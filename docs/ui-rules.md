@@ -124,6 +124,8 @@ held by review. Dates are 2026.
 - A module opens on its Overview: the pulse strip, its own work left, the standard column right
   (Interview me, Files, Agents, Intelligence, What Alpha may do, Tables); a card's head is its name
   only; nothing on it twice (Vikas, 27 Oct; replaces M1 and M2 if agreed).
+- The standard column is the default, not a suggestion: blocks that move (29 Oct) move within the
+  work column or within the standard column, which opens on the right in every module (Vikas, 30 Oct).
 - Intelligence has Connections, Second Brain, Agents and Governance. Second Brain is the layer
   across modules. Governance is what Alpha keeps about itself: notes, rules and decisions
   (Vikas, 27 Oct).

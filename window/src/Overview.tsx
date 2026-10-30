@@ -1246,8 +1246,7 @@ export function Overview({
     { key: 'brain', name: 'Second Brain', node: <Intelligence m={m} rules={rules} /> },
     { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
   ]
-  const blocks = [...lead, ...work, ...standard]
-  const wide = new Set(blocks.filter((b) => 'wide' in b && b.wide).map((b) => b.key))
+  const wide = new Set([...lead, ...work].filter((b) => 'wide' in b && b.wide).map((b) => b.key))
 
   return (
     // its own width decides the columns, not the window's: it is drawn in the side panel too
@@ -1259,17 +1258,23 @@ export function Overview({
           </div>
           <InterviewButton m={m} className="shrink-0" />
         </div>
-        <Arranged
-          page={`overview:${m.id}`}
-          blocks={blocks}
-          start={[
-            ...pairs(
+        {/* the work left and the standard column right, in every module (27 Oct, kept when
+            blocks became movable on 29 Oct); each moves and resizes within its column */}
+        <div className="grid items-start gap-4 @4xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+          <Arranged
+            page={`overview:${m.id}:work`}
+            blocks={[...lead, ...work]}
+            start={pairs(
               [...lead, ...work].map((b) => b.key),
               (k) => wide.has(k),
-            ),
-            ...pairs(standard.map((b) => b.key)),
-          ]}
-        />
+            )}
+          />
+          <Arranged
+            page={`overview:${m.id}:side`}
+            blocks={standard}
+            start={standard.map((b) => [b.key])}
+          />
+        </div>
       </div>
     </div>
   )
