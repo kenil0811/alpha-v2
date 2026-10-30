@@ -1,5 +1,7 @@
 // The journal: append-only lines, each with an actor, a kind and plain words (design §4).
+import { hashOf, lastHash } from './audit.ts'
 import { all, type Db, json, now, one, parse, run } from './db.ts'
+import { Refused } from './kinds.ts'
 
 export type ActorKind = 'person' | 'alpha' | 'agent' | 'connector' | 'system'
 
@@ -70,24 +72,56 @@ function toLine(r: LineRow): Line {
 }
 
 // Append a line; call it inside the transaction of the write it records.
+// A secret the person signed in with never reaches a line (step 2, part 3): each is kept here
+// for the life of the core, and a line that would carry one is refused.
+const secrets = new Set<string>()
+export function keepOut(secret: string): void {
+  if (secret.trim().length >= 4) secrets.add(secret)
+}
+
 export function append(db: Db, line: LineInput): Line {
   const at = now()
+  const data = json(line.data ?? {})
+  for (const s of secrets)
+    if (line.words.includes(s) || data.includes(s))
+      throw new Refused('That line would carry a secret, which the journal never does.')
+  const id =
+    Number(one<{ id: number | null }>(db, 'SELECT max(id) AS id FROM journal')?.id ?? 0) + 1
+  const row = {
+    id,
+    at,
+    actor_kind: line.actor.kind,
+    actor_id: line.actor.id ?? null,
+    source: line.source ?? null,
+    kind: line.kind,
+    words: line.words,
+    data,
+    user_id: line.user ?? null,
+    turn_id: line.turn ?? null,
+    module_id: line.module ?? null,
+    run_id: line.run ?? null,
+    card_id: line.card ?? null,
+  }
+  // chained to the line before (step 2, part 3)
+  const hash = hashOf(lastHash(db), row)
   const res = run(
     db,
-    `INSERT INTO journal (at, actor_kind, actor_id, source, kind, words, data, user_id, turn_id,
-       module_id, run_id, card_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    at,
-    line.actor.kind,
-    line.actor.id ?? null,
-    line.source ?? null,
-    line.kind,
-    line.words,
-    json(line.data ?? {}),
-    line.user ?? null,
-    line.turn ?? null,
-    line.module ?? null,
-    line.run ?? null,
-    line.card ?? null,
+    `INSERT INTO journal (id, at, actor_kind, actor_id, source, kind, words, data, user_id, turn_id,
+       module_id, run_id, card_id, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    row.id,
+    row.at,
+    row.actor_kind,
+    row.actor_id,
+    row.source,
+    row.kind,
+    row.words,
+    row.data,
+    row.user_id,
+    row.turn_id,
+    row.module_id,
+    row.run_id,
+    row.card_id,
+    hash,
   )
   return read(db, Number(res.lastInsertRowid)) as Line
 }

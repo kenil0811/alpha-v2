@@ -191,6 +191,8 @@ export function registerConnectors(ctx: Ctx): void {
         secret: z.string().optional(),
       })
       .parse(req.body)
+    // a secret the person signs in with never reaches a journal line (step 2, part 3)
+    if (b.secret) world.keepOut(b.secret)
     const c = await engine.connect(user, b.connector, b.account, b.secret ?? null)
     return { id: c.id, state: c.state }
   })

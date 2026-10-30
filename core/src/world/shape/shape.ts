@@ -244,6 +244,7 @@ export class Shape {
         many?: boolean
         partOf?: boolean
         indexed?: boolean
+        sensitive?: boolean
         summary?: SummarySpec
         per?: 'person'
       }>(f.options, {})
@@ -261,6 +262,7 @@ export class Shape {
         per: f.kind === 'person' && o.per === 'person' ? ('person' as const) : null,
         partOf: f.kind === 'relation' && !o.many && !!o.partOf,
         indexed: !!o.indexed,
+        sensitive: !!o.sensitive,
         key: f.key,
         about: f.about,
         aboutBy: f.about_by,
@@ -394,6 +396,7 @@ export class Shape {
       ...(many || (f.kind === 'choice' && f.many) ? { many: true } : {}),
       ...(f.partOf ? { partOf: true } : {}),
       ...(f.indexed && f.kind !== 'relation' && !summary ? { indexed: true } : {}),
+      ...(f.sensitive ? { sensitive: true } : {}),
       ...(summary ? { summary } : {}),
       ...(f.per ? { per: 'person' } : {}),
     }

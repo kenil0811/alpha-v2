@@ -23,6 +23,7 @@ import type { BackupView, DataPageView } from './api/types.ts'
 import { KEY_REF } from './engine/route.ts'
 import type { Install } from './install.ts'
 import type { Platform } from './platform/index.ts'
+import { exportLines } from './world/audit.ts'
 import { type Beside, mirror } from './world/backups.ts'
 import { one } from './world/db.ts'
 import { Refused } from './world/kinds.ts'
@@ -173,9 +174,11 @@ export async function takeData(world: World, home: string, dest = exportsDir()):
           })
     if (existsSync(join(home, 'alpha.yaml')))
       cpSync(join(home, 'alpha.yaml'), join(root, 'alpha.yaml'))
+    // the journal with its chain, which `pnpm journal verify` checks anywhere (step 2, part 3)
+    writeFileSync(join(root, 'journal.jsonl'), exportLines(world.db))
     writeFileSync(
       join(root, 'README.md'),
-      '# Alpha data\n\nworld.sqlite is the world (SQLite); files/ its files by hash; modules/ the module folders; instructions/ the standing instructions; connectors/ the connectors added. See docs/data.md in Alpha.\n',
+      '# Alpha data\n\nworld.sqlite is the world (SQLite); files/ its files by hash; modules/ the module folders; instructions/ the standing instructions; connectors/ the connectors added; journal.jsonl the journal with its hash chain, checked with `pnpm journal verify journal.jsonl`. See docs/data.md in Alpha.\n',
     )
     mkdirSync(dest, { recursive: true })
     const out = join(dest, `alpha-data-${new Date().toISOString().slice(0, 10)}.tar.gz`)

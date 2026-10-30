@@ -1,5 +1,7 @@
 // The world's schema, every migration in the order it runs (design §3, §4); `schema.ts` runs
 // them. Kept apart so the list can grow without the runner around it.
+
+import { chainJournal } from './audit.ts'
 import type { Db } from './db.ts'
 import { addSeq, foldProvenance, toRealTables } from './migrate13.ts'
 
@@ -590,4 +592,7 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   `
   ALTER TABLE tables ADD COLUMN added_on TEXT;
   `,
+  // 28: the audit journal (step 2, part 3, 30 Oct): every line's hash over its content and the
+  // line before's; the lines there already chained once, oldest first
+  chainJournal,
 ]

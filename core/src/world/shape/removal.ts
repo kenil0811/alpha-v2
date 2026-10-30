@@ -173,6 +173,7 @@ export function hiddenFields(shape: Shape, tableId: string): (Field & { rows: nu
       name: f.name,
       slug: f.slug,
       kind: f.kind,
+      sensitive: false,
       choices: [],
       tones: {},
       about: null,

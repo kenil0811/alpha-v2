@@ -26,6 +26,7 @@ import { platformHere } from './platform/index.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
 import { isDeveloper, type Trust } from './signing.ts'
+import { fold, verify } from './world/audit.ts'
 import { backupDaily } from './world/backups.ts'
 import { setHomeRegion } from './world/phones.ts'
 import { expire } from './world/records/index.ts'
@@ -110,6 +111,13 @@ const port = install.port
 const windowPort = port + 1
 const tenant = tenantDir(home, install.tenant)
 const world = await World.open(tenant)
+// the journal's chain, checked at every start (step 2, part 3): a break is said, never hidden
+const chainCheck = verify(world.db)
+if (!chainCheck.ok) {
+  const words = `The journal's chain is broken at line ${chainCheck.at}: ${chainCheck.why}. A line was changed or removed outside Alpha.`
+  console.error(words)
+  world.line({ actor: { kind: 'system' }, kind: 'journal_check', words, data: chainCheck })
+}
 const user = world.owner(install.owner ?? platform.personName())
 // what the last start was told to say (a backup put back, data brought in)
 const note = takeRestartNote(tenant)
@@ -263,6 +271,13 @@ const scheduler = new Scheduler(world, [
   },
   // removed rows kept past keep_removed_days deleted for good (core step 1)
   { run: async () => void expire(world.records, config.limits().keep_removed_days) },
+  // read lines older than journal_fold_days folded into a checkpoint a day (step 2, part 3)
+  {
+    run: async () => {
+      const done = fold(world.db, config.limits().journal_fold_days, { actor: { kind: 'system' } })
+      if (done.folded) console.log(`Folded ${done.folded} read lines of the journal.`)
+    },
+  },
   // the world backed up once a day, the last 7 days and 4 weeks kept
   {
     run: async () => {

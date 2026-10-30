@@ -28,6 +28,7 @@ function fieldsOf(
       ...(f.summary ? { summary: f.summary } : {}),
       ...(f.per ? { per: f.per } : {}),
       ...(f.indexed ? { indexed: true } : {}),
+      ...(f.sensitive ? { sensitive: true } : {}),
       key: f.key ?? f.name,
       ...(f.about ? { about: f.about, aboutBy: 'kit' as const } : {}),
     }))

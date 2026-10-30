@@ -74,6 +74,12 @@ browser_pace_max_ms: 9000
 # daily work deletes it for good (core step 1, Kenil 26 Oct). A judgement, never a setting.
 keep_removed_days: 30
 
+# Days after which journal lines that only said something was read (queries, searches, syncs
+# with nothing new, their done lines) fold into one checkpoint line a day that keeps the chain
+# (step 2, part 3, Kenil's call 5, 29 Oct). Writes, sends, cards, rules, reverts, removals and
+# refusals are kept for ever. A judgement, never a setting.
+journal_fold_days: 90
+
 # A row's parts its view shows, each part's twelve changed most lately with how many in all: a client's hundreds
 # of ledger lines would make its page long and slow (core plan step 4, Accounting). Open as a table
 # shows them all; the same number as a row's links show.

@@ -321,6 +321,9 @@
                 "indexed": {
                   "type": "boolean"
                 },
+                "sensitive": {
+                  "type": "boolean"
+                },
                 "key": {
                   "type": "string"
                 },

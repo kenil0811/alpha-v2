@@ -514,6 +514,20 @@ take-back runs through its connector (`connectors/takeback.ts`), journaled as `t
 that fails said in its own line. A send's card says "Once it has gone, it cannot be called
 back"; a draft's, what Revert does with it.
 
+**The audit journal** (step 2, part 3, Kenil's yes 30 Oct; his call 5, 29 Oct): every line's
+hash covers its content and the hash of the line before (`world/audit.ts`; the lines from before
+were chained once, migration 28), so a line changed with another tool breaks the chain at
+itself. The chain is checked at every start (a break is a `journal_check` line and said on the
+console) and by `pnpm journal verify <world.sqlite | journal.jsonl>`; "Take my data" adds
+`journal.jsonl`, every line with its hash and the last hash closing it, which verifies anywhere.
+A secret the person signs in with is kept out of every line from then on (a line that would carry
+it is refused), and a kit field marked `sensitive` has its values written as "(kept out)" in a
+call's line. Once a day, lines older than `journal_fold_days` (90) that only said something was
+read (queries, searches, syncs with nothing new, their done lines) fold into one `journal_fold`
+line a day, which keeps each folded run's last hash so the chain verifies across the gap; the
+fold is the one thing that deletes journal lines, and it journals itself. Everything else is kept
+for ever.
+
 **Signed packs** (slice 3, Kenil's yes 29 Oct): a kit's or a connector's pack carries SIGNATURE
 beside its PACK.json, an Ed25519 signature over PACK.json's bytes (every file and its hash), made
 with Kenil's key (`pnpm sign <pack>`; `pnpm sign --new-key` makes it once, the private half in his

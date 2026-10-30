@@ -69,7 +69,7 @@ export class Gatekeeper {
       // a connector's call says what it is, so Activity can show the writes and sends that went
       data: {
         tool: name,
-        input,
+        input: keptOut(this.world, name, input),
         call: call.callId,
         subagent: call.subagent,
         ...(says ? { effect: says.effect } : {}),
@@ -283,5 +283,33 @@ function resultOf(r: unknown): unknown {
     return JSON.parse(text)
   } catch {
     return text
+  }
+}
+
+// A write's or a change's values for a sensitive field, as the journal keeps them: "(kept out)"
+// (step 2, part 3). Every other input is kept as it is.
+function keptOut(
+  world: World,
+  tool: string,
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  if ((tool !== 'write' && tool !== 'change') || typeof input.table !== 'string') return input
+  const table = world.shape.table(input.table)
+  const hidden = new Set(
+    (table?.fields ?? []).filter((f) => f.sensitive).flatMap((f) => [f.name, f.slug, f.id]),
+  )
+  if (!hidden.size || !Array.isArray(input.rows)) return input
+  return {
+    ...input,
+    rows: input.rows.map((r) => {
+      const row = r as { values?: Record<string, unknown> }
+      if (!row?.values) return r
+      return {
+        ...row,
+        values: Object.fromEntries(
+          Object.entries(row.values).map(([k, v]) => [k, hidden.has(k) ? '(kept out)' : v]),
+        ),
+      }
+    }),
   }
 }

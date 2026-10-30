@@ -44,6 +44,8 @@ const Field = z.object({
   // it, never empty, and no tab of its own (core step 3a)
   part_of: z.boolean().optional(),
   indexed: z.boolean().optional(), // an index on it, for a field filtered on often
+  // its values never reach a journal line (an SSN, a bank account): "(kept out)" there
+  sensitive: z.boolean().optional(),
   key: z.string().optional(), // the kit's stable name for the field; its name at install when absent
   about: z.string().optional(), // one sentence on what the field means (the semantic layer)
 })

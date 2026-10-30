@@ -7,7 +7,16 @@ import { Cards } from './cards.ts'
 import { Connections } from './connections.ts'
 import { all, type Db, newId, now, one, openDb, run, tx } from './db.ts'
 import { type FileOut, Files } from './files.ts'
-import { type Actor, append, type Line, type LineInput, lastId, lines, read } from './journal.ts'
+import {
+  type Actor,
+  append,
+  keepOut,
+  type Line,
+  type LineInput,
+  lastId,
+  lines,
+  read,
+} from './journal.ts'
 import { Refused } from './kinds.ts'
 import { ModelSql } from './modelsql.ts'
 import { People } from './people/index.ts'
@@ -156,6 +165,11 @@ export class World {
   // A journal line on its own (a sentence said, a reply, a step); writes add theirs themselves.
   line(input: LineInput): Line {
     return tx(this.db, () => append(this.db, input))
+  }
+
+  // A secret the person signed in with: never in a line from now on (step 2, part 3).
+  keepOut(secret: string): void {
+    keepOut(secret)
   }
 
   lines(where: Parameters<typeof lines>[1]): Line[] {
