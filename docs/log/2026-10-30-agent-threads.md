@@ -173,3 +173,17 @@ Look again and an agent page's Run now are one `UpdateNow` (`ui/update-now.tsx`)
 just before the button, Updating… and a turning icon while it runs; Insights' date at its foot is
 gone, and an agent group's button sits under its bar so the name keeps its room. Checked with
 Playwright on Avilo (DealPilot's Overview and Home).
+
+Home's standard column (Vikas, 30 Oct: "Getting this Mac ready can be a rectangular button. Similar
+to interview me… placed above the agents, governance… why are those sections currently missing on
+the home page? Bring them back"). Home now draws an Overview's two columns through the same
+`Arranged`: the work column keeps the page "home", so an arrangement kept before stays the
+person's, and the standard column is "home:side". At its head Interview me and Getting this Mac
+ready are two buttons of one size (the Mac's steps open under them); the Interview me tile and the
+old Mac pill are gone from Home, the Overview's square is unchanged. The sections are the
+Overview's own components, given the smallest all-modules variant and no core work: Agents every
+agent from `/api/working`, grouped by function as the Agents list groups them, eight until Show
+more; Governance `GovernanceSection` with no module (every rule); Tables every module's, each under
+its name, parts folded until Show more; Second Brain and Files from each module's
+`/api/modules/:id` merged (one request a module, marked ponytail). For Kenil's review; checked
+with Playwright on Avilo and Dell at 1440 and 1100.

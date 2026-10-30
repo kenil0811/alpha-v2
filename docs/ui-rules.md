@@ -262,6 +262,12 @@ put it there and on the parts page (#/parts).
   chosen). The word a person sees is "agent", never "automation".
 - On a module's Overview, Interview me is a square, smaller than the strip's tiles, first in the
   standard column above Agents; nothing sits beside the strip.
+- Home has an Overview's two columns: its work left (Needs you, Today and overdue, What changed)
+  and the standard column right across every module (Agents grouped by what they do with New
+  agent, Governance, Tables, Second Brain, Files). At its head, above Agents, two rectangular
+  buttons of one size: Interview me, and Getting this Mac ready with its count while setup is
+  unfinished, its steps opening under them; neither is a tile in the strip (Vikas, 30 Oct; for
+  Kenil's review).
 - Tasks opens on the first list that holds something. Needs you holds every card waiting
   on the person, then the tasks waiting on them, each with its button.
 - Needs you switches List, Card and Slides with the tables' view dropdown; Card is a
@@ -286,7 +292,8 @@ put it there and on the parts page (#/parts).
 - Resizing adds no chrome (Vikas, 30 Oct: "minimalistic UI rather than so many new elements"):
   no handles, bars or borders, only the cursor. A chart's x-axis (the strip it and its labels are
   drawn in) shows ↔ and a drag stretches the drawing wider or compresses it; its y-axis shows ↕
-  and a drag heightens or shortens the drawing while its box keeps its height, the drawing then
+  and a drag up heightens the drawing (down shortens it) while its box keeps its height, the
+  origin the anchor: the foot stays where it was and the top is what scrolls away, the drawing
   scrolling up and down inside the box as a wider one scrolls sideways; the box's bottom-right
   corner shows ↘↖ and is the one way to change the box, the drawing with it
   (`Stretch` in `ui/chart.tsx`). Bars and heat take their label strips as axes; donut and rings
@@ -349,7 +356,11 @@ put it there and on the parts page (#/parts).
 - A goal's tile says what it counts ("0 listings reviewed · of 13 this week") and its button's
   hover what it opens, as the view shows it ("1,015 listings to review"). A weekly goal counts the
   rows whose stage was set this week, and never a row that left (Passed, Lost); its links open in the side panel, filtered; a link to no
-  rows is not offered. A table opened in the panel shows just the rows a figure counted.
+  rows is not offered. A table opened in the panel shows just the rows a figure counted. Any link
+  to the rows a figure counted (a tile's button, a chart's mark, a goal's line) opens in the side
+  panel wherever it is (`COUNTED` in `Peek.tsx`); ⌘-click or Open page goes to the page.
+- Back returns to where the person was, wherever that was; only a screen opened first (a link
+  from outside, a reload) goes to the place above it (Vikas, 30 Oct).
 - Under 64rem, task and card rows fold state, module and owner, so the title keeps its room.
 
 ### Lists dropdown and choice colours (Vikas, 30 Oct)

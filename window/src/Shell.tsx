@@ -1259,6 +1259,16 @@ export function InBar({ children }: { children: ReactNode }) {
   return at ? createPortal(children, at) : null
 }
 
+// The places this window went, in order: Back returns to the one before, wherever it was (Vikas,
+// 30 Oct: "when I press back, it's going to home and not to the previous path")
+const been: string[] = [globalThis.location?.hash || '#/']
+globalThis.addEventListener?.('hashchange', () => {
+  const h = location.hash || '#/'
+  if (been.at(-2) === h)
+    been.pop() // went back
+  else if (been.at(-1) !== h) been.push(h)
+})
+
 // The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
 // another, the screen's switch or name centred. Find is ⌘K, from anywhere.
 export function Bar({
@@ -1281,8 +1291,13 @@ export function Bar({
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {/* every screen but Home: Back to the place above it, or Home */}
-        {!home && <Back href={back?.href ?? '#/'} to={back?.href ? back.label : 'Home'} />}
+        {/* every screen but Home: Back to where the person was, else the place above it */}
+        {!home &&
+          (been.length > 1 ? (
+            <Back to="where you were" onClick={() => history.back()} />
+          ) : (
+            <Back href={back?.href ?? '#/'} to={back?.href ? back.label : 'Home'} />
+          ))}
         {lens && (
           <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
             Only {lens.name}

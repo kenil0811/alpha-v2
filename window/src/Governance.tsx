@@ -26,7 +26,15 @@ const SIDES: { side: Side; title: string; icon: typeof Check; tone: string; lead
 ]
 
 // A module's governance; with no module, every rule across Alpha (Settings › Governance).
-export function GovernanceSection({ module, version = 0 }: { module?: string; version?: number }) {
+export function GovernanceSection({
+  module,
+  version = 0,
+  title = module ? 'Governance' : 'Can and cannot do',
+}: {
+  module?: string
+  version?: number
+  title?: string
+}) {
   const [rules, setRules] = useState<RuleView[] | null>(null)
   const [m, setM] = useState<ModuleView | null>(null)
   const load = useCallback(() => {
@@ -51,7 +59,7 @@ export function GovernanceSection({ module, version = 0 }: { module?: string; ve
 
   return (
     <Section
-      title={module ? 'Governance' : 'Can and cannot do'}
+      title={title}
       about="What agents can and cannot do here, held by the core. Solid rules are yours; greyed ones wait for your approval. Anything else that changes your data or reaches someone, Alpha asks first."
     >
       {rules && (

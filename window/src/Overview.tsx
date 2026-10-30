@@ -26,7 +26,8 @@ import {
   Plus,
   Sheet,
 } from 'lucide-react'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
+import { byFunction } from './AgentList.tsx'
 import { api } from './api.ts'
 import { Arranged, type Block, pairs } from './arrange.tsx'
 import { interviewMe, useInterview } from './ask.ts'
@@ -1358,7 +1359,11 @@ export function Overview({
         </div>
       ),
     },
-    { key: 'tables', name: 'Tables', node: <Tables m={m} /> },
+    {
+      key: 'tables',
+      name: 'Tables',
+      node: <Tables ms={[m]} href={`#/module/${m.id}/agents`} />,
+    },
     { key: 'brain', name: 'Second Brain', node: <Intelligence m={m} rules={rules} /> },
     { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
   ]
@@ -1795,7 +1800,15 @@ function InterviewMe({
 
 // The module's files as a desktop: an icon each, its name, the row it sits on. Drop a file on it
 // to add it; Alpha reads it and files it.
-function Files({ m, onChange }: { m: ModuleView; onChange: () => void }) {
+export function Files({
+  m,
+  onChange,
+  href = `#/module/${m.id}/agents`,
+}: {
+  m: ModuleView
+  onChange: () => void
+  href?: string
+}) {
   const { busy, problem, act } = useAct(onChange)
   const icon = (f: ModuleFileView) =>
     f.mime.startsWith('image/') ? Image : /sheet|csv|excel/.test(f.mime) ? Sheet : FileText
@@ -1805,7 +1818,7 @@ function Files({ m, onChange }: { m: ModuleView; onChange: () => void }) {
     <Card
       id="files"
       title="Files"
-      href={`#/module/${m.id}/agents`}
+      href={href}
       count={m.files.length}
       signal={unread ? 'opt' : null}
       grows={m.files.length > 8}
@@ -1862,20 +1875,31 @@ function groupsOf(agents: AgentView[], main: TableData[]) {
 }
 const agentSignal = (a: AgentView): Signal => (a.needs ? 'now' : a.state === 'on' ? 'done' : 'opt')
 
-function Agents({
+// On Home (byFunction) every agent of the workspace, grouped by what it does as the Agents list
+// groups them, its module beside its name; eight until Show more.
+export function Agents({
   m,
   main,
   onChange,
   onNew,
+  href = `#/module/${m.id}/agents`,
+  byFunction: fn = false,
 }: {
   m: ModuleView
   main: TableData[]
   onChange: () => void
   onNew?: () => void
+  href?: string
+  byFunction?: boolean
 }) {
   const { busy, problem, act } = useAct(onChange)
   if (!m.agents.length) return null
-  const { groups, rest } = groupsOf(m.agents, main)
+  const { groups, rest: all } = groupsOf(m.agents, main)
+  const rest = fn
+    ? all
+        .map((a) => ({ ...a, function: a.function ?? 'Admin' }))
+        .sort((a, b) => byFunction(a.function, b.function))
+    : all
   const on = m.agents.filter((a) => a.state === 'on').length
   const turn = (as: AgentView[], state: boolean) =>
     act(() =>
@@ -1901,9 +1925,9 @@ function Agents({
     <Card
       id="agents"
       title="Agents"
-      href={`#/module/${m.id}/agents`}
+      href={href}
       count={on}
-      grows={groups.length > 0}
+      grows={groups.length > 0 || (fn && rest.length > 8)}
     >
       {(big) => (
         <div>
@@ -1965,13 +1989,18 @@ function Agents({
               </div>
             )
           })}
-          {rest.map((a) => (
-            <Line key={a.id} s={agentSignal(a)} actions={toggle(a)}>
-              <a href={`#/agent/${a.id}`} className="hover:text-accent hover:underline">
-                {a.name}
-              </a>{' '}
-              <span className="text-ink-3 text-sm">{a.when}</span>
-            </Line>
+          {(fn && !big ? rest.slice(0, 8) : rest).map((a, i) => (
+            <Fragment key={a.id}>
+              {fn && a.function !== rest[i - 1]?.function && (
+                <p className="pt-2 pb-1 text-ink-3 text-xs">{a.function}</p>
+              )}
+              <Line s={agentSignal(a)} actions={toggle(a)}>
+                <a href={`#/agent/${a.id}`} className="hover:text-accent hover:underline">
+                  {a.name}
+                </a>{' '}
+                <span className="text-ink-3 text-sm">{fn ? a.module.name : a.when}</span>
+              </Line>
+            </Fragment>
           ))}
           {onNew && (
             <button
@@ -1991,9 +2020,16 @@ function Agents({
 
 // What Alpha knows about the module, counted: the notes it reads first, the documents it has
 // read, the rules it keeps, the agents that work here; then what it keeps, table by table.
-function Intelligence({ m, rules }: { m: ModuleView; rules: RuleView[] }) {
+export function Intelligence({
+  m,
+  rules,
+  here = `#/module/${m.id}/agents`,
+}: {
+  m: ModuleView
+  rules: RuleView[]
+  here?: string
+}) {
   const notes = m.notes.split('\n').filter((l) => !l.startsWith('#') && l.trim().length > 20)
-  const here = `#/module/${m.id}/agents`
   // only what it has: a nought says nothing (Vikas, 27 Oct)
   const tiles = [
     { n: notes.length, label: 'notes', href: here },
@@ -2052,57 +2088,81 @@ function Intelligence({ m, rules }: { m: ModuleView; rules: RuleView[] }) {
 }
 
 // Every table of the module, numbered as the rail numbers its modules (2.2, its parts 2.2.1),
-// all of them in sight. The pin puts a table in the bar's switch, or takes it out.
-function Tables({ m }: { m: ModuleView }) {
-  const { pins, toggle } = usePins(m)
-  const [number, setNumber] = useState('')
+// all of them in sight. The pin puts a table in the bar's switch, or takes it out. On Home, every
+// module's, each under its name, the tables on rows folded until Show more.
+type TablesOf = Pick<ModuleView, 'id' | 'name' | 'tables'>
+export function Tables({ ms, href }: { ms: TablesOf[]; href: string }) {
+  const [numbers, setNumbers] = useState(new Map<string, string>())
   useEffect(() => {
     api.get<ModuleSummary[]>('/api/modules').then(
-      (ms) => setNumber(moduleNumbers(ms).get(m.id) ?? ''),
+      (all) => setNumbers(moduleNumbers(all)),
       () => undefined,
     )
-  }, [m.id])
+  }, [])
+  const shown = ms.filter((m) => m.tables.length)
   return (
-    <Card id="tables" title="Tables" href={`#/module/${m.id}/agents`} count={m.tables.length}>
-      {() => (
+    <Card
+      id="tables"
+      title="Tables"
+      href={href}
+      count={shown.reduce((a, m) => a + m.tables.length, 0)}
+      grows={ms.length > 1}
+    >
+      {(big) => (
         <div>
-          {numberTables(m.tables, number).map(({ table: t, n, depth }) => (
-            <div
-              key={t.id}
-              className="group/t flex h-8 items-center gap-1.5 border-hair border-t text-md"
-              style={{ paddingLeft: depth * 16 }}
-            >
-              <span className="text-ink-3 text-sm tabular-nums">{n}</span>
-              <a
-                href={`#/table/${t.id}`}
-                className="min-w-0 truncate text-ink hover:text-accent hover:underline"
-              >
-                {t.name}
-              </a>
-              <span className="flex-1 text-ink-3 text-sm tabular-nums">
-                {t.rows.toLocaleString()}
-              </span>
-              <button
-                type="button"
-                aria-label={
-                  pins.includes(t.id) ? `Unpin ${t.name} from the bar` : `Pin ${t.name} to the bar`
-                }
-                data-tip={pins.includes(t.id) ? 'Unpin from the bar' : 'Pin to the bar'}
-                onClick={() => toggle(t.id)}
-                className={cn(
-                  'grid size-6 place-items-center rounded-sm hover:bg-hover',
-                  pins.includes(t.id)
-                    ? 'text-accent'
-                    : 'text-ink-3 opacity-0 group-hover/t:opacity-100',
-                )}
-              >
-                <Pin className="size-3.5" />
-              </button>
+          {shown.map((m) => (
+            <div key={m.id}>
+              {ms.length > 1 && <p className="pt-2 pb-1 text-ink-3 text-xs">{m.name}</p>}
+              <TableRows m={m} number={numbers.get(m.id) ?? ''} all={big || ms.length === 1} />
             </div>
           ))}
         </div>
       )}
     </Card>
+  )
+}
+
+function TableRows({ m, number, all }: { m: TablesOf; number: string; all: boolean }) {
+  const { pins, toggle } = usePins(m)
+  return (
+    <>
+      {numberTables(m.tables, number)
+        .filter((x) => all || x.depth === 0)
+        .map(({ table: t, n, depth }) => (
+          <div
+            key={t.id}
+            className="group/t flex h-8 items-center gap-1.5 border-hair border-t text-md"
+            style={{ paddingLeft: depth * 16 }}
+          >
+            <span className="text-ink-3 text-sm tabular-nums">{n}</span>
+            <a
+              href={`#/table/${t.id}`}
+              className="min-w-0 truncate text-ink hover:text-accent hover:underline"
+            >
+              {t.name}
+            </a>
+            <span className="flex-1 text-ink-3 text-sm tabular-nums">
+              {t.rows.toLocaleString()}
+            </span>
+            <button
+              type="button"
+              aria-label={
+                pins.includes(t.id) ? `Unpin ${t.name} from the bar` : `Pin ${t.name} to the bar`
+              }
+              data-tip={pins.includes(t.id) ? 'Unpin from the bar' : 'Pin to the bar'}
+              onClick={() => toggle(t.id)}
+              className={cn(
+                'grid size-6 place-items-center rounded-sm hover:bg-hover',
+                pins.includes(t.id)
+                  ? 'text-accent'
+                  : 'text-ink-3 opacity-0 group-hover/t:opacity-100',
+              )}
+            >
+              <Pin className="size-3.5" />
+            </button>
+          </div>
+        ))}
+    </>
   )
 }
 

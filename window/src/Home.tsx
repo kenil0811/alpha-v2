@@ -1,25 +1,38 @@
 // Home (Kenil, 20 Oct: "Home should be about all important things, the space in home is very
 // precious"): no conversation here, Alpha is on the right. Find on top, one strip across every
 // module, then what needs the person (cards answered right here) and what changed since they last
-// looked (kept until they clear it); the modules are in the rail, not here (Kenil, 26 Oct).
+// looked (kept until they clear it); the modules are in the rail, not here (Kenil, 26 Oct). Beside
+// it the standard column of an Overview, across every module (Vikas, 30 Oct).
 
 import type {
   AgentView,
   CardView,
   ConnectorsView,
   ModuleSummary,
+  ModuleView,
+  RuleView,
   SetupView,
   Stream,
   TasksView,
   TodayView,
   WorkingModuleView,
 } from '@alpha/core/api'
-import { Bot, Check, ChevronDown, ChevronRight, LoaderCircle, Search } from 'lucide-react'
+import { Bot, Check, ChevronRight, LoaderCircle, MessageCircleQuestion, Search } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged, type Block } from './arrange.tsx'
 import { interviewMe, useInterview } from './ask.ts'
-import { isQuestion, Strip, signalOf, type Tile } from './Overview.tsx'
+import { GovernanceSection } from './Governance.tsx'
+import {
+  Agents,
+  Files,
+  Intelligence,
+  isQuestion,
+  Strip,
+  signalOf,
+  Tables,
+  type Tile,
+} from './Overview.tsx'
 import { peek } from './Peek.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
@@ -28,7 +41,7 @@ import { clock, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Cut } from './ui/cut.tsx'
-import { Dot, type Signal, strongest } from './ui/dot.tsx'
+import { type Signal, strongest } from './ui/dot.tsx'
 import { Group, Line } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
 import { NEEDS_YOU } from './vocabulary.ts'
@@ -129,6 +142,44 @@ export function Home({
     void last
     load()
   }, [load, last])
+  // the standard column across every module: each module's files and notes, and every rule
+  // ponytail: one request a module; a workspace endpoint when a person keeps dozens
+  const [views, setViews] = useState<ModuleView[]>([])
+  const [rules, setRules] = useState<RuleView[]>([])
+  useEffect(() => {
+    void last
+    Promise.all(modules.map((m) => api.get<ModuleView>(`/api/modules/${m.id}`))).then(
+      setViews,
+      () => setViews([]),
+    )
+    api.get<RuleView[]>('/api/rules').then(
+      (r) => setRules(r.filter((x) => !x.revokedAt)),
+      () => setRules([]),
+    )
+  }, [modules, last])
+  const unique = <T,>(xs: T[], key: (x: T) => string) => [
+    ...new Map(xs.map((x) => [key(x), x])).values(),
+  ]
+  const workspace: ModuleView = {
+    id: '',
+    name: 'Workspace',
+    people: false,
+    kit: null,
+    sites: 0,
+    parent: null,
+    pages: [],
+    modules: [],
+    agents,
+    notes: views.map((v) => v.notes).join('\n'),
+    tables: unique(
+      views.flatMap((v) => v.tables),
+      (t) => t.id,
+    ),
+    files: unique(
+      views.flatMap((v) => v.files),
+      (f) => `${f.hash}${f.row.id}`,
+    ),
+  }
 
   useEffect(() => {
     void last
@@ -247,6 +298,93 @@ export function Home({
     </Group>
   )
 
+  // Interview me and Getting this Mac ready: two buttons of one size at the head of the standard
+  // column, above Agents (Vikas, 30 Oct); the Mac's steps open under them
+  const start: Block['node'] = (
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          className="h-10 min-w-0 justify-start text-left"
+          onClick={() => interviewMe(null)}
+          data-tip={interview.tip}
+        >
+          {interview.busy ? (
+            <LoaderCircle className="size-4 shrink-0 animate-spin" />
+          ) : (
+            <MessageCircleQuestion className="size-4 shrink-0" />
+          )}
+          <span className="min-w-0 flex-1">Interview me</span>
+        </Button>
+        {setup && unready(setup) && (
+          <Button
+            className="h-10 min-w-0 justify-start text-left"
+            aria-expanded={readyOpen}
+            onClick={() => setReadyOpen(!readyOpen)}
+            data-tip={`Getting this Mac ready: ${readyCount(setup)} of ${4 + setup.steps.length} done; a click shows the steps`}
+          >
+            <span className="min-w-0 flex-1 truncate">
+              Mac setup{' '}
+              <span className="font-normal text-ink-3 tabular-nums">
+                {readyCount(setup)}/{4 + setup.steps.length}
+              </span>
+            </span>
+          </Button>
+        )}
+      </div>
+      {setup && unready(setup) && readyOpen && <SetupList view={setup} onChange={reloadSetup} />}
+    </div>
+  )
+  // the standard column, across every module, in an Overview's order
+  const standard: Block[] = [
+    { key: 'start', name: 'Interview me', node: start },
+    ...(agents.length
+      ? [
+          {
+            key: 'agents',
+            name: 'Agents',
+            node: (
+              <Agents
+                m={workspace}
+                main={[]}
+                onChange={load}
+                href="#/intelligence/agents"
+                byFunction
+                onNew={() => (window.location.hash = '#/agent/new')}
+              />
+            ),
+          },
+        ]
+      : []),
+    {
+      key: 'governance',
+      name: 'Governance',
+      node: (
+        <div id="ov-governance" className="rounded-lg border border-line bg-surface px-3 py-3">
+          <GovernanceSection title="Governance" version={last ?? 0} />
+        </div>
+      ),
+    },
+    ...(modules.some((m) => m.tables.length)
+      ? [
+          {
+            key: 'tables',
+            name: 'Tables',
+            node: <Tables ms={modules} href="#/intelligence/brain" />,
+          },
+        ]
+      : []),
+    {
+      key: 'brain',
+      name: 'Second Brain',
+      node: <Intelligence m={workspace} rules={rules} here="#/intelligence/brain" />,
+    },
+    {
+      key: 'files',
+      name: 'Files',
+      node: <Files m={workspace} onChange={load} href="#/intelligence/brain" />,
+    },
+  ]
+
   return (
     // every link on Home opens in the side panel first (Peek.tsx; Vikas, 28 Oct)
     <div data-peek-all className="@container h-full overflow-y-auto">
@@ -276,12 +414,9 @@ export function Home({
         </button>
 
         <Strip
-          tiles={homeTiles({ cards, signIns: signIns.length, agents, tasks, changed, interview })}
+          tiles={homeTiles({ cards, signIns: signIns.length, agents, tasks, changed })}
           onGo={(go) => {
-            // the Interviewer's questions for today, never a fixed prompt (Vikas, 30 Oct)
-            if (go === 'ask' && !cards.some(isQuestion)) interviewMe(null)
-            else if (go === 'ask') document.getElementById('home-needs')?.scrollIntoView()
-            else if (go === 'tasks') peek('#/tasks?list=today')
+            if (go === 'tasks') peek('#/tasks?list=today')
             else if (go === 'agents') peek('#/intelligence/agents')
             else
               document
@@ -297,38 +432,15 @@ export function Home({
           </p>
         )}
 
-        {/* small until opened: how far the Mac is, then the steps (Vikas, 26 Oct) */}
-        {setup && unready(setup) && (
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              aria-expanded={readyOpen}
-              onClick={() => setReadyOpen(!readyOpen)}
-              className="flex w-fit items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-md hover:shadow-pop"
-            >
-              <Dot s="yes" tip="Setup to finish" />
-              Getting this Mac ready
-              <span className="text-ink-3 tabular-nums">
-                {readyCount(setup)} of {4 + setup.steps.length} done
-              </span>
-              {readyOpen ? (
-                <ChevronDown className="size-3.5 text-ink-3" />
-              ) : (
-                <ChevronRight className="size-3.5 text-ink-3" />
-              )}
-            </button>
-            {readyOpen && <SetupList view={setup} onChange={reloadSetup} />}
-          </div>
-        )}
-
         {firstOpen ? (
           <Welcome onTry={(w) => api.post('/api/say', { words: w }).then(onAsked)} />
         ) : (
           // what waits on the person, their day and what Alpha did, each a block the person
-          // drags beside, above or below another (Vikas, 29 Oct); an empty one is not shown
+          // drags beside, above or below another (Vikas, 29 Oct); an empty one is not shown. The
+          // standard column on the right, as on an Overview (Vikas, 30 Oct); the work column keeps
+          // the page "home", so an arrangement kept before stays the person's
           <Arranged
-            page="home"
-            start={[['needs', 'tasks'], ['changed']]}
+            className="grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]"
             blocks={[
               ...(cards.length + signIns.length > 0
                 ? [{ key: 'needs', name: 'Needs you', node: needs }]
@@ -339,6 +451,11 @@ export function Home({
               ...(failed.today || changed.length > 0
                 ? [{ key: 'changed', name: 'What changed', node: whatChanged }]
                 : []),
+              ...standard,
+            ]}
+            columns={[
+              { page: 'home', start: [['needs'], ['tasks'], ['changed']] },
+              { page: 'home:side', start: standard.map((b) => [b.key]) },
             ]}
           />
         )}
@@ -443,22 +560,20 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
   )
 }
 
-// Home's one strip, across every module (Vikas, 27 Oct): what waits on the person, Alpha's
-// questions (or Interview me), the agents, today's tasks and what changed; never a strip per module.
+// Home's one strip, across every module (Vikas, 27 Oct): what waits on the person (Alpha's
+// questions with it), the agents, today's tasks and what changed; never a strip per module.
 function homeTiles({
   cards,
   signIns,
   agents,
   tasks,
   changed,
-  interview,
 }: {
   cards: CardView[]
   signIns: number
   agents: AgentView[]
   tasks: TasksView | null
   changed: { id: string; name: string; words: string | null }[]
-  interview: ReturnType<typeof useInterview>
 }): Tile[] {
   const questions = cards.filter(isQuestion)
   const on = agents.filter((a) => a.state === 'on')
@@ -467,7 +582,7 @@ function homeTiles({
   const all = needsCount(cards, signIns)
   // one place for what waits on the person (Vikas, 30 Oct): Needs you below lists it, so its tile
   // counts it, questions with the rest, and goes there; it never lists it again. Interview me
-  // stands only while Alpha has no question waiting.
+  // is a button at the head of the standard column, not a tile (Vikas, 30 Oct).
   return [
     {
       key: 'needs',
@@ -485,28 +600,6 @@ function homeTiles({
         ? { label: 'Review', go: 'needs' }
         : { label: 'All done', off: true, tip: 'Nothing needs you now' },
     },
-    ...(questions.length
-      ? []
-      : [
-          {
-            key: 'ask',
-            label: 'Interview me',
-            signal: 'opt' as const,
-            big: interview.view?.today && interview.view.left ? String(interview.view.left) : '',
-            small: interview.busy
-              ? "Interview me: preparing today's questions"
-              : interview.view?.today && interview.view.left
-                ? `${interview.view.left === 1 ? 'question' : 'questions'} prepared for you today`
-                : 'Interview me: a short one',
-            // on a hover: what the Interviewer prepared today, and its first question
-            lines: [{ s: 'opt' as const, words: interview.tip }],
-            go: 'ask',
-            // busy while the Interviewer prepares (Vikas, 30 Oct)
-            act: interview.busy
-              ? { label: 'Preparing…', off: true, tip: "Today's questions are being prepared" }
-              : { label: 'Start', go: 'ask' },
-          },
-        ]),
     {
       key: 'agents',
       label: 'Agents',

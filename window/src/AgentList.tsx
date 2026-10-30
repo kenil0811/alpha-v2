@@ -167,7 +167,7 @@ export function RunsCell({ agent: a, onDone }: { agent: AgentView; onDone?: () =
 
 // Functions in the order a business reads them; any other a kit names comes after.
 const FUNCTIONS = ['Sourcing', 'Intake', 'Analysis & insights', 'Outreach', 'Finance', 'Admin']
-const byFunction = (a: string, b: string) =>
+export const byFunction = (a: string, b: string) =>
   (FUNCTIONS.indexOf(a) + 1 || 99) - (FUNCTIONS.indexOf(b) + 1 || 99) || a.localeCompare(b)
 
 type On = 'all' | 'time' | 'event'

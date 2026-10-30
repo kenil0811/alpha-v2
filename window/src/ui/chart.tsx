@@ -62,9 +62,23 @@ export function Stretch({
     if (e.clientX - d.left < axes.y) return 'y'
     return null
   }
+  // the origin is the anchor (Vikas, 30 Oct): the y-axis grows upward, up to stretch, and the
+  // drawing keeps its foot where it was in the box, so what scrolls away is the top
+  const gap = useRef<number | null>(null) // the drawing's foot below the box's, while the y-axis moves
+  useLayoutEffect(() => {
+    const el = box.current
+    if (el && gap.current !== null) el.scrollTop = el.scrollHeight - el.clientHeight - gap.current
+  }, [H])
   const grow = (axis: Axis, r: DOMRect, dx: number, dy: number) => {
     if (axis !== 'y') setWide(Math.max(least[0], r.width + dx))
-    if (axis === 'y') setFrame((f) => f ?? box.current?.offsetHeight)
+    if (axis === 'y') {
+      const el = box.current
+      if (el) gap.current = el.scrollHeight - el.scrollTop - el.clientHeight
+      setFrame((f) => f ?? el?.offsetHeight)
+      setTall(Math.max(least[1], r.height - dy))
+      return
+    }
+    gap.current = null
     if (axis === 'xy') setFrame(undefined) // the corner is the box's: it follows the drawing again
     if (axis !== 'x') setTall(Math.max(least[1], r.height + dy))
   }
@@ -74,6 +88,7 @@ export function Stretch({
       if (axis !== 'x') setTall(height)
       setFrame(undefined)
     } else if (axis === 'y' && box.current) {
+      gap.current = 0 // back with its origin in view
       // the drawing back to the box it is held in (less a sideways scrollbar, if any)
       setTall(box.current.clientHeight)
     }

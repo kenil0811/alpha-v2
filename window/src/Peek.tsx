@@ -26,6 +26,10 @@ const ELEMENT = /^#\/(row|agent|run|rule|permission|tasks|people|card)\/([\w-]+)
 const SCREEN =
   /^#\/(?:row|agent|run|rule|permission|tasks|people|card|module|table|activity|intelligence|settings)\b/
 
+// the rows a figure counted (`rowsHref`): a tile's button, a chart's mark, a goal's line open here
+// wherever they are, never as a page (Vikas, 30 Oct: "Review listings… takes me to a new page")
+const COUNTED = /^#\/table\/[\w-]+\?(?:.*&)?only=/
+
 // a screen that opens something by script, not by a link, opens it here the same way
 export const peek = (href: string) =>
   window.dispatchEvent(new CustomEvent('alpha:peek', { detail: href }))
@@ -46,7 +50,7 @@ export function usePeek() {
       if (!a || !href || a.closest('[data-page]') || href === '#/module/new') return
       const inPanel = !!a.closest('[data-peek-panel]')
       const wide = inPanel || !!a.closest('[data-peek-all]')
-      if (!(ELEMENT.test(href) || (wide && SCREEN.test(href)))) return
+      if (!(ELEMENT.test(href) || COUNTED.test(href) || (wide && SCREEN.test(href)))) return
       e.preventDefault()
       setTrail((t) => (inPanel ? [...t, href] : [href]))
     }
