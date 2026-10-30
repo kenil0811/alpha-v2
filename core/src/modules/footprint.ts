@@ -10,14 +10,14 @@
 // 6. A confirmed fact settles the interview questions it answers (answeredByFootprint).
 // 9. The ledger: per source what Alpha read and skipped, and Forget this source.
 // What was read is kept in the world's meta table, one JSON value, beside the interview pool.
-import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { resolveMx, resolveTxt } from 'node:dns/promises'
 import { readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { config } from '../config.ts'
 import type { Ask } from '../files/reading.ts'
+import type { Places, Platform } from '../platform/index.ts'
 import { all, run as exec, json, one, parse } from '../world/db.ts'
 import { quote } from '../world/ddl.ts'
 import { Refused } from '../world/kinds.ts'
@@ -30,44 +30,19 @@ import { REVIEW, Reviews } from './reviews.ts'
 
 const KEY = 'footprint'
 
-// What reaches past this Mac's files: the system's own commands and the network, given so tests
-// read a temp home and fake records.
-export interface Env {
+// What reaches past the person's files: where this computer keeps things (the platform's places)
+// and the network, given so tests read a temp home and fake records.
+export type Env = Places & {
   home: string
-  apps: string[] // the folders apps are installed in
-  dock: () => string[] // the apps kept in the Dock, by name
-  recent: (home: string, days: number) => string[] // names of files opened lately
   records: (domain: string) => Promise<string[]> // a domain's MX and TXT records
   page: (url: string) => Promise<string> // a page's HTML
 }
 
-export function macEnv(): Env {
+export function envHere(platform: Platform): Env {
   const home = homedir()
-  const sh = (cmd: string, args: string[]) =>
-    execFileSync(cmd, args, { encoding: 'utf8', timeout: 15_000, maxBuffer: 8 << 20 })
   return {
     home,
-    apps: ['/Applications', join(home, 'Applications')],
-    dock: () => {
-      try {
-        return [
-          ...sh('defaults', ['export', 'com.apple.dock', '-']).matchAll(
-            /<key>file-label<\/key>\s*<string>([^<]+)<\/string>/g,
-          ),
-        ].map((m) => m[1] ?? '')
-      } catch {
-        return []
-      }
-    },
-    recent: (h, days) => {
-      try {
-        return sh('mdfind', ['-onlyin', h, `kMDItemLastUsedDate >= $time.today(-${days})`])
-          .split('\n')
-          .filter((p) => p && !p.includes('/Library/') && !p.includes('/.'))
-      } catch {
-        return []
-      }
-    },
+    ...platform.places(home),
     records: async (domain) => {
       const mx = await resolveMx(domain).catch(() => [])
       const txt = await resolveTxt(domain).catch(() => [])
@@ -156,19 +131,19 @@ export function sources(world: World): SourceView[] {
 // ---- the local readers: each gives lines, nothing more ----
 
 function apps(env: Env): string[] {
-  const dock = new Set(env.dock())
+  const pinned = new Set(env.pinned())
   return env.apps.flatMap((d) => {
     let names: string[] = []
     try {
-      names = readdirSync(d).filter((n) => n.endsWith('.app'))
+      names = readdirSync(d).filter((n) => n.endsWith(env.app))
     } catch {}
     return names.map((n) => {
-      const name = n.slice(0, -4)
+      const name = n.slice(0, -env.app.length)
       let since = ''
       try {
         since = `, since ${statSync(join(d, n)).birthtime.toISOString().slice(0, 10)}`
       } catch {}
-      return `${name}${since}${dock.has(name) ? ', in the Dock' : ''}`
+      return `${name}${since}${pinned.has(name) ? `, in ${env.pinnedIn}` : ''}`
     })
   })
 }
@@ -186,7 +161,7 @@ function folders(env: Env, keep: number): string[] {
     }
     for (const e of list) {
       if (out.length >= keep) return
-      if (e.name.startsWith('.') || e.name.endsWith('.app')) continue
+      if (e.name.startsWith('.') || e.name.endsWith(env.app)) continue
       const at = `${rel}/${e.name}`
       if (e.isDirectory()) {
         out.push(`${at}/`)
@@ -233,18 +208,14 @@ const count1 = (world: World, sql: string, ...p: string[]) =>
 export function count(world: World, env: Env): SourceView[] {
   const f = config.footprint()
   const s = load(world)
-  const b = readBrowsers(
-    env.home,
-    { bookmarks: true, extensions: true, history: true },
-    f.history_days,
-  )
+  const b = readBrowsers(env, { bookmarks: true, extensions: true, history: true }, f.history_days)
   s.counts = {
     apps: apps(env).length,
     bookmarks: b.bookmarks.length,
     extensions: b.extensions.length,
     history: b.sites.length,
     folders: folders(env, 100_000).length,
-    recent: env.recent(env.home, f.recent_days).length,
+    recent: env.recent(f.recent_days).length,
     contacts: connected(world, 'contacts')
       ? count1(
           world,
@@ -337,7 +308,7 @@ export async function read(world: World, env: Env, ctx: WriteCtx): Promise<Sourc
   }
   const b =
     want.bookmarks || want.extensions || want.history
-      ? readBrowsers(env.home, want, f.history_days)
+      ? readBrowsers(env, want, f.history_days)
       : null
   const keep = f.keep
   const results: Record<string, { lines: string[]; skipped: Rule[]; note?: string }> = {}
@@ -375,8 +346,8 @@ export async function read(world: World, env: Env, ctx: WriteCtx): Promise<Sourc
   if (on('recent'))
     results.recent = {
       lines: env
-        .recent(env.home, f.recent_days)
-        .map((p) => p.split('/').pop() ?? '')
+        .recent(f.recent_days)
+        .map((p) => basename(p))
         .filter(Boolean)
         .slice(0, keep),
       skipped: [],

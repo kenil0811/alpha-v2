@@ -216,3 +216,9 @@ given topics and sources, as Proposed Noticed rows on one review card that now s
 (where the fact came from); step 6 drops bank questions a confirmed topic answers; step 9 is the
 ledger with Forget in Settings › Governance. Kenil's open questions taken on the recommended
 answer. Tests in `modules/footprint.test.ts` (13). Steps 7 and 8 wait.
+
+Later: onboarding's Mac reads (Spotlight, the Dock, plutil, Library paths) moved behind the
+platform's `places`; the plain platform names Windows' places (Edge, Chrome, Brave and Firefox
+under AppData, the Start menu, the taskbar, Recent). The platform wall now refuses those calls
+outside `core/src/platform/`. A test reads a Windows-laid-out home. Not tried on a Windows
+machine; Chromium on Windows may hold History locked, which is said as a skip.

@@ -24,4 +24,20 @@ export interface Platform {
   region(): string | null
   // A file or folder of the person's discarded on their word: the Mac's Trash where there is one.
   discard(path: string): void
+  // Where this computer keeps what onboarding reads from the footprint (step 2), for one home.
+  places(home: string): Places
+}
+
+// Named here, read by the footprint's readers, which open only what browsers.ts allows.
+export interface Places {
+  apps: string[] // the folders apps are installed in
+  app: string // what marks an app there (.app, .lnk)
+  pinned: () => string[] // the apps kept at hand, by name
+  pinnedIn: string // where they are kept (the Dock, the taskbar)
+  recent: (days: number) => string[] // files opened lately, by path
+  chromium: [string, string][] // [browser, its user-data folder]
+  firefox: string[] // the folders Firefox's profiles are in
+  safari: string | null
+  plist: ((file: string) => string) | null // a property list as XML, where the computer has the tool
+  access: string | null // the system switch a refused read needs (Full Disk Access), where there is one
 }

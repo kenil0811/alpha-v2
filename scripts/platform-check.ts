@@ -5,7 +5,7 @@ import { join, relative } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..', 'core', 'src')
 const MAC =
-  /process\.platform|osascript|caffeinate|\/usr\/bin\/open|x-apple\.|\/usr\/bin\/id\b|AppleLocale|MacKeychain/
+  /process\.platform|osascript|caffeinate|\/usr\/bin\/open|x-apple\.|\/usr\/bin\/id\b|AppleLocale|MacKeychain|mdfind|plutil|com\.apple\.|Library\/(Application Support|Safari)|AppData/
 const found: string[] = []
 function walk(dir: string) {
   for (const e of readdirSync(dir)) {

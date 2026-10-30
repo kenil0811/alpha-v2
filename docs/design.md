@@ -917,7 +917,9 @@ Kenil's yes, built, checked, restarted in his Alpha with test steps, committed o
   The default deny list is approved deny rules (read, sites), checked with the rules' own `covers`.
   Drafted and pasted-back facts are Proposed rows of Alpha's Noticed table on one review card; a
   confirmed fact's topic settles the bank questions it answers. What was read is one meta value
-  beside the interview pool, with a ledger and Forget in Governance.
+  beside the interview pool, with a ledger and Forget in Governance. Where a computer keeps apps, recent
+  files and browsers is the platform's `places` (the Mac's; Windows' AppData, Start menu, taskbar
+  and Recent in the plain one), so the readers name no computer.
 
 - Claude Code's system prompt with Alpha's appended, measured in week 1 (§6).
 - Claude's GitHub access to github.com/kenil0811/alpha-v2, for pushing.

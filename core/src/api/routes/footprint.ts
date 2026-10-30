@@ -7,23 +7,25 @@ import {
   count,
   draft,
   draftCard,
+  envHere,
   finish,
   forget,
   load,
-  macEnv,
   read,
   remember,
   setSite,
   sources,
   tick,
 } from '../../modules/footprint.ts'
+import { PlainPlatform } from '../../platform/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FootprintView } from '../types.ts'
 
 export function registerFootprint(ctx: Ctx): void {
   const { app, world, engine, user, asPerson } = ctx
-  const env = ctx.options.footprintEnv ?? macEnv
+  const env =
+    ctx.options.footprintEnv ?? (() => envHere(ctx.options.platform ?? new PlainPlatform()))
   const view = (): FootprintView => {
     const s = load(world)
     return {

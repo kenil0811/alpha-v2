@@ -64,7 +64,7 @@ export interface ServerOptions {
     restart: (words: string, apply: () => Promise<void>) => Promise<void>
   }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
-  footprintEnv?: () => import('../modules/footprint.ts').Env // where onboarding reads: this Mac's, or a test's
+  footprintEnv?: () => import('../modules/footprint.ts').Env // where onboarding reads: this computer's, or a test's
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {

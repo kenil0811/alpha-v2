@@ -6,9 +6,9 @@
 // - History is sites only: a page's address is cut to its host the moment it is read; titles,
 //   paths, queries and the search-box table are never selected.
 // - Databases are opened read-only and immutable where they lie, never copied (db.ts).
-import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, join, sep } from 'node:path'
+import type { Places } from '../platform/index.ts'
 import { openForeign } from '../world/db.ts'
 
 export const ALLOWED = new Set([
@@ -74,12 +74,6 @@ export interface Read {
   problems: string[] // a browser that could not be read, and why, in words
 }
 
-const CHROMIUM: [string, string][] = [
-  ['Chrome', 'Library/Application Support/Google/Chrome'],
-  ['Edge', 'Library/Application Support/Microsoft Edge'],
-  ['Brave', 'Library/Application Support/BraveSoftware/Brave-Browser'],
-  ['Arc', 'Library/Application Support/Arc/User Data'],
-]
 const DAY = 86_400_000
 const dirs = (d: string) => {
   try {
@@ -157,9 +151,10 @@ export interface Want {
   history?: boolean
 }
 
-// Everything readable on this Mac, as much as is wanted: nothing is opened for what is not.
+// Everything readable where this computer keeps its browsers (the platform's places), as much as
+// is wanted: nothing is opened for what is not.
 export function readBrowsers(
-  home: string,
+  at: Pick<Places, 'chromium' | 'firefox' | 'safari' | 'plist' | 'access'>,
   want: Want,
   historyDays: number,
   nowMs = Date.now(),
@@ -173,14 +168,14 @@ export function readBrowsers(
     } catch (err) {
       // macOS keeps Safari's files from any app without Full Disk Access
       const said = `${(err as { code?: string }).code ?? ''} ${(err as Error).message ?? ''}`
-      const words = /EPERM|EACCES|not permitted|permission|unable to open|plutil/i.test(said)
-        ? `${browser} needs Full Disk Access for Alpha; skipped.`
-        : `${browser} could not be read; skipped.`
+      const words =
+        at.access && /EPERM|EACCES|not permitted|permission|unable to open/i.test(said)
+          ? `${browser} needs ${at.access} for Alpha; skipped.`
+          : `${browser} could not be read; skipped.`
       if (!out.problems.includes(words)) out.problems.push(words)
     }
   }
-  for (const [browser, rel] of CHROMIUM) {
-    const root = join(home, rel)
+  for (const [browser, root] of at.chromium) {
     if (!existsSync(root)) continue
     out.browsers.push(browser)
     for (const p of profiles(root)) {
@@ -209,8 +204,7 @@ export function readBrowsers(
         )
     }
   }
-  const firefox = join(home, 'Library/Application Support/Firefox/Profiles')
-  for (const p of dirs(firefox)) {
+  for (const p of at.firefox.flatMap(dirs)) {
     if (!out.browsers.includes('Firefox')) out.browsers.push('Firefox')
     const places = join(p, 'places.sqlite')
     if (existsSync(places) && (want.bookmarks || want.history))
@@ -254,8 +248,8 @@ export function readBrowsers(
         if (a.type === 'extension' && a.location === 'app-profile' && a.defaultLocale?.name)
           out.extensions.push({ browser: 'Firefox', name: a.defaultLocale.name })
   }
-  const safari = join(home, 'Library/Safari')
-  if (existsSync(safari)) {
+  const { safari, plist } = at
+  if (safari && existsSync(safari)) {
     out.browsers.push('Safari')
     if (want.history && existsSync(join(safari, 'History.db')))
       tryRead('Safari', () =>
@@ -268,13 +262,9 @@ export function readBrowsers(
           visits,
         ),
       )
-    if (want.bookmarks && existsSync(join(safari, 'Bookmarks.plist')))
+    if (want.bookmarks && plist && existsSync(join(safari, 'Bookmarks.plist')))
       tryRead('Safari', () => {
-        const xml = execFileSync(
-          'plutil',
-          ['-convert', 'xml1', '-o', '-', allowed(join(safari, 'Bookmarks.plist'))],
-          { encoding: 'utf8', timeout: 10_000 },
-        )
+        const xml = plist(allowed(join(safari, 'Bookmarks.plist')))
         for (const m of xml.matchAll(/<key>URLString<\/key>\s*<string>([^<]+)<\/string>/g)) {
           const site = siteOf(m[1] ?? '')
           if (site) out.bookmarks.push({ browser: 'Safari', folder: '', name: site, site })

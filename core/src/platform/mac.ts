@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { homedir, userInfo } from 'node:os'
 import { basename, join } from 'node:path'
 import { MacKeychain, NoSecrets } from '@alpha/connector-sdk'
-import type { Platform } from './platform.ts'
+import type { Places, Platform } from './platform.ts'
 
 // Where the helper's source is, for a development run that builds it.
 const HELPER_SRC = join(import.meta.dirname, '..', '..', '..', 'connector-sdk', 'helper')
@@ -99,6 +99,57 @@ export class MacPlatform implements Platform {
       return region && /^[A-Z]{2}$/.test(region) ? region : null
     } catch {
       return null
+    }
+  }
+
+  // The Mac's places: /Applications, the Dock, Spotlight's recent files, and each browser under
+  // Library (Safari's only with Full Disk Access).
+  places(home: string): Places {
+    const sh = (cmd: string, args: string[]) =>
+      execFileSync(cmd, args, { encoding: 'utf8', timeout: 15_000, maxBuffer: 8 << 20 })
+    const lib = (rel: string) => join(home, 'Library', rel)
+    return {
+      apps: ['/Applications', join(home, 'Applications')],
+      app: '.app',
+      pinned: () => {
+        try {
+          return [
+            ...sh('/usr/bin/defaults', ['export', 'com.apple.dock', '-']).matchAll(
+              /<key>file-label<\/key>\s*<string>([^<]+)<\/string>/g,
+            ),
+          ].map((m) => m[1] ?? '')
+        } catch {
+          return []
+        }
+      },
+      pinnedIn: 'the Dock',
+      recent: (days) => {
+        try {
+          return sh('/usr/bin/mdfind', [
+            '-onlyin',
+            home,
+            `kMDItemLastUsedDate >= $time.today(-${days})`,
+          ])
+            .split('\n')
+            .filter((p) => p && !p.includes('/Library/') && !p.includes('/.'))
+        } catch {
+          return []
+        }
+      },
+      chromium: [
+        ['Chrome', lib('Application Support/Google/Chrome')],
+        ['Edge', lib('Application Support/Microsoft Edge')],
+        ['Brave', lib('Application Support/BraveSoftware/Brave-Browser')],
+        ['Arc', lib('Application Support/Arc/User Data')],
+      ],
+      firefox: [lib('Application Support/Firefox/Profiles')],
+      safari: lib('Safari'),
+      plist: (file) =>
+        execFileSync('/usr/bin/plutil', ['-convert', 'xml1', '-o', '-', file], {
+          encoding: 'utf8',
+          timeout: 10_000,
+        }),
+      access: 'Full Disk Access',
     }
   }
 }

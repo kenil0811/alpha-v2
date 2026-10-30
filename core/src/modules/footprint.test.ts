@@ -12,6 +12,8 @@ import { buildServer } from '../api/server.ts'
 import { config } from '../config.ts'
 import { Engine } from '../engine/engine.ts'
 import type { Ask } from '../files/reading.ts'
+import { MacPlatform } from '../platform/mac.ts'
+import { PlainPlatform } from '../platform/plain.ts'
 import { World } from '../world/world.ts'
 import { ALLOWED, allowed, readBrowsers } from './browsers.ts'
 import { DEFAULT_KITS, keepDefaults } from './defaults.ts'
@@ -110,9 +112,10 @@ function mac() {
 }
 
 const env = (): Env => ({
+  ...new MacPlatform().places(home),
   home,
   apps: [join(home, 'Applications')],
-  dock: () => ['QuickBooks'],
+  pinned: () => ['QuickBooks'],
   recent: () => [join(home, 'Documents', 'Quote template.docx')],
   records: async () => ['MX 1 aspmx.l.google.com', 'TXT stripe-verification=abc'],
   page: async () =>
@@ -156,7 +159,11 @@ describe('the browser reader’s walls', () => {
   })
 
   it('keeps sites only: no page, title, query or search-box text', () => {
-    const r = readBrowsers(home, { bookmarks: true, extensions: true, history: true }, 90)
+    const r = readBrowsers(
+      new MacPlatform().places(home),
+      { bookmarks: true, extensions: true, history: true },
+      90,
+    )
     const all = JSON.stringify(r)
     expect(r.sites.map((s) => s.site)).toEqual(['app.hubspot.com', 'chase.com', 'google.com'])
     for (const secret of [
@@ -180,8 +187,45 @@ describe('the browser reader’s walls', () => {
     ])
   })
 
+  it("reads Windows' places: Edge's bookmarks under AppData, the Start menu, the taskbar, Recent", () => {
+    const local = join(home, 'AppData', 'Local', 'Microsoft', 'Edge', 'User Data')
+    mkdirSync(join(local, 'Default'), { recursive: true })
+    writeFileSync(join(local, 'Default', 'Preferences'), '{}')
+    writeFileSync(
+      join(local, 'Default', 'Bookmarks'),
+      JSON.stringify({
+        roots: {
+          bar: {
+            type: 'folder',
+            name: 'Favorites bar',
+            children: [{ type: 'url', name: 'Books', url: 'https://qbo.intuit.com/app' }],
+          },
+        },
+      }),
+    )
+    const roaming = join(home, 'AppData', 'Roaming', 'Microsoft')
+    const menu = join(roaming, 'Windows', 'Start Menu', 'Programs')
+    const bar = join(roaming, 'Internet Explorer', 'Quick Launch', 'User Pinned', 'TaskBar')
+    const recent = join(roaming, 'Windows', 'Recent')
+    for (const [d, f] of [
+      [menu, 'Excel.lnk'],
+      [bar, 'Excel.lnk'],
+      [recent, 'Quote.docx.lnk'],
+    ] as const) {
+      mkdirSync(d, { recursive: true })
+      writeFileSync(join(d, f), '')
+    }
+    const at = new PlainPlatform().places(home)
+    expect(readBrowsers(at, { bookmarks: true }, 90).bookmarks).toEqual([
+      { browser: 'Edge', folder: 'Favorites bar', name: 'Books', site: 'qbo.intuit.com' },
+    ])
+    expect(at.pinned()).toEqual(['Excel'])
+    expect(at.recent(7).map((p) => p.split(/[\\/]/).pop())).toEqual(['Quote.docx'])
+    expect(at.apps).toContain(menu)
+  })
+
   it('reads nothing of what it was not asked for', () => {
-    const r = readBrowsers(home, { extensions: true }, 90)
+    const r = readBrowsers(new MacPlatform().places(home), { extensions: true }, 90)
     expect(r.sites).toEqual([])
     expect(r.bookmarks).toEqual([])
   })
