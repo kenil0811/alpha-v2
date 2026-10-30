@@ -1,5 +1,5 @@
 // The kit installer and the ownership rule, on a made-up kit (test-kit/): never a client's.
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -603,6 +603,55 @@ describe('stable keys and tombstones (step 2, sub-step 4)', () => {
     world.shape.removeHiddenField(orders.id, y.removed[0]?.fieldId as string, ctx)
     expect(yours(world, m.id).removed).toEqual([])
     expect(world.records.list(orders.id)[0]?.values).toEqual({ item: 'Flour' })
+  })
+
+  it('removes the tables a newer version names as removed, pointers and all, and keeps the runs of an agent it drops', async () => {
+    const m = await install(
+      world,
+      kitAt('0.1.0', (x) => x),
+      ctx,
+    )
+    const orders = world.shape.table('Orders') as { id: string }
+    const suppliers = world.shape.table('Suppliers') as { id: string }
+    const mill = world.records.byKey(suppliers.id, 'setup:mill') as string
+    world.records.add(
+      orders.id,
+      [
+        {
+          values: { Item: 'Flour', Supplier: mill },
+          provenance: { kind: 'estimated', basis: 'a guess' },
+        },
+      ],
+      { actor: alpha },
+    )
+    const counter = agents(world, m.id)[0]?.id as string
+    run(
+      world.db,
+      "INSERT INTO runs (id, agent_id, module_id, started_at, state) VALUES ('r_1', ?, ?, '2026-10-29T07:00:00.000Z', 'ok')",
+      counter,
+      m.id,
+    )
+    // Network's 0.4.0 in small: the table pointed at goes first, then the one pointing at it
+    const newer = kitAt(
+      '0.2.0',
+      (x) =>
+        `${x.slice(0, x.indexOf('tables:'))}tables:\n  - name: Deliveries\n    fields:\n      - { name: Day, kind: date }\nnetwork: []\nhistory:\n  removed: [{ table: Suppliers, in: 0.2.0 }, { table: Orders, in: 0.2.0 }]\n`,
+      '',
+    )
+    rmSync(join(newer, 'agents'), { recursive: true })
+    rmSync(join(newer, 'skills'), { recursive: true })
+    rmSync(join(newer, 'tests'), { recursive: true })
+    await update(world, m.name, newer, ctx)
+    expect(world.shape.tables(m.id).map((t) => t.name)).toEqual(['Deliveries'])
+    expect(world.lines({ kinds: ['removed'] }).map((l) => l.words)).toEqual([
+      'Removed the table Suppliers and its 2 rows.',
+      'Removed the table Orders and its 1 row.',
+    ])
+    expect(agents(world, m.id)).toEqual([])
+    expect(existsSync(join(m.dir, 'skills', 'count'))).toBe(false)
+    expect(world.db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+    const runs = world.db.prepare('SELECT agent_id, module_id FROM runs').all()
+    expect(runs).toEqual([{ agent_id: null, module_id: m.id }])
   })
 
   it('lists what is yours and gives the kit’s version back', async () => {

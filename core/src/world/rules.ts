@@ -206,6 +206,7 @@ export class Rules {
       if ((d === 'read' || d === 'change' || d === 'remove') && tables.length)
         return `${verb} rows in ${or(tables)}`
       if (d === 'reach') return `${verb} ${c.sites?.length ? or(c.sites) : 'sites'}`
+      if (d === 'read' && c.sites?.length) return `${verb} ${or(c.sites)}`
       if (d === 'send') {
         const to = c.to?.addresses?.length
           ? ` to ${or(c.to.addresses)}`

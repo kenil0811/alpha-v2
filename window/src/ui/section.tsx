@@ -14,7 +14,7 @@ export function Section({
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex items-center gap-1.5">
+      <div data-head className="flex items-center gap-1.5">
         <h2 className="font-medium font-serif text-2xl text-ink">{title}</h2>
         {about && <Info help={about} />}
       </div>

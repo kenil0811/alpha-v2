@@ -17,6 +17,7 @@ import { quote } from '../world/ddl.ts'
 import type { Line } from '../world/journal.ts'
 import type { World } from '../world/world.ts'
 import { agents } from './agents.ts'
+import { answeredByFootprint } from './footprint.ts'
 import { installedKits } from './kits/index.ts'
 
 const POOL = 'interview_pool'
@@ -109,16 +110,20 @@ export function answeredKeys(world: World, nowMs = Date.now()): Set<string> {
 // The standing bank, once for the business and once for each module.
 export function bank(world: World, own: string | null): Unresolved[] {
   const b = config.interviewBank()
-  const out: Unresolved[] = b.business.map((q) => ({
-    key: q.id,
-    kind: q.kind,
-    module: null,
-    reach: q.reach,
-    facts: `The business as a whole: ${q.ask}`,
-    ask: q.ask,
-    why: q.why,
-    unblocks: q.unblocks,
-  }))
+  // a question the owner's confirmed footprint already answers is not asked (onboarding step 6)
+  const known = answeredByFootprint(world)
+  const out: Unresolved[] = b.business
+    .filter((q) => !known.has(q.id))
+    .map((q) => ({
+      key: q.id,
+      kind: q.kind,
+      module: null,
+      reach: q.reach,
+      facts: `The business as a whole: ${q.ask}`,
+      ask: q.ask,
+      why: q.why,
+      unblocks: q.unblocks,
+    }))
   for (const m of world.shape.modules().filter((x) => x.id !== own))
     for (const q of b.module) {
       const w = (s: string) => s.replaceAll('{module}', m.name)
@@ -276,8 +281,9 @@ function savePool(world: World, pool: Pool): void {
 export function ranked(world: World, module: string | null = null, nowMs = Date.now()): PoolItem[] {
   const pool = loadPool(world)
   const answered = answeredKeys(world, nowMs)
+  const known = answeredByFootprint(world)
   return pool.items
-    .filter((i) => !answered.has(i.key) && !(i.key in pool.settled))
+    .filter((i) => !answered.has(i.key) && !(i.key in pool.settled) && !known.has(i.key))
     .filter((i) => !module || i.module === module)
     .map((i) => ({ ...i, value: worth(i, nowMs) }))
     .sort((a, b) => b.value - a.value || a.key.localeCompare(b.key))

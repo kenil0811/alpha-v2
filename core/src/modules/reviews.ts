@@ -17,13 +17,20 @@ export interface ReviewInput {
   choices: string[] // two or three of its choices, the first the usual yes
   rows: string[]
   note: string | null // a field shown under each row: why the agent put it there
+  also?: string | null // a second field shown after it: where a drafted fact came from
 }
 
 export interface ReviewView {
   table: string
   field: string
   choices: string[]
-  rows: { id: string; name: string; note: string | null; value: string | null }[]
+  rows: {
+    id: string
+    name: string
+    note: string | null
+    also: string | null
+    value: string | null
+  }[]
   open: number
 }
 
@@ -40,7 +47,7 @@ export class Reviews {
   // its own.
   open(
     input: Omit<ReviewInput, 'table'> & { table: Table },
-    by: { agent: string; module: string; run: string },
+    by: { agent: string; module: string; run: string | null },
   ): Card {
     const t = input.table
     const f = t.fields.find((x) => x.name === input.field)
@@ -50,8 +57,9 @@ export class Reviews {
       throw new Refused(
         `${input.field} takes ${f.choices.join(', ')}; ${wrong.join(', ') || 'no choice'} given.`,
       )
-    if (input.note && !t.fields.some((x) => x.name === input.note))
-      throw new Refused(`${t.name} has no field ${input.note}.`)
+    for (const n of [input.note, input.also])
+      if (n && !t.fields.some((x) => x.name === n))
+        throw new Refused(`${t.name} has no field ${n}.`)
     const known = new Set(this.world.records.list(t.id).map((r) => r.id))
     const rows = [...new Set(input.rows)].filter((r) => known.has(r))
     if (!rows.length) throw new Refused('There are no rows of that table to put to the person.')
@@ -80,17 +88,20 @@ export class Reviews {
     if (!r || !t) return null
     const field = t.fields.find((f) => f.name === r.field)
     const note = r.note ? t.fields.find((f) => f.name === r.note) : undefined
+    const also = r.also ? t.fields.find((f) => f.name === r.also) : undefined
     const byId = new Map(this.world.records.list(t.id).map((x) => [x.id, x]))
     const rows = r.rows.flatMap((id) => {
       const row = byId.get(id)
       if (!row) return []
       const v = field ? row.values[field.slug] : null
       const n = note ? row.values[note.slug] : null
+      const a = also ? row.values[also.slug] : null
       return [
         {
           id,
           name: this.world.rowName(t, row.values),
           note: typeof n === 'string' && n ? n : null,
+          also: typeof a === 'string' && a ? a : null,
           value: typeof v === 'string' && r.choices.includes(v) ? v : null,
         },
       ]

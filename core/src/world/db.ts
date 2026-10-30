@@ -2,6 +2,7 @@
 // world wraps it here and better-sqlite3 stays the fallback).
 import { randomBytes } from 'node:crypto'
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
+import { pathToFileURL } from 'node:url'
 
 export type Db = DatabaseSync
 export type Row = Record<string, unknown>
@@ -13,6 +14,14 @@ export function openDb(file: string, options: { readOnly?: boolean } = {}): Db {
     db.exec('PRAGMA foreign_keys = ON')
   }
   return db
+}
+
+// Another app's database (a browser's History), opened where it lies, read-only and immutable:
+// never copied, never locked, never written (Kenil's question 3, the recommended answer).
+export function openForeign(file: string): Db {
+  const url = pathToFileURL(file)
+  url.search = '?immutable=1'
+  return new DatabaseSync(url, { readOnly: true })
 }
 
 // One logical change is one transaction, the read it depends on included. Nested calls join the

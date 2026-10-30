@@ -506,7 +506,9 @@ the core to. A kit says `api: 1`; core serves `1`; `uses:` names the kits (with 
 connectors whose tables it reads, relates to or triggers on, checked at install; `maintainer:`
 says whose kit it is to keep. A kit field has a stable `key` (its name at install when the kit
 gives none), so an update matches on it; `history.renamed` renames in place, `history.removed`
-hides a field with its rows kept; what the person removed (a field, a table, a setup row, a
+hides a field with its rows kept, and an entry naming a table with no key removes that table
+the way a person does, rows and all, journaled (Vikas, 30 Oct, Network's Circles; **for Kenil's
+review**); module.yaml's description, `uses` and version follow the kit on update; what the person removed (a field, a table, a setup row, a
 kit's view) is a tombstone and stays removed. Settings › Kits shows what is the person's now
 (changed files, rows, views, fields; the fields a kit no longer uses) with the kit's version back,
 and on a maintained kit a shape change from the desk goes on a card: ask the maintainer (a
@@ -907,6 +909,15 @@ Kenil's yes, built, checked, restarted in his Alpha with test steps, committed o
 - A short dated entry in `docs/log/` per session. No decisions table.
 
 ## Still open
+
+- Onboarding from the footprint (30 Oct; for Kenil's review): Interview me's first sitting reads
+  before it asks (`modules/footprint.ts`, `modules/browsers.ts`, `config/footprint.yaml`). Counts
+  first, a tick per source, then local reads only of what was ticked; the browser reader opens an
+  allow-list of files, keeps sites only and opens databases read-only and immutable where they lie.
+  The default deny list is approved deny rules (read, sites), checked with the rules' own `covers`.
+  Drafted and pasted-back facts are Proposed rows of Alpha's Noticed table on one review card; a
+  confirmed fact's topic settles the bank questions it answers. What was read is one meta value
+  beside the interview pool, with a ledger and Forget in Governance.
 
 - Claude Code's system prompt with Alpha's appended, measured in week 1 (§6).
 - Claude's GitHub access to github.com/kenil0811/alpha-v2, for pushing.

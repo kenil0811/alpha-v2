@@ -33,7 +33,8 @@ function fieldsOf(
 // Tables first without their relations, then the relations, so a table can point at one made
 // after it, then the summaries, which read the relations (core step 3c). A kit's field is matched by its key (decision 3), so a rename the kit declares in
 // its history is a rename in place; what the person removed stays removed (tombstones); a field
-// the kit no longer uses is hidden, its rows kept. A newer version never removes data.
+// the kit no longer uses is hidden, its rows kept. A newer version removes only a table its
+// history names as removed.
 export function shapeTables(
   world: World,
   module: Module,
@@ -164,9 +165,17 @@ export function shapeTables(
   // the fields the kit no longer uses: hidden, their rows kept
   for (const r of manifest.history?.removed ?? [])
     for (const t of tablesNamed(r.table)) {
+      if (!r.key) continue
       const f = byKey(t, r.key)
       if (f) world.shape.hideField(t.id, f.id, ctx)
     }
+  // the tables the kit no longer ships (a removal naming a table and no key): removed the way a
+  // person removes one, rows and all, journaled and tombstoned (Vikas, 30 Oct; for Kenil's review)
+  for (const r of manifest.history?.removed ?? []) {
+    if (r.key || !r.table) continue
+    const t = tablesNamed(r.table)[0]
+    if (t) world.shape.removeTable(t.id, ctx)
+  }
 }
 
 // A kit's views: made when the table has none by that name; on update, replaced while nobody has

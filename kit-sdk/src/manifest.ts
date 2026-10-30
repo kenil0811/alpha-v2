@@ -86,8 +86,12 @@ export const Manifest = z.object({
           }),
         )
         .default([]),
+      // a field by its key (hidden, its rows kept), or a whole table by its name with no key
+      // (removed on update, journaled: Network's Circles, 30 Oct)
       removed: z
-        .array(z.object({ key: z.string(), in: z.string(), table: z.string().optional() }))
+        .array(
+          z.object({ key: z.string().optional(), in: z.string(), table: z.string().optional() }),
+        )
         .default([]),
     })
     .optional(),

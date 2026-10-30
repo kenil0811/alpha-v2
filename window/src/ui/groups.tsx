@@ -19,7 +19,7 @@ export function Group({
 }) {
   return (
     <section id={id} className="flex scroll-mt-4 flex-col gap-2.5">
-      <div className="flex flex-col gap-0.5">
+      <div data-head className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-ink-2 text-sm">{title}</h2>
           {!!count && (

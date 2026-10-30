@@ -33,6 +33,7 @@ import { api, Problem, wordsOf } from './api.ts'
 import { Arranged, pairs } from './arrange.tsx'
 import { showAsk, startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
+import { FootprintLedger } from './FootprintLedger.tsx'
 import { GovernanceSection } from './Governance.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { peek } from './Peek.tsx'
@@ -251,17 +252,19 @@ export function Settings({
     )
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
+      <div className="@container mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
         {head}
-        <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-          <SideList label={p.title} className="self-start max-md:flex-row max-md:flex-wrap">
+        {/* the side lists fold above their page by the room it has, not the window's width: the
+            assistant open beside it left Governance a 75px column (30 Oct) */}
+        <div className="grid grid-cols-1 gap-7 @2xl:grid-cols-[170px_1fr]">
+          <SideList label={p.title} className="self-start @max-2xl:flex-row @max-2xl:flex-wrap">
             {tabs.map(([id, name]) => (
               <SideItem key={id} sel={id === at} onClick={() => go(id)}>
                 {name}
               </SideItem>
             ))}
           </SideList>
-          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
+          <div className="@container flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
       </div>
     </div>
@@ -271,20 +274,21 @@ export function Settings({
 // Governance (Vikas, 27 and 29 Oct): the rules Alpha keeps — what agents can and cannot do across
 // every module (the same two columns as a module's), how to work (the standing instructions), and
 // the Alpha module's two tables, Decisions and Noticed, shown here instead of on the rail.
-type Part = 'rules' | 'work' | 'Decisions' | 'Noticed'
+type Part = 'rules' | 'work' | 'Decisions' | 'Noticed' | 'footprint'
 
 function Governance({ version }: { version: number }) {
   const [part, setPart] = useState<Part>('rules')
   return (
     // three lists of their own: the list view, as Settings draws it (Vikas, 28 Oct)
-    <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-      <SideList label="Governance" className="self-start max-md:flex-row max-md:flex-wrap">
+    <div className="grid grid-cols-1 gap-7 @2xl:grid-cols-[170px_1fr]">
+      <SideList label="Governance" className="self-start @max-2xl:flex-row @max-2xl:flex-wrap">
         {(
           [
             ['rules', 'Can and cannot do'],
             ['work', 'How to work'],
             ['Decisions', 'Decisions'],
             ['Noticed', 'Noticed'],
+            ['footprint', 'What Alpha read'],
           ] as const
         ).map(([value, label]) => (
           <SideItem key={value} sel={part === value} onClick={() => setPart(value)}>
@@ -297,6 +301,8 @@ function Governance({ version }: { version: number }) {
           <GovernanceSection version={version} />
         ) : part === 'work' ? (
           <HowToWork version={version} />
+        ) : part === 'footprint' ? (
+          <FootprintLedger />
         ) : (
           <AlphaTable key={part} name={part} version={version} />
         )}

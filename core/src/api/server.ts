@@ -20,6 +20,7 @@ import { registerBrain } from './routes/brain.ts'
 import { registerCards } from './routes/cards.ts'
 import { registerConnectors } from './routes/connectors.ts'
 import { registerFiles } from './routes/files.ts'
+import { registerFootprint } from './routes/footprint.ts'
 import { registerKits } from './routes/kits.ts'
 import { registerMe } from './routes/me.ts'
 import { registerModules } from './routes/modules.ts'
@@ -63,6 +64,7 @@ export interface ServerOptions {
     restart: (words: string, apply: () => Promise<void>) => Promise<void>
   }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
+  footprintEnv?: () => import('../modules/footprint.ts').Env // where onboarding reads: this Mac's, or a test's
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -135,6 +137,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerModules(ctx)
   registerSettings(ctx)
   registerActivity(ctx)
+  registerFootprint(ctx)
   registerUsage(ctx)
   registerBrain(ctx)
 

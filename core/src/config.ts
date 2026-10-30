@@ -83,6 +83,30 @@ const People = z.object({
   role_addresses: z.array(z.string().min(1)),
 })
 
+// Onboarding from the footprint (30 Oct): the sources step 1 counts, the default deny list, the
+// topics a draft is sorted into, the domain records' tools and the paste-back prompt
+const Footprint = z.object({
+  history_days: z.number().int().positive(),
+  recent_days: z.number().int().positive(),
+  keep: z.number().int().positive(),
+  draft_items: z.number().int().positive(),
+  draft_facts: z.number().int().positive(),
+  sources: z.array(
+    z.object({
+      id: z.string().min(1),
+      title: z.string().min(1),
+      unit: z.string().min(1),
+      sub: z.string(),
+      needs: z.string().optional(),
+    }),
+  ),
+  deny: z.array(z.object({ name: z.string().min(1), sites: z.array(z.string().min(1)).min(1) })),
+  topics: z.array(z.object({ name: z.string().min(1), answers: z.array(z.string()) })).min(1),
+  dns: z.array(z.object({ match: z.string().min(1), tool: z.string().min(1) })),
+  memory_prompt: z.string().min(1),
+})
+export type FootprintConfig = z.infer<typeof Footprint>
+
 export type ModelsConfig = z.infer<typeof Models>
 export type LimitsConfig = z.infer<typeof Limits>
 
@@ -131,4 +155,7 @@ export const config = {
   research: (dir?: string) => load('research.md', (t) => t.trim(), dir),
   governance: (dir?: string) => load('governance.md', (t) => t.trim(), dir),
   builder: (dir?: string) => load('builder.md', (t) => t.trim(), dir),
+  // onboarding from the footprint: what is counted and read, and how the model drafts from it
+  footprint: (dir?: string) => load('footprint.yaml', yamlOf(Footprint, 'footprint.yaml'), dir),
+  footprintDraft: (dir?: string) => load('footprint-draft.md', (t) => t.trim(), dir),
 }

@@ -2,83 +2,14 @@
 # Every table and field says what it means (the semantic layer, 24 Oct).
 name: Network
 api: 1
-# the connectors' tables its agents read and run on
-uses:
-  - { connector: mac, tables: [Contacts, Events] }
-  - { connector: gmail, tables: [Mail] }
-  - { connector: linkedin, tables: [LinkedIn connections] }
-version: 0.3.1
+version: 0.4.0
 # People and Organizations are this module's tabs (UI batch 2, 26 Oct)
 people: true
 description: >
-  Who the person knows, in circles they name: who belongs in each, proposed for their yes; how
-  close each one is, by rules they can read and change; and who is going quiet in the circles
-  they keep warm, with a note drafted for their yes.
+  Who the person knows: everyone and every organization, as People and Organizations, with lists
+  from the tables whose rows are people. LinkedIn's export of their connections, dropped in, adds
+  each one.
 tables:
-  - name: Circles
-    about: "A circle of the person's network, named by them, with who belongs in it in their own words."
-    fields:
-      - { name: Name, kind: text, about: "The circle's name, as the person calls it (Advisers, Clients, Old colleagues)." }
-      - { name: Who belongs, kind: text, about: "Who belongs in the circle, in the person's words; the Circles agent sorts people by it." }
-      - { name: Keep warm, kind: choice, choices: ['Yes', 'No'], about: "Whether the person wants to stay in touch with this circle; the Follow-ups agent watches the circles marked Yes." }
-      - { name: Every (days), kind: number, about: "How many days may pass without contact before a member of a kept-warm circle is due a follow-up." }
-  - name: Members
-    about: "One person's membership of one circle, proposed by the Circles agent and decided by the person."
-    fields:
-      - { name: Person, kind: person, about: "The person, one of the people Alpha knows." }
-      - { name: Circle, kind: relation, relates_to: Circles, about: "The circle they belong to, or were proposed for." }
-      - name: State
-        kind: choice
-        choices: [Proposed, In, Left out]
-        tones: { Proposed: warn, In: good }
-        about: "Proposed by the agent until the person says In or Left out on the card; what they decided is never proposed again."
-      - { name: Why, kind: text, about: "Why the agent thought they belong, from what is known of them." }
-      - { name: Proposed on, kind: date, about: "The day the agent proposed it." }
-    views:
-      - { name: In circles, default: true, about: "The members the person confirmed.", filters: { rules: [{ field: State, op: is, value: In }] } }
-      - { name: Proposed, about: "Who the agent thinks belongs, waiting for the person's yes.", filters: { rules: [{ field: State, op: is, value: Proposed }] } }
-      - { name: By state, kind: board, group: State, about: "Members as a board by state." }
-  - name: Closeness
-    about: "How close the person is to each person they know, worked out from their emails and meetings by the Closeness rules."
-    fields:
-      - { name: Person, kind: person, about: "The person, one of the people Alpha knows." }
-      - { name: Circles, kind: text, about: "The circles they are in, by name." }
-      - name: Closeness
-        kind: choice
-        choices: [Close, In touch, Drifting, Quiet, No contact yet]
-        tones: { Close: good, In touch: good, Drifting: warn, Quiet: bad }
-        about: "Close, In touch, Drifting or Quiet by the Closeness rules; No contact yet when no email or meeting was found."
-      - { name: Last contact, kind: date, about: "The last email or meeting with them." }
-      - { name: In 90 days, kind: number, about: "How many emails and meetings with them in the last 90 days." }
-      - { name: Wrote first, kind: choice, choices: ['You', 'They'], about: "Who started the last exchange." }
-  - name: Closeness rules
-    about: "The rule for one closeness, in numbers the person can change; the first rule that fits, by Order, decides."
-    fields:
-      - name: Closeness
-        kind: choice
-        choices: [Close, In touch, Drifting, Quiet]
-        about: "The closeness this rule gives."
-      - { name: At least in 90 days, kind: number, about: "The fewest emails and meetings in 90 days this closeness needs." }
-      - { name: Last within (days), kind: number, about: "The most days since the last contact this closeness allows." }
-      - { name: Order, kind: number, about: "Rules are tried in this order; the first that fits decides." }
-  - name: Follow-ups
-    about: "Someone in a kept-warm circle who has gone quiet, with a note drafted for the person's yes."
-    fields:
-      - { name: Person, kind: person, about: "Who is due a follow-up." }
-      - { name: Due since, kind: date, about: "The day the circle's days without contact ran out." }
-      - { name: Why, kind: text, about: "Which circle, how long since the last contact." }
-      - { name: Answer, kind: choice, choices: [Draft a note, Not now], about: "What the person chose on the card." }
-      - name: Note
-        kind: choice
-        choices: [Waiting for you, Sent, Not sent, Needs an address]
-        tones: { Waiting for you: warn, Sent: good, Needs an address: warn }
-        about: "What became of the drafted note; Needs an address when no email is known for them."
-  - name: Notes
-    about: "The words a drafted follow-up note starts from; the person's to change."
-    fields:
-      - { name: Kind, kind: choice, choices: [Follow-up], about: "Which note this is the template for." }
-      - { name: Subject, kind: text, about: "The note's subject line." }
-      - { name: Body, kind: text, about: "The note's body; the agent fills in the name." }
   - name: LinkedIn
     about: "One of the person's LinkedIn connections, as the LinkedIn connector read it; each is one of the people Alpha knows."
     # each connection is one of the person's people, at their company, by their profile link
@@ -91,3 +22,13 @@ tables:
       - { name: Position, kind: text, about: "Their title there." }
       - { name: Connected on, kind: date, about: "When the person and they connected on LinkedIn." }
 network: []
+# Circles and what fed them (Members, Closeness, its rules, Follow-ups and their Notes) are no tab
+# or list of Network's (Vikas, 30 Oct): People's lists come from the tables whose rows are people.
+history:
+  removed:
+    - { table: Members, in: 0.4.0 }
+    - { table: Follow-ups, in: 0.4.0 }
+    - { table: Closeness, in: 0.4.0 }
+    - { table: Closeness rules, in: 0.4.0 }
+    - { table: Notes, in: 0.4.0 }
+    - { table: Circles, in: 0.4.0 }

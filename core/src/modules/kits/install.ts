@@ -1,4 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import { all, now, one, run, tx } from '../../world/db.ts'
@@ -7,7 +15,7 @@ import type { Module, WriteCtx } from '../../world/shape/index.ts'
 import type { World } from '../../world/world.ts'
 import { syncAgents } from '../agents.ts'
 import { commitAll } from '../git.ts'
-import { checked, readKit, sha } from './read.ts'
+import { checked, type KitManifest, readKit, sha } from './read.ts'
 import { currentRowHash, landSetup, placeModule, shapeTables, shapeViews } from './shape.ts'
 
 export async function install(world: World, kitDir: string, ctx: WriteCtx): Promise<Module> {
@@ -191,7 +199,14 @@ export async function update(
       mkdirSync(dirname(join(module.dir, f)), { recursive: true })
       copyFileSync(join(kitDir, f), join(module.dir, f))
     }
-    for (const f of out.dropped) rmSync(join(module.dir, f), { force: true })
+    for (const f of out.dropped) {
+      rmSync(join(module.dir, f), { force: true })
+      // and the folder it leaves empty (a dropped skill's); one with anything left stays
+      if (dirname(f) !== '.')
+        try {
+          rmdirSync(dirname(join(module.dir, f)))
+        } catch {}
+    }
     syncAgents(world, module, 'paused')
     world.line({
       actor: ctx.actor,
@@ -203,7 +218,7 @@ export async function update(
     })
     return out
   })
-  updateSites(world, module, manifest.network, kitCtx, manifest.people === true)
+  updateSites(world, module, manifest, kitCtx)
   world.shape.writeManifest(world.shape.module(module.id) as Module)
   await commitAll(module.dir, `Updated ${kitName}`)
   return report
@@ -213,21 +228,21 @@ export async function update(
 // the person let a reader reach on a card (its journal line), so a site the kit drops goes and
 // one the person allowed stays (item 44 of the problems list, 25 Oct). module.yaml is not one of
 // a kit's files on update, so without this its list never changed.
-function updateSites(
-  world: World,
-  module: Module,
-  kit: string[],
-  ctx: WriteCtx,
-  people: boolean,
-): void {
+function updateSites(world: World, module: Module, manifest: KitManifest, ctx: WriteCtx): void {
+  const kit = manifest.network
+  const people = manifest.people === true
   const file = join(module.dir, 'module.yaml')
   const m = (existsSync(file) ? parse(readFileSync(file, 'utf8')) : {}) as Record<string, unknown>
-  // where People lives is the kit's to say: module.yaml is not one of a kit's files on update
-  if (people !== (m.people === true)) {
-    if (people) m.people = true
-    else delete m.people
-    writeFileSync(file, stringify(m))
-  }
+  // where People lives, what the module is for, what it reads and its version are the kit's to
+  // say (nothing lets the person change them): module.yaml is not one of a kit's files on update
+  const said = JSON.stringify(m)
+  if (people) m.people = true
+  else delete m.people
+  for (const k of ['description', 'uses'] as const)
+    if (manifest[k] === undefined) delete m[k]
+    else m[k] = manifest[k]
+  m.version = manifest.version
+  if (JSON.stringify(m) !== said) writeFileSync(file, stringify(m))
   const was = Array.isArray(m.network) ? m.network.map(String) : []
   const allowed = all<{ host: string }>(
     world.db,

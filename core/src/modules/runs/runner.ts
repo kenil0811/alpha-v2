@@ -46,6 +46,7 @@ export class AgentRunner {
   ask: Ask
   judgeAsk: Ask
   interviewAsk: Ask // the model wording the day's interview questions
+  footprintAsk: Ask // the model drafting the business from the owner's footprint
   researchAsk: Ask // Research: the model planning its searches and writing its brief
   governanceAsk: Ask // Governance: the model explaining a refusal
   web: Web // what Research reads the web through: the browser engine, by default
@@ -69,6 +70,7 @@ export class AgentRunner {
       ask?: Ask // the model reading a document
       judge?: Ask // the model sorting items into the person's groups
       interview?: Ask // the model wording the day's interview questions
+      footprint?: Ask
       research?: Ask
       governance?: Ask
       web?: Web
@@ -85,6 +87,10 @@ export class AgentRunner {
       options.interview ??
       options.ask ??
       askModel(world.paths.dir, undefined, () => config.interviewing())
+    this.footprintAsk =
+      options.footprint ??
+      options.ask ??
+      askModel(world.paths.dir, undefined, () => config.footprintDraft())
     this.researchAsk =
       options.research ??
       options.ask ??

@@ -52,6 +52,7 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
                 {r.name}
               </a>
               {r.note && <span className="block truncate text-ink-3 text-sm">{r.note}</span>}
+              {r.also && <span className="block truncate text-ink-3 text-xs">{r.also}</span>}
             </span>
             {r.value ? (
               <span className="shrink-0 text-ink-2 text-sm">{r.value}</span>

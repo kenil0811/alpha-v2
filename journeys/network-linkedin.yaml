@@ -1,0 +1,15 @@
+name: network-linkedin
+title: "Network: LinkedIn's export of the person's connections, dropped in, becomes their people"
+why: >
+  The People and Network plan (21 Oct); Network is Alpha's own since Kenil's word the same day, and
+  holds no groups of its own since Vikas's word on 30 Oct (Overview, People, Organizations). The
+  person's LinkedIn export (made-up connections) is read into LinkedIn, each one of their people.
+steps:
+  - kit: { from: core/kits/network, agents: [LinkedIn export] }
+  - folder: { from: journeys/fixtures/linkedin }
+    checks:
+      - documents: 1
+  - due: true
+    checks:
+      - rows_in: { table: LinkedIn, count: 8 }
+      - errors: 0

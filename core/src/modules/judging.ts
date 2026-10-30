@@ -1,4 +1,4 @@
-// The model sorts a person's items into the groups the person named (a kit's circles), for their
+// The model sorts a person's items into the groups the person named (a kit's lists), for their
 // review: each item one group or none, with why in a few words, from the facts given only
 // (config/judging.md). A wall in code: an answer naming a group or an item that was not asked is
 // dropped. Items go in batches, so a long list is sorted in a few calls.

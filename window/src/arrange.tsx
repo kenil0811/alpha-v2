@@ -298,7 +298,13 @@ export function Arranged({
                 </button>
                 <div
                   data-body
-                  className={height ? 'flex flex-col overflow-y-auto *:flex-1' : undefined}
+                  // sized smaller than it is, its body scrolls under its header, which stays in
+                  // sight (Vikas, 30 Oct: the Agents and Governance heads "omnipresent")
+                  className={
+                    height
+                      ? 'flex flex-col overflow-y-auto *:flex-1 [&_[data-head]]:sticky [&_[data-head]]:top-0 [&_[data-head]]:z-1 [&_[data-head]]:bg-surface'
+                      : undefined
+                  }
                   style={{ height: height ?? undefined }}
                 >
                   {b.node}

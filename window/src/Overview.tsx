@@ -851,7 +851,7 @@ function StripTile({
   const words = (
     <>
       <Dot s={dot} className="size-1.5" />
-      <span className="line-clamp-2">{t.act.label}</span>
+      <span className="truncate">{t.act.label}</span>
     </>
   )
   // the popover is the tile's sibling, not its child: a portal's events bubble to its React parent
@@ -877,7 +877,7 @@ function StripTile({
           if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : onOpen(true)
         }}
         className={cn(
-          'flex size-40 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
+          'flex w-52 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
           on && 'border-accent-line shadow-pop',
         )}
       >
@@ -886,22 +886,28 @@ function StripTile({
         {t.big.length >= 4 ? (
           <>
             <div className="font-serif text-2xl leading-none">{t.big}</div>
-            <p className="mt-1 line-clamp-3 text-ink-2 text-sm">{t.small}</p>
+            <p className="mt-1 truncate text-ink-2 text-sm">{t.small}</p>
           </>
         ) : (
-          <p className="line-clamp-3 text-ink-2 text-sm">
+          <p className="line-clamp-2 text-ink-2 text-sm">
             {t.big && (
               <span className="mr-1.5 font-serif text-2xl text-ink leading-none">{t.big}</span>
             )}
             {t.small}
           </p>
         )}
-        {t.spark && <Spark points={t.spark} />}
-        <div className="mt-auto flex pt-1.5">
+        {/* three lines in all (Vikas, 30 Oct): the number and its words, then one row with the
+            spark at the left and the button at the right */}
+        <div className="mt-auto flex items-end justify-end gap-2 pt-1.5">
+          {t.spark && (
+            <div className="min-w-0 flex-1">
+              <Spark points={t.spark} />
+            </div>
+          )}
           {t.act.off ? (
             <span
               aria-disabled="true"
-              data-tip={t.act.tip}
+              data-tip={t.act.tip ?? t.act.label}
               className={cn(
                 button,
                 'cursor-default border-transparent bg-sunk text-ink-3 hover:border-transparent hover:bg-sunk',
@@ -910,13 +916,13 @@ function StripTile({
               {words}
             </span>
           ) : t.act.href ? (
-            <a href={t.act.href} data-tip={t.act.tip} className={button}>
+            <a href={t.act.href} data-tip={t.act.tip ?? t.act.label} className={button}>
               {words}
             </a>
           ) : (
             <button
               type="button"
-              data-tip={t.act.tip}
+              data-tip={t.act.tip ?? t.act.label}
               onClick={() => {
                 onOpen(false)
                 onGo(t.act.go ?? t.go)
@@ -1593,7 +1599,7 @@ function Card({
         (big || wide) && 'col-span-full',
       )}
     >
-      <div className="flex h-11 items-center gap-2 px-3">
+      <div data-head className="flex h-11 items-center gap-2 rounded-t-lg px-3">
         {signal && <Dot s={signal} />}
         <a
           href={href}

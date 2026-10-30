@@ -1,0 +1,77 @@
+# Onboarding from the footprint (Vikas, 30 Oct; proposals/2026-10-30-footprint-onboarding.md):
+# Alpha counts what it could read, the owner ticks, Alpha reads only what was ticked, drafts the
+# business for the owner to confirm, and asks only the gaps. The readers are code's
+# (core/src/modules/footprint.ts and browsers.ts); what they are called, how far back they read,
+# the default deny list and the topics a draft is sorted into live here.
+
+# Browser history: sites only, this many days back (Vikas's decision 1).
+history_days: 90
+# Recently used files: this many days back.
+recent_days: 30
+# What one source keeps at most, and what the draft is given of it.
+keep: 400
+draft_items: 60
+# The facts a draft or a paste-back lands at most.
+draft_facts: 30
+
+# The sources step 1 counts, in the order the card lists them. A source's reader is code's, by id.
+sources:
+  - { id: apps, title: Installed apps, unit: apps, sub: "Apps in Applications and the Dock, with when each came" }
+  - { id: bookmarks, title: Browser bookmarks, unit: bookmarks, sub: "The bookmarks bar and its folders, in each browser" }
+  - { id: extensions, title: Browser extensions, unit: extensions, sub: "Each one a tool or a habit" }
+  - { id: history, title: Sites visited, unit: sites, sub: "Sites only, the last 90 days; never pages, titles or searches" }
+  - { id: folders, title: Desktop, Documents and Downloads, unit: names, sub: "Folder and file names only, never what is in them" }
+  - { id: recent, title: Recent files, unit: files, sub: "Names of files opened in the last 30 days" }
+  - { id: contacts, title: Contacts, unit: people, sub: "Through Contacts, once connected", needs: contacts }
+  - { id: calendar, title: Calendar, unit: meetings, sub: "Through Calendar, once connected", needs: calendar }
+  - { id: mail, title: Mail, unit: mails, sub: "Through Gmail, once connected", needs: gmail }
+  - { id: website, title: Your website, unit: records, sub: "Its page and its domain's public records (mail, verification)" }
+
+# The default deny list (Vikas's decision 4): saved as approved rules on the owner's first tick,
+# shown in Governance, where each can be revoked. A site a rule names is skipped by every reader.
+deny:
+  - name: Money
+    sites: [chase.com, bankofamerica.com, wellsfargo.com, citi.com, capitalone.com, usbank.com, pnc.com, schwab.com, fidelity.com, vanguard.com, americanexpress.com, discover.com, paypal.com, venmo.com, robinhood.com, coinbase.com, creditkarma.com]
+  - name: Health
+    sites: [webmd.com, healthline.com, mayoclinic.org, goodrx.com, zocdoc.com, teladoc.com, cvs.com, walgreens.com, 23andme.com, betterhelp.com, talkspace.com, mychart.org]
+
+# What a draft fact is about. A confirmed fact about a topic settles the interview questions it
+# answers (interview-bank.yaml ids), so Interview me asks only the gaps.
+topics:
+  - { name: You, answers: [] }
+  - { name: Your clients, answers: [customers] }
+  - { name: Your suppliers, answers: [] }
+  - { name: Your team, answers: [people] }
+  - { name: Your tools, answers: [tools] }
+  - { name: How the work runs, answers: [] }
+
+# What a domain's public records say it runs on: a piece of an MX or TXT record, and the tool.
+dns:
+  - { match: google.com, tool: Google Workspace }
+  - { match: googlemail.com, tool: Google Workspace }
+  - { match: outlook.com, tool: Microsoft 365 }
+  - { match: "ms=ms", tool: Microsoft 365 }
+  - { match: zoho, tool: Zoho }
+  - { match: sendgrid.net, tool: SendGrid }
+  - { match: mailgun.org, tool: Mailgun }
+  - { match: mcsv.net, tool: Mailchimp }
+  - { match: hubspotemail.net, tool: HubSpot }
+  - { match: salesforce.com, tool: Salesforce }
+  - { match: zendesk.com, tool: Zendesk }
+  - { match: amazonses.com, tool: Amazon SES }
+  - { match: shopify, tool: Shopify }
+  - { match: stripe-verification, tool: Stripe }
+  - { match: facebook-domain-verification, tool: Meta Business }
+  - { match: atlassian-domain-verification, tool: Atlassian }
+  - { match: docusign, tool: DocuSign }
+  - { match: zoom_verify, tool: Zoom }
+  - { match: adobe-idp-site-verification, tool: Adobe }
+  - { match: apple-domain-verification, tool: Apple Business }
+
+# Step 4 (Vikas's decision 3): the prompt the owner copies into ChatGPT, Claude or Gemini, whose
+# answer they paste back. Every fact it brings is unconfirmed until they confirm it.
+memory_prompt: >
+  Tell me everything you know about my work and my business from our past conversations and your
+  memory of me. Answer only in lines of the form "Topic: fact", one fact a line, using these
+  topics: You, Your clients, Your suppliers, Your team, Your tools, How the work runs. Leave out
+  anything about health, money held in accounts, passwords or other people's private matters.

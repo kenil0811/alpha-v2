@@ -95,7 +95,13 @@ export interface ReviewView {
   table: string
   field: string
   choices: string[] // the first is the usual yes
-  rows: { id: string; name: string; note: string | null; value: string | null }[]
+  rows: {
+    id: string
+    name: string
+    note: string | null
+    also: string | null // a second line after the note: where a drafted fact came from
+    value: string | null
+  }[]
   open: number // rows not yet decided
 }
 
@@ -239,6 +245,36 @@ export interface FilingView {
 
 // Interview me (Vikas, 30 Oct): the pool as it stands for the business or a module, as the button
 // says it on a hover. No count is fixed: questions and left are those worth asking now.
+// Onboarding from the footprint (30 Oct): each source with what it holds, its tick and what was
+// read of it; the website given; the paste-back prompt; the draft's card while it waits.
+export interface FootprintSource {
+  id: string
+  title: string
+  unit: string
+  sub: string
+  count: number | null // what it holds, counted before any read
+  needs: string | null // the connector to connect first
+  ticked: boolean
+  read: {
+    at: string
+    read: number
+    skipped: number
+    why: string | null // why some were skipped, in words
+    items: string[] // a few of what was read
+  } | null
+}
+
+export interface FootprintView {
+  sources: FootprintSource[]
+  countedAt: string | null
+  site: string | null
+  denied: boolean
+  memoryPrompt: string
+  memory: FootprintSource['read'] // what the AI-memory paste-back brought
+  card: string | null
+  done: boolean
+}
+
 export interface InterviewView {
   at: string | null // when the pool was last ranked
   today: boolean

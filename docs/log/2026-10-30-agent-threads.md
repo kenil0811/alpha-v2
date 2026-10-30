@@ -187,3 +187,32 @@ more; Governance `GovernanceSection` with no module (every rule); Tables every m
 its name, parts folded until Show more; Second Brain and Files from each module's
 `/api/modules/:id` merged (one request a module, marked ponytail). For Kenil's review; checked
 with Playwright on Avilo and Dell at 1440 and 1100.
+
+Network without Circles (Vikas, 30 Oct: "circles is not one of my tab… delete and clean up the
+entire network tables so that it's aligned with our current structure"). Network 0.4.0 keeps only
+LinkedIn (the export's fallback that feeds People) and its LinkedIn export agent; Circles, Members,
+Closeness, Closeness rules, Follow-ups and Notes go, with the Circles and Closeness agents and
+their skills and the starting circles. A circle's membership was not kept as a list value: People's
+lists already come from the tables whose rows are people. A kit now removes a table by naming it in
+`history.removed` with no key: the update calls the shape's own `removeTable` (journaled,
+tombstoned, pointers at it cleared), so a table pointed at can go before the one pointing at it; a
+removed agent's runs stay in Activity with no agent (as `syncAgents` already did). The update also
+brings the kit's description, `uses` and version into module.yaml, so the rail's hover no longer
+speaks of circles. A removed table is deleted outright, as the design has a person's removal: its
+rows are not in the 30-day trash, only the daily backup. Test in `modules/kits.test.ts`; the
+journey is now `network-linkedin`. Design line on `history.removed` marked for Kenil's review.
+
+**Onboarding from the footprint.** Vikas: "ensure the onboarding flow which we discussed is in
+place." Built in Interview me's first sitting: step 1 counts ten sources (apps, bookmarks,
+extensions, sites visited, folder and file names, recent files, Contacts, Calendar, Mail, the
+website) and reads none before its tick; the first tick saves the default deny list (Money,
+Health) as the owner's approved rules. Step 2 reads locally: `modules/browsers.ts` for Chrome,
+Edge, Brave, Arc, Firefox and Safari (an allow-list of files, sites only, 90 days, immutable
+read-only opens), apps with install dates and the Dock, folder names, Spotlight's recent files,
+exchanges counted from Gmail and Calendar where connected (said and skipped where not), and the
+website's title and its domain's MX/TXT tools. Step 4 is the paste-back (code reads "Topic: fact"
+lines, all unconfirmed); step 5 a draft by the model (`config/footprint-draft.md`) kept only on
+given topics and sources, as Proposed Noticed rows on one review card that now shows a second line
+(where the fact came from); step 6 drops bank questions a confirmed topic answers; step 9 is the
+ledger with Forget in Settings › Governance. Kenil's open questions taken on the recommended
+answer. Tests in `modules/footprint.test.ts` (13). Steps 7 and 8 wait.

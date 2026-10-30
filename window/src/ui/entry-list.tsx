@@ -2,9 +2,10 @@
 // Governance's Can do and Cannot do, How to work. Empty, its only line is New; with entries, a
 // small Add sits at the right of its heading. A hover shows ✕ at an entry's right (the caller
 // confirms it, or lets it be undone); a double-click edits an entry, Enter saves and Escape lets
-// it be. A click never edits.
+// it be. A click never edits. The box shows Save and Cancel; once an added entry goes in, the box
+// empties and stays open for the next (Vikas, 30 Oct: "there is no save, no way to add a second").
 import { Plus, X } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 import { Button, IconButton } from './button.tsx'
 import { cn } from './cn.ts'
 
@@ -112,6 +113,7 @@ export function EntryList<T>({
           <Words
             start=""
             placeholder={placeholder}
+            again
             onSave={onAdd}
             onDone={() => setAdding(false)}
           />
@@ -130,43 +132,68 @@ export function EntryList<T>({
   )
 }
 
-// The box an entry is typed in: Enter saves, Escape or leaving it unchanged lets it be.
+// The box an entry is typed in: Save or Enter saves, Cancel or Escape lets it be, as does leaving
+// it unchanged. With again (adding), a saved entry empties the box for the next one.
 function Words({
   start,
   placeholder,
+  again = false,
   onSave,
   onDone,
 }: {
   start: string
   placeholder: string
+  again?: boolean
   onSave: (words: string) => Promise<boolean>
   onDone: () => void
 }) {
   const [words, setWords] = useState(start)
   const [busy, setBusy] = useState(false)
+  const box = useRef<HTMLInputElement>(null)
   const save = async () => {
     const w = words.trim()
     if (!w || w === start) return onDone()
     setBusy(true)
     const ok = await onSave(w)
     setBusy(false)
-    if (ok) onDone()
+    if (!ok) return
+    if (!again) return onDone()
+    setWords('')
+    setTimeout(() => box.current?.focus())
   }
   return (
-    <input
-      // biome-ignore lint/a11y/noAutofocus: New, Add or a double-click opened it to type in
-      autoFocus
-      value={words}
-      disabled={busy}
-      aria-label={placeholder}
-      placeholder={placeholder}
-      onChange={(e) => setWords(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') void save()
-        if (e.key === 'Escape') onDone()
-      }}
-      onBlur={() => !busy && (words.trim() === start.trim() || !words.trim()) && onDone()}
-      className="h-9 rounded-md border border-accent-line bg-surface px-3 text-ink text-md outline-none placeholder:text-ink-3"
-    />
+    <div className="flex items-center gap-1.5">
+      <input
+        ref={box}
+        // biome-ignore lint/a11y/noAutofocus: New, Add or a double-click opened it to type in
+        autoFocus
+        value={words}
+        disabled={busy}
+        aria-label={placeholder}
+        placeholder={placeholder}
+        onChange={(e) => setWords(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') void save()
+          if (e.key === 'Escape') onDone()
+        }}
+        onBlur={(e) => {
+          // leaving for its own Save or Cancel is not leaving it
+          if (e.relatedTarget?.closest('[data-words]')) return
+          if (!busy && (words.trim() === start.trim() || !words.trim())) onDone()
+        }}
+        className="h-9 min-w-0 flex-1 rounded-md border border-accent-line bg-surface px-3 text-ink text-md outline-none placeholder:text-ink-3"
+      />
+      <Button
+        data-words
+        variant="primary"
+        disabled={busy || !words.trim() || words.trim() === start.trim()}
+        onClick={() => void save()}
+      >
+        {busy ? 'Saving…' : 'Save'}
+      </Button>
+      <Button data-words variant="ghost" disabled={busy} onClick={onDone}>
+        Cancel
+      </Button>
+    </div>
   )
 }

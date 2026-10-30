@@ -318,10 +318,11 @@ put it there and on the parts page (#/parts).
 - A strip of tiles is one row of square tiles (`Strip` in `Overview.tsx`, Home's too) that scrolls
   sideways inside itself, snapping to a tile, its scrollbar shown only under the pointer; a hover or
   a click opens the whole name and what it counts in a popover over the page, never clipped by the
-  row. Replaces "evened over the rows" of the same day. Every tile is one layout, 200px square: the
-  number big and left, its words after it on the same line ("0 listings reviewed · of 13 this
-  week"), up to three lines; a number of four characters or more ("1,016") on its own line above
-  its words; a spark under the words; its one button at the foot. The signal is a small dot on the
+  row. Replaces "evened over the rows" of the same day. Every tile is one layout, three lines in
+  all with its button: the number big and left, its words after it ("0 listings reviewed · of 13
+  this week"), two lines at most; a number of four characters or more ("1,016") on its own line
+  with its words in one line under it; then one row, the spark at the left and the one button at
+  the right, its words on one line (all of them on hover). The signal is a small dot on the
   button, before its words, and nowhere else on the tile. With nothing to do the button stays,
   greyed, saying it is done ("All engaged"), its hover saying why (Vikas, 30 Oct; for Kenil's
   review).
@@ -332,7 +333,8 @@ put it there and on the parts page (#/parts).
   (Vikas, 30 Oct; for Kenil's review).
 - Every card is a block the person moves (its handle on hover) and resizes from its bottom-right
   corner alone, the ↘↖ cursor its only mark (width a share of its row, height in pixels, kept as
-  "key@40x320"; double-click gives it back), kept per person by the core: Home, an
+  "key@40x320"; double-click gives it back); sized smaller than it is, its body scrolls under its
+  header, which stays in sight (`data-head`), kept per person by the core: Home, an
   Overview, a module's Agents and notes, an agent's page, Second Brain, Usage, Connections.
   A table's own views are not blocks.
 
@@ -394,3 +396,20 @@ put it there and on the parts page (#/parts).
   a file and a list of rows stay fixed, and a double-click on one says why in the tip.
 - The side panel stands apart from the page it opened over: a firmer left edge (`--edge`) and a
   soft shadow cast on the page (`--shadow-side`), in both themes; nothing more.
+
+### Onboarding from the footprint (Vikas, 30 Oct; for Kenil's review)
+
+- The Interviewer's thread opens on one card, "Before the questions", until the owner goes on:
+  what Alpha could read, a row a source with its switch, what it does and its count (or Connect
+  <service> while it is not connected), Update now for the counts. Nothing is read before its
+  switch is on; Read what I ticked reads, and each row then says what it read and what it skipped.
+- The default deny list shows on that card in one line, linking to Governance, where its rules
+  are revoked as any other.
+- The same card holds the AI-memory paste-back (the prompt with Copy, a box, Add these), Draft my
+  business, and Ask me the rest, which ends the card and starts the questions. While the card
+  stands, Interview me opens on it and asks nothing.
+- The draft is the one review card under it (never inside it): a topic a row, the fact under it,
+  where it came from under that; Confirmed or Dropped each; a double-click on the row fixes it.
+- Settings › Governance › What Alpha read is the ledger: a source a row, what was read and when,
+  what was skipped and why, a few of the items, Forget this source asked first in the one pop-up.
+- Home's Welcome has "Let Alpha learn your business" first, done once the owner went on.

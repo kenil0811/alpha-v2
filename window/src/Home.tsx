@@ -8,6 +8,7 @@ import type {
   AgentView,
   CardView,
   ConnectorsView,
+  FootprintView,
   ModuleSummary,
   ModuleView,
   RuleView,
@@ -470,14 +471,17 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
   const [view, setView] = useState<{
     steps: { name: string; words: string; sub: string; done: boolean }[]
     kit: boolean
+    learned: boolean
   } | null>(null)
   useEffect(() => {
     Promise.all([
       api.get<ConnectorsView>('/api/connectors'),
       api.get<WorkingModuleView[]>('/api/working'),
+      api.get<FootprintView>('/api/footprint').catch(() => null),
     ]).then(
-      ([c, w]) =>
+      ([c, w, f]) =>
         setView({
+          learned: !!f?.done,
           steps: c.connectors
             .filter((k) => k.setup || k.auth === 'path')
             .map((k) => ({
@@ -501,6 +505,13 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
     'Who emailed me this week?',
   ]
   const setup = [
+    // the footprint first (Vikas, 30 Oct): Alpha reads what is ticked, then asks what is left
+    {
+      done: view?.learned,
+      words: 'Let Alpha learn your business',
+      sub: 'It reads only what you tick on this Mac, drafts your business for your yes, then asks what is left',
+      href: '#/conversation/interviewer',
+    },
     ...(view?.steps ?? []).map((s) => ({
       done: s.done,
       words: s.words,

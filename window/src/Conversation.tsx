@@ -6,6 +6,7 @@ import type {
   AboutRows,
   AgentView,
   CardView,
+  FootprintView,
   LiveEvent,
   ModelView,
   Stream,
@@ -39,6 +40,7 @@ import { INTERVIEWER, takeAsk, takeSitting, useSitting } from './ask.ts'
 import { Beside } from './Beside.tsx'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
+import { Footprint } from './Footprint.tsx'
 import { MatchCard } from './MatchCard.tsx'
 import { peek } from './Peek.tsx'
 import { ProposedCard } from './ProposedCard.tsx'
@@ -327,9 +329,17 @@ export function Agents({
   const { start } = sitting
   useEffect(() => {
     if (!interviewer) return
+    // the footprint first (Vikas, 30 Oct: Alpha reads first, asks last): while its card stands,
+    // Interview me opens on it, and its Ask me the rest starts the sitting
     const take = () => {
       const s = takeSitting()
-      if (s) void start(s.module)
+      if (s)
+        api.get<FootprintView>('/api/footprint').then(
+          (f) => {
+            if (f.done) void start(s.module)
+          },
+          () => void start(s.module),
+        )
     }
     take()
     window.addEventListener('alpha:interview', take)
@@ -352,7 +362,14 @@ export function Agents({
               if (m) window.location.hash = `#/module/${m.id}`
             }}
             thread={thread}
-            top={interviewer && <Sitting {...sitting} />}
+            top={
+              interviewer && (
+                <>
+                  <Footprint cards={stream?.cards ?? []} onAsk={() => void start(null)} />
+                  <Sitting {...sitting} />
+                </>
+              )
+            }
           />
         )}
       </div>
