@@ -879,7 +879,7 @@ function StripTile({
           if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : onOpen(true)
         }}
         className={cn(
-          'flex w-52 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
+          'flex aspect-square w-40 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
           on && 'border-accent-line shadow-pop',
         )}
       >
@@ -1601,7 +1601,8 @@ function Card({
         (big || wide) && 'col-span-full',
       )}
     >
-      <div data-head className="flex h-11 items-center gap-2 rounded-t-lg px-3">
+      {/* a container, so a narrow card drops the words before its buttons leave the right edge */}
+      <div data-head className="@container flex h-11 items-center gap-2 rounded-t-lg px-3">
         {signal && <Dot s={signal} />}
         <a
           href={href}

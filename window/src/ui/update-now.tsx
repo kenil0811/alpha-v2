@@ -39,9 +39,11 @@ export function UpdateNow({
   disabled?: boolean
 }) {
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+    // kept at the right; in a narrow card's head (a container) the words go, and their time
+    // moves to the button's hover
+    <span className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
       <span
-        className="whitespace-nowrap text-ink-3 text-sm"
+        className="whitespace-nowrap text-ink-3 text-sm @max-[22rem]:hidden"
         data-tip={at && !busy ? full(new Date(at)) : undefined}
       >
         {busy ? 'Updating…' : at ? `Updated ${updatedWords(at)}` : 'Not updated yet'}
@@ -50,7 +52,7 @@ export function UpdateNow({
         size="sm"
         disabled={busy || disabled}
         aria-busy={busy}
-        data-tip={tip}
+        data-tip={[tip, at && !busy && `Updated ${full(new Date(at))}`].filter(Boolean).join('. ')}
         onClick={onClick}
       >
         <RefreshCw className={cn('size-3.5', busy && 'animate-spin')} />

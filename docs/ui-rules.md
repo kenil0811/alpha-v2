@@ -323,7 +323,8 @@ put it there and on the parts page (#/parts).
 - A strip of tiles is one row of square tiles (`Strip` in `Overview.tsx`, Home's too) that scrolls
   sideways inside itself, snapping to a tile, its scrollbar shown only under the pointer; a hover or
   a click opens the whole name and what it counts in a popover over the page, never clipped by the
-  row. Replaces "evened over the rows" of the same day. Every tile is one layout, three lines in
+  row. Replaces "evened over the rows" of the same day. Every tile is square, one size whatever
+  the room (Vikas, 30 Oct), and one layout, three lines in
   all with its button: the number big and left, its words after it ("0 listings reviewed · of 13
   this week"), two lines at most; a number of four characters or more ("1,016") on its own line
   with its words in one line under it; then one row, the spark at the left and the one button at
@@ -335,7 +336,8 @@ put it there and on the parts page (#/parts).
   page) it is one button, Update now, with when it last updated just before it ("Updated 12 min
   ago", "Updated 12:42", "Updated 29 Oct, 13:34"; the full time on hover) and Updating… with the
   icon turning while it runs (`ui/update-now.tsx`). Replaces Sync now, Look again and Run now
-  (Vikas, 30 Oct; for Kenil's review).
+  (Vikas, 30 Oct; for Kenil's review). It stays at the right of a card's head however narrow
+  the card: under 22rem the "Updated" words go and their time moves to the button's hover.
 - Every card is a block the person moves (its handle on hover) and resizes from its bottom-right
   corner alone, the ↘↖ cursor its only mark (width a share of its row, height in pixels, kept as
   "key@40x320"; double-click gives it back); sized smaller than it is, its body scrolls under its
