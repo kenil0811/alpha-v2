@@ -141,10 +141,24 @@ export interface Call {
   call<T>(name: string, args: unknown, fn: () => Promise<T>): Promise<T>
 }
 
+// What a write or a send is, once done (step 2, part 2, Kenil's yes 30 Oct): final (an email
+// sent), or taken back by its counter-action (a saved draft deleted) or its exact undo. A tool
+// that says nothing is final. Revert in Activity runs the take-back, with `result`, what the
+// tool's run returned.
+export type Undo<I = unknown> =
+  | 'final'
+  | {
+      kind: 'undoable' | 'counter'
+      said: string // on the card: "Revert deletes the draft again."
+      words: (input: I, result: unknown) => string // "Deletes the draft to priya@…"
+      run: (c: Call, input: I, result: unknown) => Promise<unknown>
+    }
+
 export interface Tool<S extends z.ZodRawShape = z.ZodRawShape> {
   description: string
   input: S
   effect: Effect | ((input: z.infer<z.ZodObject<S>>) => Effect)
+  undo?: Undo<z.infer<z.ZodObject<S>>>
   // What a card shows when the call waits on one: a line, and the whole of it.
   preview?: (input: z.infer<z.ZodObject<S>>) => { words: string; detail?: string; yes?: string }
   // What the step is called where the person reads it (Activity): plain words, no tool names.

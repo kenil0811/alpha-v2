@@ -71,6 +71,8 @@ export const Check = z.union([
     }),
   }),
   z.object({ connector_calls: z.object({ words: z.string(), count: z.number() }) }),
+  // what the newest revert said, in part (step 2, part 2: a take-back outside Alpha)
+  z.object({ reverted: z.string() }),
   // a connector's attempts the sandbox refused, listed under it (step 2, part 1, slice 2)
   z.object({
     refused: z.object({ connector: z.string(), host: z.string(), count: z.number() }),
@@ -401,6 +403,14 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `“${check.connector_calls.words}” ${check.connector_calls.count} time(s)`,
       ok: n === check.connector_calls.count,
       saw: String(n),
+    }
+  }
+  if ('reverted' in check) {
+    const last = world.lines({ kinds: ['reverted', 'took_back'] }).at(-1)
+    return {
+      check: `the newest revert says /${check.reverted}/`,
+      ok: !!last && new RegExp(check.reverted, 'i').test(last.words),
+      saw: last?.words ?? 'no revert',
     }
   }
   if ('refused' in check) {

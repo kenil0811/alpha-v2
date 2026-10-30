@@ -639,12 +639,29 @@ export const gmail: Connector = {
         )
         return { ...(saved as object), draft: id }
       },
+      // taken back by Revert: the draft deleted again (step 2, part 2)
+      undo: {
+        kind: 'counter',
+        said: 'Revert deletes the draft again.',
+        words: (m) => `Deletes the draft to ${m.to}`,
+        run: (c, m, result) => {
+          const id = (result as { draft?: string } | null)?.draft
+          if (!id) throw new Problem(`The draft to ${m.to} has no id to find it by.`, 'gone')
+          return c.call('discard', { draft: id }, () =>
+            withImap(c, async (client) => {
+              await discardDraft(client, id)
+              return { discarded: true }
+            }),
+          )
+        },
+      },
     }),
     send: defineTool({
       description:
         'Send an email from the person’s Gmail. It waits for their yes on a card first. To send a draft (one saved with draft, or one found in Drafts with search in:drafts, then read), give its id as draft and its to, cc, subject and body as the draft has them: that draft goes and leaves Drafts, and one changed since is refused.',
       input: { ...Message, draft: z.string().optional() },
       effect: 'outward',
+      undo: 'final',
       preview,
       words: (m) => `${m.draft ? 'Send your draft to' : 'Send an email to'} ${m.to}`,
       run: async (c, m) =>

@@ -147,6 +147,7 @@ export function activityView(
       .filter((r) => !placed.has(r.id))
       .map((r) => lineOut(r, 'read', String(r.data.title ?? r.actor.id ?? 'A connector'), null))
     const rowLines = world.lines({ kinds: ROWS, limit: 1000 })
+    const tookBack = world.lines({ kinds: ['took_back'], limit: 200 })
     // removals and reverts made outside a run or a turn: the person's, mostly
     const own = rowLines
       .filter((l) => !l.run && !l.turn && (l.kind === 'reverted' || l.kind === 'removed'))
@@ -160,6 +161,10 @@ export function activityView(
             }
           : {
               ...lineOut(l, 'revert', who, l.module),
+              // what it took back outside Alpha (step 2, part 2), each its own step
+              steps: tookBack
+                .filter((t) => JSON.stringify(t.data.target) === JSON.stringify(l.data.target))
+                .map((t) => ({ id: t.id, at: t.at, kind: t.kind, words: t.words })),
               undo: undoOf({ line: l.id }, 'Revert', `the revert at ${clock(l.at)}`),
             }
       })

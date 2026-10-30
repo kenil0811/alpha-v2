@@ -28,10 +28,19 @@ steps:
       - cards_waiting: 0
   - say: now send it
     checks:
-      - card: { gate: leaves_world, words: 'Send your draft to marco@brokerage' }
+      - card: { gate: leaves_world, words: 'Send your draft to .*marco@brokerage' }
       - connector_calls: { words: 'Gmail: send', count: 1 }
   - answer: { choice: 'Yes' }
     checks:
       - connector_calls: { words: 'Gmail: send', count: 2 }
       - cards_waiting: 0
+      - errors: 0
+  # step 2, part 2 (Kenil's yes, 30 Oct): Revert on a turn that saved a draft deletes it again
+  - say: draft an email to Priya thanking her for the NDA, and don't send it
+    checks:
+      - cards_waiting: 0
+  - revert: last_turn
+    checks:
+      - connector_calls: { words: 'Gmail: discard', count: 1 }
+      - reverted: 'Deleted the draft to .*priya@harborcapital'
       - errors: 0

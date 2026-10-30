@@ -1,7 +1,7 @@
 import { z } from 'zod'
+import { revertAll } from '../../connectors/takeback.ts'
 import { agents, nextRun } from '../../modules/agents.ts'
 import { Refused } from '../../world/kinds.ts'
-import { revert } from '../../world/records/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { RunView, TodayView, UndoTarget, UndoView } from '../types.ts'
 
@@ -59,22 +59,22 @@ export function registerActivity(ctx: Ctx): void {
     const target = Target.parse(req.body)
     const e = entry(target)
     if (!e?.undo) throw new Refused('That can’t be reverted.')
-    return revert(
-      world.records,
+    return revertAll(
+      world,
+      engine.connectors,
       target,
       { actor: { kind: 'person', id: user.id }, user: user.id },
       e.undo.what,
-      {
-        preview: true,
-      },
+      { preview: true },
     )
   })
   app.post('/api/undo', async (req): Promise<UndoView> => {
     const target = Target.parse(req.body)
     const e = entry(target)
     if (!e?.undo) throw new Refused('That can’t be reverted.')
-    const done = revert(
-      world.records,
+    const done = await revertAll(
+      world,
+      engine.connectors,
       target,
       { actor: { kind: 'person', id: user.id }, user: user.id },
       e.undo.what,

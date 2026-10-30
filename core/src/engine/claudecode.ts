@@ -164,13 +164,14 @@ export class ClaudeCodeProvider implements Provider {
       if (input.hook_event_name !== 'PostToolUse' && input.hook_event_name !== 'PostToolUseFailure')
         return {}
       const failed = input.hook_event_name === 'PostToolUseFailure' || isErrorResponse(input)
-      const waiting = gate.after({
+      const waiting = await gate.after({
         callId: input.tool_use_id,
         ok: !failed,
         ...(input.hook_event_name === 'PostToolUse' && input.duration_ms !== undefined
           ? { ms: input.duration_ms }
           : {}),
         ...(failed ? { error: errorText(input) } : {}),
+        ...(input.hook_event_name === 'PostToolUse' ? { result: input.tool_response } : {}),
       })
       if (!waiting.length) return {}
       return {

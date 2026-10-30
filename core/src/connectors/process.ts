@@ -41,6 +41,7 @@ export interface Described {
       effect: Effect | null
       preview: boolean
       words: boolean
+      undo: 'final' | { kind: 'undoable' | 'counter'; said: string } | null
     }
   >
   check: boolean
@@ -53,11 +54,28 @@ export interface CallSays {
   effect: Effect
   preview: { words: string; detail?: string; yes?: string } | null
   words: string | null
+  // what it is once done: final, or taken back by Revert (its card says so); none for a read
+  undo: { kind: 'final' | 'undoable' | 'counter'; said: string | null } | null
 }
 
 // A connector whose code runs in its own process: the core asks it what each call is.
 export type RemoteConnector = Connector & {
-  remote: { process: ConnectorProcess; says(tool: string, input: unknown): Promise<CallSays> }
+  remote: {
+    process: ConnectorProcess
+    says(tool: string, input: unknown): Promise<CallSays>
+    undoWords(tool: string, input: unknown, result: unknown): Promise<string | null>
+  }
+}
+
+// What a call is once done, for its card and the line that says it was done: a write or a send
+// is final unless its tool says how it is taken back; a read is nothing.
+export function undoSaid(
+  effect: Effect | null,
+  undo: Tool['undo'] | { kind: 'undoable' | 'counter'; said: string } | null | undefined,
+): CallSays['undo'] {
+  if (effect === 'read') return null
+  if (!undo || undo === 'final') return { kind: 'final', said: null }
+  return { kind: undo.kind, said: undo.said }
 }
 
 export const isRemote = (c: Connector): c is RemoteConnector => 'remote' in c
@@ -379,6 +397,24 @@ export function remoteConnectors(
           effect: spec.effect ?? 'outward',
           run: (call: Call, input: unknown) =>
             proc.request('run', { name, tool: t, input, ...callFields(call) }, call.host),
+          // its take-back runs in the process; the words are asked of it (`service.undoOf`)
+          ...(spec.undo && spec.undo !== 'final'
+            ? {
+                undo: {
+                  kind: spec.undo.kind,
+                  said: spec.undo.said,
+                  words: () => '',
+                  run: (call: Call, input: unknown, result: unknown) =>
+                    proc.request(
+                      'undo',
+                      { name, tool: t, input, result, ...callFields(call) },
+                      call.host,
+                    ),
+                },
+              }
+            : spec.undo
+              ? { undo: 'final' as const }
+              : {}),
         } satisfies Tool,
       ]),
     )
@@ -422,10 +458,14 @@ export function remoteConnectors(
         says: async (tool, input) => {
           const spec = d.tools[tool]
           // a tool whose effect, card and words are fixed needs no question
+          const undo = undoSaid(spec?.effect ?? null, spec?.undo ?? null)
           if (spec?.effect && !spec.preview && !spec.words)
-            return { effect: spec.effect, preview: null, words: null }
-          return (await proc.request('describe', { name, tool, input })) as CallSays
+            return { effect: spec.effect, preview: null, words: null, undo }
+          const said = (await proc.request('describe', { name, tool, input })) as CallSays
+          return { ...said, undo: undoSaid(said.effect, spec?.undo ?? null) }
         },
+        undoWords: (tool, input, result) =>
+          proc.request('undo_words', { name, tool, input, result }) as Promise<string | null>,
       },
     }
     return c

@@ -19,6 +19,9 @@ export interface Undo {
   can: boolean // something changes
   words: string // what it does: "In Deals, 2 rows go and 5 values return."
   left: string[] // what it leaves alone, a sentence each
+  // what it did outside Alpha that Revert takes back (step 2, part 2): each the line that said
+  // the call was done, and the take-back's words; whoever reverts runs them through the connector
+  takeBacks: { line: number; words: string }[]
 }
 
 const ROW_KINDS = ['wrote', 'changed', 'landed', 'removed', 'reverted']
@@ -32,9 +35,23 @@ const ELSE: Record<string, string> = {
   card_opened: 'questions put to you',
   filed: 'files',
   noted: 'notes',
-  connector_call: 'what it sent outside Alpha',
   folded: 'people merged',
 }
+
+// What a run or a turn did outside Alpha (step 2, part 2): the lines that say a connector's
+// write or send was done, each with what it is once done.
+interface Done {
+  kind: 'final' | 'undoable' | 'counter'
+  did: string
+  words: string | null
+}
+function actionLines(records: Records, target: UndoTarget): Line[] {
+  if ('line' in target) return []
+  return lines(records.db, { ...forTarget(target), kinds: ['called'] }).filter(
+    (l) => l.data.ok === true && !!l.data.undo,
+  )
+}
+const doneOf = (l: Line) => l.data.undo as Done
 
 // A line that wrote rows: a removal of a table or a field is a shape change, not one.
 const isRowLine = (l: Line) =>
@@ -61,7 +78,8 @@ const undoSince = (db: Db) =>
 export function undoable(records: Records, target: UndoTarget): boolean {
   const ls = rowLines(records, target)
   const since = undoSince(records.db)
-  return ls.length > 0 && ls.every((l) => l.id > since)
+  const back = actionLines(records, target).some((l) => doneOf(l).kind !== 'final')
+  return (ls.length > 0 || back) && ls.every((l) => l.id > since)
 }
 
 // The same value or provenance, whatever order its keys were written in.
@@ -93,7 +111,18 @@ export function revert(
   const work = (): Undo => {
     const one_ = 'line' in target && options.unfold ? read(db, target.line) : undefined
     const ls = one_?.kind === 'folded' ? [one_] : rowLines(records, target)
-    if (!ls.length) throw new Refused('That changed no rows, so there is nothing to revert.')
+    // what it did outside Alpha: taken back where it can be, named where it cannot
+    const actions = options.unfold ? [] : actionLines(records, target)
+    const takeBacks = actions
+      .filter((l) => doneOf(l).kind !== 'final')
+      .map((l) => ({ line: l.id, words: doneOf(l).words ?? 'Takes it back' }))
+    const finals = actions.filter((l) => doneOf(l).kind === 'final').map((l) => doneOf(l).did)
+    if (!ls.length && !takeBacks.length)
+      throw new Refused(
+        finals.length
+          ? `That changed no rows, and what it did outside Alpha cannot be called back: ${and(finals.map((f) => `“${f}”`))}.`
+          : 'That changed no rows, so there is nothing to revert.',
+      )
     if (ls.some((l) => l.id <= undoSince(db)))
       throw new Refused('That happened before Alpha could undo, so it can’t be reverted.')
     const inSet = ls.map((l) => l.id).join(', ')
@@ -287,6 +316,8 @@ export function revert(
           .map((l) => ELSE[l.kind] as string),
       )
       if (others.size) leftWords.push(`What else it did stays as it is: ${and([...others])}.`)
+      for (const f of finals)
+        leftWords.push(`“${f}” was done outside Alpha and cannot be called back.`)
     }
 
     const say = (past: boolean) =>
@@ -304,9 +335,12 @@ export function revert(
           return `in ${p.name}, ${and(bits)}`
         })
         .join('; ')
-    const can = per.size > 0
-    const words = can ? `${say(false).replace(/^i/, 'I')}.` : 'Nothing is left to put back.'
-    if (options.preview) return { can, words, left: leftWords }
+    const can = per.size > 0 || takeBacks.length > 0
+    const doing = [per.size ? say(false) : '', ...takeBacks.map((t) => t.words)]
+      .filter(Boolean)
+      .join('; ')
+    const words = can ? `${doing.replace(/^i/, 'I')}.` : 'Nothing is left to put back.'
+    if (options.preview) return { can, words, left: leftWords, takeBacks }
     if (!can) throw new Refused(`Nothing is left to put back. ${leftWords.join(' ')}`.trim())
 
     const bringing = 'line' in target && ls[0]?.kind === 'removed'
@@ -318,7 +352,7 @@ export function revert(
       words: `${
         bringing
           ? `Brought back ${n(returned.length, 'row')} to ${and([...per.values()].map((p) => p.name))}.`
-          : `Reverted ${what}: ${say(true)}.`
+          : `Reverted ${what}: ${[per.size ? say(true) : '', ...takeBacks.map((t) => t.words)].filter(Boolean).join('; ')}.`
       }${leftWords.length ? ` ${leftWords.join(' ')}` : ''}`,
       data: {
         target,
@@ -329,6 +363,7 @@ export function revert(
         changed: [...changed],
         back: returned,
         from: Object.fromEntries(returned.map((id) => [id, backFrom.get(id)?.id])),
+        takeBacks: takeBacks.map((t) => t.line),
       },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,
@@ -346,7 +381,7 @@ export function revert(
     }
     for (const [tableId, xs] of heard)
       records.watch?.rows(records.shape.table(tableId) as Table, xs, ctx)
-    return { can, words, left: leftWords }
+    return { can, words, left: leftWords, takeBacks }
   }
   if (!options.preview) return tx(db, work)
   // the same work, rolled back

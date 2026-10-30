@@ -56,14 +56,14 @@ describe('Activity', () => {
     expect(
       (await gate.before('mcp__gmail__draft', mail, { callId: 'c1', subagent: null })).allow,
     ).toBe(true)
-    gate.after({ callId: 'c1', ok: true })
+    await gate.after({ callId: 'c1', ok: true })
     // a search reads: no step
     await gate.before(
       'mcp__gmail__search',
       { query: 'from:priya' },
       { callId: 'c0', subagent: null },
     )
-    gate.after({ callId: 'c0', ok: true })
+    await gate.after({ callId: 'c0', ok: true })
     const asked = said('now send it')
     here.current = { ...here.current, turn: asked }
     expect(
@@ -76,7 +76,7 @@ describe('Activity', () => {
     expect(
       (await gate.before('mcp__gmail__send', mail, { callId: 'c3', subagent: null })).allow,
     ).toBe(true)
-    gate.after({ callId: 'c3', ok: true })
+    await gate.after({ callId: 'c3', ok: true })
 
     const views = makeViews({ world, engine: { hands: null }, user } as unknown as BaseCtx)
     const turns = views.activity().filter((r) => r.kind === 'turn')
@@ -87,6 +87,7 @@ describe('Activity', () => {
         ['Saved a draft to priya@harbor.example'],
       ],
     ])
-    expect(turns.every((t) => t.undo === null)).toBe(true)
+    // the draft can be taken back (step 2, part 2), so its turn has Revert; the send is final
+    expect(turns.map((t) => t.undo?.label ?? null)).toEqual([null, 'Revert'])
   })
 })

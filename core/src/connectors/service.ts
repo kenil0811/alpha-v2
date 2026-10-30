@@ -4,7 +4,6 @@
 // runs. The core names no connector: each describes itself in its manifest, and the service
 // answers for the set it was given (decision 10).
 import { createHash } from 'node:crypto'
-import { existsSync, realpathSync } from 'node:fs'
 import {
   type BrowserEngine,
   type Call,
@@ -29,7 +28,8 @@ import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
-import { type CallSays, type Described, isRemote, type ProcessRules } from './process.ts'
+import { type CallSays, isRemote, undoSaid } from './process.ts'
+import { rulesFor } from './rules.ts'
 
 export interface ServiceOptions {
   secrets: SecretStore
@@ -84,41 +84,7 @@ export class ConnectorService {
     )
     if (problems.length) throw new Refused(problems.join(' '))
     this.set.push(c)
-    if (isRemote(c)) c.remote.process.govern(this.rules())
-  }
-
-  // What a connector's process may reach and read (step 2, part 1, slice 2): the hosts its
-  // connectors name and those the person approved on their connections; the folders their
-  // connections are, for a connector of folders. A host it was refused is a line where the
-  // person sees it.
-  private rules(): ProcessRules {
-    const of = (described: Described[]) => {
-      const names = described.map((d) => d.manifest.name)
-      return this.world.connections.list().filter((k) => names.includes(k.connector))
-    }
-    return {
-      hosts: (described) => [
-        ...new Set([
-          ...described.flatMap((d) => d.manifest.reaches ?? []),
-          ...of(described).flatMap((k) => k.hosts),
-        ]),
-      ],
-      reads: (described) =>
-        of(described.filter((d) => d.manifest.auth === 'path'))
-          .map((k) => k.account)
-          .filter((dir) => existsSync(dir))
-          .map((dir) => realpathSync(dir))
-          .sort(),
-      refused: (host, name) => {
-        const title = this.find(name)?.manifest.title ?? name
-        this.world.line({
-          actor: { kind: 'connector', id: name },
-          kind: 'reach_refused',
-          words: `${title} tried to reach ${host}: refused.`,
-          data: { connector: name, host, title },
-        })
-      },
-    }
+    if (isRemote(c)) c.remote.process.govern(rulesFor(this.world, (n) => this.find(n)))
   }
 
   // A connector leaves the loaded set, when nothing is connected through it.
@@ -266,8 +232,55 @@ export class ConnectorService {
           effect: effectOf(t.spec, input),
           preview: t.spec.preview ? t.spec.preview(input as never) : null,
           words: t.spec.words ? t.spec.words(input as never) : null,
+          undo: undoSaid(effectOf(t.spec, input), t.spec.undo),
         }
     return { ...says, words: says.words ?? `Reached ${t.c.manifest.title}` }
+  }
+
+  // What a done call's take-back would do, in words (step 2, part 2); none when it is final.
+  async undoOf(
+    name: string,
+    input: Record<string, unknown>,
+    result: unknown,
+  ): Promise<{
+    kind: 'final' | 'undoable' | 'counter'
+    said: string | null
+    words: string | null
+  } | null> {
+    const t = this.toolOf(name)
+    if (!t) return null
+    const says = await this.says(name, input)
+    if (!says?.undo) return null
+    if (says.undo.kind === 'final') return { ...says.undo, words: null }
+    const words = isRemote(t.c)
+      ? await t.c.remote.undoWords(t.tool, input, result)
+      : t.spec.undo && t.spec.undo !== 'final'
+        ? t.spec.undo.words(input as never, result)
+        : null
+    return { ...says.undo, words }
+  }
+
+  // A done call taken back, from the line that said it was done (Revert, step 2, part 2): its
+  // tool's take-back runs with what the call returned, journaled as any call; the words say it.
+  async takeBack(line: { data: Record<string, unknown> }): Promise<{ words: string }> {
+    const undo = line.data.undo as { words?: string; result?: unknown } | undefined
+    const call = line.data.call as string | undefined
+    const from = this.world
+      .lines({ kinds: ['call'], limit: 5000 })
+      .find((l) => l.data.call === call)
+    const t = from ? this.toolOf(String(from.data.tool)) : undefined
+    if (!t?.spec.undo || t.spec.undo === 'final' || !undo)
+      throw new Refused('That cannot be taken back.')
+    const c = this.connector(t.c.manifest.name)
+    await t.spec.undo.run(
+      this.call(c, this.connectionFor(c), 'write'),
+      from?.data.input as never,
+      undo.result,
+    )
+    const words = (undo.words ?? 'Taken back').replace(/^(\w+)s\b/, (_m, v: string) =>
+      v.endsWith('e') ? `${v}d` : `${v}ed`,
+    )
+    return { words }
   }
 
   // The connectors' own processes, ended (a core that stops, a test that ends).

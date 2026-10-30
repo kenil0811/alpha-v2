@@ -502,6 +502,18 @@ core's. The browser it asks for opens only its hosts, and Alpha's Mac helper is 
 it, so macOS keeps the permission with Alpha's own app. Allow beside a refusal is offered only on
 a connector of sites the person chooses (`chosenSites`; none yet).
 
+**What each action is** (step 2, part 2, Kenil's yes 30 Oct; problems-list item 14): a tool's
+`undo` says what its write or send is once done: `final` (an email sent; what a write or send
+with no `undo` is), or taken back by its `counter` action (a saved draft deleted again) or its
+exact `undoable` opposite, with the card's words (`said`), the take-back's words and its run,
+which gets what the call returned. The line that says a call was done keeps that (its kind, the
+call's words, the take-back's words, the result), so Revert in Activity covers a turn or a run
+that did something outside Alpha as it covers rows: the pop-up says what rows return, what is
+taken back, and what was done for good; on Yes the rows revert in one transaction, then each
+take-back runs through its connector (`connectors/takeback.ts`), journaled as `took_back`, one
+that fails said in its own line. A send's card says "Once it has gone, it cannot be called
+back"; a draft's, what Revert does with it.
+
 **Signed packs** (slice 3, Kenil's yes 29 Oct): a kit's or a connector's pack carries SIGNATURE
 beside its PACK.json, an Ed25519 signature over PACK.json's bytes (every file and its hash), made
 with Kenil's key (`pnpm sign <pack>`; `pnpm sign --new-key` makes it once, the private half in his

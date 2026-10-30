@@ -30,6 +30,8 @@ export class Gatekeeper {
   private emit: NonNullable<GateOptions['emit']>
   private networkWaits: string[] = []
   private onYes = new Map<string, string>()
+  // each connector call under way, for the line that says it was done (what it is, once done)
+  private calls = new Map<string, { tool: string; input: Record<string, unknown>; words: string }>()
 
   constructor(world: World, here: Here, user: User, options: GateOptions = {}) {
     this.world = world
@@ -76,7 +78,8 @@ export class Gatekeeper {
       turn: cur.turn,
     })
     this.emit({ type: 'doing', words })
-    if (this.connectors?.isTool(toolName))
+    if (this.connectors?.isTool(toolName)) {
+      this.calls.set(call.callId, { tool: toolName, input, words })
       return this.connector(
         toolName,
         input,
@@ -86,6 +89,7 @@ export class Gatekeeper {
         says,
         call.callId,
       )
+    }
     if (!toolName.startsWith(`mcp__${SERVER}__`)) return { allow: true }
     return this.worldTool(name, input, words, call)
   }
@@ -176,7 +180,11 @@ export class Gatekeeper {
       preview: `${preview?.words ?? words}${fresh ? ', a new recipient' : ''}?`,
       ...(preview?.detail ? { detail: preview.detail } : {}),
       ...(preview?.yes ? { yes: preview.yes } : {}),
-      cannotUndo: 'Once it has gone, it cannot be called back.',
+      // what Revert can do with it once done (step 2, part 2): the tool's own words, or none
+      cannotUndo:
+        says?.undo && says.undo.kind !== 'final'
+          ? says.undo.said
+          : 'Once it has gone, it cannot be called back.',
       message,
       actor: { kind: 'alpha' },
       user: this.user.id,
@@ -215,9 +223,24 @@ export class Gatekeeper {
     return { allow: false, reason: verdict.reason }
   }
 
-  // After a call: the journal line saying how it went. Returns the hosts whose reach waits on a
-  // card, so the route can tell the model why its command came back empty.
-  after(call: { callId: string; ok: boolean; ms?: number; error?: string }): string[] {
+  // After a call: the journal line saying how it went, and, for a connector's write or send,
+  // what it is once done (final, or taken back by Revert, with what the call returned: step 2,
+  // part 2). Returns the hosts whose reach waits on a card, so the route can tell the model why
+  // its command came back empty.
+  async after(call: {
+    callId: string
+    ok: boolean
+    ms?: number
+    error?: string
+    result?: unknown
+  }): Promise<string[]> {
+    const made = this.calls.get(call.callId)
+    this.calls.delete(call.callId)
+    const result = resultOf(call.result)
+    const undo =
+      made && call.ok && this.connectors
+        ? await this.connectors.undoOf(made.tool, made.input, result)
+        : null
     this.world.line({
       actor: { kind: 'alpha' },
       kind: 'called',
@@ -228,6 +251,9 @@ export class Gatekeeper {
         ...(call.ms !== undefined ? { ms: call.ms } : {}),
         ...(call.ok ? {} : { error: call.error ?? '' }),
         ...(this.onYes.has(call.callId) ? { card: this.onYes.get(call.callId) } : {}),
+        ...(undo && made
+          ? { undo: { kind: undo.kind, did: made.words, words: undo.words ?? null, result } }
+          : {}),
       },
       user: this.user.id,
       turn: this.here.current.turn,
@@ -235,5 +261,27 @@ export class Gatekeeper {
     this.onYes.delete(call.callId)
     this.emit({ type: 'lines' })
     return this.networkWaits.splice(0)
+  }
+}
+
+// What a tool's call returned, from its result as the route hands it: the connector's own
+// answer, as JSON in the tool result's text, or as it is.
+function resultOf(r: unknown): unknown {
+  const content = Array.isArray(r)
+    ? (r as { type?: string; text?: string }[])
+    : r && typeof r === 'object' && Array.isArray((r as { content?: unknown }).content)
+      ? (r as { content: { type?: string; text?: string }[] }).content
+      : null
+  const text =
+    typeof r === 'string'
+      ? r
+      : content
+        ? content.map((c) => (c.type === 'text' ? (c.text ?? '') : '')).join('')
+        : null
+  if (text === null) return r ?? null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
   }
 }

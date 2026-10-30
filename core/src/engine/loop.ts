@@ -249,7 +249,7 @@ export class OwnLoop implements Session {
     const input = (call.input ?? {}) as Record<string, unknown>
     const d = await this.spec.gate.before(call.name, input, { callId: call.id, subagent: null })
     if (!d.allow) {
-      this.spec.gate.after({ callId: call.id, ok: false, error: d.reason ?? 'refused' })
+      await this.spec.gate.after({ callId: call.id, ok: false, error: d.reason ?? 'refused' })
       return {
         type: 'tool_result',
         tool_use_id: call.id,
@@ -259,13 +259,13 @@ export class OwnLoop implements Session {
     }
     const started = Date.now()
     const out = await this.spec.registry.call(call.name, input)
-    this.spec.gate.after({
+    await this.spec.gate.after({
       callId: call.id,
       ok: !out.isError,
       ms: Date.now() - started,
       ...(out.isError
         ? { error: out.content.map((c) => (c.type === 'text' ? c.text : '')).join(' ') }
-        : {}),
+        : { result: out }),
     })
     return {
       type: 'tool_result',

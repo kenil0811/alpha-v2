@@ -38,6 +38,9 @@ function describeTool(t: Tool) {
     effect: typeof t.effect === 'function' ? null : t.effect,
     preview: !!t.preview,
     words: !!t.words,
+    // what it is once done (step 2, part 2): final, or taken back; none for a read
+    undo:
+      !t.undo || t.undo === 'final' ? (t.undo ?? null) : { kind: t.undo.kind, said: t.undo.said },
   }
 }
 
@@ -102,10 +105,11 @@ function hostFor(req: number, account: string, cursor: string | null): Host {
 interface Request {
   t: 'req'
   id: number
-  op: 'check' | 'sync' | 'run' | 'files' | 'describe'
+  op: 'check' | 'sync' | 'run' | 'files' | 'describe' | 'undo_words' | 'undo'
   name: string
   tool?: string
   input?: Record<string, unknown>
+  result?: unknown
   item?: string
   account?: string
   cursor?: string | null
@@ -150,6 +154,10 @@ async function main() {
         words: tool.words ? tool.words(input) : null,
       }
     }
+    if (r.op === 'undo_words') {
+      if (!tool?.undo || tool.undo === 'final') return null
+      return tool.undo.words((r.input ?? {}) as never, r.result)
+    }
     const call: Call = makeCall(
       c.manifest,
       hostFor(r.id, r.account ?? '', r.cursor ?? null),
@@ -162,6 +170,10 @@ async function main() {
       return files.map((f) => ({ ...f, bytes: b64(f.bytes) }))
     }
     if (!tool) throw new Error(`${c.manifest.title} has no ${r.tool}.`)
+    if (r.op === 'undo') {
+      if (!tool.undo || tool.undo === 'final') throw new Error(`${r.tool} cannot be taken back.`)
+      return tool.undo.run(call, (r.input ?? {}) as never, r.result)
+    }
     return tool.run(call, (r.input ?? {}) as never)
   }
 

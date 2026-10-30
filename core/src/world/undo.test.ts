@@ -142,6 +142,7 @@ describe('the trash', () => {
       can: false,
       words: 'Nothing is left to put back.',
       left: ['1 row of Sources it deleted is gone for good.'],
+      takeBacks: [],
     })
   })
 
@@ -219,6 +220,7 @@ describe('Revert', () => {
         'Name on 1 row of Deals changed since; it stays as it is.',
         '1 row of Deals it added was changed since; it stays.',
       ],
+      takeBacks: [],
     })
     const done = revert(world.records, { run: 'run_1' }, { actor: person }, 'what Watson did')
     expect(done).toEqual(preview)

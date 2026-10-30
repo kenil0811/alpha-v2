@@ -93,6 +93,19 @@ export function checkConnector(x: unknown, taken: string[] = []): string[] {
         !(EFFECTS as readonly string[]).includes(String(t.effect))
       )
         out.push(`tools.${name}: its effect is not one of ${EFFECTS.join(', ')}.`)
+      const u = t.undo
+      if (u !== undefined && u !== 'final') {
+        const ok =
+          isObject(u) &&
+          (u.kind === 'undoable' || u.kind === 'counter') &&
+          typeof u.said === 'string' &&
+          typeof u.words === 'function' &&
+          typeof u.run === 'function'
+        if (!ok)
+          out.push(
+            `tools.${name}: undo is 'final', or {kind: undoable | counter, said, words, run}.`,
+          )
+      }
       if (typeof t.run !== 'function') out.push(`tools.${name}: nothing to run.`)
       if (t.words !== undefined && typeof t.words !== 'function')
         out.push(`tools.${name}: words is a function of the input.`)

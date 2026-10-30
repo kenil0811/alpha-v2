@@ -44,7 +44,7 @@ describe('the gate adapter', () => {
       { callId: 'c1', subagent: null },
     )
     expect(d).toEqual({ allow: true })
-    expect(gate.after({ callId: 'c1', ok: true, ms: 12 })).toEqual([])
+    expect(await gate.after({ callId: 'c1', ok: true, ms: 12 })).toEqual([])
     const lines = world.lines({ kinds: ['call', 'called'] }).map((l) => [l.kind, l.words])
     expect(lines).toEqual([
       ['call', 'Added a row to Meals'],
@@ -86,8 +86,10 @@ describe('the gate adapter', () => {
     ])
     expect(gate.network('api.example.com').allow).toBe(false)
     // the hosts whose reach waits come back once, after the call, for the model's own eyes
-    expect(gate.after({ callId: 'c4', ok: false, error: 'refused' })).toEqual(['api.example.com'])
-    expect(gate.after({ callId: 'c5', ok: true })).toEqual([])
+    expect(await gate.after({ callId: 'c4', ok: false, error: 'refused' })).toEqual([
+      'api.example.com',
+    ])
+    expect(await gate.after({ callId: 'c5', ok: true })).toEqual([])
   })
 
   it('refuses a send a rule forbids when the rule names Gmail or its send (28 Oct)', async () => {

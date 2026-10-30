@@ -24,6 +24,7 @@ import { z } from 'zod'
 import { config } from '../config.ts'
 import { loadConnector, loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
+import { revertAll } from '../connectors/takeback.ts'
 import { Engine } from '../engine/engine.ts'
 import { stillReading } from '../files/documents.ts'
 import { agents, setAgentState } from '../modules/agents.ts'
@@ -32,7 +33,7 @@ import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
 import { AgentRunner } from '../modules/runs/index.ts'
 import { Refused } from '../world/kinds.ts'
-import { revert, undoable } from '../world/records/index.ts'
+import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
 
@@ -340,7 +341,10 @@ export async function runOne(
         what = `**Could not install the kit ${step.kit.from}:** ${err.message}`
       }
     } else if (step.revert) {
-      const rows = world.lines({ kinds: ['wrote', 'changed', 'removed', 'landed'] })
+      // the newest turn that wrote rows or did something outside Alpha that can be taken back
+      const rows = world
+        .lines({ kinds: ['wrote', 'changed', 'removed', 'landed', 'called'] })
+        .filter((l) => l.kind !== 'called' || !!l.data.undo)
       const target =
         step.revert === 'last_run'
           ? { run: runner.runs(20).find((r) => undoable(world.records, { run: r.id }))?.id ?? '' }
@@ -350,7 +354,13 @@ export async function runOne(
       const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
       // a revert refused fails the journey, and the journeys after it still run
       try {
-        const undone = revert(world.records, target, person, `the ${step.revert.replace('_', ' ')}`)
+        const undone = await revertAll(
+          world,
+          connectors,
+          target,
+          person,
+          `the ${step.revert.replace('_', ' ')}`,
+        )
         what = `Reverted the ${step.revert.replace('_', ' ')}: ${[undone.words, ...undone.left].join(' ')}`
       } catch (err) {
         if (!(err instanceof Refused)) throw err

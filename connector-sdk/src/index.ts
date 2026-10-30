@@ -29,6 +29,7 @@ export {
   type SyncResult,
   type TableSpec,
   type Tool,
+  type Undo,
 } from './connector.ts'
 export { EFFECTS, type Effect, isEffect } from './effects.ts'
 export { type HelperOptions, helperBinary, runHelper } from './helper.ts'
