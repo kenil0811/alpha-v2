@@ -537,8 +537,11 @@ you, as a sign-in. Each connection says who set it up (its `made_by`: "Set up by
 owner that Dell's step, with users, builds on.
 
 **Signing in as the person** (step 2, part 5, slice 1, Kenil's yes 30 Oct): Alpha acts as the
-person, so it reaches only what they can, and a mail it sends goes from their own address; an
-app's own key is kept for server jobs with no person behind them. A provider (`connector-sdk`'s
+person, so it reaches only what they can, and a mail it sends goes from their own address. An
+app's own key (a mailbox no person signs in to, read by the app) is not built: a sign-in keeps
+reading while the person is away, each of a client's people signs in as themselves, and a shared
+mailbox is read through the sign-in of someone who has it (Microsoft's Mail.Read.Shared); it is
+built when a client asks for a mailbox nobody can sign in to (Kenil, 30 Oct). A provider (`connector-sdk`'s
 `signin.ts`; Microsoft first) says where the person signs in and where the answer is traded for
 tokens, for the app the client's IT registered in their own tenant; the permissions IT approves at
 once (Microsoft: read, drafts and send), of which a connector's manifest (`auth: 'oauth'`,

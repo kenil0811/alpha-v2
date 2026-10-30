@@ -42,3 +42,12 @@ he asked for reading, which is this slice.
 - Mail's files with two accounts in one table: intake asked every connection about every row (each
   failing on the other's). `records.landed` now says which connection landed a row (its
   provenance) and each file source carries its connector and account; a test failed first.
+
+## Slice 3 dropped; part 5 and the connector platform step closed
+
+Slice 2 pushed at 15:57 on Kenil's "looks good" (his Gmail email landed through Outlook and
+Alpha answered from it). Slice 3, an app's own key (a certificate made by Alpha, Exchange's
+per-mailbox app permissions), was written up; Kenil asked why it is needed at all, and on his
+"yes" (16:52) it is not built: background reading already works with the person's own sign-in,
+Dell's people each sign in, and a shared mailbox can be read through a person who has it. The
+design says when it would be built. Step 2 of the final plan, the connector platform, is done.
