@@ -83,7 +83,8 @@ describe('the window', () => {
         place={{ at: 'home' }}
         here={null}
         name="Kenil"
-        waiting={2}
+        cards={[]}
+        signIns={2}
         onNew={() => undefined}
         tasksDue={0}
         online
@@ -111,7 +112,7 @@ describe('the window', () => {
         place={{ at: 'home' }}
         here={null}
         name="Kenil"
-        waiting={0}
+        cards={[]}
         onNew={() => undefined}
         tasksDue={0}
         online
@@ -127,7 +128,7 @@ describe('the window', () => {
         place={{ at: 'home' }}
         here="m_2"
         name="Kenil"
-        waiting={0}
+        cards={[]}
         onNew={() => undefined}
         tasksDue={0}
         online

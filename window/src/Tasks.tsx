@@ -1,14 +1,24 @@
 // Tasks (Kenil's plan, 21 Oct, Ledger): one list of all work, each task on the place it concerns.
-// Saved lists (Today, This week, Overdue, Waiting for you, Agents, All open, Done) in four views:
-// a list, a tree by place, a board by state and a calendar by due date. New under the list. A
+// Saved lists (Today, This week, Overdue, Needs you, Agents, All open, Done) in four views:
+// a list, a tree by place, a board by state and a calendar by due date; Needs you is the one list
+// Home draws too (Waiting.tsx). New under the list. A
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
-import type { KeptTable, TaskLineView, TaskView } from '@alpha/core/api'
+import type {
+  CardView,
+  KeptTable,
+  ModuleSummary,
+  Stream,
+  TaskLineView,
+  TasksView,
+  TaskView,
+} from '@alpha/core/api'
 import { Check, CircleDot, Clock, Repeat2, Trash2, X } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
+import { peek } from './Peek.tsx'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
 import { dueWords } from './time.ts'
@@ -23,15 +33,26 @@ import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Tabs } from './ui/tabs.tsx'
-import { answerWords } from './vocabulary.ts'
+import { answerWords, NEEDS_YOU } from './vocabulary.ts'
+import {
+  actCell,
+  type CardsKind,
+  CardsSwitch,
+  dateCell,
+  NeedsYou,
+  needsCount,
+  Rows,
+  rowClass,
+  wideCell,
+} from './Waiting.tsx'
 
-type List = 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
+export type List = 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
 
 const LISTS: { value: List; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'week', label: 'This week' },
   { value: 'overdue', label: 'Overdue' },
-  { value: 'waiting', label: 'Waiting for you' },
+  { value: 'waiting', label: NEEDS_YOU },
   { value: 'agents', label: 'Agents' },
   { value: 'open', label: 'All open' },
   { value: 'done', label: 'Done' },
@@ -69,8 +90,25 @@ export function Tasks({
 }
 
 // The saved lists are the switch in the bar; the tasks are drawn by the shared table view, with its
-// table, board, calendar and grouping, each opening on its own page.
+// table, board, calendar and grouping, each opening in the side panel. Needs you holds every card
+// that waits on the person beside the tasks that do (Vikas, 30 Oct).
 function TaskLists({ list, version }: { list: List; version: number }) {
+  const [cards, setCards] = useState<CardView[]>([])
+  const [signIns, setSignIns] = useState<Stream['attention']>([])
+  const [modules, setModules] = useState<ModuleSummary[]>([])
+  useEffect(() => {
+    if (version < 0) return
+    api.get<Stream>('/api/stream?limit=1').then(
+      (st) => {
+        setCards(st.cards)
+        setSignIns(st.attention)
+      },
+      () => setCards([]),
+    )
+  }, [version])
+  useEffect(() => {
+    api.get<ModuleSummary[]>('/api/modules').then(setModules, () => setModules([]))
+  }, [])
   // the core serves a saved list's tasks as a table: changed in a cell, or by a card dragged
   // across the board (UI batch 2, 26 Oct)
   const [data, setData] = useState<KeptTable | null>(null)
@@ -81,6 +119,8 @@ function TaskLists({ list, version }: { list: List; version: number }) {
     if (version >= 0) load()
   }, [load, version])
   const counts = data?.kept.counts ?? {}
+  // Needs you counts what it draws, as Home and its badge do
+  const waiting = needsCount(cards, signIns.length)
   const [adding, setAdding] = useState(false)
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -90,19 +130,29 @@ function TaskLists({ list, version }: { list: List; version: number }) {
           key: l.value,
           href: `#/tasks?list=${l.value}`,
           label: l.label,
-          count: l.value !== 'done' && counts[l.value] ? counts[l.value] : undefined,
+          count:
+            l.value === 'waiting'
+              ? waiting || undefined
+              : l.value !== 'done' && counts[l.value]
+                ? counts[l.value]
+                : undefined,
           sel: l.value === list,
         }))}
       />
       <div className="min-h-0 flex-1">
-        {data ? (
+        {list === 'waiting' ? (
+          <WaitingForYou
+            cards={cards}
+            signIns={signIns}
+            moduleName={(id) => modules.find((m) => m.id === id)?.name}
+            version={version}
+          />
+        ) : data ? (
           <TableView
             key={list}
             data={data}
             kept={{
-              open: (id) => {
-                window.location.hash = `#/tasks/${id}`
-              },
+              open: (id) => peek(`#/tasks/${id}`),
               onNew: () => setAdding(true),
             }}
           />
@@ -118,6 +168,58 @@ function TaskLists({ list, version }: { list: List; version: number }) {
           }}
         />
       </Dialog>
+    </div>
+  )
+}
+
+// Needs you: the one list Home draws too (Waiting.tsx), every card its own row, then the tasks
+// that wait on the person.
+function WaitingForYou({
+  cards,
+  signIns,
+  moduleName,
+  version,
+}: {
+  cards: CardView[]
+  signIns: Stream['attention']
+  moduleName: (id: string) => string | undefined
+  version: number
+}) {
+  const [kind, setKind] = useState<CardsKind>('list')
+  const [tasks, setTasks] = useState<TasksView | null>(null)
+  const load = useCallback(() => {
+    api.get<TasksView>('/api/tasks?list=waiting').then(setTasks, () => setTasks(null))
+  }, [])
+  useEffect(() => {
+    if (version >= 0) load()
+  }, [load, version])
+  // what waits on the person: a task waiting on someone else is in its own lists, not here
+  const lines = (tasks?.lines ?? []).filter((l) => l.waitingForYou)
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="flex flex-col gap-6 px-7 pt-4 pb-10">
+        {cards.length > 1 && (
+          <div className="flex justify-end">
+            <CardsSwitch kind={kind} onPick={setKind} />
+          </div>
+        )}
+        {!tasks ? (
+          <p className="text-ink-3">Loading…</p>
+        ) : cards.length + lines.length + signIns.length === 0 ? (
+          <p className="text-ink-3">
+            Approvals, answers, drafts and tasks that need your word show here.
+          </p>
+        ) : (
+          <NeedsYou
+            cards={cards}
+            signIns={signIns}
+            tasks={lines}
+            kind={kind}
+            moduleName={moduleName}
+            onChange={load}
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -226,30 +328,20 @@ function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
   )
 }
 
+// Under a task's title: where it sits past its module, and its checklist.
 function Meta({ t, place = true }: { t: TaskLineView; place?: boolean }) {
-  const bits: ReactNode[] = []
-  if (place && t.place.path.length)
-    bits.push(
-      <span key="p" className="truncate">
-        {t.place.path.join(' › ')}
-      </span>,
-    )
-  if (t.ownerKind !== 'person') bits.push(<span key="o">{t.owner}</span>)
-  if (t.children) bits.push(<span key="c">{`${t.childrenDone} of ${t.children} done`}</span>)
+  const bits: string[] = []
+  if (place && t.place.path.length > 1) bits.push(t.place.path.slice(1).join(' › '))
+  if (t.children) bits.push(`${t.childrenDone} of ${t.children} done`)
   return bits.length ? (
-    <span className="flex min-w-0 items-center gap-2 truncate text-ink-3 text-sm">{bits}</span>
+    <span className="block truncate text-ink-3 text-sm">{bits.join(' · ')}</span>
   ) : null
 }
 
 function Due({ t }: { t: TaskLineView }) {
   if (!t.due) return null
   return (
-    <span
-      className={cn(
-        'flex shrink-0 items-center gap-1 text-sm tabular-nums',
-        t.overdue ? 'text-bad' : 'text-ink-3',
-      )}
-    >
+    <span className={cn('flex items-center gap-1', t.overdue ? 'text-bad' : 'text-ink-3')}>
       {t.repeat && <Repeat2 className="size-3" aria-label={t.repeat} />}
       {t.remindAt && <Clock className="size-3" aria-label="With a reminder" />}
       {dueWords(t.due)}
@@ -257,7 +349,18 @@ function Due({ t }: { t: TaskLineView }) {
   )
 }
 
-function TaskLine({
+// A task's state in words, its agent's with it (Vikas, 30 Oct; Linear's and Planner's states):
+// Needs your input while its cards wait, "Morning working" while its agent runs on it.
+function stateWords(t: TaskLineView): string {
+  if (open(t) && t.waitingForYou) return 'Needs your input'
+  if (t.working) return `${t.owner} working`
+  return STATES.find((x) => x.value === t.state)?.label ?? t.state
+}
+
+// One task, one row of the grid it shares with Needs you's cards (Waiting.tsx): the state, the
+// title with where it sits under it, the state in words, its module, its owner, its due at the
+// same place on every row, and the one thing to do. A click on the title opens it in the panel.
+export function TaskLine({
   t,
   onChange,
   place,
@@ -267,42 +370,76 @@ function TaskLine({
   place?: boolean
 }) {
   return (
-    <div className="flex items-center gap-3 border-hair border-t px-4 py-2.5 first:border-t-0 hover:bg-hover">
+    <div className={rowClass}>
       <Tick t={t} onChange={onChange} />
-      <a href={`#/tasks/${t.id}`} className="min-w-0 flex-1">
-        <span
+      <span className="min-w-0">
+        <button
+          type="button"
+          onClick={() => peek(`#/tasks/${t.id}`)}
           className={cn(
-            'block truncate text-base',
+            'line-clamp-2 w-full text-left text-base hover:underline',
             open(t) ? 'text-ink' : 'text-ink-3 line-through',
           )}
         >
           {t.priority === 'high' && <span className="mr-1.5 text-warn">●</span>}
           {t.title}
-        </span>
+        </button>
         <Meta t={t} place={place ?? true} />
-      </a>
-      {t.waitingForYou && <Pill tone="warn">Waiting for your yes</Pill>}
-      {t.working && <Pill tone="accent">{t.owner} working</Pill>}
-      {t.state === 'doing' && !t.working && <Pill tone="accent">In progress</Pill>}
-      {t.state === 'waiting' && !t.waitingForYou && <Pill>Waiting</Pill>}
-      <Due t={t} />
+      </span>
+      <span className={cn(wideCell, (t.waitingForYou || t.working) && open(t) && 'text-warn')}>
+        {stateWords(t)}
+      </span>
+      <span className={wideCell}>{place === false ? '' : (t.place.path[0] ?? '')}</span>
+      <span className={wideCell}>{t.owner}</span>
+      <span className={dateCell}>
+        <Due t={t} />
+      </span>
+      <span className={actCell}>
+        <Next t={t} onChange={onChange} />
+      </span>
     </div>
   )
 }
 
-export function TaskList({ lines, onChange }: { lines: TaskLineView[]; onChange: () => void }) {
+// Every open task says what to do next as a button (Vikas, 28 Oct): Review what waits for your
+// yes (its page, in the panel, with its cards), Start what is to do, Done what is under way.
+function Next({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
+  if (!open(t)) return null
+  if (t.waitingForYou)
+    return (
+      <Button size="sm" variant="primary" onClick={() => peek(`#/tasks/${t.id}`)}>
+        Review
+      </Button>
+    )
+  const to = t.state === 'todo' ? 'doing' : 'done'
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+    <Button size="sm" onClick={() => setState(t.id, to).then(onChange, onChange)}>
+      {to === 'doing' ? 'Start' : 'Done'}
+    </Button>
+  )
+}
+
+export function TaskList({
+  lines,
+  onChange,
+  place,
+}: {
+  lines: TaskLineView[]
+  onChange: () => void
+  place?: boolean
+}) {
+  return (
+    <Rows>
       {lines.map((t) => (
-        <TaskLine key={t.id} t={t} onChange={onChange} />
+        <TaskLine key={t.id} t={t} onChange={onChange} place={place ?? true} />
       ))}
-    </div>
+    </Rows>
   )
 }
 
 // ---- a task's page --------------------------------------------------------------------------
 
-function TaskPage({
+export function TaskPage({
   id,
   version,
   onName,
@@ -404,7 +541,7 @@ function TaskPage({
             ) : (
               <span>{t.place.words}</span>
             )}
-            {t.waitingForYou && <Pill tone="warn">Waiting for your yes</Pill>}
+            {t.waitingForYou && <Pill tone="warn">Needs approval</Pill>}
           </div>
         </div>
         {problem && <p className="text-bad text-sm">{problem}</p>}
@@ -506,13 +643,7 @@ function TaskPage({
         </Section>
 
         <Section title="Checklist" about="The steps beneath it, each a task of its own">
-          {t.subtasks.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-line bg-surface">
-              {t.subtasks.map((s) => (
-                <TaskLine key={s.id} t={s} onChange={load} place={false} />
-              ))}
-            </div>
-          )}
+          {t.subtasks.length > 0 && <TaskList lines={t.subtasks} onChange={load} place={false} />}
           <SubTask parent={t.id} onAdded={load} />
         </Section>
 
@@ -534,11 +665,7 @@ function TaskPage({
             {t.context.siblings.length > 0 && (
               <>
                 <div className="text-ink-3 text-sm">Other open tasks there</div>
-                <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                  {t.context.siblings.map((s) => (
-                    <TaskLine key={s.id} t={s} onChange={load} place={false} />
-                  ))}
-                </div>
+                <TaskList lines={t.context.siblings} onChange={load} place={false} />
               </>
             )}
           </Section>

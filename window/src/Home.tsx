@@ -1,11 +1,10 @@
 // Home (Kenil, 20 Oct: "Home should be about all important things, the space in home is very
 // precious"): no conversation here. One line to ask Alpha, whose answer opens on the right; then
-// what needs the person (cards answered right here), what changed since they last looked (kept
+// what needs the person (the one list Tasks › Needs you draws), what changed since they last looked (kept
 // until they clear it), what is running and what is coming up; the modules are in the rail, not
 // here (Kenil, 26 Oct). The conversation has its own place in the rail, each module's tab, and Ask
 // (⌘J) on any screen.
 import type {
-  CardView,
   ConnectorsView,
   ModuleSummary,
   Stream,
@@ -13,18 +12,18 @@ import type {
   TodayView,
   WorkingModuleView,
 } from '@alpha/core/api'
-import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucide-react'
+import { ArrowUp, Bot, Check, ChevronRight, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { CardBox } from './Conversation.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
-import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Group, Line, Quiet } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
+import { NEEDS_YOU } from './vocabulary.ts'
+import { type CardsKind, CardsSwitch, NeedsYou, needsCount } from './Waiting.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
 function NotLoaded({ onTry }: { onTry: () => void }) {
@@ -65,6 +64,10 @@ export function Home({
   })
   const [words, setWords] = useState('')
   const [allComing, setAllComing] = useState(false)
+  // Needs you as rows, a gallery or one card at a time (Vikas, 30 Oct)
+  const [cardsKind, setCardsKind] = useState<CardsKind>('list')
+  // the tasks that wait on the person, for Needs you
+  const [yours, setYours] = useState<TasksView['lines']>([])
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
   const load = useCallback(() => {
@@ -81,6 +84,10 @@ export function Home({
         setFailed((f) => (f.tasks ? { ...f, tasks: false } : f))
       },
       () => setFailed((f) => ({ ...f, tasks: true })),
+    )
+    api.get<TasksView>('/api/tasks?list=waiting').then(
+      (t) => setYours(t.lines.filter((l) => l.waitingForYou)),
+      () => setYours([]),
     )
   }, [])
   // on opening, and at each new journal line, Home looks again
@@ -101,13 +108,9 @@ export function Home({
     modules.length === 0 &&
     stream.lines.length === 0 &&
     cards.length + signIns.length === 0
-  const changeCard = (card: CardView) => {
-    setWords(`About “${card.words.replace(/\?$/, '')}”: `)
-    ask.current?.focus()
-  }
 
   return (
-    <div className="@container h-full overflow-y-auto">
+    <div data-peek-all className="@container h-full overflow-y-auto">
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
         <div className="flex flex-col gap-4">
           <div>
@@ -150,44 +153,23 @@ export function Home({
         ) : (
           <div className="grid items-start gap-7 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-7">
-              <Group title="Needs you" count={cards.length + signIns.length}>
-                {stream && cards.length + signIns.length === 0 && (
-                  <Quiet>Nothing waits on you.</Quiet>
+              <Group
+                title={NEEDS_YOU}
+                count={needsCount(cards, signIns.length)}
+                action={cards.length > 1 && <CardsSwitch kind={cardsKind} onPick={setCardsKind} />}
+              >
+                {stream && cards.length + signIns.length + yours.length === 0 && (
+                  <Quiet>Nothing needs you.</Quiet>
                 )}
-                {cards.map((c) => (
-                  <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
-                ))}
-                {signIns.map((a) => (
-                  <Line
-                    key={a.connector}
-                    icon={<KeyRound className="size-3.5 text-warn" />}
-                    head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
-                    words={
-                      a.waiting
-                        ? `${a.title}: ${a.waiting}`
-                        : a.inBrowser
-                          ? `${a.title} needs you to sign in: it opens in Chrome`
-                          : a.signsInWith
-                            ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
-                            : `${a.title} needs you to sign in again`
-                    }
-                    {...(a.waiting
-                      ? { href: '#/intelligence/connections' }
-                      : a.inBrowser
-                        ? {
-                            onClick: () => {
-                              void api.post(`/api/connections/${a.connection}/sign-in`)
-                            },
-                          }
-                        : a.signsInWith
-                          ? {
-                              onClick: () => {
-                                void signInWith(a.connection)
-                              },
-                            }
-                          : { href: `#/settings?connect=${a.connector}` })}
-                  />
-                ))}
+                {/* the one list, as Tasks › Needs you draws it (Vikas, 30 Oct) */}
+                <NeedsYou
+                  cards={cards}
+                  signIns={signIns}
+                  tasks={yours}
+                  kind={cardsKind}
+                  moduleName={(id) => modules.find((m) => m.id === id)?.name}
+                  onChange={load}
+                />
               </Group>
 
               <Group

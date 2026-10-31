@@ -17,3 +17,6 @@ export const NEVER_SAY: [RegExp, string][] = [
 export function answerWords(option: string): string {
   return option === 'Yes' ? 'Approve' : option === 'No' ? 'Decline' : option
 }
+
+// One name for what waits on the person, on Home and in Tasks (Vikas, 30 Oct).
+export const NEEDS_YOU = 'Needs you'

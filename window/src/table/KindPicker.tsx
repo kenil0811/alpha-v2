@@ -9,6 +9,7 @@ import {
   ChartGantt,
   ChevronDown,
   ClipboardList,
+  GalleryHorizontal,
   Kanban,
   LayoutGrid,
   List,
@@ -18,7 +19,9 @@ import { type ReactNode, useRef, useState } from 'react'
 import { Select } from '../ui/field.tsx'
 import { MenuItem, Popover } from '../ui/popover.tsx'
 
-const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
+// Slides is not a table's view: one card at a time, offered by a list of cards (Vikas, 30 Oct)
+type Kind = ViewKind | 'slides'
+const KINDS: { kind: Kind; words: string; icon: ReactNode }[] = [
   { kind: 'table', words: 'Table', icon: <Table2 className="size-3.5" /> },
   { kind: 'gallery', words: 'Card', icon: <LayoutGrid className="size-3.5" /> },
   { kind: 'timeline', words: 'Timeline', icon: <ChartGantt className="size-3.5" /> },
@@ -27,10 +30,11 @@ const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
   { kind: 'form', words: 'Form', icon: <ClipboardList className="size-3.5" /> },
   { kind: 'list', words: 'List', icon: <List className="size-3.5" /> },
   { kind: 'chart', words: 'Chart', icon: <ChartBarBig className="size-3.5" /> },
+  { kind: 'slides', words: 'Slides', icon: <GalleryHorizontal className="size-3.5" /> },
 ]
 
-// what the picker offers: all but the last two, kept only to name a view saved as one
-const OFFERED = KINDS.slice(0, 6)
+// what the picker offers: the first six; List and Chart are kept only to name a view saved as one
+const OFFERED = KINDS.slice(0, 6).map((k) => k.kind as ViewKind)
 
 export function KindPicker({
   fields,
@@ -43,8 +47,6 @@ export function KindPicker({
   config: ViewConfig
   onConfig: (c: ViewConfig) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const anchor = useRef<HTMLButtonElement>(null)
   const choices = fields.filter(
     (f) => f.kind === 'choice' && !f.many && !f.summary && f.choices.length,
   )
@@ -68,7 +70,6 @@ export function KindPicker({
         : k === 'chart'
           ? 'A chart needs a choice or a date column. Ask Alpha to add one.'
           : `A ${k} needs a date column. Ask Alpha to add one.`
-  const current = KINDS.find((k) => k.kind === config.kind) ?? KINDS[0]
   // switching to a view that needs a field gives it one, as the core would
   // a calendar or timeline starts on the date most rows have; a board's columns and a chart's bars
   // are left to the person (the table shows Stage, or the first choice, until they choose)
@@ -103,16 +104,7 @@ export function KindPicker({
   )
   return (
     <span className="flex items-center gap-2">
-      <button
-        ref={anchor}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink text-md hover:bg-hover"
-      >
-        {current?.icon}
-        {current?.words}
-        <ChevronDown className="size-3.5 text-ink-3" />
-      </button>
+      <ViewSwitch kind={config.kind} offered={OFFERED} why={why} onPick={switchTo} />
       {config.kind === 'board' &&
         pick(
           'The board’s columns',
@@ -165,22 +157,59 @@ export function KindPicker({
           )}
         </>
       )}
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        {OFFERED.map((k) => (
-          <MenuItem
-            key={k.kind}
-            checked={k.kind === config.kind}
-            reason={why(k.kind)}
-            onClick={() => {
-              setOpen(false)
-              switchTo(k.kind)
-            }}
-          >
-            <span className="text-ink-3">{k.icon}</span>
-            {k.words}
-          </MenuItem>
-        ))}
-      </Popover>
     </span>
+  )
+}
+
+// The view's dropdown alone: the kinds offered, the one shown, why one can't be had. Tables use it
+// through KindPicker; a list of cards (Needs you) offers List, Card and Slides with it.
+export function ViewSwitch<K extends Kind>({
+  kind,
+  offered,
+  why = () => undefined,
+  onPick,
+}: {
+  kind: K
+  offered: K[]
+  why?: (k: K) => string | undefined
+  onPick: (k: K) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  const current = KINDS.find((k) => k.kind === kind) ?? KINDS[0]
+  const kinds = offered.map((k) => KINDS.find((x) => x.kind === k))
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-haspopup="menu"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink text-md hover:bg-hover"
+      >
+        {current?.icon}
+        {current?.words}
+        <ChevronDown className="size-3.5 text-ink-3" />
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        {kinds.map(
+          (k) =>
+            k && (
+              <MenuItem
+                key={k.kind}
+                checked={k.kind === kind}
+                reason={why(k.kind as K)}
+                onClick={() => {
+                  setOpen(false)
+                  onPick(k.kind as K)
+                }}
+              >
+                <span className="text-ink-3">{k.icon}</span>
+                {k.words}
+              </MenuItem>
+            ),
+        )}
+      </Popover>
+    </>
   )
 }

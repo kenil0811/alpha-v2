@@ -6,7 +6,7 @@
 // New module last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
 // folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
 // buttons.
-import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
+import type { CardView, FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
   ChevronDown,
   ChevronLeft,
@@ -43,6 +43,7 @@ import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Edge } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
+import { needsCount } from './Waiting.tsx'
 
 export type Place =
   | { at: 'home' }
@@ -113,7 +114,8 @@ export function Rail({
   modules,
   place,
   name,
-  waiting,
+  cards,
+  signIns = 0,
   tasksDue,
   online,
   here,
@@ -125,7 +127,8 @@ export function Rail({
   place: Place
   here: string | null // the module whose screen or table is open
   name: string
-  waiting: number
+  cards: CardView[] // what waits on the person: Home's badge
+  signIns?: number // connections waiting on a sign-in, counted with them
   tasksDue: number // tasks due today or overdue
   online: boolean
   layout: Layout
@@ -138,6 +141,7 @@ export function Rail({
   const hiding: Hiding = { hidden: layout.hidden, set: (ids) => onLayout({ hidden: ids }) }
   const empty = useContextMenu()
   const keepWidth = (w: number) => onLayout({ railWidth: w })
+  const waiting = needsCount(cards, signIns)
   if (layout.railFolded)
     return (
       <Strip
@@ -197,7 +201,7 @@ export function Rail({
         icon={<House className="size-4" />}
         label="Home"
         current={place.at === 'home'}
-        extra={waiting > 0 && <Badge n={waiting} />}
+        extra={waiting > 0 && <Waiting cards={cards} n={waiting} modules={modules} />}
       />
       <Nav
         href="#/conversation"
@@ -361,6 +365,94 @@ function Badge({ n }: { n: number }) {
   return (
     <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
+    </span>
+  )
+}
+
+// What Home's count is made of (Vikas, 29 Oct): on a hover, the cards waiting for the person by
+// module, each line opening that module's Overview, where its Needs you is; Alpha's own on Home.
+const cardWord = (c: CardView) =>
+  c.gate === 'sign_in' || c.site || c.connector
+    ? 'sign-in'
+    : c.draft
+      ? 'draft'
+      : c.proposed
+        ? 'proposed task'
+        : c.review
+          ? 'review'
+          : c.match
+            ? 'possible match'
+            : c.filing
+              ? 'file to put away'
+              : c.options.length
+                ? 'question'
+                : 'note'
+
+export function waitingLines(cards: CardView[], modules: ModuleSummary[]) {
+  const by = new Map<string, Map<string, number>>()
+  for (const c of cards) {
+    const kinds = by.get(c.module ?? '') ?? new Map<string, number>()
+    kinds.set(cardWord(c), (kinds.get(cardWord(c)) ?? 0) + needsCount([c]))
+    by.set(c.module ?? '', kinds)
+  }
+  return [...by]
+    .map(([id, kinds]) => {
+      const m = modules.find((x) => x.id === id)
+      return {
+        name: m?.name ?? 'Alpha',
+        count: [...kinds.values()].reduce((a, b) => a + b, 0),
+        words: [...kinds]
+          .sort((a, b) => b[1] - a[1])
+          .map(([k, n]) => `${n} ${n === 1 ? k : `${k}s`}`)
+          .join(', '),
+        href: m ? `#/module/${m.id}/overview` : '#/',
+      }
+    })
+    .sort((a, b) => b.count - a.count)
+}
+
+function Waiting({
+  cards,
+  n,
+  modules,
+}: {
+  cards: CardView[]
+  n: number
+  modules: ModuleSummary[]
+}) {
+  const anchor = useRef<HTMLSpanElement>(null)
+  const [open, setOpen] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const hover = (on: boolean) => {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setOpen(on), on ? 150 : 250)
+  }
+  useEffect(() => () => clearTimeout(timer.current), [])
+  return (
+    <span ref={anchor} onPointerEnter={() => hover(true)} onPointerLeave={() => hover(false)}>
+      <Badge n={n} />
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
+        <div
+          className="flex min-w-64 max-w-80 flex-col p-1"
+          onPointerEnter={() => hover(true)}
+          onPointerLeave={() => hover(false)}
+        >
+          <div className="px-2.5 pt-1.5 pb-1 font-medium text-ink text-md">{n} need you</div>
+          {waitingLines(cards, modules).map((l) => (
+            <a
+              key={l.name}
+              href={l.href}
+              onClick={() => setOpen(false)}
+              className="flex flex-col rounded-md px-2.5 py-1.5 hover:bg-hover"
+            >
+              <span className="text-ink text-md">
+                {l.count} in {l.name}
+              </span>
+              <span className="text-ink-3 text-sm">{l.words}</span>
+            </a>
+          ))}
+        </div>
+      </Popover>
     </span>
   )
 }

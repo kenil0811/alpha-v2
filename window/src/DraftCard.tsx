@@ -38,17 +38,16 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
     : null
 
   return (
-    <Card label="Leaves your world" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="Leaves your world" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="text-ink-3 text-sm">
         {draft.agent}'s {draft.kind}
         {draft.about && (
           <>
             {' for '}
-            <a
-              className="text-ink-2 hover:underline"
-              href={`#/table/${draft.about.table}?only=${draft.about.row}`}
-            >
+            <a className="text-ink-2 hover:underline" href={`#/row/${draft.about.row}`}>
               {draft.about.name}
             </a>
           </>

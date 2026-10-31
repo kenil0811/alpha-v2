@@ -58,8 +58,10 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
   }
 
   return (
-    <Card label="A file from your mail" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="A file from your mail" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="text-ink-3 text-sm">
         From {filing.from}: “{filing.subject}”
         {filing.date ? `, ${new Date(filing.date).toLocaleDateString()}` : ''}

@@ -33,8 +33,10 @@ export function ProposedCard({ card, proposed }: { card: CardView; proposed: Pro
     })
   const n = kept.size
   return (
-    <Card label={`${proposed.agent} proposes`} waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label={`${proposed.agent} proposes`} waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="overflow-hidden rounded-md border border-line">
         {proposed.tasks.map((t, i) => (
           <label

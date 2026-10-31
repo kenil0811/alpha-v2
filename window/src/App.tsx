@@ -34,6 +34,7 @@ import { Marker } from './Mark.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { NewModule } from './NewModule.tsx'
 import { Parts } from './Parts.tsx'
+import { Peek, usePeek } from './Peek.tsx'
 import { People } from './People.tsx'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { alphaOf, Settings } from './Settings.tsx'
@@ -138,6 +139,8 @@ export function placeOf(hash: string): Place {
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
   const [stream, setStream] = useState<Stream | null>(null)
+  // what a click opened in the side panel, beside the screen (Peek.tsx)
+  const peek = usePeek()
   const [modules, setModules] = useState<ModuleSummary[]>([])
   const [table, setTable] = useState<TableData | null>(null)
   const [live, setLive] = useState<Live>({})
@@ -436,7 +439,8 @@ export function App() {
           layout={layout}
           onLayout={changeLayout}
           name={name}
-          waiting={stream?.cards.length ?? 0}
+          cards={stream?.cards ?? []}
+          signIns={stream?.attention.length ?? 0}
           onNew={() => {
             window.location.hash = '#/module/new'
           }}
@@ -554,6 +558,17 @@ export function App() {
                   <p className="p-6 text-ink-3">That table is not there.</p>
                 )}
               </div>
+              {peek.href && (
+                <Peek
+                  href={peek.href}
+                  canBack={peek.canBack}
+                  onBack={peek.back}
+                  onClose={peek.close}
+                  version={version}
+                  modules={modules}
+                  cards={stream?.cards ?? []}
+                />
+              )}
             </div>
           </BarMiddle>
         </main>

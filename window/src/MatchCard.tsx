@@ -1,5 +1,5 @@
 // People or companies that may be one (design §4): found by their names, never merged by code.
-// One card per batch, each pair side by side with why Alpha thinks so, Merge or Keep apart; the
+// One card per batch, each pair side by side with why Alpha thinks so, Merge or Not a duplicate; the
 // pairs with the same name at the same company can be merged at once. A pair decided never comes
 // back, and a merge can be undone from the person's page.
 import type { CardView, MatchView, SideView } from '@alpha/core/api'
@@ -60,8 +60,10 @@ export function MatchCard({ card, match }: { card: CardView; match: MatchView })
   const open = match.pairs.filter((p) => p.state === 'proposed')
   const done = match.pairs.filter((p) => p.state !== 'proposed')
   return (
-    <Card label="Maybe the same" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="Possible duplicate" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="text-ink-3 text-sm">
         {open.length} {open.length === 1 ? 'pair' : 'pairs'} to decide. Alpha never merges on a
         guess; a merge can be undone on the person's page.
@@ -98,7 +100,7 @@ export function MatchCard({ card, match }: { card: CardView; match: MatchView })
                 disabled={busy}
                 onClick={() => act(`/api/people/pairs/${p.id}`, { merge: false })}
               >
-                Keep apart
+                Not a duplicate
               </Button>
             </div>
           </div>

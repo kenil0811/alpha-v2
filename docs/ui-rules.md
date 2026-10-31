@@ -128,3 +128,9 @@ held by review. Dates are 2026.
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.
+- Needs you is one list, the same on Home and in Tasks (`Waiting.tsx`): sign-ins, every card its
+  own row with its own buttons under who it is from, then the tasks waiting on the person; List,
+  Card and Slides (one card at a time, with the Pager) in the table's view dropdown (30 Oct).
+- What a click opens first is the side panel (`ui/side-panel.tsx`, `Peek.tsx`): an element (row,
+  agent, run, rule, task, person, card) from anywhere, and from Home or inside the panel any screen;
+  Back to the step before, a large Open page at its foot; the rail goes to the page (26, 28 Oct).
