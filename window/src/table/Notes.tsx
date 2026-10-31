@@ -12,7 +12,7 @@ import { Button } from '../ui/button.tsx'
 import { Popover } from '../ui/popover.tsx'
 
 // A mention's link, as notes keep it, to where it opens in the window.
-const opens = (url: string) =>
+export const opens = (url: string) =>
   url.startsWith('person:')
     ? `#/people/${url.slice(7)}`
     : url.startsWith('row:')

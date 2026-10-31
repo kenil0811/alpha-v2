@@ -5,6 +5,8 @@ import type { FieldView, RowPageView } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { Record } from './Record.tsx'
+import { Blocks } from './table/Blocks.tsx'
+import { opens } from './table/Notes.tsx'
 import { RowBody } from './table/RowPanel.tsx'
 import { Refusal } from './ui/act.tsx'
 
@@ -46,15 +48,24 @@ export function RowPage({
         return false
       },
     )
+  // the row's notes are its document, open blocks written where they stand (table/Blocks.tsx)
+  const notes = view.fields.find((f) => f.kind === 'notes')
+  const doc =
+    notes && typeof view.row.values[notes.slug] === 'string'
+      ? (view.row.values[notes.slug] as string)
+      : ''
   return (
     <Record kind={view.table.name}>
       <h1 className="font-serif text-2xl text-ink">{view.title}</h1>
+      {notes && (
+        <Blocks key={id} value={doc} opens={opens} onSave={(md) => edit(notes, md || null)} />
+      )}
       <div className="overflow-hidden rounded-lg border border-line bg-surface">
         <RowBody
           tableId={view.table.id}
           kinds={view.documents}
           row={view.row}
-          fields={view.fields}
+          fields={view.fields.filter((f) => f !== notes)}
           names={view.names}
           onField={(slug) => {
             const f = view.fields.find((x) => x.slug === slug)

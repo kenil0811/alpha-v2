@@ -128,3 +128,11 @@ held by review. Dates are 2026.
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.
+- Every card is a block the person moves (its handle on hover: beside, above or below another) and
+  resizes from its bottom-right corner alone, the ↘↖ cursor its only mark; a double-click gives the
+  size back. Home, a module's Agents and notes, an agent's page, Connections. A table's own views
+  are not blocks. Kept per person once the core keeps it (Vikas, 29–30 Oct).
+- What floats is on one scale (`--z-raised` 10 to `--z-tip` 60 in `app.css`), never a bare z
+  number past z-1, and portalled to the window or into the open dialog (`floatRoot`) (Vikas, 30 Oct).
+- A row's notes on its own page are open blocks: "/" for a kind, Markdown starts, to-dos, drag to
+  move; kept as Markdown (Vikas, 27 Oct).

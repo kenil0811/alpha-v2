@@ -16,6 +16,7 @@ import type {
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { Arranged } from './arrange.tsx'
 import { startAsk } from './ask.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
@@ -283,134 +284,181 @@ function AgentsAndNotes({
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
-        <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
-          <div className="flex flex-col gap-2">
-            {m.agents.length > 1 && (
-              <div className="flex justify-end">
-                <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
-              </div>
-            )}
-            {m.agents.length === 0 ? (
-              <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
-            ) : (
-              <List>
-                {m.agents.map((a) => (
-                  <Row
-                    key={a.id}
-                    lead={<Bot className="size-4 text-ink-3" />}
-                    title={
-                      <a href={`#/agent/${a.id}`} className="hover:underline">
-                        {a.name}
-                      </a>
-                    }
-                    sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
-                    actions={
-                      <>
-                        {on === a.id && <Refusal words={problem} />}
-                        {a.running && <Pill tone="accent">Running</Pill>}
-                        <Switch
-                          checked={a.state === 'on'}
-                          disabled={busy && on === a.id}
-                          label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-                          onChange={(on) => turn(a.id, on)}
-                        />
-                      </>
-                    }
-                  />
-                ))}
-              </List>
-            )}
-          </div>
-        </Section>
-        {m.tables.some((t) => t.place !== 'main') && (
-          <Section
-            title="Tables"
-            sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
-          >
-            <ul className="flex flex-col">
-              {m.tables
-                .filter((t) => t.place !== 'main')
-                .map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
-                  >
-                    <a
-                      href={`#/table/${t.id}`}
-                      className="min-w-0 flex-1 truncate text-ink hover:underline"
-                    >
-                      {t.name}
-                    </a>
-                    <span className="text-ink-3">
-                      {t.place === 'setup'
-                        ? 'Setup'
-                        : t.place === 'people'
-                          ? "People's columns"
-                          : `Part of ${t.of ?? 'a row'}`}
-                    </span>
-                    {t.place !== 'people' && (
-                      <button
-                        type="button"
-                        disabled={busy && on === t.id}
-                        onClick={() =>
-                          act(() => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }), t.id)
-                        }
-                        className={
-                          t.tab
-                            ? 'text-accent hover:underline'
-                            : 'text-ink-3 hover:text-ink hover:underline'
-                        }
-                      >
-                        {t.tab ? 'A tab' : 'Keep as a tab'}
-                      </button>
+        {/* each section a block the person moves and resizes, one arrangement for every module (Vikas, 30 Oct) */}
+        <Arranged
+          page="module:agents-and-notes"
+          start={[['agents'], ['tables'], ['notes'], ['activity'], ['governance']]}
+          blocks={[
+            {
+              key: 'agents',
+              name: 'Agents',
+              node: (
+                <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
+                  <div className="flex flex-col gap-2">
+                    {m.agents.length > 1 && (
+                      <div className="flex justify-end">
+                        <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+                      </div>
                     )}
-                    <span className="w-14 text-right text-ink-3 tabular-nums">
-                      {t.rows.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </Section>
-        )}
-        <Section
-          title="Notes"
-          sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
-        >
-          <div className="text-md">
-            <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
-          </div>
-        </Section>
-        <Section title="Recent activity" sub={`What ran in ${m.name} lately.`}>
-          {runs === null ? (
-            <p className="text-ink-3 text-md">Loading…</p>
-          ) : runs.length === 0 ? (
-            <p className="text-ink-2 text-md">Nothing has run here yet.</p>
-          ) : (
-            <ul className="flex flex-col">
-              {runs.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                    {m.agents.length === 0 ? (
+                      <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
+                    ) : (
+                      <List>
+                        {m.agents.map((a) => (
+                          <Row
+                            key={a.id}
+                            lead={<Bot className="size-4 text-ink-3" />}
+                            title={
+                              <a href={`#/agent/${a.id}`} className="hover:underline">
+                                {a.name}
+                              </a>
+                            }
+                            sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
+                            actions={
+                              <>
+                                {on === a.id && <Refusal words={problem} />}
+                                {a.running && <Pill tone="accent">Running</Pill>}
+                                <Switch
+                                  checked={a.state === 'on'}
+                                  disabled={busy && on === a.id}
+                                  label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
+                                  onChange={(on) => turn(a.id, on)}
+                                />
+                              </>
+                            }
+                          />
+                        ))}
+                      </List>
+                    )}
+                  </div>
+                </Section>
+              ),
+            },
+            ...(m.tables.some((t) => t.place !== 'main')
+              ? [
+                  {
+                    key: 'tables',
+                    name: 'Tables',
+                    node: (
+                      <Section
+                        title="Tables"
+                        sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
+                      >
+                        <ul className="flex flex-col">
+                          {m.tables
+                            .filter((t) => t.place !== 'main')
+                            .map((t) => (
+                              <li
+                                key={t.id}
+                                className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                              >
+                                <a
+                                  href={`#/table/${t.id}`}
+                                  className="min-w-0 flex-1 truncate text-ink hover:underline"
+                                >
+                                  {t.name}
+                                </a>
+                                <span className="text-ink-3">
+                                  {t.place === 'setup'
+                                    ? 'Setup'
+                                    : t.place === 'people'
+                                      ? "People's columns"
+                                      : `Part of ${t.of ?? 'a row'}`}
+                                </span>
+                                {t.place !== 'people' && (
+                                  <button
+                                    type="button"
+                                    disabled={busy && on === t.id}
+                                    onClick={() =>
+                                      act(
+                                        () => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }),
+                                        t.id,
+                                      )
+                                    }
+                                    className={
+                                      t.tab
+                                        ? 'text-accent hover:underline'
+                                        : 'text-ink-3 hover:text-ink hover:underline'
+                                    }
+                                  >
+                                    {t.tab ? 'A tab' : 'Keep as a tab'}
+                                  </button>
+                                )}
+                                <span className="w-14 text-right text-ink-3 tabular-nums">
+                                  {t.rows.toLocaleString()}
+                                </span>
+                              </li>
+                            ))}
+                        </ul>
+                      </Section>
+                    ),
+                  },
+                ]
+              : []),
+            {
+              key: 'notes',
+              name: 'Notes',
+              node: (
+                <Section
+                  title="Notes"
+                  sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
                 >
-                  <span className="w-28 shrink-0 text-ink-3 tabular-nums">{when(r.startedAt)}</span>
-                  <span className="min-w-0 flex-1 truncate text-ink">
-                    {r.name}
-                    {r.words && <span className="text-ink-3"> · {r.words}</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <a href="#/activity" className="mt-1 inline-block text-accent text-sm hover:underline">
-            All activity
-          </a>
-        </Section>
-        <Section
-          title="Governance"
-          sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
-        >
-          <Governance m={m} rules={rules} onChange={onChange} />
-        </Section>
+                  <div className="text-md">
+                    <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
+                  </div>
+                </Section>
+              ),
+            },
+            {
+              key: 'activity',
+              name: 'Recent activity',
+              node: (
+                <Section title="Recent activity" sub={`What ran in ${m.name} lately.`}>
+                  {runs === null ? (
+                    <p className="text-ink-3 text-md">Loading…</p>
+                  ) : runs.length === 0 ? (
+                    <p className="text-ink-2 text-md">Nothing has run here yet.</p>
+                  ) : (
+                    <ul className="flex flex-col">
+                      {runs.map((r) => (
+                        <li
+                          key={r.id}
+                          className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                        >
+                          <span className="w-28 shrink-0 text-ink-3 tabular-nums">
+                            {when(r.startedAt)}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-ink">
+                            {r.name}
+                            {r.words && <span className="text-ink-3"> · {r.words}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <a
+                    href="#/activity"
+                    className="mt-1 inline-block text-accent text-sm hover:underline"
+                  >
+                    All activity
+                  </a>
+                </Section>
+              ),
+            },
+            {
+              key: 'governance',
+              name: 'Governance',
+              node: (
+                <Section
+                  title="Governance"
+                  sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
+                >
+                  <Governance m={m} rules={rules} onChange={onChange} />
+                </Section>
+              ),
+            },
+          ]}
+        />
       </div>
     </div>
   )

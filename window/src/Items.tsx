@@ -6,6 +6,7 @@ import type { AgentView, RuleView, RunView, WorkingModuleView } from '@alpha/cor
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api } from './api.ts'
+import { Arranged } from './arrange.tsx'
 import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -13,6 +14,7 @@ import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
+import { Section } from './ui/section.tsx'
 import { Switch } from './ui/switch.tsx'
 
 export type ItemKind = 'agent' | 'run' | 'rule'
@@ -142,36 +144,56 @@ function AgentPage({
         {a.needs && <Pill tone="warn">{a.needs}</Pill>}
         <Refusal words={problem} />
       </div>
-      <Facts
-        lines={[
-          [
-            'Module',
-            <a key="m" href={`#/module/${m.id}`} className="hover:underline">
-              {m.name}
-            </a>,
-          ],
-          [a.state === 'on' ? 'Runs' : 'Would run', a.when],
-          ['Last ran', a.lastRunAt ? dayWords(a.lastRunAt) : 'not yet'],
+      {/* each section a block the person moves and resizes, kept for every agent's page (Vikas, 30 Oct) */}
+      <Arranged
+        page="agent"
+        start={[['works'], ['runs']]}
+        blocks={[
+          {
+            key: 'works',
+            name: 'Works in',
+            node: (
+              <Facts
+                lines={[
+                  [
+                    'Module',
+                    <a key="m" href={`#/module/${m.id}`} className="hover:underline">
+                      {m.name}
+                    </a>,
+                  ],
+                  [a.state === 'on' ? 'Runs' : 'Would run', a.when],
+                  ['Last ran', a.lastRunAt ? dayWords(a.lastRunAt) : 'not yet'],
+                ]}
+              />
+            ),
+          },
+          {
+            key: 'runs',
+            name: 'Recent runs',
+            node: (
+              <Section title="Recent runs">
+                {runs.length === 0 ? (
+                  <p className="text-ink-2 text-md">No runs yet.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                    {runs.map((r) => (
+                      <RunRow
+                        key={r.id}
+                        run={r}
+                        open={false}
+                        onOpen={() => {
+                          window.location.hash = `#/run/${r.id}`
+                        }}
+                        onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Section>
+            ),
+          },
         ]}
       />
-      <h2 className="font-medium font-serif text-ink text-xl">Recent runs</h2>
-      {runs.length === 0 ? (
-        <p className="text-ink-2 text-md">No runs yet.</p>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
-          {runs.map((r) => (
-            <RunRow
-              key={r.id}
-              run={r}
-              open={false}
-              onOpen={() => {
-                window.location.hash = `#/run/${r.id}`
-              }}
-              onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
-            />
-          ))}
-        </div>
-      )}
     </Page>
   )
 }

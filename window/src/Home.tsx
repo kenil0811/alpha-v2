@@ -16,6 +16,7 @@ import type {
 import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { Arranged } from './arrange.tsx'
 import { CardBox } from './Conversation.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { signInWith } from './SignInApps.tsx'
@@ -148,195 +149,235 @@ export function Home({
             }}
           />
         ) : (
-          <div className="grid items-start gap-7 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            <div className="flex min-w-0 flex-col gap-7">
-              <Group title="Needs you" count={cards.length + signIns.length}>
-                {stream && cards.length + signIns.length === 0 && (
-                  <Quiet>Nothing waits on you.</Quiet>
-                )}
-                {cards.map((c) => (
-                  <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
-                ))}
-                {signIns.map((a) => (
-                  <Line
-                    key={a.connector}
-                    icon={<KeyRound className="size-3.5 text-warn" />}
-                    head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
-                    words={
-                      a.waiting
-                        ? `${a.title}: ${a.waiting}`
-                        : a.inBrowser
-                          ? `${a.title} needs you to sign in: it opens in Chrome`
-                          : a.signsInWith
-                            ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
-                            : `${a.title} needs you to sign in again`
-                    }
-                    {...(a.waiting
-                      ? { href: '#/intelligence/connections' }
-                      : a.inBrowser
-                        ? {
-                            onClick: () => {
-                              void api.post(`/api/connections/${a.connection}/sign-in`)
-                            },
-                          }
-                        : a.signsInWith
-                          ? {
-                              onClick: () => {
-                                void signInWith(a.connection)
-                              },
-                            }
-                          : { href: `#/settings?connect=${a.connector}` })}
-                  />
-                ))}
-              </Group>
-
-              <Group
-                title="Since you last looked"
-                sub={today ? sinceWords(today.since) : undefined}
-                action={
-                  changed.length > 0 && (
-                    <button
-                      type="button"
-                      className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
-                      onClick={() => api.post('/api/today/seen').then(load, load)}
-                    >
-                      Clear
-                    </button>
-                  )
-                }
-              >
-                {failed.today && <NotLoaded onTry={load} />}
-                {today && !failed.today && changed.length === 0 && <Quiet>Nothing changed.</Quiet>}
-                {changed.length > 0 && (
-                  <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {changed.slice(0, 10).map((r) => {
-                      const said = r.words?.startsWith(`${r.name}: `)
-                        ? r.words.slice(r.name.length + 2)
-                        : r.words
-                      return (
-                        <Line
-                          key={r.id}
-                          boxed
-                          icon={<Bot className="size-3.5 text-ink-3" />}
-                          head={`${r.name}${r.module ? ` · ${r.module}` : ''} · ${clock(new Date(r.startedAt))}`}
-                          words={said ?? ''}
-                          warn={r.state === 'failed'}
-                          href="#/activity"
-                        />
-                      )
-                    })}
-                  </div>
-                )}
-                {changed.length > 10 && (
-                  <a className="text-accent text-sm underline underline-offset-3" href="#/activity">
-                    {changed.length - 10} more in Activity
-                  </a>
-                )}
-              </Group>
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-7">
-              <Group
-                title="Today's tasks"
-                count={tasks?.lines.filter((t) => t.overdue).length}
-                action={
-                  <a
-                    className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
-                    href="#/tasks"
-                  >
-                    All tasks
-                  </a>
-                }
-              >
-                {tasks && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <TaskTile label="Overdue" n={tasks.counts.overdue ?? 0} list="overdue" bad />
-                    <TaskTile label="Due today" n={tasks.counts.today ?? 0} list="today" />
-                    <TaskTile label="This week" n={tasks.counts.week ?? 0} list="week" />
-                  </div>
-                )}
-                {failed.tasks && <NotLoaded onTry={load} />}
-                {tasks && !failed.tasks && tasks.lines.length === 0 && (
-                  <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
-                )}
-                {tasks && tasks.lines.length > 0 && (
-                  <TaskList lines={tasks.lines} onChange={load} />
-                )}
-              </Group>
-
-              {(running.length > 0 || reading.length > 0) && (
-                <Group title="Running">
-                  <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {reading.map((r) => (
-                      <div
-                        key={r.connection}
-                        className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
-                      >
-                        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                        <span className="min-w-0 flex-1 truncate text-ink">
-                          Reading {r.title}
-                          <span className="text-ink-3"> · {r.account}</span>
-                        </span>
-                      </div>
-                    ))}
-                    {running.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
-                      >
-                        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                        <span className="min-w-0 flex-1 truncate text-ink">{r.name}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => api.post(`/api/runs/${r.id}/stop`)}
-                        >
-                          Stop
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </Group>
-              )}
-
-              <Group title="Coming up">
-                {failed.today && <NotLoaded onTry={load} />}
-                {today && !failed.today && coming.length === 0 && (
-                  <Quiet>No agent runs on the clock.</Quiet>
-                )}
-                {coming.length > 0 && (
-                  <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {/* opened out, the rows scroll inside their box, not the whole screen (Kenil,
-                        21 Oct) */}
-                    <div className={allComing ? 'max-h-80 overflow-y-auto' : undefined}>
-                      {(allComing ? coming : coming.slice(0, 3)).map((c) => (
-                        <a
-                          key={c.agent}
-                          href={`#/module/${c.module}/agents`}
-                          className="flex items-baseline gap-2 border-hair border-t px-4 py-2.5 text-md first:border-t-0 hover:bg-hover"
-                        >
-                          <span className="min-w-0 flex-1 truncate text-ink">
-                            {c.name}
-                            <span className="text-ink-3"> · {c.moduleName}</span>
-                          </span>
-                          <span className="shrink-0 text-ink-3 text-sm">{dayWords(c.at)}</span>
-                        </a>
-                      ))}
-                    </div>
-                    {coming.length > 3 && (
-                      <button
-                        type="button"
-                        onClick={() => setAllComing((a) => !a)}
-                        className="w-full border-hair border-t px-4 py-2 text-left text-accent text-sm hover:bg-hover"
-                      >
-                        {allComing ? 'Fewer' : `${coming.length - 3} more`}
-                      </button>
+          // what waits on the person, their day and what Alpha did, each a block the person
+          // drags beside, above or below another and resizes from its corner (Vikas, 29–30 Oct)
+          <Arranged
+            page="home"
+            start={[['needs', 'tasks'], ['changed', 'coming'], ['running']]}
+            blocks={[
+              {
+                key: 'needs',
+                name: 'Needs you',
+                node: (
+                  <Group title="Needs you" count={cards.length + signIns.length}>
+                    {stream && cards.length + signIns.length === 0 && (
+                      <Quiet>Nothing waits on you.</Quiet>
                     )}
-                  </div>
-                )}
-              </Group>
-            </div>
-          </div>
+                    {cards.map((c) => (
+                      <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
+                    ))}
+                    {signIns.map((a) => (
+                      <Line
+                        key={a.connector}
+                        icon={<KeyRound className="size-3.5 text-warn" />}
+                        head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
+                        words={
+                          a.waiting
+                            ? `${a.title}: ${a.waiting}`
+                            : a.inBrowser
+                              ? `${a.title} needs you to sign in: it opens in Chrome`
+                              : a.signsInWith
+                                ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
+                                : `${a.title} needs you to sign in again`
+                        }
+                        {...(a.waiting
+                          ? { href: '#/intelligence/connections' }
+                          : a.inBrowser
+                            ? {
+                                onClick: () => {
+                                  void api.post(`/api/connections/${a.connection}/sign-in`)
+                                },
+                              }
+                            : a.signsInWith
+                              ? {
+                                  onClick: () => {
+                                    void signInWith(a.connection)
+                                  },
+                                }
+                              : { href: `#/settings?connect=${a.connector}` })}
+                      />
+                    ))}
+                  </Group>
+                ),
+              },
+              {
+                key: 'changed',
+                name: 'Since you last looked',
+                node: (
+                  <Group
+                    title="Since you last looked"
+                    sub={today ? sinceWords(today.since) : undefined}
+                    action={
+                      changed.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+                          onClick={() => api.post('/api/today/seen').then(load, load)}
+                        >
+                          Clear
+                        </button>
+                      )
+                    }
+                  >
+                    {failed.today && <NotLoaded onTry={load} />}
+                    {today && !failed.today && changed.length === 0 && (
+                      <Quiet>Nothing changed.</Quiet>
+                    )}
+                    {changed.length > 0 && (
+                      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                        {changed.slice(0, 10).map((r) => {
+                          const said = r.words?.startsWith(`${r.name}: `)
+                            ? r.words.slice(r.name.length + 2)
+                            : r.words
+                          return (
+                            <Line
+                              key={r.id}
+                              boxed
+                              icon={<Bot className="size-3.5 text-ink-3" />}
+                              head={`${r.name}${r.module ? ` · ${r.module}` : ''} · ${clock(new Date(r.startedAt))}`}
+                              words={said ?? ''}
+                              warn={r.state === 'failed'}
+                              href="#/activity"
+                            />
+                          )
+                        })}
+                      </div>
+                    )}
+                    {changed.length > 10 && (
+                      <a
+                        className="text-accent text-sm underline underline-offset-3"
+                        href="#/activity"
+                      >
+                        {changed.length - 10} more in Activity
+                      </a>
+                    )}
+                  </Group>
+                ),
+              },
+              {
+                key: 'tasks',
+                name: "Today's tasks",
+                node: (
+                  <Group
+                    title="Today's tasks"
+                    count={tasks?.lines.filter((t) => t.overdue).length}
+                    action={
+                      <a
+                        className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+                        href="#/tasks"
+                      >
+                        All tasks
+                      </a>
+                    }
+                  >
+                    {tasks && (
+                      <div className="grid grid-cols-3 gap-2">
+                        <TaskTile
+                          label="Overdue"
+                          n={tasks.counts.overdue ?? 0}
+                          list="overdue"
+                          bad
+                        />
+                        <TaskTile label="Due today" n={tasks.counts.today ?? 0} list="today" />
+                        <TaskTile label="This week" n={tasks.counts.week ?? 0} list="week" />
+                      </div>
+                    )}
+                    {failed.tasks && <NotLoaded onTry={load} />}
+                    {tasks && !failed.tasks && tasks.lines.length === 0 && (
+                      <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
+                    )}
+                    {tasks && tasks.lines.length > 0 && (
+                      <TaskList lines={tasks.lines} onChange={load} />
+                    )}
+                  </Group>
+                ),
+              },
+              ...(running.length > 0 || reading.length > 0
+                ? [
+                    {
+                      key: 'running',
+                      name: 'Running',
+                      node: (
+                        <Group title="Running">
+                          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                            {reading.map((r) => (
+                              <div
+                                key={r.connection}
+                                className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
+                              >
+                                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+                                <span className="min-w-0 flex-1 truncate text-ink">
+                                  Reading {r.title}
+                                  <span className="text-ink-3"> · {r.account}</span>
+                                </span>
+                              </div>
+                            ))}
+                            {running.map((r) => (
+                              <div
+                                key={r.id}
+                                className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
+                              >
+                                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+                                <span className="min-w-0 flex-1 truncate text-ink">{r.name}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => api.post(`/api/runs/${r.id}/stop`)}
+                                >
+                                  Stop
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </Group>
+                      ),
+                    },
+                  ]
+                : []),
+              {
+                key: 'coming',
+                name: 'Coming up',
+                node: (
+                  <Group title="Coming up">
+                    {failed.today && <NotLoaded onTry={load} />}
+                    {today && !failed.today && coming.length === 0 && (
+                      <Quiet>No agent runs on the clock.</Quiet>
+                    )}
+                    {coming.length > 0 && (
+                      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                        {/* opened out, the rows scroll inside their box, not the whole screen (Kenil,
+                        21 Oct) */}
+                        <div className={allComing ? 'max-h-80 overflow-y-auto' : undefined}>
+                          {(allComing ? coming : coming.slice(0, 3)).map((c) => (
+                            <a
+                              key={c.agent}
+                              href={`#/module/${c.module}/agents`}
+                              className="flex items-baseline gap-2 border-hair border-t px-4 py-2.5 text-md first:border-t-0 hover:bg-hover"
+                            >
+                              <span className="min-w-0 flex-1 truncate text-ink">
+                                {c.name}
+                                <span className="text-ink-3"> · {c.moduleName}</span>
+                              </span>
+                              <span className="shrink-0 text-ink-3 text-sm">{dayWords(c.at)}</span>
+                            </a>
+                          ))}
+                        </div>
+                        {coming.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => setAllComing((a) => !a)}
+                            className="w-full border-hair border-t px-4 py-2 text-left text-accent text-sm hover:bg-hover"
+                          >
+                            {allComing ? 'Fewer' : `${coming.length - 3} more`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </Group>
+                ),
+              },
+            ]}
+          />
         )}
       </div>
     </div>

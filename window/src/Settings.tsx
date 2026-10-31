@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
+import { Arranged, pairs } from './arrange.tsx'
 import { startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
@@ -140,23 +141,29 @@ export function Settings({
           title="Connections"
           about="Your accounts, read by Alpha; what you type stays in the Keychain."
         >
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
-            {accounts.map((c) => (
-              <ConnectorTile
-                key={c.name}
-                connector={c}
-                connections={view.connections.filter((k) => k.connector === c.name)}
-                startOpen={open === c.name}
-                added={view.added.includes(c.name)}
-                appSet={
-                  c.signsInWith
-                    ? !!view.signInApps.find((a) => a.provider === c.signsInWith?.provider)?.set
-                    : null
-                }
-                onChange={load}
-              />
-            ))}
-          </div>
+          {/* each tile a block the person moves and resizes (Vikas, 30 Oct) */}
+          <Arranged
+            page="connections"
+            start={pairs(accounts.map((c) => c.name))}
+            blocks={accounts.map((c) => ({
+              key: c.name,
+              name: c.title,
+              node: (
+                <ConnectorTile
+                  connector={c}
+                  connections={view.connections.filter((k) => k.connector === c.name)}
+                  startOpen={open === c.name}
+                  added={view.added.includes(c.name)}
+                  appSet={
+                    c.signsInWith
+                      ? !!view.signInApps.find((a) => a.provider === c.signsInWith?.provider)?.set
+                      : null
+                  }
+                  onChange={load}
+                />
+              ),
+            }))}
+          />
           {orphans.length > 0 && (
             <List>
               {orphans.map((k) => (

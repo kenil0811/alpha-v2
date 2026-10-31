@@ -17,6 +17,17 @@ import {
 import { createPortal } from 'react-dom'
 import { cn } from './cn.ts'
 
+// Where what floats is drawn: in the open modal dialog it belongs to (the browser draws a modal
+// dialog in its top layer, over anything in the page, so a menu in the body would sit behind it),
+// else against the window.
+export function floatRoot(from?: Element | null): Element {
+  return (
+    from?.closest('dialog[open]') ??
+    [...document.querySelectorAll('dialog[open]')].at(-1) ??
+    document.body
+  )
+}
+
 export function Popover({
   anchor,
   point,
@@ -105,13 +116,13 @@ export function Popover({
       onKeyDown={move}
       style={{ top: at?.top ?? -9999, left: at?.left ?? -9999 }}
       className={cn(
-        'fixed z-50 max-h-[calc(100vh-16px)] min-w-48 overflow-y-auto rounded-md border border-line bg-surface p-1 text-md shadow-pop',
+        'fixed z-(--z-pop) max-h-[calc(100vh-16px)] min-w-48 overflow-y-auto rounded-md border border-line bg-surface p-1 text-md shadow-pop',
         className,
       )}
     >
       {children}
     </div>,
-    document.body,
+    floatRoot(anchor?.current),
   )
 }
 
