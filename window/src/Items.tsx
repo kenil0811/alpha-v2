@@ -5,6 +5,7 @@
 import type { AgentView, RuleView, RunView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
+import { Blocked, OnCell } from './AgentList.tsx'
 import { api } from './api.ts'
 import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
@@ -13,7 +14,6 @@ import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
-import { Switch } from './ui/switch.tsx'
 
 export type ItemKind = 'agent' | 'run' | 'rule'
 
@@ -122,15 +122,7 @@ function AgentPage({
     <Page kind={`Agent in ${m.name}`} title={a.name}>
       {a.description && <p className="text-ink-2 text-md">{a.description}</p>}
       <div className="flex flex-wrap items-center gap-2">
-        <Switch
-          checked={a.state === 'on'}
-          label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-          disabled={busy}
-          onChange={(on) =>
-            act(() => api.post(`/api/agents/${a.id}`, { state: on ? 'on' : 'paused' }))
-          }
-        />
-        <span className="text-ink-2 text-md">{a.state === 'on' ? 'On' : 'Paused'}</span>
+        <OnCell agent={a} />
         <Button
           size="sm"
           disabled={busy || a.running}
@@ -138,10 +130,14 @@ function AgentPage({
         >
           Run now
         </Button>
-        {a.running && <Pill tone="accent">Running</Pill>}
-        {a.needs && <Pill tone="warn">{a.needs}</Pill>}
+        {a.running && <Pill tone="accent">Running now…</Pill>}
         <Refusal words={problem} />
       </div>
+      {a.needs && (
+        <div className="text-md">
+          <Blocked agent={a} />
+        </div>
+      )}
       <Facts
         lines={[
           [

@@ -27,6 +27,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { AgentList } from './AgentList.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
@@ -1561,24 +1562,14 @@ function Embedded({
   )
 }
 
-// Intelligence's Agents: every agent in one shared table, each opening its page; then the modules
-// they come from, to install, update and pack.
+// Intelligence's Agents: every agent, how often it runs, when it last ran, on or paused (AgentList).
 function Agents({ version }: { version: number }) {
-  // every module's agents as one table from the core: On or Paused changes in its cell
-  const [data, setData] = useState<KeptTable | null>(null)
-  useEffect(() => {
-    if (version >= 0) api.get<KeptTable>('/api/kept/agents').then(setData, () => setData(null))
-  }, [version])
   return (
-    <Section title="Agents" about="Every agent, what it does and when it last ran.">
-      {data && (
-        <Embedded
-          data={data}
-          open={(id) => {
-            window.location.hash = `#/agent/${id}`
-          }}
-        />
-      )}
+    <Section
+      title="Agents"
+      about="Every agent, Alpha's own included: how often it runs, when it last ran and whether it is running."
+    >
+      <AgentList version={version} />
     </Section>
   )
 }

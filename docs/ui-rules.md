@@ -122,6 +122,13 @@ held by review. Dates are 2026.
 
 ## Proposed, waiting on Kenil or the core
 
+- Agents are grouped by what they do (by module until the core says what each does). Their list
+  says how often each runs, when it last ran ("12 min ago", the time on hover), and Running or
+  Paused beside the switch (Vikas, 29 Oct).
+- A blocked agent is red: a red dot and the reason in words; the one button that unblocks it
+  waits on the core.
+- "Running now…" until a run ends. Sync now, beside New, says when the table last synced.
+
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, renaming a module and choosing its icon (needs the core).
 - What each run costs, shown under Settings › Model (needs the core).

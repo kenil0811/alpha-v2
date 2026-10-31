@@ -4,6 +4,7 @@
 // while the person clicks along a row. What the person changes and has not saved stays while they
 // open a row and come back, in this browser; a saved view is shared by everyone.
 import type {
+  AgentView,
   FieldView,
   FilterRule,
   KeptTable,
@@ -21,11 +22,14 @@ import {
   EllipsisVertical,
   Group,
   Plus,
+  RefreshCw,
   Search,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { agoWords } from './AgentList.tsx'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
+import { when } from './ModulesAndAgents.tsx'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
 import { setGroup, setRule } from './table/edits.ts'
@@ -48,12 +52,13 @@ import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
-import { canType, isTags, show } from './table/values.ts'
+import { canType, isTags, show, titleOf } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
+import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
@@ -567,6 +572,7 @@ export function TableView({
                   New
                 </Button>
               </span>
+              {!kept && <SyncNow data={data} />}
               {rows.length > Math.min(size, ...SIZES) && (
                 <>
                   <span className="mr-2 tabular-nums">
@@ -852,4 +858,57 @@ function barRule(field: FieldView, key: string): FilterRule {
     return { field: field.id, op: 'between', value: `${key}-01`, value2: `${key}-${last}` }
   }
   return { field: field.id, op: 'is', value: key }
+}
+
+// Sync now, beside New: runs, now, the module's agents that are on and are named after this
+// table's rows or the rows it points at (a source's reader); shown only while there are such agents.
+// Beside it, when they last synced (Vikas, 29 Oct), or Syncing… while one runs.
+function SyncNow({ data }: { data: TableData }) {
+  const [agents, setAgents] = useState<AgentView[]>([])
+  const [tick, setTick] = useState(0)
+  const { busy, problem, act } = useAct(() => setTick((n) => n + 1))
+  useEffect(() => {
+    api.get<{ agents: AgentView[] }>(`/api/modules/${data.module.id}`).then(
+      (m) => setAgents(m.agents),
+      () => setAgents([]),
+    )
+  }, [data.module.id, tick])
+  // its own rows' names, and the rows its relations point at (a deal's source)
+  const names = new Set([
+    ...data.rows.map((r) => titleOf(data.fields, r)),
+    ...Object.values(data.names),
+  ])
+  const readers = agents.filter((a) => a.state === 'on' && names.has(a.name))
+  const syncing = readers.some((a) => a.running)
+  // while one runs, ask again every few seconds, so Syncing… ends when it does
+  useEffect(() => {
+    if (!syncing) return
+    const t = setTimeout(() => setTick((n) => n + 1), 4000)
+    return () => clearTimeout(t)
+  }, [syncing, agents])
+  if (!readers.length) return null
+  const last = readers
+    .map((a) => a.lastRunAt)
+    .filter((x): x is string => !!x)
+    .sort()
+    .at(-1)
+  return (
+    <span className="mr-2 flex items-center gap-2">
+      <Refusal words={problem} />
+      <span className="text-ink-3 text-sm" data-tip={last && !syncing ? when(last) : undefined}>
+        {syncing ? 'Syncing…' : last ? `Last synced ${agoWords(last)}` : 'Not synced yet'}
+      </span>
+      <Button
+        size="sm"
+        disabled={busy}
+        data-tip={`Run the ${readers.length} readers of these ${data.name.toLowerCase()} that are on, now`}
+        onClick={() =>
+          act(() => Promise.all(readers.map((a) => api.post(`/api/agents/${a.id}/run`))))
+        }
+      >
+        <RefreshCw className="size-3.5" />
+        Sync now
+      </Button>
+    </span>
+  )
 }
