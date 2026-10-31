@@ -128,3 +128,11 @@ held by review. Dates are 2026.
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.
+- Every button changes colour under the pointer: plain and ghost turn to the accent's soft tint,
+  primary darkens; a soft kind for a way onward that is not the main act (Vikas, 30 Oct).
+- A card's row of buttons sits at the right, the one thing to do first (`Actions` in
+  `ui/card.tsx`) (Vikas, 30 Oct).
+- Small parts in `ui/`, each on #/parts: the pill switch (`pill-switch.tsx`, to replace the tabs
+  of H2), cut buttons for cuts of one list (`cut.tsx`), the signal dot (`dot.tsx`), the square icon
+  tile (`icon-tile.tsx`) and the one Back (`back.tsx`) (Vikas, 27 to 28 Oct). Only Activity's
+  filter uses one so far; the screens move to them with their own changes.

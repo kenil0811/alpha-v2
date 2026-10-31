@@ -1,13 +1,18 @@
 // Every part of the window on one page (#/parts, not in the rail), so a change to a part is seen in
 // light and dark before a screen uses it: the shots take this page too.
-import { Bot, Mail } from 'lucide-react'
+import { Bot, Home, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Preview } from './Conversation.tsx'
+import { Back } from './ui/back.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
+import { Cut } from './ui/cut.tsx'
+import { Dot } from './ui/dot.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { IconTile, IconTiles } from './ui/icon-tile.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Kbd, Label, Pill, Topic } from './ui/pill.tsx'
+import { PillSwitch, SwitchPill } from './ui/pill-switch.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
@@ -16,15 +21,20 @@ import { Switch } from './ui/switch.tsx'
 export function Parts() {
   const [view, setView] = useState<'table' | 'board'>('table')
   const [on, setOn] = useState(true)
+  const [cut, setCut] = useState('today')
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-8 px-8 py-7">
           <h1 className="text-2xl text-ink">Parts</h1>
-          <Section title="Buttons" about="Plain, primary, ghost, warn; two sizes; an icon button.">
+          <Section
+            title="Buttons"
+            about="Plain, primary, soft, ghost, warn; two sizes; an icon button. Each changes colour under the pointer."
+          >
             <div className="flex flex-wrap items-center gap-2">
               <Button>Read now</Button>
               <Button variant="primary">Send it</Button>
+              <Button variant="soft">Open page</Button>
               <Button variant="ghost">Decline</Button>
               <Button variant="warn">Disconnect</Button>
               <Button size="sm">Small</Button>
@@ -45,6 +55,10 @@ export function Parts() {
               <Topic>Deals</Topic>
               <Label>Leaves your world</Label>
               <Kbd>⌘K</Kbd>
+              <Dot s="now" />
+              <Dot s="yes" />
+              <Dot s="opt" />
+              <Dot s="done" />
             </div>
           </Section>
           <Section title="Controls">
@@ -64,6 +78,41 @@ export function Parts() {
                 <option>New</option>
                 <option>Passed</option>
               </Select>
+            </div>
+          </Section>
+          <Section title="Switches">
+            <div className="flex flex-col items-start gap-4">
+              <Back to="Home" onClick={() => undefined} />
+              <PillSwitch label="A module">
+                <SwitchPill tab={{ key: 'o', href: '#/parts', label: 'Overview', sel: false }} />
+                <SwitchPill
+                  tab={{ key: 'd', href: '#/parts', label: 'Deals', sel: true, count: 42 }}
+                />
+                <SwitchPill tab={{ key: 's', href: '#/parts', label: 'Sources', sel: false }} />
+              </PillSwitch>
+              <div className="flex gap-1.5">
+                {(
+                  [
+                    ['today', 'Today', 4],
+                    ['week', 'This week', 11],
+                    ['all', 'All', 30],
+                  ] as const
+                ).map(([k, l, n]) => (
+                  <Cut key={k} sel={cut === k} count={n} onClick={() => setCut(k)}>
+                    {l}
+                  </Cut>
+                ))}
+              </div>
+              <div className="w-48">
+                <IconTiles>
+                  <IconTile label="Home" onClick={() => undefined}>
+                    <Home />
+                  </IconTile>
+                  <IconTile label="Mail" onClick={() => undefined} current>
+                    <Mail />
+                  </IconTile>
+                </IconTiles>
+              </div>
             </div>
           </Section>
           <Section title="A list">

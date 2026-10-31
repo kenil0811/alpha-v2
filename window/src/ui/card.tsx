@@ -27,3 +27,9 @@ export function Card({
     </div>
   )
 }
+
+// A card's row of buttons, at its right (Vikas, 30 Oct: every action row aligns right), the one
+// thing to do first.
+export function Actions({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap items-center justify-end gap-2">{children}</div>
+}
