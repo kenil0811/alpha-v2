@@ -128,3 +128,12 @@ held by review. Dates are 2026.
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.
+- A module opens on its Overview, its first tab: the pulse strip (each goal with its next step,
+  what is new this week), its own work left (Insights, goal tasks, charts of its tables), the
+  standard column right (Agents, Tables, Second Brain); a card's head is its name only; nothing on
+  it twice; never blank (Vikas, 27 and 29 Oct; replaces M1's order if agreed).
+- Every figure has a button saying what to do about it, going to the exact rows; a goal is said
+  as its verb ("Review listings"), read from its measure. A goal behind has one task, kept to its
+  numbers and closed when met, once the core makes tasks from goals (Vikas, 29 Oct).
+- Modules are numbered in rail order and tables under them (2, 2.2, 2.2.1); every table counted is
+  listed (Vikas, 29 Oct).

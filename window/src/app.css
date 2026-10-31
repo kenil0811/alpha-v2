@@ -143,6 +143,21 @@
 }
 
 /*
+  One scale for what floats, written z-(--z-pop) and so on, never a bare number past z-1. Inside a
+  box (a sticky header, a hovered tile) a screen keeps z-1 to z-10; a side panel or overlay sits at
+  --z-panel; menus, dropdowns and pickers at --z-pop, in a portal against the window; the one tooltip
+  and the link status above them. A modal dialog is the browser's top layer, over all of these, so
+  a menu opened inside one is portalled into it (ui/popover.tsx, floatRoot).
+*/
+:root {
+  --z-raised: 10;
+  --z-panel: 20;
+  --z-overlay: 30;
+  --z-pop: 50;
+  --z-tip: 60;
+}
+
+/*
   Tailwind reads the tokens through @theme inline, so classes follow the theme:
   bg-surface, bg-sunk, text-ink-2, border-line, bg-accent-soft, text-warn …
   Tailwind's own palette and sizes are switched off: bg-neutral-400 draws nothing, and text-sm is now 12px.

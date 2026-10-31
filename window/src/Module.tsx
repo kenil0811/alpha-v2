@@ -1,11 +1,11 @@
-// A module's screen (design §14, Ledger): its name in the bar, then one row of tabs: People and
-// Organizations when people live in it (module.yaml's people: true), an Overview of the modules
-// inside it when it holds any (a plain list: each one's name, where it comes from and what goes on
-// in it right now; Kenil, 21 Oct), its pages (design §13), its tables with their counts, its
-// Conversation (Home through the module's lens) and its Agents and notes: its agents, the notes
-// Alpha reads first, what ran lately, and what Alpha may do here. Nothing sits under a table or a
-// page (Kenil, 26 Oct). A module holding others opens on its Overview, else on its front page,
-// else its first table.
+// A module's screen (design §14, Ledger): its name in the bar, then one row of tabs: its Overview
+// first, People and Organizations when people live in it (module.yaml's people: true), its pages
+// (design §13), its tables with their counts, its Conversation (Home through the module's lens)
+// and its Agents and notes: its agents, the notes Alpha reads first, what ran lately, and what
+// Alpha may do here. Nothing sits under a table or a page (Kenil, 26 Oct). A module opens on its
+// Overview (Vikas, 27 Oct): its goals, charts and insights (Overview.tsx); a module holding others
+// and no tables of its own lists them instead (a plain list: each one's name, where it comes from
+// and what goes on in it right now; Kenil, 21 Oct). The module people live in opens on People.
 import type {
   ModuleView,
   RuleView,
@@ -19,6 +19,7 @@ import { api } from './api.ts'
 import { startAsk } from './ask.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
+import { Overview } from './Overview.tsx'
 import { PageView } from './PageView.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -60,44 +61,40 @@ export function ModuleScreen({
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-
-  // with no tab named, the Overview of the modules inside, else the front page, else the first
-  // table, else the conversation
-  const front = m?.pages.find((p) => p.front)
-  const holds = (m?.modules.length ?? 0) > 0
-  // its main tables are its tabs; a part shows on its row, a setup table under Agents and notes
-  const first = m?.tables.find((t) => t.place === 'main')
-  const current: ModuleTab =
-    tab ??
-    (holds
-      ? { kind: 'overview' }
-      : front
-        ? { kind: 'page', name: front.name }
-        : first
-          ? { kind: 'table', id: first.id }
-          : { kind: 'conversation' })
-  // the module's own address opens its first table, as that table's address; only once this
-  // module's own data is here (the last module's, still shown, would send it back there)
-  const firstTable = !tab && m && m.id === moduleId && !front && !holds ? first?.id : undefined
+  // its main tables whole: the Overview's charts and goals, and its agents' groups
+  const [main, setMain] = useState<TableData[]>([])
+  const mainIds = (m?.tables ?? [])
+    .filter((t) => t.place === 'main')
+    .map((t) => t.id)
+    .join(',')
   useEffect(() => {
-    // the module people live in opens on its People
-    if (firstTable) window.location.replace(m?.people ? '#/people' : `#/table/${firstTable}`)
-  }, [firstTable, m?.people])
+    if (version < 0) return
+    if (!mainIds) return setMain([])
+    Promise.all(mainIds.split(',').map((id) => api.get<TableData>(`/api/tables/${id}`))).then(
+      setMain,
+      () => setMain([]),
+    )
+  }, [mainIds, version])
+
+  // with no tab named, the Overview, or People in the module people live in; only once this
+  // module's own data is here (the last module's, still shown, would send it there)
+  const holds = (m?.modules.length ?? 0) > 0
+  const current: ModuleTab = tab ?? { kind: 'overview' }
+  const toPeople = !tab && m && m.id === moduleId && m.people
+  useEffect(() => {
+    if (toPeople) window.location.replace('#/people')
+  }, [toPeople])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
   const tabs: Tab[] = m
     ? [
+        {
+          key: 'overview',
+          href: `#/module/${moduleId}/overview`,
+          label: 'Overview',
+          sel: current.kind === 'overview',
+        },
         ...(m.people ? peopleTabs(null) : []),
-        ...(holds
-          ? [
-              {
-                key: 'overview',
-                href: `#/module/${moduleId}/overview`,
-                label: 'Overview',
-                sel: current.kind === 'overview',
-              },
-            ]
-          : []),
         ...moduleTabs(m, current),
       ]
     : []
@@ -107,7 +104,12 @@ export function ModuleScreen({
       <Tabs label={m?.name ?? 'Module'} tabs={tabs} />
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
-          m && <Overview m={m} />
+          m &&
+          (holds && !m.tables.length ? (
+            <Inside m={m} />
+          ) : (
+            <Overview m={m} main={main} version={version} onChange={load} />
+          ))
         ) : current.kind === 'page' ? (
           m && page ? (
             <PageView key={page.name} m={m} page={page} version={version} />
@@ -175,7 +177,7 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
 
 // The modules inside this one, a row each: its name, where it comes from, and what goes on in
 // it right now (agents on and running, open tasks); what waits on the person stands out.
-function Overview({ m }: { m: ModuleView }) {
+function Inside({ m }: { m: ModuleView }) {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-page px-7 py-6">

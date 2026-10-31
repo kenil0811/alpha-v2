@@ -87,7 +87,20 @@ function PeopleList({
     <div className="flex h-full min-h-0 flex-col">
       <Tabs
         label={net?.name ?? 'People'}
-        tabs={[...peopleTabs(kind), ...(net ? moduleTabs(net, null) : [])]}
+        tabs={[
+          ...(net
+            ? [
+                {
+                  key: 'overview',
+                  href: `#/module/${net.id}/overview`,
+                  label: 'Overview',
+                  sel: false,
+                },
+              ]
+            : []),
+          ...peopleTabs(kind),
+          ...(net ? moduleTabs(net, null) : []),
+        ]}
       />
       {none && (
         <p className="border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">

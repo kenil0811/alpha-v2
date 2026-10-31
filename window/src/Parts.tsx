@@ -1,8 +1,10 @@
 // Every part of the window on one page (#/parts, not in the rail), so a change to a part is seen in
 // light and dark before a screen uses it: the shots take this page too.
+import type { ModuleSummary, TableSummary } from '@alpha/core/api'
 import { Bot, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Preview } from './Conversation.tsx'
+import { childrenOf, tops } from './tree.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { Field, Select } from './ui/field.tsx'
@@ -125,4 +127,63 @@ export function Parts() {
       </SidePanel>
     </div>
   )
+}
+
+// Numbering (Vikas, 29 Oct): modules in the rail's order, depth-first (1, 2, 2.1), and a module's
+// tables under its number: the main tables, then the setup ones, each followed by the tables that
+// are part of its rows (DealPilot 2: Sources 2.1, Deals 2.2, Financials 2.2.1). Every table counted
+// gets a number, so a count and its list always agree. The one place numbers are made; the rail,
+// the Overview, the Second Brain and Agents and notes read them from here.
+type Placed = Pick<ModuleSummary, 'id' | 'name' | 'parent'> & { alpha?: boolean }
+
+export function moduleNumbers(modules: Placed[]): Map<string, string> {
+  const out = new Map<string, string>()
+  const shown = modules.filter((m) => !m.alpha) // Alpha's own module is not on the rail
+  const walk = (list: Placed[], prefix: string) =>
+    list.forEach((m, i) => {
+      const n = `${prefix}${i + 1}`
+      if (out.has(m.id)) return
+      out.set(m.id, n)
+      walk(childrenOf(shown, m.id), `${n}.`)
+    })
+  walk(tops(shown), '')
+  return out
+}
+
+export type NumberedTable<T> = { table: T; n: string; depth: number }
+
+export function numberTables<T extends Pick<TableSummary, 'id' | 'name' | 'place' | 'of'>>(
+  tables: T[],
+  prefix = '',
+): NumberedTable<T>[] {
+  const out: NumberedTable<T>[] = []
+  const seen = new Set<string>()
+  const partsOf = (t: T) => tables.filter((p) => p.of === t.name && p.id !== t.id)
+  const walk = (list: T[], pre: string, depth: number, i = 0) => {
+    for (const t of list) {
+      if (seen.has(t.id)) continue
+      seen.add(t.id)
+      const n = `${pre}${++i}`
+      out.push({ table: t, n, depth })
+      walk(partsOf(t), `${n}.`, depth + 1)
+    }
+    return i
+  }
+  // the top: tables that are part of no table here, main ones first; a part whose chain loops
+  // back on itself still gets a number, after them
+  const top = tables.filter((t) => !t.of || !tables.some((o) => o.name === t.of))
+  const rank = (t: T) => (t.place === 'main' ? 0 : t.place === 'part' ? 1 : 2)
+  const pre = prefix ? `${prefix}.` : ''
+  const last = walk(
+    [...top].sort((a, b) => rank(a) - rank(b)),
+    pre,
+    0,
+  )
+  walk(
+    tables.filter((t) => !seen.has(t.id)),
+    pre,
+    0,
+    last,
+  )
+  return out
 }
