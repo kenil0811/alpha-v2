@@ -16,6 +16,9 @@ import {
   total,
 } from './engine.ts'
 
+// West of UTC, where a day read as midnight UTC falls on the day before; CI runs in UTC
+process.env.TZ = 'America/Chicago'
+
 const field = (id: string, kind: string, extra: Partial<FieldView> = {}): FieldView =>
   ({
     id,
