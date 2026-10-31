@@ -5,7 +5,7 @@
 // the notes that mention it; the pages and files its values were read from; its tasks; and the
 // documents on it (a deal's CIM), which a file dropped on the view joins at once.
 import type { FieldView, RowAround, RowFileView, RowView, TasksView } from '@alpha/core/api'
-import { ExternalLink, FileText, Paperclip, Plus, X } from 'lucide-react'
+import { ExternalLink, FileText, Plus, X } from 'lucide-react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
@@ -13,6 +13,7 @@ import { NewTask, TaskList } from '../Tasks.tsx'
 import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
+import { DropZone } from '../ui/drop-zone.tsx'
 import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 import { AddRow } from './AddRow.tsx'
@@ -63,7 +64,6 @@ export function RowBody({
     api.get<TasksView>(`/api/tasks?row=${row.id}`).then(setTasks, () => setTasks(null))
   const [problem, setProblem] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
-  const picker = useRef<HTMLInputElement>(null)
   // the row comes again whenever the world changes: its files are asked again with it
   useEffect(() => {
     if (row.id) api.get<RowFileView[]>(path).then(setFiles, () => setFiles([]))
@@ -115,9 +115,7 @@ export function RowBody({
         <FieldList fields={fields} row={row} names={names} onField={onField} onEdit={onEdit} />
         {notes && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              {notes.name}
-            </div>
+            <div className="font-semibold text-ink-3 text-sm">{notes.name}</div>
             <Notes
               value={
                 typeof row.values[notes.slug] === 'string' ? (row.values[notes.slug] as string) : ''
@@ -129,7 +127,7 @@ export function RowBody({
         {around?.parts.map((p) => (
           <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="flex items-center justify-between">
-              <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+              <div className="font-semibold text-ink-3 text-sm">
                 {p.table.name} · {p.count}
               </div>
               {p.count > 0 && (
@@ -155,9 +153,7 @@ export function RowBody({
         ))}
         {around && (around.links.length > 0 || around.mentions.length > 0) && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              Linked here
-            </div>
+            <div className="font-semibold text-ink-3 text-sm">Related</div>
             {[
               ...around.links.map((l) => ({
                 key: `l${l.table.id}${l.field}`,
@@ -176,7 +172,7 @@ export function RowBody({
                   <a
                     key={r.id}
                     href={`#/row/${r.id}`}
-                    className="truncate py-0.5 text-ink text-md hover:underline"
+                    className="truncate py-0.5 text-accent text-md hover:underline"
                   >
                     {r.name}
                   </a>
@@ -190,9 +186,7 @@ export function RowBody({
         )}
         {places.size > 0 && (
           <div className="flex flex-col gap-2 p-4.5">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              Read from
-            </div>
+            <div className="font-semibold text-ink-3 text-sm">Read from</div>
             <div className="flex flex-wrap gap-1.5">
               {[...places.values()].map((p) => (
                 <Button
@@ -218,7 +212,7 @@ export function RowBody({
           </div>
         )}
         <div className="flex flex-col gap-2 p-4.5">
-          <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+          <div className="font-semibold text-ink-3 text-sm">
             Tasks
             {tasks?.lines.length
               ? ` · ${tasks.lines.filter((t) => t.state !== 'done' && t.state !== 'dropped').length} open`
@@ -235,86 +229,67 @@ export function RowBody({
         </div>
         <div className="flex flex-col gap-2 p-4.5">
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              Documents
-            </div>
-            <Button size="sm" variant="ghost" onClick={() => picker.current?.click()}>
-              <Paperclip className="size-3.25" />
-              Add a file
-            </Button>
-            <input
-              ref={picker}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                add(e.target.files)
-                e.target.value = ''
-              }}
-            />
+            <div className="font-semibold text-ink-3 text-sm">Documents</div>
           </div>
-          {files.length === 0 && (
-            <div className="text-ink-3 text-sm">
-              None yet. Drop a file here to keep it on this row.
-            </div>
-          )}
-          {files.map((f) => (
-            <div
-              key={f.hash}
-              className="flex flex-col gap-1 rounded-md border border-hair px-2.5 py-2"
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="size-3.5 shrink-0 text-ink-3" />
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 truncate text-left text-md text-ink hover:underline"
-                  title={f.name}
-                  onClick={() => window.location.assign(fileHref({ file: f.hash }))}
-                >
-                  {f.name}
-                </button>
-                <IconButton
-                  label="Take it off this row"
-                  onClick={() => act(api.post<RowFileView[]>(`${path}/${f.hash}`, { off: true }))}
-                >
-                  <X className="size-3.5" />
-                </IconButton>
-              </div>
-              <div className="flex items-center gap-2 text-ink-3 text-sm">
-                {kinds?.length ? (
-                  <Select
-                    aria-label="What kind of document it is"
-                    className="h-6.5 text-sm"
-                    value={f.kind ?? ''}
-                    onChange={(e) =>
-                      act(
-                        api.post<RowFileView[]>(`${path}/${f.hash}`, {
-                          kind: e.target.value || null,
-                        }),
-                      )
-                    }
+          <DropZone onFiles={add}>
+            {files.map((f) => (
+              <div
+                key={f.hash}
+                className="flex flex-col gap-1 rounded-md border border-hair px-2.5 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="size-3.5 shrink-0 text-ink-3" />
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left text-md text-ink hover:underline"
+                    title={f.name}
+                    onClick={() => window.location.assign(fileHref({ file: f.hash }))}
                   >
-                    <option value="">No kind given</option>
-                    {kinds.map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </Select>
-                ) : (
-                  f.kind && <span>{f.kind}</span>
-                )}
-                <span className="truncate">
-                  {f.by}, {dayWords(f.at)}
-                  {f.read === 'reading'
-                    ? ' · being read'
-                    : f.read === 'kept'
-                      ? ' · kept, not read'
-                      : ''}
-                </span>
+                    {f.name}
+                  </button>
+                  <IconButton
+                    label="Take it off this row"
+                    onClick={() => act(api.post<RowFileView[]>(`${path}/${f.hash}`, { off: true }))}
+                  >
+                    <X className="size-3.5" />
+                  </IconButton>
+                </div>
+                <div className="flex items-center gap-2 text-ink-3 text-sm">
+                  {kinds?.length ? (
+                    <Select
+                      aria-label="What kind of document it is"
+                      className="h-6.5 text-sm"
+                      value={f.kind ?? ''}
+                      onChange={(e) =>
+                        act(
+                          api.post<RowFileView[]>(`${path}/${f.hash}`, {
+                            kind: e.target.value || null,
+                          }),
+                        )
+                      }
+                    >
+                      <option value="">No kind given</option>
+                      {kinds.map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    f.kind && <span>{f.kind}</span>
+                  )}
+                  <span className="truncate">
+                    {f.by}, {dayWords(f.at)}
+                    {f.read === 'reading'
+                      ? ' · being read'
+                      : f.read === 'kept'
+                        ? ' · kept, not read'
+                        : ''}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </DropZone>
           {problem && <div className="text-bad text-sm">{problem}</div>}
         </div>
         {dragging && (

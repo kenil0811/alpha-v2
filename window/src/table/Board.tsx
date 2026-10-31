@@ -13,9 +13,11 @@ export function Board({
   data,
   by,
   rowsAt = `/api/tables/${data.id}/rows`,
+  onOpen,
 }: {
   data: TableData
   by: FieldView
+  onOpen?: (row: string) => void // a click on a card's name opens it, as a row's name does
   rowsAt?: string // where a moved card's change goes: a kept list's rows when it is one
 }) {
   const { busy, on, problem, act } = useAct()
@@ -73,11 +75,15 @@ export function Board({
                 }}
                 onDragEnd={() => setOver(null)}
                 title={`Drag to another ${by.name.toLowerCase()}`}
-                className="flex cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base active:cursor-grabbing"
+                className="group/card flex cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base active:cursor-grabbing"
               >
-                <div className="text-ink">
+                <button
+                  type="button"
+                  onClick={() => onOpen?.(r.id)}
+                  className="w-fit text-left text-ink hover:text-accent hover:underline"
+                >
                   {name ? show(name, r.values[name.slug]) || 'Untitled' : 'Untitled'}
-                </div>
+                </button>
                 {cardFields(r).map((f) => {
                   const v = show(f, r.values[f.slug], data.names)
                   return v ? (
@@ -86,8 +92,9 @@ export function Board({
                     </div>
                   ) : null
                 })}
+                {/* the column already says it: the way to move by keyboard shows on hover or focus */}
                 <Select
-                  className="mt-1 h-6.5 text-sm"
+                  className="sr-only mt-1 h-6.5 text-sm focus:not-sr-only group-hover/card:not-sr-only"
                   value={choice}
                   disabled={busy && on === r.id}
                   aria-label={`Move to another ${by.name.toLowerCase()}`}

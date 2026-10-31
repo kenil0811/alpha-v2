@@ -124,7 +124,7 @@ export function ViewTabs({
           setNaming('rename')
         }}
         {...onList.on}
-        className="flex h-7.5 max-w-40 shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface pr-1.5 pl-2.5 text-ink text-md hover:border-accent-line"
+        className="flex h-7.5 max-w-40 shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface pr-1.5 pl-2.5 text-ink text-md hover:border-accent-line hover:bg-accent-soft"
       >
         <span className="truncate">{name}</span>
         {dirty && (

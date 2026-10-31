@@ -46,7 +46,7 @@ import { PasteBar, TickedBar } from './table/Many.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
+import { AddFilter, Chips, ColumnsList } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
 import { canType, isTags, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -134,7 +134,6 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
-  const [searching, setSearching] = useState(false)
   const layout = layoutOf(config, setConfig) // frozen and wrapped columns, kept with the list
   // rows to a page, the person's choice, kept by Alpha per person
   const { layout: left, change } = useLayout()
@@ -269,38 +268,27 @@ export function TableView({
           tools={
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
-              {searching || config.search ? (
-                <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-                  <Search className="size-3.25 shrink-0" />
-                  <input
-                    // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
-                    autoFocus={searching}
-                    value={config.search}
-                    onChange={(e) => setConfig({ ...config, search: e.target.value })}
-                    onBlur={() => setSearching(false)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Escape') return
-                      e.preventDefault()
-                      setConfig({ ...config, search: '' })
-                      setSearching(false)
-                    }}
-                    placeholder={`Search ${data.name}`}
-                    aria-label={`Search ${data.name}`}
-                    title="Escape clears it"
-                    className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-                  />
-                </label>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setSearching(true)}
-                  data-tip={`Search ${data.name}`}
-                  className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
-                >
-                  <Search className="size-3.25 shrink-0" />
-                  Search
-                </button>
-              )}
+              {/* search first, wide, always a box (Vikas, 27 Oct) */}
+              <label className="flex h-7.5 w-80 min-w-32 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                <Search className="size-3.25 shrink-0" />
+                <input
+                  value={config.search}
+                  onChange={(e) => setConfig({ ...config, search: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Escape') return
+                    e.preventDefault()
+                    setConfig({ ...config, search: '' })
+                  }}
+                  placeholder={`Search ${data.name.toLowerCase()}`}
+                  aria-label={`Search ${data.name}`}
+                  className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+                />
+              </label>
+            </>
+          }
+          right={
+            <>
+              {/* Filter on the right, just left of ⋮; Columns inside ⋮ (Vikas, 27 Oct) */}
               <AddFilter
                 fields={fields}
                 config={config}
@@ -308,13 +296,6 @@ export function TableView({
                 names={data.names}
                 onConfig={setConfig}
               />
-            </>
-          }
-          right={
-            <>
-              {config.kind !== 'board' && (
-                <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
-              )}
               <More
                 tableId={data.id}
                 fields={fields}
@@ -445,7 +426,7 @@ export function TableView({
         </div>
         {config.kind === 'board' && boardBy ? (
           <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
-            <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
+            <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />
           </div>
         ) : config.kind === 'form' ? (
           <FormView
@@ -651,8 +632,8 @@ export function TableView({
 const PAGE = 50
 const SIZES = [25, 50, 100, 250]
 
-// The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
-// The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
+// The ⋮ menu: the view's columns, sort and group, then downloads of exactly the rows and columns
+// shown.
 function More({
   tableId,
   fields,
@@ -701,6 +682,18 @@ function More({
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        <SubMenu
+          label={
+            <>
+              <Columns3 className="size-3.5 text-ink-3" />
+              Columns
+            </>
+          }
+          hint={config.hidden.length ? `${config.hidden.length} hidden` : undefined}
+          reason={config.kind === 'board' ? 'A board shows its cards, not columns.' : undefined}
+        >
+          <ColumnsList fields={fields} config={config} onConfig={onConfig} />
+        </SubMenu>
         <SubMenu
           label={
             <>
