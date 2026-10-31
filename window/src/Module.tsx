@@ -16,7 +16,7 @@ import type {
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { startAsk } from './ask.ts'
+import { GovernanceSection } from './Governance.tsx'
 import { ModuleCase } from './ModuleCase.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
@@ -237,8 +237,9 @@ function Section({ title, sub, children }: { title: string; sub: string; childre
   )
 }
 
-// The Agents and notes tab: where the module comes from, then its agents, the notes Alpha reads
-// first, what ran lately and what Alpha may do here.
+// The Agents and notes tab, in the module page's order (Vikas, 29 Oct): where the module comes
+// from, its agents, Governance (what they can and cannot do), its tables, then the notes Alpha
+// reads first and what ran lately.
 function AgentsAndNotes({
   m,
   version,
@@ -249,16 +250,11 @@ function AgentsAndNotes({
   onChange: () => void
 }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
-  const [rules, setRules] = useState<RuleView[] | null>(null)
   useEffect(() => {
     if (version < 0) return
     api.get<RunView[]>('/api/activity').then(
       (all) => setRuns(all.filter((r) => r.moduleId === m.id).slice(0, 5)),
       () => setRuns([]),
-    )
-    api.get<RuleView[]>(`/api/rules?module=${encodeURIComponent(m.id)}`).then(
-      (all) => setRules(all.filter((r) => !r.revokedAt)),
-      () => setRules([]),
     )
   }, [m.id, version])
   const { busy, on, problem, act } = useAct(onChange)
@@ -322,6 +318,7 @@ function AgentsAndNotes({
             )}
           </div>
         </Section>
+        <GovernanceSection m={m} version={version} />
         {m.tables.some((t) => t.place !== 'main') && (
           <Section
             title="Tables"
@@ -405,77 +402,20 @@ function AgentsAndNotes({
             All activity
           </a>
         </Section>
-        <Section
-          title="Governance"
-          sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
-        >
-          <Governance m={m} rules={rules} onChange={onChange} />
-        </Section>
       </div>
     </div>
   )
 }
 
-// Governance's rules in two columns, Allowed n and Denied n (core step 2), each a sentence with
-// where it came from: the sites the module's readers may read, and the rules the core holds here
-// (this module's and all of Alpha's), yours and what Alpha noticed. + Add in either column starts
-// the assistant with the rule's first words for the person to finish; the rule lands here only on
-// their Save on its card (design §14: a rule for the model is a wall in code, or it is not written).
-type Rule = { key: string; words: string; why: string; href?: string; rule?: RuleView }
+// The agent page's rule columns; a module's Governance is GovernanceSection.
+export type Rule = { key: string; words: string; why: string; href?: string; rule?: RuleView }
 
-function why(r: RuleView): string {
+export function why(r: RuleView): string {
   const day = dayWords(r.madeAt)
   const across = r.module ? '' : '; it holds across Alpha'
   if (r.kind === 'inferred') return `Alpha noticed, ${day}; approve or dismiss it`
   if (r.always) return `You said Always on its card, ${day}${across}`
   return `You said, ${day}${across}`
-}
-
-function Governance({
-  m,
-  rules,
-  onChange,
-}: {
-  m: ModuleView
-  rules: RuleView[] | null
-  onChange: () => void
-}) {
-  const line = (r: RuleView): Rule => ({
-    key: r.id,
-    words: r.words,
-    why: why(r),
-    href: `#/rule/${r.id}`,
-    rule: r,
-  })
-  const may: Rule[] = [
-    {
-      key: 'sites',
-      words: m.sites
-        ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
-        : 'Its readers read no sites.',
-      why: 'The sites were named when the module was made.',
-    },
-    ...(rules ?? []).filter((r) => r.side === 'allow').map(line),
-  ]
-  const never = (rules ?? []).filter((r) => r.side === 'deny').map(line)
-  return (
-    <div className="@container">
-      <div className="grid items-start gap-6 @min-[600px]:grid-cols-2">
-        <RuleColumn
-          side="allowed"
-          rules={may}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, you may `)}
-        />
-        <RuleColumn
-          side="denied"
-          rules={never}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, never `)}
-        />
-      </div>
-    </div>
-  )
 }
 
 // A rule's ⋮: Revoke for yours, after a yes; Approve or Dismiss for what Alpha noticed.
@@ -525,7 +465,7 @@ function RuleMenu({ rule: r, onChange }: { rule: RuleView; onChange: () => void 
   )
 }
 
-function RuleColumn({
+export function RuleColumn({
   side,
   rules,
   onAdd,

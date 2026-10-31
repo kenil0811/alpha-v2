@@ -43,7 +43,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its main tables with their counts (a table part of a row, setup, or one row per person in People's module is not a tab), then the parts and setup tables kept as tabs, Conversation, Agents and notes | 26 Oct, 27 Oct, 28 Oct | — |
 | M2 | Nothing sits under a table or a page; what the module is for (its business case, Edit beside it, assumed while Alpha's), agents, the module's other tables (setup, and parts with what they are part of, each with Keep as a tab, reading A tab while it is one; the same in the table's ⋯ menu), notes, recent activity and Governance are the Agents and notes tab | 26 Oct, 27 Oct, 28 Oct | — |
-| M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss | 26 Oct, 27 Oct | — |
+| M3 | Governance is its own section, right after Agents: two columns, Can do and Cannot do, of rules the core holds and enforces only; approved is solid, one Alpha noticed is greyed on dots with Approve, Decline behind ⋮; a rule is added by typing at the foot of a column (it goes to Alpha's Save card), never an Add button; figures and connection states are never rules | 26 Oct, 27 Oct, 29 Oct | — |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 
 ## Table and toolbar
