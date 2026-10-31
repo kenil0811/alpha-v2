@@ -146,8 +146,8 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
     expect(lines(/\b(?:MoreHorizontal|Ellipsis)\b/)).toEqual([])
   })
 
-  it('T11: no bare <select> but the cell editor', () => {
-    expect(lines(/<select\b/, (f) => !f.endsWith(join('table', 'Grid.tsx')))).toEqual([])
+  it('T11: no bare <select>, the cell editor included', () => {
+    expect(lines(/<select\b/)).toEqual([])
   })
 
   it('W4: labels are in sentence case', () => {

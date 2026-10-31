@@ -4,7 +4,6 @@ import { ChevronDown, Plus, Search } from 'lucide-react'
 import {
   type ChangeEvent,
   Children,
-  type FormEvent,
   type InputHTMLAttributes,
   isValidElement,
   type KeyboardEvent,
@@ -37,8 +36,62 @@ function optionsOf(children: ReactNode): Option[] {
   })
 }
 
+export type Adds = { what: string; send: (words: string) => Promise<unknown> }
+
+// Add new… at a list's foot: one line naming the new one, sent for Alpha to add.
+export function AddNew({ adds, onDone }: { adds: Adds; onDone: () => void }) {
+  const [asking, setAsking] = useState(false)
+  const [ask, setAsk] = useState('')
+  const { busy, problem, act } = useAct()
+  if (!asking)
+    return (
+      <MenuItem onClick={() => setAsking(true)}>
+        <Plus className="size-3.5 text-ink-3" />
+        Add new…
+      </MenuItem>
+    )
+  const send = async () => {
+    if (ask.trim() && (await act(() => adds.send(ask.trim())))) {
+      setAsking(false)
+      setAsk('')
+      onDone()
+    }
+  }
+  // not a <form>: it sits inside one (Add a row, a form view) where a list is drawn in place
+  return (
+    <div className="flex flex-col gap-1.5 p-1">
+      <div className="flex items-center gap-1.5">
+        <Field
+          autoFocus
+          value={ask}
+          onChange={(e) => setAsk(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation() // a cell's Enter and Escape are not this line's
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void send()
+            }
+          }}
+          placeholder={`The new ${adds.what}`}
+          aria-label={`The new ${adds.what}`}
+          className="flex-1"
+        />
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={busy || !ask.trim()}
+          onClick={() => void send()}
+        >
+          Send
+        </Button>
+      </div>
+      <Refusal words={problem} />
+    </div>
+  )
+}
+
 // One dropdown everywhere: a button that opens a short list, with a search
-// line when there are more than five. Written as a <select> is, <option>s and onChange alike.
+// line when there are more than six. Written as a <select> is, <option>s and onChange alike.
 export function Select({
   className,
   value,
@@ -48,25 +101,27 @@ export function Select({
   disabled,
   title,
   adds,
+  startOpen,
+  onDismiss,
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & {
-  // Add new… at the list's foot: one line naming the new one, sent for Alpha to add
-  adds?: { what: string; send: (words: string) => Promise<unknown> } | undefined
+  adds?: Adds | undefined // Add new… at the list's foot, where a choice can grow
+  startOpen?: boolean | undefined // opened at once: a cell being changed
+  onDismiss?: (() => void) | undefined // closed without a pick (a click away, Escape)
 }) {
   const options = optionsOf(children)
   const [own, setOwn] = useState(String(defaultValue ?? options[0]?.value ?? ''))
   const now = value === undefined ? own : String(value)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(!!startOpen)
   const [words, setWords] = useState('')
-  const [asking, setAsking] = useState(false) // Add new…'s line is open
-  const [ask, setAsk] = useState('')
-  const { busy, problem, act } = useAct()
   const anchor = useRef<HTMLButtonElement>(null)
   const close = () => {
     setOpen(false)
     setWords('')
-    setAsking(false)
-    setAsk('')
+  }
+  const dismiss = () => {
+    close()
+    onDismiss?.()
   }
   const shown = options.filter((o) => o.label.toLowerCase().includes(words.trim().toLowerCase()))
   // the keyboard is the menu's own (ui/popover.tsx): the arrows, Home, End and a letter move
@@ -96,7 +151,7 @@ export function Select({
         aria-label={rest['aria-label']}
         title={title}
         disabled={disabled}
-        onClick={() => setOpen(!open)}
+        onClick={() => (open ? dismiss() : setOpen(true))}
         onKeyDown={keys}
         className={cn(
           FIELD,
@@ -109,9 +164,9 @@ export function Select({
         </span>
         <ChevronDown className="size-3.5 shrink-0 text-ink-3" />
       </button>
-      <Popover anchor={anchor} open={open} onClose={close}>
+      <Popover anchor={anchor} open={open} onClose={dismiss}>
         <div className="flex max-h-72 min-w-44 flex-col p-1">
-          {options.length > 5 && (
+          {options.length > 6 && (
             <label className="mb-1 flex items-center gap-1.5 border-line border-b px-2 pb-1.5">
               <Search className="size-3.25 text-ink-3" />
               <input
@@ -139,37 +194,7 @@ export function Select({
             {shown.length === 0 && <p className="px-2.5 py-1.5 text-ink-3 text-md">No match.</p>}
           </div>
           {adds && <MenuLine />}
-          {adds && !asking && (
-            <MenuItem onClick={() => setAsking(true)}>
-              <Plus className="size-3.5 text-ink-3" />
-              Add new…
-            </MenuItem>
-          )}
-          {adds && asking && (
-            <form
-              onSubmit={async (e: FormEvent) => {
-                e.preventDefault()
-                e.stopPropagation() // drawn over a form (Add a row) that would take the submit too
-                if (ask.trim() && (await act(() => adds.send(ask.trim())))) close()
-              }}
-              className="flex flex-col gap-1.5 p-1"
-            >
-              <div className="flex items-center gap-1.5">
-                <Field
-                  autoFocus
-                  value={ask}
-                  onChange={(e) => setAsk(e.target.value)}
-                  placeholder={`The new ${adds.what}`}
-                  aria-label={`The new ${adds.what}`}
-                  className="flex-1"
-                />
-                <Button type="submit" size="sm" variant="primary" disabled={busy || !ask.trim()}>
-                  Send
-                </Button>
-              </div>
-              <Refusal words={problem} />
-            </form>
-          )}
+          {adds && <AddNew adds={adds} onDone={dismiss} />}
         </div>
       </Popover>
     </>
