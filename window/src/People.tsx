@@ -7,15 +7,16 @@ import type { KeptTable, ModuleSummary, PersonView, RowAround } from '@alpha/cor
 import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { moduleTabs, peopleTabs } from './Module.tsx'
+import { peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
+import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { FieldList } from './table/RowPanel.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
+import { PillSwitch, SwitchPill } from './ui/pill-switch.tsx'
 import { Section } from './ui/section.tsx'
-import { Tabs } from './ui/tabs.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, {
@@ -85,19 +86,37 @@ function PeopleList({
   const none = data && data.rows.length === 0 && kind === 'person'
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs
-        label={net?.name ?? 'People'}
-        tabs={[...peopleTabs(kind), ...(net ? moduleTabs(net, null) : [])]}
-      />
+      {/* Network's switch in the bar (Vikas, 29 Oct): Overview first, then People and
+          Organizations, nothing else; its other lists are the People table's Lists */}
+      <InBar>
+        <PillSwitch label={net?.name ?? 'People'}>
+          {[
+            ...(net
+              ? [
+                  {
+                    key: 'overview',
+                    href: `#/module/${net.id}/overview`,
+                    label: 'Overview',
+                    sel: false,
+                  },
+                ]
+              : []),
+            ...peopleTabs(kind),
+          ].map((t) => (
+            <SwitchPill key={t.key} tab={t} />
+          ))}
+        </PillSwitch>
+      </InBar>
       {none && (
-        <p className="border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
-          No one yet. People come from your contacts, the people you write to and your small
-          meetings, once Contacts, Calendar or Gmail is connected in{' '}
-          <a className="text-accent hover:underline" href="#/intelligence/connections">
-            Intelligence
-          </a>
-          .
-        </p>
+        <div className="border-line border-b px-7 py-2">
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => (window.location.hash = '#/settings/connections')}
+          >
+            Connect Contacts, Calendar or Gmail
+          </Button>
+        </div>
       )}
       <div className="min-h-0 flex-1">
         {data ? (

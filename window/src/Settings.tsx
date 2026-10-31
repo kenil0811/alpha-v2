@@ -26,7 +26,7 @@ import {
   Unplug,
   UserRound,
 } from 'lucide-react'
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
@@ -42,6 +42,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm, Dialog } from './ui/dialog.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
@@ -49,6 +50,7 @@ import { Kbd, Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Empty, Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { SideItem, SideList } from './ui/side-list.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Tabs } from './ui/tabs.tsx'
 
@@ -86,10 +88,13 @@ const PAGES = {
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs on this Mac: its model, modules, permissions, data and how it looks.',
+    about:
+      'How Alpha runs on this Mac: its model, modules, connections, rules, data and how it looks.',
     tabs: [
       ['model', 'Model'],
+      ['usage', 'Usage'],
       ['modules', 'Modules'],
+      ['connections', 'Connections'],
       ['permissions', 'Permissions'],
       ['data', 'Data'],
       ['appearance', 'Appearance'],
@@ -133,6 +138,7 @@ export function Settings({
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
     brain: <SecondBrain version={version} />,
+    usage: <UsageSection />,
     agents: <Agents version={version} />,
     connections: (
       <>
@@ -191,12 +197,7 @@ export function Settings({
     ),
     modules: <ModulesAndAgents version={version} />,
     permissions: <Permissions version={version} />,
-    model: (
-      <div className="flex flex-col gap-7">
-        <ModelSection />
-        <UsageSection />
-      </div>
-    ),
+    model: <ModelSection />,
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
     experimental: <Experimental />,
@@ -239,29 +240,13 @@ export function Settings({
       <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
         {head}
         <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-          <nav className="flex flex-col gap-px self-start max-md:flex-row max-md:flex-wrap">
+          <SideList label={p.title} className="self-start max-md:flex-row max-md:flex-wrap">
             {tabs.map(([id, name]) => (
-              <button
-                key={id}
-                type="button"
-                aria-current={id === at ? 'page' : undefined}
-                onClick={() => go(id)}
-                className={cn(
-                  'flex h-7 items-center gap-2 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink',
-                  id === at &&
-                    'bg-accent-soft font-medium text-accent hover:bg-accent-soft hover:text-accent',
-                )}
-              >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    id === at ? 'bg-accent' : 'bg-transparent',
-                  )}
-                />
+              <SideItem key={id} sel={id === at} onClick={() => go(id)}>
                 {name}
-              </button>
+              </SideItem>
             ))}
-          </nav>
+          </SideList>
           <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
       </div>
@@ -1253,7 +1238,6 @@ function AddConnector({ view, onChange }: { view: ConnectorsView; onChange: () =
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [said, setSaid] = useState<string | null>(null)
-  const picker = useRef<HTMLInputElement>(null)
   const loaded = new Set(view.connectors.map((c) => c.name))
   const offered = view.available.filter((p) => !loaded.has(p.name))
   const act = async (fn: () => Promise<{ title: string }>) => {
@@ -1318,21 +1302,15 @@ function AddConnector({ view, onChange }: { view: ConnectorsView; onChange: () =
         <Button type="submit" disabled={busy || !folder.trim()}>
           {busy ? 'Adding…' : 'Add a connector'}
         </Button>
-        <Button variant="ghost" disabled={busy} onClick={() => picker.current?.click()}>
-          Add from a file
-        </Button>
-        <input
-          ref={picker}
-          type="file"
-          accept=".alphaconnector"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void act(() => api.uploadTo<{ title: string }>('/api/connectors/pack', file))
-            e.target.value = ''
-          }}
-        />
       </form>
+      <DropZone
+        accept=".alphaconnector"
+        busy={busy}
+        onFiles={(files) => {
+          const file = files[0]
+          if (file) void act(() => api.uploadTo<{ title: string }>('/api/connectors/pack', file))
+        }}
+      />
       {said && <div className="text-ink-2 text-md">{said}</div>}
       {problem && <div className="text-bad text-md">{problem}</div>}
     </div>
@@ -1429,9 +1407,7 @@ function Experimental() {
         title="Experimental"
         about="Features still being tried. Each is off until you switch it on, on this computer only."
       >
-        {EXPERIMENTS.length === 0 ? (
-          <p className="text-ink-2 text-md">Nothing to try right now.</p>
-        ) : (
+        {EXPERIMENTS.length === 0 ? null : (
           <List>
             {EXPERIMENTS.map((e) => (
               <ExperimentLine key={e.name} name={e.name} title={e.title} about={e.about} />

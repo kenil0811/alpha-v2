@@ -17,6 +17,17 @@ import {
 import { createPortal } from 'react-dom'
 import { cn } from './cn.ts'
 
+// Where what floats is drawn: in the open modal dialog it belongs to (the browser draws a modal
+// dialog in its top layer, over anything in the page, so a menu in the body would sit behind it),
+// else against the window.
+export function floatRoot(from?: Element | null): Element {
+  return (
+    from?.closest('dialog[open]') ??
+    [...document.querySelectorAll('dialog[open]')].at(-1) ??
+    document.body
+  )
+}
+
 export function Popover({
   anchor,
   point,

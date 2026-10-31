@@ -128,3 +128,17 @@ held by review. Dates are 2026.
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.
+- Settings: Model, Usage, Modules, Connections, Permissions, Data, Appearance; Usage is its own
+  section, no longer under Model (Vikas, 27 Oct; changes I2 and I3 if agreed).
+- The list view (`ui/side-list.tsx`): a list left, the chosen page right, as Settings draws it
+  (Vikas, 28 Oct).
+- Every place files are added is one drop zone (`ui/drop-zone.tsx`): a dashed box to drop on or
+  click, one kind (`accept`) or many (Vikas, 27 Oct).
+- Over a link, the foot of the window says where it goes: the address with ↗ outside Alpha, the
+  page's name inside (`ui/link-status.tsx`; Vikas, 29 Oct). A link in Alpha's words to a place in
+  Alpha opens here, not in a new tab.
+- A list is never blank: Loading…, a line saying what will show, or the refusal; no "Nothing
+  configured yet" lines; where an empty state has a next step it is a button (Connect Contacts,
+  Calendar or Gmail) (Vikas, 28 and 29 Oct).
+- Network's switch in the bar is a pill switch: Overview, People, Organizations, nothing else
+  (Vikas, 29 Oct).
