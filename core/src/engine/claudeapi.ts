@@ -7,13 +7,27 @@ import { config } from '../config.ts'
 import { Refused } from '../world/kinds.ts'
 import { usesOfTokens } from '../world/spend.ts'
 import type { World } from '../world/world.ts'
-import { type Chat, Limited, OwnLoop } from './loop.ts'
+import { type Chat, type ChatRequest, Limited, OwnLoop } from './loop.ts'
 import type { Capabilities, Provider, Session, SessionSpec } from './provider.ts'
 
 export interface ClaudeApiOptions {
   key: () => string | null // the key as kept in the Keychain, read when a request is made
   chat?: Chat // a scripted model in tests
   userId: string
+}
+
+// One round's request: the model, the system prompt, every tool and the conversation, with the
+// API asked to cache what repeats from one round to the next (step 3, part 1: without it a round
+// sends everything in full).
+export function requestOf(req: ChatRequest): Anthropic.MessageStreamParams {
+  return {
+    model: config.models().desk,
+    max_tokens: 64_000,
+    cache_control: { type: 'ephemeral' },
+    system: req.system,
+    messages: req.messages,
+    tools: req.tools,
+  }
 }
 
 export class ClaudeApiProvider implements Provider {
@@ -49,16 +63,7 @@ export class ClaudeApiProvider implements Provider {
     return async (req) => {
       const client = this.client()
       try {
-        const stream = client.messages.stream(
-          {
-            model: config.models().desk,
-            max_tokens: 64_000,
-            system: req.system,
-            messages: req.messages,
-            tools: req.tools,
-          },
-          { signal: req.signal },
-        )
+        const stream = client.messages.stream(requestOf(req), { signal: req.signal })
         stream.on('text', req.onText)
         const m = await stream.finalMessage()
         return {

@@ -1019,7 +1019,9 @@ made-up one served on the Mac. A client's journeys live in the client's own repo
 with `pnpm journey <name> --from ../<client>/journeys`. `--times N` runs one N times, each on a
 fresh world, and says how many passed (`journey_times` in limits.yaml when no number is given);
 `pnpm journeys` runs a whole folder; either writes one summary beside the reports (item 48, 25
-Oct). A kit's test cases (`pnpm kit test`) may record a page that fails as a site would (a
+Oct). `--loop own` runs them on Alpha's own loop with the API key kept in the Keychain, read once a
+round, never from a file or the chat; every report says what its journey spent, and the summary
+what the round cost (step 3, part 1, Kenil's yes 30 Oct). A kit's test cases (`pnpm kit test`) may record a page that fails as a site would (a
 timeout, a block), to try a reader's way with it.
 
 **Tests** (Vitest) never call the model and never touch a real tenant. A failure becomes a
