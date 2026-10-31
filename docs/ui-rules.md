@@ -122,12 +122,6 @@ held by review. Dates are 2026.
 
 ## Proposed, waiting on Kenil or the core
 
-- Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
-- A module's files listed under it, renaming a module and choosing its icon (needs the core).
-- What each run costs, shown under Settings › Model (needs the core).
-- A choice column's default for everyone, and flagging a cell as wrong (needs the core).
-- Fewer explanatory sentences on screens, redone on today's screens.
-- On a phone, a bottom tab bar with modules and chat as drawers.
 - Settings: Model, Usage, Modules, Connections, Permissions, Data, Appearance; Usage is its own
   section, no longer under Model (Vikas, 27 Oct; changes I2 and I3 if agreed).
 - The list view (`ui/side-list.tsx`): a list left, the chosen page right, as Settings draws it
@@ -142,3 +136,9 @@ held by review. Dates are 2026.
   Calendar or Gmail) (Vikas, 28 and 29 Oct).
 - Network's switch in the bar is a pill switch: Overview, People, Organizations, nothing else
   (Vikas, 29 Oct).
+- Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
+- A module's files listed under it, renaming a module and choosing its icon (needs the core).
+- What each run costs, shown under Settings › Model (needs the core).
+- A choice column's default for everyone, and flagging a cell as wrong (needs the core).
+- Fewer explanatory sentences on screens, redone on today's screens.
+- On a phone, a bottom tab bar with modules and chat as drawers.
