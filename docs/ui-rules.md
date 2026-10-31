@@ -14,8 +14,8 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | S1 | The rail is module names only: Home, Conversation, Tasks, then each module, with modules inside one folded under it; Alpha's own module is not there | 20 Oct, 26 Oct | — |
-| S2 | Intelligence and Settings are pinned at the foot of the rail, Intelligence above | 25 Oct | — |
-| S3 | The rail's head is the workspace: a menu of Settings, Intelligence and Appearance | 26 Oct | — |
+| S2 | The Second Brain (a brain icon) and Settings are pinned at the foot of the rail, the Second Brain above | 25 Oct, 28 Oct | — |
+| S3 | The rail's head is the workspace: a menu of Settings, Second Brain and Appearance | 26 Oct, 28 Oct | — |
 | S4 | A module's menu (⋮ or right-click): Open, Move to, Hide, Hidden modules; modules drag into one another or out to the top | 26 Oct | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
 | S6 | Both side panels drag by one edge and fold; the rail folds to a strip of icons (⌘\\) | 25 Oct | — |
@@ -90,12 +90,12 @@ held by review. Dates are 2026.
 | A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J or its fold) to a strip with the face and the bell; it always leaves the rail and at least 600px of screen | 26 Oct | — |
 | A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
 
-## Intelligence and Settings
+## Second Brain and Settings
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
-| I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct | — |
+| I1 | Second Brain: Graph (the default: Alpha, every module sized by its rows, its main tables and agents, the connections), Across modules (ask, since you last looked, what each module holds), Connections, Agents. Settings › Governance holds How to work, Decisions and Noticed | 26 Oct, 28 Oct | — |
+| I2 | Settings: Model, Modules, Permissions, Governance, Data, Appearance, Help, one at a time; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this; under them Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions | 27 Oct | — |
 

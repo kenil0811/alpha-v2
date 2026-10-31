@@ -3,11 +3,12 @@
 // the right, their headers on one line. The rail has the workspace at its top, Home with a badge
 // for what waits on the person, Tasks, the modules by name (People and Organizations are
 // tabs inside Network; a rail item of their own only when there is no Network) with the modules inside them,
-// New module last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
+// New module last in the list, and the Second Brain and Settings at its foot; no headings and no status lines. It
 // folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
 // buttons.
 import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
+  Brain,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -20,7 +21,6 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -261,8 +261,8 @@ export function Rail({
       <div className="flex flex-col gap-0.5 pt-2">
         <Nav
           href="#/intelligence"
-          icon={<Sparkles className="size-4" />}
-          label="Intelligence"
+          icon={<Brain className="size-4" />}
+          label="Second Brain"
           current={place.at === 'intelligence'}
         />
         <Nav
@@ -277,7 +277,7 @@ export function Rail({
 }
 
 // The rail's head: the workspace's initial on an accent tile and its name, opening a menu of where
-// Alpha is set up (Settings, Intelligence) and how it looks.
+// Alpha is set up (Settings, Second Brain) and how it looks.
 function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   const label = name ? `${name}'s workspace` : 'Your workspace'
   const anchor = useRef<HTMLButtonElement>(null)
@@ -335,8 +335,8 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
             Settings
           </MenuItem>
           <MenuItem onClick={() => go('#/intelligence')}>
-            <Sparkles className="size-3.5 text-ink-3" />
-            Intelligence
+            <Brain className="size-3.5 text-ink-3" />
+            Second Brain
           </MenuItem>
           <MenuLine />
           <div className="px-2.5 pt-1 pb-0.5 text-ink-3 text-sm">Appearance</div>
@@ -771,9 +771,9 @@ function Strip({
       </div>
       {icon(
         '#/intelligence',
-        'Intelligence',
+        'Second Brain',
         place.at === 'intelligence',
-        <Sparkles className="size-4" />,
+        <Brain className="size-4" />,
       )}
       {icon(
         '#/settings',
@@ -879,7 +879,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       { label: 'People', hint: 'Network', href: '#/people' },
       { label: 'Organizations', hint: 'Network', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
-      { label: 'Intelligence', hint: '', href: '#/intelligence' },
+      { label: 'Second Brain', hint: '', href: '#/intelligence' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
         label: m.name,

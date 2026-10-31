@@ -73,6 +73,11 @@ describe('the window', () => {
       section: 'permissions',
       open: null,
     })
+    expect(placeOf('#/intelligence/governance')).toEqual({
+      at: 'settings',
+      section: 'governance',
+      open: null,
+    })
     expect(placeOf('#/intelligence')).toEqual({ at: 'intelligence', section: null, open: null })
   })
 

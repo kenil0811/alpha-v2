@@ -14,6 +14,7 @@ import type {
 } from '@alpha/core/api'
 import {
   BookmarkCheck,
+  Brain,
   CalendarDays,
   Check,
   Folder,
@@ -32,6 +33,7 @@ import { startAsk } from './ask.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { Reach } from './Reach.tsx'
+import { BrainGraph, SecondBrain } from './SecondBrain.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
@@ -70,17 +72,20 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
   plug: <Plug className="size-4" />,
 }
 
-// Two pages share this file (proposal item 14, 15). Intelligence: what Alpha knows and does, as
+// Two pages share this file (proposal item 14, 15). Second Brain: what Alpha knows and does, as
 // tabs. Settings: how Alpha runs, a list of sections on the left and one section at a time.
 const PAGES = {
+  // Second Brain (Vikas, 28 Oct): the big picture of the platform, a graph first; what it holds
+  // across modules; the connections and agents feeding it
   intelligence: {
-    icon: <Sparkles className="size-4" />,
-    title: 'Intelligence',
-    about: 'The accounts Alpha reads, its agents and what it knows.',
+    icon: <Brain className="size-4" />,
+    title: 'Second Brain',
+    about: 'How the whole platform fits together and how it is doing.',
     tabs: [
+      ['graph', 'Graph'],
+      ['brain', 'Across modules'],
       ['connections', 'Connections'],
       ['agents', 'Agents'],
-      ['brain', 'Second Brain'],
     ],
   },
   settings: {
@@ -91,6 +96,7 @@ const PAGES = {
       ['model', 'Model'],
       ['modules', 'Modules'],
       ['permissions', 'Permissions'],
+      ['governance', 'Governance'],
       ['data', 'Data'],
       ['appearance', 'Appearance'],
       ['experimental', 'Experimental'],
@@ -132,7 +138,9 @@ export function Settings({
   // a connection whose connector is not loaded (its pack not added yet): shown, waiting
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
+    graph: <BrainGraph version={version} />,
     brain: <SecondBrain version={version} />,
+    governance: <Governance version={version} />,
     agents: <Agents version={version} />,
     connections: (
       <>
@@ -202,7 +210,7 @@ export function Settings({
     experimental: <Experimental />,
     help: <Help />,
   }
-  // the bar holds Settings' icon tile, title and line; Intelligence has its tabs under the bar
+  // the bar holds Settings' icon tile, title and line; the Second Brain has its tabs under the bar
   const head = (
     <InBar>
       <div className="flex min-w-0 items-center gap-2.5">
@@ -221,7 +229,7 @@ export function Settings({
     return (
       <div className="flex h-full min-h-0 flex-col">
         <Tabs
-          label="Intelligence"
+          label="Second Brain"
           tabs={PAGES.intelligence.tabs.map(([id, label]) => ({
             key: id,
             href: `#/intelligence/${id}`,
@@ -269,17 +277,17 @@ export function Settings({
   )
 }
 
-// Second Brain: how to work (the standing instructions), and the Alpha module's two tables,
+// Governance: how to work (the standing instructions), and the Alpha module's two tables,
 // Decisions and Noticed, which are shown here instead of as a module on the rail.
 type Part = 'work' | 'Decisions' | 'Noticed'
 
-function SecondBrain({ version }: { version: number }) {
+function Governance({ version }: { version: number }) {
   const [part, setPart] = useState<Part>('work')
   return (
     <>
       <div className="self-start">
         <Segmented
-          label="Second Brain"
+          label="Governance"
           value={part}
           onChange={setPart}
           options={[

@@ -12,13 +12,13 @@ import type {
 } from '@alpha/core/api'
 import {
   Activity as ActivityIcon,
+  Brain,
   Briefcase,
   FileText,
   House,
   ListChecks,
   MessageSquare,
   SlidersHorizontal,
-  Sparkles,
   Users,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -81,13 +81,13 @@ export function placeOf(hash: string): Place {
       },
     }
   }
-  // an old #/settings?connect= link still lands on the connection, now under Intelligence
+  // an old #/settings?connect= link still lands on the connection, now under the Second Brain
   const c = /^#\/settings\?connect=([\w-]+)$/.exec(hash)
   if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
   const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
-  // Permissions moved from Intelligence to Settings: an old link still lands there
+  // Permissions and Governance moved to Settings: an old link still lands there
   if (s)
-    return s[1] === 'settings' || s[2] === 'permissions'
+    return s[1] === 'settings' || s[2] === 'permissions' || s[2] === 'governance'
       ? { at: 'settings', section: s[2] ?? null, open: null }
       : { at: 'intelligence', section: s[2] ?? null, open: null }
   if (hash === '#/activity') return { at: 'activity' }
@@ -172,12 +172,12 @@ export function App() {
       }),
     [],
   )
-  // the Alpha module is not on the rail: its Decisions and Noticed are in Intelligence › Second
-  // Brain, and anything that opens it (Home's cards, Find, a link) lands there
+  // the Alpha module is not on the rail: its Decisions and Noticed are in Settings › Governance,
+  // and anything that opens it (Home's cards, Find, a link) lands there
   const alpha = alphaOf(modules)
   useEffect(() => {
     if (alpha && place.at === 'module' && place.id === alpha.id)
-      window.location.replace('#/intelligence/brain')
+      window.location.replace('#/settings/governance')
   }, [alpha, place])
   // where a screen puts its switch, in the middle of the bar
   const [middle, setMiddle] = useState<HTMLElement | null>(null)
@@ -315,7 +315,7 @@ export function App() {
 
   const icon = 'size-3.25'
   const at = (label: string, href?: string) => ({ label, href })
-  // a run's page sits under Activity, an agent's under Intelligence, a rule's under Settings
+  // a run's page sits under Activity, an agent's under the Second Brain, a rule's under Settings
   const itemCrumb: Crumb | null =
     place.at === 'row'
       ? {
@@ -333,8 +333,8 @@ export function App() {
         ? null
         : place.kind === 'agent'
           ? {
-              icon: <Sparkles className={icon} />,
-              parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
+              icon: <Brain className={icon} />,
+              parts: [at('Second Brain', '#/intelligence/agents'), at(itemName || '…')],
             }
           : place.kind === 'rule'
             ? {
@@ -367,7 +367,7 @@ export function App() {
             : place.at === 'settings'
               ? { icon: <SlidersHorizontal className={icon} />, parts: [at('Settings')] }
               : place.at === 'intelligence'
-                ? { icon: <Sparkles className={icon} />, parts: [at('Intelligence')] }
+                ? { icon: <Brain className={icon} />, parts: [at('Second Brain')] }
                 : place.at === 'parts'
                   ? { parts: [at('Parts')] }
                   : place.at === 'new'
