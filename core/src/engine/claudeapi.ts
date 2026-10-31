@@ -7,12 +7,14 @@ import { config } from '../config.ts'
 import { Refused } from '../world/kinds.ts'
 import { usesOfTokens } from '../world/spend.ts'
 import type { World } from '../world/world.ts'
+import { apiShape, fromApi } from './apishape.ts'
 import { type Chat, type ChatRequest, Limited, OwnLoop } from './loop.ts'
 import type { Capabilities, Provider, Session, SessionSpec } from './provider.ts'
 
 export interface ClaudeApiOptions {
   key: () => string | null // the key as kept in the Keychain, read when a request is made
   chat?: Chat // a scripted model in tests
+  fetch?: typeof fetch // a made-up API in tests: never the real one
   userId: string
 }
 
@@ -51,7 +53,10 @@ export class ClaudeApiProvider implements Provider {
   private client(): Anthropic {
     const key = this.options.key()
     if (!key) throw new Refused('No API key is kept: give one in Settings › Model.')
-    return new Anthropic({ apiKey: key })
+    return new Anthropic({
+      apiKey: key,
+      ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
+    })
   }
 
   session(spec: SessionSpec): Session {
@@ -86,32 +91,63 @@ export class ClaudeApiProvider implements Provider {
     }
   }
 
+  // One question answered in a shape: as a strict answer, which the API holds to the shape; a
+  // shape too large for that (a reader's dozens of fields: "the compiled grammar is too large")
+  // is asked again as a tool the model calls once, which the API does not compile (step 3, part 1).
   async ask(system: string, prompt: string, schema: Record<string, unknown>) {
     const client = this.client()
-    const m = await client.messages.create({
-      model: config.models().desk,
-      max_tokens: 16_000,
-      system,
-      messages: [{ role: 'user', content: prompt }],
-      output_config: { format: { type: 'json_schema', schema } },
-    })
-    const text = m.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('')
-    const tokens =
-      (m.usage.input_tokens ?? 0) +
-      (m.usage.output_tokens ?? 0) +
-      (m.usage.cache_read_input_tokens ?? 0) +
-      (m.usage.cache_creation_input_tokens ?? 0)
+    const model = config.models().desk
     try {
-      return {
-        answer: JSON.parse(text) as unknown,
-        tokens,
-        uses: usesOfTokens(config.models().desk, m.usage),
+      const m = await client.messages.create({
+        model,
+        max_tokens: 16_000,
+        system,
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+          format: { type: 'json_schema', schema: apiShape(schema) as Record<string, unknown> },
+        },
+      })
+      const text = m.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map((b) => b.text)
+        .join('')
+      let answer: unknown
+      try {
+        answer = fromApi(schema, JSON.parse(text))
+      } catch {
+        throw new Refused('The model gave no answer in the shape asked.')
       }
-    } catch {
-      throw new Refused('The model gave no answer in the shape asked.')
+      return { answer, tokens: tokensOf(m.usage), uses: usesOfTokens(model, m.usage) }
+    } catch (err) {
+      if (!(err instanceof Anthropic.BadRequestError) || !TOO_LARGE.test(err.message)) throw err
     }
+    const m = await client.messages.create({
+      model,
+      max_tokens: 16_000,
+      system: `${system}\n\nGive your answer by calling the answer tool once, and say nothing else.`,
+      messages: [{ role: 'user', content: prompt }],
+      tools: [
+        {
+          name: 'answer',
+          description: 'Your answer, in the shape asked.',
+          input_schema: schema as Anthropic.Tool.InputSchema,
+        },
+      ],
+      tool_choice: { type: 'auto' },
+    })
+    const call = m.content.find(
+      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === 'answer',
+    )
+    if (!call) throw new Refused('The model gave no answer in the shape asked.')
+    return { answer: call.input, tokens: tokensOf(m.usage), uses: usesOfTokens(model, m.usage) }
   }
 }
+
+// What the API says when an answer shape is beyond its strict answers' limits.
+const TOO_LARGE = /grammar|too complex|union types|optional parameters/i
+
+const tokensOf = (u: Anthropic.Usage) =>
+  (u.input_tokens ?? 0) +
+  (u.output_tokens ?? 0) +
+  (u.cache_read_input_tokens ?? 0) +
+  (u.cache_creation_input_tokens ?? 0)

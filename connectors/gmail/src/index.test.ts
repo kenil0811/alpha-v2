@@ -133,7 +133,7 @@ describe('sendOnce', () => {
     // the draft's own words and Message-ID, dated when it goes
     expect(String(mail.raw)).toContain('Message-ID: <d1@gmail.com>')
     expect(String(mail.raw)).toContain('\r\n\r\nHi Sam')
-    expect(String(mail.raw)).not.toContain('1 Oct 2026')
+    expect(String(mail.raw)).not.toContain('Thu, 1 Oct 2026') // its saved date gone (on 31 Oct, "1 Oct 2026" is in today's)
     expect(g.removed).toEqual(['<d1@gmail.com>'])
   })
 

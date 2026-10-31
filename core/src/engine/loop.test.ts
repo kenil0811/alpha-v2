@@ -9,6 +9,7 @@ import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
+import { apiShape, fromApi } from './apishape.ts'
 import { ClaudeApiProvider } from './claudeapi.ts'
 import { Desk, type DeskEvent } from './desk.ts'
 import type { Chat, ChatAnswer, ChatRequest } from './loop.ts'
@@ -224,5 +225,154 @@ describe('Alpha’s own loop', () => {
       structured: true,
     })
     expect(toolsOf).toBeTypeOf('function')
+  })
+
+  // step 3, part 1's round (30 Oct): the model asked for a tool Alpha has not got; the own loop
+  // let the name reach the gates, and a rule refused a draft that could never have been
+  it('answers a tool Alpha has not got with "no such tool", before the gates', async () => {
+    const { desk, seen, idle } = await deskOn((_req, round) =>
+      round === 0
+        ? call('t1', 'mcp__alpha__draft', { to: 'priya@harbor.example' })
+        : text('Sorry.'),
+    )
+    const done = idle()
+    desk.say('draft an email to Priya')
+    await done
+    const answered = seen[1]?.messages.at(-1)?.content as {
+      type: string
+      is_error?: boolean
+      content: string
+    }[]
+    expect(answered[0]).toMatchObject({ type: 'tool_result', is_error: true })
+    expect(String(answered[0]?.content)).toMatch(/There is no tool called mcp__alpha__draft/)
+    expect(world.lines({ kinds: ['call', 'refused'] })).toEqual([])
+    desk.close()
+  })
+})
+
+// The answer shapes the API takes (step 3, part 1's round): it refused a choice that may be
+// empty, written as a list of types with an enum, and then a reader's shape with dozens of fields
+// that may be empty (its limit is 16).
+describe('an answer shape on the own loop', () => {
+  const given = {
+    type: 'object',
+    properties: {
+      kind: { type: ['string', 'null'], enum: ['CIM', 'Teaser', null] },
+      price: { type: ['number', 'null'] },
+      found: {
+        type: ['object', 'null'],
+        properties: {
+          value: { type: 'string' },
+          pieces: { type: 'array', items: { type: 'integer' } },
+        },
+        required: ['value', 'pieces'],
+      },
+      list: { type: 'array', items: { type: 'object', properties: { a: { type: 'string' } } } },
+    },
+    required: ['kind', 'price', 'found'],
+  }
+
+  it('has nothing that may be one of several types, every object closed and every field required', () => {
+    const sent = JSON.stringify(apiShape(given))
+    expect(sent).not.toContain('"null"')
+    expect(sent).not.toContain('anyOf')
+    const shape = apiShape(given) as {
+      properties: Record<string, Record<string, unknown>>
+      required: string[]
+    }
+    expect(shape.required).toEqual(['kind', 'price', 'found', 'list'])
+    expect(shape.properties.kind).toMatchObject({
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        empty: { type: 'boolean' },
+        value: { type: 'string', enum: ['CIM', 'Teaser'] },
+      },
+      required: ['empty', 'value'],
+    })
+    expect(shape.properties.list).toEqual({
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { a: { type: 'string' } },
+        required: ['a'],
+      },
+    })
+  })
+
+  it('turns the answer back as Alpha asked for it: an empty one null', () => {
+    expect(
+      fromApi(given, {
+        kind: { empty: false, value: 'Teaser' },
+        price: { empty: true, value: 0 },
+        found: { empty: false, value: { value: '375,000', pieces: [3] } },
+        list: [{ a: 'x' }],
+      }),
+    ).toEqual({
+      kind: 'Teaser',
+      price: null,
+      found: { value: '375,000', pieces: [3] },
+      list: [{ a: 'x' }],
+    })
+  })
+})
+
+// The reader's shape, too large for the API's strict answers ("the compiled grammar is too large",
+// step 3, part 1's round): the same question asked again with the shape as an answer tool, which
+// the API does not compile, and the answer taken from the tool's input.
+describe('a question on the own loop whose answer shape is too large', () => {
+  it('is asked again with the shape as a tool, and answered from it', async () => {
+    const asked: Record<string, unknown>[] = []
+    const fake = async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+      asked.push(body)
+      const json = (status: number, v: unknown) =>
+        new Response(JSON.stringify(v), {
+          status,
+          headers: { 'content-type': 'application/json', 'request-id': 'req_test' },
+        })
+      if (body.output_config)
+        return json(400, {
+          type: 'error',
+          error: {
+            type: 'invalid_request_error',
+            message:
+              'The compiled grammar is too large, which would cause performance issues. Simplify your tool schemas or reduce the number of strict tools.',
+          },
+        })
+      return json(200, {
+        id: 'msg_1',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-opus-5-5',
+        content: [
+          { type: 'tool_use', id: 'tu_1', name: 'answer', input: { kind: null, price: 950000 } },
+        ],
+        stop_reason: 'tool_use',
+        stop_sequence: null,
+        usage: { input_tokens: 100, output_tokens: 20 },
+      })
+    }
+    const p = new ClaudeApiProvider(world, {
+      key: () => 'sk-ant-test',
+      userId: user.id,
+      fetch: fake as typeof fetch,
+    })
+    const schema = {
+      type: 'object',
+      properties: {
+        kind: { type: ['string', 'null'], enum: ['CIM', 'Teaser', null] },
+        price: { type: ['number', 'null'] },
+      },
+      required: ['kind', 'price'],
+    }
+    const out = await p.ask('Read the document.', 'Harbor CIM', schema)
+    expect(out.answer).toEqual({ kind: null, price: 950000 })
+    expect(asked).toHaveLength(2)
+    const again = asked[1] as { tools: { name: string; input_schema: unknown }[]; system: string }
+    expect(again.tools).toEqual([expect.objectContaining({ name: 'answer', input_schema: schema })])
+    expect(again.system).toMatch(/answer tool/)
+    expect(out.uses[0]).toMatchObject({ model: 'claude-opus-5-5', input: 100, output: 20 })
   })
 })
