@@ -119,6 +119,7 @@ held by review. Dates are 2026.
 | L3 | Serif for page, record and section titles and big numbers only | 26 Oct | test |
 | L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a row of tabs shows none | 26 Oct | — |
 | L5 | One avatar for people and organizations | 25 Oct | — |
+| L6 | A chart resizes with no chrome, only the cursor (`Stretch` in `ui/chart.tsx`): its x-axis strip shows ↔ and a drag widens or narrows it, its y-axis strip ↕ and a drag heightens or shortens it, its bottom-right corner ↘↖ both; a drawing with no axes has the corner alone. A double-click fits it back, a focused axis takes the arrows, a click on an axis never opens what is beneath; wider than its box, it scrolls inside the box, never the page | 30 Oct | test (ticks) |
 
 ## Proposed, waiting on Kenil or the core
 
