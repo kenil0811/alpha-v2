@@ -50,6 +50,7 @@ import { Field } from './ui/field.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
+import { SideHeading, SideList } from './ui/side-list.tsx'
 import { Words } from './ui/words.tsx'
 import { answerWords } from './vocabulary.ts'
 
@@ -240,6 +241,85 @@ export function Conversation({
 
 const keyOf = (i: Item) =>
   i.kind === 'alpha' ? `a${i.turn}` : i.kind === 'card' ? `c${i.id}` : `${i.kind}${i.id}`
+
+// The Conversation screen as a list of who to talk to (Vikas, 30 Oct), as a messenger's contacts:
+// Alpha first, then every agent grouped by its module; each opens its own thread. Alpha's own
+// agents (Morning, Watson) speak in Alpha's thread. An agent's thread waits on the core naming
+// the agent on each line and card and taking a message for it; until then it says so.
+export function Agents({
+  agent,
+  version,
+  children,
+}: {
+  agent: string | null
+  version: number
+  children: ReactNode // Alpha's thread
+}) {
+  const [working, setWorking] = useState<WorkingModuleView[] | null>(null)
+  useEffect(() => {
+    if (version >= 0) api.get<WorkingModuleView[]>('/api/working').then(setWorking, () => undefined)
+  }, [version])
+  const modules = (working ?? []).filter((m) => !m.kit?.core && m.agents.length > 0)
+  const chosen = agent
+    ? modules
+        .flatMap((m) => m.agents.map((a) => ({ ...a, module: m.name })))
+        .find((a) => a.id === agent)
+    : undefined
+  const one = (id: string | null, name: string, sub: string) => (
+    <a
+      key={id ?? 'alpha'}
+      href={id ? `#/conversation/${id}` : '#/conversation'}
+      aria-current={agent === id ? 'page' : undefined}
+      className={cn(
+        'flex items-start gap-2.5 rounded-md px-2.5 py-2 hover:bg-hover',
+        agent === id && 'bg-accent-soft hover:bg-accent-soft',
+      )}
+    >
+      <span className="mt-0.5">
+        <Mark agent={!!id} />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className={cn('truncate text-md text-ink', agent === id && 'font-medium')}>
+          {name}
+        </span>
+        <span className="truncate text-ink-3 text-sm">{sub}</span>
+      </span>
+    </a>
+  )
+  return (
+    <div className="flex h-full min-h-0">
+      <SideList
+        label="Agents"
+        className="w-72 shrink-0 overflow-y-auto border-line border-r px-2.5 py-4"
+      >
+        {one(null, 'Alpha', 'Ask anything, across every module')}
+        {modules.map((m) => (
+          <div key={m.id} className="flex flex-col gap-px">
+            <SideHeading>{m.name}</SideHeading>
+            {m.agents.map((a) => one(a.id, a.name, a.state === 'paused' ? 'Paused' : a.when))}
+          </div>
+        ))}
+      </SideList>
+      <div className="min-w-0 flex-1">
+        {!agent ? (
+          children
+        ) : !working ? null : !chosen ? (
+          <p className="p-6 text-ink-2">This agent is not there any more.</p>
+        ) : (
+          <div className="flex flex-col items-center gap-2 px-6 pt-24 text-center">
+            <p className="text-ink-2">{chosen.name} does not have its own thread yet.</p>
+            <p className="max-w-md text-ink-3">
+              What it posts and asks shows in Alpha’s thread for now, under {chosen.module}.
+            </p>
+            <a href={`#/agent/${chosen.id}`} className="text-accent hover:underline">
+              Open {chosen.name}
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function DayLine({ day }: { day: string }) {
   return (

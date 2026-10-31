@@ -46,7 +46,7 @@ import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popov
 
 export type Place =
   | { at: 'home' }
-  | { at: 'conversation' }
+  | { at: 'conversation'; agent: string | null }
   | { at: 'activity' }
   | { at: 'parts' }
   | { at: 'new' }

@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
-import { applyLive, Conversation, type Live } from './Conversation.tsx'
+import { Agents, applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
@@ -109,7 +109,8 @@ export function placeOf(hash: string): Place {
     }
   const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
-  if (hash === '#/conversation') return { at: 'conversation' }
+  const talk = /^#\/conversation(?:\/([\w-]+))?$/.exec(hash)
+  if (talk) return { at: 'conversation', agent: talk[1] ?? null }
   if (hash === '#/parts') return { at: 'parts' }
   if (hash === '#/module/new') return { at: 'new' }
   // a row's own page (core step 3b)
@@ -451,7 +452,7 @@ export function App() {
                 ? { parts: crumb.parts.slice(-1) }
                 : (itemCrumb ?? crumb)
             }
-            lens={place.at === 'conversation' ? lens : null}
+            lens={place.at === 'conversation' && !place.agent ? lens : null}
             onClearLens={() => setLens(null)}
             middle={setMiddle}
           />
@@ -471,13 +472,15 @@ export function App() {
                     onAsked={() => setAsking(true)}
                   />
                 ) : place.at === 'conversation' ? (
-                  <Conversation
-                    stream={stream}
-                    live={live}
-                    busyTurn={busyTurn}
-                    lens={lens}
-                    onLens={setLens}
-                  />
+                  <Agents agent={place.agent} version={version}>
+                    <Conversation
+                      stream={stream}
+                      live={live}
+                      busyTurn={busyTurn}
+                      lens={lens}
+                      onLens={setLens}
+                    />
+                  </Agents>
                 ) : place.at === 'parts' ? (
                   <Parts />
                 ) : place.at === 'new' ? (
