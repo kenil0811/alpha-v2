@@ -158,8 +158,10 @@ held by review. Dates are 2026.
 - What was clicked stays in sight to the left of the side panel when it opens (Vikas, 1 Nov).
 - The rail's rows are evenly spaced, the modules too: no gap between Tasks and the first module
   (Vikas, 1 Nov).
-- A card's resize grip is drawn in its own bottom-right corner on hover (Vikas, 1 Nov).
-- A tile is two lines: its number and words on one, its button under them (Vikas, 1 Nov).
+- A card resizes from its own bottom-right corner: the pointer turns there, nothing is drawn on a
+  hover (Vikas, 1 Nov).
+- A tile is square: its number big, its words beside it from the number's top line, its button
+  at its foot (Vikas, 1 Nov).
 - A card shows four or five rows, then the slideshow; Mac setup is a card of its own, done once
   and gone when it is (Vikas, 1 Nov).
 - Agents are one list, never grouped by what they do; on Home and an Overview, Files sits under
@@ -170,3 +172,8 @@ held by review. Dates are 2026.
 - The Second Brain draws every module, its pages, its tables and the buckets their rows fall in,
   its agents and the connections (Vikas, 1 Nov).
 - What Mark opens to send to Alpha stays inside the window (Vikas, 1 Nov).
+- Home's work column holds two cards a row (Agent approvals beside Today and overdue, Mac setup
+  among them) unless a card needs the whole row; the right column holds only the standard cards and
+  buttons (Vikas, 1 Nov).
+- Two pagers that could meet say what they count: "Approval 2 of 4" in the card's button row,
+  "Agents 4–6 of 16" under its list (Vikas, 1 Nov).

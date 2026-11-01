@@ -22,7 +22,7 @@ import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot } from './ui/dot.tsx'
 import { Label } from './ui/pill.tsx'
-import { Slides } from './ui/slides.tsx'
+import { Pager, pagesOf } from './ui/slides.tsx'
 import { answerWords } from './vocabulary.ts'
 
 export type CardsKind = 'list' | 'gallery' | 'slides'
@@ -137,19 +137,31 @@ export function FailedCard({ card }: { card: CardView }) {
   )
 }
 
-// The agents, five a page: on the card where it waits, and on the card opened whole.
+// The agents, three a page so the card stays half the work column: on the card where it waits,
+// and on the card opened whole.
+const PER = 3
 function FailedRows({ card }: { card: CardView }) {
   const failed = useFilled(failedOf(card), !card.failed?.length)
+  const [at, setAt] = useState(0)
+  const pages = pagesOf(failed.length, PER)
+  const page = Math.min(at, pages - 1)
+  const shown = failed.slice(page * PER, page * PER + PER)
   return (
-    <Slides items={failed} label="Agents that did not finish">
-      {(page) => (
-        <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
-          {page.map((f) => (
-            <FailedAgent key={f.name} card={card.id} f={f} own={!!card.failed?.length} />
-          ))}
-        </ul>
-      )}
-    </Slides>
+    <div className="flex flex-col gap-2">
+      <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+        {shown.map((f) => (
+          <FailedAgent key={f.name} card={card.id} f={f} own={!!card.failed?.length} />
+        ))}
+      </ul>
+      {/* it counts agents, not pages: "Agents 6–10 of 16" */}
+      <Pager
+        page={page}
+        pages={pages}
+        label="Agents that did not finish"
+        words={`Agents ${page * PER + 1}–${page * PER + shown.length} of ${failed.length}`}
+        onGo={setAt}
+      />
+    </div>
   )
 }
 
@@ -203,7 +215,7 @@ function FailedAgent({
         className="min-w-0 flex-1 basis-48 text-left"
       >
         <span className="block font-medium text-ink hover:underline">{f.name}</span>
-        <span className="block text-ink-3 text-sm">
+        <span data-tip={f.words} className="line-clamp-2 break-words text-ink-3 text-sm">
           {f.words}
           {f.at ? ` · ${agoWords(f.at)}` : ''}
         </span>
@@ -252,8 +264,8 @@ function CardTile({
         if (!(e.target as HTMLElement).closest('button')) onOpen()
       }}
       className={cn(
-        'flex cursor-pointer flex-col gap-2 rounded-lg border border-line bg-surface hover:border-accent-line',
-        pager ? 'min-h-72 gap-3 p-6' : 'p-4',
+        // one size, the pager or not: a card is half the work column (Vikas, 1 Nov: "too big")
+        'flex cursor-pointer flex-col gap-2 rounded-lg border border-line bg-surface p-4 hover:border-accent-line',
       )}
     >
       <div className="flex items-center gap-2">
@@ -266,23 +278,11 @@ function CardTile({
       <button
         type="button"
         onClick={onOpen}
-        className={cn(
-          'text-left font-medium text-ink hover:underline',
-          pager ? 'text-lg' : 'line-clamp-3 text-base',
-        )}
+        className={cn('line-clamp-3 text-left font-medium text-base text-ink hover:underline')}
       >
         {card.words}
       </button>
-      {body && (
-        <p
-          className={cn(
-            'whitespace-pre-line text-ink-2',
-            pager ? 'max-h-80 overflow-y-auto text-base' : 'line-clamp-5 text-sm',
-          )}
-        >
-          {body}
-        </p>
-      )}
+      {body && <p className={cn('line-clamp-5 whitespace-pre-line text-ink-2 text-sm')}>{body}</p>}
       {several && <FailedRows card={card} />}
       <div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-1">
         {pager && <span className="mr-auto">{pager}</span>}
@@ -317,13 +317,30 @@ function OneAtATime({
   moduleName: (c: CardView) => string | undefined
   onChange: () => void
 }) {
-  return (
-    <Slides items={cards} per={1} label="Agent approvals">
-      {([card]) =>
-        card && <CardTile key={card.id} card={card} module={moduleName(card)} onChange={onChange} />
+  // its pager inside the card, beside its buttons, so the card's corner is its own and a list
+  // inside it never shows a second "1 of 4" under the first (Vikas, 1 Nov)
+  const [at, setAt] = useState(0)
+  const page = Math.min(at, cards.length - 1)
+  const card = cards[page]
+  return card ? (
+    <CardTile
+      key={card.id}
+      card={card}
+      module={moduleName(card)}
+      onChange={onChange}
+      pager={
+        cards.length > 1 && (
+          <Pager
+            page={page}
+            pages={cards.length}
+            label="Agent approvals"
+            words={`Approval ${page + 1} of ${cards.length}`}
+            onGo={setAt}
+          />
+        )
       }
-    </Slides>
-  )
+    />
+  ) : null
 }
 
 // ---- the one grid, shared by card rows and task rows (Vikas, 30 Oct: "the layout is too fluid,

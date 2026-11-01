@@ -77,21 +77,19 @@ const readyCount = (v: SetupView) =>
     ...v.steps.map((x) => x.done),
   ].filter(Boolean).length
 
-function greeting(name: string): string {
+// no name: it is in the workspace's corner already (Vikas, 1 Nov)
+function greeting(): string {
   const h = new Date().getHours()
-  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-  return name ? `${part}, ${name}` : part
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
 export function Home({
   stream,
   modules,
-  name,
   onAsked,
 }: {
   stream: Stream | null
   modules: ModuleSummary[]
-  name: string
   onAsked: () => void // the answer opens on the right
 }) {
   const [today, setToday] = useState<TodayView | null>(null)
@@ -339,7 +337,6 @@ export function Home({
   // the standard column, across every module, in an Overview's order
   const standard: Block[] = [
     ...(interview.view ? [{ key: 'start', name: 'Interview me', node: start }] : []),
-    ...mac,
     ...(agents.length
       ? [
           {
@@ -395,27 +392,30 @@ export function Home({
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
         {/* the greeting and the day sit in the bar; Home opens on Find and one strip across every
             module (Vikas, 27 Oct): the assistant is on the right, so no box to ask here */}
+        {/* two lines each side (Vikas, 1 Nov): the day over the greeting at the left, Next and its
+            day over the next thing at the right */}
         <InBar>
-          <span className="flex min-w-0 flex-1 items-baseline gap-3">
-            <span className="flex items-baseline gap-2.5 whitespace-nowrap">
-              <span className="text-ink-3 text-sm">
+          <span className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex flex-col whitespace-nowrap leading-tight">
+              <span className="text-ink-3 text-xs">
                 {new Date().toLocaleDateString(undefined, {
                   weekday: 'short',
                   day: 'numeric',
                   month: 'short',
                 })}
               </span>
-              <h1 className="font-serif text-ink text-xl">{greeting(name)}</h1>
+              <h1 className="font-serif text-ink text-lg leading-tight">{greeting()}</h1>
             </span>
             {next && (
               <a
                 href={`#/tasks/${next.id}`}
                 data-tip="The next thing on your calendar"
-                className="ml-auto flex min-w-0 items-baseline gap-1.5 text-sm hover:text-accent"
+                className="ml-auto flex min-w-0 max-w-80 flex-col items-end leading-tight hover:text-accent"
               >
-                <span className="shrink-0 text-ink-3">Next</span>
-                <span className="truncate text-ink">{next.title}</span>
-                <span className="shrink-0 text-ink-3">{next.due ? dueWords(next.due) : ''}</span>
+                <span className="text-ink-3 text-xs">
+                  Next{next.due ? ` · ${dueWords(next.due)}` : ''}
+                </span>
+                <span className="max-w-full truncate text-ink text-md">{next.title}</span>
               </a>
             )}
           </span>
@@ -455,7 +455,9 @@ export function Home({
           // what waits on the person, their day and what Alpha did, each a block the person
           // drags beside, above or below another (Vikas, 29 Oct); an empty one is not shown. The
           // standard column on the right, as on an Overview (Vikas, 30 Oct); the work column keeps
-          // the page "home", so an arrangement kept before stays the person's
+          // the page "home", so an arrangement kept before stays the person's. The work column
+          // holds two cards a row, Mac setup among them; the right one only the standard cards and
+          // buttons (Vikas, 1 Nov)
           <Arranged
             className="grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]"
             blocks={[
@@ -468,10 +470,17 @@ export function Home({
               ...(failed.today || changed.length > 0
                 ? [{ key: 'changed', name: 'What changed', node: whatChanged }]
                 : []),
+              ...mac,
               ...standard,
             ]}
             columns={[
-              { page: 'home', start: [['needs'], ['tasks'], ['changed']] },
+              {
+                page: 'home',
+                start: [
+                  ['needs', 'tasks'],
+                  ['changed', 'mac'],
+                ],
+              },
               { page: 'home:side', start: standard.map((b) => [b.key]) },
             ]}
           />

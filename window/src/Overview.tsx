@@ -791,7 +791,7 @@ export function folded(lines: Tile['lines']) {
 }
 
 // One row of square tiles that scrolls sideways inside itself (Vikas, 30 Oct: "I don't see a point
-// in so much width"); a tile is two lines, its words whole on a hover (Vikas, 1 Nov). What a hover or a click opens (the whole
+// in so much width"); a tile is square, its words beside its number from the top (Vikas, 1 Nov). What a hover or a click opens (the whole
 // name, the lines it counts) floats over the page in a popover, so the scrolling row never clips it.
 export function Strip({ tiles, onGo }: { tiles: Tile[]; onGo: (go: string) => void }) {
   const [open, setOpen] = useState<string | null>(null) // opened by a click, kept until a click away
@@ -882,18 +882,18 @@ function StripTile({
           if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : onOpen(true)
         }}
         className={cn(
-          'flex w-52 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2 transition-shadow hover:shadow-pop',
+          'flex aspect-square w-32 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface p-2.5 transition-shadow hover:shadow-pop',
           on && 'border-accent-line shadow-pop',
         )}
       >
-        {/* two lines in all (Vikas, 1 Nov: "reduced by almost half"): the number big with its
-            words on one line, whole on a hover, then the button */}
-        <p data-tip={`${t.big} ${t.small}`} className="truncate text-ink-2 text-sm">
+        {/* square (Vikas, 1 Nov): the number big, its words beside it from the number's top line,
+            three lines at most, whole on a hover; the button at the foot */}
+        <div data-tip={`${t.big} ${t.small}`} className="flex min-w-0 items-start gap-1.5">
           {t.big && (
-            <span className="mr-1.5 font-serif text-2xl text-ink leading-none">{t.big}</span>
+            <span className="shrink-0 font-serif text-2xl text-ink leading-none">{t.big}</span>
           )}
-          {t.small}
-        </p>
+          <p className="line-clamp-3 min-w-0 text-ink-2 text-sm leading-tight">{t.small}</p>
+        </div>
         <div className="mt-auto flex items-end justify-end gap-2 pt-1">
           {t.spark && (
             <div className="min-w-0 flex-1">
@@ -1698,7 +1698,7 @@ function NeedsYou({ cards, onChange }: { cards: CardView[]; onChange: () => void
       signal={strongest(cards.map(signalOf))}
     >
       {() => (
-        <Slides items={stacks} per={1} label="Agent approvals">
+        <Slides items={stacks} per={1} label="Agent approvals" noun="Approval">
           {(page) =>
             page.map((st) => (
               <Stack
