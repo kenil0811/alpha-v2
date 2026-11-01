@@ -15,6 +15,7 @@ import {
 import { Refusal, useAct } from './act.tsx'
 import { Button } from './button.tsx'
 import { cn } from './cn.ts'
+import { Choice, type Choices } from './pill.tsx'
 import { MenuItem, MenuLine, Popover } from './popover.tsx'
 
 const FIELD =
@@ -34,6 +35,15 @@ function optionsOf(children: ReactNode): Option[] {
     const label = Children.toArray(c.props.children).join('')
     return [{ value: String(c.props.value ?? label), label, disabled: !!c.props.disabled }]
   })
+}
+
+// The choices a person starred in one list sort to its top. Hidden until Kenil decides the ★ on
+// every dropdown and the core keeps stars per person (core P1): no star shows, the order stands.
+export function useStars(_key: string | undefined) {
+  const first = <T,>(list: T[], _of: (t: T) => string) => list
+  const star = (_v: string): { on: boolean; onClick: () => void; tip: string } | undefined =>
+    undefined
+  return { first, star }
 }
 
 export type Adds = { what: string; send: (words: string) => Promise<unknown> }
@@ -91,7 +101,7 @@ export function AddNew({ adds, onDone }: { adds: Adds; onDone: () => void }) {
 }
 
 // One dropdown everywhere: a button that opens a short list, with a search
-// line when there are more than six. Written as a <select> is, <option>s and onChange alike.
+// line when there are more than five. Written as a <select> is, <option>s and onChange alike.
 export function Select({
   className,
   value,
@@ -101,11 +111,15 @@ export function Select({
   disabled,
   title,
   adds,
+  stars,
+  of,
   startOpen,
   onDismiss,
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & {
   adds?: Adds | undefined // Add new… at the list's foot, where a choice can grow
+  stars?: string | undefined // a ★ on each line, kept per person under this key (a field's id)
+  of?: Choices | undefined // a field's choices: each line in its own colour (Vikas, 30 Oct)
   startOpen?: boolean | undefined // opened at once: a cell being changed
   onDismiss?: (() => void) | undefined // closed without a pick (a click away, Escape)
 }) {
@@ -114,6 +128,7 @@ export function Select({
   const now = value === undefined ? own : String(value)
   const [open, setOpen] = useState(!!startOpen)
   const [words, setWords] = useState('')
+  const { first, star } = useStars(stars)
   const anchor = useRef<HTMLButtonElement>(null)
   const close = () => {
     setOpen(false)
@@ -123,7 +138,10 @@ export function Select({
     close()
     onDismiss?.()
   }
-  const shown = options.filter((o) => o.label.toLowerCase().includes(words.trim().toLowerCase()))
+  const shown = first(
+    options.filter((o) => o.label.toLowerCase().includes(words.trim().toLowerCase())),
+    (o) => o.value,
+  )
   // the keyboard is the menu's own (ui/popover.tsx): the arrows, Home, End and a letter move
   // between the lines, Return picks, Escape closes; ↓ or ↑ on the button opens it
   const keys = (e: KeyboardEvent) => {
@@ -187,8 +205,9 @@ export function Select({
                 checked={o.value === now}
                 disabled={o.disabled}
                 onClick={() => pick(o.value)}
+                star={o.value ? star(o.value) : undefined}
               >
-                {o.label || '—'}
+                {of && o.value ? <Choice of={of} value={o.value} /> : o.label || '—'}
               </MenuItem>
             ))}
             {shown.length === 0 && <p className="px-2.5 py-1.5 text-ink-3 text-md">No match.</p>}
