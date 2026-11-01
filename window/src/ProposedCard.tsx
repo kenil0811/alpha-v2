@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { api, Problem } from './api.ts'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Actions, Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 
 export function ProposedCard({ card, proposed }: { card: CardView; proposed: ProposedView }) {
@@ -68,14 +68,14 @@ export function ProposedCard({ card, proposed }: { card: CardView; proposed: Pro
         ))}
       </div>
       {problem && <p className="text-bad text-sm">{problem}</p>}
-      <div className="flex gap-2">
+      <Actions>
         <Button variant="primary" disabled={busy || n === 0} onClick={() => take([...kept])}>
           {n === proposed.tasks.length ? 'Add them' : `Add ${n === 1 ? 'this one' : `these ${n}`}`}
         </Button>
         <Button disabled={busy} onClick={() => take([])}>
           Decline
         </Button>
-      </div>
+      </Actions>
     </Card>
   )
 }

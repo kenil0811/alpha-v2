@@ -1,4 +1,5 @@
-// A section of a page: its title in serif, an ⓘ with what it is, then its rows; no card around it,
+// A section of a page: its title in serif, one size below the page's title (Vikas, 1 Nov: the
+// section heading was as big as the page's), an ⓘ with what it is, then its rows; no card around it,
 // so what it holds (a list, a table) is the only frame (Kenil, 26 Oct: no card inside a card).
 import type { ReactNode } from 'react'
 import { Info } from './info.tsx'
@@ -6,16 +7,22 @@ import { Info } from './info.tsx'
 export function Section({
   title,
   about,
+  small,
   children,
 }: {
   title: string
   about?: string
+  small?: boolean | undefined // inside a card: its head the size of the card's (Agents)
   children: ReactNode
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex items-center gap-1.5">
-        <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+      <div data-head className="flex items-center gap-1.5">
+        {small ? (
+          <h2 className="font-semibold text-base text-ink">{title}</h2>
+        ) : (
+          <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+        )}
         {about && <Info help={about} />}
       </div>
       {children}

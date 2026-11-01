@@ -3,6 +3,7 @@
 import type { FieldView, RowView } from '@alpha/core/api'
 import { ClipboardPaste } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { askForNew } from '../ask.ts'
 import { Button } from '../ui/button.tsx'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
@@ -136,6 +137,7 @@ function SetForm({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           aria-label="The value to set"
+          adds={{ what: 'choice', send: (w) => askForNew('choice', field.name, w) }}
         >
           <option value="">Empty</option>
           {field.choices.map((c) => (
