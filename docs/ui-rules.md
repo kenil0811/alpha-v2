@@ -139,3 +139,6 @@ held by review. Dates are 2026.
 - The one dropdown everywhere (T10): search past six, tags too, and a double-click on a choice
   opens it (Vikas, 29 Oct).
 - No bare `<select>` at all (T11), the cell editor included (Vikas, 29 Oct).
+- A card shows only the rows it holds, then a dot per page with ‹ 2 of 10 › beside them
+  (`ui/slides.tsx`); never a cut-off list, a "more" link or a scroll inside the card. Agent
+  approvals is one card a page (Vikas, 1 Nov).
