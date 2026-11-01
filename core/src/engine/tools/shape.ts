@@ -7,12 +7,13 @@ import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { setPer } from '../../world/records/fold.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
+import { notAPeriod } from '../../world/shape/naming.ts'
 import { namedConfig, ViewConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import { Field, guard, ok, tableOf, tool } from './common.ts'
-import { caseFirst, notAPeriod, notOnlyAName } from './walls.ts'
+import { caseFirst, notOnlyAName } from './walls.ts'
 
 // A shape change as the desk's tool takes it.
 const SHAPE_INPUT = {
@@ -175,7 +176,6 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
     }
     case 'rename': {
       if (!a.to) throw new Refused('rename needs to.')
-      if (!a.field) notAPeriod(a.to)
       const t = world.shape.rename(
         { table: tableOf(world, table).id, ...(a.field ? { field: a.field } : {}) },
         a.to,

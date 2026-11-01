@@ -13,22 +13,13 @@ import type {
   TableSummary,
   ViewConfig,
 } from '@alpha/core/api'
-import {
-  ArrowDownUp,
-  Columns3,
-  Copy,
-  Download,
-  EllipsisVertical,
-  Group,
-  Plus,
-  Search,
-} from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Plus, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
-import { setGroup, setRule } from './table/edits.ts'
+import { setRule } from './table/edits.ts'
 import {
   applyFilters,
   applySearch,
@@ -36,21 +27,21 @@ import {
   columns,
   complete,
   differs,
-  GROUPABLE,
   sortRows,
 } from './table/engine.ts'
-import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
+import { Grid, type PastePlan } from './table/Grid.tsx'
 import { cleared, hiding } from './table/hiding.ts'
 import { KindPicker } from './table/KindPicker.tsx'
-import { type LayoutNow, layoutOf } from './table/layout.ts'
+import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
+import { More } from './table/More.tsx'
+import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { Showing } from './table/Showing.tsx'
-import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
-import { canType, isTags, show } from './table/values.ts'
+import { canType, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
@@ -58,7 +49,6 @@ import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
-import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
 interface Working {
   view: string | null
@@ -331,6 +321,7 @@ export function TableView({
                     : null
                 }
                 onTab={(tab) => write(() => api.post(`/api/tables/${data.id}/tab`, { tab }))}
+                readBy={data.readBy}
                 onCopy={() =>
                   navigator.clipboard?.writeText(
                     [
@@ -566,6 +557,7 @@ export function TableView({
                   New
                 </Button>
               </span>
+              {readByWords(data.readBy) && <span className="mr-3">{readByWords(data.readBy)}</span>}
               {rows.length > Math.min(size, ...SIZES) && (
                 <>
                   <span className="mr-2 tabular-nums">
@@ -649,197 +641,6 @@ export function TableView({
 
 const PAGE = 50
 const SIZES = [25, 50, 100, 250]
-
-// The ⋮ menu: export exactly the rows and columns shown, as an Excel or a CSV file.
-// The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
-function More({
-  tableId,
-  fields,
-  shown,
-  config,
-  layout,
-  adding,
-  onConfig,
-  onExport,
-  onCopy,
-  tab = null,
-  onTab,
-}: {
-  tableId: string
-  fields: FieldView[]
-  shown: FieldView[]
-  config: ViewConfig
-  layout: LayoutNow
-  adding: boolean // whether a column can be added here
-  onConfig: (c: ViewConfig) => void
-  onExport: (as: 'csv' | 'xlsx') => void
-  onCopy: () => void
-  tab?: boolean | null // a part or setup table: whether it is kept as a tab; null for the rest
-  onTab?: (tab: boolean) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [add, setAdd] = useState(false)
-  const grid = config.kind === 'table' ? undefined : 'Columns are laid out in the table view.'
-  const wrapped = shown.length > 0 && shown.every((f) => layout.wrap.includes(f.id))
-  const anchor = useRef<HTMLButtonElement>(null)
-  const sortedBy = config.sorts
-    .map((s) => fields.find((f) => f.id === s.field)?.name)
-    .filter(Boolean)
-  const grouped = fields.find((f) => f.id === config.group)
-  const groupable = fields.filter((f) => GROUPABLE.has(f.kind) && !isTags(f))
-  return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        aria-label="More"
-        data-tip="Sort, group, layout, download and more"
-        onClick={() => setOpen((o) => !o)}
-        className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
-      >
-        <EllipsisVertical className="size-4" />
-      </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        <SubMenu
-          label={
-            <>
-              <ArrowDownUp className="size-3.5 text-ink-3" />
-              Sort
-            </>
-          }
-          hint={sortedBy.length ? sortedBy.join(', ') : 'None'}
-        >
-          <SortEditor fields={fields} config={config} onConfig={onConfig} />
-        </SubMenu>
-        <SubMenu
-          label={
-            <>
-              <Group className="size-3.5 text-ink-3" />
-              Group
-            </>
-          }
-          hint={grouped?.name ?? 'None'}
-          reason={
-            config.kind === 'table' || config.kind === 'list'
-              ? groupable.length
-                ? undefined
-                : 'No column here can be grouped by.'
-              : 'Groups show in the table and list views.'
-          }
-        >
-          <MenuItem checked={!grouped} onClick={() => onConfig(setGroup(config, null))}>
-            No grouping
-          </MenuItem>
-          <MenuLine />
-          {groupable.map((f) => (
-            <MenuItem
-              key={f.id}
-              checked={f.id === config.group}
-              onClick={() => onConfig(setGroup(config, f.id))}
-            >
-              {f.name}
-            </MenuItem>
-          ))}
-        </SubMenu>
-        <SubMenu
-          label={
-            <>
-              <Columns3 className="size-3.5 text-ink-3" />
-              Layout
-            </>
-          }
-          reason={grid}
-        >
-          {[1, 2, 3].map((n) => (
-            <MenuItem
-              key={n}
-              checked={layout.frozen === n}
-              reason={n > shown.length ? `There are only ${shown.length} columns.` : undefined}
-              onClick={() => layout.setFrozen(n)}
-            >
-              {n === 1 ? 'Freeze the first column' : `Freeze the first ${n} columns`}
-            </MenuItem>
-          ))}
-          <MenuLine />
-          <MenuItem
-            checked={wrapped}
-            onClick={() => layout.setWrap(wrapped ? [] : shown.map((f) => f.id))}
-          >
-            Wrap text in every column
-          </MenuItem>
-          <MenuItem
-            reason={
-              Object.keys(config.widths).length ? undefined : 'The columns are at their own widths.'
-            }
-            onClick={() => onConfig({ ...config, widths: {} })}
-          >
-            Reset the column widths
-          </MenuItem>
-        </SubMenu>
-        <MenuItem
-          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
-          onClick={() => {
-            setOpen(false)
-            setAdd(true)
-          }}
-        >
-          <Plus className="size-3.5 text-ink-3" />
-          Add column
-        </MenuItem>
-        {tab !== null && (
-          <MenuItem
-            checked={tab}
-            onClick={() => {
-              setOpen(false)
-              onTab?.(!tab)
-            }}
-          >
-            Keep as a tab
-          </MenuItem>
-        )}
-        <MenuLine />
-        <SubMenu
-          label={
-            <>
-              <Download className="size-3.5 text-ink-3" />
-              Download
-            </>
-          }
-        >
-          <MenuItem
-            onClick={() => {
-              setOpen(false)
-              onExport('xlsx')
-            }}
-          >
-            Excel, as shown
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setOpen(false)
-              onExport('csv')
-            }}
-          >
-            CSV, as shown
-          </MenuItem>
-          <MenuLine />
-          <MenuItem
-            onClick={() => {
-              setOpen(false)
-              onCopy()
-            }}
-          >
-            <Copy className="size-3.5 text-ink-3" />
-            Copy as a table
-          </MenuItem>
-        </SubMenu>
-      </Popover>
-      <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
-      </Popover>
-    </>
-  )
-}
 
 // A chart bar's rows as a filter: its choice, its words, its month, or no value.
 function barRule(field: FieldView, key: string): FilterRule {

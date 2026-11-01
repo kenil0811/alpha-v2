@@ -30,6 +30,7 @@ import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
 import { type Tab, Tabs } from './ui/tabs.tsx'
 import { Words } from './ui/words.tsx'
+import { WaitingRules } from './WaitingRules.tsx'
 
 export type ModuleTab =
   | { kind: 'overview' }
@@ -409,6 +410,7 @@ function AgentsAndNotes({
           title="Governance"
           sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
         >
+          <WaitingRules module={m.id} version={version} onAnswered={onChange} />
           <Governance m={m} rules={rules} onChange={onChange} />
         </Section>
       </div>

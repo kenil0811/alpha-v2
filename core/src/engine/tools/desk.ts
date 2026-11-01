@@ -12,7 +12,7 @@ import { keep } from '../../modules/keep.ts'
 import { type AgentRunner, PROPOSE_TASKS } from '../../modules/runs/index.ts'
 import { pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
-import { DOES, type RuleSpec, SAVE_RULE } from '../../world/rules.ts'
+import { DOES, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/rules.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import {
@@ -74,7 +74,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
                 : hands.intake.file(card.id, { row: f.row, kind: f.kind }, here_.user)
               return ok(`The card is answered: ${done.state}.`)
             }
-            if (card.call?.tool === SAVE_RULE && !no)
+            if (card.call?.tool === SAVE_RULE && choice === SAVE_ANSWERS.yes)
               world.rules.save(card.call.input as RuleSpec, {
                 actor: { kind: 'person', id: here_.user.id },
                 user: here_.user.id,
@@ -191,7 +191,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
           const card = world.cards.open({
             kind: 'question',
             words: `Save this rule? ${words}`,
-            options: ['Save', 'Not now'],
+            options: [SAVE_ANSWERS.yes, SAVE_ANSWERS.no],
             call: { tool: SAVE_RULE, input: spec },
             actor: { kind: 'alpha' },
             user: here.current.user.id,

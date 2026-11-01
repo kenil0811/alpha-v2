@@ -569,6 +569,58 @@ describe('stable keys and tombstones (step 2, sub-step 4)', () => {
     expect(world.shape.table('Suppliers')).toBeUndefined()
   })
 
+  it('finds a table the person renamed by its lasting key: no second one on update (call 6)', async () => {
+    const m = await install(
+      world,
+      kitAt('0.1.0', (x) => x),
+      ctx,
+    )
+    const suppliers = world.shape.table('Suppliers') as { id: string }
+    world.shape.rename({ table: suppliers.id }, 'Vendors', ctx)
+    // the newer version adds a field to Suppliers, a relation to it and a setup row, by its own name
+    const newer = kitAt(
+      '0.2.0',
+      (x) =>
+        x
+          .replace(
+            '      - { name: Email, kind: email }',
+            '      - { name: Email, kind: email }\n      - { name: Phone, kind: phone }',
+          )
+          .replace(
+            '      - { name: Supplier, kind: relation, relates_to: Suppliers }',
+            '      - { name: Supplier, kind: relation, relates_to: Suppliers }\n      - { name: Backup, kind: relation, relates_to: Suppliers }',
+          ),
+      `Suppliers:\n  - key: mill\n    values: { Name: Mill & Co, Email: mill@example.com }\n  - key: oven\n    values: { Name: Oven Works }\n`,
+    )
+    await update(world, m.name, newer, ctx)
+    expect(world.shape.tables(m.id).map((t) => [t.name, t.key])).toEqual([
+      ['Orders', 'Orders'],
+      ['Vendors', 'Suppliers'],
+    ])
+    const vendors = world.shape.table(suppliers.id)
+    expect(vendors?.fields.map((f) => f.name)).toEqual(['Name', 'Email', 'Phone'])
+    expect(world.records.list(suppliers.id).map((r) => r.values.name)).toContain('Oven Works')
+    const orders = world.shape.table('Orders')
+    expect(orders?.fields.filter((f) => f.kind === 'relation').map((f) => f.relatesTo)).toEqual([
+      suppliers.id,
+      suppliers.id,
+    ])
+  })
+
+  it('takes a kit’s module back by its key after a rename, and refuses a second install', async () => {
+    const m = await install(world, KIT, ctx)
+    world.shape.renameModule(m.id, 'Shop', ctx)
+    await expect(install(world, KIT, ctx)).rejects.toThrow(/already installed: update it instead/)
+    const report = await update(
+      world,
+      'Bakery',
+      kitAt('0.2.0', (x) => x),
+      ctx,
+    )
+    expect(report).toBeDefined()
+    expect(world.shape.modules().map((x) => x.name)).toEqual(['Shop'])
+  })
+
   it('hides a field the kit no longer uses, keeping its rows, and lists it as removable', async () => {
     const m = await install(
       world,

@@ -29,6 +29,19 @@ export function registerModules(ctx: Ctx): void {
     return { id: m.id, parent: m.parent }
   })
 
+  // The person renames a module by double-clicking its name in the rail (Batch B, pick 14a): its
+  // name alone; its id, key and folder stay.
+  app.post('/api/modules/:id/name', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { name } = z.object({ name: z.string().max(80) }).parse(req.body)
+    const m = world.shape.renameModule(id, name, {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { id: m.id, name: m.name }
+  })
+
   // the person's own business case for a module (core step 3e): theirs from then on
   app.post('/api/modules/:id/case', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

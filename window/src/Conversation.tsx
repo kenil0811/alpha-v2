@@ -36,22 +36,15 @@ import {
 import { api, Problem } from './api.ts'
 import { takeAsk } from './ask.ts'
 import { Beside } from './Beside.tsx'
-import { DraftCard } from './DraftCard.tsx'
-import { FilingCard } from './FilingCard.tsx'
-import { MatchCard } from './MatchCard.tsx'
-import { ProposedCard } from './ProposedCard.tsx'
-import { ReviewCard } from './ReviewCard.tsx'
+import { CardBox, GATE } from './CardBox.tsx'
 import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
-import { Field } from './ui/field.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 import { Words } from './ui/words.tsx'
-import { answerWords } from './vocabulary.ts'
 
 export interface Live {
   [turn: string]: { text: string; doing: string | null }
@@ -590,49 +583,6 @@ function Work({ steps }: { steps: Step[] }) {
   )
 }
 
-// What a card would send, as it will go: a message's head (From, To, Subject…) laid out, then its
-// body. Anything without such a head is shown as written.
-export function Preview({ detail }: { detail: string }) {
-  const [head, ...rest] = detail.split('\n\n')
-  const lines = (head ?? '').split('\n')
-  const fields = lines.map((l) => /^([A-Z][A-Za-z-]{0,12}):\s(.*)$/.exec(l))
-  if (!fields.length || fields.some((f) => !f))
-    return (
-      <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
-        {detail}
-      </div>
-    )
-  return (
-    <div className="rounded-md border border-hair bg-canvas text-md">
-      <dl className="grid grid-cols-[60px_1fr] gap-x-2.5 gap-y-0.75 border-hair border-b px-3 py-2.5">
-        {fields.map((f) =>
-          f ? (
-            <div key={f[1]} className="contents">
-              <dt className="text-ink-3">{f[1]}</dt>
-              <dd className="min-w-0 break-words text-ink">{f[2]}</dd>
-            </div>
-          ) : null,
-        )}
-      </dl>
-      {rest.length > 0 && (
-        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap px-3 py-2.5 text-ink leading-relaxed">
-          {rest.join('\n\n')}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// What each gate is called in a card's head.
-const GATE: Record<string, string> = {
-  leaves_world: 'Leaves your world',
-  deletes_own: 'Deletes your entries',
-  sign_in: 'Sign-in',
-  filing: 'A file from your mail',
-  match: 'Maybe the same',
-  rows: 'For you to decide',
-}
-
 // Scrolls the stream to a card and flashes it.
 function goToCard(id: string) {
   const el = document.getElementById(`card-${id}`)
@@ -640,116 +590,6 @@ function goToCard(id: string) {
   el?.animate(
     [{ boxShadow: '0 0 0 4px var(--accent-line)' }, { boxShadow: '0 0 0 0 transparent' }],
     { duration: 1400 },
-  )
-}
-
-// How an option reads on its button: a plain Yes is Approve, a plain No is Decline.
-const optionWords = answerWords
-
-export function CardBox({
-  id,
-  card,
-  onChange,
-}: {
-  id: string
-  card: CardView
-  onChange: (c: CardView) => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
-  const [typed, setTyped] = useState('')
-  const [opened, setOpened] = useState(false)
-  if (card.filing) return <FilingCard card={card} filing={card.filing} />
-  if (card.draft) return <DraftCard card={card} draft={card.draft} />
-  if (card.match) return <MatchCard card={card} match={card.match} />
-  if (card.review) return <ReviewCard card={card} review={card.review} />
-  if (card.proposed) return <ProposedCard card={card} proposed={card.proposed} />
-  const answer = async (a: string) => {
-    setBusy(true)
-    try {
-      // A site's sign-in opens the site in the person's own Google Chrome; the card is answered when
-      // they quit it. A connection's opens the form where they sign in themselves.
-      if (card.site && a === card.options[0]) {
-        await api.post(`/api/cards/${id}/sign-in`)
-        setOpened(true)
-        return
-      }
-      await api.post(`/api/cards/${id}`, { answer: a })
-      if (card.gate === 'sign_in' && a === card.options[0])
-        window.location.hash = `#/settings${card.connector ? `?connect=${card.connector}` : ''}`
-    } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That answer did not go in.')
-      setBusy(false)
-    }
-  }
-  return (
-    <Card
-      label={card.gate ? (GATE[card.gate] ?? 'Waits for you') : 'A question'}
-      waits="Waits for you"
-    >
-      <div className="font-medium text-ink text-lg">{card.words}</div>
-      {/* a question's detail is words, in Markdown; a gate's is what would go, as it would go */}
-      {card.detail &&
-        (card.kind === 'question' ? (
-          <div className="rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
-            <Words text={card.detail} />
-          </div>
-        ) : (
-          <Preview detail={card.detail} />
-        ))}
-      {card.restsOn.length > 0 && (
-        <div className="text-ink-3 text-sm">Rests on {card.restsOn.join(' and ')}</div>
-      )}
-      {card.cannotUndo && (
-        <div className="flex items-center gap-1.5 text-sm text-warn">
-          <TriangleAlert className="size-3.5 shrink-0" />
-          {card.cannotUndo}
-        </div>
-      )}
-      <div className="flex flex-wrap gap-2">
-        {card.options.map((o, i) => (
-          <Button
-            key={o}
-            variant={i === 0 ? 'primary' : 'default'}
-            disabled={busy}
-            onClick={() => answer(o)}
-          >
-            {optionWords(o)}
-          </Button>
-        ))}
-        {card.kind === 'permission' && (
-          <Button variant="ghost" disabled={busy} onClick={() => onChange(card)}>
-            Change something
-          </Button>
-        )}
-        {card.options.length === 0 && (
-          <form
-            className="flex w-full gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (typed.trim()) void answer(typed.trim())
-            }}
-          >
-            <Field
-              className="flex-1"
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder="Your answer"
-            />
-            <Button type="submit" variant="primary" disabled={busy || !typed.trim()}>
-              Answer
-            </Button>
-          </form>
-        )}
-      </div>
-      {opened && (
-        <div className="text-ink-2 text-sm">
-          {card.site} is open in Google Chrome on your Mac. Sign in there, then quit that Chrome
-          with ⌘Q; the reader runs again.
-        </div>
-      )}
-      {problem && <div className="text-bad text-sm">{problem}</div>}
-    </Card>
   )
 }
 

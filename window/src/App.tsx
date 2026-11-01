@@ -26,6 +26,7 @@ import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
 import { useBack } from './back.ts'
+import { CardPage } from './CardPage.tsx'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Find } from './Find.tsx'
@@ -252,22 +253,24 @@ export function App() {
               ]
             : [at('…')],
         }
-      : place.at !== 'item'
-        ? null
-        : place.kind === 'agent'
-          ? {
-              icon: <Sparkles className={icon} />,
-              parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
-            }
-          : place.kind === 'rule'
+      : place.at === 'card'
+        ? { icon: <House className={icon} />, parts: [at('Home', '#/'), at('Waits for you')] }
+        : place.at !== 'item'
+          ? null
+          : place.kind === 'agent'
             ? {
-                icon: <SlidersHorizontal className={icon} />,
-                parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
+                icon: <Sparkles className={icon} />,
+                parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
               }
-            : {
-                icon: <ActivityIcon className={icon} />,
-                parts: [at('Activity', '#/activity'), at(itemName || '…')],
-              }
+            : place.kind === 'rule'
+              ? {
+                  icon: <SlidersHorizontal className={icon} />,
+                  parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
+                }
+              : {
+                  icon: <ActivityIcon className={icon} />,
+                  parts: [at('Activity', '#/activity'), at(itemName || '…')],
+                }
   const crumb: Crumb =
     place.at === 'activity'
       ? { icon: <ActivityIcon className={icon} />, parts: [at('Activity')] }
@@ -377,6 +380,12 @@ export function App() {
                 : (itemCrumb ?? crumb)
             }
             back={back}
+            // a table's name, in the bar on its own screen, is renamed by a double-click (Batch B)
+            rename={
+              place.at === 'table' && !place.row && table
+                ? (to) => api.post(`/api/tables/${table.id}/name`, { name: to })
+                : null
+            }
             lens={place.at === 'conversation' ? lens : null}
             onClearLens={() => setLens(null)}
             middle={setMiddle}
@@ -414,6 +423,8 @@ export function App() {
                   <Activity version={version} />
                 ) : place.at === 'row' ? (
                   <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
+                ) : place.at === 'card' ? (
+                  <CardPage key={place.id} id={place.id} version={version} />
                 ) : place.at === 'item' ? (
                   <ItemPage
                     key={`${place.kind}/${place.id}`}

@@ -2,14 +2,19 @@
 // acts on them: Revoke, and Approve or Dismiss on what Alpha noticed. A rule is made only on its
 // Save card (cards.ts, the engine's answer).
 import { z } from 'zod'
-import type { Rule } from '../../world/rules.ts'
+import { type Rule, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/rules.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptField, keptTable } from '../kept.ts'
-import type { KeptTable, RuleView } from '../types.ts'
+import type { KeptTable, RuleView, WaitingRuleView } from '../types.ts'
 
 export function registerRules(ctx: Ctx): void {
-  const { app, world, live, asPerson } = ctx
+  const { app, world, user, live, asPerson } = ctx
   const { byWords } = ctx.views
+
+  const whereOf = (s: Pick<RuleSpec, 'module' | 'agent'>) =>
+    s.module
+      ? (world.shape.module(s.module)?.name ?? 'A module removed since')
+      : (s.agent ?? 'All of Alpha')
 
   const ruleOut = (r: Rule): RuleView => ({
     id: r.id,
@@ -17,11 +22,7 @@ export function registerRules(ctx: Ctx): void {
     said: r.said,
     side: r.side,
     kind: r.kind,
-    where: r.module
-      ? (world.shape.module(r.module)?.name ?? 'A module removed since')
-      : r.agent
-        ? r.agent
-        : 'All of Alpha',
+    where: whereOf(r),
     module: r.module,
     madeBy: byWords(r.madeBy),
     madeAt: r.madeAt,
@@ -39,6 +40,27 @@ export function registerRules(ctx: Ctx): void {
   app.get('/api/rules', async (req): Promise<RuleView[]> => {
     const { module } = z.object({ module: z.string().optional() }).parse(req.query)
     return world.rules.list(module).map(ruleOut)
+  })
+
+  // Rules waiting on their Save card (Batch B, pick 18): a module's and those of all of Alpha, or
+  // every one; each answered through its own card, Approve with its yes and Decline with its no.
+  app.get('/api/rules/waiting', async (req): Promise<WaitingRuleView[]> => {
+    const { module } = z.object({ module: z.string().optional() }).parse(req.query)
+    return world.cards.waiting(user.id).flatMap((c) => {
+      if (c.call?.tool !== SAVE_RULE) return []
+      const s = c.call.input as RuleSpec
+      if (module && s.module && s.module !== module) return []
+      return [
+        {
+          card: c.id,
+          words: world.rules.describe(s),
+          side: s.side,
+          where: whereOf(s),
+          askedAt: c.createdAt,
+          ...SAVE_ANSWERS,
+        },
+      ]
+    })
   })
 
   // as a table under Settings › Permissions (UI batch 2): read here; a rule's page acts on it

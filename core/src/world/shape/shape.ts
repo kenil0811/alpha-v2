@@ -22,7 +22,9 @@ import {
   toNotes,
   tonesSetByOthers,
 } from './fields.ts'
+import { claimModule, claimTable, ownModule, ownTable } from './keys.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
+import { renameModule } from './naming.ts'
 import { partRows, partsOf, setPartOf, setSetup, setTab } from './parts.ts'
 import { perAllowed, setPer } from './per.ts'
 import {
@@ -153,7 +155,8 @@ export class Shape {
     return out
   }
 
-  makeModule(name: string, ctx: WriteCtx): Module {
+  // key: the kit's or connector's name for it, so it finds it again after a rename (call 6)
+  makeModule(name: string, ctx: WriteCtx, key?: string): Module {
     if (!name.trim()) throw new Refused('A module needs a name.')
     return tx(this.db, () => {
       if (this.module(name)) throw new Refused(`There is already a module called ${name}.`)
@@ -164,12 +167,13 @@ export class Shape {
       )
       run(
         this.db,
-        'INSERT INTO modules (id, name, slug, made_by, created_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO modules (id, name, slug, made_by, created_at, key) VALUES (?, ?, ?, ?, ?, ?)',
         id,
         name.trim(),
         slug,
         actorName(ctx.actor),
         now(),
+        key ?? null,
       )
       append(this.db, {
         actor: ctx.actor,
@@ -205,6 +209,7 @@ export class Shape {
       module_id: string
       name: string
       slug: string
+      key: string | null
       hidden: number
       setup: number
       tab: number
@@ -215,7 +220,7 @@ export class Shape {
       about_by: AboutBy | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, hidden, setup, tab, added_on, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, key, hidden, setup, tab, added_on, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -273,6 +278,7 @@ export class Shape {
       module,
       name: t.name,
       slug: t.slug,
+      key: t.key,
       hidden: t.hidden === 1,
       setup: t.setup === 1,
       tab: t.tab === 1,
@@ -290,7 +296,13 @@ export class Shape {
     name: string,
     fields: FieldInput[],
     ctx: WriteCtx,
-    options: { hidden?: boolean; setup?: boolean; about?: string; aboutBy?: AboutBy } = {},
+    options: {
+      hidden?: boolean
+      setup?: boolean
+      about?: string
+      aboutBy?: AboutBy
+      key?: string // the kit's or connector's name for it (call 6)
+    } = {},
   ): Table {
     if (!name.trim()) throw new Refused('A table needs a name.')
     return tx(this.db, () => {
@@ -302,7 +314,7 @@ export class Shape {
       const slug = freeSlug(slugify(name), (s) => this.slugTaken(s))
       run(
         this.db,
-        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden, setup, about, about_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO tables (id, module_id, name, slug, made_by, created_at, hidden, setup, about, about_by, key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         id,
         module.id,
         name.trim(),
@@ -313,6 +325,7 @@ export class Shape {
         options.setup ? 1 : 0,
         options.about?.trim() || null,
         options.about?.trim() ? (options.aboutBy ?? 'person') : null,
+        options.key ?? null,
       )
       for (const f of fields) this.insertField(id, f, false)
       const table = this.table(id) as Table
@@ -509,6 +522,21 @@ export class Shape {
   }
   setKey(fieldId: string, key: string): void {
     setKey(this, fieldId, key)
+  }
+  ownModule(key: string): Module | undefined {
+    return ownModule(this, key)
+  }
+  ownTable(moduleId: string, key: string): Table | undefined {
+    return ownTable(this, moduleId, key)
+  }
+  claimTable(table: Table, moduleId: string, key: string): void {
+    claimTable(this, table, moduleId, key)
+  }
+  claimModule(id: string, key: string): void {
+    claimModule(this, id, key)
+  }
+  renameModule(moduleId: string, to: string, ctx: WriteCtx): Module {
+    return renameModule(this, moduleId, to, ctx)
   }
   removeTable(tableId: string, ctx: WriteCtx): void {
     removeTable(this, tableId, ctx)

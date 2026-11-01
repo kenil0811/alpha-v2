@@ -1,0 +1,22 @@
+name: a-long-letter-on-its-page
+title: A long letter's card is answered on its own page, and goes once
+why: >
+  Batch B, pick 13 (Kenil, 1 Nov): a card has a page of its own, where a long letter shows whole.
+  Answering there is the card's own answer, so its gate and "Send it" once are as on the card. On
+  recorded answers (journeys/fixtures/gmail), never a real account.
+steps:
+  - connect: { connector: gmail, account: owner@example.com }
+    checks:
+      - rows_in: { table: Mail, count: 6 }
+  - say: >
+      write Priya a long email about the Harbor deal, four paragraphs: thank her for the NDA, ask
+      for the CIM, three years of financials and the customer list, and propose a call next week.
+      Then send it.
+    checks:
+      - card: { gate: leaves_world, words: 'priya@harborcapital\.example', detail: 'CIM' }
+      - connector_calls: { words: 'Gmail: send', count: 0 }
+  - answer: { choice: 'Yes', on_page: true }
+    checks:
+      - connector_calls: { words: 'Gmail: send', count: 1 }
+      - cards_waiting: 0
+      - errors: 0

@@ -1,11 +1,13 @@
 import { type Cell, sheetBytes } from '@alpha/connector-files'
 import { z } from 'zod'
 import { config } from '../../config.ts'
+import { tx } from '../../world/db.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { findField } from '../../world/shape/index.ts'
 import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
-import type { HistoryView, SavedView, TableView } from '../types.ts'
+import type { HistoryView, Pick, SavedView, TableView } from '../types.ts'
+import { readByOf } from './readnow.ts'
 import { fieldViews } from './rows.ts'
 
 export function registerTables(ctx: Ctx): void {
@@ -44,6 +46,18 @@ export function registerTables(ctx: Ctx): void {
     return { ok: true }
   })
 
+  // The person renames a table by double-clicking its name (Batch B, pick 7): the same core rename
+  // Alpha's tool makes, walled and journaled the same.
+  app.post('/api/tables/:id/name', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { name } = z.object({ name: z.string().max(80) }).parse(req.body)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    const now = world.shape.rename({ table: t.id }, name, asPerson)
+    live()
+    return { id: now.id, name: now.name }
+  })
+
   app.post('/api/tables/:id/sidebar', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { shown } = z.object({ shown: z.boolean() }).parse(req.body)
@@ -54,54 +68,80 @@ export function registerTables(ctx: Ctx): void {
     return { id: t.id, hidden: t.hidden }
   })
 
+  // What a relation's picker offers (Batch B, 14b): every row of this table, by its name.
+  app.get('/api/tables/:id/names', async (req): Promise<Pick[]> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const t = world.shape.table(id)
+    if (!t) throw new Refused('That table is not there.')
+    return world.records
+      .list(t.id)
+      .map((r) => ({ id: r.id, name: world.rowName(t, r.values) || 'A row', hint: null }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  })
+
   // The person sets a value in the window (a board's column, a Home line's Pass, Correct it in the
-  // source panel): their own word, journaled, and the value's source. The world checks its kind.
+  // source panel, a picked row or person, Batch B): their own word, journaled, and the value's
+  // source. The world checks its kind, and that a picked row or person is there; files stay
+  // with Alpha.
   app.post('/api/tables/:id/rows/:row', async (req) => {
     const { id, row } = z.object({ id: z.string(), row: z.string() }).parse(req.params)
     const { field, value } = z.object({ field: z.string(), value: z.unknown() }).parse(req.body)
     const t = world.shape.table(id)
     const f = t?.fields.find((x) => x.name === field)
     if (!t || !f) throw new Refused('That field is not there.')
-    if (f.kind === 'relation' || f.kind === 'file' || f.kind === 'person')
-      throw new Refused(`${f.name} is set by asking Alpha, not from here.`)
+    if (f.kind === 'file') throw new Refused(`${f.name} is set by asking Alpha, not from here.`)
     const r = world.records.list(t.id).find((x) => x.id === row)
     if (!r) throw new Refused(`${t.name} has no such row.`)
+    // a picked row or person by its name in the journal, never its id
+    const ids = (Array.isArray(value) ? value : [value]).filter((x) => x != null).map(String)
     const said =
-      value && typeof value === 'object' && 'amount' in value
-        ? String((value as { amount: unknown }).amount)
-        : String(value)
-    const line = world.line({
-      actor: { kind: 'person', id: user.id },
-      kind: 'set',
-      words:
-        f.kind === 'notes'
-          ? `Wrote the notes on ${world.rowName(t, r.values)}`
-          : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`,
-      data: { table: t.id, row, field, value },
-      user: user.id,
-      module: t.module.id,
-    })
-    // typing over a figure a script worked out keeps that figure beside theirs, with Reset
-    const was = r.provenance[f.slug]
-    world.records.change(
-      t.id,
-      [
-        {
-          id: row,
-          values: { [field]: value },
-          provenance: { kind: 'stated', source: { message: line.id } },
-        },
-      ],
-      { actor: { kind: 'person', id: user.id }, user: user.id },
-    )
-    if (was?.kind === 'computed' && r.values[f.slug] !== undefined)
-      world.records.keepBeside(t.id, row, {
-        [f.name]: {
-          value: r.values[f.slug],
-          ...(was.source.formula ? { formula: was.source.formula } : {}),
-          ...(was.source.note ? { note: was.source.note } : {}),
-        },
+      f.kind === 'relation'
+        ? ids
+            .map((x) => world.records.get(x))
+            .map((x) => (x ? world.rowName(x.table, x.record.values) : 'a row not there'))
+            .join(', ')
+        : f.kind === 'person'
+          ? ids.map((x) => world.people.names([x])[x] ?? 'someone not there').join(', ')
+          : value && typeof value === 'object' && 'amount' in value
+            ? String((value as { amount: unknown }).amount)
+            : String(value)
+    // the line and the change together: a value the world refuses leaves no line saying it was set
+    tx(world.db, () => {
+      const line = world.line({
+        actor: { kind: 'person', id: user.id },
+        kind: 'set',
+        words:
+          f.kind === 'notes'
+            ? `Wrote the notes on ${world.rowName(t, r.values)}`
+            : (f.kind === 'relation' || f.kind === 'person') && !ids.length
+              ? `Cleared ${field} on ${world.rowName(t, r.values)}`
+              : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`,
+        data: { table: t.id, row, field, value },
+        user: user.id,
+        module: t.module.id,
       })
+      // typing over a figure a script worked out keeps that figure beside theirs, with Reset
+      const was = r.provenance[f.slug]
+      world.records.change(
+        t.id,
+        [
+          {
+            id: row,
+            values: { [field]: value },
+            provenance: { kind: 'stated', source: { message: line.id } },
+          },
+        ],
+        { actor: { kind: 'person', id: user.id }, user: user.id },
+      )
+      if (was?.kind === 'computed' && r.values[f.slug] !== undefined)
+        world.records.keepBeside(t.id, row, {
+          [f.name]: {
+            value: r.values[f.slug],
+            ...(was.source.formula ? { formula: was.source.formula } : {}),
+            ...(was.source.note ? { note: was.source.note } : {}),
+          },
+        })
+    })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
   })
@@ -339,6 +379,7 @@ export function registerTables(ctx: Ctx): void {
       documents: t.documents,
       fields: t.fields.map(fieldViews(world.shape)),
       views: world.views.list(t.id).map(savedView),
+      readBy: readByOf(ctx, t.id),
       rows: world.records.list(t.id).map((r) => ({
         id: r.id,
         values: r.values,

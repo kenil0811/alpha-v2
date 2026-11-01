@@ -21,6 +21,8 @@ import { extname, join, normalize, resolve } from 'node:path'
 import { BrowserEngine, MemorySecrets, type SecretStore } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
+import { buildServer } from '../api/server.ts'
+import type { WaitingRuleView } from '../api/types.ts'
 import { config } from '../config.ts'
 import { linkShared, loadConnector, loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
@@ -49,8 +51,15 @@ const Journey = z.object({
       say: z.string().optional(),
       in: z.string().optional(), // say it in this module's Conversation
 
-      // the first waiting card answered; an agent's draft can be sent with Always when offered
-      answer: z.object({ choice: z.string(), always: z.boolean().optional() }).optional(),
+      // the first waiting card answered; an agent's draft can be sent with Always when offered; on
+      // its own page, through the window's routes (Batch B, pick 13)
+      answer: z
+        .object({
+          choice: z.string(),
+          always: z.boolean().optional(),
+          on_page: z.boolean().optional(),
+        })
+        .optional(),
       // a folder of files given to Alpha, copied from the repository so the journey owns it
       folder: z.object({ from: z.string(), only: z.string().optional() }).optional(),
       // files dropped on a row in the window, as the person drops them (a client's exports)
@@ -73,6 +82,13 @@ const Journey = z.object({
       customer_does: z.string().optional(),
       // Try again on a connection waiting for the customer, by its connector
       try_again: z.string().optional(),
+      // a table renamed as the person renames it, by double-clicking its name (Batch B)
+      rename: z.object({ table: z.string(), to: z.string() }).optional(),
+      // Read now, as the person presses it on a connection, by its connector
+      read_now: z.string().optional(),
+      // the rule waiting on its Save card approved from a module's Governance, by its name, through
+      // the window's routes (Batch B, pick 18)
+      approve_rule: z.string().optional(),
       // a kit installed from a folder, its agents on when the journey says so (all, or those named)
       kit: z
         .object({
@@ -221,6 +237,13 @@ export async function runOne(
       : `Fresh tenant, model ${config.models().desk}, on Claude Code, Alpha's prompt ${prompt === 'alone' ? 'alone' : 'appended to Claude Code’s'}.`,
     '',
   ]
+  // the window's own routes, in this process, for a step the person takes on a page
+  const served: { app?: ReturnType<typeof buildServer> } = {}
+  const page = () => {
+    served.app ??= buildServer({ engine, user, token: 'journey', ports: [4700] })
+    return served.app
+  }
+  const asWindow = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
   let passed = true
   const started = Date.now()
   for (const [i, step] of journey.steps.entries()) {
@@ -229,7 +252,8 @@ export async function runOne(
     // not, nor an answer with no card to answer, which is waited on no longer (it waited out the
     // step's ten minutes, 29 Oct)
     const first = step.answer ? world.cards.waiting(user.id)[0] : undefined
-    const turns = !!step.say || (!!first && first.call?.tool !== DRAFT)
+    // a Save card approved from Governance is answered as on the card, so its turn goes on too
+    const turns = !!step.say || !!step.approve_rule || (!!first && first.call?.tool !== DRAFT)
     const done = turns ? idle() : Promise.resolve(true)
     let what: string
     if (step.say) {
@@ -246,7 +270,21 @@ export async function runOne(
         what = `**No card was waiting to answer with ${step.answer.choice}.**`
       } else {
         what = `Answered “${card.words}” with ${step.answer.choice}${step.answer.always ? ', and always' : ''}`
-        if (card.call?.tool === DRAFT)
+        if (step.answer.on_page) {
+          // the card's page as the window opens it, by its id, and answered through its route
+          const shown = await page().inject({ url: `/api/cards/${card.id}`, headers: asWindow })
+          what += ', on its own page'
+          if (shown.statusCode !== 200) {
+            passed = false
+            what = `**The card's own page did not open: ${shown.json().problem}**`
+          } else
+            await page().inject({
+              method: 'POST',
+              url: `/api/cards/${card.id}`,
+              headers: asWindow,
+              payload: { answer: step.answer.choice },
+            })
+        } else if (card.call?.tool === DRAFT)
           await (step.answer.always
             ? drafts.send(card.id, null, user, true)
             : engine.answerDraft(user, card.id, step.answer.choice))
@@ -347,6 +385,38 @@ export async function runOne(
       if (!k) throw new Error(`No connection of ${step.try_again} to try again.`)
       await connectors.sync(k.id)
       what = `Tried ${step.try_again} again`
+    } else if (step.rename) {
+      const t = world.shape.table(step.rename.table)
+      if (!t) throw new Error(`Step ${i + 1}: no table ${step.rename.table} to rename.`)
+      world.shape.rename({ table: t.id }, step.rename.to, {
+        actor: { kind: 'person', id: user.id },
+        user: user.id,
+      })
+      what = `Renamed the table ${step.rename.table} to ${step.rename.to}, as the person does`
+    } else if (step.approve_rule) {
+      const m = world.shape.module(step.approve_rule)
+      if (!m) throw new Error(`Step ${i + 1}: no module ${step.approve_rule}.`)
+      const waiting = (
+        await page().inject({ url: `/api/rules/waiting?module=${m.id}`, headers: asWindow })
+      ).json() as WaitingRuleView[]
+      const r = waiting[0]
+      if (!r) {
+        passed = false
+        what = `**No rule was waiting in ${m.name}'s Governance.**`
+      } else {
+        await page().inject({
+          method: 'POST',
+          url: `/api/cards/${r.card}`,
+          headers: asWindow,
+          payload: { answer: r.yes },
+        })
+        what = `Approved “${r.words}” in ${m.name}'s Governance`
+      }
+    } else if (step.read_now) {
+      const ks = world.connections.list().filter((x) => x.connector === step.read_now)
+      if (!ks.length) throw new Error(`No connection of ${step.read_now} to read.`)
+      for (const k of ks) await engine.sync(user, k.id)
+      what = `Pressed Read now on ${step.read_now}`
     } else if (step.site) {
       site = await serve(resolve(base, step.site.from))
       what = `Served the made-up site ${step.site.from} at ${site.url}`
@@ -475,6 +545,7 @@ export async function runOne(
   const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${own ? 'own' : prompt}.md`)
   mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
   writeFileSync(out, `${report.join('\n').trim()}\n`)
+  await served.app?.close()
   engine.close()
   await browser.close()
   site?.server.close()

@@ -14,6 +14,7 @@ export function keptField(name: string, kind: string, tones: FieldView['tones'] 
     choices: Object.keys(tones),
     tones,
     many: false,
+    relatesTo: null,
     summary: null,
     about: null,
     aboutBy: null,
@@ -38,6 +39,7 @@ export function keptTable(
     rows: rows.map((r) => ({ ...r, sources: {} })),
     names: {},
     views: [],
+    readBy: [],
     kept: { name, ...kept },
   }
 }

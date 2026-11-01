@@ -1,7 +1,15 @@
 // The card shell: a sunk head that names what it is (a gate, a question) and what it waits on,
-// then its body. Cards sit in the stream; the shell is the same for every kind.
-import type { ReactNode } from 'react'
+// then its body. Cards sit in the stream; the shell is the same for every kind. In a list a card
+// has a way to its own page (Batch B, pick 13), where it shows whole.
+import { ArrowUpRight } from 'lucide-react'
+import { createContext, type ReactNode, useContext } from 'react'
 import { Label } from './pill.tsx'
+
+// Where a card shows: in a list, with the address of its own page; or on that page, whole.
+export const CardPlace = createContext<{ open: string | null; whole: boolean }>({
+  open: null,
+  whole: false,
+})
 
 export function Card({
   label,
@@ -12,6 +20,7 @@ export function Card({
   waits?: string
   children: ReactNode
 }) {
+  const { open } = useContext(CardPlace)
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-pop">
       <div className="flex items-center gap-2 border-line border-b bg-sunk px-3.5 py-2">
@@ -21,6 +30,16 @@ export function Card({
             <span className="size-1.5 rounded-full bg-warn" />
             {waits}
           </span>
+        )}
+        {open && (
+          <a
+            href={open}
+            aria-label="Open on its own page"
+            data-tip="Open on its own page"
+            className={`${waits ? '' : 'ml-auto '}grid size-5 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink`}
+          >
+            <ArrowUpRight className="size-3.5" />
+          </a>
         )}
       </div>
       <div className="flex flex-col gap-3 p-3.5">{children}</div>

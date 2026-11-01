@@ -1,0 +1,26 @@
+{
+  "validity": "1",
+  "modseq": "520",
+  "last": 7,
+  "headers": [
+    {
+      "id": "<deal-7@harbor.example>",
+      "thread": "t-harbor",
+      "from": "Priya Shah <priya@harborcapital.example>",
+      "fromAddress": "priya@harborcapital.example",
+      "to": "owner@example.com",
+      "cc": "",
+      "subject": "Harbor deal: the NDA is signed",
+      "date": "2026-10-20T10:30:00.000Z",
+      "labels": "Inbox",
+      "direction": "received",
+      "toAddresses": "owner@example.com",
+      "ccAddresses": "",
+      "attachments": "",
+      "unread": true,
+      "starred": false
+    }
+  ],
+  "marks": [],
+  "total": 7
+}

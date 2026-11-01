@@ -10,6 +10,7 @@ import {
   removeFolder,
   unpack,
 } from '../../connectors/discover.ts'
+import { tableOf } from '../../connectors/places.ts'
 import { PlainPlatform } from '../../platform/index.ts'
 import { FOLDERS, isDeveloper } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -82,7 +83,7 @@ export function registerConnectors(ctx: Ctx): void {
           lastSyncAt: k.lastSyncAt,
           settings: k.state === 'needs_sign_in' ? (c?.manifest.system?.pane ?? null) : null,
           tables: (c?.tables ?? []).flatMap((spec) => {
-            const t = world.shape.table(spec.name)
+            const t = c && tableOf(world, c, spec.name)
             return t ? [{ id: t.id, name: t.name, hidden: t.hidden }] : []
           }),
           reaches: [...new Set([...(c?.manifest.reaches ?? []), ...k.hosts])],
@@ -256,18 +257,5 @@ export function registerConnectors(ctx: Ctx): void {
       live()
     })().catch(() => undefined)
     return { opened: true }
-  })
-
-  // Read now, and Try again: a connection signed in as the person renews its token first, so a
-  // sign-in revoked since shows at once; one with nothing to read is checked.
-  app.post('/api/connections/:id/sync', async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params)
-    const conn = world.connections.get(id)
-    const c = conn ? engine.connectors?.find(conn.connector) : undefined
-    if (c?.manifest.auth === 'oauth') signIn?.forget(id)
-    if (c && !c.sync) await engine.connectors?.checkNow(id)
-    else await engine.sync(user, id)
-    live()
-    return { ok: true }
   })
 }

@@ -1,4 +1,5 @@
 // What the window may import from the core: the shapes of the api, never its code.
+import type { ReadByView } from './connector-types.ts'
 import type { FieldView } from './row-types.ts'
 
 export interface Health {
@@ -11,10 +12,11 @@ export type {
   ConnectionView,
   ConnectorsView,
   ConnectorView,
+  ReadByView,
   SignInAppView,
 } from './connector-types.ts'
 export type { Layout, Me } from './me-types.ts'
-export type { FieldView, RowAround, RowPageView } from './row-types.ts'
+export type { FieldView, Pick, RowAround, RowPageView } from './row-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
 export interface FoundRow {
@@ -204,6 +206,18 @@ export interface RuleView {
   noticedFrom: { id: number; at: string; words: string }[] // the lines Alpha noticed it in
 }
 
+// A rule waiting on its Save card (Batch B, pick 18): Approve and Decline answer the card itself,
+// by its yes and no as their words.
+export interface WaitingRuleView {
+  card: string
+  words: string // the rule as it would hold, in code's own words
+  side: 'allow' | 'deny'
+  where: string // all of Alpha, a module or an agent, in words
+  askedAt: string
+  yes: string
+  no: string
+}
+
 // A file that came by mail, waiting to be filed: the email, what the file is, the place the model proposed and how sure, and the rows named, to pick another.
 export interface FilingView {
   file: string
@@ -337,6 +351,7 @@ export interface TableView {
   rows: RowView[]
   names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
+  readBy: ReadByView[] // the connections that fill it, read again from its ⋮ (Batch B, pick 15)
 }
 
 // A list kept outside a module's tables (people, organizations, tasks, agents, standing

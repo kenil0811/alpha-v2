@@ -67,8 +67,11 @@ export interface Covered {
   place: Record<string, string>
 }
 
-// The card a rule waits on: the person's Save makes it (the engine's answer, the desk's ask).
+// The card a rule waits on: the person's Save makes it (the engine's answer, the desk's ask). Its
+// answers by their meaning, never their place on the card, so no order turns a no into a Save
+// (Batch B, pick 18).
 export const SAVE_RULE = 'save_rule'
+export const SAVE_ANSWERS = { yes: 'Save', no: 'Not now' } as const
 
 // The yeses in a row that earn the offer of Always.
 export const ALWAYS_AFTER = 3

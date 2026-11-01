@@ -37,6 +37,24 @@ function optionsOf(children: ReactNode): Option[] {
   })
 }
 
+// The search line at the head of a list longer than five (T10): typing narrows it.
+export function SearchLine({ words, onWords }: { words: string; onWords: (w: string) => void }) {
+  return (
+    <label className="mb-1 flex items-center gap-1.5 border-line border-b px-2 pb-1.5">
+      <Search className="size-3.25 text-ink-3" />
+      <input
+        // biome-ignore lint/a11y/noAutofocus: the list was opened to choose; typing narrows it
+        autoFocus
+        value={words}
+        onChange={(e) => onWords(e.target.value)}
+        placeholder="Search"
+        aria-label="Search"
+        className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+      />
+    </label>
+  )
+}
+
 // One dropdown everywhere: a button that opens a short list, with a search
 // line when there are more than five. Written as a <select> is, <option>s and onChange alike.
 export function Select({
@@ -111,20 +129,7 @@ export function Select({
       </button>
       <Popover anchor={anchor} open={open} onClose={close}>
         <div className="flex max-h-72 min-w-44 flex-col p-1">
-          {options.length > 5 && (
-            <label className="mb-1 flex items-center gap-1.5 border-line border-b px-2 pb-1.5">
-              <Search className="size-3.25 text-ink-3" />
-              <input
-                // biome-ignore lint/a11y/noAutofocus: the list was opened to choose; typing narrows it
-                autoFocus
-                value={words}
-                onChange={(e) => setWords(e.target.value)}
-                placeholder="Search"
-                aria-label="Search"
-                className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-              />
-            </label>
-          )}
+          {options.length > 5 && <SearchLine words={words} onWords={setWords} />}
           <div role="menu" className="overflow-y-auto">
             {shown.map((o) => (
               <MenuItem

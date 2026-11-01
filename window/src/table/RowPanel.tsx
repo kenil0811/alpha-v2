@@ -16,10 +16,10 @@ import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 import { AddRow } from './AddRow.tsx'
-import { EditCell } from './Grid.tsx'
+import { EditCell } from './EditCell.tsx'
 import { Notes } from './Notes.tsx'
 import { TagChips } from './Tags.tsx'
-import { canType, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
+import { canEdit, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
 
 // The side panel's way in: the row's view, with Open full to its own page.
 export function RowPanel({
@@ -411,7 +411,7 @@ export function FieldList({
         .map((f) => {
           const source = row.sources[f.slug]
           const text = show(f, row.values[f.slug], names)
-          const editable = !!onEdit && canType(f)
+          const editable = !!onEdit && canEdit(f)
           if (editing === f.slug && onEdit)
             return (
               <div key={f.id} className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5">

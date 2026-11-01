@@ -16,7 +16,7 @@ held by review. Dates are 2026.
 | S1 | The rail is module names only: Home, Conversation, Tasks, then each module, with modules inside one folded under it; Alpha's own module is not there | 20 Oct, 26 Oct | — |
 | S2 | Intelligence and Settings are pinned at the foot of the rail, Intelligence above | 25 Oct | — |
 | S3 | The rail's head is the workspace: a menu of Settings, Intelligence and Appearance | 26 Oct | — |
-| S4 | A module's menu (⋮ or right-click): Open, Move to, Hide, Hidden modules; modules drag into one another or out to the top | 26 Oct | — |
+| S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules; modules drag into one another or out to the top; a double-click on a module's name in the rail renames it in place (Enter keeps, Escape puts it back, a refusal under the box) | 26 Oct, 1 Nov | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
 | S6 | Both side panels drag by one edge and fold; the rail folds to a strip of icons (⌘\\) | 25 Oct | — |
 | S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
@@ -26,7 +26,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: a way back to where you were on the left (the screen last visited in this window, by its name; a tab switch inside a screen is not a place; nothing visited, the screen's parent), the screen's name centred | 25 Oct, 1 Nov | test |
+| H1 | One 48px bar across the rail's top, the page and the assistant: a way back to where you were on the left (the screen last visited in this window, by its name; a tab switch inside a screen is not a place; nothing visited, the screen's parent), the screen's name centred; on a table's own screen its name is renamed there by a double-click or Enter, as a module's is in the rail (S4) | 25 Oct, 1 Nov | test |
 | H2 | A screen with parts has one row of tabs under the bar, every label in full, scrolling sideways; never cut short or folded to icons | 26 Oct | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
@@ -43,14 +43,14 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its main tables with their counts (a table part of a row, setup, or one row per person in People's module is not a tab), then the parts and setup tables kept as tabs, Conversation, Agents and notes | 26 Oct, 27 Oct, 28 Oct | — |
 | M2 | Nothing sits under a table or a page; what the module is for (its business case, Edit beside it, assumed while Alpha's), agents, the module's other tables (setup, and parts with what they are part of, each with Keep as a tab, reading A tab while it is one; the same in the table's ⋯ menu), notes, recent activity and Governance are the Agents and notes tab | 26 Oct, 27 Oct, 28 Oct | — |
-| M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss | 26 Oct, 27 Oct | — |
+| M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss; above them, Waiting for you lists the rules waiting on their Save card (the module's and those of all of Alpha), Approve and Decline answering the card itself | 26 Oct, 27 Oct, 1 Nov | test, journey |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 
 ## Table and toolbar
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self. Whenever rows are hidden, a line under the tabs says how many show and what hides them ("Showing 12 of 140 rows, filtered by Stage and a search"), with Clear filters; Cancel brings the saved list back | 26 Oct, 1 Nov | test (the line) |
+| T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self. Whenever rows are hidden, a line under the tabs says how many show and what hides them ("Showing 12 of 140 rows, filtered by Stage and a search"), with Clear filters; Cancel brings the saved list back. On a table a connection fills, ⋮ has Read now, reading every connection that fills it in one press (one waiting on a sign-in or the customer greyed with its reason, W3), and the line under the table says what reads into it and when ("Read by Gmail and Outlook, 10:42") | 26 Oct, 1 Nov | test (the line, read by) |
 | T2 | No cards of counts above or below a table | 26 Oct | test |
 | T3 | New sits in the page row under the table and works while the assistant is open | 26 Oct | — |
 | T4 | A click on a row's name opens it in the side panel, with Open page to its own page (#/row/…), beside the assistant too when the window holds the rail, the page's 600px, the panel's 320px and the assistant (else the panel gives way and the assistant stays); a link to a task, a run, a person or a row opens it beside the page the same way, kept in the address so a reload keeps it and Back closes it, one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row. A part's small table: its first three fields, one line a row, names never ids, long words cut with the whole on the tip; its twelve changed most lately with how many in all, and Open as a table for the rest | 26 Oct, 27 Oct, 28 Oct, 1 Nov | test (room, beside) |
@@ -59,7 +59,7 @@ held by review. Dates are 2026.
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
 | T8 | Rows come 25, 50, 100 or 250 a page, with First and Last | 25 Oct | — |
 | T9 | Ticked rows show "n selected"; Escape lets them go after any menu closes | 26 Oct | — |
-| T10 | Every dropdown is one of ours: search past five, Add new… at the foot where a choice can grow | 26 Oct | — |
+| T10 | Every dropdown is one of ours: search past five, Add new… at the foot where a choice can grow; a related row or a person is picked from one on a double-click, in the grid and an opened row (a relation holding several ticks rows, as tags do, T15), never with Add new… (a new related row is made on its own table); pasting, filling down and many rows at once leave them to Alpha | 26 Oct, 1 Nov | test (picks) |
 | T11 | No bare `<select>` where a person picks; only the cell editor keeps the native one | 25 Oct | test |
 | T12 | Freezing and wrapping columns are kept with the saved list, like widths | 26 Oct | — |
 | T13 | A cell's History (old → new, who, when) is on its right-click menu; ⇧↓ and ⌘D fill down, after a yes | 26 Oct | — |
@@ -79,6 +79,7 @@ held by review. Dates are 2026.
 | R6 | Revert, and Bring back on a removal, sit behind an Activity line's ⋮, said first in the one pop-up from the core's own preview of the same work | 26 Oct | — |
 | R7 | A value Alpha is not sure of has a small grey mark (≈ estimated, ? assumed), never amber: its word on hover in a table, written out in a panel; an empty value is a grey dash in a table and "Unknown" in a panel | 25 Oct | — |
 | R8 | A short list (How to work first, the others as they are touched): Add on its heading, ✕ on an entry when hovered, a double-click edits the entry in place (Enter keeps, Escape puts it back); where Alpha must understand an entry, Add starts the conversation | 1 Nov | test |
+| R9 | A card has its own page (#/card/<id>), opened from ↗ on its head wherever it shows (the stream, Home, a task): the same card across the page, a long letter whole, answered there as on the card; once answered the page says with what | 1 Nov | test (route), journey |
 
 ## Assistant and chat
 
@@ -98,7 +99,7 @@ held by review. Dates are 2026.
 | I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
 | I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this; under them Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
-| I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions | 27 Oct | — |
+| I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, as in Governance (M3) | 27 Oct, 1 Nov | test |
 
 ## Wording
 

@@ -1,0 +1,18 @@
+name: a-renamed-table-keeps-its-rows
+title: Mail renamed by the person keeps taking Gmail's mail, with no second Mail
+why: >
+  Batch B, call 6 (Kenil, 1 Nov): a table a connector fills is found by a lasting key, so a name
+  the person changes splits nothing. Before, the next read made an empty Mail beside the renamed
+  table and new mail landed there, hidden. On recorded answers (journeys/fixtures/gmail).
+steps:
+  - connect: { connector: gmail, account: owner@example.com }
+    checks:
+      - rows_in: { table: Mail, count: 6 }
+  - rename: { table: Mail, to: Inbox }
+    checks:
+      - no_table: '^Mail$'
+  - read_now: gmail
+    checks:
+      - rows_in: { table: Inbox, count: 7 }
+      - no_table: '^Mail$'
+      - errors: 0

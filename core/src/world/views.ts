@@ -342,7 +342,7 @@ export class Views {
       const was = this.get(id)
       if (was?.kitHash) {
         const t = this.shape.table(was.table)
-        if (t) this.shape.tombstone(t.module.id, 'view', `${t.name}:${was.name}`, ctx)
+        if (t) this.shape.tombstone(t.module.id, 'view', `${t.key ?? t.name}:${was.name}`, ctx)
       }
       const v = this.get(id)
       if (!v) throw new Refused('That view is not there.')

@@ -137,7 +137,7 @@ export async function installPack(
   trust: Trust,
 ): Promise<string> {
   const { name, version, dir } = unpack(file, kitsDir, trust)
-  const m = world.shape.module(name)
+  const m = world.shape.ownModule(name) ?? world.shape.module(name)
   const fromKit =
     m && one<{ version: string }>(world.db, 'SELECT version FROM kits WHERE module_id = ?', m.id)
   // the same kit again (every install refills the inbox): nothing to do

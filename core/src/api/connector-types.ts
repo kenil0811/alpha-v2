@@ -47,6 +47,16 @@ export interface ConnectionView {
   canAllow: boolean
 }
 
+// A connection that fills a table (Batch B, pick 15): Read now on the table reads every one that
+// can be read now; one that can't says why, greyed (W3).
+export interface ReadByView {
+  connection: string
+  title: string // Gmail
+  account: string
+  reason: string | null // why it can't be read now: a sign-in, or the customer's own step
+  lastReadAt: string | null
+}
+
 export interface ConnectorsView {
   connectors: ConnectorView[]
   connections: ConnectionView[]

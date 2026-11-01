@@ -216,6 +216,12 @@ export function prepare(
         if (v.length > 1) throw new Refused(`${f.name} holds one row, not ${v.length}.`)
         v = v[0] ?? null
       }
+      // each a row of the table it points at, whoever sets it (Batch B, 14b): never one not there
+      for (const id of (Array.isArray(v) ? v : [v]) as unknown[])
+        if (id !== null && records.tableOf(String(id))?.id !== f.relatesTo)
+          throw new Refused(
+            `${f.name} points at a row of ${records.shape.table(f.relatesTo ?? '')?.name ?? 'a table removed since'} that is not there.`,
+          )
     }
     if (f.kind === 'person' && typeof v === 'string' && records.personOf) v = records.personOf(v)
     vals[f.id] = v

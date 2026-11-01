@@ -11,6 +11,7 @@ export type Place =
   | { at: 'new' }
   | { at: 'item'; kind: 'agent' | 'run' | 'rule'; id: string }
   | { at: 'row'; id: string }
+  | { at: 'card'; id: string } // a card on its own page (Batch B, pick 13)
   | {
       at: 'table'
       id: string
@@ -103,9 +104,9 @@ export function placeOf(address: string): Place {
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
   if (hash === '#/module/new') return { at: 'new' }
-  // a row's own page (core step 3b)
-  const rw = /^#\/row\/([\w-]+)$/.exec(hash)
-  if (rw?.[1]) return { at: 'row', id: rw[1] }
+  // a row's own page (core step 3b), a card's (Batch B, pick 13)
+  const rw = /^#\/(row|card)\/([\w-]+)$/.exec(hash)
+  if (rw?.[2]) return { at: rw[1] === 'card' ? 'card' : 'row', id: rw[2] }
   // a standing permission's old link lands on its rule (core step 2)
   const it = /^#\/(agent|run|rule|permission)\/([\w-]+)$/.exec(hash)
   if (it?.[1] && it[2])

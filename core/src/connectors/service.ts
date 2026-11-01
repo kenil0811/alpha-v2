@@ -26,8 +26,8 @@ import { takeIn } from '../files/documents.ts'
 import type { FileSource } from '../files/intake.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
-import type { Table } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
+import { landIn, tableOf } from './places.ts'
 import { type CallSays, isRemote, undoSaid } from './process.ts'
 import { rulesFor } from './rules.ts'
 import { describeConnections, entriesOf } from './served.ts'
@@ -149,27 +149,14 @@ export class ConnectorService {
       : undefined
   }
 
-  // The module and tables a connector's items land in, made when it is first connected, and
-  // any field a newer version adds; and how their rows name people, read again when that changes.
-  tables(c: Connector): Table[] {
-    const actor = { kind: 'connector' as const, id: c.manifest.name }
-    if (!c.tables.length) return []
-    const module =
-      this.world.shape.module(c.module) ?? this.world.shape.makeModule(c.module, { actor })
-    return c.tables.map((spec) => {
-      const found = this.world.shape.table(spec.name)
-      // Alpha's working memory, out of the sidebar until the person shows it (Kenil, 19 Oct).
-      const missing = found
-        ? spec.fields.filter(
-            (f) => !found.fields.some((x) => x.name.toLowerCase() === f.name.toLowerCase()),
-          )
+  // The connections that fill a table (Batch B, pick 15): those whose loaded connector reads into
+  // it, found by its lasting key, so a renamed table still knows what fills it.
+  filling(tableId: string): { conn: Connection; c: Connector }[] {
+    return this.world.connections.list().flatMap((conn) => {
+      const c = this.find(conn.connector)
+      return c?.tables.some((spec) => tableOf(this.world, c, spec.name)?.id === tableId)
+        ? [{ conn, c }]
         : []
-      const t = !found
-        ? this.world.shape.makeTable(module.id, spec.name, spec.fields, { actor }, { hidden: true })
-        : missing.length
-          ? this.world.shape.addFields(found.id, missing, { actor })
-          : found
-      return this.world.people.mapTable(t.id, spec.people ?? null, { actor })
     })
   }
 
@@ -187,7 +174,7 @@ export class ConnectorService {
       cursor: () => this.world.connections.get(conn.id)?.cursor ?? null,
       setCursor: (cursor) => this.world.connections.setCursor(conn.id, cursor),
       land: (tableName, items, options) => {
-        const t = this.world.shape.table(tableName)
+        const t = tableOf(this.world, c, tableName)
         if (!t) throw new Problem(`The table ${tableName} is not there.`)
         return this.world.records.land(
           t.id,
@@ -199,7 +186,7 @@ export class ConnectorService {
       },
       ...(this.options.browser ? { browser: this.options.browser } : {}),
       keys: (tableName) => {
-        const t = this.world.shape.table(tableName)
+        const t = tableOf(this.world, c, tableName)
         return t ? this.world.records.keys(t.id) : []
       },
       keepFile: (name, bytes, mime) => {
@@ -288,12 +275,12 @@ export class ConnectorService {
         err instanceof Problem &&
         ((c.manifest.auth === 'browser' && err.kind === 'sign_in') || err.kind === 'waiting')
       ) {
-        this.tables(c)
+        landIn(this.world, c)
         return this.world.connections.get(conn.id) as Connection
       }
       throw err instanceof Problem ? new Refused(err.message) : err
     }
-    this.tables(c)
+    landIn(this.world, c)
     void this.sync(conn.id)
     return this.world.connections.get(conn.id) as Connection
   }
@@ -318,7 +305,7 @@ export class ConnectorService {
         `${c.manifest.title} for ${conn.account} is connected.`,
         { actor: { kind: 'connector', id: c.manifest.name } },
       )
-    this.tables(c)
+    landIn(this.world, c)
     if (c.sync) void this.sync(id)
     return this.world.connections.get(id) as Connection
   }
@@ -391,7 +378,7 @@ export class ConnectorService {
         data: { connection: id, name: c.manifest.title, ms: Date.now() - started, state, quiet },
       })
     try {
-      this.tables(c)
+      landIn(this.world, c)
       const result = await c.sync(this.call(c, conn))
       const health = judgeHealth(
         { rows: conn.lastRows, lastNewAt: conn.lastNewAt },
@@ -513,7 +500,7 @@ export class ConnectorService {
               {
                 connection: k.id,
                 title: c.manifest.title,
-                table: c.files.table,
+                table: tableOf(this.world, c, c.files.table)?.id ?? c.files.table,
                 field: c.files.field,
                 connector: k.connector,
                 account: k.account,

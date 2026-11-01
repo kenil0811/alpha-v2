@@ -52,6 +52,7 @@ import { Segmented } from './ui/segmented.tsx'
 import { ShortList } from './ui/shortlist.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Tabs } from './ui/tabs.tsx'
+import { WaitingRules } from './WaitingRules.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   connected: ['Connected', 'good'],
@@ -393,6 +394,7 @@ function Permissions({ version }: { version: number }) {
         title="Rules"
         about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule holds once you save it on its card."
       >
+        <WaitingRules version={version} />
         <Standing version={version} />
       </Section>
     </>

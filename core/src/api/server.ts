@@ -23,6 +23,7 @@ import { registerKits } from './routes/kits.ts'
 import { registerMe } from './routes/me.ts'
 import { registerModules } from './routes/modules.ts'
 import { registerPeople } from './routes/people.ts'
+import { registerReadNow } from './routes/readnow.ts'
 import { registerRows } from './routes/rows.ts'
 import { registerRules } from './routes/rules.ts'
 import { registerSettings } from './routes/settings.ts'
@@ -134,6 +135,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerRows(ctx)
   registerFiles(ctx)
   registerConnectors(ctx)
+  registerReadNow(ctx)
   registerSignIn(ctx)
   registerKits(ctx)
   registerModules(ctx)

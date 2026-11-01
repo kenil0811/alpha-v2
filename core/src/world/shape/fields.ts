@@ -4,6 +4,7 @@ import { addFieldSql, columnsOf, dropFieldSql, junctionName, junctionSql, quote 
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import { slugTaken, writeManifest } from './manifest.ts'
+import { tableNameFree } from './naming.ts'
 import type { Shape } from './shape.ts'
 import { summariesReading } from './summary.ts'
 import type { AboutBy, Field, PeopleMap, Table, Tone, WriteCtx } from './types.ts'
@@ -40,6 +41,7 @@ export function rename(
       }
       words = `Renamed ${field.name} to ${to.trim()} in ${table.name}.`
     } else {
+      tableNameFree(shape, table.id, to)
       const slug = freeSlug(slugify(to), (s) => s !== table.slug && slugTaken(shape, s))
       run(shape.db, 'UPDATE tables SET name = ?, slug = ? WHERE id = ?', to.trim(), slug, table.id)
       if (slug !== table.slug) {

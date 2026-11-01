@@ -131,6 +131,35 @@ describe('a Gmail connection on recorded answers', () => {
     ])
   })
 
+  it('lands mail in the table the person renamed, never a second Mail (call 6)', async () => {
+    const svc = new ConnectorService(world, { secrets, fixtures, known })
+    record('gmail', 'check', {}, '[Gmail]/All Mail')
+    const page = (cursor: string | null, last: number, id: string, subject: string) =>
+      record(
+        'gmail',
+        'sync',
+        { cursor },
+        {
+          validity: '7',
+          modseq: String(last * 10),
+          last,
+          headers: [header(id, subject)],
+          marks: [],
+          total: last,
+        },
+      )
+    page(null, 1, '<a@x>', 'Deal')
+    const conn = await svc.connect('gmail', 'kenil@example.com', 'app-pass', 'u_1')
+    await svc.sync(conn.id)
+    const mail = world.shape.table('Mail') as { id: string }
+    world.shape.rename({ table: mail.id }, 'Inbox', { actor: { kind: 'person', id: 'u_1' } })
+    page('v2:7:1:10', 2, '<b@x>', 'Hello')
+    await svc.sync(conn.id)
+    expect(world.shape.table('Mail')).toBeUndefined()
+    expect(world.shape.tables().map((t) => [t.name, t.key])).toContainEqual(['Inbox', 'Mail'])
+    expect(world.records.list(mail.id).map((r) => r.values.subject)).toEqual(['Deal', 'Hello'])
+  })
+
   it('says when the account needs the person to sign in again', async () => {
     const svc = new ConnectorService(world, { secrets, fixtures, known })
     record('gmail', 'check', {}, '[Gmail]/All Mail')

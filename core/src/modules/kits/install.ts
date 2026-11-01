@@ -14,7 +14,8 @@ import { currentRowHash, landSetup, placeModule, shapeTables, shapeViews } from 
 export async function install(world: World, kitDir: string, ctx: WriteCtx): Promise<Module> {
   const { note } = checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
-  const known = world.shape.module(manifest.name)
+  // the kit's module by its lasting key, so a renamed one is still this kit's (call 6)
+  const known = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
   if (known) {
     const isKit = one(world.db, 'SELECT 1 FROM kits WHERE module_id = ?', known.id)
     throw new Refused(
@@ -26,7 +27,7 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
   const kitName = `${manifest.name} ${manifest.version}`
   const kitCtx: WriteCtx = { ...ctx, actor: { kind: 'system', id: `kit:${manifest.name}` } }
   const module = tx(world.db, () => {
-    const m = world.shape.makeModule(manifest.name, kitCtx)
+    const m = world.shape.makeModule(manifest.name, kitCtx, manifest.name)
     for (const f of files) {
       mkdirSync(dirname(join(m.dir, f)), { recursive: true })
       copyFileSync(join(kitDir, f), join(m.dir, f))
@@ -44,7 +45,7 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
       setBusinessCase(world.shape, m, manifest.business_case, 'kit', kitCtx)
     placeModule(world, m, manifest.within, kitCtx)
     shapeTables(world, m, manifest, kitCtx)
-    shapeViews(world, manifest, kitCtx)
+    shapeViews(world, m, manifest, kitCtx)
     const rows = landSetup(world, m.id, setup, kitName, kitCtx, () => true)
     run(
       world.db,
@@ -90,7 +91,8 @@ export async function update(
 ): Promise<UpdateReport> {
   checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
-  const module = world.shape.module(moduleName)
+  // by the kit's name (its lasting key) or the module's name as it is now
+  const module = world.shape.ownModule(moduleName) ?? world.shape.module(moduleName)
   if (!module) throw new Refused(`There is no module called ${moduleName}.`)
   const kit = one<{ kit: string; version: string }>(
     world.db,
@@ -148,7 +150,7 @@ export async function update(
     }
     placeModule(world, module, manifest.within, kitCtx)
     shapeTables(world, module, manifest, kitCtx)
-    shapeViews(world, manifest, kitCtx)
+    shapeViews(world, module, manifest, kitCtx)
     const rows = landSetup(world, module.id, setup, kitName, kitCtx, (recordId) => {
       const installed = one<{ installed_hash: string }>(
         world.db,

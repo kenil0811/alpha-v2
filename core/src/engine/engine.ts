@@ -4,7 +4,7 @@ import { takeIn } from '../files/documents.ts'
 import { FILING, type Filing } from '../files/intake.ts'
 import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
-import { type RuleSpec, SAVE_RULE } from '../world/rules.ts'
+import { type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../world/rules.ts'
 import type { User, World } from '../world/world.ts'
 import { Desk, type DeskEvent, type DeskOptions } from './desk.ts'
 
@@ -141,7 +141,7 @@ export class Engine {
     if (
       waiting?.call?.tool === SAVE_RULE &&
       waiting.state === 'waiting' &&
-      answer === waiting.options[0]
+      answer === SAVE_ANSWERS.yes
     )
       this.world.rules.save(waiting.call.input as RuleSpec, {
         actor: { kind: 'person', id: user.id },

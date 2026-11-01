@@ -18,6 +18,16 @@ export function registerCards(ctx: Ctx): void {
   const { app, world, engine, user, person, live, asPerson } = ctx
   const { cardOut } = ctx.views
 
+  // A card on its own page (Batch B, pick 13): the card the stream shows, answered there by the
+  // routes below; one not there, or another person's, is not there.
+  app.get('/api/cards/:id', async (req, reply): Promise<CardView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const c = world.cards.get(id)
+    if (!c || (c.user && c.user !== user.id))
+      return reply.code(404).send({ problem: 'That card is not there.' })
+    return cardOut(c)
+  })
+
   // An agent's proposed tasks: those the person kept are added (by their place in the card).
   app.post('/api/cards/:id/tasks', async (req): Promise<CardView | null> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

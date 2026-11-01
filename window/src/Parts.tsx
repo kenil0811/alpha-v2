@@ -2,7 +2,7 @@
 // light and dark before a screen uses it: the shots take this page too.
 import { Bot, Mail } from 'lucide-react'
 import { useState } from 'react'
-import { Preview } from './Conversation.tsx'
+import { Preview } from './CardBox.tsx'
 import { RUN_STATE } from './runState.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'

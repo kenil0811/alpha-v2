@@ -33,7 +33,7 @@ export async function keepDefaults(
     const folder = join(dir, name)
     if (!existsSync(join(folder, 'module.yaml'))) continue
     const { manifest } = readKit(folder)
-    const m = world.shape.module(manifest.name)
+    const m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
     const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined
     if (!m) {
       const made = await install(world, folder, ctx)

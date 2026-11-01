@@ -10,10 +10,19 @@ export interface FieldView {
   choices: string[]
   tones: Record<string, 'good' | 'warn' | 'bad' | 'accent'> // a choice's colour, where it is a state
   many: boolean // a relation holding a list of rows, or a choice holding several (tags)
+  relatesTo: string | null // the table a relation's rows are picked from (Batch B, 14b)
   // a summary (core step 3c): what it is in words; worked out from other rows, never written
   summary: string | null
   about: string | null // one sentence on what it means
   aboutBy: 'kit' | 'alpha' | 'person' | null // whose sentence: the kit's, assumed by Alpha, or yours
+}
+
+// One a picker offers (Batch B, 14b): a row of the table a relation points at, or a person, by
+// name, with a hint where two might read the same (a person's organization or address).
+export interface Pick {
+  id: string
+  name: string
+  hint: string | null
 }
 
 // A row on its own, for its view in the panel and as a page (core step 3b).

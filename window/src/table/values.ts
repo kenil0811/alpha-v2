@@ -50,7 +50,8 @@ export const EMPTY_CELL = '–'
 export const EMPTY_WORDS = 'Unknown'
 
 export const NUMERIC = new Set(['money', 'number'])
-// What can be typed in the window; a relation, a file or a person is changed by asking Alpha.
+// What can be typed in the window; a relation or a person is picked (canPick), a file is changed
+// by asking Alpha.
 export const CORRECTABLE = new Set([
   'text',
   'number',
@@ -64,6 +65,11 @@ export const CORRECTABLE = new Set([
 
 // What can be typed in this field: a summary is worked out from other rows, never typed (3c).
 export const canType = (f: FieldView) => CORRECTABLE.has(f.kind) && !f.summary
+// What is picked, one value at a time (Batch B, 14b): a related row, or a person.
+export const canPick = (f: FieldView) =>
+  (f.kind === 'relation' && !!f.relatesTo && !f.summary) || f.kind === 'person'
+// What a double-click changes in the grid and in an opened row (T4).
+export const canEdit = (f: FieldView) => canType(f) || canPick(f)
 // A choice holding several (tags, core step 3c): a list, shown as chips.
 export const isTags = (f: FieldView) => f.kind === 'choice' && f.many
 

@@ -554,7 +554,8 @@ describe('the api over a world', () => {
       headers: ok,
       payload: { field: 'Sources', value: [] },
     })
-    expect(relation.statusCode).toBe(409)
+    // a relation is picked from the window since Batch B (14b): none clears it
+    expect(relation.statusCode).toBe(200)
     await a.close()
   })
   it('keeps Alpha’s figure beside a value the person types over, and resets to it', async () => {

@@ -35,6 +35,7 @@ import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
 import { Edge } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
+import { BarName, Renamable } from './ui/rename.tsx'
 
 function Nav({
   href,
@@ -43,6 +44,7 @@ function Nav({
   current,
   extra,
   small,
+  onDoubleClick,
 }: {
   href: string
   icon: ReactNode
@@ -50,10 +52,12 @@ function Nav({
   current: boolean
   extra?: ReactNode
   small?: boolean
+  onDoubleClick?: (() => void) | undefined
 }) {
   return (
     <a
       href={href}
+      onDoubleClick={onDoubleClick}
       aria-current={current ? 'page' : undefined}
       className={cn(
         'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
@@ -470,39 +474,50 @@ function ModuleItem({
           over && 'bg-rail-hover ring-2 ring-accent',
         )}
       >
-        <Nav
-          href={`#/module/${m.id}`}
-          icon={<ModuleIcon name={m.name} className="size-4" />}
-          label={m.name}
-          current={here === m.id}
-          extra={<span className="w-11 shrink-0" />}
-        />
-        <span className="absolute right-0.5 flex items-center">
-          <ModuleMenu
-            m={m}
-            modules={modules}
-            hiding={hiding}
-            point={menu.point}
-            onShut={menu.close}
-          />
-          {kids.length > 0 ? (
-            <button
-              type="button"
-              aria-expanded={open}
-              aria-label={open ? `Fold ${m.name}` : `Unfold ${m.name}`}
-              onClick={() => onFold(m.id)}
-              className="grid size-6 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:text-rail-ink"
-            >
-              {open ? (
-                <ChevronDown className="size-3.25" />
-              ) : (
-                <ChevronRight className="size-3.25" />
-              )}
-            </button>
-          ) : (
-            <span className="size-6 shrink-0" />
+        <Renamable
+          name={m.name}
+          rename={(to) => api.post(`/api/modules/${m.id}/name`, { name: to })}
+        >
+          {(start) => (
+            <>
+              <Nav
+                href={`#/module/${m.id}`}
+                icon={<ModuleIcon name={m.name} className="size-4" />}
+                label={m.name}
+                current={here === m.id}
+                extra={<span className="w-11 shrink-0" />}
+                onDoubleClick={start}
+              />
+              <span className="absolute right-0.5 flex items-center">
+                <ModuleMenu
+                  m={m}
+                  modules={modules}
+                  hiding={hiding}
+                  point={menu.point}
+                  onShut={menu.close}
+                  onRename={start}
+                />
+                {kids.length > 0 ? (
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-label={open ? `Fold ${m.name}` : `Unfold ${m.name}`}
+                    onClick={() => onFold(m.id)}
+                    className="grid size-6 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:text-rail-ink"
+                  >
+                    {open ? (
+                      <ChevronDown className="size-3.25" />
+                    ) : (
+                      <ChevronRight className="size-3.25" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="size-6 shrink-0" />
+                )}
+              </span>
+            </>
           )}
-        </span>
+        </Renamable>
       </div>
       {open && kids.length > 0 && (
         <div className="flex flex-col pl-4">
@@ -531,12 +546,14 @@ function ModuleMenu({
   hiding,
   point,
   onShut,
+  onRename,
 }: {
   m: ModuleSummary
   modules: ModuleSummary[]
   hiding: Hiding
   point: { x: number; y: number } | null // a right-click's place
   onShut: () => void
+  onRename: (() => void) | undefined // its name edited in place in the rail
 }) {
   const [open, setOpen] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -583,6 +600,16 @@ function ModuleMenu({
         >
           Open
         </MenuItem>
+        {onRename && (
+          <MenuItem
+            onClick={() => {
+              close()
+              onRename()
+            }}
+          >
+            Rename
+          </MenuItem>
+        )}
         <SubMenu label="Move to">
           {flat(modules)
             .filter(({ module }) => !own.has(module.id))
@@ -774,9 +801,11 @@ export function Bar({
   lens,
   onClearLens,
   middle,
+  rename,
 }: {
   crumb: Crumb
   back: { to: Visit | null; go: () => void } // where the person was (back.ts), else the parent
+  rename: ((to: string) => Promise<unknown>) | null // the screen's name changed by a double-click
   lens: { id: string; name: string } | null
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
@@ -825,7 +854,7 @@ export function Bar({
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        <h1 className="hidden truncate font-serif text-ink text-xl peer-empty:block">{last}</h1>
+        <BarName name={last} rename={rename} />
       </div>
       <div data-tauri-drag-region />
     </div>

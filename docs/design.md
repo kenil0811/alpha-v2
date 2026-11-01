@@ -403,7 +403,8 @@ code. **The builder's walls** (core step 3e, from Vikas's notes, item 6), in the
 table whose fields, notes aside, are one text field is refused (a list to pick from is a choice
 field on the table that would point at it; a thing of its own is made with what it keeps beyond
 its name, assumed and said); a table made or renamed with a period in its name is refused (one table, a
-date on each row; the period words and patterns in `core/config/words.yaml`). Each refusal says
+date on each row; a rename meets it in the core rename, the person's double-click too, Batch B;
+the period words and patterns in `core/config/words.yaml`). Each refusal says
 what to make instead; kits are checked, not walled.
 
 ## 8. The connector SDK and connectors
@@ -662,7 +663,9 @@ which the host object, the model's guide and `docs/kit-api.md` are generated and
 the core to. A kit says `api: 1`; core serves `1`; `uses:` names the kits (with `min`) or
 connectors whose tables it reads, relates to or triggers on, checked at install; `maintainer:`
 says whose kit it is to keep. A kit field has a stable `key` (its name at install when the kit
-gives none), so an update matches on it; `history.renamed` renames in place, `history.removed`
+gives none), so an update matches on it; the tables and modules a kit or a connector makes keep a
+lasting key too, the name it gave them (Batch B, call 6, 1 Nov), so one the person renames is still
+theirs; `history.renamed` renames in place, `history.removed`
 hides a field with its rows kept; what the person removed (a field, a table, a setup row, a
 kit's view) is a tombstone and stays removed. Settings › Modules shows what is the person's now
 (changed files, rows, views, fields; the fields a kit no longer uses) with the kit's version back,

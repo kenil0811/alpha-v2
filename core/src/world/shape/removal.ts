@@ -44,7 +44,7 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
     run(shape.db, 'DELETE FROM views WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM fields WHERE table_id = ?', table.id)
     run(shape.db, 'DELETE FROM tables WHERE id = ?', table.id)
-    tombstone(shape, table.module.id, 'table', table.name, ctx)
+    tombstone(shape, table.module.id, 'table', table.key ?? table.name, ctx)
     append(shape.db, {
       actor: ctx.actor,
       kind: 'removed',

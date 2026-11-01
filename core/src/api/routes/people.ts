@@ -5,7 +5,7 @@ import { peopleTables, perField } from '../../world/shape/per.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptEdit, keptField, keptTable } from '../kept.ts'
 import { perColumns, perRows, setForPerson, typed } from '../per.ts'
-import type { CardView, KeptTable, PersonView } from '../types.ts'
+import type { CardView, KeptTable, PersonView, Pick } from '../types.ts'
 import { fieldViews } from './rows.ts'
 
 export function registerPeople(ctx: Ctx): void {
@@ -68,6 +68,15 @@ export function registerPeople(ctx: Ctx): void {
     )
   }
   app.get('/api/kept/people', async () => keptPeople('person'))
+  // What a person field's picker offers (Batch B, 14b): each person by name, with where they work
+  app.get(
+    '/api/people/names',
+    async (): Promise<Pick[]> =>
+      world.people
+        .list('person')
+        .map((p) => ({ id: p.id, name: p.name, hint: p.companies[0] ?? p.emails[0] ?? null }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+  )
   app.get('/api/kept/organizations', async () => keptPeople('company'))
   for (const list of ['people', 'organizations'])
     app.post(`/api/kept/${list}/rows/:id`, async (req) => {

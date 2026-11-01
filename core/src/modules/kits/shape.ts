@@ -9,10 +9,13 @@ import { hashOf, resolveConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
 import { rowHash } from './read.ts'
 
-// A table's fields of one sort: plain, relations, or summaries (which read the relations).
+// A table's fields of one sort: plain, relations, or summaries (which read the relations). The
+// tables they point at are the kit's own by key where it has them (call 6), so a table the person
+// renamed is still the one pointed at.
 function fieldsOf(
   spec: KitManifest['tables'][number],
   sort: 'plain' | 'relation' | 'summary',
+  tableOf: (name: string) => string = (name) => name,
 ): FieldInput[] {
   const sortOf = (k: string) => (k === 'relation' || k === 'summary' ? k : 'plain')
   return spec.fields
@@ -22,10 +25,10 @@ function fieldsOf(
       kind: f.kind,
       ...(f.choices ? { choices: f.choices } : {}),
       ...(f.tones ? { tones: f.tones } : {}),
-      ...(f.relates_to ? { relatesTo: f.relates_to } : {}),
+      ...(f.relates_to ? { relatesTo: tableOf(f.relates_to) } : {}),
       ...(f.many ? { many: true } : {}),
       ...(f.part_of ? { partOf: true } : {}),
-      ...(f.summary ? { summary: f.summary } : {}),
+      ...(f.summary ? { summary: { ...f.summary, of: tableOf(f.summary.of) } } : {}),
       ...(f.per ? { per: f.per } : {}),
       ...(f.indexed ? { indexed: true } : {}),
       ...(f.sensitive ? { sensitive: true } : {}),
@@ -45,9 +48,12 @@ export function shapeTables(
   ctx: WriteCtx,
 ): void {
   const lower = (s: string) => s.toLowerCase()
+  // the kit's own table by the name it gives it: by its lasting key, so a rename splits nothing
+  const own = (name: string) => world.shape.ownTable(module.id, name)
+  const tableOf = (name: string) => own(name)?.id ?? name
   const tablesNamed = (name: string | undefined): Table[] =>
     name
-      ? [world.shape.table(name)].filter((t): t is Table => !!t && t.module.id === module.id)
+      ? [own(name)].filter((t): t is Table => !!t && t.module.id === module.id)
       : world.shape.tables(module.id)
   const byKey = (t: Table, key: string) =>
     t.fields.find((x) => lower(x.key ?? x.name) === lower(key))
@@ -64,18 +70,20 @@ export function shapeTables(
       run(world.db, 'UPDATE fields SET key = ? WHERE id = ?', spec?.key ?? r.to, f.id)
     }
   for (const spec of manifest.tables) {
-    const t = world.shape.table(spec.name)
+    const t = own(spec.name)
     if (!t) {
       if (world.shape.tombstoned(module.id, 'table', spec.name)) continue
       world.shape.makeTable(module.id, spec.name, fieldsOf(spec, 'plain'), ctx, {
         ...(spec.about ? { about: spec.about, aboutBy: 'kit' } : {}),
         ...(spec.setup ? { setup: true } : {}),
+        key: spec.name,
       })
     } else if (t.module.id !== module.id)
       throw new Refused(`There is already a table called ${spec.name} in ${t.module.name}.`)
+    else world.shape.claimTable(t, module.id, spec.name)
   }
   for (const spec of manifest.tables) {
-    const before = world.shape.table(spec.name)
+    const before = own(spec.name)
     if (!before) continue
     // a field from before keys is matched by its name once, and keyed from then on
     for (const f of before.fields)
@@ -84,7 +92,7 @@ export function shapeTables(
         if (sf) world.shape.setKey(f.id, sf.key ?? sf.name)
       }
     const t = world.shape.table(before.id) as Table
-    const missing = [...fieldsOf(spec, 'plain'), ...fieldsOf(spec, 'relation')].filter(
+    const missing = [...fieldsOf(spec, 'plain'), ...fieldsOf(spec, 'relation', tableOf)].filter(
       (f) =>
         !byKey(t, f.key as string) && !world.shape.tombstoned(module.id, 'field', f.key as string),
     )
@@ -201,9 +209,9 @@ export function shapeTables(
   }
   // the summaries, once every table has its relations
   for (const spec of manifest.tables) {
-    const t = world.shape.table(spec.name)
+    const t = own(spec.name)
     if (!t || t.module.id !== module.id) continue
-    const missing = fieldsOf(spec, 'summary').filter(
+    const missing = fieldsOf(spec, 'summary', tableOf).filter(
       (f) =>
         !byKey(t, f.key as string) && !world.shape.tombstoned(module.id, 'field', f.key as string),
     )
@@ -219,15 +227,21 @@ export function shapeTables(
 
 // A kit's views: made when the table has none by that name; on update, replaced while nobody has
 // changed the kit's version (its hash is still there), else left as theirs.
-export function shapeViews(world: World, manifest: KitManifest, ctx: WriteCtx): void {
+export function shapeViews(
+  world: World,
+  module: Module,
+  manifest: KitManifest,
+  ctx: WriteCtx,
+): void {
   for (const spec of manifest.tables) {
-    const t = world.shape.table(spec.name)
+    const t = world.shape.ownTable(module.id, spec.name)
     if (!t) continue
     for (const { name, default: isDefault, about, ...given } of spec.views) {
       const config = resolveConfig(t, given)
       const hash = hashOf(config)
       const was = world.views.list(t.id).find((v) => v.name.toLowerCase() === name.toLowerCase())
-      if (!was && world.shape.tombstoned(t.module.id, 'view', `${t.name}:${name}`)) continue
+      if (!was && world.shape.tombstoned(t.module.id, 'view', `${t.key ?? t.name}:${name}`))
+        continue
       const said = about ? { about } : {}
       if (!was)
         world.views.save(
@@ -259,7 +273,7 @@ export function landSetup(
   let landed = 0
   let kept = 0
   for (const [tableName, rows] of Object.entries(setup)) {
-    const t = world.shape.table(tableName)
+    const t = world.shape.ownTable(moduleId, tableName)
     if (!t && world.shape.tombstoned(moduleId, 'table', tableName)) {
       kept += rows.length // the person removed the table: its rows stay out
       continue
@@ -326,7 +340,9 @@ export function placeModule(
   const by = world.shape.placedBy(module.id)
   if (by === 'person' || by === 'alpha') return
   if (!within && by !== 'kit') return
-  const parent = within ? (world.shape.module(within) ?? world.shape.makeModule(within, ctx)) : null
+  const parent = within
+    ? (world.shape.ownModule(within) ?? world.shape.makeModule(within, ctx, within))
+    : null
   if ((parent?.id ?? null) !== module.parent || by !== 'kit')
     world.shape.place(module.id, parent?.id ?? null, ctx)
 }

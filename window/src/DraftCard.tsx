@@ -3,13 +3,15 @@
 // unchanged sends of its kind the card offers Always, confirmed in a second step here.
 import type { CardView, DraftView } from '@alpha/core/api'
 import { TriangleAlert } from 'lucide-react'
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Card, CardPlace } from './ui/card.tsx'
+import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 
 export function DraftCard({ card, draft }: { card: CardView; draft: DraftView }) {
+  const { whole } = useContext(CardPlace)
   const [to, setTo] = useState(draft.message.to)
   const [subject, setSubject] = useState(draft.message.subject)
   const [body, setBody] = useState(draft.message.body)
@@ -82,7 +84,11 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
         </div>
         <textarea
           aria-label="The email"
-          className="min-h-36 w-full rounded-md border border-line bg-surface px-2.5 py-2 text-ink text-md outline-none focus:border-accent-line focus:ring-3 focus:ring-accent-soft"
+          className={cn(
+            'w-full rounded-md border border-line bg-surface px-2.5 py-2 text-ink text-md outline-none focus:border-accent-line focus:ring-3 focus:ring-accent-soft',
+            // on the card's own page the letter has the room to read it whole
+            whole ? 'min-h-[50dvh]' : 'min-h-36',
+          )}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />

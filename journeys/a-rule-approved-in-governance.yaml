@@ -1,0 +1,26 @@
+name: a-rule-approved-in-governance
+title: A rule left waiting on its Save card is approved later from Governance, and holds
+why: >
+  Batch B, pick 18 (Kenil's call 9, 1 Nov): a rule Alpha proposed waits on its Save card; the
+  person moves on, and later finds it in a module's Governance under Waiting for you. Approve there
+  is the card's own Save, so the rule and its journal line come out as on the card. On recorded
+  answers (journeys/fixtures/gmail), never a real account.
+steps:
+  - connect: { connector: gmail, account: owner@example.com }
+    checks:
+      - rows_in: { table: Mail, count: 6 }
+  - say: From now on, never email anyone outside example.com.
+    checks:
+      - card: { words: 'Save this rule\? Alpha must never send to an address outside example\.com' }
+      - query: { sql: "SELECT id FROM journal WHERE kind = 'rule_saved'", count: 0 }
+  # the person moves on, the card left waiting
+  - say: who has emailed me about deals this week?
+    checks:
+      - reply_matches: 'Priya'
+      - query: { sql: "SELECT id FROM journal WHERE kind = 'rule_saved'", count: 0 }
+      - cards_waiting: 1
+  - approve_rule: Mail
+    checks:
+      - query: { sql: "SELECT id FROM journal WHERE kind = 'rule_saved'", count: 1 }
+      - cards_waiting: 0
+      - errors: 0

@@ -16,7 +16,7 @@ import type {
 import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
-import { CardBox } from './Conversation.tsx'
+import { CardBox } from './CardBox.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
