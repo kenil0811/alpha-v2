@@ -5,35 +5,52 @@
 // the rail's strip, or a drag out of its edge. ⌘J (or ⌘⇧\, the rail's ⌘\ mirrored) folds and
 // opens it.
 import { Bell, PanelRightClose, PanelRightOpen } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
+import { ActivityDrop } from './Activity.tsx'
 import { Face, type Mood } from './Companion.tsx'
 import { MarkButton } from './Mark.tsx'
 import { IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
+import { Popover } from './ui/popover.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
+// The bell opens Activity as a dropdown first; its Open page goes to the page (Vikas, 1 Nov)
 function BellLink({ running, labelled = false }: { running: number; labelled?: boolean }) {
+  const anchor = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
   return (
-    <a
-      href="#/activity"
-      aria-label={running ? `Activity, ${running} running` : 'Activity'}
-      data-tip={running ? `Activity, ${running} running` : 'Activity'}
-      className={
-        labelled
-          ? stripItem()
-          : 'relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
-      }
-    >
-      <Bell className="size-4" />
-      {labelled && <span className={stripName}>Activity</span>}
-      {running > 0 && (
-        <span
-          className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
-          aria-hidden="true"
-        />
-      )}
-    </a>
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={running ? `Activity, ${running} running` : 'Activity'}
+        data-tip={running ? `Activity, ${running} running` : 'Activity'}
+        onClick={(e) => {
+          e.stopPropagation() // folded, a click on the strip opens the assistant
+          setOpen((o) => !o)
+        }}
+        className={
+          labelled
+            ? stripItem()
+            : 'relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
+        }
+      >
+        <Bell className="size-4" />
+        {labelled && <span className={stripName}>Activity</span>}
+        {running > 0 && (
+          <span
+            className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
+            aria-hidden="true"
+          />
+        )}
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        {open && <ActivityDrop onClose={() => setOpen(false)} />}
+      </Popover>
+    </>
   )
 }
 

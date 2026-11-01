@@ -5,7 +5,7 @@ import type { UsageRow, UsageView } from '@alpha/core/usage'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { money } from './table/values.ts'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 
 // The models by their names, never their ids (W6)
@@ -34,50 +34,47 @@ export function UsageSection() {
       title="Usage"
       about="What each use of the model cost: Alpha's turns under the module they were asked in, agents' runs under their agent. Counted from 28 Oct 2026."
     >
-      {u && !u.months.length ? (
-        <Empty>Nothing used yet. Each turn and each agent's use of the model shows here.</Empty>
-      ) : (
-        u && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {u.months.length > 1 ? (
-                <Segmented
-                  label="Month"
-                  value={u.month}
-                  options={u.months.slice(0, 12).map((m) => ({ value: m, label: monthName(m) }))}
-                  onChange={setMonth}
-                />
-              ) : (
-                <span className="text-ink text-md">{monthName(u.month)}</span>
-              )}
-              <span className="font-medium text-ink text-lg tabular-nums">
-                {usdWords(u.total.usd)}
-              </span>
-              <span className="text-ink-3 text-md">
-                {[
-                  u.atApiPrices ? 'at API prices' : '',
-                  plural(u.total.turns, 'turn'),
-                  plural(u.total.runs, 'run'),
-                  plural(u.total.tokens, 'token'),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </div>
-            {u.atApiPrices && (
-              <p className="text-ink-3 text-sm">
-                Your Claude subscription bills nothing per turn: this is what the same use would
-                cost on an API key.
-              </p>
+      {/* nothing used yet: the section's line says what will show; no empty-state sentence */}
+      {u && u.months.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {u.months.length > 1 ? (
+              <Segmented
+                label="Month"
+                value={u.month}
+                options={u.months.slice(0, 12).map((m) => ({ value: m, label: monthName(m) }))}
+                onChange={setMonth}
+              />
+            ) : (
+              <span className="text-ink text-md">{monthName(u.month)}</span>
             )}
-            <UsageTable title="By module" rows={u.byModule} />
-            {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
-            <UsageTable
-              title="By model"
-              rows={u.byModel.map((r) => ({ ...r, name: MODEL_NAMES[r.name] ?? r.name }))}
-            />
+            <span className="font-medium text-ink text-lg tabular-nums">
+              {usdWords(u.total.usd)}
+            </span>
+            <span className="text-ink-3 text-md">
+              {[
+                u.atApiPrices ? 'at API prices' : '',
+                plural(u.total.turns, 'turn'),
+                plural(u.total.runs, 'run'),
+                plural(u.total.tokens, 'token'),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           </div>
-        )
+          {u.atApiPrices && (
+            <p className="text-ink-3 text-sm">
+              Your Claude subscription bills nothing per turn: this is what the same use would cost
+              on an API key.
+            </p>
+          )}
+          <UsageTable title="By module" rows={u.byModule} />
+          {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
+          <UsageTable
+            title="By model"
+            rows={u.byModel.map((r) => ({ ...r, name: MODEL_NAMES[r.name] ?? r.name }))}
+          />
+        </div>
       )}
     </Section>
   )

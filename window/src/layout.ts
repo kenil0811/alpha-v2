@@ -1,7 +1,8 @@
 // How the person left the window (design §14): kept by Alpha per person, read once at start and
 // changed through the core; every screen reads it here, never from the browser's storage.
-import type { Layout } from '@alpha/core/api'
+
 import { createContext, useContext } from 'react'
+import type { Layout } from './coming.ts'
 
 export const NO_LAYOUT: Layout = {
   railFolded: false,
@@ -11,6 +12,9 @@ export const NO_LAYOUT: Layout = {
   panel: null,
   assistant: 'open',
   pageSize: null,
+  pins: {},
+  seen: {},
+  docked: null,
 }
 
 export const LayoutContext = createContext<{

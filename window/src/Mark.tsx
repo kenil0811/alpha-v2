@@ -163,7 +163,16 @@ export function Marker({ from }: { from: Module | null }) {
   const shown = picked?.box ?? over
   const W = 320
   const left = picked ? Math.max(8, Math.min(picked.box.left, window.innerWidth - W - 8)) : 0
-  const below = picked ? picked.box.bottom + 8 + 170 < window.innerHeight : true
+  // under what was marked, else over it, else inside its top: always in the window, a whole panel
+  // marked included (Vikas, 1 Nov: the box went off the screen)
+  const H = 170
+  const top = !picked
+    ? 0
+    : picked.box.bottom + 8 + H < window.innerHeight
+      ? picked.box.bottom + 8
+      : picked.box.top - 8 - H > 0
+        ? picked.box.top - 8 - H
+        : Math.min(Math.max(8, picked.box.top + 8), window.innerHeight - H - 8)
   return (
     <div ref={own}>
       {/* while marking, the window dims a little and the thing under the pointer stands out
@@ -200,13 +209,7 @@ export function Marker({ from }: { from: Module | null }) {
           className={cn(
             'fixed z-(--z-tip) flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-pop',
           )}
-          style={{
-            width: W,
-            left,
-            ...(below
-              ? { top: picked.box.bottom + 8 }
-              : { bottom: window.innerHeight - picked.box.top + 8 }),
-          }}
+          style={{ width: W, left, top }}
         >
           <p className="line-clamp-2 text-ink-3 text-sm">{picked.what}</p>
           <textarea

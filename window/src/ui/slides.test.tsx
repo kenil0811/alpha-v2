@@ -21,7 +21,7 @@ it('shows the first page with a dot per page and ‹ 1 of n ›', () => {
   const html = list(rows(12))
   expect(html).toContain('row 5')
   expect(html).not.toContain('row 6')
-  expect(html).toContain('1<!-- --> of <!-- -->3')
+  expect(html).toContain('1 of 3')
   expect(html.match(/aria-label="Page \d+"/g)).toHaveLength(3)
   expect(html).toContain('aria-label="Next"')
 })
@@ -29,6 +29,15 @@ it('shows the first page with a dot per page and ‹ 1 of n ›', () => {
 it('shows no controls when everything fits, and no dots past twelve pages', () => {
   expect(list(rows(4))).not.toContain('aria-label="Next"')
   const many = list(rows(20), 1)
-  expect(many).toContain('1<!-- --> of <!-- -->20')
+  expect(many).toContain('1 of 20')
   expect(many).not.toContain('aria-label="Page 1"')
+})
+
+it('says what it counts when given a noun', () => {
+  const html = renderToString(
+    <Slides items={rows(4)} per={1} label="Agent approvals" noun="Approval">
+      {(shown) => shown.map((r) => <p key={r}>{r}</p>)}
+    </Slides>,
+  )
+  expect(html).toContain('Approval 1 of 4')
 })

@@ -144,3 +144,40 @@ held by review. Dates are 2026.
 - A card shows only the rows it holds, then a dot per page with ‹ 2 of 10 › beside them
   (`ui/slides.tsx`); never a cut-off list, a "more" link or a scroll inside the card. Agent
   approvals is one card a page (Vikas, 1 Nov).
+- A page's bar: search runs up to Filter, then the page's one action (two at the most), then ⋮;
+  never a row of buttons. A page's own lists (Tasks' Today, This week…) are Quick filters inside
+  Filter, not a row of their own. Add field is first in ⋮ and the same in every view: a field is
+  the data, not the layout (Vikas, 1 Nov).
+- A table link opens the table in the side panel; only a pinned table is a module tab, and its
+  Open page is a page of its own (Vikas, 1 Nov).
+- A to-do row shows its state and never changes it; the state changes on the task's page. Review
+  stays where a card waits for the person (Vikas, 1 Nov).
+- Agent approvals are the agents' asks, not tasks: on Home and the Agents page, never a Tasks list.
+  A card for several agents that did not finish lists each with what happened and its own Try
+  again (Vikas, 1 Nov).
+- What was clicked stays in sight to the left of the side panel when it opens (Vikas, 1 Nov).
+- The rail's rows are evenly spaced, the modules too: no gap between Tasks and the first module
+  (Vikas, 1 Nov).
+- A card resizes from its own bottom-right corner: the pointer turns there, nothing is drawn on a
+  hover (Vikas, 1 Nov).
+- A tile is square: its number big, its words beside it from the number's top line, its button
+  at its foot (Vikas, 1 Nov).
+- A card shows four or five rows, then the slideshow; Mac setup is a card of its own, done once
+  and gone when it is (Vikas, 1 Nov).
+- Agents are one list, never grouped by what they do; on Home and an Overview, Files sits under
+  Agents and Tables under Governance (Vikas, 1 Nov).
+- Home's bar: the day and the greeting at its left, the next event at its right (Vikas, 1 Nov).
+- Tasks reads as a module: Overview, Calendar and Tasks in the bar, Calendar first. Events are a
+  hidden table tied to tasks, on the calendar once the core keeps them (P20) (Vikas, 1 Nov).
+- The Second Brain draws every module, its pages, its tables and the buckets their rows fall in,
+  its agents and the connections (Vikas, 1 Nov).
+- What Mark opens to send to Alpha stays inside the window (Vikas, 1 Nov).
+- Home's work column holds two cards a row (Agent approvals beside Today and overdue, Mac setup
+  among them) unless a card needs the whole row; the right column holds only the standard cards and
+  buttons (Vikas, 1 Nov).
+- Two pagers that could meet say what they count: "Approval 2 of 4" in the card's button row,
+  "Agents 4–6 of 16" under its list (Vikas, 1 Nov).
+- The bell opens Activity as a dropdown: what is downloading for this Mac, then the latest runs,
+  each opening in the side panel; only its Open page goes to the page (Vikas, 1 Nov).
+- A download of gigabytes asks first and says its size; while it runs, the bell's dropdown shows
+  it (Vikas, 1 Nov).

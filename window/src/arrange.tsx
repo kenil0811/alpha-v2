@@ -247,7 +247,8 @@ export function Arranged({
                 data-block={key}
                 className={cn(
                   'group/block relative min-w-0',
-                  width ? 'shrink grow-0' : 'flex-1 basis-80',
+                  // two cards share a work column's row (Vikas, 1 Nov)
+                  width ? 'shrink grow-0' : 'flex-1 basis-64',
                 )}
                 style={{
                   flexBasis: width ? `calc(${width}% - 1rem)` : undefined,
@@ -359,7 +360,9 @@ export function Arranged({
                     const h = height ?? r?.height ?? 0
                     keep(all.map((c) => sized(c, key, { w: w + d[0], h: h + d[1] })))
                   }}
-                  className="absolute right-0 bottom-0 z-1 size-4 cursor-nwse-resize rounded-br-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-line"
+                  // the card's own corner: the pointer turns to resize there, nothing drawn on a hover
+                  // (Vikas, 1 Nov)
+                  className="absolute right-0 bottom-0 z-1 size-5 cursor-nwse-resize rounded-br-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-line"
                 />
                 {side && line(side)}
               </div>

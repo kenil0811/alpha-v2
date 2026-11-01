@@ -4,10 +4,11 @@
 // happened, how long it took and whether the model was used; it opens to its steps. Runs that
 // changed nothing fold into one line per name and day. A running one can be stopped; one that
 // wrote rows has Revert behind its ⋮, a removal Bring back, both said first in the one pop-up.
-import type { RunView, UndoView } from '@alpha/core/api'
-import { ChevronRight, RotateCcw } from 'lucide-react'
+import type { RunView, SetupView, UndoView } from '@alpha/core/api'
+import { ChevronRight, LoaderCircle, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import { peek } from './Peek.tsx'
 import { usdWords } from './Usage.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -20,7 +21,7 @@ import { MenuItem } from './ui/popover.tsx'
 const STATE: Record<RunView['state'], [string, Tone]> = {
   running: ['Running', 'accent'],
   ok: ['Done', 'good'],
-  failed: ["Didn't finish", 'bad'],
+  failed: ['Failed', 'bad'],
   stopped: ['Stopped', 'neutral'],
 }
 
@@ -70,8 +71,18 @@ export function Activity({ version }: { version: number }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [only, setOnly] = useState<'all' | 'failed'>('all')
+  const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
-    api.get<RunView[]>('/api/activity').then(setRuns, () => setRuns([]))
+    api.get<RunView[]>('/api/activity').then(
+      (r) => {
+        setRuns(r)
+        setProblem(null)
+      },
+      (err) => {
+        setRuns([])
+        setProblem(wordsOf(err))
+      },
+    )
   }, [])
   useEffect(() => {
     if (version >= 0) load()
@@ -101,18 +112,19 @@ export function Activity({ version }: { version: number }) {
             </Cut>
           </div>
         </div>
-        {runs && shown.length === 0 && (
+        {/* never a blank page (Vikas, 29 Oct): still loading, or nothing to show, says so */}
+        {!runs && <p className="mt-4 text-ink-3 text-md">Loading…</p>}
+        {problem && <p className="mt-4 text-md text-warn">{problem}</p>}
+        {runs && !problem && shown.length === 0 && (
           <p className="mt-4 text-ink-2 text-md">
             {only === 'failed'
               ? 'Everything that ran finished.'
-              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
+              : 'Nothing has run yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
           </p>
         )}
         {days.map(([day, list]) => (
           <section key={day}>
-            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-xs uppercase tracking-label">
-              {day}
-            </div>
+            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-sm">{day}</div>
             <div className="overflow-hidden rounded-lg border border-line bg-surface">
               {fold(list).map((l) =>
                 l.kind === 'quiet' ? (
@@ -251,7 +263,7 @@ export function RunRow({
 
 // Revert (or Bring back) behind ⋮: the pop-up says what it will do and what it leaves before
 // anything happens, from the core's own preview of the same work.
-function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefined }) {
+export function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefined }) {
   const u = r.undo
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<UndoView | null>(null)
@@ -315,5 +327,84 @@ function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefi
         {problem && <p className="mt-2 text-md text-warn">{problem}</p>}
       </Confirm>
     </>
+  )
+}
+
+// The bell's dropdown (Vikas, 1 Nov: "initially a drop down… I don't want to be moving between so
+// many pages"): what is downloading for this Mac, then the latest runs, each opening in the side
+// panel; Open page at its foot is the only way to the page.
+export function ActivityDrop({ onClose }: { onClose: () => void }) {
+  const [runs, setRuns] = useState<RunView[] | null>(null)
+  const [setup, setSetup] = useState<SetupView | null>(null)
+  useEffect(() => {
+    api.get<RunView[]>('/api/activity').then(setRuns, () => setRuns([]))
+    api.get<SetupView>('/api/setup').then(setSetup, () => setSetup(null))
+  }, [])
+  const getting = setup
+    ? [
+        setup.readers.browser === 'preparing' && 'The reading browser, about 200 MB',
+        setup.readers.documents === 'preparing' && 'The document reader, about 2 GB',
+      ].filter((w): w is string => !!w)
+    : []
+  const open = (href: string) => {
+    onClose()
+    peek(href)
+  }
+  return (
+    <div className="flex w-96 max-w-[calc(100vw-2rem)] flex-col">
+      <div className="max-h-[60vh] overflow-y-auto">
+        {getting.map((w) => (
+          <div key={w} className="flex items-center gap-2.5 border-hair border-b px-3 py-2.5">
+            <LoaderCircle className="size-3.5 shrink-0 animate-spin text-accent" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-ink">Downloading for this Mac</span>
+              <span className="block truncate text-ink-3 text-sm">{w}</span>
+            </span>
+          </div>
+        ))}
+        {!runs ? (
+          <p className="px-3 py-3 text-ink-3">Loading…</p>
+        ) : runs.length + getting.length === 0 ? (
+          <p className="px-3 py-3 text-ink-3">Nothing has run yet.</p>
+        ) : (
+          runs.slice(0, 12).map((r) => {
+            const [state, tone] = STATE[r.state]
+            const ran = r.kind === 'run' || r.kind === 'read'
+            const words = r.words?.startsWith(`${r.name}: `)
+              ? r.words.slice(r.name.length + 2)
+              : r.words
+            return (
+              <button
+                key={r.id}
+                type="button"
+                disabled={!ran}
+                onClick={() => open(`#/run/${r.id}`)}
+                className="flex w-full items-start gap-2.5 border-hair border-b px-3 py-2 text-left last:border-b-0 enabled:hover:bg-hover"
+              >
+                <span className="w-11 shrink-0 pt-0.5 font-mono text-ink-3 text-xs">
+                  {time(r.startedAt)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <b className="truncate font-medium text-ink">{r.name}</b>
+                    <Pill tone={tone}>{state}</Pill>
+                  </span>
+                  {words && <span className="line-clamp-2 text-ink-3 text-sm">{words}</span>}
+                </span>
+              </button>
+            )
+          })
+        )}
+      </div>
+      <a
+        href="#/activity"
+        onClick={onClose}
+        data-page
+        className="flex items-center justify-center gap-1.5 border-line border-t px-3 py-2 font-medium text-accent text-sm hover:bg-accent-soft"
+      >
+        Open page
+        <ChevronRight className="size-3.5" />
+      </a>
+    </div>
   )
 }

@@ -2,10 +2,11 @@
 // its first page, what Alpha read it as, how sure and why there. The person files it where Alpha
 // proposed, or picks another row or kind first; a second file of that kind on the row can replace
 // the first. Decline takes a reason, and the file goes.
-import type { CardView, FilingView, FoundRow } from '@alpha/core/api'
+import type { FilingView, FoundRow } from '@alpha/core/api'
 import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
+import type { CardView } from './coming.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
 import { Field, Select } from './ui/field.tsx'
@@ -58,8 +59,10 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
   }
 
   return (
-    <Card label="A file from your mail" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="A file from your mail" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="text-ink-3 text-sm">
         From {filing.from}: “{filing.subject}”
         {filing.date ? `, ${new Date(filing.date).toLocaleDateString()}` : ''}

@@ -2,10 +2,11 @@
 // window. The window answers the page's questions from the core (its module's rows, read-only),
 // sends it the window's look, sizes the frame to it, opens what the page asks to open, and prints
 // it to a PDF with the page's choices.
-import type { ModuleView, PageSummary, TableView as TableData } from '@alpha/core/api'
+import type { PageSummary, TableView as TableData } from '@alpha/core/api'
 import { Download } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
+import type { ModuleView } from './coming.ts'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { show } from './table/values.ts'
 import { Button } from './ui/button.tsx'

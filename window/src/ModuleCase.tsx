@@ -1,10 +1,11 @@
 // What a module is for (core step 3e): who it is for, what it keeps track of and the decisions it
 // serves, at the top of Agents and notes. Alpha's words show as assumed until the person changes
 // them; Edit makes them theirs, and a kit's update never writes over theirs.
-import type { ModuleView } from '@alpha/core/api'
+
 import { Pencil } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import type { ModuleView } from './coming.ts'
 import { Refusal } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'

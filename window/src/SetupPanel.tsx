@@ -7,6 +7,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Confirm } from './ui/dialog.tsx'
+import { Slides } from './ui/slides.tsx'
 import { Switch } from './ui/switch.tsx'
 
 const READY: Record<SetupView['readers']['browser'], string> = {
@@ -39,6 +41,8 @@ export function useSetup(): [SetupView | null, () => void] {
 
 export function SetupList({ view, onChange }: { view: SetupView; onChange: () => void }) {
   const prepare = () => api.post('/api/setup/prepare').then(onChange, onChange)
+  // a download of gigabytes is said first, never one click by mistake (Vikas, 1 Nov)
+  const [asking, setAsking] = useState(false)
   const items: {
     done: boolean
     busy?: boolean
@@ -89,34 +93,43 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
     (view.readers.documents !== 'ready' && view.readers.documents !== 'preparing')
   return (
     <div className="flex flex-col gap-2">
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
-        {items.map((s) => (
-          <div
-            key={s.words}
-            className="flex items-center gap-3 border-hair border-t px-4 py-3 first:border-t-0"
-          >
-            <span
-              className={cn(
-                'grid size-5 shrink-0 place-items-center rounded-full border',
-                s.done ? 'border-good bg-good text-surface' : 'border-line',
-              )}
-            >
-              {s.done && <Check className="size-3" />}
-              {s.busy && <LoaderCircle className="size-3 animate-spin text-ink-3" />}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-medium text-ink">{s.words}</span>
-              <span className="block text-ink-3 text-sm">{s.sub}</span>
-            </span>
-            {s.act && (
-              <span className="flex items-center gap-1 text-accent text-sm">
-                {s.act}
-                <ChevronRight className="size-3.5" />
-              </span>
-            )}
+      {/* what is left first, four a page (Vikas, 1 Nov) */}
+      <Slides
+        items={[...items].sort((x, y) => Number(x.done) - Number(y.done))}
+        per={4}
+        label="Mac setup"
+      >
+        {(page) => (
+          <div className="overflow-hidden rounded-lg border border-line bg-surface">
+            {page.map((s) => (
+              <div
+                key={s.words}
+                className="flex items-center gap-3 border-hair border-t px-4 py-3 first:border-t-0"
+              >
+                <span
+                  className={cn(
+                    'grid size-5 shrink-0 place-items-center rounded-full border',
+                    s.done ? 'border-good bg-good text-surface' : 'border-line',
+                  )}
+                >
+                  {s.done && <Check className="size-3" />}
+                  {s.busy && <LoaderCircle className="size-3 animate-spin text-ink-3" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-ink">{s.words}</span>
+                  <span className="block text-ink-3 text-sm">{s.sub}</span>
+                </span>
+                {s.act && (
+                  <span className="flex items-center gap-1 text-accent text-sm">
+                    {s.act}
+                    <ChevronRight className="size-3.5" />
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </Slides>
       {view.keepAwake !== null && (
         <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
           <span className="min-w-0 flex-1">
@@ -133,9 +146,24 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         </div>
       )}
       {view.readers.problem && <p className="text-bad text-sm">{view.readers.problem}</p>}
+      <Confirm
+        open={asking}
+        title="Download what reading needs?"
+        yes="Download"
+        onClose={() => setAsking(false)}
+        onYes={() => {
+          setAsking(false)
+          prepare()
+        }}
+      >
+        <p className="text-md text-ink-2">
+          The reading browser (about 200 MB) and the document reader (about 2 GB), onto this Mac. It
+          runs in the background; the bell's Activity shows it until it is done.
+        </p>
+      </Confirm>
       {waiting && (
         <div>
-          <Button size="sm" onClick={prepare}>
+          <Button size="sm" onClick={() => setAsking(true)}>
             Download what reading needs
           </Button>
         </div>

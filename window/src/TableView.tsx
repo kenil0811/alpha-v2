@@ -48,7 +48,7 @@ import { PasteBar, TickedBar } from './table/Many.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips, ColumnsList } from './table/Toolbar.tsx'
+import { AddFilter, Chips, ColumnsList, type QuickFilter } from './table/Toolbar.tsx'
 import { type QuickLists, ViewTabs } from './table/ViewTabs.tsx'
 import { canType, isTags, show, titleOf } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -88,6 +88,9 @@ export function TableView({
   field: openField = null,
   quiet = false,
   kept = null,
+  start,
+  quickFilters,
+  quickBy,
 }: {
   data: TableData
   row?: string | null
@@ -102,7 +105,11 @@ export function TableView({
   // their own page, changed there; why is said when something would be typed or saved. New adds
   // one in the page's own way, when it has one.
   kept?: { open: (row: string) => void; onNew?: () => void } | null
+  start?: Partial<ViewConfig> // how it opens with no saved list chosen: a board for tasks
+  quickFilters?: QuickFilter[] // a page's own lists, first inside Filter (Tasks' due lists)
+  quickBy?: string // the choice the lists dropdown goes by, by name, when not the usual
 }) {
+  const opening = { ...BLANK, ...start }
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
   // where a row's change goes: the module table's own rows, or the kept list's
@@ -115,7 +122,7 @@ export function TableView({
     if (was && (was.view === null || data.views.some((v) => v.id === was.view))) return was.view
     return data.views.find((v) => v.isDefault)?.id ?? null
   })
-  const saved = complete(views.find((v) => v.id === viewId)?.config ?? BLANK)
+  const saved = complete(views.find((v) => v.id === viewId)?.config ?? opening)
   const [config, setConfig] = useState<ViewConfig>(() => {
     const was = stored(key)
     return was && was.view === viewId ? complete(was.config) : saved
@@ -211,7 +218,10 @@ export function TableView({
     choices.find((f) => f.name === 'Stage') ??
     choices[0]
   // the lists dropdown's values: a list's tags (Clients, Insurers), else the board's choice
-  const quick = fields.find((f) => isTags(f) && f.choices.length > 1) ?? boardBy
+  const quick =
+    fields.find((f) => f.name === quickBy) ??
+    fields.find((f) => isTags(f) && f.choices.length > 1) ??
+    boardBy
 
   const act = async (fn: () => Promise<void>) => {
     if (kept) return setProblem(why)
@@ -224,7 +234,7 @@ export function TableView({
   }
   const pick = (id: string | null) => {
     setViewId(id)
-    setConfig(complete(views.find((v) => v.id === id)?.config ?? BLANK))
+    setConfig(complete(views.find((v) => v.id === id)?.config ?? opening))
     setProblem(null)
   }
   const replace = (v: SavedView) =>
@@ -309,7 +319,7 @@ export function TableView({
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
               {/* search first, wide, always a box (Vikas, 27 Oct) */}
-              <label className="flex h-7.5 w-80 min-w-32 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+              <label className="flex h-7.5 min-w-32 flex-1 items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
                 <Search className="size-3.25 shrink-0" />
                 <input
                   value={config.search}
@@ -328,14 +338,27 @@ export function TableView({
           }
           right={
             <>
-              {/* Filter on the right, just left of ⋮; Columns inside ⋮ (Vikas, 27 Oct) */}
+              {/* Filter on the right, then the page's one action, then ⋮; search runs up to Filter
+                  (Vikas, 1 Nov) */}
               <AddFilter
                 fields={fields}
                 config={config}
                 rows={data.rows}
                 names={data.names}
                 onConfig={setConfig}
+                quick={quickFilters}
               />
+              <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={typeof onNew === 'string'}
+                  onClick={typeof onNew === 'string' ? undefined : onNew}
+                >
+                  <Plus className="size-3.5" />
+                  New
+                </Button>
+              </span>
               <More
                 tableId={data.id}
                 fields={fields}
@@ -599,21 +622,11 @@ export function TableView({
             />
           </>
         )}
-        {/* New, then Save and Cancel while the list differs from what was saved, under every
-            view (Vikas, 27 Oct); a table's pages to its right */}
+        {/* Save and Cancel while the list differs from what was saved, under every view (Vikas,
+            27 Oct); a table's pages to its right */}
         <div
           className={cn('flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm', grid && '-mt-4')}
         >
-          <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
-            <Button
-              size="sm"
-              disabled={typeof onNew === 'string'}
-              onClick={typeof onNew === 'string' ? undefined : onNew}
-            >
-              <Plus className="size-3.5" />
-              New
-            </Button>
-          </span>
           <span ref={setSaveAt} className="mr-auto flex items-center gap-1 empty:hidden" />
           {!kept && <Readers data={data} />}
           {grid && rows.length > Math.min(size, ...SIZES) && (
@@ -701,7 +714,7 @@ function More({
   shown: FieldView[]
   config: ViewConfig
   layout: LayoutNow
-  adding: boolean // whether a column can be added here
+  adding: boolean // whether a field can be added here
   onConfig: (c: ViewConfig) => void
   onExport: (as: 'csv' | 'xlsx') => void
   onCopy: () => void
@@ -731,6 +744,22 @@ function More({
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        {/* a field is the data, so it is first and the same in every view (Vikas, 1 Nov); Tasks'
+            and People's own fields come with core P19 */}
+        {adding && (
+          <>
+            <MenuItem
+              onClick={() => {
+                setOpen(false)
+                setAdd(true)
+              }}
+            >
+              <Plus className="size-3.5 text-ink-3" />
+              Add field
+            </MenuItem>
+            <MenuLine />
+          </>
+        )}
         <SubMenu
           label={
             <>
@@ -819,16 +848,6 @@ function More({
             Reset the column widths
           </MenuItem>
         </SubMenu>
-        <MenuItem
-          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
-          onClick={() => {
-            setOpen(false)
-            setAdd(true)
-          }}
-        >
-          <Plus className="size-3.5 text-ink-3" />
-          Add column
-        </MenuItem>
         {tab !== null && (
           <MenuItem
             checked={tab}
@@ -878,7 +897,7 @@ function More({
         </SubMenu>
       </Popover>
       <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
+        <AddFieldForm tableId={tableId} title="Add a field" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )

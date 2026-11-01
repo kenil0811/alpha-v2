@@ -11,9 +11,21 @@ export const NEVER_SAY: [RegExp, string][] = [
   [/\bnot now\b/i, 'Decline, or Cancel'],
   [/\bveto(?:es|ed)?\b/i, 'Decline'],
   [/\bcoming soon\b/i, 'the reason it can’t, on hover'],
+  // the words any business app uses (Vikas, 28 Oct): one term for one thing, everywhere
+  [/\bmaybe the same\b|\bmay be the same\b/i, 'Possible duplicate'],
+  [/\bkeep apart\b/i, 'Not a duplicate'],
+  [/\bwaits? (?:for|on) you\b|\bwaiting for your yes\b|\bwaits for your yes\b/i, 'Needs approval'],
+  [/\bdidn[’']t finish\b/i, 'Failed'],
+  [/\bshow original list\b/i, 'Clear filters'],
+  [/\bbring back\b/i, 'Restore'],
+  [/\blinked here\b/i, 'Related'],
+  [/\bof\s+on\s*$/, 'active'],
 ]
 
 // A card's plain answers, as the person reads them: a yes is Approve, a no is Decline.
 export function answerWords(option: string): string {
   return option === 'Yes' ? 'Approve' : option === 'No' ? 'Decline' : option
 }
+
+// One name for what waits on the person, on Home and in Tasks (Vikas, 30 Oct).
+export const NEEDS_YOU = 'Agent approvals' // Vikas, 1 Nov: what an agent's run waits on the person for

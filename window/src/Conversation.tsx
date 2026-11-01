@@ -2,14 +2,7 @@
 // important things): the person's sentences and Alpha's replies in order, each with its topic
 // chip as a lens; one live message per turn becoming the outcome; cards inline; the Now strip and
 // the composer at the foot. A module's Conversation tab and Ask (⌘J) show it through a lens.
-import type {
-  AboutRows,
-  CardView,
-  LiveEvent,
-  ModelView,
-  Stream,
-  WorkingModuleView,
-} from '@alpha/core/api'
+import type { AboutRows, LiveEvent, ModelView } from '@alpha/core/api'
 import {
   ArrowUp,
   Bot,
@@ -34,14 +27,25 @@ import {
   useState,
 } from 'react'
 import { api, Problem } from './api.ts'
-import { takeAsk } from './ask.ts'
+import { INTERVIEWER, takeAsk, takeSitting, useSitting } from './ask.ts'
 import { Beside } from './Beside.tsx'
+import type { AgentView, CardView, FootprintView, Stream, WorkingModuleView } from './coming.ts'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
+import { Footprint } from './Footprint.tsx'
 import { MatchCard } from './MatchCard.tsx'
+import { peek } from './Peek.tsx'
 import { ProposedCard } from './ProposedCard.tsx'
 import { ReviewCard } from './ReviewCard.tsx'
-import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
+import {
+  type Answered,
+  group,
+  type Item,
+  type Module,
+  moduleOfItem,
+  type Step,
+  threadOf,
+} from './stream.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
@@ -50,8 +54,10 @@ import { Field } from './ui/field.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
+import { SideHeading, SideList } from './ui/side-list.tsx'
 import { Words } from './ui/words.tsx'
 import { answerWords } from './vocabulary.ts'
+import { FailedCard, failedOf } from './Waiting.tsx'
 
 export interface Live {
   [turn: string]: { text: string; doing: string | null }
@@ -78,6 +84,8 @@ export function Conversation({
   onLens,
   from = null,
   compact = false,
+  thread,
+  top,
 }: {
   stream: Stream | null
   live: Live
@@ -86,8 +94,31 @@ export function Conversation({
   onLens: (m: Module) => void
   from?: Module // asked from a module's screen or its Ask panel
   compact?: boolean // in the Ask panel: narrow, no Now strip
+  // one thread on the Agents screen: one agent's, or Alpha's (to: null) with its own agents'
+  // (Morning, Watson); none, everything
+  thread?: Thread | undefined
+  top?: ReactNode // above the composer: the Interviewer's Preparing… and Stop
 }) {
-  const all = useMemo(() => group(stream?.lines ?? []), [stream])
+  const to = thread?.to ?? null
+  const all = useMemo(() => {
+    const lines = stream?.lines ?? []
+    if (!thread) return group(lines)
+    const of = threadOf(lines)
+    return group(lines.filter((l) => keyOf(thread.own, of(l)) === (thread.to?.id ?? null)))
+  }, [stream, thread])
+  // beside a thread, what waits in it
+  const beside = useMemo(
+    () =>
+      stream && thread
+        ? {
+            ...stream,
+            cards: stream.cards.filter(
+              (c) => keyOf(thread.own, c.agent?.id ?? null) === (thread.to?.id ?? null),
+            ),
+          }
+        : stream,
+    [stream, thread],
+  )
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
   // through a lens, a sentence stays when the turn it began does
   const items = useMemo(() => {
@@ -165,9 +196,11 @@ export function Conversation({
           >
             {items.length === 0 && (
               <p className="pt-24 text-center text-ink-3">
-                {lens
-                  ? `Nothing about ${lens.name} yet.`
-                  : 'Say what you want kept, tracked or done.'}
+                {to
+                  ? `${to.name} has not said anything yet. What it posts and asks shows here.`
+                  : lens
+                    ? null
+                    : 'Say what you want kept, tracked or done.'}
               </p>
             )}
             {items.map((item) => {
@@ -175,7 +208,7 @@ export function Conversation({
               const line = day !== lastDay
               lastDay = day
               return (
-                <div key={keyOf(item)} className="flex flex-col gap-5">
+                <div key={itemKey(item)} className="flex flex-col gap-5">
                   {line && <DayLine day={day} />}
                   <Entry
                     item={item}
@@ -208,25 +241,27 @@ export function Conversation({
         >
           {!compact && (
             <div className="@min-[1100px]:hidden">
-              <Now stream={stream} />
+              <Now stream={beside} />
             </div>
           )}
+          {top}
           <Composer
             words={words}
             setWords={setWords}
             area={composer}
             onProblem={setProblem}
             from={from}
+            to={to}
             compact={compact}
           />
         </div>
       </div>
       {!compact && (
         <Beside
-          stream={stream}
+          stream={beside}
           lens={lens}
-          gate={(g) => (g ? (GATE[g] ?? 'Waits for you') : 'A question')}
-          onCard={goToCard}
+          gate={(g) => (g ? (GATE[g] ?? 'Needs approval') : 'A question')}
+          onCard={(id) => peek(`#/card/${id}`)}
         />
       )}
       {dragging && (
@@ -238,12 +273,229 @@ export function Conversation({
   )
 }
 
-const keyOf = (i: Item) =>
+// A thread: the agent it is with (none: Alpha), and Alpha's own agents, whose lines are Alpha's.
+type Thread = { to: { id: string; name: string } | null; own: Set<string> }
+const keyOf = (own: Set<string>, agent: string | null) => (agent && own.has(agent) ? null : agent)
+
+const itemKey = (i: Item) =>
   i.kind === 'alpha' ? `a${i.turn}` : i.kind === 'card' ? `c${i.id}` : `${i.kind}${i.id}`
+
+// The Agents screen (Vikas, 30 Oct): a list of who to talk to, as a messenger's contacts, Alpha
+// first, then every agent grouped by what it does; each opens its own thread. An agent is a kit
+// script with the model at its judgement points, not a model of its own: its thread is what its
+// runs posted and asked, and what the person said to it, which Alpha answers for it.
+export function Agents({
+  stream,
+  live,
+  busyTurn,
+  agent,
+  version,
+}: {
+  stream: Stream | null
+  live: Live
+  busyTurn: string | null
+  agent: string | null
+  version: number
+}) {
+  const [working, setWorking] = useState<WorkingModuleView[] | null>(null)
+  useEffect(() => {
+    if (version >= 0) api.get<WorkingModuleView[]>('/api/working').then(setWorking, () => undefined)
+  }, [version])
+  const agents = useMemo(
+    () => (working ?? []).filter((m) => !m.kit?.core).flatMap((m) => m.agents),
+    [working],
+  )
+  const own = useMemo(
+    () =>
+      new Set((working ?? []).filter((m) => m.kit?.core).flatMap((m) => m.agents.map((a) => a.id))),
+    [working],
+  )
+  const interviewer = agent === INTERVIEWER.id
+  const chosen = interviewer ? INTERVIEWER : agent ? agents.find((a) => a.id === agent) : undefined
+  const thread = useMemo(
+    () => ({ to: chosen ? { id: chosen.id, name: chosen.name } : null, own }),
+    [chosen, own],
+  )
+  // Interview me lands here and starts the sitting, scoped to where it was pressed
+  const sitting = useSitting()
+  const { start } = sitting
+  useEffect(() => {
+    if (!interviewer) return
+    // the footprint first (Vikas, 30 Oct: Alpha reads first, asks last): while its card stands,
+    // Interview me opens on it, and its Ask me the rest starts the sitting
+    const take = () => {
+      const s = takeSitting()
+      if (s)
+        api.get<FootprintView>('/api/footprint').then(
+          (f) => {
+            if (f.done) void start(s.module)
+          },
+          () => void start(s.module),
+        )
+    }
+    take()
+    window.addEventListener('alpha:interview', take)
+    return () => window.removeEventListener('alpha:interview', take)
+  }, [interviewer, start])
+  return (
+    <div className="flex h-full min-h-0">
+      <AgentsNav stream={stream} agents={agents} own={own} chosen={agent} />
+      <div className="min-w-0 flex-1">
+        {agent && working && !chosen ? (
+          <p className="p-6 text-ink-2">This agent is not there any more.</p>
+        ) : (
+          <Conversation
+            key={agent ?? 'alpha'}
+            stream={stream}
+            live={live}
+            busyTurn={busyTurn}
+            lens={null}
+            onLens={(m) => {
+              if (m) window.location.hash = `#/module/${m.id}`
+            }}
+            thread={thread}
+            top={
+              interviewer && (
+                <>
+                  <Footprint cards={stream?.cards ?? []} onAsk={() => void start(null)} />
+                  <Sitting {...sitting} />
+                </>
+              )
+            }
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// While the Interviewer prepares the day's questions: Preparing… and Stop (Vikas, 30 Oct: "there
+// is no way for me to cancel my request"); a problem in its place once it has one.
+function Sitting({
+  preparing,
+  problem,
+  stop,
+}: {
+  preparing: boolean
+  problem: string | null
+  stop: () => void
+}) {
+  if (!preparing) return <Refusal words={problem} />
+  return (
+    <div className="flex items-center gap-2 text-ink-3 text-sm" role="status">
+      <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+      <span className="font-medium text-ink-2">{INTERVIEWER.name}</span>
+      <span>Preparing…</span>
+      <span className="ml-auto">
+        <Button size="sm" variant="ghost" onClick={stop}>
+          Stop
+        </Button>
+      </span>
+    </div>
+  )
+}
+
+function AgentsNav({
+  stream,
+  agents,
+  own,
+  chosen,
+}: {
+  stream: Stream | null
+  agents: AgentView[]
+  own: Set<string>
+  chosen: string | null
+}) {
+  // each thread's last line and what waits in it
+  const last = useMemo(() => {
+    const lines = stream?.lines ?? []
+    const of = threadOf(lines)
+    const out = new Map<string | null, string>()
+    for (const l of lines)
+      if (
+        l.kind === 'said' ||
+        l.kind === 'replied' ||
+        l.kind === 'told' ||
+        l.kind === 'card_opened'
+      )
+        out.set(keyOf(own, of(l)), l.kind === 'said' ? `You: ${l.words}` : l.words)
+    return out
+  }, [stream, own])
+  const waiting = (id: string | null) =>
+    (stream?.cards ?? []).filter((c) => keyOf(own, c.agent?.id ?? null) === id).length
+  const groups = new Map<string, AgentView[]>()
+  for (const a of agents)
+    groups.set(a.function ?? 'Admin', [...(groups.get(a.function ?? 'Admin') ?? []), a])
+  const one = (id: string | null, name: string, sub: string | undefined, a?: AgentView) => (
+    <a
+      key={id ?? 'alpha'}
+      href={id ? `#/conversation/${id}` : '#/conversation'}
+      aria-current={chosen === id ? 'page' : undefined}
+      className={cn(
+        'flex items-start gap-2.5 rounded-md px-2.5 py-2 hover:bg-hover',
+        chosen === id && 'bg-accent-soft hover:bg-accent-soft',
+      )}
+    >
+      <span className="mt-0.5">
+        <Mark agent={!!id} />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex items-center gap-2">
+          <span
+            className={cn(
+              'min-w-0 flex-1 truncate text-md text-ink',
+              chosen === id && 'font-medium',
+            )}
+          >
+            {name}
+          </span>
+          {waiting(id) > 0 && (
+            <span
+              data-tip={`${waiting(id)} waiting on you`}
+              className="grid h-4.5 min-w-4.5 shrink-0 place-items-center rounded-full bg-warn-soft px-1.5 font-semibold text-warn text-xs"
+            >
+              {waiting(id)}
+            </span>
+          )}
+        </span>
+        <span className="truncate text-ink-3 text-sm">
+          {a?.blocked ? (
+            <span className="text-bad">{a.blocked.words}</span>
+          ) : (
+            (last.get(id) ?? sub ?? (a ? `${a.module?.name} · ${a.when}` : ''))
+          )}
+        </span>
+      </span>
+    </a>
+  )
+  return (
+    <SideList
+      label="Agents"
+      className="w-72 shrink-0 overflow-y-auto border-line border-r px-2.5 py-4"
+    >
+      <Button
+        size="sm"
+        className="mb-2 self-start"
+        onClick={() => (window.location.hash = '#/agent/new')}
+      >
+        <Plus className="size-3.5" />
+        New agent
+      </Button>
+      {one(null, 'Alpha', 'Ask anything, across every module')}
+      {one(INTERVIEWER.id, INTERVIEWER.name, 'Asks what Alpha needs to know from you')}
+      {[...groups].map(([fn, list]) => (
+        <div key={fn} className="flex flex-col gap-px">
+          <SideHeading>{fn}</SideHeading>
+          {list.map((a) => one(a.id, a.name, undefined, a))}
+        </div>
+      ))}
+    </SideList>
+  )
+}
 
 function DayLine({ day }: { day: string }) {
   return (
-    <div className="flex items-center gap-3 font-semibold text-ink-3 text-xs uppercase tracking-label">
+    <div className="flex items-center gap-3 font-semibold text-ink-3 text-sm">
       <span className="h-px flex-1 bg-hair" />
       {day}
       <span className="h-px flex-1 bg-hair" />
@@ -264,18 +516,22 @@ function Mark({ agent }: { agent?: boolean | undefined }) {
   )
 }
 
+// Who said it (Alpha, or the agent itself), the module as a small chip, the time, and Details:
+// the post's run, or the card in full, in the side panel.
 function Meta({
   who,
   agent,
   module,
   at,
   onLens,
+  details,
 }: {
   who: string
   agent?: boolean | undefined
   module: Module
   at: string
   onLens: (m: Module) => void
+  details?: string | null | undefined
 }) {
   return (
     <div className="flex items-center gap-2 text-ink-3 text-sm">
@@ -283,6 +539,11 @@ function Meta({
       <span className="font-semibold text-ink text-md">{who}</span>
       {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
       <span>{clock(at)}</span>
+      {details && (
+        <a href={details} className="ml-auto hover:text-accent hover:underline">
+          Details
+        </a>
+      )}
     </div>
   )
 }
@@ -352,7 +613,14 @@ function Entry({
     const words = item.words.startsWith(`${who}: `) ? item.words.slice(who.length + 2) : item.words
     return (
       <div className="flex flex-col gap-2.25">
-        <Meta who={who} agent module={item.module} at={item.at} onLens={onLens} />
+        <Meta
+          who={who}
+          agent
+          module={item.module}
+          at={item.at}
+          onLens={onLens}
+          details={item.run && `#/run/${item.run}`}
+        />
         <Told words={words} about={item.about} />
       </div>
     )
@@ -362,7 +630,14 @@ function Entry({
     if (!card && !item.answered) return null
     return (
       <div className="flex flex-col gap-2.25" id={`card-${item.id}`}>
-        <Meta who="Alpha" module={item.module} at={item.at} onLens={onLens} />
+        <Meta
+          who={item.agent?.name ?? 'Alpha'}
+          agent={!!item.agent}
+          module={item.module}
+          at={item.at}
+          onLens={onLens}
+          details={`#/card/${item.id}`}
+        />
         {card ? (
           <CardBox id={item.id} card={card} onChange={onChangeCard} />
         ) : item.answered ? (
@@ -403,6 +678,7 @@ function Entry({
       })}
       {item.steps.length > 0 && <Work steps={item.steps} />}
       <Ran
+        who={item.who ?? 'Alpha'}
         module={item.module}
         at={item.at}
         steps={item.steps.length}
@@ -415,12 +691,14 @@ function Entry({
 
 // The grey line under a reply: who answered, what ran, and Stop while it runs.
 function Ran({
+  who,
   module,
   at,
   steps,
   doing,
   onLens,
 }: {
+  who: string
   module: Module
   at: string
   steps: number
@@ -432,7 +710,7 @@ function Ran({
       {doing && (
         <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
       )}
-      <span className="font-medium text-ink-2">Alpha</span>
+      <span className="font-medium text-ink-2">{who}</span>
       {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
       <span>{clock(at)}</span>
       <span className="min-w-0 truncate">
@@ -471,7 +749,7 @@ function Now({ stream }: { stream: Stream | null }) {
       need: true,
       icon: <TriangleAlert className="size-3.25" />,
       words: c.words.length > 48 ? `${c.words.slice(0, 47)}…` : c.words,
-      go: () => goToCard(c.id),
+      go: () => peek(`#/card/${c.id}`),
     })
   for (const a of stream.attention)
     chips.push({
@@ -488,7 +766,7 @@ function Now({ stream }: { stream: Stream | null }) {
   const shown = [...chips.filter((c) => c.need), ...chips.filter((c) => !c.need)].slice(0, 3)
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-0.5 font-semibold text-ink-3 text-xs uppercase tracking-label">Now</span>
+      <span className="mr-0.5 font-semibold text-ink-3 text-sm">Now</span>
       {shown.map((c) => (
         <button
           key={c.key}
@@ -535,17 +813,11 @@ function Told({ words, about }: { words: string; about: AboutRows | null }) {
         >
           <a
             className="min-w-0 flex-1 truncate font-medium text-ink underline decoration-line underline-offset-3 hover:decoration-ink-3"
-            href={`#/table/${about.table}/${r.id}`}
+            href={`#/row/${r.id}`}
           >
             {r.name}
           </a>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              window.location.hash = `#/table/${about.table}/${r.id}`
-            }}
-          >
+          <Button size="sm" variant="ghost" onClick={() => peek(`#/row/${r.id}`)}>
             Open
           </Button>
           {on === r.id && <Refusal words={problem} />}
@@ -629,18 +901,8 @@ const GATE: Record<string, string> = {
   deletes_own: 'Deletes your entries',
   sign_in: 'Sign-in',
   filing: 'A file from your mail',
-  match: 'Maybe the same',
+  match: 'Possible duplicate',
   rows: 'For you to decide',
-}
-
-// Scrolls the stream to a card and flashes it.
-function goToCard(id: string) {
-  const el = document.getElementById(`card-${id}`)
-  el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  el?.animate(
-    [{ boxShadow: '0 0 0 4px var(--accent-line)' }, { boxShadow: '0 0 0 0 transparent' }],
-    { duration: 1400 },
-  )
 }
 
 // How an option reads on its button: a plain Yes is Approve, a plain No is Decline.
@@ -659,6 +921,8 @@ export function CardBox({
   const [problem, setProblem] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
   const [opened, setOpened] = useState(false)
+  // agents that did not finish: each with its reason and its own Try again and Leave it
+  if (failedOf(card).length) return <FailedCard card={card} />
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
@@ -684,10 +948,12 @@ export function CardBox({
   }
   return (
     <Card
-      label={card.gate ? (GATE[card.gate] ?? 'Waits for you') : 'A question'}
-      waits="Waits for you"
+      label={card.gate ? (GATE[card.gate] ?? 'Needs approval') : 'A question'}
+      waits="Needs approval"
     >
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+      <a href={`#/card/${id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       {/* a question's detail is words, in Markdown; a gate's is what would go, as it would go */}
       {card.detail &&
         (card.kind === 'question' ? (
@@ -697,9 +963,7 @@ export function CardBox({
         ) : (
           <Preview detail={card.detail} />
         ))}
-      {card.restsOn.length > 0 && (
-        <div className="text-ink-3 text-sm">Rests on {card.restsOn.join(' and ')}</div>
-      )}
+      <RestsOn card={card} />
       {card.cannotUndo && (
         <div className="flex items-center gap-1.5 text-sm text-warn">
           <TriangleAlert className="size-3.5 shrink-0" />
@@ -753,6 +1017,21 @@ export function CardBox({
   )
 }
 
+// What a card rests on, opening the runs it names: its own run, or its agent's runs on the
+// agent's page. A card on the person's own message rests on that, said, with nothing to open.
+export function RestsOn({ card }: { card: CardView }) {
+  if (!card.restsOn.length) return null
+  const href = card.run ? `#/run/${card.run}` : card.agent ? `#/agent/${card.agent.id}` : null
+  const words = `Rests on ${card.restsOn.join(' and ')}`
+  return href ? (
+    <a href={href} className="self-start text-ink-3 text-sm hover:text-accent hover:underline">
+      {words}
+    </a>
+  ) : (
+    <div className="text-ink-3 text-sm">{words}</div>
+  )
+}
+
 // The route, named short beside "+" when it is not the person's own subscription (the default).
 const ROUTE_WORDS = { key: 'API key', api: "Alpha's own loop" } as const
 export const routeChip = (m: ModelView | null) =>
@@ -770,6 +1049,7 @@ function Composer({
   area,
   onProblem,
   from,
+  to,
   compact,
 }: {
   words: string
@@ -777,6 +1057,7 @@ function Composer({
   area: RefObject<HTMLTextAreaElement | null>
   onProblem: (p: string) => void
   from: Module
+  to: { id: string; name: string } | null // the agent whose thread it is
   compact: boolean
 }) {
   const file = useRef<HTMLInputElement>(null)
@@ -850,7 +1131,10 @@ function Composer({
     setWords('')
     setQuery(null)
     try {
-      await api.post('/api/say', { words: w, ...(from ? { from: from.id } : {}) })
+      await api.post('/api/say', {
+        words: w,
+        ...(to ? { agent: to.id } : from ? { from: from.id } : {}),
+      })
     } catch (err) {
       setWords(w)
       onProblem(err instanceof Problem ? err.message : 'That did not reach Alpha.')
@@ -886,7 +1170,7 @@ function Composer({
         <div
           role="listbox"
           aria-label="Agents"
-          className="absolute inset-x-3 bottom-full mb-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-pop"
+          className="absolute inset-x-3 bottom-full z-(--z-pop) mb-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-pop"
         >
           {shown.map((a, i) => (
             <button
@@ -914,8 +1198,14 @@ function Composer({
         onChange={(e) => type(e.target.value, e.target.selectionStart)}
         onKeyDown={key}
         onBlur={() => setQuery(null)}
-        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha, or @ an agent'}
-        aria-label={from ? `Ask about ${from.name}` : 'Message Alpha'}
+        placeholder={
+          to
+            ? `Message ${to.name}`
+            : from
+              ? `Ask about ${from.name}`
+              : 'Message Alpha, or @ an agent'
+        }
+        aria-label={to ? `Message ${to.name}` : from ? `Ask about ${from.name}` : 'Message Alpha'}
         className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
       />
       <div className="flex items-center gap-1">

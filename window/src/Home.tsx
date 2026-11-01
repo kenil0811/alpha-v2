@@ -1,31 +1,59 @@
 // Home (Kenil, 20 Oct: "Home should be about all important things, the space in home is very
-// precious"): no conversation here. One line to ask Alpha, whose answer opens on the right; then
-// what needs the person (cards answered right here), what changed since they last looked (kept
-// until they clear it), what is running and what is coming up; the modules are in the rail, not
-// here (Kenil, 26 Oct). The conversation has its own place in the rail, each module's tab, and Ask
-// (⌘J) on any screen.
+// precious"): no conversation here, Alpha is on the right. Find on top, one strip across every
+// module, then what needs the person (cards answered right here) and what changed since they last
+// looked (kept until they clear it); the modules are in the rail, not here (Kenil, 26 Oct). Beside
+// it the standard column of an Overview, across every module (Vikas, 30 Oct).
+
+import type { ConnectorsView, SetupView, TasksView, TodayView } from '@alpha/core/api'
+import { Bot, Check, ChevronRight, LoaderCircle, MessageCircleQuestion, Search } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { api } from './api.ts'
+import { Arranged, type Block } from './arrange.tsx'
+import { interviewMe, useInterview } from './ask.ts'
 import type {
+  AgentView,
   CardView,
-  ConnectorsView,
+  FootprintView,
   ModuleSummary,
+  ModuleView,
+  RuleView,
   Stream,
-  TasksView,
-  TodayView,
   WorkingModuleView,
-} from '@alpha/core/api'
-import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucide-react'
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { api, Problem } from './api.ts'
-import { Arranged } from './arrange.tsx'
-import { CardBox } from './Conversation.tsx'
+} from './coming.ts'
+import { GovernanceSection } from './Governance.tsx'
+import {
+  Agents,
+  Files,
+  Intelligence,
+  isQuestion,
+  Strip,
+  signalOf,
+  Tables,
+  type Tile,
+} from './Overview.tsx'
+import { peek } from './Peek.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
-import { signInWith } from './SignInApps.tsx'
+import { InBar } from './Shell.tsx'
 import { TaskList } from './Tasks.tsx'
-import { clock, dayWords, sinceWords } from './time.ts'
+import { clock, dueWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Group, Line, Quiet } from './ui/groups.tsx'
+import { Cut } from './ui/cut.tsx'
+import { type Signal, strongest } from './ui/dot.tsx'
+import { Group, Line } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
+import { Slides } from './ui/slides.tsx'
+import { NEEDS_YOU } from './vocabulary.ts'
+import { NeedsYou, needsCount } from './Waiting.tsx'
+
+// Home's tasks come in three cuts of the Tasks lists: today and overdue, this week, and what
+// waits on someone else (a client's "My work" filters, 29 Oct)
+type TaskCut = 'today' | 'week' | 'waiting'
+const CUTS: [TaskCut, string, string][] = [
+  ['today', 'Today', 'Today and overdue'],
+  ['week', 'This week', 'This week'],
+  ['waiting', 'Waiting', 'Waiting'],
+]
 
 // A part of Home whose load failed: said in its place, with the way to try again.
 function NotLoaded({ onTry }: { onTry: () => void }) {
@@ -39,21 +67,29 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
   )
 }
 
-function greeting(name: string): string {
+// How many of the Mac's steps are done: Claude, the two readers, Chrome and each connection.
+const readyCount = (v: SetupView) =>
+  [
+    v.claude.signedIn,
+    v.readers.browser === 'ready',
+    v.readers.documents === 'ready',
+    v.chrome,
+    ...v.steps.map((x) => x.done),
+  ].filter(Boolean).length
+
+// no name: it is in the workspace's corner already (Vikas, 1 Nov)
+function greeting(): string {
   const h = new Date().getHours()
-  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-  return name ? `${part}, ${name}` : part
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
 export function Home({
   stream,
   modules,
-  name,
   onAsked,
 }: {
   stream: Stream | null
   modules: ModuleSummary[]
-  name: string
   onAsked: () => void // the answer opens on the right
 }) {
   const [today, setToday] = useState<TodayView | null>(null)
@@ -64,9 +100,13 @@ export function Home({
     today: false,
     tasks: false,
   })
-  const [words, setWords] = useState('')
-  const [allComing, setAllComing] = useState(false)
-  const ask = useRef<HTMLInputElement>(null)
+  const [agents, setAgents] = useState<AgentView[]>([])
+  const [cut, setCut] = useState<TaskCut>('today')
+  const [cutView, setCutView] = useState<TasksView | null>(null)
+  // Needs you as rows, a gallery or one card at a time (Vikas, 30 Oct)
+  // the tasks that wait on the person, for Needs you (those a card there stands for are left out)
+  const [yours, setYours] = useState<TasksView['lines']>([])
+  const interview = useInterview(null)
   const last = stream?.lastId
   const load = useCallback(() => {
     api.get<TodayView>('/api/today').then(
@@ -83,47 +123,324 @@ export function Home({
       },
       () => setFailed((f) => ({ ...f, tasks: true })),
     )
+    api.get<TasksView>('/api/tasks?list=waiting').then(
+      (t) => setYours(t.lines.filter((l) => l.waitingForYou)),
+      () => setYours([]),
+    )
+    api.get<WorkingModuleView[]>('/api/working').then(
+      (w) => setAgents(w.flatMap((m) => m.agents)),
+      () => setAgents([]),
+    )
   }, [])
   // on opening, and at each new journal line, Home looks again
   useEffect(() => {
     void last
     load()
   }, [load, last])
+  // the standard column across every module: each module's files and notes, and every rule
+  // ponytail: one request a module; a workspace endpoint when a person keeps dozens
+  const [views, setViews] = useState<ModuleView[]>([])
+  const [rules, setRules] = useState<RuleView[]>([])
+  useEffect(() => {
+    void last
+    Promise.all(modules.map((m) => api.get<ModuleView>(`/api/modules/${m.id}`))).then(
+      setViews,
+      () => setViews([]),
+    )
+    api.get<RuleView[]>('/api/rules').then(
+      (r) => setRules(r.filter((x) => !x.revokedAt)),
+      () => setRules([]),
+    )
+  }, [modules, last])
+  const unique = <T,>(xs: T[], key: (x: T) => string) => [
+    ...new Map(xs.map((x) => [key(x), x])).values(),
+  ]
+  const workspace: ModuleView = {
+    id: '',
+    name: 'Workspace',
+    people: false,
+    kit: null,
+    sites: 0,
+    businessCase: null,
+    parent: null,
+    pages: [],
+    modules: [],
+    agents,
+    notes: views.map((v) => v.notes).join('\n'),
+    tables: unique(
+      views.flatMap((v) => v.tables),
+      (t) => t.id,
+    ),
+    files: unique(
+      views.flatMap((v) => v.files ?? []),
+      (f) => `${f.hash}${f.row.id}`,
+    ),
+  }
+
+  useEffect(() => {
+    void last
+    if (cut === 'today') setCutView(null)
+    else api.get<TasksView>(`/api/tasks?list=${cut}`).then(setCutView, () => setCut('today'))
+  }, [cut, last])
+  const shown = cut === 'today' ? tasks : cutView
+  // a cut with nothing in it is not offered; one cut alone is not a choice
+  const cuts = CUTS.filter(([k]) => k === cut || (tasks?.counts[k] ?? 0) > 0)
 
   const cards = stream?.cards ?? []
   const signIns = stream?.attention ?? []
-  const running = stream?.running ?? []
-  const reading = stream?.reading ?? []
   const changed = today?.changed ?? []
-  const coming = today?.coming ?? []
+  // the next event, at the bar's right: an event of the calendar once the core keeps them (P20),
+  // until then the soonest task with a due day that is not past
+  const next = (tasks?.lines ?? [])
+    .filter((t) => t.due && !t.overdue && t.state !== 'done' && t.state !== 'dropped')
+    .sort((x, y) => (x.due ?? '').localeCompare(y.due ?? ''))[0]
   // a card that waits is never hidden behind the welcome
   const firstOpen =
     stream !== null &&
     modules.length === 0 &&
     stream.lines.length === 0 &&
     cards.length + signIns.length === 0
-  const changeCard = (card: CardView) => {
-    setWords(`About “${card.words.replace(/\?$/, '')}”: `)
-    ask.current?.focus()
-  }
+
+  const needs: Block['node'] = (
+    <Group id="home-needs" title={NEEDS_YOU} count={needsCount(cards, signIns.length)}>
+      {/* the one list, as Tasks › Needs you draws it (Vikas, 30 Oct) */}
+      <NeedsYou
+        cards={cards}
+        signIns={signIns}
+        tasks={yours}
+        moduleName={(id) => modules.find((m) => m.id === id)?.name}
+        onChange={load}
+      />
+    </Group>
+  )
+  const todayTasks: Block['node'] = (
+    <Group
+      id="home-tasks"
+      title={CUTS.find(([k]) => k === cut)?.[2] ?? 'Today and overdue'}
+      count={shown?.lines.length}
+      action={
+        <a
+          href={`#/tasks?list=${cut}`}
+          className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+        >
+          All tasks
+        </a>
+      }
+    >
+      {cuts.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 whitespace-nowrap">
+          {cuts.map(([k, label]) => (
+            <Cut
+              key={k}
+              sel={k === cut}
+              count={tasks?.counts[k] || undefined}
+              onClick={() => setCut(k)}
+            >
+              {label}
+            </Cut>
+          ))}
+        </div>
+      )}
+      {failed.tasks && <NotLoaded onTry={load} />}
+      {shown && shown.lines.length > 0 && (
+        <Slides items={shown.lines} label="Tasks">
+          {(page) => <TaskList lines={page} cards={cards} />}
+        </Slides>
+      )}
+    </Group>
+  )
+  const whatChanged: Block['node'] = (
+    <Group
+      id="home-changed"
+      title="What changed"
+      sub={today ? sinceWords(today.since) : undefined}
+      action={
+        changed.length > 0 && (
+          <button
+            type="button"
+            className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+            onClick={() => api.post('/api/today/seen').then(load, load)}
+          >
+            Clear
+          </button>
+        )
+      }
+    >
+      {failed.today && <NotLoaded onTry={load} />}
+      {changed.length > 0 && (
+        <Slides items={changed} label="What changed">
+          {(page) => (
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              {page.map((r) => {
+                const said = r.words?.startsWith(`${r.name}: `)
+                  ? r.words.slice(r.name.length + 2)
+                  : r.words
+                return (
+                  <Line
+                    key={r.id}
+                    boxed
+                    icon={<Bot className="size-3.5 text-ink-3" />}
+                    head={`${r.name}${r.module ? ` · ${r.module}` : ''} · ${clock(new Date(r.startedAt))}`}
+                    words={said ?? ''}
+                    warn={r.state === 'failed'}
+                    href="#/activity"
+                  />
+                )
+              })}
+            </div>
+          )}
+        </Slides>
+      )}
+    </Group>
+  )
+
+  // Interview me: a button at the head of the standard column, above Agents (Vikas, 30 Oct)
+  const start: Block['node'] = (
+    <div className="flex flex-col gap-2">
+      <div className="grid gap-2">
+        {interview.view && (
+          <Button
+            className="h-10 min-w-0 justify-start text-left"
+            onClick={() => interviewMe(null)}
+            data-tip={interview.tip}
+          >
+            {interview.busy ? (
+              <LoaderCircle className="size-4 shrink-0 animate-spin" />
+            ) : (
+              <MessageCircleQuestion className="size-4 shrink-0" />
+            )}
+            <span className="min-w-0 flex-1">Interview me</span>
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+  // Getting this Mac ready: a card of its own, done once and gone when it is (Vikas, 1 Nov)
+  const mac: Block[] =
+    setup && unready(setup)
+      ? [
+          {
+            key: 'mac',
+            name: 'Mac setup',
+            node: (
+              <Group
+                id="home-mac"
+                title="Mac setup"
+                sub={`${readyCount(setup)} of ${4 + setup.steps.length} done; once, then it goes`}
+              >
+                <SetupList view={setup} onChange={reloadSetup} />
+              </Group>
+            ),
+          },
+        ]
+      : []
+  // the standard column, across every module, in an Overview's order
+  const standard: Block[] = [
+    ...(interview.view ? [{ key: 'start', name: 'Interview me', node: start }] : []),
+    ...(agents.length
+      ? [
+          {
+            key: 'agents',
+            name: 'Agents',
+            node: (
+              <Agents
+                m={workspace}
+                main={[]}
+                onChange={load}
+                href="#/intelligence/agents"
+                across
+                onNew={() => (window.location.hash = '#/agent/new')}
+              />
+            ),
+          },
+        ]
+      : []),
+    // Files under Agents, Tables under Governance (Vikas, 1 Nov)
+    {
+      key: 'files',
+      name: 'Files',
+      node: <Files m={workspace} onChange={load} href="#/intelligence/brain" />,
+    },
+    {
+      key: 'governance',
+      name: 'Governance',
+      node: (
+        <div id="ov-governance" className="rounded-lg border border-line bg-surface px-3 py-3">
+          <GovernanceSection title="Governance" version={last ?? 0} small />
+        </div>
+      ),
+    },
+    ...(modules.some((m) => m.tables.length)
+      ? [
+          {
+            key: 'tables',
+            name: 'Tables',
+            node: <Tables ms={modules} href="#/intelligence/brain" />,
+          },
+        ]
+      : []),
+    {
+      key: 'brain',
+      name: 'Second Brain',
+      node: <Intelligence m={workspace} rules={rules} here="#/intelligence/brain" />,
+    },
+  ]
 
   return (
-    <div className="@container h-full overflow-y-auto">
+    // every link on Home opens in the side panel first (Peek.tsx; Vikas, 28 Oct)
+    <div data-peek-all className="@container h-full overflow-y-auto">
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-ink-3 text-sm">
-              {new Date().toLocaleDateString(undefined, {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
-            </p>
-            <h1 className="mt-1 font-serif text-2xl text-ink">{greeting(name)}</h1>
-            <p className="mt-1 text-ink-2 text-md">What needs you and what changed.</p>
-          </div>
-          <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
-        </div>
+        {/* the greeting and the day sit in the bar; Home opens on Find and one strip across every
+            module (Vikas, 27 Oct): the assistant is on the right, so no box to ask here */}
+        {/* two lines each side (Vikas, 1 Nov): the day over the greeting at the left, Next and its
+            day over the next thing at the right */}
+        <InBar>
+          <span className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex flex-col whitespace-nowrap leading-tight">
+              <span className="text-ink-3 text-xs">
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+              <h1 className="font-serif text-ink text-lg leading-tight">{greeting()}</h1>
+            </span>
+            {next && (
+              <a
+                href={`#/tasks/${next.id}`}
+                data-tip="The next thing on your calendar"
+                className="ml-auto flex min-w-0 max-w-80 flex-col items-end leading-tight hover:text-accent"
+              >
+                <span className="text-ink-3 text-xs">
+                  Next{next.due ? ` · ${dueWords(next.due)}` : ''}
+                </span>
+                <span className="max-w-full truncate text-ink text-md">{next.title}</span>
+              </a>
+            )}
+          </span>
+        </InBar>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('alpha:find'))}
+          className="flex h-11 w-full items-center gap-3 rounded-xl border border-line bg-surface px-4 text-ink-3 shadow-pop hover:border-accent-line"
+        >
+          <Search className="size-4" />
+          <span className="flex-1 text-left">Find a client, a person, a task or a module</span>
+          <kbd className="text-sm">⌘K</kbd>
+        </button>
+
+        <Strip
+          tiles={homeTiles({ cards, signIns: signIns.length, agents, tasks, changed })}
+          onGo={(go) => {
+            if (go === 'tasks') peek('#/tasks?list=today')
+            else if (go === 'agents') peek('#/intelligence/agents')
+            else
+              document
+                .getElementById(`home-${go}`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+        />
 
         {stream?.settingUp && (
           <p className="flex items-center gap-2 text-ink-2 text-md">
@@ -132,313 +449,44 @@ export function Home({
           </p>
         )}
 
-        {setup && unready(setup) && (
-          <Group
-            title="Getting this Mac ready"
-            sub="Alpha works meanwhile; these finish setting it up"
-          >
-            <SetupList view={setup} onChange={reloadSetup} />
-          </Group>
-        )}
-
         {firstOpen ? (
-          <Welcome
-            onTry={(w) => {
-              setWords(w)
-              ask.current?.focus()
-            }}
-          />
+          <Welcome onTry={(w) => api.post('/api/say', { words: w }).then(onAsked)} />
         ) : (
-          // each part a card the person moves by its handle, within and across the two columns, and
-          // resizes from its corner (Vikas, 29 and 30 Oct)
+          // what waits on the person, their day and what Alpha did, each a block the person
+          // drags beside, above or below another (Vikas, 29 Oct); an empty one is not shown. The
+          // standard column on the right, as on an Overview (Vikas, 30 Oct); the work column keeps
+          // the page "home", so an arrangement kept before stays the person's. The work column
+          // holds two cards a row, Mac setup among them; the right one only the standard cards and
+          // buttons (Vikas, 1 Nov)
           <Arranged
-            className="grid items-start gap-7 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
+            className="grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]"
             blocks={[
-              {
-                key: 'needs',
-                name: 'Needs you',
-                node: (
-                  <Group title="Needs you" count={cards.length + signIns.length}>
-                    {stream && cards.length + signIns.length === 0 && (
-                      <Quiet>Nothing waits on you.</Quiet>
-                    )}
-                    {cards.map((c) => (
-                      <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
-                    ))}
-                    {signIns.map((a) => (
-                      <Line
-                        key={a.connector}
-                        icon={<KeyRound className="size-3.5 text-warn" />}
-                        head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
-                        words={
-                          a.waiting
-                            ? `${a.title}: ${a.waiting}`
-                            : a.inBrowser
-                              ? `${a.title} needs you to sign in: it opens in Chrome`
-                              : a.signsInWith
-                                ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
-                                : `${a.title} needs you to sign in again`
-                        }
-                        {...(a.waiting
-                          ? { href: '#/intelligence/connections' }
-                          : a.inBrowser
-                            ? {
-                                onClick: () => {
-                                  void api.post(`/api/connections/${a.connection}/sign-in`)
-                                },
-                              }
-                            : a.signsInWith
-                              ? {
-                                  onClick: () => {
-                                    void signInWith(a.connection)
-                                  },
-                                }
-                              : { href: `#/settings?connect=${a.connector}` })}
-                      />
-                    ))}
-                  </Group>
-                ),
-              },
-              {
-                key: 'changed',
-                name: 'Since you last looked',
-                node: (
-                  <Group
-                    title="Since you last looked"
-                    sub={today ? sinceWords(today.since) : undefined}
-                    action={
-                      changed.length > 0 && (
-                        <button
-                          type="button"
-                          className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
-                          onClick={() => api.post('/api/today/seen').then(load, load)}
-                        >
-                          Clear
-                        </button>
-                      )
-                    }
-                  >
-                    {failed.today && <NotLoaded onTry={load} />}
-                    {today && !failed.today && changed.length === 0 && (
-                      <Quiet>Nothing changed.</Quiet>
-                    )}
-                    {changed.length > 0 && (
-                      <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                        {changed.slice(0, 10).map((r) => {
-                          const said = r.words?.startsWith(`${r.name}: `)
-                            ? r.words.slice(r.name.length + 2)
-                            : r.words
-                          return (
-                            <Line
-                              key={r.id}
-                              boxed
-                              icon={<Bot className="size-3.5 text-ink-3" />}
-                              head={`${r.name}${r.module ? ` · ${r.module}` : ''} · ${clock(new Date(r.startedAt))}`}
-                              words={said ?? ''}
-                              warn={r.state === 'failed'}
-                              href="#/activity"
-                            />
-                          )
-                        })}
-                      </div>
-                    )}
-                    {changed.length > 10 && (
-                      <a
-                        className="text-accent text-sm underline underline-offset-3"
-                        href="#/activity"
-                      >
-                        {changed.length - 10} more in Activity
-                      </a>
-                    )}
-                  </Group>
-                ),
-              },
-              {
-                key: 'tasks',
-                name: "Today's tasks",
-                node: (
-                  <Group
-                    title="Today's tasks"
-                    count={tasks?.lines.filter((t) => t.overdue).length}
-                    action={
-                      <a
-                        className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
-                        href="#/tasks"
-                      >
-                        All tasks
-                      </a>
-                    }
-                  >
-                    {tasks && (
-                      <div className="grid grid-cols-3 gap-2">
-                        <TaskTile
-                          label="Overdue"
-                          n={tasks.counts.overdue ?? 0}
-                          list="overdue"
-                          bad
-                        />
-                        <TaskTile label="Due today" n={tasks.counts.today ?? 0} list="today" />
-                        <TaskTile label="This week" n={tasks.counts.week ?? 0} list="week" />
-                      </div>
-                    )}
-                    {failed.tasks && <NotLoaded onTry={load} />}
-                    {tasks && !failed.tasks && tasks.lines.length === 0 && (
-                      <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
-                    )}
-                    {tasks && tasks.lines.length > 0 && (
-                      <TaskList lines={tasks.lines} onChange={load} />
-                    )}
-                  </Group>
-                ),
-              },
-              ...(running.length > 0 || reading.length > 0
-                ? [
-                    {
-                      key: 'running',
-                      name: 'Running',
-                      node: (
-                        <Group title="Running">
-                          <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                            {reading.map((r) => (
-                              <div
-                                key={r.connection}
-                                className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
-                              >
-                                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                                <span className="min-w-0 flex-1 truncate text-ink">
-                                  Reading {r.title}
-                                  <span className="text-ink-3"> · {r.account}</span>
-                                </span>
-                              </div>
-                            ))}
-                            {running.map((r) => (
-                              <div
-                                key={r.id}
-                                className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
-                              >
-                                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                                <span className="min-w-0 flex-1 truncate text-ink">{r.name}</span>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => api.post(`/api/runs/${r.id}/stop`)}
-                                >
-                                  Stop
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </Group>
-                      ),
-                    },
-                  ]
+              ...(cards.length + signIns.length > 0
+                ? [{ key: 'needs', name: NEEDS_YOU, node: needs }]
                 : []),
-              {
-                key: 'coming',
-                name: 'Coming up',
-                node: (
-                  <Group title="Coming up">
-                    {failed.today && <NotLoaded onTry={load} />}
-                    {today && !failed.today && coming.length === 0 && (
-                      <Quiet>No agent runs on the clock.</Quiet>
-                    )}
-                    {coming.length > 0 && (
-                      <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                        {/* opened out, the rows scroll inside their box, not the whole screen (Kenil,
-                            21 Oct) */}
-                        <div className={allComing ? 'max-h-80 overflow-y-auto' : undefined}>
-                          {(allComing ? coming : coming.slice(0, 3)).map((c) => (
-                            <a
-                              key={c.agent}
-                              href={`#/module/${c.module}/agents`}
-                              className="flex items-baseline gap-2 border-hair border-t px-4 py-2.5 text-md first:border-t-0 hover:bg-hover"
-                            >
-                              <span className="min-w-0 flex-1 truncate text-ink">
-                                {c.name}
-                                <span className="text-ink-3"> · {c.moduleName}</span>
-                              </span>
-                              <span className="shrink-0 text-ink-3 text-sm">{dayWords(c.at)}</span>
-                            </a>
-                          ))}
-                        </div>
-                        {coming.length > 3 && (
-                          <button
-                            type="button"
-                            onClick={() => setAllComing((a) => !a)}
-                            className="w-full border-hair border-t px-4 py-2 text-left text-accent text-sm hover:bg-hover"
-                          >
-                            {allComing ? 'Fewer' : `${coming.length - 3} more`}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </Group>
-                ),
-              },
+              ...(failed.tasks || (tasks?.lines.length ?? 0) > 0 || cuts.length > 1
+                ? [{ key: 'tasks', name: 'Today and overdue', node: todayTasks }]
+                : []),
+              ...(failed.today || changed.length > 0
+                ? [{ key: 'changed', name: 'What changed', node: whatChanged }]
+                : []),
+              ...mac,
+              ...standard,
             ]}
             columns={[
-              { page: 'home', start: [['needs'], ['changed']] },
-              { page: 'home:side', start: [['tasks'], ['running'], ['coming']] },
+              {
+                page: 'home',
+                start: [
+                  ['needs', 'tasks'],
+                  ['changed', 'mac'],
+                ],
+              },
+              { page: 'home:side', start: standard.map((b) => [b.key]) },
             ]}
           />
         )}
       </div>
     </div>
-  )
-}
-
-// One line to ask Alpha; the answer opens on the right, in the conversation.
-function AskBox({
-  area,
-  words,
-  setWords,
-  onAsked,
-}: {
-  area: React.RefObject<HTMLInputElement | null>
-  words: string
-  setWords: (w: string) => void
-  onAsked: () => void
-}) {
-  const [problem, setProblem] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const send = async (e: FormEvent) => {
-    e.preventDefault()
-    const w = words.trim()
-    if (!w || busy) return
-    setBusy(true)
-    setProblem(null)
-    try {
-      await api.post('/api/say', { words: w })
-      setWords('')
-      onAsked()
-    } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That did not reach Alpha.')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <form onSubmit={send} className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pr-1.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
-        <input
-          ref={area}
-          value={words}
-          onChange={(e) => setWords(e.target.value)}
-          placeholder="Ask Alpha, or tell it what to keep"
-          aria-label="Ask Alpha"
-          className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
-        />
-        <button
-          type="submit"
-          aria-label="Send"
-          disabled={!words.trim() || busy}
-          className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink disabled:opacity-35"
-        >
-          <ArrowUp className="size-4" />
-        </button>
-      </div>
-      {problem && <div className="text-bad text-sm">{problem}</div>}
-    </form>
   )
 }
 
@@ -448,14 +496,17 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
   const [view, setView] = useState<{
     steps: { name: string; words: string; sub: string; done: boolean }[]
     kit: boolean
+    learned: boolean
   } | null>(null)
   useEffect(() => {
     Promise.all([
       api.get<ConnectorsView>('/api/connectors'),
       api.get<WorkingModuleView[]>('/api/working'),
+      api.get<FootprintView>('/api/footprint').catch(() => null),
     ]).then(
-      ([c, w]) =>
+      ([c, w, f]) =>
         setView({
+          learned: !!f?.done,
           steps: c.connectors
             .filter((k) => k.setup || k.auth === 'path')
             .map((k) => ({
@@ -479,6 +530,13 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
     'Who emailed me this week?',
   ]
   const setup = [
+    // the footprint first (Vikas, 30 Oct): Alpha reads what is ticked, then asks what is left
+    {
+      done: view?.learned,
+      words: 'Let Alpha learn your business',
+      sub: 'It reads only what you tick on this Mac, drafts your business for your yes, then asks what is left',
+      href: '#/conversation/interviewer',
+    },
     ...(view?.steps ?? []).map((s) => ({
       done: s.done,
       words: s.words,
@@ -505,7 +563,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
             key={t}
             type="button"
             onClick={() => onTry(t)}
-            className="h-7 rounded-full border border-line bg-surface px-2.75 text-ink-2 text-sm transition-colors hover:border-accent-line hover:text-accent"
+            className="h-7 rounded-full border border-line bg-surface px-2.75 text-ink-2 text-sm transition-colors hover:border-accent-line hover:bg-accent-soft hover:text-accent"
           >
             {t}
           </button>
@@ -538,32 +596,101 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
   )
 }
 
-// A tile of Today: a count of tasks, opening their list. Overdue turns red only when it has some.
-function TaskTile({
-  label,
-  n,
-  list,
-  bad,
+// Home's one strip, across every module (Vikas, 27 Oct): what waits on the person (Alpha's
+// questions with it), the agents, today's tasks and what changed; never a strip per module.
+function homeTiles({
+  cards,
+  signIns,
+  agents,
+  tasks,
+  changed,
 }: {
-  label: string
-  n: number
-  list: string
-  bad?: boolean
-}) {
-  return (
-    <a
-      href={`#/tasks?list=${list}`}
-      className={cn(
-        'flex flex-col gap-0.5 rounded-lg border px-3.5 py-2.5 hover:bg-hover',
-        bad && n > 0 ? 'border-bad/40 bg-bad-soft' : 'border-line bg-surface',
-      )}
-    >
-      <span className={cn('text-sm', bad && n > 0 ? 'text-bad' : 'text-ink-3')}>{label}</span>
-      <span
-        className={cn('font-serif text-2xl tabular-nums', bad && n > 0 ? 'text-bad' : 'text-ink')}
-      >
-        {n}
-      </span>
-    </a>
-  )
+  cards: CardView[]
+  signIns: number
+  agents: AgentView[]
+  tasks: TasksView | null
+  changed: { id: string; name: string; words: string | null }[]
+}): Tile[] {
+  const questions = cards.filter(isQuestion)
+  const on = agents.filter((a) => a.state === 'on')
+  const needs = agents.filter((a) => a.needs)
+  const due = (tasks?.counts.overdue ?? 0) + (tasks?.counts.today ?? 0)
+  const all = needsCount(cards, signIns)
+  // one place for what waits on the person (Vikas, 30 Oct): Needs you below lists it, so its tile
+  // counts it, questions with the rest, and goes there; it never lists it again. Interview me
+  // is a button at the head of the standard column, not a tile (Vikas, 30 Oct).
+  return [
+    {
+      key: 'needs',
+      label: NEEDS_YOU,
+      signal: signIns ? 'now' : (strongest(cards.map(signalOf)) ?? 'opt'),
+      big: String(all),
+      small: `${all === 1 ? 'thing needs' : 'things need'} you${
+        questions.length
+          ? `, ${questions.length} ${questions.length === 1 ? 'question' : 'questions'}`
+          : ''
+      }`,
+      lines: [],
+      go: 'needs',
+      act: all
+        ? { label: 'Review', go: 'needs' }
+        : { label: 'All done', off: true, tip: 'Nothing needs you now' },
+    },
+    {
+      key: 'agents',
+      label: 'Agents',
+      signal: needs.length ? 'now' : on.length ? 'done' : 'opt',
+      big: String(on.length),
+      small: `of ${agents.length} agents active`,
+      lines: [
+        ...needs.slice(0, 3).map((a) => ({
+          s: 'now' as const,
+          words: `${a.name} needs ${a.needs}`,
+          href: `#/agent/${a.id}`,
+        })),
+        ...agents
+          .filter((a) => !a.needs)
+          .slice(0, 4 - Math.min(needs.length, 3))
+          .map((a) => ({
+            s: (a.state === 'on' ? 'done' : 'opt') as Signal,
+            words: a.name,
+            href: `#/agent/${a.id}`,
+          })),
+      ],
+      go: 'agents',
+      act: needs[0]
+        ? { label: 'Fix', href: `#/agent/${needs[0].id}` }
+        : { label: 'Open agents', go: 'agents' },
+    },
+    {
+      key: 'tasks',
+      label: 'Tasks',
+      signal: tasks?.counts.overdue ? 'now' : due ? 'yes' : 'opt',
+      big: String(due),
+      small: `${due === 1 ? 'task' : 'tasks'} due${tasks?.counts.overdue ? `, ${tasks.counts.overdue} overdue` : ' today'}`,
+      lines: (tasks?.lines ?? []).slice(0, 4).map((t) => ({
+        s: (t.overdue ? 'now' : 'yes') as Signal,
+        words: t.title,
+        href: `#/tasks/${t.id}`,
+      })),
+      go: 'tasks',
+      act: { label: due ? 'Start' : 'Open tasks', go: 'tasks' },
+    },
+    {
+      key: 'changed',
+      label: 'What changed',
+      signal: 'opt',
+      big: String(changed.length),
+      small: `${changed.length === 1 ? 'thing' : 'things'} changed`,
+      lines: changed.slice(0, 20).map((r) => ({
+        s: 'opt' as const,
+        words: r.words ?? r.name,
+        href: `#/run/${r.id}`,
+      })),
+      go: 'changed',
+      act: changed.length
+        ? { label: 'See changes', go: 'changed' }
+        : { label: 'Nothing new', off: true, tip: 'Nothing changed since you last looked' },
+    },
+  ]
 }
