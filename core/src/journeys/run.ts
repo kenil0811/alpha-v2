@@ -18,7 +18,7 @@ import {
 import { createServer, type Server } from 'node:http'
 import { homedir, tmpdir } from 'node:os'
 import { extname, join, normalize, resolve } from 'node:path'
-import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
+import { BrowserEngine, MemorySecrets, type SecretStore } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { config } from '../config.ts'
@@ -32,10 +32,12 @@ import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
 import { AgentRunner } from '../modules/runs/index.ts'
+import { platformHere } from '../platform/index.ts'
 import { Refused } from '../world/kinds.ts'
 import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
+import { ownLoop, spentIn } from './own.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
 
@@ -135,14 +137,17 @@ export async function runOne(
   name: string,
   args: string[],
   run: { at: number; of: number } = { at: 1, of: 1 },
-): Promise<{ passed: boolean; report: string; seconds: number }> {
+  keys: SecretStore = new MemorySecrets(), // the API key, for the own loop (keyOnce)
+): Promise<{ passed: boolean; report: string; seconds: number; usd: number | null }> {
   // Alpha's prompt alone is the default since 24 Oct; --appended tries it on Claude Code's own
   const prompt = args.includes('--appended') ? 'appended' : 'alone'
+  // --loop own: Alpha's own loop on the person's API key (step 3, part 1); else Claude Code
+  const own = args[args.indexOf('--loop') + 1] === 'own' && args.includes('--loop')
   const { journeys, base } = placesOf(args)
   const journey = Journey.parse(parse(readFileSync(join(journeys, `${name}.yaml`), 'utf8')))
   const stamp = `${stampOf()}${run.of > 1 ? `-run${run.at}` : ''}`
   // Outside $TMPDIR, so the sandbox is as it is for the person.
-  const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${prompt}`)
+  const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${own ? 'own' : prompt}`)
   rmSync(home, { recursive: true, force: true })
   const world = await World.open(join(home, 'tenants', 't_journey'))
   const user = world.owner('Kenil')
@@ -160,7 +165,17 @@ export async function runOne(
     // journeys never read a real site: only the made-up ones served on this Mac
     only: ['127.0.0.1', 'localhost'],
   })
-  const runner = new AgentRunner(world, () => browser, { owner: user.id })
+  // the own loop answers the desk and the small asks (reading a document, sorting into groups)
+  const provider = own ? await ownLoop(world, user, keys) : null
+  const runner = new AgentRunner(world, () => browser, {
+    owner: user.id,
+    ...(provider
+      ? {
+          ask: (p, schema) => provider.ask(config.reading(), p, schema),
+          judge: (p, schema) => provider.ask(config.judging(), p, schema),
+        }
+      : {}),
+  })
   const drafts = new Drafts(
     world,
     { send: (connector, message) => connectors.runTool(connector, 'send', { ...message }) },
@@ -173,6 +188,7 @@ export async function runOne(
   runner.drafts = drafts
   const engine = new Engine(world, {
     prompt,
+    ...(provider ? { provider } : {}),
     connectors,
     hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
   })
@@ -201,7 +217,9 @@ export async function runOne(
     '',
     journey.title,
     '',
-    `Fresh tenant, model ${config.models().desk}, Alpha's prompt ${prompt === 'alone' ? 'alone' : 'appended to Claude Code’s'}.`,
+    own
+      ? `Fresh tenant, model ${config.models().desk}, on Alpha's own loop with the API key kept in the Keychain.`
+      : `Fresh tenant, model ${config.models().desk}, on Claude Code, Alpha's prompt ${prompt === 'alone' ? 'alone' : 'appended to Claude Code’s'}.`,
     '',
   ]
   let passed = true
@@ -414,21 +432,8 @@ export async function runOne(
     const steps = world
       .lines({ user: user.id, kinds: ['call'] })
       .filter((l) => l.turn === reply?.turn)
-    const usage = (reply?.data.usage ?? {}) as Record<
-      string,
-      {
-        inputTokens: number
-        outputTokens: number
-        cacheReadInputTokens: number
-        cacheCreationInputTokens: number
-      }
-    >
-    const tokens = Object.entries(usage)
-      .map(
-        ([m, u]) =>
-          `${m}: in ${u.inputTokens + u.cacheReadInputTokens + u.cacheCreationInputTokens} (cache read ${u.cacheReadInputTokens}), out ${u.outputTokens}`,
-      )
-      .join('; ')
+    // what the world spent so far: Claude Code's own cost, the own loop's tokens priced
+    const tokens = spentIn(world).words
     report.push(`## ${i + 1}. ${what}`, '')
     if (step.say || step.answer) {
       report.push(
@@ -436,7 +441,7 @@ export async function runOne(
         '',
       )
       if (steps.length) report.push(`Steps: ${steps.map((s) => s.words).join('; ')}.`, '')
-      if (tokens) report.push(`Tokens so far in the session: ${tokens}.`, '')
+      report.push(`Spent so far: ${tokens}.`, '')
     } else report.push(`Took ${((Date.now() - t0) / 1000).toFixed(1)} s.`, '')
     for (const check of step.checks) {
       const o = await judge(world, user, check)
@@ -449,10 +454,11 @@ export async function runOne(
       break
     }
   }
+  const spent = spentIn(world)
   report.splice(
     5,
     0,
-    `**${passed ? 'Passed' : 'Failed'}** in ${((Date.now() - started) / 1000).toFixed(0)} s.`,
+    `**${passed ? 'Passed' : 'Failed'}** in ${((Date.now() - started) / 1000).toFixed(0)} s, ${spent.usd === null ? 'cost partly unpriced' : `$${spent.usd.toFixed(2)}`}.`,
     '',
   )
   const tables = world.shape.tables()
@@ -467,7 +473,7 @@ export async function runOne(
       )
     report.push('')
   }
-  const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${prompt}.md`)
+  const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${own ? 'own' : prompt}.md`)
   mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
   writeFileSync(out, `${report.join('\n').trim()}\n`)
   engine.close()
@@ -476,5 +482,10 @@ export async function runOne(
   world.close()
   if (!args.includes('--keep')) rmSync(home, { recursive: true, force: true })
   console.log(`${passed ? 'passed' : 'FAILED'}: ${out}`)
-  return { passed, report: out, seconds: Math.round((Date.now() - started) / 1000) }
+  return {
+    passed,
+    report: out,
+    seconds: Math.round((Date.now() - started) / 1000),
+    usd: spent.usd,
+  }
 }
