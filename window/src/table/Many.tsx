@@ -137,6 +137,7 @@ function SetForm({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           aria-label="The value to set"
+          of={field}
           adds={{ what: 'choice', send: (w) => askForNew('choice', field.name, w) }}
         >
           <option value="">Empty</option>

@@ -18,6 +18,7 @@ import { type FormEvent, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
 import { Field, Select } from '../ui/field.tsx'
+import { Choice } from '../ui/pill.tsx'
 import { MenuItem, MenuLine } from '../ui/popover.tsx'
 import {
   hide,
@@ -348,7 +349,9 @@ export function RuleEditor({
                   setValues((vs) => (e.target.checked ? [...vs, c] : vs.filter((x) => x !== c)))
                 }
               />
-              <span className="min-w-0 flex-1 truncate text-ink">{c}</span>
+              <span className="min-w-0 flex-1">
+                <Choice of={field} value={c} />
+              </span>
               <span className="text-ink-3 text-sm tabular-nums">{counts.get(c) ?? 0}</span>
             </label>
           ))}

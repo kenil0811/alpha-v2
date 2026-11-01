@@ -2,6 +2,19 @@
 import type { FieldView, SourceView } from '@alpha/core/api'
 import type { Tone } from '../ui/pill.tsx'
 
+// Where a value goes when clicked (Vikas, 28 Oct: every link opens): a web address to its page,
+// an email to a new message, a phone number to a call.
+export function hrefOf(kind: string, text: string): string | null {
+  const t = text.trim()
+  if (!t) return null
+  if (kind === 'phone') return `tel:${t.replace(/[^\d+]/g, '')}`
+  if (/\s/.test(t)) return null
+  if (/^https?:\/\//i.test(t)) return t
+  if (kind === 'link' || /^www\./i.test(t)) return `https://${t}`
+  if (kind === 'email' || /^[^@]+@[^@]+\.\w+$/.test(t)) return `mailto:${t}`
+  return null
+}
+
 export const KIND_TONE: Record<SourceView['kind'], Tone> = {
   stated: 'accent',
   looked_up: 'neutral',
@@ -64,6 +77,17 @@ export const CORRECTABLE = new Set([
 
 // What can be typed in this field: a summary is worked out from other rows, never typed (3c).
 export const canType = (f: FieldView) => CORRECTABLE.has(f.kind) && !f.summary
+// Why a double-click does not change it, said in the tip in its place.
+export const whyFixed = (f: FieldView) =>
+  f.summary
+    ? `${f.name} is worked out (${f.summary}), so it is never typed.`
+    : f.kind === 'file'
+      ? `${f.name} is added from the row's files.`
+      : f.kind === 'notes'
+        ? `${f.name} is written in the row's notes.`
+        : f.kind === 'relation' && f.many
+          ? `${f.name} holds a list of rows; ask Alpha to change it.`
+          : `${f.name} is changed by asking Alpha.`
 // A choice holding several (tags, core step 3c): a list, shown as chips.
 export const isTags = (f: FieldView) => f.kind === 'choice' && f.many
 
@@ -99,13 +123,17 @@ export function show(field: FieldView, value: unknown, names: Record<string, str
     return money(m.amount, m.currency)
   }
   if (field.kind === 'date' && typeof value === 'string' && !Number.isNaN(Date.parse(value)))
-    return new Date(value).toLocaleString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      // a date with its time shows the time, in the person's own zone
-      ...(/T\d{2}:\d{2}/.test(value) ? { hour: '2-digit', minute: '2-digit' } : {}),
-    })
+    // a day alone is that day where the person is, never midnight UTC (a day early in the west)
+    return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00` : value).toLocaleString(
+      undefined,
+      {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        // a date with its time shows the time, in the person's own zone
+        ...(/T\d{2}:\d{2}/.test(value) ? { hour: '2-digit', minute: '2-digit' } : {}),
+      },
+    )
   if (Array.isArray(value)) return value.join(', ')
   return String(value)
 }
