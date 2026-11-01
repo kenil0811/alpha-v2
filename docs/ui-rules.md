@@ -139,4 +139,5 @@ held by review. Dates are 2026.
 - The one dropdown everywhere (T10): search past six, tags too, and a double-click on a choice
   opens it (Vikas, 29 Oct).
 - No bare `<select>` at all (T11), the cell editor included (Vikas, 29 Oct).
-- A card's resize grip is drawn in its own bottom-right corner on hover (Vikas, 1 Nov).
+- A card resizes from its own bottom-right corner: the pointer turns there, nothing is drawn on a
+  hover (Vikas, 1 Nov).
