@@ -6,6 +6,7 @@ import type { AgentView, RuleView, RunView, WorkingModuleView } from '@alpha/cor
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api } from './api.ts'
+import { Arranged } from './arrange.tsx'
 import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -142,36 +143,59 @@ function AgentPage({
         {a.needs && <Pill tone="warn">{a.needs}</Pill>}
         <Refusal words={problem} />
       </div>
-      <Facts
-        lines={[
-          [
-            'Module',
-            <a key="m" href={`#/module/${m.id}`} className="hover:underline">
-              {m.name}
-            </a>,
-          ],
-          [a.state === 'on' ? 'Runs' : 'Would run', a.when],
-          ['Last ran', a.lastRunAt ? dayWords(a.lastRunAt) : 'not yet'],
+      {/* each a card the person moves by its handle and resizes from its corner (Vikas, 30 Oct) */}
+      <Arranged
+        page="agent"
+        start={[['facts'], ['runs']]}
+        blocks={[
+          {
+            key: 'facts',
+            name: 'Details',
+            node: (
+              <Facts
+                lines={[
+                  [
+                    'Module',
+                    <a key="m" href={`#/module/${m.id}`} className="hover:underline">
+                      {m.name}
+                    </a>,
+                  ],
+                  [a.state === 'on' ? 'Runs' : 'Would run', a.when],
+                  ['Last ran', a.lastRunAt ? dayWords(a.lastRunAt) : 'not yet'],
+                ]}
+              />
+            ),
+          },
+          {
+            key: 'runs',
+            name: 'Recent runs',
+            node: (
+              <div className="flex flex-col gap-3">
+                <h2 data-head className="font-medium font-serif text-ink text-xl">
+                  Recent runs
+                </h2>
+                {runs.length === 0 ? (
+                  <p className="text-ink-2 text-md">No runs yet.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-line bg-surface">
+                    {runs.map((r) => (
+                      <RunRow
+                        key={r.id}
+                        run={r}
+                        open={false}
+                        onOpen={() => {
+                          window.location.hash = `#/run/${r.id}`
+                        }}
+                        onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ),
+          },
         ]}
       />
-      <h2 className="font-medium font-serif text-ink text-xl">Recent runs</h2>
-      {runs.length === 0 ? (
-        <p className="text-ink-2 text-md">No runs yet.</p>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
-          {runs.map((r) => (
-            <RunRow
-              key={r.id}
-              run={r}
-              open={false}
-              onOpen={() => {
-                window.location.hash = `#/run/${r.id}`
-              }}
-              onStop={() => act(() => api.post(`/api/runs/${r.id}/stop`))}
-            />
-          ))}
-        </div>
-      )}
     </Page>
   )
 }
