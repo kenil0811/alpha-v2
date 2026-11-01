@@ -23,3 +23,11 @@ export function applyTheme(t: Theme): void {
     // a private window: the choice lasts until the window closes
   }
 }
+
+// Text size: Small is the scale Kenil approved, Large the 30 Oct one, Medium between (app.css).
+export type TextSize = 'small' | 'medium' | 'large'
+
+export function applyTextSize(t: TextSize): void {
+  if (t === 'small') delete document.documentElement.dataset.text
+  else document.documentElement.dataset.text = t
+}

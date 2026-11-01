@@ -228,6 +228,83 @@
   --z-pop: 50;
   --z-tip: 60;
 }
+/* Text size in Appearance (Vikas, 1 Nov): Small is the scale Kenil approved, Large the 30 Oct one
+   with its 18px body, Medium between them; spacing grows with the text */
+:root {
+  --t-xs: 11px;
+  --t-xs-lh: 16px;
+  --t-sm: 12px;
+  --t-sm-lh: 16px;
+  --t-md: 13px;
+  --t-md-lh: 20px;
+  --t-base: 14px;
+  --t-base-lh: 22px;
+  --t-lg: 16px;
+  --t-lg-lh: 22px;
+  --t-xl: 20px;
+  --t-xl-lh: 26px;
+  --t-2xl: 26px;
+  --t-2xl-lh: 30px;
+  --t-body: 14px;
+  --t-step: 4px;
+}
+:root[data-text="medium"] {
+  --t-xs: 11px;
+  --t-xs-lh: 15px;
+  --t-sm: 13px;
+  --t-sm-lh: 18px;
+  --t-md: 14px;
+  --t-md-lh: 20px;
+  --t-base: 16px;
+  --t-base-lh: 24px;
+  --t-lg: 17px;
+  --t-lg-lh: 24px;
+  --t-xl: 22px;
+  --t-xl-lh: 28px;
+  --t-2xl: 29px;
+  --t-2xl-lh: 34px;
+  --t-body: 16px;
+  --t-step: 4.5px;
+}
+:root[data-text="large"] {
+  --t-xs: 10px;
+  --t-xs-lh: 14px;
+  --t-sm: 14px;
+  --t-sm-lh: 20px;
+  --t-md: 14px;
+  --t-md-lh: 20px;
+  --t-base: 18px;
+  --t-base-lh: 26px;
+  --t-lg: 18px;
+  --t-lg-lh: 26px;
+  --t-xl: 24px;
+  --t-xl-lh: 30px;
+  --t-2xl: 32px;
+  --t-2xl-lh: 38px;
+  --t-body: 18px;
+  --t-step: 5px;
+}
+@theme {
+  /* seven names, each set by the person's text size above */
+  --text-*: initial;
+  --text-xs: var(--t-xs);
+  --text-xs--line-height: var(--t-xs-lh);
+  --text-sm: var(--t-sm);
+  --text-sm--line-height: var(--t-sm-lh);
+  --text-md: var(--t-md);
+  --text-md--line-height: var(--t-md-lh);
+  --text-base: var(--t-base);
+  --text-base--line-height: var(--t-base-lh);
+  --text-lg: var(--t-lg);
+  --text-lg--line-height: var(--t-lg-lh);
+  --text-xl: var(--t-xl);
+  --text-xl--line-height: var(--t-xl-lh);
+  --text-2xl: var(--t-2xl);
+  --text-2xl--line-height: var(--t-2xl-lh);
+
+  --spacing: var(--t-step);
+}
+
 /*
   Tailwind reads the tokens through @theme inline, so classes follow the theme:
   bg-surface, bg-sunk, text-ink-2, border-line, bg-accent-soft, text-warn …
@@ -299,28 +376,7 @@
   --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* seven sizes and no others; text-sm is 12px here, not Tailwind's 14px */
-  --text-*: initial;
-  --text-xs: 11px;
-  --text-xs--line-height: 16px;
-  --text-sm: 12px;
-  --text-sm--line-height: 16px;
-  --text-md: 13px;
-  --text-md--line-height: 20px;
-  --text-base: 14px;
-  --text-base--line-height: 22px;
-  --text-lg: 16px;
-  --text-lg--line-height: 22px;
-  --text-xl: 20px;
-  --text-xl--line-height: 26px;
-  --text-2xl: 26px;
-  --text-2xl--line-height: 30px;
-
-  /* labels: 11px uppercase with this tracking; nothing else is uppercase */
   --tracking-label: 0.06em;
-
-  /* one step of spacing is 4px, as in the mock; the root's 14px text would make it 3.5px */
-  --spacing: 4px;
 
   /* the frame's widths: the stream (720px of text in 32px gutters), a wide table in it, a page */
   --container-stream: 784px;
@@ -380,7 +436,7 @@
     background: var(--canvas);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: var(--t-body);
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }
