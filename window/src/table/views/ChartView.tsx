@@ -55,7 +55,7 @@ export function ChartView({
     <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
       <div className="flex max-w-stream flex-col gap-3">
         <div className="flex items-baseline gap-3">
-          <h2 className="font-medium font-serif text-ink text-xl">
+          <h2 className="font-medium font-serif text-base text-ink">
             {measure ? `${measure.name} by ${axis.name}` : `Rows by ${axis.name}`}
           </h2>
           <span className="text-ink-3 text-sm">

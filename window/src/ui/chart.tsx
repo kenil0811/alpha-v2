@@ -234,7 +234,7 @@ export function KindPicker({
       aria-label="Chart type"
       value={kind}
       onChange={(e) => onKind(e.target.value as ChartKind)}
-      className="h-6.5 w-auto shrink-0 text-sm"
+      className="h-6.5 w-auto shrink-0 text-xs"
     >
       {kinds.map((k) => (
         <option key={k} value={k}>
@@ -272,7 +272,7 @@ export function Chart({ kind, marks, fmt = count }: { kind: ChartKind; marks: Ma
                 type="button"
                 onClick={() => open(m)}
                 data-tip={`${m.label}: ${fmt(m.n)}${m.target !== undefined ? ` of ${fmt(m.target)}` : ''}`}
-                className="group grid min-h-5 flex-1 grid-cols-[minmax(6rem,10rem)_1fr_auto] items-center gap-2 text-left text-md"
+                className="group grid min-h-5 flex-1 grid-cols-[minmax(6rem,10rem)_1fr_auto] items-center gap-2 text-left text-sm"
               >
                 <span className="truncate text-ink-2 group-hover:text-accent">{m.label}</span>
                 <span
@@ -344,7 +344,7 @@ function Donut({ marks, fmt }: { marks: Mark[]; fmt: Fmt }) {
               x="60"
               y="66"
               textAnchor="middle"
-              className="fill-ink font-serif text-md tabular-nums"
+              className="fill-ink font-serif text-sm tabular-nums"
             >
               {fmt(total)}
             </text>
@@ -356,7 +356,7 @@ function Donut({ marks, fmt }: { marks: Mark[]; fmt: Fmt }) {
                 type="button"
                 onClick={() => open(m)}
                 data-tip={`${m.label}: ${fmt(m.n)}`}
-                className="flex min-w-0 items-center gap-2 text-left text-md hover:text-accent"
+                className="flex min-w-0 items-center gap-2 text-left text-sm hover:text-accent"
               >
                 <span
                   className="size-2.5 shrink-0 rounded-xs bg-accent"
@@ -574,7 +574,7 @@ export function Bubbles({
       >
         {draw}
       </Stretch>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-xs">
         {tones.map((t) => (
           <span key={t.label} className="flex items-center gap-1.5">
             <span className={cn('size-2.5 rounded-full', SWATCH[t.tone])} />
@@ -746,7 +746,7 @@ export function Scatter({
       <Stretch height={260} least={[320, 180]} axes={{ y: LEFT, x: BOTTOM }}>
         {draw}
       </Stretch>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-xs">
         {tones.map((t) => (
           <span key={t.label} className="flex items-center gap-1.5">
             <span className={cn('size-2.5 rounded-full', SWATCH[t.tone])} />
@@ -954,7 +954,7 @@ export function Heat({
       {() => (
         <div className="flex h-full flex-col gap-2 pt-1">
           <div
-            className="grid gap-0.5 text-sm"
+            className="grid gap-0.5 text-xs"
             style={{
               gridTemplateColumns: `minmax(6rem, max-content) repeat(${cols.length}, minmax(3rem, 1fr))`,
             }}
@@ -1002,7 +1002,7 @@ export function Heat({
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-1.5 text-ink-3 text-sm">
+          <div className="flex items-center gap-1.5 text-ink-3 text-xs">
             {[0.15, 0.4, 0.7, 1].map((o) => (
               <span key={o} className="size-2.5 rounded-sm bg-accent" style={{ opacity: o }} />
             ))}
