@@ -97,7 +97,7 @@ export function Activity({ version }: { version: number }) {
               All
             </Cut>
             <Cut sel={only === 'failed'} onClick={() => setOnly('failed')}>
-              Didn't finish
+              Failed
             </Cut>
           </div>
         </div>

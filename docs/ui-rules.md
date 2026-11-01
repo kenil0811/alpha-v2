@@ -59,8 +59,8 @@ held by review. Dates are 2026.
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
 | T8 | Rows come 25, 50, 100 or 250 a page, with First and Last | 25 Oct | — |
 | T9 | Ticked rows show "n selected"; Escape lets them go after any menu closes | 26 Oct | — |
-| T10 | Every dropdown is one of ours: search past six, Add new… at the foot where a choice can grow (tags too); a double-click on a choice opens it | 26 Oct, 29 Oct | — |
-| T11 | No bare `<select>` where a person picks, the cell editor included | 25 Oct, 29 Oct | test |
+| T10 | Every dropdown is one of ours: search past five, Add new… at the foot where a choice can grow | 26 Oct | — |
+| T11 | No bare `<select>` where a person picks; only the cell editor keeps the native one | 25 Oct | test |
 | T12 | Freezing and wrapping columns are kept with the saved list, like widths | 26 Oct | — |
 | T13 | A cell's History (old → new, who, when) is on its right-click menu; ⇧↓ and ⌘D fill down, after a yes | 26 Oct | — |
 | T14 | A summary shows as the kind it comes to and is never typed; what it is, in words, is on its column's tip and menu | 27 Oct | — |
@@ -136,3 +136,6 @@ held by review. Dates are 2026.
   of H2), cut buttons for cuts of one list (`cut.tsx`), the signal dot (`dot.tsx`), the square icon
   tile (`icon-tile.tsx`) and the one Back (`back.tsx`) (Vikas, 27 to 28 Oct). Only Activity's
   filter uses one so far; the screens move to them with their own changes.
+- The one dropdown everywhere (T10): search past six, tags too, and a double-click on a choice
+  opens it (Vikas, 29 Oct).
+- No bare `<select>` at all (T11), the cell editor included (Vikas, 29 Oct).
