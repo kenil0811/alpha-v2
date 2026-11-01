@@ -1,8 +1,8 @@
 // What a view does, said above its table as chips: each filter (opens to change it), all or any,
-// Clear all when there are several, the sorts, the group; and Filter to add one, Columns to show,
-// hide and order them.
+// Clear all when there are several, the sorts, the group; and Filter to add one; Columns, inside ⋮,
+// show, hide and order them.
 import type { FieldView, FilterRule, RowView, ViewConfig } from '@alpha/core/api'
-import { ArrowDown, ArrowUp, Columns3, ListFilter, Rows3, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ListFilter, Rows3, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { cn } from '../ui/cn.ts'
 import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
@@ -45,7 +45,8 @@ export function Chips({
   const sorts = config.sorts
     .map((s) => ({ ...s, field: fields.find((f) => f.id === s.field) }))
     .filter((s): s is { field: FieldView; dir: 'asc' | 'desc' } => !!s.field)
-  const group = fields.find((f) => f.id === config.group)
+  // a board's columns are its group already
+  const group = config.kind === 'board' ? undefined : fields.find((f) => f.id === config.group)
   return (
     <>
       {rules.map(({ rule, field }, i) => (
@@ -186,7 +187,7 @@ export function AddFilter({
         ref={anchor}
         type="button"
         onClick={() => (open ? close() : setOpen(true))}
-        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line border-dashed px-2.5 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line border-dashed px-2.5 text-ink-2 text-md hover:border-accent-line hover:bg-accent-soft hover:text-accent"
       >
         <ListFilter className="size-3.25" />
         Filter
@@ -221,8 +222,8 @@ export function AddFilter({
   )
 }
 
-// Columns: each field shown or hidden, and moved up or down the order.
-export function ColumnsButton({
+// Columns, inside ⋮ (Vikas, 27 Oct): each field shown or hidden, and moved up or down the order.
+export function ColumnsList({
   fields,
   config,
   onConfig,
@@ -231,105 +232,87 @@ export function ColumnsButton({
   config: ViewConfig
   onConfig: (c: ViewConfig) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const anchor = useRef<HTMLButtonElement>(null)
   const shown = columns(fields, config)
   const ordered = [...shown, ...fields.filter((f) => config.hidden.includes(f.id))]
   return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'flex h-7.5 items-center gap-1.5 rounded-md px-2.5 text-ink-2 text-md hover:bg-hover hover:text-ink',
-          config.hidden.length > 0 && 'text-accent',
-        )}
-      >
-        <Columns3 className="size-3.5" />
-        Columns{config.hidden.length > 0 ? ` (${config.hidden.length} hidden)` : ''}
-      </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        <div className="flex max-h-96 w-64 flex-col overflow-y-auto">
-          <div className="flex h-7.5 items-center justify-between px-1.5 text-sm">
-            <button
-              type="button"
-              disabled={!config.hidden.length}
-              onClick={() => onConfig({ ...config, hidden: [] })}
-              className="text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
-            >
-              Show all
-            </button>
-            <button
-              type="button"
-              title="Keeps the first column"
-              disabled={shown.length <= 1}
-              onClick={() =>
-                onConfig({
-                  ...config,
-                  hidden: fields.filter((f) => f.id !== shown[0]?.id).map((f) => f.id),
-                })
-              }
-              className="text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
-            >
-              Hide all
-            </button>
+    <div className="flex max-h-96 w-64 flex-col overflow-y-auto">
+      <div className="flex h-7.5 items-center justify-between px-1.5 text-sm">
+        <button
+          type="button"
+          disabled={!config.hidden.length}
+          onClick={() => onConfig({ ...config, hidden: [] })}
+          className="text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
+        >
+          Show all
+        </button>
+        <button
+          type="button"
+          title="Keeps the first column"
+          disabled={shown.length <= 1}
+          onClick={() =>
+            onConfig({
+              ...config,
+              hidden: fields.filter((f) => f.id !== shown[0]?.id).map((f) => f.id),
+            })
+          }
+          className="text-accent hover:underline disabled:text-ink-3 disabled:no-underline"
+        >
+          Hide all
+        </button>
+      </div>
+      <MenuLine />
+      {ordered.map((f) => {
+        const hidden = config.hidden.includes(f.id)
+        const at = shown.findIndex((x) => x.id === f.id)
+        return (
+          <div
+            key={f.id}
+            className="flex h-7.5 items-center gap-2 rounded-sm px-1.5 hover:bg-hover"
+          >
+            <input
+              type="checkbox"
+              className="accent-accent"
+              checked={!hidden}
+              disabled={!hidden && shown.length <= 1}
+              aria-label={`Show ${f.name}`}
+              onChange={(e) => onConfig(hide(config, f.id, !e.target.checked))}
+            />
+            <span className={cn('min-w-0 flex-1 truncate', hidden ? 'text-ink-3' : 'text-ink')}>
+              {f.name}
+            </span>
+            {!hidden && (
+              <>
+                <button
+                  type="button"
+                  aria-label={`Move ${f.name} up`}
+                  disabled={at <= 0}
+                  onClick={() => onConfig(move(config, shown, f.id, -1))}
+                  className="grid size-5 place-items-center rounded-sm text-ink-3 hover:text-ink disabled:opacity-30"
+                >
+                  <ArrowUp className="size-3.25" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move ${f.name} down`}
+                  disabled={at >= shown.length - 1}
+                  onClick={() => onConfig(move(config, shown, f.id, 1))}
+                  className="grid size-5 place-items-center rounded-sm text-ink-3 hover:text-ink disabled:opacity-30"
+                >
+                  <ArrowDown className="size-3.25" />
+                </button>
+              </>
+            )}
           </div>
+        )
+      })}
+      {Object.keys(config.widths).length > 0 && (
+        <>
           <MenuLine />
-          {ordered.map((f) => {
-            const hidden = config.hidden.includes(f.id)
-            const at = shown.findIndex((x) => x.id === f.id)
-            return (
-              <div
-                key={f.id}
-                className="flex h-7.5 items-center gap-2 rounded-sm px-1.5 hover:bg-hover"
-              >
-                <input
-                  type="checkbox"
-                  className="accent-accent"
-                  checked={!hidden}
-                  disabled={!hidden && shown.length <= 1}
-                  aria-label={`Show ${f.name}`}
-                  onChange={(e) => onConfig(hide(config, f.id, !e.target.checked))}
-                />
-                <span className={cn('min-w-0 flex-1 truncate', hidden ? 'text-ink-3' : 'text-ink')}>
-                  {f.name}
-                </span>
-                {!hidden && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label={`Move ${f.name} up`}
-                      disabled={at <= 0}
-                      onClick={() => onConfig(move(config, shown, f.id, -1))}
-                      className="grid size-5 place-items-center rounded-sm text-ink-3 hover:text-ink disabled:opacity-30"
-                    >
-                      <ArrowUp className="size-3.25" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Move ${f.name} down`}
-                      disabled={at >= shown.length - 1}
-                      onClick={() => onConfig(move(config, shown, f.id, 1))}
-                      className="grid size-5 place-items-center rounded-sm text-ink-3 hover:text-ink disabled:opacity-30"
-                    >
-                      <ArrowDown className="size-3.25" />
-                    </button>
-                  </>
-                )}
-              </div>
-            )
-          })}
-          {Object.keys(config.widths).length > 0 && (
-            <>
-              <MenuLine />
-              <MenuItem onClick={() => onConfig({ ...config, widths: {} })}>
-                Reset the column widths
-              </MenuItem>
-            </>
-          )}
-        </div>
-      </Popover>
-    </>
+          <MenuItem onClick={() => onConfig({ ...config, widths: {} })}>
+            Reset the column widths
+          </MenuItem>
+        </>
+      )}
+    </div>
   )
 }

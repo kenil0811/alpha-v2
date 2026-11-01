@@ -78,6 +78,7 @@ export function AddRow({
               id={`add-${f.id}`}
               value={values[f.name] ?? ''}
               onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+              of={f}
               adds={{ what: 'choice', send: (w) => askForNew('choice', `${f.name} in ${name}`, w) }}
             >
               <option value="" />

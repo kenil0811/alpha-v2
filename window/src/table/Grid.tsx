@@ -34,8 +34,9 @@ import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
-import { Pill } from '../ui/pill.tsx'
+import { Choice } from '../ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
+import { tipNow } from '../ui/tooltip.tsx'
 import { CellHistory } from './CellHistory.tsx'
 import { ColumnMenu } from './ColumnMenu.tsx'
 import { cycleSort, setTotal, setWidth } from './edits.ts'
@@ -56,9 +57,9 @@ import { RowMenu } from './RowMenu.tsx'
 import { TagChips, TagPicker } from './Tags.tsx'
 import {
   canType,
-  DOT,
   EMPTY_CELL,
   EMPTY_WORDS,
+  hrefOf,
   INK,
   isTags,
   KIND_WORDS,
@@ -68,6 +69,7 @@ import {
   show,
   TINT,
   typedOf,
+  whyFixed,
 } from './values.ts'
 
 type Item = { kind: 'group'; group: Group } | { kind: 'row'; row: RowView }
@@ -454,6 +456,7 @@ export function Grid({
                           // a row kept on its own page opens there from its name
                           onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
                           onEdit={!readOnly && canType(f) ? () => startEditing(here) : undefined}
+                          fixed={readOnly || canType(f) ? undefined : whyFixed(f)}
                           onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
@@ -780,6 +783,7 @@ function Cell({
   onPick,
   onEdit,
   onOpen,
+  fixed,
 }: {
   field: FieldView
   row: RowView
@@ -793,10 +797,18 @@ function Cell({
   onPick: () => void
   onEdit: (() => void) | undefined
   onOpen: (() => void) | undefined
+  fixed?: string | undefined // why a double-click does not change it (a summary, a file)
 }) {
   const value = r.values[f.slug]
   const source = r.sources[f.slug]
   const text = show(f, value, names)
+  // where a click on the words goes: the related record, an address, a mail, a call
+  const href =
+    f.kind === 'relation' && typeof value === 'string'
+      ? `#/row/${value}`
+      : f.kind === 'person'
+        ? null
+        : hrefOf(f.kind, text)
   const mark = source ? MARK[source.kind] : undefined
   const empty = value === null || value === undefined || text === ''
   const key = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -812,13 +824,15 @@ function Cell({
         // WebKit does not focus a button on a click; the cell needs it for Enter, F2 and a paste
         onClick={(e) => {
           e.currentTarget.focus({ preventScroll: true })
-          // the name opens the row; the rest of the cell picks it
-          if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
+          // a link opens; the name opens the row; the rest of the cell picks it
+          const link = (e.target as HTMLElement).closest<HTMLElement>('[data-href]')?.dataset.href
+          if (link) go(link)
+          else if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
           else onPick()
         }}
-        onDoubleClick={onEdit}
+        onDoubleClick={onEdit ?? (fixed ? (e) => tipNow(e.currentTarget) : undefined)}
         onKeyDown={key}
-        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : undefined}
+        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : fixed}
         className={cn(
           'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
@@ -833,13 +847,8 @@ function Cell({
           </span>
         ) : isTags(f) ? (
           <TagChips field={f} value={value} />
-        ) : f.kind === 'choice' && f.tones[text] ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <span className={cn('size-1.75 shrink-0 rounded-full', DOT[f.tones[text]])} />
-            <span className="truncate">{text}</span>
-          </span>
         ) : f.kind === 'choice' ? (
-          <Pill>{text}</Pill>
+          <Choice of={f} value={text} />
         ) : (
           <span
             className={cn(
@@ -850,9 +859,19 @@ function Cell({
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
               tone && INK[tone],
+              href && !onOpen && 'cursor-pointer text-accent underline decoration-solid',
             )}
+            data-href={onOpen ? undefined : (href ?? undefined)}
             data-name={onOpen ? '' : undefined}
-            data-tip={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
+            data-tip={
+              onOpen || href?.startsWith('#')
+                ? `Open ${text}`
+                : href
+                  ? `Opens ${href.replace(/^(mailto|tel):|^https?:\/\//, '')}`
+                  : text.length > 30
+                    ? text
+                    : undefined
+            }
           >
             {text}
           </span>
@@ -950,6 +969,7 @@ export function EditCell({
       title={problem ?? undefined}
       onChange={(e) => void save(e.target.value)}
       onDismiss={() => void save()}
+      of={field}
       adds={{
         what: 'choice',
         send: (w) => askForNew('choice', table ? `${field.name} in ${table}` : field.name, w),
@@ -1275,4 +1295,11 @@ export function AddFieldForm({
       </div>
     </form>
   )
+}
+
+// A link's click: a record opens in the window; an outside address in a new tab; a mail or a call
+// in the app that takes it.
+export function go(href: string) {
+  if (href.startsWith('#')) window.location.hash = href
+  else window.open(href, href.startsWith('http') ? '_blank' : '_self', 'noreferrer')
 }

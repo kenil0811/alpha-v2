@@ -110,6 +110,7 @@ export function FormView({
                   id={`form-${f.id}`}
                   value={typed[f.slug] ?? ''}
                   onChange={(e) => setTyped({ ...typed, [f.slug]: e.target.value })}
+                  of={f}
                   adds={{
                     what: 'choice',
                     send: (w) => askForNew('choice', `${f.name} in ${table}`, w),
