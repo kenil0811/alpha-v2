@@ -4,6 +4,7 @@
 // while the person clicks along a row. What the person changes and has not saved stays while they
 // open a row and come back, in this browser; a saved view is shared by everyone.
 import type {
+  AgentView,
   FieldView,
   FilterRule,
   KeptTable,
@@ -28,7 +29,7 @@ import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
-import { setGroup, setRule } from './table/edits.ts'
+import { removeRule, setGroup, setRule } from './table/edits.ts'
 import {
   applyFilters,
   applySearch,
@@ -37,6 +38,7 @@ import {
   complete,
   differs,
   GROUPABLE,
+  ruleWords,
   sortRows,
 } from './table/engine.ts'
 import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
@@ -47,17 +49,20 @@ import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsList } from './table/Toolbar.tsx'
-import { ViewTabs } from './table/ViewTabs.tsx'
-import { canType, isTags, show } from './table/values.ts'
+import { type QuickLists, ViewTabs } from './table/ViewTabs.tsx'
+import { canType, isTags, show, titleOf } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
+import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
 import { Select } from './ui/field.tsx'
 import { Pager } from './ui/pager.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 
 interface Working {
   view: string | null
@@ -79,17 +84,19 @@ export function TableView({
   only = null,
   of = null,
   summary = null,
+  why: onlyWhy = null,
   field: openField = null,
   quiet = false,
   kept = null,
 }: {
   data: TableData
   row?: string | null
-  only?: string[] | null // the rows a page opened: only these, until Show all
-  of?: string | null // a row whose parts these are, from its view: only those, until Show all
+  only?: string[] | null // the rows a page or a chart opened: only these, until Clear filters
+  why?: string | null // what they are, in words: "Stage is New"
+  of?: string | null // a row whose parts these are, from its view: only those, until Clear filters
   summary?: TableSummary | null // where it sits in its module, and whether it is kept as a tab
-  field?: string | null // with row: that value's panel, by the field's name
-  quiet?: boolean // the Ask panel is open: the source panel gives way to it
+  field?: string | null // with row: that value's panel, by the field's name; without, the row's
+  quiet?: boolean // the Ask panel is open: New opens as a dialog; a row's panel still sits beside
   // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
   // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved. New adds
@@ -123,7 +130,7 @@ export function TableView({
   const dirty = differs(config, saved)
   const [problem, setProblem] = useState<string | null>(null)
   const [picked, setPicked] = useState<{ row: string; field: string } | null>(
-    openRow
+    openRow && openField
       ? {
           row: openRow,
           field:
@@ -145,8 +152,15 @@ export function TableView({
   }
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
   const [ticked, setTicked] = useState<Set<string>>(new Set())
+  const [saveAt, setSaveAt] = useState<HTMLElement | null>(null) // Save and Cancel, beside New
   const [pasting, setPasting] = useState<PastePlan | null>(null)
+  // a link to a row (#/table/…/r_…) opens its panel; with a field, that value's source instead
   const [opened, setOpened] = useState<string | null>(null)
+  useEffect(() => {
+    if (!openRow || openField) return
+    setOpened(openRow)
+    setPicked(null)
+  }, [openRow, openField])
   // the open tasks on each row, drawn beside its name
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
   useEffect(() => {
@@ -196,6 +210,8 @@ export function TableView({
     choices.find((f) => f.id === config.group) ??
     choices.find((f) => f.name === 'Stage') ??
     choices[0]
+  // the lists dropdown's values: a list's tags (Clients, Insurers), else the board's choice
+  const quick = fields.find((f) => isTags(f) && f.choices.length > 1) ?? boardBy
 
   const act = async (fn: () => Promise<void>) => {
     if (kept) return setProblem(why)
@@ -261,6 +277,29 @@ export function TableView({
   const pages = Math.max(1, Math.ceil(rows.length / size))
   const at = Math.min(page, pages - 1)
   const paged = rows.slice(at * size, (at + 1) * size)
+  // the grid is the view a kind falls back to
+  const grid = !(
+    (config.kind === 'board' && boardBy) ||
+    (config.kind === 'calendar' && dateBy) ||
+    (config.kind === 'timeline' && dateBy) ||
+    ['form', 'list', 'gallery', 'chart'].includes(config.kind)
+  )
+  // what keeps rows out of sight, in words, for the line above the rows (a chart's bar is a rule)
+  const hiding =
+    rows.length === data.rows.length
+      ? []
+      : [
+          ...(only
+            ? [onlyWhy ?? 'the ones a page counted']
+            : of
+              ? ['the ones part of the row you came from']
+              : []),
+          ...config.filters.rules.flatMap((r) => {
+            const f = fields.find((x) => x.id === r.field)
+            return f ? [ruleWords(r, f)] : []
+          }),
+          ...(config.search.trim() ? [`matching “${config.search.trim()}”`] : []),
+        ]
 
   return (
     <div className="flex h-full min-h-0">
@@ -334,8 +373,26 @@ export function TableView({
             </>
           }
           views={views}
+          counts={(id) =>
+            applyFilters(
+              base,
+              fields,
+              complete(views.find((v) => v.id === id)?.config).filters,
+              data.names,
+            ).length
+          }
+          quick={quickLists(quick, config, base, setConfig, (value, rule) =>
+            act(async () => {
+              const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
+                name: value,
+                config: setRule(BLANK, rule),
+              })
+              setViews((vs) => [...vs, v])
+            }),
+          )}
           current={viewId}
           dirty={dirty}
+          saveAt={saveAt}
           problem={problem}
           onPick={pick}
           onReset={() => setConfig(saved)}
@@ -344,20 +401,21 @@ export function TableView({
               if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
             })
           }
-          onSaveAs={(name) =>
+          onSaveAs={(name, from) =>
             act(async () => {
               const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
                 name,
-                config,
+                config:
+                  from === undefined ? config : complete(views.find((x) => x.id === from)?.config),
               })
               setViews((vs) => [...vs, v])
               setViewId(v.id)
               setConfig(complete(v.config))
             })
           }
-          onRename={(name) =>
+          onRename={(id, name) =>
             act(async () => {
-              if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
+              replace(await api.put<SavedView>(`/api/views/${id}`, { name }))
             })
           }
           onDefault={(id, on) =>
@@ -365,28 +423,35 @@ export function TableView({
               replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
             })
           }
-          onRemove={() =>
+          onRemove={(id) =>
             act(async () => {
-              if (!viewId) return
-              await api.delete(`/api/views/${viewId}`)
-              setViews((vs) => vs.filter((v) => v.id !== viewId))
+              await api.delete(`/api/views/${id}`)
+              setViews((vs) => vs.filter((v) => v.id !== id))
+              if (id !== viewId) return
               setViewId(null)
               setConfig(BLANK)
             })
           }
         />
-        {(only || of) && (
+        {hiding.length > 0 && (
           <div className="flex items-center gap-2 border-line border-b bg-accent-soft px-7 py-2 text-md text-ink-2">
             <span className="flex-1">
-              Showing {base.length} of {data.rows.length} rows,{' '}
-              {only ? 'the ones a page counted.' : 'the ones part of the row you came from.'}
+              Showing {rows.length.toLocaleString()} of {data.rows.length.toLocaleString()} rows:{' '}
+              {hiding.join('; ')}.
             </span>
-            <a href={`#/table/${data.id}`} className="font-medium text-accent hover:underline">
-              Show all
-            </a>
+            <button
+              type="button"
+              onClick={() => {
+                setConfig({ ...config, search: '', filters: { ...config.filters, rules: [] } })
+                if (only || of) window.location.hash = `#/table/${data.id}`
+              }}
+              className="font-medium text-accent hover:underline"
+            >
+              Clear filters
+            </button>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2 px-7 py-2">
+        <div className="flex flex-wrap items-center gap-2 px-7 py-2 empty:hidden">
           {tickedRows.length > 0 ? (
             <TickedBar
               tableId={data.id}
@@ -419,11 +484,6 @@ export function TableView({
               onConfig={setConfig}
             />
           )}
-          <span className="text-ink-3 text-sm">
-            {rows.length === data.rows.length
-              ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-              : `${rows.length} of ${data.rows.length}`}
-          </span>
         </div>
         {config.kind === 'board' && boardBy ? (
           <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
@@ -538,40 +598,46 @@ export function TableView({
               layout={layout}
               onPaste={setPasting}
             />
-            <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
-              <span data-tip={typeof onNew === 'string' ? onNew : undefined} className="mr-auto">
-                <Button
-                  size="sm"
-                  disabled={typeof onNew === 'string'}
-                  onClick={typeof onNew === 'string' ? undefined : onNew}
-                >
-                  <Plus className="size-3.5" />
-                  New
-                </Button>
-              </span>
-              {rows.length > Math.min(size, ...SIZES) && (
-                <>
-                  <span className="mr-2 tabular-nums">
-                    Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
-                  </span>
-                  <Select
-                    aria-label="Rows to a page"
-                    value={String(size)}
-                    onChange={(e) => resize(Number(e.target.value))}
-                    className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
-                  >
-                    {SIZES.map((n) => (
-                      <option key={n} value={n}>
-                        {n} a page
-                      </option>
-                    ))}
-                  </Select>
-                  <Pager at={at} count={pages} onAt={setPage} />
-                </>
-              )}
-            </div>
           </>
         )}
+        {/* New, then Save and Cancel while the list differs from what was saved, under every
+            view (Vikas, 27 Oct); a table's pages to its right */}
+        <div
+          className={cn('flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm', grid && '-mt-4')}
+        >
+          <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
+            <Button
+              size="sm"
+              disabled={typeof onNew === 'string'}
+              onClick={typeof onNew === 'string' ? undefined : onNew}
+            >
+              <Plus className="size-3.5" />
+              New
+            </Button>
+          </span>
+          <span ref={setSaveAt} className="mr-auto flex items-center gap-1 empty:hidden" />
+          {!kept && <Readers data={data} />}
+          {grid && rows.length > Math.min(size, ...SIZES) && (
+            <>
+              <span className="mr-2 tabular-nums">
+                Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
+              </span>
+              <Select
+                aria-label="Rows to a page"
+                value={String(size)}
+                onChange={(e) => resize(Number(e.target.value))}
+                className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+              >
+                {SIZES.map((n) => (
+                  <option key={n} value={n}>
+                    {n} a page
+                  </option>
+                ))}
+              </Select>
+              <Pager at={at} count={pages} onAt={setPage} />
+            </>
+          )}
+        </div>
       </div>
       {adding && (
         <AddRow
@@ -582,7 +648,7 @@ export function TableView({
           onClose={() => setAdding(false)}
         />
       )}
-      {!adding && !quiet && openedRow && (
+      {!adding && openedRow && (
         <RowPanel
           tableId={data.id}
           kinds={data.documents}
@@ -598,7 +664,7 @@ export function TableView({
           onClose={() => setOpened(null)}
         />
       )}
-      {!adding && !quiet && !openedRow && pickedRow && pickedField && (
+      {!adding && !openedRow && pickedRow && pickedField && (
         <SourcePanel
           tableId={data.id}
           table={data.name}
@@ -829,4 +895,82 @@ function barRule(field: FieldView, key: string): FilterRule {
     return { field: field.id, op: 'between', value: `${key}-01`, value2: `${key}-${last}` }
   }
   return { field: field.id, op: 'is', value: key }
+}
+
+// Update now, beside New, for a table filled from outside: runs the module's agents that are on
+// and are named after this table's rows or the rows they point at (a source's reader), with when
+// they last updated (Vikas, 29 and 30 Oct). Shown only while there are such agents.
+function Readers({ data }: { data: TableData }) {
+  const [agents, setAgents] = useState<AgentView[]>([])
+  const [tick, setTick] = useState(0)
+  const { busy, problem, act } = useAct(() => setTick((n) => n + 1))
+  useEffect(() => {
+    api.get<{ agents: AgentView[] }>(`/api/modules/${data.module.id}`).then(
+      (m) => setAgents(m.agents),
+      () => setAgents([]),
+    )
+  }, [data.module.id, tick])
+  const names = new Set([
+    ...data.rows.map((r) => titleOf(data.fields, r)),
+    ...Object.values(data.names),
+  ])
+  const readers = agents.filter((a) => a.state === 'on' && names.has(a.name))
+  const running = readers.some((a) => a.running)
+  // while one runs, ask again every few seconds, so Updating… ends when it does
+  useEffect(() => {
+    if (!running) return
+    const t = setTimeout(() => setTick((n) => n + 1), 4000)
+    return () => clearTimeout(t)
+  }, [running, agents])
+  if (!readers.length) return null
+  const last = readers
+    .map((a) => a.lastRunAt)
+    .filter((x): x is string => !!x)
+    .sort()
+    .at(-1)
+  return (
+    <span className="mr-2 flex items-center gap-2">
+      <Refusal words={problem} />
+      <UpdateNow
+        at={last}
+        busy={busy || running}
+        tip={`Run the ${readers.length} readers of these ${data.name.toLowerCase()} that are on, now`}
+        onClick={() =>
+          act(() => Promise.all(readers.map((a) => api.post(`/api/agents/${a.id}/run`))))
+        }
+      />
+    </span>
+  )
+}
+
+// The values of the table's list choice as lists in the lists dropdown (Vikas, 27 and 30 Oct):
+// each with its count, one click to keep to it; the same rule a Filter makes, so it shows and saves
+// the same way. Under two, none.
+function quickLists(
+  field: FieldView | undefined,
+  config: ViewConfig,
+  rows: RowView[],
+  onConfig: (c: ViewConfig) => void,
+  keep: (value: string, rule: FilterRule) => void,
+): QuickLists | null {
+  if (!field) return null
+  const held = (r: RowView) => {
+    const v = r.values[field.slug]
+    return Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)]
+  }
+  // picked only when the rule is this one value's: one choice, not a list of them
+  const rule = config.filters.rules.find((r) => r.field === field.id && r.op === 'in')
+  const on = rule?.values?.length === 1 ? rule.values[0] : undefined
+  const items = field.choices
+    .map((value) => ({ value, count: rows.filter((r) => held(r).includes(value)).length }))
+    .filter((x) => x.count)
+  if (items.length < 2) return null
+  const ruleOf = (value: string): FilterRule => ({ field: field.id, op: 'in', values: [value] })
+  return {
+    of: field,
+    items,
+    on,
+    pick: (value) => onConfig(setRule(removeRule(config, field.id), ruleOf(value))),
+    keep: (value) => keep(value, ruleOf(value)),
+  }
 }

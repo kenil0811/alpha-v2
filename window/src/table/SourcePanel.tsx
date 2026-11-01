@@ -244,6 +244,7 @@ function Correct({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           aria-label={field.name}
+          of={field}
           adds={{
             what: 'choice',
             send: (w) => askForNew('choice', `${field.name} in ${table}`, w),

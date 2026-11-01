@@ -15,6 +15,7 @@ import {
   toneOf,
   total,
 } from './engine.ts'
+import { hrefOf, show } from './values.ts'
 
 // West of UTC, where a day read as midnight UTC falls on the day before; CI runs in UTC
 process.env.TZ = 'America/Chicago'
@@ -186,5 +187,17 @@ describe('the same cases as a summary’s condition', () => {
     const f = field('v', c.kind, { many: !!c.tags })
     const rule = { field: 'v', ...c.rule } as FilterRule
     expect(matches(rule, f, c.value, {})).toBe(c.match)
+  })
+})
+
+describe('values in words', () => {
+  it('shows a stored day as that day, west of UTC too', () => {
+    expect(show(field('d', 'date'), '2026-10-28')).toContain('28')
+  })
+  it('opens links, mails and calls, and nothing else', () => {
+    expect(hrefOf('link', 'acme.com')).toBe('https://acme.com')
+    expect(hrefOf('text', 'ann@acme.com')).toBe('mailto:ann@acme.com')
+    expect(hrefOf('phone', '+1 (314) 555-0100')).toBe('tel:+13145550100')
+    expect(hrefOf('text', 'just words')).toBeNull()
   })
 })

@@ -16,11 +16,12 @@ import { cn } from '../ui/cn.ts'
 import { DropZone } from '../ui/drop-zone.tsx'
 import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
+import { tipNow } from '../ui/tooltip.tsx'
 import { AddRow } from './AddRow.tsx'
-import { EditCell } from './Grid.tsx'
+import { EditCell, go } from './Grid.tsx'
 import { Notes } from './Notes.tsx'
 import { TagChips } from './Tags.tsx'
-import { canType, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
+import { canType, EMPTY_WORDS, hrefOf, isTags, KIND_WORDS, MARK, show, whyFixed } from './values.ts'
 
 // The side panel's way in: the row's view, with Open full to its own page.
 export function RowPanel({
@@ -387,6 +388,13 @@ export function FieldList({
           const source = row.sources[f.slug]
           const text = show(f, row.values[f.slug], names)
           const editable = !!onEdit && canType(f)
+          const value = row.values[f.slug]
+          const href =
+            f.kind === 'relation' && typeof value === 'string'
+              ? `#/row/${value}`
+              : f.kind === 'person'
+                ? null
+                : hrefOf(f.kind, text)
           if (editing === f.slug && onEdit)
             return (
               <div key={f.id} className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5">
@@ -406,18 +414,22 @@ export function FieldList({
             <button
               key={f.id}
               type="button"
-              title={
+              data-tip={
                 editable
                   ? 'Click for where it came from; double-click to change it'
-                  : 'Where it came from'
+                  : onEdit
+                    ? whyFixed(f)
+                    : 'Where it came from'
               }
-              onClick={() => {
+              onClick={(e) => {
+                const link = (e.target as HTMLElement).closest<HTMLElement>('[data-href]')
+                if (link?.dataset.href) return go(link.dataset.href)
                 if (!editable) return onField(f.slug)
                 if (click.current) clearTimeout(click.current)
                 click.current = setTimeout(() => onField(f.slug), 250)
               }}
-              onDoubleClick={() => {
-                if (!editable) return
+              onDoubleClick={(e) => {
+                if (!editable) return void (onEdit && tipNow(e.currentTarget))
                 if (click.current) clearTimeout(click.current)
                 setEditing(f.slug)
               }}
@@ -438,7 +450,14 @@ export function FieldList({
                 )}
               >
                 {isTags(f) && text ? (
-                  <TagChips field={f} value={row.values[f.slug]} />
+                  <TagChips field={f} value={value} />
+                ) : href && text ? (
+                  <span
+                    data-href={href}
+                    className="cursor-pointer break-all text-accent underline decoration-solid"
+                  >
+                    {text}
+                  </span>
                 ) : (
                   text || EMPTY_WORDS
                 )}
