@@ -95,7 +95,8 @@ export function numberOf(field: FieldView, value: unknown): number | null {
   if (field.kind === 'money' && typeof value === 'object')
     return (value as { amount: number }).amount
   if (field.kind === 'date') {
-    const t = Date.parse(String(value))
+    // a day without a time is that day in the person's zone, not midnight UTC
+    const t = dateOf(value)
     return Number.isNaN(t) ? null : t
   }
   const n = Number(value)
@@ -360,7 +361,9 @@ export function total(
   if (!nums.length) return '—'
   if (op === 'earliest' || op === 'latest') {
     const t = op === 'earliest' ? Math.min(...nums) : Math.max(...nums)
-    return show(field, new Date(t).toISOString().slice(0, 10))
+    const d = new Date(t)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return show(field, `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
   }
   const n =
     op === 'sum'
