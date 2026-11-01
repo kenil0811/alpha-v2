@@ -4,7 +4,7 @@
 // click on the face opens a box to type to Alpha, answered right there in the same conversation as
 // the window's. The face is a stand-in until Kenil picks Alpha's character. The Mac app sizes its
 // window to what this draws, and lets clicks anywhere else through to what is behind it.
-import type { CardView, Stream, StreamLine } from '@alpha/core/api'
+
 import { X } from 'lucide-react'
 import {
   type KeyboardEvent,
@@ -16,10 +16,11 @@ import {
   useState,
 } from 'react'
 import { api, listen, Problem } from './api.ts'
+import type { CardView, Stream, StreamLine } from './coming.ts'
 import { openInAlpha, shell } from './macApp.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { answerWords } from './vocabulary.ts'
+import { answerWords, NEEDS_YOU } from './vocabulary.ts'
 
 export type Mood = 'quiet' | 'working' | 'needs' | 'typing'
 
@@ -152,7 +153,7 @@ export function Companion() {
         </Bubble>
       ) : card ? (
         <Bubble
-          kind={waiting > 1 ? `Needs you · ${waiting}` : 'Needs you'}
+          kind={waiting > 1 ? `${NEEDS_YOU} · ${waiting}` : NEEDS_YOU}
           words={card.words}
           onAway={() => away(card.id)}
           problem={problem}
@@ -379,7 +380,7 @@ function FaceButton({ mood, onToggle }: { mood: Mood; onToggle: () => void }) {
 }
 
 const MOOD_WORDS: Record<Mood, string> = {
-  quiet: 'Alpha · nothing waits on you',
+  quiet: 'Alpha · nothing needs approval',
   working: 'Alpha is working',
   needs: 'Something needs you',
   typing: 'Alpha is listening',

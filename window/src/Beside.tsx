@@ -1,14 +1,16 @@
 // Beside the conversation on a wide window (Kenil, 20 Oct: the chat's empty sides): what waits on
 // the person, each jumping to its card in the stream; what is running; and each agent's next run.
 // What changed since they last looked stays on Home.
-import type { Stream, TodayView } from '@alpha/core/api'
+import type { TodayView } from '@alpha/core/api'
 import { KeyRound, TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import type { Stream } from './coming.ts'
 import type { Module } from './stream.ts'
 import { dayWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { Group, Line, Quiet } from './ui/groups.tsx'
+import { NEEDS_YOU } from './vocabulary.ts'
 
 export function Beside({
   stream,
@@ -38,8 +40,7 @@ export function Beside({
   return (
     <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-hair border-l @min-[1100px]:flex">
       <div className="flex flex-col gap-6 px-5 pt-7 pb-6">
-        <Group title="Needs you" count={cards.length + signIns.length}>
-          {cards.length + signIns.length === 0 && <Quiet>Nothing waits on you.</Quiet>}
+        <Group title={NEEDS_YOU} count={cards.length + signIns.length}>
           {cards.map((c) => (
             <Line
               key={c.id}
