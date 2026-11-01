@@ -12,11 +12,11 @@ import type {
 } from '@alpha/core/api'
 import {
   Activity as ActivityIcon,
+  Bot,
   Briefcase,
   FileText,
   House,
   ListChecks,
-  MessageSquare,
   SlidersHorizontal,
   Sparkles,
   Users,
@@ -34,6 +34,7 @@ import { Marker } from './Mark.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { NewModule } from './NewModule.tsx'
 import { Parts } from './Parts.tsx'
+import { Peek, usePeek } from './Peek.tsx'
 import { People } from './People.tsx'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { alphaOf, Settings } from './Settings.tsx'
@@ -137,6 +138,7 @@ export function placeOf(hash: string): Place {
 
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
+  const peek = usePeek()
   const [stream, setStream] = useState<Stream | null>(null)
   const [modules, setModules] = useState<ModuleSummary[]>([])
   const [table, setTable] = useState<TableData | null>(null)
@@ -206,7 +208,13 @@ export function App() {
   askableRef.current = askable
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j' && askableRef.current) {
+      // ⌘J, or ⌘⇧\ (the rail's ⌘\ mirrored), folds the assistant or opens it
+      const mirrored = e.shiftKey && (e.key === '\\' || e.key === '|')
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        (e.key.toLowerCase() === 'j' || mirrored) &&
+        askableRef.current
+      ) {
         e.preventDefault()
         setAsking((a) => !a)
       }
@@ -243,7 +251,7 @@ export function App() {
         if (panelRef.current) changeLayout({ panel: null })
         else setAsking(false)
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === '\\') {
         e.preventDefault()
         changeLayout({ railFolded: !foldedRef.current })
       }
@@ -363,7 +371,7 @@ export function App() {
                   : [at('People')],
             }
           : place.at === 'conversation'
-            ? { icon: <MessageSquare className={icon} />, parts: [at('Conversation')] }
+            ? { icon: <Bot className={icon} />, parts: [at('Agents')] }
             : place.at === 'settings'
               ? { icon: <SlidersHorizontal className={icon} />, parts: [at('Settings')] }
               : place.at === 'intelligence'
@@ -554,6 +562,16 @@ export function App() {
                   <p className="p-6 text-ink-3">That table is not there.</p>
                 )}
               </div>
+              {peek.href && (
+                <Peek
+                  href={peek.href}
+                  canBack={peek.canBack}
+                  onBack={peek.back}
+                  onClose={peek.close}
+                  version={version}
+                  modules={modules}
+                />
+              )}
             </div>
           </BarMiddle>
         </main>

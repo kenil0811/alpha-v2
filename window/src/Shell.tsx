@@ -1,26 +1,28 @@
 // The shell (Vikas, 25 Oct; reverses design §14's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
 // the right, their headers on one line. The rail has the workspace at its top, Home with a badge
-// for what waits on the person, Tasks, the modules by name (People and Organizations are
+// for what waits on the person, Agents, Tasks, the modules by name (People and Organizations are
 // tabs inside Network; a rail item of their own only when there is no Network) with the modules inside them,
-// New module last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
+// New module last in the list, and Settings at its foot with the Second Brain beside it (Vikas,
+// 28 Oct); no headings and no status lines. It
 // folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
 // buttons.
 import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
+  ArrowLeftRight,
+  Bot,
+  Brain,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   EllipsisVertical,
   House,
   ListChecks,
-  MessageSquare,
+  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -40,9 +42,13 @@ import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
+import { Back } from './ui/back.tsx'
+import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Edge } from './ui/edge.tsx'
+import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
+import { Field } from './ui/field.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
+import { Segmented } from './ui/segmented.tsx'
 
 export type Place =
   | { at: 'home' }
@@ -149,7 +155,7 @@ export function Rail({
         tasksDue={tasksDue}
         hidden={hiding.hidden}
         onNew={onNew}
-        onOpen={() => onLayout({ railFolded: false })}
+        onOpen={(w) => onLayout({ railFolded: false, ...(w ? { railWidth: w } : {}) })}
       />
     )
   const fold = (id: string) =>
@@ -192,34 +198,18 @@ export function Rail({
           <PanelLeftClose className="size-4" />
         </button>
       </div>
-      <Nav
-        href="#/"
-        icon={<House className="size-4" />}
-        label="Home"
-        current={place.at === 'home'}
-        extra={waiting > 0 && <Badge n={waiting} />}
-      />
-      <Nav
-        href="#/conversation"
-        icon={<MessageSquare className="size-4" />}
-        label="Conversation"
-        current={place.at === 'conversation'}
-      />
-      <Nav
-        href="#/tasks"
-        icon={<ListChecks className="size-4" />}
-        label="Tasks"
-        current={place.at === 'tasks'}
-        extra={tasksDue > 0 && <Badge n={tasksDue} />}
-      />
-      {!network(modules) && (
-        <Nav
-          href="#/people"
-          icon={<Users className="size-4" />}
-          label="People"
-          current={place.at === 'people'}
-        />
-      )}
+      <div className="flex flex-col">
+        {places(place, waiting, tasksDue, modules).map((f) => (
+          <Nav
+            key={f.href}
+            href={f.href}
+            icon={<f.icon className="size-4" />}
+            label={f.label}
+            current={f.current}
+            extra={f.count > 0 && <Badge n={f.count} />}
+          />
+        ))}
+      </div>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
       <div
         className="mt-3 min-h-0 flex-1 overflow-y-auto"
@@ -258,39 +248,102 @@ export function Rail({
           New module
         </button>
       </div>
-      <div className="flex flex-col gap-0.5 pt-2">
-        <Nav
-          href="#/intelligence"
-          icon={<Sparkles className="size-4" />}
-          label="Intelligence"
-          current={place.at === 'intelligence'}
-        />
-        <Nav
-          href="#/settings"
-          icon={<SlidersHorizontal className="size-4" />}
-          label="Settings"
-          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
-        />
+      <div className="flex items-center gap-1 pt-2">
+        <div className="min-w-0 flex-1">
+          <Nav
+            href="#/settings"
+            icon={<SlidersHorizontal className="size-4" />}
+            label="Settings"
+            current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
+          />
+        </div>
+        <a
+          href={BRAIN}
+          aria-label="Second Brain"
+          data-tip="Second Brain"
+          aria-current={place.at === 'intelligence' ? 'page' : undefined}
+          className={cn(
+            'grid size-8 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+            place.at === 'intelligence' &&
+              'bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent',
+          )}
+        >
+          <Brain className="size-4" />
+        </a>
       </div>
     </nav>
   )
 }
 
-// The rail's head: the workspace's initial on an accent tile and its name, opening a menu of where
-// Alpha is set up (Settings, Intelligence) and how it looks.
+// The places at the top of the rail and its strip, from one list: Home, Agents, Tasks, and People
+// when there is no Network
+const places = (place: Place, waiting: number, tasksDue: number, modules: ModuleSummary[]) => [
+  { href: '#/', label: 'Home', icon: House, current: place.at === 'home', count: waiting },
+  {
+    href: '#/conversation',
+    label: 'Agents',
+    icon: Bot,
+    current: place.at === 'conversation',
+    count: 0,
+  },
+  {
+    href: '#/tasks',
+    label: 'Tasks',
+    icon: ListChecks,
+    current: place.at === 'tasks',
+    count: tasksDue,
+  },
+  ...(network(modules)
+    ? []
+    : [
+        {
+          href: '#/people',
+          label: 'People',
+          icon: Users,
+          current: place.at === 'people',
+          count: 0,
+        },
+      ]),
+]
+
+// the rail's small Second Brain icon lands on Intelligence's Second Brain tab
+const BRAIN = '#/intelligence/brain'
+
+// The rail's head (Vikas, 29 Oct): the workspace's initial and name. A click opens the account's
+// menu: the workspace and where it runs, Appearance on one line, Switch account and Log out;
+// Settings and the Second Brain are on the rail already.
 function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   const label = name ? `${name}'s workspace` : 'Your workspace'
   const anchor = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(savedTheme)
-  const go = (href: string) => {
-    setOpen(false)
-    window.location.hash = href
-  }
+  const [switching, setSwitching] = useState<string | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
   const look = (t: Theme) => {
     setTheme(t)
     applyTheme(t)
     void api.post('/api/appearance', { theme: t }).catch(() => undefined) // kept here regardless
+  }
+  // Log out: this browser forgets the per-install token, and the window shows the core's own
+  // words for opening Alpha again from the address it printed
+  const logOut = () => {
+    try {
+      sessionStorage.removeItem('alpha-token')
+    } catch {
+      // a private window keeps nothing
+    }
+    window.location.replace(window.location.pathname)
+  }
+  // Switch account: another Alpha (another install, another person) is another address with its
+  // own token, the one its core printed
+  const go = (address: string) => {
+    try {
+      const u = new URL(address.trim())
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error()
+      window.location.assign(u.href)
+    } catch {
+      setProblem('Paste the whole address the core printed, starting http.')
+    }
   }
   const tile = (
     <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
@@ -320,8 +373,16 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
           </>
         )}
       </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
-        <div className="flex min-w-60 flex-col p-1" role="menu" aria-label={label}>
+      <Popover
+        anchor={anchor}
+        open={open}
+        onClose={() => {
+          setOpen(false)
+          setSwitching(null)
+          setProblem(null)
+        }}
+      >
+        <div className="flex min-w-72 flex-col p-1" role="menu" aria-label={label}>
           <div className="flex items-center gap-2 px-2.5 py-2">
             {tile}
             <div className="min-w-0">
@@ -330,27 +391,57 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
             </div>
           </div>
           <MenuLine />
-          <MenuItem onClick={() => go('#/settings')}>
-            <SlidersHorizontal className="size-3.5 text-ink-3" />
-            Settings
-          </MenuItem>
-          <MenuItem onClick={() => go('#/intelligence')}>
-            <Sparkles className="size-3.5 text-ink-3" />
-            Intelligence
-          </MenuItem>
+          <div className="flex items-center gap-3 px-2.5 py-1.5">
+            <span className="flex-1 text-ink-2 text-md">Appearance</span>
+            <Segmented
+              label="Appearance"
+              value={theme}
+              onChange={look}
+              options={[
+                { value: 'mac', label: 'Match Mac' },
+                { value: 'light', label: 'Light' },
+                { value: 'dark', label: 'Dark' },
+              ]}
+            />
+          </div>
           <MenuLine />
-          <div className="px-2.5 pt-1 pb-0.5 text-ink-3 text-sm">Appearance</div>
-          {(
-            [
-              ['mac', 'Match Mac'],
-              ['light', 'Light'],
-              ['dark', 'Dark'],
-            ] as const
-          ).map(([t, words]) => (
-            <MenuItem key={t} checked={theme === t} onClick={() => look(t)}>
-              {words}
+          {switching === null ? (
+            <MenuItem onClick={() => setSwitching('')}>
+              <ArrowLeftRight className="size-3.5 text-ink-3" />
+              Switch account
             </MenuItem>
-          ))}
+          ) : (
+            <form
+              className="flex flex-col gap-1.5 px-2.5 py-1.5"
+              onSubmit={(e) => {
+                e.preventDefault()
+                go(switching)
+              }}
+            >
+              <span className="text-ink-3 text-sm">The address another Alpha's core printed</span>
+              <div className="flex gap-1.5">
+                <Field
+                  autoFocus
+                  aria-label="The address to open"
+                  placeholder="http://localhost:4700/?t=…"
+                  value={switching}
+                  onChange={(e) => setSwitching(e.target.value)}
+                  className="h-7 min-w-0 flex-1"
+                />
+                <Button size="sm" variant="primary" type="submit" disabled={!switching.trim()}>
+                  Open
+                </Button>
+              </div>
+            </form>
+          )}
+          {/* Alpha's own Mac window is signed in by the Mac: nothing to log out of there */}
+          {!inMacApp() && (
+            <MenuItem onClick={logOut}>
+              <LogOut className="size-3.5 text-ink-3" />
+              Log out
+            </MenuItem>
+          )}
+          {problem && <p className="max-w-72 px-2.5 py-1.5 text-bad text-sm">{problem}</p>}
         </div>
       </Popover>
     </>
@@ -683,8 +774,9 @@ function Strip({
   tasksDue: number
   hidden: string[]
   onNew: () => void
-  onOpen: () => void
+  onOpen: (width?: number) => void // a drag out of its edge opens it at that width
 }) {
+  const [opening, setOpening] = useState<number | null>(null)
   // a module inside another lights the one at the top that holds it
   const top = here ? (ancestors(modules, here)[0]?.id ?? here) : null
   const icon = (
@@ -701,16 +793,27 @@ function Strip({
       data-tip={label}
       aria-current={current ? 'page' : undefined}
       className={cn(
-        'relative grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-        current && 'bg-accent-soft text-accent',
+        stripItem(current),
+        !current && 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink',
       )}
     >
       {child}
+      <span className={stripName}>{label.split(',')[0]}</span>
       {extra}
     </a>
   )
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+    <nav className="relative flex w-20 shrink-0 flex-col items-center gap-1 border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
+      <Edge
+        side="right"
+        folded
+        width={STRIP}
+        max={RAIL[1]}
+        onDrag={setOpening}
+        onDone={(w) => onOpen(w)}
+        onFold={() => undefined}
+      />
+      <Opening side="left" width={opening} />
       <div
         data-tauri-drag-region
         className={cn(
@@ -724,33 +827,33 @@ function Strip({
         type="button"
         aria-label="Open the rail"
         data-tip={'Open the rail (⌘\\)'}
-        onClick={onOpen}
-        className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+        onClick={() => onOpen()}
+        className={cn(
+          stripItem(),
+          'mt-1 mb-2 text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink',
+        )}
       >
         <PanelLeftOpen className="size-4" />
+        <span className={stripName}>Open</span>
       </button>
-      {icon(
-        '#/',
-        waiting ? `Home, ${waiting} waiting for you` : 'Home',
-        place.at === 'home',
-        <House className="size-4" />,
-        waiting > 0 && (
-          <span
-            className="absolute top-1 right-1 size-2 rounded-full bg-accent"
-            aria-hidden="true"
-          />
+      {places(place, waiting, tasksDue, modules).map((f) =>
+        icon(
+          f.href,
+          f.count
+            ? `${f.label}, ${f.count} ${f.href === '#/' ? 'waiting for you' : 'due'}`
+            : f.label,
+          f.current,
+          <f.icon className="size-4" />,
+          f.href === '#/' && f.count > 0 && (
+            <span
+              className="absolute top-1 right-1 size-2 rounded-full bg-accent"
+              aria-hidden="true"
+            />
+          ),
         ),
       )}
-      {icon(
-        '#/tasks',
-        tasksDue ? `Tasks, ${tasksDue} due` : 'Tasks',
-        place.at === 'tasks',
-        <ListChecks className="size-4" />,
-      )}
-      {!network(modules) &&
-        icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+      <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {shownTops(modules, hidden).map((m) =>
           icon(
             `#/module/${m.id}`,
@@ -764,17 +867,13 @@ function Strip({
           aria-label="New module"
           data-tip="New module"
           onClick={onNew}
-          className="grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+          className={cn(stripItem(), 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink')}
         >
           <Plus className="size-4" />
+          <span className={stripName}>New</span>
         </button>
       </div>
-      {icon(
-        '#/intelligence',
-        'Intelligence',
-        place.at === 'intelligence',
-        <Sparkles className="size-4" />,
-      )}
+      {icon(BRAIN, 'Second Brain', place.at === 'intelligence', <Brain className="size-4" />)}
       {icon(
         '#/settings',
         'Settings',
@@ -792,7 +891,7 @@ export interface Crumb {
 }
 
 // the rail's narrowest and widest
-const RAIL = [180, 360] as const
+const RAIL = [SIDE_MIN, 360] as const
 
 // The module People and Organizations live in, as its module.yaml says (people: true; Network's).
 export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
@@ -806,8 +905,19 @@ export function InBar({ children }: { children: ReactNode }) {
   return at ? createPortal(children, at) : null
 }
 
-// The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
-// another, the screen's switch or name centred. Find is ⌘K, from anywhere.
+// The places this window went, in order: Back returns to the one before, wherever it was (Vikas,
+// 30 Oct: "when I press back, it's going to home and not to the previous path"); a link, not
+// history.back(), so a place left by replace never takes Back out of the window
+const been: string[] = [globalThis.location?.hash || '#/']
+globalThis.addEventListener?.('hashchange', () => {
+  const h = location.hash || '#/'
+  if (been.at(-2) === h)
+    been.pop() // went back
+  else if (been.at(-1) !== h) been.push(h)
+})
+
+// The bar over each screen, at the shared 48px: Back on the left on every screen but Home, the
+// screen's switch or name centred. Find is ⌘K, from anywhere.
 export function Bar({
   crumb,
   lens,
@@ -821,25 +931,20 @@ export function Bar({
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
   const back = crumb.parts.at(-2)
+  const home = !crumb.parts.length || (crumb.parts.length === 1 && last === 'Home')
   return (
     <div
       data-tauri-drag-region
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {back?.href && (
-          // whole or not at all: an empty first item lets a way back too wide for its room wrap
-          // onto a second line, which is cut off
-          <div className="flex h-6 min-w-0 flex-wrap overflow-hidden before:h-6 before:content-['']">
-            <a
-              href={back.href}
-              className="flex h-6 shrink-0 items-center gap-1 whitespace-nowrap text-ink-3 text-md hover:text-ink"
-            >
-              <ChevronLeft className="size-3.5 shrink-0" />
-              {back.label}
-            </a>
-          </div>
-        )}
+        {/* every screen but Home: Back to where the person was, else the place above it */}
+        {!home &&
+          (been.length > 1 ? (
+            <Back to="where you were" href={been.at(-2) ?? '#/'} />
+          ) : (
+            <Back href={back?.href ?? '#/'} to={back?.href ? back.label : 'Home'} />
+          ))}
         {lens && (
           <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
             Only {lens.name}
@@ -873,13 +978,14 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
   const places = useMemo(
     () => [
       { label: 'Home', hint: '', href: '#/' },
-      { label: 'Conversation', hint: '', href: '#/conversation' },
+      { label: 'Agents', hint: '', href: '#/conversation' },
       { label: 'Tasks', hint: '', href: '#/tasks' },
       { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
       { label: 'People', hint: 'Network', href: '#/people' },
       { label: 'Organizations', hint: 'Network', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
       { label: 'Intelligence', hint: '', href: '#/intelligence' },
+      { label: 'Second Brain', hint: 'Intelligence', href: BRAIN },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
         label: m.name,
