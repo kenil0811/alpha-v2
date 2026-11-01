@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { placeOf } from './App.tsx'
 import { NO_LAYOUT } from './layout.ts'
 import { buildWords, NewModule } from './NewModule.tsx'
+import { opensBeside } from './Peek.tsx'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 import { More } from './ui/more.tsx'
@@ -138,6 +139,19 @@ describe('the window', () => {
     expect(strip).toContain('Open the rail')
     expect(strip).toContain('aria-label="Shops"')
     expect(strip).not.toContain('aria-label="Bakery"')
+    // a strip that reads: each place's name under its icon, and an edge that drags it open
+    expect(strip).toContain('>Open</span>')
+    expect(strip).toContain('>Shops</span>')
+    expect(strip).toContain('data-tip="Drag out to open"')
+  })
+
+  it('opens a record, a person or the rows a figure counted beside the screen', () => {
+    expect(opensBeside('#/row/r_1')).toBe(true)
+    expect(opensBeside('#/people/p_1')).toBe(true)
+    expect(opensBeside('#/table/t_1?only=r_1,r_2')).toBe(true)
+    expect(opensBeside('#/table/t_1')).toBe(false)
+    expect(opensBeside('#/module/m_1')).toBe(false)
+    expect(opensBeside('#/tasks?list=today')).toBe(false)
   })
 
   it('reads the tree from each module’s parent', () => {

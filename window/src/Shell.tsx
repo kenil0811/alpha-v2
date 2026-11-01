@@ -9,7 +9,6 @@
 import type { FoundRow, Layout, ModuleSummary } from '@alpha/core/api'
 import {
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   EllipsisVertical,
   House,
@@ -40,8 +39,9 @@ import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
+import { Back } from './ui/back.tsx'
 import { cn } from './ui/cn.ts'
-import { Edge } from './ui/edge.tsx'
+import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 
 export type Place =
@@ -149,7 +149,7 @@ export function Rail({
         tasksDue={tasksDue}
         hidden={hiding.hidden}
         onNew={onNew}
-        onOpen={() => onLayout({ railFolded: false })}
+        onOpen={(w) => onLayout({ railFolded: false, ...(w ? { railWidth: w } : {}) })}
       />
     )
   const fold = (id: string) =>
@@ -683,8 +683,9 @@ function Strip({
   tasksDue: number
   hidden: string[]
   onNew: () => void
-  onOpen: () => void
+  onOpen: (width?: number) => void // a drag out of its edge opens it at that width
 }) {
+  const [opening, setOpening] = useState<number | null>(null)
   // a module inside another lights the one at the top that holds it
   const top = here ? (ancestors(modules, here)[0]?.id ?? here) : null
   const icon = (
@@ -701,16 +702,27 @@ function Strip({
       data-tip={label}
       aria-current={current ? 'page' : undefined}
       className={cn(
-        'relative grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-        current && 'bg-accent-soft text-accent',
+        stripItem(current),
+        !current && 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink',
       )}
     >
       {child}
+      <span className={stripName}>{label.split(',')[0]}</span>
       {extra}
     </a>
   )
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+    <nav className="relative flex w-20 shrink-0 flex-col items-center gap-1 border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
+      <Edge
+        side="right"
+        folded
+        width={STRIP}
+        max={RAIL[1]}
+        onDrag={setOpening}
+        onDone={(w) => onOpen(w)}
+        onFold={() => undefined}
+      />
+      <Opening side="left" width={opening} />
       <div
         data-tauri-drag-region
         className={cn(
@@ -724,10 +736,14 @@ function Strip({
         type="button"
         aria-label="Open the rail"
         data-tip={'Open the rail (⌘\\)'}
-        onClick={onOpen}
-        className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+        onClick={() => onOpen()}
+        className={cn(
+          stripItem(),
+          'mt-1 mb-2 text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink',
+        )}
       >
         <PanelLeftOpen className="size-4" />
+        <span className={stripName}>Open</span>
       </button>
       {icon(
         '#/',
@@ -750,7 +766,7 @@ function Strip({
       {!network(modules) &&
         icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+      <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {shownTops(modules, hidden).map((m) =>
           icon(
             `#/module/${m.id}`,
@@ -764,9 +780,10 @@ function Strip({
           aria-label="New module"
           data-tip="New module"
           onClick={onNew}
-          className="grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+          className={cn(stripItem(), 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink')}
         >
           <Plus className="size-4" />
+          <span className={stripName}>New</span>
         </button>
       </div>
       {icon(
@@ -792,7 +809,7 @@ export interface Crumb {
 }
 
 // the rail's narrowest and widest
-const RAIL = [180, 360] as const
+const RAIL = [SIDE_MIN, 360] as const
 
 // The module People and Organizations live in, as its module.yaml says (people: true; Network's).
 export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
@@ -806,8 +823,19 @@ export function InBar({ children }: { children: ReactNode }) {
   return at ? createPortal(children, at) : null
 }
 
-// The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
-// another, the screen's switch or name centred. Find is ⌘K, from anywhere.
+// The places this window went, in order: Back returns to the one before, wherever it was (Vikas,
+// 30 Oct: "when I press back, it's going to home and not to the previous path"); a link, not
+// history.back(), so a place left by replace never takes Back out of the window
+const been: string[] = [globalThis.location?.hash || '#/']
+globalThis.addEventListener?.('hashchange', () => {
+  const h = location.hash || '#/'
+  if (been.at(-2) === h)
+    been.pop() // went back
+  else if (been.at(-1) !== h) been.push(h)
+})
+
+// The bar over each screen, at the shared 48px: Back on the left on every screen but Home, the
+// screen's switch or name centred. Find is ⌘K, from anywhere.
 export function Bar({
   crumb,
   lens,
@@ -821,25 +849,20 @@ export function Bar({
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
   const back = crumb.parts.at(-2)
+  const home = !crumb.parts.length || (crumb.parts.length === 1 && last === 'Home')
   return (
     <div
       data-tauri-drag-region
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {back?.href && (
-          // whole or not at all: an empty first item lets a way back too wide for its room wrap
-          // onto a second line, which is cut off
-          <div className="flex h-6 min-w-0 flex-wrap overflow-hidden before:h-6 before:content-['']">
-            <a
-              href={back.href}
-              className="flex h-6 shrink-0 items-center gap-1 whitespace-nowrap text-ink-3 text-md hover:text-ink"
-            >
-              <ChevronLeft className="size-3.5 shrink-0" />
-              {back.label}
-            </a>
-          </div>
-        )}
+        {/* every screen but Home: Back to where the person was, else the place above it */}
+        {!home &&
+          (been.length > 1 ? (
+            <Back to="where you were" href={been.at(-2) ?? '#/'} />
+          ) : (
+            <Back href={back?.href ?? '#/'} to={back?.href ? back.label : 'Home'} />
+          ))}
         {lens && (
           <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
             Only {lens.name}
