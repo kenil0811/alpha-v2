@@ -1,9 +1,10 @@
 // Tasks an agent proposes (Kenil's plan, 21 Oct): one card with each task as it would be added,
 // where it would sit and for whom, each ticked; Add them keeps the ticked ones, Not now none.
 // Nothing is kept before the person's yes.
-import type { CardView, ProposedView } from '@alpha/core/api'
+
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
+import type { CardView, ProposedView } from './coming.ts'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
@@ -33,8 +34,10 @@ export function ProposedCard({ card, proposed }: { card: CardView; proposed: Pro
     })
   const n = kept.size
   return (
-    <Card label={`${proposed.agent} proposes`} waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label={`${proposed.agent} proposes`} waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="overflow-hidden rounded-md border border-line">
         {proposed.tasks.map((t, i) => (
           <label

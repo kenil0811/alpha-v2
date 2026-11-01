@@ -2,11 +2,12 @@
 // table so the page reads as a module. Build it sends the words to Alpha and opens the assistant
 // on the right, where Alpha asks and plans; when the module is made, the page goes to it.
 // Cancel and Escape go back.
-import type { ModuleSummary } from '@alpha/core/api'
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import type { ModuleSummary } from './coming.ts'
 import { Button } from './ui/button.tsx'
-import { Field } from './ui/field.tsx'
+import { Field, Select } from './ui/field.tsx'
 
 // the words Alpha is sent
 export const buildWords = (name: string, what: string) =>
@@ -17,6 +18,112 @@ export const buildWords = (name: string, what: string) =>
 const back = () => {
   if (window.history.length > 1) window.history.back()
   else window.location.hash = '#/'
+}
+
+// Escape goes back: not while a pop-up is open, or while typing outside the page (the
+// assistant's composer).
+function useEscapeBack(page: RefObject<HTMLFormElement | null>) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]')) return
+      const t = e.target
+      if (
+        t instanceof HTMLElement &&
+        t.closest('input, textarea, select, [contenteditable=true]') &&
+        !page.current?.contains(t)
+      )
+        return
+      e.preventDefault()
+      back()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [page])
+}
+
+export const agentWords = (what: string) => `Make an agent in this module: ${what.trim()}`
+
+// New agent (proposal 28 Oct §1 #2): New module's page, asking what it should do and in which
+// module. Make it sends the words to Alpha in that module's conversation and opens the assistant;
+// the agent comes paused, with Activate, in the Agents list.
+export function NewAgent({
+  modules,
+  onAsked,
+}: {
+  modules: { id: string; name: string }[]
+  onAsked: () => void
+}) {
+  const [what, setWhat] = useState('')
+  // from a module's Agents card (#/agent/new?module=<id>), that module
+  const [module, setModule] = useState(
+    () => /[?&]module=([\w-]+)/.exec(window.location.hash)?.[1] ?? modules[0]?.id ?? '',
+  )
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const page = useRef<HTMLFormElement>(null)
+  useEscapeBack(page)
+  const at = (modules.some((m) => m.id === module) && module) || modules[0]?.id || ''
+
+  const send = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!what.trim() || !at || busy) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      await api.post('/api/say', { words: agentWords(what), from: at })
+      onAsked()
+      window.location.hash = '#/intelligence/agents'
+    } catch (err) {
+      setProblem(wordsOf(err))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <form ref={page} onSubmit={send} className="flex max-w-page flex-col gap-4 px-7 py-6">
+        <textarea
+          // biome-ignore lint/a11y/noAutofocus: the page is for this
+          autoFocus
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) page.current?.requestSubmit()
+          }}
+          rows={4}
+          placeholder="What should it do, and when?"
+          aria-label="What should it do, and when?"
+          disabled={busy}
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink text-md outline-none placeholder:text-ink-3 focus:border-accent-line focus:ring-3 focus:ring-accent-soft"
+        />
+        <div className="flex items-center gap-3 text-ink-2 text-md">
+          In
+          <Select
+            aria-label="Module"
+            value={at}
+            onChange={(e) => setModule(e.target.value)}
+            disabled={busy}
+            className="w-64"
+          >
+            {modules.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="submit" variant="primary" disabled={!what.trim() || !at || busy}>
+            {busy ? 'Making…' : 'Make it'}
+          </Button>
+          <Button variant="ghost" onClick={back}>
+            Cancel
+          </Button>
+          {problem && <span className="text-bad text-sm">{problem}</span>}
+        </div>
+      </form>
+    </div>
+  )
 }
 
 export function NewModule({
@@ -39,23 +146,7 @@ export function NewModule({
     if (made) window.location.hash = `#/module/${made.id}`
   }, [before, modules])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // not while a pop-up is open, or while typing outside this page (the assistant's composer)
-      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]')) return
-      const t = e.target
-      if (
-        t instanceof HTMLElement &&
-        t.closest('input, textarea, select, [contenteditable=true]') &&
-        !page.current?.contains(t)
-      )
-        return
-      e.preventDefault()
-      back()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  useEscapeBack(page)
 
   const send = async (e: FormEvent) => {
     e.preventDefault()

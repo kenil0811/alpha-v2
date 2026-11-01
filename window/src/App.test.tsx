@@ -1,10 +1,10 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { placeOf } from './App.tsx'
+import type { CardView } from './coming.ts'
 import { NO_LAYOUT } from './layout.ts'
 import { buildWords, NewModule } from './NewModule.tsx'
-import { opensBeside } from './Peek.tsx'
-import { Rail } from './Shell.tsx'
+import { Rail, waitingLines } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
@@ -28,10 +28,20 @@ describe('delete', () => {
 })
 
 const modules = [
-  { id: 'm_1', name: 'Shops', parent: null, people: false, alpha: false, pages: [], tables: [] },
+  {
+    id: 'm_1',
+    name: 'Shops',
+    about: null,
+    parent: null,
+    people: false,
+    alpha: false,
+    pages: [],
+    tables: [],
+  },
   {
     id: 'm_2',
     name: 'Bakery',
+    about: null,
     parent: 'm_1',
     people: false,
     alpha: false,
@@ -41,6 +51,7 @@ const modules = [
   {
     id: 'm_3',
     name: 'Food',
+    about: null,
     parent: null,
     people: false,
     alpha: false,
@@ -49,6 +60,9 @@ const modules = [
   },
 ]
 const open = NO_LAYOUT
+// a card names its module by id, as the core sends it
+const card = (id: string) =>
+  ({ id, kind: 'ask', options: ['Yes'], module: 'm_1', restsOn: [] }) as unknown as CardView
 
 describe('a menu line', () => {
   it('gives the default a filled ★ of its own beside it, so starring never picks the line', () => {
@@ -84,7 +98,7 @@ describe('the window', () => {
         place={{ at: 'home' }}
         here={null}
         name="Kenil"
-        waiting={2}
+        cards={[card('a'), card('b')]}
         onNew={() => undefined}
         tasksDue={0}
         online
@@ -100,12 +114,15 @@ describe('the window', () => {
     expect(html).toContain('>2<')
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
-    expect(html).toContain('href="#/intelligence/brain"') // the Second Brain beside Settings
-    expect(html).toContain('>Agents<')
-    expect(html.indexOf('>Home<')).toBeLessThan(html.indexOf('>Agents<'))
-    expect(html.indexOf('>Agents<')).toBeLessThan(html.indexOf('>Tasks<'))
+    expect(html).toContain('href="#/intelligence"')
     expect(html).not.toContain('Alpha is running')
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
+  })
+
+  it('says what Home’s count is made of, by module', () => {
+    expect(waitingLines([card('a'), card('b')], modules)).toEqual([
+      { name: 'Shops', count: 2, words: '2 questions', href: '#/module/m_1/overview' },
+    ])
   })
 
   it('folds a module’s modules away, and the rail to a strip of icons', () => {
@@ -115,7 +132,7 @@ describe('the window', () => {
         place={{ at: 'home' }}
         here={null}
         name="Kenil"
-        waiting={0}
+        cards={[]}
         onNew={() => undefined}
         tasksDue={0}
         online
@@ -131,7 +148,7 @@ describe('the window', () => {
         place={{ at: 'home' }}
         here="m_2"
         name="Kenil"
-        waiting={0}
+        cards={[]}
         onNew={() => undefined}
         tasksDue={0}
         online
@@ -142,19 +159,6 @@ describe('the window', () => {
     expect(strip).toContain('Open the rail')
     expect(strip).toContain('aria-label="Shops"')
     expect(strip).not.toContain('aria-label="Bakery"')
-    // a strip that reads: each place's name under its icon, and an edge that drags it open
-    expect(strip).toContain('>Open</span>')
-    expect(strip).toContain('>Shops</span>')
-    expect(strip).toContain('data-tip="Drag out to open"')
-  })
-
-  it('opens a record, a person or the rows a figure counted beside the screen', () => {
-    expect(opensBeside('#/row/r_1')).toBe(true)
-    expect(opensBeside('#/people/p_1')).toBe(true)
-    expect(opensBeside('#/table/t_1?only=r_1,r_2')).toBe(true)
-    expect(opensBeside('#/table/t_1')).toBe(false)
-    expect(opensBeside('#/module/m_1')).toBe(false)
-    expect(opensBeside('#/tasks?list=today')).toBe(false)
   })
 
   it('reads the tree from each module’s parent', () => {

@@ -20,7 +20,7 @@ import { MenuItem } from './ui/popover.tsx'
 const STATE: Record<RunView['state'], [string, Tone]> = {
   running: ['Running', 'accent'],
   ok: ['Done', 'good'],
-  failed: ["Didn't finish", 'bad'],
+  failed: ['Failed', 'bad'],
   stopped: ['Stopped', 'neutral'],
 }
 
@@ -70,8 +70,18 @@ export function Activity({ version }: { version: number }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [only, setOnly] = useState<'all' | 'failed'>('all')
+  const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
-    api.get<RunView[]>('/api/activity').then(setRuns, () => setRuns([]))
+    api.get<RunView[]>('/api/activity').then(
+      (r) => {
+        setRuns(r)
+        setProblem(null)
+      },
+      (err) => {
+        setRuns([])
+        setProblem(wordsOf(err))
+      },
+    )
   }, [])
   useEffect(() => {
     if (version >= 0) load()
@@ -101,18 +111,19 @@ export function Activity({ version }: { version: number }) {
             </Cut>
           </div>
         </div>
-        {runs && shown.length === 0 && (
+        {/* never a blank page (Vikas, 29 Oct): still loading, or nothing to show, says so */}
+        {!runs && <p className="mt-4 text-ink-3 text-md">Loading…</p>}
+        {problem && <p className="mt-4 text-md text-warn">{problem}</p>}
+        {runs && !problem && shown.length === 0 && (
           <p className="mt-4 text-ink-2 text-md">
             {only === 'failed'
               ? 'Everything that ran finished.'
-              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
+              : 'Nothing has run yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
           </p>
         )}
         {days.map(([day, list]) => (
           <section key={day}>
-            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-xs uppercase tracking-label">
-              {day}
-            </div>
+            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-sm">{day}</div>
             <div className="overflow-hidden rounded-lg border border-line bg-surface">
               {fold(list).map((l) =>
                 l.kind === 'quiet' ? (
@@ -251,7 +262,7 @@ export function RunRow({
 
 // Revert (or Bring back) behind ⋮: the pop-up says what it will do and what it leaves before
 // anything happens, from the core's own preview of the same work.
-function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefined }) {
+export function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefined }) {
   const u = r.undo
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<UndoView | null>(null)

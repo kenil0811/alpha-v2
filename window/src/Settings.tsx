@@ -1,5 +1,6 @@
 // Settings (design §14): connections, folders, and modules with their agents. Connecting is the
 // person's own act here: what they type goes to the Keychain, never to the model.
+
 import type {
   ConnectionView,
   ConnectorsView,
@@ -9,11 +10,10 @@ import type {
   InstructionView,
   KeptTable,
   ModelView,
-  ModuleSummary,
   TableView as TableData,
 } from '@alpha/core/api'
 import {
-  BookmarkCheck,
+  Brain,
   CalendarDays,
   Check,
   Folder,
@@ -26,32 +26,41 @@ import {
   Unplug,
   UserRound,
 } from 'lucide-react'
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { AgentList } from './AgentList.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { Arranged, pairs } from './arrange.tsx'
-import { startAsk } from './ask.ts'
+import { showAsk, startAsk } from './ask.ts'
+import type { ModuleSummary } from './coming.ts'
 import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
+import { FootprintLedger } from './FootprintLedger.tsx'
+import { GovernanceSection } from './Governance.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
+import { peek } from './Peek.tsx'
 import { Reach } from './Reach.tsx'
+import { BrainGraph, SecondBrain } from './SecondBrain.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
 import { TableView } from './TableView.tsx'
-import { applyTheme, savedTheme, type Theme } from './theme.ts'
+import { applyTextSize, applyTheme, savedTheme, type TextSize, type Theme } from './theme.ts'
 import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm, Dialog } from './ui/dialog.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
+import { EntryList } from './ui/entry-list.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Kbd, Pill, type Tone } from './ui/pill.tsx'
+import { PillSwitch, SwitchPill } from './ui/pill-switch.tsx'
 import { MenuItem } from './ui/popover.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { SideItem, SideList } from './ui/side-list.tsx'
 import { Switch } from './ui/switch.tsx'
-import { Tabs } from './ui/tabs.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   connected: ['Connected', 'good'],
@@ -74,24 +83,31 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
 // Two pages share this file (proposal item 14, 15). Intelligence: what Alpha knows and does, as
 // tabs. Settings: how Alpha runs, a list of sections on the left and one section at a time.
 const PAGES = {
+  // Second Brain, by the brain beside Settings (Vikas, 28 Oct): the big picture of the platform,
+  // a graph first; what it holds across modules; the connections and agents feeding it
   intelligence: {
-    icon: <Sparkles className="size-4" />,
-    title: 'Intelligence',
-    about: 'The accounts Alpha reads, its agents and what it knows.',
+    icon: <Brain className="size-4" />,
+    title: 'Second Brain',
+    about: 'How the whole platform fits together and how it is doing.',
     tabs: [
+      ['graph', 'Graph'],
+      ['brain', 'Across modules'],
       ['connections', 'Connections'],
       ['agents', 'Agents'],
-      ['brain', 'Second Brain'],
     ],
   },
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs on this Mac: its model, modules, permissions, data and how it looks.',
+    about:
+      'How Alpha runs on this Mac: its model, modules, connections, rules, data and how it looks.',
     tabs: [
       ['model', 'Model'],
+      ['usage', 'Usage'],
       ['modules', 'Modules'],
+      ['connections', 'Connections'],
       ['permissions', 'Permissions'],
+      ['governance', 'Governance'],
       ['data', 'Data'],
       ['appearance', 'Appearance'],
       ['experimental', 'Experimental'],
@@ -133,7 +149,10 @@ export function Settings({
   // a connection whose connector is not loaded (its pack not added yet): shown, waiting
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
+    graph: <BrainGraph version={version} />,
     brain: <SecondBrain version={version} />,
+    governance: <Governance version={version} />,
+    usage: <UsageSection />,
     agents: <Agents version={version} />,
     connections: (
       <>
@@ -141,7 +160,7 @@ export function Settings({
           title="Connections"
           about="Your accounts, read by Alpha; what you type stays in the Keychain."
         >
-          {/* each tile a card the person moves by its handle and resizes from its corner */}
+          {/* each tile a block the person moves and resizes (Vikas, 30 Oct) */}
           <Arranged
             page="connections"
             start={pairs(accounts.map((c) => c.name))}
@@ -198,12 +217,7 @@ export function Settings({
     ),
     modules: <ModulesAndAgents version={version} />,
     permissions: <Permissions version={version} />,
-    model: (
-      <div className="flex flex-col gap-7">
-        <ModelSection />
-        <UsageSection />
-      </div>
-    ),
+    model: <ModelSection />,
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
     experimental: <Experimental />,
@@ -227,15 +241,18 @@ export function Settings({
   if (page === 'intelligence')
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <Tabs
-          label="Intelligence"
-          tabs={PAGES.intelligence.tabs.map(([id, label]) => ({
-            key: id,
-            href: `#/intelligence/${id}`,
-            label,
-            sel: id === at,
-          }))}
-        />
+        {/* Intelligence's parts each hold their own data, so they take the pill switch like a
+            module's tables (Vikas, 28 Oct) */}
+        <InBar>
+          <PillSwitch label="Second Brain">
+            {PAGES.intelligence.tabs.map(([id, label]) => (
+              <SwitchPill
+                key={id}
+                tab={{ key: id, href: `#/intelligence/${id}`, label, sel: id === at }}
+              />
+            ))}
+          </PillSwitch>
+        </InBar>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex max-w-page flex-col gap-8 px-7 pt-6 pb-12">{body[at]}</div>
         </div>
@@ -243,65 +260,62 @@ export function Settings({
     )
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
+      <div className="@container mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
         {head}
-        <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-          <nav className="flex flex-col gap-px self-start max-md:flex-row max-md:flex-wrap">
+        {/* the side lists fold above their page by the room it has, not the window's width: the
+            assistant open beside it left Governance a 75px column (30 Oct) */}
+        <div className="grid grid-cols-1 gap-7 @2xl:grid-cols-[170px_1fr]">
+          <SideList label={p.title} className="self-start @max-2xl:flex-row @max-2xl:flex-wrap">
             {tabs.map(([id, name]) => (
-              <button
-                key={id}
-                type="button"
-                aria-current={id === at ? 'page' : undefined}
-                onClick={() => go(id)}
-                className={cn(
-                  'flex h-7 items-center gap-2 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink',
-                  id === at &&
-                    'bg-accent-soft font-medium text-accent hover:bg-accent-soft hover:text-accent',
-                )}
-              >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    id === at ? 'bg-accent' : 'bg-transparent',
-                  )}
-                />
+              <SideItem key={id} sel={id === at} onClick={() => go(id)}>
                 {name}
-              </button>
+              </SideItem>
             ))}
-          </nav>
-          <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
+          </SideList>
+          <div className="@container flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
       </div>
     </div>
   )
 }
 
-// Second Brain: how to work (the standing instructions), and the Alpha module's two tables,
-// Decisions and Noticed, which are shown here instead of as a module on the rail.
-type Part = 'work' | 'Decisions' | 'Noticed'
+// Governance (Vikas, 27 and 29 Oct): the rules Alpha keeps — what agents can and cannot do across
+// every module (the same two columns as a module's), how to work (the standing instructions), and
+// the Alpha module's two tables, Decisions and Noticed, shown here instead of on the rail.
+type Part = 'rules' | 'work' | 'Decisions' | 'Noticed' | 'footprint'
 
-function SecondBrain({ version }: { version: number }) {
-  const [part, setPart] = useState<Part>('work')
+function Governance({ version }: { version: number }) {
+  const [part, setPart] = useState<Part>('rules')
   return (
-    <>
-      <div className="self-start">
-        <Segmented
-          label="Second Brain"
-          value={part}
-          onChange={setPart}
-          options={[
-            { value: 'work', label: 'How to work' },
-            { value: 'Decisions', label: 'Decisions' },
-            { value: 'Noticed', label: 'Noticed' },
-          ]}
-        />
+    // three lists of their own: the list view, as Settings draws it (Vikas, 28 Oct)
+    <div className="grid grid-cols-1 gap-7 @2xl:grid-cols-[170px_1fr]">
+      <SideList label="Governance" className="self-start @max-2xl:flex-row @max-2xl:flex-wrap">
+        {(
+          [
+            ['rules', 'Can and cannot do'],
+            ['work', 'How to work'],
+            ['Decisions', 'Decisions'],
+            ['Noticed', 'Noticed'],
+            ['footprint', 'What Alpha read'],
+          ] as const
+        ).map(([value, label]) => (
+          <SideItem key={value} sel={part === value} onClick={() => setPart(value)}>
+            {label}
+          </SideItem>
+        ))}
+      </SideList>
+      <div className="flex min-w-0 flex-col gap-8">
+        {part === 'rules' ? (
+          <GovernanceSection version={version} />
+        ) : part === 'work' ? (
+          <HowToWork version={version} />
+        ) : part === 'footprint' ? (
+          <FootprintLedger />
+        ) : (
+          <AlphaTable key={part} name={part} version={version} />
+        )}
       </div>
-      {part === 'work' ? (
-        <HowToWork version={version} />
-      ) : (
-        <AlphaTable key={part} name={part} version={version} />
-      )}
-    </>
+    </div>
   )
 }
 
@@ -327,7 +341,6 @@ function AlphaTable({ name, version }: { name: keyof typeof ABOUT_ALPHA; version
   }, [name, version])
   return (
     <Section title={name} about={ABOUT_ALPHA[name]}>
-      {data === null && <Empty>Nothing here yet.</Empty>}
       {data && (
         <div className="h-[min(520px,70vh)] overflow-hidden rounded-lg border border-line bg-surface">
           <TableView data={data} />
@@ -340,7 +353,8 @@ function AlphaTable({ name, version }: { name: keyof typeof ABOUT_ALPHA; version
 // Alpha's own module, as the core marks it (its module.yaml says core: true), whatever its name.
 export const alphaOf = (modules: ModuleSummary[]) => modules.find((m) => m.alpha)
 
-// How to work: the standing instructions the person gave, each one forgotten on a yes.
+// How to work: the standing instructions the person gave, kept as every list is
+// (ui/entry-list.tsx): one is added or changed by telling Alpha in words, forgotten on a yes.
 function HowToWork({ version }: { version: number }) {
   const [lines, setLines] = useState<InstructionView[] | null>(null)
   const load = useCallback(() => {
@@ -350,65 +364,54 @@ function HowToWork({ version }: { version: number }) {
     if (version >= 0) load()
   }, [load, version])
   const { busy, on, problem, act } = useAct(load)
-  const [forgetting, setForgetting] = useState<string | null>(null)
+  const [forgetting, setForgetting] = useState<InstructionView | null>(null)
   const keyOf = (l: InstructionView) => `${l.for}${l.words}`
-  const asked = lines?.find((l) => keyOf(l) === forgetting)
   const forget = (l: InstructionView) => {
     setForgetting(null)
     void act(() => api.post('/api/instructions/remove', { for: l.for, words: l.words }), keyOf(l))
   }
+  const say = (words: string) =>
+    act(async () => {
+      await api.post('/api/say', { words })
+      showAsk()
+    }, 'new')
   return (
     <Section
       title="How to work"
-      about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
+      about="How you asked things to be done from now on. New or Add tells Alpha in a sentence."
     >
-      {lines?.length === 0 && (
-        <Empty>Nothing configured yet. Say “from now on…” to Alpha to add one.</Empty>
+      {lines && (
+        <EntryList
+          head="Instructions"
+          items={lines}
+          idOf={keyOf}
+          textOf={(l) => l.words}
+          line={(l) => (
+            <>
+              <span className="text-md">{l.words}</span>
+              <span className="text-ink-3 text-sm">
+                {l.for === 'me' ? 'For you' : 'For everyone here'}
+              </span>
+              {on === keyOf(l) && <Refusal words={problem} />}
+            </>
+          )}
+          placeholder="How should things be done from now on?"
+          removeLabel="Forget"
+          onAdd={(w) => say(`From now on: ${w}`)}
+          onEdit={(l, w) => say(`Change how I asked things to be done, “${l.words}”, to: ${w}`)}
+          onRemove={setForgetting}
+        />
       )}
-      {lines && lines.length > 0 && (
-        <List>
-          {lines.map((l) => (
-            <Row
-              key={keyOf(l)}
-              lead={
-                <Tile>
-                  <BookmarkCheck className="size-4" />
-                </Tile>
-              }
-              title={<span className="whitespace-normal font-normal">{l.words}</span>}
-              sub={l.for === 'me' ? 'For you' : 'For everyone here'}
-              actions={
-                <>
-                  {on === keyOf(l) && <Refusal words={problem} />}
-                  <More label="More" disabled={busy}>
-                    {(close) => (
-                      <MenuItem
-                        danger
-                        onClick={() => {
-                          close()
-                          setForgetting(keyOf(l))
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                        Forget
-                      </MenuItem>
-                    )}
-                  </More>
-                </>
-              }
-            ></Row>
-          ))}
-        </List>
-      )}
+      {on === 'new' && <Refusal words={problem} />}
       <Confirm
-        open={!!asked}
+        open={!!forgetting}
         title="Forget this?"
         yes="Forget it"
         busy={busy}
         onClose={() => setForgetting(null)}
-        onYes={() => asked && forget(asked)}
+        onYes={() => forgetting && forget(forgetting)}
       >
-        Alpha stops doing it from now on: “{asked?.words}”. Saying it again brings it back.
+        Alpha stops doing it from now on: “{forgetting?.words}”. Saying it again brings it back.
       </Confirm>
     </Section>
   )
@@ -697,7 +700,7 @@ function Standing({ version }: { version: number }) {
     <Embedded
       data={data}
       open={(id) => {
-        window.location.hash = `#/rule/${id}`
+        peek(`#/rule/${id}`)
       }}
       onNew={() => startAsk('From now on, ')}
     />
@@ -834,6 +837,9 @@ function KeyForm({
 
 function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => void }) {
   const [theme, setTheme] = useState<Theme>(savedTheme)
+  const [size, setSize] = useState<TextSize>(
+    () => (document.documentElement.dataset.text as TextSize | undefined) ?? 'small',
+  )
   const tables = view.connections.flatMap((k) => k.tables)
   const shown = tables.some((t) => !t.hidden)
   const { busy, problem, act } = useAct(onChange)
@@ -861,6 +867,27 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
                 { value: 'mac', label: 'Match Mac' },
                 { value: 'light', label: 'Light' },
                 { value: 'dark', label: 'Dark' },
+              ]}
+            />
+          }
+        />
+        <Row
+          title="Text size"
+          sub="Small is the plain size; Medium and Large make the text and the room around it bigger."
+          actions={
+            <Segmented
+              label="Text size"
+              value={size}
+              onChange={(t) => {
+                setSize(t)
+                applyTextSize(t)
+                // kept per person once the core can (P1); until then it holds while the window is open
+                void api.post('/api/appearance', { textSize: t }).catch(() => undefined)
+              }}
+              options={[
+                { value: 'small', label: 'Small' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'large', label: 'Large' },
               ]}
             />
           }
@@ -1101,7 +1128,7 @@ function ConnectorTile({
         open && 'col-span-full',
       )}
     >
-      <div data-head className="flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-base text-ink">{c.title}</div>
@@ -1260,7 +1287,6 @@ function AddConnector({ view, onChange }: { view: ConnectorsView; onChange: () =
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [said, setSaid] = useState<string | null>(null)
-  const picker = useRef<HTMLInputElement>(null)
   const loaded = new Set(view.connectors.map((c) => c.name))
   const offered = view.available.filter((p) => !loaded.has(p.name))
   const act = async (fn: () => Promise<{ title: string }>) => {
@@ -1325,21 +1351,15 @@ function AddConnector({ view, onChange }: { view: ConnectorsView; onChange: () =
         <Button type="submit" disabled={busy || !folder.trim()}>
           {busy ? 'Adding…' : 'Add a connector'}
         </Button>
-        <Button variant="ghost" disabled={busy} onClick={() => picker.current?.click()}>
-          Add from a file
-        </Button>
-        <input
-          ref={picker}
-          type="file"
-          accept=".alphaconnector"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void act(() => api.uploadTo<{ title: string }>('/api/connectors/pack', file))
-            e.target.value = ''
-          }}
-        />
       </form>
+      <DropZone
+        accept=".alphaconnector"
+        busy={busy}
+        onFiles={(files) => {
+          const file = files[0]
+          if (file) void act(() => api.uploadTo<{ title: string }>('/api/connectors/pack', file))
+        }}
+      />
       {said && <div className="text-ink-2 text-md">{said}</div>}
       {problem && <div className="text-bad text-md">{problem}</div>}
     </div>
@@ -1436,9 +1456,7 @@ function Experimental() {
         title="Experimental"
         about="Features still being tried. Each is off until you switch it on, on this computer only."
       >
-        {EXPERIMENTS.length === 0 ? (
-          <p className="text-ink-2 text-md">Nothing to try right now.</p>
-        ) : (
+        {EXPERIMENTS.length === 0 ? null : (
           <List>
             {EXPERIMENTS.map((e) => (
               <ExperimentLine key={e.name} name={e.name} title={e.title} about={e.about} />
@@ -1568,24 +1586,14 @@ function Embedded({
   )
 }
 
-// Intelligence's Agents: every agent in one shared table, each opening its page; then the modules
-// they come from, to install, update and pack.
-function Agents({ version }: { version: number }) {
-  // every module's agents as one table from the core: On or Paused changes in its cell
-  const [data, setData] = useState<KeptTable | null>(null)
-  useEffect(() => {
-    if (version >= 0) api.get<KeptTable>('/api/kept/agents').then(setData, () => setData(null))
-  }, [version])
+// Intelligence's Agents: every agent, its triggers, next run, last result and cost (AgentList).
+export function Agents({ version }: { version: number }) {
   return (
-    <Section title="Agents" about="Every agent, what it does and when it last ran.">
-      {data && (
-        <Embedded
-          data={data}
-          open={(id) => {
-            window.location.hash = `#/agent/${id}`
-          }}
-        />
-      )}
+    <Section
+      title="Agents"
+      about="Every agent, Alpha's own included: when it runs, how it last went and what it cost this week."
+    >
+      <AgentList version={version} />
     </Section>
   )
 }

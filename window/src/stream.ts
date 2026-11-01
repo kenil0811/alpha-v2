@@ -2,7 +2,8 @@
 // then Alpha's one message for the turn: its reply, its steps for "Show the work", its cards and,
 // once answered, each card's one line. A turn's module is the first one its steps touched, so a
 // topic chip can name it and a lens can keep to it.
-import type { AboutRows, StreamLine } from '@alpha/core/api'
+import type { AboutRows } from '@alpha/core/api'
+import type { StreamLine } from './coming.ts'
 
 export interface Step {
   id: number
@@ -34,6 +35,7 @@ export type Item =
       answered: Record<string, Answered>
       at: string
       module: Module
+      who: string | null // the agent it speaks as (the Interviewer); none: Alpha
     }
   | { kind: 'note'; id: number; words: string; tone: 'plain' | 'warn'; at: string }
   | {
@@ -44,9 +46,17 @@ export type Item =
       about: AboutRows | null
       at: string
       module: Module
+      run: string | null // the run that said it, opened from the post
     }
-  // a card an agent's run opened, outside any turn
-  | { kind: 'card'; id: string; at: string; module: Module; answered: Answered | null }
+  // a card an agent's run opened, outside any turn; agent: who opened it (none: Alpha)
+  | {
+      kind: 'card'
+      id: string
+      at: string
+      module: Module
+      answered: Answered | null
+      agent: { id: string; name: string } | null
+    }
 
 const RESULTS = new Set([
   'made',
@@ -82,6 +92,7 @@ export function group(lines: StreamLine[]): Item[] {
         answered: {},
         at,
         module: null,
+        who: null,
       }
       turns.set(turn, a)
       items.push(a)
@@ -131,9 +142,17 @@ export function group(lines: StreamLine[]): Item[] {
           about: (l.data.about as AboutRows | null | undefined) ?? null,
           at: l.at,
           module: l.module,
+          run: l.run ?? null,
         })
       } else if (l.kind === 'card_opened' && l.card) {
-        items.push({ kind: 'card', id: l.card, at: l.at, module: l.module, answered: null })
+        items.push({
+          kind: 'card',
+          id: l.card,
+          at: l.at,
+          module: l.module,
+          answered: null,
+          agent: l.agent ?? null,
+        })
       } else if (
         l.kind === 'filed' ||
         l.kind === 'card_opened' ||
@@ -152,6 +171,7 @@ export function group(lines: StreamLine[]): Item[] {
     }
     const a = alpha(l.turn, l.at)
     if (!a.module && l.module) a.module = l.module
+    if (!a.who && l.agent) a.who = l.agent.name
     if (l.kind === 'call') {
       const step: Step = { id: l.id, words: l.words, ok: null, results: [] }
       a.steps.push(step)
@@ -187,4 +207,22 @@ export function group(lines: StreamLine[]): Item[] {
 // The module an item belongs to, for a lens.
 export function moduleOfItem(i: Item): Module {
   return i.kind === 'alpha' || i.kind === 'told' || i.kind === 'card' ? i.module : null
+}
+
+// Whose thread each line is in (Vikas, 30 Oct: every agent its own thread): the agent the core
+// names on it, else the agent of the sentence that began its turn, else of the card it answers.
+// null: Alpha's own.
+export function threadOf(lines: StreamLine[]): (l: StreamLine) => string | null {
+  const turns = new Map<string, string | null>()
+  const cards = new Map<string, string | null>()
+  for (const l of lines) {
+    if (l.kind === 'said') turns.set(String(l.id), l.agent?.id ?? null)
+    if (l.kind === 'card_opened' && l.card)
+      cards.set(l.card, l.agent?.id ?? (l.turn ? (turns.get(l.turn) ?? null) : null))
+  }
+  return (l) =>
+    l.agent?.id ??
+    (l.turn ? turns.get(l.turn) : undefined) ??
+    (l.card ? cards.get(l.card) : undefined) ??
+    null
 }

@@ -1,35 +1,33 @@
-// A module's screen (design §14, Ledger): its name in the bar, then one row of tabs: People and
-// Organizations when people live in it (module.yaml's people: true), an Overview of the modules
-// inside it when it holds any (a plain list: each one's name, where it comes from and what goes on
-// in it right now; Kenil, 21 Oct), its pages (design §13), its tables with their counts, its
-// Conversation (Home through the module's lens) and its Agents and notes: its agents, the notes
-// Alpha reads first, what ran lately, and what Alpha may do here. Nothing sits under a table or a
-// page (Kenil, 26 Oct). A module holding others opens on its Overview, else on its front page,
-// else its first table.
-import type {
-  ModuleView,
-  RuleView,
-  RunView,
-  TableView as TableData,
-  TableSummary,
-} from '@alpha/core/api'
+// A module's screen (design §14, Ledger; Vikas, 27 Oct): its switch in the middle of the bar, in
+// place of its name: Overview first, then the tables pinned to it, lowest on the spine first (a
+// deal before its source), then after a rule its pages. People and
+// Organizations come first when people live in it. A module opens on its Overview: what waits on
+// the person, its main table as a chart, its tables, agents, notes and what Alpha may do. A module
+// holding others and no tables of its own lists them instead (a plain list: each one's name, where
+// it comes from and what goes on in it right now; Kenil, 21 Oct). Agents and notes keeps the whole
+// of each, reached from the Overview's cards.
+import type { RunView, TableView as TableData, TableSummary } from '@alpha/core/api'
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { Fragment, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged } from './arrange.tsx'
-import { startAsk } from './ask.ts'
+import type { CardView, ModuleSummary, ModuleView, RuleView } from './coming.ts'
+import { GovernanceSection } from './Governance.tsx'
 import { ModuleCase } from './ModuleCase.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
+import { lowerFirst, Overview, usePins } from './Overview.tsx'
 import { PageView } from './PageView.tsx'
+import { moduleNumbers, numberTables } from './Parts.tsx'
+import { InBar } from './Shell.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
-import { MenuItem } from './ui/popover.tsx'
+import { PillSwitch, SwitchPill, type Tab } from './ui/pill-switch.tsx'
+import { MenuItem, Popover, useContextMenu } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
-import { type Tab, Tabs } from './ui/tabs.tsx'
 import { Words } from './ui/words.tsx'
 
 export type ModuleTab =
@@ -44,6 +42,7 @@ export function ModuleScreen({
   tab,
   version,
   table,
+  cards,
   conversation,
   renderTable,
 }: {
@@ -51,6 +50,7 @@ export function ModuleScreen({
   tab: ModuleTab | null
   version: number
   table: TableData | null
+  cards: CardView[]
   conversation: ReactNode
   renderTable: (t: TableData, summary: TableSummary | null) => ReactNode
 }) {
@@ -61,54 +61,42 @@ export function ModuleScreen({
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-
-  // with no tab named, the Overview of the modules inside, else the front page, else the first
-  // table, else the conversation
-  const front = m?.pages.find((p) => p.front)
-  const holds = (m?.modules.length ?? 0) > 0
-  // its main tables are its tabs; a part shows on its row, a setup table under Agents and notes
-  const first = m?.tables.find((t) => t.place === 'main')
-  const current: ModuleTab =
-    tab ??
-    (holds
-      ? { kind: 'overview' }
-      : front
-        ? { kind: 'page', name: front.name }
-        : first
-          ? { kind: 'table', id: first.id }
-          : { kind: 'conversation' })
-  // the module's own address opens its first table, as that table's address; only once this
-  // module's own data is here (the last module's, still shown, would send it back there)
-  const firstTable = !tab && m && m.id === moduleId && !front && !holds ? first?.id : undefined
+  // its main tables whole: the switch's order, the Overview's chart and its agents' groups
+  const [main, setMain] = useState<TableData[]>([])
+  const mainIds = (m?.tables ?? [])
+    .filter((t) => t.place === 'main')
+    .map((t) => t.id)
+    .join(',')
   useEffect(() => {
-    // the module people live in opens on its People
-    if (firstTable) window.location.replace(m?.people ? '#/people' : `#/table/${firstTable}`)
-  }, [firstTable, m?.people])
-  const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
+    if (version < 0) return
+    if (!mainIds) return setMain([])
+    Promise.all(mainIds.split(',').map((id) => api.get<TableData>(`/api/tables/${id}`))).then(
+      setMain,
+      () => setMain([]),
+    )
+  }, [mainIds, version])
+  const { pins } = usePins(m)
 
-  const tabs: Tab[] = m
-    ? [
-        ...(m.people ? peopleTabs(null) : []),
-        ...(holds
-          ? [
-              {
-                key: 'overview',
-                href: `#/module/${moduleId}/overview`,
-                label: 'Overview',
-                sel: current.kind === 'overview',
-              },
-            ]
-          : []),
-        ...moduleTabs(m, current),
-      ]
-    : []
+  // with no tab named, the Overview, or People in the module people live in
+  const holds = (m?.modules.length ?? 0) > 0
+  const current: ModuleTab = tab ?? { kind: 'overview' }
+  const toPeople = !tab && m && m.id === moduleId && m.people
+  useEffect(() => {
+    if (toPeople) window.location.replace('#/people')
+  }, [toPeople])
+  const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs label={m?.name ?? 'Module'} tabs={tabs} />
+      {m && <ModuleSwitch m={m} main={main} pins={pins} current={current} onRenamed={load} />}
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
-          m && <Overview m={m} />
+          m &&
+          (holds && !m.tables.length ? (
+            <Inside m={m} />
+          ) : (
+            <Overview m={m} main={main} cards={cards} version={version} onChange={load} />
+          ))
         ) : current.kind === 'page' ? (
           m && page ? (
             <PageView key={page.name} m={m} page={page} version={version} />
@@ -129,10 +117,163 @@ export function ModuleScreen({
   )
 }
 
+// The switch in the bar: Overview, the pinned tables (main ones lowest on the spine first, then
+// any part or setup table pinned), a rule, then the pages; Conversation is in the rail, filtered
+// to the module there, never a tab of each module (Vikas, 27 Oct). A table not
+// pinned but open shows too, so the person sees where they are.
+function ModuleSwitch({
+  m,
+  main,
+  pins,
+  current,
+  onRenamed,
+}: {
+  m: ModuleView
+  main: TableData[]
+  pins: string[]
+  current: ModuleTab
+  onRenamed: () => void
+}) {
+  const order = [
+    ...lowerFirst(main).map((t) => t.id),
+    ...m.tables.map((t) => t.id).filter((id) => !main.some((t) => t.id === id)),
+  ]
+  const shown = m.tables
+    .filter((t) => pins.includes(t.id) || (current.kind === 'table' && current.id === t.id))
+    .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+  const overview: Tab = {
+    key: 'overview',
+    href: `#/module/${m.id}/overview`,
+    label: 'Overview',
+    sel: current.kind === 'overview',
+  }
+  // the module people live in (Network): Overview, People and Organizations only
+  const groups: Tab[][] = m.people
+    ? [[overview, ...peopleTabs(null)]]
+    : [
+        [
+          overview,
+          ...shown.map((t) => ({
+            key: t.id,
+            href: `#/table/${t.id}`,
+            label: t.name,
+            count: t.rows,
+            sel: current.kind === 'table' && current.id === t.id,
+          })),
+        ],
+        m.pages.map((p) => ({
+          key: `p:${p.name}`,
+          href: `#/module/${m.id}/page/${p.name}`,
+          label: p.title,
+          sel: current.kind === 'page' && current.name === p.name,
+        })),
+      ].filter((g) => g.length)
+  return (
+    <InBar>
+      <PillSwitch label={m.name}>
+        {groups.map((g, i) => (
+          <Fragment key={g[0]?.key ?? i}>
+            {i > 0 && <span className="mx-1.5 h-4 w-px shrink-0 bg-line" />}
+            {g.map((t) =>
+              shown.some((x) => x.id === t.key) ? (
+                <TablePill key={t.key} m={m} tab={t} onRenamed={onRenamed} />
+              ) : (
+                <SwitchPill key={t.key} tab={t} />
+              ),
+            )}
+          </Fragment>
+        ))}
+      </PillSwitch>
+    </InBar>
+  )
+}
+
+// A table's pill: a double-click renames it in place (Return keeps it, Escape leaves it); a
+// right-click opens Open, Rename… and Unpin from the bar.
+// Renaming a table in the bar waits for its route (core P12): the pill and its menu offer it then.
+const RENAME = false
+
+function TablePill({ m, tab, onRenamed }: { m: ModuleView; tab: Tab; onRenamed: () => void }) {
+  const menu = useContextMenu()
+  const { pins, toggle } = usePins(m)
+  const [naming, setNaming] = useState<string | null>(null)
+  const { problem, act } = useAct(onRenamed)
+  const save = () => {
+    const name = naming?.trim()
+    setNaming(null)
+    if (name && name !== tab.label) act(() => api.post(`/api/tables/${tab.key}/name`, { name }))
+  }
+  return (
+    <>
+      {naming !== null ? (
+        <input
+          // biome-ignore lint/a11y/noAutofocus: opened by a double-click to type the new name
+          autoFocus
+          aria-label={`Rename ${tab.label}`}
+          value={naming}
+          onChange={(e) => setNaming(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') setNaming(null)
+          }}
+          size={Math.max(6, naming.length)}
+          className="h-6.5 shrink-0 rounded-full bg-surface px-3.5 text-ink text-md shadow-btn outline-none ring-2 ring-accent-soft"
+        />
+      ) : (
+        <SwitchPill
+          tab={tab}
+          {...menu.on}
+          // renaming in the bar waits for core P12
+          onDoubleClick={
+            RENAME
+              ? (e) => {
+                  e.preventDefault()
+                  setNaming(tab.label)
+                }
+              : undefined
+          }
+        />
+      )}
+      {problem && <Refusal words={problem} />}
+      <Popover point={menu.point} open={menu.open} onClose={menu.close}>
+        <div role="menu" className="flex min-w-44 flex-col p-1">
+          <MenuItem
+            onClick={() => {
+              menu.close()
+              window.location.hash = tab.href
+            }}
+          >
+            Open
+          </MenuItem>
+          {RENAME && (
+            <MenuItem
+              onClick={() => {
+                menu.close()
+                setNaming(tab.label)
+              }}
+            >
+              Rename…
+            </MenuItem>
+          )}
+          <MenuItem
+            reason={pins.includes(tab.key) ? undefined : 'Not pinned: it shows while it is open'}
+            onClick={() => {
+              menu.close()
+              toggle(tab.key)
+            }}
+          >
+            Unpin from the bar
+          </MenuItem>
+        </div>
+      </Popover>
+    </>
+  )
+}
+
 // A module's own tabs after People and the Overview: its pages, its main tables with their counts
 // (a table that is part of a row, or setup, is not a tab: core step 3a), then the parts and setup
-// tables kept as tabs (28 Oct), its
-// Conversation and its Agents and notes; People's screen shows them too, none chosen.
+// tables kept as tabs (28 Oct), its Agents and notes; People's screen shows them too, none chosen.
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
@@ -155,12 +296,6 @@ export const moduleTabs = (
     sel: current?.kind === 'table' && current.id === t.id,
   })),
   {
-    key: 'conversation',
-    href: `#/module/${m.id}/conversation`,
-    label: 'Conversation',
-    sel: current?.kind === 'conversation',
-  },
-  {
     key: 'agents',
     href: `#/module/${m.id}/agents`,
     label: 'Agents and notes',
@@ -176,7 +311,7 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
 
 // The modules inside this one, a row each: its name, where it comes from, and what goes on in
 // it right now (agents on and running, open tasks); what waits on the person stands out.
-function Overview({ m }: { m: ModuleView }) {
+function Inside({ m }: { m: ModuleView }) {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-page px-7 py-6">
@@ -231,17 +366,16 @@ function Overview({ m }: { m: ModuleView }) {
 function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
   return (
     <section className="flex flex-col">
-      <div data-head className="mb-2.5">
-        <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
-        <p className="mt-0.5 text-ink-3 text-sm">{sub}</p>
-      </div>
+      <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+      <p className="mt-0.5 mb-2.5 text-ink-3 text-sm">{sub}</p>
       {children}
     </section>
   )
 }
 
-// The Agents and notes tab: where the module comes from, then its agents, the notes Alpha reads
-// first, what ran lately and what Alpha may do here.
+// The Agents and notes tab, in the module page's order (Vikas, 29 Oct): where the module comes
+// from, its agents, Governance (what they can and cannot do), every table numbered, then the notes
+// Alpha reads first and what ran lately.
 function AgentsAndNotes({
   m,
   version,
@@ -252,16 +386,16 @@ function AgentsAndNotes({
   onChange: () => void
 }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
-  const [rules, setRules] = useState<RuleView[] | null>(null)
+  const [number, setNumber] = useState('')
   useEffect(() => {
     if (version < 0) return
     api.get<RunView[]>('/api/activity').then(
       (all) => setRuns(all.filter((r) => r.moduleId === m.id).slice(0, 5)),
       () => setRuns([]),
     )
-    api.get<RuleView[]>(`/api/rules?module=${encodeURIComponent(m.id)}`).then(
-      (all) => setRules(all.filter((r) => !r.revokedAt)),
-      () => setRules([]),
+    api.get<ModuleSummary[]>('/api/modules').then(
+      (ms) => setNumber(moduleNumbers(ms).get(m.id) ?? ''),
+      () => setNumber(''),
     )
   }, [m.id, version])
   const { busy, on, problem, act } = useAct(onChange)
@@ -286,10 +420,10 @@ function AgentsAndNotes({
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
-        {/* each section a card the person moves by its handle and resizes from its corner */}
+        {/* each section a block the person moves and resizes, one arrangement for every module (Vikas, 30 Oct) */}
         <Arranged
           page="module:agents-and-notes"
-          start={[['agents'], ['tables'], ['notes'], ['activity'], ['governance']]}
+          start={[['agents'], ['governance'], ['tables'], ['notes'], ['activity']]}
           blocks={[
             {
               key: 'agents',
@@ -336,7 +470,12 @@ function AgentsAndNotes({
                 </Section>
               ),
             },
-            ...(m.tables.some((t) => t.place !== 'main')
+            {
+              key: 'governance',
+              name: 'Governance',
+              node: <GovernanceSection module={m.id} version={version} />,
+            },
+            ...(m.tables.length > 0
               ? [
                   {
                     key: 'tables',
@@ -344,53 +483,50 @@ function AgentsAndNotes({
                     node: (
                       <Section
                         title="Tables"
-                        sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
+                        sub={`Every table of ${m.name}, numbered: the tables that are part of a row sit under it.`}
                       >
                         <ul className="flex flex-col">
-                          {m.tables
-                            .filter((t) => t.place !== 'main')
-                            .map((t) => (
-                              <li
-                                key={t.id}
-                                className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                          {numberTables(m.tables, number).map(({ table: t, n, depth }) => (
+                            <li
+                              key={t.id}
+                              className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                              style={{ paddingLeft: depth * 20 }}
+                            >
+                              <span className="w-14 shrink-0 text-ink-3 tabular-nums">{n}</span>
+                              <a
+                                href={`#/table/${t.id}`}
+                                className="min-w-0 flex-1 truncate text-ink hover:underline"
                               >
-                                <a
-                                  href={`#/table/${t.id}`}
-                                  className="min-w-0 flex-1 truncate text-ink hover:underline"
+                                {t.name}
+                              </a>
+                              {t.place === 'setup' && <span className="text-ink-3">Setup</span>}
+                              {t.place === 'people' && (
+                                <span className="text-ink-3">People's columns</span>
+                              )}
+                              {t.place !== 'main' && t.place !== 'people' && (
+                                <button
+                                  type="button"
+                                  disabled={busy && on === t.id}
+                                  onClick={() =>
+                                    act(
+                                      () => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }),
+                                      t.id,
+                                    )
+                                  }
+                                  className={
+                                    t.tab
+                                      ? 'text-accent hover:underline'
+                                      : 'text-ink-3 hover:text-ink hover:underline'
+                                  }
                                 >
-                                  {t.name}
-                                </a>
-                                <span className="text-ink-3">
-                                  {t.place === 'setup'
-                                    ? 'Setup'
-                                    : t.place === 'people'
-                                      ? "People's columns"
-                                      : `Part of ${t.of ?? 'a row'}`}
-                                </span>
-                                {t.place !== 'people' && (
-                                  <button
-                                    type="button"
-                                    disabled={busy && on === t.id}
-                                    onClick={() =>
-                                      act(
-                                        () => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }),
-                                        t.id,
-                                      )
-                                    }
-                                    className={
-                                      t.tab
-                                        ? 'text-accent hover:underline'
-                                        : 'text-ink-3 hover:text-ink hover:underline'
-                                    }
-                                  >
-                                    {t.tab ? 'A tab' : 'Keep as a tab'}
-                                  </button>
-                                )}
-                                <span className="w-14 text-right text-ink-3 tabular-nums">
-                                  {t.rows.toLocaleString()}
-                                </span>
-                              </li>
-                            ))}
+                                  {t.tab ? 'A tab' : 'Keep as a tab'}
+                                </button>
+                              )}
+                              <span className="w-14 text-right text-ink-3 tabular-nums">
+                                {t.rows.toLocaleString()}
+                              </span>
+                            </li>
+                          ))}
                         </ul>
                       </Section>
                     ),
@@ -418,9 +554,7 @@ function AgentsAndNotes({
                 <Section title="Recent activity" sub={`What ran in ${m.name} lately.`}>
                   {runs === null ? (
                     <p className="text-ink-3 text-md">Loading…</p>
-                  ) : runs.length === 0 ? (
-                    <p className="text-ink-2 text-md">Nothing has run here yet.</p>
-                  ) : (
+                  ) : runs.length === 0 ? null : (
                     <ul className="flex flex-col">
                       {runs.map((r) => (
                         <li
@@ -447,18 +581,6 @@ function AgentsAndNotes({
                 </Section>
               ),
             },
-            {
-              key: 'governance',
-              name: 'Governance',
-              node: (
-                <Section
-                  title="Governance"
-                  sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
-                >
-                  <Governance m={m} rules={rules} onChange={onChange} />
-                </Section>
-              ),
-            },
           ]}
         />
       </div>
@@ -466,66 +588,15 @@ function AgentsAndNotes({
   )
 }
 
-// Governance's rules in two columns, Allowed n and Denied n (core step 2), each a sentence with
-// where it came from: the sites the module's readers may read, and the rules the core holds here
-// (this module's and all of Alpha's), yours and what Alpha noticed. + Add in either column starts
-// the assistant with the rule's first words for the person to finish; the rule lands here only on
-// their Save on its card (design §14: a rule for the model is a wall in code, or it is not written).
-type Rule = { key: string; words: string; why: string; href?: string; rule?: RuleView }
+// The agent page's rule columns (Items.tsx); a module's Governance is GovernanceSection.
+export type Rule = { key: string; words: string; why: string; href?: string; rule?: RuleView }
 
-function why(r: RuleView): string {
+export function why(r: RuleView): string {
   const day = dayWords(r.madeAt)
   const across = r.module ? '' : '; it holds across Alpha'
   if (r.kind === 'inferred') return `Alpha noticed, ${day}; approve or dismiss it`
   if (r.always) return `You said Always on its card, ${day}${across}`
   return `You said, ${day}${across}`
-}
-
-function Governance({
-  m,
-  rules,
-  onChange,
-}: {
-  m: ModuleView
-  rules: RuleView[] | null
-  onChange: () => void
-}) {
-  const line = (r: RuleView): Rule => ({
-    key: r.id,
-    words: r.words,
-    why: why(r),
-    href: `#/rule/${r.id}`,
-    rule: r,
-  })
-  const may: Rule[] = [
-    {
-      key: 'sites',
-      words: m.sites
-        ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
-        : 'Its readers read no sites.',
-      why: 'The sites were named when the module was made.',
-    },
-    ...(rules ?? []).filter((r) => r.side === 'allow').map(line),
-  ]
-  const never = (rules ?? []).filter((r) => r.side === 'deny').map(line)
-  return (
-    <div className="@container">
-      <div className="grid items-start gap-6 @min-[600px]:grid-cols-2">
-        <RuleColumn
-          side="allowed"
-          rules={may}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, you may `)}
-        />
-        <RuleColumn
-          side="denied"
-          rules={never}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, never `)}
-        />
-      </div>
-    </div>
-  )
 }
 
 // A rule's ⋮: Revoke for yours, after a yes; Approve or Dismiss for what Alpha noticed.
@@ -575,7 +646,7 @@ function RuleMenu({ rule: r, onChange }: { rule: RuleView; onChange: () => void 
   )
 }
 
-function RuleColumn({
+export function RuleColumn({
   side,
   rules,
   onAdd,
@@ -600,11 +671,7 @@ function RuleColumn({
         {side === 'allowed' ? 'Allowed' : 'Denied'}
         <span className="font-normal text-ink-3 tabular-nums">{rules.length}</span>
       </h3>
-      {rules.length === 0 ? (
-        <p className="text-ink-3 text-md">
-          {side === 'allowed' ? 'Nothing allowed.' : 'Nothing denied.'}
-        </p>
-      ) : (
+      {rules.length === 0 ? null : (
         <ul className="flex flex-col gap-2">
           {rules.map((r) => (
             <li key={r.key} className="group/row flex items-start gap-2">
@@ -626,7 +693,7 @@ function RuleColumn({
       <button
         type="button"
         onClick={onAdd}
-        className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+        className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:bg-accent-soft hover:text-accent"
       >
         <Plus className="size-3.5" />
         {side === 'allowed' ? 'Add allowed action' : 'Add denied action'}

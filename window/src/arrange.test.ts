@@ -10,6 +10,7 @@ import {
   sizeOf,
   stacked,
 } from './arrange.tsx'
+import { verbOf } from './Overview.tsx'
 
 it('moves a block beside, above or below another, and keeps new blocks at the foot', () => {
   const rows = [['a', 'b'], ['c']]
@@ -79,4 +80,12 @@ it('moves a block within or across columns, and stacks the columns in order', ()
     ['ask'],
     ['files'],
   ])
+})
+
+it('says a goal as what to do', () => {
+  expect(verbOf('Listings reviewed', 'Reviewed')).toEqual({ verb: 'Review', thing: 'listings' })
+  expect(verbOf('CIMs reviewed', 'CIM reviewed')).toEqual({ verb: 'Review', thing: 'CIMs' })
+  expect(verbOf('LOIs sent', 'LOI sent')).toEqual({ verb: 'Send', thing: 'LOIs' })
+  expect(verbOf('Deals closed', 'Closed')).toEqual({ verb: 'Close', thing: 'deals' })
+  expect(verbOf('Calls', 'Call')).toEqual({ verb: 'Move to', thing: 'call' })
 })

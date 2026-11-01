@@ -24,7 +24,7 @@ import {
   Plus,
   Search,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
@@ -88,6 +88,9 @@ export function TableView({
   field: openField = null,
   quiet = false,
   kept = null,
+  start,
+  filters,
+  quickBy,
 }: {
   data: TableData
   row?: string | null
@@ -102,7 +105,11 @@ export function TableView({
   // their own page, changed there; why is said when something would be typed or saved. New adds
   // one in the page's own way, when it has one.
   kept?: { open: (row: string) => void; onNew?: () => void } | null
+  start?: Partial<ViewConfig> // how it opens with no saved list chosen: a board for tasks
+  filters?: ReactNode // a page's own quick filters, first above the rows (Tasks' due lists)
+  quickBy?: string // the choice the lists dropdown goes by, by name, when not the usual
 }) {
+  const opening = { ...BLANK, ...start }
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
   // where a row's change goes: the module table's own rows, or the kept list's
@@ -115,7 +122,7 @@ export function TableView({
     if (was && (was.view === null || data.views.some((v) => v.id === was.view))) return was.view
     return data.views.find((v) => v.isDefault)?.id ?? null
   })
-  const saved = complete(views.find((v) => v.id === viewId)?.config ?? BLANK)
+  const saved = complete(views.find((v) => v.id === viewId)?.config ?? opening)
   const [config, setConfig] = useState<ViewConfig>(() => {
     const was = stored(key)
     return was && was.view === viewId ? complete(was.config) : saved
@@ -211,7 +218,10 @@ export function TableView({
     choices.find((f) => f.name === 'Stage') ??
     choices[0]
   // the lists dropdown's values: a list's tags (Clients, Insurers), else the board's choice
-  const quick = fields.find((f) => isTags(f) && f.choices.length > 1) ?? boardBy
+  const quick =
+    fields.find((f) => f.name === quickBy) ??
+    fields.find((f) => isTags(f) && f.choices.length > 1) ??
+    boardBy
 
   const act = async (fn: () => Promise<void>) => {
     if (kept) return setProblem(why)
@@ -224,7 +234,7 @@ export function TableView({
   }
   const pick = (id: string | null) => {
     setViewId(id)
-    setConfig(complete(views.find((v) => v.id === id)?.config ?? BLANK))
+    setConfig(complete(views.find((v) => v.id === id)?.config ?? opening))
     setProblem(null)
   }
   const replace = (v: SavedView) =>
@@ -433,6 +443,7 @@ export function TableView({
             })
           }
         />
+        {filters && <div className="flex flex-wrap items-center gap-1.5 px-7 pb-2">{filters}</div>}
         {hiding.length > 0 && (
           <div className="flex items-center gap-2 border-line border-b bg-accent-soft px-7 py-2 text-md text-ink-2">
             <span className="flex-1">

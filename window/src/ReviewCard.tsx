@@ -1,9 +1,10 @@
 // Rows an agent puts to the person (design §12, D7): one card with each row, why it is there and
 // the few choices it offers; a choice is theirs on that row, and one button takes the first choice
 // for every row not yet decided. The card closes when each row has one.
-import type { CardView, ReviewView } from '@alpha/core/api'
+
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
+import type { CardView, ReviewView } from './coming.ts'
 import { Button } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
@@ -24,8 +25,10 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
     }
   }
   return (
-    <Card label="For you to decide" waits="Waits for you">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
+    <Card label="For you to decide" waits="Needs approval">
+      <a href={`#/card/${card.id}`} className="font-medium text-ink text-lg hover:underline">
+        {card.words}
+      </a>
       <div className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
         <span>
           {review.open} of {review.rows.length} to decide
@@ -44,12 +47,13 @@ export function ReviewCard({ card, review }: { card: CardView; review: ReviewVie
           >
             <span className="min-w-0 flex-1">
               <a
-                href={`#/table/${review.table}/${r.id}`}
+                href={`#/row/${r.id}`}
                 className="block truncate font-medium text-base text-ink hover:underline"
               >
                 {r.name}
               </a>
               {r.note && <span className="block truncate text-ink-3 text-sm">{r.note}</span>}
+              {r.also && <span className="block truncate text-ink-3 text-xs">{r.also}</span>}
             </span>
             {r.value ? (
               <span className="shrink-0 text-ink-2 text-sm">{r.value}</span>
