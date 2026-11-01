@@ -1,4 +1,4 @@
-// A segmented control: one of a few views (Table · Board, All · Didn't finish).
+// A segmented control: one of a few views (Table · Board, All · Failed).
 import { cn } from './cn.ts'
 
 export function Segmented<T extends string>({

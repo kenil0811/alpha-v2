@@ -25,6 +25,11 @@ const RULES: [string, RegExp][] = [
   ['a text size that is not one of the seven', /(?<![\w-])text-(?:[3-9]xl|xxs)(?![\w-])/g],
   ['an invented colour', /(?<![\w-])(?:bg|border|ring|fill|stroke|decoration|outline)-\[[^\]]*\]/g],
   ['a colour written out', /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g],
+  // one layering scale (Batch A, pick 8): past a box's own order (z-0 to z-3), a layer is named
+  [
+    'a numbered layer: name it (z-(--z-raised), --z-panel, --z-overlay, --z-pop, --z-tip)',
+    /(?<![\w-])-?z-(?:[4-9]|\d{2,}|\[[^\]]*\])(?![\w-])/g,
+  ],
 ]
 
 function sources(dir: string): string[] {

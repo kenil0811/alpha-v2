@@ -4,6 +4,7 @@
 // here from models.yaml. Counted from the day it shipped (his call 1): nothing is worked out from
 // before. Nothing is capped: this only says what was spent.
 import { config } from '../config.ts'
+import { monthOf, monthSpan } from './day.ts'
 import { all, type Db, now, run } from './db.ts'
 
 export interface Use {
@@ -139,19 +140,26 @@ export class Spend {
   }
 
   // A month's rows (YYYY-MM), and the months there are, newest first.
+  // the person's month, not UTC's (Batch A, pick 4): from its first instant to the next's
   month(month: string): SpendRow[] {
+    const [from, to] = monthSpan(month)
     return all<SpendRow>(
       this.db,
-      'SELECT * FROM spend WHERE substr(at, 1, 7) = ? ORDER BY id',
-      month,
+      'SELECT * FROM spend WHERE at >= ? AND at < ? ORDER BY id',
+      from.toISOString(),
+      to.toISOString(),
     )
   }
 
+  // the months that have spend, newest first: each UTC hour's first and last row says which of
+  // the person's months it touched (a month starts on an hour or a half hour)
   months(): string[] {
-    return all<{ m: string }>(
+    const ats = all<{ at: string }>(
       this.db,
-      'SELECT DISTINCT substr(at, 1, 7) AS m FROM spend ORDER BY m DESC',
-    ).map((r) => r.m)
+      `SELECT at FROM spend WHERE id IN (SELECT min(id) FROM spend GROUP BY substr(at, 1, 13)
+         UNION SELECT max(id) FROM spend GROUP BY substr(at, 1, 13))`,
+    )
+    return [...new Set(ats.map((r) => monthOf(new Date(r.at))))].sort().reverse()
   }
 
   // What one turn or one run spent, for its line in Activity.

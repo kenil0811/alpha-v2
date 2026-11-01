@@ -19,14 +19,14 @@ held by review. Dates are 2026.
 | S4 | A module's menu (⋮ or right-click): Open, Move to, Hide, Hidden modules; modules drag into one another or out to the top | 26 Oct | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
 | S6 | Both side panels drag by one edge and fold; the rail folds to a strip of icons (⌘\\) | 25 Oct | — |
-| S7 | Menus sit against the window, never clipped by a scrolling box | 25 Oct | — |
+| S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
 | S8 | Heights use `dvh`, never `vh` (a phone's browser bars) | 2 Sep | skip |
 
 ## Header bar and tabs
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: a way back on the left when inside something, the screen's name centred | 25 Oct | — |
+| H1 | One 48px bar across the rail's top, the page and the assistant: a way back to where you were on the left (the screen last visited in this window, by its name; a tab switch inside a screen is not a place; nothing visited, the screen's parent), the screen's name centred | 25 Oct, 1 Nov | test |
 | H2 | A screen with parts has one row of tabs under the bar, every label in full, scrolling sideways; never cut short or folded to icons | 26 Oct | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
@@ -50,10 +50,10 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self | 26 Oct | — |
+| T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self. Whenever rows are hidden, a line under the tabs says how many show and what hides them ("Showing 12 of 140 rows, filtered by Stage and a search"), with Clear filters; Cancel brings the saved list back | 26 Oct, 1 Nov | test (the line) |
 | T2 | No cards of counts above or below a table | 26 Oct | test |
 | T3 | New sits in the page row under the table and works while the assistant is open | 26 Oct | — |
-| T4 | A click on a row's name opens it in the side panel, with Open full to its own page (#/row/…), one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row. A part's small table: its first three fields, one line a row, names never ids, long words cut with the whole on the tip; its twelve changed most lately with how many in all, and Open as a table for the rest | 26 Oct, 27 Oct, 28 Oct | — |
+| T4 | A click on a row's name opens it in the side panel, with Open page to its own page (#/row/…), beside the assistant too when the window holds the rail, the page's 600px, the panel's 320px and the assistant (else the panel gives way and the assistant stays); a link to a task, a run, a person or a row opens it beside the page the same way, kept in the address so a reload keeps it and Back closes it, one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row. A part's small table: its first three fields, one line a row, names never ids, long words cut with the whole on the tip; its twelve changed most lately with how many in all, and Open as a table for the rest | 26 Oct, 27 Oct, 28 Oct, 1 Nov | test (room, beside) |
 | T5 | An empty table keeps its header, blank rows and footer, and says nothing | 26 Oct | — |
 | T6 | Every menu works from the keyboard and opens on a right-click where it belongs; one list, never a second | 26 Oct | — |
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
@@ -73,11 +73,12 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | R1 | A section is its serif title and ⓘ over what it holds, never a card; nothing sits in a card inside a card | 26 Oct | — |
 | R2 | One record layout: the way back in the bar, a centred column, a line naming the record, its serif title, its sections; a row's page too | 25 Oct, 27 Oct | — |
-| R3 | Delete is never one click: behind ⋮, always confirmed in our own pop-up, saying what goes, the parts that go with it, and how long Bring back returns them, in the core's words | 26 Oct, 27 Oct | — |
+| R3 | Delete is never one click: behind ⋮, or a short list's ✕ (R8), always confirmed in our own pop-up, saying what goes, the parts that go with it, and how long Bring back returns them, in the core's words | 26 Oct, 27 Oct, 1 Nov | — |
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |
 | R6 | Revert, and Bring back on a removal, sit behind an Activity line's ⋮, said first in the one pop-up from the core's own preview of the same work | 26 Oct | — |
 | R7 | A value Alpha is not sure of has a small grey mark (≈ estimated, ? assumed), never amber: its word on hover in a table, written out in a panel; an empty value is a grey dash in a table and "Unknown" in a panel | 25 Oct | — |
+| R8 | A short list (How to work first, the others as they are touched): Add on its heading, ✕ on an entry when hovered, a double-click edits the entry in place (Enter keeps, Escape puts it back); where Alpha must understand an entry, Add starts the conversation | 1 Nov | test |
 
 ## Assistant and chat
 
@@ -104,11 +105,12 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | W1 | Module, never kit or project | 23 Oct | test |
-| W2 | Organization, never company; Second Brain, never remembered; Download, never export; Delete, never remove; Decline or Cancel, never "not now"; Decline, never Veto | 25 Oct | test |
+| W2 | Organization, never company; Second Brain, never remembered; Download, never export; Delete, never remove; Decline or Cancel, never "not now"; Decline, never Veto; a run that did not finish is Failed, in Activity's filter and every pill | 25 Oct, 1 Nov | test |
 | W3 | No line for what Alpha can't do yet; a line that can't act now stays greyed with its reason; never "Coming soon" | 26 Oct | test (words) |
 | W4 | Sentence case for labels, buttons and placeholders | 25 Oct | test |
 | W5 | Dates read "25 Oct" (the year only when it isn't this one), typed as words; never a dd/mm/yyyy picker | 26 Oct | — |
 | W6 | Plain words: no tool names, no ids; the window never names the apps it learned from | 25 Oct | — |
+| W7 | Today, this month and a day's name (Home's due today, Usage's month, a backup's and a download's name, a table's earliest and latest, what is ahead for a person) are the person's own day, never UTC's | 1 Nov | test |
 
 ## Look
 

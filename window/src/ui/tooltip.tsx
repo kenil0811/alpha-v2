@@ -80,7 +80,7 @@ export function Tooltips() {
       ref={label}
       role="tooltip"
       style={{ top: at?.top ?? -9999, left: at?.left ?? -9999 }}
-      className="pointer-events-none fixed z-60 max-w-80 truncate rounded-sm border border-line bg-surface px-2 py-1 text-ink text-sm shadow-pop"
+      className="pointer-events-none fixed z-(--z-tip) max-w-80 truncate rounded-sm border border-line bg-surface px-2 py-1 text-ink text-sm shadow-pop"
     >
       {text}
     </div>,

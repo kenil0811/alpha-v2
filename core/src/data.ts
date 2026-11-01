@@ -25,6 +25,7 @@ import type { Install } from './install.ts'
 import type { Platform } from './platform/index.ts'
 import { exportLines } from './world/audit.ts'
 import { type Beside, mirror } from './world/backups.ts'
+import { dayOf } from './world/day.ts'
 import { one } from './world/db.ts'
 import { Refused } from './world/kinds.ts'
 import type { TenantPaths, World } from './world/world.ts'
@@ -181,7 +182,7 @@ export async function takeData(world: World, home: string, dest = exportsDir()):
       '# Alpha data\n\nworld.sqlite is the world (SQLite); files/ its files by hash; modules/ the module folders; instructions/ the standing instructions; connectors/ the connectors added; journal.jsonl the journal with its hash chain, checked with `pnpm journal verify journal.jsonl`. See docs/data.md in Alpha.\n',
     )
     mkdirSync(dest, { recursive: true })
-    const out = join(dest, `alpha-data-${new Date().toISOString().slice(0, 10)}.tar.gz`)
+    const out = join(dest, `alpha-data-${dayOf()}.tar.gz`)
     execFileSync('tar', ['-czf', out, '-C', stage, 'alpha-data'])
     return out
   } finally {

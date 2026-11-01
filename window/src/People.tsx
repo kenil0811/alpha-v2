@@ -7,6 +7,7 @@ import type { KeptTable, ModuleSummary, PersonView, RowAround } from '@alpha/cor
 import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
+import { isPast } from './day.ts'
 import { moduleTabs, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
@@ -183,8 +184,9 @@ function PersonPage({
     p.contact.last ? `last on ${date(p.contact.last)}` : '',
     p.contact.count ? (firstWords(p.contact.first) ?? '') : '',
   ].filter(Boolean)
-  const upcoming = p.history.filter((h) => h.at > new Date().toISOString())
-  const past = p.history.filter((h) => h.at <= new Date().toISOString())
+  // what is ahead and what is past, on the person's own day (Batch A, pick 4)
+  const upcoming = p.history.filter((h) => !isPast(h.at))
+  const past = p.history.filter((h) => isPast(h.at))
 
   return (
     <Record kind={company ? 'Organization' : 'Person'}>

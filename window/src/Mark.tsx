@@ -162,14 +162,14 @@ export function Marker({ from }: { from: Module | null }) {
       {shown && (
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed z-50 rounded-sm outline-2 outline-accent outline-offset-1"
+          className="pointer-events-none fixed z-(--z-pop) rounded-sm outline-2 outline-accent outline-offset-1"
           style={{ top: shown.top, left: shown.left, width: shown.width, height: shown.height }}
         />
       )}
       {!picked && (
         <div
           role="status"
-          className="fixed top-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-surface py-1 pr-1 pl-3 text-md shadow-pop"
+          className="fixed top-2 left-1/2 z-(--z-pop) flex -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-surface py-1 pr-1 pl-3 text-md shadow-pop"
         >
           <Pencil className="size-3.5 text-accent" />
           Click anything to mark it
@@ -183,7 +183,7 @@ export function Marker({ from }: { from: Module | null }) {
           role="dialog"
           aria-label="Comment on what you marked"
           className={cn(
-            'fixed z-50 flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-pop',
+            'fixed z-(--z-pop) flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-pop',
           )}
           style={{
             width: W,

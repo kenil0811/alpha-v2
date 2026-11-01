@@ -40,10 +40,12 @@ import {
   sortRows,
 } from './table/engine.ts'
 import { AddFieldForm, Grid, type PastePlan } from './table/Grid.tsx'
+import { cleared, hiding } from './table/hiding.ts'
 import { KindPicker } from './table/KindPicker.tsx'
 import { type LayoutNow, layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
+import { Showing } from './table/Showing.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
@@ -88,7 +90,7 @@ export function TableView({
   of?: string | null // a row whose parts these are, from its view: only those, until Show all
   summary?: TableSummary | null // where it sits in its module, and whether it is kept as a tab
   field?: string | null // with row: that value's panel, by the field's name
-  quiet?: boolean // the Ask panel is open: the source panel gives way to it
+  quiet?: boolean // no room beside the page with the assistant open: the row panel gives way
   // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
   // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved. New adds
@@ -393,17 +395,14 @@ export function TableView({
             })
           }
         />
-        {(only || of) && (
-          <div className="flex items-center gap-2 border-line border-b bg-accent-soft px-7 py-2 text-md text-ink-2">
-            <span className="flex-1">
-              Showing {base.length} of {data.rows.length} rows,{' '}
-              {only ? 'the ones a page counted.' : 'the ones part of the row you came from.'}
-            </span>
-            <a href={`#/table/${data.id}`} className="font-medium text-accent hover:underline">
-              Show all
-            </a>
-          </div>
-        )}
+        <Showing
+          shown={rows.length}
+          total={data.rows.length}
+          hiding={hiding(config, fields)}
+          came={only ? 'page' : of ? 'row' : null}
+          allHref={`#/table/${data.id}`}
+          onClear={() => setConfig(cleared(config))}
+        />
         <div className="flex flex-wrap items-center gap-2 px-7 py-2">
           {tickedRows.length > 0 ? (
             <TickedBar

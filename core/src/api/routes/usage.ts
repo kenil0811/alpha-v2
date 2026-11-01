@@ -1,6 +1,7 @@
 // What the model was used for and what it spent, a month at a time (core plan step 5): desk turns
 // under the module they were asked in (Alpha's, asked on Home), agents' runs under their agent.
 import { z } from 'zod'
+import { monthOf } from '../../world/day.ts'
 import type { SpendRow } from '../../world/spend.ts'
 import type { Ctx } from '../ctx.ts'
 import type { UsageRow, UsageView } from '../usage-types.ts'
@@ -18,7 +19,7 @@ export function registerUsage(ctx: Ctx): void {
       })
       .parse(req.query)
     const months = world.spend.months()
-    const m = month ?? months[0] ?? new Date().toISOString().slice(0, 7)
+    const m = month ?? months[0] ?? monthOf()
     const rows = world.spend.month(m)
     const moduleName = (id: string | null) => (id && world.shape.module(id)?.name) || 'Alpha'
     return {

@@ -7,15 +7,14 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { backup } from 'node:sqlite'
+import { dayOf, dayPlus, weekdayOf } from './day.ts'
 import type { Db } from './db.ts'
 
 const DAILY = /^world-daily-(\d{4}-\d{2}-\d{2})\.sqlite$/
 
 // The Monday of a day's week, as its key.
 function weekOf(day: string): string {
-  const d = new Date(`${day}T12:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
-  return d.toISOString().slice(0, 10)
+  return dayPlus(day, -weekdayOf(day))
 }
 
 // Which daily backups stay: the 7 newest days, then the newest of each of the 4 weeks before.
@@ -81,7 +80,7 @@ export async function backupDaily(
   beside: Beside | null = null,
 ): Promise<string | null> {
   mkdirSync(dir, { recursive: true })
-  const day = today.toISOString().slice(0, 10)
+  const day = dayOf(today) // the person's own day (Batch A, pick 4)
   const days = readdirSync(dir)
     .map((n) => DAILY.exec(n)?.[1])
     .filter((d): d is string => !!d)

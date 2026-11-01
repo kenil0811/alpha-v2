@@ -40,7 +40,7 @@ export function Edge({
       tabIndex={0}
       title="Drag to resize; drag all the way in to fold"
       className={cn(
-        'absolute inset-y-0 z-10 w-2 cursor-col-resize outline-none transition-colors hover:bg-accent-line/40 focus-visible:bg-accent-line/40',
+        'absolute inset-y-0 z-(--z-raised) w-2 cursor-col-resize outline-none transition-colors hover:bg-accent-line/40 focus-visible:bg-accent-line/40',
         side === 'left' ? '-left-1' : '-right-1',
         on && 'bg-accent-line/40',
       )}

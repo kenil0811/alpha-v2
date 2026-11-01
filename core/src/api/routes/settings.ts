@@ -62,6 +62,28 @@ export function registerSettings(ctx: Ctx): void {
     return { ok: true }
   })
 
+  // A standing instruction's words changed in place, where it stood (Batch A, pick 6).
+  app.post('/api/instructions/change', async (req) => {
+    const b = z
+      .object({ for: z.enum(['me', 'everyone']), words: z.string(), to: z.string().trim().min(1) })
+      .parse(req.body)
+    const file = instructionsFile(world, b.for === 'me' ? user.id : null)
+    if (!existsSync(file)) throw new Refused('There is nothing remembered there.')
+    const lines = readFileSync(file, 'utf8').split('\n')
+    const at = lines.findIndex((l) => l.startsWith('- ') && l.slice(2).trim() === b.words)
+    if (at < 0) throw new Refused('That is not remembered.')
+    lines[at] = `- ${b.to.replace(/\s*\n\s*/g, ' ')}`
+    writeFileSync(file, lines.join('\n'))
+    world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'instruction_changed',
+      words: `How to work changed: “${b.words}” is now “${b.to}”`,
+      data: { for: b.for },
+      user: user.id,
+    })
+    return { ok: true }
+  })
+
   // What each provider can do, in a line, and what it cannot that another can.
   const canWords = (can: Capabilities) =>
     [

@@ -25,19 +25,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
+import { useBack } from './back.ts'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
+import { Find } from './Find.tsx'
 import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { Marker } from './Mark.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { NewModule } from './NewModule.tsx'
+import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
+import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
+import { type Place, placeOf } from './place.ts'
 import { RowPage, type RowPlace } from './RowPage.tsx'
+import { besideWidth, roomBeside, useWindowWidth } from './room.ts'
 import { alphaOf, Settings } from './Settings.tsx'
-import { Bar, BarMiddle, type Crumb, Find, network, type Place, Rail } from './Shell.tsx'
+import { Bar, BarMiddle, type Crumb, network, Rail } from './Shell.tsx'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
@@ -45,95 +51,6 @@ import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
 import { setFoldLines } from './ui/fold.tsx'
-
-export function placeOf(hash: string): Place {
-  const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?$/.exec(hash)
-  if (m?.[1]) {
-    // ?only=<rows> (the rows a page counted), ?of=<row> (the parts of a row), ?field=<name>
-    // (that value's panel)
-    const query = new URLSearchParams(m[3] ?? '')
-    const only = query.get('only')
-    return {
-      at: 'table',
-      id: m[1],
-      row: m[2] ?? null,
-      only: only ? only.split(',').filter(Boolean) : null,
-      of: query.get('of'),
-      field: query.get('field'),
-    }
-  }
-  const f = /^#\/file\/([0-9a-f]{16,})(?:\?(.*))?$/.exec(hash)
-  if (f?.[1]) {
-    const q = new URLSearchParams(f[2] ?? '')
-    const box = q.get('box')?.split(',').map(Number)
-    return {
-      at: 'file',
-      place: {
-        hash: f[1],
-        sheet: q.get('sheet'),
-        cell: q.get('cell'),
-        page: q.get('page') ? Number(q.get('page')) : null,
-        box:
-          box?.length === 4 && box.every(Number.isFinite)
-            ? (box as [number, number, number, number])
-            : null,
-        line: q.get('line') ? Number(q.get('line')) : null,
-      },
-    }
-  }
-  // an old #/settings?connect= link still lands on the connection, now under Intelligence
-  const c = /^#\/settings\?connect=([\w-]+)$/.exec(hash)
-  if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
-  const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
-  // Permissions moved from Intelligence to Settings: an old link still lands there
-  if (s)
-    return s[1] === 'settings' || s[2] === 'permissions'
-      ? { at: 'settings', section: s[2] ?? null, open: null }
-      : { at: 'intelligence', section: s[2] ?? null, open: null }
-  if (hash === '#/activity') return { at: 'activity' }
-  const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+))?$/.exec(hash)
-  if (tk)
-    return {
-      at: 'tasks',
-      list:
-        (tk[2] as
-          | 'today'
-          | 'week'
-          | 'overdue'
-          | 'waiting'
-          | 'agents'
-          | 'open'
-          | 'done'
-          | undefined) ?? 'today',
-      id: tk[1] ?? null,
-    }
-  const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
-  if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
-  if (hash === '#/conversation') return { at: 'conversation' }
-  if (hash === '#/parts') return { at: 'parts' }
-  if (hash === '#/module/new') return { at: 'new' }
-  // a row's own page (core step 3b)
-  const rw = /^#\/row\/([\w-]+)$/.exec(hash)
-  if (rw?.[1]) return { at: 'row', id: rw[1] }
-  // a standing permission's old link lands on its rule (core step 2)
-  const it = /^#\/(agent|run|rule|permission)\/([\w-]+)$/.exec(hash)
-  if (it?.[1] && it[2])
-    return {
-      at: 'item',
-      kind: it[1] === 'permission' ? 'rule' : (it[1] as 'agent' | 'run' | 'rule'),
-      id: it[2],
-    }
-  const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)))?$/.exec(hash)
-  if (mod?.[1])
-    return {
-      at: 'module',
-      id: mod[1],
-      tab:
-        mod[2] === 'overview' || mod[2] === 'conversation' || mod[2] === 'agents' ? mod[2] : null,
-      page: mod[3] ?? null,
-    }
-  return { at: 'home' }
-}
 
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
@@ -162,6 +79,12 @@ export function App() {
   const layoutHere = useMemo(() => ({ layout, change: changeLayout }), [layout, changeLayout])
   // the assistant on the right: open unless the person folded it
   const asking = layout.assistant !== 'folded'
+  // room beside the page for a row, a task, a run or a person with the assistant open (Batch A)
+  const windowWidth = useWindowWidth()
+  const room = roomBeside(windowWidth, layout, asking)
+  // a task, a run, a person or a row open beside the page, from the address (Batch A, pick 2)
+  const { base: besideBase, opened } = splitBeside(window.location.hash)
+  useOpenBeside(room)
   const setAsking = useCallback(
     (open: boolean | ((was: boolean) => boolean)) =>
       setLayout((l) => {
@@ -426,6 +349,7 @@ export function App() {
                             }
                           : { icon: <House className={icon} />, parts: [at('Home')] }
 
+  const back = useBack(window.location.hash, (itemCrumb ?? crumb).parts.at(-1)?.label ?? '')
   return (
     <LayoutContext.Provider value={layoutHere}>
       <div className="flex h-screen bg-canvas text-base text-ink">
@@ -445,12 +369,14 @@ export function App() {
         />
         <main className="flex min-w-0 flex-1 flex-col">
           <Bar
-            // no way back inside a module: its tabs are the way around
+            // no way back to a parent inside a module (its tabs are the way around); back to where
+            // the person was, wherever they came from (Batch A, pick 1)
             crumb={
               place.at === 'module' || place.at === 'table'
                 ? { parts: crumb.parts.slice(-1) }
                 : (itemCrumb ?? crumb)
             }
+            back={back}
             lens={place.at === 'conversation' ? lens : null}
             onClearLens={() => setLens(null)}
             middle={setMiddle}
@@ -536,7 +462,8 @@ export function App() {
                         only={place.at === 'table' ? place.only : null}
                         of={place.at === 'table' ? place.of : null}
                         field={place.at === 'table' ? place.field : null}
-                        quiet={asking}
+                        // one panel beside the page: a page opened beside takes the row's place
+                        quiet={(asking && !room) || !!opened}
                       />
                     )}
                     conversation={
@@ -557,6 +484,16 @@ export function App() {
             </div>
           </BarMiddle>
         </main>
+        {opened && room && (
+          <OpenedPanel
+            opened={opened}
+            version={version}
+            width={besideWidth(windowWidth, layout, asking)}
+            onClose={() => {
+              window.location.hash = besideBase
+            }}
+          />
+        )}
         {askable && (
           <Assistant
             folded={!asking}

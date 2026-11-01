@@ -49,6 +49,7 @@ import { Kbd, Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Empty, Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { ShortList } from './ui/shortlist.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Tabs } from './ui/tabs.tsx'
 
@@ -333,7 +334,9 @@ function AlphaTable({ name, version }: { name: keyof typeof ABOUT_ALPHA; version
 // Alpha's own module, as the core marks it (its module.yaml says core: true), whatever its name.
 export const alphaOf = (modules: ModuleSummary[]) => modules.find((m) => m.alpha)
 
-// How to work: the standing instructions the person gave, each one forgotten on a yes.
+// How to work: the standing instructions the person gave, on the one control for short lists
+// (Batch A, pick 6): Add asks Alpha, as it must understand them; a double-click changes the words;
+// ✕ forgets one on a yes.
 function HowToWork({ version }: { version: number }) {
   const [lines, setLines] = useState<InstructionView[] | null>(null)
   const load = useCallback(() => {
@@ -342,68 +345,34 @@ function HowToWork({ version }: { version: number }) {
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
-  const { busy, on, problem, act } = useAct(load)
-  const [forgetting, setForgetting] = useState<string | null>(null)
-  const keyOf = (l: InstructionView) => `${l.for}${l.words}`
-  const asked = lines?.find((l) => keyOf(l) === forgetting)
-  const forget = (l: InstructionView) => {
-    setForgetting(null)
-    void act(() => api.post('/api/instructions/remove', { for: l.for, words: l.words }), keyOf(l))
-  }
+  const after = <T,>(p: Promise<T>) => p.finally(load)
   return (
-    <Section
+    <ShortList
       title="How to work"
-      about="How you asked things to be done from now on. Tell Alpha in a sentence to add one."
-    >
-      {lines?.length === 0 && (
-        <Empty>Nothing configured yet. Say “from now on…” to Alpha to add one.</Empty>
+      about="How you asked things to be done from now on. Add asks Alpha; a double-click changes one."
+      items={lines}
+      keyOf={(l) => `${l.for}${l.words}`}
+      wordsOf={(l) => l.words}
+      subOf={(l) => (l.for === 'me' ? 'For you' : 'For everyone here')}
+      lead={() => (
+        <Tile>
+          <BookmarkCheck className="size-4" />
+        </Tile>
       )}
-      {lines && lines.length > 0 && (
-        <List>
-          {lines.map((l) => (
-            <Row
-              key={keyOf(l)}
-              lead={
-                <Tile>
-                  <BookmarkCheck className="size-4" />
-                </Tile>
-              }
-              title={<span className="whitespace-normal font-normal">{l.words}</span>}
-              sub={l.for === 'me' ? 'For you' : 'For everyone here'}
-              actions={
-                <>
-                  {on === keyOf(l) && <Refusal words={problem} />}
-                  <More label="More" disabled={busy}>
-                    {(close) => (
-                      <MenuItem
-                        danger
-                        onClick={() => {
-                          close()
-                          setForgetting(keyOf(l))
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                        Forget
-                      </MenuItem>
-                    )}
-                  </More>
-                </>
-              }
-            ></Row>
-          ))}
-        </List>
-      )}
-      <Confirm
-        open={!!asked}
-        title="Forget this?"
-        yes="Forget it"
-        busy={busy}
-        onClose={() => setForgetting(null)}
-        onYes={() => asked && forget(asked)}
-      >
-        Alpha stops doing it from now on: “{asked?.words}”. Saying it again brings it back.
-      </Confirm>
-    </Section>
+      addLabel="Add an instruction"
+      onAdd={() => startAsk('From now on, ')}
+      onEdit={(l, to) =>
+        after(api.post('/api/instructions/change', { for: l.for, words: l.words, to }))
+      }
+      remove={{
+        title: 'Forget this?',
+        yes: 'Forget it',
+        what: (l) =>
+          `Alpha stops doing it from now on: “${l.words}”. Saying it again brings it back.`,
+        run: (l) => after(api.post('/api/instructions/remove', { for: l.for, words: l.words })),
+      }}
+      empty="Nothing configured yet. Say “from now on…” to Alpha to add one."
+    />
   )
 }
 

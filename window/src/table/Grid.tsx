@@ -321,7 +321,7 @@ export function Grid({
         </colgroup>
         <thead>
           <tr>
-            <th className="sticky top-0 left-0 z-30 h-9 border-line border-b bg-surface p-0">
+            <th className="sticky top-0 left-0 z-3 h-9 border-line border-b bg-surface p-0">
               <Tick
                 label={all ? 'Untick every row' : 'Tick every row shown'}
                 checked={all}
@@ -346,7 +346,7 @@ export function Grid({
                 onConfig={onConfig}
               />
             ))}
-            <th className="sticky top-0 z-10 h-9 border-line border-b bg-surface p-0">
+            <th className="sticky top-0 z-2 h-9 border-line border-b bg-surface p-0">
               <AddField tableId={tableId} />
             </th>
           </tr>
@@ -491,7 +491,7 @@ export function Grid({
         </tbody>
         <tfoot>
           <tr>
-            <td className="sticky bottom-0 left-0 z-20 h-8.5 border-line border-t bg-canvas p-0" />
+            <td className="sticky bottom-0 left-0 z-3 h-8.5 border-line border-t bg-canvas p-0" />
             {shown.map((f, i) => (
               <Foot
                 key={f.id}
@@ -505,7 +505,7 @@ export function Grid({
                 onConfig={onConfig}
               />
             ))}
-            <td className="sticky bottom-0 z-10 h-8.5 border-line border-t bg-canvas p-0" />
+            <td className="sticky bottom-0 z-2 h-8.5 border-line border-t bg-canvas p-0" />
           </tr>
         </tfoot>
       </table>
@@ -680,8 +680,8 @@ function Header({
       }}
       {...ctx.on}
       className={cn(
-        'group/head sticky top-0 z-10 h-9 border-line border-b bg-surface p-0 font-medium text-ink-3 text-sm',
-        left !== undefined && 'z-20',
+        'group/head sticky top-0 z-2 h-9 border-line border-b bg-surface p-0 font-medium text-ink-3 text-sm',
+        left !== undefined && 'z-3',
         edge && 'shadow-[inset_-1px_0_0_var(--hair)]',
         over === 'left' && 'shadow-[inset_2px_0_0_var(--accent)]',
         over === 'right' && 'shadow-[inset_-2px_0_0_var(--accent)]',
@@ -728,7 +728,7 @@ function Header({
           aria-hidden="true"
           onPointerDown={resize}
           data-tip={`Drag to resize ${f.name}`}
-          className="absolute top-0 -right-1 z-10 h-full w-2 cursor-col-resize hover:bg-accent-line"
+          className="absolute top-0 -right-1 z-1 h-full w-2 cursor-col-resize hover:bg-accent-line"
         />
       </div>
       <Popover
@@ -1061,8 +1061,8 @@ function Foot({
     <td
       style={left === undefined ? undefined : { left }}
       className={cn(
-        'sticky bottom-0 z-10 h-8.5 border-line border-t bg-canvas p-0 text-sm',
-        left !== undefined && 'z-20',
+        'sticky bottom-0 z-2 h-8.5 border-line border-t bg-canvas p-0 text-sm',
+        left !== undefined && 'z-3',
         edge && 'shadow-[inset_-1px_0_0_var(--hair)]',
       )}
     >

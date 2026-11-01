@@ -1,3 +1,4 @@
+import { dayOf } from '../day.ts'
 import { Refused } from '../kinds.ts'
 import type { WriteCtx } from '../shape/index.ts'
 
@@ -144,7 +145,8 @@ export function readRepeat(words: string): Repeat {
 }
 
 export const pad = (n: number) => String(n).padStart(2, '0')
-export const dayOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+// the person's own day, one helper for the whole core (Batch A, pick 4)
+export { dayOf }
 
 // The next due after this one: the same time of day when it has one.
 export function nextDue(rule: Repeat, due: string): string {

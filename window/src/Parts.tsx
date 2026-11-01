@@ -3,6 +3,7 @@
 import { Bot, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Preview } from './Conversation.tsx'
+import { RUN_STATE } from './runState.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { Field, Select } from './ui/field.tsx'
@@ -39,7 +40,7 @@ export function Parts() {
               <Pill>Paused</Pill>
               <Pill tone="good">Done</Pill>
               <Pill tone="warn">Waits on you</Pill>
-              <Pill tone="bad">Didn't finish</Pill>
+              <Pill tone="bad">{RUN_STATE.failed[0]}</Pill>
               <Pill tone="accent">You said</Pill>
               <Pill tone="faint">No model</Pill>
               <Topic>Deals</Topic>

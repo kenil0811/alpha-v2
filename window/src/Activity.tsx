@@ -8,21 +8,15 @@ import type { RunView, UndoView } from '@alpha/core/api'
 import { ChevronRight, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import { RUN_STATE } from './runState.ts'
 import { usdWords } from './Usage.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { More } from './ui/more.tsx'
-import { Pill, type Tone } from './ui/pill.tsx'
+import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Segmented } from './ui/segmented.tsx'
-
-const STATE: Record<RunView['state'], [string, Tone]> = {
-  running: ['Running', 'accent'],
-  ok: ['Done', 'good'],
-  failed: ["Didn't finish", 'bad'],
-  stopped: ['Stopped', 'neutral'],
-}
 
 // a run's time in the mono column: 24-hour, so it never wraps
 const time = (at: string) =>
@@ -98,7 +92,7 @@ export function Activity({ version }: { version: number }) {
             onChange={setOnly}
             options={[
               { value: 'all', label: 'All' },
-              { value: 'failed', label: "Didn't finish" },
+              { value: 'failed', label: RUN_STATE.failed[0] },
             ]}
           />
         </div>
@@ -159,7 +153,7 @@ export function RunRow({
   onStop: () => void
   onUndone?: () => void
 }) {
-  const [state, tone] = STATE[r.state]
+  const [state, tone] = RUN_STATE[r.state]
   const words = r.words?.startsWith(`${r.name}: `) ? r.words.slice(r.name.length + 2) : r.words
   const ran = r.kind === 'run' || r.kind === 'read'
   return (

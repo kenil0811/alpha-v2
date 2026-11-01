@@ -119,7 +119,7 @@ describe('connectors found in their folders', () => {
     ])
     removeFolder(home, 'linkedin')
     expect(existsSync(unpacked)).toBe(false)
-  })
+  }, 30_000) // it packs with the package manager, which takes a while on a busy Mac
 
   it('updates an added connector that came with Alpha to the newest pack the release brought (29 Oct)', async () => {
     const home = join(dir, 'connectors')

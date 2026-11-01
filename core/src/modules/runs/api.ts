@@ -1,5 +1,6 @@
 import type { ExtractSpec } from '@alpha/connector-sdk'
 import { type Ask, inReadingOrder, type ReadSpec, readInto } from '../../files/reading.ts'
+import { dayOf, dayOfWhen } from '../../world/day.ts'
 import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module, Table } from '../../world/shape/index.ts'
@@ -447,15 +448,16 @@ export function api(
     'home.today': async () => {
       const w = runner.world
       const now = Date.now()
-      const day = new Date(now).toISOString().slice(0, 10)
+      // today and each due on the person's own day (Batch A, pick 4)
+      const day = dayOf(new Date(now))
       const open = w.tasks.list({ open: true })
       const due = open
-        .filter((t) => t.due && t.due.slice(0, 10) <= day)
+        .filter((t) => t.due && dayOfWhen(t.due) <= day)
         .map((t) => ({
           id: t.id,
           title: t.title,
           due: t.due,
-          overdue: (t.due ?? '').slice(0, 10) < day,
+          overdue: dayOfWhen(t.due ?? '') < day,
         }))
       const quiet = open
         .filter((t) => !t.due && now - Date.parse(t.updatedAt) >= 7 * 86_400_000)

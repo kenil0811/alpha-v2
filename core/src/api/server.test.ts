@@ -487,6 +487,20 @@ describe('the api over a world', () => {
     expect(world.lines({ kinds: ['forgot'] })[0]?.words).toBe(
       'Will no longer remember: Call me Kenil',
     )
+    // changed in place (Batch A, pick 6): the line's words, where it stood
+    const changed = await a.inject({
+      method: 'POST',
+      url: '/api/instructions/change',
+      headers: ok,
+      payload: { for: 'me', words: 'Money in USD', to: 'Money in GBP' },
+    })
+    expect(changed.statusCode).toBe(200)
+    expect((await a.inject({ url: '/api/instructions', headers: ok })).json()).toEqual([
+      { for: 'me', words: 'Money in GBP' },
+    ])
+    expect(world.lines({ kinds: ['instruction_changed'] })[0]?.words).toBe(
+      'How to work changed: “Money in USD” is now “Money in GBP”',
+    )
     await a.close()
   })
 

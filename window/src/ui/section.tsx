@@ -6,10 +6,12 @@ import { Info } from './info.tsx'
 export function Section({
   title,
   about,
+  action,
   children,
 }: {
   title: string
   about?: string
+  action?: ReactNode // on the heading's right: a short list's Add (Batch A, pick 6)
   children: ReactNode
 }) {
   return (
@@ -17,6 +19,7 @@ export function Section({
       <div className="flex items-center gap-1.5">
         <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
         {about && <Info help={about} />}
+        {action && <span className="ml-auto">{action}</span>}
       </div>
       {children}
     </section>

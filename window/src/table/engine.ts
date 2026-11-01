@@ -358,9 +358,13 @@ export function total(
   if (op === 'unique') return String(new Set(filled.map((v) => show(field, v, names))).size)
   const nums = filled.map((v) => numberOf(field, v)).filter((n): n is number => n !== null)
   if (!nums.length) return '—'
+  // the earliest or latest value as it is written (a day stays the person's day, Batch A pick 4)
   if (op === 'earliest' || op === 'latest') {
     const t = op === 'earliest' ? Math.min(...nums) : Math.max(...nums)
-    return show(field, new Date(t).toISOString().slice(0, 10))
+    return show(
+      field,
+      filled.find((v) => numberOf(field, v) === t),
+    )
   }
   const n =
     op === 'sum'

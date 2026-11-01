@@ -47,8 +47,8 @@ export function TimelineView({
   return (
     <div className="mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface">
       <div className="relative" style={{ width: 260 + width }}>
-        <div className="sticky top-0 z-10 flex h-9 border-line border-b bg-surface text-ink-3 text-sm">
-          <div className="sticky left-0 z-10 w-65 shrink-0 border-hair border-r bg-surface px-3 py-2 font-medium">
+        <div className="sticky top-0 z-2 flex h-9 border-line border-b bg-surface text-ink-3 text-sm">
+          <div className="sticky left-0 z-3 w-65 shrink-0 border-hair border-r bg-surface px-3 py-2 font-medium">
             {rows.length - dated.length > 0
               ? `${dated.length} by ${by.name} · ${rows.length - dated.length} with none`
               : `By ${by.name}`}
