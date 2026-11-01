@@ -142,3 +142,5 @@ held by review. Dates are 2026.
 - A card shows only the rows it holds, then a dot per page with ‹ 2 of 10 › beside them
   (`ui/slides.tsx`); never a cut-off list, a "more" link or a scroll inside the card. Agent
   approvals is one card a page (Vikas, 1 Nov).
+- Two pagers that could meet say what they count (`noun`, or `Pager` drawn by the card itself):
+  "Approval 2 of 4", "Agents 4–6 of 16" (Vikas, 1 Nov).
