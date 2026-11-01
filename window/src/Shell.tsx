@@ -1291,7 +1291,11 @@ export function Bar({
   return (
     <div
       data-tauri-drag-region
-      className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
+      // Home's bar is one row: the greeting at its left, the next event at its right (Vikas, 1 Nov)
+      className={cn(
+        '@container h-12 shrink-0 items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6',
+        home ? 'flex' : 'grid grid-cols-[1fr_auto_1fr]',
+      )}
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
         {/* every screen but Home: Back to where the person was, else the place above it */}
@@ -1316,8 +1320,11 @@ export function Bar({
           </span>
         )}
       </div>
-      <div className="flex min-w-0 justify-center">
-        <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
+      <div className={cn('flex min-w-0 justify-center', home && 'flex-1')}>
+        <div
+          ref={middle}
+          className={cn('peer flex min-w-0 justify-center empty:hidden', home && 'flex-1')}
+        />
         <h1 className="hidden truncate font-serif text-2xl text-ink peer-empty:block">{last}</h1>
       </div>
       <div data-tauri-drag-region />

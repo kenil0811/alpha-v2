@@ -18,8 +18,7 @@ import {
   Plus,
   Sheet,
 } from 'lucide-react'
-import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
-import { byFunction } from './AgentList.tsx'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged, type Block, pairs } from './arrange.tsx'
 import { interviewMe, useInterview } from './ask.ts'
@@ -792,7 +791,7 @@ export function folded(lines: Tile['lines']) {
 }
 
 // One row of square tiles that scrolls sideways inside itself (Vikas, 30 Oct: "I don't see a point
-// in so much width"); a tile's name wraps to three lines. What a hover or a click opens (the whole
+// in so much width"); a tile is two lines, its words whole on a hover (Vikas, 1 Nov). What a hover or a click opens (the whole
 // name, the lines it counts) floats over the page in a popover, so the scrolling row never clips it.
 export function Strip({ tiles, onGo }: { tiles: Tile[]; onGo: (go: string) => void }) {
   const [open, setOpen] = useState<string | null>(null) // opened by a click, kept until a click away
@@ -883,28 +882,19 @@ function StripTile({
           if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : onOpen(true)
         }}
         className={cn(
-          'flex w-40 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
+          'flex w-52 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2 transition-shadow hover:shadow-pop',
           on && 'border-accent-line shadow-pop',
         )}
       >
-        {/* the number big, its words after it on the same line; a number of four characters or
-            more ("1,016") stands on its own line above them (Vikas, 30 Oct) */}
-        {t.big.length >= 4 ? (
-          <>
-            <div className="font-serif text-2xl leading-none">{t.big}</div>
-            <p className="mt-1 truncate text-ink-2 text-sm">{t.small}</p>
-          </>
-        ) : (
-          <p className="line-clamp-2 text-ink-2 text-sm">
-            {t.big && (
-              <span className="mr-1.5 font-serif text-2xl text-ink leading-none">{t.big}</span>
-            )}
-            {t.small}
-          </p>
-        )}
-        {/* three lines in all (Vikas, 30 Oct): the number and its words, then one row with the
-            spark at the left and the button at the right */}
-        <div className="mt-auto flex items-end justify-end gap-2 pt-1.5">
+        {/* two lines in all (Vikas, 1 Nov: "reduced by almost half"): the number big with its
+            words on one line, whole on a hover, then the button */}
+        <p data-tip={`${t.big} ${t.small}`} className="truncate text-ink-2 text-sm">
+          {t.big && (
+            <span className="mr-1.5 font-serif text-2xl text-ink leading-none">{t.big}</span>
+          )}
+          {t.small}
+        </p>
+        <div className="mt-auto flex items-end justify-end gap-2 pt-1">
           {t.spark && (
             <div className="min-w-0 flex-1">
               <Spark points={t.spark} />
@@ -1363,6 +1353,8 @@ export function Overview({
           },
         ]
       : []),
+    // Files under Agents, Tables under Governance (Vikas, 1 Nov)
+    { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
     {
       key: 'governance',
       name: 'Governance',
@@ -1378,7 +1370,6 @@ export function Overview({
       node: <Tables ms={[m]} href={`#/module/${m.id}/agents`} />,
     },
     { key: 'brain', name: 'Second Brain', node: <Intelligence m={m} rules={rules} /> },
-    { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
   ]
   const wide = new Set([...lead, ...work].filter((b) => 'wide' in b && b.wide).map((b) => b.key))
 
@@ -1853,7 +1844,7 @@ export function Files({
         <DropZone onFiles={drop} busy={busy}>
           <Refusal words={problem} />
           {(m.files ?? []).length > 0 && (
-            <Slides items={m.files ?? []} per={8} label="Files">
+            <Slides items={m.files ?? []} label="Files">
               {(page) => (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(5rem,1fr))] gap-1">
                   {page.map((f) => {
@@ -1905,31 +1896,26 @@ function groupsOf(agents: AgentView[], main: TableData[]) {
 }
 const agentSignal = (a: AgentView): Signal => (a.needs ? 'now' : a.state === 'on' ? 'done' : 'opt')
 
-// On Home (byFunction) every agent of the workspace, grouped by what it does as the Agents list
-// groups them, its module beside its name; eight until Show more.
+// On Home (across) every agent of the workspace in one list, its module beside its name; five a
+// page (Vikas, 1 Nov: "I just want list of all agents").
 export function Agents({
   m,
   main,
   onChange,
   onNew,
   href = `#/module/${m.id}/agents`,
-  byFunction: fn = false,
+  across = false,
 }: {
   m: ModuleView
   main: TableData[]
   onChange: () => void
   onNew?: () => void
   href?: string
-  byFunction?: boolean
+  across?: boolean
 }) {
   const { busy, problem, act } = useAct(onChange)
   if (!m.agents.length) return null
-  const { groups, rest: all } = groupsOf(m.agents, main)
-  const rest = fn
-    ? all
-        .map((a) => ({ ...a, function: a.function ?? 'Admin' }))
-        .sort((a, b) => byFunction(a.function, b.function))
-    : all
+  const { groups, rest } = groupsOf(m.agents, main)
   const on = m.agents.filter((a) => a.state === 'on').length
   const turn = (as: AgentView[], state: boolean) =>
     act(() =>
@@ -2013,20 +1999,15 @@ export function Agents({
               </div>
             )
           })}
-          <Slides items={rest} per={8} label="Agents">
+          <Slides items={rest} label="Agents">
             {(page) =>
-              page.map((a, i) => (
-                <Fragment key={a.id}>
-                  {fn && a.function !== page[i - 1]?.function && (
-                    <p className="pt-2 pb-1 font-medium text-ink text-sm">{a.function}</p>
-                  )}
-                  <Line s={agentSignal(a)} actions={toggle(a)}>
-                    <a href={`#/agent/${a.id}`} className="hover:text-accent hover:underline">
-                      {a.name}
-                    </a>{' '}
-                    <span className="text-ink-3 text-sm">{fn ? a.module?.name : a.when}</span>
-                  </Line>
-                </Fragment>
+              page.map((a) => (
+                <Line key={a.id} s={agentSignal(a)} actions={toggle(a)}>
+                  <a href={`#/agent/${a.id}`} className="hover:text-accent hover:underline">
+                    {a.name}
+                  </a>{' '}
+                  <span className="text-ink-3 text-sm">{across ? a.module?.name : a.when}</span>
+                </Line>
               ))
             }
           </Slides>

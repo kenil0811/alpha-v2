@@ -5,15 +5,17 @@
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.
 
-import type { KeptTable, TaskLineView, TaskView } from '@alpha/core/api'
+import type { KeptTable, TaskLineView, TasksView, TaskView } from '@alpha/core/api'
 import { Check, CircleDot, Clock, Repeat2, Trash2, X } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api, Problem } from './api.ts'
 import { CardBox } from './Conversation.tsx'
 import type { CardView } from './coming.ts'
+import { Strip, type Tile } from './Overview.tsx'
 import { peek } from './Peek.tsx'
 import { Record } from './Record.tsx'
+import { InBar } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { Notes } from './table/Notes.tsx'
 import { dueWords } from './time.ts'
@@ -22,11 +24,14 @@ import { cn } from './ui/cn.ts'
 import { DateField, parseDay } from './ui/date-field.tsx'
 import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { Group } from './ui/groups.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
+import { PillSwitch, SwitchPill } from './ui/pill-switch.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { Slides } from './ui/slides.tsx'
 import { Title } from './ui/title.tsx'
 import { answerWords } from './vocabulary.ts'
 import { actCell, dateCell, Rows, rowClass, wideCell } from './Waiting.tsx'
@@ -78,15 +83,27 @@ export function Tasks({
 const firstWithSome = (counts: Record<string, number>): List =>
   counts.today ? 'today' : counts.week ? 'week' : 'open'
 
-// The tasks are drawn by the shared table view, with its table, board, calendar and grouping, each
-// opening on its own page; the due lists are its Quick filters.
+// Tasks as a module is (Vikas, 1 Nov): Overview, Calendar and Tasks in the bar, Calendar first.
+// Calendar and Tasks are the shared table view, by due day and as a board; the due lists are its
+// Quick filters. Events come in on the calendar once the core keeps them, as a hidden table of
+// their own tied to tasks (P20).
+type View = 'overview' | 'calendar' | 'tasks'
+const VIEWS: { value: View; label: string }[] = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'calendar', label: 'Calendar' },
+  { value: 'tasks', label: 'Tasks' },
+]
+
 function TaskLists({ list: asked, version }: { list: List; version: number }) {
-  const explicit = window.location.hash.includes('list=')
+  const q = new URLSearchParams(window.location.hash.split('?')[1] ?? '')
+  const view = (VIEWS.find((v) => v.value === q.get('view'))?.value ?? 'calendar') as View
+  const explicit = q.has('list')
   // the core serves a saved list's tasks as a table: changed in a cell, or by a card dragged
   // across the board (UI batch 2, 26 Oct)
   const [data, setData] = useState<KeptTable | null>(null)
   const counts = data?.kept.counts ?? {}
-  const list = explicit || !data ? asked : firstWithSome(counts)
+  // the calendar holds every open task by its day; the board the first list that holds some
+  const list = explicit || !data ? asked : view === 'calendar' ? 'open' : firstWithSome(counts)
   const load = useCallback(() => {
     api.get<KeptTable>(`/api/kept/tasks?list=${list}`).then(setData, () => setData(null))
   }, [list])
@@ -94,22 +111,43 @@ function TaskLists({ list: asked, version }: { list: List; version: number }) {
     if (version >= 0) load()
   }, [load, version])
   const [adding, setAdding] = useState(false)
+  const at = (v: View, l: List = list) => `#/tasks?list=${l}&view=${v}`
   const quick = LISTS.filter((l) => l.value !== 'agents' || counts.agents).map((l) => ({
     label: l.label,
     count: l.value === 'done' ? undefined : counts[l.value],
     on: l.value === list,
-    href: `#/tasks?list=${l.value}`,
+    href: at(view, l.value),
   }))
+  const due = data?.fields.find((f) => f.kind === 'date' && f.name === 'Due')
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <InBar>
+        <PillSwitch label="Tasks">
+          {VIEWS.map((v) => (
+            <SwitchPill
+              key={v.value}
+              tab={{
+                key: v.value,
+                href: at(v.value, v.value === 'calendar' ? 'open' : list),
+                label: v.label,
+                sel: v.value === view,
+              }}
+            />
+          ))}
+        </PillSwitch>
+      </InBar>
       <div className="min-h-0 flex-1">
         {!data ? (
           <p className="p-7 text-ink-3">Loading…</p>
+        ) : view === 'overview' ? (
+          <TasksOverview counts={counts} version={version} go={(l) => at('tasks', l)} />
         ) : (
           <TableView
-            key={list}
+            key={`${view}:${list}`}
             data={data}
-            start={{ kind: 'board' }}
+            start={
+              view === 'calendar' && due ? { kind: 'calendar', by: due.id } : { kind: 'board' }
+            }
             quickBy="For"
             quickFilters={quick}
             kept={{
@@ -130,6 +168,55 @@ function TaskLists({ list: asked, version }: { list: List; version: number }) {
           }}
         />
       </Dialog>
+    </div>
+  )
+}
+
+// Tasks' Overview: a tile a list (Today, This week, Overdue…) with its count and the way to it,
+// then what is due today and overdue, five a page, as a module's Overview reads.
+function TasksOverview({
+  counts,
+  version,
+  go,
+}: {
+  counts: Record<string, number>
+  version: number
+  go: (list: List) => string
+}) {
+  const [today, setToday] = useState<TasksView | null>(null)
+  useEffect(() => {
+    if (version >= 0)
+      api.get<TasksView>('/api/tasks?list=today').then(setToday, () => setToday(null))
+  }, [version])
+  const tiles: Tile[] = LISTS.filter(
+    (l) => l.value !== 'done' && (l.value !== 'agents' || counts.agents),
+  ).map((l) => {
+    const n = counts[l.value] ?? 0
+    return {
+      key: l.value,
+      label: l.label,
+      signal: l.value === 'overdue' && n ? 'now' : n ? 'yes' : 'opt',
+      big: String(n),
+      small: l.value === 'open' ? 'open' : l.label.toLowerCase(),
+      lines: [],
+      go: l.value,
+      act: { label: 'Open', href: go(l.value) },
+    }
+  })
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-6 pb-10">
+        <Strip tiles={tiles} onGo={(l) => (window.location.hash = go(l as List))} />
+        <Group title="Today and overdue" count={today?.lines.length}>
+          {today && today.lines.length > 0 ? (
+            <Slides items={today.lines} label="Today and overdue">
+              {(page) => <TaskList lines={page} />}
+            </Slides>
+          ) : (
+            <p className="text-ink-3">{today ? 'Nothing due today.' : 'Loading…'}</p>
+          )}
+        </Group>
+      </div>
     </div>
   )
 }

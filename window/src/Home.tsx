@@ -35,7 +35,7 @@ import { peek } from './Peek.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TaskList } from './Tasks.tsx'
-import { clock, sinceWords } from './time.ts'
+import { clock, dueWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Cut } from './ui/cut.tsx'
@@ -105,7 +105,6 @@ export function Home({
   const [agents, setAgents] = useState<AgentView[]>([])
   const [cut, setCut] = useState<TaskCut>('today')
   const [cutView, setCutView] = useState<TasksView | null>(null)
-  const [readyOpen, setReadyOpen] = useState(false)
   // Needs you as rows, a gallery or one card at a time (Vikas, 30 Oct)
   // the tasks that wait on the person, for Needs you (those a card there stands for are left out)
   const [yours, setYours] = useState<TasksView['lines']>([])
@@ -192,6 +191,11 @@ export function Home({
   const cards = stream?.cards ?? []
   const signIns = stream?.attention ?? []
   const changed = today?.changed ?? []
+  // the next event, at the bar's right: an event of the calendar once the core keeps them (P20),
+  // until then the soonest task with a due day that is not past
+  const next = (tasks?.lines ?? [])
+    .filter((t) => t.due && !t.overdue && t.state !== 'done' && t.state !== 'dropped')
+    .sort((x, y) => (x.due ?? '').localeCompare(y.due ?? ''))[0]
   // a card that waits is never hidden behind the welcome
   const firstOpen =
     stream !== null &&
@@ -292,11 +296,10 @@ export function Home({
     </Group>
   )
 
-  // Interview me and Getting this Mac ready: two buttons of one size at the head of the standard
-  // column, above Agents (Vikas, 30 Oct); the Mac's steps open under them
+  // Interview me: a button at the head of the standard column, above Agents (Vikas, 30 Oct)
   const start: Block['node'] = (
     <div className="flex flex-col gap-2">
-      <div className={cn('grid gap-2', interview.view && 'grid-cols-2')}>
+      <div className="grid gap-2">
         {interview.view && (
           <Button
             className="h-10 min-w-0 justify-start text-left"
@@ -311,28 +314,32 @@ export function Home({
             <span className="min-w-0 flex-1">Interview me</span>
           </Button>
         )}
-        {setup && unready(setup) && (
-          <Button
-            className="h-10 min-w-0 justify-start text-left"
-            aria-expanded={readyOpen}
-            onClick={() => setReadyOpen(!readyOpen)}
-            data-tip={`Getting this Mac ready: ${readyCount(setup)} of ${4 + setup.steps.length} done; a click shows the steps`}
-          >
-            <span className="min-w-0 flex-1 truncate">
-              Mac setup{' '}
-              <span className="font-normal text-ink-3 tabular-nums">
-                {readyCount(setup)}/{4 + setup.steps.length}
-              </span>
-            </span>
-          </Button>
-        )}
       </div>
-      {setup && unready(setup) && readyOpen && <SetupList view={setup} onChange={reloadSetup} />}
     </div>
   )
+  // Getting this Mac ready: a card of its own, done once and gone when it is (Vikas, 1 Nov)
+  const mac: Block[] =
+    setup && unready(setup)
+      ? [
+          {
+            key: 'mac',
+            name: 'Mac setup',
+            node: (
+              <Group
+                id="home-mac"
+                title="Mac setup"
+                sub={`${readyCount(setup)} of ${4 + setup.steps.length} done; once, then it goes`}
+              >
+                <SetupList view={setup} onChange={reloadSetup} />
+              </Group>
+            ),
+          },
+        ]
+      : []
   // the standard column, across every module, in an Overview's order
   const standard: Block[] = [
-    { key: 'start', name: 'Interview me', node: start },
+    ...(interview.view ? [{ key: 'start', name: 'Interview me', node: start }] : []),
+    ...mac,
     ...(agents.length
       ? [
           {
@@ -344,13 +351,19 @@ export function Home({
                 main={[]}
                 onChange={load}
                 href="#/intelligence/agents"
-                byFunction
+                across
                 onNew={() => (window.location.hash = '#/agent/new')}
               />
             ),
           },
         ]
       : []),
+    // Files under Agents, Tables under Governance (Vikas, 1 Nov)
+    {
+      key: 'files',
+      name: 'Files',
+      node: <Files m={workspace} onChange={load} href="#/intelligence/brain" />,
+    },
     {
       key: 'governance',
       name: 'Governance',
@@ -374,11 +387,6 @@ export function Home({
       name: 'Second Brain',
       node: <Intelligence m={workspace} rules={rules} here="#/intelligence/brain" />,
     },
-    {
-      key: 'files',
-      name: 'Files',
-      node: <Files m={workspace} onChange={load} href="#/intelligence/brain" />,
-    },
   ]
 
   return (
@@ -388,15 +396,28 @@ export function Home({
         {/* the greeting and the day sit in the bar; Home opens on Find and one strip across every
             module (Vikas, 27 Oct): the assistant is on the right, so no box to ask here */}
         <InBar>
-          <span className="flex items-baseline gap-2.5 whitespace-nowrap">
-            <h1 className="font-serif text-ink text-xl">{greeting(name)}</h1>
-            <span className="text-ink-3 text-sm">
-              {new Date().toLocaleDateString(undefined, {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-              })}
+          <span className="flex min-w-0 flex-1 items-baseline gap-3">
+            <span className="flex items-baseline gap-2.5 whitespace-nowrap">
+              <span className="text-ink-3 text-sm">
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+              <h1 className="font-serif text-ink text-xl">{greeting(name)}</h1>
             </span>
+            {next && (
+              <a
+                href={`#/tasks/${next.id}`}
+                data-tip="The next thing on your calendar"
+                className="ml-auto flex min-w-0 items-baseline gap-1.5 text-sm hover:text-accent"
+              >
+                <span className="shrink-0 text-ink-3">Next</span>
+                <span className="truncate text-ink">{next.title}</span>
+                <span className="shrink-0 text-ink-3">{next.due ? dueWords(next.due) : ''}</span>
+              </a>
+            )}
           </span>
         </InBar>
         <button

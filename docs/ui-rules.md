@@ -159,3 +159,14 @@ held by review. Dates are 2026.
 - The rail's rows are evenly spaced, the modules too: no gap between Tasks and the first module
   (Vikas, 1 Nov).
 - A card's resize grip is drawn in its own bottom-right corner on hover (Vikas, 1 Nov).
+- A tile is two lines: its number and words on one, its button under them (Vikas, 1 Nov).
+- A card shows four or five rows, then the slideshow; Mac setup is a card of its own, done once
+  and gone when it is (Vikas, 1 Nov).
+- Agents are one list, never grouped by what they do; on Home and an Overview, Files sits under
+  Agents and Tables under Governance (Vikas, 1 Nov).
+- Home's bar: the day and the greeting at its left, the next event at its right (Vikas, 1 Nov).
+- Tasks reads as a module: Overview, Calendar and Tasks in the bar, Calendar first. Events are a
+  hidden table tied to tasks, on the calendar once the core keeps them (P20) (Vikas, 1 Nov).
+- The Second Brain draws every module, its pages, its tables and the buckets their rows fall in,
+  its agents and the connections (Vikas, 1 Nov).
+- What Mark opens to send to Alpha stays inside the window (Vikas, 1 Nov).

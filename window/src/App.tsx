@@ -103,7 +103,7 @@ export function placeOf(hash: string): Place {
       ? { at: 'settings', section: s[2] ?? null, open: null }
       : { at: 'intelligence', section: s[2] ?? null, open: null }
   if (hash === '#/activity') return { at: 'activity' }
-  const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+)(?:&agent=[\w-]+)?)?$/.exec(hash)
+  const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+)(?:&(?:agent|view)=[\w-]+)*)?$/.exec(hash)
   if (tk)
     return {
       at: 'tasks',
