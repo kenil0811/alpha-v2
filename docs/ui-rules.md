@@ -57,7 +57,7 @@ held by review. Dates are 2026.
 | T5 | An empty table keeps its header, blank rows and footer, and says nothing | 26 Oct | — |
 | T6 | Every menu works from the keyboard and opens on a right-click where it belongs; one list, never a second | 26 Oct | — |
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
-| T8 | Rows come 25, 50, 100 or 250 a page; every table and slideshow pages with the one Pager (`ui/pager.tsx`): ‹ and ›, each page's number while there are seven or fewer, else "3 of 12"; nothing for one page | 25 Oct, 30 Oct (for Kenil's review) | — |
+| T8 | Rows come 25, 50, 100 or 250 a page, with First and Last | 25 Oct | — |
 | T9 | Ticked rows show "n selected"; Escape lets them go after any menu closes | 26 Oct | — |
 | T10 | Every dropdown is one of ours: search past five, Add new… at the foot where a choice can grow | 26 Oct | — |
 | T11 | No bare `<select>` where a person picks; only the cell editor keeps the native one | 25 Oct | test |
@@ -125,6 +125,8 @@ held by review. Dates are 2026.
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, renaming a module and choosing its icon (needs the core).
 - What each run costs, shown under Settings › Model (needs the core).
+- One pager for every table and slideshow (T8, `ui/pager.tsx`): ‹ and ›, each page's number
+  while there are seven or fewer, else "3 of 12"; nothing for one page (Vikas, 30 Oct).
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.
