@@ -238,7 +238,7 @@ function Correct({
   return (
     <form onSubmit={save} className="flex flex-col gap-2">
       {isTags(field) ? (
-        <TagPicker field={field} typed={typed} onTyped={setTyped} />
+        <TagPicker field={field} typed={typed} onTyped={setTyped} table={table} />
       ) : field.kind === 'choice' ? (
         <Select
           value={typed}

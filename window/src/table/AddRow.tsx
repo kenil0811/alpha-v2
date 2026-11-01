@@ -71,6 +71,7 @@ export function AddRow({
               field={f}
               typed={values[f.name] ?? ''}
               onTyped={(t) => setValues((v) => ({ ...v, [f.name]: t }))}
+              table={name}
             />
           ) : f.kind === 'choice' ? (
             <Select
