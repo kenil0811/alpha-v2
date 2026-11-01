@@ -11,11 +11,11 @@ import { api, wordsOf } from './api.ts'
 import { usdWords } from './Usage.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Cut } from './ui/cut.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { More } from './ui/more.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
-import { Segmented } from './ui/segmented.tsx'
 
 const STATE: Record<RunView['state'], [string, Tone]> = {
   running: ['Running', 'accent'],
@@ -92,15 +92,14 @@ export function Activity({ version }: { version: number }) {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl text-ink">Activity</h1>
           <span className="flex-1" />
-          <Segmented
-            label="Show"
-            value={only}
-            onChange={setOnly}
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'failed', label: "Didn't finish" },
-            ]}
-          />
+          <div className="flex gap-1.5">
+            <Cut sel={only === 'all'} onClick={() => setOnly('all')}>
+              All
+            </Cut>
+            <Cut sel={only === 'failed'} onClick={() => setOnly('failed')}>
+              Failed
+            </Cut>
+          </div>
         </div>
         {runs && shown.length === 0 && (
           <p className="mt-4 text-ink-2 text-md">

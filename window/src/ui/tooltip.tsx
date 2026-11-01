@@ -4,8 +4,14 @@
 // draws its own. Mounted once; it sits above everything, against the window, so nothing clips it.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { floatRoot } from './popover.tsx'
 
 const WAIT = 150
+
+// Show an element's tip now, as if the pointer had just come to it: a double-click on what does
+// not change says why (Vikas, 30 Oct).
+export const tipNow = (el: Element) =>
+  el.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
 
 export function Tooltips() {
   const [on, setOn] = useState<HTMLElement | null>(null)
@@ -80,10 +86,10 @@ export function Tooltips() {
       ref={label}
       role="tooltip"
       style={{ top: at?.top ?? -9999, left: at?.left ?? -9999 }}
-      className="pointer-events-none fixed z-60 max-w-80 truncate rounded-sm border border-line bg-surface px-2 py-1 text-ink text-sm shadow-pop"
+      className="pointer-events-none fixed z-(--z-tip) max-w-80 truncate rounded-sm border border-line bg-surface px-2 py-1 text-ink text-sm shadow-pop"
     >
       {text}
     </div>,
-    document.body,
+    floatRoot(on),
   )
 }

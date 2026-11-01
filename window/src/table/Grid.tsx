@@ -29,6 +29,7 @@ import {
   useState,
 } from 'react'
 import { api, Problem } from '../api.ts'
+import { askForNew } from '../ask.ts'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
@@ -883,10 +884,12 @@ export function EditCell({
   field,
   value,
   onDone,
+  table,
 }: {
   field: FieldView
   value: unknown
   onDone: (value: unknown) => Promise<boolean> // undefined: left as it was
+  table?: string | undefined // its table's name, for a choice's Add new…
 }) {
   const start = typedOf(field, value)
   const [typed, setTyped] = useState(start)
@@ -898,14 +901,14 @@ export function EditCell({
     input.current?.focus()
     if (input.current && 'select' in input.current) input.current.select?.()
   }, [])
-  const save = async () => {
+  const save = async (t = typed) => {
     if (done.current) return
-    if (typed === start) {
+    if (t === start) {
       done.current = true
       await onDone(undefined)
       return
     }
-    const read = readValue(field, typed, value)
+    const read = readValue(field, t, value)
     if ('problem' in read) return setProblem(read.problem)
     done.current = true
     if (!(await onDone(read.value))) done.current = false
@@ -934,26 +937,30 @@ export function EditCell({
         </span>
         <Popover anchor={anchor} open onClose={() => void save()}>
           {/* Escape leaves it as it was, as in every other cell; a click away keeps the ticks */}
-          <TagPicker field={field} typed={typed} onTyped={setTyped} onKeyDown={key} />
+          <TagPicker field={field} typed={typed} onTyped={setTyped} onKeyDown={key} table={table} />
         </Popover>
       </>
     )
+  // a choice: the one dropdown, open at once (a double-click shows the list), saved on a pick
   return field.kind === 'choice' ? (
-    <select
-      ref={input}
+    <Select
+      startOpen
       value={typed}
       aria-label={field.name}
       title={problem ?? undefined}
-      onChange={(e) => setTyped(e.target.value)}
-      onBlur={() => void save()}
-      onKeyDown={key}
+      onChange={(e) => void save(e.target.value)}
+      onDismiss={() => void save()}
+      adds={{
+        what: 'choice',
+        send: (w) => askForNew('choice', table ? `${field.name} in ${table}` : field.name, w),
+      }}
       className={box}
     >
       <option value="" />
       {field.choices.map((c) => (
         <option key={c}>{c}</option>
       ))}
-    </select>
+    </Select>
   ) : (
     <input
       ref={input}

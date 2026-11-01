@@ -6,7 +6,7 @@ import type { CardView, MatchView, SideView } from '@alpha/core/api'
 import { useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Actions, Card } from './ui/card.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
@@ -84,7 +84,7 @@ export function MatchCard({ card, match }: { card: CardView; match: MatchView })
               <Side s={p.a} />
               <Side s={p.b} />
             </div>
-            <div className="flex gap-2">
+            <Actions>
               <Button
                 size="sm"
                 variant="primary"
@@ -100,7 +100,7 @@ export function MatchCard({ card, match }: { card: CardView; match: MatchView })
               >
                 Keep apart
               </Button>
-            </div>
+            </Actions>
           </div>
         ))}
       </div>

@@ -2,9 +2,18 @@ import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { Avatar } from './avatar.tsx'
 import { Confirm } from './dialog.tsx'
+import { optionClass } from './pill.tsx'
 import { Section } from './section.tsx'
 
 describe('the shared parts', () => {
+  it('gives each choice its own colour, the same every time (Vikas, 30 Oct)', () => {
+    const lists = { choices: ['Clients', 'Insurers', 'Leads', 'My team'], tones: { Lost: 'bad' } }
+    const shown = lists.choices.map((c) => optionClass(lists, c))
+    expect(new Set(shown).size).toBe(4)
+    expect(optionClass(lists, 'Leads')).toBe(shown[2])
+    expect(optionClass(lists, 'Lost')).toContain('text-bad')
+    expect(optionClass(undefined, 'Brokers')).toBe(optionClass(undefined, 'Brokers'))
+  })
   it('puts a section’s explanation behind an ⓘ, never as a line under its title', () => {
     const html = renderToString(
       <Section title="Connections" about="Your accounts, read by Alpha.">

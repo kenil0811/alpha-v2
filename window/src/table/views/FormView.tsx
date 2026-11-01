@@ -103,6 +103,7 @@ export function FormView({
                   field={f}
                   typed={typed[f.slug] ?? ''}
                   onTyped={(t) => setTyped({ ...typed, [f.slug]: t })}
+                  table={table}
                 />
               ) : f.kind === 'choice' ? (
                 <Select
