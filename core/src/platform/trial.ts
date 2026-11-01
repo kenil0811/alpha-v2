@@ -79,7 +79,8 @@ function line(r: Read): string {
   }
   if (r.source.startsWith('files ')) {
     const files = list(a, 'files')
-    return `| ${r.source} | ${files.filter((f) => !f.folder).length} files in ${files.filter((f) => f.folder).length} folders | ${took} |`
+    const projects = files.filter((f) => f.project).length
+    return `| ${r.source} | ${files.filter((f) => !f.folder).length} files in ${files.filter((f) => f.folder && !f.project).length} folders${projects ? `, ${projects} projects` : ''} | ${took} |`
   }
   return `| ${r.source} | ${a.state ?? 'answered'} | ${took} |`
 }

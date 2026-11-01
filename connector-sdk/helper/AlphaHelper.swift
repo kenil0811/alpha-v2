@@ -78,26 +78,29 @@ let biome = home.appendingPathComponent("Library/Biome/streams/restricted/App.In
 let folders = ["documents": "Documents", "desktop": "Desktop", "downloads": "Downloads"]
 
 // What a folder holds, its own and its folders' names, kinds and dates, never their contents:
-// hidden files, bundles, node_modules, .git and Library left out, at most 50,000.
+// hidden files, bundles, node_modules and Library left out; a folder with its own version history
+// (.git) is one project, not walked. The newest 50,000, so a limit never hides recent files.
 func walk(_ root: URL) -> [[String: Any]]? {
   let fm = FileManager.default
   guard (try? fm.contentsOfDirectory(atPath: root.path)) != nil else { return nil }
   let keys: [URLResourceKey] = [.isDirectoryKey, .contentModificationDateKey, .fileSizeKey]
   guard let e = fm.enumerator(at: root, includingPropertiesForKeys: keys,
                               options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return [] }
-  var out: [[String: Any]] = []
+  var found: [(Date, [String: Any])] = []
   for case let url as URL in e {
-    let name = url.lastPathComponent
-    if ["node_modules", ".git", "Library"].contains(name) { e.skipDescendants(); continue }
+    if ["node_modules", "Library"].contains(url.lastPathComponent) { e.skipDescendants(); continue }
     let v = try? url.resourceValues(forKeys: Set(keys))
-    out.append([
-      "path": String(url.path.dropFirst(root.path.count + 1)), "folder": v?.isDirectory ?? false,
-      "modified": v?.contentModificationDate.map { iso.string(from: $0) } ?? "",
-      "size": v?.fileSize ?? 0,
-    ])
-    if out.count >= 50_000 { break }
+    let folder = v?.isDirectory ?? false
+    let project = folder && fm.fileExists(atPath: url.appendingPathComponent(".git").path)
+    if project { e.skipDescendants() }
+    let modified = v?.contentModificationDate ?? .distantPast
+    found.append((modified, [
+      "path": String(url.path.dropFirst(root.path.count + 1)), "folder": folder, "project": project,
+      "modified": iso.string(from: modified), "size": v?.fileSize ?? 0,
+    ]))
+    if found.count >= 1_000_000 { break }
   }
-  return out
+  return found.sorted { $0.0 > $1.0 }.prefix(50_000).map { $0.1 }
 }
 
 // The outermost app around this helper: the one a person switches on in System Settings.
