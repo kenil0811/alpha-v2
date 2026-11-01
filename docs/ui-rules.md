@@ -139,3 +139,6 @@ held by review. Dates are 2026.
 - The one dropdown everywhere (T10): search past six, tags too, and a double-click on a choice
   opens it (Vikas, 29 Oct).
 - No bare `<select>` at all (T11), the cell editor included (Vikas, 29 Oct).
+- What was clicked stays in sight to the left of the side panel when it opens (Vikas, 1 Nov).
+- The rail's rows are evenly spaced, the modules too: no gap between Tasks and the first module
+  (Vikas, 1 Nov).

@@ -22,6 +22,11 @@ const COUNTED = /^#\/table\/[\w-]+\?(?:.*&)?only=/
 
 export const opensBeside = (href: string) => ELEMENT.test(href) || COUNTED.test(href)
 
+// what was clicked outside the panel: the panel narrows the screen, so it is brought back in sight
+// to the panel's left once it opens (Vikas, 1 Nov: "the to do which I clicked should appear to the
+// left")
+let pressed: Element | null = null
+
 export function usePeek() {
   const [trail, setTrail] = useState<string[]>([])
   useEffect(() => {
@@ -32,6 +37,7 @@ export function usePeek() {
       if (!a || !href || a.closest('[data-page]') || !opensBeside(href)) return
       e.preventDefault()
       const inPanel = !!a.closest('[data-peek-panel]')
+      if (!inPanel) pressed = a.closest('tr, [role="row"], li, article, [data-row]') ?? a
       setTrail((t) => (inPanel ? [...t, href] : [href]))
     }
     // the page it opens, or any other place, closes it
@@ -43,6 +49,15 @@ export function usePeek() {
       window.removeEventListener('hashchange', away)
     }
   }, [])
+  const opened = trail[0] ?? null
+  useEffect(() => {
+    if (!opened || !pressed?.isConnected) return
+    const el = pressed
+    const f = requestAnimationFrame(() =>
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' }),
+    )
+    return () => cancelAnimationFrame(f)
+  }, [opened])
   return {
     href: trail.at(-1) ?? null,
     canBack: trail.length > 1,
