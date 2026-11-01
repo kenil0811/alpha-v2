@@ -309,7 +309,7 @@ export function TableView({
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
               {/* search first, wide, always a box (Vikas, 27 Oct) */}
-              <label className="flex h-7.5 w-80 min-w-32 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+              <label className="flex h-7.5 min-w-32 flex-1 items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
                 <Search className="size-3.25 shrink-0" />
                 <input
                   value={config.search}
@@ -328,7 +328,8 @@ export function TableView({
           }
           right={
             <>
-              {/* Filter on the right, just left of ⋮; Columns inside ⋮ (Vikas, 27 Oct) */}
+              {/* Filter on the right, then the page's one action, then ⋮; search runs up to Filter
+                  (Vikas, 1 Nov) */}
               <AddFilter
                 fields={fields}
                 config={config}
@@ -336,6 +337,17 @@ export function TableView({
                 names={data.names}
                 onConfig={setConfig}
               />
+              <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={typeof onNew === 'string'}
+                  onClick={typeof onNew === 'string' ? undefined : onNew}
+                >
+                  <Plus className="size-3.5" />
+                  New
+                </Button>
+              </span>
               <More
                 tableId={data.id}
                 fields={fields}
@@ -599,21 +611,11 @@ export function TableView({
             />
           </>
         )}
-        {/* New, then Save and Cancel while the list differs from what was saved, under every
-            view (Vikas, 27 Oct); a table's pages to its right */}
+        {/* Save and Cancel while the list differs from what was saved, under every view (Vikas,
+            27 Oct); a table's pages to its right */}
         <div
           className={cn('flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm', grid && '-mt-4')}
         >
-          <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
-            <Button
-              size="sm"
-              disabled={typeof onNew === 'string'}
-              onClick={typeof onNew === 'string' ? undefined : onNew}
-            >
-              <Plus className="size-3.5" />
-              New
-            </Button>
-          </span>
           <span ref={setSaveAt} className="mr-auto flex items-center gap-1 empty:hidden" />
           {!kept && <Readers data={data} />}
           {grid && rows.length > Math.min(size, ...SIZES) && (
@@ -701,7 +703,7 @@ function More({
   shown: FieldView[]
   config: ViewConfig
   layout: LayoutNow
-  adding: boolean // whether a column can be added here
+  adding: boolean // whether a field can be added here
   onConfig: (c: ViewConfig) => void
   onExport: (as: 'csv' | 'xlsx') => void
   onCopy: () => void
@@ -731,6 +733,22 @@ function More({
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        {/* a field is the data, so it is first and the same in every view (Vikas, 1 Nov); Tasks'
+            and People's own fields come with core P19 */}
+        {adding && (
+          <>
+            <MenuItem
+              onClick={() => {
+                setOpen(false)
+                setAdd(true)
+              }}
+            >
+              <Plus className="size-3.5 text-ink-3" />
+              Add field
+            </MenuItem>
+            <MenuLine />
+          </>
+        )}
         <SubMenu
           label={
             <>
@@ -819,16 +837,6 @@ function More({
             Reset the column widths
           </MenuItem>
         </SubMenu>
-        <MenuItem
-          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
-          onClick={() => {
-            setOpen(false)
-            setAdd(true)
-          }}
-        >
-          <Plus className="size-3.5 text-ink-3" />
-          Add column
-        </MenuItem>
         {tab !== null && (
           <MenuItem
             checked={tab}
@@ -878,7 +886,7 @@ function More({
         </SubMenu>
       </Popover>
       <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
+        <AddFieldForm tableId={tableId} title="Add a field" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )

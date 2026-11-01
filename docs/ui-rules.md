@@ -141,3 +141,7 @@ held by review. Dates are 2026.
 - The one dropdown everywhere (T10): search past six, tags too, and a double-click on a choice
   opens it (Vikas, 29 Oct).
 - No bare `<select>` at all (T11), the cell editor included (Vikas, 29 Oct).
+- A page's bar: search runs up to Filter, then the page's one action (two at the most), then ⋮;
+  never a row of buttons. A page's own lists (Tasks' Today, This week…) are Quick filters inside
+  Filter, not a row of their own. Add field is first in ⋮ and the same in every view: a field is
+  the data, not the layout (Vikas, 1 Nov).
