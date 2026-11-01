@@ -18,13 +18,11 @@ export function Section({
   return (
     <section className="flex min-w-0 flex-col gap-2.5">
       <div data-head className="flex items-center gap-1.5">
-        <h2
-          className={
-            small ? 'font-semibold text-base text-ink' : 'font-medium font-serif text-ink text-xl'
-          }
-        >
-          {title}
-        </h2>
+        {small ? (
+          <h2 className="font-semibold text-base text-ink">{title}</h2>
+        ) : (
+          <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+        )}
         {about && <Info help={about} />}
       </div>
       {children}
