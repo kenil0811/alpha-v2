@@ -198,7 +198,7 @@ export function Rail({
           <PanelLeftClose className="size-4" />
         </button>
       </div>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col">
         {places(place, waiting, tasksDue, modules).map((f) => (
           <Nav
             key={f.href}
