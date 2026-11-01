@@ -242,7 +242,7 @@ export function Home({
       {failed.tasks && <NotLoaded onTry={load} />}
       {shown && shown.lines.length > 0 && (
         <Slides items={shown.lines} label="Tasks">
-          {(page) => <TaskList lines={page} cards={cards} onChange={load} />}
+          {(page) => <TaskList lines={page} cards={cards} />}
         </Slides>
       )}
     </Group>

@@ -22,7 +22,8 @@ import { type List, TaskPage, Tasks } from './Tasks.tsx'
 import { Back } from './ui/back.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
-const ELEMENT = /^#\/(row|agent|run|rule|permission|tasks|people|card)\/([\w-]+)$/
+// a table is an element too: it opens here, its Open page is its own page (Vikas, 1 Nov)
+const ELEMENT = /^#\/(row|agent|run|rule|permission|tasks|people|card|table)\/([\w-]+)$/
 // every screen the panel can draw: an element, or a whole screen opened from Home or the panel
 const SCREEN =
   /^#\/(?:row|agent|run|rule|permission|tasks|people|card|module|table|activity|intelligence|settings)\b/
@@ -37,8 +38,13 @@ export const peek = (href: string) =>
 
 // whether the last press was inside the panel: what it opens by script is then a step further
 let fromPanel = false
+// what was pressed outside it: the panel narrows the screen, so it is brought back in sight to the
+// panel's left once it opens (Vikas, 1 Nov: "the to do which I clicked should appear to the left")
+let pressed: Element | null = null
 const press = (e: PointerEvent) => {
-  fromPanel = !!(e.target as Element | null)?.closest?.('[data-peek-panel]')
+  const at = e.target as Element | null
+  fromPanel = !!at?.closest?.('[data-peek-panel]')
+  if (!fromPanel) pressed = at?.closest?.('tr, [role="row"], li, article, [data-row]') ?? at
 }
 
 export function usePeek() {
@@ -72,6 +78,15 @@ export function usePeek() {
       window.removeEventListener('alpha:peek', asked)
     }
   }, [])
+  const opened = trail[0] ?? null
+  useEffect(() => {
+    if (!opened || !pressed?.isConnected) return
+    const el = pressed
+    const f = requestAnimationFrame(() =>
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' }),
+    )
+    return () => cancelAnimationFrame(f)
+  }, [opened])
   return {
     href: trail.at(-1) ?? null,
     canBack: trail.length > 1,
@@ -98,8 +113,8 @@ export function Peek({
   cards: CardView[]
 }) {
   const [name, setName] = useState('')
-  const element = ELEMENT.test(href)
-  // an element reads at 480px; a whole screen wants half the window
+  // an element reads at 480px; a table, like a whole screen, wants half the window
+  const element = ELEMENT.test(href) && !href.startsWith('#/table/')
   const [width, setWidth] = useState<number | null>(null)
   const [bar, setBar] = useState<HTMLElement | null>(null)
   const shown = width ?? (element ? 480 : Math.round(window.innerWidth * 0.42))
@@ -174,7 +189,6 @@ function Screen({
         id={null}
         version={version}
         onName={onName}
-        agent={q.get('agent')}
       />
     )
   if (kind === 'people')

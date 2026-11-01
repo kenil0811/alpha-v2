@@ -4,11 +4,12 @@
 // options (drafts never), then the tasks that wait on the person and no card stands for. Rows share
 // one fixed grid with the task rows, the date at the same place on each. As a gallery, each card is
 // a tile. A click on a row or tile, off its buttons, opens it whole in the side panel.
-import type { TaskLineView } from '@alpha/core/api'
+import type { RunView, TaskLineView } from '@alpha/core/api'
 import { KeyRound } from 'lucide-react'
 import { Fragment, type ReactNode, useEffect, useState } from 'react'
+import { agoWords } from './AgentList.tsx'
 import { api } from './api.ts'
-import type { CardView, Stream } from './coming.ts'
+import type { CardView, Stream, WorkingModuleView } from './coming.ts'
 import { signalOf } from './Overview.tsx'
 import { peek } from './Peek.tsx'
 import { signInWith } from './SignInApps.tsx'
@@ -35,7 +36,7 @@ export const needsCount = (cards: CardView[], signIns = 0) =>
 
 // What a card is, in the words any business app uses.
 export function kindWords(c: CardView): string {
-  if (c.failed?.length) return 'Failed'
+  if (failedOf(c).length) return 'Failed'
   if (c.draft) return 'Draft'
   if (c.match) return 'Possible duplicate'
   if (c.review) return 'For you to decide'
@@ -48,7 +49,8 @@ export function kindWords(c: CardView): string {
 
 // The one thing to do: an answer given from here, or the card opened where it needs more.
 function primaryOf(c: CardView): { label: string; answer: string | null } {
-  if (c.failed?.length) return { label: c.options[0] ?? 'Try again', answer: c.options[0] ?? null }
+  if (failedOf(c).length)
+    return { label: c.options[0] ?? 'Try again', answer: c.options[0] ?? null }
   if (c.draft) return { label: 'Review draft', answer: null }
   if (c.match) return { label: 'Compare', answer: null }
   if (c.review) return { label: `Decide ${c.review.open}`, answer: null }
@@ -64,8 +66,11 @@ function primaryOf(c: CardView): { label: string; answer: string | null } {
 // aggregated request as text on the card"): the agents that did not finish by their reasons, a
 // proposal's tasks, a review's rows, a draft's message, else its detail or what it rests on.
 export function bodyOf(c: CardView): string {
-  const failed = c.failed ?? []
+  const failed = failedOf(c)
   if (failed.length === 1) return `${failed[0]?.name}: ${failed[0]?.words}`
+  // before P6 the reasons are on each agent's row, opened from the card
+  if (failed.length && failed.every((f) => !f.words))
+    return `Each did not finish its last runs: ${failed.map((f) => f.name).join(', ')}. Open it to see what happened to each and answer one at a time.`
   if (failed.length) {
     const by = new Map<string, string[]>()
     for (const f of failed) by.set(f.words, [...(by.get(f.words) ?? []), f.name])
@@ -91,19 +96,30 @@ export function bodyOf(c: CardView): string {
 }
 const aboutOf = (c: CardView) => bodyOf(c).split('\n')[0] ?? ''
 
+type Failed = NonNullable<CardView['failed']>[number]
+
+// The agents a card says did not finish: the core's own list (P6), else read from what the card
+// rests on ("Fusion's last 3 runs"), so each is its own row even before P6 (Vikas, 1 Nov).
+export function failedOf(c: CardView): Failed[] {
+  if (c.failed?.length) return c.failed
+  if (!/did not finish/.test(c.words)) return []
+  return c.restsOn.flatMap((r) => {
+    const m = /^(.+)'s last (\d+) runs$/.exec(r)
+    return m?.[1] ? [{ agent: '', name: m[1], words: '', times: Number(m[2]) }] : []
+  })
+}
+
+// What happened, agent by agent: one row each with its last failed run's words and when, the
+// agent's page on a click, and its own Try again and Leave it; the card's buttons answer for all.
 export function FailedCard({ card }: { card: CardView }) {
   const all = useAct()
-  const failed = card.failed ?? []
+  const failed = failedOf(card)
   return (
     <Card label="Failed" waits="Needs approval">
-      <div className="font-medium text-ink text-lg">{card.words}</div>
-      {failed.length > 1 && (
-        <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
-          {failed.map((f) => (
-            <FailedAgent key={f.agent} card={card.id} f={f} />
-          ))}
-        </ul>
-      )}
+      <div className="font-medium text-ink text-lg">
+        {failed.length > 1 ? `${failed.length} agents did not finish` : card.words}
+      </div>
+      {failed.length > 1 && <FailedRows card={card} />}
       <div className="flex flex-wrap items-center gap-2">
         {card.options.map((o, i) => (
           <Button
@@ -121,26 +137,87 @@ export function FailedCard({ card }: { card: CardView }) {
   )
 }
 
-function FailedAgent({ card, f }: { card: string; f: NonNullable<CardView['failed']>[number] }) {
+// The agents, five a page: on the card where it waits, and on the card opened whole.
+function FailedRows({ card }: { card: CardView }) {
+  const failed = useFilled(failedOf(card), !card.failed?.length)
+  return (
+    <Slides items={failed} label="Agents that did not finish">
+      {(page) => (
+        <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+          {page.map((f) => (
+            <FailedAgent key={f.name} card={card.id} f={f} own={!!card.failed?.length} />
+          ))}
+        </ul>
+      )}
+    </Slides>
+  )
+}
+
+// Before P6, each agent's id and what its last failed run said, from Agents and Activity.
+function useFilled(failed: Failed[], fill: boolean): (Failed & { at?: string })[] {
+  const [runs, setRuns] = useState<RunView[]>([])
+  const [ids, setIds] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    if (!fill) return
+    api.get<RunView[]>('/api/activity').then(setRuns, () => setRuns([]))
+    api.get<WorkingModuleView[]>('/api/working').then(
+      (ms) => setIds(new Map(ms.flatMap((m) => m.agents.map((a) => [a.name, a.id] as const)))),
+      () => undefined,
+    )
+  }, [fill])
+  if (!fill) return failed
+  return failed.map((f) => {
+    const last = runs.find((r) => r.kind === 'run' && r.name === f.name && r.state === 'failed')
+    return {
+      ...f,
+      agent: ids.get(f.name) ?? '',
+      words: last?.words ?? `Its last ${f.times} runs did not finish`,
+      ...(last ? { at: last.startedAt } : {}),
+    }
+  })
+}
+
+function FailedAgent({
+  card,
+  f,
+  own,
+}: {
+  card: string
+  f: Failed & { at?: string }
+  own: boolean
+}) {
   const { busy, problem, act } = useAct()
+  // the core's per-agent answer (P6); before it, Try again runs the agent once more
   const go = (again: boolean) =>
-    act(() => api.post(`/api/cards/${card}/agents/${f.agent}`, { again }))
+    act(() =>
+      own
+        ? api.post(`/api/cards/${card}/agents/${f.agent}`, { again })
+        : api.post(`/api/agents/${f.agent}/run`),
+    )
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
       <button
         type="button"
+        disabled={!f.agent}
         onClick={() => peek(`#/agent/${f.agent}`)}
         className="min-w-0 flex-1 basis-48 text-left"
       >
         <span className="block font-medium text-ink hover:underline">{f.name}</span>
-        <span className="block text-ink-3 text-sm">{f.words}</span>
+        <span className="block text-ink-3 text-sm">
+          {f.words}
+          {f.at ? ` · ${agoWords(f.at)}` : ''}
+        </span>
       </button>
-      <Button size="sm" disabled={busy} onClick={() => go(true)}>
-        Try again
-      </Button>
-      <Button size="sm" variant="ghost" disabled={busy} onClick={() => go(false)}>
-        Leave it
-      </Button>
+      {f.agent && (
+        <Button size="sm" disabled={busy} onClick={() => go(true)}>
+          Try again
+        </Button>
+      )}
+      {own && (
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => go(false)}>
+          Leave it
+        </Button>
+      )}
       <Refusal words={problem} />
     </li>
   )
@@ -165,7 +242,8 @@ function CardTile({
   const primary = primaryOf(card)
   const second = primary.answer ? card.options[1] : undefined
   const answer = (a: string) => act(() => api.post(`/api/cards/${card.id}`, { answer: a }))
-  const body = bodyOf(card)
+  const several = failedOf(card).length > 1
+  const body = several ? '' : bodyOf(card)
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: the title is the keyboard's way in, a button
     // biome-ignore lint/a11y/noStaticElementInteractions: as above
@@ -205,6 +283,7 @@ function CardTile({
           {body}
         </p>
       )}
+      {several && <FailedRows card={card} />}
       <div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-1">
         {pager && <span className="mr-auto">{pager}</span>}
         <Refusal words={problem} />
@@ -626,7 +705,7 @@ export function NeedsYou({
             <Heading name="Tasks" count={alone.length} />
           )}
           {alone.map((t) => (
-            <TaskLine key={t.id} t={t} cards={cards} onChange={onChange} />
+            <TaskLine key={t.id} t={t} cards={cards} />
           ))}
         </>
       )}

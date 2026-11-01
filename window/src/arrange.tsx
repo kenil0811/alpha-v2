@@ -9,7 +9,7 @@
 // 30 Oct: "just hovering on the corner of the card, a double-sided arrow can come"): its width, a
 // share of its row, and its height are kept with its key as "key@40x320" (40 per cent, 320px;
 // "key@40" before heights), so the core keeps rows of strings as before.
-import { GripVertical } from 'lucide-react'
+import { GripVertical, MoveDiagonal2 } from 'lucide-react'
 import { type DragEvent, type ReactNode, useRef, useState } from 'react'
 import { cn } from './ui/cn.ts'
 
@@ -359,8 +359,12 @@ export function Arranged({
                     const h = height ?? r?.height ?? 0
                     keep(all.map((c) => sized(c, key, { w: w + d[0], h: h + d[1] })))
                   }}
-                  className="absolute right-0 bottom-0 z-1 size-4 cursor-nwse-resize rounded-br-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-line"
-                />
+                  // drawn in the card's own corner, so the pointer knows where to hold (Vikas, 1 Nov)
+                  data-tip={`Drag to resize ${b.name}; a double-click gives it back`}
+                  className="absolute right-1 bottom-1 z-1 grid size-5 cursor-nwse-resize place-items-center rounded-sm text-ink-3 opacity-0 outline-none hover:bg-hover hover:text-ink focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent-line group-hover/block:opacity-100"
+                >
+                  <MoveDiagonal2 className="size-3.5" />
+                </div>
                 {side && line(side)}
               </div>
             )

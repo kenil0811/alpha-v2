@@ -119,8 +119,9 @@ export function ModuleScreen({
 
 // The switch in the bar: Overview, the pinned tables (main ones lowest on the spine first, then
 // any part or setup table pinned), a rule, then the pages; Conversation is in the rail, filtered
-// to the module there, never a tab of each module (Vikas, 27 Oct). A table not
-// pinned but open shows too, so the person sees where they are.
+// to the module there, never a tab of each module (Vikas, 27 Oct). Only a pinned table is a
+// tab: any other opens in the side panel, and its Open page is a page of its own (Vikas, 1 Nov).
+// The pills go to their page, never the panel (data-page).
 function ModuleSwitch({
   m,
   main,
@@ -139,7 +140,7 @@ function ModuleSwitch({
     ...m.tables.map((t) => t.id).filter((id) => !main.some((t) => t.id === id)),
   ]
   const shown = m.tables
-    .filter((t) => pins.includes(t.id) || (current.kind === 'table' && current.id === t.id))
+    .filter((t) => pins.includes(t.id))
     .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
   const overview: Tab = {
     key: 'overview',
@@ -170,20 +171,22 @@ function ModuleSwitch({
       ].filter((g) => g.length)
   return (
     <InBar>
-      <PillSwitch label={m.name}>
-        {groups.map((g, i) => (
-          <Fragment key={g[0]?.key ?? i}>
-            {i > 0 && <span className="mx-1.5 h-4 w-px shrink-0 bg-line" />}
-            {g.map((t) =>
-              shown.some((x) => x.id === t.key) ? (
-                <TablePill key={t.key} m={m} tab={t} onRenamed={onRenamed} />
-              ) : (
-                <SwitchPill key={t.key} tab={t} />
-              ),
-            )}
-          </Fragment>
-        ))}
-      </PillSwitch>
+      <div data-page className="contents">
+        <PillSwitch label={m.name}>
+          {groups.map((g, i) => (
+            <Fragment key={g[0]?.key ?? i}>
+              {i > 0 && <span className="mx-1.5 h-4 w-px shrink-0 bg-line" />}
+              {g.map((t) =>
+                shown.some((x) => x.id === t.key) ? (
+                  <TablePill key={t.key} m={m} tab={t} onRenamed={onRenamed} />
+                ) : (
+                  <SwitchPill key={t.key} tab={t} />
+                ),
+              )}
+            </Fragment>
+          ))}
+        </PillSwitch>
+      </div>
     </InBar>
   )
 }

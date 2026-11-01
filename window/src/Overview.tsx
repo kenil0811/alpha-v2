@@ -57,6 +57,7 @@ import { Slides } from './ui/slides.tsx'
 import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
 import { NEEDS_YOU } from './vocabulary.ts'
+import { failedOf } from './Waiting.tsx'
 
 type Field = TableData['fields'][number]
 
@@ -132,7 +133,7 @@ export const isQuestion = (c: CardView) =>
   !c.review &&
   !c.match &&
   !c.filing &&
-  !c.failed?.length
+  !failedOf(c).length
 
 // --- What the module's tables say: read from their shape, never named --------------------
 
@@ -882,7 +883,7 @@ function StripTile({
           if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : onOpen(true)
         }}
         className={cn(
-          'flex aspect-square w-40 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
+          'flex w-40 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
           on && 'border-accent-line shadow-pop',
         )}
       >

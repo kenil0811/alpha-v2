@@ -250,7 +250,7 @@ export function Rail({
       </div>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
       <div
-        className="mt-3 min-h-0 flex-1 overflow-y-auto"
+        className="min-h-0 flex-1 overflow-y-auto"
         onContextMenu={(e) => {
           if (e.target === e.currentTarget && modules.some((m) => hiding.hidden.includes(m.id)))
             empty.on.onContextMenu(e)

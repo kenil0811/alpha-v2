@@ -57,7 +57,7 @@ import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 import { SideHeading, SideList } from './ui/side-list.tsx'
 import { Words } from './ui/words.tsx'
 import { answerWords } from './vocabulary.ts'
-import { FailedCard } from './Waiting.tsx'
+import { FailedCard, failedOf } from './Waiting.tsx'
 
 export interface Live {
   [turn: string]: { text: string; doing: string | null }
@@ -922,7 +922,7 @@ export function CardBox({
   const [typed, setTyped] = useState('')
   const [opened, setOpened] = useState(false)
   // agents that did not finish: each with its reason and its own Try again and Leave it
-  if (card.failed?.length) return <FailedCard card={card} />
+  if (failedOf(card).length) return <FailedCard card={card} />
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />

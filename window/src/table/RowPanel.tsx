@@ -224,9 +224,7 @@ export function RowBody({
               ? ` · ${tasks.lines.filter((t) => t.state !== 'done' && t.state !== 'dropped').length} open`
               : ''}
           </div>
-          {tasks && tasks.lines.length > 0 && (
-            <TaskList lines={tasks.lines} onChange={() => void loadTasks()} />
-          )}
+          {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} />}
           <NewTask
             on={{ row: row.id }}
             placeholder="Add a task on this row"

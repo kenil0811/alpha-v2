@@ -3,11 +3,12 @@
 // filter. Each row: how often it runs (changed here, written into its file), when it last ran,
 // its next run, its last result, its cost this week from Usage, and Running or Paused. One that is
 // blocked says why in red, with the one action that unblocks it. New agent opens New module's
-// page for an agent.
+// page for an agent. Agent approvals sit above the list, one at a time: they are the agents' asks,
+// not tasks (Vikas, 1 Nov).
 
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import type { AgentView, WorkingModuleView } from './coming.ts'
+import type { AgentView, Stream, WorkingModuleView } from './coming.ts'
 import { when } from './ModulesAndAgents.tsx'
 import { peek } from './Peek.tsx'
 import { dayWords } from './time.ts'
@@ -16,7 +17,10 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Cut } from './ui/cut.tsx'
 import { Select } from './ui/field.tsx'
+import { Section } from './ui/section.tsx'
 import { Switch } from './ui/switch.tsx'
+import { NEEDS_YOU } from './vocabulary.ts'
+import { NeedsYou } from './Waiting.tsx'
 
 // "25 Oct", the year only when it isn't this one (W5)
 export const shortDay = (at: string) => {
@@ -179,7 +183,9 @@ export function AgentList({ version }: { version: number }) {
   const [fn, setFn] = useState<string | null>(null)
   const [module, setModule] = useState('')
   const [on, setOn] = useState<On>('all')
+  const [asks, setAsks] = useState<Stream | null>(null)
   const load = useCallback(() => {
+    api.get<Stream>('/api/stream?limit=1').then(setAsks, () => setAsks(null))
     api.get<WorkingModuleView[]>('/api/working').then(setWorking, () => setWorking([]))
     // the same sum as Settings › Usage, for the last 7 days
     api.get<Record<string, number>>('/api/usage/agents').then(
@@ -221,8 +227,14 @@ export function AgentList({ version }: { version: number }) {
     'Cost this week',
     'Running',
   ]
+  const waiting = (asks?.cards.length ?? 0) + (asks?.attention.length ?? 0)
   return (
     <div className="flex flex-col gap-3">
+      {asks && waiting > 0 && (
+        <Section title={NEEDS_YOU} small>
+          <NeedsYou cards={asks.cards} signIns={asks.attention} onChange={load} />
+        </Section>
+      )}
       <div className="flex flex-wrap items-center gap-1.5">
         <Button variant="primary" size="sm" onClick={() => (window.location.hash = '#/agent/new')}>
           New agent

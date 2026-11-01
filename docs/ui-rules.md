@@ -144,3 +144,18 @@ held by review. Dates are 2026.
 - A card shows only the rows it holds, then a dot per page with ‹ 2 of 10 › beside them
   (`ui/slides.tsx`); never a cut-off list, a "more" link or a scroll inside the card. Agent
   approvals is one card a page (Vikas, 1 Nov).
+- A page's bar: search runs up to Filter, then the page's one action (two at the most), then ⋮;
+  never a row of buttons. A page's own lists (Tasks' Today, This week…) are Quick filters inside
+  Filter, not a row of their own. Add field is first in ⋮ and the same in every view: a field is
+  the data, not the layout (Vikas, 1 Nov).
+- A table link opens the table in the side panel; only a pinned table is a module tab, and its
+  Open page is a page of its own (Vikas, 1 Nov).
+- A to-do row shows its state and never changes it; the state changes on the task's page. Review
+  stays where a card waits for the person (Vikas, 1 Nov).
+- Agent approvals are the agents' asks, not tasks: on Home and the Agents page, never a Tasks list.
+  A card for several agents that did not finish lists each with what happened and its own Try
+  again (Vikas, 1 Nov).
+- What was clicked stays in sight to the left of the side panel when it opens (Vikas, 1 Nov).
+- The rail's rows are evenly spaced, the modules too: no gap between Tasks and the first module
+  (Vikas, 1 Nov).
+- A card's resize grip is drawn in its own bottom-right corner on hover (Vikas, 1 Nov).
