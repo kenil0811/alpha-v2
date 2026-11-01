@@ -100,7 +100,10 @@ describe('the window', () => {
     expect(html).toContain('>2<')
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
-    expect(html).toContain('href="#/intelligence"')
+    expect(html).toContain('href="#/intelligence/brain"') // the Second Brain beside Settings
+    expect(html).toContain('>Agents<')
+    expect(html.indexOf('>Home<')).toBeLessThan(html.indexOf('>Agents<'))
+    expect(html.indexOf('>Agents<')).toBeLessThan(html.indexOf('>Tasks<'))
     expect(html).not.toContain('Alpha is running')
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
   })

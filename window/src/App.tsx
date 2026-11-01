@@ -12,11 +12,11 @@ import type {
 } from '@alpha/core/api'
 import {
   Activity as ActivityIcon,
+  Bot,
   Briefcase,
   FileText,
   House,
   ListChecks,
-  MessageSquare,
   SlidersHorizontal,
   Sparkles,
   Users,
@@ -371,7 +371,7 @@ export function App() {
                   : [at('People')],
             }
           : place.at === 'conversation'
-            ? { icon: <MessageSquare className={icon} />, parts: [at('Conversation')] }
+            ? { icon: <Bot className={icon} />, parts: [at('Agents')] }
             : place.at === 'settings'
               ? { icon: <SlidersHorizontal className={icon} />, parts: [at('Settings')] }
               : place.at === 'intelligence'
