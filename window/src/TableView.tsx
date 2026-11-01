@@ -510,7 +510,6 @@ export function TableView({
             fields={shown}
             group={fields.find((f) => f.id === config.group)}
             names={data.names}
-            onOpen={openRowPanel}
           />
         ) : config.kind === 'gallery' ? (
           <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />

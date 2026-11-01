@@ -44,7 +44,10 @@ export function RowBody({
   names,
   onField,
   onEdit,
+  side = false,
 }: {
+  // only what is around the row (links, files, tasks): a row's own page lays out the rest itself
+  side?: boolean
   tableId: string
   kinds: string[] | null // the kinds of document the table's rows take
   row: RowView
@@ -113,8 +116,10 @@ export function RowBody({
         onDragLeave={() => setDragging(false)}
         onDrop={drop}
       >
-        <FieldList fields={fields} row={row} names={names} onField={onField} onEdit={onEdit} />
-        {notes && (
+        {!side && (
+          <FieldList fields={fields} row={row} names={names} onField={onField} onEdit={onEdit} />
+        )}
+        {notes && !side && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="font-semibold text-ink-3 text-sm">{notes.name}</div>
             <Notes
@@ -125,7 +130,7 @@ export function RowBody({
             />
           </div>
         )}
-        {around?.parts.map((p) => (
+        {(side ? [] : (around?.parts ?? [])).map((p) => (
           <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="flex items-center justify-between">
               <div className="font-semibold text-ink-3 text-sm">
