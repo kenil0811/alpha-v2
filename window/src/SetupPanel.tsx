@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Confirm } from './ui/dialog.tsx'
 import { Slides } from './ui/slides.tsx'
 import { Switch } from './ui/switch.tsx'
 
@@ -40,6 +41,8 @@ export function useSetup(): [SetupView | null, () => void] {
 
 export function SetupList({ view, onChange }: { view: SetupView; onChange: () => void }) {
   const prepare = () => api.post('/api/setup/prepare').then(onChange, onChange)
+  // a download of gigabytes is said first, never one click by mistake (Vikas, 1 Nov)
+  const [asking, setAsking] = useState(false)
   const items: {
     done: boolean
     busy?: boolean
@@ -143,9 +146,24 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         </div>
       )}
       {view.readers.problem && <p className="text-bad text-sm">{view.readers.problem}</p>}
+      <Confirm
+        open={asking}
+        title="Download what reading needs?"
+        yes="Download"
+        onClose={() => setAsking(false)}
+        onYes={() => {
+          setAsking(false)
+          prepare()
+        }}
+      >
+        <p className="text-md text-ink-2">
+          The reading browser (about 200 MB) and the document reader (about 2 GB), onto this Mac. It
+          runs in the background; the bell's Activity shows it until it is done.
+        </p>
+      </Confirm>
       {waiting && (
         <div>
-          <Button size="sm" onClick={prepare}>
+          <Button size="sm" onClick={() => setAsking(true)}>
             Download what reading needs
           </Button>
         </div>

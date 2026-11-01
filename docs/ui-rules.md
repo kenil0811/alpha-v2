@@ -177,3 +177,7 @@ held by review. Dates are 2026.
   buttons (Vikas, 1 Nov).
 - Two pagers that could meet say what they count: "Approval 2 of 4" in the card's button row,
   "Agents 4–6 of 16" under its list (Vikas, 1 Nov).
+- The bell opens Activity as a dropdown: what is downloading for this Mac, then the latest runs,
+  each opening in the side panel; only its Open page goes to the page (Vikas, 1 Nov).
+- A download of gigabytes asks first and says its size; while it runs, the bell's dropdown shows
+  it (Vikas, 1 Nov).
