@@ -7,6 +7,7 @@ import { Preview } from './Conversation.tsx'
 import { childrenOf, tops } from './tree.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
+import { Bubbles, Chart, Lines } from './ui/chart.tsx'
 import { Cut } from './ui/cut.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
 import { EntryList } from './ui/entry-list.tsx'
@@ -20,6 +21,8 @@ import { Segmented } from './ui/segmented.tsx'
 import { SideItem, SideList } from './ui/side-list.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 import { Switch } from './ui/switch.tsx'
+
+const SAMPLE_DAY = Date.parse('2026-10-20T10:00:00')
 
 export function Parts() {
   const [view, setView] = useState<'table' | 'board'>('table')
@@ -177,6 +180,54 @@ export function Parts() {
                 actions={<Switch checked={on} onChange={setOn} label="An agent" />}
               />
             </List>
+          </Section>
+          <Section
+            title="Charts"
+            about="Drag an axis or the corner to stretch; a double click fits it back."
+          >
+            <div className="flex flex-col gap-6">
+              <Chart
+                kind="bar"
+                marks={[
+                  { label: 'Listed', n: 12, href: '#/parts' },
+                  { label: 'Under LOI', n: 5, href: '#/parts' },
+                  { label: 'Closed', n: 2, href: '#/parts' },
+                ]}
+              />
+              <Bubbles
+                lanes={['Listed', 'Under LOI']}
+                size="Asking price"
+                tones={[
+                  { label: 'On time', tone: 'good' },
+                  { label: 'Late', tone: 'bad' },
+                ]}
+                points={[
+                  { at: SAMPLE_DAY, lane: 'Listed', size: 3, tone: 'good', label: 'Harbor Bakery' },
+                  { at: SAMPLE_DAY, lane: 'Listed', size: 2, tone: 'good', label: 'Pine Dental' },
+                  {
+                    at: SAMPLE_DAY + 4 * 864e5,
+                    lane: 'Under LOI',
+                    size: 5,
+                    tone: 'bad',
+                    label: 'Ridge HVAC',
+                  },
+                  {
+                    at: SAMPLE_DAY + 9 * 864e5,
+                    lane: 'Listed',
+                    size: 1,
+                    tone: 'good',
+                    label: 'Oak Print',
+                  },
+                ]}
+              />
+              <Lines
+                periods={[{ label: 'Aug' }, { label: 'Sep' }, { label: 'Oct' }]}
+                series={[
+                  { label: 'Listed', n: [4, 7, 12] },
+                  { label: 'Closed', n: [1, 1, 2] },
+                ]}
+              />
+            </div>
           </Section>
           <Section title="A card">
             <Card label="Leaves your world" waits="Needs approval">
