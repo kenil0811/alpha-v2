@@ -22,7 +22,7 @@ fi
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS"
 cp "$here/Info.plist" "$app/Contents/Info.plist"
-xcrun swiftc -O -target arm64-apple-macos14 -o "$app/Contents/MacOS/alpha-helper" "$here/AlphaHelper.swift"
+xcrun swiftc -O -target arm64-apple-macos14 -lsqlite3 -o "$app/Contents/MacOS/alpha-helper" "$here/AlphaHelper.swift"
 codesign -s "$sign" -f --identifier io.github.kenil0811.alpha.helper "$app" >/dev/null 2>&1
 echo "$sum" > "$stamp"
 if [ "$sign" = "-" ]; then

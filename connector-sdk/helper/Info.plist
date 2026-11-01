@@ -13,5 +13,8 @@
   <key>LSUIElement</key><true/>
   <key>NSCalendarsFullAccessUsageDescription</key><string>Alpha reads your calendar so it knows your meetings and who was in them.</string>
   <key>NSContactsUsageDescription</key><string>Alpha reads your contacts so it knows the people you deal with.</string>
+  <key>NSDocumentsFolderUsageDescription</key><string>Alpha reads the names and dates of the files in Documents, never what is in them.</string>
+  <key>NSDesktopFolderUsageDescription</key><string>Alpha reads the names and dates of the files on your Desktop, never what is in them.</string>
+  <key>NSDownloadsFolderUsageDescription</key><string>Alpha reads the names and dates of the files in Downloads, never what is in them.</string>
 </dict>
 </plist>
