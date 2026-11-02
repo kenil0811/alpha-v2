@@ -133,6 +133,7 @@ held by review. Dates are 2026.
 | L13 | A row's and a task's title on its page is renamed by a double-click, as a table's and a module's name are | 2 Nov | — |
 | L14 | A task, a run, a person, a row, an agent, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel opens a step further in it, with the panel's own Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov | test (opened) |
 | L15 | Marking dims the window a little, the outline glides between what can be marked, and its line wears the accent | 2 Nov | — |
+| L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
 
 ## Proposed, waiting on Kenil or the core
 

@@ -76,6 +76,9 @@
   --opt-7-soft: #f8e4e2;
   --opt-8: #66553f;
   --opt-8-soft: #eee9e2;
+  /* the side panel's firmer edge and the soft shadow it casts on the page (Batch E, 66.15) */
+  --edge: #c7ced6;
+  --elev-side: -10px 0 24px -12px rgb(22 32 43 / 0.3);
 
   /* states only: done or fits, waits on you or unsure, failed */
   --good: #3b7550;
@@ -147,6 +150,8 @@
     --opt-7-soft: #3a201e;
     --opt-8: #cbb89c;
     --opt-8-soft: #2e2820;
+    --edge: #3b4550;
+    --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
     --good: #8cc29c;
     --good-soft: #182a1f;
     --warn: #dfb27a;
@@ -197,6 +202,8 @@
   --opt-7-soft: #3a201e;
   --opt-8: #cbb89c;
   --opt-8-soft: #2e2820;
+  --edge: #3b4550;
+  --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
   --good: #8cc29c;
   --good-soft: #182a1f;
   --warn: #dfb27a;
@@ -255,6 +262,7 @@
   --color-opt-7-soft: var(--opt-7-soft);
   --color-opt-8: var(--opt-8);
   --color-opt-8-soft: var(--opt-8-soft);
+  --color-edge: var(--edge);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
   --color-warn: var(--warn);
