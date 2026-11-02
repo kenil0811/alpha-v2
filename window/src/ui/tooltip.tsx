@@ -4,8 +4,12 @@
 // draws its own. Mounted once; it sits above everything, against the window, so nothing clips it.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { floatRoot } from './popover.tsx'
 
 const WAIT = 150
+
+// An element's tip shown now: a double-click on what can't change says why (Batch D, 66.14).
+export const tipNow = (el: Element) => el.dispatchEvent(new Event('alpha:tip', { bubbles: true }))
 
 export function Tooltips() {
   const [on, setOn] = useState<HTMLElement | null>(null)
@@ -42,6 +46,8 @@ export function Tooltips() {
       if (el && (e.target as Element).matches(':focus-visible')) show(el, 0)
     }
     const key = (e: KeyboardEvent) => e.key === 'Escape' && hide()
+    const now = (e: Event) => show(tipped(e.target), 0)
+    document.addEventListener('alpha:tip', now)
     document.addEventListener('pointerover', over)
     document.addEventListener('pointerout', out)
     document.addEventListener('pointerdown', hide, true)
@@ -51,6 +57,7 @@ export function Tooltips() {
     document.addEventListener('scroll', hide, true)
     return () => {
       clearTimeout(timer)
+      document.removeEventListener('alpha:tip', now)
       document.removeEventListener('pointerover', over)
       document.removeEventListener('pointerout', out)
       document.removeEventListener('pointerdown', hide, true)
@@ -84,6 +91,6 @@ export function Tooltips() {
     >
       {text}
     </div>,
-    document.body,
+    floatRoot(on),
   )
 }

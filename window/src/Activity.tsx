@@ -12,11 +12,11 @@ import { RUN_STATE } from './runState.ts'
 import { usdWords } from './Usage.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Cut, Cuts } from './ui/cut.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
-import { Segmented } from './ui/segmented.tsx'
 
 // a run's time in the mono column: 24-hour, so it never wraps
 const time = (at: string) =>
@@ -86,15 +86,19 @@ export function Activity({ version }: { version: number }) {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl text-ink">Activity</h1>
           <span className="flex-1" />
-          <Segmented
-            label="Show"
-            value={only}
-            onChange={setOnly}
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'failed', label: RUN_STATE.failed[0] },
-            ]}
-          />
+          {/* cuts of one list, each with its count (Batch D, 66.16) */}
+          <Cuts label="Show">
+            <Cut on={only === 'all'} count={runs?.length} onClick={() => setOnly('all')}>
+              All
+            </Cut>
+            <Cut
+              on={only === 'failed'}
+              count={runs?.filter((r) => r.state === 'failed').length}
+              onClick={() => setOnly('failed')}
+            >
+              {RUN_STATE.failed[0]}
+            </Cut>
+          </Cuts>
         </div>
         {runs && shown.length === 0 && (
           <p className="mt-4 text-ink-2 text-md">

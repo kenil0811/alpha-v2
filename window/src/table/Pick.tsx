@@ -6,7 +6,7 @@ import type { FieldView, Pick } from '@alpha/core/api'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
 import { cn } from '../ui/cn.ts'
-import { SearchLine } from '../ui/field.tsx'
+import { SEARCH_PAST, SearchLine } from '../ui/field.tsx'
 import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
 
 // how many lines a picker draws at once; typing finds the rest
@@ -84,7 +84,7 @@ export function PickCell({
       <Popover anchor={anchor} open onClose={() => void finish(field.many ? held : null)}>
         {/* biome-ignore lint/a11y/noStaticElementInteractions: Escape inside the list leaves the value as it was */}
         <div className="flex max-h-80 min-w-56 flex-col p-1" onKeyDown={keys}>
-          {(picks?.length ?? 0) > 5 && <SearchLine words={words} onWords={setWords} />}
+          {(picks?.length ?? 0) > SEARCH_PAST && <SearchLine words={words} onWords={setWords} />}
           {picks === null && <p className="px-2.5 py-1.5 text-ink-3 text-md">Loading…</p>}
           {picks && shown.length === 0 && (
             <p className="px-2.5 py-1.5 text-ink-3 text-md">

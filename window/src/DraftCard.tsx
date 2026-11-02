@@ -6,7 +6,7 @@ import { TriangleAlert } from 'lucide-react'
 import { useContext, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
-import { Card, CardPlace } from './ui/card.tsx'
+import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 
@@ -106,14 +106,14 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
             This one goes now, and the next ones without a card, each shown on Home. Revoke it any
             time in Settings › Permissions.
           </div>
-          <div className="flex gap-2">
+          <Actions>
             <Button variant="primary" disabled={busy} onClick={() => act('send', { always: true })}>
               Send it, and always
             </Button>
             <Button variant="ghost" onClick={() => setAlways(false)}>
               Back
             </Button>
-          </div>
+          </Actions>
         </div>
       ) : holding ? (
         <form
@@ -151,7 +151,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
           </div>
         </form>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <Actions>
           <Button variant="primary" disabled={busy} onClick={() => act('send', { message })}>
             {changed ? 'Send it as changed' : 'Send it'}
           </Button>
@@ -163,7 +163,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
               Always…
             </Button>
           )}
-        </div>
+        </Actions>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}
     </Card>

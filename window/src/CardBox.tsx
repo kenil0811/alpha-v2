@@ -12,7 +12,7 @@ import { MatchCard } from './MatchCard.tsx'
 import { ProposedCard } from './ProposedCard.tsx'
 import { ReviewCard } from './ReviewCard.tsx'
 import { Button } from './ui/button.tsx'
-import { Card, CardPlace } from './ui/card.tsx'
+import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Answer, Question } from './ui/question.tsx'
 import { answerWords } from './vocabulary.ts'
@@ -157,7 +157,7 @@ function CardBody({
       {card.detail && <Preview detail={card.detail} />}
       {restsOn}
       {cannotUndo}
-      <div className="flex flex-wrap gap-2">
+      <Actions>
         {card.options.map((o, i) => (
           <Button
             key={o}
@@ -174,7 +174,7 @@ function CardBody({
           </Button>
         )}
         {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}
-      </div>
+      </Actions>
       {opened && (
         <div className="text-ink-2 text-sm">
           {card.site} is open in Google Chrome on your Mac. Sign in there, then quit that Chrome

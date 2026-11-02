@@ -46,3 +46,9 @@ export function Card({
     </div>
   )
 }
+
+// A card's row of buttons at its right, the main act (written first) at the right edge (Batch D,
+// 66.2, Kenil's yes 2 Nov): every card's buttons sit the same way.
+export function Actions({ children }: { children: ReactNode }) {
+  return <div className="flex flex-row-reverse flex-wrap items-center gap-2">{children}</div>
+}

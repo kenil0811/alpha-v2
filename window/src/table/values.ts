@@ -70,6 +70,12 @@ export const canPick = (f: FieldView) =>
   (f.kind === 'relation' && !!f.relatesTo && !f.summary) || f.kind === 'person'
 // What a double-click changes in the grid and in an opened row (T4).
 export const canEdit = (f: FieldView) => canType(f) || canPick(f)
+// Why a value can't be changed where it is, said at once on a double-click (Batch D, 66.14).
+export function whyFixed(f: FieldView, kept: boolean): string {
+  if (kept) return 'Kept on its own page: open the row to change it.'
+  if (f.summary) return `Worked out: ${f.summary}. It changes when those rows do.`
+  return 'Alpha keeps this from where it came from; it is not typed here.'
+}
 // A choice holding several (tags, core step 3c): a list, shown as chips.
 export const isTags = (f: FieldView) => f.kind === 'choice' && f.many
 

@@ -165,7 +165,7 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
 
   it('T11: no bare <select> but the cell editor', () => {
     // the cell editor, out of Grid.tsx since Batch B, keeps the native one
-    expect(lines(/<select\b/, (f) => !f.endsWith(join('table', 'EditCell.tsx')))).toEqual([])
+    expect(lines(/<select\b/)).toEqual([])
   })
 
   it('W4: labels are in sentence case', () => {

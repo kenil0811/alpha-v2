@@ -5,27 +5,36 @@ import { useState } from 'react'
 import { Preview } from './CardBox.tsx'
 import { RUN_STATE } from './runState.ts'
 import { Button, IconButton } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Actions, Card } from './ui/card.tsx'
+import { Cut, Cuts } from './ui/cut.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Kbd, Label, Pill, Topic } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { SideItem, SideList } from './ui/side-list.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 import { Switch } from './ui/switch.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 
 export function Parts() {
   const [view, setView] = useState<'table' | 'board'>('table')
   const [on, setOn] = useState(true)
+  const [cut, setCut] = useState<'all' | 'failed'>('all')
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-8 px-8 py-7">
           <h1 className="text-2xl text-ink">Parts</h1>
-          <Section title="Buttons" about="Plain, primary, ghost, warn; two sizes; an icon button.">
+          <Section
+            title="Buttons"
+            about="Plain, primary, soft, ghost, warn; two sizes; an icon button. Each tints under the pointer."
+          >
             <div className="flex flex-wrap items-center gap-2">
               <Button>Read now</Button>
               <Button variant="primary">Send it</Button>
+              <Button variant="soft">Open page</Button>
               <Button variant="ghost">Decline</Button>
               <Button variant="warn">Disconnect</Button>
               <Button size="sm">Small</Button>
@@ -104,12 +113,74 @@ export function Parts() {
               <div className="text-ink-3 text-sm">
                 Rests on your message: “ask the broker for the CIM”
               </div>
-              <div className="flex gap-2">
+              <Actions>
                 <Button variant="primary">Send it</Button>
                 <Button>Decline</Button>
                 <Button variant="ghost">Change something</Button>
-              </div>
+              </Actions>
             </Card>
+          </Section>
+          {/* the parts Batch D brought (66.27) */}
+          <Section title="Cuts" about="Cuts of one list, each with its count, one picked.">
+            <Cuts label="Show">
+              <Cut on={cut === 'all'} count={42} onClick={() => setCut('all')}>
+                All
+              </Cut>
+              <Cut on={cut === 'failed'} count={3} onClick={() => setCut('failed')}>
+                {RUN_STATE.failed[0]}
+              </Cut>
+            </Cuts>
+          </Section>
+          <Section
+            title="A drop zone"
+            about="Drop files on it or click to choose; what is there sits inside."
+          >
+            <DropZone onFiles={() => undefined} />
+          </Section>
+          <Section
+            title="A side list"
+            about="A list on the left, the chosen one's page on the right."
+          >
+            <div className="grid grid-cols-[170px_1fr] gap-7">
+              <SideList label="Sections">
+                <SideItem on onClick={() => undefined}>
+                  Model
+                </SideItem>
+                <SideItem on={false} onClick={() => undefined}>
+                  Modules
+                </SideItem>
+              </SideList>
+              <p className="text-ink-2 text-md">The chosen one's page.</p>
+            </div>
+          </Section>
+          <Section
+            title="Read now, Run now"
+            about="When it last happened just before the button; the full time on hover."
+          >
+            <UpdateNow
+              label="Read now"
+              at={new Date(Date.now() - 12 * 60_000).toISOString()}
+              busy={false}
+              onClick={() => undefined}
+            />
+          </Section>
+          <Section
+            title="Where a link goes"
+            about="Rest the pointer on a link: a line at the window's foot names where it goes."
+          >
+            <div className="flex gap-4 text-md">
+              <a className="text-accent underline underline-offset-3" href="#/settings/usage">
+                Usage
+              </a>
+              <a
+                className="text-accent underline underline-offset-3"
+                href="https://example.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                An outside page
+              </a>
+            </div>
           </Section>
         </div>
       </div>

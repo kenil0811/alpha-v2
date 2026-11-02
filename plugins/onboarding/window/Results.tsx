@@ -2,6 +2,7 @@
 // change or drop; questions to answer, each answer their own line; routines and suggestions to add
 // or decline, a declined one never offered again; then everything that was sent, and Forget.
 import {
+  Actions,
   Button,
   Card,
   Field,
@@ -102,7 +103,7 @@ export function Results({
               <div className="font-medium text-ink text-lg">{r.what}</div>
               <div className="text-ink-2 text-md">{r.evidence}</div>
               <div className="text-ink text-md">{r.how}</div>
-              <div className="flex flex-wrap gap-2">
+              <Actions>
                 <Button
                   variant="primary"
                   disabled={act.busy}
@@ -121,7 +122,7 @@ export function Results({
                 >
                   Decline
                 </Button>
-              </div>
+              </Actions>
             </Card>
           ))}
         </Section>
@@ -136,7 +137,7 @@ export function Results({
             <Card key={s.words} label={KIND[s.kind] ?? 'A suggestion'}>
               <div className="font-medium text-ink text-lg">{s.words}</div>
               <div className="text-ink-2 text-md">{s.why}</div>
-              <div className="flex flex-wrap gap-2">
+              <Actions>
                 <Button
                   variant="primary"
                   disabled={act.busy}
@@ -157,7 +158,7 @@ export function Results({
                 >
                   Decline
                 </Button>
-              </div>
+              </Actions>
             </Card>
           ))}
         </Section>

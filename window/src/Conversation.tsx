@@ -41,6 +41,7 @@ import { type Answered, group, type Item, type Module, moduleOfItem, type Step }
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { dropped } from './ui/drop-zone.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
@@ -122,7 +123,7 @@ export function Conversation({
   const drop = async (e: DragEvent) => {
     e.preventDefault()
     setDragging(false)
-    for (const f of Array.from(e.dataTransfer.files)) {
+    for (const f of dropped(e)) {
       try {
         await api.upload(f)
       } catch (err) {

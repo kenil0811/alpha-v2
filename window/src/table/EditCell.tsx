@@ -1,10 +1,13 @@
-// A value changed in place, in the grid and in an opened row (T4): typed, a choice, tags from a
-// tick list (T15), or a related row or a person picked (Batch B, 14b; Pick.tsx). Out of Grid.tsx
-// so that screen only shrinks (the window file wall).
+// A value changed in place, in the grid and in an opened row (T4): typed, a choice from Alpha's own
+// dropdown (Batch D, 66.5), tags from a tick list (T15), or a related row or a person picked (Batch
+// B, 14b; Pick.tsx). Out of Grid.tsx so that screen only shrinks (the window file wall).
 import type { FieldView } from '@alpha/core/api'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { askForNew } from '../ask.ts'
 import { cn } from '../ui/cn.ts'
+import { Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
+import { useTableName } from './context.ts'
 import { PickCell } from './Pick.tsx'
 import { TagChips, TagPicker } from './Tags.tsx'
 import { canPick, isTags, NUMERIC, readValue, typedOf } from './values.ts'
@@ -23,8 +26,9 @@ export function EditCell({
   const [typed, setTyped] = useState(start)
   const [problem, setProblem] = useState<string | null>(null)
   const done = useRef(false)
-  const input = useRef<HTMLInputElement & HTMLSelectElement>(null)
+  const input = useRef<HTMLInputElement>(null)
   const anchor = useRef<HTMLSpanElement>(null)
+  const table = useTableName()
   useEffect(() => {
     input.current?.focus()
     if (input.current && 'select' in input.current) input.current.select?.()
@@ -71,23 +75,40 @@ export function EditCell({
         </Popover>
       </>
     )
-  return field.kind === 'choice' ? (
-    <select
-      ref={input}
-      value={typed}
-      aria-label={field.name}
-      title={problem ?? undefined}
-      onChange={(e) => setTyped(e.target.value)}
-      onBlur={() => void save()}
-      onKeyDown={key}
-      className={box}
-    >
-      <option value="" />
-      {field.choices.map((c) => (
-        <option key={c}>{c}</option>
-      ))}
-    </select>
-  ) : (
+  // a choice: the shared dropdown, open at once, saved on a pick; Escape or a click away leaves it
+  if (field.kind === 'choice')
+    return (
+      <Select
+        startOpen
+        value={typed}
+        aria-label={field.name}
+        title={problem ?? undefined}
+        className={cn(box, 'rounded-none border-0')}
+        onChange={(e) => {
+          const read = readValue(field, e.target.value, value)
+          if ('problem' in read) return setProblem(read.problem)
+          done.current = true
+          void onDone(read.value).then((ok) => {
+            if (!ok) done.current = false
+          })
+        }}
+        onDismiss={() => {
+          done.current = true
+          void onDone(undefined)
+        }}
+        adds={
+          table
+            ? { what: 'choice', send: (w) => askForNew('choice', `${field.name} in ${table}`, w) }
+            : undefined
+        }
+      >
+        <option value="" />
+        {field.choices.map((c) => (
+          <option key={c}>{c}</option>
+        ))}
+      </Select>
+    )
+  return (
     <input
       ref={input}
       value={typed}

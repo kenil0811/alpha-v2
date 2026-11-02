@@ -35,6 +35,7 @@ import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Pill } from '../ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
+import { tipNow } from '../ui/tooltip.tsx'
 import { CellHistory } from './CellHistory.tsx'
 import { ColumnMenu } from './ColumnMenu.tsx'
 import { EditCell } from './EditCell.tsx'
@@ -68,6 +69,7 @@ import {
   readValue,
   show,
   TINT,
+  whyFixed,
 } from './values.ts'
 
 type Item = { kind: 'group'; group: Group } | { kind: 'row'; row: RowView }
@@ -454,6 +456,7 @@ export function Grid({
                           // a row kept on its own page opens there from its name
                           onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
                           onEdit={!readOnly && canEdit(f) ? () => startEditing(here) : undefined}
+                          fixed={!readOnly && canEdit(f) ? undefined : whyFixed(f, readOnly)}
                           onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
@@ -779,6 +782,7 @@ function Cell({
   inRange,
   onPick,
   onEdit,
+  fixed,
   onOpen,
 }: {
   field: FieldView
@@ -792,6 +796,7 @@ function Cell({
   inRange: boolean // under the picked cell, in its ⇧↓ range
   onPick: () => void
   onEdit: (() => void) | undefined
+  fixed: string | undefined // why it can't be changed here
   onOpen: (() => void) | undefined
 }) {
   const value = r.values[f.slug]
@@ -816,9 +821,9 @@ function Cell({
           if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
           else onPick()
         }}
-        onDoubleClick={onEdit}
+        onDoubleClick={(e) => (onEdit ? onEdit() : tipNow(e.currentTarget))}
         onKeyDown={key}
-        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : undefined}
+        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : fixed}
         className={cn(
           'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',

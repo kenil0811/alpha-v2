@@ -3,6 +3,7 @@
 // was found here before the next. The Full Disk Access card opens System Settings with Alpha in
 // Finder beside it and moves on by itself once Alpha can read.
 import {
+  Actions,
   Button,
   Card,
   List,
@@ -138,7 +139,7 @@ export function Cards({ onDone }: { onDone: () => void }) {
       )}
       <Refusal words={view.problem ?? act.problem ?? null} />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <Actions>
         {view.said === null && !absent && (
           <>
             {view.name === 'safari' && view.connected && !view.ready ? (
@@ -171,7 +172,7 @@ export function Cards({ onDone }: { onDone: () => void }) {
             Alpha moves on by itself once it can read
           </span>
         )}
-      </div>
+      </Actions>
     </Card>
   )
 }

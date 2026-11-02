@@ -105,3 +105,39 @@ export function BarName({
     </h1>
   )
 }
+
+// A page's own title, renamed where it shows by a double-click, as the bar's name is (Batch D,
+// 66.21, Kenil's yes 2 Nov): a row's page, a task's.
+export function PageTitle({
+  name,
+  rename,
+  className,
+}: {
+  name: string
+  rename: ((to: string) => Promise<unknown>) | null
+  className?: string // its size where it shows
+}) {
+  return (
+    <h1 className={cn('min-w-0 font-serif text-ink', className)}>
+      <Renamable name={name} rename={rename} className="w-full">
+        {(start) =>
+          start ? (
+            <button
+              type="button"
+              className="block max-w-full rounded-sm text-left"
+              onDoubleClick={start}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'F2') start()
+              }}
+              data-tip={RENAME_TIP}
+            >
+              {name}
+            </button>
+          ) : (
+            <span className="block">{name}</span>
+          )
+        }
+      </Renamable>
+    </h1>
+  )
+}

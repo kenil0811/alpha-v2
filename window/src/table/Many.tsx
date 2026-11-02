@@ -3,10 +3,12 @@
 import type { FieldView, RowView } from '@alpha/core/api'
 import { ClipboardPaste } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { askForNew } from '../ask.ts'
 import { Button } from '../ui/button.tsx'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
+import { useTableName } from './context.ts'
 import type { PastePlan } from './Grid.tsx'
 import { useGoes } from './goes.ts'
 import { TagPicker } from './Tags.tsx'
@@ -98,6 +100,7 @@ function SetForm({
   count: number
   onSet: (f: FieldView, value: unknown) => void
 }) {
+  const table = useTableName()
   const [slug, setSlug] = useState(fields[0]?.slug ?? '')
   const [typed, setTyped] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
@@ -136,6 +139,11 @@ function SetForm({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           aria-label="The value to set"
+          adds={
+            table
+              ? { what: 'choice', send: (w) => askForNew('choice', `${field.name} in ${table}`, w) }
+              : undefined
+          }
         >
           <option value="">Empty</option>
           {field.choices.map((c) => (

@@ -5,7 +5,7 @@
 import { type ReactNode, useState } from 'react'
 import { answerWords } from '../vocabulary.ts'
 import { Button } from './button.tsx'
-import { Card } from './card.tsx'
+import { Actions, Card } from './card.tsx'
 import { Field } from './field.tsx'
 import { Words } from './words.tsx'
 
@@ -39,7 +39,7 @@ export function Question({
         </div>
       )}
       {children}
-      <div className="flex flex-wrap gap-2">
+      <Actions>
         {options.map((o, i) => (
           <Button
             key={o}
@@ -51,7 +51,7 @@ export function Question({
           </Button>
         ))}
         {options.length === 0 && <Answer busy={busy} onAnswer={onAnswer} />}
-      </div>
+      </Actions>
       {problem && <div className="text-bad text-sm">{problem}</div>}
     </Card>
   )

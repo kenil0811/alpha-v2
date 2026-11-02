@@ -46,8 +46,10 @@ import { Kbd, Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
+import { SideItem, SideList } from './ui/side-list.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Tabs } from './ui/tabs.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 import { WaitingRules } from './WaitingRules.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
@@ -237,29 +239,16 @@ export function Settings({
       <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
         {head}
         <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-          <nav className="flex flex-col gap-px self-start max-md:flex-row max-md:flex-wrap">
+          <SideList
+            label={page === 'settings' ? 'Settings' : 'Intelligence'}
+            className="max-md:flex-row max-md:flex-wrap"
+          >
             {tabs.map(([id, name]) => (
-              <button
-                key={id}
-                type="button"
-                aria-current={id === at ? 'page' : undefined}
-                onClick={() => go(id)}
-                className={cn(
-                  'flex h-7 items-center gap-2 truncate whitespace-nowrap rounded-md px-2.5 text-left text-ink-2 text-md hover:bg-hover hover:text-ink',
-                  id === at &&
-                    'bg-accent-soft font-medium text-accent hover:bg-accent-soft hover:text-accent',
-                )}
-              >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    id === at ? 'bg-accent' : 'bg-transparent',
-                  )}
-                />
+              <SideItem key={id} on={id === at} onClick={() => go(id)}>
                 {name}
-              </button>
+              </SideItem>
             ))}
-          </nav>
+          </SideList>
           <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
       </div>
@@ -753,7 +742,6 @@ function ConnectionLine({
   const [state, tone] = STATE[k.state]
   const about = (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span>Last read {when(k.lastSyncAt)}</span>
       <span>Set up by {k.owner}</span>
       {k.tables.map((t) => (
         <span key={t.id}>
@@ -789,13 +777,12 @@ function ConnectionLine({
           >
             Open System Settings
           </Button>
-          <Button
-            size="sm"
-            disabled={busy}
+          <UpdateNow
+            label="Read now"
+            at={k.lastSyncAt}
+            busy={busy}
             onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
-          >
-            Read now
-          </Button>
+          />
         </>
       ) : k.state === 'needs_sign_in' ? (
         <Button
@@ -815,14 +802,21 @@ function ConnectionLine({
               ? `Sign in with ${k.signsInWith}`
               : 'Sign in'}
         </Button>
-      ) : (
+      ) : k.state === 'waiting' ? (
         <Button
           size="sm"
           disabled={busy}
           onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
         >
-          {k.state === 'waiting' ? 'Try again' : 'Read now'}
+          Try again
         </Button>
+      ) : (
+        <UpdateNow
+          label="Read now"
+          at={k.lastSyncAt}
+          busy={busy}
+          onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
+        />
       )}
       <More label="More" disabled={busy}>
         {(close) => (

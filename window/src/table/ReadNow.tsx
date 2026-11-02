@@ -6,10 +6,9 @@
 import type { ReadByView } from '@alpha/core/api'
 import { RefreshCw } from 'lucide-react'
 import { api } from '../api.ts'
-import { dayOf } from '../day.ts'
 import { useAct } from '../ui/act.tsx'
 import { MenuItem } from '../ui/popover.tsx'
-import { when } from './values.ts'
+import { updatedWords } from '../ui/update-now.tsx'
 
 // "Gmail and Outlook": each connector once, in the order they fill it.
 export function titles(by: ReadByView[]): string {
@@ -19,18 +18,15 @@ export function titles(by: ReadByView[]): string {
     : (names[0] ?? '')
 }
 
-// When it was last read: the time today, else the day and time, in the person's own day (W7).
+// When it was last read, in the words every Read now and Run now uses (Batch D, 66.25): "12 min
+// ago", the time today, else the day and time, in the person's own day (W7).
 export function lastRead(by: ReadByView[], now: Date = new Date()): string | null {
   const at = by
     .map((r) => r.lastReadAt)
     .filter((x): x is string => !!x)
     .sort()
     .at(-1)
-  if (!at) return null
-  const d = new Date(at)
-  return dayOf(d) === dayOf(now)
-    ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-    : when(at)
+  return at ? updatedWords(at, now.getTime()) : null
 }
 
 // The line under the table: "Read by Gmail and Outlook, 10:42".

@@ -5,8 +5,10 @@ import type { FieldView, RowPageView } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { Record } from './Record.tsx'
+import { TableName } from './table/context.ts'
 import { RowBody } from './table/RowPanel.tsx'
 import { Refusal } from './ui/act.tsx'
+import { PageTitle } from './ui/rename.tsx'
 
 export interface RowPlace {
   module: { id: string; name: string }
@@ -34,6 +36,9 @@ export function RowPage({
   }, [view, onPlace])
   if (view === undefined) return <p className="p-6 text-ink-3">Loading…</p>
   if (view === null) return <p className="p-6 text-ink-2">This row is not there any more.</p>
+  // its name is its first text field that holds one (as the core names a row), else the first
+  const texts = view.fields.filter((f) => f.kind === 'text' && !f.summary)
+  const named = texts.find((f) => view.row.values[f.slug]) ?? texts[0]
   const edit = (f: FieldView, value: unknown) =>
     api.post(`/api/tables/${view.table.id}/rows/${id}`, { field: f.name, value }).then(
       async () => {
@@ -47,23 +52,39 @@ export function RowPage({
       },
     )
   return (
-    <Record kind={view.table.name}>
-      <h1 className="font-serif text-2xl text-ink">{view.title}</h1>
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
-        <RowBody
-          tableId={view.table.id}
-          kinds={view.documents}
-          row={view.row}
-          fields={view.fields}
-          names={view.names}
-          onField={(slug) => {
-            const f = view.fields.find((x) => x.slug === slug)
-            window.location.hash = `#/table/${view.table.id}/${id}${f ? `?field=${encodeURIComponent(f.name)}` : ''}`
-          }}
-          onEdit={edit}
+    <TableName.Provider value={view.table.name}>
+      <Record kind={view.table.name}>
+        <PageTitle
+          name={view.title}
+          className="text-2xl"
+          rename={
+            named
+              ? (to) =>
+                  api
+                    .post(`/api/tables/${view.table.id}/rows/${id}`, {
+                      field: named.name,
+                      value: to,
+                    })
+                    .then(async () => setView(await api.get<RowPageView>(`/api/rows/${id}`)))
+              : null
+          }
         />
-      </div>
-      <Refusal words={problem} />
-    </Record>
+        <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <RowBody
+            tableId={view.table.id}
+            kinds={view.documents}
+            row={view.row}
+            fields={view.fields}
+            names={view.names}
+            onField={(slug) => {
+              const f = view.fields.find((x) => x.slug === slug)
+              window.location.hash = `#/table/${view.table.id}/${id}${f ? `?field=${encodeURIComponent(f.name)}` : ''}`
+            }}
+            onEdit={edit}
+          />
+        </div>
+        <Refusal words={problem} />
+      </Record>
+    </TableName.Provider>
   )
 }

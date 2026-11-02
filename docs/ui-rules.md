@@ -59,8 +59,8 @@ held by review. Dates are 2026.
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
 | T8 | Rows come 25, 50, 100 or 250 a page, with First and Last | 25 Oct | — |
 | T9 | Ticked rows show "n selected"; Escape lets them go after any menu closes | 26 Oct | — |
-| T10 | Every dropdown is one of ours: search past five, Add new… at the foot where a choice can grow; a related row or a person is picked from one on a double-click, in the grid and an opened row (a relation holding several ticks rows, as tags do, T15), never with Add new… (a new related row is made on its own table); pasting, filling down and many rows at once leave them to Alpha | 26 Oct, 1 Nov | test (picks) |
-| T11 | No bare `<select>` where a person picks; only the cell editor keeps the native one | 25 Oct | test |
+| T10 | Every dropdown is one of ours: search past six, Add new… at the foot where a choice can grow (one shared part, the tags picker too, with its search); a related row or a person is picked from one on a double-click, in the grid and an opened row (a relation holding several ticks rows, as tags do, T15), never with Add new… (a new related row is made on its own table); pasting, filling down and many rows at once leave them to Alpha | 26 Oct, 1 Nov, 2 Nov | test (picks) |
+| T11 | No bare `<select>` where a person picks, the cell editor included: a choice cell opens our dropdown at once, saved on a pick, Escape leaves it | 25 Oct, 2 Nov | test |
 | T12 | Freezing and wrapping columns are kept with the saved list, like widths | 26 Oct | — |
 | T13 | A cell's History (old → new, who, when) is on its right-click menu; ⇧↓ and ⌘D fill down, after a yes | 26 Oct | — |
 | T14 | A summary shows as the kind it comes to and is never typed; what it is, in words, is on its column's tip and menu | 27 Oct | — |
@@ -122,6 +122,14 @@ held by review. Dates are 2026.
 | L3 | Serif for page, record and section titles and big numbers only | 26 Oct | test |
 | L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a row of tabs shows none | 26 Oct | — |
 | L5 | One avatar for people and organizations | 25 Oct | — |
+| L6 | Every button changes colour under the pointer, into the accent's tint (the primary darkens); a soft kind is a way onward that is not the screen's main act (Open page) | 2 Nov | — |
+| L7 | A card's buttons sit at its right, its main act at the right edge, the same on every card | 2 Nov | — |
+| L8 | Cuts of one list are rounded buttons, each with its count, one picked (Activity's All and Failed) | 2 Nov | — |
+| L9 | Where a link goes shows at the window's foot while the pointer rests on it: a place in Alpha by its name, an outside page by its address; a link to a place in Alpha opens in Alpha | 2 Nov | — |
+| L10 | Files are added in one drop zone, a dashed box to drop on or click, what is there inside it | 2 Nov | — |
+| L11 | Read now and Run now say when it last happened just before the button, the full time on hover | 2 Nov | — |
+| L12 | A double-click on what can't change says why, at once | 2 Nov | — |
+| L13 | A row's and a task's title on its page is renamed by a double-click, as a table's and a module's name are | 2 Nov | — |
 
 ## Proposed, waiting on Kenil or the core
 

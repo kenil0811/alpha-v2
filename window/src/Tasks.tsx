@@ -20,6 +20,7 @@ import { Field, Select } from './ui/field.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
+import { PageTitle } from './ui/rename.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Tabs } from './ui/tabs.tsx'
@@ -314,14 +315,12 @@ function TaskPage({
   const [t, setT] = useState<TaskView | null>(null)
   const [missing, setMissing] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
   const [removing, setRemoving] = useState(false)
   const load = useCallback(() => {
     api.get<TaskView>(`/api/tasks/${id}`).then(
       (v) => {
         setT(v)
-        setTitle(v.title)
         setNotes(v.notes ?? '')
         setMissing(false)
         onName(v.title)
@@ -369,14 +368,10 @@ function TaskPage({
             </a>
           )}
           <div className="flex items-center gap-2">
-            <input
-              aria-label="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() =>
-                title.trim() && title.trim() !== t.title && change({ title: title.trim() })
-              }
-              className="h-12 w-full bg-transparent font-serif text-2xl text-ink outline-none"
+            <PageTitle
+              name={t.title}
+              className="flex-1 text-2xl"
+              rename={(to) => api.post<TaskView>(`/api/tasks/${id}`, { title: to }).then(setT)}
             />
             <More label="More" shown>
               {(close) => (

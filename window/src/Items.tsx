@@ -14,6 +14,7 @@ import { Confirm } from './ui/dialog.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
+import { UpdateNow } from './ui/update-now.tsx'
 
 export type ItemKind = 'agent' | 'run' | 'rule'
 
@@ -131,13 +132,12 @@ function AgentPage({
           }
         />
         <span className="text-ink-2 text-md">{a.state === 'on' ? 'On' : 'Paused'}</span>
-        <Button
-          size="sm"
-          disabled={busy || a.running}
+        <UpdateNow
+          label="Run now"
+          at={a.lastRunAt}
+          busy={busy || a.running}
           onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
-        >
-          Run now
-        </Button>
+        />
         {a.running && <Pill tone="accent">Running</Pill>}
         {a.needs && <Pill tone="warn">{a.needs}</Pill>}
         <Refusal words={problem} />

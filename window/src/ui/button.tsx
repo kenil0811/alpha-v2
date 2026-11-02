@@ -1,5 +1,5 @@
-// The window's buttons (Ledger): a plain one, the primary in the accent, a ghost, and an icon button.
-// Weight and spacing live here, never in a screen.
+// The window's buttons (Ledger): a plain one, the primary in the accent, a soft one, a ghost, and an
+// icon button. Weight and spacing live here, never in a screen.
 import { cva, type VariantProps } from 'class-variance-authority'
 import type { ComponentProps } from 'react'
 import { cn } from './cn.ts'
@@ -9,9 +9,15 @@ const button = cva(
   {
     variants: {
       variant: {
-        default: 'border-line bg-surface text-ink hover:bg-hover',
-        primary: 'border-accent bg-accent text-accent-ink hover:brightness-110',
-        ghost: 'border-transparent bg-transparent text-ink-2 hover:bg-hover hover:text-ink',
+        // every kind changes colour under the pointer, into the accent's tint (Batch D, 66.1,
+        // Kenil's yes 2 Nov); the primary darkens
+        default:
+          'border-line bg-surface text-ink hover:border-accent-line hover:bg-accent-soft hover:text-accent',
+        primary: 'border-accent bg-accent text-accent-ink hover:brightness-90 active:brightness-80',
+        // a way onward that is not the screen's main act: Open page
+        soft: 'border-accent-line bg-accent-soft text-accent hover:border-accent',
+        ghost:
+          'border-transparent bg-transparent text-ink-2 hover:bg-accent-soft hover:text-accent',
         warn: 'border-line bg-surface text-warn hover:bg-hover',
         danger: 'border-line bg-surface text-bad hover:bg-bad-soft',
       },
