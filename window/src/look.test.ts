@@ -32,12 +32,24 @@ const RULES: [string, RegExp][] = [
   ],
 ]
 
-function sources(dir: string): string[] {
+function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = join(dir, e.name)
-    if (e.isDirectory()) return sources(p)
+    if (e.isDirectory()) return files(p)
     return /\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name) ? [p] : []
   })
+}
+
+// The window's own screens and every plugin's (onboarding in Alpha, 2 Nov): one look for all.
+const PLUGINS = join(SRC, '..', '..', 'plugins')
+function sources(dir: string): string[] {
+  const screens = existsSync(PLUGINS)
+    ? readdirSync(PLUGINS)
+        .map((p) => join(PLUGINS, p, 'window'))
+        .filter((w) => existsSync(w))
+        .flatMap(files)
+    : []
+  return [...files(dir), ...screens]
 }
 
 describe('the window’s look', () => {

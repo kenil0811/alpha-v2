@@ -188,9 +188,12 @@ function catalogue(host: PluginHost, own: string): string[] {
             m.case ? `: for ${m.case.for}; keeps ${m.case.keeps}; decides ${m.case.decides}` : ''
           }.`,
       ),
-    ...c.connectors.map(
-      (k) => `Connector ${k.title} (${k.name})${k.connected ? ', connected' : ', not connected'}.`,
-    ),
+    ...c.connectors
+      .filter((k) => !k.private)
+      .map(
+        (k) =>
+          `Connector ${k.title} (${k.name})${k.connected ? ', connected' : ', not connected'}.`,
+      ),
   ]
 }
 

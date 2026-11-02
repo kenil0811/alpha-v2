@@ -41,6 +41,7 @@ import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
 import { type Place, placeOf } from './place.ts'
+import { screenOf } from './plugin/screens.ts'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { besideWidth, roomBeside, useWindowWidth } from './room.ts'
 import { alphaOf, Settings } from './Settings.tsx'
@@ -296,61 +297,63 @@ export function App() {
                 ? { icon: <Sparkles className={icon} />, parts: [at('Intelligence')] }
                 : place.at === 'parts'
                   ? { parts: [at('Parts')] }
-                  : place.at === 'new'
-                    ? { icon: <Briefcase className={icon} />, parts: [at('New module')] }
-                    : place.at === 'file'
-                      ? {
-                          icon: <FileText className={icon} />,
-                          parts: [at('Documents'), at(fileName || '…')],
-                        }
-                      : place.at === 'table'
+                  : place.at === 'plugin'
+                    ? { parts: [at(screenOf(place.name)?.title ?? '…')] }
+                    : place.at === 'new'
+                      ? { icon: <Briefcase className={icon} />, parts: [at('New module')] }
+                      : place.at === 'file'
                         ? {
-                            icon: <Briefcase className={icon} />,
-                            parts: table
-                              ? [
-                                  ...above,
-                                  at(table.module.name, `#/module/${table.module.id}`),
-                                  // with a row open, the table's name closes it
-                                  place.row
-                                    ? at(table.name, `#/table/${table.id}`)
-                                    : at(table.name),
-                                  ...(place.row
-                                    ? [
-                                        at(
-                                          (() => {
-                                            const r = table.rows.find((x) => x.id === place.row)
-                                            return r ? titleOf(table.fields, r) : '…'
-                                          })(),
-                                        ),
-                                      ]
-                                    : []),
-                                ]
-                              : [at('…')],
+                            icon: <FileText className={icon} />,
+                            parts: [at('Documents'), at(fileName || '…')],
                           }
-                        : place.at === 'module'
+                        : place.at === 'table'
                           ? {
                               icon: <Briefcase className={icon} />,
-                              parts: [
-                                ...above,
-                                at(moduleHere?.name ?? '…', `#/module/${place.id}`),
-                                at(
-                                  place.tab === 'agents'
-                                    ? 'Agents and notes'
-                                    : place.tab === 'conversation'
-                                      ? 'Conversation'
-                                      : place.tab === 'overview' ||
-                                          (!place.page &&
-                                            modules.some((x) => x.parent === place.id))
-                                        ? 'Overview'
-                                        : (modules
-                                            .find((x) => x.id === place.id)
-                                            ?.pages.find((p) =>
-                                              place.page ? p.name === place.page : p.front,
-                                            )?.title ?? '…'),
-                                ),
-                              ],
+                              parts: table
+                                ? [
+                                    ...above,
+                                    at(table.module.name, `#/module/${table.module.id}`),
+                                    // with a row open, the table's name closes it
+                                    place.row
+                                      ? at(table.name, `#/table/${table.id}`)
+                                      : at(table.name),
+                                    ...(place.row
+                                      ? [
+                                          at(
+                                            (() => {
+                                              const r = table.rows.find((x) => x.id === place.row)
+                                              return r ? titleOf(table.fields, r) : '…'
+                                            })(),
+                                          ),
+                                        ]
+                                      : []),
+                                  ]
+                                : [at('…')],
                             }
-                          : { icon: <House className={icon} />, parts: [at('Home')] }
+                          : place.at === 'module'
+                            ? {
+                                icon: <Briefcase className={icon} />,
+                                parts: [
+                                  ...above,
+                                  at(moduleHere?.name ?? '…', `#/module/${place.id}`),
+                                  at(
+                                    place.tab === 'agents'
+                                      ? 'Agents and notes'
+                                      : place.tab === 'conversation'
+                                        ? 'Conversation'
+                                        : place.tab === 'overview' ||
+                                            (!place.page &&
+                                              modules.some((x) => x.parent === place.id))
+                                          ? 'Overview'
+                                          : (modules
+                                              .find((x) => x.id === place.id)
+                                              ?.pages.find((p) =>
+                                                place.page ? p.name === place.page : p.front,
+                                              )?.title ?? '…'),
+                                  ),
+                                ],
+                              }
+                            : { icon: <House className={icon} />, parts: [at('Home')] }
 
   const back = useBack(window.location.hash, (itemCrumb ?? crumb).parts.at(-1)?.label ?? '')
   return (
@@ -415,6 +418,8 @@ export function App() {
                   />
                 ) : place.at === 'parts' ? (
                   <Parts />
+                ) : place.at === 'plugin' ? (
+                  <PluginPage name={place.name} />
                 ) : place.at === 'new' ? (
                   <NewModule modules={modules} onAsked={() => setAsking(true)} />
                 ) : place.at === 'file' ? (
@@ -536,3 +541,9 @@ export function App() {
 // a key pressed in a field belongs to the field
 const typing = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+
+// A plugin's own page, or plain words where no plugin of that name is in this window.
+function PluginPage({ name }: { name: string }) {
+  const Page = screenOf(name)?.Page
+  return Page ? <Page /> : <p className="p-8 text-ink-2 text-md">Nothing is here.</p>
+}

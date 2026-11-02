@@ -6,8 +6,12 @@
 // this folder removes it whole.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type Explored, type Plugin, type PluginHost, Refusal, type Row } from '@alpha/plugin-sdk'
-import { type Checked, check, fromWords, SCHEMA, sameAs } from './answer.ts'
+import { type Plugin, type PluginHost, Refusal, type Row } from '@alpha/plugin-sdk'
+import { check, fromWords, SCHEMA, sameAs } from './answer.ts'
+import type { Run } from './run.ts'
+
+export type { Run }
+
 import { readSources } from './sources.ts'
 import { buildSummary } from './summary.ts'
 import { toolsOf } from './tools.ts'
@@ -26,18 +30,15 @@ const today = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-export interface Run {
-  id: string
-  at: string
-  state: 'looking' | 'done' | 'failed'
-  problem?: string
-  overview: string // what it started from
-  ids: string[]
-  counts: Record<string, number>
-  calls: Explored['calls'] // every look it took, with what it got: all of it went to Claude
-  checked: Checked | null
-  answered: Record<string, string> // a question's place, the person's answer
+// What the person decided across every run, so nothing declined or answered comes back: kept in
+// the plugin's folder apart from the runs, since Forget deletes what was sent, not their word.
+interface Decided {
+  declined: string[]
+  asked: string[]
 }
+
+// The sources onboarding reads, as Start lists them: Alpha's connectors by name.
+const SOURCES = ['calendar', 'contacts', 'gmail', 'outlook', 'browsing', 'apps', 'filenames']
 
 // A run of onboarding, kept in the plugin's own folder so Show the work shows everything that was
 // sent and Forget deletes it.
@@ -52,7 +53,21 @@ export class Runs {
   }
   get(id: string): Run | null {
     const file = join(this.dir, `${id.replace(/[^\w-]/g, '')}.json`)
-    return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as Run) : null
+    if (!existsSync(file)) return null
+    // a run kept before Add and Decline, or before the closer look, reads as one now
+    const run = JSON.parse(readFileSync(file, 'utf8')) as Partial<Run> & { id: string }
+    return {
+      at: '',
+      overview: '',
+      ids: [],
+      counts: {},
+      calls: [],
+      checked: null,
+      answered: {},
+      decided: {},
+      ...run,
+      state: run.state ?? (run.checked ? 'done' : 'failed'),
+    }
   }
   latest(): Run | null {
     if (!existsSync(this.dir)) return null
@@ -71,13 +86,22 @@ export class Runs {
 
 export function register(host: PluginHost): void {
   const runs = new Runs(host.dir)
+  const decidedFile = join(host.dir, 'decided.json')
+  const decided = (): Decided =>
+    existsSync(decidedFile)
+      ? (JSON.parse(readFileSync(decidedFile, 'utf8')) as Decided)
+      : { declined: [], asked: [] }
+  const decide = (d: Decided) => {
+    mkdirSync(host.dir, { recursive: true })
+    writeFileSync(decidedFile, JSON.stringify(d, null, 1))
+  }
   const rows = () => host.own.rows(TABLE)
   const kept = () => rows().filter((r: Row) => r.values.State === 'Kept')
   const can = () => {
     const c = host.catalogue()
     return {
       modules: c.modules.filter((m) => m.name !== OWN && m.name !== 'Alpha').map((m) => m.name),
-      connectors: c.connectors.map((k) => k.name),
+      connectors: c.connectors.filter((k) => !k.private).map((k) => k.name),
     }
   }
   let looking: Promise<void> | null = null
@@ -96,7 +120,7 @@ export function register(host: PluginHost): void {
         x.answer,
         { ids: [...run.ids, ...x.calls.map((c) => c.id)], text: read },
         can(),
-        rows().map((r) => String(r.values.Line ?? '')),
+        { lines: rows().map((r) => String(r.values.Line ?? '')), ...decided() },
       )
       const tools = Object.fromEntries(x.calls.map((c) => [c.id, c.tool]))
       const on = today()
@@ -139,6 +163,7 @@ export function register(host: PluginHost): void {
       calls: [],
       checked: null,
       answered: {},
+      decided: {},
     }
     runs.save(run)
     host.journal(
@@ -180,7 +205,54 @@ export function register(host: PluginHost): void {
     ])
     if (id) host.own.set(TABLE, id, { Line: line, State: 'Kept' })
     runs.save({ ...run, answered: { ...run.answered, [String(at)]: answer } })
+    const d = decided()
+    decide({ ...d, asked: [...d.asked, q.question] })
     return { ok: true }
+  })
+
+  // A suggestion or a routine added (the window then opens it, or puts it in the assistant's box)
+  // or declined, never offered again.
+  host.route('POST', '/decide', async ({ body }) => {
+    const b = (body ?? {}) as { run?: unknown; kind?: unknown; at?: unknown; decision?: unknown }
+    const run = runs.get(String(b.run ?? ''))
+    const at = Number(b.at)
+    const kind = b.kind === 'routine' ? 'routine' : 'suggestion'
+    const item =
+      kind === 'routine' ? run?.checked?.routines[at]?.what : run?.checked?.suggestions[at]?.words
+    if (!run || !item) throw new Refusal('That is not here any more.')
+    const decision = b.decision === 'declined' ? 'declined' : 'added'
+    runs.save({ ...run, decided: { ...run.decided, [`${kind}:${at}`]: decision } })
+    if (decision === 'declined') {
+      const d = decided()
+      decide({ ...d, declined: [...d.declined, item] })
+    }
+    return { ok: true }
+  })
+
+  // The sources Start lists, each connected or not.
+  host.route('GET', '/sources', async () =>
+    host
+      .catalogue()
+      .connectors.filter((k) => SOURCES.includes(k.name))
+      .sort((a, b) => SOURCES.indexOf(a.name) - SOURCES.indexOf(b.name)),
+  )
+
+  // Home's row: whether to start, that Alpha is looking, or what still waits for the person.
+  host.route('GET', '/home', async () => {
+    const run = runs.latest()
+    if (!run || run.state === 'failed') return { state: 'start' }
+    if (run.state === 'looking') return { state: 'looking' }
+    const c = run.checked
+    const waits = {
+      lines: rows().filter((r) => r.values.State === 'Proposed').length,
+      questions: (c?.questions ?? []).filter((_, i) => !(String(i) in run.answered)).length,
+      routines: (c?.routines ?? []).filter(
+        (r, i) => r.alpha !== 'no' && !(`routine:${i}` in run.decided),
+      ).length,
+      suggestions: (c?.suggestions ?? []).filter((_, i) => !(`suggestion:${i}` in run.decided))
+        .length,
+    }
+    return { state: Object.values(waits).some((n) => n > 0) ? 'waiting' : 'done', waits }
   })
 
   // About you: each line kept, changed and kept, or dropped, on the person's word.

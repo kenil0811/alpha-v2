@@ -8,6 +8,7 @@ export type Place =
   | { at: 'conversation' }
   | { at: 'activity' }
   | { at: 'parts' }
+  | { at: 'plugin'; name: string } // a plugin's own page (onboarding in Alpha, 2 Nov)
   | { at: 'new' }
   | { at: 'item'; kind: 'agent' | 'run' | 'rule'; id: string }
   | { at: 'row'; id: string }
@@ -103,6 +104,8 @@ export function placeOf(address: string): Place {
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
   if (hash === '#/conversation') return { at: 'conversation' }
   if (hash === '#/parts') return { at: 'parts' }
+  const pl = /^#\/p\/([a-z][a-z0-9-]*)$/.exec(hash)
+  if (pl?.[1]) return { at: 'plugin', name: pl[1] }
   if (hash === '#/module/new') return { at: 'new' }
   // a row's own page (core step 3b), a card's (Batch B, pick 13)
   const rw = /^#\/(row|card)\/([\w-]+)$/.exec(hash)

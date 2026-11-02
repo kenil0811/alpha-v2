@@ -17,6 +17,7 @@ export function Row({
   actions,
   children,
   indent,
+  wrap,
   className,
 }: {
   title: ReactNode
@@ -25,6 +26,7 @@ export function Row({
   actions?: ReactNode | undefined
   children?: ReactNode | undefined // under the row: steps, a form
   indent?: boolean | undefined
+  wrap?: boolean | undefined // a title that is a sentence: shown whole, never cut
   className?: string | undefined
 }) {
   return (
@@ -38,7 +40,9 @@ export function Row({
       <div className={cn('flex items-center gap-3 px-4 py-3', indent && 'pl-14')}>
         {lead}
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-base text-ink">{title}</div>
+          <div className={cn('font-medium text-base text-ink', wrap ? 'break-words' : 'truncate')}>
+            {title}
+          </div>
           {sub && <div className="text-ink-3 text-sm">{sub}</div>}
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

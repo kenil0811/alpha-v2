@@ -25,7 +25,9 @@ export interface Catalogue {
     installed: boolean
     case: { for: string; keeps: string; decides: string } | null // its business case
   }[]
-  connectors: { name: string; title: string; connected: boolean }[]
+  // private: one of this computer's (browsing, apps, file names), kept from the model and never
+  // offered as a suggestion; connected from onboarding itself
+  connectors: { name: string; title: string; connected: boolean; private: boolean }[]
 }
 
 // Someone the person deals with, by the world's own counts of meetings and messages.

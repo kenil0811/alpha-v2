@@ -17,6 +17,7 @@ import { ArrowUp, Bot, Check, ChevronRight, KeyRound, LoaderCircle } from 'lucid
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
+import { SCREENS } from './plugin/screens.ts'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
@@ -139,6 +140,9 @@ export function Home({
             <SetupList view={setup} onChange={reloadSetup} />
           </Group>
         )}
+
+        {/* a plugin's row, while something of its waits for the person (onboarding in Alpha) */}
+        {SCREENS.map((s) => s.Waiting && <s.Waiting key={s.name} />)}
 
         {firstOpen ? (
           <Welcome

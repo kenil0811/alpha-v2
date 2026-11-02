@@ -2,7 +2,8 @@
 // No cap of ours on how much comes back: what is checked is truth. Every item rests on what was
 // read: the overview's ids (B17) or the session's tool calls (t3). A module or connector suggested
 // is one Alpha can set up; a site or a file's name nothing read held is not let through (which
-// keeps what the person left out, out); a line they dropped before is not proposed again.
+// keeps what the person left out, out); a line they dropped before is not proposed again, nor a
+// suggestion or routine they declined, nor a question they answered.
 
 const CITES = { type: 'array', items: { type: 'string' } } as const
 
@@ -127,12 +128,18 @@ export function check(
   answer: unknown,
   read: { ids: string[]; text: string }, // what can be cited, and everything read
   can: { modules: string[]; connectors: string[] },
-  before: string[], // lines Alpha proposed already, kept or dropped: never proposed again
+  before: {
+    lines: string[] // lines Alpha proposed already, kept or dropped: never proposed again
+    declined?: string[] // suggestions and routines the person declined
+    asked?: string[] // questions they answered
+  },
 ): Checked {
   const a = (answer ?? {}) as Record<string, unknown>
   const known = new Set(read.ids)
   const text = read.text.toLowerCase()
-  const seen = new Set(before.map(sameAs))
+  const seen = new Set(before.lines.map(sameAs))
+  const declined = new Set((before.declined ?? []).map(sameAs))
+  const asked = new Set((before.asked ?? []).map(sameAs))
   const dropped: Checked['dropped'] = []
   const cited = (from: unknown) =>
     (Array.isArray(from) ? from : [])
@@ -173,7 +180,9 @@ export function check(
       how: str(x.how),
       from,
     }
-    const why = wall(from, r.what, r.evidence, r.how)
+    const why =
+      wall(from, r.what, r.evidence, r.how) ??
+      (declined.has(sameAs(what)) ? 'it was declined before' : null)
     if (why) dropped.push({ what, why })
     else routines.push(r)
   }
@@ -196,7 +205,8 @@ export function check(
       ? wall(from)
       : !offered
         ? `${name ?? 'it'} is not one Alpha can set up`
-        : wall(from, words, str(x.why))
+        : (wall(from, words, str(x.why)) ??
+          (declined.has(sameAs(words)) ? 'it was declined before' : null))
     if (why) dropped.push({ what: words, why })
     else suggestions.push({ kind, name, words, why: str(x.why), from })
   }
@@ -206,7 +216,9 @@ export function check(
     const question = str(x.question)
     if (!question) continue
     const from = cited(x.from)
-    const why = wall(from, question, str(x.why))
+    const why =
+      wall(from, question, str(x.why)) ??
+      (asked.has(sameAs(question)) ? 'it was answered before' : null)
     if (why) dropped.push({ what: question, why })
     else questions.push({ question, why: str(x.why), from })
   }

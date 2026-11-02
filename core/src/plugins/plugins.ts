@@ -183,15 +183,14 @@ export class Plugins {
             .modules()
             .map((m) => ({ name: m.name, installed: true, case: businessCase(m) })),
         ],
-        connectors: (this.deps.connectors?.known() ?? [])
-          .filter((c) => !c.manifest.private)
-          .map((c) => ({
-            name: c.manifest.name,
-            title: c.manifest.title,
-            connected: world.connections
-              .list()
-              .some((k) => k.connector === c.manifest.name && k.state === 'connected'),
-          })),
+        connectors: (this.deps.connectors?.known() ?? []).map((c) => ({
+          name: c.manifest.name,
+          title: c.manifest.title,
+          private: !!c.manifest.private,
+          connected: world.connections
+            .list()
+            .some((k) => k.connector === c.manifest.name && k.state === 'connected'),
+        })),
       }),
       people: () =>
         world.people

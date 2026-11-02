@@ -169,7 +169,11 @@ function made(model: Model = none, connected = true) {
         },
         { name: 'About you', installed: true, case: null },
       ],
-      connectors: [{ name: 'outlook', title: 'Outlook', connected: false }],
+      connectors: [
+        { name: 'outlook', title: 'Outlook', connected: false, private: false },
+        { name: 'browsing', title: 'Browsing history', connected: true, private: true },
+        { name: 'calendar', title: 'Calendar', connected: true, private: false },
+      ],
     }),
     people: () => [{ name: 'Priya Shah', company: 'Harbor', contact: 5, last: z(21, 4) }],
     rows: (m, t) => tables[`${m}/${t}`] ?? [],
@@ -477,7 +481,7 @@ describe('the checks on the answer', () => {
       },
       read,
       can,
-      ['you dropped this before'],
+      { lines: ['you dropped this before'], declined: ['Track deals!'], asked: [] },
     )
     // no cap of ours: all fourteen kept
     expect(out.about.map((a) => a.line)).toEqual([
@@ -487,17 +491,29 @@ describe('the checks on the answer', () => {
     expect(out.routines.map((r) => [r.what, r.alpha])).toEqual([
       ['You check new listings each morning', 'yes'],
     ])
-    expect(out.suggestions.map((s) => s.words)).toEqual(['Track deals', 'Connect Outlook'])
+    expect(out.suggestions.map((s) => s.words)).toEqual(['Connect Outlook'])
     expect(out.questions.map((q) => q.question)).toEqual(['Do you buy for yourself or a fund?'])
     expect(out.dropped.map((d) => d.why)).toEqual([
       'it cites nothing that was read',
       'it names chase.com, which nothing read holds',
       'it was proposed before',
       'it cites nothing that was read',
+      'it was declined before',
       'Nowhere is not one Alpha can set up',
       'it cites nothing that was read',
       'it names acme.example, which nothing read holds',
     ])
+    // a question answered once is never asked again
+    expect(
+      check(
+        {
+          questions: [{ question: 'Do you buy for yourself or a fund?', why: 'x', from: ['B1'] }],
+        },
+        read,
+        can,
+        { lines: [], asked: ['Do you buy for yourself, or a fund?'] },
+      ).dropped,
+    ).toEqual([{ what: 'Do you buy for yourself or a fund?', why: 'it was answered before' }])
     expect(fromWords(['B1', 't1', 't2', 'F2'], { t1: 'day', t2: 'files' })).toBe(
       'Browsing, Your days, File names',
     )
@@ -585,6 +601,22 @@ describe('onboarding through its host', () => {
       ].join('\n'),
     )
     expect(((await call('GET /run')) as Run).answered).toEqual({ '0': 'For myself.' })
+    // the sources Start lists, Home's row, Add and Decline
+    expect(((await call('GET /sources')) as { name: string }[]).map((x) => x.name)).toEqual([
+      'calendar',
+      'outlook',
+      'browsing',
+    ])
+    expect(await call('GET /home')).toEqual({
+      state: 'waiting',
+      waits: { lines: 0, questions: 0, routines: 1, suggestions: 1 },
+    })
+    await call('POST /decide', { run: run.id, kind: 'routine', at: 0, decision: 'added' })
+    await call('POST /decide', { run: run.id, kind: 'suggestion', at: 0, decision: 'declined' })
+    await expect(
+      call('POST /decide', { run: run.id, kind: 'suggestion', at: 5, decision: 'added' }),
+    ).rejects.toThrow(/not here any more/)
+    expect(((await call('GET /home')) as { state: string }).state).toBe('done')
     // Forget deletes everything that was sent
     await call('POST /forget', { run: run.id })
     expect(await call('GET /run')).toBeNull()

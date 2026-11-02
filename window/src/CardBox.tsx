@@ -14,8 +14,7 @@ import { ReviewCard } from './ReviewCard.tsx'
 import { Button } from './ui/button.tsx'
 import { Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
-import { Field } from './ui/field.tsx'
-import { Words } from './ui/words.tsx'
+import { Answer, Question } from './ui/question.tsx'
 import { answerWords } from './vocabulary.ts'
 
 // What a card would send, as it will go: a message's head (From, To, Subject…) laid out, then its
@@ -100,7 +99,6 @@ function CardBody({
 }) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [typed, setTyped] = useState('')
   const [opened, setOpened] = useState(false)
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
@@ -125,30 +123,40 @@ function CardBody({
       setBusy(false)
     }
   }
+  const restsOn = card.restsOn.length > 0 && (
+    <div className="text-ink-3 text-sm">Rests on {card.restsOn.join(' and ')}</div>
+  )
+  const cannotUndo = card.cannotUndo && (
+    <div className="flex items-center gap-1.5 text-sm text-warn">
+      <TriangleAlert className="size-3.5 shrink-0" />
+      {card.cannotUndo}
+    </div>
+  )
+  // a question is the one shared piece (its detail is words, in Markdown)
+  if (card.kind === 'question' && !card.gate)
+    return (
+      <Question
+        words={card.words}
+        detail={card.detail}
+        options={card.options}
+        busy={busy}
+        problem={problem}
+        onAnswer={(a) => void answer(a)}
+      >
+        {restsOn}
+        {cannotUndo}
+      </Question>
+    )
   return (
     <Card
       label={card.gate ? (GATE[card.gate] ?? 'Waits for you') : 'A question'}
       waits="Waits for you"
     >
       <div className="font-medium text-ink text-lg">{card.words}</div>
-      {/* a question's detail is words, in Markdown; a gate's is what would go, as it would go */}
-      {card.detail &&
-        (card.kind === 'question' ? (
-          <div className="rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
-            <Words text={card.detail} />
-          </div>
-        ) : (
-          <Preview detail={card.detail} />
-        ))}
-      {card.restsOn.length > 0 && (
-        <div className="text-ink-3 text-sm">Rests on {card.restsOn.join(' and ')}</div>
-      )}
-      {card.cannotUndo && (
-        <div className="flex items-center gap-1.5 text-sm text-warn">
-          <TriangleAlert className="size-3.5 shrink-0" />
-          {card.cannotUndo}
-        </div>
-      )}
+      {/* a gate's detail is what would go, as it would go */}
+      {card.detail && <Preview detail={card.detail} />}
+      {restsOn}
+      {cannotUndo}
       <div className="flex flex-wrap gap-2">
         {card.options.map((o, i) => (
           <Button
@@ -165,25 +173,7 @@ function CardBody({
             Change something
           </Button>
         )}
-        {card.options.length === 0 && (
-          <form
-            className="flex w-full gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (typed.trim()) void answer(typed.trim())
-            }}
-          >
-            <Field
-              className="flex-1"
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder="Your answer"
-            />
-            <Button type="submit" variant="primary" disabled={busy || !typed.trim()}>
-              Answer
-            </Button>
-          </form>
-        )}
+        {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}
       </div>
       {opened && (
         <div className="text-ink-2 text-sm">
