@@ -26,6 +26,9 @@ import { SandboxManager } from '@anthropic-ai/sandbox-runtime'
 import { z } from 'zod'
 import { allow, CODE, forget, newId, sandbox } from '../sandbox.ts'
 
+// What a connector may ask of the computer's reader (connector-sdk/src/local.ts).
+const LOCAL_CALLS = ['access', 'browsers', 'visits', 'apps', 'appTime', 'files', 'showSettings']
+
 const CHILD = join(import.meta.dirname, 'child.ts')
 
 export interface Described {
@@ -299,6 +302,17 @@ export class ConnectorProcess {
         const app = process.env.ALPHA_HELPER_APP
         if (!app) throw new Problem("Alpha's helper is not built on this Mac.")
         result = await runHelper(app, p.args as string[], (p.options ?? {}) as never)
+      } else if (method === 'never') result = (await host.never?.()) ?? []
+      else if (method.startsWith('local.')) {
+        // the computer's reader: only its own calls, and only where the core has one
+        const reader = host.local?.() as unknown as Record<string, (...a: unknown[]) => unknown>
+        const fn = method.slice('local.'.length)
+        if (!reader || !LOCAL_CALLS.includes(fn))
+          throw new Problem('Not on this computer: Alpha has no way to read it here.', 'gone')
+        result = await (reader[fn] as (...a: unknown[]) => unknown).apply(
+          reader,
+          params as unknown[],
+        )
       } else if (method.startsWith('browser.')) {
         const b = host.browser?.() as unknown as
           | Record<string, (...a: unknown[]) => unknown>

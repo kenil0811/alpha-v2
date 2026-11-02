@@ -84,6 +84,15 @@ function hostFor(req: number, account: string, cursor: string | null): Host {
           ask(req, `browser.${String(m)}`, args),
     },
   )
+  const local = new Proxy(
+    {},
+    {
+      get:
+        (_, m) =>
+        (...args: unknown[]) =>
+          ask(req, `local.${String(m)}`, args),
+    },
+  )
   return {
     account,
     secret: () => ask(req, 'secret', null) as Promise<string | null>,
@@ -98,6 +107,9 @@ function hostFor(req: number, account: string, cursor: string | null): Host {
     keys: (table) => ask(req, 'keys', table) as never,
     helper: (args, options) => ask(req, 'helper', { args, options: options ?? {} }),
     browser: () => browser as never,
+    // the computer's reader stays with the core too: each of its calls is asked of it
+    local: () => local as never,
+    never: () => ask(req, 'never', null) as Promise<string[]>,
     journal: (words, data) => tell(req, 'journal', { words, data }),
   }
 }

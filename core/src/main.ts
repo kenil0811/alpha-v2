@@ -165,6 +165,8 @@ const connectors = new ConnectorService(world, {
   known: [...standard.connectors, ...added.connectors],
   // signing in as the person: the provider sends them back to this core (step 2, part 5)
   signIn: new SignIn(world, { secrets, back: () => `http://localhost:${port}${BACK}` }),
+  // what onboarding reads of this computer, through the helper where there is one
+  local: platform.local(helper),
 })
 for (const f of [...standard.failed, ...added.failed]) {
   const words = `The connector in ${f.folder} did not load: ${f.why}`

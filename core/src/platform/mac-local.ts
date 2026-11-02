@@ -2,6 +2,7 @@
 // through Alpha's helper run as the app, so macOS asks naming Alpha. The helper's answers are raw
 // rows; here they take the reader's shapes, its refusals the five access words with where macOS
 // switches Alpha on, and Screen Time's spans the time in each app on each of the person's days.
+import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -60,6 +61,24 @@ export function timeByDay(
   return [...by.values()].map((t) => ({ ...t, seconds: Math.round(t.seconds) }))
 }
 
+// An app's own name by its id, as Spotlight finds it anywhere on the Mac (Finder lives outside the
+// app folders): none when it is not found.
+export function appName(id: string): string | null {
+  if (!/^[A-Za-z0-9.-]+$/.test(id)) return null
+  try {
+    const path = execFileSync('/usr/bin/mdfind', [`kMDItemCFBundleIdentifier == "${id}"`], {
+      encoding: 'utf8',
+      timeout: 5000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .split('\n')
+      .find((p) => p.endsWith('.app'))
+    return path ? (path.split('/').at(-1) ?? '').replace(/\.app$/, '') || null : null
+  } catch {
+    return null
+  }
+}
+
 // A name's kind: a project (a folder with its own version history), a folder, or its extension.
 export function kindOf(row: { path: string; folder?: boolean; project?: boolean }): string {
   if (row.project) return 'project'
@@ -71,9 +90,12 @@ export class MacReader implements LocalReader {
   readonly run: RunHelper
   readonly chrome: string
   readonly zone: string | undefined
+  readonly nameOf: (id: string) => string | null
 
-  constructor(run: RunHelper, home = homedir(), zone?: string) {
+  // nameOf: an app's name by its id (Spotlight; the tests give their own)
+  constructor(run: RunHelper, home = homedir(), zone?: string, nameOf = appName) {
     this.run = run
+    this.nameOf = nameOf
     this.chrome = join(home, 'Library', 'Application Support', 'Google', 'Chrome')
     this.zone = zone
   }
@@ -142,7 +164,12 @@ export class MacReader implements LocalReader {
       'screen-time',
       ['app-time', since],
     )
-    return timeByDay(a.spans, this.zone)
+    const time = timeByDay(a.spans, this.zone)
+    const names = new Map([...new Set(time.map((t) => t.id))].map((id) => [id, this.nameOf(id)]))
+    return time.map((t) => {
+      const name = names.get(t.id)
+      return name ? { ...t, name } : t
+    })
   }
 
   async files(folder: Folder): Promise<FileSeen[]> {

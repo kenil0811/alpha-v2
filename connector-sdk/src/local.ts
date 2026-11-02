@@ -38,6 +38,7 @@ export interface AppTime {
   id: string
   day: string // 2026-10-31, the person's own day
   seconds: number
+  name?: string // where the computer can say it: an app used but not among the installed ones
 }
 
 // A name in one of the three folders: its path inside it, its kind (an extension, folder, or

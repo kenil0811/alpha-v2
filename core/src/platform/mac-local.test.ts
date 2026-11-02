@@ -44,7 +44,9 @@ describe('the Mac reader', () => {
   })
 
   it('reads Safari, the apps, Screen Time and the folders through the helper, in the reader’s shapes', async () => {
-    const r = new MacReader(fake(), home, 'UTC')
+    const r = new MacReader(fake(), home, 'UTC', (id) =>
+      id === 'example.bundle-001' ? 'Named' : null,
+    )
     const visits = await r.visits('safari', '2026-08-01T00:00:00Z')
     expect(visits.length).toBe(recorded('safari-visits').visits.length)
     expect(Object.keys(visits[0] ?? {}).sort()).toEqual(['at', 'title', 'url'])
@@ -57,6 +59,10 @@ describe('the Mac reader', () => {
     const time = await r.appTime('2026-10-01T00:00:00Z')
     expect(time.length).toBeGreaterThan(0)
     expect(time.every((t) => /^\d{4}-\d{2}-\d{2}$/.test(t.day) && t.seconds > 0)).toBe(true)
+    // an app's name where the Mac can say it, for one used outside the app folders
+    expect(new Set(time.filter((t) => t.name).map((t) => [t.id, t.name].join(' ')))).toEqual(
+      new Set(time.some((t) => t.id === 'example.bundle-001') ? ['example.bundle-001 Named'] : []),
+    )
     const files = await r.files('downloads')
     expect(files.every((f) => f.folder === 'downloads')).toBe(true)
     expect(new Set(files.map((f) => f.kind)).has('folder')).toBe(true)

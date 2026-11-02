@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createTableSql } from './ddl.ts'
 import { Refused } from './kinds.ts'
+import { lastingKeys } from './migrate30.ts'
 import { MIGRATIONS } from './schema.ts'
 import { World } from './world.ts'
 
@@ -220,7 +221,7 @@ describe('the lasting keys (migration 30, call 6)', () => {
     const dir = join(home, 'tenants', 't_keys')
     mkdirSync(dir, { recursive: true })
     const db = new DatabaseSync(join(dir, 'world.sqlite'))
-    const before = MIGRATIONS.length - 1
+    const before = MIGRATIONS.indexOf(lastingKeys)
     for (const m of MIGRATIONS.slice(0, before)) typeof m === 'string' ? db.exec(m) : m(db)
     const at = '2026-10-31T09:00:00.000Z'
     const mod = db.prepare(

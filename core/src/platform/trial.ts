@@ -3,14 +3,21 @@
 // reader, each timed. The raw answers stay in .data/onboarding-trial/<when>/ and are never
 // committed; the report holds counts, times and states only. `--settings` opens Full Disk Access
 // with Alpha beside it; `--record` writes test recordings from the newest trial with every name,
-// site, title, path and app replaced. Nothing leaves the computer; no model is asked.
+// site, title, path and app replaced; `--count` runs the three connectors for this computer as the
+// core runs them (each in its own process, asking the Mac reader across the pipe) and says how
+// much they counted, the names left in .data for the person alone. Nothing leaves the computer;
+// no model is asked.
 //
-//   pnpm onboarding-trial [--settings | --record]
+//   pnpm onboarding-trial [--settings | --record | --count]
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { runHelper } from '@alpha/connector-sdk'
+import { MemorySecrets, runHelper } from '@alpha/connector-sdk'
+import { loadConnector } from '../connectors/discover.ts'
+import { ConnectorService } from '../connectors/service.ts'
+import { World } from '../world/world.ts'
+import { MacReader } from './mac-local.ts'
 import { chromiumVisits } from './readers/chromium.ts'
 
 const REPO = join(import.meta.dirname, '..', '..', '..')
@@ -191,7 +198,48 @@ function record() {
   console.log(`Recordings, names replaced, from ${newest}: ${FIXTURES}`)
 }
 
+// The three connectors as the core runs them, on a world of their own made for this and dropped.
+async function count() {
+  execFileSync('/bin/sh', [join(HELPER_SRC, 'build.sh')], { stdio: 'inherit' })
+  const dir = join(TRIALS, `count-${new Date().toISOString().replace(/[:.]/g, '-')}`)
+  const world = await World.open(join(dir, 'world'))
+  const svc = new ConnectorService(world, {
+    secrets: new MemorySecrets(),
+    known: await loadConnector(join(REPO, 'connectors', 'this-computer')),
+    local: new MacReader(helper),
+  })
+  const out: Record<string, unknown> = {}
+  try {
+    for (const [name, tool, input] of [
+      ['browsing', 'sites', { days: DAYS }],
+      ['apps', 'apps', { days: 30 }],
+      ['filenames', 'files', {}],
+    ] as const) {
+      await svc.connect(name, 'This computer', null, 'trial')
+      const t0 = performance.now()
+      out[name] = await svc.runTool(name, tool, { ...input })
+      console.log(`${name}: ${((performance.now() - t0) / 1000).toFixed(1)} s`)
+    }
+  } finally {
+    svc.close()
+    world.close()
+  }
+  writeFileSync(join(dir, 'counted.json'), JSON.stringify(out, null, 1))
+  const b = out.browsing as { parts: object; sites: unknown[] }
+  const a = out.apps as { parts: object; apps: { hoursWeek?: number }[] }
+  const f = out.filenames as { parts: object; tree: unknown[]; recent: unknown[] }
+  console.log(
+    [
+      `browsing ${JSON.stringify(b.parts)}: ${b.sites.length} sites after the filters`,
+      `apps ${JSON.stringify(a.parts)}: ${a.apps.length} apps, ${a.apps.filter((x) => x.hoursWeek).length} with hours a week`,
+      `filenames ${JSON.stringify(f.parts)}: ${f.tree.length} folders in the tree, ${f.recent.length} newest names`,
+      `What was counted, names and all, for you alone: ${join(dir, 'counted.json')}`,
+    ].join('\n'),
+  )
+}
+
 const flag = process.argv[2]
 if (flag === '--settings') console.log(await helper(['show-settings', 'safari']))
 else if (flag === '--record') record()
+else if (flag === '--count') await count()
 else await trial()

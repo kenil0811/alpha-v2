@@ -17,6 +17,9 @@
       "path": "connectors/mac"
     },
     {
+      "path": "connectors/this-computer"
+    },
+    {
       "path": "connectors-extra/linkedin"
     },
     {

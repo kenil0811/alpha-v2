@@ -45,25 +45,28 @@ export function registerConnectors(ctx: Ctx): void {
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
     const refused = refusals()
     return {
-      connectors: (engine.connectors?.known() ?? []).map((c) => ({
-        name: c.manifest.name,
-        title: c.manifest.title,
-        auth: c.manifest.auth,
-        icon: c.manifest.icon ?? 'plug',
-        account: c.manifest.account,
-        ...(c.manifest.secret ? { secret: c.manifest.secret } : {}),
-        ...(c.manifest.system ? { system: c.manifest.system } : {}),
-        ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
-        ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
-        ...(c.manifest.oauth && signIn
-          ? {
-              signsInWith: {
-                provider: c.manifest.oauth.provider,
-                title: signIn.provider(c.manifest.oauth.provider).title,
-              },
-            }
-          : {}),
-      })),
+      // one Alpha keeps from the model is connected from onboarding's cards, not from a tile
+      connectors: (engine.connectors?.known() ?? [])
+        .filter((c) => !c.manifest.private)
+        .map((c) => ({
+          name: c.manifest.name,
+          title: c.manifest.title,
+          auth: c.manifest.auth,
+          icon: c.manifest.icon ?? 'plug',
+          account: c.manifest.account,
+          ...(c.manifest.secret ? { secret: c.manifest.secret } : {}),
+          ...(c.manifest.system ? { system: c.manifest.system } : {}),
+          ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
+          ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
+          ...(c.manifest.oauth && signIn
+            ? {
+                signsInWith: {
+                  provider: c.manifest.oauth.provider,
+                  title: signIn.provider(c.manifest.oauth.provider).title,
+                },
+              }
+            : {}),
+        })),
       connections: world.connections.list().map((k) => {
         const c = engine.connectors?.find(k.connector)
         return {

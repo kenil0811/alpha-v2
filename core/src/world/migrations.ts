@@ -439,4 +439,9 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
 
   connectionStates, // 29: a connection waiting for the customer (step 2, part 4; migrate29.ts)
   lastingKeys, // 30: a lasting key on the tables and modules kits and connectors make (migrate30.ts)
+  // 31: what a connection never counts (onboarding step 3): the sites, folders and words the person
+  // left out, a JSON list
+  `
+  ALTER TABLE connections ADD COLUMN never TEXT NOT NULL DEFAULT '[]';
+  `,
 ]

@@ -11,32 +11,40 @@ import { type ConnectorService, mcpName } from './service.ts'
 // Every connector's tools as entries of the tool registry (decision 11), each under its
 // connector's server: the model sees mcp__<connector>__<tool>, and what Gmail can do is
 // Gmail's list.
+// A connector whose tools Alpha keeps from the model (what it reads of this computer) serves none:
+// only Alpha's own code calls them (onboarding step 3, Kenil's call 1).
 export function entriesOf(service: ConnectorService): ToolEntry[] {
-  return service.known().flatMap((c) =>
-    Object.entries(c.tools).map(([t, spec]) =>
-      entry(
-        c.manifest.name,
-        t,
-        `${c.manifest.title}: ${spec.description}`,
-        { ...spec.input, account: z.string().optional() },
-        async (input: Record<string, unknown>) => {
-          try {
-            const { account, ...rest } = input
-            const conn = service.connectionFor(c, typeof account === 'string' ? account : undefined)
-            const effect = (await service.says(mcpName(c.manifest.name, t), rest))?.effect
-            const out = await spec.run(service.call(c, conn, effect ?? 'outward'), rest as never)
-            return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 1) }] }
-          } catch (err) {
-            const words =
-              err instanceof Refused || err instanceof Problem
-                ? err.message
-                : `Something went wrong: ${err instanceof Error ? err.message : String(err)}`
-            return { content: [{ type: 'text' as const, text: words }], isError: true }
-          }
-        },
+  return service
+    .known()
+    .filter((c) => !c.manifest.private)
+    .flatMap((c) =>
+      Object.entries(c.tools).map(([t, spec]) =>
+        entry(
+          c.manifest.name,
+          t,
+          `${c.manifest.title}: ${spec.description}`,
+          { ...spec.input, account: z.string().optional() },
+          async (input: Record<string, unknown>) => {
+            try {
+              const { account, ...rest } = input
+              const conn = service.connectionFor(
+                c,
+                typeof account === 'string' ? account : undefined,
+              )
+              const effect = (await service.says(mcpName(c.manifest.name, t), rest))?.effect
+              const out = await spec.run(service.call(c, conn, effect ?? 'outward'), rest as never)
+              return { content: [{ type: 'text' as const, text: JSON.stringify(out, null, 1) }] }
+            } catch (err) {
+              const words =
+                err instanceof Refused || err instanceof Problem
+                  ? err.message
+                  : `Something went wrong: ${err instanceof Error ? err.message : String(err)}`
+              return { content: [{ type: 'text' as const, text: words }], isError: true }
+            }
+          },
+        ),
       ),
-    ),
-  )
+    )
 }
 
 // What the start layer says about connections.

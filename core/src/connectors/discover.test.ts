@@ -51,6 +51,9 @@ describe('connectors found in their folders', () => {
       'calendar',
       'contacts',
       'outlook',
+      'browsing',
+      'apps',
+      'filenames',
     ])
   })
 
@@ -89,7 +92,7 @@ describe('connectors found in their folders', () => {
     ).toThrow(/cannot be called alpha/)
     expect(() => svc.drop('nothing')).toThrow(/no connector called nothing/)
     world.close()
-  })
+  }, 30_000) // it loads the whole standard set, each in a process of its own, twice
 
   it('packs LinkedIn, unpacks it beside the kits with the SDK linked, and loads it', async () => {
     const file = await pack(join(EXTRA, 'linkedin'), dir)

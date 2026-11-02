@@ -212,7 +212,7 @@ describe('Alpha’s own loop', () => {
       /usage window is closed until/,
     )
     limited.close()
-  })
+  }, 30_000) // two desks, each loading the whole standard set of connectors in processes of their own
 
   it('refuses a key that is not there, and names what the route cannot do', async () => {
     const p = new ClaudeApiProvider(world, { key: () => null, userId: user.id })
