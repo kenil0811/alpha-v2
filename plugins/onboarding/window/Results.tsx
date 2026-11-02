@@ -170,7 +170,7 @@ export function Results({
 }
 
 // One line of About you: Keep, Edit (their words, kept) or Drop while proposed; Drop once kept.
-function AboutLine({ row, onChange }: { row: AboutRow; onChange: () => void }) {
+export function AboutLine({ row, onChange }: { row: AboutRow; onChange: () => void }) {
   const act = useAct(onChange)
   const [editing, setEditing] = useState<string | null>(null)
   const v = row.values

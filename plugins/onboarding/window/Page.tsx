@@ -16,6 +16,7 @@ import {
 } from '@alpha/window/kit'
 import { useCallback, useEffect, useState } from 'react'
 import type { Run } from '../src/run.ts'
+import { Cards } from './Cards.tsx'
 import { Results } from './Results.tsx'
 import { onboarding } from './routes.ts'
 
@@ -47,16 +48,24 @@ export function Page() {
   const [about, setAbout] = useState<AboutRow[]>([])
   const [sources, setSources] = useState<Source[]>([])
   const [problem, setProblem] = useState<string | null>(null)
+  // the cards: the next one not yet answered, how many were, and whether they are open
+  const [cards, setCards] = useState<{ next: string | null; said: number }>({ next: null, said: 0 })
+  const [home, setHome] = useState<string | null>(null) // Home's row: what waits
+  const [walking, setWalking] = useState(false)
   const load = useCallback(async () => {
     try {
-      const [r, a, s] = await Promise.all([
+      const [r, a, s, c, h] = await Promise.all([
         onboarding.get<Run | null>('/run'),
         onboarding.get<AboutRow[]>('/about'),
         onboarding.get<Source[]>('/sources'),
+        onboarding.get<{ next: string | null; said: Record<string, string> }>('/cards'),
+        onboarding.get<{ state: string }>('/home'),
       ])
       setRun(r)
       setAbout(a)
       setSources(s)
+      setCards({ next: c.next, said: Object.keys(c.said).length })
+      setHome(h.state)
       setProblem(null)
     } catch (err) {
       setProblem(wordsOf(err))
@@ -72,6 +81,10 @@ export function Page() {
     return () => clearInterval(t)
   }, [run?.state, load])
   const start = useAct(() => void load())
+  // part way through the cards, they open where they were left
+  // the cards open on their own while they are what waits (part way, or never gone through)
+  const showCards = walking || home === 'cards'
+  const cardsFirst = run === null && cards.next !== null
 
   return (
     <div className="@container h-full overflow-y-auto">
@@ -84,11 +97,25 @@ export function Page() {
 
         {run?.state === 'looking' && <Looking since={run.at} />}
 
+        {showCards && (
+          <Section
+            title="One source at a time"
+            about="Each card asks for one source. Allow lets Alpha read it on this Mac, and macOS asks where it must; Skip leaves it alone."
+          >
+            <Cards
+              onDone={() => {
+                setWalking(false)
+                void load()
+              }}
+            />
+          </Section>
+        )}
+
         {run?.state === 'done' && run.checked && (
           <Results run={run} about={about} onChange={() => void load()} />
         )}
 
-        {run !== undefined && run?.state !== 'looking' && (
+        {run !== undefined && run?.state !== 'looking' && !showCards && (
           <Section
             title={run?.state === 'done' ? 'Look again' : 'What Alpha reads'}
             about="Each source as it is connected on this Mac. What Alpha reads stays here; only what its looks find goes to Claude, and you can see all of it after."
@@ -127,10 +154,17 @@ export function Page() {
               <Button
                 variant={run?.state === 'done' ? 'default' : 'primary'}
                 disabled={start.busy}
-                onClick={() => void start.act(() => onboarding.post('/look'))}
+                onClick={() =>
+                  cardsFirst ? setWalking(true) : void start.act(() => onboarding.post('/look'))
+                }
               >
-                {run?.state === 'done' ? 'Look again' : 'Start'}
+                {run?.state === 'done' ? 'Look again' : cardsFirst ? 'Start' : 'Look closer'}
               </Button>
+              {!cardsFirst && (
+                <Button variant="ghost" onClick={() => setWalking(true)}>
+                  Go through the cards
+                </Button>
+              )}
               <Refusal words={start.problem} />
             </div>
           </Section>

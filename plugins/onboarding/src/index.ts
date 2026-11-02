@@ -12,6 +12,7 @@ import type { Run } from './run.ts'
 
 export type { Run }
 
+import { CARDS, Cards, cardRoutes, choicesOf } from './cards.ts'
 import { readSources } from './sources.ts'
 import { buildSummary } from './summary.ts'
 import { toolsOf } from './tools.ts'
@@ -86,6 +87,8 @@ export class Runs {
 
 export function register(host: PluginHost): void {
   const runs = new Runs(host.dir)
+  const cards = new Cards(host.dir)
+  cardRoutes(host, cards)
   const decidedFile = join(host.dir, 'decided.json')
   const decided = (): Decided =>
     existsSync(decidedFile)
@@ -112,7 +115,7 @@ export function register(host: PluginHost): void {
       const x = await host.explore(
         words,
         `Today is ${today()}.\n\n# Overview\n\n${run.overview}`,
-        toolsOf(await readSources(host), host),
+        toolsOf(await readSources(host, choicesOf(cards.get())), host),
         SCHEMA,
       )
       const read = [run.overview, ...x.calls.map((c) => JSON.stringify(c.output))].join('\n')
@@ -152,7 +155,7 @@ export function register(host: PluginHost): void {
   // Start the session; it runs on, and the run says when it is done.
   host.route('POST', '/look', async () => {
     if (looking) throw new Refusal('Alpha is getting to know you already: it says when it is done.')
-    const s = await buildSummary(host, OWN)
+    const s = await buildSummary(host, OWN, choicesOf(cards.get()))
     const run: Run = {
       id: `r-${Date.now()}`,
       at: new Date().toISOString(),
@@ -240,6 +243,9 @@ export function register(host: PluginHost): void {
   // Home's row: whether to start, that Alpha is looking, or what still waits for the person.
   host.route('GET', '/home', async () => {
     const run = runs.latest()
+    // part way through the cards: how far
+    const said = Object.keys(cards.get().said).length
+    if (!run && said > 0 && cards.next()) return { state: 'cards', done: said, of: CARDS.length }
     if (!run || run.state === 'failed') return { state: 'start' }
     if (run.state === 'looking') return { state: 'looking' }
     const c = run.checked
@@ -252,7 +258,10 @@ export function register(host: PluginHost): void {
       suggestions: (c?.suggestions ?? []).filter((_, i) => !(`suggestion:${i}` in run.decided))
         .length,
     }
-    return { state: Object.values(waits).some((n) => n > 0) ? 'waiting' : 'done', waits }
+    if (Object.values(waits).some((n) => n > 0)) return { state: 'waiting', waits }
+    // a look made before the cards: the cards still wait to be gone through
+    if (cards.next()) return { state: 'cards', done: said, of: CARDS.length }
+    return { state: 'done', waits }
   })
 
   // About you: each line kept, changed and kept, or dropped, on the person's word.

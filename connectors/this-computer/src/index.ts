@@ -48,6 +48,43 @@ async function access(c: Call, parts: string[]): Promise<Record<string, Access>>
   return out
 }
 
+// Each part's own words to open its place in System Settings (onboarding's cards): the pane that
+// switches Alpha on for it, with Alpha shown in Finder beside it.
+const settings = (parts: string[]) =>
+  defineTool({
+    description:
+      'Opens System Settings where this computer lets Alpha read a part, for the person.',
+    input: { part: z.enum(parts as [string, ...string[]]) },
+    effect: 'read',
+    words: () => 'Opened System Settings',
+    run: async (c, { part }) => {
+      reader(c).showSettings(part)
+      return { opened: part }
+    },
+  })
+
+// Each part's access now, in the five words (onboarding's cards ask after a yes or a setting).
+const partsTool = (parts: string[] | ((c: Call) => Promise<Record<string, Access>>)) =>
+  defineTool({
+    description: 'Each part of this source and whether Alpha can read it on this computer now.',
+    input: {},
+    effect: 'read',
+    words: () => 'Looked at what Alpha can read',
+    run: async (c) => (typeof parts === 'function' ? parts(c) : access(c, parts)),
+  })
+
+// The visits of the browsers asked for (all that can be read when none are named).
+async function visitsOf(c: Call, days: number, browsers?: string[]) {
+  const r = reader(c)
+  const parts = await access(c, ['chrome', 'safari'])
+  const visits = []
+  for (const b of await r.browsers())
+    if (parts[b.id] === 'ready' && (!browsers || browsers.includes(b.id)))
+      visits.push(...(await r.visits(b.id, since(days))))
+  return { parts, visits }
+}
+const BROWSERS = z.array(z.enum(['chrome', 'safari'])).optional()
+
 const base = {
   auth: 'system',
   account: { label: 'This computer' },
@@ -73,33 +110,27 @@ export const browsing: Connector = {
     sites: defineTool({
       description:
         'Each site visited in the last days with its visits, days seen, last visit and up to three page titles, filtered.',
-      input: { days: z.number().int().min(1).max(365).default(90) },
+      input: { days: z.number().int().min(1).max(365).default(90), browsers: BROWSERS },
       effect: 'read',
       words: () => 'Counted the sites visited',
-      run: async (c, { days }) => {
-        const r = reader(c)
-        const parts = await access(c, ['chrome', 'safari'])
-        const visits = []
-        for (const b of await r.browsers())
-          if (parts[b.id] === 'ready') visits.push(...(await r.visits(b.id, since(days))))
+      run: async (c, { days, browsers }) => {
+        const { parts, visits } = await visitsOf(c, days, browsers)
         return { parts, sites: countSites(visits, await never(c)) }
       },
     }),
     visits: defineTool({
       description:
         'Each visit in the last days in time order: when, the site and its page title, filtered; never the address.',
-      input: { days: z.number().int().min(1).max(365).default(90) },
+      input: { days: z.number().int().min(1).max(365).default(90), browsers: BROWSERS },
       effect: 'read',
       words: () => 'Read the visits by site and title',
-      run: async (c, { days }) => {
-        const r = reader(c)
-        const parts = await access(c, ['chrome', 'safari'])
-        const visits = []
-        for (const b of await r.browsers())
-          if (parts[b.id] === 'ready') visits.push(...(await r.visits(b.id, since(days))))
+      run: async (c, { days, browsers }) => {
+        const { parts, visits } = await visitsOf(c, days, browsers)
         return { parts, visits: filterVisits(visits, await never(c)) }
       },
     }),
+    parts: partsTool(['chrome', 'safari']),
+    settings: settings(['chrome', 'safari']),
   },
   access: (c) => access(c, ['chrome', 'safari']),
   // the reader answers, or says this computer has none
@@ -134,12 +165,16 @@ export const apps: Connector = {
     apps: defineTool({
       description:
         'Each app with its launches, last use and, where the time is known, hours a week over the last days.',
-      input: { days: z.number().int().min(1).max(90).default(30) },
+      input: {
+        days: z.number().int().min(1).max(90).default(30),
+        time: z.boolean().default(true), // false: Screen Time is not read, the person said no
+      },
       effect: 'read',
       words: () => 'Counted the apps used',
-      run: async (c, { days }) => {
+      run: async (c, { days, time: withTime }) => {
         const r = reader(c)
-        const time = (await r.access('screen-time')).state
+        // a call that does not say (the core's own, unparsed) reads it where it can
+        const time = withTime === false ? 'refused' : (await r.access('screen-time')).state
         return {
           parts: { installed: 'ready', 'screen-time': time },
           apps: countApps(
@@ -169,6 +204,8 @@ export const apps: Connector = {
         }
       },
     }),
+    parts: partsTool(async (c) => ({ installed: 'ready', ...(await access(c, ['screen-time'])) })),
+    settings: settings(['screen-time']),
   },
   access: async (c) => ({ installed: 'ready', ...(await access(c, ['screen-time'])) }),
   check: async (c) => {
@@ -237,6 +274,8 @@ export const filenames: Connector = {
         }
       },
     }),
+    parts: partsTool([...FOLDERS]),
+    settings: settings([...FOLDERS]),
   },
   access: (c) => access(c, [...FOLDERS]),
   check: async (c) => {

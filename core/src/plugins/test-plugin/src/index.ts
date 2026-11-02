@@ -22,6 +22,11 @@ export const plugin: Plugin = {
     })
     host.route('GET', '/mail', async () => ({ rows: host.rows('Mail', 'Mail').length }))
     host.route('GET', '/never', async ({ query }) => ({ never: host.never(query.words ?? '') }))
+    host.route('POST', '/leave-out', async ({ body }) => {
+      host.setNever('browsing', [String((body as { word?: unknown }).word ?? '')])
+      return { list: host.neverOf('browsing') }
+    })
+    host.route('POST', '/connect', async () => host.connect('browsing'))
     host.route('POST', '/ask', async () => ({
       answer: await host.ask('Answer in the schema.', 'Say yes.', { type: 'object' }),
     }))

@@ -203,6 +203,37 @@ export class Plugins {
             contact: p.count,
             last: p.last,
           })),
+      connect: async (connector) => {
+        const s = this.deps.connectors
+        if (!s) throw new Refused('Connectors are not set up in this core.')
+        const c = s.connector(connector)
+        if (c.manifest.auth !== 'system')
+          throw new Refused(`${c.manifest.title} connects through its own step, in Connections.`)
+        try {
+          const conn = await s.connect(
+            connector,
+            c.manifest.account?.label ?? 'This computer',
+            null,
+            this.deps.user.id,
+          )
+          return { connected: conn.state === 'connected', problem: conn.health }
+        } catch (err) {
+          return { connected: false, problem: err instanceof Error ? err.message : String(err) }
+        }
+      },
+      neverOf: (connector) =>
+        world.connections
+          .list()
+          .filter((k) => k.connector === connector)
+          .flatMap((k) => k.never),
+      setNever: (connector, words) => {
+        // the person's own ticks, said in the plugin's screen
+        for (const k of world.connections.list().filter((x) => x.connector === connector))
+          world.connections.setNever(k.id, words, {
+            actor: { kind: 'person', id: this.deps.user.id },
+            user: this.deps.user.id,
+          })
+      },
       never: (words) =>
         never(
           words,

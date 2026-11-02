@@ -74,6 +74,8 @@ describe('a plugin', () => {
       'POST /api/plugins/test/keep/:id',
       'GET /api/plugins/test/mail',
       'GET /api/plugins/test/never',
+      'POST /api/plugins/test/leave-out',
+      'POST /api/plugins/test/connect',
       'POST /api/plugins/test/ask',
     ])
   })
@@ -133,6 +135,27 @@ describe('a plugin', () => {
         actor: { kind: 'person', id: world.owner('Kenil').id },
       })
       expect(await never('Harbor deal: next steps')).toBe(true)
+      // a connection's own list, set on the person's word
+      world.connections.add('browsing', 'This computer', null, 'Browsing history', {
+        actor: { kind: 'person', id: world.owner('Kenil').id },
+      })
+      const left = await a.inject({
+        method: 'POST',
+        url: '/api/plugins/test/leave-out',
+        headers: ok,
+        payload: { word: 'Example.com' },
+      })
+      expect(left.json()).toEqual({ list: ['example.com'] })
+      // connecting needs the core's connectors: said, never thrown
+      const connect = await a.inject({
+        method: 'POST',
+        url: '/api/plugins/test/connect',
+        headers: ok,
+      })
+      expect([connect.statusCode, connect.json().problem]).toEqual([
+        409,
+        'Connectors are not set up in this core.',
+      ])
       // its one question, and what it cost kept with Alpha's usage under its own module
       expect(
         (await a.inject({ method: 'POST', url: '/api/plugins/test/ask', headers: ok })).json(),

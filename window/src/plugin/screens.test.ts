@@ -6,8 +6,8 @@ import { SCREENS, screenOf } from './screens.ts'
 
 describe('a plugin’s screens', () => {
   it('are found in the plugins’ folders, each at #/p/<name>', () => {
-    expect(SCREENS.map((s) => [s.name, s.title, !!s.Page, !!s.Waiting])).toEqual([
-      ['onboarding', 'Let Alpha get to know you', true, true],
+    expect(SCREENS.map((s) => [s.name, s.title, !!s.Page, !!s.Waiting, s.brain?.label])).toEqual([
+      ['onboarding', 'Let Alpha get to know you', true, true, 'About you'],
     ])
     expect(placeOf('#/p/onboarding')).toEqual({ at: 'plugin', name: 'onboarding' })
     expect(placeOf('#/p/Not-a-name')).not.toMatchObject({ at: 'plugin' })

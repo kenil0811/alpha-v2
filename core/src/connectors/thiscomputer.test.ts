@@ -40,8 +40,11 @@ const reader: LocalReader = {
   ],
   appSpans: async () => [],
   downloads: async () => [],
-  showSettings: () => undefined,
+  showSettings: (part) => {
+    opened.push(part)
+  },
 }
+const opened: string[] = []
 
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'alpha-this-computer-'))
@@ -79,6 +82,39 @@ describe('the connectors for this computer', () => {
         recent: { folder: string; path: string }[]
       }
       expect(files.recent.map((f) => f.folder)).toEqual(['documents', 'desktop', 'downloads'])
+    } finally {
+      svc.close()
+    }
+  })
+
+  it('say each part’s state, open its System Settings, and read only what the person allowed', async () => {
+    const svc = new ConnectorService(world, { secrets: new MemorySecrets(), known, local: reader })
+    try {
+      for (const name of ['browsing', 'apps', 'filenames'])
+        await svc.connect(name, 'This computer', null, 'u_1')
+      expect(await svc.runTool('browsing', 'parts', {})).toEqual({
+        chrome: 'ready',
+        safari: 'settings',
+      })
+      expect(await svc.runTool('apps', 'parts', {})).toEqual({
+        installed: 'ready',
+        'screen-time': 'ready',
+      })
+      opened.length = 0
+      await svc.runTool('browsing', 'settings', { part: 'safari' })
+      expect(opened).toEqual(['safari'])
+      // Safari and Screen Time left out on the cards: not read even when they could be
+      const none = (await svc.runTool('browsing', 'sites', {
+        days: 400,
+        browsers: ['safari'],
+      })) as {
+        sites: unknown[]
+      }
+      expect(none.sites).toEqual([])
+      const apps = (await svc.runTool('apps', 'apps', { days: 7, time: false })) as {
+        apps: { hoursWeek?: number }[]
+      }
+      expect(apps.apps.map((a) => a.hoursWeek)).toEqual([undefined])
     } finally {
       svc.close()
     }

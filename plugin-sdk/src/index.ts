@@ -69,6 +69,14 @@ export interface PluginHost {
   // Whether some words (a subject, a title, a sender) touch the never-use list: the one shipped
   // with Alpha and every one the person keeps on a connection. What touches it never leaves.
   never(words: string): boolean
+  // A connector Alpha connects on its own (one of this computer's: Calendar, Contacts, browsing,
+  // apps, file names), on the person's yes in the plugin's screen: connected, or the words why not
+  // (macOS said no, the source is not on this computer). One that signs in connects in Connections.
+  connect(connector: string): Promise<{ connected: boolean; problem: string | null }>
+  // A connection's never-use list (the sites, folders and words the person left out), and that list
+  // set to the person's word.
+  neverOf(connector: string): string[]
+  setNever(connector: string, words: string[]): void
   // A connector's tool as Alpha's own code calls it, on the person's connection (one kept from the
   // model too); the connector says in words when it is not connected.
   connectorTool(connector: string, tool: string, input: Record<string, unknown>): Promise<unknown>

@@ -18,14 +18,17 @@ export { List, Row, Tile } from '../ui/list.tsx'
 export { Label, Pill } from '../ui/pill.tsx'
 export { Answer, Question } from '../ui/question.tsx'
 export { Empty, Section } from '../ui/section.tsx'
+export { Switch } from '../ui/switch.tsx'
 export { Words } from '../ui/words.tsx'
 
-// A plugin's page and, when something waits for the person, its row on Home.
+// A plugin's page and, when something waits for the person, its row on Home; and, where what it
+// keeps is about the person, its part of Second Brain, always one click away.
 export interface Screen {
   name: string // the plugin's: its page is #/p/<name>
   title: string // the page's name in the bar
   Page: ComponentType
   Waiting?: ComponentType // a row on Home; none when nothing waits
+  brain?: { label: string; Part: ComponentType } // a part of Intelligence › Second Brain
 }
 
 // The plugin's own routes, answered by the core as the person (/api/plugins/<name>/…).

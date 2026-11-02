@@ -3,11 +3,14 @@
 // window's own screens do; removing the plugin's folder removes both.
 import { Group, Line, LoaderCircle, type Screen, Sparkles } from '@alpha/window/kit'
 import { useEffect, useState } from 'react'
+import { AboutYou } from './Brain.tsx'
 import { Page } from './Page.tsx'
 import { onboarding } from './routes.ts'
 
 interface Home {
-  state: 'start' | 'looking' | 'waiting' | 'done'
+  state: 'start' | 'cards' | 'looking' | 'waiting' | 'done'
+  done?: number // cards answered, part way through them
+  of?: number
   waits?: { lines: number; questions: number; routines: number; suggestions: number }
 }
 
@@ -43,14 +46,26 @@ function Waiting() {
           )
         }
         head={
-          home.state === 'start' ? 'Start' : home.state === 'looking' ? 'Looking' : 'Waits for you'
+          home.state === 'start'
+            ? 'Start'
+            : home.state === 'cards'
+              ? home.done
+                ? 'Part way'
+                : 'One source at a time'
+              : home.state === 'looking'
+                ? 'Looking'
+                : 'Waits for you'
         }
         words={
           home.state === 'start'
             ? 'Alpha reads what you allow on this Mac and learns what it can about your work, for your yes.'
-            : home.state === 'looking'
-              ? 'Alpha is looking closer at what you allowed.'
-              : waitWords(home.waits ?? { lines: 0, questions: 0, routines: 0, suggestions: 0 })
+            : home.state === 'cards'
+              ? home.done
+                ? `${home.done} of ${home.of} sources answered; carry on where you left off.`
+                : 'Go through what Alpha reads, one source at a time.'
+              : home.state === 'looking'
+                ? 'Alpha is looking closer at what you allowed.'
+                : waitWords(home.waits ?? { lines: 0, questions: 0, routines: 0, suggestions: 0 })
         }
         href="#/p/onboarding"
       />
@@ -63,4 +78,5 @@ export const screen: Screen = {
   title: 'Let Alpha get to know you',
   Page,
   Waiting,
+  brain: { label: 'About you', Part: AboutYou },
 }

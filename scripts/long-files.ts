@@ -14,7 +14,7 @@ const LIMIT = 600
 const LEFT: Record<string, number> = {
   'core/src/api/types.ts': 660, // the window's contract, one file by design (Kenil, 24 Oct)
   // the window's big screens as they stood when the wall came (1 Nov): they may only shrink
-  'window/src/Settings.tsx': 1585,
+  'window/src/Settings.tsx': 1448, // Second Brain moved out (2 Nov)
   'window/src/table/Grid.tsx': 1272,
   'window/src/Conversation.tsx': 1020,
   'window/src/Shell.tsx': 977,

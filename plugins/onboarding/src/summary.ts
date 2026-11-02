@@ -2,6 +2,7 @@
 // line with an id the answer may cite ([B17]), counted here from what the person allowed and
 // dropped after; nothing raw is kept. No size of our choosing: everything counted goes in.
 import type { PluginHost, Row } from '@alpha/plugin-sdk'
+import { ALL, type Choices } from './cards.ts'
 import { mailRows, meetingRows } from './sources.ts'
 
 export interface Summary {
@@ -212,15 +213,30 @@ async function read<T>(
 }
 
 // Every part read and counted.
-export async function buildSummary(host: PluginHost, own: string): Promise<Summary> {
+export async function buildSummary(
+  host: PluginHost,
+  own: string,
+  choices: Choices = ALL,
+): Promise<Summary> {
   const p = host.person()
+  const ok = (card: string) => !choices.skipped.includes(card)
   const sites =
-    (await read<{ sites: Site[] }>(host, 'browsing', 'sites', { days: 90 }))?.sites ?? null
-  const appList = (await read<{ apps: App[] }>(host, 'apps', 'apps', { days: 30 }))?.apps ?? null
-  const fileList = await read<Files>(host, 'filenames', 'files', {})
-  const events = meetingRows(host)
-  const people = host.rows('Contacts', 'Contacts')
-  const messages = mailRows(host)
+    !choices.browsers || choices.browsers.length
+      ? ((
+          await read<{ sites: Site[] }>(host, 'browsing', 'sites', {
+            days: 90,
+            ...(choices.browsers ? { browsers: choices.browsers } : {}),
+          })
+        )?.sites ?? null)
+      : null
+  const appList = ok('apps')
+    ? ((await read<{ apps: App[] }>(host, 'apps', 'apps', { days: 30, time: choices.screenTime }))
+        ?.apps ?? null)
+    : null
+  const fileList = ok('files') ? await read<Files>(host, 'filenames', 'files', {}) : null
+  const events = ok('calendar') ? meetingRows(host) : []
+  const people = ok('contacts') ? host.rows('Contacts', 'Contacts') : []
+  const messages = ok('mail') ? mailRows(host) : []
   const parts: Part[] = [
     {
       letter: 'P',

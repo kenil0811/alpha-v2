@@ -9,6 +9,7 @@ import type { Input, PluginHost, PluginTool, Row } from '@alpha/plugin-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { check, fromWords } from './answer.ts'
 import { type Run, register } from './index.ts'
+import type { CardView } from './run.ts'
 import { readSources } from './sources.ts'
 import { buildSummary } from './summary.ts'
 import { appRuns, seriesOf, shapeOf, toolsOf } from './tools.ts'
@@ -29,6 +30,26 @@ type Model = (use: Use, prompt: string) => Promise<unknown>
 const none: Model = async () => ({ about: [], routines: [], suggestions: [], questions: [] })
 
 function made(model: Model = none, connected = true) {
+  // what is connected, each part's access, every connector tool called, the never-use lists
+  const conn: Record<string, boolean> = {
+    outlook: false,
+    browsing: true,
+    calendar: true,
+    contacts: false,
+    apps: false,
+    filenames: false,
+  }
+  const parts: Record<string, string> = {
+    chrome: 'ready',
+    safari: 'settings',
+    installed: 'ready',
+    'screen-time': 'settings',
+    documents: 'ready',
+    desktop: 'refused',
+    downloads: 'ready',
+  }
+  const toolCalls: { connector: string; tool: string; input: Record<string, unknown> }[] = []
+  const neverLists: Record<string, string[]> = {}
   const own = new Map<string, Row>()
   let next = 1
   const routes = new Map<string, (i: Input) => Promise<unknown>>()
@@ -169,20 +190,51 @@ function made(model: Model = none, connected = true) {
         },
         { name: 'About you', installed: true, case: null },
       ],
-      connectors: [
-        { name: 'outlook', title: 'Outlook', connected: false, private: false },
-        { name: 'browsing', title: 'Browsing history', connected: true, private: true },
-        { name: 'calendar', title: 'Calendar', connected: true, private: false },
-      ],
+      connectors: Object.entries(conn).map(([name, connected]) => ({
+        name,
+        title: name.charAt(0).toUpperCase() + name.slice(1),
+        connected,
+        private: ['browsing', 'apps', 'filenames'].includes(name),
+      })),
     }),
     people: () => [{ name: 'Priya Shah', company: 'Harbor', contact: 5, last: z(21, 4) }],
     rows: (m, t) => tables[`${m}/${t}`] ?? [],
     // the never-use list as the core answers it, cut down to what these rows need
     never: (words) => /\b(bank|therapy)\b/i.test(words),
-    connectorTool: async (connector, tool) => {
+    connectorTool: async (connector, tool, input) => {
+      toolCalls.push({ connector, tool, input })
+      // the person switches Alpha on in System Settings
+      if (tool === 'settings') {
+        parts.safari = 'ready'
+        parts['screen-time'] = 'ready'
+        return { opened: input.part }
+      }
+      if (tool === 'parts') {
+        const of: Record<string, string[]> = {
+          browsing: ['chrome', 'safari'],
+          apps: ['installed', 'screen-time'],
+          filenames: ['documents', 'desktop', 'downloads'],
+        }
+        return Object.fromEntries((of[connector] ?? []).map((p) => [p, parts[p]]))
+      }
       const out = reads[`${connector}/${tool}`]
       if (!connected || !out) throw new Error('not connected')
+      // a site on the never-use list is never counted, as the connector does
+      if (tool === 'sites')
+        return {
+          sites: (out.sites as { site: string }[]).filter(
+            (x) => !(neverLists.browsing ?? []).includes(x.site),
+          ),
+        }
       return out
+    },
+    connect: async (connector) => {
+      conn[connector] = true
+      return { connected: true, problem: null }
+    },
+    neverOf: (connector) => neverLists[connector] ?? [],
+    setNever: (connector, words) => {
+      neverLists[connector] = words
     },
     ask: async () => {
       throw new Error('onboarding asks nothing without its tools')
@@ -233,7 +285,7 @@ function made(model: Model = none, connected = true) {
     })
     return run as unknown as Run
   }
-  return { host, own, call, settled, starts, lines, prompts }
+  return { host, own, call, settled, starts, lines, prompts, toolCalls, neverLists }
 }
 
 describe('the overview', () => {
@@ -520,6 +572,84 @@ describe('the checks on the answer', () => {
   })
 })
 
+describe('the one-at-a-time cards', () => {
+  it('ask for one source at a time: Allow connects and shows what was found, Skip leaves it alone', async () => {
+    const { call, toolCalls, neverLists, lines, settled, prompts } = made()
+    const card = (name: string, what = '') =>
+      call(
+        `${what ? 'POST' : 'GET'} /card/:name${what ? `/${what}` : ''}`,
+        {},
+        { name },
+      ) as Promise<CardView & { problem?: string | null }>
+    expect(await call('GET /cards')).toEqual({
+      names: ['calendar', 'contacts', 'apps', 'chrome', 'safari', 'files', 'mail'],
+      next: 'calendar',
+      said: {},
+    })
+    expect(await card('calendar', 'allow')).toMatchObject({
+      at: 1,
+      of: 7,
+      said: 'allowed',
+      found: { lines: ['4 meetings with 3 people.'] },
+    })
+    expect(await card('contacts', 'skip')).toMatchObject({ said: 'skipped', found: null })
+    // part way: Home says how far
+    expect(await call('GET /home')).toEqual({ state: 'cards', done: 2, of: 7 })
+    expect((await card('apps', 'allow')).found?.lines).toEqual([
+      '1 app; used most: Microsoft Excel.',
+    ])
+    // a browser's sites, each with a tick: one switched off joins the never-use list
+    const chrome = await card('chrome', 'allow')
+    expect(chrome.found?.ticks).toEqual([
+      { item: 'bizbuysell.com', sub: '140 visits', on: true },
+      { item: 'docs.example.org', sub: '9 visits', on: true },
+    ])
+    expect(toolCalls.find((t) => t.tool === 'sites')?.input).toEqual({
+      days: 90,
+      browsers: ['chrome'],
+    })
+    const ticked = (await call(
+      'POST /card/:name/tick',
+      { item: 'bizbuysell.com', on: false },
+      { name: 'chrome' },
+    )) as CardView
+    expect(neverLists.browsing).toEqual(['bizbuysell.com'])
+    expect(ticked.found?.ticks?.map((t) => [t.item, t.on])).toEqual([
+      ['docs.example.org', true],
+      ['bizbuysell.com', false],
+    ])
+    // Full Disk Access: not until System Settings says so, then allowed
+    const safari = await card('safari', 'allow')
+    expect(safari).toMatchObject({ said: null, ready: false, states: { safari: 'settings' } })
+    expect(await card('safari', 'settings')).toEqual({ opened: 'safari' })
+    expect(await card('safari', 'allow')).toMatchObject({ said: 'allowed', ready: true })
+    // file names: a folder macOS said no to is not read; the rest are
+    const files = await card('files', 'allow')
+    expect(files).toMatchObject({ said: 'allowed', states: { desktop: 'refused' } })
+    expect(files.found?.ticks?.[0]).toEqual({ item: 'Documents/Deals', sub: '3 files', on: true })
+    await call('POST /card/:name/tick', { item: 'Documents/Deals', on: false }, { name: 'files' })
+    expect(neverLists.filenames).toEqual(['deals'])
+    // mail connects in its own step: Done waits for it
+    expect((await card('mail', 'allow')).problem).toMatch(/Connect Gmail or Outlook first/)
+    await card('mail', 'skip')
+    expect(((await call('GET /cards')) as { next: string | null }).next).toBeNull()
+    expect(lines.filter((l) => l.startsWith('Skipped'))).toEqual([
+      'Skipped Contacts for getting to know the person.',
+      'Skipped Mail for getting to know the person.',
+    ])
+    // what was skipped is never read: no contacts or mail in the overview, only the browsers allowed
+    toolCalls.length = 0
+    await call('POST /look')
+    await settled()
+    expect(prompts[0]).toContain('Contacts: nothing read')
+    expect(prompts[0]).toContain('Mail: nothing read')
+    expect(toolCalls.find((t) => t.tool === 'visits')?.input).toEqual({
+      days: 90,
+      browsers: ['chrome', 'safari'],
+    })
+  })
+})
+
 describe('onboarding through its host', () => {
   it('looks closer, proposes its lines, takes an answer, and keeps only what the person keeps', async () => {
     const { call, own, settled, starts, lines, prompts } = made(async (use) => {
@@ -604,8 +734,11 @@ describe('onboarding through its host', () => {
     // the sources Start lists, Home's row, Add and Decline
     expect(((await call('GET /sources')) as { name: string }[]).map((x) => x.name)).toEqual([
       'calendar',
+      'contacts',
       'outlook',
       'browsing',
+      'apps',
+      'filenames',
     ])
     expect(await call('GET /home')).toEqual({
       state: 'waiting',
@@ -616,7 +749,8 @@ describe('onboarding through its host', () => {
     await expect(
       call('POST /decide', { run: run.id, kind: 'suggestion', at: 5, decision: 'added' }),
     ).rejects.toThrow(/not here any more/)
-    expect(((await call('GET /home')) as { state: string }).state).toBe('done')
+    // nothing of the look waits now; the cards, never gone through, still do
+    expect(await call('GET /home')).toEqual({ state: 'cards', done: 0, of: 7 })
     // Forget deletes everything that was sent
     await call('POST /forget', { run: run.id })
     expect(await call('GET /run')).toBeNull()

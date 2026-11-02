@@ -6,6 +6,7 @@
 // not read at all (Kenil's yes 2 Nov, after a bank statement's subject reached the first run).
 // Nothing here is sent: the tools pick from it.
 import type { PluginHost, Row } from '@alpha/plugin-sdk'
+import { ALL, type Choices } from './cards.ts'
 
 export interface Visit {
   at: string
@@ -162,18 +163,41 @@ async function read<T>(host: PluginHost, connector: string, tool: string, input 
   }
 }
 
-export async function readSources(host: PluginHost): Promise<Sources> {
+// What the person allowed on the cards decides what is read at all: a card said no to is a
+// source never read, a browser or Screen Time left out is never opened.
+export async function readSources(host: PluginHost, choices: Choices = ALL): Promise<Sources> {
   const values = (rows: Row[]) => rows.map((r) => r.values)
+  const ok = (card: string) => !choices.skipped.includes(card)
+  const browsing = !choices.browsers || choices.browsers.length > 0
   return {
-    visits:
-      (await read<{ visits: Visit[] }>(host, 'browsing', 'visits', { days: 90 }))?.visits ?? null,
-    spans: (await read<{ spans: Span[] }>(host, 'apps', 'spans', { days: 30 }))?.spans ?? null,
-    apps: (await read<{ apps: AppUse[] }>(host, 'apps', 'apps', { days: 30 }))?.apps ?? null,
-    names: (await read<{ names: Name[] }>(host, 'filenames', 'names'))?.names ?? null,
-    downloads:
-      (await read<{ downloads: Fetched[] }>(host, 'filenames', 'downloads'))?.downloads ?? null,
-    mail: values(mailRows(host)).map(message),
-    meetings: values(meetingRows(host)).map(meeting),
-    contacts: values(host.rows('Contacts', 'Contacts')).map(contact),
+    visits: browsing
+      ? ((
+          await read<{ visits: Visit[] }>(host, 'browsing', 'visits', {
+            days: 90,
+            ...(choices.browsers ? { browsers: choices.browsers } : {}),
+          })
+        )?.visits ?? null)
+      : null,
+    spans:
+      ok('apps') && choices.screenTime
+        ? ((await read<{ spans: Span[] }>(host, 'apps', 'spans', { days: 30 }))?.spans ?? null)
+        : null,
+    apps: ok('apps')
+      ? ((
+          await read<{ apps: AppUse[] }>(host, 'apps', 'apps', {
+            days: 30,
+            time: choices.screenTime,
+          })
+        )?.apps ?? null)
+      : null,
+    names: ok('files')
+      ? ((await read<{ names: Name[] }>(host, 'filenames', 'names'))?.names ?? null)
+      : null,
+    downloads: ok('files')
+      ? ((await read<{ downloads: Fetched[] }>(host, 'filenames', 'downloads'))?.downloads ?? null)
+      : null,
+    mail: ok('mail') ? values(mailRows(host)).map(message) : [],
+    meetings: ok('calendar') ? values(meetingRows(host)).map(meeting) : [],
+    contacts: ok('contacts') ? values(host.rows('Contacts', 'Contacts')).map(contact) : [],
   }
 }
