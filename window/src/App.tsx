@@ -46,6 +46,7 @@ import { RowPage, type RowPlace } from './RowPage.tsx'
 import { besideWidth, roomBeside, useWindowWidth } from './room.ts'
 import { alphaOf, Settings } from './Settings.tsx'
 import { Bar, BarMiddle, type Crumb, network, Rail } from './Shell.tsx'
+import { moduleSignals } from './signals.ts'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
@@ -370,6 +371,7 @@ export function App() {
           onLayout={changeLayout}
           name={name}
           waiting={stream?.cards.length ?? 0}
+          signals={moduleSignals(stream)}
           onNew={() => {
             window.location.hash = '#/module/new'
           }}

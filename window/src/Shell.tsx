@@ -33,6 +33,7 @@ import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
+import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 import { BarName, Renamable } from './ui/rename.tsx'
@@ -73,6 +74,9 @@ function Nav({
   )
 }
 
+// Each module's signal, for its dot in the rail (Batch E, 66.18).
+const Signals = createContext<Record<string, Signal>>({})
+
 export function Rail({
   modules,
   place,
@@ -84,9 +88,11 @@ export function Rail({
   layout,
   onLayout,
   onNew,
+  signals = {},
 }: {
   modules: ModuleSummary[]
   place: Place
+  signals?: Record<string, Signal> // each module's dot (Batch E, 66.18)
   here: string | null // the module whose screen or table is open
   name: string
   waiting: number
@@ -200,19 +206,21 @@ export function Rail({
         <Popover point={empty.point} open={empty.open} onClose={empty.close}>
           <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
         </Popover>
-        <ModuleDrag modules={modules}>
-          {shownTops(modules, hiding.hidden).map((m) => (
-            <ModuleItem
-              key={m.id}
-              m={m}
-              modules={modules}
-              here={here}
-              folded={layout.folded}
-              onFold={fold}
-              hiding={hiding}
-            />
-          ))}
-        </ModuleDrag>
+        <Signals.Provider value={signals}>
+          <ModuleDrag modules={modules}>
+            {shownTops(modules, hiding.hidden).map((m) => (
+              <ModuleItem
+                key={m.id}
+                m={m}
+                modules={modules}
+                here={here}
+                folded={layout.folded}
+                onFold={fold}
+                hiding={hiding}
+              />
+            ))}
+          </ModuleDrag>
+        </Signals.Provider>
         <button
           type="button"
           onClick={onNew}
@@ -437,8 +445,14 @@ function ModuleItem({
   hiding: Hiding
 }) {
   const kids = childrenOf(modules, m.id).filter((c) => !hiding.hidden.includes(c.id))
+  const signals = useContext(Signals)
   const menu = useContextMenu()
   const open = !folded.includes(m.id)
+  // folded, it shows the strongest of what waits or runs in the modules inside it too
+  const signal =
+    open || !kids.length
+      ? signals[m.id]
+      : strongest(inside(modules, m.id).flatMap((id) => signals[id] ?? []))
   const drag = useContext(Drag)
   const [over, setOver] = useState(false)
   // never into itself, one of its own, or where it already sits
@@ -485,7 +499,12 @@ function ModuleItem({
                 icon={<ModuleIcon name={m.name} className="size-4" />}
                 label={m.name}
                 current={here === m.id}
-                extra={<span className="w-11 shrink-0" />}
+                extra={
+                  <>
+                    {signal && <Dot s={signal} />}
+                    <span className="w-11 shrink-0" />
+                  </>
+                }
                 onDoubleClick={start}
               />
               <span className="absolute right-0.5 flex items-center">

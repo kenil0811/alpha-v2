@@ -7,6 +7,7 @@ import { RUN_STATE } from './runState.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
 import { Cut, Cuts } from './ui/cut.tsx'
+import { Dot, SIGNAL_WORDS } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
@@ -145,6 +146,16 @@ export function Parts() {
             <div className="flex flex-wrap items-center gap-2">
               {CHOICES.choices.map((c) => (
                 <Choice key={c} of={CHOICES} value={c} />
+              ))}
+            </div>
+          </Section>
+          <Section title="Signals" about="One dot for what a place holds; its words on hover.">
+            <div className="flex flex-wrap items-center gap-4 text-md text-ink-2">
+              {(['now', 'yes', 'read', 'running'] as const).map((s) => (
+                <span key={s} className="inline-flex items-center gap-2">
+                  <Dot s={s} />
+                  {SIGNAL_WORDS[s]}
+                </span>
               ))}
             </div>
           </Section>
