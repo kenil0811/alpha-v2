@@ -22,6 +22,7 @@ held by review. Dates are 2026.
 | S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
 | S8 | Heights use `dvh`, never `vh` (a phone's browser bars) | 2 Sep | skip |
 | S9 | Beside each module in the rail, one signal dot for what it holds, the strongest of: needs you now (pulsing), waits for your yes (filled), something to read (hollow), running (green); a folded module shows the strongest of the modules inside it too; its words on hover | 2 Nov | test (signals) |
+| S10 | The rail's rows are evenly spaced at 30px, the modules straight after Home, Conversation and Tasks with no gap above them | 2 Nov | — |
 
 ## Header bar and tabs
 
