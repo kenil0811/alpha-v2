@@ -32,39 +32,47 @@ export async function keepDefaults(
   for (const name of readdirSync(dir).sort()) {
     const folder = join(dir, name)
     if (!existsSync(join(folder, 'module.yaml'))) continue
-    const { manifest } = readKit(folder)
-    const m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
-    const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined
-    if (!m) {
-      const made = await install(world, folder, ctx)
-      for (const a of agents(world, made.id)) {
-        run(world.db, "UPDATE agents SET state = 'on' WHERE id = ?", a.id)
-        world.line({
-          actor: ctx.actor,
-          kind: 'agent',
-          words: `Turned on ${a.name}: ${manifest.name} is Alpha's own.`,
-          data: { agent: a.id, state: 'on' },
-          module: made.id,
-        })
-      }
-      said.push(`Installed ${manifest.name} ${manifest.version}, Alpha's own.`)
-    } else if (k?.kit === manifest.name && newer(manifest.version, k.version)) {
-      // an agent the newer version brings starts on, being Alpha's own; one the person paused
-      // stays paused (the ownership rule)
-      const before = new Set(agents(world, m.id).map((a) => a.id))
-      await update(world, manifest.name, folder, ctx)
-      for (const a of agents(world, m.id).filter((x) => !before.has(x.id))) {
-        run(world.db, "UPDATE agents SET state = 'on' WHERE id = ?", a.id)
-        world.line({
-          actor: ctx.actor,
-          kind: 'agent',
-          words: `Turned on ${a.name}: ${manifest.name} is Alpha's own.`,
-          data: { agent: a.id, state: 'on' },
-          module: m.id,
-        })
-      }
-      said.push(`Updated ${manifest.name} to ${manifest.version}, Alpha's own.`)
-    }
+    const out = await keepKit(world, folder, ctx)
+    if (out) said.push(out)
   }
   return said
+}
+
+// One of Alpha's own modules, installed where it is missing and updated where a newer version
+// ships (a plugin's own module too, onboarding 4a); what it did, in words, or nothing.
+export async function keepKit(world: World, folder: string, ctx: WriteCtx): Promise<string | null> {
+  const { manifest } = readKit(folder)
+  const m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
+  const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined
+  if (!m) {
+    const made = await install(world, folder, ctx)
+    for (const a of agents(world, made.id)) {
+      run(world.db, "UPDATE agents SET state = 'on' WHERE id = ?", a.id)
+      world.line({
+        actor: ctx.actor,
+        kind: 'agent',
+        words: `Turned on ${a.name}: ${manifest.name} is Alpha's own.`,
+        data: { agent: a.id, state: 'on' },
+        module: made.id,
+      })
+    }
+    return `Installed ${manifest.name} ${manifest.version}, Alpha's own.`
+  } else if (k?.kit === manifest.name && newer(manifest.version, k.version)) {
+    // an agent the newer version brings starts on, being Alpha's own; one the person paused
+    // stays paused (the ownership rule)
+    const before = new Set(agents(world, m.id).map((a) => a.id))
+    await update(world, manifest.name, folder, ctx)
+    for (const a of agents(world, m.id).filter((x) => !before.has(x.id))) {
+      run(world.db, "UPDATE agents SET state = 'on' WHERE id = ?", a.id)
+      world.line({
+        actor: ctx.actor,
+        kind: 'agent',
+        words: `Turned on ${a.name}: ${manifest.name} is Alpha's own.`,
+        data: { agent: a.id, state: 'on' },
+        module: m.id,
+      })
+    }
+    return `Updated ${manifest.name} to ${manifest.version}, Alpha's own.`
+  }
+  return null
 }

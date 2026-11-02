@@ -1,0 +1,10 @@
+# A made-up plugin's own module, for the plugin seam's tests: never a client's.
+name: Kept notes
+version: 0.1.0
+api: 1
+tables:
+  - name: Notes
+    about: One thing the made-up plugin keeps.
+    fields:
+      - { name: Line, kind: text }
+      - { name: State, kind: choice, choices: [Proposed, Kept] }

@@ -21,6 +21,9 @@
     },
     {
       "path": "../kit-sdk"
+    },
+    {
+      "path": "../plugin-sdk"
     }
   ]
 }

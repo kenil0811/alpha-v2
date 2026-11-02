@@ -274,6 +274,9 @@ importers:
       '@alpha/kit-sdk':
         specifier: workspace:*
         version: link:../kit-sdk
+      '@alpha/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
       '@anthropic-ai/claude-agent-sdk':
         specifier: 'catalog:'
         version: 0.3.302(@anthropic-ai/sdk@1.1.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.32.1(zod@4.6.7))(zod@4.6.7)
@@ -332,6 +335,12 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.5
+
+  plugin-sdk:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

@@ -25,6 +25,7 @@ import { Drafts } from './modules/drafts.ts'
 import { installInbox } from './modules/packs.ts'
 import { AgentRunner } from './modules/runs/index.ts'
 import { platformHere } from './platform/index.ts'
+import { loadPlugins, PLUGINS_DIR, Plugins } from './plugins/plugins.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
 import { isDeveloper, type Trust } from './signing.ts'
@@ -242,11 +243,26 @@ const drafts = new Drafts(
   },
 )
 runner.drafts = drafts
+// Alpha's plugins (onboarding 4a): each with its host; one that does not load is said and left out
+const plugins = new Plugins({
+  world,
+  user,
+  home,
+  region: () => platform.region(),
+  ask: (system, prompt, schema) => provider().ask(system, prompt, schema),
+  connectors,
+})
+const pluginsFailed = await (async () => {
+  const found = await loadPlugins(PLUGINS_DIR)
+  return [...found.failed, ...(await plugins.register(found.plugins))]
+})()
+for (const f of pluginsFailed) console.error(`The plugin in ${f.folder} did not load: ${f.why}`)
 const engine = new Engine(world, {
   connectors,
   route,
   provider,
   providers,
+  starts: () => plugins.startBlocks(),
   hands: { browser: browserEngine, runner, browsers: join(home, 'browsers'), intake, drafts },
 })
 started = engine
@@ -354,6 +370,7 @@ const app = buildServer({
     },
   },
   failedConnectors: [...standard.failed, ...added.failed],
+  plugins: plugins.routes,
   ...(served ? { windowDir } : {}),
 })
 try {
@@ -370,6 +387,7 @@ try {
         console.log(said)
       kitsNow.now = "Alpha's own modules"
       for (const said of await keepDefaults(world, ctx)) console.log(said)
+      for (const said of await plugins.keepKits(ctx)) console.log(said)
     } catch (err) {
       console.error(
         `Setting up the kits did not finish: ${err instanceof Error ? err.message : err}`,

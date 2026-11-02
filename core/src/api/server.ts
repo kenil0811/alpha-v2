@@ -11,6 +11,7 @@ import { z } from 'zod'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
 import type { Install } from '../install.ts'
 import type { Platform } from '../platform/index.ts'
+import type { PluginRoute } from '../plugins/plugins.ts'
 import type { Setup } from '../setup.ts'
 import { Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
@@ -64,6 +65,7 @@ export interface ServerOptions {
     restart: (words: string, apply: () => Promise<void>) => Promise<void>
   }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
+  plugins?: PluginRoute[] // what plugins answer, under /api/plugins/<name>/ (onboarding 4a)
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -142,6 +144,17 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerSettings(ctx)
   registerUsage(ctx)
   registerActivity(ctx)
+  for (const r of options.plugins ?? [])
+    app.route({
+      method: r.method,
+      url: r.path,
+      handler: async (req) =>
+        r.answer({
+          params: req.params as Record<string, string>,
+          query: req.query as Record<string, string>,
+          body: req.body,
+        }),
+    })
 
   void app.register(websocket)
   void app.register(async (scope) => {

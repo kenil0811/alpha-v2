@@ -45,6 +45,7 @@ export function startLayer(
   userId: string,
   deskDir: string,
   connections: string | null,
+  extra: string[] = [], // what plugins add: the person's facts one keeps (onboarding 4a)
 ): string {
   const parts: string[] = ['# Alpha: where things stand']
   const everyone = readWhole(instructionsFile(world, null))
@@ -59,6 +60,7 @@ export function startLayer(
     parts.push(
       `## The person's rules\nCode holds these: a call one denies is refused before it runs, and one it allows needs no card. Plan around them; a rule changes only on the person's word (the rule tool asks, their Save makes it).\n${rules.map((r) => `- ${r}`).join('\n')}`,
     )
+  parts.push(...extra)
   const map = world.map()
   parts.push('## Modules and tables')
   if (!map.length) parts.push('None yet.')

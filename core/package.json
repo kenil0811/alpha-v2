@@ -17,6 +17,7 @@
     "@alpha/connector-files": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
     "@alpha/kit-sdk": "workspace:*",
+    "@alpha/plugin-sdk": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@anthropic-ai/sandbox-runtime": "catalog:",
     "@anthropic-ai/sdk": "catalog:",

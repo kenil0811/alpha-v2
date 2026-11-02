@@ -39,6 +39,8 @@ export interface DeskOptions {
   connectors?: ConnectorService
   hands?: Hands
   route?: ModelRoute // how this install reaches Claude: the person's subscription or a key
+  // blocks plugins add to the start of a conversation (onboarding 4a); none when there are none
+  starts?: () => string[]
   // Alpha's words alone (measured 24 Oct: six journeys, three runs each way; alone passed 17 of
   // 18 to appended's 18, 8% faster and 9% fewer input tokens, and one prompt serves both routes),
   // or appended to the route's own prompt:
@@ -78,6 +80,7 @@ export class Desk {
   private prompt: 'appended' | 'alone'
   private connectors: ConnectorService | null
   private hands: Hands | undefined
+  private starts: () => string[]
 
   constructor(world: World, user: User, options: DeskOptions = {}) {
     this.world = world
@@ -87,6 +90,7 @@ export class Desk {
     this.connectors = options.connectors ?? null
     this.hands = options.hands
     this.prompt = options.prompt ?? 'alone'
+    this.starts = options.starts ?? (() => [])
     this.here = {
       current: { user, turn: null, said: null, message: null },
       fromSubagent: false,
@@ -243,6 +247,7 @@ export class Desk {
             this.user.id,
             this.world.deskDir(this.user.id),
             this.connectors?.describe() ?? null,
+            this.starts(),
           )
         },
         turn: () =>

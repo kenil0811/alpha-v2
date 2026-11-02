@@ -44,7 +44,7 @@ export interface Loaded {
 // added folder when it is unpacked, left out of its pack.
 const SHARED = ['@alpha/connector-sdk', 'zod']
 
-function entryOf(dir: string): string {
+export function entryOf(dir: string): string {
   const file = join(dir, 'package.json')
   if (!existsSync(file)) throw new Error('it has no package.json')
   const pkg = JSON.parse(readFileSync(file, 'utf8')) as {
