@@ -34,7 +34,7 @@ import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
-import { Edge, Opening, SIDE_MIN } from './ui/edge.tsx'
+import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 import { BarName, Renamable } from './ui/rename.tsx'
 
@@ -709,21 +709,19 @@ function Strip({
       aria-label={label}
       data-tip={label}
       aria-current={current ? 'page' : undefined}
-      className={cn(
-        'relative grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-        current && 'bg-accent-soft text-accent',
-      )}
+      className={stripItem(current, true)}
     >
       {child}
+      <span className={stripName}>{label.split(',')[0]}</span>
       {extra}
     </a>
   )
   return (
-    <nav className="relative flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+    <nav className="relative flex w-20 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
       <Edge
         side="right"
         folded
-        width={56}
+        width={STRIP}
         max={RAIL[1]}
         onDrag={setOpening}
         onDone={onOpenAt}
@@ -744,9 +742,10 @@ function Strip({
         aria-label="Open the rail"
         data-tip={'Open the rail (⌘\\)'}
         onClick={onOpen}
-        className="mt-1 mb-2 grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+        className={cn(stripItem(false, true), 'mt-1 mb-2')}
       >
         <PanelLeftOpen className="size-4" />
+        <span className={stripName}>Open</span>
       </button>
       {icon(
         '#/',
@@ -755,7 +754,7 @@ function Strip({
         <House className="size-4" />,
         waiting > 0 && (
           <span
-            className="absolute top-1 right-1 size-2 rounded-full bg-accent"
+            className="absolute top-1 right-4 size-2 rounded-full bg-accent"
             aria-hidden="true"
           />
         ),
@@ -769,7 +768,7 @@ function Strip({
       {!network(modules) &&
         icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+      <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {shownTops(modules, hidden).map((m) =>
           icon(
             `#/module/${m.id}`,
@@ -783,9 +782,10 @@ function Strip({
           aria-label="New module"
           data-tip="New module"
           onClick={onNew}
-          className="grid size-8.5 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+          className={stripItem(false, true)}
         >
           <Plus className="size-4" />
+          <span className={stripName}>New</span>
         </button>
       </div>
       {icon(

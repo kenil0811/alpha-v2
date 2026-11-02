@@ -4,8 +4,8 @@
 // gives way and the assistant stays (his call 3).
 import type { Layout } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
+import { STRIP } from './ui/edge.tsx' // a folded rail, or a folded assistant: its strip (80px, 79.3)
 
-const STRIP = 56 // a folded rail, or a folded assistant: its strip
 const RAIL = 216
 const PAGE = 600 // A5: the screen always keeps 600px
 export const BESIDE = 320 // a panel beside the page

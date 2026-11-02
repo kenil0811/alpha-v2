@@ -13,11 +13,11 @@ describe('room for a panel beside the page', () => {
     expect(roomBeside(1280, open, true)).toBe(false)
   })
   it('is there on the same window with the assistant folded to its strip', () => {
-    expect(roomBeside(1280, { ...open, assistant: 'folded' }, false)).toBe(true) // 216 + 600 + 320 + 56
+    expect(roomBeside(1280, { ...open, assistant: 'folded' }, false)).toBe(true) // 216 + 600 + 320 + 80
   })
   it('counts a wider assistant and a folded rail', () => {
     expect(roomBeside(1456, { ...open, panel: 480 }, true)).toBe(false)
-    expect(roomBeside(1456, { ...open, panel: 480, railFolded: true }, true)).toBe(true) // 56 + 600 + 320 + 480
+    expect(roomBeside(1480, { ...open, panel: 480, railFolded: true }, true)).toBe(true) // 80 + 600 + 320 + 480
   })
   it('starts a page opened beside at 480px where there is room, never less than 320px', () => {
     expect(besideWidth(1680, open, true)).toBe(480) // 1680 - 216 - 600 - 320 = 544

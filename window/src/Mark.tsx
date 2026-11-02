@@ -8,12 +8,13 @@ import { startAsk } from './ask.ts'
 import type { Module } from './stream.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { stripItem, stripName } from './ui/edge.tsx'
 
 export function startMark() {
   window.dispatchEvent(new Event('alpha:mark'))
 }
 
-export function MarkButton() {
+export function MarkButton({ labelled = false }: { labelled?: boolean }) {
   return (
     <button
       type="button"
@@ -23,9 +24,15 @@ export function MarkButton() {
       }}
       aria-label="Mark something and comment"
       data-tip="Mark something and comment"
-      className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
+      className={
+        labelled
+          ? stripItem()
+          : 'grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
+      }
     >
       <Pencil className="size-4" />
+      {/* on the folded strip, named under its icon (Batch E, 79.3) */}
+      {labelled && <span className={stripName}>Mark</span>}
     </button>
   )
 }

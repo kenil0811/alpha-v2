@@ -2,23 +2,28 @@
 // Open, its header has the fold control, Alpha's face and name in the middle and the bell for
 // Activity, with the pencil beside it (Mark.tsx); its edge drags it wider. Folded, it is a strip with the face, the name and the bell,
 // and a click anywhere on it opens it again. ⌘J folds and opens it.
-import { Bell, PanelRightClose } from 'lucide-react'
+import { Bell, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Face, type Mood } from './Companion.tsx'
 import { MarkButton } from './Mark.tsx'
 import { IconButton } from './ui/button.tsx'
-import { Edge, Opening } from './ui/edge.tsx'
+import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
-function BellLink({ running }: { running: number }) {
+function BellLink({ running, labelled = false }: { running: number; labelled?: boolean }) {
   return (
     <a
       href="#/activity"
       aria-label={running ? `Activity, ${running} running` : 'Activity'}
       data-tip={running ? `Activity, ${running} running` : 'Activity'}
-      className="relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink"
+      className={
+        labelled
+          ? stripItem()
+          : 'relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
+      }
     >
       <Bell className="size-4" />
+      {labelled && <span className={stripName}>Activity</span>}
       {running > 0 && (
         <span
           className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
@@ -54,13 +59,13 @@ export function Assistant({
       // biome-ignore lint/a11y/useKeyWithClickEvents: the face is the keyboard's way in
       <aside
         onClick={() => onFold(false)}
-        className="relative flex w-14 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface"
+        className="relative flex w-20 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface px-1"
       >
         {/* dragged out from its edge, it opens as wide as it was let go (Batch D, 79.2) */}
         <Edge
           side="left"
           folded
-          width={56}
+          width={STRIP}
           max={Math.floor((window.innerWidth * 2) / 3)}
           onDrag={setOpening}
           onDone={(w) => {
@@ -84,9 +89,22 @@ export function Assistant({
             <Face mood={mood} />
           </button>
         </div>
-        <span className="text-ink-3 text-xs">Alpha</span>
-        <MarkButton />
-        <BellLink running={running} />
+        {/* each place named under its icon (Batch E, 79.3) */}
+        <button
+          type="button"
+          aria-label="Open the assistant (⌘J)"
+          data-tip="Open the assistant (⌘J)"
+          onClick={(e) => {
+            e.stopPropagation()
+            onFold(false)
+          }}
+          className={stripItem()}
+        >
+          <PanelRightOpen className="size-4" />
+          <span className={stripName}>Open</span>
+        </button>
+        <MarkButton labelled />
+        <BellLink running={running} labelled />
       </aside>
     )
   return (

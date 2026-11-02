@@ -18,7 +18,7 @@ held by review. Dates are 2026.
 | S3 | The rail's head is the workspace: a menu of Settings, Intelligence and Appearance | 26 Oct | — |
 | S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules; modules drag into one another or out to the top; a double-click on a module's name in the rail renames it in place (Enter keeps, Escape puts it back, a refusal under the box) | 26 Oct, 1 Nov | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
-| S6 | Both side panels drag by one edge and fold; the rail folds to a strip of icons (⌘\\); every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
+| S6 | Both side panels drag by one edge and fold; the rail folds to an 80px strip, each icon with its name under it (⌘\\); every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
 | S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
 | S8 | Heights use `dvh`, never `vh` (a phone's browser bars) | 2 Sep | skip |
 | S9 | Beside each module in the rail, one signal dot for what it holds, the strongest of: needs you now (pulsing), waits for your yes (filled), something to read (hollow), running (green); a folded module shows the strongest of the modules inside it too; its words on hover | 2 Nov | test (signals) |
@@ -91,7 +91,7 @@ held by review. Dates are 2026.
 | A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
 | A3 | The composer's +: files, a folder, Model ›; @ names an agent | 26 Oct | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
-| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to a strip with the face and the bell; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
+| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, Mark and Activity, each named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
 | A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
 
 ## Intelligence and Settings
