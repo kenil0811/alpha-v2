@@ -14,8 +14,8 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | S1 | The rail is module names only: Home, Conversation, Tasks, then each module, with modules inside one folded under it; Alpha's own module is not there | 20 Oct, 26 Oct | — |
-| S2 | Intelligence and Settings are pinned at the foot of the rail, Intelligence above | 25 Oct | — |
-| S3 | The rail's head is the workspace: a menu of Settings, Intelligence and Appearance | 26 Oct | — |
+| S2 | Settings runs across the rail's foot, a small Second Brain icon beside it (Intelligence's other parts one pill away on that page) | 25 Oct, 2 Nov | — |
+| S3 | The rail's head is the workspace: a menu of Appearance; Settings and the Second Brain are on the rail | 26 Oct, 2 Nov | — |
 | S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules; modules drag into one another or out to the top; a double-click on a module's name in the rail renames it in place (Enter keeps, Escape puts it back, a refusal under the box) | 26 Oct, 1 Nov | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
 | S6 | Both side panels drag by one edge and fold; the rail folds to an 80px strip, each icon with its name under it (⌘\\); every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |

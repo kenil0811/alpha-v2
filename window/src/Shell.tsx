@@ -3,11 +3,13 @@
 // the right, their headers on one line. The rail has the workspace at its top, Home with a badge
 // for what waits on the person, Tasks, the modules by name (People and Organizations are
 // tabs inside Network; a rail item of their own only when there is no Network) with the modules inside them,
-// New module last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
+// New module last in the list, and Settings across its foot with a small Second Brain icon beside it
+// (Batch E, 79.14); no headings and no status lines. It
 // folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
 // buttons.
 import type { Layout, ModuleSummary } from '@alpha/core/api'
 import {
+  Brain,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -19,7 +21,6 @@ import {
   PanelLeftOpen,
   Plus,
   SlidersHorizontal,
-  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -37,6 +38,9 @@ import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 import { BarName, Renamable } from './ui/rename.tsx'
+
+// The rail's small Second Brain icon lands on Intelligence's Second Brain (Batch E, 79.14).
+const BRAIN = '#/intelligence/brain'
 
 function Nav({
   href,
@@ -230,19 +234,29 @@ export function Rail({
           New module
         </button>
       </div>
-      <div className="flex flex-col gap-0.5 pt-2">
-        <Nav
-          href="#/intelligence"
-          icon={<Sparkles className="size-4" />}
-          label="Intelligence"
-          current={place.at === 'intelligence'}
-        />
-        <Nav
-          href="#/settings"
-          icon={<SlidersHorizontal className="size-4" />}
-          label="Settings"
-          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
-        />
+      {/* Settings across the foot, the Second Brain beside it; the rest of Intelligence is one
+          pill away on that page (Batch E, 79.14, Kenil's look 2 Nov) */}
+      <div className="flex items-center gap-1 pt-2">
+        <span className="min-w-0 flex-1">
+          <Nav
+            href="#/settings"
+            icon={<SlidersHorizontal className="size-4" />}
+            label="Settings"
+            current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
+          />
+        </span>
+        <a
+          href={BRAIN}
+          aria-label="Second Brain"
+          data-tip="Second Brain"
+          aria-current={place.at === 'intelligence' ? 'page' : undefined}
+          className={cn(
+            'grid size-7.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
+            place.at === 'intelligence' && 'bg-accent-soft text-accent',
+          )}
+        >
+          <Brain className="size-4" />
+        </a>
       </div>
     </nav>
   )
@@ -255,7 +269,7 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   const anchor = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(savedTheme)
-  const go = (href: string) => {
+  const _go = (href: string) => {
     setOpen(false)
     window.location.hash = href
   }
@@ -301,15 +315,6 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
               <div className="text-ink-3 text-sm">On this Mac</div>
             </div>
           </div>
-          <MenuLine />
-          <MenuItem onClick={() => go('#/settings')}>
-            <SlidersHorizontal className="size-3.5 text-ink-3" />
-            Settings
-          </MenuItem>
-          <MenuItem onClick={() => go('#/intelligence')}>
-            <Sparkles className="size-3.5 text-ink-3" />
-            Intelligence
-          </MenuItem>
           <MenuLine />
           <div className="px-2.5 pt-1 pb-0.5 text-ink-3 text-sm">Appearance</div>
           {(
@@ -788,12 +793,7 @@ function Strip({
           <span className={stripName}>New</span>
         </button>
       </div>
-      {icon(
-        '#/intelligence',
-        'Intelligence',
-        place.at === 'intelligence',
-        <Sparkles className="size-4" />,
-      )}
+      {icon(BRAIN, 'Second Brain', place.at === 'intelligence', <Brain className="size-4" />)}
       {icon(
         '#/settings',
         'Settings',

@@ -99,7 +99,8 @@ describe('the window', () => {
     expect(html).toContain('>2<')
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
-    expect(html).toContain('href="#/intelligence"')
+    // Settings across the foot, the Second Brain beside it (Batch E, 79.14)
+    expect(html).toContain('href="#/intelligence/brain"')
     expect(html).not.toContain('Alpha is running')
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
   })
