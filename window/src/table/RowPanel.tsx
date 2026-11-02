@@ -115,9 +115,7 @@ export function RowBody({
         <FieldList fields={fields} row={row} names={names} onField={onField} onEdit={onEdit} />
         {notes && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              {notes.name}
-            </div>
+            <div className="font-semibold text-ink-3 text-sm">{notes.name}</div>
             <Notes
               value={
                 typeof row.values[notes.slug] === 'string' ? (row.values[notes.slug] as string) : ''
@@ -129,7 +127,7 @@ export function RowBody({
         {around?.parts.map((p) => (
           <div key={p.table.id} className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="flex items-center justify-between">
-              <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+              <div className="font-semibold text-ink-3 text-sm">
                 {p.table.name} · {p.count}
               </div>
               {p.count > 0 && (
@@ -155,9 +153,7 @@ export function RowBody({
         ))}
         {around && (around.links.length > 0 || around.mentions.length > 0) && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              Linked here
-            </div>
+            <div className="font-semibold text-ink-3 text-sm">Linked here</div>
             {[
               ...around.links.map((l) => ({
                 key: `l${l.table.id}${l.field}`,
@@ -190,9 +186,7 @@ export function RowBody({
         )}
         {places.size > 0 && (
           <div className="flex flex-col gap-2 p-4.5">
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
-              Read from
-            </div>
+            <div className="font-semibold text-ink-3 text-sm">Read from</div>
             <div className="flex flex-wrap gap-1.5">
               {[...places.values()].map((p) => (
                 <Button
@@ -218,7 +212,7 @@ export function RowBody({
           </div>
         )}
         <div className="flex flex-col gap-2 p-4.5">
-          <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">
+          <div className="font-semibold text-ink-3 text-sm">
             Tasks
             {tasks?.lines.length
               ? ` · ${tasks.lines.filter((t) => t.state !== 'done' && t.state !== 'dropped').length} open`
@@ -234,7 +228,7 @@ export function RowBody({
           />
         </div>
         <div className="flex flex-col gap-2 p-4.5">
-          <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">Documents</div>
+          <div className="font-semibold text-ink-3 text-sm">Documents</div>
           {/* one drop zone for files (Batch D, 66.22): drop on it or click to choose */}
           <DropZone onFiles={add}>
             {files.map((f) => (

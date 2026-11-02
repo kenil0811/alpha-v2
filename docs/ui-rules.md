@@ -118,7 +118,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | L1 | Colours and sizes are the tokens in `app.css`, nothing written out | 20 Oct | test |
-| L2 | Seven text sizes, a 14px body, 11px capital labels | 26 Oct | test (seven sizes) |
+| L2 | Seven text sizes, a 14px body, 12px sentence-case labels; nothing in capitals | 26 Oct, 2 Nov | test (seven sizes) |
 | L3 | Serif for page, record and section titles and big numbers only | 26 Oct | test |
 | L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a row of tabs shows none | 26 Oct | — |
 | L5 | One avatar for people and organizations | 25 Oct | — |

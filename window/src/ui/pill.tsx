@@ -49,13 +49,12 @@ export function Topic({ className, ...props }: ButtonHTMLAttributes<HTMLButtonEl
   )
 }
 
-// An 11px uppercase label: the only uppercase there is.
+// A small label, 12px in sentence case (Batch E, 66.3, Kenil's look 2 Nov): a card's head, a
+// part's name in a row's panel. Nothing in Alpha is set in capitals.
+export const LABEL = 'font-semibold text-ink-3 text-sm'
+
 export function Label({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <span className={cn('font-semibold text-ink-3 text-xs uppercase tracking-label', className)}>
-      {children}
-    </span>
-  )
+  return <span className={cn(LABEL, className)}>{children}</span>
 }
 
 export function Kbd({ children }: { children: ReactNode }) {

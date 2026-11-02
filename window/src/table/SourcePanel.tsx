@@ -154,7 +154,7 @@ export function SourcePanel({
         )}
         {history.length > 1 && (
           <div>
-            <div className="font-semibold text-ink-3 text-xs uppercase tracking-label">History</div>
+            <div className="font-semibold text-ink-3 text-sm">History</div>
             <ol className="mt-1.5">
               {history.map((h, i) => (
                 <li

@@ -163,7 +163,11 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
     expect(lines(/\b(?:MoreHorizontal|Ellipsis)\b/)).toEqual([])
   })
 
-  it('T11: no bare <select> but the cell editor', () => {
+  it('L2: nothing is set in capitals; a small label is 12px sentence case (Batch E, 66.3)', () => {
+    expect(lines(/(?<![\w-])uppercase(?![\w-])/)).toEqual([])
+  })
+
+  it('T11: no bare <select> anywhere, the cell editor included', () => {
     // the cell editor, out of Grid.tsx since Batch B, keeps the native one
     expect(lines(/<select\b/)).toEqual([])
   })
