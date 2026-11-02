@@ -48,6 +48,7 @@ export function Tooltips() {
     const key = (e: KeyboardEvent) => e.key === 'Escape' && hide()
     const now = (e: Event) => show(tipped(e.target), 0)
     document.addEventListener('alpha:tip', now)
+    window.addEventListener('hashchange', hide) // a new place: the tip of the last one goes
     document.addEventListener('pointerover', over)
     document.addEventListener('pointerout', out)
     document.addEventListener('pointerdown', hide, true)
@@ -58,6 +59,7 @@ export function Tooltips() {
     return () => {
       clearTimeout(timer)
       document.removeEventListener('alpha:tip', now)
+      window.removeEventListener('hashchange', hide)
       document.removeEventListener('pointerover', over)
       document.removeEventListener('pointerout', out)
       document.removeEventListener('pointerdown', hide, true)

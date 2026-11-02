@@ -159,17 +159,25 @@ export function Marker({ from }: { from: Module | null }) {
   const below = picked ? picked.box.bottom + 8 + 170 < window.innerHeight : true
   return (
     <div ref={own}>
+      {/* while marking, the window dims a little and the outline glides from one thing to the
+          next, so marking is never missed (Batch D, 79.12, Kenil's yes 2 Nov) */}
+      {!shown && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-(--z-pop) bg-ink/10"
+        />
+      )}
       {shown && (
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed z-(--z-pop) rounded-sm outline-2 outline-accent outline-offset-1"
+          className="pointer-events-none fixed z-(--z-pop) rounded-sm shadow-[0_0_0_100vmax_color-mix(in_srgb,var(--ink)_10%,transparent)] outline-2 outline-accent outline-offset-1 transition-[top,left,width,height] duration-100"
           style={{ top: shown.top, left: shown.left, width: shown.width, height: shown.height }}
         />
       )}
       {!picked && (
         <div
           role="status"
-          className="fixed top-2 left-1/2 z-(--z-pop) flex -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-surface py-1 pr-1 pl-3 text-md shadow-pop"
+          className="fixed top-2 left-1/2 z-(--z-pop) flex -translate-x-1/2 items-center gap-2 rounded-full border border-accent bg-surface py-1 pr-1 pl-3 text-md shadow-pop ring-4 ring-accent-soft"
         >
           <Pencil className="size-3.5 text-accent" />
           Click anything to mark it

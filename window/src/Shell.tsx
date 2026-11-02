@@ -33,7 +33,7 @@ import type { Place } from './place.ts'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { cn } from './ui/cn.ts'
-import { Edge } from './ui/edge.tsx'
+import { Edge, Opening, SIDE_MIN } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 import { BarName, Renamable } from './ui/rename.tsx'
 
@@ -114,6 +114,7 @@ export function Rail({
         hidden={hiding.hidden}
         onNew={onNew}
         onOpen={() => onLayout({ railFolded: false })}
+        onOpenAt={(w) => onLayout({ railFolded: false, railWidth: w })}
       />
     )
   const fold = (id: string) =>
@@ -130,7 +131,6 @@ export function Rail({
       <Edge
         side="right"
         width={dragged ?? width}
-        min={RAIL[0]}
         max={RAIL[1]}
         onDrag={setDragged}
         onDone={keepWidth}
@@ -661,6 +661,7 @@ function Strip({
   hidden,
   onNew,
   onOpen,
+  onOpenAt,
 }: {
   modules: ModuleSummary[]
   place: Place
@@ -671,7 +672,9 @@ function Strip({
   hidden: string[]
   onNew: () => void
   onOpen: () => void
+  onOpenAt: (width: number) => void // dragged out from its edge to this width (79.2)
 }) {
+  const [opening, setOpening] = useState<number | null>(null)
   // a module inside another lights the one at the top that holds it
   const top = here ? (ancestors(modules, here)[0]?.id ?? here) : null
   const icon = (
@@ -697,7 +700,17 @@ function Strip({
     </a>
   )
   return (
-    <nav className="flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+    <nav className="relative flex w-14 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail pb-2.5 text-rail-ink">
+      <Edge
+        side="right"
+        folded
+        width={56}
+        max={RAIL[1]}
+        onDrag={setOpening}
+        onDone={onOpenAt}
+        onFold={() => undefined}
+      />
+      <Opening side="left" width={opening} />
       <div
         data-tauri-drag-region
         className={cn(
@@ -779,7 +792,7 @@ export interface Crumb {
 }
 
 // the rail's narrowest and widest
-const RAIL = [180, 360] as const
+const RAIL = [SIDE_MIN, 360] as const // narrowest at the panels' 200px (Batch D, 79.1)
 
 // The module People and Organizations live in, as its module.yaml says (people: true; Network's).
 export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null

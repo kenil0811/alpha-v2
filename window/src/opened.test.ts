@@ -15,8 +15,9 @@ describe('what is open beside the page', () => {
     expect(splitBeside('#/table/t_9?only=r_1,r_2&beside=person/p_3')).toEqual({
       base: '#/table/t_9?only=r_1,r_2',
       opened: { kind: 'person', id: 'p_3' },
+      trail: [{ kind: 'person', id: 'p_3' }],
     })
-    expect(splitBeside('#/module/m_1')).toEqual({ base: '#/module/m_1', opened: null })
+    expect(splitBeside('#/module/m_1')).toEqual({ base: '#/module/m_1', opened: null, trail: [] })
     // the page under it is the same place it was
     expect(placeOf('#/module/m_1?beside=task/t_1')).toEqual(placeOf('#/module/m_1'))
   })
@@ -39,5 +40,32 @@ describe('what is open beside the page', () => {
     expect(screenOf('#/module/m_1/agents?beside=task/t_1')).toBe(
       screenOf('#/module/m_1?beside=task/t_1'),
     )
+  })
+
+  it('opens an agent, a rule and the rows a figure counted too (Batch D, 79.6, 79.7)', () => {
+    expect(linkBeside('#/agent/a_1', '#/')).toEqual({ kind: 'agent', id: 'a_1' })
+    expect(linkBeside('#/rule/u_1', '#/settings/permissions')).toEqual({ kind: 'rule', id: 'u_1' })
+    const rows = linkBeside('#/table/t_9?only=r_1,r_2', '#/module/m_1')
+    expect(rows).toEqual({ kind: 'rows', id: 't_9:r_1,r_2' })
+    // kept in the address, so a reload keeps it; its page is the table, filtered
+    const at = withBeside('#/module/m_1', rows)
+    expect(splitBeside(at).opened).toEqual(rows)
+    expect(pageOf({ kind: 'rows', id: 't_9:r_1,r_2' })).toBe('#/table/t_9?only=r_1,r_2')
+  })
+
+  it('goes a step further inside the panel, each step kept, and its own Back returns one (79.8)', () => {
+    const steps = [
+      { kind: 'task', id: 't_1' },
+      { kind: 'row', id: 'r_2' },
+    ] as const
+    const at = withBeside('#/module/m_1', [...steps])
+    expect(at).toBe('#/module/m_1?beside=task/t_1;row/r_2')
+    expect(splitBeside(at)).toEqual({
+      base: '#/module/m_1',
+      opened: { kind: 'row', id: 'r_2' },
+      trail: [...steps],
+    })
+    // the window's Back takes each step too
+    expect(screenOf(at)).not.toBe(screenOf('#/module/m_1?beside=task/t_1'))
   })
 })

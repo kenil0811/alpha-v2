@@ -3,10 +3,11 @@
 // Activity, with the pencil beside it (Mark.tsx); its edge drags it wider. Folded, it is a strip with the face, the name and the bell,
 // and a click anywhere on it opens it again. ⌘J folds and opens it.
 import { Bell, PanelRightClose } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Face, type Mood } from './Companion.tsx'
 import { MarkButton } from './Mark.tsx'
 import { IconButton } from './ui/button.tsx'
+import { Edge, Opening } from './ui/edge.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
 function BellLink({ running }: { running: number }) {
@@ -47,13 +48,28 @@ export function Assistant({
   onWidth: (w: number | null) => void
   children: ReactNode
 }) {
+  const [opening, setOpening] = useState<number | null>(null)
   if (folded)
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: the face is the keyboard's way in
       <aside
         onClick={() => onFold(false)}
-        className="flex w-14 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface"
+        className="relative flex w-14 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface"
       >
+        {/* dragged out from its edge, it opens as wide as it was let go (Batch D, 79.2) */}
+        <Edge
+          side="left"
+          folded
+          width={56}
+          max={Math.floor((window.innerWidth * 2) / 3)}
+          onDrag={setOpening}
+          onDone={(w) => {
+            onWidth(w)
+            onFold(false)
+          }}
+          onFold={() => undefined}
+        />
+        <Opening side="right" width={opening} />
         <div className="flex h-12 w-full shrink-0 items-center justify-center border-hair border-b">
           <button
             type="button"

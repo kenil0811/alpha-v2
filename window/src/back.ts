@@ -3,7 +3,7 @@
 // (his call 2). With nothing visited (a fresh start, a link), the bar's way back is the screen's
 // parent, as before.
 import { useEffect, useRef, useState } from 'react'
-import { splitBeside } from './opened.ts'
+import { besideOf, splitBeside } from './opened.ts'
 
 export interface Visit {
   hash: string
@@ -15,8 +15,8 @@ const KEEP = 30
 // A screen's own address, without the tab or list open on it: tabs inside a screen are one place.
 // What is open beside it (opened.ts) is a step of its own, so Back closes it.
 export function screenOf(address: string): string {
-  const { base, opened } = splitBeside(address)
-  return opened ? `${screenBase(base)}?beside=${opened.kind}/${opened.id}` : screenBase(base)
+  const { base, trail } = splitBeside(address)
+  return trail.length ? `${screenBase(base)}?beside=${besideOf(trail)}` : screenBase(base)
 }
 
 function screenBase(hash: string): string {

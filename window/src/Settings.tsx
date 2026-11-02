@@ -1318,6 +1318,7 @@ const KEYS: [string, [string, string][]][] = [
     [
       ['⌘K', 'Find anything'],
       ['⌘J', 'Open or fold the assistant'],
+      ['⌘⇧\\', 'Fold or open the assistant'],
       ['⌘\\', 'Fold or open the rail'],
       ['Esc', 'Close what’s open, then fold the assistant a step'],
     ],
