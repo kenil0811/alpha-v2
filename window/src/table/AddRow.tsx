@@ -74,6 +74,7 @@ export function AddRow({
             />
           ) : f.kind === 'choice' ? (
             <Select
+              of={f}
               id={`add-${f.id}`}
               value={values[f.name] ?? ''}
               onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}

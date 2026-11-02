@@ -241,6 +241,7 @@ function Correct({
         <TagPicker field={field} typed={typed} onTyped={setTyped} />
       ) : field.kind === 'choice' ? (
         <Select
+          of={field}
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           aria-label={field.name}

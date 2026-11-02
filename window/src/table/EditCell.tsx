@@ -79,6 +79,7 @@ export function EditCell({
   if (field.kind === 'choice')
     return (
       <Select
+        of={field}
         startOpen
         value={typed}
         aria-label={field.name}

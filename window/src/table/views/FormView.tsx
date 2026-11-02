@@ -106,6 +106,7 @@ export function FormView({
                 />
               ) : f.kind === 'choice' ? (
                 <Select
+                  of={f}
                   id={`form-${f.id}`}
                   value={typed[f.slug] ?? ''}
                   onChange={(e) => setTyped({ ...typed, [f.slug]: e.target.value })}

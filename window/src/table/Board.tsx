@@ -5,6 +5,7 @@ import { askForNew } from '../ask.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
 import { cn } from '../ui/cn.ts'
 import { Select } from '../ui/field.tsx'
+import { Choice } from '../ui/pill.tsx'
 import { show } from './values.ts'
 
 // The board: a column per choice, each row a card with its name and a few of its values, moved
@@ -58,7 +59,7 @@ export function Board({
             )}
           >
             <div className="flex justify-between px-1 text-sm text-ink-2">
-              <span>{choice || `No ${by.name.toLowerCase()}`}</span>
+              {choice ? <Choice of={by} value={choice} /> : <span>No {by.name.toLowerCase()}</span>}
               <span className="text-ink-3">{rows.length}</span>
             </div>
             {rows.map((r) => (
@@ -87,6 +88,7 @@ export function Board({
                   ) : null
                 })}
                 <Select
+                  of={by}
                   className="mt-1 h-6.5 text-sm"
                   value={choice}
                   disabled={busy && on === r.id}

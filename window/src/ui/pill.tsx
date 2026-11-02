@@ -36,6 +36,58 @@ export function Pill({
   )
 }
 
+// A choice in its own colour (Batch E, 66.9, Kenil's look 2 Nov): one of eight by its place in its
+// field's list, round again past eight, never random, so it wears one colour in every cell, chip,
+// dropdown and filter; one that is a state (a tone: Won, Lost, Proposed) keeps its tone's dot, so
+// states still read as states. Words that are no choice of the field go by their letters.
+const OPTION = [
+  'bg-opt-1-soft text-opt-1',
+  'bg-opt-2-soft text-opt-2',
+  'bg-opt-3-soft text-opt-3',
+  'bg-opt-4-soft text-opt-4',
+  'bg-opt-5-soft text-opt-5',
+  'bg-opt-6-soft text-opt-6',
+  'bg-opt-7-soft text-opt-7',
+  'bg-opt-8-soft text-opt-8',
+]
+const STATE_DOT: Record<string, string> = {
+  good: 'bg-good',
+  warn: 'bg-warn',
+  bad: 'bg-bad',
+  accent: 'bg-accent',
+}
+export type Choices = { choices: string[]; tones: Record<string, string> }
+
+export function optionClass(of: Choices, value: string): string {
+  let i = of.choices.indexOf(value)
+  if (i < 0) i = [...value].reduce((h, c) => (h * 31 + (c.codePointAt(0) ?? 0)) >>> 0, 7)
+  return OPTION[i % OPTION.length] as string
+}
+
+export function Choice({
+  of,
+  value,
+  className,
+}: {
+  of: Choices
+  value: string
+  className?: string | undefined
+}) {
+  const tone = of.tones[value]
+  if (tone)
+    return (
+      <span className={cn('inline-flex min-w-0 items-center gap-1.5', className)}>
+        <span className={cn('size-1.75 shrink-0 rounded-full', STATE_DOT[tone])} />
+        <span className="truncate">{value}</span>
+      </span>
+    )
+  return (
+    <Pill className={cn('min-w-0 max-w-full', optionClass(of, value), className)}>
+      <span className="truncate">{value}</span>
+    </Pill>
+  )
+}
+
 export function Topic({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button

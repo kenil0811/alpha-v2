@@ -10,13 +10,30 @@ import { Cut, Cuts } from './ui/cut.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
 import { Field, Select } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { Kbd, Label, Pill, Topic } from './ui/pill.tsx'
+import { Choice, Kbd, Label, Pill, Topic } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { SideItem, SideList } from './ui/side-list.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
+
+// a field's choices, as the parts page shows them (Batch E, 66.9)
+const CHOICES = {
+  choices: [
+    'Clients',
+    'Leads',
+    'Insurers',
+    'Brokers',
+    'Lenders',
+    'Partners',
+    'Vendors',
+    'Staff',
+    'Won',
+    'Lost',
+  ],
+  tones: { Won: 'good', Lost: 'bad' },
+}
 
 export function Parts() {
   const [view, setView] = useState<'table' | 'board'>('table')
@@ -121,6 +138,16 @@ export function Parts() {
             </Card>
           </Section>
           {/* the parts Batch D brought (66.27) */}
+          <Section
+            title="Choices"
+            about="Each choice in its own colour by its place; a state keeps its tone."
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              {CHOICES.choices.map((c) => (
+                <Choice key={c} of={CHOICES} value={c} />
+              ))}
+            </div>
+          </Section>
           <Section title="Cuts" about="Cuts of one list, each with its count, one picked.">
             <Cuts label="Show">
               <Cut on={cut === 'all'} count={42} onClick={() => setCut('all')}>

@@ -15,6 +15,7 @@ import {
 import { Refusal, useAct } from './act.tsx'
 import { Button } from './button.tsx'
 import { cn } from './cn.ts'
+import { Choice, type Choices } from './pill.tsx'
 import { MenuItem, MenuLine, Popover } from './popover.tsx'
 
 const FIELD =
@@ -124,8 +125,10 @@ export function Select({
   adds,
   startOpen,
   onDismiss,
+  of,
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & {
+  of?: Choices | undefined // a field's choices: each line in its own colour (Batch E, 66.9)
   adds?: Adds | undefined // Add new… at the list's foot, where a list can grow
   startOpen?: boolean | undefined // opened at once: a cell being changed (66.5)
   onDismiss?: (() => void) | undefined // closed with no pick: a click away, Escape
@@ -196,7 +199,7 @@ export function Select({
                 disabled={o.disabled}
                 onClick={() => pick(o.value)}
               >
-                {o.label || '—'}
+                {of && o.value ? <Choice of={of} value={o.value} /> : o.label || '—'}
               </MenuItem>
             ))}
             {shown.length === 0 && <p className="px-2.5 py-1.5 text-ink-3 text-md">No match.</p>}

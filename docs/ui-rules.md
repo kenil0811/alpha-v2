@@ -66,6 +66,7 @@ held by review. Dates are 2026.
 | T14 | A summary shows as the kind it comes to and is never typed; what it is, in words, is on its column's tip and menu | 27 Oct | — |
 | T15 | Tags show as chips and are picked from a tick list; filtered by has any of, all of, none of; never a board's columns or a group | 27 Oct | — |
 | T16 | People shows, after its own columns, the fields of its module's one-row-per-person tables, each named by its field (its table's name in front only on a clash); a person's page has a section for each; typing there writes that person's row, made if need be | 27 Oct | test |
+| T17 | Every choice wears one colour by its place in its field's list (eight, round again), in cells, board cards, chips, dropdowns and filters; a choice that is a state keeps its tone's dot | 2 Nov | — |
 
 ## Pages, records and deleting
 

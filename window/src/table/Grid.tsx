@@ -33,7 +33,7 @@ import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field, Select } from '../ui/field.tsx'
-import { Pill } from '../ui/pill.tsx'
+import { Choice } from '../ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
 import { tipNow } from '../ui/tooltip.tsx'
 import { CellHistory } from './CellHistory.tsx'
@@ -58,7 +58,6 @@ import { TagChips } from './Tags.tsx'
 import {
   canEdit,
   canType,
-  DOT,
   EMPTY_CELL,
   EMPTY_WORDS,
   INK,
@@ -838,13 +837,8 @@ function Cell({
           </span>
         ) : isTags(f) ? (
           <TagChips field={f} value={value} />
-        ) : f.kind === 'choice' && f.tones[text] ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <span className={cn('size-1.75 shrink-0 rounded-full', DOT[f.tones[text]])} />
-            <span className="truncate">{text}</span>
-          </span>
         ) : f.kind === 'choice' ? (
-          <Pill>{text}</Pill>
+          <Choice of={f} value={text} />
         ) : (
           <span
             className={cn(
