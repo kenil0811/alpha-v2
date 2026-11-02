@@ -13,6 +13,7 @@ export default defineConfig({
       'connectors/mac',
       'connectors/this-computer',
       'connectors-extra/linkedin',
+      'plugins/onboarding',
     ],
   },
 })

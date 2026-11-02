@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Problem } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { accessOf, kindOf, MacReader, timeByDay } from './mac-local.ts'
+import { accessOf, datesAdded, kindOf, MacReader, timeByDay, whereFroms } from './mac-local.ts'
 import { PlainPlatform } from './plain.ts'
 
 const recorded = (name: string) =>
@@ -67,6 +67,38 @@ describe('the Mac reader', () => {
     expect(files.every((f) => f.folder === 'downloads')).toBe(true)
     expect(new Set(files.map((f) => f.kind)).has('folder')).toBe(true)
     expect(asked.map((a) => a[0])).toEqual(['safari-visits', 'apps', 'app-time', 'files'])
+    // each time an app was in front, by the name the Mac gives it where it can
+    const spans = await r.appSpans('2026-10-01T00:00:00Z')
+    expect(spans.length).toBe(
+      recorded('app-time').spans.filter((s: { app: string }) => s.app).length,
+    )
+    expect(spans.every((s) => s.id && s.start <= s.end)).toBe(true)
+  })
+
+  it('reads where each download came from and when it arrived, as Spotlight keeps it', () => {
+    const from = whereFroms(
+      [
+        '/Users/me/Downloads/CIM Car Wash.pdf   kMDItemWhereFroms = (',
+        '    "https://cdn.example.com/f/9?sig=abc",',
+        '    "https://www.bizbuysell.com/listing/2"',
+        ')',
+        '/Users/me/Downloads/a b.zip   kMDItemWhereFroms = (',
+        '    "https://example.org/a.zip"',
+        ')',
+      ].join('\n'),
+    )
+    expect([...from.entries()]).toEqual([
+      [
+        '/Users/me/Downloads/CIM Car Wash.pdf',
+        ['https://cdn.example.com/f/9?sig=abc', 'https://www.bizbuysell.com/listing/2'],
+      ],
+      ['/Users/me/Downloads/a b.zip', ['https://example.org/a.zip']],
+    ])
+    expect([
+      ...datesAdded(
+        '/Users/me/Downloads/a b.zip   kMDItemDateAdded = 2026-10-28 10:50:04 +0000\n',
+      ).entries(),
+    ]).toEqual([['/Users/me/Downloads/a b.zip', '2026-10-28T10:50:04Z']])
   })
 
   it('says each part’s state in the five words, with where macOS switches Alpha on', async () => {

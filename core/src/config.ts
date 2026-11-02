@@ -43,6 +43,8 @@ const Limits = z.object({
   question_characters: z.number().int().min(1),
   reply_fold_lines: z.number().int().min(1),
   parts_shown: z.number().int().min(1),
+  explore_turns: z.number().int().min(1),
+  explore_look_tokens: z.number().int().min(1),
 })
 
 const Words = z.object({

@@ -1,9 +1,10 @@
 // Three connectors for any computer (onboarding design §3): browsing history, apps and the names
 // of files. None names an operating system: each asks the platform's reader for raw rows and
-// counts them here with the shared filters. They reach no network, keep no table (reading daily is
-// a later switch), and their tools are never offered to the model: only Alpha's own onboarding
-// calls them, and only counts and filtered names leave them. They are connected from onboarding's
-// cards, so they have no first-open step and no tile of their own.
+// counts or filters them here with the shared filters. They reach no network, keep no table
+// (reading daily is a later switch), and their tools are never offered to the model: only Alpha's
+// own onboarding calls them, and only what the filters let through leaves them (counts, sites and
+// scrubbed titles, never addresses; names, never what is in them; the never-use list out). They
+// are connected from onboarding's cards, so they have no first-open step and no tile of their own.
 import { readFileSync } from 'node:fs'
 import {
   type Access,
@@ -16,7 +17,15 @@ import {
   Problem,
 } from '@alpha/connector-sdk'
 import { z } from 'zod'
-import { countApps, countFiles, countSites } from './filters.ts'
+import {
+  countApps,
+  countFiles,
+  countSites,
+  filterDownloads,
+  filterNames,
+  filterSpans,
+  filterVisits,
+} from './filters.ts'
 
 const guide = readFileSync(new URL('../GUIDE.md', import.meta.url), 'utf8')
 const DAY = 86_400_000
@@ -76,6 +85,21 @@ export const browsing: Connector = {
         return { parts, sites: countSites(visits, await never(c)) }
       },
     }),
+    visits: defineTool({
+      description:
+        'Each visit in the last days in time order: when, the site and its page title, filtered; never the address.',
+      input: { days: z.number().int().min(1).max(365).default(90) },
+      effect: 'read',
+      words: () => 'Read the visits by site and title',
+      run: async (c, { days }) => {
+        const r = reader(c)
+        const parts = await access(c, ['chrome', 'safari'])
+        const visits = []
+        for (const b of await r.browsers())
+          if (parts[b.id] === 'ready') visits.push(...(await r.visits(b.id, since(days))))
+        return { parts, visits: filterVisits(visits, await never(c)) }
+      },
+    }),
   },
   access: (c) => access(c, ['chrome', 'safari']),
   // the reader answers, or says this computer has none
@@ -127,6 +151,24 @@ export const apps: Connector = {
         }
       },
     }),
+    spans: defineTool({
+      description:
+        'Each time an app was in front over the last days, its start and end, in time order; filtered.',
+      input: { days: z.number().int().min(1).max(90).default(30) },
+      effect: 'read',
+      words: () => 'Read when each app was used',
+      run: async (c, { days }) => {
+        const r = reader(c)
+        const time = (await r.access('screen-time')).state
+        return {
+          parts: { installed: 'ready', 'screen-time': time },
+          spans:
+            time === 'ready'
+              ? filterSpans(await r.appSpans(since(days)), await r.apps(), await never(c))
+              : [],
+        }
+      },
+    }),
   },
   access: async (c) => ({ installed: 'ready', ...(await access(c, ['screen-time'])) }),
   check: async (c) => {
@@ -162,6 +204,37 @@ export const filenames: Connector = {
         const seen = []
         for (const f of FOLDERS) if (parts[f] === 'ready') seen.push(...(await r.files(f)))
         return { parts, ...countFiles(seen, await never(c)) }
+      },
+    }),
+    names: defineTool({
+      description:
+        'Every name in the three folders with its kind and when it changed, filtered; never what is in them.',
+      input: {},
+      effect: 'read',
+      words: () => 'Read the names of files',
+      run: async (c) => {
+        const r = reader(c)
+        const parts = await access(c, [...FOLDERS])
+        const seen = []
+        for (const f of FOLDERS) if (parts[f] === 'ready') seen.push(...(await r.files(f)))
+        return { parts, names: filterNames(seen, await never(c)) }
+      },
+    }),
+    downloads: defineTool({
+      description:
+        'Each file in Downloads with the sites it came from and when it arrived, filtered; never the addresses.',
+      input: {},
+      effect: 'read',
+      words: () => 'Read where downloads came from',
+      run: async (c) => {
+        const parts = await access(c, ['downloads'])
+        return {
+          parts,
+          downloads:
+            parts.downloads === 'ready'
+              ? filterDownloads(await reader(c).downloads(), await never(c))
+              : [],
+        }
       },
     }),
   },

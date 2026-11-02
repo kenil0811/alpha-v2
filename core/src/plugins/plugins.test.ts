@@ -2,7 +2,7 @@
 // host, its own module kept as Alpha's own are, its routes answered under /api/plugins/<name>/,
 // its block at the start of a conversation; one that does not load said and left out; with none,
 // nothing changes. Never the model: its one question is answered here.
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -22,9 +22,6 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'alpha-plugins-'))
   world = await World.open(join(home, 'tenants', 't_test'))
   mkdirSync(join(home, 'plugins'))
-  cpSync(join(import.meta.dirname, 'test-plugin'), join(home, 'plugins', 'test'), {
-    recursive: true,
-  })
 })
 afterEach(() => {
   world.close()
@@ -57,7 +54,8 @@ async function started() {
     },
     connectors: null,
   })
-  const found = await loadPlugins(join(home, 'plugins'))
+  // the made-up plugin from where it is, beside this test (it imports the plugin SDK)
+  const found = await loadPlugins(import.meta.dirname)
   expect(found.failed).toEqual([])
   expect(await plugins.register(found.plugins)).toEqual([])
   await plugins.keepKits({ actor: { kind: 'system' }, user: world.owner('Kenil').id })
@@ -75,6 +73,7 @@ describe('a plugin', () => {
       'POST /api/plugins/test/note',
       'POST /api/plugins/test/keep/:id',
       'GET /api/plugins/test/mail',
+      'GET /api/plugins/test/never',
       'POST /api/plugins/test/ask',
     ])
   })
@@ -117,6 +116,23 @@ describe('a plugin', () => {
       expect((await a.inject({ url: '/api/plugins/test/mail', headers: ok })).json()).toEqual({
         rows: 0,
       })
+      // the never-use list: the one shipped with Alpha and every one the person keeps
+      const never = async (words: string) =>
+        (
+          await a.inject({
+            url: `/api/plugins/test/never?words=${encodeURIComponent(words)}`,
+            headers: ok,
+          })
+        ).json().never
+      expect(await never('Your bank statement')).toBe(true)
+      expect(await never('Harbor deal: next steps')).toBe(false)
+      const c = world.connections.add('outlook', 'me@x.example', null, 'Outlook', {
+        actor: { kind: 'person', id: world.owner('Kenil').id },
+      })
+      world.connections.setNever(c.id, ['harbor'], {
+        actor: { kind: 'person', id: world.owner('Kenil').id },
+      })
+      expect(await never('Harbor deal: next steps')).toBe(true)
       // its one question, and what it cost kept with Alpha's usage under its own module
       expect(
         (await a.inject({ method: 'POST', url: '/api/plugins/test/ask', headers: ok })).json(),
@@ -146,7 +162,7 @@ describe('a plugin', () => {
       'export const plugin = { name: "Broken!" }\n',
     )
     const found = await loadPlugins(join(home, 'plugins'))
-    expect(found.plugins.map((p) => p.plugin.name)).toEqual(['test'])
+    expect(found.plugins).toEqual([])
     expect(found.failed[0]?.why).toMatch(/name: letters.*title: what the person reads.*register:/)
     expect(await loadPlugins(join(home, 'nowhere'))).toEqual({ plugins: [], failed: [] })
     const none = new Plugins({

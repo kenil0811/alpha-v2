@@ -41,6 +41,24 @@ export interface AppTime {
   name?: string // where the computer can say it: an app used but not among the installed ones
 }
 
+// Time in one app, as it happened: when the person went to it and when they left (onboarding B,
+// the order of a day).
+export interface AppSpan {
+  id: string
+  name?: string // where the computer can say it
+  start: string
+  end: string
+}
+
+// A file downloaded, where the computer kept where it came from: its name in Downloads, the
+// addresses it came from (the file's own, then the page it was on) and when it arrived. Raw:
+// a connector keeps only the sites.
+export interface Download {
+  path: string
+  from: string[]
+  at: string
+}
+
 // A name in one of the three folders: its path inside it, its kind (an extension, folder, or
 // project for a folder with its own version history, not walked) and when it changed. Never what
 // is in it.
@@ -58,6 +76,8 @@ export interface LocalReader {
   visits(browser: string, since: string): Promise<Visit[]>
   apps(): Promise<AppSeen[]>
   appTime(since: string): Promise<AppTime[]>
+  appSpans(since: string): Promise<AppSpan[]>
+  downloads(): Promise<Download[]>
   files(folder: Folder): Promise<FileSeen[]>
   // the computer's settings for a part, opened with Alpha shown beside them to switch on or drag in
   showSettings(part: string): void

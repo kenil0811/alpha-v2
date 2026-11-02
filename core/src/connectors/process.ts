@@ -27,7 +27,17 @@ import { z } from 'zod'
 import { allow, CODE, forget, newId, sandbox } from '../sandbox.ts'
 
 // What a connector may ask of the computer's reader (connector-sdk/src/local.ts).
-const LOCAL_CALLS = ['access', 'browsers', 'visits', 'apps', 'appTime', 'files', 'showSettings']
+const LOCAL_CALLS = [
+  'access',
+  'browsers',
+  'visits',
+  'apps',
+  'appTime',
+  'appSpans',
+  'downloads',
+  'files',
+  'showSettings',
+]
 
 const CHILD = join(import.meta.dirname, 'child.ts')
 

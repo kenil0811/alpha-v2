@@ -17,6 +17,9 @@
       "path": "plugin-sdk"
     },
     {
+      "path": "plugins/onboarding"
+    },
+    {
       "path": "connectors/mac"
     },
     {

@@ -1,5 +1,5 @@
 // A made-up plugin for the plugin seam's tests (onboarding 4a): it uses every part of its host.
-import type { Plugin } from '@alpha/plugin-sdk'
+import { type Plugin, Refusal } from '@alpha/plugin-sdk'
 
 export const plugin: Plugin = {
   name: 'test',
@@ -9,7 +9,7 @@ export const plugin: Plugin = {
     host.route('GET', '/hello', async () => ({ hello: host.person().name }))
     host.route('POST', '/note', async ({ body }) => {
       const line = String((body as { line?: unknown }).line ?? '')
-      if (!line) throw new Error('a line is needed')
+      if (!line) throw new Refusal('A line is needed.')
       const [id] = host.own.add('Notes', [
         { values: { Line: line, State: 'Proposed' }, basis: 'the test' },
       ])
@@ -21,6 +21,7 @@ export const plugin: Plugin = {
       return { notes: host.own.rows('Notes').map((r) => r.values) }
     })
     host.route('GET', '/mail', async () => ({ rows: host.rows('Mail', 'Mail').length }))
+    host.route('GET', '/never', async ({ query }) => ({ never: host.never(query.words ?? '') }))
     host.route('POST', '/ask', async () => ({
       answer: await host.ask('Answer in the schema.', 'Say yes.', { type: 'object' }),
     }))

@@ -2,7 +2,17 @@
 // test makes; never a real computer's.
 import type { FileSeen } from '@alpha/connector-sdk'
 import { describe, expect, it } from 'vitest'
-import { countApps, countFiles, countSites, never, scrubTitle, siteOf } from './filters.ts'
+import {
+  countApps,
+  countFiles,
+  countSites,
+  filterDownloads,
+  filterSpans,
+  filterVisits,
+  never,
+  scrubTitle,
+  siteOf,
+} from './filters.ts'
 
 describe('a site', () => {
   it('is an address without www., path, query or fragment; local and browser pages are none', () => {
@@ -148,6 +158,68 @@ describe('counting file names', () => {
       'Deals/Harbor/Model/Q3 P&L.xlsx',
       'Deals/Harbor/LOI draft.docx',
       'Deals/Harbor/CIM.pdf',
+    ])
+  })
+})
+
+describe('what leaves for a closer look (onboarding B)', () => {
+  it('is each visit’s site and scrubbed title in time order, never the address', () => {
+    const seen = filterVisits(
+      [
+        { url: 'https://chase.com/statements', title: 'Statement', at: '2026-10-01T09:00:00Z' },
+        {
+          url: 'https://www.bizbuysell.com/listing/2?ref=mail',
+          title: 'Car wash for sale, call +1 415 555 0101',
+          at: '2026-10-01T10:00:00Z',
+        },
+        { url: 'https://mail.google.com/mail/u/0', title: 'Re: LOI', at: '2026-10-01T09:30:00Z' },
+        { url: 'http://localhost:4700/', title: 'Alpha', at: '2026-10-01T08:00:00Z' },
+      ],
+      [],
+    )
+    expect(seen).toEqual([
+      { at: '2026-10-01T09:30:00Z', site: 'mail.google.com', title: '' },
+      { at: '2026-10-01T10:00:00Z', site: 'bizbuysell.com', title: 'Car wash for sale, call' },
+    ])
+    expect(JSON.stringify(seen)).not.toMatch(/listing|ref=|LOI|555/)
+  })
+
+  it('is each time an app was in front, by its name, the never-use list left out', () => {
+    expect(
+      filterSpans(
+        [
+          { id: 'com.tinder', start: '2026-10-01T10:00:00Z', end: '2026-10-01T10:05:00Z' },
+          { id: 'com.excel', start: '2026-10-01T09:00:00Z', end: '2026-10-01T09:40:00Z' },
+          { id: 'x.y', name: 'Notes', start: '2026-10-01T09:41:00Z', end: '2026-10-01T09:42:00Z' },
+        ],
+        [{ id: 'com.excel', name: 'Microsoft Excel' }],
+      ),
+    ).toEqual([
+      { app: 'Microsoft Excel', start: '2026-10-01T09:00:00Z', end: '2026-10-01T09:40:00Z' },
+      { app: 'Notes', start: '2026-10-01T09:41:00Z', end: '2026-10-01T09:42:00Z' },
+    ])
+  })
+
+  it('is where each download came from, by site; one from a site on the list is not here', () => {
+    expect(
+      filterDownloads(
+        [
+          {
+            path: 'CIM Car Wash.pdf',
+            from: ['https://cdn.example.com/f/9?sig=abc', 'https://www.bizbuysell.com/listing/2'],
+            at: '2026-10-02T10:00:00Z',
+          },
+          { path: 'Statement.pdf', from: ['https://chase.com/s/1'], at: '2026-10-03T10:00:00Z' },
+          { path: 'Private/plan.pdf', from: [], at: '2026-10-04T10:00:00Z' },
+        ],
+        ['private'],
+      ),
+    ).toEqual([
+      {
+        name: 'CIM Car Wash.pdf',
+        sites: ['cdn.example.com', 'bizbuysell.com'],
+        at: '2026-10-02T10:00:00Z',
+      },
     ])
   })
 })

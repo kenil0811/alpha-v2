@@ -31,6 +31,7 @@ import { Setup } from './setup.ts'
 import { isDeveloper, type Trust } from './signing.ts'
 import { fold, verify } from './world/audit.ts'
 import { backupDaily } from './world/backups.ts'
+import { Refused } from './world/kinds.ts'
 import { setHomeRegion } from './world/phones.ts'
 import { expire } from './world/records/index.ts'
 import { tenantDir, World } from './world/world.ts'
@@ -250,6 +251,11 @@ const plugins = new Plugins({
   home,
   region: () => platform.region(),
   ask: (system, prompt, schema) => provider().ask(system, prompt, schema),
+  explore: (system, prompt, tools, schema, turns) => {
+    const p = provider()
+    if (!p.explore) throw new Refused('The way Alpha reaches Claude here cannot look around yet.')
+    return p.explore(system, prompt, tools, schema, turns)
+  },
   connectors,
 })
 const pluginsFailed = await (async () => {

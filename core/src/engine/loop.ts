@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { config } from '../config.ts'
 import type { World } from '../world/world.ts'
 import type { Session, SessionEvent, SessionSpec } from './provider.ts'
-import { fullName } from './registry.ts'
+import { fullName, type ToolEntry } from './registry.ts'
 
 // One request to the model: the whole conversation, answered as it streams.
 export interface ChatRequest {
@@ -39,7 +39,11 @@ export class Limited extends Error {
 
 // The tools as the API takes them, from the registry's entries.
 export function toolsOf(spec: SessionSpec): Anthropic.Tool[] {
-  return spec.registry.all().map((e) => {
+  return toolsOfEntries(spec.registry.all())
+}
+
+export function toolsOfEntries(entries: ToolEntry[]): Anthropic.Tool[] {
+  return entries.map((e) => {
     const schema = z.toJSONSchema(z.object(e.input), { io: 'input' }) as Record<string, unknown>
     const { $schema: _dropped, ...rest } = schema
     return {

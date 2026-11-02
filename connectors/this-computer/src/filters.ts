@@ -1,94 +1,18 @@
 // What is counted of this computer, and what never is (onboarding design §5), the same code on
 // every computer: raw rows come in from the platform's reader, counts and filtered names go out.
 // Nothing here keeps a row. Every filter runs before anything is counted.
-import type { AppSeen, AppTime, FileSeen, Folder, Visit } from '@alpha/connector-sdk'
+import {
+  type AppSeen,
+  type AppSpan,
+  type AppTime,
+  type Download,
+  type FileSeen,
+  type Folder,
+  never,
+  type Visit,
+} from '@alpha/connector-sdk'
 
-// The never-use list shipped with the package: health, banking and money, dating, adult,
-// gambling, religion and politics. A word matches a whole part of a name ("bet" never matches
-// "alphabet", "chase" never "purchase"); a stem matches inside one ("bankofamerica").
-export const SHIPPED_NEVER = [
-  // health
-  'clinic',
-  'doctor',
-  'therapy',
-  'webmd',
-  'mayoclinic',
-  'patient',
-  'dental',
-  'mental',
-  'mychart',
-  // banking and money
-  'paypal',
-  'venmo',
-  'chase',
-  'wellsfargo',
-  'citi',
-  'citibank',
-  'amex',
-  'americanexpress',
-  'capitalone',
-  'hsbc',
-  'barclays',
-  'revolut',
-  'wise',
-  'coinbase',
-  'binance',
-  'robinhood',
-  'schwab',
-  'fidelity',
-  'vanguard',
-  'etrade',
-  'creditkarma',
-  'loan',
-  'loans',
-  'zelle',
-  // dating
-  'tinder',
-  'bumble',
-  'hinge',
-  'okcupid',
-  'grindr',
-  // adult
-  'xxx',
-  'onlyfans',
-  'xvideos',
-  'adult',
-  // gambling
-  'bet',
-  'betting',
-  'draftkings',
-  'fanduel',
-  'bet365',
-  'lottery',
-  // religion
-  'church',
-  'mosque',
-  'synagogue',
-  'temple',
-  'bible',
-  'quran',
-  'religion',
-  // politics
-  'democrat',
-  'democrats',
-  'republican',
-  'gop',
-  'politics',
-  'campaign',
-  'vote',
-]
-const SHIPPED_STEMS = [
-  'health',
-  'hospital',
-  'pharma',
-  'medical',
-  'bank',
-  'mortgage',
-  'dating',
-  'porn',
-  'casino',
-  'poker',
-]
+export { never }
 
 // Sites whose page titles are someone's words (a webmail title is a subject line): counted, never
 // their titles.
@@ -108,20 +32,6 @@ const TITLES_KEPT_OUT = [
   'teams.live.com',
   'icloud.com',
 ]
-
-// Whether a name (a site, a folder, an app) is on the never-use list: the shipped one and the
-// person's own (whole sites and folders, or words).
-export function never(name: string, theirs: string[] = []): boolean {
-  const n = name.toLowerCase()
-  const parts = n.split(/[^a-z0-9]+/).filter(Boolean)
-  // the person's own: a whole site or folder, or a word
-  for (const w of theirs.map((x) => x.trim().toLowerCase()).filter(Boolean))
-    if (n === w || n.endsWith(`.${w}`) || n.startsWith(`${w}/`) || parts.includes(w)) return true
-  return (
-    SHIPPED_NEVER.some((w) => parts.includes(w)) ||
-    SHIPPED_STEMS.some((w) => parts.some((p) => p.includes(w)))
-  )
-}
 
 // An address's site, www. dropped; none for a local or browser page (localhost, a bare address,
 // file:, chrome:, about:), which is never counted.
@@ -152,6 +62,28 @@ export function scrubTitle(title: string): string {
     .trim()
 }
 
+export interface Seen {
+  at: string
+  site: string
+  title: string // '' where the site's titles are someone's words, or nothing was left
+}
+
+// Each visit as it may leave the computer: its site and a scrubbed title, never the address; a
+// site or a title on the never-use list is not here at all.
+export function filterVisits(visits: Visit[], theirs: string[] = []): Seen[] {
+  const out: Seen[] = []
+  for (const v of visits) {
+    const site = siteOf(v.url)
+    if (!site || never(site, theirs)) continue
+    const title = TITLES_KEPT_OUT.some((x) => site === x || site.endsWith(`.${x}`))
+      ? ''
+      : scrubTitle(v.title)
+    if (title && never(title, theirs)) continue
+    out.push({ at: v.at, site, title })
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at))
+}
+
 export interface Site {
   site: string
   visits: number
@@ -167,17 +99,12 @@ export function countSites(visits: Visit[], theirs: string[] = [], dayOf = local
     string,
     { visits: number; days: Set<string>; last: string; titles: Map<string, number> }
   >()
-  for (const v of visits) {
-    const site = siteOf(v.url)
-    if (!site || never(site, theirs)) continue
+  for (const { at, site, title } of filterVisits(visits, theirs)) {
     const s = by.get(site) ?? { visits: 0, days: new Set(), last: '', titles: new Map() }
     s.visits++
-    s.days.add(dayOf(v.at))
-    if (v.at > s.last) s.last = v.at
-    const title = TITLES_KEPT_OUT.some((x) => site === x || site.endsWith(`.${x}`))
-      ? ''
-      : scrubTitle(v.title)
-    if (title && !never(title, theirs)) s.titles.set(title, (s.titles.get(title) ?? 0) + 1)
+    s.days.add(dayOf(at))
+    if (at > s.last) s.last = at
+    if (title) s.titles.set(title, (s.titles.get(title) ?? 0) + 1)
     by.set(site, s)
   }
   return [...by.entries()]
@@ -247,6 +174,47 @@ export function countApps(
   )
 }
 
+export interface Span {
+  app: string
+  start: string
+  end: string
+}
+
+// Each time an app was in front, by the name it is installed under (else the one the computer
+// gives, else its id), in time order; an app on the never-use list is not here.
+export function filterSpans(spans: AppSpan[], apps: AppSeen[], theirs: string[] = []): Span[] {
+  const names = new Map(apps.map((a) => [a.id, a.name]))
+  return spans
+    .map((s) => ({ id: s.id, app: names.get(s.id) ?? s.name ?? s.id, start: s.start, end: s.end }))
+    .filter((s) => !never(s.app, theirs) && !never(s.id, theirs))
+    .map(({ app, start, end }) => ({ app, start, end }))
+    .sort((a, b) => a.start.localeCompare(b.start))
+}
+
+export interface Fetched {
+  name: string // its name in Downloads
+  sites: string[] // the sites it came from, never their addresses
+  at: string
+}
+
+// Where each download came from, by site: one on the never-use list, from a site on it or under a
+// folder on it, is not here.
+export function filterDownloads(downloads: Download[], theirs: string[] = []): Fetched[] {
+  const out: Fetched[] = []
+  for (const d of downloads) {
+    if (d.path.split('/').some((part) => never(part, theirs))) continue
+    const sites = [...new Set(d.from.map(siteOf).filter((s): s is string => !!s))]
+    if (sites.some((s) => never(s, theirs))) continue
+    out.push({ name: d.path, sites, at: d.at })
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+// Every name the person allowed, filtered: a name on the never-use list, or under a folder on it,
+// is not here.
+export const filterNames = (seen: FileSeen[], theirs: string[] = []) =>
+  seen.filter((f) => !f.path.split('/').some((part) => never(part, theirs)))
+
 export interface FolderCount {
   folder: Folder
   path: string // a folder up to two levels in; '' for the folder itself
@@ -262,7 +230,7 @@ export interface Files {
 // The three folders as a tree two levels deep, each with what it holds by kind, and the newest
 // names. A name on the never-use list, or under a folder on it, is never counted.
 export function countFiles(seen: FileSeen[], theirs: string[] = [], recent = 300): Files {
-  const kept = seen.filter((f) => !f.path.split('/').some((part) => never(part, theirs)))
+  const kept = filterNames(seen, theirs)
   const tree = new Map<string, FolderCount>()
   for (const f of kept) {
     if (f.kind === 'folder') continue

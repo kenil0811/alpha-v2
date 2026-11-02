@@ -12,7 +12,7 @@ import {
   query as sdkQuery,
 } from '@anthropic-ai/claude-agent-sdk'
 import { config } from '../config.ts'
-import { askOnce } from './ask.ts'
+import { askOnce, exploreOnce } from './ask.ts'
 import type {
   Capabilities,
   Provider,
@@ -21,6 +21,7 @@ import type {
   SessionEvent,
   SessionSpec,
 } from './provider.ts'
+import type { ToolEntry } from './registry.ts'
 import type { ModelRoute } from './route.ts'
 
 export type QueryFn = (params: { prompt: AsyncIterable<SDKUserMessage>; options: Options }) => Query
@@ -121,6 +122,24 @@ export class ClaudeCodeProvider implements Provider {
       system,
       prompt,
       schema,
+    )
+  }
+
+  explore(
+    system: string,
+    prompt: string,
+    tools: ToolEntry[],
+    schema: Record<string, unknown>,
+    turns: number,
+  ) {
+    return exploreOnce(
+      this.askDir ?? process.cwd(),
+      this.modelRoute?.env() ?? {},
+      system,
+      prompt,
+      tools,
+      schema,
+      turns,
     )
   }
 

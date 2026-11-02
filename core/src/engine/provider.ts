@@ -3,8 +3,10 @@
 // and gives a desk session (words in, text and tool calls out as they stream, interrupt, resume)
 // and `ask` (one question answered in a schema). The gates are Alpha's code on every route: a
 // session runs each tool call through the Gatekeeper before the registry's handler.
+
+import type { Use } from '../world/spend.ts'
 import type { Gatekeeper } from './gate.ts'
-import type { Registry } from './registry.ts'
+import type { Registry, ToolEntry } from './registry.ts'
 
 export type Route = 'subscription' | 'key' | 'local'
 
@@ -73,4 +75,13 @@ export interface Provider {
     prompt: string,
     schema: Record<string, unknown>,
   ): Promise<{ answer: unknown; tokens: number }>
+  // A question the model works out with a few read-only tools before it answers in the schema
+  // (a plugin's exploring session, onboarding B): those tools and no others, for at most `turns`.
+  explore?(
+    system: string,
+    prompt: string,
+    tools: ToolEntry[],
+    schema: Record<string, unknown>,
+    turns: number,
+  ): Promise<{ answer: unknown; tokens: number; uses?: Use[] }>
 }

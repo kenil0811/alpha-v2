@@ -38,6 +38,8 @@ const reader: LocalReader = {
   files: async (folder) => [
     { folder, path: 'Deals/Harbor/CIM.pdf', kind: 'pdf', modified: day(29) },
   ],
+  appSpans: async () => [],
+  downloads: async () => [],
   showSettings: () => undefined,
 }
 

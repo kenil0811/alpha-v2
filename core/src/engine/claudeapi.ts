@@ -8,8 +8,9 @@ import { Refused } from '../world/kinds.ts'
 import { usesOfTokens } from '../world/spend.ts'
 import type { World } from '../world/world.ts'
 import { apiShape, fromApi } from './apishape.ts'
-import { type Chat, type ChatRequest, Limited, OwnLoop } from './loop.ts'
+import { type Chat, type ChatRequest, Limited, OwnLoop, toolsOfEntries } from './loop.ts'
 import type { Capabilities, Provider, Session, SessionSpec } from './provider.ts'
+import { fullName, type ToolEntry } from './registry.ts'
 
 export interface ClaudeApiOptions {
   key: () => string | null // the key as kept in the Keychain, read when a request is made
@@ -57,6 +58,24 @@ export class ClaudeApiProvider implements Provider {
       apiKey: key,
       ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
     })
+  }
+
+  explore(
+    system: string,
+    prompt: string,
+    tools: ToolEntry[],
+    schema: Record<string, unknown>,
+    turns: number,
+  ) {
+    return exploreApi(
+      this.options.chat ?? this.chat(),
+      config.models().desk,
+      system,
+      prompt,
+      tools,
+      schema,
+      turns,
+    )
   }
 
   session(spec: SessionSpec): Session {
@@ -141,6 +160,69 @@ export class ClaudeApiProvider implements Provider {
     if (!call) throw new Refused('The model gave no answer in the shape asked.')
     return { answer: call.input, tokens: tokensOf(m.usage), uses: usesOfTokens(model, m.usage) }
   }
+}
+
+// A question worked out with a plugin's read-only tools (onboarding B), on Alpha's own loop: each
+// round the model calls tools or the answer tool; the tools run here and their answers go back, until
+// it answers, within the turns given.
+export async function exploreApi(
+  chat: Chat,
+  model: string,
+  system: string,
+  prompt: string,
+  tools: ToolEntry[],
+  schema: Record<string, unknown>,
+  turns: number,
+): Promise<{ answer: unknown; tokens: number; uses: ReturnType<typeof usesOfTokens> }> {
+  const byName = new Map(tools.map((t) => [fullName(t.server, t.name), t]))
+  const all: Anthropic.Tool[] = [
+    ...toolsOfEntries(tools),
+    {
+      name: 'answer',
+      description: 'Your answer, in the shape asked, once you have looked enough.',
+      input_schema: schema as Anthropic.Tool.InputSchema,
+    },
+  ]
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
+  const uses: ReturnType<typeof usesOfTokens> = []
+  let tokens = 0
+  for (let turn = 0; turn < turns; turn++) {
+    const a = await chat({
+      system: `${system}\n\nWhen you have looked enough, give your answer by calling the answer tool once.`,
+      messages,
+      tools: all,
+      signal: new AbortController().signal,
+      onText: () => undefined,
+    })
+    uses.push(...usesOfTokens(model, a.usage))
+    tokens += tokensOf(a.usage as unknown as Anthropic.Usage)
+    messages.push({ role: 'assistant', content: a.content as Anthropic.ContentBlockParam[] })
+    const calls = a.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+    const answer = calls.find((c) => c.name === 'answer')
+    if (answer) return { answer: answer.input, tokens, uses }
+    if (!calls.length) {
+      messages.push({ role: 'user', content: 'Give your answer by calling the answer tool.' })
+      continue
+    }
+    const results: Anthropic.ToolResultBlockParam[] = []
+    for (const c of calls) {
+      const t = byName.get(c.name)
+      const out = t
+        ? await t.handler(c.input as Record<string, unknown>)
+        : {
+            content: [{ type: 'text' as const, text: `There is no tool called ${c.name}.` }],
+            isError: true,
+          }
+      results.push({
+        type: 'tool_result',
+        tool_use_id: c.id,
+        content: out.content.map((x) => (x.type === 'text' ? x.text : '')).join('\n'),
+        ...(out.isError ? { is_error: true } : {}),
+      })
+    }
+    messages.push({ role: 'user', content: results })
+  }
+  throw new Refused('The model did not settle on an answer in the turns it had.')
 }
 
 // What the API says when an answer shape is beyond its strict answers' limits.

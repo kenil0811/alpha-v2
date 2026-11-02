@@ -9,8 +9,10 @@ import { join } from 'node:path'
 import {
   type Access,
   type AppSeen,
+  type AppSpan,
   type AppTime,
   type Browser,
+  type Download,
   type FileSeen,
   type Folder,
   type LocalReader,
@@ -79,6 +81,36 @@ export function appName(id: string): string | null {
   }
 }
 
+// Where each file in Downloads came from, as Spotlight keeps it (kMDItemWhereFroms; Safari and
+// Chrome both set it), read from mdfind's own lines: path, then the addresses in brackets.
+export function whereFroms(text: string): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  let path: string | null = null
+  for (const line of text.split('\n')) {
+    const head = /^(\/.+?)\s{3}kMDItemWhereFroms = \(\s*$/.exec(line)
+    if (head?.[1]) {
+      path = head[1]
+      out.set(path, [])
+    } else if (path && line.trim() === ')') path = null
+    else if (path) {
+      const url = /"([^"]+)"/.exec(line)?.[1]
+      if (url) out.get(path)?.push(url)
+    }
+  }
+  return out
+}
+
+// When each arrived: path, then a date as macOS writes it (2026-10-28 10:50:04 +0000).
+export function datesAdded(text: string): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const line of text.split('\n')) {
+    const m =
+      /^(\/.+?)\s{3}kMDItemDateAdded = (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) \+0000$/.exec(line)
+    if (m?.[1]) out.set(m[1], `${m[2]}T${m[3]}Z`)
+  }
+  return out
+}
+
 // A name's kind: a project (a folder with its own version history), a folder, or its extension.
 export function kindOf(row: { path: string; folder?: boolean; project?: boolean }): string {
   if (row.project) return 'project'
@@ -91,11 +123,13 @@ export class MacReader implements LocalReader {
   readonly chrome: string
   readonly zone: string | undefined
   readonly nameOf: (id: string) => string | null
+  readonly downloadsDir: string
 
   // nameOf: an app's name by its id (Spotlight; the tests give their own)
   constructor(run: RunHelper, home = homedir(), zone?: string, nameOf = appName) {
     this.run = run
     this.nameOf = nameOf
+    this.downloadsDir = join(home, 'Downloads')
     this.chrome = join(home, 'Library', 'Application Support', 'Google', 'Chrome')
     this.zone = zone
   }
@@ -170,6 +204,50 @@ export class MacReader implements LocalReader {
       const name = names.get(t.id)
       return name ? { ...t, name } : t
     })
+  }
+
+  async appSpans(since: string): Promise<AppSpan[]> {
+    const a = await this.ask<{ spans: { app: string; start: string; end: string }[] }>(
+      'screen-time',
+      ['app-time', since],
+    )
+    const names = new Map<string, string | null>()
+    return a.spans
+      .filter((s) => s.app)
+      .map((s) => {
+        if (!names.has(s.app)) names.set(s.app, this.nameOf(s.app))
+        const name = names.get(s.app)
+        return { id: s.app, start: s.start, end: s.end, ...(name ? { name } : {}) }
+      })
+  }
+
+  // Spotlight answers without the folder's own permission; a file it never saw arrive is not here.
+  async downloads(): Promise<Download[]> {
+    const ask = (attr: string) => {
+      try {
+        return execFileSync(
+          '/usr/bin/mdfind',
+          ['-onlyin', this.downloadsDir, '-attr', attr, 'kMDItemWhereFroms == "*"'],
+          {
+            encoding: 'utf8',
+            timeout: 20_000,
+            maxBuffer: 64 * 1024 * 1024,
+            stdio: ['ignore', 'pipe', 'ignore'],
+          },
+        )
+      } catch {
+        return ''
+      }
+    }
+    const from = whereFroms(ask('kMDItemWhereFroms'))
+    const at = datesAdded(ask('kMDItemDateAdded'))
+    return [...from.entries()].map(([path, urls]) => ({
+      path: path.startsWith(`${this.downloadsDir}/`)
+        ? path.slice(this.downloadsDir.length + 1)
+        : path,
+      from: urls,
+      at: at.get(path) ?? '',
+    }))
   }
 
   async files(folder: Folder): Promise<FileSeen[]> {

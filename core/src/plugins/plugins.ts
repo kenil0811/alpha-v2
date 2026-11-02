@@ -6,13 +6,24 @@
 import { mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { checkPlugin, type Input, type Plugin, type PluginHost, type Row } from '@alpha/plugin-sdk'
+import { never } from '@alpha/connector-sdk'
+import {
+  checkPlugin,
+  type Input,
+  type Plugin,
+  type PluginHost,
+  Refusal,
+  type Row,
+} from '@alpha/plugin-sdk'
+import { config } from '../config.ts'
 import { entryOf } from '../connectors/discover.ts'
 import type { ConnectorService } from '../connectors/service.ts'
+import type { ToolEntry } from '../engine/registry.ts'
 import { keepKit } from '../modules/defaults.ts'
 import { readKit } from '../modules/kits/index.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table, WriteCtx } from '../world/shape/index.ts'
+import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
 import type { User, World } from '../world/world.ts'
 
@@ -66,6 +77,14 @@ export interface PluginDeps {
     schema: Record<string, unknown>,
   ) => Promise<{ answer: unknown; uses?: Use[] }>
   connectors: ConnectorService | null
+  // the person's route's exploring session; none where it cannot look around
+  explore?: (
+    system: string,
+    prompt: string,
+    tools: ToolEntry[],
+    schema: Record<string, unknown>,
+    turns: number,
+  ) => Promise<{ answer: unknown; uses?: Use[] }>
 }
 
 export interface PluginRoute {
@@ -158,6 +177,38 @@ export class Plugins {
         const t = m && world.shape.ownTable(m.id, table)
         return t ? rowsOf(t) : []
       },
+      catalogue: () => ({
+        modules: [
+          ...world.shape
+            .modules()
+            .map((m) => ({ name: m.name, installed: true, case: businessCase(m) })),
+        ],
+        connectors: (this.deps.connectors?.known() ?? [])
+          .filter((c) => !c.manifest.private)
+          .map((c) => ({
+            name: c.manifest.name,
+            title: c.manifest.title,
+            connected: world.connections
+              .list()
+              .some((k) => k.connector === c.manifest.name && k.state === 'connected'),
+          })),
+      }),
+      people: () =>
+        world.people
+          .list('person')
+          .filter((p) => p.count > 0)
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+          .map((p) => ({
+            name: p.name,
+            company: p.companies[0] ?? null,
+            contact: p.count,
+            last: p.last,
+          })),
+      never: (words) =>
+        never(
+          words,
+          world.connections.list().flatMap((c) => c.never),
+        ),
       connectorTool: async (connector, tool, input) => {
         if (!this.deps.connectors) throw new Refused('Connectors are not set up in this core.')
         return this.deps.connectors.runTool(connector, tool, input)
@@ -166,6 +217,40 @@ export class Plugins {
         const { answer, uses } = await this.deps.ask(system, prompt, schema)
         world.spend.add({ kind: 'ask', module: ownModule()?.id ?? null }, uses ?? [])
         return answer
+      },
+      explore: async (system, prompt, tools, schema) => {
+        if (!this.deps.explore)
+          throw new Refused('The way Alpha reaches Claude here cannot look around yet.')
+        const calls: { id: string; tool: string; input: unknown; output: unknown }[] = []
+        let made = 0 // ids given as each call starts, so calls side by side never share one
+        const entries: ToolEntry[] = tools.map((t) => ({
+          server: name,
+          name: t.name,
+          description: t.description,
+          input: t.input,
+          alwaysLoad: true,
+          handler: async (input) => {
+            const id = `t${++made}`
+            try {
+              const output = await t.run(input)
+              calls.push({ id, tool: t.name, input, output })
+              return { content: [{ type: 'text', text: `[${id}] ${JSON.stringify(output)}` }] }
+            } catch (err) {
+              const words = err instanceof Error ? err.message : String(err)
+              calls.push({ id, tool: t.name, input, output: { problem: words } })
+              return { content: [{ type: 'text', text: `[${id}] ${words}` }], isError: true }
+            }
+          },
+        }))
+        const { answer, uses } = await this.deps.explore(
+          system,
+          prompt,
+          entries,
+          schema,
+          config.limits().explore_turns,
+        )
+        world.spend.add({ kind: 'ask', module: ownModule()?.id ?? null }, uses ?? [])
+        return { answer, calls }
       },
       own: {
         add: (table, rows) =>
@@ -198,7 +283,19 @@ export class Plugins {
       },
       route: (method, path, answer) => {
         const p = path.startsWith('/') ? path : `/${path}`
-        this.routes.push({ method, path: `/api/plugins/${name}${p}`, answer })
+        // a plugin's refusal is said as the core's are; anything else is the core's failure
+        this.routes.push({
+          method,
+          path: `/api/plugins/${name}${p}`,
+          answer: async (input) => {
+            try {
+              return await answer(input)
+            } catch (err) {
+              if (err instanceof Refusal) throw new Refused(err.message)
+              throw err
+            }
+          },
+        })
       },
       startBlock: (words) => {
         this.starts.push(words)

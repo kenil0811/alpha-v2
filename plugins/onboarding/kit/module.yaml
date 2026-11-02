@@ -1,0 +1,24 @@
+# Onboarding's own module (Let Alpha get to know you; Kenil's yes 2 Nov): what Alpha learned about
+# the person from what they allowed it to read on their computer, kept only on their word. It sits
+# inside Alpha's own module; removing the onboarding plugin leaves Alpha's own kit as it is.
+name: About you
+api: 1
+version: 0.1.1
+within: Alpha
+business_case:
+  for: The person, and only them
+  keeps: What Alpha learned about them from their own computer, each line kept or dropped by them
+  decides: What Alpha knows about them at the start of every conversation
+tables:
+  - name: About you
+    about: "One thing Alpha learned about the person, from the sources it names, proposed until they keep or drop it."
+    fields:
+      - { name: Line, kind: text, about: "What Alpha learned, in a sentence." }
+      - { name: From, kind: text, about: "What it came from, in words (Browsing, File names, Your answer)." }
+      - { name: Sure, kind: choice, choices: [Likely, Guess], tones: { Likely: good, Guess: warn }, about: "How strongly the sources back it." }
+      - { name: State, kind: choice, choices: [Proposed, Kept, Dropped], tones: { Proposed: warn, Kept: good, Dropped: bad }, about: "Proposed until the person keeps or drops it; a dropped line is never proposed again." }
+      - { name: Noticed on, kind: date, about: "The day the draft was made." }
+    views:
+      - { name: Kept, default: true, about: "What the person kept.", filters: { rules: [{ field: State, op: is, value: Kept }] } }
+      - { name: Proposed, about: "What Alpha drafted and the person has not decided on yet.", filters: { rules: [{ field: State, op: is, value: Proposed }] } }
+network: []
