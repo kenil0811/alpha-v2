@@ -24,7 +24,6 @@ import {
   X,
 } from 'lucide-react'
 import { createContext, type ReactNode, useContext, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { api } from './api.ts'
 import type { Visit } from './back.ts'
 import { inMacApp } from './macApp.ts'
@@ -32,6 +31,7 @@ import { ModuleIcon } from './moduleIcon.tsx'
 import type { Place } from './place.ts'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
+import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
 import { Edge, Opening, SIDE_MIN } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
@@ -797,14 +797,8 @@ const RAIL = [SIDE_MIN, 360] as const // narrowest at the panels' 200px (Batch D
 // The module People and Organizations live in, as its module.yaml says (people: true; Network's).
 export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
 
-// What a screen puts in the middle of the bar: its pill switch, or its title. A screen that puts
-// nothing there gets its name in serif.
-const Middle = createContext<HTMLElement | null>(null)
-export const BarMiddle = Middle.Provider
-export function InBar({ children }: { children: ReactNode }) {
-  const at = useContext(Middle)
-  return at ? createPortal(children, at) : null
-}
+// What a screen puts in the middle of the bar lives in ui/bar-slot.tsx, where a part reaches it.
+export { BarMiddle, InBar }
 
 // The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
 // another, the screen's switch or name centred. Find is ⌘K, from anywhere.

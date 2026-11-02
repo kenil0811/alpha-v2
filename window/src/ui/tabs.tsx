@@ -1,8 +1,12 @@
-// One row of tabs under the bar (design §14, Ledger): every label in full, a table's row count
-// beside its name, the chosen tab underlined in the accent; a row too long for the window scrolls
-// sideways with no scrollbar showing, never folds a label to an icon or cuts it short.
+// A screen's own pages: a pill switch in the bar (Batch E, 66.17, Kenil's look 2 Nov), or, where
+// the screen has no bar of its own (a page opened beside), one row of tabs under it as before:
+// every label in full, a table's row count beside its name, the chosen tab underlined in the
+// accent; a row too long scrolls sideways, never folds a label to an icon or cuts it short.
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { useBarSlot } from './bar-slot.tsx'
 import { cn } from './cn.ts'
+import { PillSwitch } from './pill-switch.tsx'
 
 export type Tab = {
   key: string
@@ -14,6 +18,8 @@ export type Tab = {
 }
 
 export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
+  const bar = useBarSlot()
+  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} />, bar)
   return (
     <div
       role="tablist"

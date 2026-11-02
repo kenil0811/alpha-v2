@@ -27,7 +27,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | H1 | One 48px bar across the rail's top, the page and the assistant: a way back to where you were on the left (the screen last visited in this window, by its name; a tab switch inside a screen is not a place; nothing visited, the screen's parent), the screen's name centred; on a table's own screen its name is renamed there by a double-click or Enter, as a module's is in the rail (S4) | 25 Oct, 1 Nov | test |
-| H2 | A screen with parts has one row of tabs under the bar, every label in full, scrolling sideways; never cut short or folded to icons | 26 Oct | — |
+| H2 | A screen with parts switches them with one pill switch in the bar, every label in full, scrolling sideways; never cut short or folded to icons; a page opened beside keeps a row of tabs under its head | 26 Oct, 2 Nov | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
 ## Home
