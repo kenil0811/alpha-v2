@@ -21,7 +21,7 @@ import { type List, TaskPage, Tasks } from './Tasks.tsx'
 import { Back } from './ui/back.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
-const ELEMENT = /^#\/(row|agent|run|rule|permission|tasks|people|card)\/([\w-]+)$/
+const ELEMENT = /^#\/(row|agent|run|rule|permission|tasks|people|card)\/([\w-]+)(?:\/settings)?$/
 // every screen the panel can draw: an element, or a whole screen opened from Home or the panel
 const SCREEN =
   /^#\/(?:row|agent|run|rule|permission|tasks|people|card|module|table|activity|intelligence|settings)\b/
@@ -195,7 +195,8 @@ function Screen({
         kind={kind === 'permission' ? 'rule' : kind}
         id={id}
         version={version}
-        onName={onName}
+        onName={(n) => onName(sub === 'settings' && n ? `${n}: settings` : n)}
+        settings={kind === 'agent' && sub === 'settings'}
       />
     )
   if (kind === 'activity') return <Activity version={version} />

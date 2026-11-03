@@ -62,7 +62,7 @@ export type Place =
   | { at: 'activity' }
   | { at: 'parts' }
   | { at: 'new'; what: 'module' | 'agent' }
-  | { at: 'item'; kind: 'agent' | 'run' | 'rule' | 'card'; id: string }
+  | { at: 'item'; kind: 'agent' | 'run' | 'rule' | 'card'; id: string; settings?: boolean }
   | { at: 'row'; id: string }
   | {
       at: 'table'

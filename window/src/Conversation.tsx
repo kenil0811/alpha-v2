@@ -35,6 +35,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { SettingsButton } from './AgentList.tsx'
 import { api, Problem } from './api.ts'
 import { INTERVIEWER, takeAsk, takeSitting, useSitting } from './ask.ts'
 import { Beside } from './Beside.tsx'
@@ -348,7 +349,11 @@ export function Agents({
   return (
     <div className="flex h-full min-h-0">
       <AgentsNav stream={stream} agents={agents} own={own} chosen={agent} />
-      <div className="min-w-0 flex-1">
+      <div className="relative min-w-0 flex-1">
+        {/* the chosen agent's settings at the top right (Vikas, 3 Nov) */}
+        {chosen && !interviewer && 'module' in chosen && (
+          <SettingsButton agent={chosen} className="absolute top-3 right-4 z-10" />
+        )}
         {agent && working && !chosen ? (
           <p className="p-6 text-ink-2">This agent is not there any more.</p>
         ) : (

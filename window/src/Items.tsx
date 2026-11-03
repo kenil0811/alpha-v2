@@ -6,7 +6,15 @@
 import type { AgentView, RuleView, RunView, UsageView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
-import { Blocked, costHref, lastRun, OnCell, RunsCell, resultWords } from './AgentList.tsx'
+import {
+  Blocked,
+  costHref,
+  lastRun,
+  OnCell,
+  RunsCell,
+  resultWords,
+  SettingsButton,
+} from './AgentList.tsx'
 import { api } from './api.ts'
 import { Arranged } from './arrange.tsx'
 import { startAsk } from './ask.ts'
@@ -16,10 +24,11 @@ import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
 import { usd } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
-import { Button } from './ui/button.tsx'
+import { Button, IconButton } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Section } from './ui/section.tsx'
+import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
 import { Words } from './ui/words.tsx'
 
@@ -71,11 +80,13 @@ export function ItemPage({
   id,
   version,
   onName,
+  settings,
 }: {
   kind: ItemKind
   id: string
   version: number
   onName: (name: string) => void
+  settings?: boolean // an agent's settings, not its page (#/agent/<id>/settings)
 }) {
   const working = useLoaded<WorkingModuleView[]>('/api/working', version)
   const runs = useLoaded<RunView[]>('/api/activity', version)
@@ -90,6 +101,19 @@ export function ItemPage({
   }, [name, onName])
   const loaded = { agent: working, run: runs, rule: rules }[kind]
   if (loaded === undefined) return <Loading />
+  if (agent && settings)
+    return (
+      <AgentSettings
+        module={agent.module}
+        agent={agent.agent}
+        rules={(rules ?? []).filter(
+          (r) =>
+            !r.revokedAt &&
+            r.agent === agent.agent.name &&
+            (!r.module || r.module === agent.module.id),
+        )}
+      />
+    )
   if (agent)
     return (
       <AgentPage
@@ -179,6 +203,7 @@ function AgentPage({
           onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
         />
         <Refusal words={problem} />
+        <SettingsButton agent={a} className="ml-auto" />
       </div>
       {a.blocked && (
         <div className="text-md">
@@ -499,5 +524,127 @@ function RulePage({ rule: r }: { rule: RuleView }) {
       </Confirm>
       <Refusal words={problem} />
     </Page>
+  )
+}
+
+// a gated call in the person's words; one not listed shows by its name
+const CALLS: Record<string, string> = {
+  'browser.open': "Open a site's pages",
+  'browser.extract': "Read a site's lists",
+  'draft.email': 'Draft emails for your yes',
+  'documents.extract': 'Read documents into rows',
+  'connectors.read': 'Read from your connections',
+  'connectors.file': 'File attachments onto rows',
+  research: 'Look things up on the web',
+}
+
+// What an agent may use and reach, in one place (Vikas, 3 Nov): the skills it runs, the tables
+// and documents it works with, each gated call as a switch (off is a rule of yours, listed in
+// Governance), its rules, its connections and when it runs. Read from its file and Governance.
+function AgentSettings({
+  module: m,
+  agent: a,
+  rules,
+}: {
+  module: WorkingModuleView
+  agent: AgentView
+  rules: RuleView[]
+}) {
+  const { busy, problem, act } = useAct()
+  const tables = (ts: AgentView['reads']) => (ts.length ? ts.map((t) => t.name).join(', ') : 'None')
+  const allowed = rules.filter((r) => r.side === 'allow')
+  const denied = rules.filter((r) => r.side === 'deny')
+  return (
+    <div className="flex flex-col gap-6 p-5">
+      <Section title="Skills" about="What it runs: the same rows in give the same rows out.">
+        {a.skills.length ? (
+          <List>
+            {a.skills.map((s) => (
+              <Row key={s.name} title={s.name} sub={s.description || undefined} />
+            ))}
+          </List>
+        ) : (
+          <p className="text-ink-2 text-md">None: Alpha follows its brief.</p>
+        )}
+      </Section>
+      <Section title="Data and documents">
+        <Facts
+          lines={[
+            ['Module', m.name],
+            ['Reads', tables(a.reads)],
+            ['Writes', tables(a.writes)],
+            ['Documents', a.documents.length ? a.documents.join(', ') : 'None'],
+          ]}
+        />
+      </Section>
+      <Section
+        title="Permissions"
+        about="Each call it may make. Off is a rule of yours that it never does, kept in Governance."
+      >
+        {a.calls.length ? (
+          <List>
+            {a.calls.map((c) => (
+              <Row
+                key={c.name}
+                title={CALLS[c.name] ?? c.name}
+                sub={c.name}
+                actions={
+                  <Switch
+                    checked={!c.off}
+                    disabled={busy}
+                    label={
+                      c.off ? `Let ${a.name} ${c.name} again` : `Never let ${a.name} ${c.name}`
+                    }
+                    onChange={(on) =>
+                      act(() => api.post(`/api/agents/${a.id}/calls`, { call: c.name, on }))
+                    }
+                  />
+                }
+              />
+            ))}
+          </List>
+        ) : (
+          <p className="text-ink-2 text-md">
+            {a.effects === null
+              ? 'Any: its file names none.'
+              : 'None: it only works in its tables.'}
+          </p>
+        )}
+        <Refusal words={problem} />
+        <Facts
+          lines={[
+            ['Allowed', allowed.length ? allowed.map((r) => r.words).join('; ') : 'None'],
+            ['Denied', denied.length ? denied.map((r) => r.words).join('; ') : 'None'],
+          ]}
+        />
+        <Button
+          size="sm"
+          className="w-fit"
+          onClick={() => startAsk(`From now on, when ${a.name} works in ${m.name}, `)}
+        >
+          Add a rule
+        </Button>
+      </Section>
+      <Section title="Connections">
+        <p className="text-ink text-md">
+          {a.connectors.length ? a.connectors.join(', ') : 'None'}
+          {a.needs && <span className="text-bad"> · {a.needs}</span>}
+        </p>
+      </Section>
+      <Section title="Schedule">
+        <Facts
+          lines={[
+            ['Runs', a.schedule ? <RunsCell key="r" agent={a} /> : a.when],
+            ['State', <OnCell key="o" agent={a} />],
+            [
+              'Cost',
+              <a key="c" href={costHref(a.id)} className="hover:underline">
+                This week in Usage
+              </a>,
+            ],
+          ]}
+        />
+      </Section>
+    </div>
   )
 }

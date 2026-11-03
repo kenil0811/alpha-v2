@@ -4,6 +4,7 @@ import { triggersOf } from '@alpha/kit-sdk'
 import type { FastifyReply } from 'fastify'
 import { parse as parseYaml } from 'yaml'
 import { config } from '../config.ts'
+import { skillsOf } from '../engine/context.ts'
 import {
   type Agent,
   type AgentFile,
@@ -283,6 +284,18 @@ export function makeViews(ctx: BaseCtx) {
   // inside (a module only of a connection's hidden tables stays out).
   // An agent as every list and its page show it, from its row, its file and its runs; `running`
   // is the ids of the agents running now.
+  // the person's live rule that keeps an agent from one call, made by its switch
+  const callOff = (agent: string, call: string): string | null =>
+    world.rules
+      .list()
+      .find(
+        (r) =>
+          r.agent?.toLowerCase() === agent.toLowerCase() &&
+          r.side === 'deny' &&
+          !r.revokedAt &&
+          r.covers.through?.length === 1 &&
+          r.covers.through[0] === call,
+      )?.id ?? null
   const agentOut = (m: Module, a: Agent, running: Set<string | null>): AgentView => {
     const path = join(m.dir, a.file)
     let file: AgentFile | null = null
@@ -330,6 +343,17 @@ export function makeViews(ctx: BaseCtx) {
       writes: (file?.touches ?? []).map(table),
       effects: file?.effects ?? null,
       connectors: file?.needs.connectors ?? [],
+      skills: skillsOf(m.dir)
+        .filter((s) => file?.runs.script.startsWith(`skills/${s.dir}/`))
+        .map(({ name, description }) => ({ name, description })),
+      documents: [
+        ...new Set(
+          [...(file?.needs.tables ?? []), ...(file?.touches ?? [])].flatMap(
+            (n) => tables.find((t) => t.slug === n || t.name === n)?.documents ?? [],
+          ),
+        ),
+      ],
+      calls: (file?.effects ?? []).map((name) => ({ name, off: callOff(a.name, name) })),
       tasks: a.tasks,
     }
   }

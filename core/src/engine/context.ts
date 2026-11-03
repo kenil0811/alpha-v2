@@ -17,10 +17,10 @@ function readWhole(file: string): string {
 
 // A module's skills, each by its SKILL.md's name and description (item 61 of the problems list,
 // 25 Oct): what its scripts do, known from the start without reading the folder.
-export function skillsOf(dir: string): { name: string; description: string }[] {
+export function skillsOf(dir: string): { name: string; description: string; dir: string }[] {
   const root = join(dir, 'skills')
   if (!existsSync(root)) return []
-  const out: { name: string; description: string }[] = []
+  const out: { name: string; description: string; dir: string }[] = []
   for (const s of readdirSync(root, { withFileTypes: true })) {
     if (!s.isDirectory()) continue
     const file = join(root, s.name, 'SKILL.md')
@@ -31,6 +31,7 @@ export function skillsOf(dir: string): { name: string; description: string }[] {
       out.push({
         name: String(f.name ?? s.name),
         description: String(f.description ?? '').trim(),
+        dir: s.name,
       })
     } catch {
       // a front matter that does not read is left out, never a broken start layer

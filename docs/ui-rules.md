@@ -506,3 +506,7 @@ put it there and on the parts page (#/parts).
 - The switch in the Agents, Governance and Tables card sits in the card's centre.
 - New module is the prompt alone, no empty table; under it, Or upload a module, a drop zone for a
   .alphakit file, the module opening once it is in.
+- Every agent has a gear at its top right (its conversation on Agents, its page, its row on the
+  Agents list), opening its settings in the side panel: Skills, Data and documents, Permissions,
+  Connections, Schedule. Each gated call is a switch; off is a deny rule in Governance, on revokes
+  it; nothing is kept outside Governance.

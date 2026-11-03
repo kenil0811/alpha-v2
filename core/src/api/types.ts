@@ -578,6 +578,11 @@ export interface AgentView {
   writes: { id: string | null; name: string }[] // its touches
   effects: string[] | null // null: the file says nothing, an older one
   connectors: string[]
+  // its settings at a glance (Vikas, 3 Nov): the skills it runs, the documents it is handed, and
+  // each gated call it may make, off when a rule of the person's denies it that call
+  skills: { name: string; description: string }[]
+  documents: string[]
+  calls: { name: string; off: string | null }[] // off: the deny rule's id
   tasks: boolean
   function: string // what it does, as the Agents list groups it: Sourcing, Outreach, Admin…
   // why it is not doing its work, with the one action that unblocks it (Vikas, 29 Oct)

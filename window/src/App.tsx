@@ -143,12 +143,13 @@ export function placeOf(hash: string): Place {
   const rw = /^#\/row\/([\w-]+)$/.exec(hash)
   if (rw?.[1]) return { at: 'row', id: rw[1] }
   // a standing permission's old link lands on its rule (core step 2)
-  const it = /^#\/(agent|run|rule|permission|card)\/([\w-]+)$/.exec(hash)
+  const it = /^#\/(agent|run|rule|permission|card)\/([\w-]+)(\/settings)?$/.exec(hash)
   if (it?.[1] && it[2])
     return {
       at: 'item',
       kind: it[1] === 'permission' ? 'rule' : (it[1] as 'agent' | 'run' | 'rule' | 'card'),
       id: it[2],
+      settings: !!it[3],
     }
   // a page opened from a row carries its inputs after ?: page/report?Client=Summit%20Air%20Co.
   const mod =
@@ -601,11 +602,12 @@ export function App() {
                       />
                     ) : place.at === 'item' ? (
                       <ItemPage
-                        key={`${place.kind}/${place.id}`}
+                        key={`${place.kind}/${place.id}${place.settings ? '/settings' : ''}`}
                         kind={place.kind as 'agent' | 'run' | 'rule'}
                         id={place.id}
                         version={version}
                         onName={setItemName}
+                        settings={!!place.settings}
                       />
                     ) : place.at === 'tasks' ? (
                       <Tasks

@@ -16,6 +16,7 @@ import {
 import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
 import { Refused } from '../../world/kinds.ts'
+import { DOES } from '../../world/rules.ts'
 import type { Ctx } from '../ctx.ts'
 import type { WorkingModuleView, YoursView } from '../types.ts'
 
@@ -150,6 +151,34 @@ export function registerKits(ctx: Ctx): void {
       runner.woken.add(id)
       runner.startDue()
     }
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { ok: true }
+  })
+
+  // A gated call of an agent's switched off or on in its settings (Vikas, 3 Nov): off is a rule of
+  // the person's that the agent never makes that call, on revokes it; Governance lists it as any.
+  app.post('/api/agents/:id/calls', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { call, on } = z.object({ call: z.string(), on: z.boolean() }).parse(req.body)
+    const a = agents(world).find((x) => x.id === id)
+    if (!a) throw new Refused('That agent is not there.')
+    const ctx = { actor: person, user: user.id }
+    const live = world.rules
+      .list()
+      .filter((r) => r.agent?.toLowerCase() === a.name.toLowerCase() && r.side === 'deny' && !r.revokedAt)
+      .filter((r) => r.covers.through?.length === 1 && r.covers.through[0] === call)
+    if (on) for (const r of live) world.rules.revoke(r.id, ctx)
+    else if (!live.length)
+      world.rules.save(
+        {
+          side: 'deny',
+          module: a.module,
+          agent: a.name,
+          covers: { does: [...DOES], through: [call] },
+          said: null,
+        },
+        ctx,
+      )
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
   })

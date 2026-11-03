@@ -5,6 +5,7 @@
 // blocked says why in red, with the one action that unblocks it. New agent opens New module's
 // page for an agent.
 import type { AgentView, UsageView, WorkingModuleView } from '@alpha/core/api'
+import { Settings2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { when } from './ModulesAndAgents.tsx'
@@ -12,7 +13,7 @@ import { peek } from './Peek.tsx'
 import { dayWords } from './time.ts'
 import { usd } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
-import { Button } from './ui/button.tsx'
+import { Button, IconButton } from './ui/button.tsx'
 import { Cut } from './ui/cut.tsx'
 import { Select } from './ui/field.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -218,6 +219,7 @@ export function AgentList({ version }: { version: number }) {
     'Last result',
     'Cost this week',
     'Running',
+    '', // its settings
   ]
   return (
     <div className="flex flex-col gap-3">
@@ -373,6 +375,23 @@ function AgentRow({
       <td className="px-3 py-2">
         <OnCell agent={a} onDone={onDone} />
       </td>
+      <td className="px-1 py-1.5">
+        <SettingsButton agent={a} />
+      </td>
     </tr>
+  )
+}
+
+// The gear at an agent's right (its page, its row on Agents): its settings in the side panel
+// (Vikas, 3 Nov: "a settings icon, clicking on which these things appear").
+export function SettingsButton({ agent: a, className }: { agent: AgentView; className?: string }) {
+  return (
+    <IconButton
+      label={`${a.name}'s settings: skills, documents, permissions`}
+      className={className}
+      onClick={() => peek(`#/agent/${a.id}/settings`)}
+    >
+      <Settings2 className="size-4" />
+    </IconButton>
   )
 }
