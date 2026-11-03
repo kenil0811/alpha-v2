@@ -166,6 +166,16 @@ export function Rail({
   const [pinning, setPinning] = useState<string | null>(null)
   const keepWidth = (w: number) => onLayout({ railWidth: w })
   const waiting = needsCount(cards, signIns)
+  const docked = dockedOf(layout, modules)
+  // one order, folded or open (Vikas, 3 Nov): the strip draws the same line as the rail
+  const line = railLine(
+    fixedPlaces(place, waiting, tasksDue, modules).filter((f) => !docked.includes(f.href)),
+    // Documents after every module, until the person drags it (Vikas, 3 Nov)
+    shownTops(modules, hiding.hidden)
+      .filter((m) => !docked.includes(`#/module/${m.id}`))
+      .sort((a, b) => Number(a.name === 'Documents') - Number(b.name === 'Documents')),
+    layout.order,
+  )
   if (layout.railFolded)
     return (
       <Strip
@@ -174,24 +184,11 @@ export function Rail({
         here={here}
         name={name}
         waiting={waiting}
-        tasksDue={tasksDue}
-        hidden={hiding.hidden}
+        line={line}
         onNew={onNew}
         onOpen={(w) => onLayout({ railFolded: false, ...(w ? { railWidth: w } : {}) })}
       />
     )
-  const docked = dockedOf(layout, modules)
-  const line = railLine(
-    fixedPlaces(place, waiting, tasksDue, modules).filter((f) => !docked.includes(f.href)),
-    // Documents after every module, until the person drags it (Vikas, 3 Nov)
-    shownTops(modules, hiding.hidden)
-      .filter((m) => !docked.includes(`#/module/${m.id}`))
-      .sort(
-        (a, b) =>
-          Number(a.name === 'Documents') - Number(b.name === 'Documents'),
-      ),
-    layout.order,
-  )
   const fold = (id: string) =>
     onLayout({
       folded: layout.folded.includes(id)
@@ -201,7 +198,7 @@ export function Rail({
   return (
     <nav
       style={{ width: dragged ?? width }}
-      className="relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
+      className="animate-[side-in-left_180ms_ease-out] relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
     >
       <Edge
         side="right"
@@ -1234,8 +1231,7 @@ function Strip({
   here,
   name,
   waiting,
-  tasksDue,
-  hidden,
+  line,
   onNew,
   onOpen,
 }: {
@@ -1244,8 +1240,7 @@ function Strip({
   here: string | null
   name: string
   waiting: number
-  tasksDue: number
-  hidden: string[]
+  line: ReturnType<typeof railLine<ModuleSummary>>
   onNew: () => void
   onOpen: (width?: number) => void // a drag out of its edge opens it at that width
 }) {
@@ -1276,7 +1271,7 @@ function Strip({
     </a>
   )
   return (
-    <nav className="relative flex w-20 shrink-0 flex-col items-center gap-1 border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
+    <nav className="animate-[side-in-left_180ms_ease-out] relative flex w-20 shrink-0 flex-col items-center gap-1 border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
       <Edge
         side="right"
         folded
@@ -1309,36 +1304,30 @@ function Strip({
         <PanelLeftOpen className="size-4" />
         <span className={stripName}>Open</span>
       </button>
-      {icon(
-        '#/',
-        waiting ? `Home, ${waiting} need you` : 'Home',
-        place.at === 'home',
-        <House className="size-4" />,
-        waiting > 0 && (
-          <span
-            className="absolute top-1 right-1 size-2 rounded-full bg-accent"
-            aria-hidden="true"
-          />
-        ),
-      )}
-      {icon('#/conversation', 'Agents', place.at === 'conversation', <Bot className="size-4" />)}
-      {icon(
-        '#/tasks',
-        tasksDue ? `Tasks, ${tasksDue} due` : 'Tasks',
-        place.at === 'tasks',
-        <ListChecks className="size-4" />,
-      )}
-      {!network(modules) &&
-        icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
-      <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
       <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
-        {shownTops(modules, hidden).map((m) =>
-          icon(
-            `#/module/${m.id}`,
-            m.name,
-            top === m.id,
-            <ModuleIcon name={m.name} className="size-4" />,
-          ),
+        {line.map((x) =>
+          x.f
+            ? icon(
+                x.f.href,
+                x.f.count
+                  ? `${x.f.label}, ${x.f.count} ${x.f.href === '#/' ? 'need you' : 'due'}`
+                  : x.f.label,
+                x.f.current,
+                x.f.icon('size-4'),
+                x.f.href === '#/' && waiting > 0 && (
+                  <span
+                    className="absolute top-1 right-1 size-2 rounded-full bg-accent"
+                    aria-hidden="true"
+                  />
+                ),
+              )
+            : x.m &&
+              icon(
+                `#/module/${x.m.id}`,
+                x.m.name,
+                top === x.m.id,
+                <ModuleIcon name={x.m.name} className="size-4" />,
+              ),
         )}
         <button
           type="button"
@@ -1382,6 +1371,13 @@ export function InBar({ children }: { children: ReactNode }) {
   const at = useContext(Middle)
   return at ? createPortal(children, at) : null
 }
+// the bar's left side, for what a screen keeps there (Home's day and greeting; Vikas, 3 Nov)
+const Left = createContext<HTMLElement | null>(null)
+export const BarLeft = Left.Provider
+export function InBarLeft({ children }: { children: ReactNode }) {
+  const at = useContext(Left)
+  return at ? createPortal(children, at) : null
+}
 // the bar's right side, for what a screen keeps there (Home's next event; Vikas, 3 Nov)
 const Right = createContext<HTMLElement | null>(null)
 export const BarRight = Right.Provider
@@ -1417,6 +1413,7 @@ export function Bar({
   onClearLens,
   middle,
   right,
+  left,
   backs = true,
 }: {
   crumb: Crumb
@@ -1424,6 +1421,7 @@ export function Bar({
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
   right?: (at: HTMLElement | null) => void
+  left?: (at: HTMLElement | null) => void
   backs?: boolean // false inside a module: its tabs are the way around
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
@@ -1456,6 +1454,7 @@ export function Bar({
             </button>
           </span>
         )}
+        <div ref={left} className="flex min-w-0 empty:hidden" />
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />

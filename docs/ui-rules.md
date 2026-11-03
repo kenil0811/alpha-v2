@@ -545,6 +545,10 @@ put it there and on the parts page (#/parts).
 
 ### 3 Nov, evening (Vikas)
 
+- Home's day and greeting sit at the bar's left; the greeting goes by the clock (afternoon from
+  noon).
+- The rail folded keeps the rail's own order, the person's dragged order and Documents last.
+- The rail and the assistant come in the same way: a short slide from their own edge.
 - Home's bar: the date over the greeting in its centre, Next and its day over the next item at
   its right; no name.
 - Files on a card: folders are a list of their names, five a page; a folder's files are icons

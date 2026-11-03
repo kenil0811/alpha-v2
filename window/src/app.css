@@ -496,3 +496,18 @@
     opacity: 0.45;
   }
 }
+
+/* The rail and the assistant come in the same way, open or folded: a short slide from their own
+   edge (Vikas, 3 Nov: "the left sidebar's transition very similar to the right's") */
+@keyframes side-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+@keyframes side-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}

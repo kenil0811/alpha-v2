@@ -43,6 +43,7 @@ import { RowPage, type RowPlace } from './RowPage.tsx'
 import { alphaOf, Settings } from './Settings.tsx'
 import {
   Bar,
+  BarLeft,
   BarMiddle,
   BarRight,
   type Crumb,
@@ -223,6 +224,7 @@ export function App() {
   // knows they are on a record, not a module's own page (Vikas, 2 Nov)
   const [middle, setMiddle] = useState<HTMLElement | null>(null)
   const [right, setRight] = useState<HTMLElement | null>(null)
+  const [left, setLeft] = useState<HTMLElement | null>(null)
   const [nav, setNav] = useState<HTMLElement | null>(null)
   const onRecord = place.at === 'row' || (place.at === 'table' && !!place.row)
   const placed: Module =
@@ -534,6 +536,7 @@ export function App() {
               onClearLens={() => undefined}
               middle={setMiddle}
               right={setRight}
+              left={setLeft}
             />
             <div
               ref={setNav}
@@ -544,146 +547,148 @@ export function App() {
                 {problem}
               </div>
             )}
-            <BarRight value={right}>
-              <BarMiddle value={middle}>
-                <NavRow value={onRecord ? nav : middle}>
-                  {place.at === 'row' && rowPlace && <RecordNav at={rowPlace} tab={place.tab} />}
-                  <div className="flex min-h-0 flex-1">
-                    <div className="min-w-0 flex-1">
-                      {place.at === 'home' ? (
-                        <Home stream={stream} modules={modules} onAsked={() => setAsking(true)} />
-                      ) : place.at === 'conversation' ? (
-                        <Agents
-                          stream={stream}
-                          live={live}
-                          busyTurn={busyTurn}
-                          agent={place.agent}
-                          version={version}
-                        />
-                      ) : place.at === 'parts' ? (
-                        <Parts />
-                      ) : place.at === 'new' ? (
-                        place.what === 'agent' ? (
-                          <NewAgent
-                            modules={modules.filter((m) => m.id !== alpha?.id)}
-                            onAsked={() => setAsking(true)}
+            <BarLeft value={left}>
+              <BarRight value={right}>
+                <BarMiddle value={middle}>
+                  <NavRow value={onRecord ? nav : middle}>
+                    {place.at === 'row' && rowPlace && <RecordNav at={rowPlace} tab={place.tab} />}
+                    <div className="flex min-h-0 flex-1">
+                      <div className="min-w-0 flex-1">
+                        {place.at === 'home' ? (
+                          <Home stream={stream} modules={modules} onAsked={() => setAsking(true)} />
+                        ) : place.at === 'conversation' ? (
+                          <Agents
+                            stream={stream}
+                            live={live}
+                            busyTurn={busyTurn}
+                            agent={place.agent}
+                            version={version}
+                          />
+                        ) : place.at === 'parts' ? (
+                          <Parts />
+                        ) : place.at === 'new' ? (
+                          place.what === 'agent' ? (
+                            <NewAgent
+                              modules={modules.filter((m) => m.id !== alpha?.id)}
+                              onAsked={() => setAsking(true)}
+                            />
+                          ) : (
+                            <NewModule modules={modules} onAsked={() => setAsking(true)} />
+                          )
+                        ) : place.at === 'file' ? (
+                          <FileView place={place.place} onName={setFileName} />
+                        ) : place.at === 'activity' ? (
+                          <Activity version={version} />
+                        ) : place.at === 'row' ? (
+                          <>
+                            {/* the record's page stays mounted for its place; a tab draws over it */}
+                            <div className={place.tab && rowPlace ? 'hidden' : 'h-full'}>
+                              <RowPage
+                                key={place.id}
+                                id={place.id}
+                                version={version}
+                                onPlace={setRowPlace}
+                              />
+                            </div>
+                            {place.tab && rowPlace && rowPlace.id === place.id && (
+                              <RecordTab at={rowPlace} tab={place.tab} version={version} />
+                            )}
+                          </>
+                        ) : place.at === 'item' && place.kind === 'card' ? (
+                          <CardPage
+                            key={place.id}
+                            id={place.id}
+                            version={version}
+                            onName={setItemName}
+                          />
+                        ) : place.at === 'item' ? (
+                          <ItemPage
+                            key={`${place.kind}/${place.id}${place.settings ? '/settings' : ''}`}
+                            kind={place.kind as 'agent' | 'run' | 'rule'}
+                            id={place.id}
+                            version={version}
+                            onName={setItemName}
+                            settings={!!place.settings}
+                          />
+                        ) : place.at === 'tasks' ? (
+                          <Tasks
+                            list={place.list}
+                            id={place.id}
+                            version={version}
+                            onName={setTaskName}
+                          />
+                        ) : place.at === 'people' ? (
+                          <People
+                            kind={place.kind}
+                            id={place.id}
+                            version={version}
+                            net={network(modules)}
+                            onName={setPersonName}
+                          />
+                        ) : place.at === 'settings' || place.at === 'intelligence' ? (
+                          <Settings
+                            page={place.at}
+                            tab={place.section}
+                            open={place.open}
+                            version={version}
+                          />
+                        ) : place.at === 'module' || table ? (
+                          <ModuleScreen
+                            moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                            tab={
+                              place.at === 'table'
+                                ? { kind: 'table', id: place.id }
+                                : place.tab
+                                  ? { kind: place.tab }
+                                  : place.page
+                                    ? { kind: 'page', name: place.page }
+                                    : null
+                            }
+                            version={version}
+                            cards={stream?.cards ?? []}
+                            table={table}
+                            renderTable={(t) => (
+                              <TableView
+                                key={t.id}
+                                data={t}
+                                row={place.at === 'table' ? place.row : null}
+                                only={place.at === 'table' ? place.only : null}
+                                why={place.at === 'table' ? place.why : null}
+                                field={place.at === 'table' ? place.field : null}
+                                quiet={asking}
+                              />
+                            )}
+                            conversation={
+                              <Conversation
+                                stream={stream}
+                                live={live}
+                                busyTurn={busyTurn}
+                                lens={moduleHere}
+                                onLens={() => undefined}
+                                from={moduleHere}
+                              />
+                            }
                           />
                         ) : (
-                          <NewModule modules={modules} onAsked={() => setAsking(true)} />
-                        )
-                      ) : place.at === 'file' ? (
-                        <FileView place={place.place} onName={setFileName} />
-                      ) : place.at === 'activity' ? (
-                        <Activity version={version} />
-                      ) : place.at === 'row' ? (
-                        <>
-                          {/* the record's page stays mounted for its place; a tab draws over it */}
-                          <div className={place.tab && rowPlace ? 'hidden' : 'h-full'}>
-                            <RowPage
-                              key={place.id}
-                              id={place.id}
-                              version={version}
-                              onPlace={setRowPlace}
-                            />
-                          </div>
-                          {place.tab && rowPlace && rowPlace.id === place.id && (
-                            <RecordTab at={rowPlace} tab={place.tab} version={version} />
-                          )}
-                        </>
-                      ) : place.at === 'item' && place.kind === 'card' ? (
-                        <CardPage
-                          key={place.id}
-                          id={place.id}
+                          <p className="p-6 text-ink-3">That table is not there.</p>
+                        )}
+                      </div>
+                      {peek.href && (
+                        <Peek
+                          href={peek.href}
+                          canBack={peek.canBack}
+                          onBack={peek.back}
+                          onClose={peek.close}
                           version={version}
-                          onName={setItemName}
-                        />
-                      ) : place.at === 'item' ? (
-                        <ItemPage
-                          key={`${place.kind}/${place.id}${place.settings ? '/settings' : ''}`}
-                          kind={place.kind as 'agent' | 'run' | 'rule'}
-                          id={place.id}
-                          version={version}
-                          onName={setItemName}
-                          settings={!!place.settings}
-                        />
-                      ) : place.at === 'tasks' ? (
-                        <Tasks
-                          list={place.list}
-                          id={place.id}
-                          version={version}
-                          onName={setTaskName}
-                        />
-                      ) : place.at === 'people' ? (
-                        <People
-                          kind={place.kind}
-                          id={place.id}
-                          version={version}
-                          net={network(modules)}
-                          onName={setPersonName}
-                        />
-                      ) : place.at === 'settings' || place.at === 'intelligence' ? (
-                        <Settings
-                          page={place.at}
-                          tab={place.section}
-                          open={place.open}
-                          version={version}
-                        />
-                      ) : place.at === 'module' || table ? (
-                        <ModuleScreen
-                          moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
-                          tab={
-                            place.at === 'table'
-                              ? { kind: 'table', id: place.id }
-                              : place.tab
-                                ? { kind: place.tab }
-                                : place.page
-                                  ? { kind: 'page', name: place.page }
-                                  : null
-                          }
-                          version={version}
+                          modules={modules}
                           cards={stream?.cards ?? []}
-                          table={table}
-                          renderTable={(t) => (
-                            <TableView
-                              key={t.id}
-                              data={t}
-                              row={place.at === 'table' ? place.row : null}
-                              only={place.at === 'table' ? place.only : null}
-                              why={place.at === 'table' ? place.why : null}
-                              field={place.at === 'table' ? place.field : null}
-                              quiet={asking}
-                            />
-                          )}
-                          conversation={
-                            <Conversation
-                              stream={stream}
-                              live={live}
-                              busyTurn={busyTurn}
-                              lens={moduleHere}
-                              onLens={() => undefined}
-                              from={moduleHere}
-                            />
-                          }
                         />
-                      ) : (
-                        <p className="p-6 text-ink-3">That table is not there.</p>
                       )}
                     </div>
-                    {peek.href && (
-                      <Peek
-                        href={peek.href}
-                        canBack={peek.canBack}
-                        onBack={peek.back}
-                        onClose={peek.close}
-                        version={version}
-                        modules={modules}
-                        cards={stream?.cards ?? []}
-                      />
-                    )}
-                  </div>
-                </NavRow>
-              </BarMiddle>
-            </BarRight>
+                  </NavRow>
+                </BarMiddle>
+              </BarRight>
+            </BarLeft>
           </main>
           {askable && (
             <Assistant

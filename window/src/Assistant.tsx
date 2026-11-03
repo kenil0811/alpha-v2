@@ -82,7 +82,7 @@ export function Assistant({
         onClick={(e) => {
           if (!(e.target as Element).closest('[data-popover]')) onFold(false)
         }}
-        className="relative flex w-20 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface px-1"
+        className="animate-[side-in-right_180ms_ease-out] relative flex w-20 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface px-1"
       >
         <Edge
           side="left"

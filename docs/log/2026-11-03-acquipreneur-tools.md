@@ -37,3 +37,8 @@ ships without Kenil's review (Vikas, 2 Nov). Proposal: `proposals/2026-11-03-acq
   Board the default, a DealPilot and an Accounting list; and a deal's phases as its record's
   tabs (Fit on the Overview with Request CIM, then CIM with its upload, then Diligence, the deal
   sheet, with Add to CRM, then CRM's own tabs for the lead the deal became).
+- Later: light mode tried in the Zazoo demos' warm palette, then put back to the earlier colours
+  at Vikas's word. Noted for later: a customizable appearance, a palette drop-down in Settings ›
+  Appearance, the warm palette one of its choices.
+- Home's day and greeting moved to the bar's left; the folded rail draws the open rail's order;
+  the rail and the assistant slide in alike.
