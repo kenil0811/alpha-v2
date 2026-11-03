@@ -15,6 +15,7 @@
 //   {card: {title?, text}}
 //   {grid: {columns?, blocks}}
 //   {button: {label, says}}                      asks Alpha, as the person, from this page
+//   {controls: [input names]}                    those choosers or sliders here, not at the top
 //   a chart series may be {kind: 'bar'|'line', axis: 'right'} to mix bars and a line on two axes
 //
 // A value is a number, words, a date ('2026-10-20') or money ({amount, currency}); `tone` is
@@ -453,6 +454,12 @@
   function block(b, width) {
     if (b == null) return null
     if (typeof b === 'string') return el('p', { class: 'ak-text', text: b })
+    if (b.controls) {
+      const picked = new Map([...drawing.inputs].filter(([n]) => b.controls.includes(n)))
+      return el('div', { class: 'ak-card ak-controls' }, [
+        choosers(picked, drawing.choose, drawing.printing),
+      ])
+    }
     if (b.problem != null)
       return el('div', { class: 'ak-card ak-problem' }, [
         el('p', { text: `This page could not draw itself: ${b.problem}` }),
@@ -482,8 +489,32 @@
         if (printing)
           return el('span', { class: 'ak-chooser' }, [
             el('span', { class: 'ak-chooser__label', text: `${i.label} ` }),
-            el('strong', { text: i.value }),
+            el('strong', {
+              text:
+                i.range?.unit === '$' ? money({ amount: i.value }) : fmt(i.value, i.range?.unit),
+            }),
           ])
+        if (i.range) {
+          const shown = (v) => (i.range.unit === '$' ? money({ amount: v }) : fmt(v, i.range.unit))
+          const out = el('strong', { class: 'ak-chooser__value', text: shown(i.value) })
+          const slider = el('input', {
+            type: 'range',
+            'aria-label': i.label,
+            min: i.range.min,
+            max: i.range.max,
+            step: i.range.step,
+            value: i.value,
+          })
+          slider.addEventListener('input', () => {
+            out.textContent = shown(Number(slider.value))
+          })
+          slider.addEventListener('change', () => choose(name, slider.value))
+          return el('label', { class: 'ak-chooser ak-chooser--range' }, [
+            el('span', { class: 'ak-chooser__label', text: i.label }),
+            slider,
+            out,
+          ])
+        }
         const select = el(
           'select',
           { 'aria-label': i.label },
@@ -499,14 +530,19 @@
   }
 
   let root = null
+  let drawing = { inputs: new Map(), choose: () => {}, printing: false }
   function draw(blocks, { inputs, choose, printing }) {
+    drawing = { inputs, choose, printing }
+    // the inputs a block places ({controls: [names]}) are drawn there, not at the top
+    const placed = new Set(blocks.flatMap((b) => b?.controls ?? []))
+    const top = new Map([...inputs].filter(([n]) => !placed.has(n)))
     if (!root) {
       root = el('main', { class: 'ak-page' })
       document.body.append(root)
     }
     const width = root.clientWidth || document.documentElement.clientWidth - 56
     root.replaceChildren(
-      ...[choosers(inputs, choose, printing), ...blocks.map((b) => block(b, width - 34))].filter(
+      ...[choosers(top, choose, printing), ...blocks.map((b) => block(b, width - 34))].filter(
         Boolean,
       ),
     )

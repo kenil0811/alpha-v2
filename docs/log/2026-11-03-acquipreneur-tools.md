@@ -18,3 +18,9 @@ ships without Kenil's review (Vikas, 2 Nov). Proposal: `proposals/2026-11-03-acq
   22-month median; the playbooks, reading list, the lender, the chapter and its events in the seed.
 - Found on the way: the first switch saved its rule under the agent's id, which no gate matched;
   fixed before commit.
+- Later the same day (Vikas: a deal sheet on every deal, "an interactive tool where I can
+  simulate deal structures", what to hold and where to give): the page kit gains sliders and a
+  `controls` block; Avilo's DealPilot gets a Deal sheet page on each deal (overview scores,
+  financials, service mix, three ways to the value, a structure tried with seven sliders, the
+  walk-away price, hold firm / can give / trades priced by the model, reading the seller, the
+  questions, a recommendation).

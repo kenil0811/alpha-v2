@@ -52,8 +52,20 @@
 
   const values = () => Object.fromEntries([...inputs].map(([name, i]) => [name, i.value]))
 
-  // A chooser: its value now, the first option unless the person picked another.
+  // A chooser: its value now, the first option unless the person picked another. With min and
+  // max it is a slider instead, its value a number (a deal's structure, tried).
   const input = (name, spec = {}) => {
+    if (spec.min != null && spec.max != null) {
+      const was = inputs.get(name)
+      const n = Number(was?.value ?? given[name] ?? spec.value ?? spec.min)
+      const value = Math.min(spec.max, Math.max(spec.min, Number.isFinite(n) ? n : spec.min))
+      inputs.set(name, {
+        label: spec.label ?? name,
+        range: { min: spec.min, max: spec.max, step: spec.step ?? 1, unit: spec.unit ?? '' },
+        value,
+      })
+      return value
+    }
     const options = (spec.options ?? []).map(String)
     const was = inputs.get(name)
     const want = was?.value ?? given[name] ?? (spec.value == null ? options[0] : String(spec.value))
@@ -68,7 +80,7 @@
   const choose = (name, value) => {
     const i = inputs.get(name)
     if (!i) return
-    i.value = value
+    i.value = i.range ? Number(value) : value
     post({ alpha: 'inputs', values: values() })
     run()
   }

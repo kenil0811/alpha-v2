@@ -510,3 +510,6 @@ put it there and on the parts page (#/parts).
   Agents list), opening its settings in the side panel: Skills, Data and documents, Permissions,
   Connections, Schedule. Each gated call is a switch; off is a deny rule in Governance, on revokes
   it; nothing is kept outside Governance.
+- A page's slider (`alpha.input(name, {min, max, step, value, unit})`) shows its value beside it
+  and redraws the page when let go; `{controls: [names]}` places inputs inside the section they
+  drive, never only at the top of the page.
