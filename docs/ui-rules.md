@@ -513,3 +513,7 @@ put it there and on the parts page (#/parts).
 - A page's slider (`alpha.input(name, {min, max, step, value, unit})`) shows its value beside it
   and redraws the page when let go; `{controls: [names]}` places inputs inside the section they
   drive, never only at the top of the page.
+- A page may ask for the kit's snapshot look (`<meta name="alpha-look" content="snapshot">`):
+  tinted cards without borders, small capital section titles, green bars with their values on
+  them. Its blocks: `bars` (a month's top expenses as columns), `rows` (at a glance), `callout`
+  (key insights). A section with nothing to show is left out and named once at the foot.

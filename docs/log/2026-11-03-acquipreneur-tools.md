@@ -24,3 +24,7 @@ ships without Kenil's review (Vikas, 2 Nov). Proposal: `proposals/2026-11-03-acq
   financials, service mix, three ways to the value, a structure tried with seven sliders, the
   walk-away price, hold firm / can give / trades priced by the model, reading the seller, the
   questions, a recommendation).
+- Then the clients' report in the look of Avilo's own monthly snapshot (v9.2): the kit's
+  snapshot look and its `bars`, `rows` and `callout` blocks, chart value labels and a highlighted
+  last bar; Accounting's report uses them, adds the A/R aging by bucket, and names what is
+  missing instead of drawing it empty.

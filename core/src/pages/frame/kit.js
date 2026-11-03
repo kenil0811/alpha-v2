@@ -16,6 +16,11 @@
 //   {grid: {columns?, blocks}}
 //   {button: {label, says}}                      asks Alpha, as the person, from this page
 //   {controls: [input names]}                    those choosers or sliders here, not at the top
+//   {bars: {title?, items: [{label, value, note?, change?, open?}]}}   columns of bars
+//   {rows: {title?, items: [{label, value, note?, tone?, open?}]}}     label and value, a line each
+//   {callout: {title?, text}}                    words set apart, a rule at their left
+//   {heading, title: true} is the page's title; a chart may say labels: true (values on it) and
+//   highlight: 'last'; <meta name="alpha-look" content="snapshot"> asks for the snapshot look
 //   a chart series may be {kind: 'bar'|'line', axis: 'right'} to mix bars and a line on two axes
 //
 // A value is a number, words, a date ('2026-10-20') or money ({amount, currency}); `tone` is
@@ -36,7 +41,7 @@
     'Nov',
     'Dec',
   ]
-  const SERIES = ['--accent', '--ink-3', '--warn', '--good', '--bad']
+  const SERIES = ['--ak-s1', '--ak-s2', '--ak-s3', '--ak-s4', '--ak-s5']
   const TONES = new Set(['good', 'warn', 'bad'])
 
   function el(tag, attrs = {}, children = []) {
@@ -120,7 +125,7 @@
 
   // ---- blocks ----
   function heading(h) {
-    return el('div', { class: 'ak-heading' }, [
+    return el('div', { class: h.title ? 'ak-heading ak-heading--title' : 'ak-heading' }, [
       el('h2', { text: String(h.heading) }),
       h.note ? el('p', { class: 'ak-note', text: String(h.note) }) : null,
     ])
@@ -224,6 +229,77 @@
         )
       : el('p', { class: 'ak-empty', text: 'Nothing to show yet.' })
     return titled(l.title, l.note, body)
+  }
+
+  // Columns of bars, one an item, each with its amount, share and change under it (a month's
+  // top expenses). {bars: {title?, note?, items: [{label, value, note?, change?, open?}]}}
+  function bars(b) {
+    const items = b.items ?? []
+    const top = Math.max(...items.map((i) => Math.abs(num(i.value)) || 0), 0) || 1
+    const body = items.length
+      ? el(
+          'div',
+          {
+            class: 'ak-bars',
+            style: `grid-template-columns: repeat(${items.length}, minmax(0, 1fr))`,
+          },
+          items.map((i) => {
+            const h = Math.max(2, Math.round(((Math.abs(num(i.value)) || 0) / top) * 80))
+            const c = i.change
+            const n = c ? Number(c.value) : 0
+            const better = c?.better === 'down' ? n < 0 : n > 0
+            return el(
+              'div',
+              { ...opener(i.open), class: i.open ? 'ak-bars__col ak-open' : 'ak-bars__col' },
+              [
+                el('div', { class: 'ak-bars__label', text: String(i.label ?? '') }),
+                el('div', { class: 'ak-bars__well' }, [
+                  el('div', { class: 'ak-bars__bar', style: `height: ${h}px` }),
+                ]),
+                el('div', { class: 'ak-bars__value', text: fmt(i.value, i.unit) }),
+                i.note ? el('div', { class: 'ak-note', text: String(i.note) }) : null,
+                c && c.value != null
+                  ? el('div', {
+                      class: `ak-change ${n === 0 ? '' : better ? 'ak-up' : 'ak-down'}`,
+                      text:
+                        n === 0
+                          ? `no change${c.label ? ` ${c.label}` : ''}`
+                          : `${n > 0 ? '▲' : '▼'}${fmt(Math.abs(n), c.unit)}${c.label ? ` ${c.label}` : ''}`,
+                    })
+                  : null,
+              ],
+            )
+          }),
+        )
+      : el('p', { class: 'ak-empty', text: 'Nothing to show yet.' })
+    return titled(b.title, b.note, body, ' ak-bars-card')
+  }
+
+  // Label and value, a line each (a month at a glance). {rows: {title?, items: [{label, value,
+  // unit?, note?, tone?, open?}]}}
+  function rowsBlock(r) {
+    const body = el(
+      'div',
+      { class: 'ak-rows' },
+      (r.items ?? []).map((i) =>
+        el('div', { ...opener(i.open), class: i.open ? 'ak-rows__row ak-open' : 'ak-rows__row' }, [
+          el('span', { class: 'ak-rows__label', text: String(i.label ?? '') }),
+          el('span', { class: `ak-rows__value${tone(i.tone)}` }, [
+            el('strong', { text: fmt(i.value, i.unit) }),
+            i.note ? el('span', { class: 'ak-rows__note', text: ` ${i.note}` }) : null,
+          ]),
+        ]),
+      ),
+    )
+    return titled(r.title, r.note, body, ' ak-rows-card')
+  }
+
+  // Words set apart with a rule at their left (the month's key insights). {callout: {title?, text}}
+  function callout(c) {
+    return el('section', { class: 'ak-callout' }, [
+      c.title ? el('strong', { text: String(c.title) }) : null,
+      el('p', { text: String(c.text ?? '') }),
+    ])
   }
 
   function card(c) {
@@ -370,6 +446,7 @@
         const x = px(i) - (bw * bars.length) / 2 + bi * bw
         const y0 = py(0, ax)
         const y = py(v, ax)
+        const lit = c.highlight === 'last' && i === n - 1
         g.append(
           svg(
             'rect',
@@ -379,11 +456,21 @@
               width: Math.max(1, bw - 1),
               height: Math.abs(y0 - y),
               rx: 1.5,
-              style: `fill: ${s.colour}`,
+              style: `fill: ${lit ? 'var(--ak-strong)' : s.colour}`,
             },
             [svg('title', { text: `${r[c.x]}: ${ax.label(v)}` })],
           ),
         )
+        // each bar's value over it, when the chart asks and they fit
+        if (c.labels && bw >= 18)
+          g.append(
+            svg('text', {
+              x: x + bw / 2,
+              y: Math.min(y, y0) - 4,
+              class: 'ak-tick ak-tick--x',
+              text: ax.label(v),
+            }),
+          )
       })
     })
     for (const s of series.filter((x) => x.kind !== 'bar')) {
@@ -415,6 +502,15 @@
               svg('title', { text: `${r[c.x]}: ${ax.label(v)}` }),
             ]),
           )
+          if (c.labels && n <= 13)
+            g.append(
+              svg('text', {
+                x: px(i),
+                y: py(v, ax) - 7,
+                class: 'ak-tick ak-tick--x ak-tick--strong',
+                text: ax.label(v),
+              }),
+            )
         })
     }
     return titled(c.title, c.note, el('div', {}, [legend, g]), ' ak-chart')
@@ -471,6 +567,9 @@
     if (b.table) return table(b.table)
     if (b.list) return list(b.list)
     if (b.card) return card(b.card)
+    if (b.bars) return bars(b.bars)
+    if (b.rows) return rowsBlock(b.rows)
+    if (b.callout) return callout(b.callout)
     if (b.grid) return grid(b.grid, width)
     if (b.button) return button(b.button)
     if (b.text != null) return el('p', { class: 'ak-text', text: String(b.text) })
@@ -537,7 +636,9 @@
     const placed = new Set(blocks.flatMap((b) => b?.controls ?? []))
     const top = new Map([...inputs].filter(([n]) => !placed.has(n)))
     if (!root) {
-      root = el('main', { class: 'ak-page' })
+      // a page may ask for one of the kit's looks: <meta name="alpha-look" content="snapshot">
+      const look = document.querySelector('meta[name="alpha-look"]')?.getAttribute('content')
+      root = el('main', { class: look ? `ak-page ak-look-${look}` : 'ak-page' })
       document.body.append(root)
     }
     const width = root.clientWidth || document.documentElement.clientWidth - 56
