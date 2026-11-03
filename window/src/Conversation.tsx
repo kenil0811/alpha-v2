@@ -62,10 +62,10 @@ import { Field } from './ui/field.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
-import { SideHeading, SideList } from './ui/side-list.tsx'
+import { SideList } from './ui/side-list.tsx'
 import { Words } from './ui/words.tsx'
 import { answerWords } from './vocabulary.ts'
-import { FailedCard } from './Waiting.tsx'
+import { Approvals, FailedCard } from './Waiting.tsx'
 
 export interface Live {
   [turn: string]: { text: string; doing: string | null }
@@ -289,7 +289,8 @@ const itemKey = (i: Item) =>
   i.kind === 'alpha' ? `a${i.turn}` : i.kind === 'card' ? `c${i.id}` : `${i.kind}${i.id}`
 
 // The Agents screen (Vikas, 30 Oct): a list of who to talk to, as a messenger's contacts, Alpha
-// first, then every agent grouped by what it does; each opens its own thread. An agent is a kit
+// first, then every agent in one list, no groups by what it does (Vikas, 1 Nov: "I just want list
+// of all agents"); each opens its own thread. An agent is a kit
 // script with the model at its judgement points, not a model of its own: its thread is what its
 // runs posted and asked, and what the person said to it, which Alpha answers for it.
 export function Agents({
@@ -363,11 +364,22 @@ export function Agents({
             }}
             thread={thread}
             top={
-              interviewer && (
+              interviewer ? (
                 <>
                   <Footprint cards={stream?.cards ?? []} onAsk={() => void start(null)} />
                   <Sitting {...sitting} />
                 </>
+              ) : (
+                // approvals are agents' questions, not tasks (Vikas, 1 Nov): above Alpha's thread
+                !agent && (
+                  <Approvals
+                    id="agents-approvals"
+                    cards={stream?.cards ?? []}
+                    signIns={stream?.attention ?? []}
+                    moduleName={(id) => working?.find((m) => m.id === id)?.name}
+                    onChange={() => undefined}
+                  />
+                )
               )
             }
           />
@@ -431,8 +443,6 @@ function AgentsNav({
   }, [stream, own])
   const waiting = (id: string | null) =>
     (stream?.cards ?? []).filter((c) => keyOf(own, c.agent?.id ?? null) === id).length
-  const groups = new Map<string, AgentView[]>()
-  for (const a of agents) groups.set(a.function, [...(groups.get(a.function) ?? []), a])
   const one = (id: string | null, name: string, sub: string | undefined, a?: AgentView) => (
     <a
       key={id ?? 'alpha'}
@@ -490,12 +500,7 @@ function AgentsNav({
       </Button>
       {one(null, 'Alpha', 'Ask anything, across every module')}
       {one(INTERVIEWER.id, INTERVIEWER.name, 'Asks what Alpha needs to know from you')}
-      {[...groups].map(([fn, list]) => (
-        <div key={fn} className="flex flex-col gap-px">
-          <SideHeading>{fn}</SideHeading>
-          {list.map((a) => one(a.id, a.name, undefined, a))}
-        </div>
-      ))}
+      {agents.map((a) => one(a.id, a.name, undefined, a))}
     </SideList>
   )
 }

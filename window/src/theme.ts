@@ -24,7 +24,8 @@ export function applyTheme(t: Theme): void {
   }
 }
 
-// Text size: Small is the plain size; Medium and Large scale the text and spacing (app.css).
+// Text size: Small, the default, is the scale Kenil approved; Large the 30 Oct one with its 18px
+// body; Medium between (app.css).
 export type TextSize = 'small' | 'medium' | 'large'
 
 export function applyTextSize(t: TextSize): void {

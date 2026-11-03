@@ -37,7 +37,7 @@ import { peek } from './Peek.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TaskList } from './Tasks.tsx'
-import { clock, sinceWords } from './time.ts'
+import { clock, dueWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Cut } from './ui/cut.tsx'
@@ -45,8 +45,7 @@ import { type Signal, strongest } from './ui/dot.tsx'
 import { FindBar } from './ui/find-bar.tsx'
 import { Group, Line } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
-import { NEEDS_YOU } from './vocabulary.ts'
-import { type CardsKind, CardsSwitch, NeedsYou, needsCount } from './Waiting.tsx'
+import { Approvals, needsCount } from './Waiting.tsx'
 
 // Home's tasks come in three cuts of the Tasks lists: today and overdue, this week, and what
 // waits on someone else (a client's "My work" filters, 29 Oct)
@@ -79,21 +78,20 @@ const readyCount = (v: SetupView) =>
     ...v.steps.map((x) => x.done),
   ].filter(Boolean).length
 
-function greeting(name: string): string {
+// no name: it is in the workspace's corner already (Vikas, 1 Nov)
+function greeting(): string {
   const h = new Date().getHours()
-  const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-  return name ? `${part}, ${name}` : part
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
 export function Home({
   stream,
   modules,
-  name,
   onAsked,
 }: {
   stream: Stream | null
   modules: ModuleSummary[]
-  name: string
+  name?: string // ponytail: unused since 1 Nov; App.tsx can stop passing it
   onAsked: () => void // the answer opens on the right
 }) {
   const [today, setToday] = useState<TodayView | null>(null)
@@ -107,11 +105,8 @@ export function Home({
   const [agents, setAgents] = useState<AgentView[]>([])
   const [cut, setCut] = useState<TaskCut>('today')
   const [cutView, setCutView] = useState<TasksView | null>(null)
-  const [readyOpen, setReadyOpen] = useState(false)
-  // Needs you as rows, a gallery or one card at a time (Vikas, 30 Oct)
-  const [cardsKind, setCardsKind] = useState<CardsKind>('list')
-  // the tasks that wait on the person, for Needs you (those a card there stands for are left out)
-  const [yours, setYours] = useState<TasksView['lines']>([])
+  // this week's tasks, for Next in the bar when nothing is due today
+  const [week, setWeek] = useState<TasksView['lines']>([])
   const interview = useInterview(null)
   const last = stream?.lastId
   const load = useCallback(() => {
@@ -129,9 +124,9 @@ export function Home({
       },
       () => setFailed((f) => ({ ...f, tasks: true })),
     )
-    api.get<TasksView>('/api/tasks?list=waiting').then(
-      (t) => setYours(t.lines.filter((l) => l.waitingForYou)),
-      () => setYours([]),
+    api.get<TasksView>('/api/tasks?list=week').then(
+      (t) => setWeek(t.lines),
+      () => setWeek([]),
     )
     api.get<WorkingModuleView[]>('/api/working').then(
       (w) => setAgents(w.flatMap((m) => m.agents)),
@@ -189,6 +184,11 @@ export function Home({
   const cards = stream?.cards ?? []
   const signIns = stream?.attention ?? []
   const changed = today?.changed ?? []
+  // the next event, at the bar's right: an event of the calendar once the core keeps them, until
+  // then the soonest open task with a due day that is not past (Vikas, 1 Nov)
+  const next = [...(tasks?.lines ?? []), ...week]
+    .filter((t) => t.due && !t.overdue && t.state !== 'done' && t.state !== 'dropped')
+    .sort((x, y) => (x.due ?? '').localeCompare(y.due ?? ''))[0]
   // a card that waits is never hidden behind the welcome
   const firstOpen =
     stream !== null &&
@@ -196,23 +196,15 @@ export function Home({
     stream.lines.length === 0 &&
     cards.length + signIns.length === 0
 
+  // agent approvals, one compact card a page; not tasks (Vikas, 1 Nov)
   const needs: Block['node'] = (
-    <Group
+    <Approvals
       id="home-needs"
-      title={NEEDS_YOU}
-      count={needsCount(cards, signIns.length)}
-      action={cards.length > 1 && <CardsSwitch kind={cardsKind} onPick={setCardsKind} />}
-    >
-      {/* the one list, as Tasks › Needs you draws it (Vikas, 30 Oct) */}
-      <NeedsYou
-        cards={cards}
-        signIns={signIns}
-        tasks={yours}
-        kind={cardsKind}
-        moduleName={(id) => modules.find((m) => m.id === id)?.name}
-        onChange={load}
-      />
-    </Group>
+      cards={cards}
+      signIns={signIns}
+      moduleName={(id) => modules.find((m) => m.id === id)?.name}
+      onChange={load}
+    />
   )
   const todayTasks: Block['node'] = (
     <Group
@@ -294,42 +286,41 @@ export function Home({
     </Group>
   )
 
-  // Interview me and Getting this Mac ready: two buttons of one size at the head of the standard
-  // column, above Agents (Vikas, 30 Oct); the Mac's steps open under them
+  // Interview me: a button at the head of the standard column, above Files (Vikas, 30 Oct)
   const start: Block['node'] = (
-    <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          className="h-10 min-w-0 justify-start text-left"
-          onClick={() => interviewMe(null)}
-          data-tip={interview.tip}
-        >
-          {interview.busy ? (
-            <LoaderCircle className="size-4 shrink-0 animate-spin" />
-          ) : (
-            <MessageCircleQuestion className="size-4 shrink-0" />
-          )}
-          <span className="min-w-0 flex-1">Interview me</span>
-        </Button>
-        {setup && unready(setup) && (
-          <Button
-            className="h-10 min-w-0 justify-start text-left"
-            aria-expanded={readyOpen}
-            onClick={() => setReadyOpen(!readyOpen)}
-            data-tip={`Getting this Mac ready: ${readyCount(setup)} of ${4 + setup.steps.length} done; a click shows the steps`}
-          >
-            <span className="min-w-0 flex-1 truncate">
-              Mac setup{' '}
-              <span className="font-normal text-ink-3 tabular-nums">
-                {readyCount(setup)}/{4 + setup.steps.length}
-              </span>
-            </span>
-          </Button>
-        )}
-      </div>
-      {setup && unready(setup) && readyOpen && <SetupList view={setup} onChange={reloadSetup} />}
-    </div>
+    <Button
+      className="h-10 w-full min-w-0 justify-start text-left"
+      onClick={() => interviewMe(null)}
+      data-tip={interview.tip}
+    >
+      {interview.busy ? (
+        <LoaderCircle className="size-4 shrink-0 animate-spin" />
+      ) : (
+        <MessageCircleQuestion className="size-4 shrink-0" />
+      )}
+      <span className="min-w-0 flex-1">Interview me</span>
+    </Button>
   )
+  // Getting this Mac ready: a card of its own in the work column, done once and gone when it is
+  // (Vikas, 1 Nov: "it's one time thing")
+  const mac: Block[] =
+    setup && unready(setup)
+      ? [
+          {
+            key: 'mac',
+            name: 'Mac setup',
+            node: (
+              <Group
+                id="home-mac"
+                title="Mac setup"
+                sub={`${readyCount(setup)} of ${4 + setup.steps.length} done`}
+              >
+                <SetupList view={setup} onChange={reloadSetup} />
+              </Group>
+            ),
+          },
+        ]
+      : []
   // the standard column, across every module, in an Overview's order
   const standard: Block[] = [
     // the buttons on top, then Files, then Agents, Governance and Tables as one card; no Second
@@ -378,16 +369,31 @@ export function Home({
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
         {/* the greeting and the day sit in the bar; Home opens on Find and one strip across every
             module (Vikas, 27 Oct): the assistant is on the right, so no box to ask here */}
+        {/* two lines a side (Vikas, 1 Nov): the day over the greeting at the left, Next and its
+            day over the next thing at the right */}
         <InBar>
-          <span className="flex items-baseline gap-2.5 whitespace-nowrap">
-            <h1 className="font-serif text-ink text-xl">{greeting(name)}</h1>
-            <span className="text-ink-3 text-sm">
-              {new Date().toLocaleDateString(undefined, {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-              })}
+          <span className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex flex-col whitespace-nowrap leading-tight">
+              <span className="text-ink-3 text-xs">
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+              <h1 className="font-serif text-ink text-lg leading-tight">{greeting()}</h1>
             </span>
+            {next && (
+              <a
+                href={`#/tasks/${next.id}`}
+                className="ml-auto flex min-w-0 max-w-80 flex-col items-end leading-tight hover:text-accent"
+              >
+                <span className="text-ink-3 text-xs">
+                  Next{next.due ? ` · ${dueWords(next.due)}` : ''}
+                </span>
+                <span className="max-w-full truncate text-ink text-md">{next.title}</span>
+              </a>
+            )}
           </span>
         </InBar>
         <FindBar />
@@ -422,7 +428,7 @@ export function Home({
             className="grid gap-8 @3xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]"
             blocks={[
               ...(cards.length + signIns.length > 0
-                ? [{ key: 'needs', name: 'Needs you', node: needs }]
+                ? [{ key: 'needs', name: 'Agent approvals', node: needs }]
                 : []),
               ...(failed.tasks || (tasks?.lines.length ?? 0) > 0 || cuts.length > 1
                 ? [{ key: 'tasks', name: 'Today and overdue', node: todayTasks }]
@@ -430,10 +436,19 @@ export function Home({
               ...(failed.today || changed.length > 0
                 ? [{ key: 'changed', name: 'What changed', node: whatChanged }]
                 : []),
+              ...mac,
               ...standard,
             ]}
             columns={[
-              { page: 'home', start: [['needs'], ['tasks'], ['changed']] },
+              // two cards a row: Agent approvals beside Today and overdue, What changed beside Mac
+              // setup (Vikas, 1 Nov)
+              {
+                page: 'home',
+                start: [
+                  ['needs', 'tasks'],
+                  ['changed', 'mac'],
+                ],
+              },
               { page: 'home:side', start: standard.map((b) => [b.key]) },
             ]}
           />
@@ -569,16 +584,16 @@ function homeTiles({
   const needs = agents.filter((a) => a.needs)
   const due = (tasks?.counts.overdue ?? 0) + (tasks?.counts.today ?? 0)
   const all = needsCount(cards, signIns)
-  // one place for what waits on the person (Vikas, 30 Oct): Needs you below lists it, so its tile
-  // counts it, questions with the rest, and goes there; it never lists it again. Interview me
-  // is a button at the head of the standard column, not a tile (Vikas, 30 Oct).
+  // one place for what waits on the person: Agent approvals below lists it (Vikas, 1 Nov: was
+  // Needs you), so its tile counts it and goes there; it never lists it again. Interview me is a
+  // button at the head of the standard column, not a tile (Vikas, 30 Oct).
   return [
     {
       key: 'needs',
-      label: 'Needs you',
+      label: 'Agent approvals',
       signal: signIns ? 'now' : (strongest(cards.map(signalOf)) ?? 'opt'),
       big: String(all),
-      small: `${all === 1 ? 'thing needs' : 'things need'} you${
+      small: `${all === 1 ? 'approval' : 'approvals'} to answer${
         questions.length
           ? `, ${questions.length} ${questions.length === 1 ? 'question' : 'questions'}`
           : ''
@@ -587,7 +602,7 @@ function homeTiles({
       go: 'needs',
       act: all
         ? { label: 'Review', go: 'needs' }
-        : { label: 'Done', off: true, tip: 'Nothing needs you now' },
+        : { label: 'Done', off: true, tip: 'Nothing to answer now' },
     },
     {
       key: 'agents',

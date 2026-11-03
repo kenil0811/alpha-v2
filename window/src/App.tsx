@@ -556,12 +556,7 @@ export function App() {
                 <div className="flex min-h-0 flex-1">
                   <div className="min-w-0 flex-1">
                     {place.at === 'home' ? (
-                      <Home
-                        stream={stream}
-                        modules={modules}
-                        name={name}
-                        onAsked={() => setAsking(true)}
-                      />
+                      <Home stream={stream} modules={modules} onAsked={() => setAsking(true)} />
                     ) : place.at === 'conversation' ? (
                       <Agents
                         stream={stream}

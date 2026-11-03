@@ -19,6 +19,7 @@ import { Button } from './ui/button.tsx'
 import { Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot } from './ui/dot.tsx'
+import { Group } from './ui/groups.tsx'
 import { Pager } from './ui/pager.tsx'
 import { Label } from './ui/pill.tsx'
 import { answerWords } from './vocabulary.ts'
@@ -106,13 +107,7 @@ export function FailedCard({ card }: { card: CardView }) {
   return (
     <Card label="Failed" waits="Needs approval">
       <div className="font-medium text-ink text-lg">{card.words}</div>
-      {failed.length > 1 && (
-        <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
-          {failed.map((f) => (
-            <FailedAgent key={f.agent} card={card.id} f={f} />
-          ))}
-        </ul>
-      )}
+      {failed.length > 1 && <FailedRows card={card} />}
       <div className="flex flex-wrap items-center gap-2">
         {card.options.map((o, i) => (
           <Button
@@ -130,6 +125,33 @@ export function FailedCard({ card }: { card: CardView }) {
   )
 }
 
+// The agents that did not finish, three a page so the card stays small (Vikas, 1 Nov): on the card
+// where it waits, and on the card opened whole; its pager counts agents, not pages.
+const PER = 3
+function FailedRows({ card }: { card: CardView }) {
+  const failed = card.failed ?? []
+  const [at, setAt] = useState(0)
+  const count = Math.ceil(failed.length / PER)
+  const page = Math.max(0, Math.min(at, count - 1)) // an answered agent can shorten the list
+  return (
+    <div className="flex flex-col gap-1">
+      <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+        {failed.slice(page * PER, page * PER + PER).map((f) => (
+          <FailedAgent key={f.agent} card={card.id} f={f} />
+        ))}
+      </ul>
+      <Pager
+        at={page}
+        count={count}
+        onAt={setAt}
+        noun="Agents"
+        items={{ per: PER, total: failed.length }}
+        className="self-end"
+      />
+    </div>
+  )
+}
+
 function FailedAgent({ card, f }: { card: string; f: NonNullable<CardView['failed']>[number] }) {
   const { busy, problem, act } = useAct()
   const go = (again: boolean) =>
@@ -142,7 +164,9 @@ function FailedAgent({ card, f }: { card: string; f: NonNullable<CardView['faile
         className="min-w-0 flex-1 basis-48 text-left"
       >
         <span className="block font-medium text-ink hover:underline">{f.name}</span>
-        <span className="block text-ink-3 text-sm">{f.words}</span>
+        <span data-tip={f.words} className="line-clamp-2 break-words text-ink-3 text-sm">
+          {f.words}
+        </span>
       </button>
       <Button size="sm" disabled={busy} onClick={() => go(true)}>
         Try again
@@ -155,9 +179,10 @@ function FailedAgent({ card, f }: { card: string; f: NonNullable<CardView['faile
   )
 }
 
-// One card as a card: what it is, its title, what it asks written out, and its buttons at the
-// bottom right; large, one at a time, with the pager beside the buttons. A click anywhere else on it
-// opens it whole.
+// One card as a card: what it is, its title, what it asks written out (the agents that did not
+// finish as their own rows), and its buttons at the bottom right; one compact size, one at a time
+// with the pager beside the buttons (Vikas, 1 Nov: "too big"). A click anywhere else on it opens it
+// whole.
 function CardTile({
   card,
   module,
@@ -174,7 +199,8 @@ function CardTile({
   const primary = primaryOf(card)
   const second = primary.answer ? card.options[1] : undefined
   const answer = (a: string) => act(() => api.post(`/api/cards/${card.id}`, { answer: a }))
-  const body = bodyOf(card)
+  const several = (card.failed?.length ?? 0) > 1
+  const body = several ? '' : bodyOf(card)
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: the title is the keyboard's way in, a button
     // biome-ignore lint/a11y/noStaticElementInteractions: as above
@@ -182,10 +208,7 @@ function CardTile({
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest('button')) onOpen()
       }}
-      className={cn(
-        'flex cursor-pointer flex-col gap-2 rounded-lg border border-line bg-surface hover:border-accent-line',
-        pager ? 'min-h-72 gap-3 p-6' : 'p-4',
-      )}
+      className="flex cursor-pointer flex-col gap-2 rounded-lg border border-line bg-surface p-4 hover:border-accent-line"
     >
       <div className="flex items-center gap-2">
         <Dot s={signalOf(card)} tip={kindWords(card)} />
@@ -197,23 +220,12 @@ function CardTile({
       <button
         type="button"
         onClick={onOpen}
-        className={cn(
-          'text-left font-medium text-ink hover:underline',
-          pager ? 'text-lg' : 'line-clamp-3 text-base',
-        )}
+        className="line-clamp-3 text-left font-medium text-base text-ink hover:underline"
       >
         {card.words}
       </button>
-      {body && (
-        <p
-          className={cn(
-            'whitespace-pre-line text-ink-2',
-            pager ? 'max-h-80 overflow-y-auto text-base' : 'line-clamp-5 text-sm',
-          )}
-        >
-          {body}
-        </p>
-      )}
+      {body && <p className="line-clamp-5 whitespace-pre-line text-ink-2 text-sm">{body}</p>}
+      {several && <FailedRows card={card} />}
       <div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-1">
         {pager && <span className="mr-auto">{pager}</span>}
         <Refusal words={problem} />
@@ -235,9 +247,10 @@ function CardTile({
   )
 }
 
-// One card at a time, large (Vikas, 30 Oct: "a slideshow kind of view where I can navigate across
-// multiple cards"): the pager beside its buttons, ← and → to go; an answered card leaves the list,
-// so the next one takes its place.
+// One card at a time (Vikas, 30 Oct: "a slideshow kind of view where I can navigate across
+// multiple cards"): the pager inside the card beside its buttons, saying what it counts so a list
+// inside the card never shows a second "1 of 4" (Vikas, 1 Nov); ← and → to go; an answered card
+// leaves the list, so the next one takes its place.
 function Slides({
   cards,
   moduleName,
@@ -269,7 +282,7 @@ function Slides({
       card={card}
       module={moduleName(card)}
       onChange={onChange}
-      pager={<Pager at={i} count={n} onAt={setAt} />}
+      pager={<Pager at={i} count={n} onAt={setAt} noun="Approval" />}
     />
   )
 }
@@ -584,7 +597,7 @@ export function NeedsYou({
   tasks?: TaskLineView[]
   kind?: CardsKind
   agent?: string | null // from this agent only, as its need line asks
-  moduleName?: (id: string) => string | undefined
+  moduleName?: ((id: string) => string | undefined) | undefined
   onChange: () => void
 }) {
   const [only, setOnly] = useState<string | null>(agent ? `a:${agent}` : null)
@@ -676,3 +689,34 @@ export function NeedsYou({
 
 // How many of a proposal's tasks still want a word.
 const openTasks = (c: CardView) => c.proposed?.tasks.filter((t) => !t.word).length ?? 0
+
+// Agent approvals: what agents wait on the person for, one compact card a page, with the
+// connections that need a sign-in as rows. Not tasks (Vikas, 1 Nov: "when you clearly
+// differentiated it as not a task, it should come under agents"): on Home and above the Agents
+// page's list.
+export function Approvals({
+  id,
+  cards,
+  signIns = [],
+  moduleName,
+  onChange,
+}: {
+  id: string
+  cards: CardView[]
+  signIns?: Stream['attention']
+  moduleName?: ((id: string) => string | undefined) | undefined
+  onChange: () => void
+}) {
+  if (cards.length + signIns.length === 0) return null
+  return (
+    <Group id={id} title="Agent approvals" count={needsCount(cards, signIns.length)}>
+      <NeedsYou
+        cards={cards}
+        signIns={signIns}
+        kind="slides"
+        moduleName={moduleName}
+        onChange={onChange}
+      />
+    </Group>
+  )
+}

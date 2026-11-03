@@ -55,6 +55,7 @@ export function Confirm({
   onYes,
   onClose,
   busy,
+  kind = 'danger',
   children,
 }: {
   open: boolean
@@ -63,6 +64,8 @@ export function Confirm({
   onYes: () => void
   onClose: () => void
   busy?: boolean
+  // danger for what can't be undone; primary for a long step that is only asked first
+  kind?: 'danger' | 'primary'
   children?: ReactNode
 }) {
   return (
@@ -75,7 +78,7 @@ export function Confirm({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="danger" disabled={busy} onClick={onYes}>
+          <Button variant={kind} disabled={busy} onClick={onYes}>
             {yes}
           </Button>
         </>

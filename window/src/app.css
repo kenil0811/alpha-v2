@@ -215,11 +215,27 @@
 }
 
 /*
-  Text size (Settings › Appearance; per person): Small is 1, Medium and Large scale the seven sizes
-  and the spacing step together, so a bigger text keeps its room. Read through var(), not inline.
+  Text size (Settings › Appearance; per person, Vikas 1 Nov): Small, the default, is the scale Kenil
+  approved; Large the 30 Oct one with its 18px body; Medium between. Each sets the seven sizes, the
+  body and the spacing step together, so a bigger text keeps its room. Read through var(), not inline.
 */
 :root {
-  --text-scale: 1;
+  --t-xs: 11px;
+  --t-xs-lh: 16px;
+  --t-sm: 12px;
+  --t-sm-lh: 16px;
+  --t-md: 13px;
+  --t-md-lh: 20px;
+  --t-base: 14px;
+  --t-base-lh: 22px;
+  --t-lg: 16px;
+  --t-lg-lh: 22px;
+  --t-xl: 20px;
+  --t-xl-lh: 26px;
+  --t-2xl: 26px;
+  --t-2xl-lh: 30px;
+  --t-body: 14px;
+  --t-step: 4px;
 }
 
 /*
@@ -237,32 +253,60 @@
   --z-tip: 60;
 }
 :root[data-text="medium"] {
-  --text-scale: 1.07;
+  --t-xs: 11px;
+  --t-xs-lh: 15px;
+  --t-sm: 13px;
+  --t-sm-lh: 18px;
+  --t-md: 14px;
+  --t-md-lh: 20px;
+  --t-base: 16px;
+  --t-base-lh: 24px;
+  --t-lg: 17px;
+  --t-lg-lh: 24px;
+  --t-xl: 22px;
+  --t-xl-lh: 28px;
+  --t-2xl: 29px;
+  --t-2xl-lh: 34px;
+  --t-body: 16px;
+  --t-step: 4.5px;
 }
 :root[data-text="large"] {
-  --text-scale: 1.15;
+  --t-xs: 10px;
+  --t-xs-lh: 14px;
+  --t-sm: 14px;
+  --t-sm-lh: 20px;
+  --t-md: 14px;
+  --t-md-lh: 20px;
+  --t-base: 18px;
+  --t-base-lh: 26px;
+  --t-lg: 18px;
+  --t-lg-lh: 26px;
+  --t-xl: 24px;
+  --t-xl-lh: 30px;
+  --t-2xl: 32px;
+  --t-2xl-lh: 38px;
+  --t-body: 18px;
+  --t-step: 5px;
 }
 @theme {
-  /* five sizes and no others (Vikas, 28 Oct): 10, 14, 18, 24 and 32. sm and md are both 14, base and
-     lg both 18, until the screens use one name each; text-sm is not Tailwind's here */
+  /* seven names and no others, each set by the person's text size above; text-sm is not Tailwind's */
   --text-*: initial;
-  --text-xs: calc(10px * var(--text-scale));
-  --text-xs--line-height: calc(14px * var(--text-scale));
-  --text-sm: calc(14px * var(--text-scale));
-  --text-sm--line-height: calc(20px * var(--text-scale));
-  --text-md: calc(14px * var(--text-scale));
-  --text-md--line-height: calc(20px * var(--text-scale));
-  --text-base: calc(18px * var(--text-scale));
-  --text-base--line-height: calc(26px * var(--text-scale));
-  --text-lg: calc(18px * var(--text-scale));
-  --text-lg--line-height: calc(26px * var(--text-scale));
-  --text-xl: calc(24px * var(--text-scale));
-  --text-xl--line-height: calc(30px * var(--text-scale));
-  --text-2xl: calc(32px * var(--text-scale));
-  --text-2xl--line-height: calc(38px * var(--text-scale));
+  --text-xs: var(--t-xs);
+  --text-xs--line-height: var(--t-xs-lh);
+  --text-sm: var(--t-sm);
+  --text-sm--line-height: var(--t-sm-lh);
+  --text-md: var(--t-md);
+  --text-md--line-height: var(--t-md-lh);
+  --text-base: var(--t-base);
+  --text-base--line-height: var(--t-base-lh);
+  --text-lg: var(--t-lg);
+  --text-lg--line-height: var(--t-lg-lh);
+  --text-xl: var(--t-xl);
+  --text-xl--line-height: var(--t-xl-lh);
+  --text-2xl: var(--t-2xl);
+  --text-2xl--line-height: var(--t-2xl-lh);
 
-  /* one step of spacing is 5px: it grew with the text from 4px (Vikas, 26 and 28 Oct) */
-  --spacing: calc(5px * var(--text-scale));
+  --spacing: var(--t-step);
 }
 
 /*
@@ -396,7 +440,7 @@
     background: var(--canvas);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: calc(18px * var(--text-scale));
+    font-size: var(--t-body);
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }

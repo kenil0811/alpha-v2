@@ -245,7 +245,7 @@ export function Arranged({
                 data-block={key}
                 className={cn(
                   'group/block relative min-w-0',
-                  width ? 'shrink grow-0' : 'flex-1 basis-80',
+                  width ? 'shrink grow-0' : 'flex-1 basis-64',
                 )}
                 style={{
                   flexBasis: width ? `calc(${width}% - 2.5rem)` : undefined,

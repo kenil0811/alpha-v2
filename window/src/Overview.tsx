@@ -26,8 +26,7 @@ import {
   Plus,
   Sheet,
 } from 'lucide-react'
-import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
-import { byFunction } from './AgentList.tsx'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged, type Block, pairs } from './arrange.tsx'
 import { interviewMe, useInterview } from './ask.ts'
@@ -46,6 +45,7 @@ import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
 import { FindBar } from './ui/find-bar.tsx'
 import { IconTile } from './ui/icon-tile.tsx'
+import { Pager } from './ui/pager.tsx'
 import { Popover } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
@@ -1551,6 +1551,28 @@ function Line({
   )
 }
 
+// A card's rows a page at a time (Vikas, 1 Nov: "so sections don't become long scroll"): five,
+// then the pager under them; never Show more nor a scroll inside the card.
+export function Paged<T>({
+  items,
+  per = 5,
+  children,
+}: {
+  items: T[]
+  per?: number
+  children: (page: T[]) => ReactNode
+}) {
+  const [at, setAt] = useState(0)
+  const count = Math.ceil(items.length / per)
+  const page = Math.min(at, Math.max(0, count - 1)) // a shorter list keeps a page that exists
+  return (
+    <>
+      {children(items.slice(page * per, page * per + per))}
+      <Pager at={page} count={count} onAt={setAt} className="justify-center pt-1" />
+    </>
+  )
+}
+
 function ChartCard({
   id,
   title,
@@ -1829,27 +1851,36 @@ export function Files({
                 )}
               </div>
               {/* icons, as a file viewer shows them (Vikas, 3 Nov: not a list): a folder per
-                  table and kind, a file opening in the viewer, the row it is on on its hover */}
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1">
-                {at === null
-                  ? folders.map((name) => (
-                      <button
-                        key={name}
-                        type="button"
-                        onClick={() => setFolder(name)}
-                        data-tip={name}
-                        className={tile}
-                      >
-                        <Folder className="size-9 text-accent" strokeWidth={1.25} />
-                        <span className="line-clamp-2 w-full break-words text-center text-sm">
-                          {name.split(' › ').at(-1)}
-                        </span>
-                        <span className="text-ink-3 text-xs tabular-nums">
-                          {m.files.filter((f) => folderOf(f) === name).length}
-                        </span>
-                      </button>
-                    ))
-                  : shown.map((f) => {
+                  table and kind, a file opening in the viewer, the row it is on on its hover;
+                  ten a page, two rows of a column's width (Vikas, 1 Nov: no long scroll) */}
+              <Paged<string | ModuleFileView>
+                key={at ?? ''}
+                items={at === null ? folders : shown}
+                per={10}
+              >
+                {(page) => (
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1">
+                    {page.map((f) => {
+                      if (typeof f === 'string') {
+                        const name = f
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => setFolder(name)}
+                            data-tip={name}
+                            className={tile}
+                          >
+                            <Folder className="size-9 text-accent" strokeWidth={1.25} />
+                            <span className="line-clamp-2 w-full break-words text-center text-sm">
+                              {name.split(' › ').at(-1)}
+                            </span>
+                            <span className="text-ink-3 text-xs tabular-nums">
+                              {m.files.filter((x) => folderOf(x) === name).length}
+                            </span>
+                          </button>
+                        )
+                      }
                       const Icon = icon(f)
                       return (
                         <a
@@ -1879,7 +1910,9 @@ export function Files({
                         </a>
                       )
                     })}
-              </div>
+                  </div>
+                )}
+              </Paged>
             </div>
           )}
         </DropZone>
@@ -1906,8 +1939,8 @@ function groupsOf(agents: AgentView[], main: TableData[]) {
 }
 const agentSignal = (a: AgentView): Signal => (a.needs ? 'now' : a.state === 'on' ? 'done' : 'opt')
 
-// On Home (byFunction) every agent of the workspace, grouped by what it does as the Agents list
-// groups them, its module beside its name; eight until Show more.
+// On Home (byFunction) every agent of the workspace, its module beside its name; one list with no
+// groups by what it does (Vikas, 1 Nov: "I just want list of all agents"), five lines a page.
 export function Agents({
   m,
   main,
@@ -1922,18 +1955,18 @@ export function Agents({
   onChange: () => void
   onNew?: () => void
   href?: string
-  byFunction?: boolean
+  byFunction?: boolean // across modules: each agent's module beside it (no longer groups)
   head?: ReactNode
 }) {
   const { busy, problem, act } = useAct(onChange)
   // none yet, and somewhere to make one: the card stays, with New agent (Vikas, 3 Nov)
   if (!m.agents.length && !onNew) return null
-  const { groups, rest: all } = groupsOf(m.agents, main)
-  const rest = fn
-    ? all
-        .map((a) => ({ ...a, function: a.function ?? 'Admin' }))
-        .sort((a, b) => byFunction(a.function, b.function))
-    : all
+  const { groups, rest } = groupsOf(m.agents, main)
+  // a group's line, then its agents under it, then the rest: one run of lines to page through
+  const lines = [
+    ...groups.flatMap((g) => [{ g }, ...g.agents.map((a) => ({ a, inGroup: true }))]),
+    ...rest.map((a) => ({ a, inGroup: false })),
+  ]
   const on = m.agents.filter((a) => a.state === 'on').length
   const turn = (as: AgentView[], state: boolean) =>
     act(() =>
@@ -1957,82 +1990,81 @@ export function Agents({
   )
   return (
     <Card id="agents" title="Agents" href={href} head={head} count={on}>
-      {(big) => (
+      {() => (
         <div>
           <Refusal words={problem} />
           {!m.agents.length && <p className="py-1 text-ink-3 text-md">No agents here yet.</p>}
-          {groups.map((g) => {
-            const gon = g.agents.filter((a) => a.state === 'on')
-            return (
-              <div key={g.name}>
-                <Line
-                  s={strongest(g.agents.map(agentSignal)) ?? 'opt'}
-                  actions={
-                    // the button, then the switch at the far right (Vikas, 2 Nov: toggles sit
-                    // right of buttons); when they last updated on the button's hover
-                    <span className="flex items-center gap-2.5">
-                      <UpdateNow
-                        at={g.agents
-                          .map((a) => a.lastRunAt)
-                          .filter(Boolean)
-                          .sort()
-                          .at(-1)}
-                        busy={busy || gon.some((a) => a.running)}
-                        disabled={!gon.length}
-                        onClick={() => sync(g.agents)}
-                        tip={`Run every ${lc(g.name).replace(/s$/, '')} that is on, now`}
-                        words={false}
-                      />
-                      <Switch
-                        checked={gon.length > 0}
-                        disabled={busy}
-                        label={gon.length ? `Pause every ${g.name}` : `Turn on every ${g.name}`}
-                        onChange={(v) => turn(g.agents, v)}
-                      />
-                    </span>
-                  }
-                >
-                  {g.name}{' '}
-                  <span className="text-ink-3 text-sm">
-                    {gon.length} of {g.agents.length} on
-                  </span>
-                  <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-sunk">
-                    <span
-                      className="bg-good"
-                      style={{ width: `${(gon.length / g.agents.length) * 100}%` }}
-                    />
-                  </div>
-                </Line>
-                {big &&
-                  g.agents.map((a) => (
-                    <Line key={a.id} s={agentSignal(a)} actions={toggle(a)}>
-                      <a
-                        href={`#/agent/${a.id}`}
-                        className="pl-3 hover:text-accent hover:underline"
-                      >
-                        {a.name}
-                      </a>{' '}
+          <Paged items={lines}>
+            {(page) =>
+              page.map((l) => {
+                if ('g' in l) {
+                  const g = l.g
+                  const gon = g.agents.filter((a) => a.state === 'on')
+                  return (
+                    <Line
+                      key={`g:${g.name}`}
+                      s={strongest(g.agents.map(agentSignal)) ?? 'opt'}
+                      actions={
+                        // the button, then the switch at the far right (Vikas, 2 Nov: toggles sit
+                        // right of buttons); when they last updated on the button's hover
+                        <span className="flex items-center gap-2.5">
+                          <UpdateNow
+                            at={g.agents
+                              .map((a) => a.lastRunAt)
+                              .filter(Boolean)
+                              .sort()
+                              .at(-1)}
+                            busy={busy || gon.some((a) => a.running)}
+                            disabled={!gon.length}
+                            onClick={() => sync(g.agents)}
+                            tip={`Run every ${lc(g.name).replace(/s$/, '')} that is on, now`}
+                            words={false}
+                          />
+                          <Switch
+                            checked={gon.length > 0}
+                            disabled={busy}
+                            label={gon.length ? `Pause every ${g.name}` : `Turn on every ${g.name}`}
+                            onChange={(v) => turn(g.agents, v)}
+                          />
+                        </span>
+                      }
+                    >
+                      {g.name}{' '}
                       <span className="text-ink-3 text-sm">
-                        {a.state === 'on' ? `ran ${when(a.lastRunAt)}` : 'off'}
+                        {gon.length} of {g.agents.length} on
                       </span>
+                      <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-sunk">
+                        <span
+                          className="bg-good"
+                          style={{ width: `${(gon.length / g.agents.length) * 100}%` }}
+                        />
+                      </div>
                     </Line>
-                  ))}
-              </div>
-            )
-          })}
-          {(fn && !big ? rest.slice(0, 8) : rest).map((a, i) => (
-            <Fragment key={a.id}>
-              {fn && a.function !== rest[i - 1]?.function && (
-                <p className="pt-2 pb-1 font-medium text-ink text-sm">{a.function}</p>
-              )}
-              <Line s={agentSignal(a)} actions={toggle(a)}>
-                <a href={`#/agent/${a.id}`} className="hover:text-accent hover:underline">
-                  {a.name}
-                </a>{' '}
-                <span className="text-ink-3 text-sm">{fn ? a.module.name : a.when}</span>
-              </Line>
-            </Fragment>
-          ))}
+                  )
+                }
+                const a = l.a
+                return (
+                  <Line key={a.id} s={agentSignal(a)} actions={toggle(a)}>
+                    <a
+                      href={`#/agent/${a.id}`}
+                      className={cn('hover:text-accent hover:underline', l.inGroup && 'pl-3')}
+                    >
+                      {a.name}
+                    </a>{' '}
+                    <span className="text-ink-3 text-sm">
+                      {l.inGroup
+                        ? a.state === 'on'
+                          ? `ran ${when(a.lastRunAt)}`
+                          : 'off'
+                        : fn
+                          ? a.module.name
+                          : a.when}
+                    </span>
+                  </Line>
+                )
+              })
+            }
+          </Paged>
           {onNew && (
             <button
               type="button"
@@ -2050,8 +2082,8 @@ export function Agents({
 }
 
 // Every table of the module, numbered as the rail numbers its modules (2.2, its parts 2.2.1),
-// all of them in sight. The pin puts a table in the bar's switch, or takes it out. On Home, every
-// module's, each under its name, the tables on rows folded until Show more.
+// five lines a page. The pin puts a table in the bar's switch, or takes it out. On Home, every
+// module's, each a line that opens to its tables.
 type TablesOf = Pick<ModuleView, 'id' | 'name' | 'tables'>
 export function Tables({ ms, href, head }: { ms: TablesOf[]; href: string; head?: ReactNode }) {
   const [numbers, setNumbers] = useState(new Map<string, string>())
@@ -2086,16 +2118,34 @@ export function Tables({ ms, href, head }: { ms: TablesOf[]; href: string; head?
       head={head}
       count={shown.reduce((a, m) => a + m.tables.length, 0)}
     >
-      {(big) =>
-        ms.length === 1 ? (
-          <TableRows m={ms[0] as TablesOf} number={numbers.get(ms[0]?.id ?? '') ?? ''} all={big} />
-        ) : (
-          <div>
-            {shown.map((m) => {
-              const on = open.has(m.id)
-              return (
-                <div key={m.id}>
+      {() => {
+        // one run of lines to page through: on Home a line per module, its tables under it once
+        // opened; in a module its tables
+        const lines = (ms.length === 1 ? ms : shown).flatMap((m) => {
+          const number = numbers.get(m.id) ?? ''
+          const tables = numberTables(m.tables, number).map((x) => ({ m, ...x }))
+          if (ms.length === 1) return tables
+          return [{ m, number }, ...(open.has(m.id) ? tables : [])]
+        })
+        return (
+          <Paged items={lines}>
+            {(page) =>
+              page.map((l) => {
+                if ('table' in l)
+                  return (
+                    <TableLine
+                      key={l.table.id}
+                      m={l.m}
+                      t={l.table}
+                      n={l.n}
+                      depth={l.depth + (ms.length === 1 ? 0 : 1)}
+                    />
+                  )
+                const { m } = l
+                const on = open.has(m.id)
+                return (
                   <button
+                    key={m.id}
                     type="button"
                     aria-expanded={on}
                     onClick={() => {
@@ -2110,66 +2160,60 @@ export function Tables({ ms, href, head }: { ms: TablesOf[]; href: string; head?
                     ) : (
                       <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
                     )}
-                    <span className="text-ink-3 text-sm tabular-nums">{numbers.get(m.id)}</span>
+                    <span className="text-ink-3 text-sm tabular-nums">{l.number}</span>
                     <span className="min-w-0 flex-1 truncate font-medium text-ink">{m.name}</span>
                     <span className="text-ink-3 text-sm tabular-nums">{m.tables.length}</span>
                   </button>
-                  {on && (
-                    <div className="pl-5">
-                      <TableRows m={m} number={numbers.get(m.id) ?? ''} all />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                )
+              })
+            }
+          </Paged>
         )
-      }
+      }}
     </Card>
   )
 }
 
-function TableRows({ m, number, all }: { m: TablesOf; number: string; all: boolean }) {
+function TableLine({
+  m,
+  t,
+  n,
+  depth,
+}: {
+  m: TablesOf
+  t: TablesOf['tables'][number]
+  n: string
+  depth: number
+}) {
   const { pins, toggle } = usePins(m)
   return (
-    <>
-      {numberTables(m.tables, number)
-        .filter((x) => all || x.depth === 0)
-        .map(({ table: t, n, depth }) => (
-          <div
-            key={t.id}
-            className="group/t flex h-8 items-center gap-1.5 border-hair border-t text-md"
-            style={{ paddingLeft: depth * 16 }}
-          >
-            <span className="text-ink-3 text-sm tabular-nums">{n}</span>
-            <a
-              href={`#/table/${t.id}`}
-              className="min-w-0 truncate text-ink hover:text-accent hover:underline"
-            >
-              {t.name}
-            </a>
-            <span className="flex-1 text-ink-3 text-sm tabular-nums">
-              {t.rows.toLocaleString()}
-            </span>
-            <button
-              type="button"
-              aria-label={
-                pins.includes(t.id) ? `Unpin ${t.name} from the bar` : `Pin ${t.name} to the bar`
-              }
-              data-tip={pins.includes(t.id) ? 'Unpin from the bar' : 'Pin to the bar'}
-              onClick={() => toggle(t.id)}
-              className={cn(
-                'grid size-6 place-items-center rounded-sm hover:bg-hover',
-                pins.includes(t.id)
-                  ? 'text-accent'
-                  : 'text-ink-3 opacity-0 group-hover/t:opacity-100',
-              )}
-            >
-              <Pin className="size-3.5" />
-            </button>
-          </div>
-        ))}
-    </>
+    <div
+      className="group/t flex h-8 items-center gap-1.5 border-hair border-t text-md"
+      style={{ paddingLeft: depth * 16 }}
+    >
+      <span className="text-ink-3 text-sm tabular-nums">{n}</span>
+      <a
+        href={`#/table/${t.id}`}
+        className="min-w-0 truncate text-ink hover:text-accent hover:underline"
+      >
+        {t.name}
+      </a>
+      <span className="flex-1 text-ink-3 text-sm tabular-nums">{t.rows.toLocaleString()}</span>
+      <button
+        type="button"
+        aria-label={
+          pins.includes(t.id) ? `Unpin ${t.name} from the bar` : `Pin ${t.name} to the bar`
+        }
+        data-tip={pins.includes(t.id) ? 'Unpin from the bar' : 'Pin to the bar'}
+        onClick={() => toggle(t.id)}
+        className={cn(
+          'grid size-6 place-items-center rounded-sm hover:bg-hover',
+          pins.includes(t.id) ? 'text-accent' : 'text-ink-3 opacity-0 group-hover/t:opacity-100',
+        )}
+      >
+        <Pin className="size-3.5" />
+      </button>
+    </div>
   )
 }
 

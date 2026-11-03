@@ -1,6 +1,6 @@
 // Intelligence › Agents (proposal 28 Oct §2 #1; Vikas, 29 Oct): every agent, Alpha's own
-// included, in one list grouped by what it does (Sourcing, Outreach…), its module a column and a
-// filter. Each row: how often it runs (changed here, written into its file), when it last ran,
+// included, in one list, its module a column and a filter; no groups by what it does (Vikas,
+// 1 Nov: "I still don't know what admin is"). Each row: how often it runs (changed here, written into its file), when it last ran,
 // its next run, its last result, its cost this week from Usage, and Running or Paused. One that is
 // blocked says why in red, with the one action that unblocks it. New agent opens New module's
 // page for an agent.
@@ -165,17 +165,11 @@ export function RunsCell({ agent: a, onDone }: { agent: AgentView; onDone?: () =
   )
 }
 
-// Functions in the order a business reads them; any other a kit names comes after.
-const FUNCTIONS = ['Sourcing', 'Intake', 'Analysis & insights', 'Outreach', 'Finance', 'Admin']
-export const byFunction = (a: string, b: string) =>
-  (FUNCTIONS.indexOf(a) + 1 || 99) - (FUNCTIONS.indexOf(b) + 1 || 99) || a.localeCompare(b)
-
 type On = 'all' | 'time' | 'event'
 
 export function AgentList({ version }: { version: number }) {
   const [working, setWorking] = useState<WorkingModuleView[] | null>(null)
   const [cost, setCost] = useState<Map<string, number>>(new Map())
-  const [fn, setFn] = useState<string | null>(null)
   const [module, setModule] = useState('')
   const [on, setOn] = useState<On>('all')
   const load = useCallback(() => {
@@ -197,18 +191,10 @@ export function AgentList({ version }: { version: number }) {
     return () => clearInterval(t)
   }, [anyRunning, load])
   if (!working) return <p className="text-ink-3">Loading…</p>
-  // a core from before functions groups every agent under Admin until it restarts
-  const every = working
-    .flatMap((m) => m.agents)
-    .map((a) => ({ ...a, function: a.function ?? 'Admin' }))
+  const every = working.flatMap((m) => m.agents)
   const has = (a: AgentView, kind: On) => kind === 'all' || a.triggers.some((t) => t.on === kind)
   const inModule = every.filter((a) => !module || a.module.id === module)
-  const inFn = inModule.filter((a) => !fn || a.function === fn)
-  const shown = inFn.filter((a) => has(a, on))
-  const functions = [...new Set(inModule.map((a) => a.function))].sort(byFunction)
-  const groups = [...new Set(shown.map((a) => a.function))]
-    .sort(byFunction)
-    .map((f) => [f, shown.filter((a) => a.function === f)] as const)
+  const shown = inModule.filter((a) => has(a, on))
   const heads = [
     'Agent',
     'Module',
@@ -225,20 +211,6 @@ export function AgentList({ version }: { version: number }) {
         <Button variant="primary" size="sm" onClick={() => (window.location.hash = '#/agent/new')}>
           New agent
         </Button>
-        <span className="mx-1 h-5 w-px bg-line" />
-        <Cut sel={!fn} count={inModule.length} onClick={() => setFn(null)}>
-          All
-        </Cut>
-        {functions.map((f) => (
-          <Cut
-            key={f}
-            sel={fn === f}
-            count={inModule.filter((a) => a.function === f).length}
-            onClick={() => setFn(f)}
-          >
-            {f}
-          </Cut>
-        ))}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <Select
@@ -266,7 +238,7 @@ export function AgentList({ version }: { version: number }) {
           <Cut
             key={k}
             sel={on === k}
-            count={inFn.filter((a) => has(a, k)).length}
+            count={inModule.filter((a) => has(a, k)).length}
             onClick={() => setOn(k)}
           >
             {label}
@@ -284,21 +256,11 @@ export function AgentList({ version }: { version: number }) {
               ))}
             </tr>
           </thead>
-          {groups.map(([f, list]) => (
-            <tbody key={f}>
-              <tr>
-                <th
-                  colSpan={heads.length}
-                  className="border-line border-b bg-sunk px-3 py-1.5 text-left font-medium text-ink-2 text-sm"
-                >
-                  {f} <span className="font-normal text-ink-3">{list.length}</span>
-                </th>
-              </tr>
-              {list.map((a) => (
-                <AgentRow key={a.id} agent={a} cost={cost.get(a.id) ?? 0} onDone={load} />
-              ))}
-            </tbody>
-          ))}
+          <tbody>
+            {shown.map((a) => (
+              <AgentRow key={a.id} agent={a} cost={cost.get(a.id) ?? 0} onDone={load} />
+            ))}
+          </tbody>
         </table>
       </div>
     </div>
