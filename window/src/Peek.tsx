@@ -36,8 +36,15 @@ export const peek = (href: string) =>
 
 // whether the last press was inside the panel: what it opens by script is then a step further
 let fromPanel = false
+// what was pressed outside the panel: the panel narrows the screen, so it is brought back in sight
+// to the panel's left once it opens (Vikas, 1 Nov: "the to do which I clicked should appear to the
+// left")
+let pressed: Element | null = null
 const press = (e: PointerEvent) => {
-  fromPanel = !!(e.target as Element | null)?.closest?.('[data-peek-panel]')
+  const t = e.target as Element | null
+  fromPanel = !!t?.closest?.('[data-peek-panel]')
+  if (!fromPanel && t?.closest)
+    pressed = t.closest('tr, [role="row"], li, article, [data-row]') ?? t
 }
 
 export function usePeek() {
@@ -71,6 +78,16 @@ export function usePeek() {
       window.removeEventListener('alpha:peek', asked)
     }
   }, [])
+  const opened = trail[0] ?? null
+  useEffect(() => {
+    if (!opened || !pressed?.isConnected) return
+    const el = pressed
+    // after the panel has drawn and narrowed the screen
+    const f = requestAnimationFrame(() =>
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' }),
+    )
+    return () => cancelAnimationFrame(f)
+  }, [opened])
   return {
     href: trail.at(-1) ?? null,
     canBack: trail.length > 1,

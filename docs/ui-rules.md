@@ -517,3 +517,28 @@ put it there and on the parts page (#/parts).
   tinted cards without borders, small capital section titles, green bars with their values on
   them. Its blocks: `bars` (a month's top expenses as columns), `rows` (at a glance), `callout`
   (key insights). A section with nothing to show is left out and named once at the foot.
+
+### The 1 Nov review brought onto this branch (Vikas, 3 Nov: the newest decision wins)
+
+- Text size: Small is the scale Kenil approved (body 14px) and the default; Large is the 30 Oct
+  scale (body 18px); Medium sits between. A section's heading is one size below its page's title
+  (20px under 26px at Small), and every page title is serif.
+- Settings keeps its list of sections on the left at every width, Governance's too.
+- Home's bar: the date over "Good morning" on the left, no name; "Next · <day>" over the next item
+  on the right.
+- Mac setup is a card in Home's work column, unfinished steps first, four a page; it is gone once
+  the Mac is ready. Download what reading needs asks first and says the sizes.
+- Agent approvals (was Needs you) is one compact slideshow card, one approval a page, its pager
+  inside the card beside its buttons ("Approval 1 of 4"); a list inside a card says what it
+  counts ("Agents 1–3 of 16"). On Home, and above Alpha's thread on the Agents page; never in
+  Tasks: an approval is an agent's question, not a task.
+- A card shows five rows (ten file icons), then the pager; never Show more or a long scroll.
+- Agents are one list: no grouping by what an agent does, anywhere.
+- Tasks: Overview and Tasks in the bar (no Calendar view: the Calendar module holds every date);
+  no row of lists, Filter's menu starts with Quick filters and Filter names the one in use; a
+  task's row shows its state and never changes it.
+- A table's search runs up to Filter; Add field is first in ⋮ in every view, where the fields are
+  the person's.
+- The bell opens Activity as a dropdown first, the latest runs and what is downloading for this
+  Mac, Open page at its foot.
+- What was clicked stays in sight left of the side panel; Mark's box stays inside the window.

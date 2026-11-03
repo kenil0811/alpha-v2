@@ -79,6 +79,18 @@ export function describe(el: Element): string {
 
 type Picked = { what: string; box: DOMRect }
 
+// The comment box stays inside the window (Vikas, 1 Nov): under what was marked, else over it,
+// else inside its top.
+const H = 170 // about the box's height, with a line of problem
+export function boxAt(
+  box: { top: number; bottom: number },
+  height: number,
+): { top: number } | { bottom: number } {
+  if (box.bottom + 8 + H <= height - 8) return { top: box.bottom + 8 }
+  if (box.top - 8 - H >= 8) return { bottom: height - box.top + 8 }
+  return { top: Math.max(8, Math.min(box.top + 8, height - H - 8)) }
+}
+
 // Mounted once: marking starts on the pencil and ends on a send, Cancel or Escape.
 export function Marker({ from }: { from: Module | null }) {
   const [on, setOn] = useState(false)
@@ -163,7 +175,6 @@ export function Marker({ from }: { from: Module | null }) {
   const shown = picked?.box ?? over
   const W = 320
   const left = picked ? Math.max(8, Math.min(picked.box.left, window.innerWidth - W - 8)) : 0
-  const below = picked ? picked.box.bottom + 8 + 170 < window.innerHeight : true
   return (
     <div ref={own}>
       {/* while marking, the window dims a little and the thing under the pointer stands out
@@ -203,9 +214,7 @@ export function Marker({ from }: { from: Module | null }) {
           style={{
             width: W,
             left,
-            ...(below
-              ? { top: picked.box.bottom + 8 }
-              : { bottom: window.innerHeight - picked.box.top + 8 }),
+            ...boxAt(picked.box, window.innerHeight),
           }}
         >
           <p className="line-clamp-2 text-ink-3 text-sm">{picked.what}</p>

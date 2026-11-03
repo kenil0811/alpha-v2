@@ -17,7 +17,6 @@ export function registerTasks(ctx: Ctx): void {
     given,
     today,
     inDays,
-    cardOut,
     byWords,
   } = ctx.views
 
@@ -60,48 +59,6 @@ export function registerTasks(ctx: Ctx): void {
   const WHY = 'Who it is for and where it sits change on its page.'
   const counts = () =>
     Object.fromEntries(Object.entries(LISTS).map(([k, f]) => [k, k === 'done' ? 0 : f().length]))
-  // Everything that needs the person is a task (Vikas, 30 Oct: "why are things that need me not
-  // tasks?"): each waiting card is a row of Today, This week and All open, owned by the person and
-  // from Alpha or the agent that raised it, one row per proposed task as Needs you draws them. Read
-  // from the cards, never kept twice; answering the card takes the row away. A card serving a task
-  // in the list is that task's Needs your input, not a second row.
-  const CARDED = new Set(['today', 'week', 'open'])
-  const cardRows = (list: string, shown: Set<string>) => {
-    if (!CARDED.has(list)) return []
-    const moduleName = (id: string | null) => (id ? (world.shape.module(id)?.name ?? '') : '')
-    return world.cards
-      .waiting(user.id)
-      .map(cardOut)
-      .filter((c) => !c.task || !shown.has(c.task))
-      .flatMap((c) => {
-        const row = (id: string, task: string) => ({
-          id,
-          values: {
-            task,
-            state: NEEDS,
-            due: null,
-            priority: PRIORITIES.normal,
-            owner: 'You',
-            from: c.agent?.name ?? 'Alpha',
-            where: moduleName(c.module),
-            for: 'Nothing',
-          },
-        })
-        const open = (c.proposed?.tasks ?? []).flatMap((t, i) => (t.word ? [] : [{ t, i }]))
-        return c.proposed
-          ? open.map(({ t, i }) => row(`card:${c.id}:${i}`, t.title))
-          : [row(`card:${c.id}`, c.words)]
-      })
-  }
-  // the lists that hold cards count them too, so each cut says what it shows
-  const keptCounts = () =>
-    Object.fromEntries(
-      Object.entries(LISTS).map(([k, f]) => {
-        if (k === 'done') return [k, 0]
-        const ts = f()
-        return [k, ts.length + cardRows(k, new Set(ts.map((t) => t.id))).length]
-      }),
-    )
   app.get('/api/kept/tasks', async (req): Promise<KeptTable> => {
     const { list } = z.object({ list: z.string().default('open') }).parse(req.query)
     const waiting = waitingCards()
@@ -109,7 +66,6 @@ export function registerTasks(ctx: Ctx): void {
     const tasks = (LISTS[list] ?? (LISTS.open as () => Task[]))()
     const lines = tasks.map((t) => lineOf(t, waiting, working))
     const madeBy = new Map(tasks.map((t) => [t.id, byWords(t.madeBy)]))
-    const carded = cardRows(list, new Set(tasks.map((t) => t.id)))
     // what a task is for: the list its row is in (Clients, Insurers, Appeals), to filter by
     // (Vikas, 27 Oct)
     const forOf = (l: (typeof lines)[number]) =>
@@ -136,7 +92,6 @@ export function registerTasks(ctx: Ctx): void {
         { ...keptField('For', 'choice'), choices: fors },
       ],
       [
-        ...carded,
         ...lines.map((l) => ({
           id: l.id,
           values: {
@@ -155,13 +110,12 @@ export function registerTasks(ctx: Ctx): void {
       {
         editable: EDITABLE,
         why: WHY,
-        counts: keptCounts(),
+        counts: counts(),
       },
     )
   })
   app.post('/api/kept/tasks/rows/:id', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
-    if (id.startsWith('card:')) throw new Refused('A card is answered on the card: open it.')
     const { field, value } = keptEdit(req.body, EDITABLE, WHY)
     const words = value === null || value === undefined ? '' : String(value).trim()
     if (field === 'State') {

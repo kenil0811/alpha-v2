@@ -32,7 +32,7 @@ export function Parts() {
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-8 px-8 py-7">
-          <h1 className="text-2xl text-ink">Parts</h1>
+          <h1 className="font-serif text-2xl text-ink">Parts</h1>
           <Section title="Buttons" about="Plain, primary, ghost, warn; two sizes; an icon button.">
             <div className="flex flex-wrap items-center gap-2">
               <Button>Read now</Button>

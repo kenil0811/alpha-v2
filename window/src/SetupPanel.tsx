@@ -7,6 +7,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Confirm } from './ui/dialog.tsx'
+import { Pager } from './ui/pager.tsx'
 import { Switch } from './ui/switch.tsx'
 
 const READY: Record<SetupView['readers']['browser'], string> = {
@@ -37,8 +39,13 @@ export function useSetup(): [SetupView | null, () => void] {
   return [view, load]
 }
 
+const PER = 4
+
 export function SetupList({ view, onChange }: { view: SetupView; onChange: () => void }) {
   const prepare = () => api.post('/api/setup/prepare').then(onChange, onChange)
+  // a download of gigabytes is said first, never one click by mistake (Vikas, 1 Nov)
+  const [asking, setAsking] = useState(false)
+  const [at, setAt] = useState(0)
   const items: {
     done: boolean
     busy?: boolean
@@ -87,10 +94,14 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
   const waiting =
     (view.readers.browser !== 'ready' && view.readers.browser !== 'preparing') ||
     (view.readers.documents !== 'ready' && view.readers.documents !== 'preparing')
+  // what is left first, four a page (Vikas, 1 Nov)
+  const left = [...items].sort((x, y) => Number(x.done) - Number(y.done))
+  const pages = Math.ceil(left.length / PER)
+  const page = Math.min(at, pages - 1)
   return (
     <div className="flex flex-col gap-2">
       <div className="overflow-hidden rounded-lg border border-line bg-surface">
-        {items.map((s) => (
+        {left.slice(page * PER, page * PER + PER).map((s) => (
           <div
             key={s.words}
             className="flex items-center gap-3 border-hair border-t px-4 py-3 first:border-t-0"
@@ -117,6 +128,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
           </div>
         ))}
       </div>
+      <Pager at={page} count={pages} onAt={setAt} className="self-end" />
       {view.keepAwake !== null && (
         <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
           <span className="min-w-0 flex-1">
@@ -133,9 +145,24 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
         </div>
       )}
       {view.readers.problem && <p className="text-bad text-sm">{view.readers.problem}</p>}
+      <Confirm
+        open={asking}
+        title="Download what reading needs?"
+        yes="Download"
+        kind="primary"
+        onClose={() => setAsking(false)}
+        onYes={() => {
+          setAsking(false)
+          prepare()
+        }}
+      >
+        <p className="text-ink-2 text-md">
+          The reading browser, about 200 MB, and the document reader, about 1.6 GB, onto this Mac.
+        </p>
+      </Confirm>
       {waiting && (
         <div>
-          <Button size="sm" onClick={prepare}>
+          <Button size="sm" onClick={() => setAsking(true)}>
             Download what reading needs
           </Button>
         </div>

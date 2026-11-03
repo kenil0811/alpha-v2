@@ -222,7 +222,7 @@ export function Settings({
         <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
           {p.icon}
         </span>
-        <h1 className="font-serif text-ink text-xl">{p.title}</h1>
+        <h1 className="font-serif text-2xl text-ink">{p.title}</h1>
         <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
       </div>
     </InBar>
@@ -254,10 +254,10 @@ export function Settings({
     <div className="h-full overflow-y-auto">
       <div className="@container mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
         {head}
-        {/* the side lists fold above their page by the room it has, not the window's width: the
-            assistant open beside it left Governance a 75px column (30 Oct) */}
-        <div className="grid grid-cols-1 gap-7 @2xl:grid-cols-[170px_1fr]">
-          <SideList label={p.title} className="self-start @max-2xl:flex-row @max-2xl:flex-wrap">
+        {/* the side lists stay a column on the left at every width (Vikas, 3 Nov), 170px so the
+            assistant open beside them cannot squeeze one to 75px (30 Oct) */}
+        <div className="grid grid-cols-[170px_1fr] gap-7">
+          <SideList label={p.title} className="self-start">
             {tabs.map(([id, name]) => (
               <SideItem key={id} sel={id === at} onClick={() => go(id)}>
                 {name}
@@ -280,8 +280,8 @@ function Governance({ version }: { version: number }) {
   const [part, setPart] = useState<Part>('rules')
   return (
     // three lists of their own: the list view, as Settings draws it (Vikas, 28 Oct)
-    <div className="grid grid-cols-1 gap-7 @2xl:grid-cols-[170px_1fr]">
-      <SideList label="Governance" className="self-start @max-2xl:flex-row @max-2xl:flex-wrap">
+    <div className="grid grid-cols-[170px_1fr] gap-7">
+      <SideList label="Governance" className="self-start">
         {(
           [
             ['rules', 'Can and cannot do'],

@@ -10,6 +10,7 @@ import { Ban, Check } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { showAsk } from './ask.ts'
+import { Paged } from './Overview.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -196,75 +197,77 @@ function Column({
           : api.post(`/api/rules/${r.id}/revoke`),
       r.id,
     ).then(() => setAsking(null))
+  const list = (items: Entry[]) => (
+    <EntryList
+      small={small}
+      head={
+        <>
+          <Icon className={cn('size-3.5', tone)} />
+          {title}
+          {approved > 0 && <span className="font-normal text-ink-3 tabular-nums">{approved}</span>}
+        </>
+      }
+      items={items}
+      idOf={(r) => r.id}
+      textOf={(r) => r.words.replace(new RegExp(`^Alpha ${lead}\\s+`, 'i'), '')}
+      groupOf={(r) => r.agent ?? r.where}
+      waits={waits}
+      placeholder={side === 'allow' ? 'Type what agents can do' : 'Type what agents cannot do'}
+      removeLabel={(r) => (r.sent ? 'Dismiss' : waits(r) ? 'Decline' : 'Revoke')}
+      line={(r) =>
+        r.sent ? (
+          <>
+            <span className={small ? 'text-sm' : 'text-md'}>{r.words}</span>
+            <span className="text-ink-3 text-sm">{r.sent.answer ?? 'Waiting for Alpha…'}</span>
+          </>
+        ) : (
+          <>
+            {r.card ? (
+              <span className={small ? 'text-sm' : 'text-md'}>{r.words}</span>
+            ) : (
+              <a
+                href={`#/rule/${r.id}`}
+                className={small ? 'text-sm hover:underline' : 'text-md hover:underline'}
+              >
+                {r.words}
+              </a>
+            )}
+            <span className="text-ink-3 text-sm">
+              {r.card
+                ? `Asked ${dayWords(r.madeAt)}; needs approval`
+                : r.kind === 'inferred'
+                  ? `Alpha noticed, ${dayWords(r.madeAt)}; needs approval`
+                  : `${r.always ? 'You said Always' : 'You approved'}, ${dayWords(r.madeAt)}${r.module ? '' : '; across Alpha'}`}
+            </span>
+            {on === r.id && <Refusal words={problem} />}
+          </>
+        )
+      }
+      after={(r) =>
+        r.sent
+          ? r.sent.answer !== null && (
+              <Button size="sm" onClick={showAsk}>
+                Open
+              </Button>
+            )
+          : waits(r) && (
+              <Button size="sm" disabled={busy} onClick={() => void approve(r)}>
+                Approve
+              </Button>
+            )
+      }
+      onAdd={(w) => say(`A rule${m ? ` for ${m.name}` : ''}: ${rule(w)}`, rule(w))}
+      onEdit={(r, w) =>
+        say(`Change the rule${m ? ` for ${m.name}` : ''} “${r.words}” to: ${rule(w)}`, rule(w))
+      }
+      onRemove={(r) => (r.sent ? onForget(r.sent.turn) : setAsking(r))}
+    />
+  )
   const pending = asking ? waits(asking) : false
   return (
     <section aria-label={title} className="flex min-w-0 flex-col">
-      <EntryList
-        small={small}
-        head={
-          <>
-            <Icon className={cn('size-3.5', tone)} />
-            {title}
-            {approved > 0 && (
-              <span className="font-normal text-ink-3 tabular-nums">{approved}</span>
-            )}
-          </>
-        }
-        items={sorted}
-        idOf={(r) => r.id}
-        textOf={(r) => r.words.replace(new RegExp(`^Alpha ${lead}\\s+`, 'i'), '')}
-        groupOf={(r) => r.agent ?? r.where}
-        waits={waits}
-        placeholder={side === 'allow' ? 'Type what agents can do' : 'Type what agents cannot do'}
-        removeLabel={(r) => (r.sent ? 'Dismiss' : waits(r) ? 'Decline' : 'Revoke')}
-        line={(r) =>
-          r.sent ? (
-            <>
-              <span className={small ? 'text-sm' : 'text-md'}>{r.words}</span>
-              <span className="text-ink-3 text-sm">{r.sent.answer ?? 'Waiting for Alpha…'}</span>
-            </>
-          ) : (
-            <>
-              {r.card ? (
-                <span className={small ? 'text-sm' : 'text-md'}>{r.words}</span>
-              ) : (
-                <a
-                  href={`#/rule/${r.id}`}
-                  className={small ? 'text-sm hover:underline' : 'text-md hover:underline'}
-                >
-                  {r.words}
-                </a>
-              )}
-              <span className="text-ink-3 text-sm">
-                {r.card
-                  ? `Asked ${dayWords(r.madeAt)}; needs approval`
-                  : r.kind === 'inferred'
-                    ? `Alpha noticed, ${dayWords(r.madeAt)}; needs approval`
-                    : `${r.always ? 'You said Always' : 'You approved'}, ${dayWords(r.madeAt)}${r.module ? '' : '; across Alpha'}`}
-              </span>
-              {on === r.id && <Refusal words={problem} />}
-            </>
-          )
-        }
-        after={(r) =>
-          r.sent
-            ? r.sent.answer !== null && (
-                <Button size="sm" onClick={showAsk}>
-                  Open
-                </Button>
-              )
-            : waits(r) && (
-                <Button size="sm" disabled={busy} onClick={() => void approve(r)}>
-                  Approve
-                </Button>
-              )
-        }
-        onAdd={(w) => say(`A rule${m ? ` for ${m.name}` : ''}: ${rule(w)}`, rule(w))}
-        onEdit={(r, w) =>
-          say(`Change the rule${m ? ` for ${m.name}` : ''} “${r.words}” to: ${rule(w)}`, rule(w))
-        }
-        onRemove={(r) => (r.sent ? onForget(r.sent.turn) : setAsking(r))}
-      />
+      {/* in a card five rules a page, then the pager (Vikas, 1 Nov: no long scroll) */}
+      {small ? <Paged items={sorted}>{list}</Paged> : list(sorted)}
       {on === 'new' && <Refusal words={problem} />}
       <Confirm
         open={!!asking}

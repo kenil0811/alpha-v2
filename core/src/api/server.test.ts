@@ -318,26 +318,17 @@ describe('the api over a world', () => {
     expect(
       (await post(`/api/kept/tasks/rows/${t.id}`, { field: 'Where', value: 'x' })).json().problem,
     ).toMatch(/change on its page/)
-    // a card waiting on the person is a task row of All open, the person's, from Alpha, until
-    // it is answered; it is answered on the card, never in a cell
-    const card = world.cards.open({
+    // a card waiting on the person is not a task (Vikas, 1 Nov): approvals are agents'
+    // questions, on Home and the Agents page, never rows of Tasks
+    world.cards.open({
       kind: 'question',
       words: 'Which Sam?',
       options: ['Sam Oat', 'Sam Mill'],
       actor: { kind: 'alpha' },
     })
     const withCard = await get('/api/kept/tasks?list=open')
-    expect(withCard.rows[0]).toMatchObject({
-      id: `card:${card.id}`,
-      values: { task: 'Which Sam?', state: 'Needs your input', owner: 'You', from: 'Alpha' },
-    })
-    expect(withCard.kept.counts.open).toBe(2)
-    expect(
-      (await post(`/api/kept/tasks/rows/card:${card.id}`, { field: 'Task', value: 'x' })).json()
-        .problem,
-    ).toMatch(/answered on the card/)
-    world.cards.answer(card.id, 'Sam Oat', { kind: 'person', id: 'u_1' })
-    expect((await get('/api/kept/tasks?list=open')).rows).toHaveLength(1)
+    expect(withCard.rows).toHaveLength(1)
+    expect(withCard.kept.counts.open).toBe(1)
 
     // the rules are read here; Revoke is on a rule's page
     const rules = await get('/api/kept/rules')

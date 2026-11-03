@@ -5,7 +5,7 @@ import type { FieldView, FilterRule, RowView, ViewConfig } from '@alpha/core/api
 import { ArrowDown, ArrowUp, ListFilter, Rows3, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { cn } from '../ui/cn.ts'
-import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, SubMenu } from '../ui/popover.tsx'
 import { RuleEditor } from './ColumnMenu.tsx'
 import { hide, move, removeRule, setGroup, setRule } from './edits.ts'
 import { columns, ruleWords } from './engine.ts'
@@ -160,19 +160,25 @@ function RuleChip({
   )
 }
 
-// + Filter: a field, then its rule.
+// A page's own list, kept in its address (Tasks' Today, This week…)
+export type QuickFilter = { label: string; count?: number | undefined; on: boolean; href: string }
+
+// + Filter: a page's Quick filters first when it has some, not a row of their own (Vikas, 1 Nov),
+// then a field and its rule. Filter names the quick filter in use.
 export function AddFilter({
   fields,
   config,
   rows,
   names,
   onConfig,
+  quick,
 }: {
   fields: FieldView[]
   config: ViewConfig
   rows: RowView[]
   names: Record<string, string>
   onConfig: (c: ViewConfig) => void
+  quick?: QuickFilter[] | undefined
 }) {
   const [open, setOpen] = useState(false)
   const [field, setField] = useState<FieldView | null>(null)
@@ -181,6 +187,7 @@ export function AddFilter({
     setOpen(false)
     setField(null)
   }
+  const at = quick?.find((q) => q.on)
   return (
     <>
       <button
@@ -190,7 +197,7 @@ export function AddFilter({
         className="flex h-7.5 items-center gap-1.5 rounded-md border border-line border-dashed px-2.5 text-ink-2 text-md hover:border-accent-line hover:bg-accent-soft hover:text-accent"
       >
         <ListFilter className="size-3.25" />
-        Filter
+        {at ? `Filter: ${at.label}` : 'Filter'}
       </button>
       <Popover anchor={anchor} open={open} onClose={close}>
         {field ? (
@@ -206,6 +213,26 @@ export function AddFilter({
           />
         ) : (
           <div className="flex max-h-80 flex-col overflow-y-auto">
+            {quick?.length ? (
+              <>
+                <SubMenu label="Quick filters" hint={at?.label}>
+                  {quick.map((q) => (
+                    <MenuItem
+                      key={q.href}
+                      checked={q.on}
+                      onClick={() => {
+                        close()
+                        window.location.hash = q.href
+                      }}
+                    >
+                      <span className="flex-1">{q.label}</span>
+                      {q.count ? <span className="text-ink-3 tabular-nums">{q.count}</span> : null}
+                    </MenuItem>
+                  ))}
+                </SubMenu>
+                <MenuLine />
+              </>
+            ) : null}
             {fields.map((f) => (
               <MenuItem
                 key={f.id}

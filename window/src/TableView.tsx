@@ -23,7 +23,7 @@ import {
   Plus,
   Search,
 } from 'lucide-react'
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
@@ -46,7 +46,7 @@ import { PasteBar, TickedBar } from './table/Many.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { SortEditor } from './table/SortEditor.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips, ColumnsList } from './table/Toolbar.tsx'
+import { AddFilter, Chips, ColumnsList, type QuickFilter } from './table/Toolbar.tsx'
 import { type QuickLists, ViewTabs } from './table/ViewTabs.tsx'
 import { canType, isTags, show, titleOf } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -85,7 +85,7 @@ export function TableView({
   quiet = false,
   kept = null,
   start,
-  filters,
+  quickFilters,
   quickBy,
 }: {
   data: TableData
@@ -100,7 +100,7 @@ export function TableView({
   // one in the page's own way, when it has one.
   kept?: { open: (row: string) => void; onNew?: () => void } | null
   start?: Partial<ViewConfig> // how it opens with no saved list chosen: a board for tasks
-  filters?: ReactNode // a page's own quick filters, first under the toolbar (Tasks' due lists)
+  quickFilters?: QuickFilter[] // a page's own lists, first inside Filter (Tasks' due lists)
   quickBy?: string // the choice the quick filters go by, by name, when not the usual
 }) {
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
@@ -301,8 +301,8 @@ export function TableView({
           tools={
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
-              {/* search first, wide, always a box (Vikas, 27 Oct) */}
-              <label className="flex h-7.5 w-80 min-w-32 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+              {/* search first, always a box, running up to Filter (Vikas, 27 Oct, 1 Nov) */}
+              <label className="flex h-7.5 min-w-32 flex-1 items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
                 <Search className="size-3.25 shrink-0" />
                 <input
                   value={config.search}
@@ -328,6 +328,7 @@ export function TableView({
                 rows={data.rows}
                 names={data.names}
                 onConfig={setConfig}
+                quick={quickFilters}
               />
               <More
                 tableId={data.id}
@@ -458,16 +459,13 @@ export function TableView({
               }}
             />
           ) : (
-            <>
-              {filters}
-              <Chips
-                fields={fields}
-                config={config}
-                rows={data.rows}
-                names={data.names}
-                onConfig={setConfig}
-              />
-            </>
+            <Chips
+              fields={fields}
+              config={config}
+              rows={data.rows}
+              names={data.names}
+              onConfig={setConfig}
+            />
           )}
         </div>
         {config.kind === 'board' && boardBy ? (
@@ -678,7 +676,7 @@ function More({
   shown: FieldView[]
   config: ViewConfig
   layout: LayoutNow
-  adding: boolean // whether a column can be added here
+  adding: boolean // whether a field can be added here
   onConfig: (c: ViewConfig) => void
   onExport: (as: 'csv' | 'xlsx') => void
   onCopy: () => void
@@ -706,6 +704,22 @@ function More({
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        {/* a field is the data, so it is first and the same in every view; a kept list's fields
+            (Tasks, People) are fixed in the core, so it has none (Vikas, 1 Nov) */}
+        {adding && (
+          <>
+            <MenuItem
+              onClick={() => {
+                setOpen(false)
+                setAdd(true)
+              }}
+            >
+              <Plus className="size-3.5 text-ink-3" />
+              Add field
+            </MenuItem>
+            <MenuLine />
+          </>
+        )}
         <SubMenu
           label={
             <>
@@ -794,16 +808,6 @@ function More({
             Reset the column widths
           </MenuItem>
         </SubMenu>
-        <MenuItem
-          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
-          onClick={() => {
-            setOpen(false)
-            setAdd(true)
-          }}
-        >
-          <Plus className="size-3.5 text-ink-3" />
-          Add column
-        </MenuItem>
         <MenuLine />
         <SubMenu
           label={
@@ -842,7 +846,7 @@ function More({
         </SubMenu>
       </Popover>
       <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
+        <AddFieldForm tableId={tableId} title="Add a field" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )
