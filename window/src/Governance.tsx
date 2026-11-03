@@ -7,7 +7,7 @@
 // only there, a wall); words code cannot match go to the module's notes instead. Figures, counts and connection states are not rules and are not here.
 import type { ModuleView, RuleView, Stream, StreamLine } from '@alpha/core/api'
 import { Ban, Check } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { showAsk } from './ask.ts'
 import { dayWords } from './time.ts'
@@ -65,7 +65,7 @@ export function GovernanceSection({
 }: {
   module?: string
   version?: number
-  title?: string
+  title?: ReactNode
   small?: boolean // a card on Home or an Overview: sized as the Agents card beside it (Vikas, 30 Oct)
 }) {
   const [rules, setRules] = useState<RuleView[] | null>(null)

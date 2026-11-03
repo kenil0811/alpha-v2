@@ -173,7 +173,8 @@ export function App() {
   const [rowPlace, setRowPlace] = useState<RowPlace | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
-  const [finding, setFinding] = useState(false)
+  // open, and the module it keeps to when opened from an Overview
+  const [finding, setFinding] = useState<false | { module: string | null }>(false)
   // how the person left the window, kept by Alpha per person: the rail, the assistant, tables
   const [layout, setLayout] = useState<Layout>(NO_LAYOUT)
   const changeLayout = useCallback((change: Partial<Layout>) => {
@@ -254,7 +255,8 @@ export function App() {
       }
     }
     const onAsk = () => setAsking(true)
-    const onFind = () => setFinding(true)
+    const onFind = (e: Event) =>
+      setFinding({ module: (e as CustomEvent<string | null>).detail ?? null })
     window.addEventListener('keydown', onKey)
     window.addEventListener('alpha:ask', onAsk)
     window.addEventListener('alpha:find', onFind)
@@ -274,7 +276,7 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        setFinding((f) => !f)
+        setFinding((f) => (f ? false : { module: null }))
       }
       // Escape steps the assistant back one level: wide to normal to folded; never while typing or
       // with a pop-up open, which Escape closes first
@@ -695,7 +697,9 @@ export function App() {
               />
             </Assistant>
           )}
-          {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
+          {finding && (
+            <Find modules={modules} within={finding.module} onClose={() => setFinding(false)} />
+          )}
           <Marker from={moduleHere} />
         </div>
       </Signals.Provider>

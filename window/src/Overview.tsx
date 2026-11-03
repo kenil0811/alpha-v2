@@ -1,8 +1,8 @@
 // A module's Overview (Vikas, 27 Oct; proposal v4): the pulse strip on top, the same block Home
 // shows for the module; under it the module's own work on the left (what waits on the person,
 // then its charts, the most opened first) and the standard column on the right, the same cards in
-// the same order in every module: Interview me, Files, Agents, Intelligence, What Alpha may do,
-// Tables. Every line, bar, slice and count opens what it counts: a table filtered to those rows,
+// the same order in every module: Files, Interview me, then Agents, Governance and Tables as one
+// card with a switch (3 Nov). Every line, bar, slice and count opens what it counts: a table filtered to those rows,
 // with Clear filters. A card's head is its name only; a card with nothing to show is not drawn.
 import type {
   AgentView,
@@ -11,7 +11,6 @@ import type {
   ModuleSummary,
   ModuleView,
   RowView,
-  RuleView,
   RunView,
   TableView as TableData,
 } from '@alpha/core/api'
@@ -19,6 +18,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  Folder,
   Image,
   LoaderCircle,
   Maximize2,
@@ -46,7 +46,6 @@ import {
   type ChartKind,
   Heat,
   KindPicker,
-  Lines,
   type Mark,
   Scatter,
 } from './ui/chart.tsx'
@@ -110,10 +109,7 @@ const num = (v: unknown): number | null =>
     : v && typeof v === 'object' && 'amount' in v
       ? Number((v as { amount: number }).amount)
       : null
-const plural = (n: number, word: string, many = `${word}s`) =>
-  `${n.toLocaleString()} ${n === 1 ? word : many}`
 const WEEK = 7 * 864e5
-const STEPS = [1, 0.75, 0.55, 0.4, 0.3, 0.2]
 
 // What a card asks, as a signal: a sign-in has stopped work until it is done, so it needs the
 // person now; anything put to them for a yes waits for it; the rest is for their information.
@@ -248,53 +244,6 @@ function scatterOf(t: TableData) {
   )
   if (Math.abs(sxy) / Math.sqrt(sxx * syy || 1) > 0.95) return null
   return { x, y, size, points, tones: tonesOf(tone) }
-}
-
-// Rows arriving over time, one line per kind (Vikas, 28 Oct): counted by week along a date that is
-// mostly past (received, denied; a due date is the bubbles'), by a twelfth of the span when that is
-// longer; one line per value of the main choice, the four biggest in colour and the rest as Other.
-function linesOf(t: TableData, not?: Field) {
-  const today = new Date().toISOString().slice(0, 10)
-  const days = (f: Field) => t.rows.map((r) => val(r, f)).filter((v) => typeof v === 'string')
-  const date = t.fields
-    .filter((f) => f.kind === 'date' && f !== not)
-    .filter((f) => days(f).filter((d) => d <= today).length > days(f).length / 2)
-    .sort((a, b) => days(b).length - days(a).length)[0]
-  const by = spreadOf(t)[0]?.f
-  if (!date || !by || days(date).length < 8) return null
-  const rows = t.rows.filter((r) => typeof val(r, date) === 'string')
-  const at = (r: RowView) => Date.parse(String(val(r, date)))
-  const from = Math.min(...rows.map(at))
-  const span = Math.max(...rows.map(at)) - from
-  const width = Math.max(WEEK, span / 11)
-  const count = Math.floor(span / width) + 1
-  if (count < 4) return null // three points make a zigzag, not a trend
-  const bin = (r: RowView) => Math.min(Math.floor((at(r) - from) / width), count - 1)
-  const periods = Array.from({ length: count }, (_, i) => {
-    const label = new Date(from + i * width).toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'short',
-    })
-    const these = rows.filter((r) => bin(r) === i)
-    return {
-      label,
-      href: these.length ? rowsHref(t, these, `${date.name} from ${label}`) : undefined,
-    }
-  })
-  const line = (label: string, has: (v: unknown) => boolean) => {
-    const n = Array<number>(count).fill(0)
-    for (const r of rows) if (has(val(r, by))) n[bin(r)] = (n[bin(r)] ?? 0) + 1
-    return { label, n }
-  }
-  const kinds = by.choices
-    .map((c) => ({ c, n: rows.filter((r) => val(r, by) === c).length }))
-    .filter((k) => k.n)
-    .sort((a, b) => b.n - a.n)
-  const top = kinds.slice(0, 4).map((k) => k.c)
-  const series = top.map((c) => line(c, (v) => v === c))
-  if (kinds.length > 4) series.push(line('Other', (v) => !top.includes(String(v))))
-  if (series.length < 2) return null
-  return { date, by, series, periods }
 }
 
 // Rows counted on two things at once (Vikas, 28 Oct): down the side what they point at (an
@@ -651,13 +600,13 @@ export function pulseOf({
         go: 'goals',
         act: g.met
           ? {
-              label: `All ${g.label.split(' ').at(-1)?.toLowerCase()}`,
+              label: 'Done',
               off: true,
               tip: `On target: ${g.n.toLocaleString()} ${g.of.split(' · ')[0]}`,
             }
           : g.left
-            ? { label: g.verb, href: g.todo, tip: g.of.split(' · ')[1] ?? g.task }
-            : { label: g.verb, off: true, tip: 'Nothing waits for this now' },
+            ? { label: 'Review', href: g.todo, tip: g.task }
+            : { label: 'Review', off: true, tip: 'Nothing waits for this now' },
       })
   else if (goals) {
     const met = goals.marks.filter((g) => g.met).length
@@ -675,8 +624,8 @@ export function pulseOf({
       })),
       go: 'goals',
       act: behind
-        ? { label: behind.verb, href: behind.todo, tip: behind.task }
-        : { label: 'All on target', off: true, tip: 'Every goal is on target' },
+        ? { label: 'Review', href: behind.todo, tip: behind.task }
+        : { label: 'Done', off: true, tip: 'Every goal is on target' },
     })
   }
   const big = [...main].sort((a, b) => b.rows.length - a.rows.length)[0]
@@ -703,8 +652,8 @@ export function pulseOf({
           : []),
       ],
       act: now?.n
-        ? { label: `Review ${now.n.toLocaleString()} new`, href: now.href }
-        : { label: 'Nothing new', off: true, tip: `No new ${big.name.toLowerCase()} this week` },
+        ? { label: 'Review', href: now.href, tip: `Review the ${now.n.toLocaleString()} new` }
+        : { label: 'Review', off: true, tip: `No new ${big.name.toLowerCase()} this week` },
       go: `weeks:${big.id}`,
     })
   }
@@ -752,7 +701,7 @@ export function pulseOf({
       go: 'agents',
       act: needs[0]
         ? { label: 'Fix', href: `#/agent/${needs[0].id}` }
-        : { label: 'Open agents', go: 'agents' },
+        : { label: 'Open', go: 'agents', tip: 'Open agents' },
     })
   }
   const changed = (runs ?? []).filter(
@@ -769,7 +718,7 @@ export function pulseOf({
         .slice(0, 3)
         .map((r) => ({ s: 'opt' as const, words: r.words ?? r.name, href: `#/run/${r.id}` })),
       go: 'maydo',
-      act: { label: 'See changes', href: '#/activity' },
+      act: { label: 'Review', href: '#/activity', tip: 'What Alpha changed' },
     })
   return tiles.slice(0, 8)
 }
@@ -897,7 +846,8 @@ function StripTile({
             spark at the left and the button at the right */}
         <div className="mt-auto flex items-end justify-end gap-2">
           {t.spark && (
-            <div className="min-w-0 flex-1">
+            // the spark keeps to its own room left of the button, never under it (Vikas, 3 Nov)
+            <div className="min-w-0 flex-1 overflow-hidden">
               <Spark points={t.spark} />
             </div>
           )}
@@ -979,9 +929,21 @@ function StripTile({
 function Spark({ points }: { points: number[] }) {
   const most = Math.max(1, ...points)
   const d = points.map((p, i) => `${i * 12},${22 - (p / most) * 20}`).join(' ')
+  // as wide as its room, at most 4rem; every point inside the box
   return (
-    <svg viewBox="0 0 62 24" className="h-6 w-16 min-w-0 shrink" aria-hidden="true">
-      <polyline points={d} fill="none" strokeWidth="1.75" className="stroke-accent" />
+    <svg
+      viewBox={`-1 0 ${Math.max(1, points.length - 1) * 12 + 2} 24`}
+      preserveAspectRatio="none"
+      className="block h-6 w-full max-w-16"
+      aria-hidden="true"
+    >
+      <polyline
+        points={d}
+        fill="none"
+        strokeWidth="1.75"
+        vectorEffect="non-scaling-stroke"
+        className="stroke-accent"
+      />
     </svg>
   )
 }
@@ -1020,7 +982,6 @@ export function Overview({
   onChange: () => void
 }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
-  const [rules, setRules] = useState<RuleView[]>([])
   const setup = useSetup(m, version)
   const { layout } = useLayout()
   useEffect(() => {
@@ -1028,10 +989,6 @@ export function Overview({
     api.get<RunView[]>('/api/activity').then(
       (all) => setRuns(all.filter((r) => r.moduleId === m.id)),
       () => setRuns([]),
-    )
-    api.get<RuleView[]>(`/api/rules?module=${encodeURIComponent(m.id)}`).then(
-      (all) => setRules(all.filter((r) => !r.revokedAt)),
-      () => setRules([]),
     )
   }, [m.id, version])
   useEffect(() => seen(`module:${m.id}`), [m.id])
@@ -1044,8 +1001,13 @@ export function Overview({
       !(t.key === 'questions' && t.big === 'Start') &&
       !(t.key === 'new' && t.big === '0'),
   )
-  const go = (id: string) =>
-    document.getElementById(`ov-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // a card behind the shared card's switch is switched to first, then scrolled to
+  const go = (id: string) => {
+    window.dispatchEvent(new CustomEvent('alpha:overview-go', { detail: id }))
+    requestAnimationFrame(() =>
+      document.getElementById(`ov-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+    )
+  }
 
   // the module's own cards, the most opened first; a chart only where it says something (Vikas,
   // 27 Oct): enough rows to read, and bars that differ
@@ -1127,24 +1089,6 @@ export function Overview({
                 tones={bubbles.tones}
               />
             )}
-          </Card>
-        ),
-      })
-    // on another date than the bubbles': on the same one they would say it twice
-    const lines = linesOf(t, bubbles?.date)
-    if (lines)
-      work.push({
-        key: `lines:${t.id}`,
-        name: `${t.name} per week`,
-        wide: true,
-        node: (
-          <Card
-            id={`lines:${t.id}`}
-            title={`${t.name} per week of ${lines.date.name.toLowerCase()}, by ${lines.by.name.toLowerCase()}`}
-            href={`#/table/${t.id}`}
-            wide
-          >
-            {() => <Lines series={lines.series} periods={lines.periods} />}
           </Card>
         ),
       })
@@ -1326,7 +1270,9 @@ export function Overview({
     })
   // the standard blocks, in this order in every module (Vikas, 29 Oct)
   const standard: Block[] = [
-    // Interview me first, a square smaller than the strip's (Vikas, 30 Oct)
+    // Files at the top, where a file is added (Vikas, 3 Nov)
+    { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
+    // Interview me next, a square smaller than the strip's (Vikas, 30 Oct)
     { key: 'interview', name: 'Interview me', node: <InterviewTile m={m} /> },
     ...(questions
       ? [
@@ -1337,38 +1283,36 @@ export function Overview({
           },
         ]
       : []),
-    ...(m.agents.length
-      ? [
-          {
-            key: 'agents',
-            name: 'Agents',
-            node: (
+    // Agents, Governance and Tables one card, a switch in its head; no Second Brain here
+    // (Vikas, 3 Nov)
+    {
+      key: 'working',
+      name: 'Agents, governance and tables',
+      node: (
+        <Working
+          parts={{
+            agents: (head) => (
               <Agents
                 m={m}
                 main={main}
                 onChange={onChange}
                 onNew={() => (window.location.hash = `#/agent/new?module=${m.id}`)}
+                head={head}
               />
             ),
-          },
-        ]
-      : []),
-    {
-      key: 'governance',
-      name: 'Governance',
-      node: (
-        <div id="ov-governance" className="rounded-lg border border-line bg-surface px-3 py-3">
-          <GovernanceSection module={m.id} version={version} small />
-        </div>
+            governance: (head) => (
+              <div
+                id="ov-governance"
+                className="rounded-lg border border-line bg-surface px-3 py-3"
+              >
+                <GovernanceSection module={m.id} version={version} small title={head} />
+              </div>
+            ),
+            tables: (head) => <Tables ms={[m]} href={`#/module/${m.id}/agents`} head={head} />,
+          }}
+        />
       ),
     },
-    {
-      key: 'tables',
-      name: 'Tables',
-      node: <Tables ms={[m]} href={`#/module/${m.id}/agents`} />,
-    },
-    { key: 'brain', name: 'Second Brain', node: <Intelligence m={m} rules={rules} /> },
-    { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
   ]
   const wide = new Set([...lead, ...work].filter((b) => 'wide' in b && b.wide).map((b) => b.key))
 
@@ -1376,7 +1320,13 @@ export function Overview({
     // its own width decides the columns, not the window's: it is drawn in the side panel too
     <div className="@container h-full overflow-y-auto">
       <div className="flex flex-col gap-4 px-7 py-4">
-        <FindBar />
+        <FindBar
+          within={{
+            id: m.id,
+            name: m.name,
+            tables: m.tables.filter((t) => t.place === 'main').map((t) => t.name),
+          }}
+        />
         <Strip tiles={tiles} onGo={go} />
         {/* the work left and the standard column right, in every module (27 Oct, kept when
             blocks became movable on 29 Oct); a block moves within or across them (30 Oct) */}
@@ -1576,6 +1526,7 @@ function Card({
   grows,
   extra,
   wide,
+  head,
   children,
 }: {
   id: string
@@ -1586,6 +1537,7 @@ function Card({
   grows?: boolean
   extra?: ReactNode
   wide?: boolean // the whole width: a chart that needs it to read
+  head?: ReactNode // in place of its name: a switch between cards that share one
   children: (big: boolean) => ReactNode
 }) {
   const [big, setBig] = useState(false)
@@ -1600,12 +1552,14 @@ function Card({
       {/* a container, so a narrow card drops the words before its buttons leave the right edge */}
       <div data-head className="@container flex h-11 items-center gap-2 rounded-t-lg px-3">
         {signal && <Dot s={signal} />}
-        <a
-          href={href}
-          className="min-w-0 truncate font-semibold text-base text-ink hover:text-accent hover:underline"
-        >
-          {title}
-        </a>
+        {head ?? (
+          <a
+            href={href}
+            className="min-w-0 truncate font-semibold text-base text-ink hover:text-accent hover:underline"
+          >
+            {title}
+          </a>
+        )}
         {!!count && <span className="text-ink-3 text-sm tabular-nums">{count}</span>}
         <span className="flex-1" />
         {extra}
@@ -1805,6 +1759,54 @@ function InterviewMe({
 
 // The module's files as a desktop: an icon each, its name, the row it sits on. Drop a file on it
 // to add it; Alpha reads it and files it.
+// Agents, Governance and Tables as one card, on Home and every Overview (Vikas, 3 Nov): a switch
+// in its head, Agents left, Governance in the middle, Tables right; each shows as its own card did.
+const WORKING = [
+  { key: 'agents', label: 'Agents' },
+  { key: 'governance', label: 'Governance' },
+  { key: 'tables', label: 'Tables' },
+] as const
+type Working = (typeof WORKING)[number]['key']
+
+export function Working({ parts }: { parts: Record<Working, (head: ReactNode) => ReactNode> }) {
+  const [tab, setTab] = useState<Working>('agents')
+  useEffect(() => {
+    const on = (e: Event) => {
+      const to = WORKING.find((w) => w.key === (e as CustomEvent<string>).detail)
+      if (to) setTab(to.key)
+    }
+    window.addEventListener('alpha:overview-go', on)
+    return () => window.removeEventListener('alpha:overview-go', on)
+  }, [])
+  const head = (
+    <div
+      role="tablist"
+      aria-label="Agents, governance and tables"
+      className="flex items-center gap-0.5 rounded-full bg-sunk p-0.75"
+    >
+      {WORKING.map((w) => (
+        <button
+          key={w.key}
+          type="button"
+          role="tab"
+          aria-selected={tab === w.key}
+          onClick={() => setTab(w.key)}
+          className={cn(
+            'flex h-6.5 items-center whitespace-nowrap rounded-full px-3 text-ink-2 text-md hover:text-ink',
+            tab === w.key && 'bg-surface font-medium text-ink shadow-btn',
+          )}
+        >
+          {w.label}
+        </button>
+      ))}
+    </div>
+  )
+  return parts[tab](head)
+}
+
+// Files as an explorer (Vikas, 3 Nov: "a file section… like file explorer"): a folder per table
+// and kind of document (Documents › Contract), the newest first inside; a path back up; any file
+// dropped anywhere on it is added.
 export function Files({
   m,
   onChange,
@@ -1815,10 +1817,18 @@ export function Files({
   href?: string
 }) {
   const { busy, problem, act } = useAct(onChange)
+  const [folder, setFolder] = useState<string | null>(null)
   const icon = (f: ModuleFileView) =>
     f.mime.startsWith('image/') ? Image : /sheet|csv|excel/.test(f.mime) ? Sheet : FileText
   const drop = (files: FileList) => act(() => Promise.all([...files].map((f) => api.upload(f))))
   const unread = m.files.filter((f) => f.read !== 'read').length
+  const folderOf = (f: ModuleFileView) => (f.kind ? `${f.row.table} › ${f.kind}` : f.row.table)
+  const folders = [...new Set(m.files.map(folderOf))].sort()
+  // one folder only: its files at once
+  const at = folders.length === 1 ? (folders[0] ?? null) : folder
+  const shown = m.files.filter((f) => folderOf(f) === at).sort((a, b) => b.at.localeCompare(a.at))
+  const line =
+    'flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-md hover:bg-hover'
   return (
     <Card
       id="files"
@@ -1832,28 +1842,65 @@ export function Files({
         <DropZone onFiles={drop} busy={busy}>
           <Refusal words={problem} />
           {m.files.length > 0 && (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(5rem,1fr))] gap-1">
-              {(big ? m.files : m.files.slice(0, 8)).map((f) => {
-                const Icon = icon(f)
-                return (
-                  <a
-                    key={`${f.hash}${f.row.id}`}
-                    href={`#/row/${f.row.id}`}
-                    data-tip={`${f.name}, on ${f.row.name}${f.read === 'read' ? '' : '; not read yet'}`}
-                    className="relative flex flex-col items-center gap-1 rounded-md p-1.5 text-center hover:bg-hover"
+            <div className="flex flex-col">
+              <div className="flex h-7 items-center gap-1 px-1.5 text-ink-3 text-sm">
+                {folders.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setFolder(null)}
+                    className={cn(at && 'hover:text-accent')}
                   >
-                    <Icon className="size-8 text-ink-3" strokeWidth={1.25} />
-                    {f.read !== 'read' && (
-                      <Dot
-                        s={f.read === 'reading' ? 'done' : 'opt'}
-                        tip={f.read === 'reading' ? 'Being read' : 'Not read yet'}
-                        className="absolute top-1 right-3"
-                      />
-                    )}
-                    <span className="line-clamp-2 break-all text-xs">{f.name}</span>
-                  </a>
-                )
-              })}
+                    All folders
+                  </button>
+                )}
+                {at && (
+                  <>
+                    {folders.length > 1 && <ChevronRight className="size-3.5" />}
+                    <span className="truncate text-ink">{at}</span>
+                  </>
+                )}
+              </div>
+              {at === null
+                ? folders.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setFolder(name)}
+                      className={line}
+                    >
+                      <Folder className="size-4 shrink-0 text-ink-3" />
+                      <span className="flex-1 truncate">{name}</span>
+                      <span className="text-ink-3 text-sm tabular-nums">
+                        {m.files.filter((f) => folderOf(f) === name).length}
+                      </span>
+                    </button>
+                  ))
+                : (big ? shown : shown.slice(0, 8)).map((f) => {
+                    const Icon = icon(f)
+                    return (
+                      <a
+                        key={`${f.hash}${f.row.id}`}
+                        href={`#/row/${f.row.id}`}
+                        data-tip={`On ${f.row.name}${f.read === 'read' ? '' : '; not read yet'}`}
+                        className={line}
+                      >
+                        <Icon className="size-4 shrink-0 text-ink-3" />
+                        <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                        {f.read !== 'read' && (
+                          <Dot
+                            s={f.read === 'reading' ? 'done' : 'opt'}
+                            tip={f.read === 'reading' ? 'Being read' : 'Not read yet'}
+                          />
+                        )}
+                        <span className="shrink-0 text-ink-3 text-sm">
+                          {new Date(f.at).toLocaleDateString(undefined, {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </span>
+                      </a>
+                    )
+                  })}
             </div>
           )}
         </DropZone>
@@ -1889,6 +1936,7 @@ export function Agents({
   onNew,
   href = `#/module/${m.id}/agents`,
   byFunction: fn = false,
+  head,
 }: {
   m: ModuleView
   main: TableData[]
@@ -1896,9 +1944,11 @@ export function Agents({
   onNew?: () => void
   href?: string
   byFunction?: boolean
+  head?: ReactNode
 }) {
   const { busy, problem, act } = useAct(onChange)
-  if (!m.agents.length) return null
+  // none yet, and somewhere to make one: the card stays, with New agent (Vikas, 3 Nov)
+  if (!m.agents.length && !onNew) return null
   const { groups, rest: all } = groupsOf(m.agents, main)
   const rest = fn
     ? all
@@ -1931,12 +1981,14 @@ export function Agents({
       id="agents"
       title="Agents"
       href={href}
+      head={head}
       count={on}
       grows={groups.length > 0 || (fn && rest.length > 8)}
     >
       {(big) => (
         <div>
           <Refusal words={problem} />
+          {!m.agents.length && <p className="py-1 text-ink-3 text-md">No agents here yet.</p>}
           {groups.map((g) => {
             const gon = g.agents.filter((a) => a.state === 'on')
             return (
@@ -2025,80 +2077,11 @@ export function Agents({
   )
 }
 
-// What Alpha knows about the module, counted: the notes it reads first, the documents it has
-// read, the rules it keeps, the agents that work here; then what it keeps, table by table.
-export function Intelligence({
-  m,
-  rules,
-  here = `#/module/${m.id}/agents`,
-}: {
-  m: ModuleView
-  rules: RuleView[]
-  here?: string
-}) {
-  const notes = m.notes.split('\n').filter((l) => !l.startsWith('#') && l.trim().length > 20)
-  // only what it has: a nought says nothing (Vikas, 27 Oct)
-  const tiles = [
-    { n: notes.length, label: 'notes', href: here },
-    { n: m.files.filter((f) => f.read === 'read').length, label: 'documents read', href: here },
-    { n: rules.length, label: 'rules', href: here },
-  ].filter((t) => t.n > 0)
-  const kept = m.tables.filter((t) => t.rows).sort((a, b) => b.rows - a.rows)
-  const total = kept.reduce((a, t) => a + t.rows, 0) || 1
-  return (
-    <Card id="intelligence" title="Second Brain" href="#/intelligence/brain">
-      {() => (
-        <div className="flex flex-col gap-2.5">
-          {tiles.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
-              {tiles.map((t) => (
-                <a
-                  key={t.label}
-                  href={t.href}
-                  className="flex flex-col rounded-md bg-sunk px-2 py-1.5 hover:bg-hover"
-                >
-                  <span className="font-serif text-xl tabular-nums">{t.n.toLocaleString()}</span>
-                  <span className="truncate text-ink-3 text-xs">{t.label}</span>
-                </a>
-              ))}
-            </div>
-          )}
-          <div className="flex h-2 overflow-hidden rounded-full bg-sunk">
-            {kept.slice(0, 6).map((t, i) => (
-              <a
-                key={t.id}
-                href={`#/table/${t.id}`}
-                data-tip={`${t.name}: ${plural(t.rows, 'row')}`}
-                className="bg-accent"
-                style={{ width: `${(t.rows / total) * 100}%`, opacity: STEPS[i] }}
-              >
-                <span className="sr-only">{`${t.name}: ${plural(t.rows, 'row')}`}</span>
-              </a>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-ink-2 text-sm">
-            {kept.slice(0, 6).map((t, i) => (
-              <a
-                key={t.id}
-                href={`#/table/${t.id}`}
-                className="flex items-center gap-1.5 hover:text-accent"
-              >
-                <span className="size-2 rounded-xs bg-accent" style={{ opacity: STEPS[i] }} />
-                {t.name} {t.rows.toLocaleString()}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-    </Card>
-  )
-}
-
 // Every table of the module, numbered as the rail numbers its modules (2.2, its parts 2.2.1),
 // all of them in sight. The pin puts a table in the bar's switch, or takes it out. On Home, every
 // module's, each under its name, the tables on rows folded until Show more.
 type TablesOf = Pick<ModuleView, 'id' | 'name' | 'tables'>
-export function Tables({ ms, href }: { ms: TablesOf[]; href: string }) {
+export function Tables({ ms, href, head }: { ms: TablesOf[]; href: string; head?: ReactNode }) {
   const [numbers, setNumbers] = useState(new Map<string, string>())
   const [alphas, setAlphas] = useState(new Set<string>())
   useEffect(() => {
@@ -2128,6 +2111,7 @@ export function Tables({ ms, href }: { ms: TablesOf[]; href: string }) {
       id="tables"
       title="Tables"
       href={href}
+      head={head}
       count={shown.reduce((a, m) => a + m.tables.length, 0)}
       grows={ms.length === 1 && !!ms[0]?.tables.some((t) => t.of)}
     >

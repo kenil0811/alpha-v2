@@ -156,25 +156,31 @@ export function registerMe(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // Find (⌘K): rows by their words, each opening where it is.
+  // Find (⌘K): rows by their words, each opening where it is; from a module's Overview, only its
+  // own rows (Vikas, 3 Nov: a module's search is for what it keeps).
   app.get('/api/find', async (req): Promise<FoundRow[]> => {
-    const { words } = z.object({ words: z.string().trim().min(1) }).parse(req.query)
-    const people: FoundRow[] = [
-      ...world.people.list('person', words).slice(0, 5),
-      ...world.people.list('company', words).slice(0, 3),
-    ].map((p) => ({
-      label: p.name,
-      hint: p.kind === 'company' ? 'Company' : (p.companies[0] ?? p.emails[0] ?? 'Person'),
-      href: `#/people/${p.id}`,
-    }))
+    const { words, module } = z
+      .object({ words: z.string().trim().min(1), module: z.string().optional() })
+      .parse(req.query)
+    const people: FoundRow[] = module
+      ? []
+      : [
+          ...world.people.list('person', words).slice(0, 5),
+          ...world.people.list('company', words).slice(0, 3),
+        ].map((p) => ({
+          label: p.name,
+          hint: p.kind === 'company' ? 'Company' : (p.companies[0] ?? p.emails[0] ?? 'Person'),
+          href: `#/people/${p.id}`,
+        }))
     return [
       ...people,
       ...world
-        .search(words, 12)
+        .search(words, module ? 60 : 12)
         .filter((h) => h.what === 'record')
         .flatMap((h) => {
           const rec = world.records.get(h.id)
           if (!rec || rec.table.hidden) return []
+          if (module && rec.table.module.id !== module) return []
           return [
             {
               label: world.rowName(rec.table, rec.record.values),

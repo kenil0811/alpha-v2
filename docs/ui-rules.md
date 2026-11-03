@@ -442,6 +442,18 @@ put it there and on the parts page (#/parts).
   wrapping, the one on screen lit, its count beside it; + adds one; right-click renames,
   duplicates or deletes. The table's actions (New, Sync now, Save) sit at that row's right.
   Replaces the lists drop-down (Vikas, 2 Nov).
+- The standard column, on Home and every Overview: Files on top, as an explorer (a folder per table
+  and kind of document, a path back up, the newest first, any file dropped on it added); then
+  Interview me; then Agents, Governance and Tables as one card, a switch in its head (Agents left,
+  Governance in the middle, Tables right). Agents shows New agent where there is none. No Second
+  Brain card. Replaces the column's 27 and 29 Oct order (Vikas, 3 Nov).
+- A tile's button is one standard word: Review, Answer, Start, Fix, Open or Done; what it opens is
+  on its hover ("Review the 3 new"). Its spark keeps to its own room left of the button, never
+  under it (Vikas, 3 Nov).
+- An Overview's Find keeps to the module: "Find in Knowledge Base: documents and reports", its
+  tables and its rows only. Home's finds everything (Vikas, 3 Nov).
+- No chart of rows per week split by kind on an Overview: "New … by week" says the count (Vikas,
+  3 Nov: confusing).
 
 ### Onboarding from the footprint (Vikas, 30 Oct; for Kenil's review)
 

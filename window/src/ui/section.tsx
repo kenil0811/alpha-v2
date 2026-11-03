@@ -9,7 +9,7 @@ export function Section({
   small,
   children,
 }: {
-  title: string
+  title: ReactNode // its name, or a switch between cards that share one (an Overview's)
   about?: string
   small?: boolean | undefined // inside a card: its head the size of the card's (Agents)
   children: ReactNode

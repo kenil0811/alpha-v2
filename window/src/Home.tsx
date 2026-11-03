@@ -11,7 +11,6 @@ import type {
   FootprintView,
   ModuleSummary,
   ModuleView,
-  RuleView,
   SetupView,
   Stream,
   TasksView,
@@ -27,12 +26,12 @@ import { GovernanceSection } from './Governance.tsx'
 import {
   Agents,
   Files,
-  Intelligence,
   isQuestion,
   Strip,
   signalOf,
   Tables,
   type Tile,
+  Working,
 } from './Overview.tsx'
 import { peek } from './Peek.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
@@ -147,16 +146,11 @@ export function Home({
   // the standard column across every module: each module's files and notes, and every rule
   // ponytail: one request a module; a workspace endpoint when a person keeps dozens
   const [views, setViews] = useState<ModuleView[]>([])
-  const [rules, setRules] = useState<RuleView[]>([])
   useEffect(() => {
     void last
     Promise.all(modules.map((m) => api.get<ModuleView>(`/api/modules/${m.id}`))).then(
       setViews,
       () => setViews([]),
-    )
-    api.get<RuleView[]>('/api/rules').then(
-      (r) => setRules(r.filter((x) => !x.revokedAt)),
-      () => setRules([]),
     )
   }, [modules, last])
   const unique = <T,>(xs: T[], key: (x: T) => string) => [
@@ -338,13 +332,21 @@ export function Home({
   )
   // the standard column, across every module, in an Overview's order
   const standard: Block[] = [
+    // Files on top, then Interview me, then Agents, Governance and Tables as one card; no Second
+    // Brain here (Vikas, 3 Nov)
+    {
+      key: 'files',
+      name: 'Files',
+      node: <Files m={workspace} onChange={load} href="#/intelligence/brain" />,
+    },
     { key: 'start', name: 'Interview me', node: start },
-    ...(agents.length
-      ? [
-          {
-            key: 'agents',
-            name: 'Agents',
-            node: (
+    {
+      key: 'working',
+      name: 'Agents, governance and tables',
+      node: (
+        <Working
+          parts={{
+            agents: (head) => (
               <Agents
                 m={workspace}
                 main={[]}
@@ -352,38 +354,21 @@ export function Home({
                 href="#/intelligence/agents"
                 byFunction
                 onNew={() => (window.location.hash = '#/agent/new')}
+                head={head}
               />
             ),
-          },
-        ]
-      : []),
-    {
-      key: 'governance',
-      name: 'Governance',
-      node: (
-        <div id="ov-governance" className="rounded-lg border border-line bg-surface px-3 py-3">
-          <GovernanceSection title="Governance" version={last ?? 0} small />
-        </div>
+            governance: (head) => (
+              <div
+                id="ov-governance"
+                className="rounded-lg border border-line bg-surface px-3 py-3"
+              >
+                <GovernanceSection title={head} version={last ?? 0} small />
+              </div>
+            ),
+            tables: (head) => <Tables ms={modules} href="#/intelligence/brain" head={head} />,
+          }}
+        />
       ),
-    },
-    ...(modules.some((m) => m.tables.length)
-      ? [
-          {
-            key: 'tables',
-            name: 'Tables',
-            node: <Tables ms={modules} href="#/intelligence/brain" />,
-          },
-        ]
-      : []),
-    {
-      key: 'brain',
-      name: 'Second Brain',
-      node: <Intelligence m={workspace} rules={rules} here="#/intelligence/brain" />,
-    },
-    {
-      key: 'files',
-      name: 'Files',
-      node: <Files m={workspace} onChange={load} href="#/intelligence/brain" />,
     },
   ]
 
@@ -602,7 +587,7 @@ function homeTiles({
       go: 'needs',
       act: all
         ? { label: 'Review', go: 'needs' }
-        : { label: 'All done', off: true, tip: 'Nothing needs you now' },
+        : { label: 'Done', off: true, tip: 'Nothing needs you now' },
     },
     {
       key: 'agents',
@@ -628,7 +613,7 @@ function homeTiles({
       go: 'agents',
       act: needs[0]
         ? { label: 'Fix', href: `#/agent/${needs[0].id}` }
-        : { label: 'Open agents', go: 'agents' },
+        : { label: 'Open', go: 'agents', tip: 'Open agents' },
     },
     {
       key: 'tasks',
@@ -642,7 +627,9 @@ function homeTiles({
         href: `#/tasks/${t.id}`,
       })),
       go: 'tasks',
-      act: { label: due ? 'Start' : 'Open tasks', go: 'tasks' },
+      act: due
+        ? { label: 'Start', go: 'tasks' }
+        : { label: 'Open', go: 'tasks', tip: 'Open tasks' },
     },
     {
       key: 'changed',
@@ -657,8 +644,8 @@ function homeTiles({
       })),
       go: 'changed',
       act: changed.length
-        ? { label: 'See changes', go: 'changed' }
-        : { label: 'Nothing new', off: true, tip: 'Nothing changed since you last looked' },
+        ? { label: 'Review', go: 'changed', tip: 'What changed' }
+        : { label: 'Review', off: true, tip: 'Nothing changed since you last looked' },
     },
   ]
 }

@@ -1467,32 +1467,45 @@ export function Bar({
   )
 }
 
-// Find (⌘K): every place in the window by its name; Return opens it.
-export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: () => void }) {
+// Find (⌘K): every place in the window by its name; Return opens it. Opened from a module's
+// Overview, only its tables and its rows (Vikas, 3 Nov).
+export function Find({
+  modules,
+  within,
+  onClose,
+}: {
+  modules: ModuleSummary[]
+  within?: string | null
+  onClose: () => void
+}) {
+  const here = within ? modules.find((m) => m.id === within) : undefined
   const [words, setWords] = useState('')
   const [at, setAt] = useState(0)
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => input.current?.focus(), [])
   const places = useMemo(
-    () => [
-      { label: 'Home', hint: '', href: '#/' },
-      { label: 'Agents', hint: '', href: '#/conversation' },
-      { label: 'Tasks', hint: '', href: '#/tasks' },
-      { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
-      { label: 'People', hint: 'Network', href: '#/people' },
-      { label: 'Activity', hint: '', href: '#/activity' },
-      { label: 'Second Brain', hint: '', href: '#/intelligence' },
-      { label: 'Settings', hint: '', href: '#/settings' },
-      ...modules.map((m) => ({
-        label: m.name,
-        hint: modules.find((p) => p.id === m.parent)?.name ?? 'Module',
-        href: `#/module/${m.id}`,
-      })),
-      ...modules.flatMap((m) =>
-        m.tables.map((t) => ({ label: t.name, hint: m.name, href: `#/table/${t.id}` })),
-      ),
-    ],
-    [modules],
+    () =>
+      here
+        ? here.tables.map((t) => ({ label: t.name, hint: here.name, href: `#/table/${t.id}` }))
+        : [
+            { label: 'Home', hint: '', href: '#/' },
+            { label: 'Agents', hint: '', href: '#/conversation' },
+            { label: 'Tasks', hint: '', href: '#/tasks' },
+            { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
+            { label: 'People', hint: 'Network', href: '#/people' },
+            { label: 'Activity', hint: '', href: '#/activity' },
+            { label: 'Second Brain', hint: '', href: '#/intelligence' },
+            { label: 'Settings', hint: '', href: '#/settings' },
+            ...modules.map((m) => ({
+              label: m.name,
+              hint: modules.find((p) => p.id === m.parent)?.name ?? 'Module',
+              href: `#/module/${m.id}`,
+            })),
+            ...modules.flatMap((m) =>
+              m.tables.map((t) => ({ label: t.name, hint: m.name, href: `#/table/${t.id}` })),
+            ),
+          ],
+    [modules, here],
   )
   const w = words.trim().toLowerCase()
   // rows whose words match, from the core, a moment after typing stops
@@ -1504,11 +1517,13 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
     }
     const t = setTimeout(() => {
       api
-        .get<FoundRow[]>(`/api/find?words=${encodeURIComponent(w)}`)
+        .get<FoundRow[]>(
+          `/api/find?words=${encodeURIComponent(w)}${here ? `&module=${encodeURIComponent(here.id)}` : ''}`,
+        )
         .then(setRows, () => setRows([]))
     }, 180)
     return () => clearTimeout(t)
-  }, [w])
+  }, [w, here])
   // a name that starts with the words first, then one that holds them, then its module's
   const score = (p: { label: string; hint: string }) => {
     const l = p.label.toLowerCase()
@@ -1540,7 +1555,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
           <input
             ref={input}
             value={words}
-            placeholder="Find a screen, a table or a row"
+            placeholder={here ? `Find in ${here.name}` : 'Find a screen, a table or a row'}
             aria-label="Find"
             className="h-11 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
             onChange={(e) => {
