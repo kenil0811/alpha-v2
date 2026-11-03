@@ -106,7 +106,7 @@ export function numberOf(field: FieldView, value: unknown): number | null {
   if (field.kind === 'money' && typeof value === 'object')
     return (value as { amount: number }).amount
   if (field.kind === 'date') {
-    const t = Date.parse(String(value))
+    const t = dateOf(value) // a plain date is that day where the person is, not UTC midnight
     return Number.isNaN(t) ? null : t
   }
   const n = Number(value)

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import {
   createContext,
+  type DragEvent,
   type MouseEvent,
   type ReactNode,
   useContext,
@@ -43,7 +44,7 @@ import { useLayout } from './layout.ts'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
-import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
+import { ancestors, childrenOf, flat, inside, ordered, tops } from './tree.ts'
 import { Back } from './ui/back.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -130,7 +131,7 @@ function Nav({
 export const Signals = createContext<Record<string, Signal>>({})
 
 export function Rail({
-  modules,
+  modules: given,
   place,
   name,
   cards,
@@ -154,6 +155,8 @@ export function Rail({
   onLayout: (change: Partial<Layout>) => void
   onNew: () => void // New module: a blank module whose words Alpha builds it from
 }) {
+  // in the order the person dragged them (Vikas, 2 Nov), kept by Alpha per person
+  const modules = ordered(given, layout.order)
   // the rail's width, dragged by its edge, kept by Alpha per person
   const width = layout.railWidth ?? 216
   const [dragged, setDragged] = useState<number | null>(null)
@@ -177,6 +180,12 @@ export function Rail({
         onOpen={(w) => onLayout({ railFolded: false, ...(w ? { railWidth: w } : {}) })}
       />
     )
+  const docked = dockedOf(layout, modules)
+  const line = railLine(
+    fixedPlaces(place, waiting, tasksDue, modules).filter((f) => !docked.includes(f.href)),
+    shownTops(modules, hiding.hidden).filter((m) => !docked.includes(`#/module/${m.id}`)),
+    layout.order,
+  )
   const fold = (id: string) =>
     onLayout({
       folded: layout.folded.includes(id)
@@ -218,37 +227,12 @@ export function Rail({
         </button>
       </div>
       <Dock modules={modules} place={place} here={here} waiting={waiting} tasksDue={tasksDue} />
-      <div className="flex flex-col gap-0.5">
-        {fixedPlaces(place, waiting, tasksDue, modules)
-          .filter((f) => !(layout.docked ?? []).includes(f.href))
-          .map((f) => (
-            <Nav
-              key={f.href}
-              href={f.href}
-              icon={f.icon('size-4')}
-              label={f.label}
-              current={f.current}
-              extra={
-                f.count > 0 &&
-                (f.href === '#/' ? (
-                  <Waiting cards={cards} n={waiting} modules={modules} />
-                ) : (
-                  <Badge n={f.count} />
-                ))
-              }
-              onContextMenu={(e) => {
-                setPinning(f.href)
-                pin.on.onContextMenu(e)
-              }}
-            />
-          ))}
-        <Popover point={pin.point} open={pin.open} onClose={pin.close}>
-          {pinning && <DockItem href={pinning} onDone={pin.close} />}
-        </Popover>
-      </div>
+      <Popover point={pin.point} open={pin.open} onClose={pin.close}>
+        {pinning && <DockItem href={pinning} onDone={pin.close} />}
+      </Popover>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
       <div
-        className="mt-3 min-h-0 flex-1 overflow-y-auto"
+        className="min-h-0 flex-1 overflow-y-auto"
         onContextMenu={(e) => {
           if (e.target === e.currentTarget && modules.some((m) => hiding.hidden.includes(m.id)))
             empty.on.onContextMenu(e)
@@ -262,20 +246,51 @@ export function Rail({
         <Popover point={empty.point} open={empty.open} onClose={empty.close}>
           <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
         </Popover>
-        <ModuleDrag modules={modules}>
-          {shownTops(modules, hiding.hidden)
-            .filter((m) => !dockedOf(layout, modules).includes(`#/module/${m.id}`))
-            .map((m) => (
-              <ModuleItem
-                key={m.id}
-                m={m}
-                modules={modules}
-                here={here}
-                folded={layout.folded}
-                onFold={fold}
-                hiding={hiding}
-              />
-            ))}
+        {/* Home, Agents and Tasks in one list with the top modules, so a module can sit between
+            any two of them (Vikas, 2 Nov) */}
+        <ModuleDrag
+          modules={modules}
+          keys={line.map((x) => x.key)}
+          onOrder={(order) => onLayout({ order })}
+        >
+          <div className="flex flex-col gap-0.5">
+            {line.map((x) =>
+              x.f ? (
+                <FixedItem key={x.key} at={x.key}>
+                  <Nav
+                    href={x.f.href}
+                    icon={x.f.icon('size-4')}
+                    label={x.f.label}
+                    current={x.f.current}
+                    extra={
+                      x.f.count > 0 &&
+                      (x.f.href === '#/' ? (
+                        <Waiting cards={cards} n={waiting} modules={modules} />
+                      ) : (
+                        <Badge n={x.f.count} />
+                      ))
+                    }
+                    onContextMenu={(e) => {
+                      setPinning(x.key)
+                      pin.on.onContextMenu(e)
+                    }}
+                  />
+                </FixedItem>
+              ) : (
+                x.m && (
+                  <ModuleItem
+                    key={x.key}
+                    m={x.m}
+                    modules={modules}
+                    here={here}
+                    folded={layout.folded}
+                    onFold={fold}
+                    hiding={hiding}
+                  />
+                )
+              ),
+            )}
+          </div>
         </ModuleDrag>
         <button
           type="button"
@@ -399,7 +414,8 @@ function Dock({
   if (tiles.length === 0) return null
   return (
     <div className="mb-1">
-      <IconTiles>
+      {/* each with its name under its icon, three to a row so the names fit (Vikas, 2 Nov) */}
+      <IconTiles className="grid-cols-3">
         {tiles.map((t) => (
           <IconTile
             key={t.href}
@@ -407,6 +423,7 @@ function Dock({
             label={t.label}
             current={t.current}
             rail
+            named
             badge={t.count > 0 && <Badge n={t.count} />}
             onContextMenu={(e) => {
               setPicked(t.href)
@@ -797,24 +814,46 @@ function Waiting({
   )
 }
 
-// Dragging a module onto another puts it inside; onto Top level, out to the top. The same place
-// route as the ⋮ menu, which stays the keyboard's way to move one.
+// Dragging a module onto the middle of another puts it inside; between two (the top or bottom of
+// one), there, beside them (Vikas, 2 Nov); onto Top level, out to the top. The same place route as
+// the ⋮ menu, which stays the keyboard's way to move one.
+type Side = 'in' | 'before' | 'after'
 type Dragging = {
   id: string | null
   start: (id: string | null) => void
-  drop: (within: string | null) => void
+  drop: (target: string | null, side?: Side) => void
 }
 const Drag = createContext<Dragging>({ id: null, start: () => undefined, drop: () => undefined })
 
-function ModuleDrag({ modules, children }: { modules: ModuleSummary[]; children: ReactNode }) {
+function ModuleDrag({
+  modules,
+  keys,
+  onOrder,
+  children,
+}: {
+  modules: ModuleSummary[]
+  keys: string[] // the rail's line in order: Home, Agents and Tasks by href, modules by id
+  onOrder: (order: string[]) => void
+  children: ReactNode
+}) {
   const [id, setId] = useState<string | null>(null)
   const [over, setOver] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const drop = async (within: string | null) => {
+  const drop = async (target: string | null, side: Side = 'in') => {
     setId(null)
-    if (!id) return
+    if (!id || id === target) return
+    const to = target ? modules.find((m) => m.id === target) : undefined
+    // between two: inside what they sit in (a fixed place is at the top), then in their order
+    const within = side === 'in' ? target : (to?.parent ?? null)
     try {
-      await api.post(`/api/modules/${id}/place`, { within })
+      if (modules.find((m) => m.id === id)?.parent !== within)
+        await api.post(`/api/modules/${id}/place`, { within })
+      if (side !== 'in' && target) {
+        const all = [...keys, ...modules.map((m) => m.id).filter((x) => !keys.includes(x))]
+        const ids = all.filter((x) => x !== id)
+        ids.splice(ids.indexOf(target) + (side === 'after' ? 1 : 0), 0, id)
+        onOrder(ids)
+      }
       setProblem(null)
     } catch (err) {
       setProblem(err instanceof Error ? err.message : 'That did not move.')
@@ -822,7 +861,7 @@ function ModuleDrag({ modules, children }: { modules: ModuleSummary[]; children:
   }
   const nested = !!modules.find((m) => m.id === id)?.parent
   return (
-    <Drag.Provider value={{ id, start: setId, drop: (w) => void drop(w) }}>
+    <Drag.Provider value={{ id, start: setId, drop: (t, side) => void drop(t, side) }}>
       {nested && (
         // biome-ignore lint/a11y/noStaticElementInteractions: a drop target; the ⋮ menu moves by keyboard
         <div
@@ -856,6 +895,67 @@ type Hiding = { hidden: string[]; set: (ids: string[]) => void }
 
 const shownTops = (modules: ModuleSummary[], hidden: string[]) =>
   tops(modules).filter((m) => !hidden.includes(m.id))
+
+// The rail's one line, in the order the person dragged it: a fixed place not placed yet comes
+// first, as it always has, and a module not placed yet after what is
+type Fixed = {
+  href: string
+  label: string
+  current: boolean
+  count: number
+  icon: (c: string) => ReactNode
+}
+export function railLine<M extends { id: string }>(fixed: Fixed[], tops: M[], order: string[]) {
+  const rank = (key: string, isFixed: boolean) => {
+    const i = order.indexOf(key)
+    return i >= 0 ? i : isFixed ? -1 : order.length
+  }
+  return [
+    ...fixed.map((f, i) => ({ key: f.href, f, m: null, r: rank(f.href, true), i })),
+    ...tops.map((m, i) => ({ key: m.id, f: null, m, r: rank(m.id, false), i: fixed.length + i })),
+  ].sort((a, b) => a.r - b.r || a.i - b.i)
+}
+
+// Home, Agents or Tasks as a place to drop a module beside: above or below it, never into it
+function FixedItem({ at, children }: { at: string; children: ReactNode }) {
+  const drag = useContext(Drag)
+  const [over, setOver] = useState<'before' | 'after' | null>(null)
+  const sideOf = (e: DragEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return e.clientY - r.top < r.height / 2 ? 'before' : 'after'
+  }
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: dropped on; the ⋮ menu moves by keyboard
+    <div
+      className="relative"
+      onDragOver={(e) => {
+        if (!drag.id) return
+        e.preventDefault()
+        const side = sideOf(e)
+        if (over !== side) setOver(side)
+      }}
+      onDragLeave={() => setOver(null)}
+      onDrop={(e) => {
+        const side = sideOf(e)
+        setOver(null)
+        if (!drag.id) return
+        e.preventDefault()
+        drag.drop(at, side)
+      }}
+    >
+      {over && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            'pointer-events-none absolute inset-x-1 z-1 h-0.5 rounded-full bg-accent',
+            over === 'before' ? '-top-px' : '-bottom-px',
+          )}
+        />
+      )}
+      {children}
+    </div>
+  )
+}
 
 // Hidden modules ›: each one, to bring back; only when any are hidden.
 function HiddenMenu({
@@ -909,12 +1009,18 @@ function ModuleItem({
   const menu = useContextMenu()
   const open = !folded.includes(m.id)
   const drag = useContext(Drag)
-  const [over, setOver] = useState(false)
-  // never into itself, one of its own, or where it already sits
-  const can =
+  const [over, setOver] = useState<Side | null>(null)
+  // never into or beside itself or one of its own; never into where it already sits
+  const can = (side: Side) =>
     !!drag.id &&
     !inside(modules, drag.id).includes(m.id) &&
-    modules.find((x) => x.id === drag.id)?.parent !== m.id
+    (side !== 'in' || modules.find((x) => x.id === drag.id)?.parent !== m.id)
+  // the top and bottom thirds of its line are between it and its neighbours, the middle is into it
+  const sideOf = (e: DragEvent<HTMLElement>): Side => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const y = (e.clientY - r.top) / r.height
+    return y < 0.3 ? 'before' : y > 0.7 ? 'after' : 'in'
+  }
   return (
     <div>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: dragged and dropped on; the ⋮ menu moves by keyboard */}
@@ -927,22 +1033,34 @@ function ModuleItem({
         onDragEnd={() => drag.start(null)}
         {...menu.on}
         onDragOver={(e) => {
-          if (!can) return
+          const side = sideOf(e)
+          if (!can(side)) return setOver(null)
           e.preventDefault()
-          setOver(true)
+          if (over !== side) setOver(side)
         }}
-        onDragLeave={() => setOver(false)}
+        onDragLeave={() => setOver(null)}
         onDrop={(e) => {
-          if (!can) return
+          const side = sideOf(e)
+          setOver(null)
+          if (!can(side)) return
           e.preventDefault()
-          setOver(false)
-          drag.drop(m.id)
+          drag.drop(m.id, side)
         }}
         className={cn(
           'group/item relative flex items-center rounded-md',
-          over && 'bg-rail-hover ring-2 ring-accent',
+          over === 'in' && 'bg-rail-hover ring-2 ring-accent',
         )}
       >
+        {/* where it goes between two: a line above or below this one */}
+        {(over === 'before' || over === 'after') && (
+          <span
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute inset-x-1 z-1 h-0.5 rounded-full bg-accent',
+              over === 'before' ? '-top-px' : '-bottom-px',
+            )}
+          />
+        )}
         <Nav
           href={`#/module/${m.id}`}
           icon={<ModuleIcon name={m.name} className="size-4" />}
@@ -1259,6 +1377,15 @@ export function InBar({ children }: { children: ReactNode }) {
   return at ? createPortal(children, at) : null
 }
 
+// A screen's tabs (its pill switch) sit in their own row under the bar, which never scrolls
+// (Vikas, 2 Nov: "just below header a nav bar and be fixed")
+const Tabs = createContext<HTMLElement | null>(null)
+export const NavRow = Tabs.Provider
+export function InNav({ children }: { children: ReactNode }) {
+  const at = useContext(Tabs)
+  return at ? createPortal(children, at) : null
+}
+
 // The places this window went, in order: Back returns to the one before, wherever it was (Vikas,
 // 30 Oct: "when I press back, it's going to home and not to the previous path")
 const been: string[] = [globalThis.location?.hash || '#/']
@@ -1276,15 +1403,17 @@ export function Bar({
   lens,
   onClearLens,
   middle,
+  backs = true,
 }: {
   crumb: Crumb
   lens: { id: string; name: string } | null
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
+  backs?: boolean // false inside a module: its tabs are the way around
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
   const back = crumb.parts.at(-2)
-  const home = !crumb.parts.length || (crumb.parts.length === 1 && last === 'Home')
+  const home = !backs || !crumb.parts.length || (crumb.parts.length === 1 && last === 'Home')
   return (
     <div
       data-tauri-drag-region
@@ -1315,7 +1444,23 @@ export function Bar({
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        <h1 className="hidden truncate font-serif text-2xl text-ink peer-empty:block">{last}</h1>
+        {/* the path to the screen, each step small and opening its place, then where it ends,
+            larger (Vikas, 2 Nov) */}
+        <nav aria-label="Path" className="hidden min-w-0 items-baseline gap-1.5 peer-empty:flex">
+          {crumb.parts.slice(0, -1).map((p) => (
+            <span key={p.label} className="flex shrink-0 items-baseline gap-1.5 text-ink-3 text-sm">
+              {p.href ? (
+                <a href={p.href} className="hover:text-accent hover:underline">
+                  {p.label}
+                </a>
+              ) : (
+                p.label
+              )}
+              <ChevronRight className="size-3.25 self-center" />
+            </span>
+          ))}
+          <h1 className="truncate font-serif text-2xl text-ink">{last}</h1>
+        </nav>
       </div>
       <div data-tauri-drag-region />
     </div>
@@ -1335,7 +1480,6 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       { label: 'Tasks', hint: '', href: '#/tasks' },
       { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
       { label: 'People', hint: 'Network', href: '#/people' },
-      { label: 'Organizations', hint: 'Network', href: '#/people?companies' },
       { label: 'Activity', hint: '', href: '#/activity' },
       { label: 'Second Brain', hint: '', href: '#/intelligence' },
       { label: 'Settings', hint: '', href: '#/settings' },

@@ -76,12 +76,6 @@ export function Footprint({ cards, onAsk }: { cards: CardView[]; onAsk: () => vo
               key={s.id}
               className="flex items-center gap-3 border-hair border-t px-3 py-2 first:border-t-0"
             >
-              <Switch
-                checked={s.ticked}
-                label={`Read ${s.title.toLowerCase()}`}
-                disabled={busy || !!s.needs}
-                onChange={(v) => act(() => post('tick', { source: s.id, on: v }), s.id)}
-              />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium text-base text-ink">{s.title}</span>
                 <span className="block text-ink-3 text-sm">
@@ -117,6 +111,13 @@ export function Footprint({ cards, onAsk }: { cards: CardView[]; onAsk: () => vo
                   </span>
                 )
               )}
+              {/* the switch last, right of any button or link (Vikas, 2 Nov) */}
+              <Switch
+                checked={s.ticked}
+                label={`Read ${s.title.toLowerCase()}`}
+                disabled={busy || !!s.needs}
+                onChange={(v) => act(() => post('tick', { source: s.id, on: v }), s.id)}
+              />
             </div>
           ))}
         </div>

@@ -11,7 +11,7 @@ import { api, Problem } from './api.ts'
 import { peopleTabs } from './Module.tsx'
 import { peek } from './Peek.tsx'
 import { Record } from './Record.tsx'
-import { InBar } from './Shell.tsx'
+import { InNav } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
@@ -64,7 +64,7 @@ export function People({
   )
 }
 
-// People and Organizations are Network's first two tabs, beside its pages and tables, in the bar.
+// People is Network's tab beside Overview, in the bar; an organization's list opens from a person.
 function PeopleList({
   kind,
   version,
@@ -87,9 +87,9 @@ function PeopleList({
   const none = data && data.rows.length === 0 && kind === 'person'
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Network's switch in the bar (Vikas, 29 Oct): Overview first, then People and
-          Organizations, nothing else; its other lists are the People table's Lists */}
-      <InBar>
+      {/* Network's switch in the bar (Vikas, 29 Oct): Overview first, then People, nothing else;
+          its other lists are the People table's Lists */}
+      <InNav>
         <PillSwitch label={net?.name ?? 'People'}>
           {[
             ...(net
@@ -107,7 +107,7 @@ function PeopleList({
             <SwitchPill key={t.key} tab={t} />
           ))}
         </PillSwitch>
-      </InBar>
+      </InNav>
       {none && (
         <div className="border-line border-b px-7 py-2">
           <Button

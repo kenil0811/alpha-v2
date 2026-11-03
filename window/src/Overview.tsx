@@ -53,6 +53,7 @@ import {
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
+import { FindBar } from './ui/find-bar.tsx'
 import { IconTile } from './ui/icon-tile.tsx'
 import { Popover } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -879,28 +880,22 @@ function StripTile({
           if (e.key === 'Enter') on || !lines.length ? onGo(t.go) : onOpen(true)
         }}
         className={cn(
-          'flex aspect-square w-40 shrink-0 snap-start cursor-pointer flex-col rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
+          'flex w-38 shrink-0 snap-start cursor-pointer flex-col gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 transition-shadow hover:shadow-pop',
           on && 'border-accent-line shadow-pop',
         )}
       >
-        {/* the number big, its words after it on the same line; a number of four characters or
-            more ("1,016") stands on its own line above them (Vikas, 30 Oct) */}
-        {t.big.length >= 4 ? (
-          <>
-            <div className="font-serif text-2xl leading-none">{t.big}</div>
-            <p className="mt-1 truncate text-ink-2 text-sm">{t.small}</p>
-          </>
-        ) : (
-          <p className="line-clamp-2 text-ink-2 text-sm">
-            {t.big && (
-              <span className="mr-1.5 font-serif text-2xl text-ink leading-none">{t.big}</span>
-            )}
-            {t.small}
-          </p>
-        )}
+        {/* the number two lines tall, its words beside it on both lines, whatever its length;
+            no room left empty: as tall as what it holds, its words a step up (Vikas, 2 Nov;
+            replaces the square and the long number on its own line, 30 Oct) */}
+        <div className="flex items-center gap-2">
+          {t.big && (
+            <span className="shrink-0 font-serif text-2xl text-ink leading-10">{t.big}</span>
+          )}
+          <p className="line-clamp-2 min-w-0 text-base text-ink-2">{t.small}</p>
+        </div>
         {/* three lines in all (Vikas, 30 Oct): the number and its words, then one row with the
             spark at the left and the button at the right */}
-        <div className="mt-auto flex items-end justify-end gap-2 pt-1.5">
+        <div className="mt-auto flex items-end justify-end gap-2">
           {t.spark && (
             <div className="min-w-0 flex-1">
               <Spark points={t.spark} />
@@ -1381,11 +1376,12 @@ export function Overview({
     // its own width decides the columns, not the window's: it is drawn in the side panel too
     <div className="@container h-full overflow-y-auto">
       <div className="flex flex-col gap-4 px-7 py-4">
+        <FindBar />
         <Strip tiles={tiles} onGo={go} />
         {/* the work left and the standard column right, in every module (27 Oct, kept when
             blocks became movable on 29 Oct); a block moves within or across them (30 Oct) */}
         <Arranged
-          className="grid gap-4 @4xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]"
+          className="grid gap-8 @4xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]"
           blocks={[...lead, ...work, ...standard]}
           columns={[
             {
@@ -1948,12 +1944,28 @@ export function Agents({
                 <Line
                   s={strongest(g.agents.map(agentSignal)) ?? 'opt'}
                   actions={
-                    <Switch
-                      checked={gon.length > 0}
-                      disabled={busy}
-                      label={gon.length ? `Pause every ${g.name}` : `Turn on every ${g.name}`}
-                      onChange={(v) => turn(g.agents, v)}
-                    />
+                    // the button, then the switch at the far right (Vikas, 2 Nov: toggles sit
+                    // right of buttons); when they last updated on the button's hover
+                    <span className="flex items-center gap-2.5">
+                      <UpdateNow
+                        at={g.agents
+                          .map((a) => a.lastRunAt)
+                          .filter(Boolean)
+                          .sort()
+                          .at(-1)}
+                        busy={busy || gon.some((a) => a.running)}
+                        disabled={!gon.length}
+                        onClick={() => sync(g.agents)}
+                        tip={`Run every ${g.name.toLowerCase().replace(/s$/, '')} that is on, now`}
+                        words={false}
+                      />
+                      <Switch
+                        checked={gon.length > 0}
+                        disabled={busy}
+                        label={gon.length ? `Pause every ${g.name}` : `Turn on every ${g.name}`}
+                        onChange={(v) => turn(g.agents, v)}
+                      />
+                    </span>
                   }
                 >
                   {g.name}{' '}
@@ -1964,20 +1976,6 @@ export function Agents({
                     <span
                       className="bg-good"
                       style={{ width: `${(gon.length / g.agents.length) * 100}%` }}
-                    />
-                  </div>
-                  {/* when they last updated, beside the one button that updates them now */}
-                  <div className="mt-1.5 flex">
-                    <UpdateNow
-                      at={g.agents
-                        .map((a) => a.lastRunAt)
-                        .filter(Boolean)
-                        .sort()
-                        .at(-1)}
-                      busy={busy || gon.some((a) => a.running)}
-                      disabled={!gon.length}
-                      onClick={() => sync(g.agents)}
-                      tip={`Run every ${g.name.toLowerCase().replace(/s$/, '')} that is on, now`}
                     />
                   </div>
                 </Line>
@@ -2102,9 +2100,13 @@ export function Intelligence({
 type TablesOf = Pick<ModuleView, 'id' | 'name' | 'tables'>
 export function Tables({ ms, href }: { ms: TablesOf[]; href: string }) {
   const [numbers, setNumbers] = useState(new Map<string, string>())
+  const [alphas, setAlphas] = useState(new Set<string>())
   useEffect(() => {
     api.get<ModuleSummary[]>('/api/modules').then(
-      (all) => setNumbers(moduleNumbers(all)),
+      (all) => {
+        setNumbers(moduleNumbers(all))
+        setAlphas(new Set(all.filter((m) => m.alpha).map((m) => m.id)))
+      },
       () => undefined,
     )
   }, [])
@@ -2112,8 +2114,9 @@ export function Tables({ ms, href }: { ms: TablesOf[]; href: string }) {
   // their numbers' order (Vikas, 30 Oct: "expand and collapse… in default, collapsed")
   const [open, setOpen] = useState<Set<string>>(new Set())
   const order = (m: TablesOf) => (numbers.get(m.id) ?? '99').split('.').map(Number)
+  // Alpha's own tables are Governance's, not a module's (Vikas, 2 Nov)
   const shown = ms
-    .filter((m) => m.tables.length)
+    .filter((m) => m.tables.length && !alphas.has(m.id))
     .sort((a, b) => {
       const [x, y] = [order(a), order(b)]
       for (let i = 0; i < Math.max(x.length, y.length); i++)

@@ -25,7 +25,6 @@ import { useEffect, useRef, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { peek } from './Peek.tsx'
-import { InBar } from './Shell.tsx'
 import { Blocks } from './table/Blocks.tsx'
 import { EditCell } from './table/Grid.tsx'
 import { opens } from './table/Notes.tsx'
@@ -120,9 +119,6 @@ export function RowPage({
     <div className="@container h-full overflow-y-auto">
       {!inside && (
         <>
-          <InBar>
-            <span />
-          </InBar>
           <div className="h-28 bg-linear-to-b from-accent-soft to-canvas" />
         </>
       )}
@@ -138,15 +134,20 @@ export function RowPage({
         >
           <ModuleIcon name={view.table.module.name} className={inside ? 'size-5' : 'size-8'} />
         </div>
-        <a
-          href={`#/table/${view.table.id}`}
-          className="mt-4 w-fit text-ink-3 text-sm hover:text-accent hover:underline"
-        >
-          {view.table.module.name === view.table.name
-            ? view.table.name
-            : `${view.table.module.name} · ${view.table.name}`}
-        </a>
+        {/* its module and table are the path in the bar, each opening its place (Vikas, 2 Nov);
+            inside the side panel, which has no bar, the line stays */}
+        {inside && (
+          <a
+            href={`#/table/${view.table.id}`}
+            className="mt-4 w-fit text-ink-3 text-sm hover:text-accent hover:underline"
+          >
+            {view.table.module.name === view.table.name
+              ? view.table.name
+              : `${view.table.module.name} · ${view.table.name}`}
+          </a>
+        )}
         <Title
+          className={inside ? '' : 'mt-5'}
           title={view.title}
           onRename={titled && canType(titled) ? (t) => edit(titled, t) : undefined}
         />

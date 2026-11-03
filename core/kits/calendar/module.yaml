@@ -1,0 +1,26 @@
+# Alpha's own Calendar (Vikas, 2 Nov: a separate calendar module), installed at start. The Mac's
+# Calendar, once connected, lands its events in Events here (the connector finds the table by its
+# name), so meetings have one home whether or not it is connected yet.
+name: Calendar
+api: 1
+version: 0.1.0
+description: >
+  The person's meetings and events, laid on a calendar: from the Mac's own Calendar once it is
+  connected, and any they add here.
+tables:
+  - name: Events
+    about: "One meeting or event on the person's calendar, from the Mac's Calendar or added here."
+    # who was in each event, as the Calendar connector says it
+    people: { each: exchange, channel: meeting, at: Starts, with: [Attendees], by: Organizer, you: Your address, about: Title }
+    fields:
+      - { name: Title, kind: text, about: "What the event is called." }
+      - { name: Starts, kind: date, about: "When it starts." }
+      - { name: Ends, kind: date, about: "When it ends." }
+      - { name: All day, kind: choice, choices: ["yes", "no"], about: "Whether it takes the whole day." }
+      - { name: Location, kind: text, about: "Where it is, or its call link." }
+      - { name: Calendar, kind: text, about: "Which of the person's calendars it is on." }
+      - { name: Attendees, kind: text, about: "Who was asked, by name and address." }
+      - { name: Organizer, kind: text, about: "Who set it up." }
+      - { name: Your address, kind: text, about: "The person's own address among those asked." }
+    views:
+      - { name: Calendar, default: true, kind: calendar, by: Starts, about: "What is on, by day." }

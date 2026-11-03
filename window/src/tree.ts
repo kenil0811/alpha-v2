@@ -44,3 +44,16 @@ export function flat<M extends Placed>(modules: M[]): { module: M; depth: number
   for (const m of tops(modules)) walk(m, 0)
   return out
 }
+
+// The modules in the order the person dragged them on the rail; any not placed yet keep the core's
+// order after them.
+export function ordered<M extends Placed>(modules: M[], order: string[]): M[] {
+  const at = (m: M) => {
+    const i = order.indexOf(m.id)
+    return i < 0 ? order.length : i
+  }
+  return modules
+    .map((m, i) => ({ m, i }))
+    .sort((a, b) => at(a.m) - at(b.m) || a.i - b.i)
+    .map((x) => x.m)
+}

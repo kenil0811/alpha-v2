@@ -23,7 +23,7 @@ import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { lowerFirst, Overview, usePins } from './Overview.tsx'
 import { PageView } from './PageView.tsx'
 import { moduleNumbers, numberTables } from './Parts.tsx'
-import { InBar } from './Shell.tsx'
+import { InNav } from './Shell.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Confirm } from './ui/dialog.tsx'
@@ -152,7 +152,7 @@ function ModuleSwitch({
     label: 'Overview',
     sel: current.kind === 'overview',
   }
-  // the module people live in (Network): Overview, People and Organizations only
+  // the module people live in (Network): Overview and People only
   const groups: Tab[][] = m.people
     ? [[overview, ...peopleTabs(null)]]
     : [
@@ -174,7 +174,7 @@ function ModuleSwitch({
         })),
       ].filter((g) => g.length)
   return (
-    <InBar>
+    <InNav>
       <PillSwitch label={m.name}>
         {groups.map((g, i) => (
           <Fragment key={g[0]?.key ?? i}>
@@ -189,7 +189,7 @@ function ModuleSwitch({
           </Fragment>
         ))}
       </PillSwitch>
-    </InBar>
+    </InNav>
   )
 }
 
@@ -297,10 +297,11 @@ export const moduleTabs = (
   },
 ]
 
-// People and Organizations, the first two tabs of the module people live in.
+// People, the one list of the module people live in: each person's organization is a column of
+// it, and a person's page opens their organization's, so Organizations is no tab of its own (Vikas, 2 Nov: "I
+// don't see why we have both people and organizations")
 export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
-  { key: 'people', href: '#/people', label: 'People', sel: kind === 'person' },
-  { key: 'companies', href: '#/people?companies', label: 'Organizations', sel: kind === 'company' },
+  { key: 'people', href: '#/people', label: 'People', sel: kind !== null },
 ]
 
 // The modules inside this one, a row each: its name, where it comes from, and what goes on in

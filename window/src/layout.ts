@@ -7,6 +7,7 @@ export const NO_LAYOUT: Layout = {
   railFolded: false,
   folded: [],
   hidden: [],
+  order: [],
   railWidth: null,
   panel: null,
   assistant: 'open',

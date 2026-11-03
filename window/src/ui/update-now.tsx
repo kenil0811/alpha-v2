@@ -31,19 +31,24 @@ export function UpdateNow({
   onClick,
   tip,
   disabled,
+  words = true,
 }: {
   at: string | null | undefined
   busy: boolean
   onClick: () => void
   tip?: string
   disabled?: boolean
+  words?: boolean // false where room is short (beside a switch): the time is on the button's hover
 }) {
   return (
     // kept at the right; in a narrow card's head (a container) the words go, and their time
     // moves to the button's hover
     <span className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
       <span
-        className="whitespace-nowrap text-ink-3 text-sm @max-[22rem]:hidden"
+        className={cn(
+          'whitespace-nowrap text-ink-3 text-sm @max-[22rem]:hidden',
+          !words && 'hidden',
+        )}
         data-tip={at && !busy ? full(new Date(at)) : undefined}
       >
         {busy ? 'Updating…' : at ? `Updated ${updatedWords(at)}` : 'Not updated yet'}

@@ -241,7 +241,7 @@ put it there and on the parts page (#/parts).
   holds who is signed in, Appearance on one line, Switch account and Log out; never a place the
   rail already has. Every count on the rail says on hover what it is made of.
 - Marking dims the window and lights what is under the pointer; its banner wears the accent ring.
-- Network's switch is Overview, People, Organizations, nothing else. A table that names people by
+- Network's switch is Overview and People, nothing else (Organizations went on 2 Nov). A table that names people by
   a role's address ("Broker email") puts them in that role's list (Brokers).
 
 ### Agents as threads, Tasks never empty (Vikas, 30 Oct)
@@ -315,7 +315,9 @@ put it there and on the parts page (#/parts).
   soft tint, the primary darkens; the focus ring is `app.css`'s, for every kind. A raw `<button>`
   that looks like a button does the same.
 - A row of buttons (a card's actions, a dialog's foot, a task's button) sits at the right, the one
-  thing to do first: `Actions` in `ui/card.tsx`, the Dialog's `actions`.
+  thing to do first: `Actions` in `ui/card.tsx`, the Dialog's `actions`. A switch in the same row
+  is last, right of every button and link (Vikas, 2 Nov); beside one, Update now keeps its time on
+  its hover.
 - Home says each thing once: the Needs you tile counts all that waits, questions with it, and goes
   to Needs you without listing it; Interview me is a tile only while no question waits.
 - A task row is one grid: state, title and where, the date (a fixed column, at the right), the
@@ -323,11 +325,12 @@ put it there and on the parts page (#/parts).
 - A strip of tiles is one row of square tiles (`Strip` in `Overview.tsx`, Home's too) that scrolls
   sideways inside itself, snapping to a tile, its scrollbar shown only under the pointer; a hover or
   a click opens the whole name and what it counts in a popover over the page, never clipped by the
-  row. Replaces "evened over the rows" of the same day. Every tile is square, one size whatever
-  the room (Vikas, 30 Oct), and one layout, three lines in
-  all with its button: the number big and left, its words after it ("0 listings reviewed · of 13
-  this week"), two lines at most; a number of four characters or more ("1,016") on its own line
-  with its words in one line under it; then one row, the spark at the left and the one button at
+  row. Replaces "evened over the rows" of the same day. Every tile is one size whatever the room,
+  as tall as what it holds, no room left empty, its words 18 (Vikas, 2 Nov; replaces square, 30
+  Oct), and one layout, three lines in
+  all with its button: the number big and left, two lines tall, its words beside it on both lines
+  ("0 listings reviewed · of 13 this week"), whatever the number's length (Vikas, 2 Nov; replaces
+  a long number on its own line); then one row, the spark at the left and the one button at
   the right, its words on one line (all of them on hover). The signal is a small dot on the
   button, before its words, and nowhere else on the tile. With nothing to do the button stays,
   greyed, saying it is done ("All engaged"), its hover saying why (Vikas, 30 Oct; for Kenil's
@@ -343,7 +346,9 @@ put it there and on the parts page (#/parts).
   "key@40x320"; double-click gives it back); sized smaller than it is, its body scrolls under its
   header, which stays in sight (`data-head`), kept per person by the core: Home, an
   Overview, a module's Agents and notes, an agent's page, Second Brain, Usage, Connections.
-  A table's own views are not blocks.
+  A table's own views are not blocks. Sized, only its last part scrolls (a framed list,
+  `data-frame`, where it has one), so its frame and bottom border stay whole; blocks stand 40px
+  apart, in a column and between columns, so each card reads as its own (Vikas, 2 Nov).
 
 ### Needs you as tasks, Slides, one pager (Vikas, 30 Oct; for Kenil's review)
 
@@ -403,6 +408,40 @@ put it there and on the parts page (#/parts).
   a file and a list of rows stay fixed, and a double-click on one says why in the tip.
 - The side panel stands apart from the page it opened over: a firmer left edge (`--edge`) and a
   soft shadow cast on the page (`--shadow-side`), in both themes; nothing more.
+
+### Path, tabs row, Find on every Overview, two modules of Alpha's own (Vikas, 2 Nov; for Kenil's review)
+
+- The bar's centre is the path to the screen: each step before the last small, grey and opening its
+  place, then a ›; where it ends larger, in serif. Inside a module it ends at the module. A record's
+  page drops its own "Module · Table" line (kept in the side panel, which has no bar). Replaces H1's
+  "the screen's name centred" and the record page's blank bar.
+- Every Overview opens on Find, the same wide box as Home's (`ui/find-bar.tsx`).
+- Calendar and Knowledge Base are Alpha's own modules, installed at start like Network. Calendar's
+  Events open on a calendar by start; the Mac's Calendar lands its events there once connected.
+  Knowledge Base holds Documents and Reports, its two tabs after Overview.
+
+- A place pinned atop the rail shows its name under its icon, three to a row (`named` on
+  `IconTile`). A module dragged onto the middle of another goes inside it; onto the top or bottom of
+  one, between them (a line shows where), the order kept per person by the core (`order` in the
+  layout). Replaces S4's "drag into one another" alone (Vikas, 2 Nov; for Kenil's review).
+
+- A screen's tabs sit in the bar, in its middle, on every module page and every screen of its
+  own (Settings, Second Brain, Network). Only a record's page differs: the bar holds the path to
+  the record, and its module's tabs (Overview and its main tables, the record's own chosen) sit in
+  the row under the bar, so the person knows they are on a record, not a module's page (Vikas,
+  2 Nov; the row stays fixed, never scrolling).
+- Alpha is the agent, not a module: Home's Tables card and the numbering leave Alpha's own module
+  out (modules number from 1, in the rail's order); its Decisions and Noticed stay in Settings ›
+  Governance (Vikas, 2 Nov; replaces 30 Oct's "Alpha numbered 1").
+- Network's tabs are Overview and People. Each person's organization is a column of People and
+  opens from their page; Organizations is no tab and no place in Find (Vikas, 2 Nov).
+- The rail is one line: Home, Agents, Tasks and the modules in one order, a module dropped above
+  or below any of them, never into Home, Agents or Tasks (`railLine` in `Shell.tsx`; `order` keeps
+  module ids and the fixed places' links). Replaces modules always below Tasks (Vikas, 2 Nov).
+- A table's lists are a row of their own above search and filter: every list a pill, left-aligned,
+  wrapping, the one on screen lit, its count beside it; + adds one; right-click renames,
+  duplicates or deletes. The table's actions (New, Sync now, Save) sit at that row's right.
+  Replaces the lists drop-down (Vikas, 2 Nov).
 
 ### Onboarding from the footprint (Vikas, 30 Oct; for Kenil's review)
 

@@ -281,6 +281,23 @@ export function TableView({
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
         <ViewTabs
+          actions={
+            <>
+              <span ref={setSaveAt} className="flex items-center gap-1 empty:hidden" />
+              {!kept && <SyncNow data={data} />}
+              <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={typeof onNew === 'string'}
+                  onClick={typeof onNew === 'string' ? undefined : onNew}
+                >
+                  <Plus className="size-3.5" />
+                  New
+                </Button>
+              </span>
+            </>
+          }
           tools={
             <>
               <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
@@ -567,23 +584,11 @@ export function TableView({
             />
           </>
         )}
-        {/* New, then Save and Cancel while the list differs from what was saved, under every
-            view (Vikas, 27 Oct); a table's pages to its right */}
+        {/* a table's pages; New, Save and Cancel and Sync now are in the lists row (Vikas, 2 Nov) */}
         <div
           className={cn('flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm', grid && '-mt-4')}
         >
-          <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
-            <Button
-              size="sm"
-              disabled={typeof onNew === 'string'}
-              onClick={typeof onNew === 'string' ? undefined : onNew}
-            >
-              <Plus className="size-3.5" />
-              New
-            </Button>
-          </span>
-          <span ref={setSaveAt} className="mr-auto flex items-center gap-1 empty:hidden" />
-          {!kept && <SyncNow data={data} />}
+          <span className="mr-auto" />
           {grid && rows.length > Math.min(size, ...SIZES) && (
             <>
               <span className="mr-2 tabular-nums">

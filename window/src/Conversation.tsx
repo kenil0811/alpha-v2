@@ -56,7 +56,7 @@ import {
 } from './stream.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
-import { Card } from './ui/card.tsx'
+import { Actions, Card } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { Fold } from './ui/fold.tsx'
@@ -969,7 +969,8 @@ export function CardBox({
           {card.cannotUndo}
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
+      {/* its buttons at the right, the one thing to do first (Vikas, 30 Oct) */}
+      <Actions>
         {card.options.map((o, i) => (
           <Button
             key={o}
@@ -1004,7 +1005,7 @@ export function CardBox({
             </Button>
           </form>
         )}
-      </div>
+      </Actions>
       {opened && (
         <div className="text-ink-2 text-sm">
           {card.site} is open in Google Chrome on your Mac. Sign in there, then quit that Chrome

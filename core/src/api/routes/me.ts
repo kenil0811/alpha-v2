@@ -9,6 +9,7 @@ export function registerMe(ctx: Ctx): void {
   const layoutOf = (): Layout => {
     const folded = world.preference(user.id, 'rail_folded_modules')
     const hidden = world.preference(user.id, 'rail_hidden_modules')
+    const order = world.preference(user.id, 'rail_order')
     const panel = Number(world.preference(user.id, 'panel_width'))
     const n = (key: string) => {
       const v = Number(world.preference(user.id, key))
@@ -18,6 +19,7 @@ export function registerMe(ctx: Ctx): void {
       railFolded: world.preference(user.id, 'rail_folded') === 'yes',
       folded: folded ? (JSON.parse(folded) as string[]) : [],
       hidden: hidden ? (JSON.parse(hidden) as string[]) : [],
+      order: order ? (JSON.parse(order) as string[]) : [],
       railWidth: n('rail_width'),
       panel: Number.isFinite(panel) && panel > 0 ? panel : null,
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
@@ -59,6 +61,8 @@ export function registerMe(ctx: Ctx): void {
         railFolded: z.boolean().optional(),
         folded: z.array(z.string()).optional(),
         hidden: z.array(z.string()).optional(),
+        // the rail's modules as dragged between one another (Vikas, 2 Nov)
+        order: z.array(z.string().max(120)).max(500).optional(),
         panel: z.number().int().positive().nullable().optional(),
         railWidth: z.number().int().positive().nullable().optional(),
         assistant: z.enum(['open', 'folded']).optional(),
@@ -96,6 +100,12 @@ export function registerMe(ctx: Ctx): void {
         user.id,
         'rail_hidden_modules',
         given.hidden.length ? JSON.stringify(given.hidden) : null,
+      )
+    if (given.order !== undefined)
+      world.setPreference(
+        user.id,
+        'rail_order',
+        given.order.length ? JSON.stringify(given.order) : null,
       )
     if (given.pins !== undefined)
       world.setPreference(

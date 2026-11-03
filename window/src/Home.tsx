@@ -18,7 +18,7 @@ import type {
   TodayView,
   WorkingModuleView,
 } from '@alpha/core/api'
-import { Bot, Check, ChevronRight, LoaderCircle, MessageCircleQuestion, Search } from 'lucide-react'
+import { Bot, Check, ChevronRight, LoaderCircle, MessageCircleQuestion } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged, type Block } from './arrange.tsx'
@@ -43,6 +43,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Cut } from './ui/cut.tsx'
 import { type Signal, strongest } from './ui/dot.tsx'
+import { FindBar } from './ui/find-bar.tsx'
 import { Group, Line } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
 import { NEEDS_YOU } from './vocabulary.ts'
@@ -404,15 +405,7 @@ export function Home({
             </span>
           </span>
         </InBar>
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new Event('alpha:find'))}
-          className="flex h-11 w-full items-center gap-3 rounded-xl border border-line bg-surface px-4 text-ink-3 shadow-pop hover:border-accent-line"
-        >
-          <Search className="size-4" />
-          <span className="flex-1 text-left">Find a client, a person, a task or a module</span>
-          <kbd className="text-sm">⌘K</kbd>
-        </button>
+        <FindBar />
 
         <Strip
           tiles={homeTiles({ cards, signIns: signIns.length, agents, tasks, changed })}
@@ -441,7 +434,7 @@ export function Home({
           // standard column on the right, as on an Overview (Vikas, 30 Oct); the work column keeps
           // the page "home", so an arrangement kept before stays the person's
           <Arranged
-            className="grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]"
+            className="grid gap-8 @3xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]"
             blocks={[
               ...(cards.length + signIns.length > 0
                 ? [{ key: 'needs', name: 'Needs you', node: needs }]

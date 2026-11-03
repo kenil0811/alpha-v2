@@ -204,7 +204,7 @@ export function Arranged({
   const column = (col: string[][], c: number) => (
     <div
       key={columns[c]?.page}
-      className="relative flex min-w-0 flex-col gap-4"
+      className="relative flex min-w-0 flex-col gap-8"
       {...(columns.length > 1 && {
         onDragOver: (e: DragEvent) => {
           if (!dragging.current) return
@@ -228,7 +228,7 @@ export function Arranged({
         <div
           key={row.map(keyOf).join('|')}
           className={cn(
-            'flex flex-wrap items-start gap-4',
+            'flex flex-wrap items-start gap-8',
             r === col.length - 1 && over?.key === c && 'relative',
           )}
         >
@@ -248,7 +248,7 @@ export function Arranged({
                   width ? 'shrink grow-0' : 'flex-1 basis-80',
                 )}
                 style={{
-                  flexBasis: width ? `calc(${width}% - 1rem)` : undefined,
+                  flexBasis: width ? `calc(${width}% - 2.5rem)` : undefined,
                   minWidth: width ? '16rem' : undefined,
                 }}
                 onDragOver={(e) => {
@@ -298,11 +298,13 @@ export function Arranged({
                 </button>
                 <div
                   data-body
-                  // sized smaller than it is, its body scrolls under its header, which stays in
-                  // sight (Vikas, 30 Oct: the Agents and Governance heads "omnipresent")
+                  // sized smaller than it is, only its last part scrolls: its header stays in sight
+                  // (Vikas, 30 Oct: the Agents and Governance heads "omnipresent") and its frame,
+                  // the bottom border too, stays whole (Vikas, 2 Nov); a list framed deeper in that
+                  // part (`data-frame`) is what scrolls, the boxes around it passing the height down
                   className={
                     height
-                      ? 'flex flex-col overflow-y-auto *:flex-1 [&_[data-head]]:sticky [&_[data-head]]:top-0 [&_[data-head]]:z-1 [&_[data-head]]:bg-surface'
+                      ? 'flex flex-col *:flex *:min-h-0 *:flex-1 *:flex-col [&>*>:last-child]:min-h-0 [&>*>:last-child]:overflow-y-auto [&_:has([data-frame])]:flex [&_:has([data-frame])]:min-h-0 [&_:has([data-frame])]:flex-col [&_:has([data-frame])]:overflow-visible! [&_[data-frame]]:min-h-0 [&_[data-frame]]:overflow-y-auto!'
                       : undefined
                   }
                   style={{ height: height ?? undefined }}
@@ -330,7 +332,7 @@ export function Arranged({
                       const w = ((m.clientX - r.left) / whole) * 100
                       const h = m.clientY - r.top
                       last = { w, h }
-                      el.style.flex = `0 1 calc(${w}% - 1rem)`
+                      el.style.flex = `0 1 calc(${w}% - 2.5rem)`
                       body.style.height = `${Math.max(80, h)}px`
                       body.style.overflowY = 'auto'
                     }

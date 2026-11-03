@@ -11,6 +11,7 @@ import { Cut } from './ui/cut.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
 import { EntryList } from './ui/entry-list.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { FindBar } from './ui/find-bar.tsx'
 import { IconTile, IconTiles } from './ui/icon-tile.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Kbd, Label, Pill, Topic } from './ui/pill.tsx'
@@ -44,6 +45,9 @@ export function Parts() {
                 <Mail className="size-4" />
               </IconButton>
             </div>
+          </Section>
+          <Section title="Find bar" about="Atop Home and every Overview; opens Find (⌘K).">
+            <FindBar />
           </Section>
           <Section title="Pills, chips and labels" about="States only in green, amber and red.">
             <div className="flex flex-wrap items-center gap-2">
@@ -213,28 +217,26 @@ export function Parts() {
   )
 }
 
-// Numbering (Vikas, 29 Oct): modules in the rail's order, depth-first (1, 2, 2.1), and a module's
+// Numbering (Vikas, 29 Oct): modules in the rail's order, depth-first (1, 1.1, 2), and a module's
 // tables under its number: the main tables, then the setup ones, each followed by the tables that
-// are part of its rows (DealPilot 2: Sources 2.1, Deals 2.2, Financials 2.2.1). Every table counted
+// are part of its rows (DealPilot 1.1: Sources 1.1.1, Deals 1.1.2, Financials 1.1.2.1). Every table counted
 // gets a number, so a count and its list always agree. The one place numbers are made; the rail,
 // the Overview, the Second Brain and Agents and notes read them from here.
 type Placed = Pick<ModuleSummary, 'id' | 'name' | 'parent'> & { alpha?: boolean }
 
 export function moduleNumbers(modules: Placed[]): Map<string, string> {
   const out = new Map<string, string>()
-  const shown = modules.filter((m) => !m.alpha) // Alpha's own module is not on the rail
-  // Alpha's own module is 1 and the rail's start at 2 (Vikas, 30 Oct: "Alpha numbered 1,
-  // Decisions 1.1, Noticed 1.2, Network 2, LinkedIn 2.1")
-  const alpha = modules.find((m) => m.alpha)
-  if (alpha) out.set(alpha.id, '1')
-  const walk = (list: Placed[], prefix: string, from = 1) =>
+  // Alpha's own module is no module of the person's (Vikas, 2 Nov: "Alpha is an agent"): it gets
+  // no number, and its Decisions and Noticed live in Settings › Governance
+  const shown = modules.filter((m) => !m.alpha)
+  const walk = (list: Placed[], prefix: string) =>
     list.forEach((m, i) => {
-      const n = `${prefix}${i + from}`
+      const n = `${prefix}${i + 1}`
       if (out.has(m.id)) return
       out.set(m.id, n)
       walk(childrenOf(shown, m.id), `${n}.`)
     })
-  walk(tops(shown), '', alpha ? 2 : 1)
+  walk(tops(shown), '')
   return out
 }
 

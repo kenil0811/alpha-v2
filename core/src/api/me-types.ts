@@ -15,6 +15,7 @@ export interface Layout {
   railFolded: boolean
   folded: string[] // the modules folded in the rail
   hidden: string[] // the modules hidden from the rail, with the ones inside them
+  order: string[] // the rail in the order the person dragged it: modules by id, Home, Agents and Tasks by their links; none is the core's
   railWidth: number | null // the rail dragged wider or narrower; none is 216px
   panel: number | null // the assistant's width; none is 320px
   assistant: 'open' | 'folded'

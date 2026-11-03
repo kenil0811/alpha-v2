@@ -297,6 +297,7 @@ export function Rows({ date = 'Due', children }: { date?: string; children: Reac
   return (
     <div className="@container">
       <div
+        data-frame
         className={cn(
           'grid gap-x-3 overflow-hidden rounded-lg border border-line bg-surface',
           COLS,
