@@ -1,0 +1,20 @@
+name: delete-the-overview
+title: 'asked from a module to delete its Overview, Alpha says it is the window’s own screen and asks about no other module'
+why: >
+  Vikas, 3 Nov: in Calendar, "delete overview" was met with a question about Network's and
+  DealPilot's Overviews, words found in their notes, and none about Calendar's. Every module's
+  Overview is the window's screen, not a page or a file, so nothing removes it; and a thing the
+  person names without a module is the module they ask from.
+steps:
+  - kit:
+      from: core/kits/calendar
+  - kit:
+      from: core/kits/network
+  - say: delete overview
+    from: Calendar
+    checks:
+      - reply_matches: 'calendar'
+      - reply_matches: '(can.?t|cannot|isn.?t|not a page|not something|stays|always)'
+      - cards_waiting: 0
+      - permission_cards: 0
+      - errors: 0

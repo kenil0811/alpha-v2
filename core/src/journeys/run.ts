@@ -42,6 +42,8 @@ const Journey = z.object({
   steps: z.array(
     z.object({
       say: z.string().optional(),
+      // the module the person says it from, as the window's assistant does from a module's screen
+      from: z.string().optional(),
       // the first waiting card answered; an agent's draft can be sent with Always when offered
       answer: z.object({ choice: z.string(), always: z.boolean().optional() }).optional(),
       // a folder of files given to Alpha, copied from the repository so the journey owns it
@@ -182,8 +184,10 @@ export async function runOne(
     let what: string
     if (step.say) {
       const words = site ? step.say.replaceAll('{site}', site.url) : step.say
-      what = `Said “${words}”`
-      engine.say(user, words)
+      const from = step.from ? world.shape.module(step.from) : undefined
+      if (step.from && !from) throw new Error(`Step ${i + 1}: no module ${step.from}.`)
+      what = `Said “${words}”${from ? ` from ${from.name}` : ''}`
+      engine.say(user, words, from ? { id: from.id, name: from.name } : null)
     } else if (step.answer) {
       const card = world.cards.waiting(user.id)[0]
       if (!card) throw new Error(`Step ${i + 1}: no card is waiting to answer.`)

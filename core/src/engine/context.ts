@@ -60,6 +60,11 @@ export function startLayer(
     )
   const map = world.map()
   parts.push('## Modules and tables')
+  // what the window draws for every module, so a word on screen is never looked for in files
+  // (Vikas, 3 Nov: "delete overview" from Calendar was met with Network's and DealPilot's)
+  parts.push(
+    'Every module opens on its Overview, the window’s own screen of its cards (its charts, Files, Agents, Governance, Tables), drawn for every module alike: it is no page and no file, so nothing removes it; the person moves its cards by dragging them. A page is a module’s pages/<name>.html, a tab after Overview.',
+  )
   if (!map.length) parts.push('None yet.')
   for (const m of map) {
     parts.push(`### ${m.module}${m.within ? ` (inside ${m.within})` : ''}`)
@@ -153,7 +158,10 @@ export function turnLayer(
 ): string {
   const limits = config.limits()
   const parts: string[] = []
-  if (from) parts.push(`Asked from the ${from.name} module.`)
+  if (from)
+    parts.push(
+      `Asked from the ${from.name} module: what they name without saying where is ${from.name}’s.`,
+    )
   const now = new Date()
   parts.push(
     `Now: ${now.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`,
