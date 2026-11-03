@@ -1,8 +1,12 @@
 // The calendar: a month of days, each row on the day of the view's date; earlier and later
-// months a click away. A row opens whole; the rows with no date are counted under the month.
-import type { FieldView, RowView } from '@alpha/core/api'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useMemo, useState } from 'react'
+// months a click away. A row opens whole; the rows with no date are counted under the month. The
+// Calendar module's also lays every task due and every date ahead from the other modules beside
+// its events, outlined (Vikas, 3 Nov).
+import type { DateRow, FieldView, RowView } from '@alpha/core/api'
+import { ChevronLeft, ChevronRight, ListChecks } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { api } from '../../api.ts'
+import { peek } from '../../Peek.tsx'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { cn } from '../../ui/cn.ts'
 import { numberOf } from '../engine.ts'
@@ -15,12 +19,18 @@ export function CalendarView({
   fields,
   by,
   onOpen,
+  gather = false,
 }: {
   rows: RowView[]
   fields: FieldView[]
   by: FieldView
   onOpen: (id: string) => void
+  gather?: boolean // the Calendar module's: every task due and date ahead beside its events
 }) {
+  const [more, setMore] = useState<DateRow[]>([])
+  useEffect(() => {
+    if (gather) api.get<DateRow[]>('/api/dates').then(setMore, () => setMore([]))
+  }, [gather])
   const dated = useMemo(
     () =>
       rows.flatMap((r) => {
@@ -39,8 +49,14 @@ export function CalendarView({
     const m = here || !latest ? now : latest
     return new Date(m.getFullYear(), m.getMonth(), 1)
   })
-  const byDay = new Map<string, RowView[]>()
-  for (const d of dated) byDay.set(dayKey(d.at), [...(byDay.get(dayKey(d.at)) ?? []), d.row])
+  const byDay = new Map<string, (RowView | DateRow)[]>()
+  const put = (at: Date, x: RowView | DateRow) =>
+    byDay.set(dayKey(at), [...(byDay.get(dayKey(at)) ?? []), x])
+  for (const d of dated) put(d.at, d.row)
+  for (const x of more) {
+    const t = Date.parse(x.at.length === 10 ? `${x.at}T00:00:00` : x.at)
+    if (!Number.isNaN(t)) put(new Date(t), x)
+  }
   // weeks start on Monday
   const first = new Date(month)
   first.setDate(1 - ((month.getDay() + 6) % 7))
@@ -113,6 +129,24 @@ export function CalendarView({
                 {d.getDate()}
               </span>
               {here.slice(0, 3).map((r) => {
+                // a task or another module's date: outlined, its module said, opening beside
+                if ('what' in r)
+                  return (
+                    <button
+                      key={r.href + r.hint}
+                      type="button"
+                      onClick={() => peek(r.href)}
+                      title={`${r.label} · ${r.module ? `${r.module}, ` : ''}${r.hint}`}
+                      className="flex items-center gap-1.5 truncate rounded-sm border border-line px-1.5 py-0.5 text-left text-ink-2 text-sm hover:bg-hover"
+                    >
+                      {r.what === 'task' ? (
+                        <ListChecks className="size-3 shrink-0 text-ink-3" />
+                      ) : (
+                        <span className="size-1.5 shrink-0 rounded-full bg-ink-3" />
+                      )}
+                      <span className="truncate">{r.label}</span>
+                    </button>
+                  )
                 const tone = colour ? colour.tones[String(r.values[colour.slug] ?? '')] : undefined
                 return (
                   <button

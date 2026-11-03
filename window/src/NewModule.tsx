@@ -1,11 +1,12 @@
-// New module (Vikas, 26 Oct): a blank module, its name and what it should keep, over an empty
-// table so the page reads as a module. Build it sends the words to Alpha and opens the assistant
-// on the right, where Alpha asks and plans; when the module is made, the page goes to it.
+// New module (Vikas, 26 Oct; 3 Nov: the prompt alone, no empty table, and an upload under it for
+// a module sent as a file): its name and what it should keep. Build it sends the words to Alpha
+// and opens the assistant on the right, where Alpha asks and plans; when the module is made, the page goes to it.
 // Cancel and Escape go back.
 import type { ModuleSummary } from '@alpha/core/api'
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { Button } from './ui/button.tsx'
+import { DropZone } from './ui/drop-zone.tsx'
 import { Field, Select } from './ui/field.tsx'
 
 // the words Alpha is sent
@@ -145,6 +146,22 @@ export function NewModule({
     if (made) window.location.hash = `#/module/${made.id}`
   }, [before, modules])
 
+  const [uploading, setUploading] = useState(false)
+  const [said, setSaid] = useState<string | null>(null)
+  // a module pack installed, or its kit updated; the new module opens as it comes
+  const upload = async (file: File | undefined) => {
+    if (!file) return
+    setUploading(true)
+    setProblem(null)
+    try {
+      setBefore(new Set(modules.map((m) => m.id)))
+      setSaid((await api.uploadTo<{ words: string }>('/api/kits/pack', file)).words)
+    } catch (err) {
+      setProblem(wordsOf(err))
+    } finally {
+      setUploading(false)
+    }
+  }
   useEscapeBack(page)
 
   const send = async (e: FormEvent) => {
@@ -196,25 +213,12 @@ export function NewModule({
           </Button>
           {problem && <span className="text-bad text-sm">{problem}</span>}
         </div>
-        <table
-          aria-hidden
-          className="mt-4 w-full table-fixed border-separate border-spacing-0 rounded-md border border-line text-md"
-        >
-          <thead>
-            <tr>
-              <th className="h-9 border-line border-b px-3 text-left font-medium text-ink-3 text-sm">
-                Name
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {[0, 1, 2].map((i) => (
-              <tr key={i}>
-                <td className={i < 2 ? 'h-9 border-line border-b' : 'h-9'} />
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* or a module someone made, sent as a file (Vikas, 3 Nov: no empty table here) */}
+        <div className="mt-4 flex flex-col gap-1.5">
+          <span className="text-ink-2 text-sm">Or upload a module</span>
+          <DropZone accept=".alphakit" busy={uploading} onFiles={(f) => void upload(f[0])} />
+          {said && <span className="text-ink-2 text-sm">{said}</span>}
+        </div>
       </form>
     </div>
   )

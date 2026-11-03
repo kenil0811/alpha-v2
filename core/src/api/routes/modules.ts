@@ -114,10 +114,13 @@ export function registerModules(ctx: Ctx): void {
   }
   app.get('/api/modules/:id/pages/:name', async (req) => {
     const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params)
+    // the inputs it opens with, from the row it was opened on: {"Client": "Summit Air Co."}
+    const { inputs } = z.object({ inputs: z.string().optional() }).parse(req.query)
+    const given = inputs ? z.record(z.string(), z.string()).parse(JSON.parse(inputs)) : undefined
     const m = pageModule(id)
     const page = pagesOf(m).find((p) => p.name === name)
     if (!page) throw new Refused(`${m.name} has no page called ${name}.`)
-    return { ...page, html: pageDocument(m, name) }
+    return { ...page, html: pageDocument(m, name, given) }
   })
   app.post('/api/modules/:id/pages/:name/ask', async (req) => {
     const { id } = z.object({ id: z.string(), name: z.string() }).parse(req.params)

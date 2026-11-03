@@ -150,7 +150,9 @@ export function placeOf(hash: string): Place {
       kind: it[1] === 'permission' ? 'rule' : (it[1] as 'agent' | 'run' | 'rule' | 'card'),
       id: it[2],
     }
-  const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)))?$/.exec(hash)
+  // a page opened from a row carries its inputs after ?: page/report?Client=Summit%20Air%20Co.
+  const mod =
+    /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)(?:\?.*)?))?$/.exec(hash)
   if (mod?.[1])
     return {
       at: 'module',

@@ -171,12 +171,13 @@ describe('the window', () => {
     expect(ancestors(modules, 'm_2').map((m) => m.name)).toEqual(['Shops'])
   })
 
-  it('opens New module blank: a name, what to keep, Build it waiting on the words, an empty table', () => {
+  it('opens New module blank: a name, what to keep, Build it waiting on the words, an upload, no table', () => {
     const html = renderToString(<NewModule modules={modules} onAsked={() => undefined} />)
     expect(html).toContain('placeholder="What should it keep track of?"')
     expect(html).toMatch(/<button type="submit"[^>]*disabled=""[^>]*>Build it/)
     expect(html).toContain('Cancel')
-    expect(html.match(/<td/g)).toHaveLength(3)
+    expect(html).not.toContain('<table')
+    expect(html).toContain('accept=".alphakit"')
     expect(buildWords(' Orders ', 'what each shop orders')).toBe(
       'Make a module called Orders: what each shop orders',
     )

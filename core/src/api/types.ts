@@ -22,6 +22,16 @@ export interface FoundRow {
 export interface PlaceRow extends FoundRow {
   place: string // as the row says it: "Austin, TX"
   module: string
+  at: { lat: number; lon: number } | null // on the map, once OpenStreetMap has said where
+  finding: boolean // being looked up now
+}
+
+// A day worth seeing on the Calendar beside its events (Vikas, 3 Nov): a task due, or a row's
+// date ahead of it (Due, Starts, Expires, Exclusivity ends…), from any module.
+export interface DateRow extends FoundRow {
+  at: string
+  what: 'task' | 'row'
+  module: string | null
 }
 
 // A line about some rows (what a reader found): each can be opened, and one choice set on it.
@@ -328,6 +338,7 @@ export interface PageSummary {
   name: string
   title: string
   front: boolean
+  for: { table: string; input: string } | null // a page of one row of that table: no tab
 }
 
 // Where a value came from, in words the person reads, with what to open.

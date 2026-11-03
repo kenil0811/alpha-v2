@@ -452,12 +452,16 @@ export function Scatter({
   y: yName,
   size,
   tones,
+  zone,
 }: {
   points: Dot[]
   x: string
   y: string
   size?: string | undefined
   tones: { label: string; tone: keyof typeof FILL }[]
+  // the area where the rows that fit sit (Vikas, 3 Nov): a dashed box, said on a hover and
+  // under the chart, opening those rows
+  zone?: { x: [number, number]; y: [number, number]; words: string; href: string } | undefined
 }) {
   const { hot, setHot, order } = useFront()
   const LEFT = 44
@@ -511,6 +515,30 @@ export function Scatter({
         <text x={LEFT} y={10} className="fill-ink-2 text-xs">
           ↑ {yName}
         </text>
+        {zone && (
+          <a href={zone.href} className="group/zone">
+            <rect
+              x={x(zone.x[0])}
+              y={y(zone.y[1])}
+              width={Math.max(8, x(zone.x[1]) - x(zone.x[0]))}
+              height={Math.max(8, y(zone.y[0]) - y(zone.y[1]))}
+              rx={6}
+              className="fill-accent stroke-accent opacity-60 group-hover/zone:opacity-100"
+              fillOpacity={0.08}
+              strokeDasharray="5 4"
+              strokeWidth={1.5}
+            >
+              <title>{zone.words}</title>
+            </rect>
+            <text
+              x={x(zone.x[0]) + 4}
+              y={y(zone.y[1]) - 5}
+              className="fill-accent font-medium text-xs"
+            >
+              Fits your thesis
+            </text>
+          </a>
+        )}
         {order(drawn.length).map((i) => {
           const p = drawn[i]
           if (!p) return null
@@ -561,6 +589,12 @@ export function Scatter({
             <span className="size-3 rounded-full bg-ink-3" />
             bigger is more {size.toLowerCase()}
           </span>
+        )}
+        {zone && (
+          <a href={zone.href} className="flex items-center gap-1.5 text-accent hover:underline">
+            <span className="h-2.5 w-4 rounded-xs border border-accent border-dashed bg-accent-soft" />
+            {zone.words}
+          </a>
         )}
       </div>
     </div>

@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import type { Ctx } from '../ctx.ts'
-import type { FoundRow, Layout, Me, PlaceRow } from '../types.ts'
+import { askable, lookUp, placesKnown } from '../geocode.ts'
+import type { DateRow, FoundRow, Layout, Me, PlaceRow } from '../types.ts'
 
 export function registerMe(ctx: Ctx): void {
   const { app, world, user } = ctx
@@ -193,32 +194,82 @@ export function registerMe(ctx: Ctx): void {
     ]
   })
 
-  // Every row that says where it is, for Network's map (Vikas, 3 Nov): a text field named for a
-  // place, its value not a link or an address to write to.
-  // ponytail: every row of every table read on each call; a places index if Network grows past it
-  app.get(
-    '/api/places',
-    async (): Promise<PlaceRow[]> =>
-      world.shape.tables().flatMap((t) => {
-        if (t.hidden) return []
-        const f = t.fields.find(
-          (x) =>
-            x.kind === 'text' && /^(location|city|address|place|based in|office)$/i.test(x.name),
-        )
-        if (!f) return []
-        return world.records.list(t.id).flatMap((r) => {
-          const place = String(r.values[f.slug] ?? '').trim()
-          if (!place || /^https?:|@/.test(place)) return []
+  // Every day worth seeing on the Calendar (Vikas, 3 Nov: "aggregation of all sessions, all
+  // important days, all tasks"): open tasks with a due, and each row's date that looks ahead (a
+  // field named Due, Starts, When, Expires, … ends, Next step…), never one that looks back (Added,
+  // Last checked). The Calendar's own Events are its rows, not these.
+  // ponytail: every row read on each call, as /api/places
+  app.get('/api/dates', async (): Promise<DateRow[]> => {
+    const ahead = /^(starts|when|date)$|due|expir|\bends$|deadline|next step|closing/i
+    const tasks: DateRow[] = world.tasks.list({ open: true }).flatMap((t) =>
+      t.due
+        ? [
+            {
+              at: t.due,
+              what: 'task' as const,
+              label: t.title,
+              hint: 'Task',
+              module: null,
+              href: `#/tasks/${t.id}`,
+            },
+          ]
+        : [],
+    )
+    const rows = world.shape.tables().flatMap((t) => {
+      if (t.hidden || (t.module.name === 'Calendar' && t.name === 'Events')) return []
+      const fs = t.fields.filter((f) => f.kind === 'date' && ahead.test(f.name))
+      if (!fs.length) return []
+      return world.records.list(t.id).flatMap((r) =>
+        fs.flatMap((f) => {
+          const at = r.values[f.slug]
+          if (typeof at !== 'string' || !at) return []
           return [
             {
-              place,
+              at,
+              what: 'row' as const,
               label: world.rowName(t, r.values),
-              hint: t.name,
+              hint: `${t.name}: ${f.name}`,
               module: t.module.name,
               href: `#/table/${t.id}/${r.id}`,
             },
           ]
-        })
-      }),
-  )
+        }),
+      )
+    })
+    return [...tasks, ...rows]
+  })
+
+  // Every row that says where it is, for Network's map (Vikas, 3 Nov): a text field named for a
+  // place, its value not a link or an address to write to.
+  // ponytail: every row of every table read on each call; a places index if Network grows past it
+  app.get('/api/places', async (): Promise<PlaceRow[]> => {
+    const known = placesKnown(world.paths.dir)
+    const rows = world.shape.tables().flatMap((t) => {
+      if (t.hidden) return []
+      const f = t.fields.find(
+        (x) => x.kind === 'text' && /^(location|city|address|place|based in|office)$/i.test(x.name),
+      )
+      if (!f) return []
+      return world.records.list(t.id).flatMap((r) => {
+        const place = String(r.values[f.slug] ?? '').trim()
+        if (!place || /^https?:|@/.test(place)) return []
+        return [
+          {
+            place,
+            label: world.rowName(t, r.values),
+            hint: t.name,
+            module: t.module.name,
+            href: `#/table/${t.id}/${r.id}`,
+            at: known[place] ?? null,
+            finding: askable(place) && !(place in known),
+          },
+        ]
+      })
+    })
+    lookUp(
+      world.paths.dir,
+      rows.filter((r) => r.finding).map((r) => r.place),
+    )
+    return rows
+  })
 }

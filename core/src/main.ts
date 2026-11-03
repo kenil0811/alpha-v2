@@ -327,16 +327,17 @@ const app = buildServer({
 try {
   await app.listen({ host: '127.0.0.1', port })
   // the kits go in once the core answers, not before (a first start on a slow Mac took minutes):
-  // kit packs dropped in kits/inbox (the install puts a client's there), then Alpha's own modules
-  // (Network), installed or brought up to date at every start
+  // Alpha's own modules (Calendar, Network, Documents), installed or brought up to date at every
+  // start, then kit packs dropped in kits/inbox (the install puts a client's there): Alpha's own
+  // first, so the rail has them above the client's (Vikas, 3 Nov)
   void (async () => {
     const ctx = { actor: { kind: 'system' as const }, user: user.id }
-    kitsNow.now = 'your kits'
+    kitsNow.now = "Alpha's own modules"
     engine.events.emit('event', { type: 'lines', user: user.id })
     try {
-      for (const said of await installInbox(world, join(home, 'kits'), ctx)) console.log(said)
-      kitsNow.now = "Alpha's own modules"
       for (const said of await keepDefaults(world, ctx)) console.log(said)
+      kitsNow.now = 'your kits'
+      for (const said of await installInbox(world, join(home, 'kits'), ctx)) console.log(said)
     } catch (err) {
       console.error(
         `Setting up the kits did not finish: ${err instanceof Error ? err.message : err}`,

@@ -1,6 +1,7 @@
 // A section of a page: its title in serif, an ⓘ with what it is, then its rows; no card around it,
 // so what it holds (a list, a table) is the only frame (Kenil, 26 Oct: no card inside a card).
 import type { ReactNode } from 'react'
+import { cn } from './cn.ts'
 import { Info } from './info.tsx'
 
 export function Section({
@@ -18,9 +19,10 @@ export function Section({
     <section className="flex min-w-0 flex-col gap-2.5">
       <div data-head className="flex items-center gap-1.5">
         <h2
-          className={
-            small ? 'font-semibold text-base text-ink' : 'font-medium font-serif text-2xl text-ink'
-          }
+          className={cn(
+            small ? 'font-semibold text-base text-ink' : 'font-medium font-serif text-2xl text-ink',
+            typeof title !== 'string' && 'flex flex-1',
+          )}
         >
           {title}
         </h2>

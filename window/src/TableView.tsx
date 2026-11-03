@@ -499,7 +499,13 @@ export function TableView({
         ) : config.kind === 'gallery' ? (
           <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
         ) : config.kind === 'calendar' && dateBy ? (
-          <CalendarView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+          <CalendarView
+            rows={rows}
+            fields={fields}
+            by={dateBy}
+            onOpen={openRowPanel}
+            gather={data.module.name === 'Calendar'}
+          />
         ) : config.kind === 'timeline' && dateBy ? (
           <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
         ) : config.kind === 'chart' ? (

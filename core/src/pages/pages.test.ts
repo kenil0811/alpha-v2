@@ -68,8 +68,8 @@ afterEach(() => {
 describe('pages', () => {
   it('lists a module’s pages by their titles, the front page first', () => {
     expect(pagesOf(m)).toEqual([
-      { name: 'funnel', title: 'Funnel', front: true },
-      { name: 'about', title: 'About', front: false },
+      { name: 'funnel', title: 'Funnel', front: true, for: null },
+      { name: 'about', title: 'About', front: false, for: null },
     ])
   })
 

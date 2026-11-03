@@ -31,6 +31,7 @@ import { byFunction } from './AgentList.tsx'
 import { api } from './api.ts'
 import { Arranged, type Block, pairs } from './arrange.tsx'
 import { interviewMe, useInterview } from './ask.ts'
+import { fileHref } from './FileView.tsx'
 import { GovernanceSection } from './Governance.tsx'
 import { useLayout } from './layout.ts'
 import { when } from './ModulesAndAgents.tsx'
@@ -88,9 +89,7 @@ export function lowerFirst(main: TableData[]): TableData[] {
 }
 const relationTo = (t: TableData, o: { name: string }) =>
   t.fields.find(
-    (f) =>
-      f.kind === 'relation' &&
-      o.name.toLowerCase().replace(/s$/, '') === f.name.toLowerCase().replace(/s$/, ''),
+    (f) => f.kind === 'relation' && lc(o.name).replace(/s$/, '') === lc(f.name).replace(/s$/, ''),
   )
 
 const val = (r: RowView, f: Field) => r.values[f.slug] ?? r.values[f.name]
@@ -136,6 +135,12 @@ function spreadOf(t: TableData) {
     .sort((a, b) => b.marks.filter((m) => m.n).length - a.marks.filter((m) => m.n).length)
 }
 
+// a name in a sentence: lower case, its acronyms kept (SDE, NOI, LOI)
+const lc = (name: string) =>
+  name
+    .split(' ')
+    .map((w) => (/^[A-Z][a-z]/.test(w) ? w.toLowerCase() : w))
+    .join(' ')
 const toneOf = (t: TableData, not?: Field) =>
   t.fields.find((f) => f.kind === 'choice' && !f.many && f !== not && Object.keys(f.tones).length)
 const tonesOf = (tone: Field | undefined) =>
@@ -195,7 +200,29 @@ function scatterOf(t: TableData) {
     [0, 0, 0],
   )
   if (Math.abs(sxy) / Math.sqrt(sxx * syy || 1) > 0.95) return null
-  return { x, y, size, points, tones: tonesOf(tone) }
+  // where the rows that fit the thesis sit: the box around them, a little room on each side
+  const fit = fitOf(t)
+  const inside = (fit?.all ?? []).flatMap((r) => {
+    const a = num(val(r, x))
+    const b = num(val(r, y))
+    return a === null || b === null ? [] : [{ a, b }]
+  })
+  const pad = (ns: number[]): [number, number] => {
+    const [lo, hi] = [Math.min(...ns), Math.max(...ns)]
+    const room = (hi - lo || Math.abs(hi) || 1) * 0.04
+    return [lo - room, hi + room]
+  }
+  const plural = lc(t.name)
+  const zone =
+    fit && inside.length >= 2
+      ? {
+          x: pad(inside.map((p) => p.a)),
+          y: pad(inside.map((p) => p.b)),
+          words: `The ${inside.length} ${plural} here fit your thesis: explore them`,
+          href: rowsHref(t, fit.all, 'fit your thesis'),
+        }
+      : undefined
+  return { x, y, size, points, tones: tonesOf(tone), zone }
 }
 
 // Rows counted on two things at once (Vikas, 28 Oct): down the side what they point at (an
@@ -258,6 +285,22 @@ function fromOf(t: TableData, main: TableData[]) {
     if (marks.length >= 2) return { from: o, marks }
   }
   return null
+}
+
+// The rows a choice named for fit says fit (Fits, a good tone), and those of them still at the
+// first stage, untouched.
+function fitOf(t: TableData) {
+  const f = t.fields.find((x) => x.kind === 'choice' && !x.many && /\bfit/i.test(x.name))
+  if (!f) return null
+  const good = f.choices.filter((c) => f.tones[c] === 'good' || /^fits?$/i.test(c))
+  if (!good.length) return null
+  const all = t.rows.filter((r) => good.includes(String(val(r, f) ?? '')))
+  const stage = t.fields.find(
+    (x) => x.kind === 'choice' && !x.many && /stage|step|phase/i.test(x.name),
+  )
+  const first = stage?.choices[0]
+  const fresh = stage ? all.filter((r) => val(r, stage) === first) : all
+  return { all, fresh, first: first?.toLowerCase(), f, good }
 }
 
 // New rows by week, by the date most of them carry (first seen, added): the last six weeks.
@@ -347,7 +390,7 @@ function goalsOf(setup: TableData[], main: TableData[]) {
         const week = weekly ? ' this week' : ''
         // the tile says what it counts and what its button opens, each as the view shows it
         // (Vikas, 30 Oct: "0 of 13 reviewed, but on that page I see too many listings")
-        const things = thing || t.name.toLowerCase()
+        const things = thing || lc(t.name)
         const doing = `${verb.toLowerCase()}${thing ? '' : ` ${at.toLowerCase()}`}`
         return {
           label,
@@ -586,17 +629,42 @@ export function pulseOf({
   }
   const big = [...main].sort((a, b) => b.rows.length - a.rows.length)[0]
   const weeks = big && weeksOf(big)
-  if (big && weeks) {
+  // rows that fit the person's thesis and nobody has looked at yet, in place of a count of new
+  // ones (Vikas, 3 Nov: "we found 5 deals which are thesis fit, explore now")
+  const fit = big && fitOf(big)
+  if (big && fit) {
+    const plural = lc(big.name)
+    tiles.push({
+      key: 'fit',
+      label: `${big.name} that fit your thesis`,
+      signal: fit.fresh.length ? 'yes' : 'opt',
+      big: fit.fresh.length.toLocaleString(),
+      small: `${plural} fit your thesis, still ${fit.first ?? 'new'} · ${fit.all.length} fit in all`,
+      lines: [],
+      act: fit.fresh.length
+        ? {
+            label: 'Explore',
+            href: rowsHref(big, fit.fresh, `fit your thesis, still ${fit.first ?? 'new'}`),
+            tip: `Explore the ${fit.fresh.length} that fit, not looked at yet`,
+          }
+        : {
+            label: 'Explore',
+            href: rowsHref(big, fit.all, 'fit your thesis'),
+            tip: `Every ${plural.replace(/s$/, '')} that fits is under way`,
+          },
+      go: `scatter:${big.id}`,
+    })
+  } else if (big && weeks) {
     const now = weeks.weeks.at(-1)
     const last = weeks.weeks.at(-2)
     const more = (now?.n ?? 0) - (last?.n ?? 0)
     const why = explainOf(big, now?.rows ?? [], 'new this week, ')
     tiles.push({
       key: 'new',
-      label: `New ${big.name.toLowerCase()} this week`,
+      label: `New ${lc(big.name)} this week`,
       signal: 'opt',
       big: (now?.n ?? 0).toLocaleString(),
-      small: `new ${big.name.toLowerCase()} this week · ${more >= 0 ? '+' : ''}${more.toLocaleString()} on last week`,
+      small: `new ${lc(big.name)} this week · ${more >= 0 ? '+' : ''}${more.toLocaleString()} on last week`,
       spark: weeks.weeks.map((w) => w.n),
       lines: [
         ...(why
@@ -609,7 +677,7 @@ export function pulseOf({
       ],
       act: now?.n
         ? { label: 'Review', href: now.href, tip: `Review the ${now.n.toLocaleString()} new` }
-        : { label: 'Review', off: true, tip: `No new ${big.name.toLowerCase()} this week` },
+        : { label: 'Review', off: true, tip: `No new ${lc(big.name)} this week` },
       go: `weeks:${big.id}`,
     })
   }
@@ -999,11 +1067,11 @@ export function Overview({
     if (spread && says(spread.marks))
       work.push({
         key: `chart:${t.id}`,
-        name: `${t.name} by ${spread.f.name.toLowerCase()}`,
+        name: `${t.name} by ${lc(spread.f.name)}`,
         node: (
           <ChartCard
             id={`chart:${t.id}`}
-            title={`${t.name} by ${spread.f.name.toLowerCase()}`}
+            title={`${t.name} by ${lc(spread.f.name)}`}
             href={`#/table/${t.id}`}
             kinds={funnel ? ['bar', 'funnel'] : ['bar', 'donut']}
             marks={spread.marks}
@@ -1011,8 +1079,8 @@ export function Overview({
               ? {
                   by: { funnel: reached },
                   about: {
-                    bar: `Where each of the ${t.name.toLowerCase()} is now`,
-                    funnel: `How many reached each ${spread.f.name.toLowerCase()}: there now or past it`,
+                    bar: `Where each of the ${lc(t.name)} is now`,
+                    funnel: `How many reached each ${lc(spread.f.name)}: there now or past it`,
                   },
                 }
               : {})}
@@ -1023,12 +1091,12 @@ export function Overview({
     if (scatter)
       work.push({
         key: `scatter:${t.id}`,
-        name: `${t.name}: ${scatter.y.name.toLowerCase()} against ${scatter.x.name.toLowerCase()}`,
+        name: `${t.name}: ${lc(scatter.y.name)} against ${lc(scatter.x.name)}`,
         wide: true,
         node: (
           <Card
             id={`scatter:${t.id}`}
-            title={`${t.name}: ${scatter.y.name.toLowerCase()} against ${scatter.x.name.toLowerCase()}`}
+            title={`${t.name}: ${lc(scatter.y.name)} against ${lc(scatter.x.name)}`}
             href={`#/table/${t.id}`}
             wide
           >
@@ -1039,6 +1107,7 @@ export function Overview({
                 y={scatter.y.name}
                 size={scatter.size?.name}
                 tones={scatter.tones}
+                zone={scatter.zone}
               />
             )}
           </Card>
@@ -1048,12 +1117,12 @@ export function Overview({
     if (heat)
       work.push({
         key: `heat:${t.id}`,
-        name: `${t.name} by ${heat.row.name.toLowerCase()} and ${heat.col.name.toLowerCase()}`,
+        name: `${t.name} by ${lc(heat.row.name)} and ${lc(heat.col.name)}`,
         wide: true,
         node: (
           <Card
             id={`heat:${t.id}`}
-            title={`${t.name} by ${heat.row.name.toLowerCase()} and ${heat.col.name.toLowerCase()}`}
+            title={`${t.name} by ${lc(heat.row.name)} and ${lc(heat.col.name)}`}
             href={`#/table/${t.id}`}
             wide
           >
@@ -1065,17 +1134,49 @@ export function Overview({
     if (from && says(from.marks))
       work.push({
         key: `from:${t.id}`,
-        name: `Where ${t.name.toLowerCase()} come from`,
+        name: `Where ${lc(t.name)} come from`,
         node: (
           <ChartCard
             id={`from:${t.id}`}
-            title={`Where ${t.name.toLowerCase()} come from`}
+            title={`Where ${lc(t.name)} come from`}
             href={`#/table/${from.from.id}`}
             kinds={['bar', 'donut']}
             marks={from.marks}
           />
         ),
       })
+  }
+  // a few rows, each with figures of its own (a client's open flags, its mappings to approve):
+  // a bar a row, so a small table says where to look first (Vikas, 3 Nov: never "No data yet")
+  for (const t of main.filter((x) => x.rows.length >= 2 && x.rows.length < 8)) {
+    const name = nameOf(t)
+    const figures = t.fields.filter(
+      (x) =>
+        (x.kind === 'summary' || x.kind === 'number' || x.kind === 'money') &&
+        t.rows.some((r) => num(val(r, x))),
+    )
+    for (const f of figures.slice(0, 3)) {
+      const marks = t.rows
+        .map((r) => ({
+          label: name ? String(val(r, name) ?? '') : r.id,
+          n: num(val(r, f)) ?? 0,
+          href: `#/row/${r.id}`,
+        }))
+        .sort((a, b) => b.n - a.n)
+      work.push({
+        key: `figure:${t.id}:${f.id}`,
+        name: `${t.name}: ${lc(f.name)}`,
+        node: (
+          <ChartCard
+            id={`figure:${t.id}:${f.id}`}
+            title={`${t.name}: ${lc(f.name)}`}
+            href={`#/table/${t.id}`}
+            kinds={['bar']}
+            marks={marks}
+          />
+        ),
+      })
+    }
   }
   const goals = goalsOf(setup, main)
   if (goals)
@@ -1115,11 +1216,11 @@ export function Overview({
   if (criteria)
     work.push({
       key: 'criteria',
-      name: `What rules ${criteria.table.name.toLowerCase()} out`,
+      name: `What rules ${lc(criteria.table.name)} out`,
       node: (
         <ChartCard
           id="criteria"
-          title={`What rules ${criteria.table.name.toLowerCase()} out`}
+          title={`What rules ${lc(criteria.table.name)} out`}
           href={`#/table/${criteria.criteria.id}`}
           kinds={['bar', 'donut']}
           marks={criteria.marks}
@@ -1419,7 +1520,7 @@ function Card({
           </a>
         )}
         {!!count && <span className="text-ink-3 text-sm tabular-nums">{count}</span>}
-        <span className="flex-1" />
+        {!head && <span className="flex-1" />}
         {extra}
       </div>
       {/* all of it, scrolling past a height; dragging the block's corner gives it more (Vikas,
@@ -1643,27 +1744,30 @@ export function Working({ parts }: { parts: Record<Working, (head: ReactNode) =>
     window.addEventListener('alpha:overview-go', on)
     return () => window.removeEventListener('alpha:overview-go', on)
   }, [])
+  // the switch in the middle of the card's head (Vikas, 3 Nov)
   const head = (
-    <div
-      role="tablist"
-      aria-label="Agents, governance and tables"
-      className="flex items-center gap-0.5 rounded-full bg-sunk p-0.75"
-    >
-      {WORKING.map((w) => (
-        <button
-          key={w.key}
-          type="button"
-          role="tab"
-          aria-selected={tab === w.key}
-          onClick={() => setTab(w.key)}
-          className={cn(
-            'flex h-6.5 items-center whitespace-nowrap rounded-full px-3 text-ink-2 text-md hover:text-ink',
-            tab === w.key && 'bg-surface font-medium text-ink shadow-btn',
-          )}
-        >
-          {w.label}
-        </button>
-      ))}
+    <div className="flex min-w-0 flex-1 justify-center">
+      <div
+        role="tablist"
+        aria-label="Agents, governance and tables"
+        className="flex items-center gap-0.5 rounded-full bg-sunk p-0.75"
+      >
+        {WORKING.map((w) => (
+          <button
+            key={w.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === w.key}
+            onClick={() => setTab(w.key)}
+            className={cn(
+              'flex h-6.5 items-center whitespace-nowrap rounded-full px-3 text-ink-2 text-md hover:text-ink',
+              tab === w.key && 'bg-surface font-medium text-ink shadow-btn',
+            )}
+          >
+            {w.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
   return parts[tab](head)
@@ -1692,8 +1796,8 @@ export function Files({
   // one folder only: its files at once
   const at = folders.length === 1 ? (folders[0] ?? null) : folder
   const shown = m.files.filter((f) => folderOf(f) === at).sort((a, b) => b.at.localeCompare(a.at))
-  const line =
-    'flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-md hover:bg-hover'
+  const tile =
+    'flex min-w-0 flex-col items-center gap-1 rounded-md px-1 py-2 text-ink hover:bg-hover'
   return (
     <Card
       id="files"
@@ -1702,7 +1806,7 @@ export function Files({
       count={m.files.length}
       signal={unread ? 'opt' : null}
     >
-      {(big) => (
+      {() => (
         <DropZone onFiles={drop} busy={busy}>
           <Refusal words={problem} />
           {m.files.length > 0 && (
@@ -1724,47 +1828,58 @@ export function Files({
                   </>
                 )}
               </div>
-              {at === null
-                ? folders.map((name) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setFolder(name)}
-                      className={line}
-                    >
-                      <Folder className="size-4 shrink-0 text-ink-3" />
-                      <span className="flex-1 truncate">{name}</span>
-                      <span className="text-ink-3 text-sm tabular-nums">
-                        {m.files.filter((f) => folderOf(f) === name).length}
-                      </span>
-                    </button>
-                  ))
-                : (big ? shown : shown.slice(0, 8)).map((f) => {
-                    const Icon = icon(f)
-                    return (
-                      <a
-                        key={`${f.hash}${f.row.id}`}
-                        href={`#/row/${f.row.id}`}
-                        data-tip={`On ${f.row.name}${f.read === 'read' ? '' : '; not read yet'}`}
-                        className={line}
+              {/* icons, as a file viewer shows them (Vikas, 3 Nov: not a list): a folder per
+                  table and kind, a file opening in the viewer, the row it is on on its hover */}
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1">
+                {at === null
+                  ? folders.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setFolder(name)}
+                        data-tip={name}
+                        className={tile}
                       >
-                        <Icon className="size-4 shrink-0 text-ink-3" />
-                        <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                        {f.read !== 'read' && (
-                          <Dot
-                            s={f.read === 'reading' ? 'done' : 'opt'}
-                            tip={f.read === 'reading' ? 'Being read' : 'Not read yet'}
-                          />
-                        )}
-                        <span className="shrink-0 text-ink-3 text-sm">
-                          {new Date(f.at).toLocaleDateString(undefined, {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
+                        <Folder className="size-9 text-accent" strokeWidth={1.25} />
+                        <span className="line-clamp-2 w-full break-words text-center text-sm">
+                          {name.split(' › ').at(-1)}
                         </span>
-                      </a>
-                    )
-                  })}
+                        <span className="text-ink-3 text-xs tabular-nums">
+                          {m.files.filter((f) => folderOf(f) === name).length}
+                        </span>
+                      </button>
+                    ))
+                  : shown.map((f) => {
+                      const Icon = icon(f)
+                      return (
+                        <a
+                          key={`${f.hash}${f.row.id}`}
+                          href={fileHref({ file: f.hash })}
+                          data-tip={`${f.name}, on ${f.row.name}${f.read === 'read' ? '' : '; not read yet'}`}
+                          className={cn(tile, 'relative')}
+                        >
+                          <Icon className="size-9 text-ink-3" strokeWidth={1.25} />
+                          <span className="line-clamp-2 w-full break-words text-center text-sm">
+                            {f.name}
+                          </span>
+                          <span className="text-ink-3 text-xs">
+                            {new Date(f.at).toLocaleDateString(undefined, {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
+                          {f.read !== 'read' && (
+                            <span className="absolute top-1.5 right-1.5">
+                              <Dot
+                                s={f.read === 'reading' ? 'done' : 'opt'}
+                                tip={f.read === 'reading' ? 'Being read' : 'Not read yet'}
+                              />
+                            </span>
+                          )}
+                        </a>
+                      )
+                    })}
+              </div>
             </div>
           )}
         </DropZone>
@@ -1865,7 +1980,7 @@ export function Agents({
                         busy={busy || gon.some((a) => a.running)}
                         disabled={!gon.length}
                         onClick={() => sync(g.agents)}
-                        tip={`Run every ${g.name.toLowerCase().replace(/s$/, '')} that is on, now`}
+                        tip={`Run every ${lc(g.name).replace(/s$/, '')} that is on, now`}
                         words={false}
                       />
                       <Switch

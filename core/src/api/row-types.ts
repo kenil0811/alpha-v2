@@ -25,6 +25,7 @@ export interface RowPageView {
   row: RowView
   names: Record<string, string>
   title: string
+  pages: { name: string; title: string; input: string }[] // its module's pages of one row of it
 }
 
 // What is around a row: its parts, the rows that link to it, the notes that mention it.

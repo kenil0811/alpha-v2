@@ -11,6 +11,10 @@ import { install, installedKits, readKit, update } from './kits/index.ts'
 
 export const DEFAULT_KITS = join(import.meta.dirname, '..', '..', 'kits')
 
+// a kit of Alpha's own under its earlier name: kept as it is, never installed twice
+// ponytail: no module rename in the core yet; an install from before 3 Nov keeps "Knowledge Base"
+const FORMERLY: Record<string, string> = { Documents: 'Knowledge Base' }
+
 // Whether version a is newer than b, part by part: 0.10.0 over 0.9.1.
 export function newer(a: string, b: string): boolean {
   const pa = a.split('.').map((x) => Number.parseInt(x, 10) || 0)
@@ -29,10 +33,15 @@ export async function keepDefaults(
 ): Promise<string[]> {
   if (!existsSync(dir)) return []
   const said: string[] = []
-  for (const name of readdirSync(dir).sort()) {
+  // installed in the rail's order: Calendar, Network, then Documents (Vikas, 3 Nov)
+  const first = ['alpha', 'calendar', 'network', 'documents']
+  const rank = (n: string) => (first.includes(n) ? first.indexOf(n) : first.length)
+  for (const name of readdirSync(dir).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))) {
     const folder = join(dir, name)
     if (!existsSync(join(folder, 'module.yaml'))) continue
     const { manifest } = readKit(folder)
+    const was = FORMERLY[manifest.name]
+    if (!world.shape.module(manifest.name) && was && world.shape.module(was)) continue
     const m = world.shape.module(manifest.name)
     const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined
     if (!m) {

@@ -14,6 +14,9 @@ export interface PageInfo {
   name: string // the file's name without .html
   title: string // its <title>
   front: boolean // <meta name="alpha-front">: the page the module opens on
+  // <meta name="alpha-for" content="Clients" data-input="Client">: a page of one row (a client's
+  // report), opened from that row with its name as the input, never a tab (Vikas, 3 Nov)
+  for: { table: string; input: string } | null
 }
 // <meta name="alpha-print" content="landscape">: a wide page prints across the paper
 
@@ -34,6 +37,12 @@ function fileOf(module: Module, name: string): string {
   return readFileSync(file, 'utf8')
 }
 
+const forOf = (html: string): PageInfo['for'] => {
+  const tag = /<meta\s+name=["']alpha-for["'][^>]*>/i.exec(html)?.[0]
+  const table = tag && /content=["']([^"']+)["']/i.exec(tag)?.[1]
+  return table ? { table, input: /data-input=["']([^"']+)["']/i.exec(tag)?.[1] ?? table } : null
+}
+
 export function pagesOf(module: Module): PageInfo[] {
   const dir = join(module.dir, 'pages')
   if (!existsSync(dir)) return []
@@ -47,6 +56,7 @@ export function pagesOf(module: Module): PageInfo[] {
         name,
         title: /<title>([^<]*)<\/title>/i.exec(html)?.[1]?.trim() || name,
         front: /<meta\s+name=["']alpha-front["']/i.test(html),
+        for: forOf(html),
       }
     })
     .sort((a, b) => Number(b.front) - Number(a.front))

@@ -152,6 +152,22 @@ export function RowPage({
           onRename={titled && canType(titled) ? (t) => edit(titled, t) : undefined}
         />
         <States view={view} onEdit={edit} />
+        {/* its module's pages of one row, opened on this one (Vikas, 3 Nov: a client's Report) */}
+        {view.pages.length > 0 && (
+          <div className="mt-3 flex gap-2">
+            {view.pages.map((p) => (
+              <Button
+                key={p.name}
+                size="sm"
+                onClick={() => {
+                  window.location.hash = `#/module/${view.table.module.id}/page/${p.name}?${new URLSearchParams({ [p.input]: view.title })}`
+                }}
+              >
+                {p.title}
+              </Button>
+            ))}
+          </div>
+        )}
         <Refusal words={problem} />
         <div className="mt-8 grid items-start gap-x-12 gap-y-10 @4xl:grid-cols-[minmax(0,1fr)_20rem]">
           <main className="flex min-w-0 flex-col">

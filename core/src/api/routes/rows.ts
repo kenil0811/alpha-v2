@@ -4,6 +4,7 @@
 // here is stored: links are the relations the rows already hold, mentions are read from the
 // notes themselves, so there is nothing to keep in step.
 import { z } from 'zod'
+import { pagesOf } from '../../pages/pages.ts'
 import { all } from '../../world/db.ts'
 import { junctionName, quote } from '../../world/ddl.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -89,6 +90,9 @@ export function registerRows(ctx: Ctx): void {
       },
       names: { ...Object.fromEntries(related), ...world.people.names(people) },
       title: world.rowName(t, r.values) || 'A row',
+      pages: pagesOf(t.module).flatMap((p) =>
+        p.for?.table === t.name ? [{ name: p.name, title: p.title, input: p.for.input }] : [],
+      ),
     }
   })
 

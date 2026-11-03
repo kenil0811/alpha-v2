@@ -1,17 +1,17 @@
-# Alpha's own Knowledge Base (Vikas, 2 Nov; 3 Nov: one list of documents, reports among them, and
-# no Overview), installed at start.
-name: Knowledge Base
+# Alpha's own Documents (Vikas, 2 Nov as Knowledge Base; 3 Nov: one list of documents, reports,
+# guides and templates among them, no Overview, and named Documents), installed at start.
+name: Documents
 api: 1
-version: 0.2.0
+version: 0.3.0
 description: >
-  What the business knows, written down: its documents (contracts, policies, guides, reports,
-  notes), each with what it is about, to find again and for Alpha to read.
+  What the business knows, written down: its documents (contracts, policies, guides, templates,
+  reports, notes), each with what it is about, to find again and for Alpha to read.
 tables:
   - name: Documents
-    about: "One document the business keeps: a contract, a policy, a guide, a report or a note."
+    about: "One document the business keeps: a contract, a policy, a guide, a template, a report or a note."
     fields:
       - { name: Title, kind: text, about: "What the document is called." }
-      - { name: Kind, kind: choice, choices: [Contract, Policy, Guide, Report, Note, Other], about: "What sort of document it is." }
+      - { name: Kind, kind: choice, choices: [Contract, Policy, Guide, Template, Report, Note, Other], about: "What sort of document it is." }
       - { name: File, kind: file, about: "The document itself." }
       - { name: Summary, kind: text, about: "What it says, in a line or two." }
       - { name: Period, kind: text, about: "For a report, the time it covers, as \"October 2026\" or \"Q3\"." }

@@ -418,7 +418,8 @@ put it there and on the parts page (#/parts).
 - Every Overview opens on Find, the same wide box as Home's (`ui/find-bar.tsx`).
 - Calendar and Knowledge Base are Alpha's own modules, installed at start like Network. Calendar's
   Events open on a calendar by start; the Mac's Calendar lands its events there once connected.
-  Knowledge Base is one list of Documents, reports among them, newest first.
+  Knowledge Base is one list of Documents, reports among them, newest first (3 Nov: named
+  Documents).
 
 - A place pinned atop the rail shows its name under its icon, three to a row (`named` on
   `IconTile`). A module dragged onto the middle of another goes inside it; onto the top or bottom of
@@ -434,8 +435,8 @@ put it there and on the parts page (#/parts).
   out (modules number from 1, in the rail's order); its Decisions and Noticed stay in Settings ›
   Governance (Vikas, 2 Nov; replaces 30 Oct's "Alpha numbered 1").
 - Network's tabs are Overview, People, Organizations and Map. Map shows every row that says where
-  it is (a column named Location, City or Address) on a map of the states, a square each, darker
-  for more; a state picked lists its rows (Vikas, 3 Nov; replaces 2 Nov's People alone).
+  it is (a column named Location, City or Address) on an OpenStreetMap map, a pin per place, larger
+  for more; a pin picked lists its rows (Vikas, 3 Nov; replaces 2 Nov's People alone).
 - The rail is one line: Home, Agents, Tasks and the modules in one order, a module dropped above
   or below any of them, never into Home, Agents or Tasks (`railLine` in `Shell.tsx`; `order` keeps
   module ids and the fixed places' links). Replaces modules always below Tasks (Vikas, 2 Nov).
@@ -448,7 +449,7 @@ put it there and on the parts page (#/parts).
   kind of document, a path back up, the newest first, any file dropped on it added); then Agents, Governance and Tables as one card, a switch in its head (Agents left,
   Governance in the middle, Tables right). Agents shows New agent where there is none. No Second
   Brain card. Replaces the column's 27 and 29 Oct order (Vikas, 3 Nov).
-- A tile's button is one standard word: Review, Answer, Start, Fix, Open or Done; what it opens is
+- A tile's button is one standard word: Review, Answer, Start, Fix, Open, Explore or Done; what it opens is
   on its hover ("Review the 3 new"). Its spark keeps to its own room left of the button, never
   under it (Vikas, 3 Nov).
 - An Overview's Find keeps to the module: "Find in DealPilot: sources and deals", its
@@ -456,7 +457,7 @@ put it there and on the parts page (#/parts).
 - No chart of rows per week split by kind on an Overview (Vikas, 3 Nov: confusing).
 - A click anywhere on a table's row opens its record, in the side panel; a double-click changes the
   cell. A link in a table is plain text, followed on the record (Vikas, 3 Nov; replaces T4's name).
-- A module with one table and nothing else (Calendar, Knowledge Base) has no Overview: it opens on
+- A module with one table and nothing else (Calendar, Documents) has no Overview: it opens on
   that table, its name alone in the bar (Vikas, 3 Nov).
 - An Overview card has no Show more: it holds everything, scrolling past its height, and dragging
   its corner gives it more. No Insights card: the strip on top is the insights (Vikas, 3 Nov).
@@ -484,3 +485,24 @@ put it there and on the parts page (#/parts).
 - Settings › Governance › What Alpha read is the ledger: a source a row, what was read and when,
   what was skipped and why, a few of the items, Forget this source asked first in the one pop-up.
 - Home's Welcome has "Let Alpha learn your business" first, done once the owner went on.
+
+### Calendar gathers, Documents, the thesis fit, files as icons (Vikas, 3 Nov)
+
+- Calendar is every date in one place: its own events, open tasks with a due date, and every
+  row's dates (starts, due, expires, deadline, next step, closing) from every module, the
+  gathered ones outlined and opening their record.
+- Alpha's own modules sit atop the rail in this order: Calendar, Network, Documents; a client's
+  modules after them. Knowledge Base is named Documents: guides, templates and reports.
+- A page that is about one row (a client's report) is not a tab: it opens from that row's record,
+  a button under its states, on that row.
+- A module's tabs are its Overview and its main tables, each opening on the table view; a chart
+  such as a funnel belongs on the Overview, never a tab of its own.
+- Where a table has a fit choice (Thesis fit), the strip's first tile is "N deals fit your thesis",
+  Explore; the scatter draws a dashed box around the rows that fit, its hover and the line under
+  the chart saying so and opening those rows.
+- A small table (2 to 7 rows) gets a card per figure it holds, a bar per row, so a module like
+  Accounting shows its numbers, never No data yet.
+- Files on an Overview show as icons, a folder or a file each, never a list.
+- The switch in the Agents, Governance and Tables card sits in the card's centre.
+- New module is the prompt alone, no empty table; under it, Or upload a module, a drop zone for a
+  .alphakit file, the module opening once it is in.

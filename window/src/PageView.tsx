@@ -78,15 +78,21 @@ export function PageView({
   )
   const inputs = useRef<Record<string, string>>({})
   const base = `/api/modules/${m.id}/pages/${page.name}`
+  // opened from a row (a client's Report): its inputs, after ? in the address
+  const given = window.location.hash.split('?')[1] ?? ''
 
   useEffect(() => {
     setHtml(null)
     setProblem(null)
-    api.get<{ html: string }>(base).then(
+    const q = Object.fromEntries(new URLSearchParams(given))
+    const at = Object.keys(q).length
+      ? `${base}?inputs=${encodeURIComponent(JSON.stringify(q))}`
+      : base
+    api.get<{ html: string }>(at).then(
       (p) => setHtml(p.html),
       (err) => setProblem(err instanceof Problem ? err.message : 'The page did not load.'),
     )
-  }, [base])
+  }, [base, given])
 
   const send = () => frame.current?.contentWindow?.postMessage({ alpha: 'theme', ...look() }, '*')
   useEffect(() => {

@@ -83,7 +83,7 @@ export function ModuleScreen({
   const { pins } = usePins(m)
 
   // with no tab named, the Overview, or People in the module people live in, or the one table of
-  // a module that has nothing else (Calendar, Knowledge Base)
+  // a module that has nothing else (Calendar, Documents)
   const holds = (m?.modules.length ?? 0) > 0
   const current: ModuleTab = tab ?? { kind: 'overview' }
   const toPeople = !tab && m && m.id === moduleId && m.people
@@ -126,7 +126,7 @@ export function ModuleScreen({
 }
 
 // A module with one main table and no pages, people or modules inside opens on that table, no
-// Overview (Vikas, 3 Nov: Calendar shows its calendar, Knowledge Base its documents).
+// Overview (Vikas, 3 Nov: Calendar shows its calendar, Documents its list).
 export const straight = (
   m: Pick<ModuleSummary, 'people' | 'pages' | 'tables'> & { modules?: unknown[] },
 ): string | null => {
@@ -187,12 +187,15 @@ function ModuleSwitch({
             sel: current.kind === 'table' && current.id === t.id,
           })),
         ],
-        m.pages.map((p) => ({
-          key: `p:${p.name}`,
-          href: `#/module/${m.id}/page/${p.name}`,
-          label: p.title,
-          sel: current.kind === 'page' && current.name === p.name,
-        })),
+        // a page of one row opens from that row, never a tab (Vikas, 3 Nov: the bar is tables)
+        m.pages
+          .filter((p) => !p.for)
+          .map((p) => ({
+            key: `p:${p.name}`,
+            href: `#/module/${m.id}/page/${p.name}`,
+            label: p.title,
+            sel: current.kind === 'page' && current.name === p.name,
+          })),
       ].filter((g) => g.length)
   return (
     <InNav>
@@ -294,13 +297,15 @@ export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
 ): Tab[] => [
-  ...m.pages.map((p) => ({
-    key: `p:${p.name}`,
-    href: `#/module/${m.id}/page/${p.name}`,
-    label: p.title,
-    icon: <LayoutDashboard className="size-3.5" />,
-    sel: current?.kind === 'page' && current.name === p.name,
-  })),
+  ...m.pages
+    .filter((p) => !p.for)
+    .map((p) => ({
+      key: `p:${p.name}`,
+      href: `#/module/${m.id}/page/${p.name}`,
+      label: p.title,
+      icon: <LayoutDashboard className="size-3.5" />,
+      sel: current?.kind === 'page' && current.name === p.name,
+    })),
   ...m.tables
     .filter((t) => t.place === 'main')
     .map((t) => ({
