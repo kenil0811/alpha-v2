@@ -1,0 +1,37 @@
+{
+  "Purchase": {
+    "Id": "252",
+    "SyncToken": "2",
+    "TxnDate": "2026-10-20",
+    "PaymentType": "CreditCard",
+    "AccountRef": { "value": "42", "name": "Visa" },
+    "EntityRef": { "value": "30", "name": "Staples", "type": "Vendor" },
+    "TotalAmt": 64.5,
+    "CurrencyRef": { "value": "USD" },
+    "Line": [
+      {
+        "Id": "1",
+        "Amount": 52.0,
+        "Description": "Printer paper",
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": { "value": "7", "name": "Uncategorized Expense" },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": { "value": "NON" }
+        }
+      },
+      {
+        "Id": "2",
+        "Amount": 12.5,
+        "Description": "Toner",
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": { "value": "15", "name": "Office Expenses" },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": { "value": "NON" }
+        }
+      }
+    ]
+  },
+  "time": "2026-11-02T09:01:12.123-07:00"
+}

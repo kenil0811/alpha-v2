@@ -1,0 +1,48 @@
+{
+  "CDCResponse": [
+    {
+      "QueryResponse": [
+        {
+          "Invoice": [
+            {
+              "Id": "130",
+              "SyncToken": "1",
+              "DocNumber": "1037",
+              "TxnDate": "2026-10-03",
+              "CustomerRef": { "value": "58", "name": "Sonnenschein Family Store" },
+              "TotalAmt": 362.07,
+              "Balance": 0,
+              "Line": []
+            },
+            {
+              "Id": "129",
+              "status": "Deleted",
+              "MetaData": { "LastUpdatedTime": "2026-11-01T10:00:00-07:00" }
+            }
+          ],
+          "startPosition": 1,
+          "maxResults": 2
+        },
+        {
+          "Payment": [
+            {
+              "Id": "301",
+              "SyncToken": "0",
+              "TxnDate": "2026-11-01",
+              "CustomerRef": { "value": "58", "name": "Sonnenschein Family Store" },
+              "TotalAmt": 362.07,
+              "UnappliedAmt": 0,
+              "PaymentRefNum": "4021",
+              "Line": [
+                { "Amount": 362.07, "LinkedTxn": [{ "TxnId": "130", "TxnType": "Invoice" }] }
+              ]
+            }
+          ],
+          "startPosition": 1,
+          "maxResults": 1
+        }
+      ]
+    }
+  ],
+  "time": "2026-11-02T09:01:12.123-07:00"
+}

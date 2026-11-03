@@ -25,6 +25,9 @@ export interface Manifest {
   icon?: Icon
   account: { label: string; placeholder?: string }
   secret?: { label: string; help: string; url?: string }
+  // oauth: the service's authorize and token addresses and the scope asked for; help says where
+  // the person makes the app whose client id and secret they type in Alpha's form.
+  oauth?: { authorize: string; token: string; scope: string; help: string; url?: string }
   // Pacing per account: calls a minute, and a day's budget where the service has one.
   pace: { perMinute: number; perDay?: number }
   // How often its sync runs, when it has one.
@@ -106,6 +109,8 @@ export interface Landed {
 export interface Host {
   account: string
   secret(): Promise<string | null>
+  // Keeps a newer secret in place of the old (an OAuth refresh token that rotated).
+  setSecret?: (secret: string) => Promise<void>
   cursor(): string | null
   setCursor(cursor: string | null): void
   // existing: change only rows already kept (a mark on an older message is not a new row).

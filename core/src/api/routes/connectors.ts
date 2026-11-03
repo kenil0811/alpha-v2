@@ -1,7 +1,8 @@
+import { randomBytes } from 'node:crypto'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { type Connector, chromePath } from '@alpha/connector-sdk'
+import { authorizeUrl, type Connector, chromePath, exchangeCode } from '@alpha/connector-sdk'
 import { z } from 'zod'
 import {
   addFolder,
@@ -14,8 +15,24 @@ import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ConnectorsView } from '../types.ts'
 
+// Where the sign-in service sends the person's browser back; it carries no token (server.ts).
+export const OAUTH_CALLBACK = '/api/connectors/oauth/callback'
+const PENDING_MS = 10 * 60_000
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`)
+const page = (words: string) =>
+  `<!doctype html><meta charset="utf-8"><title>Alpha</title><body style="font:16px system-ui;margin:3rem auto;max-width:32rem;color:#222">${esc(words)}</body>`
+
 export function registerConnectors(ctx: Ctx): void {
   const { app, world, engine, user, options, person, live, connectorOf } = ctx
+  // the core's own address, which the person's app names as its redirect
+  const redirect = options.ports?.[0]
+    ? `http://localhost:${options.ports[0]}${OAUTH_CALLBACK}`
+    : null
+  // OAuth connects waiting on the person's sign-in, by their state: single use, ten minutes.
+  // Their app's client id and secret wait in the secret store under oauth:<state>.
+  // ponytail: in memory, so a restart mid-sign-in leaves that entry behind until the next connect.
+  const pending = new Map<string, { connector: string; account: string; at: number }>()
 
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
     return {
@@ -29,6 +46,15 @@ export function registerConnectors(ctx: Ctx): void {
         ...(c.manifest.system ? { system: c.manifest.system } : {}),
         ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
         ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
+        ...(c.manifest.oauth && redirect
+          ? {
+              oauth: {
+                help: c.manifest.oauth.help,
+                ...(c.manifest.oauth.url ? { url: c.manifest.oauth.url } : {}),
+                redirect,
+              },
+            }
+          : {}),
       })),
       connections: world.connections.list().map((k) => {
         const c = engine.connectors?.find(k.connector)
@@ -154,6 +180,70 @@ export function registerConnectors(ctx: Ctx): void {
       .parse(req.body)
     const c = await engine.connect(user, b.connector, b.account, b.secret ?? null)
     return { id: c.id, state: c.state }
+  })
+
+  // An OAuth connect starts here: the person's app is kept, and the window opens the address
+  // where they consent; the sign-in service sends their browser back to the callback below.
+  app.post('/api/connectors/oauth/start', async (req) => {
+    const b = z
+      .object({
+        connector: z.string(),
+        account: z.string().trim().min(1),
+        clientId: z.string().trim().min(1),
+        clientSecret: z.string().trim().min(1),
+      })
+      .parse(req.body)
+    const c = connectorOf(b.connector)
+    const o = c.manifest.oauth
+    if (c.manifest.auth !== 'oauth' || !o)
+      throw new Refused(`${c.manifest.title} is not connected by signing in to it.`)
+    if (!redirect) throw new Refused('This core has no address to come back to.')
+    const secrets = engine.connectors?.secrets
+    if (!secrets) throw new Refused('Connections are not set up in this core.')
+    for (const [s, p] of pending)
+      if (Date.now() - p.at > PENDING_MS) {
+        pending.delete(s)
+        await secrets.delete(`oauth:${s}`)
+      }
+    const state = randomBytes(24).toString('base64url')
+    await secrets.set(
+      `oauth:${state}`,
+      JSON.stringify({ clientId: b.clientId, clientSecret: b.clientSecret }),
+    )
+    pending.set(state, { connector: b.connector, account: b.account, at: Date.now() })
+    return { url: authorizeUrl(o, b.clientId, redirect, state) }
+  })
+
+  // The sign-in service's redirect, in the person's browser. Only a state this core made, unused
+  // and under ten minutes old, is taken; the code becomes the connection's tokens.
+  app.get(OAUTH_CALLBACK, async (req, reply) => {
+    reply.type('text/html; charset=utf-8')
+    const q = req.query as Record<string, string | undefined>
+    const { code, state, error, ...extra } = q
+    const p = state ? pending.get(state) : undefined
+    if (!state || !p) return reply.code(403).send(page('This sign-in is not one Alpha started.'))
+    pending.delete(state)
+    const secrets = engine.connectors?.secrets
+    const kept = await secrets?.get(`oauth:${state}`)
+    await secrets?.delete(`oauth:${state}`)
+    if (Date.now() - p.at > PENDING_MS || !kept)
+      return reply.code(403).send(page('This sign-in took too long: start it again in Alpha.'))
+    if (error || !code)
+      return reply.code(400).send(page('The sign-in was not finished: start it again in Alpha.'))
+    try {
+      const c = connectorOf(p.connector)
+      const o = c.manifest.oauth
+      if (!o || !redirect) throw new Refused(`${c.manifest.title} is not signed in to.`)
+      const extras: Record<string, string> = {}
+      for (const [k, v] of Object.entries(extra)) if (typeof v === 'string') extras[k] = v
+      const tokens = await exchangeCode(o, JSON.parse(kept), code, redirect, extras)
+      await engine.connect(user, p.connector, p.account, JSON.stringify(tokens))
+      return reply.send(page(`${c.manifest.title} is connected. You can close this tab.`))
+    } catch (err) {
+      return reply
+        .code(409)
+        .send(page(err instanceof Error ? err.message : 'That did not connect.'))
+    }
   })
 
   app.delete('/api/connections/:id', async (req) => {

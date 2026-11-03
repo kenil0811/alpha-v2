@@ -18,7 +18,7 @@ import type { BaseCtx, Ctx } from './ctx.ts'
 import { registerActivity } from './routes/activity.ts'
 import { registerBrain } from './routes/brain.ts'
 import { registerCards } from './routes/cards.ts'
-import { registerConnectors } from './routes/connectors.ts'
+import { OAUTH_CALLBACK, registerConnectors } from './routes/connectors.ts'
 import { registerFiles } from './routes/files.ts'
 import { registerFootprint } from './routes/footprint.ts'
 import { registerKits } from './routes/kits.ts'
@@ -76,7 +76,16 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       ? createHash('sha256').update(readFileSync(index)).digest('hex').slice(0, 12)
       : null
   })()
-  app.get('/api/health', async (): Promise<Health> => ({ ok: true, version: VERSION, build }))
+  // a demo's clock (clock.ts): the window takes the core's now, so both say the same day
+  app.get(
+    '/api/health',
+    async (): Promise<Health> => ({
+      ok: true,
+      version: VERSION,
+      build,
+      ...(process.env.ALPHA_CLOCK ? { now: new Date().toISOString() } : {}),
+    }),
+  )
 
   const { engine, user, token } = options
   if (!engine || !user) return app
@@ -112,6 +121,9 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (hosts.size && !hosts.has(host)) return deny(reply, 'This address is not Alpha’s.')
     if (origin && hosts.size && !hosts.has(origin.replace(/^https?:\/\//, '')))
       return deny(reply, 'This page is not Alpha’s.')
+    // the sign-in service's redirect lands here from the person's browser without the token:
+    // its single-use state is the guard (routes/connectors.ts)
+    if (path === OAUTH_CALLBACK) return
     if (token && given !== token)
       return deny(reply, 'Open Alpha from the address the core printed.')
   })

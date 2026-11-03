@@ -1,0 +1,77 @@
+{
+  "Header": {
+    "Time": "2026-11-02T09:01:12-07:00",
+    "ReportName": "ProfitAndLoss",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2025-12-01",
+    "EndPeriod": "2026-11-02",
+    "SummarizeColumnsBy": "Month",
+    "Currency": "USD"
+  },
+  "Columns": {
+    "Column": [
+      { "ColTitle": "", "ColType": "Account" },
+      {
+        "ColTitle": "Sep 2026",
+        "ColType": "Money",
+        "MetaData": [
+          { "Name": "StartDate", "Value": "2026-09-01" },
+          { "Name": "EndDate", "Value": "2026-09-30" }
+        ]
+      },
+      {
+        "ColTitle": "Oct 2026",
+        "ColType": "Money",
+        "MetaData": [
+          { "Name": "StartDate", "Value": "2026-10-01" },
+          { "Name": "EndDate", "Value": "2026-10-31" }
+        ]
+      },
+      { "ColTitle": "Total", "ColType": "Money" }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Section",
+        "group": "Income",
+        "Header": {
+          "ColData": [{ "value": "Income" }, { "value": "" }, { "value": "" }, { "value": "" }]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                { "value": "Landscaping Services", "id": "45" },
+                { "value": "1200.00" },
+                { "value": "" },
+                { "value": "1200.00" }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            { "value": "Total Income" },
+            { "value": "1200.00" },
+            { "value": "" },
+            { "value": "1200.00" }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "NetIncome",
+        "Summary": {
+          "ColData": [
+            { "value": "Net Income" },
+            { "value": "1200.00" },
+            { "value": "-64.50" },
+            { "value": "1135.50" }
+          ]
+        }
+      }
+    ]
+  }
+}

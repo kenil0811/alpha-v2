@@ -18,6 +18,15 @@ const ManifestSchema = z.object({
   secret: z
     .object({ label: z.string().min(1), help: z.string(), url: z.string().optional() })
     .optional(),
+  oauth: z
+    .object({
+      authorize: z.string().url(),
+      token: z.string().url(),
+      scope: z.string().min(1),
+      help: z.string(),
+      url: z.string().optional(),
+    })
+    .optional(),
   pace: z.object({ perMinute: z.number().positive(), perDay: z.number().positive().optional() }),
   syncEveryMinutes: z.number().positive().optional(),
   signIn: z.string().url().optional(),
@@ -45,6 +54,8 @@ export function checkConnector(x: unknown, taken: string[] = []): string[] {
       out.push(`A connector called ${manifest.name} is loaded already.`)
     if (manifest.auth === 'secret' && !manifest.secret)
       out.push('manifest.secret: a connector that signs in with a secret says what it is called.')
+    if (manifest.auth === 'oauth' && !manifest.oauth)
+      out.push('manifest.oauth: a connector that signs in by OAuth says where and for what.')
     if (manifest.auth === 'browser' && !manifest.signIn)
       out.push('manifest.signIn: a connector the person signs in to in a browser says where.')
     if (manifest.auth === 'system' && !manifest.system)

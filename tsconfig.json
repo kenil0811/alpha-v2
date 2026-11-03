@@ -27,6 +27,9 @@
     },
     {
       "path": "kit-sdk"
+    },
+    {
+      "path": "connectors-extra/quickbooks"
     }
   ]
 }

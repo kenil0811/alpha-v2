@@ -33,6 +33,13 @@ export {
 export { EFFECTS, type Effect, isEffect } from './effects.ts'
 export { helperBinary, runHelper } from './helper.ts'
 export {
+  accessToken,
+  authorizeUrl,
+  exchangeCode,
+  type OAuthApp,
+  type OAuthTokens,
+} from './oauth.ts'
+export {
   type CallOptions,
   type Fixtures,
   type Judgements,

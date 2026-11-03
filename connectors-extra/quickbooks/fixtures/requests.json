@@ -1,0 +1,81 @@
+{
+  "recategorize": {
+    "Id": "252",
+    "SyncToken": "2",
+    "sparse": true,
+    "Line": [
+      {
+        "Id": "1",
+        "Amount": 52.0,
+        "Description": "Printer paper",
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": { "value": "15" },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": { "value": "NON" }
+        }
+      },
+      {
+        "Id": "2",
+        "Amount": 12.5,
+        "Description": "Toner",
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": { "value": "15", "name": "Office Expenses" },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": { "value": "NON" }
+        }
+      }
+    ]
+  },
+  "create-invoice": {
+    "CustomerRef": { "value": "58" },
+    "Line": [
+      {
+        "DetailType": "SalesItemLineDetail",
+        "Amount": 275,
+        "Description": "Rock Fountain",
+        "SalesItemLineDetail": { "ItemRef": { "value": "5" } }
+      }
+    ],
+    "TxnDate": "2026-11-02",
+    "DueDate": "2026-12-02",
+    "BillEmail": { "Address": "familystore@example.com" }
+  },
+  "create-bill": {
+    "VendorRef": { "value": "41" },
+    "Line": [
+      {
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "Amount": 900,
+        "Description": "November rent",
+        "AccountBasedExpenseLineDetail": { "AccountRef": { "value": "17" } }
+      }
+    ],
+    "DueDate": "2026-11-30",
+    "DocNumber": "R-11"
+  },
+  "create-journal-entry": {
+    "Line": [
+      {
+        "DetailType": "JournalEntryLineDetail",
+        "Amount": 100.1,
+        "JournalEntryLineDetail": { "PostingType": "Debit", "AccountRef": { "value": "64" } }
+      },
+      {
+        "DetailType": "JournalEntryLineDetail",
+        "Amount": 100.1,
+        "Description": "Owner's draw",
+        "JournalEntryLineDetail": { "PostingType": "Credit", "AccountRef": { "value": "35" } }
+      }
+    ],
+    "TxnDate": "2026-10-31",
+    "PrivateNote": "Month-end"
+  },
+  "attach-file": {
+    "AttachableRef": [{ "EntityRef": { "type": "Purchase", "value": "252" } }],
+    "FileName": "receipt.pdf",
+    "ContentType": "application/pdf",
+    "Note": "Staples receipt"
+  }
+}

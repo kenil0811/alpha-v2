@@ -1,0 +1,12 @@
+{
+  "CompanyInfo": {
+    "Id": "1",
+    "CompanyName": "Craig's Design and Landscaping Services",
+    "LegalName": "Craig's Design and Landscaping Services",
+    "Country": "US",
+    "FiscalYearStartMonth": "January",
+    "Email": { "Address": "noreply@quickbooks.com" },
+    "PrimaryPhone": {}
+  },
+  "time": "2026-11-02T09:01:12.123-07:00"
+}

@@ -1,0 +1,48 @@
+{
+  "QueryResponse": {
+    "Invoice": [
+      {
+        "Id": "130",
+        "SyncToken": "0",
+        "DocNumber": "1037",
+        "TxnDate": "2026-10-03",
+        "DueDate": "2026-11-02",
+        "CurrencyRef": { "value": "USD", "name": "United States Dollar" },
+        "CustomerRef": { "value": "58", "name": "Sonnenschein Family Store" },
+        "BillEmail": { "Address": "Familiystore@intuit.com" },
+        "EmailStatus": "NotSet",
+        "TotalAmt": 362.07,
+        "Balance": 362.07,
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Rock Fountain",
+            "Amount": 275.0,
+            "DetailType": "SalesItemLineDetail",
+            "SalesItemLineDetail": {
+              "ItemRef": { "value": "5", "name": "Rock Fountain" },
+              "Qty": 1
+            }
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Fountain Pump",
+            "Amount": 12.75,
+            "DetailType": "SalesItemLineDetail",
+            "SalesItemLineDetail": { "ItemRef": { "value": "11", "name": "Pump" }, "Qty": 1 }
+          },
+          { "Amount": 287.75, "DetailType": "SubTotalLineDetail", "SubTotalLineDetail": {} }
+        ],
+        "MetaData": {
+          "CreateTime": "2026-10-03T13:15:36-07:00",
+          "LastUpdatedTime": "2026-10-03T13:15:36-07:00"
+        }
+      }
+    ],
+    "startPosition": 1,
+    "maxResults": 1
+  },
+  "time": "2026-11-02T09:01:12.123-07:00"
+}

@@ -39,7 +39,7 @@ import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { peek } from './Peek.tsx'
 import { BrainGraph, SecondBrain } from './SecondBrain.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
-import { InBar } from './Shell.tsx'
+import { InBar, InNav } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { applyTextSize, applyTheme, savedTheme, type TextSize, type Theme } from './theme.ts'
 import { Usage } from './Usage.tsx'
@@ -235,7 +235,7 @@ export function Settings({
       <div className="flex h-full min-h-0 flex-col">
         {/* Intelligence's parts each hold their own data, so they take the pill switch like a
             module's tables (Vikas, 28 Oct) */}
-        <InBar>
+        <InNav>
           <PillSwitch label="Second Brain">
             {PAGES.intelligence.tabs.map(([id, label]) => (
               <SwitchPill
@@ -244,7 +244,7 @@ export function Settings({
               />
             ))}
           </PillSwitch>
-        </InBar>
+        </InNav>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex max-w-page flex-col gap-8 px-7 pt-6 pb-12">{body[at]}</div>
         </div>
@@ -1066,6 +1066,7 @@ function ConnectorTile({
 }) {
   const system = c.auth === 'system'
   const inBrowser = c.auth === 'browser'
+  const oauth = c.auth === 'oauth' ? c.oauth : undefined
   const [open, setOpen] = useState(startOpen)
   const [account, setAccount] = useState(
     system
@@ -1075,16 +1076,39 @@ function ConnectorTile({
         : '',
   )
   const [secret, setSecret] = useState('')
+  // OAuth: the person's own app, then their sign-in in the browser, which the core hears back
+  const [clientId, setClientId] = useState('')
+  const [waiting, setWaiting] = useState<number | null>(null) // the count when it started
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [removing, setRemoving] = useState(false)
   useEffect(() => setOpen(startOpen), [startOpen])
+  // the sign-in landed: the connection shows on the live stream, and the form closes
+  const count = connections.length
+  useEffect(() => {
+    if (waiting !== null && count > waiting) {
+      setWaiting(null)
+      setOpen(false)
+    }
+  }, [waiting, count])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
     setProblem(null)
     try {
+      if (oauth) {
+        const { url } = await api.post<{ url: string }>('/api/connectors/oauth/start', {
+          connector: c.name,
+          account,
+          clientId,
+          clientSecret: secret,
+        })
+        window.open(url, '_blank', 'noopener')
+        setSecret('')
+        setWaiting(connections.length)
+        return
+      }
       const made = await api.post<{ id: string; state: string }>('/api/connections', {
         connector: c.name,
         account,
@@ -1187,6 +1211,44 @@ function ConnectorTile({
               />
             </label>
           )}
+          {oauth && (
+            <>
+              {c.warning && <p className="text-ink-2 text-md">{c.warning}</p>}
+              <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-client`}>
+                <span className="text-ink-2">Client ID</span>
+                <Field
+                  id={`${c.name}-client`}
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  autoComplete="off"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
+                <span className="text-ink-2">Client secret</span>
+                <Field
+                  id={`${c.name}-secret`}
+                  type="password"
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                  autoComplete="off"
+                />
+                <span className="text-ink-3 text-sm">
+                  {oauth.help} Its redirect is{' '}
+                  <span className="select-all text-ink-2">{oauth.redirect}</span>.{' '}
+                  {oauth.url && (
+                    <a
+                      className="text-accent underline underline-offset-3"
+                      href={oauth.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Make one
+                    </a>
+                  )}
+                </span>
+              </label>
+            </>
+          )}
           {c.secret && (
             <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
               <span className="text-ink-2">{c.secret.label}</span>
@@ -1212,6 +1274,11 @@ function ConnectorTile({
               </span>
             </label>
           )}
+          {waiting !== null && (
+            <p className="text-ink-2 text-md">
+              Finish signing in to {c.title} in your browser; this shows the connection when you do.
+            </p>
+          )}
           {problem && (
             <div className="flex flex-wrap items-center gap-2 text-bad text-md">
               <span>{problem}</span>
@@ -1230,9 +1297,20 @@ function ConnectorTile({
               type="submit"
               size="sm"
               variant="primary"
-              disabled={busy || !account.trim() || (!!c.secret && !secret.trim())}
+              disabled={
+                busy ||
+                !account.trim() ||
+                ((!!c.secret || !!oauth) && !secret.trim()) ||
+                (!!oauth && !clientId.trim())
+              }
             >
-              {busy ? 'Connecting…' : inBrowser ? 'Sign in with Chrome' : 'Connect'}
+              {busy
+                ? 'Connecting…'
+                : inBrowser
+                  ? 'Sign in with Chrome'
+                  : oauth
+                    ? `Sign in with ${c.title}`
+                    : 'Connect'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
               Cancel

@@ -68,6 +68,11 @@ export class ConnectorService {
     for (const c of options.known ?? []) this.add(c)
   }
 
+  // the secret store, for an OAuth connect waiting on the person's sign-in (routes/connectors.ts)
+  get secrets(): SecretStore {
+    return this.options.secrets
+  }
+
   // A connector joins the loaded set (at start, or added from Settings without a restart): the
   // SDK's check first, so a wrong one never gets in.
   add(c: Connector): void {
@@ -160,6 +165,10 @@ export class ConnectorService {
     return {
       account: conn.account,
       secret: async () => (conn.secretRef ? this.options.secrets.get(conn.secretRef) : null),
+      // a rotated OAuth refresh token replaces the old one, under the same reference
+      ...(conn.secretRef
+        ? { setSecret: (s: string) => this.options.secrets.set(conn.secretRef as string, s) }
+        : {}),
       cursor: () => this.world.connections.get(conn.id)?.cursor ?? null,
       setCursor: (cursor) => this.world.connections.setCursor(conn.id, cursor),
       land: (tableName, items, options) => {
@@ -212,7 +221,11 @@ export class ConnectorService {
     const c = this.connector(name)
     if (c.manifest.auth === 'secret' && !secret?.trim())
       throw new Refused(`${c.manifest.title} needs its ${c.manifest.secret?.label ?? 'password'}.`)
-    const ref = c.manifest.auth === 'secret' ? `${name}:${account.trim().toLowerCase()}` : null
+    // an OAuth connection's secret is the sign-in's tokens, from the callback (routes/connectors.ts)
+    if (c.manifest.auth === 'oauth' && !secret?.trim())
+      throw new Refused(`${c.manifest.title} is connected by signing in to it.`)
+    const keeps = c.manifest.auth === 'secret' || c.manifest.auth === 'oauth'
+    const ref = keeps ? `${name}:${account.trim().toLowerCase()}` : null
     if (ref && secret) await this.options.secrets.set(ref, secret.trim())
     const conn = this.world.connections.add(name, account, ref, c.manifest.title, {
       actor: { kind: 'person', id: user },

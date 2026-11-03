@@ -5,6 +5,7 @@ export interface Health {
   ok: true
   version: string
   build: string | null // the window this core serves: a window on another build reloads
+  now?: string // a demo's clock (ALPHA_CLOCK): the window's now is the core's
 }
 
 export type { Layout, Me } from './me-types.ts'
@@ -510,6 +511,8 @@ export interface ConnectorView {
   system?: { pane: string } // the System Settings pane that turns Alpha on after a no
   setup?: { sub: string } // its step on the first open, when it asks for one
   warning?: string // what the person reads before connecting it
+  // signed in to with the person's own app: where they make it, and the redirect it must name
+  oauth?: { help: string; url?: string; redirect: string }
 }
 
 export interface ConnectionView {
