@@ -4,7 +4,7 @@
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
 // and the mail and meetings with them, newest first, each opening its row.
 
-import type { KeptTable, ModuleSummary, PersonView, RowAround } from '@alpha/core/api'
+import type { KeptTable, ModuleSummary, PersonView, PlaceRow, RowAround } from '@alpha/core/api'
 import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem } from './api.ts'
@@ -15,6 +15,7 @@ import { InNav } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
 import { Field } from './ui/field.tsx'
 import { PillSwitch, SwitchPill } from './ui/pill-switch.tsx'
 import { Section } from './ui/section.tsx'
@@ -51,7 +52,7 @@ export function People({
   net,
   onName,
 }: {
-  kind: 'person' | 'company'
+  kind: 'person' | 'company' | 'map'
   id: string | null
   version: number
   net: ModuleSummary | null
@@ -70,13 +71,14 @@ function PeopleList({
   version,
   net,
 }: {
-  kind: 'person' | 'company'
+  kind: 'person' | 'company' | 'map'
   version: number
   net: ModuleSummary | null
 }) {
   // the core serves People and Organizations as tables; a name changes in its cell
   const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
+    if (kind === 'map') return
     api
       .get<KeptTable>(`/api/kept/${kind === 'company' ? 'organizations' : 'people'}`)
       .then(setData, () => setData(null))
@@ -120,7 +122,9 @@ function PeopleList({
         </div>
       )}
       <div className="min-h-0 flex-1">
-        {data ? (
+        {kind === 'map' ? (
+          <PlacesMap version={version} />
+        ) : data ? (
           <TableView
             key={kind}
             data={data}
@@ -540,6 +544,165 @@ function History({ lines }: { lines: PersonView['history'] }) {
           )}
         </a>
       ))}
+    </div>
+  )
+}
+
+// Network's map (Vikas, 3 Nov: "see the location of everything"): every row that says where it is,
+// on a map of the states, one square each, darker for more; a state picked lists its rows, each
+// opening its record. A place that names no state is listed under Elsewhere.
+// ponytail: by state, read from "City, ST"; a street map waits on a geocoder that keeps addresses
+// on the machine
+const GRID: Record<string, [number, number]> = {
+  AK: [0, 0],
+  ME: [11, 0],
+  VT: [10, 1],
+  NH: [11, 1],
+  WA: [1, 2],
+  ID: [2, 2],
+  MT: [3, 2],
+  ND: [4, 2],
+  MN: [5, 2],
+  IL: [6, 2],
+  WI: [7, 2],
+  MI: [8, 2],
+  NY: [9, 2],
+  RI: [10, 2],
+  MA: [11, 2],
+  OR: [1, 3],
+  NV: [2, 3],
+  WY: [3, 3],
+  SD: [4, 3],
+  IA: [5, 3],
+  IN: [6, 3],
+  OH: [7, 3],
+  PA: [8, 3],
+  NJ: [9, 3],
+  CT: [10, 3],
+  CA: [1, 4],
+  UT: [2, 4],
+  CO: [3, 4],
+  NE: [4, 4],
+  MO: [5, 4],
+  KY: [6, 4],
+  WV: [7, 4],
+  VA: [8, 4],
+  MD: [9, 4],
+  DE: [10, 4],
+  AZ: [2, 5],
+  NM: [3, 5],
+  KS: [4, 5],
+  AR: [5, 5],
+  TN: [6, 5],
+  NC: [7, 5],
+  SC: [8, 5],
+  DC: [9, 5],
+  OK: [4, 6],
+  LA: [5, 6],
+  MS: [6, 6],
+  AL: [7, 6],
+  GA: [8, 6],
+  HI: [0, 7],
+  TX: [4, 7],
+  FL: [9, 7],
+}
+const stateOf = (place: string) => {
+  const st = /,\s*([A-Z]{2})\b/.exec(place)?.[1]
+  return st && st in GRID ? st : null
+}
+
+function PlacesMap({ version }: { version: number }) {
+  const [rows, setRows] = useState<PlaceRow[] | null>(null)
+  const [on, setOn] = useState<string | null>(null)
+  useEffect(() => {
+    if (version >= 0) api.get<PlaceRow[]>('/api/places').then(setRows, () => setRows([]))
+  }, [version])
+  if (!rows) return <p className="p-7 text-ink-3">Loading…</p>
+  const by = new Map<string, PlaceRow[]>()
+  for (const r of rows) {
+    const k = stateOf(r.place) ?? 'Elsewhere'
+    by.set(k, [...(by.get(k) ?? []), r])
+  }
+  const most = Math.max(
+    1,
+    ...[...by.entries()].filter(([k]) => k !== 'Elsewhere').map(([, v]) => v.length),
+  )
+  const picked = on ?? [...by.entries()].sort((a, b) => b[1].length - a[1].length)[0]?.[0] ?? null
+  const list = picked ? (by.get(picked) ?? []) : []
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="flex flex-col gap-6 px-7 py-6 lg:flex-row">
+        <section className="min-w-0 flex-1">
+          <h2 className="font-semibold text-base text-ink">Where everything is</h2>
+          <p className="mb-4 text-ink-2 text-md">
+            {rows.length
+              ? `${rows.length} rows that say where they are, by state. Pick a state to see them.`
+              : 'No row says where it is yet: a column named Location, City or Address puts it here.'}
+          </p>
+          <div className="grid max-w-180 grid-cols-12 gap-1">
+            {Object.entries(GRID).map(([st, [x, y]]) => {
+              const n = by.get(st)?.length ?? 0
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  disabled={!n}
+                  aria-pressed={picked === st}
+                  data-tip={n ? `${n} in ${st}` : `Nothing in ${st}`}
+                  onClick={() => setOn(st)}
+                  style={{
+                    gridColumn: x + 1,
+                    gridRow: y + 1,
+                    ...(n
+                      ? {
+                          background: `color-mix(in srgb, var(--accent) ${20 + (n / most) * 70}%, var(--surface))`,
+                        }
+                      : {}),
+                  }}
+                  className={cn(
+                    'flex aspect-square flex-col items-center justify-center rounded-md text-xs',
+                    n
+                      ? 'font-medium text-ink hover:ring-2 hover:ring-accent'
+                      : 'bg-sunk text-ink-3',
+                    picked === st && 'ring-2 ring-ink',
+                  )}
+                >
+                  {st}
+                  {n > 0 && <span className="tabular-nums">{n}</span>}
+                </button>
+              )
+            })}
+          </div>
+          {by.has('Elsewhere') && (
+            <button
+              type="button"
+              onClick={() => setOn('Elsewhere')}
+              className="mt-3 text-accent text-md hover:underline"
+            >
+              Elsewhere: {by.get('Elsewhere')?.length}
+            </button>
+          )}
+        </section>
+        {picked && (
+          <section className="min-w-0 lg:w-96">
+            <h2 className="mb-2 font-semibold text-base text-ink">
+              {picked} <span className="font-normal text-ink-3 text-sm">{list.length}</span>
+            </h2>
+            <ul className="flex flex-col">
+              {list.map((r) => (
+                <li key={r.href} className="border-hair border-t">
+                  <a href={r.href} className="flex flex-col py-2 hover:bg-hover">
+                    <span className="truncate text-ink text-md">{r.label}</span>
+                    <span className="truncate text-ink-3 text-sm">
+                      {r.place} · {r.module}, {r.hint}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   )
 }

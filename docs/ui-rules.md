@@ -241,7 +241,7 @@ put it there and on the parts page (#/parts).
   holds who is signed in, Appearance on one line, Switch account and Log out; never a place the
   rail already has. Every count on the rail says on hover what it is made of.
 - Marking dims the window and lights what is under the pointer; its banner wears the accent ring.
-- Network's switch is Overview and People, nothing else (Organizations went on 2 Nov). A table that names people by
+- Network's switch is Overview, People, Organizations and Map (Organizations back on 3 Nov). A table that names people by
   a role's address ("Broker email") puts them in that role's list (Brokers).
 
 ### Agents as threads, Tasks never empty (Vikas, 30 Oct)
@@ -418,7 +418,7 @@ put it there and on the parts page (#/parts).
 - Every Overview opens on Find, the same wide box as Home's (`ui/find-bar.tsx`).
 - Calendar and Knowledge Base are Alpha's own modules, installed at start like Network. Calendar's
   Events open on a calendar by start; the Mac's Calendar lands its events there once connected.
-  Knowledge Base holds Documents and Reports, its two tabs after Overview.
+  Knowledge Base is one list of Documents, reports among them, newest first.
 
 - A place pinned atop the rail shows its name under its icon, three to a row (`named` on
   `IconTile`). A module dragged onto the middle of another goes inside it; onto the top or bottom of
@@ -433,8 +433,9 @@ put it there and on the parts page (#/parts).
 - Alpha is the agent, not a module: Home's Tables card and the numbering leave Alpha's own module
   out (modules number from 1, in the rail's order); its Decisions and Noticed stay in Settings ›
   Governance (Vikas, 2 Nov; replaces 30 Oct's "Alpha numbered 1").
-- Network's tabs are Overview and People. Each person's organization is a column of People and
-  opens from their page; Organizations is no tab and no place in Find (Vikas, 2 Nov).
+- Network's tabs are Overview, People, Organizations and Map. Map shows every row that says where
+  it is (a column named Location, City or Address) on a map of the states, a square each, darker
+  for more; a state picked lists its rows (Vikas, 3 Nov; replaces 2 Nov's People alone).
 - The rail is one line: Home, Agents, Tasks and the modules in one order, a module dropped above
   or below any of them, never into Home, Agents or Tasks (`railLine` in `Shell.tsx`; `order` keeps
   module ids and the fixed places' links). Replaces modules always below Tasks (Vikas, 2 Nov).
@@ -442,18 +443,30 @@ put it there and on the parts page (#/parts).
   wrapping, the one on screen lit, its count beside it; + adds one; right-click renames,
   duplicates or deletes. The table's actions (New, Sync now, Save) sit at that row's right.
   Replaces the lists drop-down (Vikas, 2 Nov).
-- The standard column, on Home and every Overview: Files on top, as an explorer (a folder per table
-  and kind of document, a path back up, the newest first, any file dropped on it added); then
-  Interview me; then Agents, Governance and Tables as one card, a switch in its head (Agents left,
+- The standard column, on Home and every Overview: its buttons on top (Interview me, Mac setup),
+  each with its name under or beside its icon; then Files, as an explorer (a folder per table and
+  kind of document, a path back up, the newest first, any file dropped on it added); then Agents, Governance and Tables as one card, a switch in its head (Agents left,
   Governance in the middle, Tables right). Agents shows New agent where there is none. No Second
   Brain card. Replaces the column's 27 and 29 Oct order (Vikas, 3 Nov).
 - A tile's button is one standard word: Review, Answer, Start, Fix, Open or Done; what it opens is
   on its hover ("Review the 3 new"). Its spark keeps to its own room left of the button, never
   under it (Vikas, 3 Nov).
-- An Overview's Find keeps to the module: "Find in Knowledge Base: documents and reports", its
+- An Overview's Find keeps to the module: "Find in DealPilot: sources and deals", its
   tables and its rows only. Home's finds everything (Vikas, 3 Nov).
-- No chart of rows per week split by kind on an Overview: "New … by week" says the count (Vikas,
-  3 Nov: confusing).
+- No chart of rows per week split by kind on an Overview (Vikas, 3 Nov: confusing).
+- A click anywhere on a table's row opens its record, in the side panel; a double-click changes the
+  cell. A link in a table is plain text, followed on the record (Vikas, 3 Nov; replaces T4's name).
+- A module with one table and nothing else (Calendar, Knowledge Base) has no Overview: it opens on
+  that table, its name alone in the bar (Vikas, 3 Nov).
+- An Overview card has no Show more: it holds everything, scrolling past its height, and dragging
+  its corner gives it more. No Insights card: the strip on top is the insights (Vikas, 3 Nov).
+- One card per question of the rows, never two cards of the same numbers: a stage is one card,
+  "now at each stage" or "reached each stage" (now there or past it) on its switch, what it counts
+  under its name. No chart by when a row was first seen, no bubbles, no one goal's weeks beside
+  Goals by week. A heat map only when two things vary apart (two thirds of its squares filled)
+  (Vikas, 3 Nov).
+- Goals open in the side panel, with Edit, where their rows change. Goals, What rules rows out and
+  Where rows come from start in the right column, under the standard cards (Vikas, 3 Nov).
 
 ### Onboarding from the footprint (Vikas, 30 Oct; for Kenil's review)
 

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import type { Ctx } from '../ctx.ts'
-import type { FoundRow, Layout, Me } from '../types.ts'
+import type { FoundRow, Layout, Me, PlaceRow } from '../types.ts'
 
 export function registerMe(ctx: Ctx): void {
   const { app, world, user } = ctx
@@ -192,4 +192,33 @@ export function registerMe(ctx: Ctx): void {
         .slice(0, 8),
     ]
   })
+
+  // Every row that says where it is, for Network's map (Vikas, 3 Nov): a text field named for a
+  // place, its value not a link or an address to write to.
+  // ponytail: every row of every table read on each call; a places index if Network grows past it
+  app.get(
+    '/api/places',
+    async (): Promise<PlaceRow[]> =>
+      world.shape.tables().flatMap((t) => {
+        if (t.hidden) return []
+        const f = t.fields.find(
+          (x) =>
+            x.kind === 'text' && /^(location|city|address|place|based in|office)$/i.test(x.name),
+        )
+        if (!f) return []
+        return world.records.list(t.id).flatMap((r) => {
+          const place = String(r.values[f.slug] ?? '').trim()
+          if (!place || /^https?:|@/.test(place)) return []
+          return [
+            {
+              place,
+              label: world.rowName(t, r.values),
+              hint: t.name,
+              module: t.module.name,
+              href: `#/table/${t.id}/${r.id}`,
+            },
+          ]
+        })
+      }),
+  )
 }

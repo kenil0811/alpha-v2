@@ -82,13 +82,16 @@ export function ModuleScreen({
   }, [mainIds, version])
   const { pins } = usePins(m)
 
-  // with no tab named, the Overview, or People in the module people live in
+  // with no tab named, the Overview, or People in the module people live in, or the one table of
+  // a module that has nothing else (Calendar, Knowledge Base)
   const holds = (m?.modules.length ?? 0) > 0
   const current: ModuleTab = tab ?? { kind: 'overview' }
   const toPeople = !tab && m && m.id === moduleId && m.people
+  const only = m && m.id === moduleId && current.kind === 'overview' ? straight(m) : null
   useEffect(() => {
     if (toPeople) window.location.replace('#/people')
-  }, [toPeople])
+    else if (only) window.location.replace(`#/table/${only}`)
+  }, [toPeople, only])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
   return (
@@ -122,6 +125,17 @@ export function ModuleScreen({
   )
 }
 
+// A module with one main table and no pages, people or modules inside opens on that table, no
+// Overview (Vikas, 3 Nov: Calendar shows its calendar, Knowledge Base its documents).
+export const straight = (
+  m: Pick<ModuleSummary, 'people' | 'pages' | 'tables'> & { modules?: unknown[] },
+): string | null => {
+  const main = m.tables.filter((t) => t.place === 'main')
+  return main.length === 1 && !m.pages.length && !m.people && !m.modules?.length
+    ? (main[0]?.id ?? null)
+    : null
+}
+
 // The switch in the bar: Overview, the pinned tables (main ones lowest on the spine first, then
 // any part or setup table pinned), a rule, then the pages; Conversation is in the rail, filtered
 // to the module there, never a tab of each module (Vikas, 27 Oct). A table not
@@ -146,6 +160,13 @@ function ModuleSwitch({
   const shown = m.tables
     .filter((t) => pins.includes(t.id) || (current.kind === 'table' && current.id === t.id))
     .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+  // one table and nothing else: the module's name, no switch (Vikas, 3 Nov)
+  if (straight(m))
+    return (
+      <InNav>
+        <span className="font-semibold text-base text-ink">{m.name}</span>
+      </InNav>
+    )
   const overview: Tab = {
     key: 'overview',
     href: `#/module/${m.id}/overview`,
@@ -297,11 +318,12 @@ export const moduleTabs = (
   },
 ]
 
-// People, the one list of the module people live in: each person's organization is a column of
-// it, and a person's page opens their organization's, so Organizations is no tab of its own (Vikas, 2 Nov: "I
-// don't see why we have both people and organizations")
-export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
-  { key: 'people', href: '#/people', label: 'People', sel: kind !== null },
+// The module people live in: People, Organizations as a switch beside it (Vikas, 3 Nov, back
+// after 2 Nov), and the map of where everything is
+export const peopleTabs = (kind: 'person' | 'company' | 'map' | null): Tab[] => [
+  { key: 'people', href: '#/people', label: 'People', sel: kind === 'person' },
+  { key: 'companies', href: '#/people?companies', label: 'Organizations', sel: kind === 'company' },
+  { key: 'map', href: '#/people?map', label: 'Map', sel: kind === 'map' },
 ]
 
 // The modules inside this one, a row each: its name, where it comes from, and what goes on in

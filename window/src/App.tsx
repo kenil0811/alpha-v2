@@ -32,7 +32,7 @@ import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { Marker } from './Mark.tsx'
-import { ModuleScreen } from './Module.tsx'
+import { ModuleScreen, straight } from './Module.tsx'
 import { NewAgent, NewModule } from './NewModule.tsx'
 import { signalOf } from './Overview.tsx'
 import { Parts } from './Parts.tsx'
@@ -126,8 +126,13 @@ export function placeOf(hash: string): Place {
           | undefined) ?? 'today',
       id: tk[1] ?? null,
     }
-  const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
-  if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
+  const pp = /^#\/people(?:\/([\w-]+)|\?(companies|map))?$/.exec(hash)
+  if (pp)
+    return {
+      at: 'people',
+      kind: pp[2] === 'map' ? 'map' : pp[2] ? 'company' : 'person',
+      id: pp[1] ?? null,
+    }
   const talk = /^#\/conversation(?:\/([\w-]+))?$/.exec(hash)
   if (talk) return { at: 'conversation', agent: talk[1] ?? null }
   if (hash === '#/parts') return { at: 'parts' }
@@ -426,7 +431,9 @@ export function App() {
                 ? [at('People', '#/people'), at(personName || '…')]
                 : place.kind === 'company'
                   ? [at('People', '#/people'), at('Organizations')]
-                  : [at('People')],
+                  : place.kind === 'map'
+                    ? [at('People', '#/people'), at('Map')]
+                    : [at('People')],
             }
           : place.at === 'conversation'
             ? { icon: <Bot className={icon} />, parts: [at('Agents')] }
@@ -714,11 +721,21 @@ const typing = (t: EventTarget | null) =>
 // A record's module, under the path to the record: Overview and its main tables, the record's own
 // table chosen, so the way back to the module's lists is in sight
 function RecordSwitch({ m, table }: { m: ModuleSummary; table: string }) {
+  const only = straight(m)
   return (
     <InNav>
       <PillSwitch label={m.name}>
         {[
-          { key: 'overview', href: `#/module/${m.id}/overview`, label: 'Overview', sel: false },
+          ...(only
+            ? []
+            : [
+                {
+                  key: 'overview',
+                  href: `#/module/${m.id}/overview`,
+                  label: 'Overview',
+                  sel: false,
+                },
+              ]),
           ...m.tables
             .filter((t) => t.place === 'main' || t.id === table)
             .map((t) => ({

@@ -61,7 +61,6 @@ import {
   canType,
   EMPTY_CELL,
   EMPTY_WORDS,
-  hrefOf,
   INK,
   isTags,
   KIND_WORDS,
@@ -168,13 +167,6 @@ export function Grid({
   // ⇧↓ and ⇧↑ stretch the picked cell over the next rows down, for ⌘D and a paste
   const [range, setRange] = useState<{ row: string; field: string; n: number } | null>(null)
   const at = useRef<{ row: string; field: string } | null>(null) // the cell last clicked, at once
-  const pick = (p: { row: string; field: string }) => {
-    at.current = p
-    setRange(null)
-    window.clearTimeout(soon.current)
-    if (picked) onPick(p)
-    else soon.current = window.setTimeout(() => onPick(p), 250)
-  }
   // a click on a row's name opens it, a moment later for the same reason
   const open = (row: string) => {
     window.clearTimeout(soon.current)
@@ -456,11 +448,11 @@ export function Grid({
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
                           inRange={inRange(r.id, f.slug)}
-                          // a row kept on its own page opens there from its name
-                          onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
+                          // a click anywhere on the row opens its record (Vikas, 3 Nov); a
+                          // double-click still changes the cell
+                          onOpen={() => (readOnly ? onOpen(r.id) : open(r.id))}
                           onEdit={!readOnly && canChange(f) ? () => startEditing(here) : undefined}
                           fixed={readOnly || canChange(f) ? undefined : whyFixed(f)}
-                          onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
                     </td>
@@ -783,7 +775,6 @@ function Cell({
   tone,
   selected,
   inRange,
-  onPick,
   onEdit,
   onOpen,
   fixed,
@@ -797,15 +788,13 @@ function Cell({
   tone: string | null
   selected: boolean
   inRange: boolean // under the picked cell, in its ⇧↓ range
-  onPick: () => void
   onEdit: (() => void) | undefined
-  onOpen: (() => void) | undefined
+  onOpen: () => void
   fixed?: string | undefined // why a double-click does not change it (a summary, a file)
 }) {
   const value = r.values[f.slug]
   const source = r.sources[f.slug]
   const text = show(f, value, names)
-  const href = f.kind === 'relation' || f.kind === 'person' ? null : hrefOf(f.kind, text)
   const mark = source ? MARK[source.kind] : undefined
   const empty = value === null || value === undefined || text === ''
   const key = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -821,11 +810,8 @@ function Cell({
         // WebKit does not focus a button on a click; the cell needs it for Enter, F2 and a paste
         onClick={(e) => {
           e.currentTarget.focus({ preventScroll: true })
-          // a link opens; the name opens the row; the rest of the cell picks it
-          const link = (e.target as HTMLElement).closest<HTMLElement>('[data-href]')?.dataset.href
-          if (link) window.open(link, link.startsWith('http') ? '_blank' : '_self', 'noreferrer')
-          else if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
-          else onPick()
+          // anywhere on the row opens its record; a link is plain here, followed on the record
+          onOpen()
         }}
         onDoubleClick={onEdit ?? (fixed ? (e) => tipNow(e.currentTarget) : undefined)}
         onKeyDown={key}
@@ -850,17 +836,12 @@ function Cell({
           <span
             className={cn(
               wrap ? 'break-words' : 'truncate',
-              'decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
               first && 'font-medium',
-              onOpen && 'cursor-pointer',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
               tone && INK[tone],
-              href && 'cursor-pointer text-accent underline decoration-solid',
             )}
-            data-href={href ?? undefined}
-            data-name={onOpen ? '' : undefined}
-            data-tip={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
+            data-tip={text.length > 30 ? text : undefined}
           >
             {text}
           </span>

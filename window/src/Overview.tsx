@@ -21,9 +21,7 @@ import {
   Folder,
   Image,
   LoaderCircle,
-  Maximize2,
   MessageCircleQuestion,
-  Minimize2,
   Pin,
   Plus,
   Sheet,
@@ -37,18 +35,11 @@ import { GovernanceSection } from './Governance.tsx'
 import { useLayout } from './layout.ts'
 import { when } from './ModulesAndAgents.tsx'
 import { moduleNumbers, numberTables } from './Parts.tsx'
+import { peek } from './Peek.tsx'
 import { Stack, stacksOf } from './stack.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import {
-  Bubbles,
-  Chart,
-  type ChartKind,
-  Heat,
-  KindPicker,
-  type Mark,
-  Scatter,
-} from './ui/chart.tsx'
+import { Chart, type ChartKind, Heat, KindPicker, type Mark, Scatter } from './ui/chart.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
@@ -145,45 +136,6 @@ function spreadOf(t: TableData) {
     .sort((a, b) => b.marks.filter((m) => m.n).length - a.marks.filter((m) => m.n).length)
 }
 
-// Rows as bubbles (Vikas, 27 Oct): along the date most of them have, in lanes by their main
-// choice, sized by their first amount, coloured by a choice whose words carry a tone (Risk). Only
-// when the table has all three, and enough rows dated to read.
-function bubblesOf(t: TableData) {
-  const dated = (f: Field) => t.rows.filter((r) => typeof val(r, f) === 'string').length
-  const date = t.fields.filter((f) => f.kind === 'date').sort((a, b) => dated(b) - dated(a))[0]
-  const size = t.fields.find((f) => f.kind === 'money') ?? t.fields.find((f) => f.kind === 'number')
-  const lane = spreadOf(t)[0]?.f
-  const tone = toneOf(t, lane)
-  if (!date || !size || !lane || dated(date) < 8) return null
-  const name = nameOf(t)
-  const points = t.rows.flatMap((r) => {
-    const d = val(r, date)
-    const lanes = val(r, lane)
-    if (typeof d !== 'string' || typeof lanes !== 'string') return []
-    const said = tone ? String(val(r, tone) ?? '') : ''
-    const n = num(val(r, size)) ?? 0
-    return [
-      {
-        at: Date.parse(d),
-        lane: lanes,
-        size: n,
-        tone: tone?.tones[said],
-        label: [
-          name ? String(val(r, name) ?? '') : '',
-          `${date.name} ${d}`,
-          `${size.name} ${n.toLocaleString()}`,
-          said && tone ? `${tone.name} ${said}` : '',
-        ]
-          .filter(Boolean)
-          .join(' · '),
-        href: `#/row/${r.id}`,
-      },
-    ]
-  })
-  const lanes = lane.choices.filter((c) => points.some((p) => p.lane === c))
-  return { date, size, lane, points, lanes, tones: tonesOf(tone) }
-}
-
 const toneOf = (t: TableData, not?: Field) =>
   t.fields.find((f) => f.kind === 'choice' && !f.many && f !== not && Object.keys(f.tones).length)
 const tonesOf = (tone: Field | undefined) =>
@@ -278,6 +230,10 @@ function heatOf(t: TableData) {
     }),
   )
   if (cols.length < 2) return null
+  // only two things that vary apart (Vikas, 3 Nov): where most pairs are empty, one decides the
+  // other (a stage under LOI is never "SIM requested"), and the grid is a funnel said worse
+  const all = cells.flat()
+  if (all.filter((c) => c.n).length < (all.length * 2) / 3) return null
   return { row, col, rows: rowIds.map(said), cols, cells }
 }
 
@@ -1027,6 +983,19 @@ export function Overview({
   }
   for (const t of main.filter((x) => x.rows.length >= 8)) {
     const spread = spreadOf(t)[0]
+    // a stage is one card with two readings (Vikas, 3 Nov: not two cards of the same rows): where
+    // each row is now, and how many reached each stage, there now or past it, the ones that left
+    // (Passed, Lost) out; the funnel's numbers are larger for that reason, said under its name
+    const f = spread && /stage|step|phase/i.test(spread.f.name) ? spread.f : null
+    const left = (c: string) =>
+      !!f && (f.tones[c] === 'bad' || /pass|lost|drop|declin|gone|cancel/i.test(c))
+    const steps = f ? f.choices.filter((c) => !left(c)) : []
+    const at = (r: RowView) => (f ? steps.indexOf(String(val(r, f) ?? '')) : -1)
+    const reached = steps.map((c, i) => {
+      const rows = t.rows.filter((r) => at(r) >= i)
+      return { label: c, n: rows.length, href: rowsHref(t, rows, `${f?.name} at ${c} or past it`) }
+    })
+    const funnel = reached.filter((x) => x.n).length >= 2
     if (spread && says(spread.marks))
       work.push({
         key: `chart:${t.id}`,
@@ -1036,60 +1005,18 @@ export function Overview({
             id={`chart:${t.id}`}
             title={`${t.name} by ${spread.f.name.toLowerCase()}`}
             href={`#/table/${t.id}`}
-            kinds={['bar', 'donut', 'funnel']}
+            kinds={funnel ? ['bar', 'funnel'] : ['bar', 'donut']}
             marks={spread.marks}
+            {...(funnel
+              ? {
+                  by: { funnel: reached },
+                  about: {
+                    bar: `Where each of the ${t.name.toLowerCase()} is now`,
+                    funnel: `How many reached each ${spread.f.name.toLowerCase()}: there now or past it`,
+                  },
+                }
+              : {})}
           />
-        ),
-      })
-    // a stage as a funnel (Vikas, 29 Oct: the Funnel page's analytics on the Overview): the rows
-    // at or past each stage, the ones that left (Passed, Lost) out
-    if (spread && /stage|step|phase/i.test(spread.f.name)) {
-      const f = spread.f
-      const left = (c: string) =>
-        f.tones[c] === 'bad' || /pass|lost|drop|declin|gone|cancel/i.test(c)
-      const steps = f.choices.filter((c) => !left(c))
-      const at = (r: RowView) => steps.indexOf(String(val(r, f) ?? ''))
-      const marks = steps.map((c, i) => {
-        const rows = t.rows.filter((r) => at(r) >= i)
-        return { label: c, n: rows.length, href: rowsHref(t, rows, `${f.name} at ${c} or past it`) }
-      })
-      if (marks.filter((x) => x.n).length >= 2)
-        work.push({
-          key: `funnel:${t.id}`,
-          name: `${t.name} funnel`,
-          node: (
-            <ChartCard
-              id={`funnel:${t.id}`}
-              title={`${t.name} funnel`}
-              href={`#/table/${t.id}`}
-              kinds={['funnel', 'bar']}
-              marks={marks}
-            />
-          ),
-        })
-    }
-    const bubbles = bubblesOf(t)
-    if (bubbles)
-      work.push({
-        key: `bubbles:${t.id}`,
-        name: `${t.name} by ${bubbles.date.name.toLowerCase()}`,
-        wide: true,
-        node: (
-          <Card
-            id={`bubbles:${t.id}`}
-            title={`${t.name} by ${bubbles.date.name.toLowerCase()}`}
-            href={`#/table/${t.id}`}
-            wide
-          >
-            {() => (
-              <Bubbles
-                points={bubbles.points}
-                lanes={bubbles.lanes}
-                size={bubbles.size.name}
-                tones={bubbles.tones}
-              />
-            )}
-          </Card>
         ),
       })
     const scatter = scatterOf(t)
@@ -1146,7 +1073,6 @@ export function Overview({
             href={`#/table/${from.from.id}`}
             kinds={['bar', 'donut']}
             marks={from.marks}
-            few={8}
           />
         ),
       })
@@ -1161,34 +1087,28 @@ export function Overview({
           id="goals"
           title="Goals"
           href={`#/table/${goals.goals.id}`}
+          peek
+          // the goals are rows of their setup table, changed in the side panel (Vikas, 3 Nov)
+          extra={
+            <Button size="sm" onClick={() => peek(`#/table/${goals.goals.id}`)}>
+              Edit
+            </Button>
+          }
           kinds={['bullet', 'rings']}
           marks={goals.marks}
         />
       ),
     })
-  // each goal week by week and month by month, and the first one's weeks against its target
+  // each goal week by week and month by month (one goal's weeks alone is no card of its own: the
+  // same numbers; Vikas, 3 Nov)
   // ponytail: by the date a row carries for the goal (Reviewed); a stage reached has no date
   // until the core gives a row's stage history, so those goals show only where they stand
   if (goals?.marks.some((g) => g.date)) {
-    const first = goals.marks.find((g) => g.date) as Goal
     work.push({
       key: 'goal-weeks',
       name: 'Goals by week',
       wide: true,
       node: <GoalWeeks t={goals.table} goals={goals.marks} href={`#/table/${goals.goals.id}`} />,
-    })
-    work.push({
-      key: 'goal-first',
-      name: `${first.label} per week`,
-      node: (
-        <ChartCard
-          id="goal-first"
-          title={`${first.label} per week`}
-          href={`#/table/${goals.table.id}`}
-          kinds={['bullet', 'bar']}
-          marks={periodsOf(goals.table, first).weeks}
-        />
-      ),
     })
   }
   const criteria = criteriaOf(setup, main)
@@ -1203,22 +1123,6 @@ export function Overview({
           href={`#/table/${criteria.criteria.id}`}
           kinds={['bar', 'donut']}
           marks={criteria.marks}
-        />
-      ),
-    })
-  const big = [...main].sort((a, b) => b.rows.length - a.rows.length)[0]
-  const weeks = big && weeksOf(big)
-  if (big && weeks && weeks.weeks.filter((w) => w.n).length >= 2 && says(weeks.weeks))
-    work.push({
-      key: `weeks:${big.id}`,
-      name: `New ${big.name.toLowerCase()} by week`,
-      node: (
-        <ChartCard
-          id={`weeks:${big.id}`}
-          title={`New ${big.name.toLowerCase()} by week`}
-          href={`#/table/${big.id}`}
-          kinds={['bar', 'donut']}
-          marks={weeks.weeks}
         />
       ),
     })
@@ -1244,12 +1148,9 @@ export function Overview({
         .catch(() => undefined)
   }, [goalKey, m.id])
 
-  const insights = m.agents.find((a) => /insight/i.test(a.name))
   const questions = cards.some((c) => c.module === m.name && isQuestion(c))
+  // no Insights card: the strip on top is the insights (Vikas, 3 Nov)
   const lead: (Block & { wide?: boolean })[] = [
-    ...(insights
-      ? [{ key: 'insights', name: 'Insights', node: <Insights a={insights} onChange={onChange} /> }]
-      : []),
     ...(waiting.length
       ? [
           {
@@ -1270,10 +1171,9 @@ export function Overview({
     })
   // the standard blocks, in this order in every module (Vikas, 29 Oct)
   const standard: Block[] = [
-    // Files at the top, where a file is added (Vikas, 3 Nov)
-    { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
-    // Interview me next, a square smaller than the strip's (Vikas, 30 Oct)
+    // Interview me on top, its name under its icon, then Files (Vikas, 3 Nov)
     { key: 'interview', name: 'Interview me', node: <InterviewTile m={m} /> },
+    { key: 'files', name: 'Files', node: <Files m={m} onChange={onChange} /> },
     ...(questions
       ? [
           {
@@ -1315,6 +1215,9 @@ export function Overview({
     },
   ]
   const wide = new Set([...lead, ...work].filter((b) => 'wide' in b && b.wide).map((b) => b.key))
+  // the right column's room under its standard cards (Vikas, 3 Nov): goals, what rules rows out
+  // and where they come from start there; the rest of the work on the left
+  const right = work.filter((b) => /^(goals$|criteria$|from:)/.test(b.key)).map((b) => b.key)
 
   return (
     // its own width decides the columns, not the window's: it is drawn in the side panel too
@@ -1337,11 +1240,14 @@ export function Overview({
             {
               page: `overview:${m.id}:work`,
               start: pairs(
-                [...lead, ...work].map((b) => b.key),
+                [...lead, ...work].map((b) => b.key).filter((k) => !right.includes(k)),
                 (k) => wide.has(k),
               ),
             },
-            { page: `overview:${m.id}:side`, start: standard.map((b) => [b.key]) },
+            {
+              page: `overview:${m.id}:side`,
+              start: [...standard.map((b) => b.key), ...right].map((k) => [k]),
+            },
           ]}
         />
       </div>
@@ -1460,61 +1366,6 @@ function NoData({ m, main }: { m: ModuleView; main: TableData[] }) {
   )
 }
 
-// What the module's Insights agent last found (Vikas, 29 Oct: "a particular agent handling all
-// this analysis… proactively working on the overview page"): its last run's words, a line each.
-// ponytail: an agent's only output to the window is its run's words; insights as rows of their
-// own, each with its chart and the rows it rests on, need the core to keep them
-function Insights({ a, onChange }: { a: AgentView; onChange: () => void }) {
-  const { busy, problem, act } = useAct(onChange)
-  const said = a.lastResult?.ok ? a.lastResult.words.split(/\n+/).filter((l) => l.trim()) : []
-  return (
-    <Card
-      id="insights"
-      title="Insights"
-      href={`#/agent/${a.id}`}
-      signal={a.lastResult && !a.lastResult.ok ? 'now' : null}
-      extra={
-        a.state === 'on' ? (
-          <UpdateNow
-            at={a.lastResult?.at ?? a.lastRunAt}
-            busy={busy || a.running}
-            tip={`${a.name} looks at the rows again now`}
-            onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
-          />
-        ) : (
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={busy}
-            onClick={() => act(() => api.post(`/api/agents/${a.id}`, { state: 'on' }))}
-          >
-            Turn on
-          </Button>
-        )
-      }
-    >
-      {() => (
-        <div>
-          <Refusal words={problem} />
-          {said.length ? (
-            said.map((l) => (
-              <Line key={l} s="opt">
-                {l}
-              </Line>
-            ))
-          ) : (
-            <p className="text-ink-3 text-md">
-              {a.lastResult && !a.lastResult.ok
-                ? `${a.name} did not finish: ${a.lastResult.words}`
-                : `No insights yet: ${a.name} writes what it finds here, ${a.when}.`}
-            </p>
-          )}
-        </div>
-      )}
-    </Card>
-  )
-}
-
 // A card: its name, which opens its page; a count when there is one; its actions and Show more at
 // the right of the head. No line of explanation under the name.
 function Card({
@@ -1523,10 +1374,10 @@ function Card({
   href,
   count,
   signal,
-  grows,
   extra,
   wide,
   head,
+  peek: inPanel,
   children,
 }: {
   id: string
@@ -1534,19 +1385,18 @@ function Card({
   href: string
   count?: number
   signal?: Signal | null
-  grows?: boolean
   extra?: ReactNode
   wide?: boolean // the whole width: a chart that needs it to read
   head?: ReactNode // in place of its name: a switch between cards that share one
+  peek?: boolean | undefined // its name opens its page in the side panel
   children: (big: boolean) => ReactNode
 }) {
-  const [big, setBig] = useState(false)
   return (
     <section
       id={`ov-${id}`}
       className={cn(
         'flex min-w-0 flex-col rounded-lg border border-line bg-surface transition-shadow hover:shadow-pop',
-        (big || wide) && 'col-span-full',
+        wide && 'col-span-full',
       )}
     >
       {/* a container, so a narrow card drops the words before its buttons leave the right edge */}
@@ -1555,6 +1405,14 @@ function Card({
         {head ?? (
           <a
             href={href}
+            onClick={
+              inPanel
+                ? (e) => {
+                    e.preventDefault()
+                    peek(href)
+                  }
+                : undefined
+            }
             className="min-w-0 truncate font-semibold text-base text-ink hover:text-accent hover:underline"
           >
             {title}
@@ -1563,19 +1421,12 @@ function Card({
         {!!count && <span className="text-ink-3 text-sm tabular-nums">{count}</span>}
         <span className="flex-1" />
         {extra}
-        {grows && (
-          <button
-            type="button"
-            aria-label={big ? 'Show less' : 'Show more'}
-            data-tip={big ? 'Show less' : 'Show more'}
-            onClick={() => setBig(!big)}
-            className="grid size-6 shrink-0 place-items-center rounded-sm text-ink-3 hover:bg-hover hover:text-ink"
-          >
-            {big ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
-          </button>
-        )}
       </div>
-      <div className="px-3 pb-3">{children(big)}</div>
+      {/* all of it, scrolling past a height; dragging the block's corner gives it more (Vikas,
+          3 Nov: no Show more) */}
+      <div className="max-h-120 overflow-y-auto px-3 pb-3 [[data-body][style*=height]_&]:max-h-none">
+        {children(true)}
+      </div>
     </section>
   )
 }
@@ -1605,27 +1456,42 @@ function ChartCard({
   href,
   kinds,
   marks,
-  few,
+  by,
+  about,
+  peek: inPanel,
+  extra,
 }: {
   id: string
   title: string
   href: string
   kinds: ChartKind[]
   marks: Mark[]
-  few?: number
+  by?: Partial<Record<ChartKind, Mark[]>> // a kind that counts otherwise (a funnel: at or past)
+  about?: Partial<Record<ChartKind, string>> // what the kind on screen counts, under the head
+  peek?: boolean
+  extra?: ReactNode
 }) {
   const [kind, setKind] = useState<ChartKind>(kinds[0] ?? 'bar')
-  const shown = marks.filter((x) => x.n > 0 || x.target !== undefined)
-  const cut = few ?? shown.length
+  const shown = (by?.[kind] ?? marks).filter((x) => x.n > 0 || x.target !== undefined)
   return (
     <Card
       id={id}
       title={title}
       href={href}
-      grows={shown.length > cut || shown.length !== marks.length}
-      extra={<KindPicker kinds={kinds} kind={kind} onKind={setKind} />}
+      peek={inPanel}
+      extra={
+        <>
+          {extra}
+          <KindPicker kinds={kinds} kind={kind} onKind={setKind} />
+        </>
+      }
     >
-      {(big) => <Chart kind={kind} marks={big ? marks : shown.slice(0, cut)} />}
+      {() => (
+        <>
+          {about?.[kind] && <p className="-mt-1 mb-2 text-ink-3 text-sm">{about[kind]}</p>}
+          <Chart kind={kind} marks={shown} />
+        </>
+      )}
     </Card>
   )
 }
@@ -1650,7 +1516,6 @@ function NeedsYou({ cards, onChange }: { cards: CardView[]; onChange: () => void
       href="#/"
       count={cards.length}
       signal={strongest(cards.map(signalOf))}
-      grows={stacks.length > 5}
     >
       {(big) =>
         (big ? stacks : stacks.slice(0, 5)).map((st) => (
@@ -1696,12 +1561,12 @@ function InterviewButton({ m, label = 'Interview me' }: { m: ModuleView; label?:
   )
 }
 
-// The same as a square at the head of the standard column: its name is its tooltip.
+// The same as a square at the head of the standard column, its name under its icon.
 function InterviewTile({ m }: { m: ModuleView }) {
   const interview = useInterview(m.id)
   return (
-    <div className="w-13">
-      <IconTile label={`Interview me. ${interview.tip}`} onClick={() => interviewMe(m.id)}>
+    <div className="w-22">
+      <IconTile named label="Interview me" onClick={() => interviewMe(m.id)}>
         {interview.busy ? <LoaderCircle className="animate-spin" /> : <MessageCircleQuestion />}
       </IconTile>
     </div>
@@ -1836,7 +1701,6 @@ export function Files({
       href={href}
       count={m.files.length}
       signal={unread ? 'opt' : null}
-      grows={m.files.length > 8}
     >
       {(big) => (
         <DropZone onFiles={drop} busy={busy}>
@@ -1977,14 +1841,7 @@ export function Agents({
     />
   )
   return (
-    <Card
-      id="agents"
-      title="Agents"
-      href={href}
-      head={head}
-      count={on}
-      grows={groups.length > 0 || (fn && rest.length > 8)}
-    >
+    <Card id="agents" title="Agents" href={href} head={head} count={on}>
       {(big) => (
         <div>
           <Refusal words={problem} />
@@ -2113,7 +1970,6 @@ export function Tables({ ms, href, head }: { ms: TablesOf[]; href: string; head?
       href={href}
       head={head}
       count={shown.reduce((a, m) => a + m.tables.length, 0)}
-      grows={ms.length === 1 && !!ms[0]?.tables.some((t) => t.of)}
     >
       {(big) =>
         ms.length === 1 ? (

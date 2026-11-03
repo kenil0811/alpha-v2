@@ -18,6 +18,12 @@ export interface FoundRow {
   href: string
 }
 
+// A row that says where it is (a field named Location, City, Address…), for Network's map.
+export interface PlaceRow extends FoundRow {
+  place: string // as the row says it: "Austin, TX"
+  module: string
+}
+
 // A line about some rows (what a reader found): each can be opened, and one choice set on it.
 export interface AboutRows {
   table: string

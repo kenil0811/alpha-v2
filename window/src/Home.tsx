@@ -332,14 +332,14 @@ export function Home({
   )
   // the standard column, across every module, in an Overview's order
   const standard: Block[] = [
-    // Files on top, then Interview me, then Agents, Governance and Tables as one card; no Second
+    // the buttons on top, then Files, then Agents, Governance and Tables as one card; no Second
     // Brain here (Vikas, 3 Nov)
+    { key: 'start', name: 'Interview me', node: start },
     {
       key: 'files',
       name: 'Files',
       node: <Files m={workspace} onChange={load} href="#/intelligence/brain" />,
     },
-    { key: 'start', name: 'Interview me', node: start },
     {
       key: 'working',
       name: 'Agents, governance and tables',

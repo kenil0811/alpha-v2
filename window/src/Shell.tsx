@@ -81,7 +81,7 @@ export type Place =
   | { at: 'settings'; section: string | null; open: string | null }
   | { at: 'intelligence'; section: string | null; open: string | null }
   | { at: 'file'; place: FilePlace }
-  | { at: 'people'; kind: 'person' | 'company'; id: string | null }
+  | { at: 'people'; kind: 'person' | 'company' | 'map'; id: string | null }
   | {
       at: 'tasks'
       list: 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
