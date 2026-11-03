@@ -5,6 +5,10 @@ redesign of Alpha, started 19 October 2026. **`docs/design.md` is the reference*
 Kenil on 19 October 2026; `BRIEF.md` is the brief it was written from, kept as history. Read
 the design first, then the newest entries in `docs/log/`.
 
+**Working for a UI contributor rather than Kenil?** Follow `docs/ui-contributions.md`: it decides
+whether a change goes to `main` or to the `ui-lab` branch, and for that work it replaces the rules
+below on proposing changes to Kenil and on the log.
+
 ## The repository
 
 - `core/`: the service (world, engine, gates, scheduler, api, journeys runner); `core/kits/`
@@ -37,7 +41,8 @@ the per-install token. Prompts, models and judgements live in `core/config/`, no
 - Every change is proposed to Kenil in writing before it is built, built in the design's shape,
   looked at in the app, and committed after his review. The design changes only on his yes.
 - One short dated entry in `docs/log/` per session.
-- Read `docs/ui-rules.md` before any change to `window/`; a rule goes there the day Kenil says yes to it.
+- Read `docs/ui-rules.md` before any change to `window/`; a rule changes there in the same change
+  that needs it, by Kenil or a UI contributor (`docs/ui-contributions.md`).
 - Tests never call the model or touch a real tenant; journeys run on a fresh tenant each.
 - Never `cp` a world file: copy it with SQLite's backup API.
 - `../alpha-brain` is v1: read-only reference. Reread what the design names, rewrite it, never

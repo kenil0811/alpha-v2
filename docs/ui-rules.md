@@ -1,9 +1,9 @@
 # The window's UI rules
 
-Every rule the window keeps, one line each, as agreed with Kenil. Read this before any change to
-`window/`. A rule lands here, with its date, once Kenil has said yes to it; where this list and
-`docs/design.md` §14 disagree, the design wins and this list is corrected the same day. A rule
-Vikas or anyone proposes waits under "Proposed" until then.
+Every rule the window keeps, one line each. Read this before any change to `window/`. A rule
+lands here, with its date, in the same change that brings it in, whether Kenil's or a UI
+contribution's (`docs/ui-contributions.md`). Where this list and `docs/design.md` §14 disagree,
+the newer rule holds and Kenil brings the design up to date.
 
 **Held by** names the test in `window/src/look.test.ts` that fails when the rule breaks: **test**
 holds it today, **skip** is written and waits on its fix, **—** cannot be checked by code and is
