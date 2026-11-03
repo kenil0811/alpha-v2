@@ -291,11 +291,12 @@ function Slides({
 // not fixed") -----------------------------------------------------------------------------------
 // state · title (what it is about under it) · state in words · module · owner · date · buttons.
 // The columns sit on the list, each row a subgrid, so every date and button lines up; narrow, the
-// module, owner and state words fold and the buttons drop to a line of their own, right; narrow is
-// below 64rem, where the fixed columns and two buttons would leave the title no room. A subgrid's
+// module, owner and state words fold and the date and buttons stay on the title's line, so a row is
+// as tall as its two-line title (Vikas, 3 Nov: "align them so that the section takes less space");
+// narrow is below 64rem. A subgrid's
 // padding sits inside its first track, so that track is the padding plus the dot.
 const COLS =
-  'grid-cols-[2.25rem_minmax(0,1fr)_auto] @5xl:grid-cols-[2.25rem_minmax(0,1fr)_9rem_7rem_7rem_6rem_auto]'
+  'grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] @5xl:grid-cols-[2.25rem_minmax(0,1fr)_9rem_7rem_7rem_6rem_auto]'
 export const rowClass =
   'col-span-full grid grid-cols-subgrid items-center gap-y-0.5 border-hair border-t px-4 py-2.5 hover:bg-hover'
 // a cell that folds when the list is narrow
@@ -303,8 +304,7 @@ export const wideCell = 'hidden truncate text-ink-3 text-sm @5xl:block'
 // the date cell: right-aligned, tabular, empty but kept when there is none
 export const dateCell = 'flex justify-end whitespace-nowrap text-sm tabular-nums'
 // the buttons: the one thing to do on the far right
-export const actCell =
-  'col-span-2 col-start-2 flex flex-wrap items-center justify-end gap-1.5 @5xl:col-auto'
+export const actCell = 'flex items-center justify-end gap-1.5 whitespace-nowrap'
 
 export function Rows({ date = 'Due', children }: { date?: string; children: ReactNode }) {
   return (

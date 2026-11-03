@@ -4,14 +4,14 @@
 // here is stored: links are the relations the rows already hold, mentions are read from the
 // notes themselves, so there is nothing to keep in step.
 import { z } from 'zod'
-import { pagesOf } from '../../pages/pages.ts'
+import { type PageInfo, pagesOf } from '../../pages/pages.ts'
 import { all } from '../../world/db.ts'
 import { junctionName, quote } from '../../world/ddl.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Field, Shape, Table } from '../../world/shape/index.ts'
 import { summaryShows, summaryWords } from '../../world/shape/summary.ts'
 import type { Ctx } from '../ctx.ts'
-import type { FieldView, RowAround, RowPageView } from '../types.ts'
+import type { FieldView, RowAround, RowPageTab, RowPageView } from '../types.ts'
 
 // A field as the window reads it: a summary as the kind it shows as, with what it is in words.
 export const fieldViews =
@@ -59,6 +59,63 @@ export function registerRows(ctx: Ctx): void {
     return out
   }
 
+  // a row's pages: its module's of its table, then those of a table that links to it, opened on
+  // the linking row (a lead on its deal); a field the row lacks never allows the page
+  const rowPages = (
+    t: Table,
+    values: Record<string, unknown>,
+    name: string,
+    row: string,
+  ): RowPageTab[] => {
+    const fieldValue = (field: string) => {
+      const f = t.fields.find((x) => x.name.toLowerCase() === field.toLowerCase())
+      return f ? String(values[f.slug] ?? '') : ''
+    }
+    const tab = (m: string, p: PageInfo, value: string, own: boolean): RowPageTab | null => {
+      const fr = p.for
+      if (!fr) return null
+      const on = !own || !fr.when || fr.when.values.includes(fieldValue(fr.when.field))
+      // a next step starts something: done once its field is past empty and its first choice
+      const nf =
+        fr.next && t.fields.find((x) => x.name.toLowerCase() === fr.next?.field.toLowerCase())
+      const now = fr.next ? fieldValue(fr.next.field) : ''
+      const done = !!fr.next && now !== '' && now !== (nf?.choices?.[0] ?? '')
+      return {
+        module: m,
+        name: p.name,
+        title: p.title,
+        input: fr.input,
+        value,
+        place: fr.place,
+        on,
+        next: own && fr.next && !done ? fr.next : null,
+        upload: fr.upload,
+      }
+    }
+    const own = pagesOf(t.module)
+      .filter((p) => p.for?.table === t.name)
+      .sort((a, b) => (a.for?.order ?? 50) - (b.for?.order ?? 50))
+      .flatMap((p) => tab(t.module.id, p, name, true) ?? [])
+    const linked = world.shape.tables().flatMap((o) => {
+      if (o.module.id === t.module.id) return []
+      const rel = o.fields.find((f) => f.kind === 'relation' && !f.many && f.relatesTo === t.id)
+      if (!rel) return []
+      const pages = pagesOf(o.module)
+        .filter((p) => p.for?.table === o.name)
+        .sort((a, b) => (a.for?.order ?? 50) - (b.for?.order ?? 50))
+      if (!pages.length) return []
+      return world.records
+        .idsWhere(o.id, rel.name, [row])
+        .slice(0, 1)
+        .flatMap((id) => {
+          const lr = world.records.get(id)?.record
+          const ln = lr ? world.rowName(o, lr.values) : ''
+          return pages.flatMap((p) => tab(o.module.id, p, ln, false) ?? [])
+        })
+    })
+    return [...own, ...linked]
+  }
+
   app.get('/api/rows/:row', async (req): Promise<RowPageView> => {
     const { row } = z.object({ row: z.string() }).parse(req.params)
     const got = world.records.get(row)
@@ -90,9 +147,7 @@ export function registerRows(ctx: Ctx): void {
       },
       names: { ...Object.fromEntries(related), ...world.people.names(people) },
       title: world.rowName(t, r.values) || 'A row',
-      pages: pagesOf(t.module).flatMap((p) =>
-        p.for?.table === t.name ? [{ name: p.name, title: p.title, input: p.for.input }] : [],
-      ),
+      pages: rowPages(t, r.values, world.rowName(t, r.values) || '', row),
     }
   })
 

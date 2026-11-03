@@ -65,10 +65,11 @@ export const api = {
       'x-file-name': encodeURIComponent(file.name),
     }),
   // a file dropped on a row: kept there at once
-  uploadTo: <T>(path: string, file: File) =>
+  uploadTo: <T>(path: string, file: File, kind?: string) =>
     call<T>('POST', path, file, {
       'content-type': file.type || 'application/octet-stream',
       'x-file-name': encodeURIComponent(file.name),
+      ...(kind ? { 'x-file-kind': kind } : {}),
     }),
   // a core address the browser opens itself (a picture, a download), with the token
   tokened: (path: string) =>

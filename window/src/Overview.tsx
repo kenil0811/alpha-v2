@@ -1819,7 +1819,7 @@ export function Files({
   const at = folders.length === 1 ? (folders[0] ?? null) : folder
   const shown = m.files.filter((f) => folderOf(f) === at).sort((a, b) => b.at.localeCompare(a.at))
   const tile =
-    'flex min-w-0 flex-col items-center gap-1 rounded-md px-1 py-2 text-ink hover:bg-hover'
+    'flex min-w-0 flex-col items-center gap-0.5 rounded-md px-0.5 py-1.5 text-ink hover:bg-hover'
   return (
     <Card
       id="files"
@@ -1850,16 +1850,22 @@ export function Files({
                   </>
                 )}
               </div>
-              {/* icons, as a file viewer shows them (Vikas, 3 Nov: not a list): a folder per
-                  table and kind, a file opening in the viewer, the row it is on on its hover;
-                  ten a page, two rows of a column's width (Vikas, 1 Nov: no long scroll) */}
+              {/* folders a list of their names, five a page (Vikas, 3 Nov: "the list of names
+                  itself instead of folder icons"); a folder's files icons, close enough for four
+                  a row in the side column, a file opening in the viewer, its row on its hover */}
               <Paged<string | ModuleFileView>
                 key={at ?? ''}
                 items={at === null ? folders : shown}
-                per={10}
+                per={at === null ? 5 : 12}
               >
                 {(page) => (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1">
+                  <div
+                    className={
+                      at === null
+                        ? 'flex flex-col'
+                        : 'grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))]'
+                    }
+                  >
                     {page.map((f) => {
                       if (typeof f === 'string') {
                         const name = f
@@ -1869,15 +1875,10 @@ export function Files({
                             type="button"
                             onClick={() => setFolder(name)}
                             data-tip={name}
-                            className={tile}
+                            className="flex h-8 min-w-0 items-center gap-2 rounded-md px-1.5 text-left text-ink text-md hover:bg-hover"
                           >
-                            <Folder className="size-9 text-accent" strokeWidth={1.25} />
-                            <span className="line-clamp-2 w-full break-words text-center text-sm">
-                              {name.split(' › ').at(-1)}
-                            </span>
-                            <span className="text-ink-3 text-xs tabular-nums">
-                              {m.files.filter((x) => folderOf(x) === name).length}
-                            </span>
+                            <Folder className="size-4 shrink-0 text-accent" />
+                            <span className="truncate">{name.split(' › ').at(-1)}</span>
                           </button>
                         )
                       }
@@ -1889,15 +1890,9 @@ export function Files({
                           data-tip={`${f.name}, on ${f.row.name}${f.read === 'read' ? '' : '; not read yet'}`}
                           className={cn(tile, 'relative')}
                         >
-                          <Icon className="size-9 text-ink-3" strokeWidth={1.25} />
-                          <span className="line-clamp-2 w-full break-words text-center text-sm">
+                          <Icon className="size-8 text-ink-3" strokeWidth={1.25} />
+                          <span className="line-clamp-2 w-full break-words text-center text-xs">
                             {f.name}
-                          </span>
-                          <span className="text-ink-3 text-xs">
-                            {new Date(f.at).toLocaleDateString(undefined, {
-                              day: 'numeric',
-                              month: 'short',
-                            })}
                           </span>
                           {f.read !== 'read' && (
                             <span className="absolute top-1.5 right-1.5">

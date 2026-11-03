@@ -14,6 +14,7 @@ import {
   Kanban,
   LayoutGrid,
   List,
+  Map as MapIcon,
   Table2,
 } from 'lucide-react'
 import { type ReactNode, useRef, useState } from 'react'
@@ -30,12 +31,17 @@ const KINDS: { kind: Kind; words: string; icon: ReactNode }[] = [
   { kind: 'calendar', words: 'Calendar', icon: <CalendarDays className="size-3.5" /> },
   { kind: 'board', words: 'Board', icon: <Kanban className="size-3.5" /> },
   { kind: 'form', words: 'Form', icon: <ClipboardList className="size-3.5" /> },
+  { kind: 'map', words: 'Map', icon: <MapIcon className="size-3.5" /> },
   { kind: 'chart', words: 'Chart', icon: <ChartBarBig className="size-3.5" /> },
   { kind: 'slides', words: 'Slides', icon: <GalleryHorizontal className="size-3.5" /> },
 ]
 
+// a column the map reads where a row is by (as /api/places does)
+export const isPlace = (f: FieldView) =>
+  f.kind === 'text' && /^(location|city|address|place|based in|office)$/i.test(f.name)
+
 // what the picker offers: all but Chart, kept only to name a view saved as one
-const OFFERED = KINDS.slice(0, 7).map((k) => k.kind as ViewKind)
+const OFFERED = KINDS.slice(0, 8).map((k) => k.kind as ViewKind)
 
 export function KindPicker({
   fields,
@@ -61,7 +67,9 @@ export function KindPicker({
         ? dates.length > 0
         : k === 'chart'
           ? choices.length > 0 || dates.length > 0
-          : true
+          : k === 'map'
+            ? fields.some(isPlace)
+            : true
   // why a view can't show this table, said on the greyed line
   const why = (k: ViewKind) =>
     can(k)
@@ -70,7 +78,9 @@ export function KindPicker({
         ? 'A board needs a choice column. Ask Alpha to add one.'
         : k === 'chart'
           ? 'A chart needs a choice or a date column. Ask Alpha to add one.'
-          : `A ${k} needs a date column. Ask Alpha to add one.`
+          : k === 'map'
+            ? 'A map needs a column named Location, City or Address.'
+            : `A ${k} needs a date column. Ask Alpha to add one.`
   // switching to a view that needs a field gives it one, as the core would
   // a calendar or timeline starts on the date most rows have; a board's columns and a chart's bars
   // are left to the person (the table shows Stage, or the first choice, until they choose)

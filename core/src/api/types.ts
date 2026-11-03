@@ -8,8 +8,8 @@ export interface Health {
   now?: string // a demo's clock (ALPHA_CLOCK): the window's now is the core's
 }
 
-export type { Layout, Me } from './me-types.ts'
-export type { FieldView, RowAround, RowPageView } from './row-types.ts'
+export type { Layout, Me, ModuleTabs } from './me-types.ts'
+export type { FieldView, RowAround, RowPageTab, RowPageView } from './row-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.
 export interface FoundRow {
@@ -426,6 +426,7 @@ export type ViewKind =
   | 'timeline'
   | 'chart'
   | 'form'
+  | 'map'
 export type FilterOp =
   | 'is'
   | 'is_not'

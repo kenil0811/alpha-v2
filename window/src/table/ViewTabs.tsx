@@ -194,12 +194,13 @@ export function ViewTabs({
   return (
     <div className="border-hair border-b">
       {/* the lists, spread out in a row of their own above search and filter, the one on screen
-          lit; the table's actions at the row's right (Vikas, 2 Nov) */}
+          lit; the table's actions at the row's right (Vikas, 2 Nov). One line always, scrolled
+          sideways when they outgrow it (Vikas, 3 Nov: "it cannot leak into two rows") */}
       <div className="flex min-h-11 items-center gap-2 border-hair border-b px-7">
         <div
           role="tablist"
           aria-label="Lists"
-          className="-mx-1 flex min-w-0 flex-1 flex-wrap items-center gap-0.5 px-1 py-1.5"
+          className="-mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1 py-1.5 [scrollbar-width:thin]"
         >
           {lists.map((v) =>
             pill(

@@ -18,6 +18,7 @@ export const VIEW_KINDS = [
   'timeline',
   'chart',
   'form',
+  'map',
 ] as const
 
 export const FILTER_OPS = [

@@ -26,4 +26,12 @@ export interface Layout {
   // per page ("home", "overview:<module>"), its blocks as the person dragged them: rows top to
   // bottom, each row its blocks left to right; none is the page's own order
   arrange?: Record<string, string[][]>
+  // per module, its switch's tabs as the person left them (Vikas, 3 Nov): dragged into an order,
+  // some hidden (Overview, a page), some renamed; a table's name is the table's own
+  tabs?: Record<string, ModuleTabs>
+}
+export interface ModuleTabs {
+  order: string[] // tab keys: overview, a table's id, p:<page>
+  hidden: string[]
+  names: Record<string, string>
 }

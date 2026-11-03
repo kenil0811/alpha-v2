@@ -60,10 +60,12 @@ export function PageView({
   m,
   page,
   version,
+  given: inputs_ = undefined,
 }: {
   m: ModuleView
   page: PageSummary
   version: number // a change in the world: the page asks again
+  given?: string | undefined // its inputs, as a query; none, after ? in the address
 }) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [html, setHtml] = useState<string | null>(null)
@@ -79,7 +81,7 @@ export function PageView({
   const inputs = useRef<Record<string, string>>({})
   const base = `/api/modules/${m.id}/pages/${page.name}`
   // opened from a row (a client's Report): its inputs, after ? in the address
-  const given = window.location.hash.split('?')[1] ?? ''
+  const given = inputs_ ?? window.location.hash.split('?')[1] ?? ''
 
   useEffect(() => {
     setHtml(null)

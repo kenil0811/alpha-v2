@@ -35,7 +35,7 @@ import {
 } from './Overview.tsx'
 import { peek } from './Peek.tsx'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
-import { InBar } from './Shell.tsx'
+import { InBar, InBarRight } from './Shell.tsx'
 import { TaskList } from './Tasks.tsx'
 import { clock, dueWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
@@ -369,33 +369,33 @@ export function Home({
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
         {/* the greeting and the day sit in the bar; Home opens on Find and one strip across every
             module (Vikas, 27 Oct): the assistant is on the right, so no box to ask here */}
-        {/* two lines a side (Vikas, 1 Nov): the day over the greeting at the left, Next and its
-            day over the next thing at the right */}
+        {/* the day over the greeting in the bar's centre, Next and its day over the next thing at
+            its right, no name (Vikas, 3 Nov) */}
         <InBar>
-          <span className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="flex flex-col whitespace-nowrap leading-tight">
-              <span className="text-ink-3 text-xs">
-                {new Date().toLocaleDateString(undefined, {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </span>
-              <h1 className="font-serif text-ink text-lg leading-tight">{greeting()}</h1>
+          <span className="flex flex-col items-center whitespace-nowrap leading-tight">
+            <span className="text-ink-3 text-xs">
+              {new Date().toLocaleDateString(undefined, {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+              })}
             </span>
-            {next && (
-              <a
-                href={`#/tasks/${next.id}`}
-                className="ml-auto flex min-w-0 max-w-80 flex-col items-end leading-tight hover:text-accent"
-              >
-                <span className="text-ink-3 text-xs">
-                  Next{next.due ? ` · ${dueWords(next.due)}` : ''}
-                </span>
-                <span className="max-w-full truncate text-ink text-md">{next.title}</span>
-              </a>
-            )}
+            <h1 className="font-serif text-ink text-lg leading-tight">{greeting()}</h1>
           </span>
         </InBar>
+        {next && (
+          <InBarRight>
+            <a
+              href={`#/tasks/${next.id}`}
+              className="flex min-w-0 max-w-80 flex-col items-end leading-tight hover:text-accent"
+            >
+              <span className="text-ink-3 text-xs">
+                Next{next.due ? ` · ${dueWords(next.due)}` : ''}
+              </span>
+              <span className="max-w-full truncate text-ink text-md">{next.title}</span>
+            </a>
+          </InBarRight>
+        )}
         <FindBar />
 
         <Strip

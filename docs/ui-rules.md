@@ -542,3 +542,27 @@ put it there and on the parts page (#/parts).
 - The bell opens Activity as a dropdown first, the latest runs and what is downloading for this
   Mac, Open page at its foot.
 - What was clicked stays in sight left of the side panel; Mark's box stays inside the window.
+
+### 3 Nov, evening (Vikas)
+
+- Home's bar: the date over the greeting in its centre, Next and its day over the next item at
+  its right; no name.
+- Files on a card: folders are a list of their names, five a page; a folder's files are icons
+  close enough for four a row in the side column, no count or date under them.
+- A task row keeps its date and its button on the title's line at every width: a row is as tall
+  as its two-line title.
+- A table's row of lists is one line always, scrolled sideways when the lists outgrow it.
+- Map is a view in View for every table with a Location, City or Address column; a kept table
+  (Network's) maps every module's places. No Map tab.
+- Documents sits after every module in the rail until the person drags it; a row of a table of
+  documents opens on its file, no details, its page only when it has no file.
+- Every tab of a module's switch drags into place and right-clicks to Open, Rename… and Hide
+  (a table's tab: Hide from the bar), with what is hidden under Show again; Overview too. Kept
+  per person.
+- A record's own page: the module's name in the bar; under it the path at the left (Module /
+  Table / the record as a picker of its rows) and its tabs in the middle: Overview, then its
+  pages of one row in their order, each once the row's field allows it (`data-when`), then the
+  pages of a module whose row links to it (a CRM lead's, on its deal). Its Overview: the cards
+  its pages place there (`data-place="overview"`) in the centre, each with its next step
+  (`data-next`, a button setting the field) and upload (`data-upload`); its fields fixed in the
+  column at the right. A page opened on its row shows no chooser for it.

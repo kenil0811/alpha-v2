@@ -15,10 +15,11 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
-import { Fragment, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type HTMLAttributes, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Arranged } from './arrange.tsx'
 import { GovernanceSection } from './Governance.tsx'
+import { useLayout } from './layout.ts'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { lowerFirst, Overview, usePins } from './Overview.tsx'
 import { PageView } from './PageView.tsx'
@@ -197,37 +198,116 @@ function ModuleSwitch({
             sel: current.kind === 'page' && current.name === p.name,
           })),
       ].filter((g) => g.length)
+  return <Tabs m={m} groups={groups} tables={shown.map((t) => t.id)} onRenamed={onRenamed} />
+}
+
+// The switch's tabs as the person left them (Vikas, 3 Nov): dragged into an order, Overview or a
+// page hidden and shown again, renamed; a table's tab renames the table and hides by unpinning.
+// A tab hidden but open still shows, so the person sees where they are.
+function Tabs({
+  m,
+  groups,
+  tables,
+  onRenamed,
+}: {
+  m: ModuleView
+  groups: Tab[][]
+  tables: string[]
+  onRenamed: () => void
+}) {
+  const { layout, change } = useLayout()
+  const { pins, toggle } = usePins(m)
+  const mine = layout.tabs?.[m.id] ?? { order: [], hidden: [], names: {} }
+  const save = (next: Partial<typeof mine>) =>
+    change({ tabs: { ...layout.tabs, [m.id]: { ...mine, ...next } } })
+  const all = groups.flat()
+  const rank = (k: string) => {
+    const i = mine.order.indexOf(k)
+    return i < 0 ? mine.order.length + all.findIndex((t) => t.key === k) : i
+  }
+  const tabs = all
+    .filter((t) => t.sel || !mine.hidden.includes(t.key))
+    .map((t) => ({ ...t, label: mine.names[t.key] ?? t.label }))
+    .sort((a, b) => rank(a.key) - rank(b.key))
+  // what can come back: a hidden tab, or a main table not pinned
+  const back = [
+    ...all
+      .filter((t) => mine.hidden.includes(t.key))
+      .map((t) => ({
+        key: t.key,
+        label: mine.names[t.key] ?? t.label,
+        show: () => save({ hidden: mine.hidden.filter((h) => h !== t.key) }),
+      })),
+    ...m.tables
+      .filter((t) => t.place === 'main' && !pins.includes(t.id) && !tables.includes(t.id))
+      .map((t) => ({ key: t.id, label: t.name, show: () => toggle(t.id) })),
+  ]
+  const [dragging, setDragging] = useState<string | null>(null)
+  const drop = (on: string) => {
+    if (!dragging || dragging === on) return
+    const keys = tabs.map((t) => t.key).filter((k) => k !== dragging)
+    keys.splice(keys.indexOf(on), 0, dragging)
+    save({ order: keys })
+    setDragging(null)
+  }
   return (
     <InNav>
       <PillSwitch label={m.name}>
-        {groups.map((g, i) => (
-          <Fragment key={g[0]?.key ?? i}>
-            {i > 0 && <span className="mx-1.5 h-4 w-px shrink-0 bg-line" />}
-            {g.map((t) =>
-              shown.some((x) => x.id === t.key) ? (
-                <TablePill key={t.key} m={m} tab={t} onRenamed={onRenamed} />
-              ) : (
-                <SwitchPill key={t.key} tab={t} />
-              ),
-            )}
-          </Fragment>
+        {tabs.map((t) => (
+          <TabPill
+            key={t.key}
+            tab={t}
+            table={tables.includes(t.key)}
+            back={back}
+            onRename={(name) =>
+              tables.includes(t.key)
+                ? api.post(`/api/tables/${t.key}/name`, { name }).then(onRenamed)
+                : save({ names: { ...mine.names, [t.key]: name } })
+            }
+            onHide={() =>
+              tables.includes(t.key) ? toggle(t.key) : save({ hidden: [...mine.hidden, t.key] })
+            }
+            drag={{
+              draggable: true,
+              onDragStart: () => setDragging(t.key),
+              onDragEnd: () => setDragging(null),
+              onDragOver: (e) => e.preventDefault(),
+              onDrop: (e) => {
+                e.preventDefault()
+                drop(t.key)
+              },
+            }}
+          />
         ))}
       </PillSwitch>
     </InNav>
   )
 }
 
-// A table's pill: a double-click renames it in place (Return keeps it, Escape leaves it); a
-// right-click opens Open, Rename… and Unpin from the bar.
-function TablePill({ m, tab, onRenamed }: { m: ModuleView; tab: Tab; onRenamed: () => void }) {
+// A tab's pill: a double-click renames it in place (Return keeps it, Escape leaves it); a
+// right-click opens Open, Rename…, Hide, and what was hidden to show again, as a module's does
+function TabPill({
+  tab,
+  table,
+  back,
+  onRename,
+  onHide,
+  drag,
+}: {
+  tab: Tab
+  table: boolean
+  back: { key: string; label: string; show: () => void }[]
+  onRename: (name: string) => unknown
+  onHide: () => void
+  drag: HTMLAttributes<HTMLAnchorElement>
+}) {
   const menu = useContextMenu()
-  const { pins, toggle } = usePins(m)
   const [naming, setNaming] = useState<string | null>(null)
-  const { problem, act } = useAct(onRenamed)
+  const { problem, act } = useAct(() => undefined)
   const save = () => {
     const name = naming?.trim()
     setNaming(null)
-    if (name && name !== tab.label) act(() => api.post(`/api/tables/${tab.key}/name`, { name }))
+    if (name && name !== tab.label) act(async () => onRename(name))
   }
   return (
     <>
@@ -250,6 +330,7 @@ function TablePill({ m, tab, onRenamed }: { m: ModuleView; tab: Tab; onRenamed: 
         <SwitchPill
           tab={tab}
           {...menu.on}
+          {...drag}
           onDoubleClick={(e) => {
             e.preventDefault()
             setNaming(tab.label)
@@ -276,14 +357,29 @@ function TablePill({ m, tab, onRenamed }: { m: ModuleView; tab: Tab; onRenamed: 
             Rename…
           </MenuItem>
           <MenuItem
-            reason={pins.includes(tab.key) ? undefined : 'Not pinned: it shows while it is open'}
             onClick={() => {
               menu.close()
-              toggle(tab.key)
+              onHide()
             }}
           >
-            Unpin from the bar
+            {table ? 'Hide from the bar' : 'Hide'}
           </MenuItem>
+          {back.length > 0 && (
+            <>
+              <span className="mx-2 mt-1.5 mb-0.5 text-ink-3 text-xs">Show again</span>
+              {back.map((b) => (
+                <MenuItem
+                  key={b.key}
+                  onClick={() => {
+                    menu.close()
+                    b.show()
+                  }}
+                >
+                  {b.label}
+                </MenuItem>
+              ))}
+            </>
+          )}
         </div>
       </Popover>
     </>
@@ -328,7 +424,6 @@ export const moduleTabs = (
 export const peopleTabs = (kind: 'person' | 'company' | 'map' | null): Tab[] => [
   { key: 'people', href: '#/people', label: 'People', sel: kind === 'person' },
   { key: 'companies', href: '#/people?companies', label: 'Organizations', sel: kind === 'company' },
-  { key: 'map', href: '#/people?map', label: 'Map', sel: kind === 'map' },
 ]
 
 // The modules inside this one, a row each: its name, where it comes from, and what goes on in

@@ -63,7 +63,7 @@ export type Place =
   | { at: 'parts' }
   | { at: 'new'; what: 'module' | 'agent' }
   | { at: 'item'; kind: 'agent' | 'run' | 'rule' | 'card'; id: string; settings?: boolean }
-  | { at: 'row'; id: string }
+  | { at: 'row'; id: string; tab: string | null }
   | {
       at: 'table'
       id: string
@@ -183,7 +183,13 @@ export function Rail({
   const docked = dockedOf(layout, modules)
   const line = railLine(
     fixedPlaces(place, waiting, tasksDue, modules).filter((f) => !docked.includes(f.href)),
-    shownTops(modules, hiding.hidden).filter((m) => !docked.includes(`#/module/${m.id}`)),
+    // Documents after every module, until the person drags it (Vikas, 3 Nov)
+    shownTops(modules, hiding.hidden)
+      .filter((m) => !docked.includes(`#/module/${m.id}`))
+      .sort(
+        (a, b) =>
+          Number(a.name === 'Documents') - Number(b.name === 'Documents'),
+      ),
     layout.order,
   )
   const fold = (id: string) =>
@@ -1376,6 +1382,13 @@ export function InBar({ children }: { children: ReactNode }) {
   const at = useContext(Middle)
   return at ? createPortal(children, at) : null
 }
+// the bar's right side, for what a screen keeps there (Home's next event; Vikas, 3 Nov)
+const Right = createContext<HTMLElement | null>(null)
+export const BarRight = Right.Provider
+export function InBarRight({ children }: { children: ReactNode }) {
+  const at = useContext(Right)
+  return at ? createPortal(children, at) : null
+}
 
 // A screen's tabs (its pill switch) sit in their own row under the bar, which never scrolls
 // (Vikas, 2 Nov: "just below header a nav bar and be fixed")
@@ -1403,12 +1416,14 @@ export function Bar({
   lens,
   onClearLens,
   middle,
+  right,
   backs = true,
 }: {
   crumb: Crumb
   lens: { id: string; name: string } | null
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
+  right?: (at: HTMLElement | null) => void
   backs?: boolean // false inside a module: its tabs are the way around
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
@@ -1462,7 +1477,7 @@ export function Bar({
           <h1 className="truncate font-serif text-2xl text-ink">{last}</h1>
         </nav>
       </div>
-      <div data-tauri-drag-region />
+      <div ref={right} className="flex min-w-0 justify-end" data-tauri-drag-region />
     </div>
   )
 }

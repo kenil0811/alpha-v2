@@ -32,21 +32,22 @@ import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { Marker } from './Mark.tsx'
-import { ModuleScreen, straight } from './Module.tsx'
+import { ModuleScreen } from './Module.tsx'
 import { NewAgent, NewModule } from './NewModule.tsx'
 import { signalOf } from './Overview.tsx'
 import { Parts } from './Parts.tsx'
 import { Peek, usePeek } from './Peek.tsx'
 import { People } from './People.tsx'
+import { RecordNav, RecordTab } from './RecordNav.tsx'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { alphaOf, Settings } from './Settings.tsx'
 import {
   Bar,
   BarMiddle,
+  BarRight,
   type Crumb,
   DOCK_MAX,
   Find,
-  InNav,
   NavRow,
   network,
   type Place,
@@ -61,7 +62,6 @@ import { applyTextSize, applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
 import { type Signal, strongest } from './ui/dot.tsx'
 import { setFoldLines } from './ui/fold.tsx'
-import { PillSwitch, SwitchPill } from './ui/pill-switch.tsx'
 
 export function placeOf(hash: string): Place {
   const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?$/.exec(hash)
@@ -140,8 +140,8 @@ export function placeOf(hash: string): Place {
   // ?module=<id>: from a module's Agents card, that module chosen
   if (/^#\/agent\/new(?:\?module=[\w-]+)?$/.test(hash)) return { at: 'new', what: 'agent' }
   // a row's own page (core step 3b)
-  const rw = /^#\/row\/([\w-]+)$/.exec(hash)
-  if (rw?.[1]) return { at: 'row', id: rw[1] }
+  const rw = /^#\/row\/([\w-]+)(?:\?(.*))?$/.exec(hash)
+  if (rw?.[1]) return { at: 'row', id: rw[1], tab: new URLSearchParams(rw[2] ?? '').get('tab') }
   // a standing permission's old link lands on its rule (core step 2)
   const it = /^#\/(agent|run|rule|permission|card)\/([\w-]+)(\/settings)?$/.exec(hash)
   if (it?.[1] && it[2])
@@ -222,10 +222,9 @@ export function App() {
   // bar holds the path to the record and the switch sits in the row under it, so the person
   // knows they are on a record, not a module's own page (Vikas, 2 Nov)
   const [middle, setMiddle] = useState<HTMLElement | null>(null)
+  const [right, setRight] = useState<HTMLElement | null>(null)
   const [nav, setNav] = useState<HTMLElement | null>(null)
   const onRecord = place.at === 'row' || (place.at === 'table' && !!place.row)
-  const recordModule =
-    place.at === 'row' && rowPlace ? modules.find((m) => m.id === rowPlace.module.id) : null
   const placed: Module =
     place.at === 'module'
       ? (modules.find((m) => m.id === place.id) ?? null)
@@ -390,13 +389,8 @@ export function App() {
       ? {
           // a row's page sits under its module and its table, the way back to each
           icon: <Briefcase className={icon} />,
-          parts: rowPlace
-            ? [
-                at(rowPlace.module.name, `#/module/${rowPlace.module.id}`),
-                at(rowPlace.table.name, `#/table/${rowPlace.table.id}`),
-                at(rowPlace.title),
-              ]
-            : [at('…')],
+          // the module's name in the bar; its path, the record a picker, under it (RecordNav)
+          parts: rowPlace ? [at(rowPlace.module.name)] : [at('…')],
         }
       : place.at !== 'item'
         ? null
@@ -539,6 +533,7 @@ export function App() {
               lens={null}
               onClearLens={() => undefined}
               middle={setMiddle}
+              right={setRight}
             />
             <div
               ref={setNav}
@@ -549,138 +544,146 @@ export function App() {
                 {problem}
               </div>
             )}
-            <BarMiddle value={middle}>
-              <NavRow value={onRecord ? nav : middle}>
-                {recordModule && rowPlace && (
-                  <RecordSwitch m={recordModule} table={rowPlace.table.id} />
-                )}
-                <div className="flex min-h-0 flex-1">
-                  <div className="min-w-0 flex-1">
-                    {place.at === 'home' ? (
-                      <Home stream={stream} modules={modules} onAsked={() => setAsking(true)} />
-                    ) : place.at === 'conversation' ? (
-                      <Agents
-                        stream={stream}
-                        live={live}
-                        busyTurn={busyTurn}
-                        agent={place.agent}
-                        version={version}
-                      />
-                    ) : place.at === 'parts' ? (
-                      <Parts />
-                    ) : place.at === 'new' ? (
-                      place.what === 'agent' ? (
-                        <NewAgent
-                          modules={modules.filter((m) => m.id !== alpha?.id)}
-                          onAsked={() => setAsking(true)}
+            <BarRight value={right}>
+              <BarMiddle value={middle}>
+                <NavRow value={onRecord ? nav : middle}>
+                  {place.at === 'row' && rowPlace && <RecordNav at={rowPlace} tab={place.tab} />}
+                  <div className="flex min-h-0 flex-1">
+                    <div className="min-w-0 flex-1">
+                      {place.at === 'home' ? (
+                        <Home stream={stream} modules={modules} onAsked={() => setAsking(true)} />
+                      ) : place.at === 'conversation' ? (
+                        <Agents
+                          stream={stream}
+                          live={live}
+                          busyTurn={busyTurn}
+                          agent={place.agent}
+                          version={version}
+                        />
+                      ) : place.at === 'parts' ? (
+                        <Parts />
+                      ) : place.at === 'new' ? (
+                        place.what === 'agent' ? (
+                          <NewAgent
+                            modules={modules.filter((m) => m.id !== alpha?.id)}
+                            onAsked={() => setAsking(true)}
+                          />
+                        ) : (
+                          <NewModule modules={modules} onAsked={() => setAsking(true)} />
+                        )
+                      ) : place.at === 'file' ? (
+                        <FileView place={place.place} onName={setFileName} />
+                      ) : place.at === 'activity' ? (
+                        <Activity version={version} />
+                      ) : place.at === 'row' ? (
+                        <>
+                          {/* the record's page stays mounted for its place; a tab draws over it */}
+                          <div className={place.tab && rowPlace ? 'hidden' : 'h-full'}>
+                            <RowPage
+                              key={place.id}
+                              id={place.id}
+                              version={version}
+                              onPlace={setRowPlace}
+                            />
+                          </div>
+                          {place.tab && rowPlace && rowPlace.id === place.id && (
+                            <RecordTab at={rowPlace} tab={place.tab} version={version} />
+                          )}
+                        </>
+                      ) : place.at === 'item' && place.kind === 'card' ? (
+                        <CardPage
+                          key={place.id}
+                          id={place.id}
+                          version={version}
+                          onName={setItemName}
+                        />
+                      ) : place.at === 'item' ? (
+                        <ItemPage
+                          key={`${place.kind}/${place.id}${place.settings ? '/settings' : ''}`}
+                          kind={place.kind as 'agent' | 'run' | 'rule'}
+                          id={place.id}
+                          version={version}
+                          onName={setItemName}
+                          settings={!!place.settings}
+                        />
+                      ) : place.at === 'tasks' ? (
+                        <Tasks
+                          list={place.list}
+                          id={place.id}
+                          version={version}
+                          onName={setTaskName}
+                        />
+                      ) : place.at === 'people' ? (
+                        <People
+                          kind={place.kind}
+                          id={place.id}
+                          version={version}
+                          net={network(modules)}
+                          onName={setPersonName}
+                        />
+                      ) : place.at === 'settings' || place.at === 'intelligence' ? (
+                        <Settings
+                          page={place.at}
+                          tab={place.section}
+                          open={place.open}
+                          version={version}
+                        />
+                      ) : place.at === 'module' || table ? (
+                        <ModuleScreen
+                          moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                          tab={
+                            place.at === 'table'
+                              ? { kind: 'table', id: place.id }
+                              : place.tab
+                                ? { kind: place.tab }
+                                : place.page
+                                  ? { kind: 'page', name: place.page }
+                                  : null
+                          }
+                          version={version}
+                          cards={stream?.cards ?? []}
+                          table={table}
+                          renderTable={(t) => (
+                            <TableView
+                              key={t.id}
+                              data={t}
+                              row={place.at === 'table' ? place.row : null}
+                              only={place.at === 'table' ? place.only : null}
+                              why={place.at === 'table' ? place.why : null}
+                              field={place.at === 'table' ? place.field : null}
+                              quiet={asking}
+                            />
+                          )}
+                          conversation={
+                            <Conversation
+                              stream={stream}
+                              live={live}
+                              busyTurn={busyTurn}
+                              lens={moduleHere}
+                              onLens={() => undefined}
+                              from={moduleHere}
+                            />
+                          }
                         />
                       ) : (
-                        <NewModule modules={modules} onAsked={() => setAsking(true)} />
-                      )
-                    ) : place.at === 'file' ? (
-                      <FileView place={place.place} onName={setFileName} />
-                    ) : place.at === 'activity' ? (
-                      <Activity version={version} />
-                    ) : place.at === 'row' ? (
-                      <RowPage
-                        key={place.id}
-                        id={place.id}
+                        <p className="p-6 text-ink-3">That table is not there.</p>
+                      )}
+                    </div>
+                    {peek.href && (
+                      <Peek
+                        href={peek.href}
+                        canBack={peek.canBack}
+                        onBack={peek.back}
+                        onClose={peek.close}
                         version={version}
-                        onPlace={setRowPlace}
-                      />
-                    ) : place.at === 'item' && place.kind === 'card' ? (
-                      <CardPage
-                        key={place.id}
-                        id={place.id}
-                        version={version}
-                        onName={setItemName}
-                      />
-                    ) : place.at === 'item' ? (
-                      <ItemPage
-                        key={`${place.kind}/${place.id}${place.settings ? '/settings' : ''}`}
-                        kind={place.kind as 'agent' | 'run' | 'rule'}
-                        id={place.id}
-                        version={version}
-                        onName={setItemName}
-                        settings={!!place.settings}
-                      />
-                    ) : place.at === 'tasks' ? (
-                      <Tasks
-                        list={place.list}
-                        id={place.id}
-                        version={version}
-                        onName={setTaskName}
-                      />
-                    ) : place.at === 'people' ? (
-                      <People
-                        kind={place.kind}
-                        id={place.id}
-                        version={version}
-                        net={network(modules)}
-                        onName={setPersonName}
-                      />
-                    ) : place.at === 'settings' || place.at === 'intelligence' ? (
-                      <Settings
-                        page={place.at}
-                        tab={place.section}
-                        open={place.open}
-                        version={version}
-                      />
-                    ) : place.at === 'module' || table ? (
-                      <ModuleScreen
-                        moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
-                        tab={
-                          place.at === 'table'
-                            ? { kind: 'table', id: place.id }
-                            : place.tab
-                              ? { kind: place.tab }
-                              : place.page
-                                ? { kind: 'page', name: place.page }
-                                : null
-                        }
-                        version={version}
+                        modules={modules}
                         cards={stream?.cards ?? []}
-                        table={table}
-                        renderTable={(t) => (
-                          <TableView
-                            key={t.id}
-                            data={t}
-                            row={place.at === 'table' ? place.row : null}
-                            only={place.at === 'table' ? place.only : null}
-                            why={place.at === 'table' ? place.why : null}
-                            field={place.at === 'table' ? place.field : null}
-                            quiet={asking}
-                          />
-                        )}
-                        conversation={
-                          <Conversation
-                            stream={stream}
-                            live={live}
-                            busyTurn={busyTurn}
-                            lens={moduleHere}
-                            onLens={() => undefined}
-                            from={moduleHere}
-                          />
-                        }
                       />
-                    ) : (
-                      <p className="p-6 text-ink-3">That table is not there.</p>
                     )}
                   </div>
-                  {peek.href && (
-                    <Peek
-                      href={peek.href}
-                      canBack={peek.canBack}
-                      onBack={peek.back}
-                      onClose={peek.close}
-                      version={version}
-                      modules={modules}
-                      cards={stream?.cards ?? []}
-                    />
-                  )}
-                </div>
-              </NavRow>
-            </BarMiddle>
+                </NavRow>
+              </BarMiddle>
+            </BarRight>
           </main>
           {askable && (
             <Assistant
@@ -716,38 +719,3 @@ export function App() {
 // a key pressed in a field belongs to the field
 const typing = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
-
-// A record's module, under the path to the record: Overview and its main tables, the record's own
-// table chosen, so the way back to the module's lists is in sight
-function RecordSwitch({ m, table }: { m: ModuleSummary; table: string }) {
-  const only = straight(m)
-  return (
-    <InNav>
-      <PillSwitch label={m.name}>
-        {[
-          ...(only
-            ? []
-            : [
-                {
-                  key: 'overview',
-                  href: `#/module/${m.id}/overview`,
-                  label: 'Overview',
-                  sel: false,
-                },
-              ]),
-          ...m.tables
-            .filter((t) => t.place === 'main' || t.id === table)
-            .map((t) => ({
-              key: t.id,
-              href: `#/table/${t.id}`,
-              label: t.name,
-              count: t.rows,
-              sel: t.id === table,
-            })),
-        ].map((t) => (
-          <SwitchPill key={t.key} tab={t} />
-        ))}
-      </PillSwitch>
-    </InNav>
-  )
-}

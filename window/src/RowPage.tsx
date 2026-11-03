@@ -5,7 +5,7 @@
 // around the row: its parts, what links to it, its files and tasks. A property's click opens where
 // it came from; a double-click changes it, as everywhere (T4). It comes again whenever the world
 // changes.
-import type { FieldView, RowAround, RowPageView } from '@alpha/core/api'
+import type { FieldView, RowAround, RowPageTab, RowPageView } from '@alpha/core/api'
 import {
   ArrowUpRight,
   AtSign,
@@ -25,6 +25,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { peek } from './Peek.tsx'
+import { RowPagePart, tabKey } from './RecordNav.tsx'
 import { Blocks } from './table/Blocks.tsx'
 import { EditCell } from './table/Grid.tsx'
 import { opens } from './table/Notes.tsx'
@@ -49,9 +50,11 @@ import { Title } from './ui/title.tsx'
 import { tipNow } from './ui/tooltip.tsx'
 
 export interface RowPlace {
+  id: string
   module: { id: string; name: string }
   table: { id: string; name: string }
   title: string
+  pages: RowPageTab[]
 }
 
 const ICONS: Record<string, LucideIcon> = {
@@ -86,8 +89,12 @@ export function RowPage({
     api.get<RowPageView>(`/api/rows/${id}`).then(setView, () => setView(null))
   }, [id, version])
   useEffect(() => {
-    onPlace(view ? { module: view.table.module, table: view.table, title: view.title } : null)
-  }, [view, onPlace])
+    onPlace(
+      view
+        ? { id, module: view.table.module, table: view.table, title: view.title, pages: view.pages }
+        : null,
+    )
+  }, [view, onPlace, id])
   if (view === undefined) return <p className="p-6 text-ink-3">Loading…</p>
   if (view === null) return <p className="p-6 text-ink-2">This row is not there any more.</p>
   const edit = (f: FieldView, value: unknown) =>
@@ -106,6 +113,7 @@ export function RowPage({
     window.location.hash = `#/table/${view.table.id}/${id}?field=${encodeURIComponent(f.name)}`
   }
   const notes = view.fields.find((f) => f.kind === 'notes')
+  const cards = inside ? [] : view.pages.filter((p) => p.on && p.place === 'overview')
   const doc =
     notes && typeof view.row.values[notes.slug] === 'string'
       ? (view.row.values[notes.slug] as string)
@@ -152,27 +160,57 @@ export function RowPage({
           onRename={titled && canType(titled) ? (t) => edit(titled, t) : undefined}
         />
         <States view={view} onEdit={edit} />
-        {/* its module's pages of one row, opened on this one (Vikas, 3 Nov: a client's Report) */}
-        {view.pages.length > 0 && (
+        {/* in the side panel its pages are buttons; on its own page they are its tabs, under the
+            bar (RecordNav.tsx) */}
+        {inside && view.pages.some((p) => p.on && p.place === 'tab') && (
           <div className="mt-3 flex gap-2">
-            {view.pages.map((p) => (
-              <Button
-                key={p.name}
-                size="sm"
-                onClick={() => {
-                  window.location.hash = `#/module/${view.table.module.id}/page/${p.name}?${new URLSearchParams({ [p.input]: view.title })}`
-                }}
-              >
-                {p.title}
-              </Button>
-            ))}
+            {view.pages
+              .filter((p) => p.on && p.place === 'tab')
+              .map((p) => (
+                <Button
+                  key={tabKey(p)}
+                  size="sm"
+                  onClick={() => {
+                    window.location.hash = `#/row/${id}?${new URLSearchParams({ tab: tabKey(p), [p.input]: p.value })}`
+                  }}
+                >
+                  {p.title}
+                </Button>
+              ))}
           </div>
         )}
         <Refusal words={problem} />
         <div className="mt-8 grid items-start gap-x-12 gap-y-10 @4xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <main className="flex min-w-0 flex-col">
-            <Properties view={view} onEdit={edit} onSource={source} skip={titled?.slug} states />
-            <hr className="my-8 border-line" />
+          {/* the Overview of a record (Vikas, 3 Nov, "the notion kind of thing"): the cards its
+              module's pages place there in the centre, each with its next step, then its
+              document; its fields fixed in the column at the right, with what hangs off it */}
+          <main className="flex min-w-0 flex-col gap-6">
+            {cards.map((p) => (
+              <RowPagePart
+                key={tabKey(p)}
+                at={{
+                  id,
+                  module: view.table.module,
+                  table: view.table,
+                  title: view.title,
+                  pages: view.pages,
+                }}
+                p={p}
+                version={version}
+              />
+            ))}
+            {inside && (
+              <>
+                <Properties
+                  view={view}
+                  onEdit={edit}
+                  onSource={source}
+                  skip={titled?.slug}
+                  states
+                />
+                <hr className="my-2 border-line" />
+              </>
+            )}
             {notes ? (
               <Blocks key={id} value={doc} opens={opens} onSave={(md) => edit(notes, md || null)} />
             ) : (
@@ -199,6 +237,9 @@ export function RowPage({
             )}
           </main>
           <aside className="flex min-w-0 flex-col gap-10 @4xl:sticky @4xl:top-6">
+            {!inside && (
+              <Properties view={view} onEdit={edit} onSource={source} skip={titled?.slug} states />
+            )}
             <PartSections id={id} />
             <RowBody
               around

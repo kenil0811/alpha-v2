@@ -16,7 +16,22 @@ export interface PageInfo {
   front: boolean // <meta name="alpha-front">: the page the module opens on
   // <meta name="alpha-for" content="Clients" data-input="Client">: a page of one row (a client's
   // report), opened from that row with its name as the input, never a tab (Vikas, 3 Nov)
-  for: { table: string; input: string } | null
+  for: PageFor | null
+}
+// A row's page is a tab of the row's own page (Vikas, 3 Nov: a deal's phases), in its order
+// (data-order), on the row's Overview instead when data-place="overview". data-when="CIM:
+// Requested, Received" shows it only while the row's field is one of those; data-next="Request
+// CIM: CIM = Requested" is a button under it, setting the field, while the field is empty or its
+// first choice;
+// data-upload="CIM" takes a document of that kind on the row there.
+export interface PageFor {
+  table: string
+  input: string
+  order: number
+  place: 'tab' | 'overview'
+  when: { field: string; values: string[] } | null
+  next: { label: string; field: string; value: string } | null
+  upload: string | null
 }
 // <meta name="alpha-print" content="landscape">: a wide page prints across the paper
 
@@ -40,7 +55,31 @@ function fileOf(module: Module, name: string): string {
 const forOf = (html: string): PageInfo['for'] => {
   const tag = /<meta\s+name=["']alpha-for["'][^>]*>/i.exec(html)?.[0]
   const table = tag && /content=["']([^"']+)["']/i.exec(tag)?.[1]
-  return table ? { table, input: /data-input=["']([^"']+)["']/i.exec(tag)?.[1] ?? table } : null
+  if (!tag || !table) return null
+  const attr = (n: string) => new RegExp(`data-${n}=["']([^"']+)["']`, 'i').exec(tag)?.[1]?.trim()
+  const when = /^([^:]+):(.+)$/.exec(attr('when') ?? '')
+  const next = /^([^:]+):([^=]+)=(.+)$/.exec(attr('next') ?? '')
+  return {
+    table,
+    input: attr('input') ?? table,
+    order: Number(attr('order') ?? 50) || 50,
+    place: attr('place') === 'overview' ? 'overview' : 'tab',
+    when:
+      when?.[1] && when[2]
+        ? {
+            field: when[1].trim(),
+            values: when[2]
+              .split(',')
+              .map((v) => v.trim())
+              .filter(Boolean),
+          }
+        : null,
+    next:
+      next?.[1] && next[2] && next[3]
+        ? { label: next[1].trim(), field: next[2].trim(), value: next[3].trim() }
+        : null,
+    upload: attr('upload') ?? null,
+  }
 }
 
 export function pagesOf(module: Module): PageInfo[] {
@@ -90,8 +129,10 @@ export function pageDocument(
   const inner = fileOf(module, name)
     .replace(/<!doctype[^>]*>/gi, '')
     .replace(/<\/?(html|head|body)\b[^>]*>/gi, '')
+  // a page opened on its row keeps the row's input fixed: the record's own picker changes it
+  const fixed = forOf(inner)?.input
   const given = inputs
-    ? `<script>window.alphaInputs=${JSON.stringify(inputs).replace(/</g, '\\u003c')}</script>`
+    ? `<script>window.alphaInputs=${JSON.stringify(inputs).replace(/</g, '\\u003c')};window.alphaFixed=${JSON.stringify(fixed && fixed in inputs ? [fixed] : []).replace(/</g, '\\u003c')}</script>`
     : ''
   return [
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',

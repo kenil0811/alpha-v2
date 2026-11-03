@@ -634,7 +634,8 @@
     drawing = { inputs, choose, printing }
     // the inputs a block places ({controls: [names]}) are drawn there, not at the top
     const placed = new Set(blocks.flatMap((b) => b?.controls ?? []))
-    const top = new Map([...inputs].filter(([n]) => !placed.has(n)))
+    const fixed = window.alphaFixed ?? []
+    const top = new Map([...inputs].filter(([n]) => !placed.has(n) && !fixed.includes(n)))
     if (!root) {
       // a page may ask for one of the kit's looks: <meta name="alpha-look" content="snapshot">
       const look = document.querySelector('meta[name="alpha-look"]')?.getAttribute('content')

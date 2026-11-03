@@ -25,7 +25,20 @@ export interface RowPageView {
   row: RowView
   names: Record<string, string>
   title: string
-  pages: { name: string; title: string; input: string }[] // its module's pages of one row of it
+  // the pages of one row of it, its module's and those of a module whose row links to it (a CRM
+  // lead's pages on its DealPilot deal), in order; `on` once its field allows it (pages.ts)
+  pages: RowPageTab[]
+}
+export interface RowPageTab {
+  module: string // the page's module, by id
+  name: string
+  title: string
+  input: string
+  value: string // the input's value: this row's name, or the linking row's
+  place: 'tab' | 'overview'
+  on: boolean
+  next: { label: string; field: string; value: string } | null // shown while not done
+  upload: string | null
 }
 
 // What is around a row: its parts, the rows that link to it, the notes that mention it.

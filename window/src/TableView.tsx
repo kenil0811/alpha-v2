@@ -53,6 +53,7 @@ import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
+import { MapView } from './table/views/MapView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -274,7 +275,7 @@ export function TableView({
     (config.kind === 'board' && boardBy) ||
     (config.kind === 'calendar' && dateBy) ||
     (config.kind === 'timeline' && dateBy) ||
-    ['form', 'list', 'gallery', 'chart'].includes(config.kind)
+    ['form', 'list', 'gallery', 'chart', 'map'].includes(config.kind)
   )
 
   return (
@@ -493,6 +494,7 @@ export function TableView({
             fields={shown}
             group={fields.find((f) => f.id === config.group)}
             names={data.names}
+            files={data.fields.some((f) => f.kind === 'file') ? data.id : undefined}
           />
         ) : config.kind === 'gallery' ? (
           <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
@@ -506,6 +508,11 @@ export function TableView({
           />
         ) : config.kind === 'timeline' && dateBy ? (
           <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+        ) : config.kind === 'map' ? (
+          // a kept table (Network's) maps every module's places; a table its own rows
+          <div className="min-h-0 flex-1">
+            <MapView table={kept ? undefined : data.id} />
+          </div>
         ) : config.kind === 'chart' ? (
           <ChartView
             rows={rows}

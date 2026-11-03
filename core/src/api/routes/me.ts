@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { config } from '../../config.ts'
 import type { Ctx } from '../ctx.ts'
 import { askable, lookUp, placesKnown } from '../geocode.ts'
-import type { DateRow, FoundRow, Layout, Me, PlaceRow } from '../types.ts'
+import type { DateRow, FoundRow, Layout, Me, ModuleTabs, PlaceRow } from '../types.ts'
 
 export function registerMe(ctx: Ctx): void {
   const { app, world, user } = ctx
@@ -34,6 +34,9 @@ export function registerMe(ctx: Ctx): void {
       // only once something was dragged: a page never arranged keeps its own order
       ...(world.preference(user.id, 'block_arrange')
         ? { arrange: json<string[][]>('block_arrange') }
+        : {}),
+      ...(world.preference(user.id, 'module_tabs')
+        ? { tabs: json<ModuleTabs>('module_tabs') }
         : {}),
     }
   }
@@ -80,6 +83,16 @@ export function registerMe(ctx: Ctx): void {
               .nullable(),
           )
           .optional(),
+        tabs: z
+          .record(
+            z.string().max(120),
+            z.object({
+              order: z.array(z.string().max(160)).max(200),
+              hidden: z.array(z.string().max(160)).max(200),
+              names: z.record(z.string().max(160), z.string().trim().min(1).max(80)),
+            }),
+          )
+          .optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -113,6 +126,12 @@ export function registerMe(ctx: Ctx): void {
         user.id,
         'module_pins',
         JSON.stringify({ ...json('module_pins'), ...given.pins }),
+      )
+    if (given.tabs !== undefined)
+      world.setPreference(
+        user.id,
+        'module_tabs',
+        JSON.stringify({ ...json('module_tabs'), ...given.tabs }),
       )
     if (given.arrange !== undefined) {
       const kept: Record<string, string[][]> = json('block_arrange')

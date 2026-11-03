@@ -28,3 +28,12 @@ ships without Kenil's review (Vikas, 2 Nov). Proposal: `proposals/2026-11-03-acq
   snapshot look and its `bars`, `rows` and `callout` blocks, chart value labels and a highlighted
   last bar; Accounting's report uses them, adds the A/R aging by bucket, and names what is
   missing instead of drawing it empty.
+- In the evening, Vikas's review of the demo, built the same night: Home's bar centred with Next
+  at its right; folders a list; task rows one line beside their date and button; four agents
+  (Alpha's interviewer, and in DealPilot a Deal sourcer for all sixteen sources and the filed
+  documents, the Screener with the figures, Outreach); DealPilot, CRM and Accounting at the top,
+  no Avilo; Map a view of any table; the list row one line; Documents last and opening on the
+  file; tabs dragged, renamed, hidden and shown; CRM without Deal mail, Sellers and Lenders, its
+  Board the default, a DealPilot and an Accounting list; and a deal's phases as its record's
+  tabs (Fit on the Overview with Request CIM, then CIM with its upload, then Diligence, the deal
+  sheet, with Add to CRM, then CRM's own tabs for the lead the deal became).
