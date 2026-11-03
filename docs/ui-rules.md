@@ -545,6 +545,9 @@ put it there and on the parts page (#/parts).
 
 ### 3 Nov, evening (Vikas)
 
+- An Overview's timelines and heatmap are back, as DealPilot had them: rows as bubbles along their
+  dates, new rows by week, the first goal per week, and the heatmap of two choices however they
+  vary (the 1 Nov review's cut of them undone).
 - Home's day and greeting sit at the bar's left; the greeting goes by the clock (afternoon from
   noon).
 - The rail folded keeps the rail's own order, the person's dragged order and Documents last.

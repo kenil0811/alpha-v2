@@ -42,3 +42,5 @@ ships without Kenil's review (Vikas, 2 Nov). Proposal: `proposals/2026-11-03-acq
   Appearance, the warm palette one of its choices.
 - Home's day and greeting moved to the bar's left; the folded rail draws the open rail's order;
   the rail and the assistant slide in alike.
+- DealPilot's Overview visuals back at Vikas's word: the timeline (deals as bubbles by first
+  seen), new deals by week, the first goal per week, the heatmap without its vary-apart rule.

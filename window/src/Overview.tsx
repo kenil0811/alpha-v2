@@ -39,7 +39,15 @@ import { peek } from './Peek.tsx'
 import { Stack, stacksOf } from './stack.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import { Chart, type ChartKind, Heat, KindPicker, type Mark, Scatter } from './ui/chart.tsx'
+import {
+  Bubbles,
+  Chart,
+  type ChartKind,
+  Heat,
+  KindPicker,
+  type Mark,
+  Scatter,
+} from './ui/chart.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
@@ -141,6 +149,45 @@ const lc = (name: string) =>
     .split(' ')
     .map((w) => (/^[A-Z][a-z]/.test(w) ? w.toLowerCase() : w))
     .join(' ')
+// Rows as bubbles, the timeline (Vikas, 27 Oct; back 3 Nov): along the date most of them have, in lanes by their main
+// choice, sized by their first amount, coloured by a choice whose words carry a tone (Risk). Only
+// when the table has all three, and enough rows dated to read.
+function bubblesOf(t: TableData) {
+  const dated = (f: Field) => t.rows.filter((r) => typeof val(r, f) === 'string').length
+  const date = t.fields.filter((f) => f.kind === 'date').sort((a, b) => dated(b) - dated(a))[0]
+  const size = t.fields.find((f) => f.kind === 'money') ?? t.fields.find((f) => f.kind === 'number')
+  const lane = spreadOf(t)[0]?.f
+  const tone = toneOf(t, lane)
+  if (!date || !size || !lane || dated(date) < 8) return null
+  const name = nameOf(t)
+  const points = t.rows.flatMap((r) => {
+    const d = val(r, date)
+    const lanes = val(r, lane)
+    if (typeof d !== 'string' || typeof lanes !== 'string') return []
+    const said = tone ? String(val(r, tone) ?? '') : ''
+    const n = num(val(r, size)) ?? 0
+    return [
+      {
+        at: Date.parse(d),
+        lane: lanes,
+        size: n,
+        tone: tone?.tones[said],
+        label: [
+          name ? String(val(r, name) ?? '') : '',
+          `${date.name} ${d}`,
+          `${size.name} ${n.toLocaleString()}`,
+          said && tone ? `${tone.name} ${said}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        href: `#/row/${r.id}`,
+      },
+    ]
+  })
+  const lanes = lane.choices.filter((c) => points.some((p) => p.lane === c))
+  return { date, size, lane, points, lanes, tones: tonesOf(tone) }
+}
+
 const toneOf = (t: TableData, not?: Field) =>
   t.fields.find((f) => f.kind === 'choice' && !f.many && f !== not && Object.keys(f.tones).length)
 const tonesOf = (tone: Field | undefined) =>
@@ -257,10 +304,6 @@ function heatOf(t: TableData) {
     }),
   )
   if (cols.length < 2) return null
-  // only two things that vary apart (Vikas, 3 Nov): where most pairs are empty, one decides the
-  // other (a stage under LOI is never "SIM requested"), and the grid is a funnel said worse
-  const all = cells.flat()
-  if (all.filter((c) => c.n).length < (all.length * 2) / 3) return null
   return { row, col, rows: rowIds.map(said), cols, cells }
 }
 
@@ -1087,6 +1130,30 @@ export function Overview({
           />
         ),
       })
+    const bubbles = bubblesOf(t)
+    if (bubbles)
+      work.push({
+        key: `bubbles:${t.id}`,
+        name: `${t.name} by ${bubbles.date.name.toLowerCase()}`,
+        wide: true,
+        node: (
+          <Card
+            id={`bubbles:${t.id}`}
+            title={`${t.name} by ${bubbles.date.name.toLowerCase()}`}
+            href={`#/table/${t.id}`}
+            wide
+          >
+            {() => (
+              <Bubbles
+                points={bubbles.points}
+                lanes={bubbles.lanes}
+                size={bubbles.size.name}
+                tones={bubbles.tones}
+              />
+            )}
+          </Card>
+        ),
+      })
     const scatter = scatterOf(t)
     if (scatter)
       work.push({
@@ -1200,16 +1267,30 @@ export function Overview({
         />
       ),
     })
-  // each goal week by week and month by month (one goal's weeks alone is no card of its own: the
-  // same numbers; Vikas, 3 Nov)
+  // each goal week by week and month by month, and the first one's weeks against its target
+  // (back 3 Nov: DealPilot's timelines as they were)
   // ponytail: by the date a row carries for the goal (Reviewed); a stage reached has no date
   // until the core gives a row's stage history, so those goals show only where they stand
   if (goals?.marks.some((g) => g.date)) {
+    const first = goals.marks.find((g) => g.date) as Goal
     work.push({
       key: 'goal-weeks',
       name: 'Goals by week',
       wide: true,
       node: <GoalWeeks t={goals.table} goals={goals.marks} href={`#/table/${goals.goals.id}`} />,
+    })
+    work.push({
+      key: 'goal-first',
+      name: `${first.label} per week`,
+      node: (
+        <ChartCard
+          id="goal-first"
+          title={`${first.label} per week`}
+          href={`#/table/${goals.table.id}`}
+          kinds={['bullet', 'bar']}
+          marks={periodsOf(goals.table, first).weeks}
+        />
+      ),
     })
   }
   const criteria = criteriaOf(setup, main)
@@ -1224,6 +1305,22 @@ export function Overview({
           href={`#/table/${criteria.criteria.id}`}
           kinds={['bar', 'donut']}
           marks={criteria.marks}
+        />
+      ),
+    })
+  const big = [...main].sort((a, b) => b.rows.length - a.rows.length)[0]
+  const weeks = big && weeksOf(big)
+  if (big && weeks && weeks.weeks.filter((w) => w.n).length >= 2 && says(weeks.weeks))
+    work.push({
+      key: `weeks:${big.id}`,
+      name: `New ${big.name.toLowerCase()} by week`,
+      node: (
+        <ChartCard
+          id={`weeks:${big.id}`}
+          title={`New ${big.name.toLowerCase()} by week`}
+          href={`#/table/${big.id}`}
+          kinds={['bar', 'donut']}
+          marks={weeks.weeks}
         />
       ),
     })
