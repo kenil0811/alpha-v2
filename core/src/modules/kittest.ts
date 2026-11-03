@@ -1,24 +1,28 @@
 // `alpha kit test <dir>` (decision 9): a kit's skills run against a fixture world and recorded
 // answers, without the model, and the rows they land are compared with what the kit's test
 // expects. A case is tests/<name>.yaml in the kit: which agent or script, its input, the rows to
-// seed, the pages a browser call gets, the model's recorded answers, and what to expect. A
-// refusal by a wall fails the case. `--record` runs the model for real and writes its answers
-// into the case, to replay from then on.
+// seed (a used kit's or connector's tables too, made for the case from their definitions), the
+// pages a browser call gets, a connector's reads and an item's files as recorded, the model's
+// recorded answers, and what to expect. A refusal by a wall fails the case. `--record` runs the
+// model for real and writes its answers into the case, to replay from then on.
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { type BrowserEngine, Problem } from '@alpha/connector-sdk'
+import { dirname, join } from 'node:path'
+import { type BrowserEngine, type Connector, Problem } from '@alpha/connector-sdk'
 import { parse, stringify } from 'yaml'
 import { z } from 'zod'
+import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { askModel } from '../engine/ask.ts'
 import type { Ask } from '../files/reading.ts'
+import { run as exec, now } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
-import type { Table } from '../world/shape/index.ts'
+import type { Table, WriteCtx } from '../world/shape/index.ts'
 import { World } from '../world/world.ts'
 import { agents } from './agents.ts'
-import { install } from './kits/index.ts'
-import { AgentRunner } from './runs/index.ts'
+import { install, type KitManifest, readKit } from './kits/index.ts'
+import { shapeTables } from './kits/shape.ts'
+import { AgentRunner, toolOf } from './runs/index.ts'
 
 const Case = z.object({
   agent: z.string().optional(),
@@ -31,6 +35,33 @@ const Case = z.object({
   answers: z
     .array(z.object({ key: z.string(), about: z.string(), answer: z.unknown() }))
     .default([]),
+  // what a connector's tool that only reads gives, by its call (gmail.read) and input
+  tools: z
+    .array(
+      z.object({
+        call: z.string(),
+        input: z.record(z.string(), z.unknown()).default({}),
+        answer: z.unknown(),
+      }),
+    )
+    .default([]),
+  // the files a connector's item carries, by connector and item: each a name and its text
+  files: z
+    .record(
+      z.string(),
+      z.record(
+        z.string(),
+        z.array(
+          z.object({
+            name: z.string(),
+            mime: z.string().default('text/plain'),
+            text: z.string().default(''),
+            inline: z.boolean().default(false),
+          }),
+        ),
+      ),
+    )
+    .default({}),
   expect: z
     .object({
       state: z.enum(['ok', 'failed', 'stopped']).default('ok'),
@@ -88,6 +119,7 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
   const learned: KitTestCase['answers'] = []
   try {
     const ctx = { actor: { kind: 'alpha' as const } }
+    const known = await standIns(world, dir, c, ctx)
     const module = await install(world, dir, ctx)
     // the pages recorded are sites the kit may read in the test
     const hosts = Object.keys(c.pages).map((u) => new URL(u).host)
@@ -127,13 +159,32 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
       if (recorded.has(key)) return { answer: recorded.get(key), tokens: 0 }
       if (!real)
         throw new Refused(
-          'The script asked the model something this case has no answer recorded for; run the test with --record once.',
+          `The script asked the model something this case has no answer recorded for (key ${key}: ${prompt.slice(0, 80).replace(/\s+/g, ' ')}); run the test with --record once, or record its answer by hand under that key.`,
         )
       const out = await real(prompt, schema)
       learned.push({ key, about: prompt.slice(0, 120).replace(/\s+/g, ' '), answer: out.answer })
       return out
     }
     const runner = new AgentRunner(world, () => engine, { owner: null, ask, judge: ask })
+    runner.connectors = {
+      tool: (connector, tool, input) => toolOf(known, connector, tool, input),
+      carries: (connector) => !!known.find((k) => k.manifest.name === connector)?.files,
+      run: async (connector, tool, input) => {
+        const t = c.tools.find((x) => x.call === `${connector}.${tool}` && matches(input, x.input))
+        if (!t)
+          throw new Refused(
+            `The case has no answer recorded for ${connector}.${tool} ${JSON.stringify(input)}.`,
+          )
+        return t.answer
+      },
+      files: async (connector, item) =>
+        (c.files[connector]?.[item] ?? []).map((f) => ({
+          name: f.name,
+          mime: f.mime,
+          bytes: new TextEncoder().encode(f.text),
+          inline: f.inline,
+        })),
+    }
     const out = c.agent
       ? await (async () => {
           const a = agents(world, module.id).find((x) => x.name === c.agent)
@@ -174,6 +225,82 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
     world.close()
     rmSync(home, { recursive: true, force: true })
   }
+}
+
+// What the kit uses of other kits and of connectors, made for the case so its install's uses
+// check passes and its rows can seed them: a used kit's tables as the kit's folder beside this one
+// has them (with that kit's version), else from the fields the case seeds; a connector's tables as
+// the connector defines them. The connectors loaded are given back, for their tools' effects.
+async function standIns(
+  world: World,
+  dir: string,
+  c: KitTestCase,
+  ctx: WriteCtx,
+): Promise<Connector[]> {
+  const { manifest } = readKit(dir)
+  const known = manifest.uses.some((u) => u.connector)
+    ? (await loadSet(STANDARD_DIR)).connectors
+    : []
+  const seeded = (name: string) =>
+    [...new Set((c.rows[name] ?? []).flatMap((r) => Object.keys(r)))].map((n) => ({
+      name: n,
+      kind: 'text' as const,
+    }))
+  for (const u of manifest.uses) {
+    if (u.connector) {
+      const conn = known.find((k) => k.manifest.name === u.connector)
+      const name = conn?.module ?? u.connector
+      const m = world.shape.module(name) ?? world.shape.makeModule(name, ctx)
+      for (const t of u.tables) {
+        if (world.shape.table(t)) continue
+        const spec = conn?.tables.find((x) => x.name === t)
+        const made = world.shape.makeTable(m.id, t, spec?.fields ?? seeded(t), ctx, {
+          hidden: true,
+        })
+        if (spec?.people) world.people.mapTable(made.id, spec.people, ctx)
+      }
+      continue
+    }
+    if (!u.kit || world.shape.module(u.kit)) continue
+    const beside = besideKit(dirname(dir), u.kit)
+    const picked = (beside?.tables ?? [])
+      .filter((t) => u.tables.includes(t.name))
+      .map((t) => ({
+        ...t,
+        setup: false,
+        views: [],
+        fields: t.fields.filter((f) =>
+          f.kind === 'relation' ? u.tables.includes(f.relates_to ?? '') : f.kind !== 'summary',
+        ),
+      }))
+    const m = world.shape.makeModule(u.kit, ctx)
+    if (beside) shapeTables(world, m, { ...beside, tables: picked }, ctx)
+    for (const t of u.tables)
+      if (!world.shape.table(t)) world.shape.makeTable(m.id, t, seeded(t), ctx)
+    exec(
+      world.db,
+      'INSERT INTO kits (module_id, kit, version, source, installed_at, updated_at, api) VALUES (?, ?, ?, ?, ?, ?, 1)',
+      m.id,
+      u.kit,
+      beside?.version ?? u.min ?? '0.0.0',
+      dir,
+      now(),
+      now(),
+    )
+  }
+  return known
+}
+
+// The kit of that name in a folder beside the one tested, as its module.yaml says it.
+function besideKit(parent: string, name: string): KitManifest | null {
+  for (const e of readdirSync(parent, { withFileTypes: true })) {
+    if (!e.isDirectory() || !existsSync(join(parent, e.name, 'module.yaml'))) continue
+    try {
+      const { manifest } = readKit(join(parent, e.name))
+      if (manifest.name === name) return manifest
+    } catch {}
+  }
+  return null
 }
 
 function byName(t: Table, values: Record<string, unknown>): Record<string, unknown> {

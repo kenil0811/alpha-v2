@@ -71,7 +71,8 @@ export const CALLS: Call[] = [
         }),
       ),
     }),
-    answer: '{ added, changed, same }',
+    answer:
+      '{ added, changed, same, rows }: rows, the id of each row added or matched, in the order given',
     words:
       'a row per key, added or changed in place; values by field name; url only for the web page a row was read from; places by field name: { file, sheet, cell } or { file, page, line }, the document place a value was read from, so it opens there; a value the person said, or a figure a script computed, is never written over',
     effect: null,
@@ -141,6 +142,35 @@ export const CALLS: Call[] = [
       'values, each { value, place } with the place it was read from, ready for rows.land’s places, or null when it is not found where it is cited; lists; and dropped, why each left out was left out',
     words:
       'the model reads the document into those values, kind text, number, money, percent, date or choice',
+    effect: null,
+    since: 1,
+  },
+  {
+    name: 'connectors.read',
+    signature: 'alpha.connectors.read(connector, tool, input)',
+    params: ['connector', 'tool', 'input'],
+    args: z.looseObject({ connector: z.string(), tool: z.string(), input: record.optional() }),
+    answer:
+      'what the tool gives, as the connector says it (gmail’s read: from, to, subject, date, text, attachments)',
+    words:
+      'a tool that only reads, of a connector the kit names in uses, through the gates as the model’s call goes; a tool that writes or goes outward is refused: that is the person’s to do, on a card',
+    effect: null,
+    since: 1,
+  },
+  {
+    name: 'connectors.file',
+    signature: 'alpha.connectors.file(connector, item, table, row, kind)',
+    params: ['connector', 'item', 'table', 'row', 'kind'],
+    args: z.looseObject({
+      connector: z.string(),
+      item: z.string(),
+      table: z.string(),
+      row: z.string(),
+      kind: z.string(),
+    }),
+    answer: '[{ file, name, row, kind }], one for each file put on the row',
+    words:
+      'the files an item of a connector the kit names in uses carries (an email’s attachments, by its Message ID), filed and put on a row of the module’s own tables, as one of the kinds that table takes (documents)',
     effect: null,
     since: 1,
   },

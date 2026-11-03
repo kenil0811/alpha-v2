@@ -28,7 +28,7 @@ import { agents, setAgentState } from '../modules/agents.ts'
 import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
-import { AgentRunner } from '../modules/runs/index.ts'
+import { AgentRunner, toolsOf } from '../modules/runs/index.ts'
 import { revert, undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
@@ -139,6 +139,7 @@ export async function runOne(
     },
   )
   runner.drafts = drafts
+  runner.connectors = toolsOf(connectors, world)
   const engine = new Engine(world, {
     prompt,
     connectors,

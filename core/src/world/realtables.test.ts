@@ -333,9 +333,9 @@ describe('the shape changing under rows', () => {
     const item = [{ key: 'x1', values: { Name: 'Deal x', Price: null } }]
     const first = world.records.land(deals.id, item, { connector: 'c' }, { actor: alpha })
     const again = world.records.land(deals.id, item, { connector: 'c' }, { actor: alpha })
-    expect([first, again]).toEqual([
+    expect([first, again]).toMatchObject([
       { added: 1, changed: 0, same: 0 },
-      { added: 0, changed: 0, same: 1 },
+      { added: 0, changed: 0, same: 1, rows: first.rows },
     ])
     const row = world.records.get(world.records.byKey(deals.id, 'x1') as string)?.record
     expect(row?.values).toEqual({ name: 'Deal x' })

@@ -1,4 +1,5 @@
 // The core: one process, listening on loopback (design §2, §3).
+import './clock.ts' // first: a demo's clock, before anything reads the time
 import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -21,7 +22,7 @@ import { agents } from './modules/agents.ts'
 import { keepDefaults } from './modules/defaults.ts'
 import { Drafts } from './modules/drafts.ts'
 import { installInbox } from './modules/packs.ts'
-import { AgentRunner } from './modules/runs/index.ts'
+import { AgentRunner, toolsOf } from './modules/runs/index.ts'
 import { platformHere } from './platform/index.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
@@ -215,6 +216,7 @@ const drafts = new Drafts(
   },
 )
 runner.drafts = drafts
+runner.connectors = toolsOf(connectors, world)
 const engine = new Engine(world, {
   connectors,
   route,

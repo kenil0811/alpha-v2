@@ -240,7 +240,7 @@ describe('rows a connection lands', () => {
         src,
         ctx,
       ),
-    ).toEqual({ added: 2, changed: 0, same: 0 })
+    ).toMatchObject({ added: 2, changed: 0, same: 0 })
     expect(
       world.records.land(
         t.id,
@@ -251,8 +251,12 @@ describe('rows a connection lands', () => {
         src,
         ctx,
       ),
-    ).toEqual({ added: 0, changed: 1, same: 1 })
+    ).toMatchObject({ added: 0, changed: 1, same: 1 })
     const rows = world.records.list(t.id)
+    // the row each item landed on, in the order given
+    expect(
+      world.records.land(t.id, [{ key: 'b', values: { Food: 'jam toast' } }], src, ctx).rows,
+    ).toEqual([rows[1]?.id])
     expect(rows.map((r) => [r.values.food, r.version])).toEqual([
       ['eggs', 1],
       ['jam toast', 2],
@@ -277,7 +281,7 @@ describe('rows a connection lands', () => {
     )
     expect(
       world.records.land(t.id, [{ key: 'a', values: { Food: 'eggs', Quantity: 2 } }], src, ctx),
-    ).toEqual({ added: 0, changed: 0, same: 1 })
+    ).toMatchObject({ added: 0, changed: 0, same: 1 })
     expect(
       world.records.land(
         t.id,
@@ -285,7 +289,7 @@ describe('rows a connection lands', () => {
         src,
         ctx,
       ),
-    ).toEqual({ added: 0, changed: 1, same: 0 })
+    ).toMatchObject({ added: 0, changed: 1, same: 0 })
     const after = world.records.list(t.id)[0]
     expect([after?.values.food, after?.values.quantity]).toEqual(['duck eggs', 3])
     expect(after?.provenance.quantity?.kind).toBe('stated')

@@ -215,11 +215,13 @@ export class Records {
     source: LandSource,
     ctx: WriteCtx,
     options: { existing?: boolean } = {},
-  ): Landed {
+  ): Landed & { rows: (string | null)[] } {
     return tx(this.db, () => {
       const table = this.mustTable(tableId)
       const at = now()
       const out: Landed = { added: 0, changed: 0, same: 0 }
+      // the row each item landed on, in the order given; null for one left out (existing)
+      const rows: (string | null)[] = []
       const touched: string[] = []
       const ids = { added: [] as string[], changed: [] as string[] }
       const versions: [string, number, Snapshot][] = []
@@ -241,11 +243,13 @@ export class Records {
           ? this.readRow(table, item.row)
           : one<Row>(this.db, `SELECT * FROM ${quote(table.slug)} WHERE item_key = ?`, item.key)
         if (!r && item.row) throw new Refused(`${table.name} has no row ${item.row}.`)
+        rows.push(r?.id ?? null)
         if (!r && options.existing) continue
         if (!r) {
           partOfGiven(table, vals, true)
           const id = newId('r')
           this.insert(table, id, vals, prov, at, actorName(ctx.actor), item.key)
+          rows[rows.length - 1] = id
           touched.push(id)
           ids.added.push(id)
           out.added++
@@ -298,7 +302,7 @@ export class Records {
         tagVersions(this, versions, line.id)
       }
       this.watch?.rows(table, touched, ctx)
-      return out
+      return { ...out, rows }
     })
   }
 

@@ -21,6 +21,7 @@ import type { Drafts } from '../drafts.ts'
 import { type Web, webOf } from '../research.ts'
 import { Reviews } from '../reviews.ts'
 import * as apiOf from './api.ts'
+import type { ConnectorTools } from './connected.ts'
 import * as dueOf from './due.ts'
 import * as reachOf from './reach.ts'
 import * as tasksOf from './tasks.ts'
@@ -59,6 +60,7 @@ export class AgentRunner {
   held = new Map<string, string>() // agents waiting on a Try again card, by the card's id
   woken = new Set<string>() // agents just turned on: due at once, whatever their trigger says
   drafts: Drafts | null = null // an agent's drafts, sent from the person's mail on their yes
+  connectors: ConnectorTools | null = null // what a script reads through its kit's connectors
   readonly reviews: Reviews // rows an agent puts to the person, on a card
 
   constructor(

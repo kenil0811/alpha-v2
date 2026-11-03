@@ -1,7 +1,7 @@
 // The walls on an agent's run: what its file lets it touch, read and do, and its budget.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Manifest } from '@alpha/kit-sdk'
+import { type KitManifest, Manifest } from '@alpha/kit-sdk'
 import { parse } from 'yaml'
 import { one } from '../../world/db.ts'
 import type { Module } from '../../world/shape/index.ts'
@@ -47,16 +47,20 @@ export function fileOf(runner: AgentRunner, agentId: string, module: Module): Ag
 
 const lower = (names: string[]) => new Set(names.map((n) => n.toLowerCase()))
 
+// What a module's kit uses of other kits and connectors (module.yaml's uses).
+export function usesOf(module: Module): KitManifest['uses'] {
+  const manifest = join(module.dir, 'module.yaml')
+  return existsSync(manifest)
+    ? (Manifest.safeParse(parse(readFileSync(manifest, 'utf8'))).data?.uses ?? [])
+    : []
+}
+
 // The module's own tables and those of the modules inside it, and its kit's uses.
 function reach(runner: AgentRunner, module: Module): { own: string[]; uses: string[] } {
   const own = runner.world.shape
     .within(module.id)
     .flatMap((id) => runner.world.shape.tables(id).map((t) => t.name))
-  const manifest = join(module.dir, 'module.yaml')
-  const uses = existsSync(manifest)
-    ? (Manifest.safeParse(parse(readFileSync(manifest, 'utf8'))).data?.uses ?? [])
-    : []
-  return { own, uses: uses.flatMap((u) => u.tables) }
+  return { own, uses: usesOf(module).flatMap((u) => u.tables) }
 }
 
 // A try of a script from the chat has no agent file, so its module is its wall (item 40 of the
