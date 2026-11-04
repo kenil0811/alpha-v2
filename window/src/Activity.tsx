@@ -314,3 +314,74 @@ function Undo({ run: r, onDone }: { run: RunView; onDone?: (() => void) | undefi
     </>
   )
 }
+
+// The bell's dropdown (Vikas, 1 Nov: checking what ran shouldn't lose his place): the latest
+// runs, newest first, each with its state; a run opens beside the page as any link to it does
+// (OpenedPanel.tsx), and Open Activity at the foot goes to the whole page. Read once as it opens,
+// from the same list Activity reads; any move to another place closes it.
+export function ActivityDrop({ onClose }: { onClose: () => void }) {
+  const [runs, setRuns] = useState<RunView[] | null>(null)
+  useEffect(() => {
+    api.get<RunView[]>('/api/activity').then(setRuns, () => setRuns([]))
+  }, [])
+  useEffect(() => {
+    window.addEventListener('hashchange', onClose)
+    return () => window.removeEventListener('hashchange', onClose)
+  }, [onClose])
+  return (
+    <div className="flex w-96 max-w-[calc(100vw-2rem)] flex-col">
+      <div className="max-h-[60dvh] overflow-y-auto">
+        {!runs ? (
+          <p className="px-2.5 py-2 text-ink-3">Loading…</p>
+        ) : runs.length === 0 ? (
+          <p className="px-2.5 py-2 text-ink-3">Nothing has run yet.</p>
+        ) : (
+          runs.slice(0, 12).map((r) => {
+            const [state, tone] = RUN_STATE[r.state]
+            const words = r.words?.startsWith(`${r.name}: `)
+              ? r.words.slice(r.name.length + 2)
+              : r.words
+            const line = (
+              <>
+                <span className="w-11 shrink-0 pt-0.5 font-mono text-ink-3 text-xs">
+                  {time(r.startedAt)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <b className="truncate font-medium text-ink">{r.name}</b>
+                    <Pill tone={tone}>{state}</Pill>
+                  </span>
+                  {words && <span className="line-clamp-2 text-ink-3 text-sm">{words}</span>}
+                </span>
+              </>
+            )
+            const row = 'flex w-full items-start gap-2.5 rounded-sm px-2.5 py-2 text-left'
+            // a run or a read has its own page; Alpha's turns are read on Activity
+            return r.kind === 'run' || r.kind === 'read' ? (
+              <a
+                key={r.id}
+                href={`#/run/${r.id}`}
+                role="menuitem"
+                className={cn(row, 'outline-none hover:bg-hover focus-visible:bg-hover')}
+              >
+                {line}
+              </a>
+            ) : (
+              <div key={r.id} className={row}>
+                {line}
+              </div>
+            )
+          })
+        )}
+      </div>
+      <a
+        href="#/activity"
+        role="menuitem"
+        className="mt-1 flex items-center justify-center gap-1.5 rounded-sm border-hair border-t px-2.5 py-2 font-medium text-accent text-sm outline-none hover:bg-accent-soft focus-visible:bg-accent-soft"
+      >
+        Open Activity
+        <ChevronRight className="size-3.5" />
+      </a>
+    </div>
+  )
+}
