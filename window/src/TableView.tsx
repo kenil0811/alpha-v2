@@ -127,7 +127,6 @@ export function TableView({
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
-  const [searching, setSearching] = useState(false)
   const layout = layoutOf(config, setConfig) // frozen and wrapped columns, kept with the list
   // rows to a page, the person's choice, kept by Alpha per person
   const { layout: left, change } = useLayout()
@@ -263,38 +262,24 @@ export function TableView({
             tools={
               <>
                 <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
-                {searching || config.search ? (
-                  <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-                    <Search className="size-3.25 shrink-0" />
-                    <input
-                      // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
-                      autoFocus={searching}
-                      value={config.search}
-                      onChange={(e) => setConfig({ ...config, search: e.target.value })}
-                      onBlur={() => setSearching(false)}
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Escape') return
-                        e.preventDefault()
-                        setConfig({ ...config, search: '' })
-                        setSearching(false)
-                      }}
-                      placeholder={`Search ${data.name}`}
-                      aria-label={`Search ${data.name}`}
-                      title="Escape clears it"
-                      className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-                    />
-                  </label>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setSearching(true)}
-                    data-tip={`Search ${data.name}`}
-                    className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
-                  >
-                    <Search className="size-3.25 shrink-0" />
-                    Search
-                  </button>
-                )}
+                {/* always a box, running up to Filter (Vikas, 1 Nov) */}
+                <label className="flex h-7.5 min-w-32 flex-1 items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                  <Search className="size-3.25 shrink-0" />
+                  <input
+                    value={config.search}
+                    onChange={(e) => setConfig({ ...config, search: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Escape') return
+                      e.preventDefault()
+                      setConfig({ ...config, search: '' })
+                      e.currentTarget.blur()
+                    }}
+                    placeholder={`Search ${data.name}`}
+                    aria-label={`Search ${data.name}`}
+                    title="Escape clears it"
+                    className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+                  />
+                </label>
                 <AddFilter
                   fields={fields}
                   config={config}
@@ -345,6 +330,19 @@ export function TableView({
                   }
                 />
               </>
+            }
+            main={
+              <span data-tip={typeof onNew === 'string' ? onNew : undefined}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={typeof onNew === 'string'}
+                  onClick={typeof onNew === 'string' ? undefined : onNew}
+                >
+                  <Plus className="size-3.5" />
+                  New
+                </Button>
+              </span>
             }
             views={views}
             current={viewId}
@@ -552,16 +550,7 @@ export function TableView({
                 onPaste={setPasting}
               />
               <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
-                <span data-tip={typeof onNew === 'string' ? onNew : undefined} className="mr-auto">
-                  <Button
-                    size="sm"
-                    disabled={typeof onNew === 'string'}
-                    onClick={typeof onNew === 'string' ? undefined : onNew}
-                  >
-                    <Plus className="size-3.5" />
-                    New
-                  </Button>
-                </span>
+                <span className="mr-auto" />
                 {readByWords(data.readBy) && (
                   <span className="mr-3">{readByWords(data.readBy)}</span>
                 )}
