@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Dialog } from './ui/dialog.tsx'
 import { Switch } from './ui/switch.tsx'
 
 const READY: Record<SetupView['readers']['browser'], string> = {
@@ -39,6 +40,8 @@ export function useSetup(): [SetupView | null, () => void] {
 
 export function SetupList({ view, onChange }: { view: SetupView; onChange: () => void }) {
   const prepare = () => api.post('/api/setup/prepare').then(onChange, onChange)
+  // a download this size asks first, saying what and how much (Vikas, 1 Nov)
+  const [asking, setAsking] = useState(false)
   const items: {
     done: boolean
     busy?: boolean
@@ -135,11 +138,40 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
       {view.readers.problem && <p className="text-bad text-sm">{view.readers.problem}</p>}
       {waiting && (
         <div>
-          <Button size="sm" onClick={prepare}>
+          <Button size="sm" onClick={() => setAsking(true)}>
             Download what reading needs
           </Button>
         </div>
       )}
+      <Dialog
+        open={asking}
+        title="Download what reading needs?"
+        onClose={() => setAsking(false)}
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setAsking(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setAsking(false)
+                void prepare()
+              }}
+            >
+              Download
+            </Button>
+          </>
+        }
+      >
+        Alpha downloads{' '}
+        {[
+          view.readers.browser !== 'ready' && 'the reading browser (about 200 MB)',
+          view.readers.documents !== 'ready' && 'the document reader (about 1.6 GB)',
+        ]
+          .filter(Boolean)
+          .join(' and ')}{' '}
+        to this Mac, and works meanwhile.
+      </Dialog>
     </div>
   )
 }

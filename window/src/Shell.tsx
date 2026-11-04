@@ -32,7 +32,7 @@ import { ModuleIcon } from './moduleIcon.tsx'
 import type { Place } from './place.ts'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
-import { BarMiddle, InBar } from './ui/bar-slot.tsx'
+import { BarMiddle, BarSides, InBar, InBarSide } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
@@ -818,16 +818,18 @@ const RAIL = [SIDE_MIN, 360] as const // narrowest at the panels' 200px (Batch D
 export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
 
 // What a screen puts in the middle of the bar lives in ui/bar-slot.tsx, where a part reaches it.
-export { BarMiddle, InBar }
+export { BarMiddle, BarSides, InBar, InBarSide }
 
 // The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
-// another, the screen's switch or name centred. Find is ⌘K, from anywhere.
+// another, the screen's switch or name centred; Home's day and its Next at the sides. Find is ⌘K,
+// from anywhere.
 export function Bar({
   crumb,
   back: visited,
   lens,
   onClearLens,
   middle,
+  sides,
   rename,
 }: {
   crumb: Crumb
@@ -836,6 +838,7 @@ export function Bar({
   lens: { id: string; name: string } | null
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
+  sides: { left: (at: HTMLElement | null) => void; right: (at: HTMLElement | null) => void }
 }) {
   const last = crumb.parts.at(-1)?.label ?? ''
   const back = visited.to ? { label: visited.to.name, href: visited.to.hash } : crumb.parts.at(-2)
@@ -878,12 +881,13 @@ export function Bar({
             </button>
           </span>
         )}
+        <div ref={sides.left} className="flex min-w-0 empty:hidden" />
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
         <BarName name={last} rename={rename} />
       </div>
-      <div data-tauri-drag-region />
+      <div ref={sides.right} className="flex min-w-0 justify-end" data-tauri-drag-region />
     </div>
   )
 }

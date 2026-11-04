@@ -19,9 +19,10 @@ import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
 import { SCREENS } from './plugin/screens.ts'
 import { SetupList, unready, useSetup } from './SetupPanel.tsx'
+import { InBar, InBarSide } from './Shell.tsx'
 import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
-import { clock, dayWords, sinceWords } from './time.ts'
+import { clock, dayWords, dueWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Group, Line, Quiet } from './ui/groups.tsx'
@@ -96,6 +97,22 @@ export function Home({
   const reading = stream?.reading ?? []
   const changed = today?.changed ?? []
   const coming = today?.coming ?? []
+  // what is next, at the bar's right: the soonest open task due today that is not past, else the
+  // next agent run on the clock (Vikas, 1 Nov)
+  const task = (tasks?.lines ?? [])
+    .filter((t) => t.due && !t.overdue && t.state !== 'done' && t.state !== 'dropped')
+    .sort((x, y) => (x.due ?? '').localeCompare(y.due ?? ''))[0]
+  const run = [...coming].sort((x, y) => x.at.localeCompare(y.at))[0]
+  const next = task
+    ? { what: task.title, when: dueWords(task.due ?? ''), href: `#/tasks/${task.id}` }
+    : run
+      ? { what: run.name, when: dayWords(run.at), href: `#/module/${run.module}/agents` }
+      : null
+  const mac = setup && unready(setup) && (
+    <Group title="Getting this Mac ready" sub="Alpha works meanwhile; these finish setting it up">
+      <SetupList view={setup} onChange={reloadSetup} />
+    </Group>
+  )
   // a card that waits is never hidden behind the welcome
   const firstOpen =
     stream !== null &&
@@ -110,20 +127,38 @@ export function Home({
   return (
     <div className="@container h-full overflow-y-auto">
       <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-ink-3 text-sm">
+        {/* no heading on Home: the rail already says where you are; the day and the greeting sit
+            at the bar's left, what is next at its right (Vikas, 1 Nov; 3 Nov: at the left) */}
+        <InBar>
+          <span />
+        </InBar>
+        <InBarSide side="left">
+          {/* in a narrow bar the day gives way before the greeting */}
+          <span className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap">
+            <span className="min-w-0 shrink-[4] truncate text-ink-3 text-md">
               {new Date().toLocaleDateString(undefined, {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',
-              })}
-            </p>
-            <h1 className="mt-1 font-serif text-2xl text-ink">{greeting(name)}</h1>
-            <p className="mt-1 text-ink-2 text-md">What needs you and what changed.</p>
-          </div>
-          <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
-        </div>
+              })}{' '}
+              ·
+            </span>
+            <h1 className="min-w-0 truncate font-serif text-ink text-lg">{greeting(name)}</h1>
+          </span>
+        </InBarSide>
+        {next && (
+          <InBarSide side="right">
+            <a
+              href={next.href}
+              className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-md hover:text-accent"
+            >
+              <span className="text-ink-3">Next</span>
+              <span className="min-w-0 truncate text-ink">{next.what}</span>
+              <span className="text-ink-3">· {next.when}</span>
+            </a>
+          </InBarSide>
+        )}
+        <AskBox area={ask} words={words} setWords={setWords} onAsked={onAsked} />
 
         {stream?.settingUp && (
           <p className="flex items-center gap-2 text-ink-2 text-md">
@@ -132,18 +167,11 @@ export function Home({
           </p>
         )}
 
-        {setup && unready(setup) && (
-          <Group
-            title="Getting this Mac ready"
-            sub="Alpha works meanwhile; these finish setting it up"
-          >
-            <SetupList view={setup} onChange={reloadSetup} />
-          </Group>
-        )}
-
         {/* a plugin's row, while something of its waits for the person (onboarding in Alpha) */}
         {SCREENS.map((s) => s.Waiting && <s.Waiting key={s.name} />)}
 
+        {/* the Mac's setup is a card like the others: in the work column, or above the welcome */}
+        {firstOpen && mac}
         {firstOpen ? (
           <Welcome
             onTry={(w) => {
@@ -154,6 +182,7 @@ export function Home({
         ) : (
           <div className="grid items-start gap-7 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-7">
+              {mac}
               <Group title="Needs you" count={cards.length + signIns.length}>
                 {stream && cards.length + signIns.length === 0 && (
                   <Quiet>Nothing waits on you.</Quiet>

@@ -36,7 +36,9 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| O1 | Home is the important things: the date, the greeting and one line to ask Alpha; what needs the person, each card answered there; Overdue, Due today and This week as tiles (Overdue red only when it has some); what changed since they last looked, kept until they clear it; what is running; each agent's next run | 20 Oct, 26 Oct | — |
+| O1 | Home is the important things: one line to ask Alpha; what needs the person, each card answered there; Overdue, Due today and This week as tiles (Overdue red only when it has some); what changed since they last looked, kept until they clear it; what is running; each agent's next run | 20 Oct, 26 Oct | — |
+| O3 | Home has no heading of its own: the day and the greeting sit at the bar's left ("Tuesday 4 November · Good morning, Vikas"), Next at its right (the soonest open task due today, else the next agent run), nothing in its centre | 1 Nov, 3 Nov | — |
+| O4 | Getting this Mac ready is a card like Home's others, at the head of the work column, gone once the Mac is ready; Download what reading needs asks first, saying what and how big | 1 Nov | — |
 | O2 | No modules on Home (they are in the rail); the conversation is the assistant beside it, never in Home's own space | 26 Oct | — |
 
 ## Module page
