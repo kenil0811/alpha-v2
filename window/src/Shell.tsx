@@ -38,6 +38,7 @@ import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 import { BarName, Renamable } from './ui/rename.tsx'
+import { slide, slideIn } from './ui/slide.ts'
 
 // The rail's small Second Brain icon lands on Intelligence's Second Brain (Batch E, 79.14).
 const BRAIN = '#/intelligence/brain'
@@ -123,7 +124,7 @@ export function Rail({
         tasksDue={tasksDue}
         hidden={hiding.hidden}
         onNew={onNew}
-        onOpen={() => onLayout({ railFolded: false })}
+        onOpen={() => slide('left', false, () => onLayout({ railFolded: false }))}
         onOpenAt={(w) => onLayout({ railFolded: false, railWidth: w })}
       />
     )
@@ -135,6 +136,8 @@ export function Rail({
     })
   return (
     <nav
+      ref={slideIn('left')}
+      data-slide="left"
       style={{ width: dragged ?? width }}
       className="relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
     >
@@ -160,7 +163,7 @@ export function Rail({
           type="button"
           aria-label="Fold the rail"
           data-tip={'Fold the rail (⌘\\)'}
-          onClick={() => onLayout({ railFolded: true })}
+          onClick={() => slide('left', true, () => onLayout({ railFolded: true }))}
           className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
         >
           <PanelLeftClose className="size-4" />
@@ -723,7 +726,10 @@ function Strip({
     </a>
   )
   return (
-    <nav className="relative flex w-20 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
+    <nav
+      ref={slideIn('left')}
+      className="relative flex w-20 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink"
+    >
       <Edge
         side="right"
         folded
