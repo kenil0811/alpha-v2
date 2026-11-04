@@ -25,6 +25,7 @@ import { clock, dayWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Group, Line, Quiet } from './ui/groups.tsx'
+import { usePaged } from './ui/pager.tsx'
 import { Label } from './ui/pill.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
@@ -65,7 +66,6 @@ export function Home({
     tasks: false,
   })
   const [words, setWords] = useState('')
-  const [allComing, setAllComing] = useState(false)
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
   const load = useCallback(() => {
@@ -96,6 +96,18 @@ export function Home({
   const reading = stream?.reading ?? []
   const changed = today?.changed ?? []
   const coming = today?.coming ?? []
+  // every list on Home five rows a page, then its pager (Vikas, 2 Nov)
+  const needs = usePaged([
+    ...cards.map((c) => ({ card: c, signIn: null })),
+    ...signIns.map((a) => ({ card: null, signIn: a })),
+  ])
+  const since = usePaged(changed)
+  const due = usePaged(tasks?.lines ?? [])
+  const busy = usePaged([
+    ...reading.map((r) => ({ read: r, run: null })),
+    ...running.map((r) => ({ read: null, run: r })),
+  ])
+  const next = usePaged(coming)
   // a card that waits is never hidden behind the welcome
   const firstOpen =
     stream !== null &&
@@ -109,7 +121,7 @@ export function Home({
 
   return (
     <div className="@container h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col gap-7 px-8 pt-8 pb-12">
+      <div className="mx-auto flex max-w-page flex-col gap-10 px-8 pt-8 pb-12">
         <div className="flex flex-col gap-4">
           <div>
             <p className="text-ink-3 text-sm">
@@ -152,46 +164,51 @@ export function Home({
             }}
           />
         ) : (
-          <div className="grid items-start gap-7 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            <div className="flex min-w-0 flex-col gap-7">
+          <div className="grid items-start gap-10 @min-[960px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="flex min-w-0 flex-col gap-10">
               <Group title="Needs you" count={cards.length + signIns.length}>
                 {stream && cards.length + signIns.length === 0 && (
                   <Quiet>Nothing waits on you.</Quiet>
                 )}
-                {cards.map((c) => (
-                  <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
-                ))}
-                {signIns.map((a) => (
-                  <Line
-                    key={a.connector}
-                    icon={<KeyRound className="size-3.5 text-warn" />}
-                    head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
-                    words={
-                      a.waiting
-                        ? `${a.title}: ${a.waiting}`
+                {needs.shown
+                  .flatMap((n) => (n.card ? [n.card] : []))
+                  .map((c) => (
+                    <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
+                  ))}
+                {needs.shown
+                  .flatMap((n) => (n.signIn ? [n.signIn] : []))
+                  .map((a) => (
+                    <Line
+                      key={a.connector}
+                      icon={<KeyRound className="size-3.5 text-warn" />}
+                      head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
+                      words={
+                        a.waiting
+                          ? `${a.title}: ${a.waiting}`
+                          : a.inBrowser
+                            ? `${a.title} needs you to sign in: it opens in Chrome`
+                            : a.signsInWith
+                              ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
+                              : `${a.title} needs you to sign in again`
+                      }
+                      {...(a.waiting
+                        ? { href: '#/intelligence/connections' }
                         : a.inBrowser
-                          ? `${a.title} needs you to sign in: it opens in Chrome`
-                          : a.signsInWith
-                            ? `${a.title} needs you to sign in with ${a.signsInWith}: it opens in your browser`
-                            : `${a.title} needs you to sign in again`
-                    }
-                    {...(a.waiting
-                      ? { href: '#/intelligence/connections' }
-                      : a.inBrowser
-                        ? {
-                            onClick: () => {
-                              void api.post(`/api/connections/${a.connection}/sign-in`)
-                            },
-                          }
-                        : a.signsInWith
                           ? {
                               onClick: () => {
-                                void signInWith(a.connection)
+                                void api.post(`/api/connections/${a.connection}/sign-in`)
                               },
                             }
-                          : { href: `#/settings?connect=${a.connector}` })}
-                  />
-                ))}
+                          : a.signsInWith
+                            ? {
+                                onClick: () => {
+                                  void signInWith(a.connection)
+                                },
+                              }
+                            : { href: `#/settings?connect=${a.connector}` })}
+                    />
+                  ))}
+                {needs.pager}
               </Group>
 
               <Group
@@ -213,7 +230,7 @@ export function Home({
                 {today && !failed.today && changed.length === 0 && <Quiet>Nothing changed.</Quiet>}
                 {changed.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {changed.slice(0, 10).map((r) => {
+                    {since.shown.map((r) => {
                       const said = r.words?.startsWith(`${r.name}: `)
                         ? r.words.slice(r.name.length + 2)
                         : r.words
@@ -231,15 +248,11 @@ export function Home({
                     })}
                   </div>
                 )}
-                {changed.length > 10 && (
-                  <a className="text-accent text-sm underline underline-offset-3" href="#/activity">
-                    {changed.length - 10} more in Activity
-                  </a>
-                )}
+                {since.pager}
               </Group>
             </div>
 
-            <div className="flex min-w-0 flex-col gap-7">
+            <div className="flex min-w-0 flex-col gap-10">
               <Group
                 title="Today's tasks"
                 count={tasks?.lines.filter((t) => t.overdue).length}
@@ -263,43 +276,47 @@ export function Home({
                 {tasks && !failed.tasks && tasks.lines.length === 0 && (
                   <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
                 )}
-                {tasks && tasks.lines.length > 0 && (
-                  <TaskList lines={tasks.lines} onChange={load} />
-                )}
+                {tasks && tasks.lines.length > 0 && <TaskList lines={due.shown} onChange={load} />}
+                {due.pager}
               </Group>
 
               {(running.length > 0 || reading.length > 0) && (
                 <Group title="Running">
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {reading.map((r) => (
-                      <div
-                        key={r.connection}
-                        className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
-                      >
-                        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                        <span className="min-w-0 flex-1 truncate text-ink">
-                          Reading {r.title}
-                          <span className="text-ink-3"> · {r.account}</span>
-                        </span>
-                      </div>
-                    ))}
-                    {running.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
-                      >
-                        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-                        <span className="min-w-0 flex-1 truncate text-ink">{r.name}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => api.post(`/api/runs/${r.id}/stop`)}
+                    {busy.shown
+                      .flatMap((b) => (b.read ? [b.read] : []))
+                      .map((r) => (
+                        <div
+                          key={r.connection}
+                          className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
                         >
-                          Stop
-                        </Button>
-                      </div>
-                    ))}
+                          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+                          <span className="min-w-0 flex-1 truncate text-ink">
+                            Reading {r.title}
+                            <span className="text-ink-3"> · {r.account}</span>
+                          </span>
+                        </div>
+                      ))}
+                    {busy.shown
+                      .flatMap((b) => (b.run ? [b.run] : []))
+                      .map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center gap-2.5 border-hair border-t px-4 py-2.5 text-md first:border-t-0"
+                        >
+                          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+                          <span className="min-w-0 flex-1 truncate text-ink">{r.name}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => api.post(`/api/runs/${r.id}/stop`)}
+                          >
+                            Stop
+                          </Button>
+                        </div>
+                      ))}
                   </div>
+                  {busy.pager}
                 </Group>
               )}
 
@@ -310,34 +327,22 @@ export function Home({
                 )}
                 {coming.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {/* opened out, the rows scroll inside their box, not the whole screen (Kenil,
-                        21 Oct) */}
-                    <div className={allComing ? 'max-h-80 overflow-y-auto' : undefined}>
-                      {(allComing ? coming : coming.slice(0, 3)).map((c) => (
-                        <a
-                          key={c.agent}
-                          href={`#/module/${c.module}/agents`}
-                          className="flex items-baseline gap-2 border-hair border-t px-4 py-2.5 text-md first:border-t-0 hover:bg-hover"
-                        >
-                          <span className="min-w-0 flex-1 truncate text-ink">
-                            {c.name}
-                            <span className="text-ink-3"> · {c.moduleName}</span>
-                          </span>
-                          <span className="shrink-0 text-ink-3 text-sm">{dayWords(c.at)}</span>
-                        </a>
-                      ))}
-                    </div>
-                    {coming.length > 3 && (
-                      <button
-                        type="button"
-                        onClick={() => setAllComing((a) => !a)}
-                        className="w-full border-hair border-t px-4 py-2 text-left text-accent text-sm hover:bg-hover"
+                    {next.shown.map((c) => (
+                      <a
+                        key={c.agent}
+                        href={`#/module/${c.module}/agents`}
+                        className="flex items-baseline gap-2 border-hair border-t px-4 py-2.5 text-md first:border-t-0 hover:bg-hover"
                       >
-                        {allComing ? 'Fewer' : `${coming.length - 3} more`}
-                      </button>
-                    )}
+                        <span className="min-w-0 flex-1 truncate text-ink">
+                          {c.name}
+                          <span className="text-ink-3"> · {c.moduleName}</span>
+                        </span>
+                        <span className="shrink-0 text-ink-3 text-sm">{dayWords(c.at)}</span>
+                      </a>
+                    ))}
                   </div>
                 )}
+                {next.pager}
               </Group>
             </div>
           </div>
