@@ -13,17 +13,18 @@ import type {
   TableView as TableData,
   TableSummary,
 } from '@alpha/core/api'
-import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
+import { Ban, Bot, Check, LayoutDashboard, Plus } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
 import { ModuleCase } from './ModuleCase.tsx'
+import { Overview } from './ModuleOverview.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Confirm } from './ui/dialog.tsx'
-import { List, Row, Tile } from './ui/list.tsx'
+import { List, Row } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
@@ -31,6 +32,7 @@ import { Switch } from './ui/switch.tsx'
 import { type Tab, Tabs } from './ui/tabs.tsx'
 import { Words } from './ui/words.tsx'
 import { WaitingRules } from './WaitingRules.tsx'
+import { Working } from './Working.tsx'
 
 export type ModuleTab =
   | { kind: 'overview' }
@@ -174,58 +176,6 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
   { key: 'companies', href: '#/people?companies', label: 'Organizations', sel: kind === 'company' },
 ]
 
-// The modules inside this one, a row each: its name, where it comes from, and what goes on in
-// it right now (agents on and running, open tasks); what waits on the person stands out.
-function Overview({ m }: { m: ModuleView }) {
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-page px-7 py-6">
-        <List>
-          {m.modules.map((c) => {
-            const quiet = !c.agents && !c.running && !c.needs && !c.tasks
-            const sub = [
-              c.kit ? `From ${c.kit}` : 'Made in a conversation',
-              c.agents
-                ? `${c.agents} agent${c.agents === 1 ? '' : 's'} on${c.running ? `, ${c.running} running` : ''}`
-                : c.running
-                  ? `${c.running} running`
-                  : '',
-              c.tasks ? `${c.tasks} open task${c.tasks === 1 ? '' : 's'}` : '',
-              quiet ? 'Quiet right now' : '',
-            ]
-              .filter(Boolean)
-              .join(' · ')
-            return (
-              <Row
-                key={c.id}
-                className="relative hover:bg-canvas"
-                lead={
-                  <Tile>
-                    <Briefcase className="size-4" />
-                  </Tile>
-                }
-                title={
-                  <a href={`#/module/${c.id}`} className="after:absolute after:inset-0">
-                    {c.name}
-                  </a>
-                }
-                sub={sub}
-                actions={
-                  c.needs > 0 && (
-                    <Pill tone="warn">
-                      {c.needs} need{c.needs === 1 ? 's' : ''} you
-                    </Pill>
-                  )
-                }
-              />
-            )
-          })}
-        </List>
-      </div>
-    </div>
-  )
-}
-
 // A part of the Agents and notes tab: its title in serif, a grey line saying what it is, its
 // content; no card around it (Kenil, 26 Oct).
 function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
@@ -284,95 +234,124 @@ function AgentsAndNotes({
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
-        <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
-          <div className="flex flex-col gap-2">
-            {m.agents.length > 1 && (
-              <div className="flex justify-end">
-                <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
-              </div>
-            )}
-            {m.agents.length === 0 ? (
-              <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
-            ) : (
-              <List>
-                {m.agents.map((a) => (
-                  <Row
-                    key={a.id}
-                    lead={<Bot className="size-4 text-ink-3" />}
-                    title={
-                      <a href={`#/agent/${a.id}`} className="hover:underline">
-                        {a.name}
-                      </a>
-                    }
-                    sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
-                    actions={
-                      <>
-                        {on === a.id && <Refusal words={problem} />}
-                        {a.running && <Pill tone="accent">Running</Pill>}
-                        <Switch
-                          checked={a.state === 'on'}
-                          disabled={busy && on === a.id}
-                          label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-                          onChange={(on) => turn(a.id, on)}
+        <Working
+          label="Agents, governance and tables"
+          parts={[
+            {
+              key: 'agents',
+              label: 'Agents',
+              sub: `The agents that work on ${m.name}.`,
+              node: (
+                <div className="flex flex-col gap-2">
+                  {m.agents.length > 1 && (
+                    <div className="flex justify-end">
+                      <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+                    </div>
+                  )}
+                  {m.agents.length === 0 ? (
+                    <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
+                  ) : (
+                    <List>
+                      {m.agents.map((a) => (
+                        <Row
+                          key={a.id}
+                          lead={<Bot className="size-4 text-ink-3" />}
+                          title={
+                            <a href={`#/agent/${a.id}`} className="hover:underline">
+                              {a.name}
+                            </a>
+                          }
+                          sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
+                          actions={
+                            <>
+                              {on === a.id && <Refusal words={problem} />}
+                              {a.running && <Pill tone="accent">Running</Pill>}
+                              <Switch
+                                checked={a.state === 'on'}
+                                disabled={busy && on === a.id}
+                                label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
+                                onChange={(on) => turn(a.id, on)}
+                              />
+                            </>
+                          }
                         />
-                      </>
-                    }
-                  />
-                ))}
-              </List>
-            )}
-          </div>
-        </Section>
-        {m.tables.some((t) => t.place !== 'main') && (
-          <Section
-            title="Tables"
-            sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
-          >
-            <ul className="flex flex-col">
-              {m.tables
-                .filter((t) => t.place !== 'main')
-                .map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
-                  >
-                    <a
-                      href={`#/table/${t.id}`}
-                      className="min-w-0 flex-1 truncate text-ink hover:underline"
-                    >
-                      {t.name}
-                    </a>
-                    <span className="text-ink-3">
-                      {t.place === 'setup'
-                        ? 'Setup'
-                        : t.place === 'people'
-                          ? "People's columns"
-                          : `Part of ${t.of ?? 'a row'}`}
-                    </span>
-                    {t.place !== 'people' && (
-                      <button
-                        type="button"
-                        disabled={busy && on === t.id}
-                        onClick={() =>
-                          act(() => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }), t.id)
-                        }
-                        className={
-                          t.tab
-                            ? 'text-accent hover:underline'
-                            : 'text-ink-3 hover:text-ink hover:underline'
-                        }
-                      >
-                        {t.tab ? 'A tab' : 'Keep as a tab'}
-                      </button>
-                    )}
-                    <span className="w-14 text-right text-ink-3 tabular-nums">
-                      {t.rows.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </Section>
-        )}
+                      ))}
+                    </List>
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: 'governance',
+              label: 'Governance',
+              sub: 'What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first.',
+              node: (
+                <>
+                  <WaitingRules module={m.id} version={version} onAnswered={onChange} />
+                  <Governance m={m} rules={rules} onChange={onChange} />
+                </>
+              ),
+            },
+            // only where it has tables that are not tabs, as before
+            ...(m.tables.some((t) => t.place !== 'main')
+              ? [
+                  {
+                    key: 'tables',
+                    label: 'Tables',
+                    sub: `Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`,
+                    node: (
+                      <ul className="flex flex-col">
+                        {m.tables
+                          .filter((t) => t.place !== 'main')
+                          .map((t) => (
+                            <li
+                              key={t.id}
+                              className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                            >
+                              <a
+                                href={`#/table/${t.id}`}
+                                className="min-w-0 flex-1 truncate text-ink hover:underline"
+                              >
+                                {t.name}
+                              </a>
+                              <span className="text-ink-3">
+                                {t.place === 'setup'
+                                  ? 'Setup'
+                                  : t.place === 'people'
+                                    ? "People's columns"
+                                    : `Part of ${t.of ?? 'a row'}`}
+                              </span>
+                              {t.place !== 'people' && (
+                                <button
+                                  type="button"
+                                  disabled={busy && on === t.id}
+                                  onClick={() =>
+                                    act(
+                                      () => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }),
+                                      t.id,
+                                    )
+                                  }
+                                  className={
+                                    t.tab
+                                      ? 'text-accent hover:underline'
+                                      : 'text-ink-3 hover:text-ink hover:underline'
+                                  }
+                                >
+                                  {t.tab ? 'A tab' : 'Keep as a tab'}
+                                </button>
+                              )}
+                              <span className="w-14 text-right text-ink-3 tabular-nums">
+                                {t.rows.toLocaleString()}
+                              </span>
+                            </li>
+                          ))}
+                      </ul>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
         <Section
           title="Notes"
           sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
@@ -405,13 +384,6 @@ function AgentsAndNotes({
           <a href="#/activity" className="mt-1 inline-block text-accent text-sm hover:underline">
             All activity
           </a>
-        </Section>
-        <Section
-          title="Governance"
-          sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
-        >
-          <WaitingRules module={m.id} version={version} onAnswered={onChange} />
-          <Governance m={m} rules={rules} onChange={onChange} />
         </Section>
       </div>
     </div>
