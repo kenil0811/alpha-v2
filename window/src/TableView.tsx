@@ -50,6 +50,7 @@ import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
+import { Pager } from './ui/pager.tsx'
 
 interface Working {
   view: string | null
@@ -582,24 +583,7 @@ export function TableView({
                         </option>
                       ))}
                     </Select>
-                    {(
-                      [
-                        ['First', 0, at === 0],
-                        ['Previous', at - 1, at === 0],
-                        ['Next', at + 1, at >= pages - 1],
-                        ['Last', pages - 1, at >= pages - 1],
-                      ] as const
-                    ).map(([label, to, off]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        disabled={off}
-                        onClick={() => setPage(to)}
-                        className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    <Pager at={at} count={pages} onAt={setPage} />
                   </>
                 )}
               </div>

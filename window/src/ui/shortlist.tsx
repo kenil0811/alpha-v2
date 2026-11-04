@@ -77,6 +77,7 @@ export function ShortList<T>({
   return (
     <Section
       title={title}
+      sticky
       {...(about ? { about } : {})}
       action={
         <IconButton label={addLabel} onClick={onAdd}>
