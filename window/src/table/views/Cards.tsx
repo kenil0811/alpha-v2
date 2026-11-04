@@ -1,5 +1,5 @@
-// The list and the gallery: a row as a line with its title and a few values, or as a card. Either
-// opens the row whole. The list keeps the view's groups.
+// The list and the gallery: a row as one line, its title then a few values (Vikas, 3 Nov), or as
+// a card. Either opens the row whole. The list keeps the view's groups.
 import type { FieldView, RowView } from '@alpha/core/api'
 import { Choice } from '../../ui/pill.tsx'
 import { type Group, groupRows } from '../engine.ts'
@@ -53,14 +53,14 @@ export function ListView({
                 type="button"
                 id={`row-${r.id}`}
                 onClick={() => onOpen(r.id)}
-                className="flex w-full flex-col gap-1 border-hair border-t px-4 py-2.5 text-left first:border-t-0 hover:bg-hover"
+                className="flex w-full items-center gap-4 border-hair border-t px-4 py-2.5 text-left first:border-t-0 hover:bg-hover"
               >
-                <span className="truncate font-medium text-base text-ink">
+                <span className="max-w-1/3 shrink-0 truncate font-medium text-base text-ink">
                   {titleOf(fields, r)}
                 </span>
-                <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
+                <span className="flex min-w-0 items-center gap-x-4 overflow-hidden whitespace-nowrap text-ink-2 text-sm">
                   {summary(fields, r, 5, group ? [group.id] : []).map((f) => (
-                    <span key={f.id} className="inline-flex items-center gap-1.5">
+                    <span key={f.id} className="inline-flex shrink-0 items-center gap-1.5">
                       <span className="text-ink-3">{f.name}</span>
                       <Value field={f} row={r} names={names} />
                     </span>
