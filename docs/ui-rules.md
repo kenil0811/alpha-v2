@@ -100,7 +100,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
-| I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct | — |
+| I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time, its list of them on the left at every width; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct, 4 Nov | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this; under them Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, as in Governance (M3) | 27 Oct, 1 Nov | test |
 
@@ -122,7 +122,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | L1 | Colours and sizes are the tokens in `app.css`, nothing written out | 20 Oct | test |
 | L2 | Seven text sizes, a 14px body, 12px sentence-case labels; nothing in capitals | 26 Oct, 2 Nov | test (seven sizes) |
-| L3 | Serif for page, record and section titles and big numbers only | 26 Oct | test |
+| L3 | Serif for page, record and section titles and big numbers only; a page's title is one size (26px) on every screen, in the bar or on the page, and a section's heading one step below it (20px) | 26 Oct, 4 Nov | test |
 | L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a row of tabs shows none | 26 Oct | — |
 | L5 | One avatar for people and organizations | 25 Oct | — |
 | L6 | Every button changes colour under the pointer, into the accent's tint (the primary darkens); a soft kind is a way onward that is not the screen's main act (Open page) | 2 Nov | — |

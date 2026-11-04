@@ -382,10 +382,14 @@
     animation: face-pulse 1.4s ease-in-out infinite;
   }
 
-  /* Source Serif 4 is for page titles and big numbers only */
+  /* Source Serif 4 is for page titles and big numbers only. Every page's title, in the bar or on
+     the page, is one size, 2xl; a section's heading is one step below it, xl (Vikas, 1 and 3 Nov:
+     a heading as big as the title left a page's levels unread) */
   h1 {
     font-family: var(--font-serif);
     font-weight: 500;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
   }
   :focus-visible {
     outline: 2px solid var(--accent);
