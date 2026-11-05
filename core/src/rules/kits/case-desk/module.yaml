@@ -1,0 +1,12 @@
+# A made-up managed kit for the rule tests (docs/rules.md, M1 to M3): never a client's. Managed
+# takes a pack signed by Kenil's key from step 6; until then the mark is read by nothing.
+name: Case desk
+version: 0.1.0
+api: 1
+managed: true
+tables:
+  - name: Cases
+    about: One case the desk keeps.
+    fields:
+      - { name: Number, kind: text, about: The case's own number. }
+      - { name: Status, kind: choice, choices: [Open, Closed], about: Where the case stands. }

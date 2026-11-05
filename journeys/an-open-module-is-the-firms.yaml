@@ -1,0 +1,40 @@
+name: an-open-module-is-the-firms
+title: "An open module is the firm's; the person's word outlasts the reader"
+why: >
+  Rules step 1 (docs/rules.md, M4, D2 to D4): a reader brings three firms from a made-up
+  site; the person corrects one firm's email, removes another, and has the table and a field
+  renamed. The site's page then changes and the reader runs again. The correction holds today,
+  and so does the run after the rename; the removed firm staying removed and the page's newer
+  email kept beside the person's wait on step 4. The site is served on this Mac, never a real one.
+steps:
+  - site: { from: journeys/fixtures/sites/firms }
+  - say: >-
+      Firms for sale are listed at {site}/list.html. Keep a reader that brings each one into a
+      table Firms with its email, and try it now.
+  - answer: { choice: 'Yes' }
+    checks:
+      - rows_in: { table: Firms, count: 3 }
+      - last_run: ok
+  - edit: { table: Firms, row: Oat Mill, field: Email, to: deals@mill.example }
+    checks:
+      - field: { table: Firms, row: Oat Mill, field: Email, equals: deals@mill.example }
+  - remove: { table: Firms, row: Sugar Co }
+    checks:
+      - rows_in: { table: Firms, count: 2 }
+  # the window renames a table but not a field, so the person asks Alpha for both
+  - say: Rename the table Firms to Targets, and its field Email to Contact email.
+    checks:
+      - no_table: '^Firms$'
+      - field: { table: Targets, row: Oat Mill, field: Contact email, equals: deals@mill.example }
+  - site: { from: journeys/fixtures/sites/firms, state: later }
+  - say: Run the firms reader again now.
+    checks:
+      - field: { table: Targets, row: Oat Mill, field: Contact email, equals: deals@mill.example }
+      # Alpha renames the reader's names with the table's (5 Nov run): the run after holds today;
+      # M5's lasting keys are for a kit's own code (core/src/rules/modules.test.ts)
+      - last_run: ok
+      - rows_in: { table: Targets, count: 2 }
+        waits: 4
+      - beside: { table: Targets, row: Oat Mill, field: Contact email, equals: sales@mill.example }
+        waits: 4
+      - errors: 0

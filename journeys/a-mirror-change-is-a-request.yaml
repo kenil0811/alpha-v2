@@ -1,0 +1,29 @@
+name: a-mirror-change-is-a-request
+title: A change to a mirror's writable field is a request that leaves the world on a card, confirmed by a read
+why: >
+  Rules step 1 (docs/rules.md, D9 to D12): a made-up case system whose connector declares one
+  writable field, Status. "Close case 1042" puts an outward card up; after Yes the row keeps its
+  value, waiting, until Read now shows the system took it. A change after the record changed at
+  the source is refused as stale. Every check waits on step 8, which builds the made-up connector
+  (journeys/fixtures/connectors/cases) with Dell's contract.
+steps:
+  - connector: { from: journeys/fixtures/connectors/cases, account: '{tmp}' }
+  - say: Close case 1042.
+    checks:
+      - card: { gate: leaves_world, words: '1042', detail: 'Closed' }
+        waits: 8
+  - answer: { choice: 'Yes' }
+    checks:
+      - field: { table: Cases, key: '1042', field: Status, equals: Open }
+        waits: 8
+  - read_now: cases
+    checks:
+      - field: { table: Cases, key: '1042', field: Status, equals: Closed }
+        waits: 8
+  - customer_does: case-1042-reopened
+  - say: Set case 1042's status to Closed again.
+    checks:
+      - reply_matches: '(?i)changed since'
+        waits: 8
+      - connector_calls: { words: 'Cases: set', count: 1 }
+        waits: 8

@@ -1100,7 +1100,32 @@ build work beside it (Alpha's own loop made fit, journeys on the key route, a su
 harnesses), then linking. The first client gets a build signed on Kenil's Apple account; Dell as
 above; later work comes as each client signs.
 
-## 20. Working rules
+## 20. The rules for modules and data
+
+Agreed with Kenil on 4 and 5 November 2026 (step 1 of the production plan). The rules
+themselves are in `docs/rules.md`, one line each with how it is held; this section is their shape.
+
+- **Who may change a module.** Every module is open or managed. An open module is the firm's to
+  change, within who may build. A managed one changes only by a newer pack signed by Kenil's key;
+  Alpha's own kit, a plugin's module and a connector's module are managed by Alpha. Kit code finds
+  tables and fields by their lasting key, so a rename never breaks it.
+- **Who owns the data.** Every table is Alpha's own or a mirror of a system that keeps the
+  record. On Alpha's own, the person's value beats every machine: a newer value is kept beside
+  it, a removed row stays removed. On a mirror, the person's value on a source field is a
+  correction kept in Alpha and never sent back; rows come and go only with the source; a change
+  at the source is a request through an action its connector declares, on a card, confirmed by a
+  read.
+- **The journal.** One line per change, written in the change's own transaction by the world
+  function that makes it; its chain's newest hash is kept outside the world every day.
+- **Failing loudly.** A scheduled job or a backup that fails says so, on a line and then a card.
+- **How they are held.** Each rule has its test in `core/src/rules/`, which tries it through
+  every door that can change a row or a module (`doors.ts`, each with its driver). A rule that does
+  not hold yet waits on the step that makes it hold, and its test fails the day it holds until the
+  mark comes off. `pnpm rules`, part of `pnpm check`, fails when the list and the tests disagree,
+  and a route, tool or plugin call that writes but is in no door fails the tests. Four scenario
+  journeys tell the whole story with the real model; a journey whose every check waits is not run.
+
+## 21. Working rules
 
 - A failure becomes a journey before it becomes a change.
 - A rule for the model is a wall in code, or it is not written.
@@ -1108,6 +1133,8 @@ above; later work comes as each client signs.
 - Every change is proposed to Kenil in writing, built in this design's shape, looked at in the
   app, and committed after his review.
 - A short dated entry in `docs/log/` per session. No decisions table.
+- A rule on who may change a module or own the data lands in `docs/rules.md` the day Kenil says
+  yes to it, with the test that holds it (§20).
 
 ## Still open
 

@@ -61,7 +61,14 @@ async function main(): Promise<void> {
     const own = runs.get(name) ?? []
     const k = own.filter((r) => r.passed).length
     all &&= k === times
-    const said = times > 1 ? `passed ${k} of ${times}` : k ? 'passed' : 'FAILED'
+    // a journey whose every check waits is not run (rules step 1), and says so
+    const said = own.every((r) => r.report.startsWith('not run'))
+      ? (own[0]?.report ?? 'not run')
+      : times > 1
+        ? `passed ${k} of ${times}`
+        : k
+          ? 'passed'
+          : 'FAILED'
     console.log(`${name}: ${said}`)
     // a crash is said here too, as a single journey writes no summary
     for (const r of own) if (r.report.startsWith('it crashed')) console.log(`  ${r.report}`)

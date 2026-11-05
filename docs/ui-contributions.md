@@ -153,7 +153,10 @@ That is expected: the lab is where ideas are shown working, not code waiting to 
    git switch -c lab/<short-name>
    ```
 2. Build it. You are free here: any folder, any screen, the core too. Still use the shared pieces
-   and the tokens, so that what Kenil picks fits the rest of Alpha.
+   and the tokens, so that what Kenil picks fits the rest of Alpha. Before touching the core's
+   world, its routes or tools, an agent's scripts, a connector's tables or a plugin, read
+   `docs/rules.md`: who may change a module and who owns the data. A new route that writes goes in
+   `core/src/rules/doors.ts`, or `pnpm check` fails.
 3. `pnpm format` and `pnpm check`. It still has to pass.
 4. **Run it only on `~/AlphaTest`, never on your everyday Alpha's data.** A lab change to the core
    can change how data is stored, and your everyday Alpha may not open it properly afterwards.

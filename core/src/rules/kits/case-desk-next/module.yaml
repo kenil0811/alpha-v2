@@ -1,0 +1,12 @@
+# The made-up managed kit's next version, not signed (docs/rules.md, M3): never a client's.
+name: Case desk
+version: 0.2.0
+api: 1
+managed: true
+tables:
+  - name: Cases
+    about: One case the desk keeps.
+    fields:
+      - { name: Number, kind: text, about: The case's own number. }
+      - { name: Status, kind: choice, choices: [Open, Closed], about: Where the case stands. }
+      - { name: Court, kind: text, about: The court the case is before. }

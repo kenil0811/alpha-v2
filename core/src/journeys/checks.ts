@@ -93,10 +93,22 @@ export const Check = z.union([
   z.object({
     field: z.object({
       table: z.string(),
-      key: z.string(), // the row's own key, as a connection or a reader landed it
+      key: z.string().optional(), // the row's own key, as a connection or a reader landed it
+      row: z.string().optional(), // or its name, as the window shows it (rules step 1)
       field: z.string(),
       equals: z.string().optional(),
       count: z.number().optional(), // a relation's rows
+    }),
+  }),
+  // what is kept beside the person's value on a row (rules step 1, D3, D6): a machine's newer
+  // value, or the source's, by the row's own key; any at all when no value is named
+  z.object({
+    beside: z.object({
+      table: z.string(),
+      key: z.string().optional(),
+      row: z.string().optional(),
+      field: z.string(),
+      equals: z.string().optional(),
     }),
   }),
   z.object({ told: z.object({ matches: z.string(), rows: z.number().optional() }) }),
@@ -104,6 +116,20 @@ export const Check = z.union([
   z.object({ page: z.object({ module: z.string(), name: z.string(), matches: z.string() }) }),
 ])
 export type Check = z.infer<typeof Check>
+
+// A row's value and where it came from, by the row's own key or its name as the window shows it.
+function cellOf(
+  world: World,
+  c: { table: string; key?: string | undefined; row?: string | undefined; field: string },
+) {
+  const t = world.shape.table(c.table)
+  if (!t) return undefined
+  const rows = world.records.list(t.id)
+  const id = c.key ? world.records.byKey(t.id, c.key) : undefined
+  const r = rows.find((x) => (id ? x.id === id : world.rowName(t, x.values) === c.row))
+  const slug = t.fields.find((x) => x.name === c.field)?.slug ?? ''
+  return r ? { value: r.values[slug], provenance: r.provenance[slug] } : undefined
+}
 
 export interface Outcome {
   check: string
@@ -496,11 +522,7 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
   }
   if ('field' in check) {
     const f = check.field
-    const t = world.shape.table(f.table)
-    const row = t ? world.records.byKey(t.id, f.key) : undefined
-    const slug = t?.fields.find((x) => x.name === f.field)?.slug ?? ''
-    const value =
-      t && row ? world.records.list(t.id).find((r) => r.id === row)?.values[slug] : undefined
+    const value = cellOf(world, f)?.value
     const ok =
       f.equals !== undefined
         ? value === f.equals
@@ -508,9 +530,18 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
           ? Array.isArray(value) && value.length === f.count
           : value !== undefined
     return {
-      check: `${f.field} of ${f.key} in ${f.table} ${f.equals !== undefined ? `is ${f.equals}` : `has ${f.count}`}`,
+      check: `${f.field} of ${f.row ?? f.key} in ${f.table} ${f.equals !== undefined ? `is ${f.equals}` : `has ${f.count}`}`,
       ok,
       saw: JSON.stringify(value ?? null),
+    }
+  }
+  if ('beside' in check) {
+    const b = check.beside
+    const kept = cellOf(world, b)?.provenance?.beside
+    return {
+      check: `beside ${b.field} of ${b.row ?? b.key} in ${b.table}: ${b.equals ?? 'a value'}`,
+      ok: b.equals !== undefined ? kept?.value === b.equals : kept !== undefined,
+      saw: JSON.stringify(kept?.value ?? null),
     }
   }
   if ('told' in check) {

@@ -1,0 +1,10 @@
+# A made-up kit someone else maintains, for the rule tests (docs/rules.md, M4): never a client's.
+name: Supply
+version: 0.1.0
+api: 1
+maintainer: { name: Mira, address: mira@example.com }
+tables:
+  - name: Parts
+    about: One part the firm buys.
+    fields:
+      - { name: Name, kind: text, about: What the part is called. }

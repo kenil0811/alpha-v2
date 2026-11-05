@@ -5,3 +5,10 @@ recorded answers, serve a made-up site that later steps say as `{site}`) and che
 `docs/journeys/`. The shape is in `docs/design.md` §16. `pnpm journey <name>` runs one
 (`--times N` runs it N times, each on a fresh world), `pnpm journeys` runs them all, and a
 client's run from its own repository with `--from ../<client>/journeys`.
+
+The person's own steps in the window go through its routes: `edit` (a value typed over a row's),
+`remove` and `reset`, each naming a row by its name or its own key. A `site` named again with a
+`state` serves the pages in its `states/<state>/` folder at the same address. A check with
+`waits: N` waits on step N of the production plan (`docs/rules.md`): its report says "waits",
+and the day it holds it fails with "holds now: take off waits". A journey whose every check
+waits is not run.

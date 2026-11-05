@@ -7,7 +7,6 @@
 import {
   copyFileSync,
   cpSync,
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -15,9 +14,8 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { createServer, type Server } from 'node:http'
 import { homedir, tmpdir } from 'node:os'
-import { extname, join, normalize, resolve } from 'node:path'
+import { extname, join, resolve } from 'node:path'
 import { BrowserEngine, MemorySecrets, type SecretStore } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
@@ -39,6 +37,8 @@ import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
 import { ownLoop, spentIn } from './own.ts'
+import { type Site, serve } from './site.ts'
+import { Edit, inWindow, Remove, Reset } from './window.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
 
@@ -72,8 +72,9 @@ const Journey = z.object({
         .optional(),
       // an account connected on recorded answers (journeys/fixtures), never a real one
       connect: z.object({ connector: z.string(), account: z.string() }).optional(),
-      // a made-up site served on this Mac from the repository; later steps say it as {site}
-      site: z.object({ from: z.string() }).optional(),
+      // a made-up site served on this Mac from the repository; later steps say it as {site}. Named
+      // again with a state, it serves that state's pages at the same address (site.ts)
+      site: z.object({ from: z.string(), state: z.string().optional() }).optional(),
       // a made-up connector added from a folder, its {site}, {other} and {host} said as the site's
       // (by its name, by another, and its host), connected and read once
       connector: z.object({ from: z.string(), account: z.string() }).optional(),
@@ -105,7 +106,15 @@ const Journey = z.object({
       // two people merged by the person, by their names (core step 3d), and one merged in let go
       merge: z.object({ keep: z.string(), other: z.string() }).optional(),
       unmerge: z.string().optional(),
-      checks: z.array(Check).default([]),
+      // a value typed over a row's, a row removed, Reset on a value: in the window (window.ts)
+      edit: Edit.optional(),
+      remove: Remove.optional(),
+      reset: Reset.optional(),
+      // a check that waits on a step of the production plan (docs/rules.md) passes while it
+      // fails, and fails the day it holds, until its waits comes off
+      checks: z
+        .array(z.intersection(Check, z.object({ waits: z.number().int().positive().optional() })))
+        .default([]),
     }),
   ),
 })
@@ -115,26 +124,6 @@ const MIME: Record<string, string> = {
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   '.csv': 'text/csv',
   '.pdf': 'application/pdf',
-}
-
-// A folder served on loopback, for a journey's made-up site.
-function serve(dir: string): Promise<{ server: Server; url: string }> {
-  const server = createServer((req, res) => {
-    const path = normalize(decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/'))
-    const file = join(dir, path)
-    if (!file.startsWith(dir) || !existsSync(file) || path.endsWith('/')) {
-      res.writeHead(404).end('Not found')
-      return
-    }
-    res.writeHead(200, { 'content-type': file.endsWith('.txt') ? 'text/plain' : 'text/html' })
-    res.end(readFileSync(file))
-  })
-  return new Promise((r) =>
-    server.listen(0, '127.0.0.1', () => {
-      const a = server.address()
-      r({ server, url: `http://127.0.0.1:${typeof a === 'object' && a ? a.port : 0}` })
-    }),
-  )
 }
 
 // Where the journeys are and where their reports go: this repository's, or a client's (--from).
@@ -160,6 +149,12 @@ export async function runOne(
   const own = args[args.indexOf('--loop') + 1] === 'own' && args.includes('--loop')
   const { journeys, base } = placesOf(args)
   const journey = Journey.parse(parse(readFileSync(join(journeys, `${name}.yaml`), 'utf8')))
+  // a journey whose every check waits is not run: nothing in it can hold yet
+  const checks = journey.steps.flatMap((s) => s.checks)
+  if (checks.length && checks.every((c) => c.waits)) {
+    const on = [...new Set(checks.map((c) => c.waits))].sort().join(', ')
+    return { passed: true, report: `not run: every check waits (step ${on})`, seconds: 0, usd: 0 }
+  }
   const stamp = `${stampOf()}${run.of > 1 ? `-run${run.at}` : ''}`
   // Outside $TMPDIR, so the sandbox is as it is for the person.
   const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${own ? 'own' : prompt}`)
@@ -207,7 +202,7 @@ export async function runOne(
     connectors,
     hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
   })
-  let site: { server: Server; url: string } | null = null
+  let site: Site | null = null
   // the journey's own folder, for a made-up connector's account ({tmp})
   const tmp = mkdtempSync(join(tmpdir(), 'alpha-journey-tmp-'))
   const limit = config.limits().journey_step_minutes * 60_000
@@ -388,11 +383,17 @@ export async function runOne(
     } else if (step.rename) {
       const t = world.shape.table(step.rename.table)
       if (!t) throw new Error(`Step ${i + 1}: no table ${step.rename.table} to rename.`)
-      world.shape.rename({ table: t.id }, step.rename.to, {
-        actor: { kind: 'person', id: user.id },
-        user: user.id,
-      })
       what = `Renamed the table ${step.rename.table} to ${step.rename.to}, as the person does`
+      // a managed module refuses it (M2): said, and judged by the step's checks
+      try {
+        world.shape.rename({ table: t.id }, step.rename.to, {
+          actor: { kind: 'person', id: user.id },
+          user: user.id,
+        })
+      } catch (err) {
+        if (!(err instanceof Refused)) throw err
+        what += `: refused: ${err.message}`
+      }
     } else if (step.approve_rule) {
       const m = world.shape.module(step.approve_rule)
       if (!m) throw new Error(`Step ${i + 1}: no module ${step.approve_rule}.`)
@@ -418,8 +419,15 @@ export async function runOne(
       for (const k of ks) await engine.sync(user, k.id)
       what = `Pressed Read now on ${step.read_now}`
     } else if (step.site) {
-      site = await serve(resolve(base, step.site.from))
-      what = `Served the made-up site ${step.site.from} at ${site.url}`
+      const dir = resolve(base, step.site.from)
+      const state = step.site.state ?? null
+      if (site?.dir === dir) site.state = state
+      else site = await serve(dir, state)
+      what = `Served the made-up site ${step.site.from}${state ? ` in its ${state} state` : ''} at ${site.url}`
+    } else if (step.edit || step.remove || step.reset) {
+      const took = await inWindow(page(), world, step)
+      passed &&= took.ok
+      what = took.what
     } else if (step.due) {
       await runner.runDue(Date.now())
       const ran = runner.runs(5).filter((r) => r.startedAt >= new Date(t0).toISOString())
@@ -514,8 +522,15 @@ export async function runOne(
     } else report.push(`Took ${((Date.now() - t0) / 1000).toFixed(1)} s.`, '')
     for (const check of step.checks) {
       const o = await judge(world, user, check)
-      passed &&= o.ok
-      report.push(`- ${o.ok ? 'pass' : '**FAIL**'}: ${o.check} (saw ${o.saw})`)
+      passed &&= check.waits ? !o.ok : o.ok
+      const mark = !check.waits
+        ? o.ok
+          ? 'pass'
+          : '**FAIL**'
+        : o.ok
+          ? '**FAIL** (holds now: take off waits)'
+          : `waits (step ${check.waits})`
+      report.push(`- ${mark}: ${o.check} (saw ${o.saw})`)
     }
     report.push('')
     if (!finished) {

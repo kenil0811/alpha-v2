@@ -41,6 +41,9 @@ the per-install token. Prompts, models and judgements live in `core/config/`, no
 - Every change is proposed to Kenil in writing before it is built, built in the design's shape,
   looked at in the app, and committed after his review. The design changes only on his yes.
 - One short dated entry in `docs/log/` per session.
+- Read `docs/rules.md` before any change to the core's world, its routes or tools, an agent's
+  scripts, a connector's tables or a plugin; a rule goes there the day Kenil says yes to it, with
+  the test that holds it (`core/src/rules/`, held to the list by `pnpm rules` in `pnpm check`).
 - Read `docs/ui-rules.md` before any change to `window/`; a rule changes there in the same change
   that needs it, by Kenil or a UI contributor (`docs/ui-contributions.md`).
 - Tests never call the model or touch a real tenant; journeys run on a fresh tenant each.

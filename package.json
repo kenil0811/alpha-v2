@@ -11,7 +11,7 @@
     "typecheck": "tsc -b",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm tz && pnpm platform-check && pnpm long-files",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm tz && pnpm platform-check && pnpm long-files && pnpm rules",
     "dev:core": "ALPHA_DEV_WINDOW=1 pnpm --filter @alpha/core dev",
     "dev:window": "pnpm --filter @alpha/window dev",
     "journey": "pnpm --filter @alpha/core journey",
@@ -29,6 +29,7 @@
     "journal": "node core/src/journal.ts",
     "platform-check": "node scripts/platform-check.ts",
     "long-files": "node scripts/long-files.ts",
+    "rules": "node scripts/rules-check.ts",
     "tz": "TZ=America/Chicago vitest run core/src/world/day.test.ts window/src/day.test.ts core/src/world/tasks core/src/world/backups.test.ts"
   },
   "devDependencies": {
