@@ -71,7 +71,6 @@ rule('D2', 'the person’s value beats every machine’s', {
       return w.value(t.table, t.row, t.field) === 'accounts@harbor.example'
     },
   },
-  waits: { 'alpha: change (set)': 2, 'alpha: change (clear)': 2 },
 })
 
 rule('D3', 'a machine’s newer value is kept beside the person’s, with Reset', {

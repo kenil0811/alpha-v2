@@ -80,6 +80,9 @@ export function sortKeys(o: Record<string, unknown>): Record<string, unknown> {
 
 export interface RecordCtx extends WriteCtx {
   said?: Said | null
+  // the person's own change in the window (rules A1): the change's one line is the source of what
+  // they state in it, in these words when given, and names the card they decided it on
+  byHand?: { words?: string; card?: string }
 }
 
 // A row of a real table: the columns every table has, then the fields' columns by name.

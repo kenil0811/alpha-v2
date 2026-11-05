@@ -75,15 +75,10 @@ export function setForPerson(
   if (!typed(field)) throw new Refused(`${field.name} is set by asking Alpha, not from here.`)
   const id = world.people.root(personId)
   const row = perRows(world, [table]).get(table.id)?.get(id)
-  const ctx = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
-  const line = world.line({
-    ...ctx,
-    kind: 'set',
-    words: `Set ${field.name} to ${String(value ?? 'nothing')} for ${world.people.names([id])[id] ?? 'them'} in ${table.name}`,
-    data: { table: table.id, row: row?.id ?? null, field: field.name, value },
-    module: table.module.id,
-  })
-  const provenance = { kind: 'stated' as const, source: { message: line.id } }
+  // one line, the change's own, in the person's words (rules A1)
+  const words = `Set ${field.name} to ${String(value ?? 'nothing')} for ${world.people.names([id])[id] ?? 'them'} in ${table.name}`
+  const ctx = { actor: { kind: 'person' as const, id: user.id }, user: user.id, byHand: { words } }
+  const provenance = { kind: 'stated' as const }
   if (row)
     world.records.change(
       table.id,

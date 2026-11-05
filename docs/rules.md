@@ -20,8 +20,8 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 ## Terms
 
 - **Open module**: the firm's to change, within its build setting.
-- **Managed module**: changed only by a newer pack signed by Kenil's key. Alpha's own kit, a
-  plugin's module and a connector's module are managed by Alpha.
+- **Managed module**: changed only by a newer pack signed by Kenil's key. Alpha's own kit and a
+  plugin's module are managed by Alpha, and a connector's module for its source fields.
 - **Alpha's own table**: Alpha's row is the firm's working record.
 - **Mirror**: a table of a system that keeps the record. Its connector names that system.
 - **Source field**: a field on a mirror that the connector fills. **Own field**: any other
@@ -36,7 +36,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| M1 | Every module is open or managed. Only a pack signed by Kenil's key makes one managed (`managed: true` in its module.yaml). Alpha's own kit, a plugin's module and a connector's module are managed by Alpha itself | 4 Nov | skip (step 6) |
+| M1 | Every module is open or managed. Only a pack signed by Kenil's key makes one managed (`managed: true` in its module.yaml). Alpha's own kit and a plugin's module are managed by Alpha itself, and a connector's module for its source fields (the firm's own fields beside them stay the firm's, D7) | 4 Nov, 5 Nov | skip (step 6) |
 | M2 | In a managed module nobody changes its tables, fields, choices, relations, agents, skills, scripts, pages or business case: not a person, the model, an agent or a plugin. Every door refuses in words that say who manages it; the window greys the control with that reason | 4 Nov | skip (step 6) |
 | M3 | Only a newer signed pack changes a managed module. Its files are checked against the signature at every start; a changed file does not load and says what changed | 4 Nov | skip (step 6) |
 | M4 | In an open module everything is the firm's to change. A kit's update follows the ownership rule, and a maintained kit's shape change goes on its card from every door, not only the model's tool | 4 Nov | skip (step 2) |
@@ -50,7 +50,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | D1 | Every table is Alpha's own or a mirror. A mirror names the system that keeps its record; a field its connector does not fill is Alpha's own | 4 Nov | skip (step 5) |
-| D2 | The person's value beats every machine. No reader, connector, script, agent, revert of a machine's run, or the model on its own writes over it or clears it; the model changes it only in a turn on the person's own words | 4 Nov | skip (step 2) |
+| D2 | The person's value beats every machine. No reader, connector, script, agent, revert of a machine's run, or the model on its own writes over it or clears it; the model changes it only in a turn on the person's own words | 4 Nov | test |
 | D3 | A machine's newer value for a field the person set is kept beside theirs, with its source and time. The cell is marked ("the page now says …") and Reset puts the source's value back | 4 Nov | skip (step 4) |
 | D4 | A row the person removed stays removed: its item key is remembered, so a reader that meets it again leaves it out. Bring back returns it | 4 Nov | skip (step 4) |
 | D5 | A number, an amount or a date the model calls "stated" must be in the person's message or a card's answer; otherwise it lands as assumed | 4 Nov | skip (step 4) |
@@ -71,7 +71,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| A1 | One journal line per change, written in the change's own transaction by the world function that makes it; no door writes a line of its own beside it | 4 Nov | skip (step 2) |
+| A1 | One journal line per change, written in the change's own transaction by the world function that makes it; no door writes a line of its own beside it | 4 Nov | test |
 | A2 | Every line names a real actor: the signed-in person, an agent with its run, a connector with its account, or Alpha's turn with the message it served | 4 Nov | step 8 |
 | A3 | The chain's newest hash is written outside the world every day, into the backup's manifest and the report, so a rewritten tail cannot verify | 4 Nov | skip (step 7) |
 | A4 | A line that adds, changes or lands rows carries a digest of the values it wrote, so `pnpm journal verify` finds a value changed in the file | 4 Nov | skip (step 7) |

@@ -45,14 +45,6 @@ rule('A1', 'one journal line per change, written in the change’s own transacti
       return w.linesAfter(from).length === 0
     },
   },
-  waits: {
-    // the window's add writes its line before the world refuses the row (tables.ts)
-    'a refused change leaves no line': 2,
-    'window: set a value (set)': 2,
-    'window: add a row (add)': 2,
-    'window: paste (set)': 2,
-    'window: paste (add)': 2,
-  },
 })
 
 // A daily backup made in a folder of the test's own: what is beside it, and the chain's hash.

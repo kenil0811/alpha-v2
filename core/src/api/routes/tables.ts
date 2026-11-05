@@ -105,33 +105,20 @@ export function registerTables(ctx: Ctx): void {
           : value && typeof value === 'object' && 'amount' in value
             ? String((value as { amount: unknown }).amount)
             : String(value)
-    // the line and the change together: a value the world refuses leaves no line saying it was set
+    // one line, the change's own, in the person's words and the source of their value (rules A1)
+    const words =
+      f.kind === 'notes'
+        ? `Wrote the notes on ${world.rowName(t, r.values)}`
+        : (f.kind === 'relation' || f.kind === 'person') && !ids.length
+          ? `Cleared ${field} on ${world.rowName(t, r.values)}`
+          : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`
     tx(world.db, () => {
-      const line = world.line({
-        actor: { kind: 'person', id: user.id },
-        kind: 'set',
-        words:
-          f.kind === 'notes'
-            ? `Wrote the notes on ${world.rowName(t, r.values)}`
-            : (f.kind === 'relation' || f.kind === 'person') && !ids.length
-              ? `Cleared ${field} on ${world.rowName(t, r.values)}`
-              : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`,
-        data: { table: t.id, row, field, value },
-        user: user.id,
-        module: t.module.id,
-      })
       // typing over a figure a script worked out keeps that figure beside theirs, with Reset
       const was = r.provenance[f.slug]
       world.records.change(
         t.id,
-        [
-          {
-            id: row,
-            values: { [field]: value },
-            provenance: { kind: 'stated', source: { message: line.id } },
-          },
-        ],
-        { actor: { kind: 'person', id: user.id }, user: user.id },
+        [{ id: row, values: { [field]: value }, provenance: { kind: 'stated' } }],
+        { actor: { kind: 'person', id: user.id }, user: user.id, byHand: { words } },
       )
       if (was?.kind === 'computed' && r.values[f.slug] !== undefined)
         world.records.keepBeside(t.id, row, {
@@ -146,7 +133,7 @@ export function registerTables(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // The person adds a row in the window: each value theirs, the line saying so its source.
+  // The person adds a row in the window: each value theirs, the add's own line their source.
   app.post('/api/tables/:id/rows', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { values } = z.object({ values: z.record(z.string(), z.unknown()) }).parse(req.body)
@@ -156,25 +143,17 @@ export function registerTables(ctx: Ctx): void {
       Object.entries(values).filter(([, v]) => v !== '' && v !== null && v !== undefined),
     )
     if (!Object.keys(given).length) throw new Refused('Give the row at least one value.')
-    const line = world.line({
+    const [row] = world.records.add(t.id, [{ values: given, provenance: { kind: 'stated' } }], {
       actor: { kind: 'person', id: user.id },
-      kind: 'set',
-      words: `Added a row to ${t.name}`,
-      data: { table: t.id, values: given },
       user: user.id,
-      module: t.module.id,
+      byHand: {},
     })
-    const [row] = world.records.add(
-      t.id,
-      [{ values: given, provenance: { kind: 'stated', source: { message: line.id } } }],
-      { actor: { kind: 'person', id: user.id }, user: user.id },
-    )
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { id: row }
   })
 
   // Many rows at once from the window: a paste, or a field set on ticked rows. Each value is the
-  // person's word, with one line as its source; what is set by asking Alpha is refused.
+  // person's word, its change's own line its source; what is set by asking Alpha is refused.
   app.post('/api/tables/:id/rows/many', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const Values = z.record(z.string(), z.unknown())
@@ -193,37 +172,25 @@ export function registerTables(ctx: Ctx): void {
         if (f.kind === 'relation' || f.kind === 'file' || f.kind === 'person')
           throw new Refused(`${f.name} is set by asking Alpha, not from here.`)
       }
-    const words = [
-      body.set.length
-        ? `set values on ${body.set.length} row${body.set.length === 1 ? '' : 's'}`
-        : '',
-      body.add.length ? `added ${body.add.length} row${body.add.length === 1 ? '' : 's'}` : '',
-    ]
-      .filter(Boolean)
-      .join(' and ')
-    const line = world.line({
-      actor: { kind: 'person', id: user.id },
-      kind: 'set',
-      words: `In ${t.name}, ${words}`,
-      data: { table: t.id, set: body.set, add: body.add },
-      user: user.id,
-      module: t.module.id,
-    })
     const ctx = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
-    const provenance = { kind: 'stated' as const, source: { message: line.id } }
-    if (body.set.length)
-      world.records.change(
-        t.id,
-        body.set.map((s) => ({ id: s.row, values: s.values, provenance })),
-        ctx,
-      )
-    const added = body.add.length
-      ? world.records.add(
+    const provenance = { kind: 'stated' as const }
+    const n = (k: number) => `${k} row${k === 1 ? '' : 's'}`
+    // a set and an add are a line each, together or not at all
+    const added = tx(world.db, () => {
+      if (body.set.length)
+        world.records.change(
           t.id,
-          body.add.map((a) => ({ values: a.values, provenance })),
-          ctx,
+          body.set.map((s) => ({ id: s.row, values: s.values, provenance })),
+          { ...ctx, byHand: { words: `In ${t.name}, set values on ${n(body.set.length)}` } },
         )
-      : []
+      return body.add.length
+        ? world.records.add(
+            t.id,
+            body.add.map((a) => ({ values: a.values, provenance })),
+            { ...ctx, byHand: { words: `In ${t.name}, added ${n(body.add.length)}` } },
+          )
+        : []
+    })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { changed: body.set.length, added: added.length }
   })
@@ -419,14 +386,6 @@ export function registerTables(ctx: Ctx): void {
     const r = world.records.list(t.id).find((x) => x.id === row)
     const beside = r?.provenance[f.slug]?.beside
     if (!r || !beside) throw new Refused(`${f.name} has no figure of Alpha's to go back to.`)
-    world.line({
-      actor: { kind: 'person', id: user.id },
-      kind: 'set',
-      words: `Reset ${f.name} to Alpha's figure on ${world.rowName(t, r.values)}`,
-      data: { table: t.id, row, field: f.name },
-      user: user.id,
-      module: t.module.id,
-    })
     world.records.change(
       t.id,
       [
@@ -442,7 +401,11 @@ export function registerTables(ctx: Ctx): void {
           },
         },
       ],
-      { actor: { kind: 'person', id: user.id }, user: user.id },
+      {
+        actor: { kind: 'person', id: user.id },
+        user: user.id,
+        byHand: { words: `Reset ${f.name} to Alpha's figure on ${world.rowName(t, r.values)}` },
+      },
     )
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }

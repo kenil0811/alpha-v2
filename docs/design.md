@@ -1107,8 +1107,9 @@ themselves are in `docs/rules.md`, one line each with how it is held; this secti
 
 - **Who may change a module.** Every module is open or managed. An open module is the firm's to
   change, within who may build. A managed one changes only by a newer pack signed by Kenil's key;
-  Alpha's own kit, a plugin's module and a connector's module are managed by Alpha. Kit code finds
-  tables and fields by their lasting key, so a rename never breaks it.
+  Alpha's own kit and a plugin's module are managed by Alpha, and a connector's module for its
+  source fields. Kit code finds tables and fields by their lasting key, so a rename never breaks
+  it.
 - **Who owns the data.** Every table is Alpha's own or a mirror of a system that keeps the
   record. On Alpha's own, the person's value beats every machine: a newer value is kept beside
   it, a removed row stays removed. On a mirror, the person's value on a source field is a

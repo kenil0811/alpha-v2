@@ -323,7 +323,8 @@ export function makeViews(ctx: BaseCtx) {
               },
             }
           : {}
-        if (line?.kind === 'set')
+        // set by hand: the change's own line (rules A1), or the window's own line before it
+        if (line && ['set', 'changed', 'wrote'].includes(line.kind))
           return { kind: 'stated', words: 'You set it in your window', at, ...beside }
         const words = line?.words
         return {

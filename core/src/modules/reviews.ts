@@ -120,25 +120,17 @@ export class Reviews {
     for (const id of ids) {
       const row = now.rows.find((x) => x.id === id)
       if (!row) throw new Refused('That row is not on this card.')
-      const line = this.world.line({
-        actor: ctx.actor,
-        kind: 'set',
-        words: `Set ${r.field} to ${value} on ${row.name}`,
-        data: { table: t.id, row: id, field: r.field, value, card: cardId },
-        user: ctx.user ?? null,
-        module: t.module.id,
-        card: cardId,
-      })
+      // the change's own line, decided on the card (rules A1)
       this.world.records.change(
         t.id,
         [
           {
             id,
             values: { [r.field]: value },
-            provenance: { kind: 'stated', source: { message: line.id } },
+            provenance: { kind: 'stated', source: { card: cardId } },
           },
         ],
-        ctx,
+        { ...ctx, byHand: { words: `Set ${r.field} to ${value} on ${row.name}`, card: cardId } },
       )
     }
     const after = this.view(this.world.cards.get(cardId) as Card) as ReviewView

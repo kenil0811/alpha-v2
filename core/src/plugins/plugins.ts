@@ -295,19 +295,12 @@ export class Plugins {
         // the person's own word, from the plugin's screen: journaled, its source
         set: (table, id, values) => {
           const t = ownTable(table)
-          const line = world.line({
+          // the change's own line, in the person's name (rules A1)
+          world.records.change(t.id, [{ id, values, provenance: { kind: 'stated' } }], {
             actor: { kind: 'person', id: user.id },
-            kind: 'set',
-            words: `Changed a row of ${t.name}`,
-            data: { table: t.id, row: id, plugin: name },
             user: user.id,
-            module: t.module.id,
+            byHand: { words: `Changed a row of ${t.name}` },
           })
-          world.records.change(
-            t.id,
-            [{ id, values, provenance: { kind: 'stated', source: { message: line.id } } }],
-            { actor: { kind: 'person', id: user.id }, user: user.id },
-          )
         },
         rows: (table) => rowsOf(ownTable(table)),
       },

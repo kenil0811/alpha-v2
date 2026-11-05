@@ -86,7 +86,7 @@ describe('a picked related row', () => {
     const a = app()
     expect((await set(a, 'Supplier', dairy)).statusCode).toBe(200)
     expect(world.records.get(order)?.record.values.supplier).toBe(dairy)
-    expect(world.lines({ kinds: ['set'] }).at(-1)?.words).toBe(
+    expect(world.lines({ kinds: ['changed'] }).at(-1)?.words).toBe(
       'Set Supplier to Dairy Farm on Flour',
     )
     const history = (
@@ -109,24 +109,24 @@ describe('a picked related row', () => {
     const a = app()
     await set(a, 'Backups', [mill, dairy])
     expect(world.records.get(order)?.record.values.backups).toEqual([mill, dairy])
-    expect(world.lines({ kinds: ['set'] }).at(-1)?.words).toBe(
+    expect(world.lines({ kinds: ['changed'] }).at(-1)?.words).toBe(
       'Set Backups to Mill & Co, Dairy Farm on Flour',
     )
     await set(a, 'Supplier', null)
     expect(world.records.get(order)?.record.values.supplier ?? null).toBeNull()
-    expect(world.lines({ kinds: ['set'] }).at(-1)?.words).toBe('Cleared Supplier on Flour')
+    expect(world.lines({ kinds: ['changed'] }).at(-1)?.words).toBe('Cleared Supplier on Flour')
     await a.close()
   })
 
   it('is refused when the row is not there, and leaves no line saying it was set', async () => {
     const a = app()
-    const before = world.lines({ kinds: ['set'] }).length
+    const before = world.lines({ kinds: ['changed'] }).length
     const res = await set(a, 'Supplier', 'r_gone')
     expect(res.statusCode).toBe(409)
     expect(res.json().problem).toBe('Supplier points at a row of Suppliers that is not there.')
     // a row of another table is not one of Suppliers either
     expect((await set(a, 'Supplier', order)).statusCode).toBe(409)
-    expect(world.lines({ kinds: ['set'] })).toHaveLength(before)
+    expect(world.lines({ kinds: ['changed'] })).toHaveLength(before)
     expect(world.records.get(order)?.record.values.supplier).toBe(mill)
     await a.close()
   })
@@ -156,7 +156,7 @@ describe('a picked person', () => {
     const dairyPerson = (people[0] as Pick).id
     expect((await set(a, 'Buyer', dairyPerson)).statusCode).toBe(200)
     expect(world.records.get(order)?.record.values.buyer).toBe(dairyPerson)
-    expect(world.lines({ kinds: ['set'] }).at(-1)?.words).toBe('Set Buyer to Dairy Farm on Flour')
+    expect(world.lines({ kinds: ['changed'] }).at(-1)?.words).toBe('Set Buyer to Dairy Farm on Flour')
     expect((await set(a, 'Buyer', 'p_gone')).statusCode).toBe(409)
     expect(world.records.get(order)?.record.values.buyer).toBe(dairyPerson)
     await a.close()

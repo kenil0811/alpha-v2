@@ -44,6 +44,7 @@ import {
   unindex,
   update,
 } from './storing.ts'
+import { mustBeTheirs } from './theirs.ts'
 import { putInTrash, tagVersions, takeOutAll } from './trash.ts'
 import type {
   ChangeInput,
@@ -70,6 +71,10 @@ function partOfGiven(table: Table, vals: Record<string, unknown>, fresh: boolean
       )
 }
 
+// What a change's stated values rest on: the turn's message, or, by hand, the change's own line.
+const saidIn = (ctx: RecordCtx, line: number): Said | null =>
+  ctx.byHand ? { message: line, user: ctx.user ?? '' } : (ctx.said ?? null)
+
 export class Records {
   db: Db
   shape: Shape
@@ -95,37 +100,41 @@ export class Records {
     this.fileOf = fileOf
   }
 
+  // One line per change, in the change's own transaction (rules A1): written first, so a change
+  // the person makes by hand has it as the source of what they state.
   add(tableId: string, rows: RowInput[], ctx: RecordCtx): string[] {
     if (!rows.length) throw new Refused('There are no rows to add.')
     return tx(this.db, () => {
       const table = this.mustTable(tableId)
       const at = now()
-      const ids: string[] = []
-      for (const row of rows) {
-        const { vals, prov } = this.prepare(
-          table,
-          row.values,
-          row.provenance,
-          row.per_field,
-          ctx.said ?? null,
-          at,
-        )
-        partOfGiven(table, vals, true)
-        checkPer(this, table, vals, null)
-        const id = newId('r')
-        this.insert(table, id, vals, prov, at, actorName(ctx.actor), null)
-        ids.push(id)
-      }
-      append(this.db, {
+      const ids = rows.map(() => newId('r'))
+      const line = append(this.db, {
         actor: ctx.actor,
         kind: 'wrote',
-        words: `Added ${rows.length === 1 ? `a row to ${table.name}: ${this.describe(table, rows[0]?.values ?? {})}` : `${rows.length} rows to ${table.name}`}.`,
+        words:
+          ctx.byHand?.words ??
+          `Added ${rows.length === 1 ? `a row to ${table.name}: ${this.describe(table, rows[0]?.values ?? {})}` : `${rows.length} rows to ${table.name}`}.`,
         data: { table: table.id, records: ids },
         user: ctx.user ?? null,
         turn: ctx.turn ?? null,
         module: table.module.id,
         run: ctx.run ?? null,
+        card: ctx.byHand?.card ?? null,
       })
+      const said = saidIn(ctx, line.id)
+      for (const [i, row] of rows.entries()) {
+        const { vals, prov } = this.prepare(
+          table,
+          row.values,
+          row.provenance,
+          row.per_field,
+          said,
+          at,
+        )
+        partOfGiven(table, vals, true)
+        checkPer(this, table, vals, null)
+        this.insert(table, ids[i] as string, vals, prov, at, actorName(ctx.actor), null)
+      }
       this.watch?.rows(table, ids, ctx)
       return ids
     })
@@ -137,29 +146,12 @@ export class Records {
       const table = this.mustTable(tableId)
       const at = now()
       const versions: [string, number, Snapshot][] = []
-      for (const c of changes) {
-        const row = this.readRow(table, c.id)
-        if (!row) throw new Refused(`${table.name} has no row ${c.id}.`)
-        const { vals, prov } = this.prepare(
-          table,
-          c.values,
-          c.provenance,
-          c.per_field,
-          ctx.said ?? null,
-          at,
-        )
-        partOfGiven(table, vals, false)
-        checkPer(this, table, vals, row.id)
-        const was = this.snapshot(table, row)
-        this.keepVersion(row, was, at, actorName(ctx.actor))
-        versions.push([row.id, row.version, { vals, prov }])
-        this.update(table, row.id, vals, prov, at)
-        this.index(table, row.id, { ...was.vals, ...vals })
-      }
       const line = append(this.db, {
         actor: ctx.actor,
         kind: 'changed',
-        words: `Changed ${changes.length === 1 ? 'a row' : `${changes.length} rows`} in ${table.name}.`,
+        words:
+          ctx.byHand?.words ??
+          `Changed ${changes.length === 1 ? 'a row' : `${changes.length} rows`} in ${table.name}.`,
         data: {
           table: table.id,
           records: changes.map((c) => c.id),
@@ -169,7 +161,22 @@ export class Records {
         turn: ctx.turn ?? null,
         module: table.module.id,
         run: ctx.run ?? null,
+        card: ctx.byHand?.card ?? null,
       })
+      const said = saidIn(ctx, line.id)
+      for (const c of changes) {
+        const row = this.readRow(table, c.id)
+        if (!row) throw new Refused(`${table.name} has no row ${c.id}.`)
+        const { vals, prov } = this.prepare(table, c.values, c.provenance, c.per_field, said, at)
+        partOfGiven(table, vals, false)
+        checkPer(this, table, vals, row.id)
+        const was = this.snapshot(table, row)
+        mustBeTheirs(table, this.describeStored(table, was.vals), was.prov, vals, prov, ctx)
+        this.keepVersion(row, was, at, actorName(ctx.actor))
+        versions.push([row.id, row.version, { vals, prov }])
+        this.update(table, row.id, vals, prov, at)
+        this.index(table, row.id, { ...was.vals, ...vals })
+      }
       tagVersions(this, versions, line.id)
       this.watch?.rows(
         table,
