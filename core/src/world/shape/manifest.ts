@@ -8,6 +8,7 @@ import { columnsOf, junctionName, OWN_COLUMNS, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import { namedConfig, ViewConfig } from '../views.ts'
+import { asks } from './asks.ts'
 import type { Shape } from './shape.ts'
 import { summaryNamed } from './summary.ts'
 import type { Module, Table, WriteCtx } from './types.ts'
@@ -102,6 +103,16 @@ export function setBusinessCase(
   by: BusinessCase['by'],
   ctx: WriteCtx,
 ): boolean {
+  asks(
+    shape,
+    { module: m.id },
+    () => ({
+      words: `make ${m.name}'s business case: for ${c.for}`,
+      method: 'setBusinessCase',
+      args: [m.id, c, by],
+    }),
+    ctx,
+  )
   const was = businessCase(m)
   if (was?.by === 'person' && by !== 'person') return false
   const next = { for: c.for.trim(), keeps: c.keeps.trim(), decides: c.decides.trim(), by }

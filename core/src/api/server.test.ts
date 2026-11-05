@@ -779,4 +779,39 @@ describe('the api over a world', () => {
     expect(world.shape.table('Orders')?.fields.map((f) => f.name)).not.toContain('How many')
     await a.close()
   })
+
+  it('puts a maintained kit’s rename from the window on the same card, and makes it on Do it now (rules M4)', async () => {
+    const a = app()
+    const dir = join(home, 'kit')
+    cpSync(join(import.meta.dirname, '..', 'modules', 'test-kit'), dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      `${readFileSync(join(dir, 'module.yaml'), 'utf8')}maintainer: { name: Avilo, address: kits@avilo.example }\n`,
+    )
+    const owner = world.owner('Kenil')
+    await install(world, dir, { actor: { kind: 'person', id: owner.id }, user: owner.id })
+    const orders = world.shape.table('Orders')
+    const renamed = await a.inject({
+      method: 'POST',
+      url: `/api/tables/${orders?.id}/name`,
+      headers: ok,
+      payload: { name: 'Purchases' },
+    })
+    expect(renamed.statusCode).toBe(409)
+    expect(renamed.json().problem).toMatch(/Avilo maintains Bakery, so this change is on a card/)
+    expect(world.shape.table('Purchases')).toBeUndefined()
+    const card = world.cards
+      .waiting()
+      .find((c) => /Avilo maintains Bakery: rename Orders to Purchases/.test(c.words))
+    expect(card).toBeDefined()
+    const done = await a.inject({
+      method: 'POST',
+      url: `/api/cards/${card?.id}`,
+      headers: ok,
+      payload: { answer: 'Do it now anyway' },
+    })
+    expect(done.statusCode).toBe(200)
+    expect(world.shape.table('Purchases')?.id).toBe(orders?.id)
+    await a.close()
+  })
 })

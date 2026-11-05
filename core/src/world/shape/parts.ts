@@ -6,6 +6,7 @@ import { all, json, one, parse, run, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
+import { asks } from './asks.ts'
 import { manifestSays, writeManifest } from './manifest.ts'
 import type { Shape } from './shape.ts'
 import type { Table, WriteCtx } from './types.ts'
@@ -95,6 +96,16 @@ export function setPartOf(
   partOf: boolean,
   ctx: WriteCtx,
 ): Table {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `make ${t?.name}'s rows ${partOf ? '' : 'no longer '}part of the row its ${field} names`,
+      method: 'setPartOf',
+      args: [tableId, field, partOf],
+    }),
+    ctx,
+  )
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')

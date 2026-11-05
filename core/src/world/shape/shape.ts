@@ -8,6 +8,7 @@ import { all, type Db, json, newId, now, one, parse, run, tx } from '../db.ts'
 import { addFieldSql, columnsOf, createTableSql, OWN_COLUMNS, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { FIELD_KINDS, type FieldKind, Refused } from '../kinds.ts'
+import { type Asks, asksAdd, asksMake } from './asks.ts'
 import {
   describe,
   rename,
@@ -59,6 +60,8 @@ export class Shape {
   modulesDir: string
   // Told the rows a removed table took with it, before they go: the people they named.
   onGone: ((ids: string[]) => void) | null = null
+  // A shape change to a kit someone else maintains, asked of the person first (rules M4).
+  asks: Asks | null = null
 
   constructor(db: Db, modulesDir: string) {
     this.db = db
@@ -305,6 +308,7 @@ export class Shape {
     } = {},
   ): Table {
     if (!name.trim()) throw new Refused('A table needs a name.')
+    asksMake(this, moduleId, name, fields, options, ctx)
     return tx(this.db, () => {
       const module = this.module(moduleId)
       if (!module) throw new Refused('That module is not there.')
@@ -349,6 +353,7 @@ export class Shape {
   }
 
   addFields(tableId: string, fields: FieldInput[], ctx: WriteCtx): Table {
+    asksAdd(this, tableId, fields, ctx)
     return tx(this.db, () => {
       const table = this.table(tableId)
       if (!table) throw new Refused('That table is not there.')

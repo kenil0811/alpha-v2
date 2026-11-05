@@ -5,6 +5,7 @@ import { json, one, parse, run, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
+import { asks } from './asks.ts'
 import { manifestSays, writeManifest } from './manifest.ts'
 import type { Shape } from './shape.ts'
 import type { Table, WriteCtx } from './types.ts'
@@ -47,6 +48,16 @@ export function setPer(
   per: boolean,
   ctx: WriteCtx,
 ): Table {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `${per ? 'keep' : 'stop keeping'} one row per person in ${t?.name}`,
+      method: 'setPer',
+      args: [tableId, field, per],
+    }),
+    ctx,
+  )
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')

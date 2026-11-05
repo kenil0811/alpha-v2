@@ -3,6 +3,7 @@ import { json, one, parse, run, tx } from '../db.ts'
 import { addFieldSql, columnsOf, dropFieldSql, junctionName, junctionSql, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
+import { asks } from './asks.ts'
 import { slugTaken, writeManifest } from './manifest.ts'
 import { tableNameFree } from './naming.ts'
 import type { Shape } from './shape.ts'
@@ -16,6 +17,16 @@ export function rename(
   to: string,
   ctx: WriteCtx,
 ): Table {
+  asks(
+    shape,
+    { table: what.table },
+    (t) => ({
+      words: `rename ${what.field ? `${t?.name}'s ${what.field}` : t?.name} to ${to.trim()}`,
+      method: 'rename',
+      args: [what, to],
+    }),
+    ctx,
+  )
   if (!to.trim()) throw new Refused('A new name is needed.')
   return tx(shape.db, () => {
     const table = shape.table(what.table)
@@ -76,6 +87,16 @@ export function setChoices(
   choices: string[],
   ctx: WriteCtx,
 ): Table {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `offer ${choices.join(', ')} in ${t?.name}'s ${field}`,
+      method: 'setChoices',
+      args: [tableId, field, choices],
+    }),
+    ctx,
+  )
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
@@ -112,6 +133,16 @@ export function setTones(
   tones: Record<string, Tone>,
   ctx: WriteCtx,
 ): void {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `give ${t?.name}'s ${field} its tones`,
+      method: 'setTones',
+      args: [tableId, field, tones],
+    }),
+    ctx,
+  )
   const table = shape.table(tableId)
   if (!table) throw new Refused('That table is not there.')
   const f = findField(table, field)
@@ -165,6 +196,16 @@ export function describe(
   by: AboutBy,
   ctx: WriteCtx,
 ): boolean {
+  asks(
+    shape,
+    { table: where.table },
+    (t) => ({
+      words: `describe ${where.field ? `${t?.name}'s ${where.field}` : t?.name} as “${about ?? ''}”`,
+      method: 'describe',
+      args: [where, about, by],
+    }),
+    ctx,
+  )
   const table = shape.table(where.table)
   if (!table) throw new Refused('That table is not there.')
   const f = where.field ? findField(table, where.field) : null
@@ -309,6 +350,16 @@ export function setHidden(shape: Shape, tableId: string, hidden: boolean, ctx: W
 // junction table is made, each row's one pointer becomes its first entry, the column goes. A
 // choice comes to hold several (tags, core step 3c): each row's one choice becomes a list of it.
 export function setMany(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `let ${t?.name}'s ${field} hold several`,
+      method: 'setMany',
+      args: [tableId, field],
+    }),
+    ctx,
+  )
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
@@ -356,6 +407,16 @@ export function setMany(shape: Shape, tableId: string, field: string, ctx: Write
 // holds a list, core plan step 4): only when no row holds more than one, so nothing is lost; each
 // row's one entry becomes its pointer, the junction table goes.
 export function setOne(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `let ${t?.name}'s ${field} hold one`,
+      method: 'setOne',
+      args: [tableId, field],
+    }),
+    ctx,
+  )
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
@@ -427,6 +488,16 @@ function setTags(shape: Shape, table: Table, f: Field, ctx: WriteCtx): Table {
 // A text field becomes the row's notes (core plan step 4, DealPilot's Notes): the same column,
 // its values kept, now Markdown on the row's page and out of the grid. No other kind ever changes.
 export function toNotes(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `make ${t?.name}'s ${field} its notes`,
+      method: 'toNotes',
+      args: [tableId, field],
+    }),
+    ctx,
+  )
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')

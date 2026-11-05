@@ -2,7 +2,6 @@
 // them; on a kit someone else maintains, a shape change goes on a card first (decision 3b).
 
 import { z } from 'zod'
-import { installedKits } from '../../modules/kits/index.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
 import { setPer } from '../../world/records/fold.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
@@ -57,24 +56,9 @@ const SHAPE_INPUT = {
 }
 export type ShapeAction = z.infer<z.ZodObject<typeof SHAPE_INPUT>>
 
-export const MAINTAINED_SHAPE = 'maintained_shape'
-
-// The module a shape change is to, and its kit, when someone else maintains it. Arrangement
-// (views, placement) is the person's under any mark; shape is what goes to the maintainer.
-function maintainedKit(world: World, a: ShapeAction) {
-  // where a table shows (setup, a tab) is arrangement, the person's under any mark; part of is shape
-  if (['save_view', 'remove_view', 'place_module', 'setup', 'keep_tab'].includes(a.action))
-    return null
-  const module =
-    a.action === 'make_table'
-      ? world.shape.module(a.module?.trim() || a.table || '')
-      : a.table
-        ? world.shape.table(a.table)?.module
-        : undefined
-  if (!module) return null
-  const kit = installedKits(world).find((k) => k.module === module.id)
-  return kit?.maintainer ? { ...kit, maintainer: kit.maintainer, module } : null
-}
+// A kit someone else maintains asks the person before its shape changes, by this tool or any
+// other door: the world's shape changes ask (decision 3b; rules M4, world/maintained.ts).
+export { MAINTAINED_SHAPE } from '../../world/maintained.ts'
 
 export function describeShape(a: ShapeAction): string {
   const fields = (a.fields ?? []).map((f) => `${f.name} (${f.kind})`).join(', ')
@@ -326,30 +310,7 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'A summary (kind summary) is worked out from the rows of another table that point at this one, never written: summary: { of: the table, through: their relation here (left out when they have one), op: count, sum, min, max or latest, field: what it takes (none for count), by: the date latest goes by (left out: when added), where: one condition, as a view’s filter rule by field name, like { field: "Paid", op: "in", values: ["No"] } }. Make the table it reads first; add the summary to this table after. Prefer a summary to a field kept in step by hand: "Owed" as the sum of Amount in Invoices where Paid is No is never stale.',
       ].join('\n'),
       SHAPE_INPUT,
-      async (a) =>
-        guard(() => {
-          const c = ctx()
-          // a kit someone else maintains (decision 3b): a change to its shape goes to them as a
-          // request, or in now with them told later; the person decides on a card
-          const kit = a.action === 'place_module' ? null : maintainedKit(world, a)
-          if (kit) {
-            const card = world.cards.open({
-              kind: 'suggestion',
-              words: `${kit.maintainer.name} maintains ${kit.module.name}: ${describeShape(a)}. Ask them to put it in the kit's next version, or do it now and they are told later.`,
-              restsOn: [`${kit.kit} ${kit.version} is maintained by ${kit.maintainer.name}`],
-              options: [`Ask ${kit.maintainer.name}`, 'Do it now anyway'],
-              call: { tool: MAINTAINED_SHAPE, input: a as Record<string, unknown> },
-              actor: c.actor,
-              user: c.user ?? null,
-              turn: c.turn ?? null,
-              module: kit.module.id,
-            })
-            return ok(
-              `${kit.maintainer.name} maintains ${kit.module.name}, so this change is on a card for the person: ask ${kit.maintainer.name}, or do it now (card ${card.id}). Nothing changed yet.`,
-            )
-          }
-          return ok(applyShape(world, a, c))
-        }),
+      async (a) => guard(() => ok(applyShape(world, a, ctx()))),
       { alwaysLoad: true },
     ),
   ]

@@ -8,9 +8,11 @@ import {
 } from '../../engine/tools/index.ts'
 import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
+import { keep } from '../../modules/keep.ts'
 import { installedKits, recordChange } from '../../modules/kits/index.ts'
 import { PROPOSE_TASKS, RUN_AGAIN } from '../../modules/runs/index.ts'
 import { Refused } from '../../world/kinds.ts'
+import { type Redo, redo } from '../../world/shape/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { CardView } from '../types.ts'
 
@@ -142,16 +144,24 @@ export function registerCards(ctx: Ctx): void {
         return cardOut(out)
       }
       // a maintained kit's shape change (decision 3b): asked of the maintainer as a drafted
-      // email, or done now and counted as a change of the person's they have not seen
+      // email, or done now and counted as a change of the person's they have not seen. Asked by
+      // any door since rules step 2 (M4), as the change to make again; by Alpha's tool before it
       if (c?.call?.tool === MAINTAINED_SHAPE && c.module) {
-        const a = c.call.input as unknown as ShapeAction
+        const input = (c.call.input ?? {}) as Record<string, unknown>
+        const r = 'method' in input ? (input as unknown as Redo) : null
+        const a = input as unknown as ShapeAction
         const kit = installedKits(world).find((k) => k.module === c.module)
         const m = world.shape.module(c.module)
         if (!kit?.maintainer || !m) throw new Refused('That kit is not maintained any more.')
-        const change = describeShape(a)
+        const change = r ? r.words : describeShape(a)
         const words = `${change[0]?.toUpperCase() ?? ''}${change.slice(1)}`
         if (answer === c.options[1]) {
-          const said = applyShape(world, a, { actor: person, user: user.id })
+          const anyway = { actor: person, user: user.id, anyway: true }
+          const said = !r
+            ? applyShape(world, a, anyway)
+            : r.method === 'keep'
+              ? await keep(world, m, r.args[1], r.args[2], anyway)
+              : redo(world.shape, r, anyway)
           recordChange(world, m.id, words, a, user.id)
           const out = world.cards.answer(id, answer, person, `Done now: ${said}`)
           live()

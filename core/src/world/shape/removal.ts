@@ -3,6 +3,7 @@ import { dropFieldSql, dropTableSql, junctionName, lit, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { type FieldKind, Refused } from '../kinds.ts'
 import { ViewConfig } from '../views.ts'
+import { asks } from './asks.ts'
 import { writeManifest } from './manifest.ts'
 import type { Shape } from './shape.ts'
 import { summariesReading } from './summary.ts'
@@ -12,6 +13,12 @@ import { actorName, findField, spec } from './types.ts'
 // Removing a table removes its rows and their versions, and empties its trash (core step 1): a
 // table removed is removed outright. The journal keeps that they were here.
 export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({ words: `remove the table ${t?.name}`, method: 'removeTable', args: [tableId] }),
+    ctx,
+  )
   tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')
@@ -62,6 +69,16 @@ export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void 
 // Removing a field drops its column (or its junction table) and its provenance; the versions
 // keep what the rows held under it, the saved views forget it, and so does the table's trash.
 export function removeField(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
+  asks(
+    shape,
+    { table: tableId },
+    (t) => ({
+      words: `remove ${field} from ${t?.name}`,
+      method: 'removeField',
+      args: [tableId, field],
+    }),
+    ctx,
+  )
   return tx(shape.db, () => {
     const table = shape.table(tableId)
     if (!table) throw new Refused('That table is not there.')

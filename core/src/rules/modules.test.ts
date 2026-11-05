@@ -120,10 +120,6 @@ rule(
     holds: (w, _refused, act) =>
       unchanged(w, act, 'Parts', 'Supply', about) &&
       w.world.cards.waiting().some((c) => /Mira maintains Supply/.test(c.words)),
-    waits: {
-      'alpha: keep': 2,
-      'window: a table’s about, name, fields, tab': 2,
-    },
   },
 )
 

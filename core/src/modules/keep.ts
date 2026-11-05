@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { parse } from 'yaml'
 import { Refused } from '../world/kinds.ts'
+import { asks } from '../world/shape/asks.ts'
 import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { parseAgent, syncAgents, whenWords } from './agents.ts'
@@ -60,6 +61,13 @@ export async function keep(
   const text = content ?? (existsSync(full) ? readFileSync(full, 'utf8') : null)
   if (text === null) throw new Refused(`${rel} is not in ${module.name} yet: give its words.`)
   const agent = check(module, rel, text)
+  // a kit someone else maintains asks the person first (rules M4)
+  asks(
+    world.shape,
+    { module: module.id },
+    () => ({ words: `keep ${rel}`, method: 'keep', args: [module.id, rel, text] }),
+    ctx,
+  )
   if (content !== undefined) {
     mkdirSync(dirname(full), { recursive: true })
     writeFileSync(full, content)

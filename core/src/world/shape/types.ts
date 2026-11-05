@@ -128,6 +128,7 @@ export interface WriteCtx {
   user?: string | null
   turn?: string | null
   run?: string | null
+  anyway?: boolean // the person's "do it now" on a maintained kit's card (rules M4, asks.ts)
 }
 
 // Names the model and SQL can both use: lower case, words joined by underscores.

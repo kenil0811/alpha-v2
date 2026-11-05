@@ -18,6 +18,7 @@ import {
   read,
 } from './journal.ts'
 import { Refused } from './kinds.ts'
+import { askMaintainer } from './maintained.ts'
 import { ModelSql } from './modelsql.ts'
 import { People } from './people/index.ts'
 import { FOLD_PICK, foldPeople, pickFolded, unfoldPeople } from './records/fold.ts'
@@ -132,6 +133,7 @@ export class World {
     }
     this.tasks = new Tasks(db, this.shape, (id) => this.user(id)?.name ?? null)
     this.shape.onGone = (ids) => this.people.gone(ids)
+    this.shape.asks = (module, redo, ctx) => askMaintainer(this, module, redo, ctx)
   }
 
   static async open(dir: string, options: { pageRows?: number } = {}): Promise<World> {

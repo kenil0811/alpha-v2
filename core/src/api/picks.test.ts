@@ -156,7 +156,9 @@ describe('a picked person', () => {
     const dairyPerson = (people[0] as Pick).id
     expect((await set(a, 'Buyer', dairyPerson)).statusCode).toBe(200)
     expect(world.records.get(order)?.record.values.buyer).toBe(dairyPerson)
-    expect(world.lines({ kinds: ['changed'] }).at(-1)?.words).toBe('Set Buyer to Dairy Farm on Flour')
+    expect(world.lines({ kinds: ['changed'] }).at(-1)?.words).toBe(
+      'Set Buyer to Dairy Farm on Flour',
+    )
     expect((await set(a, 'Buyer', 'p_gone')).statusCode).toBe(409)
     expect(world.records.get(order)?.record.values.buyer).toBe(dairyPerson)
     await a.close()
