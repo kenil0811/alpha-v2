@@ -35,9 +35,16 @@ export interface Provenance {
   source: Source
   basis?: string // the words behind an estimate or an assumption
   at: string
-  // a value the person typed over a computed one: what the script works it out as now, kept
-  // beside theirs, so they can see it and go back to it
-  beside?: { value: unknown; formula?: string; note?: string; at: string }
+  // a value beside the person's (rules D3, D6): what a script works it out as now, or what a page
+  // or a connection read since (looked_up, with its source), so they can see it and go back to it
+  beside?: {
+    value: unknown
+    formula?: string
+    note?: string
+    at: string
+    kind?: 'looked_up' | 'computed' // computed when not said, as before 5 Nov
+    source?: Source
+  }
 }
 
 export interface ProvenanceInput {

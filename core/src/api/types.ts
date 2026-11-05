@@ -301,8 +301,9 @@ export interface SourceView {
     | { url: string }
     | { line: number }
   note?: string // a computed value's sum with its numbers, or each check it made
-  // beside a value the person typed over: what Alpha works it out as now, which Reset brings back
-  beside?: { value: unknown; words: string; note?: string }
+  // beside a value the person typed over: what a page or a connection read since, or what Alpha
+  // works it out as now (rules D3), which Reset brings back
+  beside?: { value: unknown; words: string; reset: string; note?: string }
 }
 
 // A document as the window shows it at a value's place: a sheet's cells, a PDF's pages (drawn by /api/files/:hash/page/:n), or a text's lines.

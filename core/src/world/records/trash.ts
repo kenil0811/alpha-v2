@@ -8,6 +8,7 @@ import { junctionName, lit, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import type { Shape, Table, WriteCtx } from '../shape/index.ts'
+import { removedKey } from './beside.ts'
 import type { Records } from './records.ts'
 import { columnValues, index, setLists } from './storing.ts'
 import type { Row, Snapshot } from './types.ts'
@@ -116,8 +117,11 @@ export function takeOut(
   for (const id of ids) {
     const k = kept.get(id) as Kept
     records.watch?.gone([id])
-    // a kit's setup row the person removes stays removed through the kit's updates
+    // a kit's setup row the person removes stays removed through the kit's updates, and any row
+    // with an item key through the next read (rules D4); Bring back forgets it
     if (k.itemKey && k.kit) records.shape.tombstone(table.module.id, 'row', k.itemKey, ctx)
+    if (k.itemKey)
+      records.shape.tombstone(table.module.id, 'row', removedKey(table, k.itemKey), ctx)
     for (const f of table.fields)
       if (f.kind === 'relation' && f.many)
         run(
@@ -327,9 +331,17 @@ export function bringBack(
           records.db,
           "DELETE FROM tombstones WHERE module_id = ? AND kind = 'row' AND key = ?",
           table.module.id,
-          kept.itemKey,
+          kept.itemKey.toLowerCase(),
         )
     }
+    // a row brought back is read again (rules D4)
+    if (kept.itemKey)
+      run(
+        records.db,
+        "DELETE FROM tombstones WHERE module_id = ? AND kind = 'row' AND key = ?",
+        table.module.id,
+        removedKey(table, kept.itemKey).toLowerCase(),
+      )
     // the rows that pointed at it point at it again, where they still point nowhere
     for (const p of kept.pointers) {
       const t = records.shape.table(p.table)

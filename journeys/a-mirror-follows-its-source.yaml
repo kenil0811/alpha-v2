@@ -21,7 +21,6 @@ steps:
           key: <deal-1@harbor.example>
           field: Subject
           equals: 'Harbor deal: restoration contractor in St. Louis'
-        waits: 4
   - reset: { table: Mail, row: <deal-1@harbor.example>, field: Subject }
     checks:
       - field:
@@ -29,7 +28,6 @@ steps:
           key: <deal-1@harbor.example>
           field: Subject
           equals: 'Harbor deal: restoration contractor in St. Louis'
-        waits: 4
   - remove: { table: Mail, row: <deal-1@harbor.example> }
     checks:
       - rows_in: { table: Mail, count: 7 }

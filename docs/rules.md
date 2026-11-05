@@ -51,15 +51,15 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 |---|---|---|---|
 | D1 | Every table is Alpha's own or a mirror. A mirror names the system that keeps its record; a field its connector does not fill is Alpha's own | 4 Nov | skip (step 5) |
 | D2 | The person's value beats every machine. No reader, connector, script, agent, revert of a machine's run, or the model on its own writes over it or clears it; the model changes it only in a turn on the person's own words | 4 Nov | test |
-| D3 | A machine's newer value for a field the person set is kept beside theirs, with its source and time. The cell is marked ("the page now says …") and Reset puts the source's value back | 4 Nov | skip (step 4) |
-| D4 | A row the person removed stays removed: its item key is remembered, so a reader that meets it again leaves it out. Bring back returns it | 4 Nov | skip (step 4) |
-| D5 | A number, an amount or a date the model calls "stated" must be in the person's message or a card's answer; otherwise it lands as assumed | 4 Nov | skip (step 4) |
+| D3 | A machine's newer value for a field the person set is kept beside theirs, with its source and time. The cell is marked ("the page now says …") and Reset puts the source's value back | 4 Nov | test |
+| D4 | A row the person removed stays removed: its item key is remembered, so a reader that meets it again leaves it out. Bring back returns it | 4 Nov | test |
+| D5 | A number, an amount or a date the model calls "stated" must be in the person's message or a card's answer; otherwise it lands as assumed | 4 Nov | test |
 
 ## Who owns the data: mirrors
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| D6 | A mirror's source field takes a correction kept in Alpha, never sent back. The corrected value is what Alpha shows and uses, marked "Corrected in Alpha; Gmail says …"; each read keeps the source's value beside it, and Reset puts it back. A field the connector declares writable is the exception (D10). In a managed module the kit decides whether corrections are allowed. An action that leaves the world on a corrected value uses the correction, and its card says so | 4 Nov | skip (steps 4, 5) |
+| D6 | A mirror's source field takes a correction kept in Alpha, never sent back. The corrected value is what Alpha shows and uses, marked "Corrected in Alpha; Gmail says …"; each read keeps the source's value beside it, and Reset puts it back. A field the connector declares writable is the exception (D10). In a managed module the kit decides whether corrections are allowed. An action that leaves the world on a corrected value uses the correction, and its card says so | 4 Nov | skip (step 5) |
 | D7 | Alpha's own fields may sit beside the source's on a mirror's row (tags, notes, a link to a deal) and follow the rules for Alpha's own data | 4 Nov | test |
 | D8 | A mirror's rows come and go only with the source: no remove, trash, Bring back or Revert of them in Alpha. A record deleted at the source is marked gone and kept, out of the default lists, so the notes, tasks and links on it stay findable | 4 Nov | skip (step 5) |
 | D9 | Each mirror's connector declares what may change at the source (add, change which fields, remove), each through one named action. What it does not declare is never sent; mail, calendar, contacts and LinkedIn declare nothing | 4 Nov | skip (step 5) |

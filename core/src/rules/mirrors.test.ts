@@ -32,10 +32,6 @@ rule('D6', 'a mirror’s source field takes a correction kept in Alpha, never se
       return refused === null && w.value(t.table, t.row, t.field) === SOURCE
     },
   },
-  waits: {
-    'each read keeps the source’s value beside it': 4,
-    'Reset puts the source’s value back': 4,
-  },
   later: {
     'a correction is marked “Corrected in Alpha; Mailbox says …”': 5,
     'an action that leaves the world on a corrected value uses it, and its card says so': 5,

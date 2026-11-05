@@ -4,8 +4,8 @@ why: >
   Rules step 1 (docs/rules.md, M4, D2 to D4): a reader brings three firms from a made-up
   site; the person corrects one firm's email, removes another, and has the table and a field
   renamed. The site's page then changes and the reader runs again. The correction holds today,
-  and so does the run after the rename; the removed firm staying removed and the page's newer
-  email kept beside the person's wait on step 4. The site is served on this Mac, never a real one.
+  and so does the run after the rename; the removed firm stays removed and the page's newer email
+  is kept beside the person's (step 4). The site is served on this Mac, never a real one.
 steps:
   - site: { from: journeys/fixtures/sites/firms }
   - say: >-
@@ -34,7 +34,5 @@ steps:
       # M5's lasting keys are for a kit's own code (core/src/rules/modules.test.ts)
       - last_run: ok
       - rows_in: { table: Targets, count: 2 }
-        waits: 4
       - beside: { table: Targets, row: Oat Mill, field: Contact email, equals: sales@mill.example }
-        waits: 4
       - errors: 0

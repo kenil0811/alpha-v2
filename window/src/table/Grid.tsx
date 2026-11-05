@@ -32,6 +32,7 @@ import { api, Problem } from '../api.ts'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
+import { Dot } from '../ui/dot.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
 import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
@@ -874,6 +875,10 @@ function Cell({
           </span>
         )}
       </button>
+      {/* a newer value kept beside theirs, or a script's figure (rules D3): its words on hover */}
+      {source?.beside && (
+        <Dot s="read" tip={source.beside.words} className="absolute top-1.5 right-1.5" />
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { config } from '../../config.ts'
 import { tx } from '../../world/db.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
+import { resetWords } from '../../world/records/index.ts'
 import { findField } from '../../world/shape/index.ts'
 import { namedConfig } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
@@ -113,21 +114,13 @@ export function registerTables(ctx: Ctx): void {
           ? `Cleared ${field} on ${world.rowName(t, r.values)}`
           : `Set ${field} to ${said} on ${world.rowName(t, r.values)}`
     tx(world.db, () => {
-      // typing over a figure a script worked out keeps that figure beside theirs, with Reset
-      const was = r.provenance[f.slug]
+      // typing over a value a page, a connection or a script gave keeps it beside theirs, with
+      // Reset (the store, rules D3)
       world.records.change(
         t.id,
         [{ id: row, values: { [field]: value }, provenance: { kind: 'stated' } }],
         { actor: { kind: 'person', id: user.id }, user: user.id, byHand: { words } },
       )
-      if (was?.kind === 'computed' && r.values[f.slug] !== undefined)
-        world.records.keepBeside(t.id, row, {
-          [f.name]: {
-            value: r.values[f.slug],
-            ...(was.source.formula ? { formula: was.source.formula } : {}),
-            ...(was.source.note ? { note: was.source.note } : {}),
-          },
-        })
     })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
@@ -385,28 +378,26 @@ export function registerTables(ctx: Ctx): void {
     if (!t || !f) throw new Refused('That field is not there.')
     const r = world.records.list(t.id).find((x) => x.id === row)
     const beside = r?.provenance[f.slug]?.beside
-    if (!r || !beside) throw new Refused(`${f.name} has no figure of Alpha's to go back to.`)
-    world.records.change(
-      t.id,
-      [
-        {
-          id: row,
-          values: { [f.name]: beside.value },
-          provenance: {
-            kind: 'computed',
+    if (!r || !beside) throw new Refused(`${f.name} has nothing beside it to go back to.`)
+    // back to the value beside it, as it came: read from its page or connection (rules D3, D6),
+    // or worked out by its script
+    const provenance =
+      beside.kind === 'looked_up'
+        ? { kind: 'looked_up' as const, source: beside.source ?? {} }
+        : {
+            kind: 'computed' as const,
             source: {
               formula: beside.formula ?? 'Alpha’s figure',
               ...(beside.note ? { note: beside.note } : {}),
             },
-          },
-        },
-      ],
-      {
-        actor: { kind: 'person', id: user.id },
-        user: user.id,
-        byHand: { words: `Reset ${f.name} to Alpha's figure on ${world.rowName(t, r.values)}` },
+          }
+    world.records.change(t.id, [{ id: row, values: { [f.name]: beside.value }, provenance }], {
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+      byHand: {
+        words: `Reset ${f.name} to ${resetWords(beside)} on ${world.rowName(t, r.values)}`,
       },
-    )
+    })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
   })

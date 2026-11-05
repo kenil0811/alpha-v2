@@ -6,6 +6,7 @@ import { unmetNeeds } from '../modules/runs/index.ts'
 import { pagesOf } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
 import type { Provenance } from '../world/kinds.ts'
+import { besideFrom, resetWords } from '../world/records/index.ts'
 import type { Module, Table } from '../world/shape/index.ts'
 import { manifestSays } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
@@ -314,12 +315,19 @@ export function makeViews(ctx: BaseCtx) {
     switch (p.kind) {
       case 'stated': {
         const line = p.source.message !== undefined ? world.lineById(p.source.message) : null
-        const beside = p.beside
+        // what is beside their value (rules D3, D6): a page's or a connection's newer read, or
+        // what a script works it out as, and what Reset puts back
+        const b = p.beside
+        const beside = b
           ? {
               beside: {
-                value: p.beside.value,
-                words: `Alpha works it out${p.beside.formula ? ` with ${p.beside.formula}` : ''}`,
-                ...(p.beside.note ? { note: p.beside.note } : {}),
+                value: b.value,
+                words:
+                  b.kind === 'looked_up'
+                    ? `${besideFrom(b) === 'the page' ? 'The page now says' : `${besideFrom(b)} says`}, read ${b.at.slice(0, 10)}`
+                    : `Alpha works it out${b.formula ? ` with ${b.formula}` : ''}`,
+                reset: `Reset to ${resetWords(b)}`,
+                ...(b.note ? { note: b.note } : {}),
               },
             }
           : {}

@@ -11,6 +11,7 @@ import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { checkValue, type Provenance, type ProvenanceInput, Refused, type Said } from '../kinds.ts'
 import { actorName, findField, type Shape, type Table, type WriteCtx } from '../shape/index.ts'
+import { landBeside, removedBefore, typedOver } from './beside.ts'
 import { checkPer, perRow } from './fold.ts'
 import {
   byKey,
@@ -32,6 +33,7 @@ import {
   tableOf,
   valuesOf,
 } from './reading.ts'
+import { checkStated } from './stated.ts'
 import {
   describe,
   describeStored,
@@ -140,6 +142,7 @@ export class Records {
         )
         partOfGiven(table, vals, true)
         checkPer(this, table, vals, null)
+        checkStated(this.db, table, vals, prov, ctx)
         this.insert(table, ids[i] as string, vals, prov, at, actorName(ctx.actor), null)
       }
       this.watch?.rows(table, ids, ctx)
@@ -186,7 +189,9 @@ export class Records {
         partOfGiven(table, vals, false)
         checkPer(this, table, vals, row.id)
         const was = this.snapshot(table, row)
+        checkStated(this.db, table, vals, prov, ctx)
         mustBeTheirs(table, this.describeStored(table, was.vals), was.prov, vals, prov, ctx)
+        typedOver(was, prov, ctx)
         this.keepVersion(row, was, at, actorName(ctx.actor))
         versions.push([row.id, row.version, { vals, prov }])
         this.update(table, row.id, vals, prov, at)
@@ -275,7 +280,7 @@ export class Records {
           : (one<Row>(this.db, `SELECT * FROM ${quote(table.slug)} WHERE item_key = ?`, item.key) ??
             perRow(this, table, vals))
         if (!r && item.row) throw new Refused(`${table.name} has no row ${item.row}.`)
-        if (!r && options.existing) continue
+        if (!r && (options.existing || removedBefore(this, table, item.key))) continue
         if (!r) {
           partOfGiven(table, vals, true)
           checkPer(this, table, vals, null)
@@ -287,14 +292,10 @@ export class Records {
           continue
         }
         const was = this.snapshot(table, r)
-        // What the person said stands: a connection or a reader never writes over it. Nor over a
-        // figure a script worked out (a deal's staff counted from its census): what the
-        // documents give stands over what a page says.
-        for (const k of Object.keys(vals))
-          if (was.prov[k]?.kind === 'stated' || was.prov[k]?.kind === 'computed') {
-            delete vals[k]
-            delete prov[k]
-          }
+        // What the person said stands: a connection or a reader never writes over it, and what
+        // it read is kept beside it (D3). Nor over a figure a script worked out (a deal's staff
+        // counted from its census): what the documents give stands over what a page says.
+        landBeside(this, r.id, was, vals, prov)
         const merged = { ...was.vals, ...vals }
         if (JSON.stringify(sortKeys(present(merged))) === JSON.stringify(sortKeys(was.vals))) {
           out.same++

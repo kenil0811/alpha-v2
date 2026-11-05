@@ -93,7 +93,6 @@ rule('D3', 'a machine’s newer value is kept beside the person’s, with Reset'
       return refused === null && w.value(t.table, t.row, t.field) === MACHINE.Messages
     },
   },
-  waits: { 'agent: a script': 4, 'connector: landing': 4, 'Reset puts the newer value back': 4 },
 })
 
 rule('D4', 'a row the person removed stays removed', {
@@ -114,7 +113,6 @@ rule('D4', 'a row the person removed stays removed', {
       return w.world.records.byKey(w.table(t.table).id, t.key ?? '') !== undefined
     },
   },
-  waits: { 'agent: a script': 4, 'connector: landing': 4 },
 })
 
 // Alpha writes an order in a turn, its quantity called the person's word: what it lands as.
@@ -141,7 +139,40 @@ rule('D5', 'a number, an amount or a date called stated is in the person’s wor
     },
     'a number in the person’s message stays stated': async (w) =>
       (await quantityCalledStated(w, 'Order 40 bags of flour from Harbor Mills.')) === 'stated',
+    'an amount and a date are checked the same way': async (w) => {
+      const t = w.table('Orders')
+      w.world.shape.addFields(
+        t.id,
+        [
+          { name: 'Price', kind: 'money' },
+          { name: 'Due', kind: 'date' },
+        ],
+        asPerson(w),
+      )
+      const kinds = async (said: string) => {
+        w.say(said)
+        await alpha(w, 'write', {
+          table: 'Orders',
+          rows: [
+            {
+              values: {
+                Item: 'Sugar',
+                Price: { amount: 1200, currency: 'USD' },
+                Due: '2026-11-20',
+              },
+              provenance: { kind: 'stated' },
+            },
+          ],
+        })
+        const row = w.world.records.list(t.id).at(-1)?.id ?? ''
+        return [
+          w.provenance('Orders', row, 'Price')?.kind,
+          w.provenance('Orders', row, 'Due')?.kind,
+        ]
+      }
+      const never = await kinds('Order sugar from Harbor Mills.')
+      const said = await kinds('Order sugar for $1,200, due 20 Nov.')
+      return never.every((k) => k === 'assumed') && said.every((k) => k === 'stated')
+    },
   },
-  waits: { 'a number the person never said is not kept as stated': 4 },
-  later: { 'an amount and a date are checked the same way': 4 },
 })

@@ -109,7 +109,7 @@ export function SourcePanel({
                 )}
                 <div>
                   <Button size="sm" onClick={reset}>
-                    Reset to Alpha's figure
+                    {source.beside.reset}
                   </Button>
                 </div>
                 {problem && <div className="text-bad text-sm">{problem}</div>}

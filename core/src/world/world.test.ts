@@ -136,7 +136,7 @@ describe('the world', () => {
       [{ id: id as string, values: { Quantity: 3 }, provenance: { kind: 'stated' } }],
       {
         actor: alpha,
-        said: s,
+        said: said('make it three'),
       },
     )
     world.shape.rename({ table: 'Meals', field: 'Quantity' }, 'How many', { actor: alpha })
@@ -165,7 +165,7 @@ describe('the world', () => {
       [{ id: id as string, values: { Quantity: 3 }, provenance: { kind: 'stated' } }],
       {
         actor: alpha,
-        said: s,
+        said: said('make it three'),
       },
     )
     expect(world.records.remove(t.id, [id as string], { actor: alpha })).toBe(1)
