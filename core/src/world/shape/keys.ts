@@ -41,15 +41,22 @@ export function claimTable(shape: Shape, table: Table, moduleId: string, key: st
     run(shape.db, 'UPDATE tables SET key = ? WHERE id = ? AND key IS NULL', key, table.id)
 }
 
-// A table a connection fills: a mirror of the system that keeps its record (rules D1).
+// A table a connection fills: a mirror of the system that keeps its record (rules D1); one two
+// connections fill (Gmail's and Outlook's Mail) mirrors both, "Gmail and Outlook".
 export function markMirror(shape: Shape, tableId: string, system: string): void {
-  run(
+  const was = one<{ mirror: string | null }>(
     shape.db,
-    'UPDATE tables SET mirror = ? WHERE id = ? AND mirror IS NOT ?',
-    system,
+    'SELECT mirror FROM tables WHERE id = ?',
     tableId,
-    system,
   )
+  const all = was?.mirror ? was.mirror.split(' and ') : []
+  if (!all.includes(system))
+    run(
+      shape.db,
+      'UPDATE tables SET mirror = ? WHERE id = ?',
+      [...all, system].join(' and '),
+      tableId,
+    )
 }
 
 export function claimModule(shape: Shape, id: string, key: string): void {

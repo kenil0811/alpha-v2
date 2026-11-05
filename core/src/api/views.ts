@@ -406,6 +406,12 @@ export function makeViews(ctx: BaseCtx) {
     }
   }
 
+  // Which system a mirror's row was read from: its connection's, where the table mirrors several.
+  const readFrom = (mirror: string, r: RecordOut) => {
+    const c = Object.values(r.provenance).find((p) => p.source.connector)?.source.connector ?? ''
+    return mirror.split(' and ').find((m) => m.toLowerCase() === c.toLowerCase()) ?? mirror
+  }
+
   // A row as a table or its page shows it: its values, each one's source, and on a mirror when
   // it was last read and whether its source deleted it (rules D6, D8, D12).
   function rowOut(t: Table, r: RecordOut): RowView {
@@ -416,10 +422,10 @@ export function makeViews(ctx: BaseCtx) {
       sources: Object.fromEntries(
         Object.entries(r.provenance).map(([k, p]) => [
           k,
-          sourceView(p, source.has(k) ? t.mirror : null),
+          sourceView(p, source.has(k) && t.mirror ? readFrom(t.mirror, r) : null),
         ]),
       ),
-      ...(t.mirror && r.readAt ? { read: { from: t.mirror, at: r.readAt } } : {}),
+      ...(t.mirror && r.readAt ? { read: { from: readFrom(t.mirror, r), at: r.readAt } } : {}),
       ...(r.goneAt ? { gone: r.goneAt } : {}),
     }
   }
