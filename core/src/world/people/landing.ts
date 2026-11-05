@@ -29,7 +29,7 @@ export function derive(
   const map = table.people
   const none = { said: [], exchanges: [], yours: [] }
   if (!map) return none
-  const v = (name?: string) => (name ? text(vals[findField(table, name).id]).trim() : '')
+  const v = (name?: string) => (name ? text(vals[findField(table, name, true).id]).trim() : '')
   const you = new Set(people.batch?.you ?? people.you())
   if (map.each === 'person') {
     const region = people.batch?.region !== undefined ? people.batch.region : people.phoneRegion()
@@ -199,7 +199,7 @@ export function rows(people: People, table: Table, ids: string[], ctx: WriteCtx)
     // own, worked out once for the whole landing
     const map = table.people
     if (map?.each === 'person' && map.phones) {
-      const f = findField(table, map.phones)
+      const f = findField(table, map.phones, true)
       const theirs = (people.records?.valuesOf(ids, f.id) ?? []).flatMap((v) =>
         String(v ?? '')
           .split(/[,;\n]+/)

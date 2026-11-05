@@ -3,7 +3,7 @@ import { type Ask, inReadingOrder, type ReadSpec, readInto } from '../../files/r
 import { dayOf, dayOfWhen } from '../../world/day.ts'
 import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { Module, Table } from '../../world/shape/index.ts'
+import { type Field, findField, type Module, type Table } from '../../world/shape/index.ts'
 import { agents, nextRun } from '../agents.ts'
 import { type JudgeSpec, judge } from '../judging.ts'
 import type { AgentRunner } from './runner.ts'
@@ -32,11 +32,22 @@ export function api(
       return out
     }
   const ctx = { actor, run: runId }
+  // a kit's tables and fields as its code names them: by their lasting keys, the names the kit gave
+  // them, whatever the person calls them now; its module's first, then any (rules M5)
   const tableOf = (name: unknown): Table => {
-    const t = runner.world.shape.table(String(name))
-    if (!t) throw new Refused(`There is no table called ${String(name)}.`)
+    const n = String(name)
+    const mine = new Set(runner.world.shape.within(module.id))
+    const all = runner.world.shape.tables()
+    const t =
+      all.find((x) => x.key === n && mine.has(x.module.id)) ??
+      all.find((x) => x.key === n) ??
+      runner.world.shape.table(n)
+    if (!t) throw new Refused(`There is no table called ${n}.`)
     return t
   }
+  const named = (f: Field) => f.key ?? f.name
+  const walled = (t: Table, names: Set<string>) =>
+    names.has(t.name.toLowerCase()) || (!!t.key && names.has(t.key.toLowerCase()))
   // the walls: a refusal is a step of the run, so Activity says what was refused and why
   const refuse = (why: string): never => {
     runner.world.line({
@@ -49,14 +60,14 @@ export function api(
     throw new Refused(why)
   }
   const readable = (t: Table): Table => {
-    if (walls && !walls.reads.has(t.name.toLowerCase()))
+    if (walls && !walled(t, walls.reads))
       refuse(
         `${label} may not read ${t.name}: it is neither ${module.name}'s own table nor one its kit uses.`,
       )
     return t
   }
   const writable = (t: Table): Table => {
-    if (walls && !walls.touches.has(t.name.toLowerCase()))
+    if (walls && !walled(t, walls.touches))
       refuse(
         walls.kind === 'try'
           ? `${label} may write only ${module.name}'s own tables, not ${t.name}.`
@@ -77,8 +88,8 @@ export function api(
     'rows.list': async (p: Record<string, unknown>) => {
       const t = readable(tableOf(p.table))
       const keys = runner.world.records.itemKeys(t.id)
-      // values by field name, as land and compute take them
-      const names = new Map(t.fields.map((f) => [f.slug, f.name]))
+      // values by the field's name for the kit's code, as land and compute take them
+      const names = new Map(t.fields.map((f) => [f.slug, named(f)]))
       return runner.world.records.list(t.id).map((r) => ({
         id: r.id,
         key: keys.get(r.id) ?? null,
@@ -223,7 +234,7 @@ export function api(
         {
           words: String(p.words ?? '').trim() || `Rows of ${t.name} for you to decide`,
           table: t,
-          field: String(p.field ?? ''),
+          field: p.field ? findField(t, String(p.field), true).name : '',
           choices: Array.isArray(p.choices) ? p.choices.map(String) : [],
           rows: Array.isArray(p.rows) ? p.rows.map(String) : [],
           note: p.note ? String(p.note) : null,
@@ -270,9 +281,7 @@ export function api(
       // what the person said stands: a script computes only the rest
       const got = runner.world.records.get(String(p.id))
       const said = got && got.table.id === t.id ? got.record.provenance : {}
-      const stated = new Set(
-        t.fields.filter((f) => said[f.slug]?.kind === 'stated').map((f) => f.name),
-      )
+      const stated = new Set(t.fields.filter((f) => said[f.slug]?.kind === 'stated').map(named))
       const given = (p.values ?? {}) as Record<string, unknown>
       const values = Object.fromEntries(Object.entries(given).filter(([k]) => !stated.has(k)))
       const formula = (p.formula ?? {}) as Record<string, string>
@@ -290,7 +299,8 @@ export function api(
             },
           ]),
       )
-      if (Object.keys(beside).length) runner.world.records.keepBeside(t.id, String(p.id), beside)
+      if (Object.keys(beside).length)
+        runner.world.records.keepBeside(t.id, String(p.id), beside, true)
       if (!Object.keys(values).length) return null
       const perField = Object.fromEntries(
         Object.keys(values).map((k) => [
@@ -360,9 +370,10 @@ export function api(
             }
           : undefined
         if (choice) {
-          const f = t.fields.find((x) => x.name === choice.field)
-          if (f?.kind !== 'choice' || !f.choices.includes(choice.value))
+          const f = findField(t, choice.field, true)
+          if (f.kind !== 'choice' || !f.choices.includes(choice.value))
             throw new Refused(`${choice.value} is not one of ${t.name}'s ${choice.field} choices.`)
+          choice.field = f.name
         }
         rows = { table: t.id, rows: ids, ...(choice ? { choice } : {}) }
       }

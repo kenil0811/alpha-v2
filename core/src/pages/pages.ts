@@ -96,7 +96,8 @@ export function pageDocument(
 }
 
 // What a page may ask: its module's rows, or when a field's values changed. Values come by field
-// name, with the kind of each (stated, looked up, computed…); nothing here writes.
+// name, with the kind of each (stated, looked up, computed…); nothing here writes. A kit's page
+// names its tables and fields as the kit did, by their lasting keys (rules M5).
 export function pageAnswer(
   world: World,
   module: Module,
@@ -104,9 +105,12 @@ export function pageAnswer(
   args: Record<string, unknown>,
 ): unknown {
   const wanted = String(args.table ?? '').toLowerCase()
-  const table = world.shape.tables(module.id).find((t) => t.name.toLowerCase() === wanted)
+  const tables = world.shape.tables(module.id)
+  const table =
+    tables.find((t) => t.key?.toLowerCase() === wanted) ??
+    tables.find((t) => t.name.toLowerCase() === wanted)
   if (!table) throw new Refused(`${module.name} has no table called ${String(args.table)}.`)
-  const nameOf = new Map(table.fields.map((f) => [f.slug, f.name]))
+  const nameOf = new Map(table.fields.map((f) => [f.slug, f.key ?? f.name]))
   const rows = world.records.list(table.id)
   if (op === 'rows')
     return rows.map((r) => ({
@@ -120,9 +124,10 @@ export function pageAnswer(
       at: r.createdAt,
     }))
   if (op === 'history') {
-    const field = table.fields.find(
-      (f) => f.name.toLowerCase() === String(args.field ?? '').toLowerCase(),
-    )
+    const named = String(args.field ?? '').toLowerCase()
+    const field =
+      table.fields.find((f) => f.key?.toLowerCase() === named) ??
+      table.fields.find((f) => f.name.toLowerCase() === named)
     if (!field) throw new Refused(`${table.name} has no field called ${String(args.field)}.`)
     // each row's values of the field, oldest first, with when each came
     return rows.map((r) => ({

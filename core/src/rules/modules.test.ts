@@ -163,9 +163,4 @@ rule('M5', 'kit code finds tables and fields by their lasting key', {
       return read === null && w.value('Messages', w.rowOf('Messages', 'm2'), 'Topic') === 'Lunch'
     },
   },
-  waits: {
-    'an agent’s script still lands in its table after the person renames it': 3,
-    'an agent’s script still lands a field after the person has it renamed': 3,
-    'a connector still lands its field after the person has it renamed': 3,
-  },
 })

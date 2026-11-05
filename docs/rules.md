@@ -40,7 +40,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | M2 | In a managed module nobody changes its tables, fields, choices, relations, agents, skills, scripts, pages or business case: not a person, the model, an agent or a plugin. Every door refuses in words that say who manages it; the window greys the control with that reason | 4 Nov | skip (step 6) |
 | M3 | Only a newer signed pack changes a managed module. Its files are checked against the signature at every start; a changed file does not load and says what changed | 4 Nov | skip (step 6) |
 | M4 | In an open module everything is the firm's to change. A kit's update follows the ownership rule, and a maintained kit's shape change goes on its card from every door, not only the model's tool | 4 Nov | test |
-| M5 | Kit code finds tables and fields by their lasting key, never by a name a person can change, so a rename never breaks an agent or a reader | 4 Nov | skip (step 3) |
+| M5 | Kit code finds tables and fields by their lasting key, never by a name a person can change, so a rename never breaks an agent or a reader | 4 Nov | test |
 | M6 | Who may build is one firm setting: everyone, admins or nobody. Building is a new module, table, field, agent or page, and installing or packing a kit | 4 Nov | step 8 |
 | M7 | The developer switch, installing packs, restoring, bringing in or removing data, and the model's route are for admins only (the owner, until there are users) | 4 Nov | step 8 |
 | M8 | A managed kit's update may rename, retype and remove, by a scripted migration signed with it; an open kit's update only adds | 4 Nov | step 8 |

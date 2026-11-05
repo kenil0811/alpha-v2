@@ -33,7 +33,10 @@ export function unmetNeeds(world: World, file: AgentFile): string[] {
   )
   for (const c of file.needs.connectors)
     if (!connected.has(c.toLowerCase())) out.push(`${c} connected`)
-  for (const t of file.needs.tables) if (!world.shape.table(t)) out.push(`a table called ${t}`)
+  // a kit's table by its lasting key too, whatever the person calls it now (rules M5)
+  const keys = new Set(world.shape.tables().flatMap((t) => (t.key ? [t.key.toLowerCase()] : [])))
+  for (const t of file.needs.tables)
+    if (!world.shape.table(t) && !keys.has(t.toLowerCase())) out.push(`a table called ${t}`)
   return out.length ? out : []
 }
 
@@ -47,7 +50,8 @@ export function fileOf(runner: AgentRunner, agentId: string, module: Module): Ag
 
 const lower = (names: string[]) => new Set(names.map((n) => n.toLowerCase()))
 
-// The module's own tables and those of the modules inside it, and its kit's uses.
+// The module's own tables and those of the modules inside it, and its kit's uses; a run's walls
+// take a table by its name or its lasting key (api.ts).
 function reach(runner: AgentRunner, module: Module): { own: string[]; uses: string[] } {
   const own = runner.world.shape
     .within(module.id)

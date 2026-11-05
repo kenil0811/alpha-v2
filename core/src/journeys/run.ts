@@ -33,6 +33,7 @@ import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
 import { AgentRunner } from '../modules/runs/index.ts'
 import { Refused } from '../world/kinds.ts'
+import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
@@ -247,8 +248,11 @@ export async function runOne(
     // not, nor an answer with no card to answer, which is waited on no longer (it waited out the
     // step's ten minutes, 29 Oct)
     const first = step.answer ? world.cards.waiting(user.id)[0] : undefined
-    // a Save card approved from Governance is answered as on the card, so its turn goes on too
-    const turns = !!step.say || !!step.approve_rule || (!!first && first.call?.tool !== DRAFT)
+    // a Save card approved from Governance is answered as on the card, so its turn goes on too;
+    // a maintained kit's card is answered on its own (rules M4), with no turn after it
+    const noTurn = [DRAFT, MAINTAINED_SHAPE]
+    const turns =
+      !!step.say || !!step.approve_rule || (!!first && !noTurn.includes(first.call?.tool ?? ''))
     const done = turns ? idle() : Promise.resolve(true)
     let what: string
     if (step.say) {

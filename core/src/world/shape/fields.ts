@@ -21,7 +21,7 @@ export function rename(
     shape,
     { table: what.table },
     (t) => ({
-      words: `rename ${what.field ? `${t?.name}'s ${what.field}` : t?.name} to ${to.trim()}`,
+      words: `rename ${what.field ? `${what.field} in ${t?.name}` : t?.name} to ${to.trim()}`,
       method: 'rename',
       args: [what, to],
     }),
@@ -300,7 +300,8 @@ export function setPeople(
               map.you,
               map.about,
             ]
-      for (const n of named.filter((x): x is string => !!x)) findField(table, n)
+      // a connector's or a kit's map names fields as it made them (rules M5)
+      for (const n of named.filter((x): x is string => !!x)) findField(table, n, true)
       if (map.each === 'exchange' && !map.from && !map.with?.length)
         throw new Refused('An exchange names who wrote it (from) or who was at it (with).')
     }

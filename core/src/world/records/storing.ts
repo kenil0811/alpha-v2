@@ -199,13 +199,14 @@ export function prepare(
   perField: Record<string, ProvenanceInput> | undefined,
   said: Said | null,
   at: string,
+  byKey = false, // code's values, by the lasting keys of its fields (rules M5)
 ): Snapshot {
   if (!values || typeof values !== 'object' || !Object.keys(values).length)
     throw new Refused('A row needs values.')
   const vals: Record<string, unknown> = {}
   const prov: Record<string, Provenance> = {}
   for (const [name, value] of Object.entries(values)) {
-    const f = findField(table, name)
+    const f = findField(table, name, byKey)
     let v = f.tags
       ? checkTags(f.name, value, f.choices)
       : checkValue(f.kind, f.name, value, f.choices)
@@ -228,7 +229,7 @@ export function prepare(
     // nothing is a value that is not there: a null clears the column and carries no provenance
     if (v === null) continue
     const own = perField
-      ? Object.entries(perField).find(([k]) => findField(table, k).id === f.id)?.[1]
+      ? Object.entries(perField).find(([k]) => findField(table, k, byKey).id === f.id)?.[1]
       : undefined
     const p = own ?? rowProv
     if (!p)

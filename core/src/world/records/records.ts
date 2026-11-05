@@ -71,6 +71,12 @@ function partOfGiven(table: Table, vals: Record<string, unknown>, fresh: boolean
       )
 }
 
+// Code a kit, a connection or an agent's script runs names fields by their lasting keys (rules M5).
+const byCode = (ctx: RecordCtx): boolean =>
+  ctx.actor.kind === 'agent' ||
+  ctx.actor.kind === 'connector' ||
+  (ctx.actor.kind === 'system' && !!ctx.actor.id?.startsWith('kit:'))
+
 // What a change's stated values rest on: the turn's message, or, by hand, the change's own line.
 const saidIn = (ctx: RecordCtx, line: number): Said | null =>
   ctx.byHand ? { message: line, user: ctx.user ?? '' } : (ctx.said ?? null)
@@ -130,6 +136,7 @@ export class Records {
           row.per_field,
           said,
           at,
+          byCode(ctx),
         )
         partOfGiven(table, vals, true)
         checkPer(this, table, vals, null)
@@ -167,7 +174,15 @@ export class Records {
       for (const c of changes) {
         const row = this.readRow(table, c.id)
         if (!row) throw new Refused(`${table.name} has no row ${c.id}.`)
-        const { vals, prov } = this.prepare(table, c.values, c.provenance, c.per_field, said, at)
+        const { vals, prov } = this.prepare(
+          table,
+          c.values,
+          c.provenance,
+          c.per_field,
+          said,
+          at,
+          byCode(ctx),
+        )
         partOfGiven(table, vals, false)
         checkPer(this, table, vals, row.id)
         const was = this.snapshot(table, row)
@@ -253,7 +268,7 @@ export class Records {
               ]),
             )
           : undefined
-        const { vals, prov } = this.prepare(table, item.values, row, perField, null, at)
+        const { vals, prov } = this.prepare(table, item.values, row, perField, null, at, true)
         // in a table of one row per person, the person's row when the key finds none (step 3d)
         const r = item.row
           ? this.readRow(table, item.row)
@@ -360,11 +375,12 @@ export class Records {
     tableId: string,
     id: string,
     beside: Record<string, { value: unknown; formula?: string; note?: string }>,
+    byKey = false,
   ): void {
     const table = this.mustTable(tableId)
     if (!this.readRow(table, id)) return
     for (const [name, b] of Object.entries(beside)) {
-      const f = findField(table, name)
+      const f = findField(table, name, byKey)
       const stored = this.provenanceOf([id]).get(id)
       const p = stored?.own[f.id] ?? stored?.all
       if (p?.kind !== 'stated') continue
@@ -483,8 +499,9 @@ export class Records {
     perField: Record<string, ProvenanceInput> | undefined,
     said: Said | null,
     at: string,
+    byKey = false,
   ): Snapshot {
-    return prepare(this, table, values, rowProv, perField, said, at)
+    return prepare(this, table, values, rowProv, perField, said, at, byKey)
   }
   index(table: Table, id: string, vals: Record<string, unknown>, fresh = false): void {
     index(this, table, id, vals, fresh)

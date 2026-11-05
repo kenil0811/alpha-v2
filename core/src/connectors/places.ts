@@ -15,17 +15,22 @@ export function landIn(world: World, c: Connector): Table[] {
   return c.tables.map((spec) => {
     const found = world.shape.ownTable(module.id, spec.name)
     if (found) world.shape.claimTable(found, module.id, spec.name)
-    const missing = found
-      ? spec.fields.filter(
-          (f) => !found.fields.some((x) => x.name.toLowerCase() === f.name.toLowerCase()),
-        )
-      : []
+    // its fields keyed with the connector's names for them (rules M5), so one the person renamed
+    // keeps taking its values; a field made before keys is keyed by its name when first met
+    const keyed = spec.fields.map((f) => ({ ...f, key: f.name }))
+    const same = (x: { key: string | null; name: string }, name: string) =>
+      x.key === name || (x.key === null && x.name.toLowerCase() === name.toLowerCase())
+    for (const f of spec.fields) {
+      const x = found?.fields.find((y) => y.key === null && same(y, f.name))
+      if (x) world.shape.setKey(x.id, f.name)
+    }
+    const missing = found ? keyed.filter((f) => !found.fields.some((x) => same(x, f.name))) : []
     // Alpha's working memory, out of the sidebar until the person shows it (Kenil, 19 Oct).
     const t = !found
       ? world.shape.makeTable(
           module.id,
           spec.name,
-          spec.fields,
+          keyed,
           { actor },
           { hidden: true, key: spec.name },
         )

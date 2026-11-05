@@ -195,13 +195,17 @@ export function spec(f: Pick<Field, 'id' | 'slug' | 'kind' | 'many' | 'indexed'>
   return { id: f.id, slug: f.slug, kind: f.kind, many: f.many, indexed: f.indexed }
 }
 
-export function findField(table: Table, nameOrSlug: string): Field {
-  const f = table.fields.find(
-    (x) =>
-      x.id === nameOrSlug ||
-      x.slug === slugify(nameOrSlug) ||
-      x.name.toLowerCase() === nameOrSlug.toLowerCase(),
-  )
+// A field by its id, slug or name; code a kit or a connector made finds it by its lasting key first,
+// the name it gave it, whatever the person calls it now (rules M5).
+export function findField(table: Table, nameOrSlug: string, byKey = false): Field {
+  const f =
+    (byKey ? table.fields.find((x) => x.key === nameOrSlug) : undefined) ??
+    table.fields.find(
+      (x) =>
+        x.id === nameOrSlug ||
+        x.slug === slugify(nameOrSlug) ||
+        x.name.toLowerCase() === nameOrSlug.toLowerCase(),
+    )
   if (!f)
     throw new Refused(
       `${table.name} has no field called ${nameOrSlug}; it has ${table.fields.map((x) => x.name).join(', ') || 'none yet'}.`,
