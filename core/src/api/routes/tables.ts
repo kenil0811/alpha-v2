@@ -13,7 +13,7 @@ import { fieldViews } from './rows.ts'
 
 export function registerTables(ctx: Ctx): void {
   const { app, world, engine, user, asPerson, live } = ctx
-  const { sourceView, savedView } = ctx.views
+  const { sourceView, savedView, rowOut } = ctx.views
 
   // In the sidebar or out of it (Settings › Connections).
   // What a table, a field or a view means, in the person's own sentence (the semantic layer):
@@ -336,17 +336,12 @@ export function registerTables(ctx: Ctx): void {
       about: t.about,
       aboutBy: t.aboutBy,
       module: { id: t.module.id, name: t.module.name },
+      mirror: t.mirror,
       documents: t.documents,
       fields: t.fields.map(fieldViews(world.shape)),
       views: world.views.list(t.id).map(savedView),
       readBy: readByOf(ctx, t.id),
-      rows: world.records.list(t.id).map((r) => ({
-        id: r.id,
-        values: r.values,
-        sources: Object.fromEntries(
-          Object.entries(r.provenance).map(([k, p]) => [k, sourceView(p)]),
-        ),
-      })),
+      rows: world.records.list(t.id).map((r) => rowOut(t, r)),
       names: {
         ...Object.fromEntries(
           t.fields

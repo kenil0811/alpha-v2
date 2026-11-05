@@ -17,10 +17,32 @@ export function list(records: Records, tableId: string): RecordOut[] {
   const lists = listsOf(records, table, null)
   const prov = provenanceOfTable(records, table)
   const sums = summed(records, table, rows)
+  const read = readOf(records, table.id)
   return rows.map((r) => {
     const vals = rowVals(records, table, r, lists.get(r.id))
-    return out(records, table, r, vals, resolve(prov.get(r.id), vals), sums(r.id))
+    return {
+      ...out(records, table, r, vals, resolve(prov.get(r.id), vals), sums(r.id)),
+      ...read(r.id),
+    }
   })
+}
+
+// When a read last met each row, and when its source said it was gone (rules D8, D12).
+function readOf(records: Records, tableId: string, id?: string) {
+  const at = new Map(
+    all<{ id: string; read_at: string | null; gone_at: string | null }>(
+      records.db,
+      `SELECT id, read_at, gone_at FROM records WHERE table_id = ? ${id ? 'AND id = ?' : ''} AND (read_at IS NOT NULL OR gone_at IS NOT NULL)`,
+      ...(id ? [tableId, id] : [tableId]),
+    ).map((x) => [x.id, x]),
+  )
+  return (rowId: string) => {
+    const x = at.get(rowId)
+    return {
+      ...(x?.read_at ? { readAt: x.read_at } : {}),
+      ...(x?.gone_at ? { goneAt: x.gone_at } : {}),
+    }
+  }
 }
 
 export function get(records: Records, id: string): { table: Table; record: RecordOut } | undefined {
@@ -29,7 +51,8 @@ export function get(records: Records, id: string): { table: Table; record: Recor
   const r = readRow(records, table, id)
   if (!r) return undefined
   const s = snapshot(records, table, r)
-  return { table, record: out(records, table, r, s.vals, s.prov, summed(records, table, [r])(id)) }
+  const record = out(records, table, r, s.vals, s.prov, summed(records, table, [r])(id))
+  return { table, record: { ...record, ...readOf(records, table.id, id)(id) } }
 }
 
 // A table's summaries for these rows (core step 3c), each with its computed provenance; they

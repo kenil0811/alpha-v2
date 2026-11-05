@@ -18,9 +18,17 @@ const theirs = (t: Target) => PERSON[t.table] ?? 'the person’s'
 const read = (t: Target) => MACHINE[t.table] ?? 'a machine’s'
 
 rule('D1', 'every table is Alpha’s own or a mirror, and a mirror names the system that keeps it', {
-  later: {
-    'a connector’s table names the system that keeps its record': 5,
-    'a field its connector does not fill is Alpha’s own': 5,
+  cases: {
+    'a connector’s table names the system that keeps its record': async (w) =>
+      w.table('Messages').mirror === 'Mailbox' && w.table('Suppliers').mirror === null,
+    'a field its connector does not fill is Alpha’s own': async (w) => {
+      await drive(w, 'alpha: shape').addField('Messages', 'Deal')
+      const fields = w.table('Messages').fields
+      return (
+        fields.find((f) => f.name === 'Subject')?.key === 'Subject' &&
+        fields.find((f) => f.name === 'Deal')?.key === null
+      )
+    },
   },
 })
 
@@ -97,6 +105,8 @@ rule('D3', 'a machine’s newer value is kept beside the person’s, with Reset'
 
 rule('D4', 'a row the person removed stays removed', {
   acts: ['land'],
+  // Alpha's own rows: a mirror's come and go only with its source (D8)
+  doors: (d) => d.by !== 'connector',
   given: (w, d) => drive(w, 'window: remove').remove(w.target(d)),
   attempt: (a, _act, d, w) => a.land(w.target(d), read(w.target(d))),
   holds: (w, _refused, _act, d) => {

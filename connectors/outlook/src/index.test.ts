@@ -30,10 +30,12 @@ afterEach(() => vi.unstubAllGlobals())
 
 function host(cursor: string | null = null) {
   const landed: { table: string; items: Item[] }[] = []
-  const h: Host & { now: string | null; landed: typeof landed } = {
+  const gone: { table: string; keys: string[]; by?: string | undefined }[] = []
+  const h: Host & { now: string | null; landed: typeof landed; goneSaid: typeof gone } = {
     account: ME,
     now: cursor,
     landed,
+    goneSaid: gone,
     secret: async () => 'short-lived',
     cursor: () => h.now,
     setCursor: (c) => {
@@ -42,6 +44,10 @@ function host(cursor: string | null = null) {
     land: (table, items) => {
       landed.push({ table, items })
       return { added: items.length, changed: 0, same: 0 }
+    },
+    gone: (table, keys, options) => {
+      gone.push({ table, keys, by: options?.by })
+      return keys.length
     },
     journal: () => {},
   }
@@ -172,6 +178,7 @@ describe('reading the mail', () => {
       Attachments: 'Harbor CIM.pdf',
       Unread: 'yes',
       Starred: 'no',
+      'Outlook ID': 'AAMk1',
     })
     expect(rows[1]?.values).toMatchObject({ Unread: 'no', Starred: 'yes', Attachments: '' })
     expect(rows[2]?.values).toMatchObject({
@@ -188,6 +195,8 @@ describe('reading the mail', () => {
     expect(asked.some((a) => a.url.includes('$deltatoken=in2'))).toBe(true)
     expect(asked.some((a) => a.url.includes('$deltatoken=sent2'))).toBe(true)
     expect(h.landed.at(-1)?.items).toEqual([])
+    // and is said gone, by the id Outlook keeps for it (rules D8)
+    expect(h.goneSaid).toEqual([{ table: 'Mail', keys: ['AAMk1'], by: 'Outlook ID' }])
     expect(JSON.parse(h.now ?? '{}').inbox).toMatch(/\$deltatoken=in2b$/)
   })
 })

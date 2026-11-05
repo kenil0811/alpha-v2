@@ -21,6 +21,8 @@ export interface RecordOut {
   provenance: Record<string, Provenance> // by the field's current slug
   createdAt: string
   updatedAt: string
+  readAt?: string // when a read last met it (rules D12)
+  goneAt?: string // when its source said it was gone; kept, out of the default lists (D8)
 }
 
 export interface LandInput {

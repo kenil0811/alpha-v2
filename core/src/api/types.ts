@@ -339,6 +339,8 @@ export interface RowView {
   id: string
   values: Record<string, unknown>
   sources: Record<string, SourceView>
+  read?: { from: string; at: string } // a mirror's row: when its system was last read (D12)
+  gone?: string // when its source deleted it; kept, out of the default list (D8)
 }
 
 export interface TableView {
@@ -347,6 +349,7 @@ export interface TableView {
   about: string | null // one sentence on what a row of it is
   aboutBy: 'kit' | 'alpha' | 'person' | null
   module: { id: string; name: string }
+  mirror: string | null // the system that keeps its rows' record (rules D1)
   fields: FieldView[]
   documents: string[] | null // the kinds of document its rows take, when it names them
   rows: RowView[]

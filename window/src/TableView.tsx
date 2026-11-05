@@ -35,6 +35,7 @@ import { cleared, hiding } from './table/hiding.ts'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
+import { MirrorLine, mirrorKeeps, mirrorRows } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
@@ -140,6 +141,9 @@ export function TableView({
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
   const [opened, setOpened] = useState<string | null>(null)
+  // a mirror's rows still at its source, or only those gone from it (rules D8)
+  const [showingGone, setShowingGone] = useState(false)
+  const present = useMemo(() => mirrorRows(data.rows, showingGone), [data.rows, showingGone])
   // the open tasks on each row, drawn beside its name
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
   useEffect(() => {
@@ -154,17 +158,17 @@ export function TableView({
   const notes = data.fields.filter((f) => f.kind === 'notes')
   const shown = columns(fields, config)
   const base = useMemo(() => {
-    if (only) return data.rows.filter((r) => only.includes(r.id))
-    if (!of) return data.rows
+    if (only) return present.filter((r) => only.includes(r.id))
+    if (!of) return present
     // the rows naming it in a relation: a part names the row it is part of
     const rel = data.fields.filter((f) => f.kind === 'relation')
-    return data.rows.filter((r) =>
+    return present.filter((r) =>
       rel.some((f) => {
         const v = r.values[f.slug]
         return v === of || (Array.isArray(v) && v.includes(of))
       }),
     )
-  }, [data.rows, data.fields, only, of])
+  }, [present, data.fields, only, of])
   const rows = useMemo(
     () =>
       sortRows(
@@ -396,6 +400,7 @@ export function TableView({
             allHref={`#/table/${data.id}`}
             onClear={() => setConfig(cleared(config))}
           />
+          <MirrorLine data={data} showingGone={showingGone} onGone={setShowingGone} />
           <div className="flex flex-wrap items-center gap-2 px-7 py-2">
             {tickedRows.length > 0 ? (
               <TickedBar
@@ -403,6 +408,7 @@ export function TableView({
                 rows={tickedRows}
                 fields={fields}
                 onClear={() => setTicked(new Set())}
+                fixed={mirrorKeeps(data)}
                 onSet={(field, value) =>
                   write(() =>
                     api.post(`/api/tables/${data.id}/rows/many`, {
@@ -539,7 +545,7 @@ export function TableView({
                         )
                 }
                 onRemove={
-                  kept
+                  kept || data.mirror
                     ? undefined
                     : (rs) =>
                         write(() =>

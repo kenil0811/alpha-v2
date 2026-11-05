@@ -221,9 +221,10 @@ export class Shape {
       people: string | null
       about: string | null
       about_by: AboutBy | null
+      mirror: string | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, key, hidden, setup, tab, added_on, documents, people, about, about_by FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, key, hidden, setup, tab, added_on, documents, people, about, about_by, mirror FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -282,6 +283,7 @@ export class Shape {
       name: t.name,
       slug: t.slug,
       key: t.key,
+      mirror: t.mirror,
       hidden: t.hidden === 1,
       setup: t.setup === 1,
       tab: t.tab === 1,

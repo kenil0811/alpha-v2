@@ -135,7 +135,7 @@ describe('the switch to real tables', () => {
         (world.db.prepare('PRAGMA table_info(records)').all() as { name: string }[]).map(
           (c) => c.name,
         ),
-      ).toEqual(['id', 'table_id', 'created_at', 'seq'])
+      ).toEqual(['id', 'table_id', 'created_at', 'seq', 'read_at', 'gone_at'])
       const deals = world.shape.table('Deals')
       expect(deals?.fields.find((f) => f.name === 'Sources')?.many).toBe(true)
       // a field called Version keeps its name; its column steps aside from the row's own

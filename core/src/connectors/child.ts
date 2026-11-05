@@ -102,6 +102,7 @@ function hostFor(req: number, account: string, cursor: string | null): Host {
       tell(req, 'setCursor', c)
     },
     land: (table, items, options) => ask(req, 'land', { table, items, options }) as never,
+    gone: (table, keys, options) => ask(req, 'gone', { table, keys, options }) as never,
     keepFile: (name, bytes, mime) =>
       ask(req, 'keepFile', { name, bytes: b64(bytes), mime }) as never,
     keys: (table) => ask(req, 'keys', table) as never,

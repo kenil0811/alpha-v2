@@ -187,6 +187,20 @@ export class ConnectorService {
           options,
         )
       },
+      gone: (tableName, keys, options) => {
+        const t = tableOf(this.world, c, tableName)
+        if (!t) throw new Problem(`The table ${tableName} is not there.`)
+        const itemKeys = this.world.records.itemKeys(t.id)
+        const by = options?.by
+        return this.world.records.gone(
+          t.id,
+          by
+            ? this.world.records.idsWhere(t.id, by, keys).flatMap((id) => itemKeys.get(id) ?? [])
+            : keys,
+          { connector: c.manifest.name, account: conn.account },
+          { actor },
+        )
+      },
       ...(this.options.browser ? { browser: this.options.browser } : {}),
       ...(this.options.local ? { local: () => this.options.local as LocalReader } : {}),
       never: () => this.world.connections.get(conn.id)?.never ?? [],

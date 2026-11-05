@@ -6,7 +6,7 @@ import { unmetNeeds } from '../modules/runs/index.ts'
 import { pagesOf } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
 import type { Provenance } from '../world/kinds.ts'
-import { besideFrom, resetWords } from '../world/records/index.ts'
+import { besideFrom, type RecordOut, resetWords } from '../world/records/index.ts'
 import type { Module, Table } from '../world/shape/index.ts'
 import { manifestSays } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
@@ -18,6 +18,7 @@ import type {
   AboutRows,
   CardView,
   ModuleSummary,
+  RowView,
   SavedView,
   SourceView,
   TableSummary,
@@ -310,7 +311,9 @@ export function makeViews(ctx: BaseCtx) {
     }
   }
 
-  function sourceView(p: Provenance): SourceView {
+  // A value's source in words; on a mirror's source field (mirror: its system), the person's value
+  // is their correction, kept in Alpha (rules D6).
+  function sourceView(p: Provenance, mirror?: string | null): SourceView {
     const at = p.at
     switch (p.kind) {
       case 'stated': {
@@ -331,6 +334,13 @@ export function makeViews(ctx: BaseCtx) {
               },
             }
           : {}
+        if (mirror)
+          return {
+            kind: 'stated',
+            words: `Corrected in Alpha; nothing goes back to ${mirror}`,
+            at,
+            ...beside,
+          }
         // set by hand: the change's own line (rules A1), or the window's own line before it
         if (line && ['set', 'changed', 'wrote'].includes(line.kind))
           return { kind: 'stated', words: 'You set it in your window', at, ...beside }
@@ -396,6 +406,24 @@ export function makeViews(ctx: BaseCtx) {
     }
   }
 
+  // A row as a table or its page shows it: its values, each one's source, and on a mirror when
+  // it was last read and whether its source deleted it (rules D6, D8, D12).
+  function rowOut(t: Table, r: RecordOut): RowView {
+    const source = new Set(t.mirror ? t.fields.filter((f) => f.key).map((f) => f.slug) : [])
+    return {
+      id: r.id,
+      values: r.values,
+      sources: Object.fromEntries(
+        Object.entries(r.provenance).map(([k, p]) => [
+          k,
+          sourceView(p, source.has(k) ? t.mirror : null),
+        ]),
+      ),
+      ...(t.mirror && r.readAt ? { read: { from: t.mirror, at: r.readAt } } : {}),
+      ...(r.goneAt ? { gone: r.goneAt } : {}),
+    }
+  }
+
   return {
     cardOut,
     today,
@@ -415,6 +443,7 @@ export function makeViews(ctx: BaseCtx) {
     moduleOf,
     aboutRows,
     sourceView,
+    rowOut,
     columnOf,
     deny,
     savedView,

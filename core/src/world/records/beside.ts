@@ -2,11 +2,12 @@
 // value stands; what a page, a connection or a script has since is kept beside it, with where it
 // came from and when, so the cell is marked and Reset puts it back. A row the person removed
 // stays removed: its item key is remembered, and Bring back forgets it (D4).
-import { now } from '../db.ts'
-import { isPersonsOwn, type Provenance } from '../kinds.ts'
-import type { Table } from '../shape/index.ts'
+import { now, one, run } from '../db.ts'
+import { append } from '../journal.ts'
+import { isPersonsOwn, type Provenance, Refused } from '../kinds.ts'
+import type { Table, WriteCtx } from '../shape/index.ts'
 import type { Records } from './records.ts'
-import type { RecordCtx, Snapshot } from './types.ts'
+import type { LandSource, RecordCtx, Snapshot } from './types.ts'
 
 type Beside = NonNullable<Provenance['beside']>
 
@@ -82,3 +83,47 @@ export function besideFrom(b: Beside): string {
 }
 export const resetWords = (b: Beside): string =>
   b.kind === 'looked_up' ? `what ${besideFrom(b)} says` : 'Alpha’s figure'
+
+// A mirror's rows come and go only with its source (rules D8): none is removed in Alpha.
+export function mirrorKeeps(table: Table): void {
+  if (table.mirror)
+    throw new Refused(
+      `${table.name} is a mirror of ${table.mirror}: its rows come and go with ${table.mirror}, so none is removed in Alpha. A field of yours on it can be cleared.`,
+    )
+}
+
+// The rows a read met, each marked with when (rules D12); one the source has again is not gone.
+export function readNow(records: Records, ids: string[], at: string): void {
+  for (const id of ids)
+    run(records.db, 'UPDATE records SET read_at = ?, gone_at = NULL WHERE id = ?', at, id)
+}
+
+// Items a connection says are gone at its source (rules D8): their rows are kept, marked gone, out
+// of the default lists, so the notes, tasks and links on them stay findable. One line says how many.
+export function markGone(
+  records: Records,
+  table: Table,
+  keys: string[],
+  source: LandSource,
+  ctx: WriteCtx,
+): number {
+  const at = now()
+  const ids = keys.flatMap((k) => {
+    const id = records.byKey(table.id, k)
+    return id && one(records.db, 'SELECT 1 FROM records WHERE id = ? AND gone_at IS NULL', id)
+      ? [id]
+      : []
+  })
+  for (const id of ids) run(records.db, 'UPDATE records SET gone_at = ? WHERE id = ?', at, id)
+  if (ids.length)
+    append(records.db, {
+      actor: ctx.actor,
+      kind: 'gone',
+      words: `${ids.length} gone from ${source.account ?? source.connector} in ${table.name}; kept here.`,
+      data: { table: table.id, records: ids, connector: source.connector },
+      user: ctx.user ?? null,
+      module: table.module.id,
+      run: ctx.run ?? null,
+    })
+  return ids.length
+}

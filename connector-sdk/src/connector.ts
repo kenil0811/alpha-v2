@@ -107,6 +107,10 @@ export interface TableSpec {
   name: string
   fields: { name: string; kind: FieldKind; choices?: string[] }[]
   people?: PeopleMap
+  // What may change at the source (rules D9): these fields, each change sent only through this
+  // one tool, which leaves the world (outward). A table that declares none is never written back:
+  // a person's value on it is a correction kept in Alpha.
+  writes?: { fields: string[]; action: string }
 }
 
 export interface Item {
@@ -132,6 +136,9 @@ export interface Host {
   setCursor(cursor: string | null): void
   // existing: change only rows already kept (a mark on an older message is not a new row).
   land(table: string, items: Item[], options?: { existing?: boolean }): Landed | Promise<Landed>
+  // Items the source deleted, by their own ids, or by a field holding the source's id for them
+  // (by): their rows are kept and marked gone (rules D8).
+  gone?: (table: string, keys: string[], options?: { by?: string }) => number | Promise<number>
   // A file kept and read into a document, as if the person had dropped it in.
   keepFile?: (
     name: string,

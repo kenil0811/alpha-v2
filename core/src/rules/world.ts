@@ -182,6 +182,12 @@ export class RuleWorld {
     return { status: r.statusCode, body: (r.body ? r.json() : {}) as Record<string, unknown> }
   }
 
+  // What the window reads, as the person.
+  async get(url: string): Promise<Answer> {
+    const r = await this.app.inject({ method: 'GET', url, headers: HEADERS })
+    return { status: r.statusCode, body: (r.body ? r.json() : {}) as Record<string, unknown> }
+  }
+
   // The person types a value over a row's, in the window.
   async personSets(t: Target, value: unknown): Promise<void> {
     const r = await this.post(`/api/tables/${this.table(t.table).id}/rows/${t.row}`, {

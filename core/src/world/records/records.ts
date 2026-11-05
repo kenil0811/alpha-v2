@@ -11,7 +11,7 @@ import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { checkValue, type Provenance, type ProvenanceInput, Refused, type Said } from '../kinds.ts'
 import { actorName, findField, type Shape, type Table, type WriteCtx } from '../shape/index.ts'
-import { landBeside, removedBefore, typedOver } from './beside.ts'
+import { landBeside, markGone, mirrorKeeps, readNow, removedBefore, typedOver } from './beside.ts'
 import { checkPer, perRow } from './fold.ts'
 import {
   byKey,
@@ -213,6 +213,7 @@ export class Records {
     if (!ids.length) throw new Refused('There are no rows to remove.')
     return tx(this.db, () => {
       const table = this.mustTable(tableId)
+      mirrorKeeps(table)
       const { gone, cleared, kept, parts } = takeOutAll(this, table, ids, ctx)
       // the rows that were part of them went with them (core step 3a)
       const with_ = parts.length
@@ -260,6 +261,7 @@ export class Records {
       const touched: string[] = []
       const ids = { added: [] as string[], changed: [] as string[] }
       const versions: [string, number, Snapshot][] = []
+      const met: string[] = [] // every row the read met, for when it was last read (D12)
       for (const item of items) {
         const row = {
           kind: 'looked_up' as const,
@@ -287,6 +289,7 @@ export class Records {
           const id = newId('r')
           this.insert(table, id, vals, prov, at, actorName(ctx.actor), item.key)
           touched.push(id)
+          met.push(id)
           ids.added.push(id)
           out.added++
           continue
@@ -296,6 +299,7 @@ export class Records {
         // it read is kept beside it (D3). Nor over a figure a script worked out (a deal's staff
         // counted from its census): what the documents give stands over what a page says.
         landBeside(this, r.id, was, vals, prov)
+        met.push(r.id)
         const merged = { ...was.vals, ...vals }
         if (JSON.stringify(sortKeys(present(merged))) === JSON.stringify(sortKeys(was.vals))) {
           out.same++
@@ -309,6 +313,7 @@ export class Records {
         ids.changed.push(r.id)
         out.changed++
       }
+      readNow(this, met, at)
       if (out.added || out.changed) {
         const line = append(this.db, {
           actor: ctx.actor,
@@ -336,6 +341,11 @@ export class Records {
       this.watch?.rows(table, touched, ctx)
       return out
     })
+  }
+
+  // Items a connection says are gone at its source: kept, marked gone (rules D8, beside.ts).
+  gone(tableId: string, keys: string[], source: LandSource, ctx: WriteCtx): number {
+    return tx(this.db, () => markGone(this, this.mustTable(tableId), keys, source, ctx))
   }
 
   // The rows a connection landed since a time, oldest first, with their values by field id.

@@ -3,10 +3,9 @@ title: A correction on a mirror is kept in Alpha, beside the source's value, and
 why: >
   Rules step 1 (docs/rules.md, D6, D8): Gmail on recorded answers (journeys/fixtures/gmail), never a
   real account. The person corrects a subject; a read keeps Gmail's value beside it and Reset
-  brings Gmail's back (step 4); a message cannot be removed in Alpha (step 5). What holds today, the
-  correction standing through a read, is tried in core/src/rules/mirrors.test.ts. Step 4 records a
-  read that brings the first message again, and step 5 one where a message is deleted at Gmail,
-  kept and marked gone.
+  brings Gmail's back (step 4); a message cannot be removed in Alpha (step 5). A message deleted at
+  the source, kept and marked gone, waits on Gmail's newer sync; Outlook's is tested with its
+  connector.
 steps:
   - connect: { connector: gmail, account: owner@example.com }
   - edit:
@@ -31,4 +30,3 @@ steps:
   - remove: { table: Mail, row: <deal-1@harbor.example> }
     checks:
       - rows_in: { table: Mail, count: 7 }
-        waits: 5

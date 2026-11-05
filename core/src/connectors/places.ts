@@ -4,6 +4,7 @@
 // a module or table found by its name is keyed from then on.
 import type { Connector } from '@alpha/connector-sdk'
 import type { Table } from '../world/shape/index.ts'
+import { markMirror } from '../world/shape/keys.ts'
 import type { World } from '../world/world.ts'
 
 export function landIn(world: World, c: Connector): Table[] {
@@ -37,6 +38,8 @@ export function landIn(world: World, c: Connector): Table[] {
       : missing.length
         ? world.shape.addFields(found.id, missing, { actor })
         : found
+    // a mirror of the connector's system: its rows come and go with it (rules D1, D8)
+    markMirror(world.shape, t.id, c.manifest.title)
     return world.people.mapTable(t.id, spec.people ?? null, { actor })
   })
 }

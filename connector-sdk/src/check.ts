@@ -47,6 +47,28 @@ const ManifestSchema = z.object({
 
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null
 
+// What a table says may change at its source (rules D9): fields it has, through one of its tools
+// that leaves the world. A tool whose effect depends on its input is not one.
+function writesProblems(t: Record<string, unknown>, tools: unknown): string[] {
+  const w = t.writes
+  if (w === undefined) return []
+  if (!isObject(w) || !Array.isArray(w.fields) || typeof w.action !== 'string')
+    return [`${t.name}.writes: the fields that may change at the source, and its one action.`]
+  const out: string[] = []
+  const names = new Set(
+    (t.fields as unknown[]).flatMap((f) => (isObject(f) ? [String(f.name)] : [])),
+  )
+  for (const f of w.fields as unknown[])
+    if (!names.has(String(f))) out.push(`${t.name}.writes: it has no field ${String(f)}.`)
+  const tool = isObject(tools) ? tools[w.action] : undefined
+  if (!isObject(tool)) out.push(`${t.name}.writes: there is no tool ${w.action}.`)
+  else if (tool.effect !== 'outward')
+    out.push(
+      `${t.name}.writes: ${w.action} must leave the world (outward), as a change at the source does.`,
+    )
+  return out
+}
+
 // Every problem with what a folder exported as its connector, in plain words; none means it is a
 // connector Alpha can load.
 export function checkConnector(x: unknown, taken: string[] = []): string[] {
@@ -106,6 +128,7 @@ export function checkConnector(x: unknown, taken: string[] = []): string[] {
             `${t.name}.${f.name}: the kind ${String(f.kind)} is not one Alpha has (${FIELD_KINDS.join(', ')}).`,
           )
       }
+      out.push(...writesProblems(t, x.tools))
     })
   if (!isObject(x.tools)) out.push('tools: a map, even an empty one.')
   else

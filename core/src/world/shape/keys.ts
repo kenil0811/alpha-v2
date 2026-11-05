@@ -41,6 +41,17 @@ export function claimTable(shape: Shape, table: Table, moduleId: string, key: st
     run(shape.db, 'UPDATE tables SET key = ? WHERE id = ? AND key IS NULL', key, table.id)
 }
 
+// A table a connection fills: a mirror of the system that keeps its record (rules D1).
+export function markMirror(shape: Shape, tableId: string, system: string): void {
+  run(
+    shape.db,
+    'UPDATE tables SET mirror = ? WHERE id = ? AND mirror IS NOT ?',
+    system,
+    tableId,
+    system,
+  )
+}
+
 export function claimModule(shape: Shape, id: string, key: string): void {
   run(shape.db, 'UPDATE modules SET key = ? WHERE id = ? AND key IS NULL', key, id)
 }

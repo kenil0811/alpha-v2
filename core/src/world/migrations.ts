@@ -444,4 +444,11 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   `
   ALTER TABLE connections ADD COLUMN never TEXT NOT NULL DEFAULT '[]';
   `,
+  // 32: a table a connection fills is a mirror of the system that keeps its record (rules D1); a
+  // row a read met says when (D12), and one the source deleted is kept, gone (D8)
+  `
+  ALTER TABLE tables ADD COLUMN mirror TEXT;
+  ALTER TABLE records ADD COLUMN read_at TEXT;
+  ALTER TABLE records ADD COLUMN gone_at TEXT;
+  `,
 ]

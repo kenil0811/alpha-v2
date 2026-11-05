@@ -33,7 +33,7 @@ export const fieldViews =
 
 export function registerRows(ctx: Ctx): void {
   const { app, world } = ctx
-  const { sourceView } = ctx.views
+  const { rowOut } = ctx.views
   const fieldView = fieldViews(world.shape)
 
   const named = (t: Table, ids: string[]) =>
@@ -81,13 +81,7 @@ export function registerRows(ctx: Ctx): void {
       table: { id: t.id, name: t.name, module: { id: t.module.id, name: t.module.name } },
       documents: t.documents,
       fields: t.fields.map(fieldView),
-      row: {
-        id: r.id,
-        values: r.values,
-        sources: Object.fromEntries(
-          Object.entries(r.provenance).map(([k, p]) => [k, sourceView(p)]),
-        ),
-      },
+      row: rowOut(t, r),
       names: { ...Object.fromEntries(related), ...world.people.names(people) },
       title: world.rowName(t, r.values) || 'A row',
     }

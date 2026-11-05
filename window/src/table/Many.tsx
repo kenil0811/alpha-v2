@@ -21,6 +21,7 @@ export function TickedBar({
   onSet,
   onRemove,
   onClear,
+  fixed,
 }: {
   tableId: string
   rows: RowView[]
@@ -28,6 +29,7 @@ export function TickedBar({
   onSet: (field: FieldView, value: unknown) => Promise<boolean>
   onRemove: () => Promise<boolean>
   onClear: () => void
+  fixed?: string | undefined // why these rows cannot be deleted here (a mirror's, rules D8)
 }) {
   const [setting, setSetting] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -59,9 +61,11 @@ export function TickedBar({
       <Button ref={setAnchor} size="sm" variant="ghost" onClick={() => setSetting((o) => !o)}>
         Set…
       </Button>
-      <Button size="sm" variant="ghost" onClick={() => setRemoving(true)}>
-        Delete
-      </Button>
+      <span data-tip={fixed}>
+        <Button size="sm" variant="ghost" disabled={!!fixed} onClick={() => setRemoving(true)}>
+          Delete
+        </Button>
+      </span>
       <Button size="sm" variant="ghost" title="Escape" onClick={onClear}>
         Cancel
       </Button>

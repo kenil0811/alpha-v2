@@ -18,6 +18,7 @@ import { Select } from '../ui/field.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 import { AddRow } from './AddRow.tsx'
 import { EditCell } from './EditCell.tsx'
+import { ReadLine } from './Mirror.tsx'
 import { Notes } from './Notes.tsx'
 import { TagChips } from './Tags.tsx'
 import { canEdit, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
@@ -112,6 +113,7 @@ export function RowBody({
         onDragLeave={() => setDragging(false)}
         onDrop={drop}
       >
+        <ReadLine row={row} />
         <FieldList fields={fields} row={row} names={names} onField={onField} onEdit={onEdit} />
         {notes && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">

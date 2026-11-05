@@ -155,6 +155,11 @@ export function revert(
       for (const id of rowIds) {
         const table = records.tableOf(id)
         if (!table) continue // gone already
+        // a mirror's rows come and go only with its source (rules D8)
+        if (table.mirror) {
+          leave(`mirror\t${table.name}\t${table.mirror}`)
+          continue
+        }
         if (changedSince(id, l.id)) {
           leave(`added\t${table.name}`)
           continue
@@ -303,6 +308,8 @@ export function revert(
         return `${n(c, 'row')} of ${table} it added ${c === 1 ? 'was' : 'were'} changed since; ${c === 1 ? 'it stays' : 'they stay'}.`
       if (kind === 'removed')
         return `${n(c, 'row')} of ${table} it changed ${c === 1 ? 'was' : 'were'} deleted since.`
+      if (kind === 'mirror')
+        return `${n(c, 'row')} of ${table} ${c === 1 ? 'stays' : 'stay'}: its rows come and go with ${field}.`
       if (kind === 'forgood')
         return `${n(c, 'row')} of ${table} it deleted ${c === 1 ? 'is' : 'are'} gone for good.`
       if (kind === 'unfolded')

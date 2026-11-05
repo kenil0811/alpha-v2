@@ -34,6 +34,7 @@ export function keptTable(
     about: null,
     aboutBy: null,
     module: { id: '', name: '' },
+    mirror: null,
     fields,
     documents: null,
     rows: rows.map((r) => ({ ...r, sources: {} })),

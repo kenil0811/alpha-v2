@@ -120,6 +120,7 @@ function row(m: Message, folder: string, account: string, files: string[]) {
       Attachments: files.join(', '),
       Unread: m.isRead ? 'no' : 'yes',
       Starred: m.flag?.flagStatus === 'flagged' ? 'yes' : 'no',
+      'Outlook ID': m.id,
     },
   }
 }
@@ -165,16 +166,18 @@ async function changed(c: Call, folder: string, from: string | undefined) {
     from ??
     `/me/mailFolders/${folder}/messages/delta?$select=${SELECT}&$filter=${encodeURIComponent(`receivedDateTime ge ${since}`)}`
   const messages: Message[] = []
+  const removed: string[] = [] // deleted at Outlook since: Graph's ids
   let delta = ''
   while (next) {
     const page: Page<Message> = await graph<Page<Message>>(c, next, {
       prefer: ['odata.maxpagesize=100'],
     })
     messages.push(...page.value.filter((m) => !m['@removed']))
+    removed.push(...page.value.filter((m) => m['@removed']).map((m) => m.id))
     next = page['@odata.nextLink']
     delta = page['@odata.deltaLink'] ?? delta
   }
-  return { messages, delta }
+  return { messages, delta, removed }
 }
 
 // The one message with this Message ID in the mailbox, by Graph's own id.
@@ -229,6 +232,8 @@ export const outlook: Connector = {
         { name: 'Attachments', kind: 'text' },
         { name: 'Unread', kind: 'choice', choices: ['yes', 'no'] },
         { name: 'Starred', kind: 'choice', choices: ['yes', 'no'] },
+        // Graph's own id, so a message Outlook says it deleted is found and marked gone (rules D8)
+        { name: 'Outlook ID', kind: 'text' },
       ],
       people: {
         each: 'exchange',
@@ -353,9 +358,11 @@ export const outlook: Connector = {
       })()
       const next: Record<string, string> = { shape: SHAPE }
       const rows: ReturnType<typeof row>[] = []
+      const gone: string[] = []
       let total = 0
       for (const f of FOLDERS) {
-        const { messages, delta } = await changed(c, f.id, seen[f.id])
+        const { messages, delta, removed } = await changed(c, f.id, seen[f.id])
+        gone.push(...removed)
         const names = await fileNames(
           c,
           messages.filter((m) => m.hasAttachments).map((m) => m.id),
@@ -370,9 +377,11 @@ export const outlook: Connector = {
             )
           ).totalItemCount ?? 0
       }
-      return { rows, next: JSON.stringify(next), total }
+      return { rows, next: JSON.stringify(next), total, gone }
     })
     const landed = await c.host.land('Mail', out.rows)
+    // a message deleted at Outlook is kept here, marked gone (rules D8)
+    if (out.gone.length) await c.host.gone?.('Mail', [...new Set(out.gone)], { by: 'Outlook ID' })
     c.host.setCursor(out.next)
     return { rows: out.total, sawNew: landed.added > 0 }
   },

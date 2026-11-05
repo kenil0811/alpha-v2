@@ -300,6 +300,8 @@ export class ConnectorProcess {
       if (method === 'secret') result = await host.secret()
       else if (method === 'land')
         result = await host.land(p.table as string, p.items as never, p.options as never)
+      else if (method === 'gone')
+        result = (await host.gone?.(p.table as string, p.keys as string[], p.options as never)) ?? 0
       else if (method === 'keepFile') {
         if (!host.keepFile) throw new Problem('This connection cannot keep files.')
         result = await host.keepFile(

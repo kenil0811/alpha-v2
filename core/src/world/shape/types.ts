@@ -68,6 +68,7 @@ export interface Table {
   name: string
   slug: string
   key: string | null // the name the kit or connector that made it gave it (call 6); none for others
+  mirror: string | null // the system that keeps its rows' record, for one a connection fills (D1)
   hidden: boolean // out of the sidebar
   setup: boolean // what the module's agents read: under Agents and notes, not a tab (step 3a)
   tab: boolean // kept as a tab of its module wherever it sits, by the person or its kit (28 Oct)
