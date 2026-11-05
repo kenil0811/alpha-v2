@@ -120,6 +120,18 @@ rule(
     holds: (w, _refused, act) =>
       unchanged(w, act, 'Parts', 'Supply', about) &&
       w.world.cards.waiting().some((c) => /Mira maintains Supply/.test(c.words)),
+    cases: {
+      // a file the firm adds to the module, as a source's own reader, is theirs (Kenil, 5 Nov)
+      'a file the kit did not ship is the firm’s to keep, with no card': async (w) => {
+        await drive(w, 'alpha: keep').keep('Supply', 'files/our-suppliers.md', 'Ours.')
+        const m = w.world.shape.module('Supply')
+        return (
+          !!m &&
+          existsSync(join(m.dir, 'files', 'our-suppliers.md')) &&
+          !w.world.cards.waiting().some((c) => /Mira maintains Supply/.test(c.words))
+        )
+      },
+    },
   },
 )
 

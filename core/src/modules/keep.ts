@@ -10,6 +10,7 @@ import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { parseAgent, syncAgents, whenWords } from './agents.ts'
 import { commitAll } from './git.ts'
+import { installedKits } from './kits/index.ts'
 
 const PLACES = ['skills/', 'agents/', 'pages/', 'files/']
 
@@ -47,6 +48,13 @@ function check(module: Module, rel: string, text: string): string | null {
   return null
 }
 
+// Whether the module's kit shipped this file; when its folder is not on this Mac, taken as shipped.
+function shipped(world: World, module: Module, rel: string): boolean {
+  const kit = installedKits(world).find((k) => k.module === module.id)
+  if (!kit) return false
+  return !existsSync(kit.source) || existsSync(join(kit.source, rel))
+}
+
 // The file's words, given or already written in the folder; checked, committed, and the module's
 // agents read again.
 export async function keep(
@@ -61,13 +69,15 @@ export async function keep(
   const text = content ?? (existsSync(full) ? readFileSync(full, 'utf8') : null)
   if (text === null) throw new Refused(`${rel} is not in ${module.name} yet: give its words.`)
   const agent = check(module, rel, text)
-  // a kit someone else maintains asks the person first (rules M4)
-  asks(
-    world.shape,
-    { module: module.id },
-    () => ({ words: `keep ${rel}`, method: 'keep', args: [module.id, rel, text] }),
-    ctx,
-  )
+  // a file a kit someone else maintains shipped asks the person first (rules M4); one the firm
+  // adds to its module, as a source's own reader, is theirs (Kenil, 5 Nov)
+  if (shipped(world, module, rel))
+    asks(
+      world.shape,
+      { module: module.id },
+      () => ({ words: `keep ${rel}`, method: 'keep', args: [module.id, rel, text] }),
+      ctx,
+    )
   if (content !== undefined) {
     mkdirSync(dirname(full), { recursive: true })
     writeFileSync(full, content)
