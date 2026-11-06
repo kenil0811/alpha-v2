@@ -22,6 +22,7 @@ import { logToFile } from './log.ts'
 import { agents } from './modules/agents.ts'
 import { keepDefaults } from './modules/defaults.ts'
 import { Drafts } from './modules/drafts.ts'
+import { checkSigned } from './modules/kits/index.ts'
 import { installInbox } from './modules/packs.ts'
 import { AgentRunner } from './modules/runs/index.ts'
 import { platformHere } from './platform/index.ts'
@@ -394,6 +395,8 @@ try {
       kitsNow.now = "Alpha's own modules"
       for (const said of await keepDefaults(world, ctx)) console.log(said)
       for (const said of await plugins.keepKits(ctx)) console.log(said)
+      // a signed kit's files as they were signed (rules M3)
+      for (const said of checkSigned(world, user.id)) console.log(said)
     } catch (err) {
       console.error(
         `Setting up the kits did not finish: ${err instanceof Error ? err.message : err}`,

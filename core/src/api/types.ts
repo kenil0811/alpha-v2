@@ -350,6 +350,7 @@ export interface TableView {
   aboutBy: 'kit' | 'alpha' | 'person' | null
   module: { id: string; name: string }
   mirror: string | null // the system that keeps its rows' record (rules D1)
+  managed: string | null // who manages its module, when it is managed: its shape is fixed (M2)
   fields: FieldView[]
   documents: string[] | null // the kinds of document its rows take, when it names them
   rows: RowView[]

@@ -9,6 +9,7 @@ import { setGroup } from './edits.ts'
 import { GROUPABLE } from './engine.ts'
 import { AddFieldForm } from './Grid.tsx'
 import type { LayoutNow } from './layout.ts'
+import { useShapeFixed } from './Mirror.tsx'
 import { ReadNowItems } from './ReadNow.tsx'
 import { SortEditor } from './SortEditor.tsx'
 import { isTags } from './values.ts'
@@ -41,6 +42,7 @@ export function More({
   onTab?: (tab: boolean) => void
   readBy?: ReadByView[] // the connections that fill it (Batch B, pick 15)
 }) {
+  const fixed = useShapeFixed()
   const [open, setOpen] = useState(false)
   const [add, setAdd] = useState(false)
   const grid = config.kind === 'table' ? undefined : 'Columns are laid out in the table view.'
@@ -141,7 +143,9 @@ export function More({
           </MenuItem>
         </SubMenu>
         <MenuItem
-          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
+          reason={
+            fixed ?? (adding ? undefined : 'This table is kept on its own page; add columns there.')
+          }
           onClick={() => {
             setOpen(false)
             setAdd(true)

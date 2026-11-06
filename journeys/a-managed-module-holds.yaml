@@ -1,17 +1,23 @@
 name: a-managed-module-holds
 title: A managed module's shape holds against the model and the window, and its data stays the firm's
 why: >
-  Rules step 1 (docs/rules.md, M1 to M3): a made-up Case desk kit, managed, is installed. The person
-  asks Alpha to add a field and renames a table in the window; both are refused in words that say
-  who manages it. Every check waits on step 6, which signs the kit with Kenil's key and adds the
-  checks that the firm's own data still changes: a case's Status edited, its agent paused.
+  Rules step 6 (docs/rules.md, M1 to M3): a made-up Case desk kit, from a pack signed with a key
+  the journey makes, is managed. The person asks Alpha to add a field and renames a table; both are
+  refused in words that say who manages it. A case's values still change: the shape is locked, the
+  rows are the firm's.
 steps:
-  - kit: { from: journeys/fixtures/kits/case-desk }
+  - kit: { from: journeys/fixtures/kits/case-desk, signed: true }
   - say: Add a field Priority to Cases.
     checks:
       - reply_matches: '(?i)managed'
-        waits: 6
+      - no_field: { table: Cases, field: Priority }
   - rename: { table: Cases, to: Matters }
     checks:
       - no_table: '^Matters$'
-        waits: 6
+  - say: Add case 1042 to Cases, status Open.
+    checks:
+      - rows_in: { table: Cases, count: 1 }
+  - edit: { table: Cases, row: '1042', field: Status, to: Closed }
+    checks:
+      - field: { table: Cases, row: '1042', field: Status, equals: Closed }
+      - errors: 0

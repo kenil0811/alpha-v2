@@ -73,6 +73,8 @@ export const Manifest = z.object({
     .default([]),
   // whose kit it is to keep (decision 3b); none means the person's own
   maintainer: z.object({ name: z.string().min(1), address: z.string().email() }).optional(),
+  // changed only by a newer pack signed by Kenil's key (rules M1): counts only from a signed pack
+  managed: z.boolean().optional(),
   // Alpha's own kit (decision 13): installed and kept up to date by the core, never uninstalled;
   // its agents can still be paused
   core: z.boolean().optional(),

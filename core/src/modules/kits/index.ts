@@ -3,4 +3,5 @@
 // repository. Read, shaped, installed and judged in the files here.
 export { install, type UpdateReport, update } from './install.ts'
 export { installedKits, type KitInfo, type KitManifest, readKit } from './read.ts'
+export { checkSigned } from './signed.ts'
 export { recordChange, takeBack, unseenChanges, type Yours, yours } from './yours.ts'

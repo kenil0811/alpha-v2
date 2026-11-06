@@ -122,7 +122,9 @@ export class Plugins {
     const said: string[] = []
     for (const l of this.loaded)
       if (l.plugin.kit) {
-        const out = await keepKit(this.deps.world, join(l.dir, l.plugin.kit), ctx)
+        const out = await keepKit(this.deps.world, join(l.dir, l.plugin.kit), ctx, {
+          managed: true,
+        })
         if (out) said.push(out)
       }
     return said

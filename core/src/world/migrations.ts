@@ -451,4 +451,8 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   ALTER TABLE records ADD COLUMN read_at TEXT;
   ALTER TABLE records ADD COLUMN gone_at TEXT;
   `,
+  // 33: who manages a kit's module, when it is managed: Alpha, or Kenil for a signed pack (rules M1)
+  `
+  ALTER TABLE kits ADD COLUMN managed TEXT;
+  `,
 ]

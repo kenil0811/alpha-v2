@@ -36,7 +36,7 @@ export function asks(
   redo: (t: Table | undefined) => Redo,
   ctx: WriteCtx,
 ): void {
-  if (!shape.asks || ctx.anyway) return
+  if (!shape.asks) return
   const t = 'table' in at ? shape.table(at.table) : undefined
   const module = 'module' in at ? at.module : t?.module.id
   if (module) shape.asks(module, redo(t), ctx)

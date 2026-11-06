@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { parse } from 'yaml'
 import { Refused } from '../world/kinds.ts'
+import { refuseManaged } from '../world/maintained.ts'
 import { asks } from '../world/shape/asks.ts'
 import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
@@ -69,8 +70,10 @@ export async function keep(
   const text = content ?? (existsSync(full) ? readFileSync(full, 'utf8') : null)
   if (text === null) throw new Refused(`${rel} is not in ${module.name} yet: give its words.`)
   const agent = check(module, rel, text)
-  // a file a kit someone else maintains shipped asks the person first (rules M4); one the firm
-  // adds to its module, as a source's own reader, is theirs (Kenil, 5 Nov)
+  // nothing is kept in a managed module (rules M2); a file a kit someone else maintains shipped
+  // asks the person first (M4), and one the firm adds to its module, as a source's own reader, is
+  // theirs (Kenil, 5 Nov)
+  refuseManaged(world, module.id, `keep ${rel}`, ctx)
   if (shipped(world, module, rel))
     asks(
       world.shape,

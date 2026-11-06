@@ -3,6 +3,7 @@
 // agent read; a connector's tables (a made-up mailbox) with one message it read; and, when a rule
 // asks, a managed kit, a kit someone else maintains, Alpha's own kit and the made-up plugin. The
 // window answers through the server, as the person; nothing calls the model.
+import { generateKeyPairSync } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,7 +17,9 @@ import { Gatekeeper } from '../engine/gate.ts'
 import type { Here } from '../engine/tools/index.ts'
 import { DEFAULT_KITS, keepKit } from '../modules/defaults.ts'
 import { install } from '../modules/kits/index.ts'
+import { installPack, pack } from '../modules/packs.ts'
 import { type Loaded, loadPlugins, Plugins } from '../plugins/plugins.ts'
+import { signPack } from '../signing.ts'
 import { type Line, lastId } from '../world/journal.ts'
 import type { Provenance } from '../world/kinds.ts'
 import type { Table } from '../world/shape/index.ts'
@@ -100,6 +103,7 @@ export class RuleWorld {
     await install(w.world, KITS.bakery, person)
     for (const k of kits)
       if (k === 'alpha') await keepKit(w.world, KITS.alpha, { actor: { kind: 'system' } })
+      else if (k === 'managed') await w.installSigned(KITS.managed)
       else await install(w.world, KITS[k], person)
     // a supplier the Counter agent read, and a message the mailbox read
     w.world.records.land(
@@ -180,6 +184,24 @@ export class RuleWorld {
       payload: body as object,
     })
     return { status: r.statusCode, body: (r.body ? r.json() : {}) as Record<string, unknown> }
+  }
+
+  // A kit installed from a pack signed by the key this rule world trusts, as a release's would be
+  // by Kenil's (rules M1, M3): a test key, never his.
+  readonly key = generateKeyPairSync('ed25519')
+  async installSigned(folder: string): Promise<string> {
+    const pem = this.key.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
+    const file = signPack(pack(folder, join(this.home, 'packs')), pem)
+    return installPack(
+      this.world,
+      file,
+      join(this.home, 'kits'),
+      { actor: { kind: 'person', id: this.user.id }, user: this.user.id },
+      {
+        developer: false,
+        key: this.key.publicKey.export({ type: 'spki', format: 'pem' }).toString(),
+      },
+    )
   }
 
   // What the window reads, as the person.

@@ -1,13 +1,14 @@
 // Who may change a module (docs/rules.md, M1 to M5), each rule tried through every door that can
 // break it. M6 to M8 are written with step 8.
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { checkSigned, install } from '../modules/kits/index.ts'
 import { api } from '../modules/runs/api.ts'
 import type { AgentRunner } from '../modules/runs/runner.ts'
 import type { Act } from './doors.ts'
 import type { Acts } from './drive.ts'
 import { drive, refusal, refusedWith, rule } from './rule.ts'
-import type { RuleWorld } from './world.ts'
+import { KITS, type RuleWorld } from './world.ts'
 
 const NEW_FIELD = 'Priority'
 
@@ -61,13 +62,23 @@ rule('M1', 'every module is open or managed; Alpha’s own, a plugin’s and a c
         unchanged(w, 'renameField', 'Messages', 'Mailbox', null)
       )
     },
+    'a connector’s module takes a field of the person’s, and its table may be renamed': async (
+      w,
+    ) => {
+      const shape = drive(w, 'alpha: shape')
+      await shape.addField('Messages', NEW_FIELD)
+      await shape.renameTable('Messages', 'Inbox')
+      return w.table('Inbox').fields.some((f) => f.name === NEW_FIELD)
+    },
+    'a kit marked managed in a folder not signed by Kenil’s key is open': async (w) => {
+      await install(w.world, KITS.managed, {
+        actor: { kind: 'person', id: w.user.id },
+        user: w.user.id,
+      })
+      await drive(w, 'alpha: shape').addField('Cases', NEW_FIELD)
+      return w.table('Cases').fields.some((f) => f.name === NEW_FIELD)
+    },
   },
-  waits: {
-    'Alpha’s own kit is managed: a new field on Decisions is refused': 6,
-    'a plugin’s module is managed: a new field on its Notes is refused': 6,
-    'a connector’s module keeps its source fields: renaming Subject is refused': 6,
-  },
-  later: { 'a kit marked managed in a folder not signed by Kenil’s key is open': 6 },
 })
 
 rule('M2', 'in a managed module nobody changes its shape, and each door says who manages it', {
@@ -81,13 +92,8 @@ rule('M2', 'in a managed module nobody changes its shape, and each door says who
   attempt: (a, act) => tryShape(a, act, 'Cases', 'Case desk'),
   holds: (w, refused, act) =>
     refusedWith(refused, /manag/i) && unchanged(w, act, 'Cases', 'Case desk', about),
-  waits: {
-    'alpha: shape': 6,
-    'alpha: keep': 6,
-    'window: a table’s about, name, fields, tab': 6,
-  },
   later: {
-    'in a managed mirror the kit decides whether its source fields take corrections (D6)': 6,
+    'in a managed mirror the kit decides whether its source fields take corrections (D6)': 8,
   },
 })
 
@@ -100,9 +106,21 @@ rule('M3', 'only a newer signed pack changes a managed module', {
       )
       return refused !== null && !w.table('Cases').fields.some((f) => f.name === 'Court')
     },
+    'a newer pack signed by Kenil’s key changes it': async (w) => {
+      await w.installSigned(KITS.managedNext)
+      return w.table('Cases').fields.some((f) => f.name === 'Court')
+    },
+    'a changed file of a managed kit does not load at start, and says what changed': async (w) => {
+      const m = w.world.shape.module('Case desk')
+      if (!m) throw new Error('The rule world has no Case desk.')
+      writeFileSync(join(m.dir, 'NOTES.md'), 'Changed by hand.')
+      const said = checkSigned(w.world, w.user.id)
+      return (
+        said.some((s) => /NOTES\.md changed/.test(s)) &&
+        w.world.cards.waiting().some((c) => /NOTES\.md changed/.test(c.words))
+      )
+    },
   },
-  waits: { 'a newer version not signed by Kenil’s key is refused': 6 },
-  later: { 'a changed file of a managed kit does not load at start, and says what changed': 6 },
 })
 
 rule(
@@ -167,8 +185,12 @@ rule('M5', 'kit code finds tables and fields by their lasting key', {
         w.value('Orders', w.rowOf('Orders', 'o1'), 'Product') === 'Flour'
       )
     },
-    'a connector still lands its field after the person has it renamed': async (w) => {
-      await drive(w, 'alpha: shape').renameField('Messages', 'Subject', 'Topic')
+    // the person's rename of a source field is refused (M1); a field the connector calls by its
+    // key lands whatever it is called now
+    'a connector still lands its field whatever it is called now': async (w) => {
+      w.world.shape.rename({ table: w.table('Messages').id, field: 'Subject' }, 'Topic', {
+        actor: { kind: 'system' },
+      })
       const read = await refusal(async () => {
         w.landMail('m2', { From: 'ann@example.com', Subject: 'Lunch' })
       })

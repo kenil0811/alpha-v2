@@ -60,6 +60,9 @@
         "address"
       ]
     },
+    "managed": {
+      "type": "boolean"
+    },
     "core": {
       "type": "boolean"
     },

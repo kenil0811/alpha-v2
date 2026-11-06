@@ -58,6 +58,7 @@ export const Check = z.union([
   // the builder's walls (core step 3e): no table named so, none that is only a name, a field of a
   // kind somewhere, a choice field holding these, and a module's business case (each module's)
   z.object({ no_table: z.string() }),
+  z.object({ no_field: z.object({ table: z.string(), field: z.string() }) }),
   z.object({ name_only_tables: z.number() }),
   z.object({ field_kind: z.string() }),
   z.object({ choices: z.array(z.string()) }),
@@ -533,6 +534,15 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `${f.field} of ${f.row ?? f.key} in ${f.table} ${f.equals !== undefined ? `is ${f.equals}` : `has ${f.count}`}`,
       ok,
       saw: JSON.stringify(value ?? null),
+    }
+  }
+  if ('no_field' in check) {
+    const t = world.shape.table(check.no_field.table)
+    const names = t?.fields.map((f) => f.name) ?? []
+    return {
+      check: `${check.no_field.table} has no field ${check.no_field.field}`,
+      ok: !names.includes(check.no_field.field),
+      saw: names.join(', '),
     }
   }
   if ('beside' in check) {

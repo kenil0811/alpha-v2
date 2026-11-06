@@ -1,7 +1,14 @@
 // A mirror of a system that keeps the record (rules D1, D8, D12): what the table says of it, the
 // rows its source deleted (kept, out of the list until asked for), and when a row was last read.
 import type { RowView, TableView } from '@alpha/core/api'
+import { createContext, useContext } from 'react'
 import { when } from './values.ts'
+
+// Why this table's shape is fixed, on a managed module (rules M2): its controls grey with it.
+export const ShapeFixed = createContext<string | undefined>(undefined)
+export const useShapeFixed = () => useContext(ShapeFixed)
+export const managedWhy = (managed: string | null) =>
+  managed ? `Managed by ${managed}: its shape stays as it is` : undefined
 
 // The line under a mirror's tabs: whose it is, and its gone rows one click away.
 export function MirrorLine({

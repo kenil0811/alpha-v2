@@ -11,7 +11,14 @@ import { commitAll } from '../git.ts'
 import { checked, readKit, sha } from './read.ts'
 import { currentRowHash, landSetup, placeModule, shapeTables, shapeViews } from './shape.ts'
 
-export async function install(world: World, kitDir: string, ctx: WriteCtx): Promise<Module> {
+// signed: from a pack signed by Kenil's key, so its `managed: true` counts (rules M1); a folder's or
+// an unsigned pack's mark counts for nothing.
+export async function install(
+  world: World,
+  kitDir: string,
+  ctx: WriteCtx,
+  options: { signed?: boolean } = {},
+): Promise<Module> {
   const { note } = checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
   // the kit's module by its lasting key, so a renamed one is still this kit's (call 6)
@@ -49,7 +56,7 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
     const rows = landSetup(world, m.id, setup, kitName, kitCtx, () => true)
     run(
       world.db,
-      'INSERT INTO kits (module_id, kit, version, source, installed_at, updated_at, api, maintainer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO kits (module_id, kit, version, source, installed_at, updated_at, api, maintainer, managed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       m.id,
       manifest.name,
       manifest.version,
@@ -58,6 +65,7 @@ export async function install(world: World, kitDir: string, ctx: WriteCtx): Prom
       now(),
       manifest.api ?? 1,
       manifest.maintainer ? JSON.stringify(manifest.maintainer) : null,
+      manifest.core ? 'Alpha' : manifest.managed && options.signed ? 'Kenil' : null,
     )
     const agents = syncAgents(world, m, 'paused')
     world.line({
@@ -88,18 +96,24 @@ export async function update(
   moduleName: string,
   kitDir: string,
   ctx: WriteCtx,
+  options: { signed?: boolean } = {},
 ): Promise<UpdateReport> {
   checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
   // by the kit's name (its lasting key) or the module's name as it is now
   const module = world.shape.ownModule(moduleName) ?? world.shape.module(moduleName)
   if (!module) throw new Refused(`There is no module called ${moduleName}.`)
-  const kit = one<{ kit: string; version: string }>(
+  const kit = one<{ kit: string; version: string; managed: string | null }>(
     world.db,
-    'SELECT kit, version FROM kits WHERE module_id = ?',
+    'SELECT kit, version, managed FROM kits WHERE module_id = ?',
     module.id,
   )
   if (!kit) throw new Refused(`${module.name} was not installed from a kit.`)
+  // a managed kit changes only by a newer pack signed by Kenil's key (rules M3)
+  if (kit.managed === 'Kenil' && !options.signed)
+    throw new Refused(
+      `${module.name} is managed by Kenil: only a newer pack signed by his key changes it.`,
+    )
   if (kit.kit !== manifest.name)
     throw new Refused(`That folder holds the kit ${manifest.name}, not ${kit.kit}.`)
   // What is in the folder now, committed first, so the update itself is one change in history.
@@ -171,6 +185,13 @@ export async function update(
       manifest.maintainer ? JSON.stringify(manifest.maintainer) : null,
       module.id,
     )
+    if (options.signed)
+      run(
+        world.db,
+        'UPDATE kits SET managed = ? WHERE module_id = ?',
+        manifest.managed ? 'Kenil' : null,
+        module.id,
+      )
     for (const f of copies) {
       mkdirSync(dirname(join(module.dir, f)), { recursive: true })
       copyFileSync(join(kitDir, f), join(module.dir, f))

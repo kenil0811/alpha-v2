@@ -40,7 +40,22 @@ export async function keepDefaults(
 
 // One of Alpha's own modules, installed where it is missing and updated where a newer version
 // ships (a plugin's own module too, onboarding 4a); what it did, in words, or nothing.
-export async function keepKit(world: World, folder: string, ctx: WriteCtx): Promise<string | null> {
+export async function keepKit(
+  world: World,
+  folder: string,
+  ctx: WriteCtx,
+  options: { managed?: boolean } = {},
+): Promise<string | null> {
+  const out = await keptKit(world, folder, ctx)
+  // Alpha's own kit and a plugin's module are managed by Alpha, which comes with them (rules M1)
+  const { manifest } = readKit(folder)
+  const m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
+  if (m && (manifest.core || options.managed))
+    run(world.db, "UPDATE kits SET managed = 'Alpha' WHERE module_id = ?", m.id)
+  return out
+}
+
+async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<string | null> {
   const { manifest } = readKit(folder)
   const m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
   const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined

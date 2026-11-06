@@ -1,5 +1,5 @@
 # A made-up managed kit for the rule tests (docs/rules.md, M1 to M3): never a client's. Managed
-# takes a pack signed by Kenil's key from step 6; until then the mark is read by nothing.
+# takes a signed pack: the rule world signs it with a test key.
 name: Case desk
 version: 0.1.0
 api: 1

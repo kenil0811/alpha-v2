@@ -54,6 +54,7 @@ import {
 } from './engine.ts'
 import { useGoes } from './goes.ts'
 import type { LayoutNow } from './layout.ts'
+import { useShapeFixed } from './Mirror.tsx'
 import { RowMenu } from './RowMenu.tsx'
 import { TagChips } from './Tags.tsx'
 import {
@@ -1053,15 +1054,17 @@ const KINDS: [string, string][] = [
 function AddField({ tableId }: { tableId: string }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
+  const fixed = useShapeFixed()
   return (
     <>
       <button
         ref={anchor}
         type="button"
         aria-label="Add a field"
-        data-tip="Add a field"
+        data-tip={fixed ?? 'Add a field'}
+        disabled={!!fixed}
         onClick={() => setOpen((o) => !o)}
-        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink"
+        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
       >
         <Plus className="size-3.75" />
       </button>

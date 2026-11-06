@@ -20,7 +20,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
-import { mustBeSigned, type Trust } from '../signing.ts'
+import { mustBeSigned, signedIn, type Trust, trustedKey } from '../signing.ts'
 import { one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
@@ -87,7 +87,7 @@ export function unpack(
   file: string,
   kitsDir: string,
   trust: Trust,
-): { name: string; version: string; dir: string } {
+): { name: string; version: string; dir: string; signed: boolean } {
   const stage = mkdtempSync(join(tmpdir(), 'alpha-unpack-'))
   try {
     try {
@@ -104,8 +104,10 @@ export function unpack(
       throw new Refused('That kit pack’s version is not a version like 1.2.3.')
     if (typeof m.name !== 'string' || !/[a-z0-9]/i.test(m.name))
       throw new Refused('That kit pack has no name.')
-    // signed by Kenil, or the developer switch is on (step 2, part 1, slice 3)
+    // signed by Kenil, or the developer switch is on (step 2, part 1, slice 3); only the first
+    // lets a kit's `managed: true` count (rules M1)
     mustBeSigned(stage, trust)
+    const signed = signedIn(stage, trust.key === undefined ? trustedKey() : trust.key)
     const kit = join(stage, 'kit')
     if (existsSync(kit)) refuseLinks(kit)
     const there = existsSync(kit) ? filesOf(kit) : []
@@ -122,7 +124,7 @@ export function unpack(
     rmSync(dir, { recursive: true, force: true })
     mkdirSync(join(dir, '..'), { recursive: true })
     renameSync(kit, dir)
-    return { name: m.name, version: m.version, dir }
+    return { name: m.name, version: m.version, dir, signed }
   } finally {
     rmSync(stage, { recursive: true, force: true })
   }
@@ -136,7 +138,7 @@ export async function installPack(
   ctx: WriteCtx,
   trust: Trust,
 ): Promise<string> {
-  const { name, version, dir } = unpack(file, kitsDir, trust)
+  const { name, version, dir, signed } = unpack(file, kitsDir, trust)
   const m = world.shape.ownModule(name) ?? world.shape.module(name)
   const fromKit =
     m && one<{ version: string }>(world.db, 'SELECT version FROM kits WHERE module_id = ?', m.id)
@@ -148,10 +150,10 @@ export async function installPack(
       `${name} ${fromKit.version} is already there, newer than ${version}; nothing changed.`,
     )
   if (m && fromKit) {
-    const r = await update(world, name, dir, ctx)
+    const r = await update(world, name, dir, ctx, { signed })
     return `Updated ${name} to ${version}: ${r.replaced.length + r.added.length} files new or replaced, ${r.kept.length} of your changes kept.`
   }
-  await install(world, dir, ctx)
+  await install(world, dir, ctx, { signed })
   return `Installed ${name} ${version}, its agents paused.`
 }
 

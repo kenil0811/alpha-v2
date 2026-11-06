@@ -33,6 +33,7 @@ import {
 } from './edits.ts'
 import { family, GROUPABLE, needs, OP_WORDS, OPS, TOTAL_WORDS, TOTALS } from './engine.ts'
 import type { LayoutNow } from './layout.ts'
+import { useShapeFixed } from './Mirror.tsx'
 import { show } from './values.ts'
 
 type Tone = 'good' | 'warn' | 'bad' | 'accent'
@@ -75,6 +76,7 @@ export function ColumnMenu({
   onInsert: (side: 'left' | 'right') => void
   onClose: () => void
 }) {
+  const fixed = useShapeFixed()
   const [page, setPage] = useState<'main' | 'filter' | 'total' | 'colour' | 'describe'>('main')
   const apply = (c: ViewConfig) => {
     onConfig(c)
@@ -135,7 +137,7 @@ export function ColumnMenu({
           <span className="text-ink-2 text-xs">Worked out from other rows: {field.summary}</span>
         )}
       </div>
-      <MenuItem onClick={() => setPage('describe')}>
+      <MenuItem reason={fixed} onClick={() => setPage('describe')}>
         <MessageSquareText className="size-3.5 text-ink-3" />
         {field.about ? 'Describe it your way…' : 'Describe…'}
       </MenuItem>
@@ -239,11 +241,11 @@ export function ColumnMenu({
         Wrap text
       </MenuItem>
       <MenuLine />
-      <MenuItem onClick={() => onInsert('left')}>
+      <MenuItem reason={fixed} onClick={() => onInsert('left')}>
         <ArrowLeftToLine className="size-3.5 text-ink-3" />
         Insert column left
       </MenuItem>
-      <MenuItem onClick={() => onInsert('right')}>
+      <MenuItem reason={fixed} onClick={() => onInsert('right')}>
         <ArrowRightToLine className="size-3.5 text-ink-3" />
         Insert column right
       </MenuItem>

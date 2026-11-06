@@ -35,7 +35,7 @@ import { cleared, hiding } from './table/hiding.ts'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
-import { MirrorLine, mirrorKeeps, mirrorRows } from './table/Mirror.tsx'
+import { MirrorLine, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
@@ -261,394 +261,409 @@ export function TableView({
 
   return (
     <TableName.Provider value={data.name}>
-      <div className="flex h-full min-h-0">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <ViewTabs
-            tools={
-              <>
-                <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
-                {searching || config.search ? (
-                  <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
-                    <Search className="size-3.25 shrink-0" />
-                    <input
-                      // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
-                      autoFocus={searching}
-                      value={config.search}
-                      onChange={(e) => setConfig({ ...config, search: e.target.value })}
-                      onBlur={() => setSearching(false)}
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Escape') return
-                        e.preventDefault()
-                        setConfig({ ...config, search: '' })
-                        setSearching(false)
-                      }}
-                      placeholder={`Search ${data.name}`}
-                      aria-label={`Search ${data.name}`}
-                      title="Escape clears it"
-                      className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
-                    />
-                  </label>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setSearching(true)}
-                    data-tip={`Search ${data.name}`}
-                    className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
-                  >
-                    <Search className="size-3.25 shrink-0" />
-                    Search
-                  </button>
-                )}
-                <AddFilter
+      <ShapeFixed.Provider value={managedWhy(data.managed)}>
+        <div className="flex h-full min-h-0">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <ViewTabs
+              tools={
+                <>
+                  <KindPicker
+                    fields={fields}
+                    rows={data.rows}
+                    config={config}
+                    onConfig={setConfig}
+                  />
+                  {searching || config.search ? (
+                    <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                      <Search className="size-3.25 shrink-0" />
+                      <input
+                        // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
+                        autoFocus={searching}
+                        value={config.search}
+                        onChange={(e) => setConfig({ ...config, search: e.target.value })}
+                        onBlur={() => setSearching(false)}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Escape') return
+                          e.preventDefault()
+                          setConfig({ ...config, search: '' })
+                          setSearching(false)
+                        }}
+                        placeholder={`Search ${data.name}`}
+                        aria-label={`Search ${data.name}`}
+                        title="Escape clears it"
+                        className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
+                      />
+                    </label>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSearching(true)}
+                      data-tip={`Search ${data.name}`}
+                      className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
+                    >
+                      <Search className="size-3.25 shrink-0" />
+                      Search
+                    </button>
+                  )}
+                  <AddFilter
+                    fields={fields}
+                    config={config}
+                    rows={data.rows}
+                    names={data.names}
+                    onConfig={setConfig}
+                  />
+                </>
+              }
+              right={
+                <>
+                  {config.kind !== 'board' && (
+                    <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
+                  )}
+                  <More
+                    tableId={data.id}
+                    fields={fields}
+                    shown={shown}
+                    config={config}
+                    layout={layout}
+                    adding={!kept}
+                    onConfig={setConfig}
+                    tab={
+                      summary && (summary.place === 'part' || summary.place === 'setup')
+                        ? summary.tab
+                        : null
+                    }
+                    onTab={(tab) => write(() => api.post(`/api/tables/${data.id}/tab`, { tab }))}
+                    readBy={data.readBy}
+                    onCopy={() =>
+                      navigator.clipboard?.writeText(
+                        [
+                          shown.map((f) => f.name),
+                          ...rows.map((r) =>
+                            shown.map((f) => show(f, r.values[f.slug], data.names)),
+                          ),
+                        ]
+                          .map((line) => line.map((t) => t.replace(/[\t\n]/g, ' ')).join('\t'))
+                          .join('\n'),
+                      )
+                    }
+                    onExport={(as) =>
+                      write(() =>
+                        api.download(
+                          `/api/tables/${data.id}/export`,
+                          { rows: rows.map((r) => r.id), fields: shown.map((f) => f.id), as },
+                          `${data.name}.${as}`,
+                        ),
+                      )
+                    }
+                  />
+                </>
+              }
+              views={views}
+              current={viewId}
+              dirty={dirty}
+              problem={problem}
+              onPick={pick}
+              onReset={() => setConfig(saved)}
+              onSave={() =>
+                act(async () => {
+                  if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
+                })
+              }
+              onSaveAs={(name) =>
+                act(async () => {
+                  const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
+                    name,
+                    config,
+                  })
+                  setViews((vs) => [...vs, v])
+                  setViewId(v.id)
+                  setConfig(complete(v.config))
+                })
+              }
+              onRename={(name) =>
+                act(async () => {
+                  if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
+                })
+              }
+              onDefault={(id, on) =>
+                act(async () => {
+                  replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
+                })
+              }
+              onRemove={() =>
+                act(async () => {
+                  if (!viewId) return
+                  await api.delete(`/api/views/${viewId}`)
+                  setViews((vs) => vs.filter((v) => v.id !== viewId))
+                  setViewId(null)
+                  setConfig(BLANK)
+                })
+              }
+            />
+            <Showing
+              shown={rows.length}
+              total={data.rows.length}
+              hiding={hiding(config, fields)}
+              came={only ? 'page' : of ? 'row' : null}
+              allHref={`#/table/${data.id}`}
+              onClear={() => setConfig(cleared(config))}
+            />
+            <MirrorLine data={data} showingGone={showingGone} onGone={setShowingGone} />
+            <div className="flex flex-wrap items-center gap-2 px-7 py-2">
+              {tickedRows.length > 0 ? (
+                <TickedBar
+                  tableId={data.id}
+                  rows={tickedRows}
+                  fields={fields}
+                  onClear={() => setTicked(new Set())}
+                  fixed={mirrorKeeps(data)}
+                  onSet={(field, value) =>
+                    write(() =>
+                      api.post(`/api/tables/${data.id}/rows/many`, {
+                        set: tickedRows.map((r) => ({
+                          row: r.id,
+                          values: { [field.name]: value },
+                        })),
+                      }),
+                    )
+                  }
+                  onRemove={async () => {
+                    const ok = await write(() =>
+                      api.post(`/api/tables/${data.id}/rows/remove`, {
+                        rows: tickedRows.map((r) => r.id),
+                      }),
+                    )
+                    if (ok) setTicked(new Set())
+                    return ok
+                  }}
+                />
+              ) : (
+                <Chips
                   fields={fields}
                   config={config}
                   rows={data.rows}
                   names={data.names}
                   onConfig={setConfig}
                 />
-              </>
-            }
-            right={
+              )}
+              <span className="text-ink-3 text-sm">
+                {rows.length === data.rows.length
+                  ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
+                  : `${rows.length} of ${data.rows.length}`}
+              </span>
+            </div>
+            {config.kind === 'board' && boardBy ? (
+              <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
+                <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
+              </div>
+            ) : config.kind === 'form' ? (
+              <FormView
+                table={data.name}
+                rows={rows}
+                fields={shown}
+                names={data.names}
+                onSave={(row, values) =>
+                  write(() =>
+                    api.post(
+                      `/api/tables/${data.id}/rows/many`,
+                      row ? { set: [{ row: row.id, values }] } : { add: [{ values }] },
+                    ),
+                  )
+                }
+              />
+            ) : config.kind === 'list' ? (
+              <ListView
+                rows={rows}
+                fields={shown}
+                group={fields.find((f) => f.id === config.group)}
+                names={data.names}
+                onOpen={openRowPanel}
+              />
+            ) : config.kind === 'gallery' ? (
+              <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
+            ) : config.kind === 'calendar' && dateBy ? (
+              <CalendarView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+            ) : config.kind === 'timeline' && dateBy ? (
+              <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
+            ) : config.kind === 'chart' ? (
+              <ChartView
+                rows={rows}
+                group={fields.find((f) => f.id === config.group) ?? (dateBy ? undefined : boardBy)}
+                by={dateBy}
+                measure={fields.find((f) => f.id === config.measure)}
+                names={data.names}
+                onBar={(field, key) =>
+                  setConfig(setRule({ ...config, kind: 'table' }, barRule(field, key)))
+                }
+              />
+            ) : (
               <>
-                {config.kind !== 'board' && (
-                  <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
+                {pasting && (
+                  <PasteBar
+                    plan={pasting}
+                    onNo={() => setPasting(null)}
+                    onYes={async () => {
+                      const plan = pasting
+                      setPasting(null)
+                      await write(() =>
+                        api.post(`/api/tables/${data.id}/rows/many`, {
+                          set: plan.set,
+                          add: plan.add,
+                        }),
+                      )
+                    }}
+                  />
                 )}
-                <More
+                <Grid
                   tableId={data.id}
+                  rows={paged}
+                  counted={rows}
+                  allRows={data.rows}
                   fields={fields}
                   shown={shown}
                   config={config}
-                  layout={layout}
-                  adding={!kept}
-                  onConfig={setConfig}
-                  tab={
-                    summary && (summary.place === 'part' || summary.place === 'setup')
-                      ? summary.tab
-                      : null
-                  }
-                  onTab={(tab) => write(() => api.post(`/api/tables/${data.id}/tab`, { tab }))}
-                  readBy={data.readBy}
-                  onCopy={() =>
-                    navigator.clipboard?.writeText(
-                      [
-                        shown.map((f) => f.name),
-                        ...rows.map((r) => shown.map((f) => show(f, r.values[f.slug], data.names))),
-                      ]
-                        .map((line) => line.map((t) => t.replace(/[\t\n]/g, ' ')).join('\t'))
-                        .join('\n'),
-                    )
-                  }
-                  onExport={(as) =>
-                    write(() =>
-                      api.download(
-                        `/api/tables/${data.id}/export`,
-                        { rows: rows.map((r) => r.id), fields: shown.map((f) => f.id), as },
-                        `${data.name}.${as}`,
-                      ),
-                    )
-                  }
-                />
-              </>
-            }
-            views={views}
-            current={viewId}
-            dirty={dirty}
-            problem={problem}
-            onPick={pick}
-            onReset={() => setConfig(saved)}
-            onSave={() =>
-              act(async () => {
-                if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
-              })
-            }
-            onSaveAs={(name) =>
-              act(async () => {
-                const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
-                  name,
-                  config,
-                })
-                setViews((vs) => [...vs, v])
-                setViewId(v.id)
-                setConfig(complete(v.config))
-              })
-            }
-            onRename={(name) =>
-              act(async () => {
-                if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
-              })
-            }
-            onDefault={(id, on) =>
-              act(async () => {
-                replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
-              })
-            }
-            onRemove={() =>
-              act(async () => {
-                if (!viewId) return
-                await api.delete(`/api/views/${viewId}`)
-                setViews((vs) => vs.filter((v) => v.id !== viewId))
-                setViewId(null)
-                setConfig(BLANK)
-              })
-            }
-          />
-          <Showing
-            shown={rows.length}
-            total={data.rows.length}
-            hiding={hiding(config, fields)}
-            came={only ? 'page' : of ? 'row' : null}
-            allHref={`#/table/${data.id}`}
-            onClear={() => setConfig(cleared(config))}
-          />
-          <MirrorLine data={data} showingGone={showingGone} onGone={setShowingGone} />
-          <div className="flex flex-wrap items-center gap-2 px-7 py-2">
-            {tickedRows.length > 0 ? (
-              <TickedBar
-                tableId={data.id}
-                rows={tickedRows}
-                fields={fields}
-                onClear={() => setTicked(new Set())}
-                fixed={mirrorKeeps(data)}
-                onSet={(field, value) =>
-                  write(() =>
-                    api.post(`/api/tables/${data.id}/rows/many`, {
-                      set: tickedRows.map((r) => ({ row: r.id, values: { [field.name]: value } })),
-                    }),
-                  )
-                }
-                onRemove={async () => {
-                  const ok = await write(() =>
-                    api.post(`/api/tables/${data.id}/rows/remove`, {
-                      rows: tickedRows.map((r) => r.id),
-                    }),
-                  )
-                  if (ok) setTicked(new Set())
-                  return ok
-                }}
-              />
-            ) : (
-              <Chips
-                fields={fields}
-                config={config}
-                rows={data.rows}
-                names={data.names}
-                onConfig={setConfig}
-              />
-            )}
-            <span className="text-ink-3 text-sm">
-              {rows.length === data.rows.length
-                ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-                : `${rows.length} of ${data.rows.length}`}
-            </span>
-          </div>
-          {config.kind === 'board' && boardBy ? (
-            <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
-              <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
-            </div>
-          ) : config.kind === 'form' ? (
-            <FormView
-              table={data.name}
-              rows={rows}
-              fields={shown}
-              names={data.names}
-              onSave={(row, values) =>
-                write(() =>
-                  api.post(
-                    `/api/tables/${data.id}/rows/many`,
-                    row ? { set: [{ row: row.id, values }] } : { add: [{ values }] },
-                  ),
-                )
-              }
-            />
-          ) : config.kind === 'list' ? (
-            <ListView
-              rows={rows}
-              fields={shown}
-              group={fields.find((f) => f.id === config.group)}
-              names={data.names}
-              onOpen={openRowPanel}
-            />
-          ) : config.kind === 'gallery' ? (
-            <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
-          ) : config.kind === 'calendar' && dateBy ? (
-            <CalendarView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
-          ) : config.kind === 'timeline' && dateBy ? (
-            <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
-          ) : config.kind === 'chart' ? (
-            <ChartView
-              rows={rows}
-              group={fields.find((f) => f.id === config.group) ?? (dateBy ? undefined : boardBy)}
-              by={dateBy}
-              measure={fields.find((f) => f.id === config.measure)}
-              names={data.names}
-              onBar={(field, key) =>
-                setConfig(setRule({ ...config, kind: 'table' }, barRule(field, key)))
-              }
-            />
-          ) : (
-            <>
-              {pasting && (
-                <PasteBar
-                  plan={pasting}
-                  onNo={() => setPasting(null)}
-                  onYes={async () => {
-                    const plan = pasting
-                    setPasting(null)
-                    await write(() =>
-                      api.post(`/api/tables/${data.id}/rows/many`, {
-                        set: plan.set,
-                        add: plan.add,
-                      }),
-                    )
+                  names={data.names}
+                  tasks={taskCounts}
+                  picked={picked}
+                  openRow={openRow ?? null}
+                  ticked={ticked}
+                  readOnly={!!kept && !own?.editable.length}
+                  onPick={(p) => {
+                    if (kept) return
+                    setPicked(p)
+                    setOpened(null)
                   }}
+                  onConfig={setConfig}
+                  onTick={setTicked}
+                  onEdit={edit}
+                  onOpen={openRowPanel}
+                  onDuplicate={
+                    kept
+                      ? undefined
+                      : (r) =>
+                          write(() =>
+                            api.post(`/api/tables/${data.id}/rows/many`, {
+                              add: [
+                                {
+                                  values: Object.fromEntries(
+                                    data.fields
+                                      .filter((f) => canType(f) && r.values[f.slug] != null)
+                                      .map((f) => [f.name, r.values[f.slug]]),
+                                  ),
+                                },
+                              ],
+                            }),
+                          )
+                  }
+                  onRemove={
+                    kept || data.mirror
+                      ? undefined
+                      : (rs) =>
+                          write(() =>
+                            api.post(`/api/tables/${data.id}/rows/remove`, {
+                              rows: rs.map((r) => r.id),
+                            }),
+                          )
+                  }
+                  layout={layout}
+                  onPaste={setPasting}
                 />
-              )}
-              <Grid
-                tableId={data.id}
-                rows={paged}
-                counted={rows}
-                allRows={data.rows}
-                fields={fields}
-                shown={shown}
-                config={config}
-                names={data.names}
-                tasks={taskCounts}
-                picked={picked}
-                openRow={openRow ?? null}
-                ticked={ticked}
-                readOnly={!!kept && !own?.editable.length}
-                onPick={(p) => {
-                  if (kept) return
-                  setPicked(p)
-                  setOpened(null)
-                }}
-                onConfig={setConfig}
-                onTick={setTicked}
-                onEdit={edit}
-                onOpen={openRowPanel}
-                onDuplicate={
-                  kept
-                    ? undefined
-                    : (r) =>
-                        write(() =>
-                          api.post(`/api/tables/${data.id}/rows/many`, {
-                            add: [
-                              {
-                                values: Object.fromEntries(
-                                  data.fields
-                                    .filter((f) => canType(f) && r.values[f.slug] != null)
-                                    .map((f) => [f.name, r.values[f.slug]]),
-                                ),
-                              },
-                            ],
-                          }),
-                        )
-                }
-                onRemove={
-                  kept || data.mirror
-                    ? undefined
-                    : (rs) =>
-                        write(() =>
-                          api.post(`/api/tables/${data.id}/rows/remove`, {
-                            rows: rs.map((r) => r.id),
-                          }),
-                        )
-                }
-                layout={layout}
-                onPaste={setPasting}
-              />
-              <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
-                <span data-tip={typeof onNew === 'string' ? onNew : undefined} className="mr-auto">
-                  <Button
-                    size="sm"
-                    disabled={typeof onNew === 'string'}
-                    onClick={typeof onNew === 'string' ? undefined : onNew}
+                <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
+                  <span
+                    data-tip={typeof onNew === 'string' ? onNew : undefined}
+                    className="mr-auto"
                   >
-                    <Plus className="size-3.5" />
-                    New
-                  </Button>
-                </span>
-                {readByWords(data.readBy) && (
-                  <span className="mr-3">{readByWords(data.readBy)}</span>
-                )}
-                {rows.length > Math.min(size, ...SIZES) && (
-                  <>
-                    <span className="mr-2 tabular-nums">
-                      Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
-                    </span>
-                    <Select
-                      aria-label="Rows to a page"
-                      value={String(size)}
-                      onChange={(e) => resize(Number(e.target.value))}
-                      className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+                    <Button
+                      size="sm"
+                      disabled={typeof onNew === 'string'}
+                      onClick={typeof onNew === 'string' ? undefined : onNew}
                     >
-                      {SIZES.map((n) => (
-                        <option key={n} value={n}>
-                          {n} a page
-                        </option>
-                      ))}
-                    </Select>
-                    {(
-                      [
-                        ['First', 0, at === 0],
-                        ['Previous', at - 1, at === 0],
-                        ['Next', at + 1, at >= pages - 1],
-                        ['Last', pages - 1, at >= pages - 1],
-                      ] as const
-                    ).map(([label, to, off]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        disabled={off}
-                        onClick={() => setPage(to)}
-                        className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                      <Plus className="size-3.5" />
+                      New
+                    </Button>
+                  </span>
+                  {readByWords(data.readBy) && (
+                    <span className="mr-3">{readByWords(data.readBy)}</span>
+                  )}
+                  {rows.length > Math.min(size, ...SIZES) && (
+                    <>
+                      <span className="mr-2 tabular-nums">
+                        Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
+                      </span>
+                      <Select
+                        aria-label="Rows to a page"
+                        value={String(size)}
+                        onChange={(e) => resize(Number(e.target.value))}
+                        className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
                       >
-                        {label}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            </>
+                        {SIZES.map((n) => (
+                          <option key={n} value={n}>
+                            {n} a page
+                          </option>
+                        ))}
+                      </Select>
+                      {(
+                        [
+                          ['First', 0, at === 0],
+                          ['Previous', at - 1, at === 0],
+                          ['Next', at + 1, at >= pages - 1],
+                          ['Last', pages - 1, at >= pages - 1],
+                        ] as const
+                      ).map(([label, to, off]) => (
+                        <button
+                          key={label}
+                          type="button"
+                          disabled={off}
+                          onClick={() => setPage(to)}
+                          className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          {adding && (
+            <AddRow
+              tableId={data.id}
+              name={data.name}
+              fields={data.fields.filter((f) => canType(f))}
+              dialog={quiet}
+              onClose={() => setAdding(false)}
+            />
+          )}
+          {!adding && !quiet && openedRow && (
+            <RowPanel
+              tableId={data.id}
+              kinds={data.documents}
+              row={openedRow}
+              fields={[...shown, ...notes]}
+              names={data.names}
+              onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
+              title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
+              onField={(slug) => {
+                setPicked({ row: openedRow.id, field: slug })
+                setOpened(null)
+              }}
+              onClose={() => setOpened(null)}
+            />
+          )}
+          {!adding && !quiet && !openedRow && pickedRow && pickedField && (
+            <SourcePanel
+              tableId={data.id}
+              table={data.name}
+              row={pickedRow}
+              field={pickedField}
+              rowName={first ? show(first, pickedRow.values[first.slug], data.names) : ''}
+              names={data.names}
+              onClose={() => setPicked(null)}
+            />
           )}
         </div>
-        {adding && (
-          <AddRow
-            tableId={data.id}
-            name={data.name}
-            fields={data.fields.filter((f) => canType(f))}
-            dialog={quiet}
-            onClose={() => setAdding(false)}
-          />
-        )}
-        {!adding && !quiet && openedRow && (
-          <RowPanel
-            tableId={data.id}
-            kinds={data.documents}
-            row={openedRow}
-            fields={[...shown, ...notes]}
-            names={data.names}
-            onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
-            title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
-            onField={(slug) => {
-              setPicked({ row: openedRow.id, field: slug })
-              setOpened(null)
-            }}
-            onClose={() => setOpened(null)}
-          />
-        )}
-        {!adding && !quiet && !openedRow && pickedRow && pickedField && (
-          <SourcePanel
-            tableId={data.id}
-            table={data.name}
-            row={pickedRow}
-            field={pickedField}
-            rowName={first ? show(first, pickedRow.values[first.slug], data.names) : ''}
-            names={data.names}
-            onClose={() => setPicked(null)}
-          />
-        )}
-      </div>
+      </ShapeFixed.Provider>
     </TableName.Provider>
   )
 }

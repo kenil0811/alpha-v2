@@ -1,6 +1,5 @@
 # A made-up managed kit for the journey a-managed-module-holds (docs/rules.md, M1 to M3): never a
-# client's. Managed takes a pack signed by Kenil's key from step 6; until then the mark is read by
-# nothing, and the journey waits.
+# client's. Managed takes a signed pack: the journey signs it with a key of its own.
 name: Case desk
 version: 0.1.0
 api: 1

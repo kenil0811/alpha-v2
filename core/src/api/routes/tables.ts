@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { config } from '../../config.ts'
 import { tx } from '../../world/db.ts'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
+import { managedBy } from '../../world/maintained.ts'
 import { resetWords } from '../../world/records/index.ts'
 import { findField } from '../../world/shape/index.ts'
 import { namedConfig } from '../../world/views.ts'
@@ -337,6 +338,7 @@ export function registerTables(ctx: Ctx): void {
       aboutBy: t.aboutBy,
       module: { id: t.module.id, name: t.module.name },
       mirror: t.mirror,
+      managed: managedBy(world, t.module.id),
       documents: t.documents,
       fields: t.fields.map(fieldViews(world.shape)),
       views: world.views.list(t.id).map(savedView),

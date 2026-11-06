@@ -38,6 +38,7 @@ import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
 import { ownLoop, spentIn } from './own.ts'
+import { installSigned } from './signed.ts'
 import { type Site, serve } from './site.ts'
 import { Edit, inWindow, Remove, Reset } from './window.ts'
 
@@ -96,6 +97,7 @@ const Journey = z.object({
         .object({
           from: z.string(),
           agents: z.union([z.enum(['on', 'paused']), z.array(z.string())]).default('paused'),
+          signed: z.boolean().optional(), // from a pack signed with a key the journey makes (M1)
         })
         .optional(),
       // the scheduler's tick: agents whose time or change has come run now
@@ -439,10 +441,11 @@ export async function runOne(
     } else if (step.kit) {
       // a kit the core refuses fails the journey, and the journeys after it still run
       try {
-        const m = await install(world, resolve(base, step.kit.from), {
-          actor: { kind: 'person', id: user.id },
-          user: user.id,
-        })
+        const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
+        const from = resolve(base, step.kit.from)
+        const m = step.kit.signed
+          ? await installSigned(world, from, home, person)
+          : await install(world, from, person)
         const on = step.kit.agents
         for (const a of agents(world, m.id))
           setAgentState(
