@@ -2,11 +2,12 @@
 // PDF's page with that piece's box marked, or a text with that line marked. The file itself is a
 // download away.
 import type { FileView as FileData } from '@alpha/core/api'
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
-import { Button, IconButton } from './ui/button.tsx'
+import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Pager } from './ui/pager.tsx'
 
 export interface FilePlace {
   hash: string
@@ -197,19 +198,7 @@ function Pages({ data, place }: { data: FileData; place: FilePlace }) {
       : null
   return (
     <div className="mx-auto flex max-w-page flex-col items-center gap-3 px-6 py-4">
-      <div className="flex items-center gap-2 text-ink-3 text-sm">
-        <IconButton label="The page before" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-          <ChevronLeft className="size-3.5" />
-        </IconButton>
-        Page {page} of {pages}
-        <IconButton
-          label="The next page"
-          disabled={page >= pages}
-          onClick={() => setPage(page + 1)}
-        >
-          <ChevronRight className="size-3.5" />
-        </IconButton>
-      </div>
+      <Pager at={page - 1} count={pages} onAt={(i) => setPage(i + 1)} />
       <div className="relative w-full border border-line bg-surface shadow-sm">
         <img
           key={page}

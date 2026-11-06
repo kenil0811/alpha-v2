@@ -59,7 +59,7 @@ held by review. Dates are 2026.
 | T5 | An empty table keeps its header, blank rows and footer, and says nothing | 26 Oct | — |
 | T6 | Every menu works from the keyboard and opens on a right-click where it belongs; one list, never a second | 26 Oct | — |
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
-| T8 | Rows come 25, 50, 100 or 250 a page, with First and Last | 25 Oct | — |
+| T8 | Rows come 25, 50, 100 or 250 a page; one pager wherever a table or list pages (a file's pages too): ‹ and ›, each page's number between them up to seven, past seven "3 of 12"; it pages what is already loaded, never asking for more | 25 Oct, 4 Nov | test (parts) |
 | T9 | Ticked rows show "n selected"; Escape lets them go after any menu closes | 26 Oct | — |
 | T10 | Every dropdown is one of ours: search past six, Add new… at the foot where a choice can grow (one shared part, the tags picker too, with its search); a related row or a person is picked from one on a double-click, in the grid and an opened row (a relation holding several ticks rows, as tags do, T15), never with Add new… (a new related row is made on its own table); pasting, filling down and many rows at once leave them to Alpha | 26 Oct, 1 Nov, 2 Nov | test (picks) |
 | T11 | No bare `<select>` where a person picks, the cell editor included: a choice cell opens our dropdown at once, saved on a pick, Escape leaves it | 25 Oct, 2 Nov | test |
@@ -137,6 +137,8 @@ held by review. Dates are 2026.
 | L14 | A task, a run, a person, a row, an agent, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel opens a step further in it, with the panel's own Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov | test (opened) |
 | L15 | Marking dims the window a little, the outline glides between what can be marked, and its line wears the accent | 2 Nov | — |
 | L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
+| L17 | A heading over a long body stays in view while the body scrolls under it (one shared part: Activity's days, a short list's heading) | 31 Oct, 4 Nov | — |
+| L18 | A sentence repeated in a list shows once with ×3 (Home's Since you last looked) | 31 Oct, 4 Nov | test (parts) |
 
 ## Proposed, waiting on Kenil or the core
 

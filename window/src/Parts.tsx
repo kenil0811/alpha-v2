@@ -10,7 +10,9 @@ import { Cut, Cuts } from './ui/cut.tsx'
 import { Dot, SIGNAL_WORDS } from './ui/dot.tsx'
 import { DropZone } from './ui/drop-zone.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { Line } from './ui/groups.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
+import { Pager } from './ui/pager.tsx'
 import { Choice, Kbd, Label, Pill, Topic } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
@@ -40,6 +42,7 @@ export function Parts() {
   const [view, setView] = useState<'table' | 'board'>('table')
   const [on, setOn] = useState(true)
   const [cut, setCut] = useState<'all' | 'failed'>('all')
+  const [page, setPage] = useState(0)
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
@@ -201,6 +204,33 @@ export function Parts() {
               busy={false}
               onClick={() => undefined}
             />
+          </Section>
+          <Section
+            title="A pager"
+            about="Each page's number up to seven, then where you are of how many."
+          >
+            <div className="flex flex-wrap items-center gap-6">
+              <Pager at={page} count={4} onAt={setPage} />
+              <Pager at={2} count={12} onAt={() => undefined} />
+            </div>
+          </Section>
+          <Section title="Lines" about="A sentence said again shows once, with how many times.">
+            <div className="overflow-hidden rounded-lg border border-line bg-surface">
+              <Line
+                boxed
+                icon={<Bot className="size-3.5 text-ink-3" />}
+                head="Inbox reader · 09:12"
+                words="Read 4 new emails and filed 2 invoices"
+              />
+              <Line
+                boxed
+                icon={<Bot className="size-3.5 text-ink-3" />}
+                head="Bank reader · 08:00"
+                words="Could not sign in to the bank"
+                warn
+                times={3}
+              />
+            </div>
           </Section>
           <Section
             title="Where a link goes"

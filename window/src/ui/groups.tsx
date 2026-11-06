@@ -44,6 +44,7 @@ export function Line({
   href,
   onClick,
   boxed,
+  times,
 }: {
   icon: ReactNode
   head: string
@@ -52,6 +53,7 @@ export function Line({
   href?: string | undefined
   onClick?: (() => void) | undefined
   boxed?: boolean | undefined
+  times?: number | undefined // the same line this many times, said once (once() below)
 }) {
   const className = cn(
     'flex items-start gap-2.5 text-left hover:bg-hover',
@@ -64,6 +66,9 @@ export function Line({
         <span className="block truncate text-ink-3 text-sm">{head}</span>
         <span className={cn('line-clamp-2 text-md', warn ? 'text-warn' : 'text-ink')}>{words}</span>
       </span>
+      {!!times && times > 1 && (
+        <span className="mt-0.5 shrink-0 text-ink-3 text-sm tabular-nums">×{times}</span>
+      )}
     </>
   )
   return href ? (
@@ -75,6 +80,19 @@ export function Line({
       {inside}
     </button>
   )
+}
+
+// A sentence repeated in a list, said once with how many times (Vikas, 31 Oct): the first of each
+// (the newest, in a list newest first) stands for the rest.
+export function once<T>(items: T[], same: (item: T) => string): { item: T; times: number }[] {
+  const seen = new Map<string, { item: T; times: number }>()
+  for (const item of items) {
+    const key = same(item)
+    const had = seen.get(key)
+    if (had) had.times++
+    else seen.set(key, { item, times: 1 })
+  }
+  return [...seen.values()]
 }
 
 export function Quiet({ children }: { children: ReactNode }) {

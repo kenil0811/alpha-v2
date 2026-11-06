@@ -17,6 +17,7 @@ import { Confirm } from './ui/dialog.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
+import { StickyHead } from './ui/section.tsx'
 
 // a run's time in the mono column: 24-hour, so it never wraps
 const time = (at: string) =>
@@ -109,7 +110,7 @@ export function Activity({ version }: { version: number }) {
         )}
         {days.map(([day, list]) => (
           <section key={day}>
-            <div className="mt-4.5 mb-2 font-semibold text-ink-3 text-sm">{day}</div>
+            <StickyHead className="mt-3 mb-0.5 font-semibold text-ink-3 text-sm">{day}</StickyHead>
             <div className="overflow-hidden rounded-lg border border-line bg-surface">
               {fold(list).map((l) =>
                 l.kind === 'quiet' ? (

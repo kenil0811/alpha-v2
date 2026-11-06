@@ -24,7 +24,7 @@ import { TaskList } from './Tasks.tsx'
 import { clock, dayWords, sinceWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Group, Line, Quiet } from './ui/groups.tsx'
+import { Group, Line, once, Quiet } from './ui/groups.tsx'
 import { Label } from './ui/pill.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
@@ -44,6 +44,10 @@ function greeting(name: string): string {
   const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
   return name ? `${part}, ${name}` : part
 }
+
+// what a run said, without its own name in front
+const saidOf = (r: { name: string; words: string | null }) =>
+  (r.words?.startsWith(`${r.name}: `) ? r.words.slice(r.name.length + 2) : r.words) ?? ''
 
 export function Home({
   stream,
@@ -95,6 +99,9 @@ export function Home({
   const running = stream?.running ?? []
   const reading = stream?.reading ?? []
   const changed = today?.changed ?? []
+  // the same line said again (a reader finding nothing each hour) shows once with ×n, ten at most
+  const lines = once(changed, (r) => [r.name, r.module, r.state, saidOf(r)].join('\n')).slice(0, 10)
+  const more = changed.length - lines.reduce((n, l) => n + l.times, 0)
   const coming = today?.coming ?? []
   // a card that waits is never hidden behind the welcome
   const firstOpen =
@@ -213,27 +220,23 @@ export function Home({
                 {today && !failed.today && changed.length === 0 && <Quiet>Nothing changed.</Quiet>}
                 {changed.length > 0 && (
                   <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                    {changed.slice(0, 10).map((r) => {
-                      const said = r.words?.startsWith(`${r.name}: `)
-                        ? r.words.slice(r.name.length + 2)
-                        : r.words
-                      return (
-                        <Line
-                          key={r.id}
-                          boxed
-                          icon={<Bot className="size-3.5 text-ink-3" />}
-                          head={`${r.name}${r.module ? ` · ${r.module}` : ''} · ${clock(new Date(r.startedAt))}`}
-                          words={said ?? ''}
-                          warn={r.state === 'failed'}
-                          href="#/activity"
-                        />
-                      )
-                    })}
+                    {lines.map(({ item: r, times }) => (
+                      <Line
+                        key={r.id}
+                        boxed
+                        icon={<Bot className="size-3.5 text-ink-3" />}
+                        head={`${r.name}${r.module ? ` · ${r.module}` : ''} · ${clock(new Date(r.startedAt))}`}
+                        words={saidOf(r)}
+                        warn={r.state === 'failed'}
+                        href="#/activity"
+                        times={times}
+                      />
+                    ))}
                   </div>
                 )}
-                {changed.length > 10 && (
+                {more > 0 && (
                   <a className="text-accent text-sm underline underline-offset-3" href="#/activity">
-                    {changed.length - 10} more in Activity
+                    {more} more in Activity
                   </a>
                 )}
               </Group>
