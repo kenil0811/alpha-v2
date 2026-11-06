@@ -1,4 +1,4 @@
-// A table's ⋮ menu: the view's sort and group, its layout, Add column, Keep as a tab, Read now on
+// A table's ⋮ menu: Add field first where fields can be added, the view's sort and group, its layout, Keep as a tab, Read now on
 // a table a connection fills (Batch B, pick 15), then downloads of exactly the rows and columns
 // shown. Out of TableView.tsx so that screen only shrinks (the window file wall).
 import type { FieldView, ReadByView, ViewConfig } from '@alpha/core/api'
@@ -33,7 +33,7 @@ export function More({
   shown: FieldView[]
   config: ViewConfig
   layout: LayoutNow
-  adding: boolean // whether a column can be added here
+  adding: boolean // whether a field can be added here
   onConfig: (c: ViewConfig) => void
   onExport: (as: 'csv' | 'xlsx') => void
   onCopy: () => void
@@ -64,6 +64,22 @@ export function More({
         <EllipsisVertical className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
+        {/* a field is the data, so it comes first, the same in every view; a list kept on its own
+            page (Tasks, People) has its fields fixed there, so none (Vikas, 1 Nov) */}
+        {adding && (
+          <>
+            <MenuItem
+              onClick={() => {
+                setOpen(false)
+                setAdd(true)
+              }}
+            >
+              <Plus className="size-3.5 text-ink-3" />
+              Add field
+            </MenuItem>
+            <MenuLine />
+          </>
+        )}
         <SubMenu
           label={
             <>
@@ -140,16 +156,6 @@ export function More({
             Reset the column widths
           </MenuItem>
         </SubMenu>
-        <MenuItem
-          reason={adding ? undefined : 'This table is kept on its own page; add columns there.'}
-          onClick={() => {
-            setOpen(false)
-            setAdd(true)
-          }}
-        >
-          <Plus className="size-3.5 text-ink-3" />
-          Add column
-        </MenuItem>
         {tab !== null && (
           <MenuItem
             checked={tab}
@@ -205,7 +211,7 @@ export function More({
         </SubMenu>
       </Popover>
       <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />
+        <AddFieldForm tableId={tableId} title="Add a field" onAdded={() => setAdd(false)} />
       </Popover>
     </>
   )

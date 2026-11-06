@@ -1,20 +1,22 @@
-// A table's toolbar, one row that never wraps, in this order: the saved list (a dropdown: the one
-// the table opens on first, its ★ filled, then All and each list, shared by everyone, a ★ on hover
-// making one the default, with Add list at its foot), Save and Cancel while the list
-// on screen differs from what was saved, the view, search and filter (`tools`), and on the right
-// the table's actions, ⋮ and the numbers' chevron (`right`). The list's own actions sit in the
-// dropdown and on a right-click of it: rename, duplicate, open the table on it, delete.
+// A table's toolbar, two rows (Vikas, 1–2 Nov). First the lists: All, then each saved list, shared
+// by everyone, as pills that wrap, the one on screen lit, ★ on the one the table opens on, + to add
+// one; at that row's right Save and Cancel while the list on screen differs from what was saved,
+// then the table's one main action (`main`, New). Under it the view, search running up to Filter
+// (`tools`), then Columns and ⋮ (`right`). The list's own actions are on a right-click of its pill
+// (picking it first): rename, duplicate, open the table on it, delete; a double-click renames.
 import type { SavedView } from '@alpha/core/api'
-import { ChevronDown, Plus } from 'lucide-react'
+import { Plus, Star } from 'lucide-react'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
+import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
 import { Field } from '../ui/field.tsx'
-import { MenuHeading, MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
+import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
 
 export function ViewTabs({
   tools,
   right,
+  main,
   views,
   current,
   dirty,
@@ -27,8 +29,9 @@ export function ViewTabs({
   onRemove,
   onReset,
 }: {
-  tools: ReactNode // the view, search and filter, after the saved list
-  right: ReactNode // the table's own actions, ⋮ and the chevron, at the right end
+  tools: ReactNode // the view, search and filter, under the lists
+  right: ReactNode // Columns and ⋮, after Filter
+  main: ReactNode // the table's one main action (New), at the lists' right
   views: SavedView[]
   current: string | null
   dirty: boolean
@@ -41,163 +44,159 @@ export function ViewTabs({
   onRemove: () => void
   onReset: () => void
 }) {
-  const [open, setOpen] = useState(false)
   const [removing, setRemoving] = useState(false) // Delete the list asks first, in the pop-up
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null)
-  const picker = useRef<HTMLButtonElement>(null)
+  const lit = useRef<HTMLButtonElement>(null)
+  const plus = useRef<HTMLButtonElement>(null)
   const onList = useContextMenu()
   const view = views.find((v) => v.id === current)
-  const name = view?.name ?? 'All'
-  const close = () => {
-    setOpen(false)
-    onList.close()
-  }
+  const close = onList.close
   const allReason = view ? undefined : 'All keeps its name and stays.'
   const mark = views.find((v) => v.isDefault) // the list the table opens on; none, All
   const starred = (v: SavedView | null) => (v ? v.isDefault : !mark)
-  // the list's own actions: in the dropdown, under its lines, and on a right-click of it
-  const actions = (
-    <>
-      <MenuItem
-        reason={allReason}
-        onClick={() => {
-          close()
-          setNaming('rename')
-        }}
-      >
-        Rename list…
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          close()
-          onSaveAs(view ? `${view.name} (copy)` : 'All (copy)')
-        }}
-      >
-        Duplicate list
-      </MenuItem>
-      <MenuItem
-        checked={view ? view.isDefault : !views.some((v) => v.isDefault)}
-        reason={
-          view
-            ? undefined
-            : views.some((v) => v.isDefault)
-              ? 'Open another list on its own default to change it.'
-              : 'The table already opens on All.'
-        }
-        onClick={() => {
-          close()
-          if (view) onDefault(view.id, !view.isDefault)
-        }}
-      >
-        Open the table on this list
-      </MenuItem>
-      <MenuLine />
-      <MenuItem
-        danger
-        reason={allReason}
-        onClick={() => {
-          close()
-          setRemoving(true)
-        }}
-      >
-        Delete list
-      </MenuItem>
-    </>
-  )
   return (
-    <div className="flex min-h-11 items-center gap-2 border-hair border-b px-7">
-      <button
-        ref={picker}
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`Saved list: ${name}`}
-        data-tip={
-          view
-            ? 'The saved list: double-click to rename it; right-click to rename, duplicate or delete it'
-            : 'The saved list: right-click to duplicate it'
-        }
-        onClick={() => setOpen((o) => !o)}
-        onDoubleClick={() => {
-          if (!view) return
-          setOpen(false)
-          setNaming('rename')
-        }}
-        {...onList.on}
-        className="flex h-7.5 max-w-40 shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface pr-1.5 pl-2.5 text-ink text-md hover:border-accent-line"
-      >
-        <span className="truncate">{name}</span>
-        {dirty && (
-          <span
-            aria-hidden="true"
-            className="size-1.5 shrink-0 rounded-full bg-accent"
-            title="Changed since it was saved"
-          />
-        )}
-        <ChevronDown className="size-3.5 shrink-0 text-ink-3" />
-      </button>
-      {dirty && (
-        <>
-          <Button size="sm" variant="ghost" onClick={onReset} title="Go back to what was saved">
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => (view ? onSave() : setNaming('new'))}
-            data-tip={
-              view ? `Save the changes to ${view.name}` : 'Keep what is on screen as a new list'
-            }
+    <div className="border-hair border-b px-7">
+      <div className="flex items-start gap-2 pt-2">
+        <div
+          role="toolbar"
+          aria-label="Saved lists"
+          className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
+        >
+          {[null, ...views].map((v) => {
+            const on = (v?.id ?? null) === current
+            const pick = () => onPick(v?.id ?? null)
+            return (
+              <button
+                key={v?.id ?? 'all'}
+                ref={on ? lit : undefined}
+                type="button"
+                aria-pressed={on}
+                data-tip={
+                  v
+                    ? 'Double-click to rename it; right-click to rename, duplicate or delete it'
+                    : 'Every row; right-click to duplicate it as a list'
+                }
+                onClick={() => !on && pick()}
+                onDoubleClick={() => on && v && setNaming('rename')}
+                onContextMenu={(e) => {
+                  if (!on) pick()
+                  onList.on.onContextMenu(e)
+                }}
+                onKeyDown={(e) => {
+                  if (!on && ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu')) pick()
+                  onList.on.onKeyDown(e)
+                }}
+                className={cn(
+                  'flex h-7.5 max-w-60 items-center gap-1.5 rounded-full border px-3 text-md',
+                  on
+                    ? 'border-accent-line bg-accent-soft text-accent'
+                    : 'border-line bg-surface text-ink-2 hover:border-accent-line hover:text-ink',
+                )}
+              >
+                {starred(v) && views.length > 0 && (
+                  <Star
+                    className="size-3 shrink-0 fill-current"
+                    aria-label="The table opens on it"
+                  />
+                )}
+                <span className="truncate">{v?.name ?? 'All'}</span>
+                {on && dirty && (
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 shrink-0 rounded-full bg-accent"
+                    title="Changed since it was saved"
+                  />
+                )}
+              </button>
+            )
+          })}
+          <button
+            ref={plus}
+            type="button"
+            aria-label="Add list"
+            data-tip="Add list: keep what is on screen as a new list"
+            onClick={() => setNaming('new')}
+            className="grid size-7.5 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-hover hover:text-ink"
           >
-            {view ? 'Save' : 'Save as list'}
-          </Button>
-        </>
-      )}
-      {tools}
-      {problem && <span className="min-w-0 truncate text-bad text-sm">{problem}</span>}
-      <span className="ml-auto flex shrink-0 items-center gap-1">{right}</span>
-      <Popover anchor={picker} open={open} onClose={() => setOpen(false)}>
-        <MenuHeading>Saved lists</MenuHeading>
-        {[null, ...views]
-          .sort((a, b) => Number(starred(b)) - Number(starred(a)))
-          .map((v) => (
-            <MenuItem
-              key={v?.id ?? 'all'}
-              checked={(v?.id ?? null) === current}
-              star={{
-                on: starred(v),
-                // All's ★ comes back when no list has one; a list's own ★ off opens the table on All
-                onClick: v
-                  ? () => onDefault(v.id, !v.isDefault)
-                  : mark
-                    ? () => onDefault(mark.id, false)
-                    : undefined,
-              }}
-              onClick={() => {
-                setOpen(false)
-                onPick(v?.id ?? null)
-              }}
-            >
-              {v?.name ?? 'All'}
-            </MenuItem>
-          ))}
-        <MenuLine />
-        {actions}
-        <MenuLine />
+            <Plus className="size-3.5" />
+          </button>
+        </div>
+        <span className="flex shrink-0 items-center gap-1">
+          {problem && <span className="max-w-60 truncate text-bad text-sm">{problem}</span>}
+          {dirty && (
+            <>
+              <Button size="sm" variant="ghost" onClick={onReset} title="Go back to what was saved">
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => (view ? onSave() : setNaming('new'))}
+                data-tip={
+                  view ? `Save the changes to ${view.name}` : 'Keep what is on screen as a new list'
+                }
+              >
+                {view ? 'Save' : 'Save as list'}
+              </Button>
+            </>
+          )}
+          {main}
+        </span>
+      </div>
+      <div className="flex min-h-11 items-center gap-2">
+        {tools}
+        {right}
+      </div>
+      <Popover point={onList.point} open={onList.open} onClose={onList.close}>
         <MenuItem
+          reason={allReason}
           onClick={() => {
-            setOpen(false)
-            setNaming('new')
+            close()
+            setNaming('rename')
           }}
         >
-          <Plus className="size-3.5 text-ink-3" />
-          Add list
+          Rename list…
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            close()
+            onSaveAs(view ? `${view.name} (copy)` : 'All (copy)')
+          }}
+        >
+          Duplicate list
+        </MenuItem>
+        <MenuItem
+          checked={starred(view ?? null)}
+          reason={
+            view
+              ? undefined
+              : mark
+                ? 'Open another list on its own default to change it.'
+                : 'The table already opens on All.'
+          }
+          onClick={() => {
+            close()
+            if (view) onDefault(view.id, !view.isDefault)
+          }}
+        >
+          Open the table on this list
+        </MenuItem>
+        <MenuLine />
+        <MenuItem
+          danger
+          reason={allReason}
+          onClick={() => {
+            close()
+            setRemoving(true)
+          }}
+        >
+          Delete list
         </MenuItem>
       </Popover>
-      <Popover point={onList.point} open={onList.open} onClose={onList.close}>
-        {actions}
-      </Popover>
-      <Popover anchor={picker} open={naming !== null} onClose={() => setNaming(null)}>
+      <Popover
+        anchor={naming === 'rename' ? lit : plus}
+        open={naming !== null}
+        onClose={() => setNaming(null)}
+      >
         <NameForm
           start={naming === 'rename' ? (view?.name ?? '') : ''}
           label={naming === 'rename' ? 'Rename' : 'Save'}
