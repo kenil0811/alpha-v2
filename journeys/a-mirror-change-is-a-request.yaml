@@ -23,7 +23,7 @@ steps:
   - customer_does: case-1042-reopened
   - say: Set case 1042's status to Closed again.
     checks:
-      - reply_matches: '(?i)changed since'
+      - reply_matches: 'changed since'
         waits: 8
       - connector_calls: { words: 'Cases: set', count: 1 }
         waits: 8

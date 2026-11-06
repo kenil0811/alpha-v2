@@ -9,7 +9,7 @@ steps:
   - kit: { from: journeys/fixtures/kits/case-desk, signed: true }
   - say: Add a field Priority to Cases.
     checks:
-      - reply_matches: '(?i)managed'
+      - reply_matches: 'managed'
       - no_field: { table: Cases, field: Priority }
   - rename: { table: Cases, to: Matters }
     checks:
