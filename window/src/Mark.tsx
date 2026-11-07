@@ -2,7 +2,7 @@
 // and a small box opens there for a comment. The comment goes to Alpha with what was marked,
 // in words: the page, and for a table cell its table, row, column and value.
 import { Pencil } from 'lucide-react'
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { startAsk } from './ask.ts'
 import type { Module } from './stream.ts'
@@ -79,6 +79,26 @@ export function describe(el: Element): string {
 
 type Picked = { what: string; box: DOMRect }
 
+// The comment box stays fully on screen (Vikas, 1 Nov: it was cut off at the edge): under what was
+// marked, else over it, else inside the window's height; its left edge on the marked thing's,
+// shifted in from either side. `size` is the box as drawn, `view` the window.
+const GAP = 8
+type Edges = { top: number; bottom: number; left: number }
+type Size = { width: number; height: number }
+export function boxAt(box: Edges, size: Size, view: Size): { top: number; left: number } {
+  const fit = (at: number, own: number, room: number) =>
+    Math.max(GAP, Math.min(at, room - own - GAP))
+  const under = box.bottom + GAP
+  const over = box.top - GAP - size.height
+  const top =
+    under + size.height <= view.height - GAP
+      ? under
+      : over >= GAP
+        ? over
+        : fit(box.top + GAP, size.height, view.height)
+  return { top, left: fit(box.left, size.width, view.width) }
+}
+
 // Mounted once: marking starts on the pencil and ends on a send, Cancel or Escape.
 export function Marker({ from }: { from: Module | null }) {
   const [on, setOn] = useState(false)
@@ -87,6 +107,8 @@ export function Marker({ from }: { from: Module | null }) {
   const [words, setWords] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const own = useRef<HTMLDivElement>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState(170) // about the box's height, until it is drawn
 
   const stop = () => {
     setOn(false)
@@ -138,6 +160,12 @@ export function Marker({ from }: { from: Module | null }) {
     }
   }, [on, picked])
 
+  // the box's real height (a problem line makes it taller), so it is placed by what it is
+  useLayoutEffect(() => {
+    const h = boxRef.current?.offsetHeight
+    if (h && h !== height) setHeight(h)
+  })
+
   if (!on) return null
 
   const send = async () => {
@@ -162,8 +190,6 @@ export function Marker({ from }: { from: Module | null }) {
   }
   const shown = picked?.box ?? over
   const W = 320
-  const left = picked ? Math.max(8, Math.min(picked.box.left, window.innerWidth - W - 8)) : 0
-  const below = picked ? picked.box.bottom + 8 + 170 < window.innerHeight : true
   return (
     <div ref={own}>
       {/* while marking, the window dims a little and the outline glides from one thing to the
@@ -195,6 +221,7 @@ export function Marker({ from }: { from: Module | null }) {
       )}
       {picked && (
         <div
+          ref={boxRef}
           role="dialog"
           aria-label="Comment on what you marked"
           className={cn(
@@ -202,10 +229,11 @@ export function Marker({ from }: { from: Module | null }) {
           )}
           style={{
             width: W,
-            left,
-            ...(below
-              ? { top: picked.box.bottom + 8 }
-              : { bottom: window.innerHeight - picked.box.top + 8 }),
+            ...boxAt(
+              picked.box,
+              { width: W, height },
+              { width: window.innerWidth, height: window.innerHeight },
+            ),
           }}
         >
           <p className="line-clamp-2 text-ink-3 text-sm">{picked.what}</p>
