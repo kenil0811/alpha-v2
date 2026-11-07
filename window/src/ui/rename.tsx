@@ -81,7 +81,7 @@ export function BarName({
 }) {
   return (
     // the name truncates, not the h1, so a refusal under the box is not cut off
-    <h1 className="hidden min-w-0 font-serif text-ink text-xl peer-empty:block">
+    <h1 className="hidden min-w-0 text-ink peer-empty:block">
       <Renamable name={name} rename={rename} className="w-64">
         {(start) =>
           start ? (

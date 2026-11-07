@@ -93,6 +93,26 @@ describe('the window’s look', () => {
     expect(found).toEqual([])
   })
 
+  // One size a level (Vikas, 1 and 3 Nov): every page's title is 2xl, set once on h1 in app.css,
+  // and a section's serif heading one step below it at xl; an h1 given another size breaks that.
+  it('L3: a page title is one size everywhere, a section heading one step below', () => {
+    const found: string[] = []
+    for (const file of sources(SRC)) {
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .forEach((line, i) => {
+          if (/^\s*\/\//.test(line)) return
+          const h1 = /<h1\b/.test(line) && /\btext-(?:xs|sm|md|base|lg|xl)\b/.test(line)
+          const h2 = /<h2\b/.test(line) && /font-serif/.test(line) && !/\btext-xl\b/.test(line)
+          if (h1 || h2) found.push(`${relative(SRC, file)}:${i + 1}`)
+        })
+    }
+    expect(found).toEqual([])
+    expect(readFileSync(join(SRC, 'app.css'), 'utf8')).toMatch(
+      /h1 \{[^}]*font-size: var\(--text-2xl\);/,
+    )
+  })
+
   it('says only the agreed words', () => {
     const found: string[] = []
     for (const file of sources(SRC)) {

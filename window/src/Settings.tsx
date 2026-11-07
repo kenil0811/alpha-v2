@@ -209,7 +209,7 @@ export function Settings({
         <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
           {p.icon}
         </span>
-        <h1 className="font-serif text-ink text-xl">{p.title}</h1>
+        <h1 className="text-ink">{p.title}</h1>
         <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
       </div>
     </InBar>
@@ -238,11 +238,9 @@ export function Settings({
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
         {head}
-        <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-          <SideList
-            label={page === 'settings' ? 'Settings' : 'Intelligence'}
-            className="max-md:flex-row max-md:flex-wrap"
-          >
+        {/* the list of sections stays a column on the left at every width (Vikas, 3 Nov) */}
+        <div className="grid grid-cols-[170px_1fr] gap-7">
+          <SideList label={page === 'settings' ? 'Settings' : 'Intelligence'}>
             {tabs.map(([id, name]) => (
               <SideItem key={id} on={id === at} onClick={() => go(id)}>
                 {name}
