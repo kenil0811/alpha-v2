@@ -42,7 +42,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | M4 | In an open module everything is the firm's to change. A kit's update follows the ownership rule, and a maintained kit's shape change, or a change to a file it shipped, goes on its card from every door, not only the model's tool; a file the firm adds to its module (a source's own reader) is the firm's | 4 Nov, 5 Nov | test |
 | M5 | Kit code finds tables and fields by their lasting key, never by a name a person can change, so a rename never breaks an agent or a reader | 4 Nov | test |
 | M6 | Who may build is one firm setting: everyone, admins or nobody. Building is a new module, table, field, agent or page, and installing or packing a kit | 4 Nov | step 8 |
-| M7 | The developer switch, installing packs, restoring, bringing in or removing data, and the model's route are for admins only (the owner, until there are users) | 4 Nov | step 8 |
+| M7 | The developer switch (`developer: true` in alpha.yaml, out of the window since 7 Nov), installing packs, restoring, bringing in or removing data, and the model's route are for admins only (the owner, until there are users) | 4 Nov, 7 Nov | step 8 |
 | M8 | A managed kit's update may rename, retype and remove, by a scripted migration signed with it; an open kit's update only adds | 4 Nov | step 8 |
 
 ## Who owns the data: Alpha's own

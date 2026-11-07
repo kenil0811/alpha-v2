@@ -62,20 +62,6 @@ export interface CardView {
   draft?: DraftView | null // an agent's email for the person's yes
   match?: MatchView | null // people or companies that may be one, side by side
   review?: ReviewView | null // rows an agent puts to the person, a choice on each
-  proposed?: ProposedView | null // tasks an agent proposes, for the person's yes
-}
-
-// Tasks an agent proposes on one card: each as it would be added, where and for whom.
-export interface ProposedView {
-  agent: string
-  tasks: {
-    title: string
-    notes: string | null
-    due: string | null
-    priority: 'high' | 'normal' | 'low'
-    place: string // in words
-    owner: string // You, or the agent's name
-  }[]
 }
 
 // Rows an agent puts to the person on one card: each with why, and the choices it offers.
@@ -174,7 +160,7 @@ export interface DraftView {
 // What this Mac still needs, for the first open and Settings › This Mac.
 export interface SetupView {
   claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
-  route: 'subscription' | 'key' | 'api'
+  route: 'subscription' | 'key'
   // each connector that asks for a place on the first open, as it describes itself
   steps: { connector: string; title: string; sub: string; done: boolean }[]
   chrome: boolean // Google Chrome, for sites the person signs in to
@@ -272,7 +258,6 @@ export interface ModuleSummary {
   name: string
   parent: string | null // the module it sits inside
   people: boolean // People and Organizations are its tabs (module.yaml people: true)
-  alpha: boolean // Alpha's own module (module.yaml core: true): its tables are the Second Brain
   pages: PageSummary[]
   tables: TableSummary[]
 }
@@ -541,7 +526,7 @@ export interface InstructionView {
 
 // The model as the person chooses it: a provider per route, each saying what it can do.
 export interface ProviderView {
-  route: 'subscription' | 'key' | 'api'
+  route: 'subscription' | 'key'
   title: string
   can: string // what it can do, in a line
   cannot: string | null // what another listed provider can and this one cannot
@@ -551,7 +536,7 @@ export interface ProviderView {
 
 export interface ModelView {
   desk: string
-  route: 'subscription' | 'key' | 'api' // their own subscription; the firm's key through Claude Code; the key through Alpha's own loop
+  route: 'subscription' | 'key' // their own subscription; the firm's key through Claude Code
   hasKey: boolean // a key is kept in the Keychain
   providers: ProviderView[]
 }
@@ -609,14 +594,12 @@ export interface TaskLineView {
   remindAt: string | null
   repeat: string | null
   priority: 'high' | 'normal' | 'low'
-  owner: string // in words: You, Alpha, an agent's name
-  ownerKind: 'person' | 'alpha' | 'agent'
+  owner: string // in words: You or Alpha
+  ownerKind: 'person' | 'alpha'
   place: { words: string; path: string[]; href: string | null }
   parent: string | null
   children: number
   childrenDone: number
-  waitingForYou: boolean // a card about it waits on the person
-  working: boolean // its agent is working on it now
 }
 
 export interface TasksView {
@@ -644,14 +627,5 @@ export interface TaskView extends TaskLineView {
     siblings: TaskLineView[]
   }
   history: { at: string; words: string }[]
-  owners: { kind: 'person' | 'alpha' | 'agent'; id: string | null; name: string }[]
-  // the agent it is given to, and its runs on it, newest first (the one working now first)
-  agent: {
-    name: string
-    on: boolean
-    takes: boolean
-    said: string | null // what its runs last said of the task: done with what, or what it waits for
-    runs: RunView[]
-  } | null
-  cards: CardView[] // what its runs put to the person: waiting first, then the decided
+  owners: { kind: 'person' | 'alpha'; id: string | null; name: string }[]
 }

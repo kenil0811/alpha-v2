@@ -7,11 +7,10 @@ import { BrowserEngine } from '@alpha/connector-sdk'
 import { BACK } from './api/routes/signin.ts'
 import { buildServer } from './api/server.ts'
 import { config } from './config.ts'
-import { loadSet, STANDARD_DIR, updateOwn } from './connectors/discover.ts'
+import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
 import { SignIn } from './connectors/signin.ts'
 import { copyNewestBackup, takeRestartNote } from './data.ts'
-import { ClaudeApiProvider } from './engine/claudeapi.ts'
 import { ClaudeCodeProvider } from './engine/claudecode.ts'
 import { Engine } from './engine/engine.ts'
 import { ModelRoute } from './engine/route.ts'
@@ -29,10 +28,9 @@ import { platformHere } from './platform/index.ts'
 import { loadPlugins, PLUGINS_DIR, Plugins } from './plugins/plugins.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
-import { isDeveloper, type Trust } from './signing.ts'
+import type { Trust } from './signing.ts'
 import { fold, verify } from './world/audit.ts'
 import { backupDaily } from './world/backups.ts'
-import { Refused } from './world/kinds.ts'
 import { setHomeRegion } from './world/phones.ts'
 import { expire } from './world/records/index.ts'
 import { tenantDir, World } from './world/world.ts'
@@ -139,22 +137,10 @@ const { store: secrets, helper } = platform.secrets(install.helper)
 if (helper) process.env.ALPHA_HELPER_APP = helper
 if (install.uv) process.env.ALPHA_UV = install.uv
 // The connectors: the standard set the release ships, then every folder under Alpha's own
-// connectors/ (added from Settings); a folder that does not load is said on Home and left out.
+// connectors/ (pnpm connector add); a folder that does not load is said on Home and left out.
 const connectorsDir = join(home, 'connectors')
-// what an install trusts: Kenil's signature, or everything while the developer switch is on
-const trust = (): Trust => ({ developer: isDeveloper(world, user.id) })
-for (const u of updateOwn(connectorsDir, trust())) {
-  const words = u.refused
-    ? `The connector ${u.title} ${u.version} was not taken: ${u.refused}`
-    : `Updated the connector ${u.title} to ${u.version}, Alpha's own.`
-  console.log(words)
-  world.line({
-    actor: { kind: 'system' },
-    kind: 'connector_updated',
-    words,
-    data: { name: u.name, version: u.version },
-  })
-}
+// what an install trusts: Kenil's signature, or everything with developer: true in alpha.yaml
+const trust = (): Trust => ({ developer: readInstall(home).developer })
 const standard = await loadSet(STANDARD_DIR)
 const added = await loadSet(
   connectorsDir,
@@ -168,8 +154,6 @@ const connectors = new ConnectorService(world, {
   known: [...standard.connectors, ...added.connectors],
   // signing in as the person: the provider sends them back to this core (step 2, part 5)
   signIn: new SignIn(world, { secrets, back: () => `http://localhost:${port}${BACK}` }),
-  // what onboarding reads of this computer, through the helper where there is one
-  local: platform.local(helper),
 })
 for (const f of [...standard.failed, ...added.failed]) {
   const words = `The connector in ${f.folder} did not load: ${f.why}`
@@ -184,12 +168,9 @@ for (const f of [...standard.failed, ...added.failed]) {
 // How this install reaches Claude: the person's subscription, or a key kept in the Keychain.
 const route = new ModelRoute(world, secrets, home)
 await route.load()
-// The model as a provider (decision 11): Claude Code through the Agent SDK on the person's
-// subscription or with the key, or the key through Anthropic's SDK and Alpha's own loop; the
-// route chosen in Settings picks one when a session opens, and for each one-question ask.
+// The model: Claude Code through the Agent SDK, on the person's subscription or with the key; the
+// route chosen in Settings says which.
 const claudeCode = new ClaudeCodeProvider({ route, askDir: world.paths.dir })
-const claudeApi = new ClaudeApiProvider(world, { key: () => route.apiKey, userId: user.id })
-const provider = () => (route.name === 'api' ? claudeApi : claudeCode)
 const providers = [
   {
     route: 'subscription' as const,
@@ -197,13 +178,8 @@ const providers = [
     provider: claudeCode,
   },
   { route: 'key' as const, title: 'Claude Code with an API key', provider: claudeCode },
-  {
-    route: 'api' as const,
-    title: "Claude with an API key, on Alpha's own loop",
-    provider: claudeApi,
-  },
 ]
-const ask: Ask = (prompt, schema) => provider().ask(config.reading(), prompt, schema)
+const ask: Ask = (prompt, schema) => claudeCode.ask(config.reading(), prompt, schema)
 // The browser starts on first use: its own copy is set up in Alpha's folder then.
 let browser: BrowserEngine | null = null
 const browserEngine = () => {
@@ -224,7 +200,7 @@ let started: Engine | null = null
 const runner = new AgentRunner(world, browserEngine, {
   owner: user.id,
   ask,
-  judge: (prompt, schema) => provider().ask(config.judging(), prompt, schema),
+  judge: (prompt, schema) => claudeCode.ask(config.judging(), prompt, schema),
   notify: () => started?.events.emit('event', { type: 'lines', user: user.id }),
 })
 // Files that come by mail, proposed for filing on a card each.
@@ -251,12 +227,9 @@ const plugins = new Plugins({
   user,
   home,
   region: () => platform.region(),
-  ask: (system, prompt, schema) => provider().ask(system, prompt, schema),
-  explore: (system, prompt, tools, schema, turns) => {
-    const p = provider()
-    if (!p.explore) throw new Refused('The way Alpha reaches Claude here cannot look around yet.')
-    return p.explore(system, prompt, tools, schema, turns)
-  },
+  ask: (system, prompt, schema) => claudeCode.ask(system, prompt, schema),
+  explore: (system, prompt, tools, schema, turns) =>
+    claudeCode.explore(system, prompt, tools, schema, turns),
   connectors,
 })
 const pluginsFailed = await (async () => {
@@ -267,7 +240,7 @@ for (const f of pluginsFailed) console.error(`The plugin in ${f.folder} did not 
 const engine = new Engine(world, {
   connectors,
   route,
-  provider,
+  provider: claudeCode,
   providers,
   starts: () => plugins.startBlocks(),
   hands: { browser: browserEngine, runner, browsers: join(home, 'browsers'), intake, drafts },

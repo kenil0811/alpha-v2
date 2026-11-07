@@ -102,5 +102,6 @@
     }
   ],
   "next": "{\"shape\": \"o1\", \"inbox\": \"https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=recorded-in\", \"sentitems\": \"https://graph.microsoft.com/v1.0/me/mailFolders/sentitems/messages/delta?$deltatoken=recorded-sent\"}",
-  "total": 5
+  "total": 5,
+  "gone": []
 }

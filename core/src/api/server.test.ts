@@ -331,7 +331,7 @@ describe('the api over a world', () => {
     await a.close()
   })
 
-  it('pauses an agent from its cell, and finds where People lives and Alpha’s own module by module.yaml', async () => {
+  it('pauses an agent from its cell, and finds where People lives by module.yaml', async () => {
     const m = await install(world, join(import.meta.dirname, '..', 'modules', 'test-kit'), {
       actor: { kind: 'alpha' },
     })
@@ -360,10 +360,6 @@ describe('the api over a world', () => {
     writeFileSync(file, `${readFileSync(file, 'utf8')}people: true\n`)
     expect((await get('/api/modules')).find((x: { id: string }) => x.id === m.id).people).toBe(true)
     expect((await get(`/api/modules/${m.id}`)).people).toBe(true)
-    // and Alpha's own module is the one whose module.yaml says core: true, whatever its name
-    expect((await get('/api/modules')).find((x: { id: string }) => x.id === m.id).alpha).toBe(false)
-    writeFileSync(file, `${readFileSync(file, 'utf8')}core: true\n`)
-    expect((await get('/api/modules')).find((x: { id: string }) => x.id === m.id).alpha).toBe(true)
     await a.close()
   })
 

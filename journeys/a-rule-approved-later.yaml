@@ -1,8 +1,8 @@
-name: a-rule-approved-in-governance
-title: A rule left waiting on its Save card is approved later from Governance, and holds
+name: a-rule-approved-later
+title: A rule left waiting on its Save card is approved later from Settings › Permissions, and holds
 why: >
   Batch B, pick 18 (Kenil's call 9, 1 Nov): a rule Alpha proposed waits on its Save card; the
-  person moves on, and later finds it in a module's Governance under Waiting for you. Approve there
+  person moves on, and later finds it in Settings › Permissions under Waiting for you. Approve there
   is the card's own Save, so the rule and its journal line come out as on the card. On recorded
   answers (journeys/fixtures/gmail), never a real account.
 steps:

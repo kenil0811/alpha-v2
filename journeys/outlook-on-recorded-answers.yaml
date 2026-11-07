@@ -16,6 +16,7 @@ steps:
   - say: what rent and deposit did Jordan's renewal email ask for?
     checks:
       - reply_matches: '1,?850'
-      - connector_calls: { words: 'Outlook: read', count: 1 }
+      # the model may open a thread's other messages too: reading the text when needed is the point
+      - connector_calls: { words: 'Outlook: read', at_least: 1 }
       - permission_cards: 0
       - errors: 0

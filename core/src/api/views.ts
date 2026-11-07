@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FastifyReply } from 'fastify'
-import { type Agent, agents, readAgent } from '../modules/agents.ts'
+import { type Agent, readAgent } from '../modules/agents.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { pagesOf } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
@@ -49,7 +49,6 @@ export function makeViews(ctx: BaseCtx) {
     draft: engine.hands?.drafts?.view(c) ?? null,
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
     review: engine.hands?.runner?.reviews.view(c) ?? null,
-    proposed: engine.hands?.runner?.proposedView(c) ?? null,
   })
   // Tasks (Kenil's plan, 21 Oct): the saved lists, a task's page, and the person's own word on
   // them: added, changed, moved, done, removed.
@@ -81,21 +80,7 @@ export function makeViews(ctx: BaseCtx) {
     return { words, path: words === 'nowhere yet' ? [] : words.split(' › '), href }
   }
   // the tasks a card waits on the person for: about the task, or from a run serving it
-  const waitingCards = () =>
-    new Set([
-      ...world.cards
-        .waiting()
-        .map((c) => (c.call?.input as { task?: string } | undefined)?.task)
-        .filter((x): x is string => !!x),
-      ...world.cards.waitingTasks(),
-    ])
-  const workingOn = () =>
-    new Set(
-      (engine.hands?.runner.runs(50) ?? [])
-        .filter((r) => r.state === 'running' && r.task)
-        .map((r) => r.task as string),
-    )
-  const lineOf = (t: Task, waiting: Set<string>, working = workingOn()): TaskLineView => {
+  const lineOf = (t: Task): TaskLineView => {
     const kids = world.tasks.children(t.id)
     return {
       id: t.id,
@@ -113,14 +98,11 @@ export function makeViews(ctx: BaseCtx) {
       parent: t.parent,
       children: kids.length,
       childrenDone: kids.filter((k) => k.state === 'done').length,
-      waitingForYou: waiting.has(t.id),
-      working: working.has(t.id),
     }
   }
   const taskOut = (id: string): TaskView | undefined => {
     const t = world.tasks.get(id)
     if (!t) return undefined
-    const waiting = waitingCards()
     const row = t.place.row ? world.records.get(t.place.row) : undefined
     const values = row
       ? row.table.fields.flatMap((f) => {
@@ -138,20 +120,13 @@ export function makeViews(ctx: BaseCtx) {
         })
       : []
     const parent = t.parent ? world.tasks.get(t.parent) : undefined
-    // who can own it: the person, Alpha, and the agents that take tasks
-    const all = agents(world)
+    // who can own it: the person or Alpha
     const owners = [
       { kind: 'person' as const, id: user.id, name: 'You' },
       { kind: 'alpha' as const, id: null, name: 'Alpha' },
-      ...all
-        .filter((a) => a.tasks || a.id === t.owner.id)
-        .map((a) => ({ kind: 'agent' as const, id: a.id, name: a.name })),
     ]
-    const agent = t.owner.kind === 'agent' ? all.find((a) => a.id === t.owner.id) : undefined
-    const runner = engine.hands?.runner
-    const cards = world.cards.ofTask(t.id)
     return {
-      ...lineOf(t, waiting),
+      ...lineOf(t),
       notes: t.notes,
       remindedAt: t.remindedAt,
       madeBy: t.madeBy.startsWith('person')
@@ -164,7 +139,7 @@ export function makeViews(ctx: BaseCtx) {
       createdAt: t.createdAt,
       doneAt: t.doneAt,
       parentTitle: parent?.title ?? null,
-      subtasks: world.tasks.children(t.id).map((k) => lineOf(k, waiting)),
+      subtasks: world.tasks.children(t.id).map((k) => lineOf(k)),
       touches: t.refs.map((r) => {
         if (r.kind === 'person')
           return {
@@ -194,7 +169,7 @@ export function makeViews(ctx: BaseCtx) {
                 .list({ open: true, on: { ...t.place, field: null } })
                 .filter((x) => x.id !== t.id && x.parent !== t.id)
                 .slice(0, 20)
-                .map((x) => lineOf(x, waiting))
+                .map((x) => lineOf(x))
             : [],
       },
       history: world
@@ -204,37 +179,9 @@ export function makeViews(ctx: BaseCtx) {
         .reverse()
         .map((l) => ({ at: l.at, words: l.words })),
       owners,
-      agent: agent
-        ? {
-            name: agent.name,
-            on: agent.state === 'on',
-            takes: agent.tasks,
-            said:
-              world
-                .lines({ kinds: ['task'] })
-                .filter(
-                  (l) =>
-                    (l.data as { task?: string }).task === t.id &&
-                    l.actor.kind === 'agent' &&
-                    !l.words.startsWith(`${agent.name} started on`),
-                )
-                .at(-1)?.words ?? null,
-            runs: (runner?.runsOf(t.id) ?? [])
-              .reverse()
-              .sort((a, b) => Number(b.state === 'running') - Number(a.state === 'running'))
-              .map(runOut),
-          }
-        : null,
-      cards: [
-        ...cards.filter((c) => c.state === 'waiting'),
-        ...cards.filter((c) => c.state !== 'waiting').reverse(),
-      ].map(cardOut),
     }
   }
 
-  // the task a run served, when it served one
-  const taskOfRun = (run: string): string | null =>
-    (engine.hands?.runner.runs(200) ?? []).find((r) => r.id === run)?.task ?? null
   // only what was sent: a field left out is left as it is
   const given = <T extends object>(o: T) =>
     Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T
@@ -259,7 +206,6 @@ export function makeViews(ctx: BaseCtx) {
       name: m.name,
       parent: m.parent,
       people: livesPeople(m),
-      alpha: isAlphas(m),
       pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
@@ -435,11 +381,8 @@ export function makeViews(ctx: BaseCtx) {
     today,
     inDays,
     placeOf,
-    waitingCards,
-    workingOn,
     lineOf,
     taskOut,
-    taskOfRun,
     given,
     needsOf,
     summaries,
@@ -503,12 +446,8 @@ export function cardView(c: Card): CardView {
   }
 }
 
-// Whether People and Organizations live in this module, by its module.yaml (Network's says so).
+// Whether People and Organizations live in this module, by its module.yaml.
 export const livesPeople = (m: Module): boolean => manifestSays(m, 'people')
-
-// Whether this is Alpha's own module, the kit the core keeps (its module.yaml says core: true):
-// its Decisions and Noticed are the Second Brain.
-export const isAlphas = (m: Module): boolean => manifestSays(m, 'core')
 
 // The window gets words, not the tools' inputs.
 export function shown(kind: string, data: Record<string, unknown>): Record<string, unknown> {

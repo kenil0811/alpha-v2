@@ -12,7 +12,7 @@ below on proposing changes to Kenil and on the log.
 ## The repository
 
 - `core/`: the service (world, engine, gates, scheduler, api, journeys runner); `core/kits/`
-  holds Alpha's own modules (Alpha, Network), `core/config/` its prompts, models and limits
+  holds Alpha's own modules (none in the clean base), `core/config/` its prompts, models and limits
 - `window/`: the web app the core serves
 - `kit-sdk/`: the kit contract; `docs/kit-api.md` is generated from it (`pnpm kit-api`), never
   edited by hand
@@ -28,7 +28,7 @@ test), `pnpm format`, `pnpm start` (builds the window; the core serves it; needs
 `pnpm dev:core` with `pnpm dev:window` (Vite on the next port), `pnpm journey <name>`
 (`--appended`: Alpha's prompt on Claude Code's own, instead of alone; `--times N`; a client's
 with `--from ../<client>/journeys`), `pnpm journeys` (every one), `pnpm kit check|test|pack <dir>`,
-`pnpm connector check|pack <dir>`, `pnpm shots`. The core prints the address to open, with
+`pnpm connector check|pack|add <dir>`, `pnpm shots`. The core prints the address to open, with
 the per-install token. Prompts, models and judgements live in `core/config/`, not in code.
 
 ## Rules
