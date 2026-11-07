@@ -1,36 +1,55 @@
 // The assistant on the right of every screen (Vikas, 25 Oct): always there.
 // Open, its header has the fold control, Alpha's face and name in the middle and the bell for
-// Activity, with the pencil beside it (Mark.tsx); its edge drags it wider. Folded, it is a strip with the face, the name and the bell,
+// Activity (the latest runs, as a dropdown), with the pencil beside it (Mark.tsx); its edge drags it wider. Folded, it is a strip with the face, the name and the bell,
 // and a click anywhere on it opens it again. ⌘J folds and opens it.
 import { Bell, PanelRightClose, PanelRightOpen } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useCallback, useRef, useState } from 'react'
+import { ActivityDrop } from './Activity.tsx'
 import { Face, type Mood } from './Companion.tsx'
 import { MarkButton } from './Mark.tsx'
 import { IconButton } from './ui/button.tsx'
 import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
+import { Popover } from './ui/popover.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
+// The bell opens the latest runs as a dropdown where it sits; Open Activity at its foot goes to
+// the page (Vikas, 1 Nov)
 function BellLink({ running, labelled = false }: { running: number; labelled?: boolean }) {
+  const anchor = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
   return (
-    <a
-      href="#/activity"
-      aria-label={running ? `Activity, ${running} running` : 'Activity'}
-      data-tip={running ? `Activity, ${running} running` : 'Activity'}
-      className={
-        labelled
-          ? stripItem()
-          : 'relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
-      }
-    >
-      <Bell className="size-4" />
-      {labelled && <span className={stripName}>Activity</span>}
-      {running > 0 && (
-        <span
-          className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
-          aria-hidden="true"
-        />
-      )}
-    </a>
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={running ? `Activity, ${running} running` : 'Activity'}
+        data-tip={running ? `Activity, ${running} running` : 'Activity'}
+        onClick={(e) => {
+          e.stopPropagation() // folded, a click on the strip opens the assistant
+          setOpen((o) => !o)
+        }}
+        className={
+          labelled
+            ? stripItem()
+            : 'relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
+        }
+      >
+        <Bell className="size-4" />
+        {labelled && <span className={stripName}>Activity</span>}
+        {running > 0 && (
+          <span
+            className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
+            aria-hidden="true"
+          />
+        )}
+      </button>
+      <Popover anchor={anchor} open={open} onClose={close} align="end">
+        <ActivityDrop onClose={close} />
+      </Popover>
+    </>
   )
 }
 
@@ -58,7 +77,10 @@ export function Assistant({
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: the face is the keyboard's way in
       <aside
-        onClick={() => onFold(false)}
+        // the bell's dropdown is drawn against the window, but its clicks still come up here
+        onClick={(e) => {
+          if (!(e.target as Element).closest('[data-popover]')) onFold(false)
+        }}
         className="relative flex w-20 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface px-1"
       >
         {/* dragged out from its edge, it opens as wide as it was let go (Batch D, 79.2) */}

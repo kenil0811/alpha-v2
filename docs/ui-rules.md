@@ -89,7 +89,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| A1 | The assistant's header: fold, face and name, the pencil, the bell; no Expand, no Open whole conversation | 26 Oct | test |
+| A1 | The assistant's header: fold, face and name, the pencil, the bell; no Expand, no Open whole conversation. The bell, open or folded, drops down the latest runs where it sits, newest first, each with its state, a run opening beside the page, Open Activity at its foot | 26 Oct, 4 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
 | A3 | The composer's +: files, a folder, Model ›; @ names an agent | 26 Oct | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
