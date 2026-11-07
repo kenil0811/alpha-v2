@@ -13,10 +13,12 @@ export const CardPlace = createContext<{ open: string | null; whole: boolean }>(
 
 export function Card({
   label,
+  head,
   waits,
   children,
 }: {
   label: string
+  head?: ReactNode // in the label's place, named by it: a pill switch between the card's parts
   waits?: string
   children: ReactNode
 }) {
@@ -24,7 +26,7 @@ export function Card({
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-pop">
       <div className="flex items-center gap-2 border-line border-b bg-sunk px-3.5 py-2">
-        <Label className="text-ink-2">{label}</Label>
+        {head ?? <Label className="text-ink-2">{label}</Label>}
         {waits && (
           <span className="ml-auto flex items-center gap-1.5 font-medium text-sm text-warn">
             <span className="size-1.5 rounded-full bg-warn" />
