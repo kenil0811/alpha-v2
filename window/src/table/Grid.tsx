@@ -1,9 +1,9 @@
 // The table view's grid: one scrolling list drawn as it scrolls (TanStack Virtual), with a sticky
 // header and name column, columns that resize by their edge, sort by a click (shift for a second
-// level), a menu in each header, groups that fold, and totals along the foot. A click on a row's
-// name opens it. Rows are ticked to act on many; a value is changed in place (double-click, Enter
-// or F2) as the person's word; a block pasted from a spreadsheet fills across and down, ⌘D fills a
-// value down; + at the end adds a field.
+// level), a menu in each header, groups that fold, and totals along the foot. A click anywhere on
+// a row opens it (Vikas, 3 Nov). Rows are ticked to act on many; a value is changed in place
+// (double-click, Enter or F2) as the person's word; a block pasted from a spreadsheet fills across
+// and down, ⌘D fills a value down; + at the end adds a field.
 import type { FieldView, RowView, ViewConfig } from '@alpha/core/api'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
@@ -159,24 +159,20 @@ export function Grid({
       setMenu({ row, field, x: r.left + 8, y: r.bottom })
     },
   })
-  // A first click opens the source panel a moment later, so a double-click can change the value
-  // instead (the panel would push the table and move the cell under the second click). With the
-  // panel already open, a click shows the new value at once.
+  // A click anywhere on a row opens it a moment later, so a double-click can change the value
+  // instead (the panel would push the table and move the cell under the second click). Where a
+  // value came from is on the cell's right-click menu and in the opened row.
   const soon = useRef<number | undefined>(undefined)
   // ⇧↓ and ⇧↑ stretch the picked cell over the next rows down, for ⌘D and a paste
   const [range, setRange] = useState<{ row: string; field: string; n: number } | null>(null)
   const at = useRef<{ row: string; field: string } | null>(null) // the cell last clicked, at once
-  const pick = (p: { row: string; field: string }) => {
+  // the clicked cell stays the one Enter, F2, ⇧↓, ⌘D and a paste start from; its row opens
+  const open = (p: { row: string; field: string }) => {
     at.current = p
     setRange(null)
     window.clearTimeout(soon.current)
-    if (picked) onPick(p)
-    else soon.current = window.setTimeout(() => onPick(p), 250)
-  }
-  // a click on a row's name opens it, a moment later for the same reason
-  const open = (row: string) => {
-    window.clearTimeout(soon.current)
-    soon.current = window.setTimeout(() => onOpen(row), 250)
+    if (readOnly) onOpen(p.row)
+    else soon.current = window.setTimeout(() => onOpen(p.row), 250)
   }
   const startEditing = (p: { row: string; field: string }) => {
     window.clearTimeout(soon.current)
@@ -454,11 +450,9 @@ export function Grid({
                           tone={toneOf(config, f, r.values[f.slug])}
                           selected={picked?.row === r.id && picked.field === f.slug}
                           inRange={inRange(r.id, f.slug)}
-                          // a row kept on its own page opens there from its name
-                          onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
+                          onOpen={() => open(here)}
                           onEdit={!readOnly && canEdit(f) ? () => startEditing(here) : undefined}
                           fixed={!readOnly && canEdit(f) ? undefined : whyFixed(f, readOnly)}
-                          onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
                     </td>
@@ -781,7 +775,6 @@ function Cell({
   tone,
   selected,
   inRange,
-  onPick,
   onEdit,
   fixed,
   onOpen,
@@ -795,10 +788,9 @@ function Cell({
   tone: string | null
   selected: boolean
   inRange: boolean // under the picked cell, in its ⇧↓ range
-  onPick: () => void
   onEdit: (() => void) | undefined
   fixed: string | undefined // why it can't be changed here
-  onOpen: (() => void) | undefined
+  onOpen: () => void
 }) {
   const value = r.values[f.slug]
   const source = r.sources[f.slug]
@@ -818,9 +810,7 @@ function Cell({
         // WebKit does not focus a button on a click; the cell needs it for Enter, F2 and a paste
         onClick={(e) => {
           e.currentTarget.focus({ preventScroll: true })
-          // the name opens the row; the rest of the cell picks it
-          if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
-          else onPick()
+          onOpen()
         }}
         onDoubleClick={(e) => (onEdit ? onEdit() : tipNow(e.currentTarget))}
         onKeyDown={key}
@@ -829,7 +819,10 @@ function Cell({
           'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
-          selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
+          // the cell Enter, F2 and a paste start from, as a picked one shows
+          selected
+            ? 'bg-accent-soft ring-2 ring-accent ring-inset'
+            : 'focus:ring-2 focus:ring-accent focus:ring-inset',
           inRange && 'bg-accent-soft',
         )}
       >
@@ -845,15 +838,12 @@ function Cell({
           <span
             className={cn(
               wrap ? 'break-words' : 'truncate',
-              'decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
               first && 'font-medium',
-              onOpen && 'cursor-pointer',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
               tone && INK[tone],
             )}
-            data-name={onOpen ? '' : undefined}
-            data-tip={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
+            data-tip={text.length > 30 ? text : undefined}
           >
             {text}
           </span>
