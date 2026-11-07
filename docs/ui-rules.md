@@ -38,6 +38,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | O1 | Home is the important things: the date, the greeting and one line to ask Alpha; what needs the person, each card answered there; Overdue, Due today and This week as tiles (Overdue red only when it has some); what changed since they last looked, kept until they clear it; what is running; each agent's next run | 20 Oct, 26 Oct | — |
 | O2 | No modules on Home (they are in the rail); the conversation is the assistant beside it, never in Home's own space | 26 Oct | — |
+| O3 | Home's cards and a module's Agents and notes move and resize: a handle at a card's head, shown on hover, drags it beside, above or below another, in its column or across, the page scrolling at its edges (the arrows too); its bottom-right corner resizes it, nothing drawn there, only the pointer turning (the arrows too; a double-click gives its size back); at least 256px wide, so two share a row where there is room, and a card someone sized keeps its width; kept while the window is open, until the core keeps it per person (S5) | 4 Nov | test (ui/arrange) |
 
 ## Module page
 

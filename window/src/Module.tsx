@@ -22,6 +22,7 @@ import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
+import { Arranged } from './ui/arrange.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
@@ -281,10 +282,16 @@ function AgentsAndNotes({
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="flex max-w-page flex-col gap-7 px-7 py-6">
+      {/* each section a card the person moves by its handle and resizes from its corner (1 Nov) */}
+      <Arranged
+        page="module"
+        start={[['agents', 'tables', 'notes', 'activity', 'governance']]}
+        className="flex max-w-page flex-col gap-7 px-7 py-6"
+        gap="gap-7"
+      >
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
-        <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
+        <Section key="agents" title="Agents" sub={`The agents that work on ${m.name}.`}>
           <div className="flex flex-col gap-2">
             {m.agents.length > 1 && (
               <div className="flex justify-end">
@@ -325,6 +332,7 @@ function AgentsAndNotes({
         </Section>
         {m.tables.some((t) => t.place !== 'main') && (
           <Section
+            key="tables"
             title="Tables"
             sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
           >
@@ -374,6 +382,7 @@ function AgentsAndNotes({
           </Section>
         )}
         <Section
+          key="notes"
           title="Notes"
           sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
         >
@@ -381,7 +390,7 @@ function AgentsAndNotes({
             <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
           </div>
         </Section>
-        <Section title="Recent activity" sub={`What ran in ${m.name} lately.`}>
+        <Section key="activity" title="Recent activity" sub={`What ran in ${m.name} lately.`}>
           {runs === null ? (
             <p className="text-ink-3 text-md">Loading…</p>
           ) : runs.length === 0 ? (
@@ -407,13 +416,14 @@ function AgentsAndNotes({
           </a>
         </Section>
         <Section
+          key="governance"
           title="Governance"
           sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
         >
           <WaitingRules module={m.id} version={version} onAnswered={onChange} />
           <Governance m={m} rules={rules} onChange={onChange} />
         </Section>
-      </div>
+      </Arranged>
     </div>
   )
 }
