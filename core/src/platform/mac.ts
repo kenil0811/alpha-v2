@@ -4,8 +4,7 @@ import { type ChildProcess, execFile, execFileSync, spawn } from 'node:child_pro
 import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { homedir, userInfo } from 'node:os'
 import { basename, join } from 'node:path'
-import { type LocalReader, MacKeychain, NoSecrets, runHelper } from '@alpha/connector-sdk'
-import { MacReader } from './mac-local.ts'
+import { MacKeychain, NoSecrets } from '@alpha/connector-sdk'
 import type { Platform } from './platform.ts'
 
 // Where the helper's source is, for a development run that builds it.
@@ -37,12 +36,6 @@ export class MacPlatform implements Platform {
         helper: null,
       }
     }
-  }
-
-  // What onboarding reads of this Mac, through the helper run as the app, so macOS asks naming
-  // Alpha; none without the helper.
-  local(helper: string | null): LocalReader | null {
-    return helper ? new MacReader((args) => runHelper(helper, args, { asApp: true })) : null
   }
 
   notify(title: string, words: string): void {

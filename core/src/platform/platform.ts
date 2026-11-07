@@ -2,7 +2,7 @@
 // step 4): secrets, a notification, keeping the machine awake, its settings, the person's name,
 // the region. One interface; a Mac implementation and a plain one; `process.platform` is read in
 // one file (index.ts). The server shape later is a linux.ts here, not a search through the core.
-import type { LocalReader, SecretStore } from '@alpha/connector-sdk'
+import type { SecretStore } from '@alpha/connector-sdk'
 
 export interface Platform {
   readonly name: 'mac' | 'plain'
@@ -27,7 +27,4 @@ export interface Platform {
   openLink(url: string): boolean
   // A file or folder of the person's discarded on their word: the Mac's Trash where there is one.
   discard(path: string): void
-  // What onboarding reads of this computer (its browsers, apps, the time in them, the names in
-  // three folders), through the helper where there is one; none where the core knows no way to.
-  local(helper: string | null): LocalReader | null
 }

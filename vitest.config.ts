@@ -11,9 +11,7 @@ export default defineConfig({
       'connectors/gmail',
       'connectors/outlook',
       'connectors/mac',
-      'connectors/this-computer',
       'connectors-extra/linkedin',
-      'plugins/onboarding',
     ],
   },
 })

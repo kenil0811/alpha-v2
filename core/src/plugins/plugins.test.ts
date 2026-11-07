@@ -73,8 +73,6 @@ describe('a plugin', () => {
       'POST /api/plugins/test/note',
       'POST /api/plugins/test/keep/:id',
       'GET /api/plugins/test/mail',
-      'GET /api/plugins/test/never',
-      'POST /api/plugins/test/leave-out',
       'POST /api/plugins/test/connect',
       'POST /api/plugins/test/ask',
     ])
@@ -118,34 +116,6 @@ describe('a plugin', () => {
       expect((await a.inject({ url: '/api/plugins/test/mail', headers: ok })).json()).toEqual({
         rows: 0,
       })
-      // the never-use list: the one shipped with Alpha and every one the person keeps
-      const never = async (words: string) =>
-        (
-          await a.inject({
-            url: `/api/plugins/test/never?words=${encodeURIComponent(words)}`,
-            headers: ok,
-          })
-        ).json().never
-      expect(await never('Your bank statement')).toBe(true)
-      expect(await never('Harbor deal: next steps')).toBe(false)
-      const c = world.connections.add('outlook', 'me@x.example', null, 'Outlook', {
-        actor: { kind: 'person', id: world.owner('Kenil').id },
-      })
-      world.connections.setNever(c.id, ['harbor'], {
-        actor: { kind: 'person', id: world.owner('Kenil').id },
-      })
-      expect(await never('Harbor deal: next steps')).toBe(true)
-      // a connection's own list, set on the person's word
-      world.connections.add('browsing', 'This computer', null, 'Browsing history', {
-        actor: { kind: 'person', id: world.owner('Kenil').id },
-      })
-      const left = await a.inject({
-        method: 'POST',
-        url: '/api/plugins/test/leave-out',
-        headers: ok,
-        payload: { word: 'Example.com' },
-      })
-      expect(left.json()).toEqual({ list: ['example.com'] })
       // connecting needs the core's connectors: said, never thrown
       const connect = await a.inject({
         method: 'POST',

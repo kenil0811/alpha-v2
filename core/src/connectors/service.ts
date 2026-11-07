@@ -15,7 +15,6 @@ import {
   type Host,
   type ItemFile,
   judgeHealth,
-  type LocalReader,
   makeCall,
   Problem,
   type SecretStore,
@@ -40,7 +39,6 @@ export interface ServiceOptions {
   browser?: () => BrowserEngine // the human-pace browser, for a site the person signs in to
   known?: Connector[] // the loaded set (discover.ts); none when not given
   signIn?: SignIn // signing in as the person (step 2, part 5)
-  local?: LocalReader | null // the computer's own reader, from the platform (onboarding step 2)
 }
 
 // The name a tool has for the model, and back.
@@ -126,8 +124,7 @@ export class ConnectorService {
   toolOf(name: string): { c: Connector; tool: string; spec: Tool } | null {
     const parts = splitMcpName(name)
     if (!parts) return null
-    // a connector whose tools Alpha keeps from the model has no model-facing name
-    const c = this.set.find((k) => k.manifest.name === parts.connector && !k.manifest.private)
+    const c = this.set.find((k) => k.manifest.name === parts.connector)
     const spec = c?.tools[parts.tool]
     return c && spec ? { c, tool: parts.tool, spec } : null
   }
@@ -202,8 +199,6 @@ export class ConnectorService {
         )
       },
       ...(this.options.browser ? { browser: this.options.browser } : {}),
-      ...(this.options.local ? { local: () => this.options.local as LocalReader } : {}),
-      never: () => this.world.connections.get(conn.id)?.never ?? [],
       keys: (tableName) => {
         const t = tableOf(this.world, c, tableName)
         return t ? this.world.records.keys(t.id) : []
@@ -554,7 +549,6 @@ export class ConnectorService {
   // connected (a session is resumed only with the same tools). They load through tool search.
   toolNames(): string[] {
     return this.set
-      .filter((c) => !c.manifest.private)
       .flatMap((c) => Object.keys(c.tools).map((t) => mcpName(c.manifest.name, t)))
       .sort()
   }

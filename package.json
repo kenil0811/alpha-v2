@@ -16,7 +16,6 @@
     "dev:window": "pnpm --filter @alpha/window dev",
     "journey": "pnpm --filter @alpha/core journey",
     "journeys": "pnpm --filter @alpha/core journey --all",
-    "onboarding-trial": "pnpm --filter @alpha/core onboarding-trial",
     "start": "pnpm --filter @alpha/window build && pnpm --filter @alpha/core start",
     "shots": "node window/scripts/shots.ts",
     "kit": "node core/src/kit.ts",

@@ -5,7 +5,6 @@ import type { z } from 'zod'
 import type { BrowserEngine } from './browser.ts'
 import type { Effect } from './effects.ts'
 import type { HelperOptions } from './helper.ts'
-import type { Access, LocalReader } from './local.ts'
 
 // secret: an app password or API key the person types in Alpha's own form, never the model.
 // oauth: the client's own sign-in app, the person signing in in their browser; `oauth` names the
@@ -50,12 +49,6 @@ export interface Manifest {
   reaches?: string[]
   // It reads sites the person chooses: a host it was refused can be allowed beside the refusal.
   chosenSites?: boolean
-  // The pieces a connection reaches separately (Chrome and Safari; three folders), each with its
-  // own access on this computer (onboarding step 3): the card lists them with their state.
-  parts?: { name: string; title: string; words: string }[]
-  // Its tools are never offered to the model: what it reads of this computer stays on it, and
-  // only Alpha's own code calls them (onboarding's summary, Kenil's call 1).
-  private?: boolean
 }
 
 // The kinds a table's fields can have: the kit API's list, said again here so a connector imports
@@ -152,11 +145,6 @@ export interface Host {
   keys?: (table: string) => string[] | Promise<string[]>
   // Alpha's Mac helper, run by the core so macOS keeps its permission with Alpha's own app.
   helper?: (args: string[], options?: HelperOptions) => Promise<unknown>
-  // The computer's own reader (local.ts), given by the core's platform layer; none where the core
-  // knows no way to read this computer. Await each of its calls, as it stays with the core.
-  local?: () => LocalReader
-  // The sites, folders and words this connection never counts: the person's never-use list.
-  never?: () => string[] | Promise<string[]>
   journal(words: string, data?: Record<string, unknown>): void
 }
 
@@ -212,8 +200,6 @@ export interface Connector {
   // biome-ignore lint/suspicious/noExplicitAny: each tool has its own input shape
   tools: Record<string, Tool<any>>
   check?: (c: Call) => Promise<void> // the account works; throws in plain words when it does not
-  // each of its parts' access on this computer, in the five words every computer uses
-  access?: (c: Call) => Promise<Record<string, Access>>
   sync?: (c: Call) => Promise<SyncResult>
   // The files an item carries, fetched when the core needs them (an email's attachments); field
   // is the item's field that names them, so the core knows which items carry any.

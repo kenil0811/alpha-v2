@@ -3,7 +3,7 @@
 // is not a server port: that comes with the server shape (design §15).
 import { rmSync } from 'node:fs'
 import { userInfo } from 'node:os'
-import { type LocalReader, NoSecrets, type SecretStore } from '@alpha/connector-sdk'
+import { NoSecrets, type SecretStore } from '@alpha/connector-sdk'
 import { Refused } from '../world/kinds.ts'
 import type { Platform } from './platform.ts'
 
@@ -45,11 +45,5 @@ export class PlainPlatform implements Platform {
 
   discard(path: string): void {
     rmSync(path, { recursive: true, force: true })
-  }
-
-  // no reader here yet: onboarding goes on with the calendar, contacts and mail (a Windows reader
-  // is a windows.ts beside mac.ts)
-  local(_helper: string | null): LocalReader | null {
-    return null
   }
 }

@@ -32,17 +32,6 @@ const ManifestSchema = z.object({
     )
     .optional(),
   chosenSites: z.boolean().optional(),
-  parts: z
-    .array(
-      z.object({
-        name: z.string().regex(NAME, 'letters, digits and dashes, starting with a letter'),
-        title: z.string().min(1),
-        words: z.string().min(1),
-      }),
-    )
-    .min(1)
-    .optional(),
-  private: z.boolean().optional(),
 })
 
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null
@@ -101,13 +90,8 @@ export function checkConnector(x: unknown, taken: string[] = []): string[] {
               `manifest.oauth.scopes: ${s} is not one of the permissions ${p.title}'s setup sheet has IT approve (${p.scopes.join(', ')}).`,
             )
     }
-    // one in parts is asked about part by part, in the platform's own words
-    if (manifest.auth === 'system' && !manifest.system && !manifest.parts)
+    if (manifest.auth === 'system' && !manifest.system)
       out.push('manifest.system: a connector the Mac asks about names its System Settings pane.')
-    if (manifest.private && manifest.reaches?.length)
-      out.push(
-        'manifest.reaches: a connector whose tools Alpha keeps from the model reaches no host.',
-      )
   }
   if (typeof x.guide !== 'string' || !x.guide.trim())
     out.push('guide: what the model reads about it is missing.')

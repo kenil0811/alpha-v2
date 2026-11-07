@@ -15,7 +15,7 @@ import { landIn, tableOf } from '../connectors/places.ts'
 import { Engine } from '../engine/engine.ts'
 import { Gatekeeper } from '../engine/gate.ts'
 import type { Here } from '../engine/tools/index.ts'
-import { DEFAULT_KITS, keepKit } from '../modules/defaults.ts'
+import { keepKit } from '../modules/defaults.ts'
 import { install } from '../modules/kits/index.ts'
 import { installPack, pack } from '../modules/packs.ts'
 import { type Loaded, loadPlugins, Plugins } from '../plugins/plugins.ts'
@@ -32,7 +32,7 @@ export const KITS = {
   managed: join(SRC, 'rules', 'kits', 'case-desk'),
   managedNext: join(SRC, 'rules', 'kits', 'case-desk-next'),
   maintained: join(SRC, 'rules', 'kits', 'supply'),
-  alpha: join(DEFAULT_KITS, 'alpha'),
+  alpha: join(import.meta.dirname, 'kits', 'own'),
 }
 
 // A made-up mailbox, landed as the connector service lands a connection's items.

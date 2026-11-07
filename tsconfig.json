@@ -17,16 +17,7 @@
       "path": "plugin-sdk"
     },
     {
-      "path": "plugins/onboarding"
-    },
-    {
-      "path": "plugins/onboarding/window"
-    },
-    {
       "path": "connectors/mac"
-    },
-    {
-      "path": "connectors/this-computer"
     },
     {
       "path": "connectors-extra/linkedin"

@@ -33,21 +33,6 @@ export {
 } from './connector.ts'
 export { EFFECTS, type Effect, isEffect } from './effects.ts'
 export { type HelperOptions, helperBinary, runHelper } from './helper.ts'
-export {
-  ACCESS,
-  type Access,
-  type AppSeen,
-  type AppSpan,
-  type AppTime,
-  type Browser,
-  type Download,
-  type FileSeen,
-  FOLDERS,
-  type Folder,
-  type LocalReader,
-  type Visit,
-} from './local.ts'
-export { never, SHIPPED_NEVER } from './never.ts'
 export { proxy } from './proxy.ts'
 export {
   type CallOptions,

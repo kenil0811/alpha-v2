@@ -6,7 +6,6 @@
 import { mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { never } from '@alpha/connector-sdk'
 import {
   checkPlugin,
   type Input,
@@ -188,7 +187,6 @@ export class Plugins {
         connectors: (this.deps.connectors?.known() ?? []).map((c) => ({
           name: c.manifest.name,
           title: c.manifest.title,
-          private: !!c.manifest.private,
           connected: world.connections
             .list()
             .some((k) => k.connector === c.manifest.name && k.state === 'connected'),
@@ -223,24 +221,6 @@ export class Plugins {
           return { connected: false, problem: err instanceof Error ? err.message : String(err) }
         }
       },
-      neverOf: (connector) =>
-        world.connections
-          .list()
-          .filter((k) => k.connector === connector)
-          .flatMap((k) => k.never),
-      setNever: (connector, words) => {
-        // the person's own ticks, said in the plugin's screen
-        for (const k of world.connections.list().filter((x) => x.connector === connector))
-          world.connections.setNever(k.id, words, {
-            actor: { kind: 'person', id: this.deps.user.id },
-            user: this.deps.user.id,
-          })
-      },
-      never: (words) =>
-        never(
-          words,
-          world.connections.list().flatMap((c) => c.never),
-        ),
       connectorTool: async (connector, tool, input) => {
         if (!this.deps.connectors) throw new Refused('Connectors are not set up in this core.')
         return this.deps.connectors.runTool(connector, tool, input)

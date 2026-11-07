@@ -1,0 +1,16 @@
+# A kit of Alpha's own, made up for the rule tests (M1): the base ships none.
+name: Alpha
+api: 1
+version: 0.1.0
+core: true
+business_case:
+  for: The person, and only them
+  keeps: The decisions they said in conversation
+  decides: Nothing yet
+description: A kit of Alpha's own, for the rule tests.
+tables:
+  - name: Decisions
+    about: "A decision the person made in conversation."
+    fields:
+      - { name: Decision, kind: text, about: "The decision in a sentence." }
+network: []

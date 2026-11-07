@@ -21,7 +21,6 @@ export interface Connection {
   lastRows: number | null
   lastNewAt: string | null
   hosts: string[] // what the person approved beyond its connector's own hosts
-  never: string[] // the sites, folders and words it never counts: the person's never-use list
   madeBy: string // who set it up (person:<id>, system): its owner
 }
 
@@ -37,7 +36,6 @@ interface ConnectionRow {
   last_rows: number | null
   last_new_at: string | null
   hosts: string
-  never: string
   made_by: string
 }
 
@@ -54,7 +52,6 @@ function toConnection(r: ConnectionRow): Connection {
     lastRows: r.last_rows,
     lastNewAt: r.last_new_at,
     hosts: JSON.parse(r.hosts || '[]') as string[],
-    never: JSON.parse(r.never || '[]') as string[],
     madeBy: r.made_by,
   }
 }
@@ -175,23 +172,6 @@ export class Connections {
         kind: 'connection',
         words: `${actorName(ctx.actor)} allowed ${c.account} to reach ${host}.`,
         data: { connection: id, host },
-      })
-    })
-  }
-
-  // What the connection never counts, as the person left it (an unticked site or folder, or the
-  // list edited in Settings): journaled as how many, never which.
-  setNever(id: string, never: string[], ctx: WriteCtx): void {
-    tx(this.db, () => {
-      const c = this.get(id)
-      if (!c) throw new Refused('That connection is not there.')
-      const list = [...new Set(never.map((x) => x.trim().toLowerCase()).filter(Boolean))].sort()
-      run(this.db, 'UPDATE connections SET never = ? WHERE id = ?', JSON.stringify(list), id)
-      append(this.db, {
-        actor: ctx.actor,
-        kind: 'connection',
-        words: `${actorName(ctx.actor)} set ${list.length} thing${list.length === 1 ? '' : 's'} ${c.account} never counts.`,
-        data: { connection: id, never: list.length },
       })
     })
   }
