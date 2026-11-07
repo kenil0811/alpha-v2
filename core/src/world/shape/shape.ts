@@ -17,10 +17,8 @@ import {
   setHidden,
   setKey,
   setMany,
-  setOne,
   setPeople,
   setTones,
-  toNotes,
   tonesSetByOthers,
 } from './fields.ts'
 import { claimModule, claimTable, ownModule, ownTable } from './keys.ts'
@@ -497,12 +495,6 @@ export class Shape {
   }
   setMany(tableId: string, field: string, ctx: WriteCtx): Table {
     return setMany(this, tableId, field, ctx)
-  }
-  setOne(tableId: string, field: string, ctx: WriteCtx): Table {
-    return setOne(this, tableId, field, ctx)
-  }
-  toNotes(tableId: string, field: string, ctx: WriteCtx): Table {
-    return toNotes(this, tableId, field, ctx)
   }
   setSetup(tableId: string, setup: boolean, ctx: WriteCtx): Table {
     return setSetup(this, tableId, setup, ctx)

@@ -14,14 +14,15 @@ import {
 } from '../../modules/kits/index.ts'
 import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
-import { FOLDERS, isDeveloper } from '../../signing.ts'
+import { FOLDERS } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptEdit, keptField, keptTable } from '../kept.ts'
 import type { KeptTable, WorkingModuleView, YoursView } from '../types.ts'
 
 export function registerKits(ctx: Ctx): void {
-  const { app, world, engine, user, person, live } = ctx
+  const { app, world, engine, user, person, live, options } = ctx
+  const developer = () => options.data?.install().developer ?? false
   const { needsOf } = ctx.views
 
   // Kits and agents (design §10, §11): what each module does on its own.
@@ -109,7 +110,7 @@ export function registerKits(ctx: Ctx): void {
   // A kit is installed from a folder on this Mac, or updated from one by the ownership rule.
   app.post('/api/kits', async (req) => {
     const { folder } = z.object({ folder: z.string().trim().min(1) }).parse(req.body)
-    if (!isDeveloper(world, user.id)) throw new Refused(FOLDERS)
+    if (!developer()) throw new Refused(FOLDERS)
     const m = await install(world, folder, {
       actor: { kind: 'person', id: user.id },
       user: user.id,
@@ -130,7 +131,7 @@ export function registerKits(ctx: Ctx): void {
         file,
         join(world.paths.dir, '..', '..', 'kits'),
         { actor: person, user: user.id },
-        { developer: isDeveloper(world, user.id) },
+        { developer: developer() },
       )
       live()
       return { words }
@@ -146,7 +147,7 @@ export function registerKits(ctx: Ctx): void {
     const k = installedKits(world).find((x) => x.module === m?.id)
     if (!m || !k) throw new Refused('That module did not come from a kit.')
     // an update from a folder is the developer's: a pack updates through installing it
-    if (!isDeveloper(world, user.id)) throw new Refused(FOLDERS)
+    if (!developer()) throw new Refused(FOLDERS)
     const report = await update(world, m.name, folder || k.source, {
       actor: { kind: 'person', id: user.id },
       user: user.id,

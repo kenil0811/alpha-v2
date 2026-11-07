@@ -111,13 +111,9 @@ xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
 if xattr -p com.apple.quarantine "$PAY/runtime/node" >/dev/null 2>&1; then
   fail "macOS's download mark could not be taken off Alpha's files, so it would not be allowed to run. Send Kenil a note."
 fi
-mkdir -p "$DATA/kits/inbox" "$DATA/connectors/available" "$LOGS" "$HOME/Library/LaunchAgents"
+mkdir -p "$DATA/kits/inbox" "$LOGS" "$HOME/Library/LaunchAgents"
 for k in "$APP/Contents/Resources/kits"/*.alphakit "$here"/kits/*.alphakit; do
   [ -f "$k" ] && cp "$k" "$DATA/kits/inbox/"
-done
-# the connectors that come with Alpha but load only once added (LinkedIn): offered in Settings
-for c in "$APP/Contents/Resources/connectors"/*.alphaconnector "$here"/connectors/*.alphaconnector; do
-  [ -f "$c" ] && cp "$c" "$DATA/connectors/available/"
 done
 printf '%s\n' "$new" > "$DATA/version"
 

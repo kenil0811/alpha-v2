@@ -97,30 +97,11 @@ export function shapeTables(
         !byKey(t, f.key as string) && !world.shape.tombstoned(module.id, 'field', f.key as string),
     )
     if (missing.length) world.shape.addFields(t.id, missing, ctx)
-    // a text field the kit now says is notes (core plan step 4): the same column, its values kept
-    for (const f of spec.fields) {
-      if (f.kind !== 'notes') continue
-      const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
-      if (was && was.kind === 'text') world.shape.toNotes(t.id, was.id, ctx)
-    }
     // a relation the kit now says holds a list, a choice that it holds several
     for (const f of spec.fields) {
       if ((f.kind !== 'relation' && f.kind !== 'choice') || !f.many) continue
       const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
       if (was && !was.many && !was.tags) world.shape.setMany(t.id, was.name, ctx)
-    }
-    // a relation the kit says holds one, found holding a list no one made (core plan step 4: lists
-    // left by the move to real tables): back to one when no row holds two, else kept, said why
-    for (const f of spec.fields) {
-      if (f.kind !== 'relation' || f.many) continue
-      const was = byKey(world.shape.table(t.id) as Table, f.key ?? f.name)
-      if (!was?.many || madeAList(world, was.id)) continue
-      try {
-        world.shape.setOne(t.id, was.id, ctx)
-      } catch (err) {
-        if (!(err instanceof Refused)) throw err
-        world.line({ actor: ctx.actor, kind: 'noted', words: err.message, module: module.id })
-      }
     }
     for (const f of spec.fields) {
       if (f.kind !== 'choice') continue
@@ -350,15 +331,6 @@ export function placeModule(
 export function currentRowHash(world: World, recordId: string): string | null {
   const r = world.records.rawValues(recordId)
   return r ? rowHash(r.vals) : null
-}
-
-// Whether someone made this relation a list (a kit's version, the person, Alpha): theirs, and kept.
-function madeAList(world: World, field: string): boolean {
-  return !!world.db
-    .prepare(
-      "SELECT 1 FROM journal WHERE kind = 'shaped' AND json_extract(data, '$.field') = ? AND json_extract(data, '$.many') = 1 LIMIT 1",
-    )
-    .get(field)
 }
 
 // Whether a table was ever kept as a tab or taken off the tabs, by anyone: theirs from then on.

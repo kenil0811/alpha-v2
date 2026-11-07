@@ -3,16 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Connector, chromePath } from '@alpha/connector-sdk'
 import { z } from 'zod'
-import {
-  addFolder,
-  available,
-  loadConnector,
-  removeFolder,
-  unpack,
-} from '../../connectors/discover.ts'
+import { addFolder, loadConnector, removeFolder, unpack } from '../../connectors/discover.ts'
 import { tableOf } from '../../connectors/places.ts'
 import { PlainPlatform } from '../../platform/index.ts'
-import { FOLDERS, isDeveloper } from '../../signing.ts'
+import { FOLDERS } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ConnectorsView } from '../types.ts'
@@ -34,6 +28,7 @@ export function registerConnectors(ctx: Ctx): void {
     return by
   }
 
+  const developer = () => options.data?.install().developer ?? false
   // who set a connection up, in words (step 2, part 4)
   const ownerWords = (madeBy: string) => {
     const [kind, id] = madeBy.split(/:(.*)/s)
@@ -45,28 +40,25 @@ export function registerConnectors(ctx: Ctx): void {
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
     const refused = refusals()
     return {
-      // one Alpha keeps from the model is connected from onboarding's cards, not from a tile
-      connectors: (engine.connectors?.known() ?? [])
-        .filter((c) => !c.manifest.private)
-        .map((c) => ({
-          name: c.manifest.name,
-          title: c.manifest.title,
-          auth: c.manifest.auth,
-          icon: c.manifest.icon ?? 'plug',
-          account: c.manifest.account,
-          ...(c.manifest.secret ? { secret: c.manifest.secret } : {}),
-          ...(c.manifest.system ? { system: c.manifest.system } : {}),
-          ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
-          ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
-          ...(c.manifest.oauth && signIn
-            ? {
-                signsInWith: {
-                  provider: c.manifest.oauth.provider,
-                  title: signIn.provider(c.manifest.oauth.provider).title,
-                },
-              }
-            : {}),
-        })),
+      connectors: (engine.connectors?.known() ?? []).map((c) => ({
+        name: c.manifest.name,
+        title: c.manifest.title,
+        auth: c.manifest.auth,
+        icon: c.manifest.icon ?? 'plug',
+        account: c.manifest.account,
+        ...(c.manifest.secret ? { secret: c.manifest.secret } : {}),
+        ...(c.manifest.system ? { system: c.manifest.system } : {}),
+        ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
+        ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
+        ...(c.manifest.oauth && signIn
+          ? {
+              signsInWith: {
+                provider: c.manifest.oauth.provider,
+                title: signIn.provider(c.manifest.oauth.provider).title,
+              },
+            }
+          : {}),
+      })),
       connections: world.connections.list().map((k) => {
         const c = engine.connectors?.find(k.connector)
         return {
@@ -80,9 +72,7 @@ export function registerConnectors(ctx: Ctx): void {
           loaded: !!c,
           state: k.state,
           owner: ownerWords(k.madeBy),
-          health: c
-            ? k.health
-            : 'Its connector is not loaded: add it below, and this connection reads again.',
+          health: c ? k.health : 'Its connector is not loaded, so this connection does not read.',
           lastSyncAt: k.lastSyncAt,
           settings: k.state === 'needs_sign_in' ? (c?.manifest.system?.pane ?? null) : null,
           tables: (c?.tables ?? []).flatMap((spec) => {
@@ -94,7 +84,6 @@ export function registerConnectors(ctx: Ctx): void {
           canAllow: !!c?.manifest.chosenSites,
         }
       }),
-      available: options.connectorsDir ? available(options.connectorsDir) : [],
       added: options.connectorsDir
         ? (engine.connectors?.known() ?? [])
             .filter((c) => existsSync(join(options.connectorsDir ?? '', c.manifest.name)))
@@ -158,7 +147,7 @@ export function registerConnectors(ctx: Ctx): void {
   }
   app.post('/api/connectors', async (req) => {
     const { folder } = z.object({ folder: z.string().trim().min(1) }).parse(req.body)
-    if (!isDeveloper(world, user.id)) throw new Refused(FOLDERS)
+    if (!developer()) throw new Refused(FOLDERS)
     return addConnector(() => addFolder(folder, options.connectorsDir ?? ''))
   })
   app.post('/api/connectors/pack', async (req) => {
@@ -170,21 +159,11 @@ export function registerConnectors(ctx: Ctx): void {
       const file = join(dir, name.replace(/[^\w.-]/g, '_'))
       writeFileSync(file, req.body as Buffer)
       return await addConnector(() =>
-        unpack(file, options.connectorsDir ?? '', { developer: isDeveloper(world, user.id) }),
+        unpack(file, options.connectorsDir ?? '', { developer: developer() }),
       )
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
-  })
-  app.post('/api/connectors/available', async (req) => {
-    const { name } = z.object({ name: z.string() }).parse(req.body)
-    const found = (options.connectorsDir ? available(options.connectorsDir) : []).find(
-      (p) => p.name === name,
-    )
-    if (!found) throw new Refused('That pack is not among the ones that came with Alpha.')
-    return addConnector(() =>
-      unpack(found.file, options.connectorsDir ?? '', { developer: isDeveloper(world, user.id) }),
-    )
   })
   app.delete('/api/connectors/:name', async (req) => {
     const { name } = z.object({ name: z.string() }).parse(req.params)

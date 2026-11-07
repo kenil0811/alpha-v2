@@ -16,7 +16,7 @@ export type Redo = { words: string } & (
   | { method: 'setChoices'; args: [string, string, string[]] }
   | { method: 'setTones'; args: [string, string, Record<string, Tone>] }
   | { method: 'describe'; args: [{ table: string; field?: string }, string | null, AboutBy] }
-  | { method: 'setMany' | 'setOne' | 'toNotes' | 'removeField'; args: [string, string] }
+  | { method: 'setMany' | 'removeField'; args: [string, string] }
   | { method: 'setPartOf' | 'setPer'; args: [string, string, boolean] }
   | { method: 'removeTable'; args: [string] }
   | {
@@ -92,8 +92,6 @@ export function redo(shape: Shape, r: Redo, ctx: WriteCtx): string {
       shape.describe(r.args[0], r.args[1], r.args[2], c)
       break
     case 'setMany':
-    case 'setOne':
-    case 'toNotes':
     case 'removeField':
       shape[r.method](r.args[0], r.args[1], c)
       break

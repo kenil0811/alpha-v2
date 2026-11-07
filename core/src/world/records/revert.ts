@@ -5,7 +5,7 @@
 // alone; its own writes carry its id, so a revert can be reverted. What else it did (a table
 // made, a task, a question put to the person) stays, and the words say so. A preview runs the
 // same work and rolls it back, so what the pop-up says is what Revert does.
-import { type Db, now, one, parse, tx } from '../db.ts'
+import { now, one, parse, tx } from '../db.ts'
 import { append, type Line, lines, read } from '../journal.ts'
 import { type Provenance, Refused } from '../kinds.ts'
 import { actorName, type Table, type WriteCtx } from '../shape/index.ts'
@@ -70,16 +70,11 @@ function rowLines(records: Records, target: UndoTarget): Line[] {
   return lines(records.db, { ...forTarget(target), kinds: ROW_KINDS }).filter(isRowLine)
 }
 
-// The last journal line from before undo existed: nothing up to it can be reverted.
-const undoSince = (db: Db) =>
-  Number(one<{ value: string }>(db, "SELECT value FROM meta WHERE key = 'undo_since'")?.value ?? 0)
-
-// Whether Activity offers Revert (or Bring back) on it: it wrote rows, all since undo exists.
+// Whether Activity offers Revert (or Bring back) on it: it wrote rows.
 export function undoable(records: Records, target: UndoTarget): boolean {
   const ls = rowLines(records, target)
-  const since = undoSince(records.db)
   const back = actionLines(records, target).some((l) => doneOf(l).kind !== 'final')
-  return (ls.length > 0 || back) && ls.every((l) => l.id > since)
+  return ls.length > 0 || back
 }
 
 // The same value or provenance, whatever order its keys were written in.
@@ -123,8 +118,6 @@ export function revert(
           ? `That changed no rows, and what it did outside Alpha cannot be called back: ${and(finals.map((f) => `“${f}”`))}.`
           : 'That changed no rows, so there is nothing to revert.',
       )
-    if (ls.some((l) => l.id <= undoSince(db)))
-      throw new Refused('That happened before Alpha could undo, so it can’t be reverted.')
     const inSet = ls.map((l) => l.id).join(', ')
     const at = now()
     const by = actorName(ctx.actor)

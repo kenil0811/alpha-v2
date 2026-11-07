@@ -2,15 +2,14 @@
 // carries SIGNATURE beside its PACK.json, an Ed25519 signature over PACK.json's bytes, which list
 // every file and its hash, so one byte changed anywhere is caught. The public half of his key
 // ships in every release (config/signing-key.pub); the private half stays in his Keychain. A
-// pack that is not signed by it loads only while the developer switch is on, kept in the world
-// (Settings › Experimental), off on a fresh install.
+// pack that is not signed by it loads only with the developer switch on (developer: true in
+// alpha.yaml), off on a fresh install.
 import { execFileSync } from 'node:child_process'
 import { createPrivateKey, createPublicKey, sign as edSign, verify as edVerify } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Refused } from './world/kinds.ts'
-import type { World } from './world/world.ts'
 
 export const SIGNATURE = 'SIGNATURE'
 export const KEY_FILE = join(import.meta.dirname, '..', 'config', 'signing-key.pub')
@@ -33,9 +32,8 @@ export function verifyManifest(manifest: Buffer, signature: string, publicPem: s
   }
 }
 
-export const UNSIGNED = 'Not signed by Kenil. Turn on the developer switch to load it.'
-export const FOLDERS =
-  'A folder loads only while the developer switch is on (Settings › Experimental).'
+export const UNSIGNED = 'Not signed by Kenil, so it does not load here.'
+export const FOLDERS = 'A folder loads only with developer: true in alpha.yaml.'
 
 // Whether an opened pack's PACK.json is signed by the key Alpha trusts (or the one given, in a
 // test): its folder holds PACK.json and SIGNATURE.
@@ -75,8 +73,3 @@ export function signPack(file: string, privatePem: string): string {
     rmSync(stage, { recursive: true, force: true })
   }
 }
-
-// The developer switch: folders and unsigned packs load while it is on.
-export const DEVELOPER = 'developer'
-export const isDeveloper = (world: World, user: string): boolean =>
-  world.preference(user, DEVELOPER) === 'on'

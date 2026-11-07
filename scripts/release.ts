@@ -28,7 +28,6 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
-import { pack as packConnector } from '../core/src/connectors/discover.ts'
 import { pack } from '../core/src/modules/packs.ts'
 
 // Every pack the release carries is signed with Kenil's key from this Mac's Keychain (step 2,
@@ -111,7 +110,7 @@ for (const f of files.filter(Boolean)) {
 if (!workingTree) run('sh', ['-c', `git archive HEAD | tar -x -C "${build}"`], ROOT)
 
 // 2. The window, built with the development packages in the build copy; then the Mac app around
-// it (mac/: its window, the menu bar mark, notifications and the companion), which the payload
+// it (mac/: its window, the menu bar mark and notifications), which the payload
 // goes inside. macOS's own xattr first: another on the PATH breaks the bundler.
 say('Building the window')
 run('pnpm', ['install', '--frozen-lockfile', '--prefer-offline'], build)
@@ -213,6 +212,8 @@ writeFileSync(
     `helper: ${JSON.stringify(join(app, 'helper', 'Alpha Helper.app'))}`,
     `uv: ${JSON.stringify(join(app, 'runtime', 'uv'))}`,
     `logs: ${JSON.stringify(join(smoke, 'Logs'))}`,
+    // a kit from a folder loads only with this, on in this throwaway core
+    'developer: true',
     '',
   ].join('\n'),
 )
@@ -254,8 +255,6 @@ const call = async (path: string, body?: unknown) => {
 }
 const page = await fetch(`${base}/?t=${token}`).then((r) => r.text())
 if (!page.includes('<div id="root">')) fail('the window was not served')
-// a kit from a folder loads only with the developer switch, on in this throwaway core
-if (!(await call('/api/developer', { on: true })).ok) fail('the developer switch did not turn on')
 const kit = await call('/api/kits', { folder: join(app, 'core', 'src', 'modules', 'test-kit') })
 if (!kit.ok) fail(`a made-up kit did not install: ${JSON.stringify(kit.data)}`)
 const view = await call(`/api/modules/${String(kit.data.module)}`)
@@ -303,21 +302,7 @@ if (client) {
   const kitsDir = join(appDir, 'Contents', 'Resources', 'kits')
   for (const k of kits) say(`Packed ${relative(appDir, signed(pack(join(repo, k), kitsDir)))}`)
 }
-// the connectors that come with Alpha but are not loaded until the person adds one (LinkedIn):
-// connectors-extra/*, each packed beside the kits; install.sh puts them in Alpha's
-// connectors/available, where Settings › Connections offers them
-const extra = join(ROOT, 'connectors-extra')
-if (existsSync(extra))
-  for (const name of readdirSync(extra).sort()) {
-    const dir = join(extra, name)
-    if (!existsSync(join(dir, 'package.json'))) continue
-    const file = signed(
-      await packConnector(dir, join(appDir, 'Contents', 'Resources', 'connectors')),
-    )
-    say(`Packed ${relative(appDir, file)}`)
-  }
-// The hash of every file the app carries, written once install.sh, the kits and the connector
-// packs are inside it (item 43 of the problems list, 25 Oct), then the app's one seal over all of
+// The hash of every file the app carries, written once install.sh and the kits are inside it (item 43 of the problems list, 25 Oct), then the app's one seal over all of
 // it: with the constant certificate when this Mac has it, else ad hoc (the helper inside keeps
 // its own signature).
 const manifest: string[] = []
@@ -331,10 +316,8 @@ const walk = (dir: string) => {
   }
 }
 walk(app)
-for (const beside of ['kits', 'connectors']) {
-  const dir = join(appDir, 'Contents', 'Resources', beside)
-  if (existsSync(dir)) walk(dir)
-}
+const kitsInside = join(appDir, 'Contents', 'Resources', 'kits')
+if (existsSync(kitsInside)) walk(kitsInside)
 writeFileSync(join(app, 'MANIFEST'), `${manifest.join('\n')}\n`)
 const identity = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'])
   .toString()

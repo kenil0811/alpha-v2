@@ -1,6 +1,6 @@
 import { TONES } from '@alpha/kit-sdk'
 import { json, one, parse, run, tx } from '../db.ts'
-import { addFieldSql, columnsOf, dropFieldSql, junctionName, junctionSql, quote } from '../ddl.ts'
+import { columnsOf, dropFieldSql, junctionName, junctionSql, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import { asks } from './asks.ts'
@@ -404,63 +404,6 @@ export function setMany(shape: Shape, tableId: string, field: string, ctx: Write
   })
 }
 
-// A relation that held a list comes back to holding one row (a kit says one where an installed copy
-// holds a list, core plan step 4): only when no row holds more than one, so nothing is lost; each
-// row's one entry becomes its pointer, the junction table goes.
-export function setOne(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
-  asks(
-    shape,
-    { table: tableId },
-    (t) => ({
-      words: `let ${t?.name}'s ${field} hold one`,
-      method: 'setOne',
-      args: [tableId, field],
-    }),
-    ctx,
-  )
-  return tx(shape.db, () => {
-    const table = shape.table(tableId)
-    if (!table) throw new Refused('That table is not there.')
-    const f = findField(table, field)
-    if (f.kind !== 'relation') throw new Refused(`${f.name} is not a relation.`)
-    if (!f.many) return table
-    const junction = quote(junctionName(table.slug, f.slug))
-    const two = one<{ n: number }>(
-      shape.db,
-      `SELECT count(*) AS n FROM (SELECT record_id FROM ${junction} GROUP BY record_id HAVING count(*) > 1)`,
-    )?.n
-    if (two)
-      throw new Refused(
-        `${two} row${two === 1 ? '' : 's'} of ${table.name} name${two === 1 ? 's' : ''} more than one in ${f.name}, so it keeps its list.`,
-      )
-    const next = { ...spec(f), many: false }
-    for (const sql of addFieldSql(table.slug, table.id, next)) shape.db.exec(sql)
-    run(
-      shape.db,
-      `UPDATE ${quote(table.slug)} SET ${quote(f.slug)} =
-         (SELECT other_id FROM ${junction} j WHERE j.record_id = ${quote(table.slug)}.id)`,
-    )
-    for (const sql of dropFieldSql(table.slug, table.id, spec(f))) shape.db.exec(sql)
-    const { many: _, ...o } = parse<Record<string, unknown>>(
-      one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
-      {},
-    )
-    run(shape.db, 'UPDATE fields SET options = ? WHERE id = ?', json(o), f.id)
-    append(shape.db, {
-      actor: ctx.actor,
-      kind: 'shaped',
-      words: `${f.name} in ${table.name} holds one row again.`,
-      data: { table: table.id, field: f.id, many: false },
-      user: ctx.user ?? null,
-      turn: ctx.turn ?? null,
-      module: table.module.id,
-      run: ctx.run ?? null,
-    })
-    writeManifest(shape, table.module)
-    return shape.table(table.id) as Table
-  })
-}
-
 function setTags(shape: Shape, table: Table, f: Field, ctx: WriteCtx): Table {
   if (f.tags) return table
   run(
@@ -484,49 +427,6 @@ function setTags(shape: Shape, table: Table, f: Field, ctx: WriteCtx): Table {
   })
   writeManifest(shape, table.module)
   return shape.table(table.id) as Table
-}
-
-// A text field becomes the row's notes (core plan step 4, DealPilot's Notes): the same column,
-// its values kept, now Markdown on the row's page and out of the grid. No other kind ever changes.
-export function toNotes(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
-  asks(
-    shape,
-    { table: tableId },
-    (t) => ({
-      words: `make ${t?.name}'s ${field} its notes`,
-      method: 'toNotes',
-      args: [tableId, field],
-    }),
-    ctx,
-  )
-  return tx(shape.db, () => {
-    const table = shape.table(tableId)
-    if (!table) throw new Refused('That table is not there.')
-    const f = findField(table, field)
-    if (f.kind === 'notes') return table
-    if (f.kind !== 'text')
-      throw new Refused(`${f.name} is ${f.kind}: only a text field becomes notes.`)
-    if (table.fields.some((x) => x.kind === 'notes'))
-      throw new Refused(`${table.name} has its notes already; a table has one place for notes.`)
-    const sums = summariesReading(shape, table.id, f.id)
-    if (sums.length)
-      throw new Refused(
-        `${sums.map((x) => `${x.field.name} in ${x.table.name}`).join(' and ')} read ${f.name}, and a summary never reads notes.`,
-      )
-    run(shape.db, "UPDATE fields SET kind = 'notes' WHERE id = ?", f.id)
-    append(shape.db, {
-      actor: ctx.actor,
-      kind: 'shaped',
-      words: `${f.name} in ${table.name} is the row's notes now: written on its page, out of the grid.`,
-      data: { table: table.id, field: f.id, kind: { from: 'text', to: 'notes' } },
-      user: ctx.user ?? null,
-      turn: ctx.turn ?? null,
-      module: table.module.id,
-      run: ctx.run ?? null,
-    })
-    writeManifest(shape, table.module)
-    return shape.table(table.id) as Table
-  })
 }
 
 // A kit field's stable name, set once on a field that had none (a world from before keys).

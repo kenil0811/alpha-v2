@@ -5,7 +5,6 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { Refused } from './kinds.ts'
 import { expire, revert, undoable } from './records/index.ts'
 import type { Table } from './shape/index.ts'
 import { World } from './world.ts'
@@ -288,17 +287,5 @@ describe('Revert', () => {
     revert(world.records, { turn: '42' }, { actor: person }, 'what Alpha did')
     expect(world.records.count(deals.id)).toBe(1)
     expect(lastLine('reverted')?.data).toMatchObject({ table: deals.id, tables: [deals.id] })
-  })
-
-  it('refuses what happened before Alpha could undo', () => {
-    const { deals, d1 } = shop()
-    world.records.change(deals.id, [{ id: d1, values: { Stage: 'Old' }, provenance: stated }], {
-      actor: alpha,
-      run: 'run_old',
-    })
-    world.db.prepare("UPDATE meta SET value = '999999' WHERE key = 'undo_since'").run()
-    expect(undoable(world.records, { run: 'run_old' })).toBe(false)
-    expect(() => revert(world.records, { run: 'run_old' }, { actor: person }, '')).toThrow(Refused)
-    expect(undoable(world.records, { run: 'nothing' })).toBe(false)
   })
 })

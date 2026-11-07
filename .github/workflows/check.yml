@@ -27,8 +27,7 @@ jobs:
       - name: What the reading browser needs on Linux (the browser tests fetch it themselves)
         run: pnpm --filter @alpha/connector-sdk exec playwright install-deps chromium
       - run: pnpm check
-      - run: pnpm kit check core/kits/network
-      - run: pnpm kit check core/kits/alpha
+      - run: pnpm kit check core/src/modules/test-kit
       - name: Every connector in the repository
         run: |
           for d in connectors/*/ connectors-extra/*/; do

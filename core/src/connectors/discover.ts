@@ -134,7 +134,6 @@ export async function loadSet(dir: string, taken: string[] = [], trust?: Trust):
     .filter(
       ({ name, folder }) =>
         !name.startsWith('.') &&
-        name !== 'available' &&
         lstatSync(folder).isDirectory() &&
         existsSync(join(folder, 'package.json')),
     )
@@ -355,63 +354,6 @@ function packageDir(file: string, name: string): string {
     if (up === dir) throw new Error(`The package ${name} was not found beside ${file}.`)
     dir = up
   }
-}
-
-// The packs that came with the release and are not loaded until the person adds one (LinkedIn):
-// Alpha's connectors/available.
-export function available(
-  connectorsDir: string,
-): { file: string; name: string; title: string; version: string }[] {
-  const dir = join(connectorsDir, 'available')
-  if (!existsSync(dir)) return []
-  const packs = readdirSync(dir)
-    .filter((n) => n.endsWith(PACK_SUFFIX))
-    .sort()
-    .flatMap((n) => {
-      try {
-        return [{ file: join(dir, n), ...peek(join(dir, n)) }]
-      } catch {
-        return []
-      }
-    })
-  // a release that brings a newer one leaves the older beside it: each is offered at its newest
-  return packs.filter((p) => !packs.some((q) => q.name === p.name && newer(q.version, p.version)))
-}
-
-// Whether version a (1.2.0) is after b.
-function newer(a: string, b: string): boolean {
-  const x = a.split('.').map(Number)
-  const y = b.split('.').map(Number)
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    const d = (x[i] || 0) - (y[i] || 0)
-    if (d) return d > 0
-  }
-  return false
-}
-
-// An added connector that came with Alpha (one of its packs in available/, an @alpha package)
-// updated to the newest the release brought, as Alpha's own kits are: its connections stay, as
-// they are the world's. A folder of the person's own of that name is left as it is.
-export function updateOwn(
-  connectorsDir: string,
-  trust: Trust,
-): { name: string; title: string; version: string; refused?: string }[] {
-  const out: { name: string; title: string; version: string; refused?: string }[] = []
-  for (const p of available(connectorsDir)) {
-    const file = join(connectorsDir, p.name, 'package.json')
-    if (!existsSync(file)) continue
-    const pkg = JSON.parse(readFileSync(file, 'utf8')) as { name?: string; version?: string }
-    if (!pkg.name?.startsWith('@alpha/connector-') || !newer(p.version, pkg.version ?? '0.0.0'))
-      continue
-    try {
-      unpack(p.file, connectorsDir, trust)
-      out.push({ name: p.name, title: p.title, version: p.version })
-    } catch (err) {
-      const refused = err instanceof Error ? err.message : String(err)
-      out.push({ name: p.name, title: p.title, version: p.version, refused })
-    }
-  }
-  return out
 }
 
 // A folder of Alpha's connectors/ removed for good, when nothing is connected through it.

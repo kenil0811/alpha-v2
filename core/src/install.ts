@@ -21,6 +21,7 @@ export interface Install {
   logs: string | null // where core.log goes; none: the console only
   keepAwake: boolean // the Mac kept from sleeping while plugged in
   prepareReaders: boolean // the readers' downloads started at start
+  developer: boolean // folders and packs not signed by Kenil load (the switch for him, no window)
   backupsCopy: string | null // a folder of the person's where a copy of the newest backup goes each day
 }
 
@@ -36,6 +37,7 @@ const Shape = z
     keep_awake: z.boolean(),
     prepare_readers: z.boolean(),
     backups_copy: z.string().nullable(),
+    developer: z.boolean(),
   })
   .partial()
 
@@ -50,6 +52,7 @@ const DEFAULTS: Install = {
   keepAwake: false,
   prepareReaders: false,
   backupsCopy: null,
+  developer: false,
 }
 
 function fromFile(home: string): Partial<Install> {
@@ -69,6 +72,7 @@ function fromFile(home: string): Partial<Install> {
     ...(f.keep_awake !== undefined ? { keepAwake: f.keep_awake } : {}),
     ...(f.prepare_readers !== undefined ? { prepareReaders: f.prepare_readers } : {}),
     ...(f.backups_copy !== undefined ? { backupsCopy: f.backups_copy } : {}),
+    ...(f.developer !== undefined ? { developer: f.developer } : {}),
   }
 }
 

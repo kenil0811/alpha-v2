@@ -61,7 +61,6 @@ export interface ConnectorsView {
   connectors: ConnectorView[]
   connections: ConnectionView[]
   // the packs that came with the release and are not loaded until added (LinkedIn)
-  available: { file: string; name: string; title: string; version: string }[]
   added: string[] // the connectors loaded from Alpha's own connectors/, by name
   failed: { folder: string; why: string }[] // folders that did not load at start
   signInApps: SignInAppView[] // for the providers the loaded connectors sign in with

@@ -1,13 +1,4 @@
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MemorySecrets, FIELD_KINDS as SDK_KINDS } from '@alpha/connector-sdk'
@@ -16,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
 import {
   addFolder,
-  available,
   checkFolder,
   loadConnector,
   loadSet,
@@ -24,7 +14,6 @@ import {
   removeFolder,
   STANDARD_DIR,
   unpack,
-  updateOwn,
 } from './discover.ts'
 import { ConnectorService } from './service.ts'
 
@@ -51,9 +40,6 @@ describe('connectors found in their folders', () => {
       'calendar',
       'contacts',
       'outlook',
-      'browsing',
-      'apps',
-      'filenames',
     ])
   })
 
@@ -111,49 +97,9 @@ describe('connectors found in their folders', () => {
     expect(linkedin?.manifest.warning).toMatch(/asks that its pages not be read automatically/)
     const { connectors } = await loadSet(home)
     expect(connectors.map((c) => c.manifest.name)).toEqual(['linkedin'])
-    // the packs that came with the release, offered until added
-    mkdirSync(join(home, 'available'))
-    writeFileSync(
-      join(home, 'available', 'linkedin-1.2.0.alphaconnector'),
-      await import('node:fs').then((fs) => fs.readFileSync(file)),
-    )
-    expect(available(home).map((p) => [p.name, p.title, p.version])).toEqual([
-      ['linkedin', 'LinkedIn', '1.2.0'],
-    ])
     removeFolder(home, 'linkedin')
     expect(existsSync(unpacked)).toBe(false)
   }, 30_000) // it packs with the package manager, which takes a while on a busy Mac
-
-  it('updates an added connector that came with Alpha to the newest pack the release brought (29 Oct)', async () => {
-    const home = join(dir, 'connectors')
-    const avail = join(home, 'available')
-    mkdirSync(avail, { recursive: true })
-    const now = await pack(join(EXTRA, 'linkedin'), avail)
-    const version = (
-      JSON.parse(readFileSync(join(EXTRA, 'linkedin', 'package.json'), 'utf8')) as {
-        version: string
-      }
-    ).version
-    // the copy the person added from an older release: the same connector, an older version
-    const { dir: added } = unpack(now, home, DEV)
-    const pkg = JSON.parse(readFileSync(join(added, 'package.json'), 'utf8'))
-    writeFileSync(join(added, 'package.json'), JSON.stringify({ ...pkg, version: '0.9.0' }))
-    writeFileSync(join(added, 'OLD'), 'from before')
-    const old = await pack(added, join(dir, 'old'))
-    renameSync(old, join(avail, 'linkedin-0.9.0.alphaconnector'))
-    // offered once, at its newest
-    expect(available(home).map((p) => [p.name, p.version])).toEqual([['linkedin', version]])
-    expect(updateOwn(home, DEV)).toEqual([{ name: 'linkedin', title: 'LinkedIn', version }])
-    expect(existsSync(join(added, 'OLD'))).toBe(false)
-    expect(JSON.parse(readFileSync(join(added, 'package.json'), 'utf8')).version).toBe(version)
-    // the newest already: nothing to do; a folder of the person's own of that name is theirs
-    expect(updateOwn(home, DEV)).toEqual([])
-    writeFileSync(
-      join(added, 'package.json'),
-      JSON.stringify({ name: 'my-linkedin', version: '0.1.0' }),
-    )
-    expect(updateOwn(home, DEV)).toEqual([])
-  })
 
   it('adds a folder as a copy Alpha keeps, and refuses one that is not a connector', async () => {
     const home = join(dir, 'connectors')

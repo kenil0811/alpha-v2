@@ -167,7 +167,7 @@ export async function takeData(world: World, home: string, dest = exportsDir()):
     const connectors = join(home, 'connectors')
     if (existsSync(connectors))
       for (const n of readdirSync(connectors))
-        if (n !== 'available' && statSync(join(connectors, n)).isDirectory())
+        if (statSync(join(connectors, n)).isDirectory())
           cpSync(join(connectors, n), join(root, 'connectors', n), {
             recursive: true,
             dereference: false,
