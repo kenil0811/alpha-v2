@@ -6,9 +6,7 @@
 import type { KeptTable, TaskLineView, TaskView } from '@alpha/core/api'
 import { Check, CircleDot, Clock, Repeat2, Trash2, X } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { RunRow } from './Activity.tsx'
 import { api, Problem } from './api.ts'
-import { CardBox } from './CardBox.tsx'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
 import { dueWords } from './time.ts'
@@ -24,16 +22,14 @@ import { PageTitle } from './ui/rename.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Tabs } from './ui/tabs.tsx'
-import { answerWords } from './vocabulary.ts'
 
-type List = 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
+type List = 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done'
 
 const LISTS: { value: List; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'week', label: 'This week' },
   { value: 'overdue', label: 'Overdue' },
-  { value: 'waiting', label: 'Waiting for you' },
-  { value: 'agents', label: 'Agents' },
+  { value: 'waiting', label: 'Waiting' },
   { value: 'open', label: 'All open' },
   { value: 'done', label: 'Done' },
 ]
@@ -282,10 +278,8 @@ function TaskLine({
         </span>
         <Meta t={t} place={place ?? true} />
       </a>
-      {t.waitingForYou && <Pill tone="warn">Waiting for your yes</Pill>}
-      {t.working && <Pill tone="accent">{t.owner} working</Pill>}
-      {t.state === 'doing' && !t.working && <Pill tone="accent">In progress</Pill>}
-      {t.state === 'waiting' && !t.waitingForYou && <Pill>Waiting</Pill>}
+      {t.state === 'doing' && <Pill tone="accent">In progress</Pill>}
+      {t.state === 'waiting' && <Pill>Waiting</Pill>}
       <Due t={t} />
     </div>
   )
@@ -399,7 +393,6 @@ function TaskPage({
             ) : (
               <span>{t.place.words}</span>
             )}
-            {t.waitingForYou && <Pill tone="warn">Waiting for your yes</Pill>}
           </div>
         </div>
         {problem && <p className="text-bad text-sm">{problem}</p>}
@@ -467,26 +460,6 @@ function TaskPage({
             </span>
           </Labelled>
         </div>
-
-        {t.agent && <AgentOnTask t={t} onChange={load} onProblem={setProblem} />}
-
-        {t.cards.length > 0 && (
-          <Section title="Approvals" about="What its agent put to you about it">
-            {t.cards
-              .filter((c) => c.state === 'waiting')
-              .map((c) => (
-                <CardBox key={c.id} id={c.id} card={c} onChange={load} />
-              ))}
-            {t.cards
-              .filter((c) => c.state !== 'waiting')
-              .map((c) => (
-                <div key={c.id} className="flex gap-3 text-sm">
-                  <span className="min-w-0 flex-1 truncate text-ink-2">{c.words}</span>
-                  <span className="shrink-0 text-ink-3">{decidedWords(c.state, c.answer)}</span>
-                </div>
-              ))}
-          </Section>
-        )}
 
         <Section title="Notes">
           <textarea
@@ -591,90 +564,6 @@ function TaskPage({
         </div>
       </div>
     </Record>
-  )
-}
-
-const decidedWords = (state: string, answer: string | null) =>
-  state === 'withdrawn'
-    ? 'Withdrawn'
-    : state === 'yes'
-      ? answerWords(answer ?? 'Yes')
-      : state === 'no'
-        ? answerWords(answer ?? 'No')
-        : (answer ?? state)
-
-// The agent a task is given to: Start (giving it never starts it), the run working on it with
-// Stop, and its earlier runs with what each said. Only its run makes the task Done (Q93).
-function AgentOnTask({
-  t,
-  onChange,
-  onProblem,
-}: {
-  t: TaskView
-  onChange: () => void
-  onProblem: (p: string | null) => void
-}) {
-  const agent = t.agent as NonNullable<TaskView['agent']>
-  const [opened, setOpened] = useState<Set<string>>(new Set())
-  const [busy, setBusy] = useState(false)
-  const running = agent.runs.find((r) => r.state === 'running')
-  const closed = t.state === 'done' || t.state === 'dropped'
-  const start = async () => {
-    setBusy(true)
-    onProblem(null)
-    try {
-      await api.post(`/api/tasks/${t.id}/start`)
-    } catch (err) {
-      onProblem(err instanceof Problem ? err.message : 'It did not start.')
-    } finally {
-      setBusy(false)
-      onChange()
-    }
-  }
-  const about = !agent.takes
-    ? `${agent.name} does not take tasks; give it to someone else.`
-    : !agent.on
-      ? `${agent.name} is paused; turn it on in Settings › Modules and agents to start it.`
-      : running
-        ? `${agent.name} is working on it.`
-        : t.waitingForYou
-          ? `${agent.name} goes on once you decide what it put to you below.`
-          : closed || agent.runs.length
-            ? `Given to ${agent.name}.`
-            : `Given to ${agent.name}. Giving it never starts it; Start does. It is Done when ${agent.name} says so.`
-  return (
-    <Section title="Agent" about={about}>
-      {agent.said && !running && !t.waitingForYou && (
-        <p className="text-ink text-md">{agent.said}</p>
-      )}
-      {!running && !closed && !t.waitingForYou && agent.takes && agent.on && (
-        <div>
-          <Button variant="primary" disabled={busy} onClick={start}>
-            {agent.runs.length ? 'Start again' : 'Start'}
-          </Button>
-        </div>
-      )}
-      {agent.runs.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
-          {agent.runs.map((r) => (
-            <RunRow
-              key={r.id}
-              run={r}
-              open={r.state === 'running' || opened.has(r.id)}
-              onOpen={() =>
-                setOpened((o) => {
-                  const next = new Set(o)
-                  if (next.has(r.id)) next.delete(r.id)
-                  else next.add(r.id)
-                  return next
-                })
-              }
-              onStop={() => api.post(`/api/runs/${r.id}/stop`).then(onChange, onChange)}
-            />
-          ))}
-        </div>
-      )}
-    </Section>
   )
 }
 

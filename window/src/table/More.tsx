@@ -1,8 +1,17 @@
-// A table's ⋮ menu: the view's sort and group, its layout, Add column, Keep as a tab, Read now on
-// a table a connection fills (Batch B, pick 15), then downloads of exactly the rows and columns
-// shown. Out of TableView.tsx so that screen only shrinks (the window file wall).
+// A table's ⋮ menu: the view's sort and group, its layout, Add column, Rename, Keep as a tab, Read
+// now on a table a connection fills (Batch B, pick 15), then downloads of exactly the rows and
+// columns shown. Out of TableView.tsx so that screen only shrinks (the window file wall).
 import type { FieldView, ReadByView, ViewConfig } from '@alpha/core/api'
-import { ArrowDownUp, Columns3, Copy, Download, EllipsisVertical, Group, Plus } from 'lucide-react'
+import {
+  ArrowDownUp,
+  Columns3,
+  Copy,
+  Download,
+  EllipsisVertical,
+  Group,
+  PencilLine,
+  Plus,
+} from 'lucide-react'
 import { useRef, useState } from 'react'
 import { MenuItem, MenuLine, Popover, SubMenu } from '../ui/popover.tsx'
 import { setGroup } from './edits.ts'
@@ -12,6 +21,7 @@ import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
 import { ReadNowItems } from './ReadNow.tsx'
 import { SortEditor } from './SortEditor.tsx'
+import { NameForm } from './ViewTabs.tsx'
 import { isTags } from './values.ts'
 
 // The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
@@ -28,6 +38,8 @@ export function More({
   tab = null,
   onTab,
   readBy = [],
+  name = null,
+  onRename,
 }: {
   tableId: string
   fields: FieldView[]
@@ -41,10 +53,13 @@ export function More({
   tab?: boolean | null // a part or setup table: whether it is kept as a tab; null for the rest
   onTab?: (tab: boolean) => void
   readBy?: ReadByView[] // the connections that fill it (Batch B, pick 15)
+  name?: string | null // its name, where Rename may change it (Kenil's call, 7 Nov: on the menu)
+  onRename?: (name: string) => void
 }) {
   const fixed = useShapeFixed()
   const [open, setOpen] = useState(false)
   const [add, setAdd] = useState(false)
+  const [naming, setNaming] = useState(false)
   const grid = config.kind === 'table' ? undefined : 'Columns are laid out in the table view.'
   const wrapped = shown.length > 0 && shown.every((f) => layout.wrap.includes(f.id))
   const anchor = useRef<HTMLButtonElement>(null)
@@ -154,6 +169,18 @@ export function More({
           <Plus className="size-3.5 text-ink-3" />
           Add column
         </MenuItem>
+        {name !== null && (
+          <MenuItem
+            reason={fixed}
+            onClick={() => {
+              setOpen(false)
+              setNaming(true)
+            }}
+          >
+            <PencilLine className="size-3.5 text-ink-3" />
+            Rename
+          </MenuItem>
+        )}
         {tab !== null && (
           <MenuItem
             checked={tab}
@@ -207,6 +234,17 @@ export function More({
             Copy as a table
           </MenuItem>
         </SubMenu>
+      </Popover>
+      <Popover anchor={anchor} open={naming} onClose={() => setNaming(false)} align="end">
+        <NameForm
+          start={name ?? ''}
+          label="Rename"
+          about="The table’s name"
+          onSave={(to) => {
+            setNaming(false)
+            onRename?.(to)
+          }}
+        />
       </Popover>
       <Popover anchor={anchor} open={add} onClose={() => setAdd(false)} align="end">
         <AddFieldForm tableId={tableId} title="Add a column" onAdded={() => setAdd(false)} />

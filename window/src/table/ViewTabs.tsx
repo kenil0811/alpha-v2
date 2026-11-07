@@ -225,13 +225,15 @@ export function ViewTabs({
   )
 }
 
-function NameForm({
+export function NameForm({
   start,
   label,
+  about = 'The list’s name, shared with everyone',
   onSave,
 }: {
   start: string
   label: string
+  about?: string
   onSave: (name: string) => void
 }) {
   const [name, setName] = useState(start)
@@ -241,13 +243,13 @@ function NameForm({
   }
   return (
     <form onSubmit={save} className="flex w-64 flex-col gap-2 p-1.5">
-      <span className="text-ink-2 text-sm">The list’s name, shared with everyone</span>
+      <span className="text-ink-2 text-sm">{about}</span>
       <Field
         autoFocus
         value={name}
         placeholder="Fits, Georgia, This week…"
         onChange={(e) => setName(e.target.value)}
-        aria-label="The list’s name"
+        aria-label={about}
       />
       <div className="flex gap-2">
         <Button type="submit" size="sm" variant="primary" disabled={!name.trim()}>

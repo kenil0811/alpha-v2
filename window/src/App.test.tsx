@@ -27,13 +27,12 @@ describe('delete', () => {
 })
 
 const modules = [
-  { id: 'm_1', name: 'Shops', parent: null, people: false, alpha: false, pages: [], tables: [] },
+  { id: 'm_1', name: 'Shops', parent: null, people: false, pages: [], tables: [] },
   {
     id: 'm_2',
     name: 'Bakery',
     parent: 'm_1',
     people: false,
-    alpha: false,
     pages: [],
     tables: [{ id: 't_1', name: 'Orders', rows: 1, place: 'main' as const, of: null, tab: false }],
   },
@@ -42,7 +41,6 @@ const modules = [
     name: 'Food',
     parent: null,
     people: false,
-    alpha: false,
     pages: [],
     tables: [{ id: 't_2', name: 'Meals', rows: 1, place: 'main' as const, of: null, tab: false }],
   },
@@ -67,13 +65,18 @@ describe('a menu line', () => {
 })
 
 describe('the window', () => {
-  it('takes an old Intelligence › Permissions link to Settings', () => {
-    expect(placeOf('#/intelligence/permissions')).toEqual({
+  it('reads Intelligence and Settings from the address', () => {
+    expect(placeOf('#/settings/permissions')).toEqual({
       at: 'settings',
       section: 'permissions',
       open: null,
     })
     expect(placeOf('#/intelligence')).toEqual({ at: 'intelligence', section: null, open: null })
+    expect(placeOf('#/intelligence/connections?connect=gmail')).toEqual({
+      at: 'intelligence',
+      section: 'connections',
+      open: 'gmail',
+    })
   })
 
   it('lists the modules by name in the rail, inside one another, with what waits, the workspace and New module last', () => {
@@ -99,8 +102,9 @@ describe('the window', () => {
     expect(html).toContain('>2<')
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
-    // Settings across the foot, the Second Brain beside it (Batch E, 79.14)
-    expect(html).toContain('href="#/intelligence/brain"')
+    // Intelligence and Settings at the foot, each its own place (Kenil's call 1, 7 Nov)
+    expect(html).toContain('href="#/intelligence"')
+    expect(html).toContain('href="#/settings"')
     expect(html).not.toContain('Alpha is running')
     expect(html).toContain('href="#/conversation"') // the conversation keeps its own screen
   })

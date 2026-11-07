@@ -17,8 +17,12 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
       { label: 'Conversation', hint: '', href: '#/conversation' },
       { label: 'Tasks', hint: '', href: '#/tasks' },
       { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
-      { label: 'People', hint: 'Network', href: '#/people' },
-      { label: 'Organizations', hint: 'Network', href: '#/people?companies' },
+      ...modules
+        .filter((m) => m.people)
+        .flatMap((m) => [
+          { label: 'People', hint: m.name, href: '#/people' },
+          { label: 'Organizations', hint: m.name, href: '#/people?companies' },
+        ]),
       { label: 'Activity', hint: '', href: '#/activity' },
       { label: 'Intelligence', hint: '', href: '#/intelligence' },
       { label: 'Settings', hint: '', href: '#/settings' },

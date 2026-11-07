@@ -5,7 +5,7 @@ export const NEVER_SAY: [RegExp, string][] = [
   [/\bkits?\b/i, 'module'],
   [/\bprojects?\b/i, 'module'],
   [/\bcompan(?:y|ies)\b/i, 'organization'],
-  [/\bremember(?:ed|s)\b/i, 'Second Brain'],
+  [/\bremember(?:ed|s)\b/i, 'How to work'],
   [/\bexport(?:ed|s)?\b/i, 'Download'],
   [/\bremov(?:e|es|ed|ing)\b/i, 'Delete'],
   [/\bnot now\b/i, 'Decline, or Cancel'],

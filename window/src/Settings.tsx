@@ -5,7 +5,6 @@ import type {
   ConnectorsView,
   ConnectorView,
   DataPageView,
-  Health,
   KeptTable,
   ModelView,
 } from '@alpha/core/api'
@@ -22,13 +21,12 @@ import {
   Unplug,
   UserRound,
 } from 'lucide-react'
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
-import { EXPERIMENTS, setExperiment, useExperiment } from './experiments.ts'
+import { HowToWork } from './HowToWork.tsx'
 import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
 import { Reach } from './Reach.tsx'
-import { alphaOf, SecondBrain } from './SecondBrain.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
@@ -42,7 +40,7 @@ import { Confirm, Dialog } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
-import { Kbd, Pill, type Tone } from './ui/pill.tsx'
+import { Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
@@ -76,11 +74,11 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'The accounts Alpha reads, its agents and what it knows.',
+    about: 'The accounts Alpha reads, its agents and how you asked it to work.',
     tabs: [
       ['connections', 'Connections'],
       ['agents', 'Agents'],
-      ['brain', 'Second Brain'],
+      ['work', 'How to work'],
     ],
   },
   settings: {
@@ -93,8 +91,6 @@ const PAGES = {
       ['permissions', 'Permissions'],
       ['data', 'Data'],
       ['appearance', 'Appearance'],
-      ['experimental', 'Experimental'],
-      ['help', 'Help'],
     ],
   },
 } as const
@@ -120,7 +116,6 @@ export function Settings({
   }, [load, version])
 
   const p = PAGES[page]
-  // Experimental always shows: the developer switch lives there (step 2, part 1, slice 3, 29 Oct)
   const tabs = p.tabs
   const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
@@ -132,7 +127,7 @@ export function Settings({
   // a connection whose connector is not loaded (its pack not added yet): shown, waiting
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
-    brain: <SecondBrain version={version} />,
+    work: <HowToWork version={version} />,
     agents: <Agents version={version} />,
     connections: (
       <>
@@ -169,7 +164,6 @@ export function Settings({
               The connector in {f.folder} did not load: {f.why}
             </div>
           ))}
-          <AddConnector view={view} onChange={load} />
         </Section>
         <SignInApps apps={view.signInApps} onChange={load} />
         <Section
@@ -199,8 +193,6 @@ export function Settings({
     ),
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
-    experimental: <Experimental />,
-    help: <Help />,
   }
   // the bar holds Settings' icon tile, title and line; Intelligence has its tabs under the bar
   const head = (
@@ -793,7 +785,7 @@ function ConnectionLine({
             // in the browser; a password goes in Alpha's own form
             if (k.inBrowser) void act(() => api.post(`/api/connections/${k.id}/sign-in`))
             else if (k.signsInWith) void act(() => signInWith(k.id))
-            else window.location.hash = `#/settings?connect=${k.connector}`
+            else window.location.hash = `#/intelligence/connections?connect=${k.connector}`
           }}
         >
           {k.inBrowser
@@ -1101,99 +1093,6 @@ function ConnectorTile({
   )
 }
 
-// A connector added without a restart: from a folder, from a pack sent as a file, or one of the
-// packs that came with Alpha (LinkedIn), with its warning shown before the first connection.
-function AddConnector({ view, onChange }: { view: ConnectorsView; onChange: () => void }) {
-  const [folder, setFolder] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
-  const [said, setSaid] = useState<string | null>(null)
-  const picker = useRef<HTMLInputElement>(null)
-  const loaded = new Set(view.connectors.map((c) => c.name))
-  const offered = view.available.filter((p) => !loaded.has(p.name))
-  const act = async (fn: () => Promise<{ title: string }>) => {
-    setBusy(true)
-    setProblem(null)
-    setSaid(null)
-    try {
-      const out = await fn()
-      setSaid(`Added ${out.title}. Connect it above.`)
-      setFolder('')
-      onChange()
-    } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That connector was not added.')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <div className="flex flex-col gap-2">
-      {offered.length > 0 && (
-        <List>
-          {offered.map((p) => (
-            <Row
-              key={p.name}
-              lead={
-                <Tile>
-                  <Plug className="size-4" />
-                </Tile>
-              }
-              title={p.title}
-              sub={`Came with Alpha, not loaded until you add it (${p.version})`}
-              actions={
-                <Button
-                  size="sm"
-                  disabled={busy}
-                  onClick={() =>
-                    act(() =>
-                      api.post<{ title: string }>('/api/connectors/available', { name: p.name }),
-                    )
-                  }
-                >
-                  Add {p.title}
-                </Button>
-              }
-            />
-          ))}
-        </List>
-      )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          void act(() => api.post<{ title: string }>('/api/connectors', { folder: folder.trim() }))
-        }}
-        className="flex gap-2"
-      >
-        <Field
-          className="flex-1"
-          value={folder}
-          placeholder="A connector's folder, like /Users/you/dev/connectors/outlook"
-          onChange={(e) => setFolder(e.target.value)}
-        />
-        <Button type="submit" disabled={busy || !folder.trim()}>
-          {busy ? 'Adding…' : 'Add a connector'}
-        </Button>
-        <Button variant="ghost" disabled={busy} onClick={() => picker.current?.click()}>
-          Add from a file
-        </Button>
-        <input
-          ref={picker}
-          type="file"
-          accept=".alphaconnector"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void act(() => api.uploadTo<{ title: string }>('/api/connectors/pack', file))
-            e.target.value = ''
-          }}
-        />
-      </form>
-      {said && <div className="text-ink-2 text-md">{said}</div>}
-      {problem && <div className="text-bad text-md">{problem}</div>}
-    </div>
-  )
-}
-
 function FolderForm({
   connector: c,
   onChange,
@@ -1239,166 +1138,6 @@ function FolderForm({
   )
 }
 
-// Experimental: the developer switch, kept in Alpha (step 2, part 1, slice 3), then the features
-// still being tried, each off until switched on on this computer.
-function Experimental() {
-  const [on, setOn] = useState<boolean | null>(null)
-  const { busy, problem, act } = useAct(() =>
-    api.get<{ on: boolean }>('/api/developer').then((d) => setOn(d.on)),
-  )
-  useEffect(() => {
-    api.get<{ on: boolean }>('/api/developer').then(
-      (d) => setOn(d.on),
-      () => setOn(null),
-    )
-  }, [])
-  return (
-    <>
-      <Section
-        title="Developer"
-        about="Modules and connectors from a folder, and packs not signed by Kenil, load only while this is on."
-      >
-        <List>
-          <Row
-            title="Developer switch"
-            sub={
-              on
-                ? 'On: folders and packs not signed by Kenil load.'
-                : 'Off: only packs signed by Kenil load.'
-            }
-            actions={
-              on !== null && (
-                <Switch
-                  checked={on}
-                  label="Developer switch"
-                  disabled={busy}
-                  onChange={(v) => act(() => api.post('/api/developer', { on: v }))}
-                />
-              )
-            }
-          />
-        </List>
-        <Refusal words={problem} />
-      </Section>
-      <Section
-        title="Experimental"
-        about="Features still being tried. Each is off until you switch it on, on this computer only."
-      >
-        {EXPERIMENTS.length === 0 ? (
-          <p className="text-ink-2 text-md">Nothing to try right now.</p>
-        ) : (
-          <List>
-            {EXPERIMENTS.map((e) => (
-              <ExperimentLine key={e.name} name={e.name} title={e.title} about={e.about} />
-            ))}
-          </List>
-        )}
-      </Section>
-    </>
-  )
-}
-
-function ExperimentLine({ name, title, about }: { name: string; title: string; about: string }) {
-  const on = useExperiment(name)
-  return (
-    <Row
-      title={title}
-      sub={about}
-      actions={<Switch checked={on} label={title} onChange={(v) => setExperiment(name, v)} />}
-    />
-  )
-}
-
-// Help: the keys the window answers to, by where they work (each from its handler: App.tsx, Find
-// in Shell.tsx, the grid, the shared menus, the composers, the pencil, a panel's edge), and the
-// version the core runs.
-const KEYS: [string, [string, string][]][] = [
-  [
-    'Anywhere',
-    [
-      ['⌘K', 'Find anything'],
-      ['⌘J', 'Open or fold the assistant'],
-      ['⌘⇧\\', 'Fold or open the assistant'],
-      ['⌘\\', 'Fold or open the rail'],
-      ['Esc', 'Close what’s open, then fold the assistant a step'],
-    ],
-  ],
-  [
-    'Find',
-    [
-      ['↑ ↓', 'Choose'],
-      ['Enter', 'Open'],
-      ['Esc', 'Close'],
-    ],
-  ],
-  [
-    'Writing to Alpha',
-    [
-      ['Enter', 'Send'],
-      ['Shift Enter', 'New line'],
-      ['Esc', 'Stop marking with the pencil'],
-    ],
-  ],
-  [
-    'Tables',
-    [
-      ['Enter or F2', 'Edit the cell'],
-      ['Enter', 'Save the cell'],
-      ['Esc', 'Leave the cell as it was'],
-      ['Double-click', 'Change a value in an opened row'],
-      ['Shift click', 'Sort by one more column'],
-      ['Esc', 'Let go of the ticked rows'],
-    ],
-  ],
-  [
-    'Menus',
-    [
-      ['Right-click, Shift F10', 'Open the menu of what is under the pointer or focused'],
-      ['↑ ↓ Home End', 'Move between the lines'],
-      ['A letter', 'Jump to the next line starting with it'],
-      ['→ ←', 'Open a submenu, go back out of it'],
-      ['Esc', 'Close the innermost menu'],
-    ],
-  ],
-  ['Panels', [['← →', 'Resize, from its edge']]],
-]
-
-function Help() {
-  const [health, setHealth] = useState<Health | null>(null)
-  useEffect(() => {
-    fetch('/api/health')
-      .then((r) => r.json() as Promise<Health>)
-      .then(setHealth, () => undefined)
-  }, [])
-  return (
-    <>
-      <Section title="Keyboard shortcuts">
-        {KEYS.map(([where, keys]) => (
-          <div key={where} className="flex flex-col gap-2">
-            <h3 className="font-medium text-ink">{where}</h3>
-            <List>
-              {keys.map(([k, what]) => (
-                <Row
-                  key={k + what}
-                  title={<span className="font-normal">{what}</span>}
-                  actions={<Kbd>{k}</Kbd>}
-                />
-              ))}
-            </List>
-          </div>
-        ))}
-      </Section>
-      <Section title="Version">
-        <p className="text-ink-2 text-md">
-          {health
-            ? `Alpha ${health.version}${health.build ? ` · build ${health.build}` : ''}`
-            : 'Loading…'}
-        </p>
-      </Section>
-    </>
-  )
-}
-
 // A shared table inside a page that scrolls: a fixed height, its own frame and nothing around it,
 // its edges in line with the section's title.
 function Embedded({
@@ -1438,5 +1177,3 @@ function Agents({ version }: { version: number }) {
     </Section>
   )
 }
-
-export { alphaOf }

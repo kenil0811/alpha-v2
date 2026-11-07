@@ -1,6 +1,5 @@
 // Tasks, runs, people and rows open beside the page, kept in the address (Batch A, pick 2).
 import { describe, expect, it } from 'vitest'
-import { screenOf } from './back.ts'
 import { linkBeside, pageOf, splitBeside, withBeside } from './opened.ts'
 import { placeOf } from './place.ts'
 
@@ -35,11 +34,6 @@ describe('what is open beside the page', () => {
   it('has its own page, and Back closes it', () => {
     expect(pageOf({ kind: 'run', id: 'r_1' })).toBe('#/run/r_1')
     expect(pageOf({ kind: 'person', id: 'p_1' })).toBe('#/people/p_1')
-    // opening beside is a step of its own for Back: the page without it is where Back goes
-    expect(screenOf('#/module/m_1?beside=task/t_1')).not.toBe(screenOf('#/module/m_1'))
-    expect(screenOf('#/module/m_1/agents?beside=task/t_1')).toBe(
-      screenOf('#/module/m_1?beside=task/t_1'),
-    )
   })
 
   it('opens an agent, a rule and the rows a figure counted too (Batch D, 79.6, 79.7)', () => {
@@ -65,7 +59,5 @@ describe('what is open beside the page', () => {
       opened: { kind: 'row', id: 'r_2' },
       trail: [...steps],
     })
-    // the window's Back takes each step too
-    expect(screenOf(at)).not.toBe(screenOf('#/module/m_1?beside=task/t_1'))
   })
 })

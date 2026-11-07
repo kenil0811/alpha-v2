@@ -189,7 +189,7 @@ export function Home({
                                 void signInWith(a.connection)
                               },
                             }
-                          : { href: `#/settings?connect=${a.connector}` })}
+                          : { href: `#/intelligence/connections?connect=${a.connector}` })}
                   />
                 ))}
               </Group>
@@ -443,7 +443,7 @@ function Welcome({ onTry }: { onTry: (words: string) => void }) {
       done: s.done,
       words: s.words,
       sub: s.sub,
-      href: `#/settings?connect=${s.name}`,
+      href: `#/intelligence/connections?connect=${s.name}`,
     })),
     {
       done: view?.kit,

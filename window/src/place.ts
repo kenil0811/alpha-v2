@@ -33,7 +33,7 @@ export type Place =
   | { at: 'people'; kind: 'person' | 'company'; id: string | null }
   | {
       at: 'tasks'
-      list: 'today' | 'week' | 'overdue' | 'waiting' | 'agents' | 'open' | 'done'
+      list: 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done'
       id: string | null
     }
 
@@ -74,13 +74,11 @@ export function placeOf(address: string): Place {
       },
     }
   }
-  // an old #/settings?connect= link still lands on the connection, now under Intelligence
-  const c = /^#\/settings\?connect=([\w-]+)$/.exec(hash)
+  const c = /^#\/intelligence\/connections\?connect=([\w-]+)$/.exec(hash)
   if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
   const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
-  // Permissions moved from Intelligence to Settings: an old link still lands there
   if (s)
-    return s[1] === 'settings' || s[2] === 'permissions'
+    return s[1] === 'settings'
       ? { at: 'settings', section: s[2] ?? null, open: null }
       : { at: 'intelligence', section: s[2] ?? null, open: null }
   if (hash === '#/activity') return { at: 'activity' }
@@ -89,15 +87,8 @@ export function placeOf(address: string): Place {
     return {
       at: 'tasks',
       list:
-        (tk[2] as
-          | 'today'
-          | 'week'
-          | 'overdue'
-          | 'waiting'
-          | 'agents'
-          | 'open'
-          | 'done'
-          | undefined) ?? 'today',
+        (tk[2] as 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done' | undefined) ??
+        'today',
       id: tk[1] ?? null,
     }
   const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
@@ -110,14 +101,8 @@ export function placeOf(address: string): Place {
   // a row's own page (core step 3b), a card's (Batch B, pick 13)
   const rw = /^#\/(row|card)\/([\w-]+)$/.exec(hash)
   if (rw?.[2]) return { at: rw[1] === 'card' ? 'card' : 'row', id: rw[2] }
-  // a standing permission's old link lands on its rule (core step 2)
-  const it = /^#\/(agent|run|rule|permission)\/([\w-]+)$/.exec(hash)
-  if (it?.[1] && it[2])
-    return {
-      at: 'item',
-      kind: it[1] === 'permission' ? 'rule' : (it[1] as 'agent' | 'run' | 'rule'),
-      id: it[2],
-    }
+  const it = /^#\/(agent|run|rule)\/([\w-]+)$/.exec(hash)
+  if (it?.[1] && it[2]) return { at: 'item', kind: it[1] as 'agent' | 'run' | 'rule', id: it[2] }
   const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)))?$/.exec(hash)
   if (mod?.[1])
     return {

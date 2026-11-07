@@ -2,7 +2,7 @@
 // then Alpha's one message for the turn: its reply, its steps for "Show the work", its cards and,
 // once answered, each card's one line. A turn's module is the first one its steps touched, so a
 // topic chip can name it and a lens can keep to it.
-import type { AboutRows, StreamLine } from '@alpha/core/api'
+import type { StreamLine } from '@alpha/core/api'
 
 export interface Step {
   id: number
@@ -35,16 +35,8 @@ export type Item =
       at: string
       module: Module
     }
-  | { kind: 'note'; id: number; words: string; tone: 'plain' | 'warn'; at: string }
-  | {
-      kind: 'told'
-      id: number
-      agent: string | null
-      words: string
-      about: AboutRows | null
-      at: string
-      module: Module
-    }
+  // a failure said in the chat: a limit reached, an error or a refusal outside a turn
+  | { kind: 'note'; id: number; words: string; at: string }
   // a card an agent's run opened, outside any turn
   | { kind: 'card'; id: string; at: string; module: Module; answered: Answered | null }
 
@@ -96,13 +88,13 @@ export function group(lines: StreamLine[]): Item[] {
       alpha(String(l.id), l.at).module = l.module
       continue
     }
+    // Alpha carrying on by itself after a yes: its turn, with nothing said for it
     if (l.kind === 'noticed') {
-      items.push({ kind: 'note', id: l.id, words: l.words, tone: 'plain', at: l.at })
       alpha(`n${l.id}`, l.at)
       continue
     }
     if (l.kind === 'limit') {
-      items.push({ kind: 'note', id: l.id, words: l.words, tone: 'warn', at: l.at })
+      items.push({ kind: 'note', id: l.id, words: l.words, at: l.at })
       continue
     }
     if (l.kind === 'card_closed') {
@@ -113,7 +105,6 @@ export function group(lines: StreamLine[]): Item[] {
           at: l.at,
           done: closed.get(l.card)?.done ?? null,
         })
-      else items.push({ kind: 'note', id: l.id, words: l.words, tone: 'plain', at: l.at })
       continue
     }
     if (l.kind === 'card_used') {
@@ -122,32 +113,10 @@ export function group(lines: StreamLine[]): Item[] {
       continue
     }
     if (!l.turn) {
-      if (l.kind === 'told') {
-        items.push({
-          kind: 'told',
-          id: l.id,
-          agent: typeof l.data.agent === 'string' ? l.data.agent : null,
-          words: l.words,
-          about: (l.data.about as AboutRows | null | undefined) ?? null,
-          at: l.at,
-          module: l.module,
-        })
-      } else if (l.kind === 'card_opened' && l.card) {
+      if (l.kind === 'card_opened' && l.card)
         items.push({ kind: 'card', id: l.card, at: l.at, module: l.module, answered: null })
-      } else if (
-        l.kind === 'filed' ||
-        l.kind === 'card_opened' ||
-        l.kind === 'error' ||
-        l.kind === 'refused' ||
-        l.kind === 'rule_saved'
-      )
-        items.push({
-          kind: 'note',
-          id: l.id,
-          words: l.words,
-          tone: l.kind === 'error' || l.kind === 'refused' ? 'warn' : 'plain',
-          at: l.at,
-        })
+      else if (l.kind === 'error' || l.kind === 'refused')
+        items.push({ kind: 'note', id: l.id, words: l.words, at: l.at })
       continue
     }
     const a = alpha(l.turn, l.at)
@@ -186,5 +155,5 @@ export function group(lines: StreamLine[]): Item[] {
 
 // The module an item belongs to, for a lens.
 export function moduleOfItem(i: Item): Module {
-  return i.kind === 'alpha' || i.kind === 'told' || i.kind === 'card' ? i.module : null
+  return i.kind === 'alpha' || i.kind === 'card' ? i.module : null
 }

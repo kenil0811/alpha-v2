@@ -1,6 +1,6 @@
 // A card that waits for the person (design §7): a question, a gate's yes, a file from the mail,
-// a draft, two who may be the same, rows to decide, tasks proposed. The same card wherever it
-// shows: the stream, Home, a task, and its own page (#/card/<id>, Batch B, pick 13), where a long
+// a draft, two who may be the same, rows to decide. The same card wherever it
+// shows: the stream, Home, and its own page (#/card/<id>, Batch B, pick 13), where a long
 // letter shows whole. Out of Conversation.tsx so that screen only shrinks (the window file wall).
 import type { CardView } from '@alpha/core/api'
 import { TriangleAlert } from 'lucide-react'
@@ -9,7 +9,6 @@ import { api, Problem } from './api.ts'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
 import { MatchCard } from './MatchCard.tsx'
-import { ProposedCard } from './ProposedCard.tsx'
 import { ReviewCard } from './ReviewCard.tsx'
 import { Button } from './ui/button.tsx'
 import { Actions, Card, CardPlace } from './ui/card.tsx'
@@ -104,7 +103,6 @@ function CardBody({
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
   if (card.review) return <ReviewCard card={card} review={card.review} />
-  if (card.proposed) return <ProposedCard card={card} proposed={card.proposed} />
   const answer = async (a: string) => {
     setBusy(true)
     try {
@@ -117,7 +115,7 @@ function CardBody({
       }
       await api.post(`/api/cards/${id}`, { answer: a })
       if (card.gate === 'sign_in' && a === card.options[0])
-        window.location.hash = `#/settings${card.connector ? `?connect=${card.connector}` : ''}`
+        window.location.hash = `#/intelligence/connections${card.connector ? `?connect=${card.connector}` : ''}`
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That answer did not go in.')
       setBusy(false)

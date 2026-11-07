@@ -173,7 +173,7 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
   })
 
   it('W4: labels are in sentence case', () => {
-    // a capital after the first word is a name (Alpha, Second Brain…) or starts an example after a comma
+    // a capital after the first word is a name (Alpha, How to work…) or starts an example after a comma
     const NAMES = /^(?:Alpha|Mac|Second|Brain|Monday|Georgia|CSV|Excel|PDF)\b/
     const found: string[] = []
     for (const file of sources(SRC)) {

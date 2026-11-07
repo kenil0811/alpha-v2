@@ -13,10 +13,10 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| S1 | The rail is module names only: Home, Conversation, Tasks, then each module, with modules inside one folded under it; Alpha's own module is not there | 20 Oct, 26 Oct | — |
-| S2 | Settings runs across the rail's foot, a small Second Brain icon beside it (Intelligence's other parts one pill away on that page) | 25 Oct, 2 Nov | — |
-| S3 | The rail's head is the workspace: a menu of Appearance; Settings and the Second Brain are on the rail | 26 Oct, 2 Nov | — |
-| S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules; modules drag into one another or out to the top; a double-click on a module's name in the rail renames it in place (Enter keeps, Escape puts it back, a refusal under the box) | 26 Oct, 1 Nov | — |
+| S1 | The rail is module names only: Home, Conversation, Tasks, then each module, with modules inside one folded under it | 20 Oct, 26 Oct, 7 Nov | — |
+| S2 | Intelligence and Settings sit at the rail's foot, each its own row | 25 Oct, 7 Nov | — |
+| S3 | The rail's head is the person's initial and name, no menu; how Alpha looks is in Settings › Appearance | 26 Oct, 7 Nov | — |
+| S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules. Rename edits the name in the rail (Enter keeps, Escape puts it back, a refusal under the box). Moving is on the menu: no drag, and no double-click on a module's name | 26 Oct, 1 Nov, 7 Nov | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
 | S6 | Both side panels drag by one edge and fold; the rail folds to an 80px strip, each icon with its name under it (⌘\\); every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
 | S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
@@ -28,7 +28,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: a way back to where you were on the left (the screen last visited in this window, by its name; a tab switch inside a screen is not a place; nothing visited, the screen's parent), the screen's name centred; on a table's own screen its name is renamed there by a double-click or Enter, as a module's is in the rail (S4) | 25 Oct, 1 Nov | test |
+| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred, a lens on the left while one is on; no way back in the bar, and the name is not edited there | 25 Oct, 1 Nov, 7 Nov | test |
 | H2 | A screen with parts switches them with one pill switch in the bar, every label in full, scrolling sideways; never cut short or folded to icons; a page opened beside keeps a row of tabs under its head | 26 Oct, 2 Nov | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
@@ -44,8 +44,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its main tables with their counts (a table part of a row, setup, or one row per person in People's module is not a tab), then the parts and setup tables kept as tabs, Conversation, Agents and notes | 26 Oct, 27 Oct, 28 Oct | — |
-| M2 | Nothing sits under a table or a page; what the module is for (its business case, Edit beside it, assumed while Alpha's), agents, the module's other tables (setup, and parts with what they are part of, each with Keep as a tab, reading A tab while it is one; the same in the table's ⋯ menu), notes, recent activity and Governance are the Agents and notes tab | 26 Oct, 27 Oct, 28 Oct | — |
-| M3 | Governance shows only rules the core holds and enforces, Allowed and Denied, each saying where it came from; + Add starts the conversation; a rule of yours has Revoke behind ⋮, one Alpha noticed Approve and Dismiss; above them, Waiting for you lists the rules waiting on their Save card (the module's and those of all of Alpha), Approve and Decline answering the card itself | 26 Oct, 27 Oct, 1 Nov | test, journey |
+| M2 | Nothing sits under a table or a page; what the module is for (its business case, Edit beside it, assumed while Alpha's), agents, the module's other tables (setup, and parts with what they are part of, each with Keep as a tab, reading A tab while it is one; the same in the table's ⋯ menu), notes, and recent activity are the Agents and notes tab | 26 Oct, 27 Oct, 28 Oct | — |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 
 ## Table and toolbar
@@ -55,7 +54,7 @@ held by review. Dates are 2026.
 | T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self. Whenever rows are hidden, a line under the tabs says how many show and what hides them ("Showing 12 of 140 rows, filtered by Stage and a search"), with Clear filters; Cancel brings the saved list back. On a table a connection fills, ⋮ has Read now, reading every connection that fills it in one press (one waiting on a sign-in or the customer greyed with its reason, W3), and the line under the table says what reads into it and when ("Read by Gmail and Outlook, 10:42") | 26 Oct, 1 Nov | test (the line, read by) |
 | T2 | No cards of counts above or below a table | 26 Oct | test |
 | T3 | New sits in the page row under the table and works while the assistant is open | 26 Oct | — |
-| T4 | A click on a row's name opens it in the side panel, with Open page to its own page (#/row/…), beside the assistant too when the window holds the rail, the page's 600px, the panel's 320px and the assistant (else the panel gives way and the assistant stays); a link to a task, a run, a person or a row opens it beside the page the same way, kept in the address so a reload keeps it and Back closes it, one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row. A part's small table: its first three fields, one line a row, names never ids, long words cut with the whole on the tip; its twelve changed most lately with how many in all, and Open as a table for the rest | 26 Oct, 27 Oct, 28 Oct, 1 Nov | test (room, beside) |
+| T4 | A click on a row's name opens it in the side panel, with Open page to its own page (#/row/…), beside the assistant too when the window holds the rail, the page's 600px, the panel's 320px and the assistant (else the panel gives way and the assistant stays); a link to a task, a run, a person or a row opens it beside the page the same way, kept in the address so a reload keeps it, one view in both: fields, notes, its parts as small tables with New, Linked here, files, tasks; a double-click edits a value, in the grid and in an opened row. A part's small table: its first three fields, one line a row, names never ids, long words cut with the whole on the tip; its twelve changed most lately with how many in all, and Open as a table for the rest | 26 Oct, 27 Oct, 28 Oct, 1 Nov | test (room, beside) |
 | T5 | An empty table keeps its header, blank rows and footer, and says nothing | 26 Oct | — |
 | T6 | Every menu works from the keyboard and opens on a right-click where it belongs; one list, never a second | 26 Oct | — |
 | T7 | The overflow glyph is the vertical ⋮ | 25 Oct | test |
@@ -70,47 +69,49 @@ held by review. Dates are 2026.
 | T16 | People shows, after its own columns, the fields of its module's one-row-per-person tables, each named by its field (its table's name in front only on a clash); a person's page has a section for each; typing there writes that person's row, made if need be | 27 Oct | test |
 | T17 | Every choice wears one colour by its place in its field's list (eight, round again), in cells, board cards, chips, dropdowns and filters; a choice that is a state keeps its tone's dot | 2 Nov | — |
 | T18 | A cell whose value has another beside it (a page's or a connection's newer read, a script's figure) shows a hollow dot at its top right, its words on hover; its source panel says whose and when, and Reset says what it goes back to | 5 Nov | — |
+| T19 | A table's name changes from its ⋮ menu (Rename), greyed with its reason on a managed module; never by a double-click | 7 Nov | — |
 
 ## Pages, records and deleting
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | R1 | A section is its serif title and ⓘ over what it holds, never a card; nothing sits in a card inside a card | 26 Oct | — |
-| R2 | One record layout: the way back in the bar, a centred column, a line naming the record, its serif title, its sections; a row's page too | 25 Oct, 27 Oct | — |
+| R2 | One record layout: a centred column, a line naming the record, its serif title, its sections; a row's page too | 25 Oct, 27 Oct | — |
 | R3 | Delete is never one click: behind ⋮, or a short list's ✕ (R8), always confirmed in our own pop-up, saying what goes, the parts that go with it, and how long Bring back returns them, in the core's words | 26 Oct, 27 Oct, 1 Nov | — |
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |
 | R6 | Revert, and Bring back on a removal, sit behind an Activity line's ⋮, said first in the one pop-up from the core's own preview of the same work | 26 Oct | — |
 | R7 | A value Alpha is not sure of has a small grey mark (≈ estimated, ? assumed), never amber: its word on hover in a table, written out in a panel; an empty value is a grey dash in a table and "Unknown" in a panel | 25 Oct | — |
 | R8 | A short list (How to work first, the others as they are touched): Add on its heading, ✕ on an entry when hovered, a double-click edits the entry in place (Enter keeps, Escape puts it back); where Alpha must understand an entry, Add starts the conversation | 1 Nov | test |
-| R9 | A card has its own page (#/card/<id>), opened from ↗ on its head wherever it shows (the stream, Home, a task): the same card across the page, a long letter whole, answered there as on the card; once answered the page says with what | 1 Nov | test (route), journey |
+| R9 | A card has its own page (#/card/<id>), opened from ↗ on its head wherever it shows (the stream, Home): the same card across the page, a long letter whole, answered there as on the card; once answered the page says with what | 1 Nov | test (route), journey |
 
 ## Assistant and chat
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| A1 | The assistant's header: fold, face and name, the pencil, the bell; no Expand, no Open whole conversation | 26 Oct | test |
+| A1 | The assistant's header: fold, face and name, the bell; no Expand, no Open whole conversation | 26 Oct, 7 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
-| A3 | The composer's +: files, a folder, Model ›; @ names an agent | 26 Oct | — |
+| A3 | The composer's +: files, a folder; @ names an agent. The way to Claude is Settings' business | 26 Oct, 7 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
-| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, Mark and Activity, each named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
+| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open and Activity, each named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
 | A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
+| A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a run's report are on Activity. Nothing runs beside it | 7 Nov | test (stream) |
 
 ## Intelligence and Settings
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| I1 | Intelligence: Connections, Agents, Second Brain (How to work, Decisions, Noticed) | 26 Oct | — |
-| I2 | Settings: Model, Modules, Permissions, Data, Appearance, Help, one at a time; Experimental always, the developer switch at its top, then what is being tried | 26 Oct, 29 Oct | — |
+| I1 | Intelligence: Connections, Agents, How to work | 26 Oct, 7 Nov | — |
+| I2 | Settings: Model, Modules, Permissions, Data, Appearance, one at a time | 26 Oct, 7 Nov | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this; under them Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
-| I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, as in Governance (M3) | 27 Oct, 1 Nov | test |
+| I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov | test |
 
 ## Wording
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | W1 | Module, never kit or project | 23 Oct | test |
-| W2 | Organization, never company; Second Brain, never remembered; Download, never export; Delete, never remove; Decline or Cancel, never "not now"; Decline, never Veto; a run that did not finish is Failed, in Activity's filter and every pill | 25 Oct, 1 Nov | test |
+| W2 | Organization, never company; How to work, never remembered; Download, never export; Delete, never remove; Decline or Cancel, never "not now"; Decline, never Veto; a run that did not finish is Failed, in Activity's filter and every pill | 25 Oct, 1 Nov | test |
 | W3 | No line for what Alpha can't do yet; a line that can't act now stays greyed with its reason; never "Coming soon" | 26 Oct | test (words) |
 | W4 | Sentence case for labels, buttons and placeholders | 25 Oct | test |
 | W5 | Dates read "25 Oct" (the year only when it isn't this one), typed as words; never a dd/mm/yyyy picker | 26 Oct | — |
@@ -133,9 +134,8 @@ held by review. Dates are 2026.
 | L10 | Files are added in one drop zone, a dashed box to drop on or click, what is there inside it | 2 Nov | — |
 | L11 | Read now and Run now say when it last happened just before the button, the full time on hover | 2 Nov | — |
 | L12 | A double-click on what can't change says why, at once | 2 Nov | — |
-| L13 | A row's and a task's title on its page is renamed by a double-click, as a table's and a module's name are | 2 Nov | — |
+| L13 | A row's and a task's title on its page is renamed by a double-click; a module's and a table's name from its menu (S4, T19) | 2 Nov, 7 Nov | — |
 | L14 | A task, a run, a person, a row, an agent, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel opens a step further in it, with the panel's own Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov | test (opened) |
-| L15 | Marking dims the window a little, the outline glides between what can be marked, and its line wears the accent | 2 Nov | — |
 | L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
 
 ## Proposed, waiting on Kenil or the core

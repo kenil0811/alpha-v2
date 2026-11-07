@@ -1,32 +1,13 @@
 // The conversation (design §14; its own place since Kenil's 20 Oct call that Home holds only the
 // important things): the person's sentences and Alpha's replies in order, each with its topic
-// chip as a lens; one live message per turn becoming the outcome; cards inline; the Now strip and
-// the composer at the foot. A module's Conversation tab and Ask (⌘J) show it through a lens.
-import type {
-  AboutRows,
-  CardView,
-  LiveEvent,
-  ModelView,
-  Stream,
-  WorkingModuleView,
-} from '@alpha/core/api'
-import {
-  ArrowUp,
-  Bot,
-  Check,
-  ChevronRight,
-  FolderUp,
-  ImageUp,
-  KeyRound,
-  Plus,
-  Sparkles,
-  TriangleAlert,
-  X,
-} from 'lucide-react'
+// chip as a lens; one live message per turn becoming the outcome; cards inline; the composer at the
+// foot. Only the conversation is here: what happened otherwise is on Activity (clean base, 7 Nov).
+// A module's Conversation tab and Ask (⌘J) show it through a lens.
+import type { CardView, LiveEvent, Stream, WorkingModuleView } from '@alpha/core/api'
+import { ArrowUp, Bot, Check, ChevronRight, FolderUp, ImageUp, Plus } from 'lucide-react'
 import {
   type DragEvent,
   type KeyboardEvent,
-  type ReactNode,
   type RefObject,
   useEffect,
   useMemo,
@@ -35,16 +16,14 @@ import {
 } from 'react'
 import { api, Problem } from './api.ts'
 import { takeAsk } from './ask.ts'
-import { Beside } from './Beside.tsx'
-import { CardBox, GATE } from './CardBox.tsx'
+import { CardBox } from './CardBox.tsx'
 import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
-import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { dropped } from './ui/drop-zone.tsx'
 import { Fold } from './ui/fold.tsx'
 import { Topic } from './ui/pill.tsx'
-import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
+import { MenuItem, Popover } from './ui/popover.tsx'
 import { Words } from './ui/words.tsx'
 
 export interface Live {
@@ -79,7 +58,7 @@ export function Conversation({
   lens: Module
   onLens: (m: Module) => void
   from?: Module // asked from a module's screen or its Ask panel
-  compact?: boolean // in the Ask panel: narrow, no Now strip
+  compact?: boolean // in the Ask panel: narrow
 }) {
   const all = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
@@ -200,11 +179,6 @@ export function Conversation({
             compact ? 'px-3 pt-1 pb-3' : 'max-w-stream px-8 pt-1.5 pb-4',
           )}
         >
-          {!compact && (
-            <div className="@min-[1100px]:hidden">
-              <Now stream={stream} />
-            </div>
-          )}
           <Composer
             words={words}
             setWords={setWords}
@@ -215,14 +189,6 @@ export function Conversation({
           />
         </div>
       </div>
-      {!compact && (
-        <Beside
-          stream={stream}
-          lens={lens}
-          gate={(g) => (g ? (GATE[g] ?? 'Waits for you') : 'A question')}
-          onCard={goToCard}
-        />
-      )}
       {dragging && (
         <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-xl border border-accent-line border-dashed bg-surface/80 text-ink-2">
           Drop to keep it in Alpha
@@ -245,68 +211,40 @@ function DayLine({ day }: { day: string }) {
   )
 }
 
-// The mark beside Alpha's name, or an agent's.
-function Mark({ agent }: { agent?: boolean | undefined }) {
-  return agent ? (
-    <span className="grid size-5 shrink-0 place-items-center rounded-sm border border-line bg-sunk text-ink-2">
-      <Bot className="size-3" />
-    </span>
-  ) : (
-    <span className="grid size-5 shrink-0 place-items-center rounded-sm bg-ink font-semibold font-serif text-canvas text-sm leading-none">
-      A
-    </span>
-  )
-}
-
-function Meta({
-  who,
-  agent,
-  module,
-  at,
-  onLens,
-}: {
-  who: string
-  agent?: boolean | undefined
-  module: Module
-  at: string
-  onLens: (m: Module) => void
-}) {
+// Alpha's name over a card a run opened: its mark, the module and when.
+function Meta({ module, at, onLens }: { module: Module; at: string; onLens: (m: Module) => void }) {
   return (
     <div className="flex items-center gap-2 text-ink-3 text-sm">
-      <Mark agent={agent} />
-      <span className="font-semibold text-ink text-md">{who}</span>
+      <span className="grid size-5 shrink-0 place-items-center rounded-sm bg-ink font-semibold font-serif text-canvas text-sm leading-none">
+        A
+      </span>
+      <span className="font-semibold text-ink text-md">Alpha</span>
       {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
       <span>{clock(at)}</span>
     </div>
   )
 }
 
-// A closing line is "Yes: the card's words" or "Chose Add: …": said as the person's answer, then
-// the card's words on what is left of the line.
-function saidOf(words: string): string {
+// A question's answer stays in the chat as one line, the card's words after it; a yes or a no on a
+// card leaves none, Activity has it (Kenil's call 3, 7 Nov). A closing line is "Chose Add: …" or
+// "Answered Soon: …".
+export function answerOf(words: string): string | null {
   const head = words.split(': ')[0] ?? ''
-  if (head === 'Yes') return 'You approved'
-  if (head === 'No') return 'You declined'
-  if (head === 'Withdrawn') return 'Withdrawn'
   if (head.startsWith('Chose ')) return `You chose ${head.slice(6)}`
   if (head.startsWith('Answered ')) return `You answered ${head.slice(9)}`
-  return head
+  return null
 }
-const restOf = (words: string) => words.split(': ').slice(1).join(': ')
 
-// A card once answered: one line, where the card was.
 function AnsweredLine({ answered }: { answered: Answered }) {
-  const no = answered.state === 'no' || answered.state === 'withdrawn'
+  const said = answerOf(answered.words)
+  if (!said) return null
   return (
-    <div
-      className={cn(
-        'flex items-center gap-2 rounded-md px-3 py-2.25 text-md',
-        no ? 'bg-sunk text-ink-2' : 'bg-good-soft text-good',
-      )}
-    >
-      {no ? <X className="size-4 shrink-0" /> : <Check className="size-4 shrink-0" />}
-      <span className="shrink-0 font-medium">{saidOf(answered.words)}</span>
-      <span className="min-w-0 flex-1 truncate opacity-80">{restOf(answered.words)}</span>
+    <div className="flex items-center gap-2 rounded-md bg-sunk px-3 py-2.25 text-ink-2 text-md">
+      <Check className="size-4 shrink-0" />
+      <span className="shrink-0 font-medium">{said}</span>
+      <span className="min-w-0 flex-1 truncate opacity-80">
+        {answered.words.split(': ').slice(1).join(': ')}
+      </span>
       <span className="shrink-0 text-sm opacity-80">
         {answered.done ? `Done at ${clock(answered.done)}` : clock(answered.at)}
       </span>
@@ -335,28 +273,13 @@ function Entry({
         {item.words}
       </div>
     )
-  if (item.kind === 'note')
-    return (
-      <div className={cn('text-center text-sm', item.tone === 'warn' ? 'text-warn' : 'text-ink-3')}>
-        {item.words}
-      </div>
-    )
-  if (item.kind === 'told') {
-    const who = item.agent ?? 'An agent'
-    const words = item.words.startsWith(`${who}: `) ? item.words.slice(who.length + 2) : item.words
-    return (
-      <div className="flex flex-col gap-2.25">
-        <Meta who={who} agent module={item.module} at={item.at} onLens={onLens} />
-        <Told words={words} about={item.about} />
-      </div>
-    )
-  }
+  if (item.kind === 'note') return <div className="text-center text-sm text-warn">{item.words}</div>
   if (item.kind === 'card') {
     const card = cards.get(item.id)
-    if (!card && !item.answered) return null
+    if (!card && !(item.answered && answerOf(item.answered.words))) return null
     return (
       <div className="flex flex-col gap-2.25" id={`card-${item.id}`}>
-        <Meta who="Alpha" module={item.module} at={item.at} onLens={onLens} />
+        <Meta module={item.module} at={item.at} onLens={onLens} />
         {card ? (
           <CardBox id={item.id} card={card} onChange={onChangeCard} />
         ) : item.answered ? (
@@ -443,120 +366,6 @@ function Ran({
   )
 }
 
-// What runs now and what waits on the person: three chips at most, each going where it is.
-function Now({ stream }: { stream: Stream | null }) {
-  if (!stream) return null
-  const chips: { key: string; need: boolean; icon: ReactNode; words: string; go: () => void }[] = []
-  for (const r of stream.running)
-    chips.push({
-      key: `r${r.id}`,
-      need: false,
-      icon: (
-        <span className="size-2.75 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-      ),
-      words: `${r.name} is running`,
-      go: () => {
-        window.location.hash = '#/activity'
-      },
-    })
-  for (const c of stream.cards)
-    chips.push({
-      key: `c${c.id}`,
-      need: true,
-      icon: <TriangleAlert className="size-3.25" />,
-      words: c.words.length > 48 ? `${c.words.slice(0, 47)}…` : c.words,
-      go: () => goToCard(c.id),
-    })
-  for (const a of stream.attention)
-    chips.push({
-      key: `s${a.connector}`,
-      need: true,
-      icon: <KeyRound className="size-3.25" />,
-      words: `${a.title} needs you to sign in`,
-      go: () => {
-        window.location.hash = `#/settings?connect=${a.connector}`
-      },
-    })
-  if (!chips.length) return null
-  // what needs the person comes before what is running
-  const shown = [...chips.filter((c) => c.need), ...chips.filter((c) => !c.need)].slice(0, 3)
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-0.5 font-semibold text-ink-3 text-sm">Now</span>
-      {shown.map((c) => (
-        <button
-          key={c.key}
-          type="button"
-          onClick={c.go}
-          className={cn(
-            'inline-flex h-6.5 max-w-80 items-center gap-1.75 rounded-full border px-2.5 text-sm transition-colors',
-            c.need
-              ? 'border-transparent bg-warn-soft text-warn'
-              : 'border-line bg-surface text-ink-2 hover:border-accent-line hover:text-ink',
-          )}
-        >
-          <span className="shrink-0">{c.icon}</span>
-          <span className="truncate">{c.words}</span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// What an agent's run told the person: its words, and the rows it is about, each with Open and
-// the one choice it offers (a deal's Pass).
-function Told({ words, about }: { words: string; about: AboutRows | null }) {
-  const { busy, on, problem, act } = useAct()
-  const choose = (row: string) => {
-    if (!about?.choice) return
-    const choice = about.choice
-    void act(
-      () =>
-        api.post(`/api/tables/${about.table}/rows/${row}`, {
-          field: choice.field,
-          value: choice.value,
-        }),
-      row,
-    )
-  }
-  return (
-    <div className="overflow-hidden rounded-lg border border-line bg-surface">
-      <p className="px-3.5 py-3 text-ink">{words}</p>
-      {about?.rows.map((r) => (
-        <div
-          key={r.id}
-          className="flex items-center gap-3 border-hair border-t py-2 pr-2.5 pl-3.5 text-md"
-        >
-          <a
-            className="min-w-0 flex-1 truncate font-medium text-ink underline decoration-line underline-offset-3 hover:decoration-ink-3"
-            href={`#/table/${about.table}/${r.id}`}
-          >
-            {r.name}
-          </a>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              window.location.hash = `#/table/${about.table}/${r.id}`
-            }}
-          >
-            Open
-          </Button>
-          {on === r.id && <Refusal words={problem} />}
-          {about.choice &&
-            (r.value === about.choice.value ? (
-              <span className="shrink-0 px-2.5 text-ink-3 text-sm">{about.choice.value}</span>
-            ) : (
-              <Button size="sm" disabled={busy && on === r.id} onClick={() => choose(r.id)}>
-                {about.choice.label}
-              </Button>
-            ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function Work({ steps }: { steps: Step[] }) {
   return (
     <details className="group text-ink-3 text-sm">
@@ -584,21 +393,6 @@ function Work({ steps }: { steps: Step[] }) {
   )
 }
 
-// Scrolls the stream to a card and flashes it.
-function goToCard(id: string) {
-  const el = document.getElementById(`card-${id}`)
-  el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  el?.animate(
-    [{ boxShadow: '0 0 0 4px var(--accent-line)' }, { boxShadow: '0 0 0 0 transparent' }],
-    { duration: 1400 },
-  )
-}
-
-// The route, named short beside "+" when it is not the person's own subscription (the default).
-const ROUTE_WORDS = { key: 'API key', api: "Alpha's own loop" } as const
-export const routeChip = (m: ModelView | null) =>
-  !m || m.route === 'subscription' ? null : ROUTE_WORDS[m.route]
-
 // The words before the caret that address an agent: "@" at the start or after a space, then a name.
 export function mentionAt(text: string): string | null {
   const m = /(?:^|\s)@([^@\n]*)$/.exec(text)
@@ -623,42 +417,13 @@ function Composer({
   const file = useRef<HTMLInputElement>(null)
   const folder = useRef<HTMLInputElement>(null)
   const plus = useRef<HTMLButtonElement>(null)
-  const chipAt = useRef<HTMLButtonElement>(null)
-  // the + menu, or the routes alone from the chip; the keys are the shared menu's (ui/popover.tsx)
-  const [open, setOpen] = useState<'main' | 'routes' | null>(null)
-  const [model, setModel] = useState<ModelView | null>(null)
-  useEffect(() => {
-    api.get<ModelView>('/api/model').then(setModel, () => setModel(null))
-  }, [])
-  const close = () => setOpen(null)
+  // the + menu; its keys are the shared menu's (ui/popover.tsx)
+  const [open, setOpen] = useState(false)
+  const close = () => setOpen(false)
   const add = async (files: FileList | null) => {
     for (const f of Array.from(files ?? []))
       await api.upload(f).catch(() => onProblem(`${f.name} did not go in.`))
   }
-  const route = (r: ModelView['route']) => {
-    close()
-    api
-      .post<ModelView>('/api/model', { route: r })
-      .then(setModel, (err: unknown) =>
-        onProblem(err instanceof Problem ? err.message : 'That did not go in.'),
-      )
-  }
-  const chip = routeChip(model)
-  // how Alpha reaches Claude, for every conversation (Settings › Model is the same switch)
-  const routes = model?.providers.map((p) => (
-    <MenuItem
-      key={p.route}
-      checked={p.chosen}
-      reason={p.needsKey && !model.hasKey ? 'Needs an API key: Settings › Model' : undefined}
-      onClick={() => route(p.route)}
-    >
-      {p.title}
-    </MenuItem>
-  )) ?? (
-    <MenuItem reason="The core did not say which routes it has." onClick={close}>
-      Model
-    </MenuItem>
-  )
   // "@" suggests the agents of every module; loaded the first time it is typed
   const [agents, setAgents] = useState<string[] | null>(null)
   const [query, setQuery] = useState<string | null>(null)
@@ -765,24 +530,12 @@ function Composer({
           label="Add files and more"
           className="rounded-full"
           aria-haspopup="menu"
-          aria-expanded={open === 'main'}
-          onClick={() => setOpen(open ? null : 'main')}
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
         >
           <Plus className="size-4" />
         </IconButton>
-        {chip && (
-          <button
-            ref={chipAt}
-            type="button"
-            data-tip={model?.providers.find((p) => p.chosen)?.title}
-            onClick={() => setOpen(open === 'routes' ? null : 'routes')}
-            className="flex h-6.5 items-center gap-1 rounded-full border border-line px-2.5 text-ink-2 text-sm hover:bg-hover hover:text-ink"
-          >
-            <Sparkles className="size-3.5 text-ink-3" />
-            {chip}
-          </button>
-        )}
-        <Popover anchor={plus} open={open === 'main'} onClose={close}>
+        <Popover anchor={plus} open={open} onClose={close}>
           <MenuItem
             onClick={() => {
               close()
@@ -801,20 +554,6 @@ function Composer({
             <FolderUp className="size-3.5 text-ink-3" />
             Add a folder
           </MenuItem>
-          <MenuLine />
-          <SubMenu
-            label={
-              <>
-                <Sparkles className="size-3.5 text-ink-3" />
-                Model
-              </>
-            }
-          >
-            {routes}
-          </SubMenu>
-        </Popover>
-        <Popover anchor={chipAt} open={open === 'routes'} onClose={close}>
-          {routes}
         </Popover>
         <input
           ref={file}

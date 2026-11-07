@@ -21,14 +21,12 @@ export { Empty, Section } from '../ui/section.tsx'
 export { Switch } from '../ui/switch.tsx'
 export { Words } from '../ui/words.tsx'
 
-// A plugin's page and, when something waits for the person, its row on Home; and, where what it
-// keeps is about the person, its part of Second Brain, always one click away.
+// A plugin's page and, when something waits for the person, its row on Home.
 export interface Screen {
   name: string // the plugin's: its page is #/p/<name>
   title: string // the page's name in the bar
   Page: ComponentType
   Waiting?: ComponentType // a row on Home; none when nothing waits
-  brain?: { label: string; Part: ComponentType } // a part of Intelligence › Second Brain
 }
 
 // The plugin's own routes, answered by the core as the person (/api/plugins/<name>/…).
@@ -55,4 +53,5 @@ export async function openModule(name: string): Promise<boolean> {
 }
 
 // A connection's own page, where it is connected.
-export const openConnection = (connector: string) => go(`#/settings?connect=${connector}`)
+export const openConnection = (connector: string) =>
+  go(`#/intelligence/connections?connect=${connector}`)

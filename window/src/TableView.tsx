@@ -334,6 +334,10 @@ export function TableView({
                     }
                     onTab={(tab) => write(() => api.post(`/api/tables/${data.id}/tab`, { tab }))}
                     readBy={data.readBy}
+                    name={kept ? null : data.name}
+                    onRename={(name) =>
+                      write(() => api.post(`/api/tables/${data.id}/name`, { name }))
+                    }
                     onCopy={() =>
                       navigator.clipboard?.writeText(
                         [

@@ -13,14 +13,13 @@ const LIMIT = 600
 // fails too.
 const LEFT: Record<string, number> = {
   'core/src/api/types.ts': 660, // the window's contract, one file by design (Kenil, 24 Oct)
-  // the window's big screens as they stood when the wall came (1 Nov): they may only shrink
-  'window/src/Settings.tsx': 1448, // Second Brain moved out (2 Nov)
+  // the window's big screens as they stood after the clean base's delete (7 Nov): they may only
+  // shrink
+  'window/src/Settings.tsx': 1180,
   'window/src/table/Grid.tsx': 1272,
-  'window/src/Conversation.tsx': 1020,
-  'window/src/Shell.tsx': 977,
+  'window/src/Shell.tsx': 692,
   'window/src/TableView.tsx': 856,
-  'window/src/Tasks.tsx': 795,
-  'window/src/App.tsx': 591,
+  'window/src/Tasks.tsx': 680,
 }
 const long: string[] = []
 function walk(dir: string) {

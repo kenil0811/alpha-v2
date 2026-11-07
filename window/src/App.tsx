@@ -10,22 +10,10 @@ import type {
   Stream,
   TableView as TableData,
 } from '@alpha/core/api'
-import {
-  Activity as ActivityIcon,
-  Briefcase,
-  FileText,
-  House,
-  ListChecks,
-  MessageSquare,
-  SlidersHorizontal,
-  Sparkles,
-  Users,
-} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
-import { useBack } from './back.ts'
 import { CardPage } from './CardPage.tsx'
 import { applyLive, Conversation, type Live } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
@@ -33,7 +21,6 @@ import { Find } from './Find.tsx'
 import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
-import { Marker } from './Mark.tsx'
 import { ModuleScreen } from './Module.tsx'
 import { NewModule } from './NewModule.tsx'
 import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
@@ -44,15 +31,15 @@ import { type Place, placeOf } from './place.ts'
 import { screenOf } from './plugin/screens.ts'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { besideWidth, roomBeside, useWindowWidth } from './room.ts'
-import { alphaOf, Settings } from './Settings.tsx'
-import { Bar, BarMiddle, type Crumb, network, Rail } from './Shell.tsx'
+import { Settings } from './Settings.tsx'
+import { Bar, BarMiddle, network, Rail } from './Shell.tsx'
 import { moduleSignals } from './signals.ts'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
 import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
-import { ancestors, inside } from './tree.ts'
+import { inside } from './tree.ts'
 import { setFoldLines } from './ui/fold.tsx'
 
 export function App() {
@@ -98,13 +85,6 @@ export function App() {
       }),
     [],
   )
-  // the Alpha module is not on the rail: its Decisions and Noticed are in Intelligence › Second
-  // Brain, and anything that opens it (Home's cards, Find, a link) lands there
-  const alpha = alphaOf(modules)
-  useEffect(() => {
-    if (alpha && place.at === 'module' && place.id === alpha.id)
-      window.location.replace('#/intelligence/brain')
-  }, [alpha, place])
   // where a screen puts its switch, in the middle of the bar
   const [middle, setMiddle] = useState<HTMLElement | null>(null)
   const placed: Module =
@@ -120,10 +100,6 @@ export function App() {
     () => placed && { id: placed.id, name: placed.name, ids: inside(modules, placed.id) },
     [placed?.id, placed?.name, modules, placed],
   )
-  // the modules a screen's module sits inside, each opening its own screen
-  const above = moduleHere
-    ? ancestors(modules, moduleHere.id).map((m) => ({ label: m.name, href: `#/module/${m.id}` }))
-    : []
   const askable = !(
     place.at === 'conversation' ||
     (place.at === 'module' && place.tab === 'conversation')
@@ -242,129 +218,59 @@ export function App() {
     [refresh],
   )
 
-  const icon = 'size-3.25'
-  const at = (label: string, href?: string) => ({ label, href })
-  // a run's page sits under Activity, an agent's under Intelligence, a rule's under Settings
-  const itemCrumb: Crumb | null =
-    place.at === 'row'
-      ? {
-          // a row's page sits under its module and its table, the way back to each
-          icon: <Briefcase className={icon} />,
-          parts: rowPlace
-            ? [
-                at(rowPlace.module.name, `#/module/${rowPlace.module.id}`),
-                at(rowPlace.table.name, `#/table/${rowPlace.table.id}`),
-                at(rowPlace.title),
-              ]
-            : [at('…')],
-        }
-      : place.at === 'card'
-        ? { icon: <House className={icon} />, parts: [at('Home', '#/'), at('Waits for you')] }
-        : place.at !== 'item'
-          ? null
-          : place.kind === 'agent'
-            ? {
-                icon: <Sparkles className={icon} />,
-                parts: [at('Intelligence', '#/intelligence/agents'), at(itemName || '…')],
-              }
-            : place.kind === 'rule'
-              ? {
-                  icon: <SlidersHorizontal className={icon} />,
-                  parts: [at('Settings', '#/settings/permissions'), at(itemName || '…')],
-                }
-              : {
-                  icon: <ActivityIcon className={icon} />,
-                  parts: [at('Activity', '#/activity'), at(itemName || '…')],
-                }
-  const crumb: Crumb =
-    place.at === 'activity'
-      ? { icon: <ActivityIcon className={icon} />, parts: [at('Activity')] }
-      : place.at === 'tasks'
-        ? {
-            icon: <ListChecks className={icon} />,
-            parts: place.id ? [at('Tasks', '#/tasks'), at(taskName || '…')] : [at('Tasks')],
-          }
-        : place.at === 'people'
-          ? {
-              icon: <Users className={icon} />,
-              parts: place.id
-                ? [at('People', '#/people'), at(personName || '…')]
-                : place.kind === 'company'
-                  ? [at('People', '#/people'), at('Organizations')]
-                  : [at('People')],
-            }
-          : place.at === 'conversation'
-            ? { icon: <MessageSquare className={icon} />, parts: [at('Conversation')] }
-            : place.at === 'settings'
-              ? { icon: <SlidersHorizontal className={icon} />, parts: [at('Settings')] }
-              : place.at === 'intelligence'
-                ? { icon: <Sparkles className={icon} />, parts: [at('Intelligence')] }
-                : place.at === 'parts'
-                  ? { parts: [at('Parts')] }
-                  : place.at === 'plugin'
-                    ? { parts: [at(screenOf(place.name)?.title ?? '…')] }
-                    : place.at === 'new'
-                      ? { icon: <Briefcase className={icon} />, parts: [at('New module')] }
-                      : place.at === 'file'
-                        ? {
-                            icon: <FileText className={icon} />,
-                            parts: [at('Documents'), at(fileName || '…')],
-                          }
-                        : place.at === 'table'
-                          ? {
-                              icon: <Briefcase className={icon} />,
-                              parts: table
-                                ? [
-                                    ...above,
-                                    at(table.module.name, `#/module/${table.module.id}`),
-                                    // with a row open, the table's name closes it
-                                    place.row
-                                      ? at(table.name, `#/table/${table.id}`)
-                                      : at(table.name),
-                                    ...(place.row
-                                      ? [
-                                          at(
-                                            (() => {
-                                              const r = table.rows.find((x) => x.id === place.row)
-                                              return r ? titleOf(table.fields, r) : '…'
-                                            })(),
-                                          ),
-                                        ]
-                                      : []),
-                                  ]
-                                : [at('…')],
-                            }
-                          : place.at === 'module'
-                            ? {
-                                icon: <Briefcase className={icon} />,
-                                parts: [
-                                  ...above,
-                                  at(moduleHere?.name ?? '…', `#/module/${place.id}`),
-                                  at(
-                                    place.tab === 'agents'
-                                      ? 'Agents and notes'
-                                      : place.tab === 'conversation'
-                                        ? 'Conversation'
-                                        : place.tab === 'overview' ||
-                                            (!place.page &&
-                                              modules.some((x) => x.parent === place.id))
-                                          ? 'Overview'
-                                          : (modules
-                                              .find((x) => x.id === place.id)
-                                              ?.pages.find((p) =>
-                                                place.page ? p.name === place.page : p.front,
-                                              )?.title ?? '…'),
-                                  ),
-                                ],
-                              }
-                            : { icon: <House className={icon} />, parts: [at('Home')] }
-
-  const back = useBack(window.location.hash, (itemCrumb ?? crumb).parts.at(-1)?.label ?? '')
+  // the screen's name, for the bar
+  const screenName = (): string => {
+    switch (place.at) {
+      case 'row':
+        return rowPlace?.title ?? '…'
+      case 'card':
+        return 'Waits for you'
+      case 'item':
+        return itemName || '…'
+      case 'activity':
+        return 'Activity'
+      case 'tasks':
+        return place.id ? taskName || '…' : 'Tasks'
+      case 'people':
+        if (place.id) return personName || '…'
+        return place.kind === 'company' ? 'Organizations' : 'People'
+      case 'conversation':
+        return 'Conversation'
+      case 'settings':
+        return 'Settings'
+      case 'intelligence':
+        return 'Intelligence'
+      case 'parts':
+        return 'Parts'
+      case 'plugin':
+        return screenOf(place.name)?.title ?? '…'
+      case 'new':
+        return 'New module'
+      case 'file':
+        return fileName || '…'
+      case 'table': {
+        if (!table) return '…'
+        if (!place.row) return table.name
+        const r = table.rows.find((x) => x.id === place.row)
+        return r ? titleOf(table.fields, r) : '…'
+      }
+      case 'module': {
+        if (place.tab === 'agents') return 'Agents and notes'
+        if (place.tab === 'conversation') return 'Conversation'
+        if (place.tab === 'overview' || (!place.page && modules.some((x) => x.parent === place.id)))
+          return 'Overview'
+        const pages = modules.find((x) => x.id === place.id)?.pages
+        return pages?.find((p) => (place.page ? p.name === place.page : p.front))?.title ?? '…'
+      }
+      default:
+        return 'Home'
+    }
+  }
   return (
     <LayoutContext.Provider value={layoutHere}>
       <div className="flex h-screen bg-canvas text-base text-ink">
         <Rail
-          modules={modules.filter((m) => m !== alpha)}
+          modules={modules}
           place={place}
           here={moduleHere?.id ?? null}
           layout={layout}
@@ -380,20 +286,7 @@ export function App() {
         />
         <main className="flex min-w-0 flex-1 flex-col">
           <Bar
-            // no way back to a parent inside a module (its tabs are the way around); back to where
-            // the person was, wherever they came from (Batch A, pick 1)
-            crumb={
-              place.at === 'module' || place.at === 'table'
-                ? { parts: crumb.parts.slice(-1) }
-                : (itemCrumb ?? crumb)
-            }
-            back={back}
-            // a table's name, in the bar on its own screen, is renamed by a double-click (Batch B)
-            rename={
-              place.at === 'table' && !place.row && table
-                ? (to) => api.post(`/api/tables/${table.id}/name`, { name: to })
-                : null
-            }
+            name={screenName()}
             lens={place.at === 'conversation' ? lens : null}
             onClearLens={() => setLens(null)}
             middle={setMiddle}
@@ -539,7 +432,6 @@ export function App() {
           </Assistant>
         )}
         {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
-        <Marker from={moduleHere} />
       </div>
     </LayoutContext.Provider>
   )

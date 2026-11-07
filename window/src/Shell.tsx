@@ -1,17 +1,13 @@
 // The shell (Vikas, 25 Oct; reverses design §14's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
-// the right, their headers on one line. The rail has the workspace at its top, Home with a badge
-// for what waits on the person, Tasks, the modules by name (People and Organizations are
-// tabs inside Network; a rail item of their own only when there is no Network) with the modules inside them,
-// New module last in the list, and Settings across its foot with a small Second Brain icon beside it
-// (Batch E, 79.14); no headings and no status lines. It
-// folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
-// buttons.
+// the right, their headers on one line. The rail has the person's name at its top, Home with a badge
+// for what waits on the person, Conversation, Tasks, the modules by name with the modules inside
+// them, New module last in the list, and Intelligence and Settings at its foot; no headings and no
+// status lines. It folds to a strip of icons. In Alpha's own Mac window its top row leaves room for
+// the window buttons.
 import type { Layout, ModuleSummary } from '@alpha/core/api'
 import {
-  Brain,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   EllipsisVertical,
   House,
@@ -21,26 +17,21 @@ import {
   PanelLeftOpen,
   Plus,
   SlidersHorizontal,
-  Users,
+  Sparkles,
   X,
 } from 'lucide-react'
 import { createContext, type ReactNode, useContext, useRef, useState } from 'react'
 import { api } from './api.ts'
-import type { Visit } from './back.ts'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import type { Place } from './place.ts'
-import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
-import { BarName, Renamable } from './ui/rename.tsx'
-
-// The rail's small Second Brain icon lands on Intelligence's Second Brain (Batch E, 79.14).
-const BRAIN = '#/intelligence/brain'
+import { Renamable } from './ui/rename.tsx'
 
 function Nav({
   href,
@@ -49,7 +40,6 @@ function Nav({
   current,
   extra,
   small,
-  onDoubleClick,
 }: {
   href: string
   icon: ReactNode
@@ -57,12 +47,10 @@ function Nav({
   current: boolean
   extra?: ReactNode
   small?: boolean
-  onDoubleClick?: (() => void) | undefined
 }) {
   return (
     <a
       href={href}
-      onDoubleClick={onDoubleClick}
       aria-current={current ? 'page' : undefined}
       className={cn(
         'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
@@ -186,14 +174,6 @@ export function Rail({
         current={place.at === 'tasks'}
         extra={tasksDue > 0 && <Badge n={tasksDue} />}
       />
-      {!network(modules) && (
-        <Nav
-          href="#/people"
-          icon={<Users className="size-4" />}
-          label="People"
-          current={place.at === 'people'}
-        />
-      )}
       {/* every row 30px, the modules straight after Tasks (Batch E, 79.16, Kenil's look 2 Nov) */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
       <div
@@ -212,19 +192,17 @@ export function Rail({
           <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
         </Popover>
         <Signals.Provider value={signals}>
-          <ModuleDrag modules={modules}>
-            {shownTops(modules, hiding.hidden).map((m) => (
-              <ModuleItem
-                key={m.id}
-                m={m}
-                modules={modules}
-                here={here}
-                folded={layout.folded}
-                onFold={fold}
-                hiding={hiding}
-              />
-            ))}
-          </ModuleDrag>
+          {shownTops(modules, hiding.hidden).map((m) => (
+            <ModuleItem
+              key={m.id}
+              m={m}
+              modules={modules}
+              here={here}
+              folded={layout.folded}
+              onFold={fold}
+              hiding={hiding}
+            />
+          ))}
         </Signals.Provider>
         <button
           type="button"
@@ -235,103 +213,38 @@ export function Rail({
           New module
         </button>
       </div>
-      {/* Settings across the foot, the Second Brain beside it; the rest of Intelligence is one
-          pill away on that page (Batch E, 79.14, Kenil's look 2 Nov) */}
-      <div className="flex items-center gap-1 pt-2">
-        <span className="min-w-0 flex-1">
-          <Nav
-            href="#/settings"
-            icon={<SlidersHorizontal className="size-4" />}
-            label="Settings"
-            current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
-          />
-        </span>
-        <a
-          href={BRAIN}
-          aria-label="Second Brain"
-          data-tip="Second Brain"
-          aria-current={place.at === 'intelligence' ? 'page' : undefined}
-          className={cn(
-            'grid size-7.5 shrink-0 place-items-center rounded-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink',
-            place.at === 'intelligence' && 'bg-accent-soft text-accent',
-          )}
-        >
-          <Brain className="size-4" />
-        </a>
+      {/* Intelligence and Settings at the foot, each its own place (Kenil's call 1, 7 Nov) */}
+      <div className="flex flex-col pt-2">
+        <Nav
+          href="#/intelligence"
+          icon={<Sparkles className="size-4" />}
+          label="Intelligence"
+          current={place.at === 'intelligence' || (place.at === 'item' && place.kind === 'agent')}
+        />
+        <Nav
+          href="#/settings"
+          icon={<SlidersHorizontal className="size-4" />}
+          label="Settings"
+          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
+        />
       </div>
     </nav>
   )
 }
 
-// The rail's head: the workspace's initial on an accent tile and its name, opening a menu of where
-// Alpha is set up (Settings, Intelligence) and how it looks.
+// The rail's head: the person's initial on an accent tile and their name. The window moves by it in
+// Alpha's own Mac window, so it takes no clicks.
 function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
   const label = name ? `${name}'s workspace` : 'Your workspace'
-  const anchor = useRef<HTMLButtonElement>(null)
-  const [open, setOpen] = useState(false)
-  const [theme, setTheme] = useState<Theme>(savedTheme)
-  const _go = (href: string) => {
-    setOpen(false)
-    window.location.hash = href
-  }
-  const look = (t: Theme) => {
-    setTheme(t)
-    applyTheme(t)
-    void api.post('/api/appearance', { theme: t }).catch(() => undefined) // kept here regardless
-  }
-  const tile = (
-    <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
-      {(name.trim()[0] ?? 'A').toUpperCase()}
-    </span>
-  )
   return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        data-tip={label}
-        aria-label={tileOnly ? label : undefined}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={(e) => {
-          e.stopPropagation() // the folded rail opens on a click
-          setOpen(!open)
-        }}
-        className="flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 text-left hover:bg-rail-hover"
-      >
-        {tile}
-        {!tileOnly && (
-          <>
-            <span className="min-w-0 flex-1 truncate font-semibold text-md">{label}</span>
-            <ChevronDown className="size-3.5 shrink-0 text-rail-ink-3" />
-          </>
-        )}
-      </button>
-      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)}>
-        <div className="flex min-w-60 flex-col p-1" role="menu" aria-label={label}>
-          <div className="flex items-center gap-2 px-2.5 py-2">
-            {tile}
-            <div className="min-w-0">
-              <div className="truncate font-medium text-ink text-md">{label}</div>
-              <div className="text-ink-3 text-sm">On this Mac</div>
-            </div>
-          </div>
-          <MenuLine />
-          <div className="px-2.5 pt-1 pb-0.5 text-ink-3 text-sm">Appearance</div>
-          {(
-            [
-              ['mac', 'Match Mac'],
-              ['light', 'Light'],
-              ['dark', 'Dark'],
-            ] as const
-          ).map(([t, words]) => (
-            <MenuItem key={t} checked={theme === t} onClick={() => look(t)}>
-              {words}
-            </MenuItem>
-          ))}
-        </div>
-      </Popover>
-    </>
+    <div className="pointer-events-none flex min-w-0 flex-1 items-center gap-2 p-1">
+      <span className="grid size-6.5 shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink text-md leading-none">
+        {(name.trim()[0] ?? 'A').toUpperCase()}
+      </span>
+      <span className={tileOnly ? 'sr-only' : 'min-w-0 flex-1 truncate font-semibold text-md'}>
+        {label}
+      </span>
+    </div>
   )
 }
 
@@ -340,59 +253,6 @@ function Badge({ n }: { n: number }) {
     <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-accent px-1.25 font-semibold text-accent-ink text-xs">
       {n}
     </span>
-  )
-}
-
-// Dragging a module onto another puts it inside; onto Top level, out to the top. The same place
-// route as the ⋮ menu, which stays the keyboard's way to move one.
-type Dragging = {
-  id: string | null
-  start: (id: string | null) => void
-  drop: (within: string | null) => void
-}
-const Drag = createContext<Dragging>({ id: null, start: () => undefined, drop: () => undefined })
-
-function ModuleDrag({ modules, children }: { modules: ModuleSummary[]; children: ReactNode }) {
-  const [id, setId] = useState<string | null>(null)
-  const [over, setOver] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
-  const drop = async (within: string | null) => {
-    setId(null)
-    if (!id) return
-    try {
-      await api.post(`/api/modules/${id}/place`, { within })
-      setProblem(null)
-    } catch (err) {
-      setProblem(err instanceof Error ? err.message : 'That did not move.')
-    }
-  }
-  const nested = !!modules.find((m) => m.id === id)?.parent
-  return (
-    <Drag.Provider value={{ id, start: setId, drop: (w) => void drop(w) }}>
-      {nested && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: a drop target; the ⋮ menu moves by keyboard
-        <div
-          onDragOver={(e) => {
-            e.preventDefault()
-            setOver(true)
-          }}
-          onDragLeave={() => setOver(false)}
-          onDrop={(e) => {
-            e.preventDefault()
-            setOver(false)
-            void drop(null)
-          }}
-          className={cn(
-            'mb-1 flex h-7.5 items-center rounded-md border border-rail-line border-dashed px-2 text-rail-ink-3 text-sm',
-            over && 'border-accent bg-rail-hover text-rail-ink',
-          )}
-        >
-          Drop here for the top level
-        </div>
-      )}
-      {children}
-      {problem && <p className="px-2 py-1 text-bad text-sm">{problem}</p>}
-    </Drag.Provider>
   )
 }
 
@@ -459,41 +319,9 @@ function ModuleItem({
     open || !kids.length
       ? signals[m.id]
       : strongest(inside(modules, m.id).flatMap((id) => signals[id] ?? []))
-  const drag = useContext(Drag)
-  const [over, setOver] = useState(false)
-  // never into itself, one of its own, or where it already sits
-  const can =
-    !!drag.id &&
-    !inside(modules, drag.id).includes(m.id) &&
-    modules.find((x) => x.id === drag.id)?.parent !== m.id
   return (
     <div>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: dragged and dropped on; the ⋮ menu moves by keyboard */}
-      <div
-        draggable
-        onDragStart={(e) => {
-          e.dataTransfer.effectAllowed = 'move'
-          drag.start(m.id)
-        }}
-        onDragEnd={() => drag.start(null)}
-        {...menu.on}
-        onDragOver={(e) => {
-          if (!can) return
-          e.preventDefault()
-          setOver(true)
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => {
-          if (!can) return
-          e.preventDefault()
-          setOver(false)
-          drag.drop(m.id)
-        }}
-        className={cn(
-          'group/item relative flex items-center rounded-md',
-          over && 'bg-rail-hover ring-2 ring-accent',
-        )}
-      >
+      <div {...menu.on} className="group/item relative flex items-center rounded-md">
         <Renamable
           name={m.name}
           rename={(to) => api.post(`/api/modules/${m.id}/name`, { name: to })}
@@ -511,7 +339,6 @@ function ModuleItem({
                     <span className="w-11 shrink-0" />
                   </>
                 }
-                onDoubleClick={start}
               />
               <span className="absolute right-0.5 flex items-center">
                 <ModuleMenu
@@ -771,8 +598,6 @@ function Strip({
         place.at === 'tasks',
         <ListChecks className="size-4" />,
       )}
-      {!network(modules) &&
-        icon('#/people', 'People', place.at === 'people', <Users className="size-4" />)}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
       <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {shownTops(modules, hidden).map((m) =>
@@ -794,7 +619,12 @@ function Strip({
           <span className={stripName}>New</span>
         </button>
       </div>
-      {icon(BRAIN, 'Second Brain', place.at === 'intelligence', <Brain className="size-4" />)}
+      {icon(
+        '#/intelligence',
+        'Intelligence',
+        place.at === 'intelligence',
+        <Sparkles className="size-4" />,
+      )}
       {icon(
         '#/settings',
         'Settings',
@@ -805,65 +635,35 @@ function Strip({
   )
 }
 
-// Where a screen sits, for the bar: a few words, the last in bold; each before it opens its place.
-export interface Crumb {
-  icon?: ReactNode
-  parts: { label: string; href?: string | undefined }[]
-}
-
 // the rail's narrowest and widest
 const RAIL = [SIDE_MIN, 360] as const // narrowest at the panels' 200px (Batch D, 79.1)
 
-// The module People and Organizations live in, as its module.yaml says (people: true; Network's).
+// The module People and Organizations live in, as its module.yaml says (people: true); none, and
+// they show nowhere.
 export const network = (modules: ModuleSummary[]) => modules.find((m) => m.people) ?? null
 
 // What a screen puts in the middle of the bar lives in ui/bar-slot.tsx, where a part reaches it.
 export { BarMiddle, InBar }
 
-// The bar over each screen, at the shared 48px: a way back on the left when the screen sits inside
-// another, the screen's switch or name centred. Find is ⌘K, from anywhere.
+// The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
+// on the left when one is on. Find is ⌘K, from anywhere.
 export function Bar({
-  crumb,
-  back: visited,
+  name,
   lens,
   onClearLens,
   middle,
-  rename,
 }: {
-  crumb: Crumb
-  back: { to: Visit | null; go: () => void } // where the person was (back.ts), else the parent
-  rename: ((to: string) => Promise<unknown>) | null // the screen's name changed by a double-click
+  name: string
   lens: { id: string; name: string } | null
   onClearLens: () => void
   middle: (at: HTMLElement | null) => void
 }) {
-  const last = crumb.parts.at(-1)?.label ?? ''
-  const back = visited.to ? { label: visited.to.name, href: visited.to.hash } : crumb.parts.at(-2)
   return (
     <div
       data-tauri-drag-region
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {back?.href && (
-          // whole or not at all: an empty first item lets a way back too wide for its room wrap
-          // onto a second line, which is cut off
-          <div className="flex h-6 min-w-0 flex-wrap overflow-hidden before:h-6 before:content-['']">
-            <a
-              href={back.href}
-              aria-label={`Back to ${back.label}`}
-              onClick={(e) => {
-                if (!visited.to) return
-                e.preventDefault()
-                visited.go()
-              }}
-              className="flex h-6 shrink-0 items-center gap-1 whitespace-nowrap text-ink-3 text-md hover:text-ink"
-            >
-              <ChevronLeft className="size-3.5 shrink-0" />
-              {back.label}
-            </a>
-          </div>
-        )}
         {lens && (
           <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
             Only {lens.name}
@@ -881,7 +681,9 @@ export function Bar({
       </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        <BarName name={last} rename={rename} />
+        <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">
+          {name}
+        </h1>
       </div>
       <div data-tauri-drag-region />
     </div>

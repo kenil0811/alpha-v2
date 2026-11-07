@@ -96,7 +96,7 @@
   --paper-box: #b7791f;
   --mark: #fbe7a6;
 
-  /* the companion's face, the same in both themes: it sits on the desktop, not on Alpha */
+  /* Alpha's face, the same in both themes */
   --face: #7fa6cc;
   --face-ink: #16202b;
   --face-shine: #ffffff;
@@ -367,12 +367,7 @@
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }
-  /* the companion's window shows the desktop through everything it does not draw */
-  html.companion,
-  html.companion body {
-    background: transparent;
-  }
-  /* the companion's face: a blink now and then, the light breathing while Alpha works */
+  /* Alpha's face: a blink now and then, the light breathing while Alpha works */
   .face-blink {
     transform-box: fill-box;
     transform-origin: center;

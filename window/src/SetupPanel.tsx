@@ -76,7 +76,9 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
       done: s.done,
       words: s.done ? `${s.title}: connected` : `Connect ${s.title}`,
       sub: s.sub,
-      act: s.done ? null : <a href={`#/settings?connect=${s.connector}`}>Connect</a>,
+      act: s.done ? null : (
+        <a href={`#/intelligence/connections?connect=${s.connector}`}>Connect</a>
+      ),
     })),
     {
       done: view.chrome,

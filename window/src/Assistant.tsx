@@ -1,11 +1,10 @@
 // The assistant on the right of every screen (Vikas, 25 Oct): always there.
 // Open, its header has the fold control, Alpha's face and name in the middle and the bell for
-// Activity, with the pencil beside it (Mark.tsx); its edge drags it wider. Folded, it is a strip with the face, the name and the bell,
-// and a click anywhere on it opens it again. ⌘J folds and opens it.
+// Activity; its edge drags it wider. Folded, it is a strip with the face, the name and the bell, and
+// a click anywhere on it opens it again. ⌘J folds and opens it.
 import { Bell, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
-import { Face, type Mood } from './Companion.tsx'
-import { MarkButton } from './Mark.tsx'
+import { Face, type Mood } from './Face.tsx'
 import { IconButton } from './ui/button.tsx'
 import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
@@ -103,7 +102,6 @@ export function Assistant({
           <PanelRightOpen className="size-4" />
           <span className={stripName}>Open</span>
         </button>
-        <MarkButton labelled />
         <BellLink running={running} labelled />
       </aside>
     )
@@ -127,7 +125,6 @@ export function Assistant({
             </span>
             <span className="truncate font-semibold text-ink text-md">{title}</span>
           </span>
-          <MarkButton />
           <BellLink running={running} />
         </div>
       }

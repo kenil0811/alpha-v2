@@ -13,24 +13,18 @@ import type {
   TableView as TableData,
   TableSummary,
 } from '@alpha/core/api'
-import { Ban, Bot, Briefcase, Check, LayoutDashboard, Plus } from 'lucide-react'
+import { Bot, Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { startAsk } from './ask.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { AllAgents, when } from './ModulesAndAgents.tsx'
 import { PageView } from './PageView.tsx'
-import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
-import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
-import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
 import { type Tab, Tabs } from './ui/tabs.tsx'
 import { Words } from './ui/words.tsx'
-import { WaitingRules } from './WaitingRules.tsx'
 
 export type ModuleTab =
   | { kind: 'overview' }
@@ -250,16 +244,12 @@ function AgentsAndNotes({
   onChange: () => void
 }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
-  const [rules, setRules] = useState<RuleView[] | null>(null)
+  const [_rules, _setRules] = useState<RuleView[] | null>(null)
   useEffect(() => {
     if (version < 0) return
     api.get<RunView[]>('/api/activity').then(
       (all) => setRuns(all.filter((r) => r.moduleId === m.id).slice(0, 5)),
       () => setRuns([]),
-    )
-    api.get<RuleView[]>(`/api/rules?module=${encodeURIComponent(m.id)}`).then(
-      (all) => setRules(all.filter((r) => !r.revokedAt)),
-      () => setRules([]),
     )
   }, [m.id, version])
   const { busy, on, problem, act } = useAct(onChange)
@@ -406,183 +396,7 @@ function AgentsAndNotes({
             All activity
           </a>
         </Section>
-        <Section
-          title="Governance"
-          sub="What Alpha may and may not do here, each with its reason. Anything else that changes your data or reaches someone, it asks you first."
-        >
-          <WaitingRules module={m.id} version={version} onAnswered={onChange} />
-          <Governance m={m} rules={rules} onChange={onChange} />
-        </Section>
       </div>
     </div>
-  )
-}
-
-// Governance's rules in two columns, Allowed n and Denied n (core step 2), each a sentence with
-// where it came from: the sites the module's readers may read, and the rules the core holds here
-// (this module's and all of Alpha's), yours and what Alpha noticed. + Add in either column starts
-// the assistant with the rule's first words for the person to finish; the rule lands here only on
-// their Save on its card (design §14: a rule for the model is a wall in code, or it is not written).
-type Rule = { key: string; words: string; why: string; href?: string; rule?: RuleView }
-
-function why(r: RuleView): string {
-  const day = dayWords(r.madeAt)
-  const across = r.module ? '' : '; it holds across Alpha'
-  if (r.kind === 'inferred') return `Alpha noticed, ${day}; approve or dismiss it`
-  if (r.always) return `You said Always on its card, ${day}${across}`
-  return `You said, ${day}${across}`
-}
-
-function Governance({
-  m,
-  rules,
-  onChange,
-}: {
-  m: ModuleView
-  rules: RuleView[] | null
-  onChange: () => void
-}) {
-  const line = (r: RuleView): Rule => ({
-    key: r.id,
-    words: r.words,
-    why: why(r),
-    href: `#/rule/${r.id}`,
-    rule: r,
-  })
-  const may: Rule[] = [
-    {
-      key: 'sites',
-      words: m.sites
-        ? `Its readers may read ${m.sites} site${m.sites === 1 ? '' : 's'}, and no others.`
-        : 'Its readers read no sites.',
-      why: 'The sites were named when the module was made.',
-    },
-    ...(rules ?? []).filter((r) => r.side === 'allow').map(line),
-  ]
-  const never = (rules ?? []).filter((r) => r.side === 'deny').map(line)
-  return (
-    <div className="@container">
-      <div className="grid items-start gap-6 @min-[600px]:grid-cols-2">
-        <RuleColumn
-          side="allowed"
-          rules={may}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, you may `)}
-        />
-        <RuleColumn
-          side="denied"
-          rules={never}
-          onChange={onChange}
-          onAdd={() => startAsk(`From now on, in ${m.name}, never `)}
-        />
-      </div>
-    </div>
-  )
-}
-
-// A rule's ⋮: Revoke for yours, after a yes; Approve or Dismiss for what Alpha noticed.
-function RuleMenu({ rule: r, onChange }: { rule: RuleView; onChange: () => void }) {
-  const [asking, setAsking] = useState(false)
-  const { busy, problem, act } = useAct(onChange)
-  const noticed = r.kind === 'inferred'
-  return (
-    <>
-      <More label="More">
-        {(close) => (
-          <>
-            {noticed && (
-              <MenuItem
-                onClick={() => {
-                  close()
-                  void act(() => api.post(`/api/rules/${r.id}/approve`))
-                }}
-              >
-                Approve
-              </MenuItem>
-            )}
-            <MenuItem
-              danger={!noticed}
-              onClick={() => {
-                close()
-                setAsking(true)
-              }}
-            >
-              {noticed ? 'Dismiss' : 'Revoke'}
-            </MenuItem>
-          </>
-        )}
-      </More>
-      <Confirm
-        open={asking}
-        title={noticed ? 'Dismiss this?' : 'Revoke this rule?'}
-        yes={noticed ? 'Dismiss it' : 'Revoke it'}
-        busy={busy}
-        onClose={() => setAsking(false)}
-        onYes={() => act(() => api.post(`/api/rules/${r.id}/revoke`)).then(() => setAsking(false))}
-      >
-        “{r.words}” {noticed ? 'Alpha stops following it.' : 'stops holding.'}
-        <Refusal words={problem} />
-      </Confirm>
-    </>
-  )
-}
-
-function RuleColumn({
-  side,
-  rules,
-  onAdd,
-  onChange,
-}: {
-  side: 'allowed' | 'denied'
-  rules: Rule[]
-  onAdd: () => void
-  onChange: () => void
-}) {
-  return (
-    <section
-      aria-label={side === 'allowed' ? 'Allowed' : 'Denied'}
-      className="flex min-w-0 flex-col gap-3"
-    >
-      <h3 className="flex h-9 items-center gap-1.5 border-line border-b font-medium text-ink text-md">
-        {side === 'allowed' ? (
-          <Check className="size-3.5 text-good" />
-        ) : (
-          <Ban className="size-3.5 text-bad" />
-        )}
-        {side === 'allowed' ? 'Allowed' : 'Denied'}
-        <span className="font-normal text-ink-3 tabular-nums">{rules.length}</span>
-      </h3>
-      {rules.length === 0 ? (
-        <p className="text-ink-3 text-md">
-          {side === 'allowed' ? 'Nothing allowed.' : 'Nothing denied.'}
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {rules.map((r) => (
-            <li key={r.key} className="group/row flex items-start gap-2">
-              <span className="flex min-w-0 flex-1 flex-col">
-                {r.href ? (
-                  <a href={r.href} className="text-ink text-md hover:underline">
-                    {r.words}
-                  </a>
-                ) : (
-                  <span className="text-ink text-md">{r.words}</span>
-                )}
-                <span className="text-ink-3 text-sm">{r.why}</span>
-              </span>
-              {r.rule && <RuleMenu rule={r.rule} onChange={onChange} />}
-            </li>
-          ))}
-        </ul>
-      )}
-      <button
-        type="button"
-        onClick={onAdd}
-        className="flex h-8 w-fit items-center gap-1.5 rounded-md border border-line border-dashed px-3 text-ink-2 text-md hover:border-accent-line hover:text-ink"
-      >
-        <Plus className="size-3.5" />
-        {side === 'allowed' ? 'Add allowed action' : 'Add denied action'}
-      </button>
-    </section>
   )
 }

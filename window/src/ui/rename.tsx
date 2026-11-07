@@ -71,43 +71,8 @@ export function Renamable({
   )
 }
 
-// The bar's name, in serif: a table's is renamed here, by a double-click.
-export function BarName({
-  name,
-  rename,
-}: {
-  name: string
-  rename: ((to: string) => Promise<unknown>) | null
-}) {
-  return (
-    // the name truncates, not the h1, so a refusal under the box is not cut off
-    <h1 className="hidden min-w-0 font-serif text-ink text-xl peer-empty:block">
-      <Renamable name={name} rename={rename} className="w-64">
-        {(start) =>
-          start ? (
-            // a double-click, or Enter by keyboard, edits it; a click alone does nothing
-            <button
-              type="button"
-              className="block max-w-full truncate rounded-sm"
-              onDoubleClick={start}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === 'F2') start()
-              }}
-              data-tip={RENAME_TIP}
-            >
-              {name}
-            </button>
-          ) : (
-            <span className="block truncate">{name}</span>
-          )
-        }
-      </Renamable>
-    </h1>
-  )
-}
-
-// A page's own title, renamed where it shows by a double-click, as the bar's name is (Batch D,
-// 66.21, Kenil's yes 2 Nov): a row's page, a task's.
+// A page's own title, renamed where it shows by a double-click (Batch D, 66.21, Kenil's yes 2 Nov;
+// his call 2 of 7 Nov keeps it for row level): a row's page, a task's.
 export function PageTitle({
   name,
   rename,

@@ -55,7 +55,7 @@ describe('the stream', () => {
     })
   })
 
-  it('puts a card’s answer where the card was, and a turn of Alpha’s own after a note', () => {
+  it('puts a card’s answer where the card was, and a turn of Alpha’s own says nothing for itself', () => {
     n = 0
     const said = line('said', 'remove the eggs', { actor: 'person' })
     const turn = String(said.id)
@@ -73,12 +73,30 @@ describe('the stream', () => {
       noticed,
       line('replied', 'Removed it.', { turn: `n${noticed.id}` }),
     ])
-    expect(items.map((i) => i.kind)).toEqual(['said', 'alpha', 'note', 'alpha'])
+    expect(items.map((i) => i.kind)).toEqual(['said', 'alpha', 'alpha'])
     expect(items[1]).toMatchObject({
       cards: ['c_1'],
       answered: { c_1: { words: 'Yes: Remove a row from Meals?', state: 'yes', done: null } },
     })
-    expect(items[3]).toMatchObject({ reply: 'Removed it.' })
+    expect(items[2]).toMatchObject({ reply: 'Removed it.' })
+  })
+
+  it('leaves out what Activity has, and says a failure', () => {
+    n = 0
+    const items = group([
+      line('told', 'Morning: nothing is due.', { actor: 'agent' }),
+      line('filed', 'Filed a quote on Acme.'),
+      line('rule_saved', 'Never email outside example.com.'),
+      line('card_closed', 'Yes: Remove a row?', { actor: 'person', data: { state: 'yes' } }),
+      line('limit', 'The usage limit is reached.', { actor: 'system' }),
+      line('error', 'The model did not answer.', { actor: 'system' }),
+      line('refused', 'Only the person can do that.'),
+    ])
+    expect(items.map((i) => [i.kind, 'words' in i ? i.words : null])).toEqual([
+      ['note', 'The usage limit is reached.'],
+      ['note', 'The model did not answer.'],
+      ['note', 'Only the person can do that.'],
+    ])
   })
 
   it('shows a card an agent’s run opened as a card, with its module', () => {
