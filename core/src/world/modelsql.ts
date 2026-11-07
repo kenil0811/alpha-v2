@@ -336,7 +336,6 @@ const PEOPLE_SQL: [string, string][] = [
          WHEN 'done' THEN 'Done' ELSE 'Dropped' END AS state,
        k.due, k.remind_at, k.repeat, k.priority,
        CASE k.owner_kind WHEN 'alpha' THEN 'Alpha'
-         WHEN 'agent' THEN (SELECT a.name FROM main.agents a WHERE a.id = k.owner_id)
          ELSE 'the person' END AS owner,
        (SELECT m.name FROM main.modules m WHERE m.id = k.module_id) AS module,
        (SELECT t.name FROM main.tables t WHERE t.id = k.table_id) AS table_name,

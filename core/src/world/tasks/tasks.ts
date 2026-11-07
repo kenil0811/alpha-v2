@@ -7,7 +7,7 @@ import { Refused } from '../kinds.ts'
 import type { Shape, WriteCtx } from '../shape/index.ts'
 import { add, change, remove, setState, tick } from './changes.ts'
 import type { Place, PlaceInput, Ref, Task, TaskInput, TaskRow, TaskState } from './types.ts'
-import { actorWord, checkWhen, dayOf, OPEN, PRIORITIES, readRepeat } from './types.ts'
+import { actorWord, dayOf, OPEN } from './types.ts'
 
 export class Tasks {
   db: Db
@@ -233,19 +233,6 @@ export class Tasks {
     return out
   }
 
-  // A task as it would be added, refused where it is not right; nothing is kept (an agent's
-  // proposal is checked when it is made, not when the person says yes).
-  check(input: TaskInput): void {
-    if (!input.title?.trim()) throw new Refused('A task needs a title.')
-    if (input.owner) this.checkOwner(input.owner)
-    if (input.on) this.resolvePlace(input.on)
-    checkWhen('due', input.due)
-    checkWhen('remind_at', input.remindAt)
-    if (input.priority && !PRIORITIES.includes(input.priority))
-      throw new Refused('Priority is high, normal or low.')
-    if (input.repeat?.trim()) readRepeat(input.repeat)
-  }
-
   // ---- the scheduler's minute ------------------------------------------------------------
 
   counts(): { open: number; overdue: number; today: number } {
@@ -265,32 +252,8 @@ export class Tasks {
     }
   }
 
-  // An agent owns a task only when it takes tasks (its file says tasks: true); returns its name.
-  checkOwner(owner: { kind: string; id?: string | null }): string | null {
-    if (owner.kind !== 'agent') return null
-    const a = owner.id
-      ? one<{ name: string; tasks: number }>(
-          this.db,
-          'SELECT name, tasks FROM agents WHERE id = ?',
-          owner.id,
-        )
-      : undefined
-    if (!a) throw new Refused('That agent is not there.')
-    if (!a.tasks)
-      throw new Refused(
-        `${a.name} does not take tasks: it runs on its own trigger. An agent takes tasks when its file says tasks: true.`,
-      )
-    return a.name
-  }
-
   ownerWords(t: Task): string {
     if (t.owner.kind === 'alpha') return 'Alpha'
-    if (t.owner.kind === 'agent') {
-      const a = t.owner.id
-        ? one<{ name: string }>(this.db, 'SELECT name FROM agents WHERE id = ?', t.owner.id)
-        : undefined
-      return a?.name ?? 'an agent'
-    }
     return (t.owner.id ? this.personName(t.owner.id) : null) ?? 'You'
   }
 

@@ -26,46 +26,41 @@ export type Runs = z.infer<typeof Runs>
 
 export const BUDGET = { minutes: 15, runs: 24 } as const
 
-export const AgentFront = z
-  .object({
-    name: z.string().optional(),
-    description: z.string().optional(), // one line for Settings and the kit directory
-    trigger: z.union([Trigger, z.array(Trigger).min(1)]).optional(),
-    runs: Runs,
-    touches: z.array(z.string()).default([]), // the tables it may write: a wall
-    tasks: z.boolean().default(false), // takes the tasks given to it: alpha.input.task
-    // the gated calls it may make (draft.email, browser.open); any other is refused before a
-    // card. A file that says nothing is an older one: allowed, and said in the run
-    effects: z.array(z.string()).optional(),
-    // what it depends on, checked at install and shown when missing
-    needs: z
-      .object({
-        connectors: z.array(z.string()).default([]),
-        tables: z.array(z.string()).default([]),
-      })
-      .default({ connectors: [], tables: [] }),
-    // its settings, each with a default, so Settings shows them as a form; a value may come from
-    // a setup row (its table, key and field)
-    input: z
-      .record(
-        z.string(),
-        z.object({
-          default: z.unknown().optional(),
-          about: z.string().optional(),
-          setup: z.object({ table: z.string(), key: z.string(), field: z.string() }).optional(),
-        }),
-      )
-      .optional(),
-    budget: z
-      .object({
-        minutes: z.number().positive().default(BUDGET.minutes),
-        runs: z.number().int().positive().default(BUDGET.runs),
-      })
-      .default({ minutes: BUDGET.minutes, runs: BUDGET.runs }),
-  })
-  .refine((f) => f.trigger || f.tasks, {
-    message: 'An agent needs a trigger, or tasks: true to be on call for the tasks given to it.',
-  })
+export const AgentFront = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(), // one line for Settings and the kit directory
+  trigger: z.union([Trigger, z.array(Trigger).min(1)]),
+  runs: Runs,
+  touches: z.array(z.string()).default([]), // the tables it may write: a wall
+  // the gated calls it may make (draft.email, browser.open); any other is refused before a
+  // card. A file that says nothing is an older one: allowed, and said in the run
+  effects: z.array(z.string()).optional(),
+  // what it depends on, checked at install and shown when missing
+  needs: z
+    .object({
+      connectors: z.array(z.string()).default([]),
+      tables: z.array(z.string()).default([]),
+    })
+    .default({ connectors: [], tables: [] }),
+  // its settings, each with a default, so Settings shows them as a form; a value may come from
+  // a setup row (its table, key and field)
+  input: z
+    .record(
+      z.string(),
+      z.object({
+        default: z.unknown().optional(),
+        about: z.string().optional(),
+        setup: z.object({ table: z.string(), key: z.string(), field: z.string() }).optional(),
+      }),
+    )
+    .optional(),
+  budget: z
+    .object({
+      minutes: z.number().positive().default(BUDGET.minutes),
+      runs: z.number().int().positive().default(BUDGET.runs),
+    })
+    .default({ minutes: BUDGET.minutes, runs: BUDGET.runs }),
+})
 export type AgentFrontMatter = z.infer<typeof AgentFront>
 
 // A trigger, or a list of them, as a list.

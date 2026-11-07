@@ -188,26 +188,6 @@ export class Cards {
     ).map(toCard)
   }
 
-  // The cards the runs serving a task opened, oldest first.
-  ofTask(task: string): Card[] {
-    return all<CardRow>(
-      this.db,
-      'SELECT c.* FROM cards c JOIN runs r ON r.id = c.run_id WHERE r.task_id = ? ORDER BY c.created_at',
-      task,
-    ).map(toCard)
-  }
-
-  // The tasks a card waits on the person for, from the runs serving them.
-  waitingTasks(): Set<string> {
-    return new Set(
-      all<{ task_id: string }>(
-        this.db,
-        `SELECT DISTINCT r.task_id FROM cards c JOIN runs r ON r.id = c.run_id
-         WHERE c.state = 'waiting' AND r.task_id IS NOT NULL`,
-      ).map((r) => r.task_id),
-    )
-  }
-
   // A person's answer. Only a person answers a card: an agent never can (design §7, a wall).
   // `said` keeps the answer in fuller words than its option (Added 1 of 2).
   answer(id: string, answer: string, by: Actor, said?: string): Card {

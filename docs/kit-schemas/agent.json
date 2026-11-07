@@ -177,10 +177,6 @@
         "type": "string"
       }
     },
-    "tasks": {
-      "default": false,
-      "type": "boolean"
-    },
     "effects": {
       "type": "array",
       "items": {
@@ -266,6 +262,7 @@
     }
   },
   "required": [
+    "trigger",
     "runs"
   ]
 }

@@ -10,7 +10,7 @@ import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { keep } from '../../modules/keep.ts'
 import { installedKits, recordChange } from '../../modules/kits/index.ts'
-import { PROPOSE_TASKS, RUN_AGAIN } from '../../modules/runs/index.ts'
+import { RUN_AGAIN } from '../../modules/runs/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import { type Redo, redo } from '../../world/shape/index.ts'
 import type { Ctx } from '../ctx.ts'
@@ -30,16 +30,6 @@ export function registerCards(ctx: Ctx): void {
     return cardOut(c)
   })
 
-  // An agent's proposed tasks: those the person kept are added (by their place in the card).
-  app.post('/api/cards/:id/tasks', async (req): Promise<CardView | null> => {
-    const { id } = z.object({ id: z.string() }).parse(req.params)
-    const { take } = z.object({ take: z.array(z.number().int().min(0)) }).parse(req.body)
-    const runner = engine.hands?.runner
-    if (!runner) throw new Refused('Agents are not set up in this core.')
-    const out = runner.adopt(id, take, user.id)
-    live()
-    return cardOut(out)
-  })
   // An agent's rows on a card: the person's choice on some, or on every one not yet decided.
   app.post('/api/cards/:id/rows', async (req): Promise<CardView | null> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
@@ -134,12 +124,6 @@ export function registerCards(ctx: Ctx): void {
           void runner.retry(input.agent, { user: user.id, turn: null }).catch(() => undefined)
         else runner.leave(input.agent, input.cursor)
         const out = world.cards.answer(id, answer, person)
-        live()
-        return cardOut(out)
-      }
-      // a yes on proposed tasks adds them all; the card's own list keeps some
-      if (c?.call?.tool === PROPOSE_TASKS && answer === c.options[0] && engine.hands?.runner) {
-        const out = engine.hands.runner.adopt(id, 'all', user.id)
         live()
         return cardOut(out)
       }

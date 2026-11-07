@@ -6,25 +6,14 @@ import { keptEdit, keptField, keptTable } from '../kept.ts'
 import type { KeptTable, TasksView, TaskView } from '../types.ts'
 
 export function registerTasks(ctx: Ctx): void {
-  const { app, world, engine, user, options, live, asPerson } = ctx
-  const { placeOf, waitingCards, workingOn, lineOf, taskOut, taskOfRun, given, today, inDays } =
-    ctx.views
+  const { app, world, user, options, live, asPerson } = ctx
+  const { placeOf, lineOf, taskOut, given, today, inDays } = ctx.views
 
   const LISTS: Record<string, () => Task[]> = {
     today: () => world.tasks.list({ open: true, dueBy: today() }),
     week: () => world.tasks.list({ open: true, dueBy: inDays(7) }),
     overdue: () => world.tasks.list({ open: true, dueBy: inDays(-1) }),
-    waiting: () => {
-      const w = waitingCards()
-      return world.tasks.list({ open: true }).filter((t) => t.state === 'waiting' || w.has(t.id))
-    },
-    // the tasks given to agents, the ones they work on now first
-    agents: () => {
-      const w = workingOn()
-      return world.tasks
-        .list({ open: true, owner: { kind: 'agent' } })
-        .sort((a, b) => Number(w.has(b.id)) - Number(w.has(a.id)))
-    },
+    waiting: () => world.tasks.list({ open: true }).filter((t) => t.state === 'waiting'),
     open: () => world.tasks.list({ open: true }),
     done: () =>
       world.tasks
@@ -49,8 +38,6 @@ export function registerTasks(ctx: Ctx): void {
     Object.fromEntries(Object.entries(LISTS).map(([k, f]) => [k, k === 'done' ? 0 : f().length]))
   app.get('/api/kept/tasks', async (req): Promise<KeptTable> => {
     const { list } = z.object({ list: z.string().default('open') }).parse(req.query)
-    const waiting = waitingCards()
-    const working = workingOn()
     return keptTable(
       'tasks',
       'Tasks',
@@ -69,7 +56,7 @@ export function registerTasks(ctx: Ctx): void {
         keptField('Where', 'text'),
       ],
       (LISTS[list] ?? (LISTS.open as () => Task[]))().map((t) => {
-        const l = lineOf(t, waiting, working)
+        const l = lineOf(t)
         return {
           id: l.id,
           values: {
@@ -115,7 +102,6 @@ export function registerTasks(ctx: Ctx): void {
         row: z.string().optional(),
       })
       .parse(req.query)
-    const waiting = waitingCards()
     const on =
       q.module || q.table || q.row
         ? {
@@ -127,10 +113,9 @@ export function registerTasks(ctx: Ctx): void {
           }
         : null
     const tasks = on ? world.tasks.list({ on }) : (LISTS[q.list] ?? (LISTS.open as () => Task[]))()
-    const working = workingOn()
     return {
       list: q.list,
-      lines: tasks.map((t) => lineOf(t, waiting, working)),
+      lines: tasks.map((t) => lineOf(t)),
       counts: counts(),
     }
   })
@@ -166,26 +151,15 @@ export function registerTasks(ctx: Ctx): void {
       }
       const c = world.cards.get(String((l.data as { card?: string }).card ?? l.card ?? ''))
       if (c?.state !== 'waiting' || (c.user && c.user !== user.id)) continue
-      const task = c.run ? taskOfRun(c.run) : null
       notices.push({
         id: `card-${c.id}`,
         title: 'Needs you',
         subtitle: c.module ? (world.shape.module(c.module)?.name ?? null) : null,
         body: c.words,
-        open: task ? `#/tasks/${task}` : '#/',
+        open: '#/',
       })
     }
     return { last, notices }
-  })
-
-  // Start the agent a task is given to on it; its run goes on after this answers.
-  app.post('/api/tasks/:id/start', async (req): Promise<TaskView | undefined> => {
-    const { id } = z.object({ id: z.string() }).parse(req.params)
-    const runner = engine.hands?.runner
-    if (!runner) throw new Refused('Agents are not set up in this core.')
-    runner.startTask(id, { user: user.id, turn: null }).run.catch(() => undefined)
-    live()
-    return taskOut(id)
   })
 
   app.get('/api/tasks/:id', async (req, reply): Promise<TaskView | undefined> => {

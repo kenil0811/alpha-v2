@@ -7,7 +7,7 @@ import { type Field, findField, type Module, type Table } from '../../world/shap
 import { agents, nextRun } from '../agents.ts'
 import { type JudgeSpec, judge } from '../judging.ts'
 import type { AgentRunner } from './runner.ts'
-import { PROPOSE_TASKS, type ProposedTask, type RunFor } from './types.ts'
+import type { RunFor } from './types.ts'
 import type { Walls } from './walls.ts'
 
 export function api(
@@ -389,48 +389,6 @@ export function api(
       runner.notify()
       return null
     },
-    // A run started on a task says what became of it: done, with what it did, or what it
-    // waits for. Only its run settles an agent's task (Q93): one that ends without saying waits.
-    // A try on a made-up task (no task behind the run) changes none: what it would say is a step.
-    'task.done': async (p: Record<string, unknown>) => {
-      const words = String(p.words ?? '').trim()
-      if (!words) throw new Refused('task.done needs words: what was done.')
-      const t = runner.serving(who)
-      if (t)
-        runner.world.tasks.setState(t.id, 'done', ctx, `${label} finished “${t.title}”: ${words}`)
-      else
-        runner.world.line({
-          actor,
-          kind: 'run_step',
-          words: `Would finish the task: ${words}`,
-          run: runId,
-          module: module.id,
-        })
-      runner.notify()
-      return null
-    },
-    'task.wait': async (p: Record<string, unknown>) => {
-      const words = String(p.words ?? '').trim()
-      if (!words) throw new Refused('task.wait needs words: what it waits for.')
-      const t = runner.serving(who)
-      if (t)
-        runner.world.tasks.setState(
-          t.id,
-          'waiting',
-          ctx,
-          `${label} waits on “${t.title}”: ${words}`,
-        )
-      else
-        runner.world.line({
-          actor,
-          kind: 'run_step',
-          words: `Would leave the task waiting: ${words}`,
-          run: runId,
-          module: module.id,
-        })
-      runner.notify()
-      return null
-    },
     // The journal's lines since a moment, for an agent that notices what was said (Watson).
     'journal.list': async (p: Record<string, unknown>) => {
       const w = runner.world
@@ -506,47 +464,6 @@ export function api(
         changed,
         coming,
       }
-    },
-    // Tasks the agent thinks need doing, on one card for the person's yes; none is kept before.
-    'task.propose': async (p: Record<string, unknown>) => {
-      const items = Array.isArray(p.tasks) ? (p.tasks as Record<string, unknown>[]) : []
-      if (!items.length)
-        throw new Refused(
-          'task.propose needs tasks: [{ title, notes, due, priority, on: { table, row, field }, owner }].',
-        )
-      const tasks: ProposedTask[] = items.map((i) => {
-        const on = (i.on ?? null) as ProposedTask['on']
-        const owner = i.owner === 'agent' ? 'agent' : 'person'
-        const priority = (['high', 'low'].includes(String(i.priority)) ? i.priority : 'normal') as
-          | 'high'
-          | 'normal'
-          | 'low'
-        const out: ProposedTask = {
-          title: String(i.title ?? '').trim(),
-          notes: i.notes ? String(i.notes) : null,
-          due: i.due ? String(i.due) : null,
-          priority,
-          on: on ? { module: module.id, ...on } : null,
-          owner,
-        }
-        runner.world.tasks.check(runner.asInput(out, agentId))
-        return out
-      })
-      const n = tasks.length
-      const card = runner.world.cards.open({
-        kind: 'suggestion',
-        words:
-          String(p.words ?? '').trim() || `${label} proposes ${n === 1 ? 'a task' : `${n} tasks`}`,
-        restsOn: [`a run of ${label}`],
-        options: ['Add them', 'Not now'],
-        call: { tool: PROPOSE_TASKS, input: { agent: agentId, label, tasks } },
-        actor,
-        user: who.user ?? runner.owner,
-        module: module.id,
-        run: runId,
-      })
-      runner.notify()
-      return { card: card.id }
     },
     log: async (p: Record<string, unknown>) => {
       runner.world.line({

@@ -27,7 +27,6 @@ export function add(tasks: Tasks, input: TaskInput, ctx: WriteCtx, by = actorWor
   const title = input.title?.trim()
   if (!title) throw new Refused('A task needs a title.')
   return tx(tasks.db, () => {
-    if (input.owner) tasks.checkOwner(input.owner)
     const place = input.on ? tasks.resolvePlace(input.on) : emptyPlace()
     const parent = input.parent ? tasks.must(input.parent) : null
     // a child sits where its parent sits, unless it is given its own place
@@ -131,12 +130,9 @@ export function change(
       set('priority', patch.priority, `${patch.priority} priority`)
     }
     if (patch.owner !== undefined) {
-      const agent = tasks.checkOwner(patch.owner)
       sets.push('owner_kind = ?', 'owner_id = ?')
       args.push(patch.owner.kind, patch.owner.id ?? null)
-      said.push(
-        `for ${patch.owner.kind === 'person' ? 'you' : patch.owner.kind === 'alpha' ? 'Alpha' : (agent ?? 'an agent')}`,
-      )
+      said.push(`for ${patch.owner.kind === 'person' ? 'you' : 'Alpha'}`)
     }
     if (patch.parent !== undefined) {
       if (patch.parent) {

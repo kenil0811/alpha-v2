@@ -74,24 +74,4 @@ describe('keep', () => {
       keep(world, m, 'agents/bad.md', '---\ntrigger: { every: fortnight }\n---\n', ctx),
     ).rejects.toThrow(/is not right/)
   })
-
-  it('keeps an agent that takes tasks only when its script says when one is done', async () => {
-    const m = world.shape.makeModule('Deals', ctx)
-    const agent =
-      '---\nname: Clerk\ntasks: true\nruns: { script: skills/clerk/run.js }\n---\nTakes deal tasks.\n'
-    await keep(world, m, 'skills/clerk/run.js', 'export default async () => ({ done: true })', ctx)
-    await expect(keep(world, m, 'agents/clerk.md', agent, ctx)).rejects.toThrow(
-      /never calls alpha.task.done/,
-    )
-    await keep(
-      world,
-      m,
-      'skills/clerk/run.js',
-      "export default async (alpha) => { await alpha.task.done('looked') }",
-      ctx,
-    )
-    expect(await keep(world, m, 'agents/clerk.md', agent, ctx)).toMatch(
-      /Clerk is on call for the tasks given to it/,
-    )
-  })
 })

@@ -9,7 +9,7 @@ import { FILING, type Filing } from '../../files/intake.ts'
 import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { keep } from '../../modules/keep.ts'
-import { type AgentRunner, PROPOSE_TASKS } from '../../modules/runs/index.ts'
+import type { AgentRunner } from '../../modules/runs/index.ts'
 import { pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { DOES, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/rules.ts'
@@ -80,10 +80,6 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
                 user: here_.user.id,
                 card: card.id,
               })
-            if (card.call?.tool === PROPOSE_TASKS && hands?.runner && !no) {
-              const done = hands.runner.adopt(card.id, 'all', here_.user.id)
-              return ok(`The card is answered: ${done.state}; its tasks are added.`)
-            }
             const done = world.cards.answer(card.id, choice, { kind: 'person', id: here_.user.id })
             return ok(`The card is answered: ${done.state}.`)
           }

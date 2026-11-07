@@ -1,7 +1,7 @@
 // The agent runner (design §11): an agent's script run in its sandbox, serving its module. A run is
 // a row; its steps are journal lines carrying its id; it reaches the person's stream only as a
 // card. The runner's pieces are the files beside this one: the walls, what a script may reach,
-// the `alpha` it is handed, agents on tasks, what is due.
+// the `alpha` it is handed, what is due.
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
@@ -10,11 +10,9 @@ import { config } from '../../config.ts'
 import { askModel } from '../../engine/ask.ts'
 import type { Ask } from '../../files/reading.ts'
 import { runScript, type ScriptRun } from '../../scripts/run.ts'
-import type { Card } from '../../world/cards.ts'
 import { all, run as exec, json, newId, now, one } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module } from '../../world/shape/index.ts'
-import type { Task, TaskInput } from '../../world/tasks/index.ts'
 import type { World } from '../../world/world.ts'
 import { type Agent, type AgentFile, agents } from '../agents.ts'
 import type { Drafts } from '../drafts.ts'
@@ -22,10 +20,8 @@ import { Reviews } from '../reviews.ts'
 import * as apiOf from './api.ts'
 import * as dueOf from './due.ts'
 import * as reachOf from './reach.ts'
-import * as tasksOf from './tasks.ts'
 import {
   type Filed,
-  type ProposedTask,
   type RunFor,
   type RunOutcome,
   type RunRow,
@@ -114,58 +110,6 @@ export class AgentRunner {
     return apiOf.api(this, module, label, runId, who, agentId, walls)
   }
 
-  serving(who: RunFor): Task | null {
-    return tasksOf.serving(this, who)
-  }
-
-  asInput(p: ProposedTask, agentId: string | null): TaskInput {
-    return tasksOf.asInput(this, p, agentId)
-  }
-
-  settle(
-    task: string,
-    state: RunOutcome['state'],
-    words: string,
-    label: string,
-    runId: string,
-  ): void {
-    tasksOf.settle(this, task, state, words, label, runId)
-  }
-
-  taskInput(t: Task) {
-    return tasksOf.taskInput(this, t)
-  }
-
-  startTask(id: string, who: RunFor): { run: Promise<RunOutcome> } {
-    return tasksOf.startTask(this, id, who)
-  }
-
-  resumeTasks(): void {
-    tasksOf.resumeTasks(this)
-  }
-
-  proposedView(card: Card): {
-    agent: string
-    tasks: {
-      title: string
-      notes: string | null
-      due: string | null
-      priority: 'high' | 'normal' | 'low'
-      place: string
-      owner: string
-    }[]
-  } | null {
-    return tasksOf.proposedView(this, card)
-  }
-
-  adopt(cardId: string, take: number[] | 'all', user: string): Card {
-    return tasksOf.adopt(this, cardId, take, user)
-  }
-
-  runsOf(task: string): RunRow[] {
-    return tasksOf.runsOf(this, task)
-  }
-
   fileOf(agentId: string, module: Module): AgentFile | null {
     return wallsOf.fileOf(this, agentId, module)
   }
@@ -246,12 +190,11 @@ export class AgentRunner {
     const walls = file ? this.wallsFor(module, file) : agentId ? null : this.wallsForTry(module)
     exec(
       this.world.db,
-      "INSERT INTO runs (id, agent_id, module_id, started_at, state, task_id) VALUES (?, ?, ?, ?, 'running', ?)",
+      "INSERT INTO runs (id, agent_id, module_id, started_at, state) VALUES (?, ?, ?, ?, 'running')",
       runId,
       agentId,
       module.id,
       now(),
-      who.task ?? null,
     )
     const missing = file ? unmetNeeds(this.world, file) : []
     if (missing.length) {
@@ -351,11 +294,10 @@ export class AgentRunner {
       actor: { kind: 'agent', id: label },
       kind: 'run_ended',
       words,
-      data: { state, ...(who.task ? { task: who.task } : {}) },
+      data: { state },
       run: runId,
       module: module.id,
     })
-    if (who.task) this.settle(who.task, state, words, label, runId)
     this.notify()
     return { id: runId, state, words, result: out.result }
   }

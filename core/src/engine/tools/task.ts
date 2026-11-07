@@ -1,7 +1,6 @@
-// The task tool: find, add, change, remove, hand to an agent (design §12).
+// The task tool: find, add, change, remove (design §12).
 
 import { z } from 'zod'
-import { agents } from '../../modules/agents.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Table } from '../../world/shape/index.ts'
 import { PRIORITIES, type Task } from '../../world/tasks/index.ts'
@@ -9,7 +8,7 @@ import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import { guard, ok, tool } from './common.ts'
 
-export function taskTools({ world, here, hands, ctx }: Tooling): ToolEntry[] {
+export function taskTools({ world, here, ctx }: Tooling): ToolEntry[] {
   return [
     tool(
       'task',
@@ -62,12 +61,7 @@ export function taskTools({ world, here, hands, ctx }: Tooling): ToolEntry[] {
             if (/^(me|you|the person|person)$/i.test(o.trim()))
               return { kind: 'person' as const, id: here.current.user.id }
             if (/^alpha$/i.test(o.trim())) return { kind: 'alpha' as const, id: null }
-            const agent = agents(world).find((x) => x.name.toLowerCase() === o.trim().toLowerCase())
-            if (!agent)
-              throw new Refused(
-                `There is no agent called ${o}; the owner is me, alpha or an agent's name.`,
-              )
-            return { kind: 'agent' as const, id: agent.id }
+            throw new Refused(`The owner is me or alpha, not ${o}.`)
           }
           const shown = (t: Task) => ({
             id: t.id,
@@ -131,31 +125,12 @@ export function taskTools({ world, here, hands, ctx }: Tooling): ToolEntry[] {
               )
               return ok({ task: shown(t) })
             }
-            case 'start': {
-              const t = world.tasks.get(one())
-              if (t?.owner.kind === 'agent') {
-                if (!hands?.runner) throw new Refused('Agents are not set up in this core.')
-                hands.runner
-                  .startTask(t.id, { user: here.current.user.id, turn: here.current.turn })
-                  .run.catch(() => undefined)
-                return ok(
-                  `Started ${world.tasks.ownerWords(t)} on it; its steps go to the task's page and Activity, and its run says when it is done.`,
-                )
-              }
+            case 'start':
               return ok({ task: shown(world.tasks.setState(one(), 'doing', c)) })
-            }
             case 'wait':
             case 'done':
             case 'drop':
             case 'reopen': {
-              // only the run's own word makes an agent's task done (design §12, Q93)
-              if (a.action === 'done') {
-                const t = world.tasks.get(one())
-                if (t?.owner.kind === 'agent')
-                  throw new Refused(
-                    `Only ${world.tasks.ownerWords(t)}'s run marks “${t.title}” done; start it, or drop it.`,
-                  )
-              }
               const state = {
                 wait: 'waiting',
                 done: 'done',

@@ -55,7 +55,7 @@ export interface Task {
   remindedAt: string | null
   repeat: string | null // as the person said it
   priority: Priority
-  owner: { kind: 'person' | 'alpha' | 'agent'; id: string | null }
+  owner: { kind: 'person' | 'alpha'; id: string | null }
   parent: string | null
   place: Place
   placedBy: string | null // the person, Alpha, or where it was made
@@ -75,7 +75,7 @@ export interface TaskInput {
   remindAt?: string | null
   repeat?: string | null
   priority?: Priority
-  owner?: { kind: 'person' | 'alpha' | 'agent'; id?: string | null }
+  owner?: { kind: 'person' | 'alpha'; id?: string | null }
   parent?: string | null
   on?: PlaceInput | null
   refs?: Ref[]
@@ -95,7 +95,7 @@ export interface TaskRow {
   repeat_rule: string | null
   repeat_next: string | null
   priority: Priority
-  owner_kind: 'person' | 'alpha' | 'agent'
+  owner_kind: 'person' | 'alpha'
   owner_id: string | null
   parent_id: string | null
   module_id: string | null

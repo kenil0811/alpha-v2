@@ -10,7 +10,6 @@ import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome, type RunRowDb } f
 // What is due by each agent's trigger, and tasks whose cards are all decided. One run of an
 // agent at a time.
 export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<void> {
-  runner.resumeTasks()
   resumeRuns(runner)
   for (const a of agents(runner.world)) {
     if (a.state !== 'on' || !triggersOf(a.trigger).length) continue

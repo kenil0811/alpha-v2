@@ -14,20 +14,7 @@ export interface RunOutcome {
 export interface RunFor {
   user: string | null
   turn: string | null
-  task?: string | null
 }
-
-// A task an agent proposes, as it would be added on the person's yes.
-export interface ProposedTask {
-  title: string
-  notes: string | null
-  due: string | null
-  priority: 'high' | 'normal' | 'low'
-  on: { table?: string; row?: string; field?: string; page?: string; module?: string } | null
-  owner: 'person' | 'agent' // the agent's own: it takes it, and works on it when started
-}
-
-export const PROPOSE_TASKS = 'propose_tasks'
 
 export interface RunRow {
   id: string
@@ -38,7 +25,6 @@ export interface RunRow {
   state: 'running' | 'ok' | 'failed' | 'stopped'
   words: string | null
   tokens: number | null // the model's, when the run asked it to read something
-  task: string | null // the task it served
 }
 
 export const CHANGE_KINDS = ['wrote', 'changed', 'landed', 'removed', 'reverted']
@@ -62,7 +48,6 @@ export interface RunRowDb {
   state: RunRow['state']
   words: string | null
   data: string
-  task_id: string | null
 }
 
 export function toRun(r: RunRowDb): RunRow {
@@ -75,6 +60,5 @@ export function toRun(r: RunRowDb): RunRow {
     state: r.state,
     words: r.words,
     tokens: fromJson<{ tokens?: number | null }>(r.data, {}).tokens ?? null,
-    task: r.task_id,
   }
 }

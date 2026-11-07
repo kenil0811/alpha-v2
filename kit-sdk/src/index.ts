@@ -291,58 +291,6 @@ export const CALLS: Call[] = [
     effect: null,
     since: 1,
   },
-  {
-    name: 'task.done',
-    signature: 'alpha.task.done(words)',
-    params: ['words'],
-    args: z.looseObject({ words: z.string() }),
-    answer: 'nothing',
-    words:
-      'what a run started on a task did: only this makes the task Done; a try with a made-up task changes none, and what it would say comes back as a step',
-    effect: null,
-    since: 1,
-  },
-  {
-    name: 'task.wait',
-    signature: 'alpha.task.wait(words)',
-    params: ['words'],
-    args: z.looseObject({ words: z.string() }),
-    answer: 'nothing',
-    words:
-      'what a run started on a task waits for; a run that opened cards waits for the person’s yes, and runs again once they are all decided',
-    effect: null,
-    since: 1,
-  },
-  {
-    name: 'task.propose',
-    signature:
-      'alpha.task.propose([{ title, notes, due, priority, on: { table, row, field }, owner }], words)',
-    params: ['tasks', 'words'],
-    args: z.looseObject({
-      tasks: z.array(
-        z.looseObject({
-          title: z.string(),
-          notes: z.string().optional(),
-          due: z.string().optional(),
-          priority: z.enum(['high', 'normal', 'low']).optional(),
-          on: z
-            .looseObject({
-              table: z.string().optional(),
-              row: z.string().optional(),
-              field: z.string().optional(),
-              page: z.string().optional(),
-            })
-            .optional(),
-          owner: z.enum(['person', 'agent']).optional(),
-        }),
-      ),
-      words: z.string().optional(),
-    }),
-    answer: '{ card }',
-    words: 'tasks it thinks need doing, on one card for the person’s yes; none is kept before',
-    effect: null,
-    since: 1,
-  },
 ]
 
 export const CALL_NAMES = CALLS.map((c) => c.name)
@@ -364,7 +312,6 @@ export function guide(): string {
     ...CALLS.map((c) => `${c.signature}: ${c.words}; gives ${c.answer}.`),
     'Every table and field in module.yaml carries an about: one sentence on what it means, which the model reads before it queries the table; write one for anything a script makes or lands.',
     'An agent woken by a filing gets alpha.input.filed: the documents filed or placed since it last looked, each with file, name, kind and rows.',
-    'An agent whose file says tasks: true takes the tasks given to it (with no trigger, it runs only for them). A run started on a task gets alpha.input.task: id, title, notes, due, priority, place (words, module, table, row, field, page), values (that row’s, by field name), touches, before (what earlier runs on it said) and cards (what came of the cards they opened).',
   ]
   return lines.join('\n')
 }

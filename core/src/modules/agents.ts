@@ -1,7 +1,6 @@
 // Agents (design §11): an agent is a file `agents/<name>.md` in its module, with front matter
-// (its trigger, what it runs, what it may touch, whether it takes tasks) and its brief. The world
-// keeps each agent's state (on or paused) and its trigger as read; the file stays the truth. An
-// agent that takes tasks is on call for the tasks given to it, and needs no trigger (Q92).
+// (its trigger, what it runs, what it may touch) and its brief. The world keeps each agent's state
+// (on or paused) and its trigger as read; the file stays the truth.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
@@ -22,11 +21,9 @@ import type { World } from '../world/world.ts'
 // The trigger, the script and the front matter are the kit API's (kit-sdk), schema version 1.
 export type { Runs, Trigger }
 
-// A trigger as the person reads it; an agent with none runs only for the tasks given to it.
+// A trigger as the person reads it.
 export function whenWords(t: Trigger | Trigger[] | null): string {
-  const list = triggersOf(t)
-  if (!list.length) return 'when given a task'
-  return list.map(oneWhen).join(', and ')
+  return triggersOf(t).map(oneWhen).join(', and ')
 }
 
 function oneWhen(t: Trigger): string {
@@ -79,8 +76,7 @@ export interface Agent {
   description: string | null
   file: string
   state: 'on' | 'paused'
-  trigger: Trigger | Trigger[] | null // none: on call for tasks only
-  tasks: boolean // takes the tasks given to it
+  trigger: Trigger | Trigger[]
   runs: Runs
   cursor: string | null
   lastRunAt: string | null
@@ -90,7 +86,6 @@ export interface AgentFile {
   name: string
   description: string | null
   trigger: Trigger | Trigger[] | null
-  tasks: boolean
   runs: Runs
   touches: string[]
   effects: string[] | null // null: the file says nothing, an older one
@@ -114,8 +109,7 @@ export function parseAgent(text: string, file: string): AgentFile {
   return {
     name,
     description: front.data.description ?? null,
-    trigger: front.data.trigger ?? null,
-    tasks: front.data.tasks,
+    trigger: front.data.trigger,
     runs: front.data.runs,
     touches: front.data.touches,
     effects: front.data.effects ?? null,
@@ -154,12 +148,11 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
       kept.add(known.id)
       run(
         world.db,
-        'UPDATE agents SET name = ?, file = ?, trigger = ?, runs = ?, tasks = ?, description = ? WHERE id = ?',
+        'UPDATE agents SET name = ?, file = ?, trigger = ?, runs = ?, description = ? WHERE id = ?',
         a.name,
         `agents/${f}`,
         json(a.trigger),
         json(a.runs),
-        a.tasks ? 1 : 0,
         a.description,
         known.id,
       )
@@ -176,7 +169,7 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
       kept.add(id)
       run(
         world.db,
-        'INSERT INTO agents (id, module_id, name, file, state, trigger, runs, tasks, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO agents (id, module_id, name, file, state, trigger, runs, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         id,
         module.id,
         a.name,
@@ -184,7 +177,6 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
         state,
         json(a.trigger),
         json(a.runs),
-        a.tasks ? 1 : 0,
         a.description,
       )
     }
@@ -211,7 +203,6 @@ interface AgentRow {
   state: 'on' | 'paused'
   trigger: string
   runs: string
-  tasks: number
   cursor: string | null
   last_run_at: string | null
 }
@@ -228,8 +219,7 @@ export function agents(world: World, moduleId?: string): Agent[] {
     file: r.file,
     state: r.state,
     description: r.description,
-    trigger: JSON.parse(r.trigger) as Trigger | Trigger[] | null,
-    tasks: r.tasks === 1,
+    trigger: JSON.parse(r.trigger) as Trigger | Trigger[],
     runs: JSON.parse(r.runs) as Runs,
     cursor: r.cursor,
     lastRunAt: r.last_run_at,
