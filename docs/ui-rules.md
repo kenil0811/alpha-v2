@@ -137,6 +137,8 @@ held by review. Dates are 2026.
 | L14 | A task, a run, a person, a row, an agent, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel opens a step further in it, with the panel's own Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov | test (opened) |
 | L15 | Marking dims the window a little, the outline glides between what can be marked, and its line wears the accent | 2 Nov | — |
 | L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
+| L17 | A card's list on Home and a module's page shows five rows, then its pager under it ("6–10 of 12", Previous, Next); never Show more, a count of more elsewhere, or a box that scrolls, so a card's bottom border stays in sight | 4 Nov | test (pager) |
+| L18 | Blocks on Home and a module's page sit 40px apart, down a column and across columns | 4 Nov | — |
 
 ## Proposed, waiting on Kenil or the core
 

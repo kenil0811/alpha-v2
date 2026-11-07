@@ -10,6 +10,7 @@ import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { List, Row } from './ui/list.tsx'
+import { usePaged } from './ui/pager.tsx'
 
 export function WaitingRules({
   module,
@@ -32,6 +33,7 @@ export function WaitingRules({
   useEffect(() => {
     if (version >= 0) load()
   }, [load, version])
+  const page = usePaged(rules ?? [])
   if (!rules?.length) return null
   return (
     <section aria-label="Waiting for you" className="flex flex-col gap-2">
@@ -40,7 +42,7 @@ export function WaitingRules({
         <span className="font-normal text-ink-3 tabular-nums">{rules.length}</span>
       </h3>
       <List>
-        {rules.map((r) => (
+        {page.shown.map((r) => (
           <Row
             key={r.card}
             lead={
@@ -79,6 +81,7 @@ export function WaitingRules({
           />
         ))}
       </List>
+      {page.pager}
     </section>
   )
 }

@@ -25,6 +25,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
+import { usePaged } from './ui/pager.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -266,6 +267,9 @@ function AgentsAndNotes({
   const turn = (id: string, state: boolean) =>
     act(() => api.post(`/api/agents/${id}`, { state: state ? 'on' : 'paused' }), id)
   const running = m.agents.filter((a) => a.state === 'on').length
+  // a list here five rows a page, then its pager (Vikas, 2 Nov)
+  const agents = usePaged(m.agents)
+  const others = usePaged(m.tables.filter((t) => t.place !== 'main'))
   const about = [
     m.kit
       ? `From ${m.kit.name}, version ${m.kit.version}`
@@ -281,7 +285,7 @@ function AgentsAndNotes({
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="flex max-w-page flex-col gap-7 px-7 py-6">
+      <div className="flex max-w-page flex-col gap-10 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
         <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
@@ -295,7 +299,7 @@ function AgentsAndNotes({
               <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
             ) : (
               <List>
-                {m.agents.map((a) => (
+                {agents.shown.map((a) => (
                   <Row
                     key={a.id}
                     lead={<Bot className="size-4 text-ink-3" />}
@@ -321,6 +325,7 @@ function AgentsAndNotes({
                 ))}
               </List>
             )}
+            {agents.pager}
           </div>
         </Section>
         {m.tables.some((t) => t.place !== 'main') && (
@@ -329,48 +334,47 @@ function AgentsAndNotes({
             sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
           >
             <ul className="flex flex-col">
-              {m.tables
-                .filter((t) => t.place !== 'main')
-                .map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+              {others.shown.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+                >
+                  <a
+                    href={`#/table/${t.id}`}
+                    className="min-w-0 flex-1 truncate text-ink hover:underline"
                   >
-                    <a
-                      href={`#/table/${t.id}`}
-                      className="min-w-0 flex-1 truncate text-ink hover:underline"
+                    {t.name}
+                  </a>
+                  <span className="text-ink-3">
+                    {t.place === 'setup'
+                      ? 'Setup'
+                      : t.place === 'people'
+                        ? "People's columns"
+                        : `Part of ${t.of ?? 'a row'}`}
+                  </span>
+                  {t.place !== 'people' && (
+                    <button
+                      type="button"
+                      disabled={busy && on === t.id}
+                      onClick={() =>
+                        act(() => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }), t.id)
+                      }
+                      className={
+                        t.tab
+                          ? 'text-accent hover:underline'
+                          : 'text-ink-3 hover:text-ink hover:underline'
+                      }
                     >
-                      {t.name}
-                    </a>
-                    <span className="text-ink-3">
-                      {t.place === 'setup'
-                        ? 'Setup'
-                        : t.place === 'people'
-                          ? "People's columns"
-                          : `Part of ${t.of ?? 'a row'}`}
-                    </span>
-                    {t.place !== 'people' && (
-                      <button
-                        type="button"
-                        disabled={busy && on === t.id}
-                        onClick={() =>
-                          act(() => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }), t.id)
-                        }
-                        className={
-                          t.tab
-                            ? 'text-accent hover:underline'
-                            : 'text-ink-3 hover:text-ink hover:underline'
-                        }
-                      >
-                        {t.tab ? 'A tab' : 'Keep as a tab'}
-                      </button>
-                    )}
-                    <span className="w-14 text-right text-ink-3 tabular-nums">
-                      {t.rows.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
+                      {t.tab ? 'A tab' : 'Keep as a tab'}
+                    </button>
+                  )}
+                  <span className="w-14 text-right text-ink-3 tabular-nums">
+                    {t.rows.toLocaleString()}
+                  </span>
+                </li>
+              ))}
             </ul>
+            {others.pager}
           </Section>
         )}
         <Section
@@ -538,6 +542,7 @@ function RuleColumn({
   onAdd: () => void
   onChange: () => void
 }) {
+  const page = usePaged(rules)
   return (
     <section
       aria-label={side === 'allowed' ? 'Allowed' : 'Denied'}
@@ -558,7 +563,7 @@ function RuleColumn({
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {rules.map((r) => (
+          {page.shown.map((r) => (
             <li key={r.key} className="group/row flex items-start gap-2">
               <span className="flex min-w-0 flex-1 flex-col">
                 {r.href ? (
@@ -575,6 +580,7 @@ function RuleColumn({
           ))}
         </ul>
       )}
+      {page.pager}
       <button
         type="button"
         onClick={onAdd}
