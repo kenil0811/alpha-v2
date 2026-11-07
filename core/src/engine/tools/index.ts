@@ -1,5 +1,5 @@
 // The world tools (design §5), as entries of the tool registry (decision 11): the Agent SDK
-// serves them in process, and Alpha's own loop calls them directly. Each declares its effect,
+// serves them in process. Each declares its effect,
 // which the gate adapter maps to the gates; each writes through the world, which journals and
 // checks provenance. Grouped by what they touch, in the files here.
 import type { ConnectorService } from '../../connectors/service.ts'

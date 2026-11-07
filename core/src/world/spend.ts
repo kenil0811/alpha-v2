@@ -1,9 +1,7 @@
 // What each use of the model spent (core plan step 5, Kenil's yes 28 Oct): a row per model per use,
 // with its tokens and its cost, and what it served (a desk turn, an agent's run, a small ask).
-// Claude Code says a cost itself, at API prices; an API key's own loop says only tokens, priced
-// here from models.yaml. Counted from the day it shipped (his call 1): nothing is worked out from
-// before. Nothing is capped: this only says what was spent.
-import { config } from '../config.ts'
+// Claude Code says a cost itself, at API prices; a session says running totals, so a turn's own
+// share is the total now less the total before. Nothing is capped: this only says what was spent.
 import { monthOf, monthSpan } from './day.ts'
 import { all, type Db, now, run } from './db.ts'
 
@@ -14,7 +12,7 @@ export interface Use {
   cacheRead: number
   cacheWrite: number
   usd: number | null // null: no price for the model
-  how: 'reported' | 'priced' | 'unpriced'
+  how: 'reported' | 'unpriced'
 }
 
 export interface SpendFor {
@@ -43,22 +41,6 @@ export interface SpendRow {
 
 const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
-// A model's tokens priced from the table; no price, no cost.
-export function priced(
-  model: string,
-  t: Pick<Use, 'input' | 'output' | 'cacheRead' | 'cacheWrite'>,
-): Use {
-  const p = config.models().prices?.[model]
-  const usd = p
-    ? (t.input * p.input +
-        t.output * p.output +
-        t.cacheRead * p.cache_read +
-        t.cacheWrite * p.cache_write) /
-      1_000_000
-    : null
-  return { model, ...t, usd, how: p ? 'priced' : 'unpriced' }
-}
-
 // What the Agent SDK says a query used, by model, with the cost it says itself (Claude Code's
 // modelUsage: a desk session's running total, or one ask's own).
 export function usesOfModelUsage(map: unknown): Use[] {
@@ -74,18 +56,6 @@ export function usesOfModelUsage(map: unknown): Use[] {
       usd: typeof u.costUSD === 'number' ? u.costUSD : null,
       how: typeof u.costUSD === 'number' ? 'reported' : 'unpriced',
     }))
-}
-
-// What the API says one call used, in tokens only: priced from the table.
-export function usesOfTokens(model: string, usage: unknown): Use[] {
-  const u = (usage ?? {}) as Record<string, unknown>
-  const t = {
-    input: n(u.input_tokens),
-    output: n(u.output_tokens),
-    cacheRead: n(u.cache_read_input_tokens),
-    cacheWrite: n(u.cache_creation_input_tokens),
-  }
-  return t.input + t.output + t.cacheRead + t.cacheWrite ? [priced(model, t)] : []
 }
 
 // A desk turn's own share of a session's running totals: now less before, by model; a model

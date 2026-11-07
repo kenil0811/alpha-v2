@@ -8,7 +8,7 @@ import type { Use } from '../world/spend.ts'
 import type { Gatekeeper } from './gate.ts'
 import type { Registry, ToolEntry } from './registry.ts'
 
-export type Route = 'subscription' | 'key' | 'local'
+export type Route = 'subscription' | 'key'
 
 // What a route can do; the prompt leaves out what it cannot (decision 11).
 export interface Capabilities {

@@ -16,7 +16,7 @@ import {
 } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { extname, join, resolve } from 'node:path'
-import { BrowserEngine, MemorySecrets, type SecretStore } from '@alpha/connector-sdk'
+import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { buildServer } from '../api/server.ts'
@@ -37,9 +37,9 @@ import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
-import { ownLoop, spentIn } from './own.ts'
 import { installSigned } from './signed.ts'
 import { type Site, serve } from './site.ts'
+import { spentIn } from './spent.ts'
 import { Edit, inWindow, Remove, Reset } from './window.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
@@ -144,12 +144,9 @@ export async function runOne(
   name: string,
   args: string[],
   run: { at: number; of: number } = { at: 1, of: 1 },
-  keys: SecretStore = new MemorySecrets(), // the API key, for the own loop (keyOnce)
 ): Promise<{ passed: boolean; report: string; seconds: number; usd: number | null }> {
   // Alpha's prompt alone is the default since 24 Oct; --appended tries it on Claude Code's own
   const prompt = args.includes('--appended') ? 'appended' : 'alone'
-  // --loop own: Alpha's own loop on the person's API key (step 3, part 1); else Claude Code
-  const own = args[args.indexOf('--loop') + 1] === 'own' && args.includes('--loop')
   const { journeys, base } = placesOf(args)
   const journey = Journey.parse(parse(readFileSync(join(journeys, `${name}.yaml`), 'utf8')))
   // a journey whose every check waits is not run: nothing in it can hold yet
@@ -160,7 +157,7 @@ export async function runOne(
   }
   const stamp = `${stampOf()}${run.of > 1 ? `-run${run.at}` : ''}`
   // Outside $TMPDIR, so the sandbox is as it is for the person.
-  const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${own ? 'own' : prompt}`)
+  const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${prompt}`)
   rmSync(home, { recursive: true, force: true })
   const world = await World.open(join(home, 'tenants', 't_journey'))
   const user = world.owner('Kenil')
@@ -178,16 +175,8 @@ export async function runOne(
     // journeys never read a real site: only the made-up ones served on this Mac
     only: ['127.0.0.1', 'localhost'],
   })
-  // the own loop answers the desk and the small asks (reading a document, sorting into groups)
-  const provider = own ? await ownLoop(world, user, keys) : null
   const runner = new AgentRunner(world, () => browser, {
     owner: user.id,
-    ...(provider
-      ? {
-          ask: (p, schema) => provider.ask(config.reading(), p, schema),
-          judge: (p, schema) => provider.ask(config.judging(), p, schema),
-        }
-      : {}),
   })
   const drafts = new Drafts(
     world,
@@ -201,7 +190,6 @@ export async function runOne(
   runner.drafts = drafts
   const engine = new Engine(world, {
     prompt,
-    ...(provider ? { provider } : {}),
     connectors,
     hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
   })
@@ -230,9 +218,7 @@ export async function runOne(
     '',
     journey.title,
     '',
-    own
-      ? `Fresh tenant, model ${config.models().desk}, on Alpha's own loop with the API key kept in the Keychain.`
-      : `Fresh tenant, model ${config.models().desk}, on Claude Code, Alpha's prompt ${prompt === 'alone' ? 'alone' : 'appended to Claude Code’s'}.`,
+    `Fresh tenant, model ${config.models().desk}, on Claude Code, Alpha's prompt ${prompt === 'alone' ? 'alone' : 'appended to Claude Code’s'}.`,
     '',
   ]
   // the window's own routes, in this process, for a step the person takes on a page
@@ -564,7 +550,7 @@ export async function runOne(
       )
     report.push('')
   }
-  const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${own ? 'own' : prompt}.md`)
+  const out = join(base, 'docs', 'journeys', `${stamp}-${name}-${prompt}.md`)
   mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
   writeFileSync(out, `${report.join('\n').trim()}\n`)
   await served.app?.close()

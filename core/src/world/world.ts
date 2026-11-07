@@ -298,31 +298,6 @@ export class World {
     run(this.db, 'DELETE FROM desk_sessions WHERE user_id = ?', user)
   }
 
-  // The messages of a desk session on Alpha's own loop: what the model is sent, kept so a
-  // session resumes with them (a route that keeps its own session writes none).
-  messages(user: string): { role: 'user' | 'assistant'; content: unknown }[] {
-    return all<{ role: 'user' | 'assistant'; content: string }>(
-      this.db,
-      'SELECT role, content FROM desk_messages WHERE user_id = ? ORDER BY id',
-      user,
-    ).map((r) => ({ role: r.role, content: JSON.parse(r.content) as unknown }))
-  }
-
-  keepMessage(user: string, role: 'user' | 'assistant', content: unknown): void {
-    run(
-      this.db,
-      'INSERT INTO desk_messages (user_id, role, content, at) VALUES (?, ?, ?, ?)',
-      user,
-      role,
-      JSON.stringify(content),
-      now(),
-    )
-  }
-
-  clearMessages(user: string): void {
-    run(this.db, 'DELETE FROM desk_messages WHERE user_id = ?', user)
-  }
-
   markSeen(user: string, journalId: number): void {
     run(
       this.db,

@@ -7,17 +7,9 @@ import { z } from 'zod'
 
 const DIR = join(import.meta.dirname, '..', 'config')
 
-const Price = z.object({
-  input: z.number().min(0),
-  output: z.number().min(0),
-  cache_read: z.number().min(0),
-  cache_write: z.number().min(0),
-})
-
 const Models = z.object({
   desk: z.string().min(1),
   eyes: z.string().min(1),
-  prices: z.record(z.string(), Price).optional(),
 })
 
 const Limits = z.object({
@@ -32,7 +24,6 @@ const Limits = z.object({
   health_quiet_days: z.number().positive(),
   browser_pace_min_ms: z.number().int().min(0),
   browser_pace_max_ms: z.number().int().min(0),
-  loop_rounds_per_turn: z.number().int().positive(),
   run_retries: z.number().int().min(1),
   connector_busy_wait_seconds: z.number().int().min(0),
   yes_hours: z.number().positive(),

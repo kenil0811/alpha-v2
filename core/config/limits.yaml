@@ -61,10 +61,6 @@ reply_fold_lines: 4
 # An Always stays until it is revoked.
 yes_hours: 6
 
-# Rounds of tool calls Alpha's own loop takes on one message before it stops and says so: a
-# wall against a model that never finishes, never met in ordinary work.
-loop_rounds_per_turn: 60
-
 # The browser reads a site at a person's pace: a random wait in this range between two pages of
 # one site (design §8, the human-pace engine).
 browser_pace_min_ms: 4000

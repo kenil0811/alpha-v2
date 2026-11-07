@@ -1,7 +1,6 @@
 // The desk: each user's one long-lived session, the only session that speaks to them (design §5).
 // It speaks to the model through a provider (decision 11): Claude Code through the Agent SDK on
-// the person's subscription or a key, or Alpha's own loop on another route; the tools are the
-// registry's, and every call goes through the gate adapter before it runs. Longer work runs as
+// the person's subscription or a key; the tools are the registry's, and every call goes through the gate adapter before it runs. Longer work runs as
 // the route's background subagents where it has them; their outcomes come back here and the desk
 // says them in its own words.
 import { createHash } from 'node:crypto'
@@ -32,7 +31,7 @@ export interface DeskOptions {
   // Claude Code when not given
   provider?: Provider | (() => Provider)
   // every provider the person can choose, by route, for Settings › Model
-  providers?: { route: 'subscription' | 'key' | 'api'; title: string; provider: Provider }[]
+  providers?: { route: 'subscription' | 'key'; title: string; provider: Provider }[]
   query?: QueryFn // a scripted session for the Claude Code provider (tests)
   emit?: (e: DeskEvent) => void
   granted?: string[] // folders the person granted, read-only

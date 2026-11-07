@@ -1,17 +1,13 @@
 // What a desk turn spent (core plan step 5): Claude Code says a desk session's running total, by
 // model with its cost, so a turn's own share is that total less the one its session said at the
-// turn before; an API key's own loop says one turn's tokens, priced from models.yaml.
-import { config } from '../config.ts'
+// turn before.
 import { one } from '../world/db.ts'
-import { shareOf, type Use, usesOfModelUsage, usesOfTokens } from '../world/spend.ts'
+import { shareOf, type Use, usesOfModelUsage } from '../world/spend.ts'
 import type { World } from '../world/world.ts'
 
 export function turnSpent(world: World, user: string, data: Record<string, unknown>): Use[] {
   const usage = data.usage
   if (!usage || typeof usage !== 'object') return []
-  const values = Object.values(usage as Record<string, unknown>)
-  // the own loop's: one turn's tokens, summed over its rounds
-  if (values.every((v) => typeof v === 'number')) return usesOfTokens(config.models().desk, usage)
   return shareOf(usesOfModelUsage(usage), before(world, user))
 }
 

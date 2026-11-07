@@ -71,7 +71,13 @@ export const Check = z.union([
       detail: z.string().optional(),
     }),
   }),
-  z.object({ connector_calls: z.object({ words: z.string(), count: z.number() }) }),
+  z.object({
+    connector_calls: z.object({
+      words: z.string(),
+      count: z.number().optional(), // exactly: what must never happen twice, or at all
+      at_least: z.number().optional(), // a read the model may repeat as it looks around
+    }),
+  }),
   // a connection's state, what it says, or who set it up (step 2, part 4)
   z.object({
     connection: z.object({
@@ -435,9 +441,10 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
     const n = world
       .lines({ kinds: ['connector_call'] })
       .filter((l) => l.words === check.connector_calls.words).length
+    const { words, count, at_least } = check.connector_calls
     return {
-      check: `“${check.connector_calls.words}” ${check.connector_calls.count} time(s)`,
-      ok: n === check.connector_calls.count,
+      check: `“${words}” ${at_least !== undefined ? `at least ${at_least}` : count} time(s)`,
+      ok: at_least !== undefined ? n >= at_least : n === count,
       saw: String(n),
     }
   }

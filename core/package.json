@@ -10,8 +10,7 @@
   "scripts": {
     "start": "node src/main.ts",
     "dev": "node --watch src/main.ts",
-    "journey": "node src/journeys/main.ts",
-    "onboarding-trial": "node src/platform/trial.ts"
+    "journey": "node src/journeys/main.ts"
   },
   "dependencies": {
     "@alpha/connector-files": "workspace:*",
@@ -20,7 +19,6 @@
     "@alpha/plugin-sdk": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@anthropic-ai/sandbox-runtime": "catalog:",
-    "@anthropic-ai/sdk": "catalog:",
     "@fastify/static": "catalog:",
     "@fastify/websocket": "catalog:",
     "@fontsource-variable/geist": "catalog:",

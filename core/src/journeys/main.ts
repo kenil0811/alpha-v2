@@ -1,16 +1,14 @@
 // The journeys runner's command (design §16), each journey on a fresh tenant with the real model:
-//   node src/journeys/main.ts <name> [--times [N]] [--appended] [--loop own] [--keep] [--from <folder of journeys>]
+//   node src/journeys/main.ts <name> [--times [N]] [--appended] [--keep] [--from <folder of journeys>]
 //   node src/journeys/main.ts --all [--times [N]] [--from <folder of journeys>]   (pnpm journeys)
 // --times runs each N times, each on a fresh world (N from limits.yaml journey_times when not
 // given), and says how many passed; --all runs every journey in the folder, a few at once
 // (limits.yaml journeys_at_once, Kenil 29 Oct); either writes one summary beside the reports
 // (item 48 of the problems list, 25 Oct), in the journeys' order whatever order they end in.
-// --loop own runs them on Alpha's own loop with the API key kept in the Keychain (step 3, part 1);
-// each says what it cost, and the summary what the round cost.
+// Each says what it cost, and the summary what the round cost.
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { config } from '../config.ts'
-import { keyOnce } from './own.ts'
 import { placesOf, runOne, stampOf } from './run.ts'
 
 async function main(): Promise<void> {
@@ -29,8 +27,6 @@ async function main(): Promise<void> {
         ),
       ]
   if (!names[0]) throw new Error('Name a journey: node src/journeys/run.ts track-what-i-eat')
-  const on = args.includes('--loop') && args[args.indexOf('--loop') + 1] === 'own'
-  const keys = on ? await keyOnce() : undefined
   // every run of every journey, a few at once, each on its own world: the next starts as one ends
   type Run = { passed: boolean; report: string; seconds: number; usd: number | null }
   const runs = new Map<string, Run[]>()
@@ -43,7 +39,7 @@ async function main(): Promise<void> {
       for (let next = waiting.shift(); next; next = waiting.shift()) {
         // one that crashes fails, with its words, and the others run on
         const t0 = Date.now()
-        const r = await runOne(next.name, args, { at: next.at, of: times }, keys).catch((err) => ({
+        const r = await runOne(next.name, args, { at: next.at, of: times }).catch((err) => ({
           passed: false,
           report: `it crashed: ${err instanceof Error ? err.message : String(err)}`,
           seconds: Math.round((Date.now() - t0) / 1000),
@@ -90,7 +86,7 @@ async function main(): Promise<void> {
     mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
     writeFileSync(
       out,
-      `# Journeys, ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC\n\n${names.length} journey${names.length === 1 ? '' : 's'}, each run ${times} time${times === 1 ? '' : 's'} on a fresh world, ${on ? "on Alpha's own loop with the API key" : 'on Claude Code'}. The round cost ${cost}.\n\n${lines.join('\n')}\n`,
+      `# Journeys, ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC\n\n${names.length} journey${names.length === 1 ? '' : 's'}, each run ${times} time${times === 1 ? '' : 's'} on a fresh world, on Claude Code. The round cost ${cost}.\n\n${lines.join('\n')}\n`,
     )
     console.log(`summary: ${out}`)
   }

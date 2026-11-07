@@ -1,13 +1,3 @@
 # The model for every desk turn and run, and the small one for eyes or a yes-or-no (design §5).
 desk: claude-opus-5-5
 eyes: claude-haiku-5-5
-
-# What each model costs on an API key, in dollars per million tokens, from Anthropic's price page
-# (https://platform.claude.com/docs/en/about-claude/pricing, read 28 Oct 2026): input, output, cache
-# read, and cache write for five minutes. On the subscription, Claude Code says each turn's cost
-# itself; these price what an API key's own loop is told only in tokens. Haiku 5.5's are its prices
-# for prompts up to 100,000 tokens.
-prices:
-  claude-opus-5-5: { input: 4, output: 20, cache_read: 0.2, cache_write: 5 }
-  claude-sonnet-5-5: { input: 2, output: 10, cache_read: 0.1, cache_write: 2.5 }
-  claude-haiku-5-5: { input: 0.1, output: 0.5, cache_read: 0.01, cache_write: 0.125 }

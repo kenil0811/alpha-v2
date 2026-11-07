@@ -1,7 +1,6 @@
 // The tool registry (decision 11): every tool the model can call, the world's and each
 // connector's, as one entry: its server, name, description, input shape, and the handler that
-// runs it. The Agent SDK's servers are built from the entries, and Alpha's own loop calls the
-// handlers directly, so a tool is defined once whatever route runs it.
+// runs it. The Agent SDK's servers are built from the entries.
 import { createSdkMcpServer, tool as sdkTool } from '@anthropic-ai/claude-agent-sdk'
 import type { z } from 'zod'
 

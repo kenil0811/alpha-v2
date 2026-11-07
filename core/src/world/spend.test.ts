@@ -1,5 +1,5 @@
 // What each use of the model spent (core plan step 5, Kenil's yes 28 Oct): a desk turn's share of
-// its session's running total, an API key's tokens priced from models.yaml, nothing counted from
+// its session's running total, nothing counted from
 // before it shipped, and Settings' month by module, agent and model.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -9,7 +9,7 @@ import { buildServer } from '../api/server.ts'
 import type { UsageView } from '../api/usage-types.ts'
 import { Engine } from '../engine/engine.ts'
 import { turnSpent } from '../engine/spent.ts'
-import { shareOf, usesOfModelUsage, usesOfTokens } from './spend.ts'
+import { shareOf, usesOfModelUsage } from './spend.ts'
 import { World } from './world.ts'
 
 let home: string
@@ -79,22 +79,6 @@ describe('a desk turn', () => {
     })
     const uses = turnSpent(world, user.id, { cost: 1.26, usage: total(130, 5600, 1.26) })
     expect(uses.reduce((s, u) => s + (u.usd ?? 0), 0)).toBeCloseTo(0.06)
-  })
-
-  it('on an API key, is priced from the table, per million tokens', () => {
-    const [u] = usesOfTokens('claude-opus-5-5', {
-      input_tokens: 1_000_000,
-      output_tokens: 100_000,
-      cache_read_input_tokens: 2_000_000,
-      cache_creation_input_tokens: 0,
-    })
-    // $4 in, $20 out a million, cache reads $0.20 a million
-    expect(u).toMatchObject({ how: 'priced', input: 1_000_000, output: 100_000 })
-    expect(u?.usd).toBeCloseTo(4 + 2 + 0.4)
-    expect(usesOfTokens('a-model-with-no-price', { input_tokens: 10 })[0]).toMatchObject({
-      usd: null,
-      how: 'unpriced',
-    })
   })
 })
 

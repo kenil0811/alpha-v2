@@ -19,7 +19,7 @@ export type Readiness = 'ready' | 'preparing' | 'not yet' | 'failed'
 
 export interface SetupView {
   claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
-  route: 'subscription' | 'key' | 'api'
+  route: 'subscription' | 'key'
   // Each connector that asks for a place on the first open, as it describes itself.
   steps: { connector: string; title: string; sub: string; done: boolean }[]
   chrome: boolean
