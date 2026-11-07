@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { Button, IconButton } from './button.tsx'
 import { cn } from './cn.ts'
 import { Edge, SIDE_MIN } from './edge.tsx'
+import { slideIn } from './slide.ts'
 
 const NARROW = 320 // its usual width; it narrows to SIDE_MIN (Batch D, 79.1)
 
@@ -19,6 +20,7 @@ export function SidePanel({
   head,
   keep,
   onBack,
+  slides = false,
 }: {
   title: string
   onClose: () => void
@@ -29,6 +31,7 @@ export function SidePanel({
   onBack?: (() => void) | undefined // a step back inside the panel (79.8)
   head?: ReactNode // a header of its own, in place of the title and its buttons
   keep?: number // the room it always leaves the rest of the window (the rail and the screen)
+  slides?: boolean // the assistant: it slides in and out from the right, like the rail (slide.ts)
 }) {
   const sizable = onWidth !== undefined
   const [room, setRoom] = useState(() => window.innerWidth)
@@ -50,6 +53,8 @@ export function SidePanel({
 
   return (
     <aside
+      ref={slides ? slideIn('right') : undefined}
+      data-slide={slides ? 'right' : undefined}
       style={sizable ? { width: shown } : undefined}
       className={cn(
         // a firmer edge and a soft shadow, so it reads as lying over the page (Batch E, 66.15)

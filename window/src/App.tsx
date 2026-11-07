@@ -54,6 +54,7 @@ import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { ancestors, inside } from './tree.ts'
 import { setFoldLines } from './ui/fold.tsx'
+import { slide } from './ui/slide.ts'
 
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
@@ -130,6 +131,8 @@ export function App() {
   )
   const askableRef = useRef(askable)
   askableRef.current = askable
+  const askingRef = useRef(asking)
+  askingRef.current = asking
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // ⌘J, and ⌘⇧\ beside the rail's ⌘\ (Batch D, 79.4), fold the assistant or open it
@@ -137,10 +140,10 @@ export function App() {
       if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'j' || shiftSlash)) {
         if (!askableRef.current) return
         e.preventDefault()
-        setAsking((a) => !a)
+        slide('right', askingRef.current, () => setAsking((a) => !a))
       }
     }
-    const onAsk = () => setAsking(true)
+    const onAsk = () => slide('right', false, () => setAsking(true))
     window.addEventListener('keydown', onKey)
     window.addEventListener('alpha:ask', onAsk)
     return () => {
@@ -170,11 +173,11 @@ export function App() {
         askableRef.current
       ) {
         if (panelRef.current) changeLayout({ panel: null })
-        else setAsking(false)
+        else slide('right', true, () => setAsking(false))
       }
       if ((e.metaKey || e.ctrlKey) && e.key === '\\' && !e.shiftKey) {
         e.preventDefault()
-        changeLayout({ railFolded: !foldedRef.current })
+        slide('left', !foldedRef.current, () => changeLayout({ railFolded: !foldedRef.current }))
       }
     }
     window.addEventListener('keydown', onKey)

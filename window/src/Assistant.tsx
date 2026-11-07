@@ -9,6 +9,7 @@ import { MarkButton } from './Mark.tsx'
 import { IconButton } from './ui/button.tsx'
 import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
+import { slide, slideIn } from './ui/slide.ts'
 
 function BellLink({ running, labelled = false }: { running: number; labelled?: boolean }) {
   return (
@@ -54,11 +55,14 @@ export function Assistant({
   children: ReactNode
 }) {
   const [opening, setOpening] = useState<number | null>(null)
+  // a click slides it, like the rail; a drag of its edge folds or opens it under the pointer
+  const turn = (f: boolean) => slide('right', f, () => onFold(f))
   if (folded)
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: the face is the keyboard's way in
       <aside
-        onClick={() => onFold(false)}
+        ref={slideIn('right')}
+        onClick={() => turn(false)}
         className="relative flex w-20 shrink-0 cursor-pointer flex-col items-center gap-1 border-line border-l bg-surface px-1"
       >
         {/* dragged out from its edge, it opens as wide as it was let go (Batch D, 79.2) */}
@@ -82,7 +86,7 @@ export function Assistant({
             data-tip="Open the assistant (⌘J)"
             onClick={(e) => {
               e.stopPropagation()
-              onFold(false)
+              turn(false)
             }}
             className="size-8 rounded-full"
           >
@@ -96,7 +100,7 @@ export function Assistant({
           data-tip="Open the assistant (⌘J)"
           onClick={(e) => {
             e.stopPropagation()
-            onFold(false)
+            turn(false)
           }}
           className={stripItem()}
         >
@@ -116,9 +120,10 @@ export function Assistant({
       // always open beside every screen, so it leaves the rail and at least 600px of screen
       // (a width kept from the old Ask panel squeezed every screen to 200px; 26 Oct)
       keep={216 + 600}
+      slides
       head={
         <div className="flex h-12 shrink-0 items-center gap-0.5 border-hair border-b px-2">
-          <IconButton label="Fold the assistant (⌘J)" onClick={() => onFold(true)}>
+          <IconButton label="Fold the assistant (⌘J)" onClick={() => turn(true)}>
             <PanelRightClose className="size-4" />
           </IconButton>
           <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
