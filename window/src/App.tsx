@@ -45,7 +45,7 @@ import { screenOf } from './plugin/screens.ts'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { besideWidth, roomBeside, useWindowWidth } from './room.ts'
 import { alphaOf, Settings } from './Settings.tsx'
-import { Bar, BarMiddle, type Crumb, network, Rail } from './Shell.tsx'
+import { Bar, BarMiddle, BarSides, type Crumb, network, Rail } from './Shell.tsx'
 import { moduleSignals } from './signals.ts'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
@@ -107,6 +107,9 @@ export function App() {
   }, [alpha, place])
   // where a screen puts its switch, in the middle of the bar
   const [middle, setMiddle] = useState<HTMLElement | null>(null)
+  // and Home's sides of it (its day at the left, what is next at the right)
+  const [left, setLeft] = useState<HTMLElement | null>(null)
+  const [right, setRight] = useState<HTMLElement | null>(null)
   const placed: Module =
     place.at === 'module'
       ? (modules.find((m) => m.id === place.id) ?? null)
@@ -397,6 +400,7 @@ export function App() {
             lens={place.at === 'conversation' ? lens : null}
             onClearLens={() => setLens(null)}
             middle={setMiddle}
+            sides={{ left: setLeft, right: setRight }}
           />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
@@ -407,12 +411,14 @@ export function App() {
             <div className="flex min-h-0 flex-1">
               <div className="min-w-0 flex-1">
                 {place.at === 'home' ? (
-                  <Home
-                    stream={stream}
-                    modules={modules}
-                    name={name}
-                    onAsked={() => setAsking(true)}
-                  />
+                  <BarSides value={{ left, right }}>
+                    <Home
+                      stream={stream}
+                      modules={modules}
+                      name={name}
+                      onAsked={() => setAsking(true)}
+                    />
+                  </BarSides>
                 ) : place.at === 'conversation' ? (
                   <Conversation
                     stream={stream}
