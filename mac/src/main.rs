@@ -18,7 +18,6 @@ use tauri::{
 };
 use tauri_plugin_opener::OpenerExt;
 
-mod companion;
 mod install;
 mod notify;
 
@@ -139,14 +138,7 @@ impl Core {
 struct Mark {
     tray: TrayIcon,
     needs: MenuItem<tauri::Wry>,
-    companion: MenuItem<tauri::Wry>,
     shown: Mutex<Option<usize>>,
-}
-
-/// The companion's page: Alpha's window at a place, and the companion's size and drawn places.
-#[tauri::command]
-fn show_main(app: AppHandle, core: tauri::State<'_, Core>, hash: String) {
-    show(&app, &core, Some(&hash));
 }
 
 /// The Install window's commands: what this install is, run it, and Not now.
@@ -171,17 +163,6 @@ fn start_core(core: tauri::State<'_, Core>) -> bool {
     core.start()
 }
 
-#[tauri::command]
-fn companion_layout(app: AppHandle, width: f64, height: f64) {
-    companion::layout(&app, width, height);
-}
-
-#[tauri::command]
-fn companion_hot(hot: tauri::State<'_, companion::Hot>, areas: Vec<[f64; 4]>, open: bool) {
-    *hot.0.lock().unwrap() = areas;
-    *hot.1.lock().unwrap() = open;
-}
-
 fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window("main")
 }
@@ -201,7 +182,7 @@ fn show(app: &AppHandle, core: &Core, hash: Option<&str>) {
     }
 }
 
-/// Started at login (`--quietly`), Alpha opens no window: the companion and the mark are there.
+/// Started at login (`--quietly`), Alpha opens no window: the mark is there.
 fn quietly() -> bool {
     std::env::args().any(|a| a == "--quietly")
 }
@@ -301,11 +282,6 @@ fn watch(app: AppHandle, core: Core) {
                 cursor = Some(last);
             }
         }
-        if answering && companion::window(&app).is_none() && !companion::hidden(&app) {
-            if let Some(url) = core.url("#/companion") {
-                let _ = companion::build(&app, url);
-            }
-        }
         if answering {
             if let Some(window) = main_window(&app) {
                 let on_core = window.url().map(|u| core.ours(&u)).unwrap_or(false);
@@ -341,16 +317,13 @@ fn watch(app: AppHandle, core: Core) {
 fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
     let open = MenuItem::with_id(app, "open", "Open Alpha", true, None::<&str>)?;
     let needs = MenuItem::with_id(app, "needs", "Nothing needs you", false, None::<&str>)?;
-    let companion_words = |hidden: bool| if hidden { "Show the companion" } else { "Hide the companion" };
-    let companion =
-        MenuItem::with_id(app, "companion", companion_words(companion::hidden(app)), true, None::<&str>)?;
     let activity = MenuItem::with_id(app, "activity", "Activity", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Alpha", true, None::<&str>)?;
     let line = || PredefinedMenuItem::separator(app);
     let menu = Menu::with_items(
         app,
-        &[&open, &needs, &line()?, &companion, &activity, &settings, &line()?, &quit],
+        &[&open, &needs, &line()?, &activity, &settings, &line()?, &quit],
     )?;
     let core = core.clone();
     let tray = TrayIconBuilder::with_id("alpha")
@@ -364,18 +337,11 @@ fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
             "needs" => show(app, &core, Some("#/")),
             "activity" => show(app, &core, Some("#/activity")),
             "settings" => show(app, &core, Some("#/settings")),
-            "companion" => {
-                let shown = companion::hidden(app);
-                companion::set_shown(app, shown);
-                if let Some(mark) = app.try_state::<Mark>() {
-                    let _ = mark.companion.set_text(companion_words(!shown));
-                }
-            }
             "quit" => app.exit(0),
             _ => {}
         })
         .build(app)?;
-    Ok(Mark { tray, needs, companion, shown: Mutex::new(None) })
+    Ok(Mark { tray, needs, shown: Mutex::new(None) })
 }
 
 fn main() {
@@ -384,28 +350,9 @@ fn main() {
     let reopen = core.clone();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(
-            tauri_plugin_window_state::Builder::default()
-                .with_denylist(&[companion::LABEL])
-                .build(),
-        )
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_shortcuts(["ctrl+alt+KeyA"])
-                .expect("the companion's key")
-                .with_handler(|app, _, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        companion::ask(app);
-                    }
-                })
-                .build(),
-        )
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(core.clone())
-        .manage(companion::Hot::default())
         .invoke_handler(tauri::generate_handler![
-            show_main,
-            companion_layout,
-            companion_hot,
             install_plan,
             install,
             install_quit,
@@ -424,16 +371,10 @@ fn main() {
             notify::start(move |place| show(&clicked, &at, Some(&place)));
             let mark = menu_bar_mark(&handle, &started)?;
             app.manage(mark);
-            companion::pass_clicks_through(handle.clone());
             watch(handle, started.clone());
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let WindowEvent::Moved(_) = event {
-                if window.label() == companion::LABEL {
-                    companion::remember(window.app_handle());
-                }
-            }
             // closing the window hides it: Alpha keeps running in the menu bar
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
