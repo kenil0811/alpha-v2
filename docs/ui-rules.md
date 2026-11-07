@@ -76,7 +76,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | R1 | A section is its serif title and ⓘ over what it holds, never a card; nothing sits in a card inside a card | 26 Oct | — |
-| R2 | One record layout: the way back in the bar, a centred column, a line naming the record, its serif title, its sections; a row's page too | 25 Oct, 27 Oct | — |
+| R2 | One record layout: the way back in the bar, a centred column, a line naming the record, its serif title, its sections; a row's page puts its whole path in the bar instead (module › table, small and linked, then the row, larger) with no line of its own, and its module's pill switch in a row under the bar, its table chosen; beside the page, with no bar, the line stays | 25 Oct, 27 Oct, 4 Nov | — |
 | R3 | Delete is never one click: behind ⋮, or a short list's ✕ (R8), always confirmed in our own pop-up, saying what goes, the parts that go with it, and how long Bring back returns them, in the core's words | 26 Oct, 27 Oct, 1 Nov | — |
 | R4 | Never the browser's `confirm`, `alert` or `prompt` | 25 Oct | test |
 | R5 | A refusal shows in a line beside the control that was pressed | 25 Oct | — |

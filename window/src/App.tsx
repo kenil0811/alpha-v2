@@ -432,7 +432,13 @@ export function App() {
                 ) : place.at === 'activity' ? (
                   <Activity version={version} />
                 ) : place.at === 'row' ? (
-                  <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
+                  <RowPage
+                    key={place.id}
+                    id={place.id}
+                    version={version}
+                    modules={modules}
+                    onPlace={setRowPlace}
+                  />
                 ) : place.at === 'card' ? (
                   <CardPage key={place.id} id={place.id} version={version} />
                 ) : place.at === 'item' ? (

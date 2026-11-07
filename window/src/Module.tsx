@@ -86,22 +86,7 @@ export function ModuleScreen({
   }, [firstTable, m?.people])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
-  const tabs: Tab[] = m
-    ? [
-        ...(m.people ? peopleTabs(null) : []),
-        ...(holds
-          ? [
-              {
-                key: 'overview',
-                href: `#/module/${moduleId}/overview`,
-                label: 'Overview',
-                sel: current.kind === 'overview',
-              },
-            ]
-          : []),
-        ...moduleTabs(m, current),
-      ]
-    : []
+  const tabs: Tab[] = m ? screenTabs(m, holds, current) : []
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -128,6 +113,27 @@ export function ModuleScreen({
     </div>
   )
 }
+
+// A module's screen's tabs, People and Organizations, the Overview of the modules inside, then its
+// own; a row's page shows them too, its table chosen (Vikas, 2–3 Nov).
+export const screenTabs = (
+  m: Pick<ModuleView, 'id' | 'people' | 'pages' | 'tables'>,
+  holds: boolean,
+  current: ModuleTab | null,
+): Tab[] => [
+  ...(m.people ? peopleTabs(null) : []),
+  ...(holds
+    ? [
+        {
+          key: 'overview',
+          href: `#/module/${m.id}/overview`,
+          label: 'Overview',
+          sel: current?.kind === 'overview',
+        },
+      ]
+    : []),
+  ...moduleTabs(m, current),
+]
 
 // A module's own tabs after People and the Overview: its pages, its main tables with their counts
 // (a table that is part of a row, or setup, is not a tab: core step 3a), then the parts and setup
