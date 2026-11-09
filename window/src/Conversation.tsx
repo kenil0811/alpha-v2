@@ -3,7 +3,7 @@
 // turn becoming the outcome; cards inline; the composer at the foot. One conversation per person
 // and agent (clean base step 7), the Chief of staff first. What happened otherwise is on Activity.
 import type { AgentView, CardView, LiveEvent, Stream } from '@alpha/core/api'
-import { Bot, Check, ChevronRight } from 'lucide-react'
+import { Bot, Check, ChevronRight, FileText, Search, SquareTerminal, Wrench } from 'lucide-react'
 import { type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { takeAsk } from './ask.ts'
@@ -21,6 +21,7 @@ import {
 } from './stream.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { CopyButton } from './ui/copy.tsx'
 import { dropped } from './ui/drop-zone.tsx'
 import { Words } from './ui/words.tsx'
 
@@ -90,7 +91,7 @@ export function Conversation({
   }, [said])
   useEffect(() => {
     if (pinned.current) end.current?.scrollIntoView({ block: 'end' })
-  }, [items, live])
+  }, [items, live, busyTurn])
 
   const drop = async (e: DragEvent) => {
     e.preventDefault()
@@ -157,7 +158,6 @@ export function Conversation({
                     waiting={stream?.waiting ?? []}
                     onChangeCard={changeCard}
                     name={agent?.name ?? 'Chief of staff'}
-                    agentId={agent?.id ?? 'chief'}
                   />
                 </div>
               )
@@ -197,9 +197,9 @@ export function Conversation({
             area={composer}
             onProblem={setProblem}
             from={from}
-            compact={compact}
             agent={agent}
             agents={agents}
+            running={busyTurn !== null}
           />
         </div>
       </div>
@@ -216,13 +216,7 @@ const keyOf = (i: Item) =>
   i.kind === 'alpha' ? `a${i.turn}` : i.kind === 'card' ? `c${i.id}` : `${i.kind}${i.id}`
 
 function DayLine({ day }: { day: string }) {
-  return (
-    <div className="flex items-center gap-3 font-semibold text-ink-3 text-sm">
-      <span className="h-px flex-1 bg-hair" />
-      {day}
-      <span className="h-px flex-1 bg-hair" />
-    </div>
-  )
+  return <div className="text-center text-ink-3 text-sm">{day}</div>
 }
 
 // Alpha's name over a card a run opened: its mark, the module and when.
@@ -270,7 +264,6 @@ function Entry({
   cards,
   waiting,
   name,
-  agentId,
   onChangeCard,
 }: {
   item: Item
@@ -279,12 +272,11 @@ function Entry({
   cards: Map<string, CardView>
   waiting: Stream['waiting']
   name: string
-  agentId: string
   onChangeCard: (c: CardView) => void
 }) {
   if (item.kind === 'said')
     return (
-      <div className="max-w-3/4 self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-sunk px-3.5 py-2.25 text-ink">
+      <div className="max-w-[85%] self-end whitespace-pre-wrap rounded-xl bg-sunk px-3.5 py-2 text-ink">
         {item.words}
       </div>
     )
@@ -327,7 +319,7 @@ function Entry({
   )
     return null
   return (
-    <div className="flex flex-col gap-2.25">
+    <div className="group/turn flex flex-col gap-3">
       {item.asks.map((a) => (
         <AskLine key={a.id} ask={a} waiting={waiting.find((w) => w.id === a.id)} />
       ))}
@@ -363,7 +355,13 @@ function Entry({
           </div>
         )
       })}
-      {working && <Working agentId={agentId} />}
+      {working && <Working />}
+      {!working && parts.some((p) => p.kind === 'text') && (
+        <CopyButton
+          text={() => parts.flatMap((p) => (p.kind === 'text' ? [p.text] : [])).join('\n\n')}
+          className="-my-2 self-start opacity-0 transition-opacity group-hover/turn:opacity-100"
+        />
+      )}
     </div>
   )
 }
@@ -490,50 +488,65 @@ function partsOf(live: Live[string]['parts']): Part[] {
   return out
 }
 
-// The steps between two pieces of text: listed while they run, then one grey line that opens.
+const stepIcon = (words: string) =>
+  /^Searched/.test(words)
+    ? Search
+    : /^Read/.test(words)
+      ? FileText
+      : /^Ran/.test(words)
+        ? SquareTerminal
+        : /^(Asked|Started)/.test(words)
+          ? Bot
+          : Wrench
+
+function StepRow({ step }: { step: Step }) {
+  const Icon = stepIcon(step.words)
+  return (
+    <li className="flex min-w-0 flex-col">
+      <span className={cn('flex min-w-0 items-center gap-2', step.ok === false && 'text-bad')}>
+        <Icon className="size-3.5 shrink-0" />
+        <span className="truncate">
+          {step.ok === false ? 'Did not work: ' : ''}
+          {step.words}
+        </span>
+      </span>
+      {step.results.map((r) => (
+        <span key={r} className="truncate pl-5.5 text-ink-3">
+          {r}
+        </span>
+      ))}
+    </li>
+  )
+}
+
+// The steps between two pieces of text: listed while they run; once done one shows as itself and
+// several as one line that opens.
 function Steps({ steps, active }: { steps: Step[]; active: boolean }) {
   const list = (
     <ol className="flex flex-col gap-1">
       {steps.map((s) => (
-        <li key={s.id} className="flex min-w-0 flex-col">
-          <span className={cn('truncate', s.ok === false && 'text-bad')}>
-            {s.ok === false ? 'Did not work: ' : ''}
-            {s.words}
-          </span>
-          {s.results.map((r) => (
-            <span key={r} className="truncate text-ink-3">
-              {r}
-            </span>
-          ))}
-        </li>
+        <StepRow key={s.id} step={s} />
       ))}
     </ol>
   )
-  if (active) return <div className="text-ink-3 text-sm">{list}</div>
+  if (active || steps.length === 1) return <div className="text-ink-3 text-sm">{list}</div>
   return (
     <details className="group text-ink-3 text-sm">
       <summary className="inline-flex cursor-pointer select-none list-none items-center gap-1 rounded-sm py-0.5 pr-1.5 pl-0.5 hover:bg-hover hover:text-ink">
         <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
-        <span>
-          Ran {steps.length} step{steps.length === 1 ? '' : 's'}
-        </span>
+        <span>Ran {steps.length} steps</span>
       </summary>
       <div className="mt-1.5 ml-2 border-line border-l pl-3">{list}</div>
     </details>
   )
 }
 
-// Under a turn while it runs: that it is working, and Stop.
-function Working({ agentId }: { agentId: string }) {
+// Under a turn while it runs.
+function Working() {
   return (
     <div className="flex items-center gap-2 text-ink-3 text-sm">
       <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
       <span>Working on it…</span>
-      <span className="ml-auto shrink-0">
-        <Button size="sm" variant="ghost" onClick={() => api.post('/api/stop', { agent: agentId })}>
-          Stop
-        </Button>
-      </span>
     </div>
   )
 }

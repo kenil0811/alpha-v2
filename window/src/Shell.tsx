@@ -646,7 +646,15 @@ export { BarMiddle, InBar }
 
 // The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
 // on the left when one is on. Find is ⌘K, from anywhere.
-export function Bar({ name, middle }: { name: string; middle: (at: HTMLElement | null) => void }) {
+export function Bar({
+  name,
+  middle,
+  plain,
+}: {
+  name: string
+  middle: (at: HTMLElement | null) => void
+  plain?: boolean // the conversation's: a small sans title, as Claude Code's
+}) {
   return (
     <div
       data-tauri-drag-region
@@ -655,9 +663,15 @@ export function Bar({ name, middle }: { name: string; middle: (at: HTMLElement |
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region></div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">
-          {name}
-        </h1>
+        {plain ? (
+          <h1 className="hidden min-w-0 truncate font-medium font-sans text-ink text-md peer-empty:block">
+            {name}
+          </h1>
+        ) : (
+          <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">
+            {name}
+          </h1>
+        )}
       </div>
       <div data-tauri-drag-region />
     </div>

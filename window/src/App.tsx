@@ -249,7 +249,7 @@ export function App() {
         if (place.id) return personName || '…'
         return place.kind === 'company' ? 'Organizations' : 'People'
       case 'conversation':
-        return 'Conversation'
+        return agents.find((a) => a.id === chosen)?.name ?? 'Chief of staff'
       case 'settings':
         return 'Settings'
       case 'intelligence':
@@ -298,7 +298,7 @@ export function App() {
           online={!problem}
         />
         <main className="flex min-w-0 flex-1 flex-col">
-          <Bar name={screenName()} middle={setMiddle} />
+          <Bar name={screenName()} middle={setMiddle} plain={place.at === 'conversation'} />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
               {problem}

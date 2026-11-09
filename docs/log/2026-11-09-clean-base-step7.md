@@ -32,6 +32,7 @@ during a conversation.
   takes effect on the next turn, in the same conversation.
 - A turn stays as it streamed: every piece of text the model wrote, in order with its steps (`along` in
   the journal), and no folding. The chat only follows to the bottom when you are at the bottom.
+- The chat restyled after Claude Code on his word: a plain bubble, steps as rows with icons, Stop inside Send, code blocks and Copy on hover, bordered tables, a small title.
 - A reply is straight on the page, as in Claude Code: no box, tables in the column, steps on one line.
 - The conversation has the agents down its left, and the assistant has a picker. @ picks teammates, the
   lens goes, Intelligence opens on Agents, and Usage has By agent.

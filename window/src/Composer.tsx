@@ -1,7 +1,7 @@
 // The message box at the foot of a conversation (split from Conversation.tsx for its wall): files
 // and a folder on its +, and @ to pick teammates, whose ids travel with the message.
 import type { AgentView } from '@alpha/core/api'
-import { ArrowUp, Bot, FolderUp, ImageUp, Plus } from 'lucide-react'
+import { ArrowUp, Bot, FolderUp, ImageUp, Plus, Square } from 'lucide-react'
 import { type KeyboardEvent, type RefObject, useRef, useState } from 'react'
 import { ModelPicker } from './Agents.tsx'
 import { api, Problem } from './api.ts'
@@ -22,18 +22,18 @@ export function Composer({
   area,
   onProblem,
   from,
-  compact,
   agent,
   agents,
+  running,
 }: {
   words: string
   setWords: (w: string) => void
   area: RefObject<HTMLTextAreaElement | null>
   onProblem: (p: string) => void
   from: Module
-  compact: boolean
   agent: AgentView | null
   agents: AgentView[]
+  running: boolean // the agent is working: an empty box's button is Stop
 }) {
   const file = useRef<HTMLInputElement>(null)
   const folder = useRef<HTMLInputElement>(null)
@@ -115,7 +115,7 @@ export function Composer({
     }
   }
   return (
-    <div className="relative flex flex-col gap-1 rounded-3xl border border-line bg-surface py-2.5 pr-2.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
+    <div className="relative flex flex-col gap-1 rounded-2xl border border-line bg-surface py-2.5 pr-2.5 pl-3.5 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
       {shown.length > 0 && (
         <div
           role="listbox"
@@ -204,20 +204,30 @@ export function Composer({
             e.target.value = ''
           }}
         />
+        <span className="ml-auto" />
         {agent && <ModelPicker agent={agent} />}
-        <span className="ml-auto text-ink-3 text-xs">
-          {compact ? '' : 'Return to send · Shift-Return for a new line'}
-        </span>
-        <button
-          type="button"
-          aria-label="Send"
-          data-tip="Send"
-          onClick={send}
-          disabled={!words.trim()}
-          className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity disabled:opacity-35"
-        >
-          <ArrowUp className="size-4" />
-        </button>
+        {running && !words.trim() ? (
+          <button
+            type="button"
+            aria-label="Stop"
+            data-tip="Stop"
+            onClick={() => void api.post('/api/stop', { agent: agent?.id ?? 'chief' })}
+            className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-accent-ink"
+          >
+            <Square className="size-3 fill-current" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Send"
+            data-tip="Send"
+            onClick={send}
+            disabled={!words.trim()}
+            className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-accent-ink transition-opacity disabled:opacity-35"
+          >
+            <ArrowUp className="size-4" />
+          </button>
+        )}
       </div>
     </div>
   )
