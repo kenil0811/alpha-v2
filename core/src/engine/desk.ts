@@ -5,14 +5,15 @@
 // says them in its own words.
 import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { config } from '../config.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { instructionsOf } from '../modules/agents.ts'
+import type { AgentAsk } from '../world/agents/asks.ts'
 import { CHIEF } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
 import type { Actor } from '../world/journal.ts'
 import type { User, World } from '../world/world.ts'
+import { answersText, askText } from './ask-words.ts'
 import { ClaudeCodeProvider, type QueryFn } from './claudecode.ts'
 import {
   handover,
@@ -23,14 +24,18 @@ import {
   teamOf,
   turnLayer,
 } from './context.ts'
+import { fileWall } from './filewall.ts'
 import { Gatekeeper } from './gate.ts'
 import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
 import { Registry } from './registry.ts'
 import type { ModelRoute } from './route.ts'
 import { costOf, turnSpent } from './spent.ts'
+import { ASK_MORE } from './tools/agents.ts'
+import type { AgentBus } from './tools/common.ts'
 import { type Hands, type Here, TOOL_NAMES, worldTools } from './tools/index.ts'
 
 export type { QueryFn } from './claudecode.ts'
+export { fileWall } from './filewall.ts'
 
 export type DeskEvent =
   | { type: 'lines' }
@@ -51,6 +56,7 @@ export interface DeskOptions {
   hands?: Hands
   route?: ModelRoute // how this install reaches Claude: the person's subscription or a key
   agent?: string // whose desk this is; the Chief of staff's when none
+  bus?: AgentBus & { settled(user: User, ask: AgentAsk, spent: number | null): void }
   // blocks plugins add to the start of a conversation (onboarding 4a); none when there are none
   starts?: () => string[]
   // Alpha's words alone (measured 24 Oct: six journeys, three runs each way; alone passed 17 of
@@ -66,6 +72,10 @@ interface Turn {
   said: { message: number; user: string } | null
   message: string | null // the person's own words, when the turn is on their message
   from?: { id: string; name: string } | null // the module they asked from
+  ask?: string | null // the teammate's ask this turn answers
+  root?: string | null // the person's request a chain of asks serves
+  low?: boolean // a teammate's; a person's own message goes ahead of it
+  named?: string[] // the teammates the person picked with @
 }
 
 // A kept session is resumed only with the same tools (v1 crashed resuming one made on others).
@@ -94,6 +104,7 @@ export class Desk {
   private hands: Hands | undefined
   private starts: () => string[]
   private agentId: string
+  private bus: DeskOptions['bus']
   private openedWith = ''
   private handingOver = false
   private knownMemories = new Set<string>()
@@ -114,7 +125,9 @@ export class Desk {
       fromSubagent: false,
       touched: new Set(),
       afterTurn: [],
+      bus: options.bus,
     }
+    this.bus = options.bus
     const given = options.provider
     const own = given
       ? null
@@ -171,6 +184,21 @@ export class Desk {
     ].filter(Boolean)
   }
 
+  // The teammates the person picked with @ on this message.
+  private pickedLine(): string[] {
+    const named = this.here.current.named ?? []
+    return named.length
+      ? [
+          `They picked these teammates with @: ${named
+            .map((id) =>
+              id === CHIEF ? 'the Chief of staff' : (this.world.agents.get(id)?.name ?? ''),
+            )
+            .filter(Boolean)
+            .join(', ')}. Ask them.`,
+        ]
+      : []
+  }
+
   // What changed in its memory or team since the session began, said once on the next turn.
   private news(): string[] {
     const out: string[] = []
@@ -213,9 +241,18 @@ export class Desk {
     return this.running !== null
   }
 
+  // Running, or with something queued to run.
+  get working(): boolean {
+    return this.running !== null || this.queue.length > 0
+  }
+
   // The person's sentence: journaled at once, answered in order. Asked from a module (Ask, ⌘J),
   // the line carries the module and the turn's context says so.
-  say(words: string, from: { id: string; name: string } | null = null): string {
+  say(
+    words: string,
+    from: { id: string; name: string } | null = null,
+    named: string[] = [],
+  ): string {
     const line = this.world.line({
       actor: { kind: 'person', id: this.user.id },
       kind: 'said',
@@ -225,12 +262,15 @@ export class Desk {
       agent: this.named,
     })
     const turn = String(line.id)
-    this.queue.push({
+    // a person's own message goes ahead of what teammates sent
+    const at = this.queue.findIndex((t) => t.low)
+    this.queue.splice(at < 0 ? this.queue.length : at, 0, {
       turn,
       text: words,
       said: { message: line.id, user: this.user.id },
       message: words,
       from,
+      named,
     })
     this.emit({ type: 'lines' })
     this.pump()
@@ -257,9 +297,79 @@ export class Desk {
       card: card.id,
       agent: this.named,
     })
-    this.queue.push({ turn: `n${line.id}`, text: words, said: null, message: null })
+    const more =
+      card.call?.tool === ASK_MORE
+        ? (card.call.input as { root: string; ask: string | null })
+        : null
+    this.queue.push({
+      turn: `n${line.id}`,
+      text: words,
+      said: null,
+      message: null,
+      ...(more ? { root: more.root, ask: more.ask } : {}),
+    })
     this.emit({ type: 'lines' })
     this.pump()
+  }
+
+  // A teammate's request: its own turn here, once what is ahead of it is done.
+  takeAsk(ask: AgentAsk, fromName: string): void {
+    this.world.line({
+      actor: ask.from === CHIEF ? { kind: 'alpha' } : { kind: 'alpha', id: ask.from },
+      kind: 'asked',
+      words: `${fromName} asks: ${ask.brief.objective}`,
+      data: { ask: ask.id, from: ask.from, name: fromName, brief: ask.brief },
+      user: this.user.id,
+      agent: this.named,
+    })
+    const text = askText(ask, fromName)
+    this.queue.push({
+      turn: `a${ask.id}`,
+      text,
+      said: null,
+      message: null,
+      ask: ask.id,
+      root: ask.root,
+      low: true,
+    })
+    this.emit({ type: 'lines' })
+    this.pump()
+  }
+
+  // Everything this desk asked in one turn has come back: one turn reads it all.
+  takeAnswers(asks: AgentAsk[], names: (id: string) => string): void {
+    const first = asks[0]
+    if (!first) return
+    const line = this.world.line({
+      actor: { kind: 'system' },
+      kind: 'noticed',
+      words: 'The answers came back.',
+      user: this.user.id,
+      agent: this.named,
+    })
+    const text = answersText(asks, names)
+    this.queue.push({
+      turn: `n${line.id}`,
+      text,
+      said: null,
+      message: null,
+      ask: first.parent,
+      root: first.root,
+      low: true,
+    })
+    this.emit({ type: 'lines' })
+    this.pump()
+  }
+
+  // A teammate's ask no longer wanted: dropped if it has not started, else stopped.
+  stopAsk(id: string): void {
+    this.queue = this.queue.filter((t) => t.ask !== id)
+    if (this.running?.ask === id) void this.stop()
+  }
+
+  // The person's request the running turn serves.
+  get runningRoot(): string | null {
+    return this.running ? (this.running.root ?? this.running.turn) : null
   }
 
   async stop(): Promise<void> {
@@ -287,8 +397,12 @@ export class Desk {
       message: next.message,
       from: next.from ?? null,
       agent: this.named,
+      ask: next.ask ?? null,
+      root: next.root ?? next.turn,
+      named: next.named ?? [],
     }
     this.here.afterTurn = []
+    if (next.ask) this.world.asks.start(next.ask)
     this.emit({ type: 'busy', turn: next.turn })
     this.session?.send(next.text)
   }
@@ -344,7 +458,7 @@ export class Desk {
             this.world.desk(this.user.id, this.agentId)?.seenJournalId ?? 0,
             this.here.current.message,
             this.here.current.from ?? null,
-            this.news(),
+            [...this.pickedLine(), ...this.news()],
           ),
         takeFresh: () => {
           const was = this.fresh
@@ -480,12 +594,38 @@ export class Desk {
       if (e.ok && !stopped) for (const keep of this.here.afterTurn) keep()
       this.here.afterTurn = []
       this.world.markSeen(this.user.id, this.world.lastLineId(), this.agentId)
+      this.settleAsk(running, e, stopped, costOf(spent))
       this.running = null
       this.stopping = false
       this.emit({ type: 'lines' })
       this.emit({ type: 'idle' })
       this.pump()
     }
+  }
+
+  // A teammate's ask this turn served: answered with the answer tool, or by its last words; left
+  // open while the answers to what this turn asked in its turn are still to come.
+  private settleAsk(
+    running: Turn,
+    e: { ok: boolean; text: string },
+    stopped: boolean,
+    spent: number | null,
+  ): void {
+    if (!running.ask) return
+    const asks = this.world.asks
+    const row = asks.get(running.ask)
+    if (!row) return
+    const waiting = asks
+      .ofTurn(running.turn)
+      .some((x) => x.state === 'queued' || x.state === 'running')
+    if (row.state === 'running' && !waiting)
+      asks.settle(
+        row.id,
+        stopped ? 'stopped' : e.ok ? 'answered' : 'failed',
+        stopped ? null : { status: e.ok ? 'done' : 'failed', result: e.text || 'Nothing to say.' },
+      )
+    const now = asks.get(row.id) as AgentAsk
+    if (now.state !== 'running') this.bus?.settled(this.user, now, spent)
   }
 
   private startOwnTurn(words: string): void {
@@ -501,50 +641,4 @@ export class Desk {
     this.emit({ type: 'busy', turn })
     this.emit({ type: 'lines' })
   }
-}
-
-function inside(path: string, base: string, roots: string[]): boolean {
-  let full = resolve(base, path)
-  try {
-    full = realpathSync(full)
-  } catch {
-    try {
-      full = resolve(realpathSync(resolve(full, '..')), full.split('/').pop() as string)
-    } catch {
-      // a path whose folder is not there either: judged as written
-    }
-  }
-  return roots.some((r) => full === r || full.startsWith(`${r}/`))
-}
-
-// The walls on the route's file tools: reads in the desk's folder, the modules and the granted
-// folders; writes in the first two only; and a module's module.yaml never by hand, since its
-// sites and shape change through the shape tool and the person's cards (item 12 of the problems
-// list, 25 Oct).
-export function fileWall(
-  tool: string,
-  input: Record<string, unknown>,
-  deskDir: string,
-  modules: string,
-  granted: string[],
-): Decision {
-  const path = String(input.file_path ?? input.path ?? input.notebook_path ?? '')
-  if (tool === 'Read') {
-    if (inside(path, deskDir, [deskDir, modules, ...granted])) return { allow: true }
-    return { allow: false, reason: `${path} is not in a folder the person granted.` }
-  }
-  if (tool === 'Write' || tool === 'Edit' || tool === 'NotebookEdit') {
-    if (/(^|\/)module\.yaml$/.test(path) && inside(path, deskDir, [modules]))
-      return {
-        allow: false,
-        reason:
-          'module.yaml is written by Alpha from the shape tool and the person’s cards, never by hand.',
-      }
-    if (inside(path, deskDir, [deskDir, modules])) return { allow: true }
-    return {
-      allow: false,
-      reason: `Alpha writes files only in ${deskDir} and the module folders under ${modules}.`,
-    }
-  }
-  return { allow: false, reason: `${tool} is not one of Alpha's tools.` }
 }

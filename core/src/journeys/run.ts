@@ -52,6 +52,7 @@ const Journey = z.object({
     z.object({
       say: z.string().optional(),
       in: z.string().optional(), // say it in this module's Conversation
+      to: z.string().optional(), // say it to this agent, in its own conversation
 
       // the first waiting card answered; a schedule's draft can be sent with Always when offered; on
       // its own page, through the window's routes (Batch B, pick 13)
@@ -248,7 +249,9 @@ export async function runOne(
       const m = step.in ? world.shape.module(step.in) : undefined
       if (step.in && !m) throw new Error(`Step ${i + 1}: no module ${step.in} to say it in.`)
       what = `Said “${words}”${m ? ` in ${m.name}` : ''}`
-      engine.say(user, words, m ? { id: m.id, name: m.name } : null)
+      const agent = step.to ? world.agents.byName(step.to) : undefined
+      if (step.to && !agent) throw new Error(`Step ${i + 1}: no agent ${step.to} to say it to.`)
+      engine.say(user, words, m ? { id: m.id, name: m.name } : null, agent?.id)
     } else if (step.answer) {
       const card = world.cards.waiting(user.id)[0]
       // no card to answer fails the journey, and the journeys after it still run
@@ -491,6 +494,9 @@ export async function runOne(
       }
     } else throw new Error(`Step ${i + 1} neither says, answers, nor connects.`)
     const finished = await done
+    // agents asking each other go on after the first turn ends
+    for (let w = 0; w < 3000 && engine.working(user); w++)
+      await new Promise((ok) => setTimeout(ok, 200))
     // a schedule's run the turn started (on a task, say) ends before the world is judged
     for (
       let w = 0;

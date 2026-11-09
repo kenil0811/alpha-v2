@@ -6,6 +6,7 @@ import { userInfo } from 'node:os'
 import { join } from 'node:path'
 import { config } from '../config.ts'
 import { Accounts } from './accounts.ts'
+import { AgentAsks } from './agents/asks.ts'
 import { Agents, CHIEF } from './agents/index.ts'
 import { Memories } from './agents/memory.ts'
 import { Cards } from './cards.ts'
@@ -105,6 +106,7 @@ export class World {
   readonly spend: Spend
   readonly agents: Agents
   readonly memories: Memories
+  readonly asks: AgentAsks
   readonly people: People
   readonly tasks: Tasks
   readonly accounts: Accounts
@@ -129,6 +131,7 @@ export class World {
     this.spend = new Spend(db)
     this.agents = new Agents(db, paths.agents)
     this.memories = new Memories(db, () => config.limits().memory_characters)
+    this.asks = new AgentAsks(db)
     this.people = new People(db, this.shape, this.cards)
     this.records.watch = this.people
     this.people.records = this.records

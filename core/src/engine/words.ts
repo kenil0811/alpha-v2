@@ -118,6 +118,14 @@ export function stepWords(tool: string, input: Input): string {
               : basename(s(input.path))
       return `Kept ${what} in ${s(input.module)}`
     }
+    case 'list_agents':
+      return 'Looked at the team'
+    case 'ask_agent':
+      return `Asked ${Array.isArray(input.to) ? input.to.join(', ') : 'a teammate'}`
+    case 'answer':
+      return 'Answered who asked'
+    case 'stop_agent':
+      return `Called off ${s(input.agent)}`
     case 'memory':
       return input.action === 'search' ? 'Looked in its memory' : 'Noted something to remember'
     case 'run':

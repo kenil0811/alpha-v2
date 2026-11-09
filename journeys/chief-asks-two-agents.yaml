@@ -1,0 +1,23 @@
+name: chief-asks-two-agents
+title: 'The Chief of staff asks two agents at once, one of them blocked, and tells the person both'
+why: >
+  Clean base step 7: asks between agents are saved rows, nobody waits, and the answers come back
+  together in one turn. One agent answers and one reports that it is blocked, and says what would
+  unblock it. A made-up firm's agents, on a fresh tenant.
+steps:
+  - say: >
+      Make two agents. Pricer answers what things cost, and its instructions are: a widget costs 12
+      dollars, the source is the price list. Stocker answers how much we have in stock, and its
+      instructions are: you cannot see the warehouse, so report that you are blocked and that a
+      person needs to give you the warehouse count.
+    checks:
+      - agents: 2
+      - errors: 0
+  - say: Ask Pricer what a widget costs and ask Stocker how many widgets we have, then tell me both.
+    checks:
+      - asks: { count: 2 }
+      - asks: { status: done, count: 1 }
+      - asks: { status: blocked, count: 1 }
+      - reply_matches: '12'
+      - reply_matches: 'warehouse'
+      - errors: 0

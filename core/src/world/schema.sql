@@ -356,6 +356,33 @@ CREATE TRIGGER agent_memories_indexed AFTER INSERT ON agent_memories BEGIN INSER
 CREATE TRIGGER agent_memories_gone AFTER DELETE ON agent_memories BEGIN INSERT INTO agent_memories_fts (agent_memories_fts, rowid, text) VALUES ('delete', old.rowid, old.text); END;
 CREATE TRIGGER agent_memories_changed AFTER UPDATE OF text ON agent_memories BEGIN INSERT INTO agent_memories_fts (agent_memories_fts, rowid, text) VALUES ('delete', old.rowid, old.text); INSERT INTO agent_memories_fts (rowid, text) VALUES (new.rowid, new.text); END;
 
+-- One agent asking another: a saved row, delivered once.
+CREATE TABLE agent_asks (
+  id TEXT PRIMARY KEY,
+  root TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  from_agent TEXT NOT NULL,
+  from_turn TEXT NOT NULL,
+  parent TEXT,
+  to_agent TEXT NOT NULL,
+  hop INTEGER NOT NULL,
+  key TEXT NOT NULL UNIQUE,
+  brief TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('queued', 'running', 'answered', 'failed', 'stopped', 'unknown')),
+  answer TEXT,
+  reported INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  settled_at TEXT
+);
+CREATE INDEX agent_asks_root ON agent_asks (root);
+CREATE INDEX agent_asks_turn ON agent_asks (from_turn);
+
+-- How many asks one request may make, once a person has said Continue.
+CREATE TABLE agent_ask_roots (
+  root TEXT PRIMARY KEY,
+  allowed INTEGER NOT NULL
+);
+
 -- What each use of the model spent.
 CREATE TABLE spend (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -6,6 +6,7 @@ import type { ConnectorService } from '../../connectors/service.ts'
 import type { Intake } from '../../files/intake.ts'
 import type { Drafts } from '../../modules/drafts.ts'
 import type { ScheduleRunner } from '../../modules/runs/index.ts'
+import type { AgentAsk } from '../../world/agents/asks.ts'
 import type { Actor } from '../../world/journal.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../../world/kinds.ts'
 import type { Table } from '../../world/shape/index.ts'
@@ -21,6 +22,8 @@ export interface TurnContext {
   from?: { id: string; name: string } | null // the module the person asked from (Ask, ⌘J)
   agent?: string | null // whose conversation this is; none is the Chief of staff's
   ask?: string | null // the ask this turn answers, when another agent asked
+  root?: string | null // the person's request this chain of asks serves; this turn's when none
+  named?: string[] // the teammates the person picked with @ on this message
 }
 
 export interface Here {
@@ -31,6 +34,12 @@ export interface Here {
   touched: Set<string>
   // what a turn keeps only if it finishes: a turn that fails saves nothing
   afterTurn: (() => void)[]
+  bus?: AgentBus | undefined // reaches the other agents' desks
+}
+
+export interface AgentBus {
+  deliver(user: User, ask: AgentAsk): void // the receiver starts when it can
+  stop(user: User, ask: AgentAsk): void // the asker called it off
 }
 
 // What reaches past the world's tables: the browser engine and the runner of module scripts.
@@ -157,6 +166,10 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   ask: () => 'write',
   remember: () => 'write',
   memory: (i) => (i.action === 'search' ? 'read' : 'write'),
+  list_agents: () => 'read',
+  ask_agent: () => 'write',
+  answer: () => 'write',
+  stop_agent: () => 'write',
   task: (i) => (i.action === 'remove' ? 'remove' : i.action === 'find' ? 'read' : 'write'),
   connect: () => 'sign_in',
   look: () => 'read',

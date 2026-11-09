@@ -1,10 +1,12 @@
-// What must fail loudly, and the rules held to their tests (docs/rules.md, R1 to R5). R3 is the
+// What must fail loudly, and the rules held to their tests (docs/rules.md, R1 to R6). R3 is the
 // door-list wall too: every route, tool and plugin call that writes is a door or is named in
 // NOT_DOORS with why, and every act a door can do has its driver. R4 is held by review.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { TOOL_NAMES } from '../engine/tools/index.ts'
+import { TOOL_NAMES, worldTools } from '../engine/tools/index.ts'
+import { keepAgent } from '../modules/agents.ts'
 import { Scheduler } from '../scheduler/scheduler.ts'
+import { CHIEF } from '../world/agents/index.ts'
 import { checkRules, pluginCalls, writeRoutes } from './check.ts'
 import { DOORS, NOT_DOORS } from './doors.ts'
 import { DRIVERS } from './drive.ts'
@@ -51,6 +53,55 @@ rule('R2', 'a daily backup that failed, or was not made by its hour, is a card t
   later: {
     'a backup that failed is a card the same day': 7,
     'a backup not made by its hour is a card the same day': 7,
+  },
+})
+
+// Two agents, and the ask tool as the model calls it, delivering nowhere.
+async function asking(w: RuleWorld) {
+  const ctx = { actor: { kind: 'alpha' as const }, user: w.user.id }
+  for (const n of ['One', 'Two'])
+    await keepAgent(w.world, n, { title: n, description: n, instructions: n }, ctx, null)
+  w.here.bus = { deliver: () => undefined, stop: () => undefined }
+  const entry = worldTools(w.world, w.here).find((t) => t.name === 'ask_agent')
+  return (to: string, objective: string) =>
+    entry?.handler({ to: [to], objective, known: 'k', answer_wanted: 'a', limits: 'l' })
+}
+
+const said = (r: Awaited<ReturnType<Awaited<ReturnType<typeof asking>>>>) =>
+  r?.content.map((c) => (c.type === 'text' ? c.text : '')).join('') ?? ''
+
+rule('R6', 'one request makes at most 8 asks and 4 hops, counted by Alpha', {
+  cases: {
+    'the ninth ask of a request waits for Continue': async (w) => {
+      const ask = await asking(w)
+      for (let i = 0; i < 8; i++) await ask('One', `question ${i}`)
+      const out = said(await ask('Two', 'one more'))
+      return (
+        /Continue first/.test(out) &&
+        w.world.asks.ofRoot('t1').length === 8 &&
+        w.world.cards.waiting().some((c) => c.call?.tool === 'ask_more')
+      )
+    },
+    'a chain stops at 4 hops': async (w) => {
+      const ask = await asking(w)
+      const deep = w.world.asks.add({
+        root: 't1',
+        user: w.user.id,
+        from: CHIEF,
+        fromTurn: 't0',
+        parent: null,
+        to: w.world.agents.byName('One')?.id as string,
+        hop: 4,
+        brief: { objective: 'deep', known: 'k', answerWanted: 'a', limits: 'l' },
+      })
+      w.here.current.ask = deep.id
+      return /4 steps deep/.test(said(await ask('Two', 'deeper')))
+    },
+    'the same ask is not made twice in one chain': async (w) => {
+      const ask = await asking(w)
+      await ask('One', 'Find deals')
+      return /already asked/.test(said(await ask('One', 'find   deals')))
+    },
   },
 })
 

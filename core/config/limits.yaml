@@ -103,3 +103,10 @@ handover_characters: 32000
 # How many of the person's last messages go back word for word after a compaction, since a summary
 # loses most of the detail.
 messages_after_compaction: 3
+
+# One request of a person makes at most this many asks between agents, then waits for Continue;
+# about cost and runaways, and said on a card when it is met.
+asks_per_request: 8
+
+# How far one agent can pass work on to another before the chain stops.
+hops_in_a_chain: 4

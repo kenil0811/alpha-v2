@@ -16,6 +16,8 @@ const Models = z.object({
 const Limits = z.object({
   query_page_rows: z.number().int().positive(),
   memory_characters: z.number().int().positive(),
+  asks_per_request: z.number().int().positive(),
+  hops_in_a_chain: z.number().int().positive(),
   essential_memory_bytes: z.number().int().positive(),
   handover_characters: z.number().int().positive(),
   messages_after_compaction: z.number().int().min(0),

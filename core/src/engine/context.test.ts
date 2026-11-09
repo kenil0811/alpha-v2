@@ -113,7 +113,9 @@ describe('a table on its first touch', () => {
     const inHand = tools.filter((x) => x.alwaysLoad).map((x) => x.name)
     expect(inHand.sort()).toEqual(
       [
+        'answer',
         'ask',
+        'ask_agent',
         'change',
         'file',
         'guide',
@@ -132,7 +134,7 @@ describe('a table on its first touch', () => {
         .filter((x) => !x.alwaysLoad)
         .map((x) => x.name)
         .sort(),
-    ).toEqual(['connect', 'keep', 'look', 'run'])
+    ).toEqual(['connect', 'keep', 'list_agents', 'look', 'run', 'stop_agent'])
     const guide = tools.find((x) => x.name === 'guide') as ToolEntry
     const views = await guide.handler({ about: 'views' })
     expect((views.content[0] as { text: string }).text).toContain('view.kind: table, board')

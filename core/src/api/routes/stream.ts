@@ -31,6 +31,9 @@ const STREAM_KINDS = [
   'told',
   'reminder',
   'noted',
+  'asking',
+  'asked',
+  'answered',
   'agent_made',
   'agent_changed',
 ]
@@ -78,7 +81,12 @@ export function registerStream(ctx: Ctx): void {
       lines,
       cards: world.cards
         .waiting(user.id)
-        .filter((c) => (c.agent ?? CHIEF) === agent)
+        // in its own conversation, and in that of whoever asked it
+        .filter(
+          (c) =>
+            (c.agent ?? CHIEF) === agent ||
+            (c.turn?.startsWith('a') && world.asks.get(c.turn.slice(1))?.from === agent),
+        )
         .map(cardOut),
       busy: engine.busy(user, agent),
       running: (engine.hands?.runner.runs(50) ?? [])
@@ -111,17 +119,26 @@ export function registerStream(ctx: Ctx): void {
   })
 
   app.post('/api/say', async (req) => {
-    const { words, from, agent } = z
+    const { words, from, agent, named } = z
       .object({
         words: z.string().trim().min(1),
         from: z.string().optional(),
         agent: z.string().optional(),
+        named: z.array(z.string()).max(32).default([]),
       })
       .parse(req.body)
     const m = from ? world.shape.module(from) : undefined
     if (agent && agent !== CHIEF && !world.agents.get(agent))
       throw new Refused('That agent is not there.')
-    return { turn: engine.say(user, words, m ? { id: m.id, name: m.name } : null, agent ?? CHIEF) }
+    return {
+      turn: engine.say(
+        user,
+        words,
+        m ? { id: m.id, name: m.name } : null,
+        agent ?? CHIEF,
+        named.filter((n) => n === CHIEF || !!world.agents.get(n)),
+      ),
+    }
   })
 
   app.post('/api/stop', async (req) => {

@@ -1,0 +1,27 @@
+name: an-agent-remembers
+title: 'An agent made in a sentence keeps what it is told, even after its instructions change'
+why: >
+  Clean base step 7: the Chief of staff makes an agent in conversation, the agent saves a fact
+  through its own memory, and editing it starts a fresh session that has not forgotten. A made-up
+  firm's agent, on a fresh tenant.
+steps:
+  - say: >
+      Make an agent called Scout. Its job is finding businesses for sale, and I would ask it when I
+      need deals found. Its instructions: answer in one short paragraph.
+    checks:
+      - agents: 1
+      - errors: 0
+  - to: Scout
+    say: Remember this for next time, it is true of every deal with them. Acme only signs annual contracts.
+    checks:
+      - memory: { agent: Scout, matches: annual }
+      - errors: 0
+  - say: Change Scout's instructions so it always answers in exactly two sentences.
+    checks:
+      - instructions: { agent: Scout, matches: two sentences }
+      - errors: 0
+  - to: Scout
+    say: What kind of contract does Acme sign?
+    checks:
+      - reply_matches: 'annual'
+      - errors: 0

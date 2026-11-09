@@ -301,6 +301,7 @@ const scheduler = new Scheduler(world, [
   },
 ])
 scheduler.start()
+engine.resumeAsks()
 // A change runs the schedules waiting on it soon after, not at the next minute's tick.
 let kick: ReturnType<typeof setTimeout> | null = null
 engine.events.on('event', (e: { type: string }) => {

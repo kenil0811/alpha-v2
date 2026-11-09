@@ -87,3 +87,4 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | R3 | Each rule here says how it is held; its test tries it through every door, and `pnpm check` fails when a rule and its test disagree | 4 Nov | test |
 | R4 | The scenario journeys that do not wait run before any push that touches the world, and the session's log names their reports | 4 Nov | — |
 | R5 | Plugins are first-party code in this repository; nothing from elsewhere loads through the plugin host. One that must, runs in its own process as a connector does | 4 Nov | test |
+| R6 | One request of a person makes at most 8 asks between agents and 4 hops in a chain, then waits for Continue; Alpha counts them, not the model, and the same ask is not made twice in one chain | 9 Nov | test |

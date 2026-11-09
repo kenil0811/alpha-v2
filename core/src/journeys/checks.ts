@@ -7,6 +7,7 @@ import { printPage } from '../pages/pages.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
+import { agentCheck } from './agent-checks.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
 
@@ -19,6 +20,12 @@ export const Check = z.union([
   z.object({ errors: z.number() }),
   z.object({ documents: z.number() }),
   z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
+  // the firm's agents (clean base step 7): how many, what one remembers, what its instructions say
+  z.object({ agents: z.number() }),
+  z.object({ memory: z.object({ agent: z.string(), matches: z.string() }) }),
+  z.object({ instructions: z.object({ agent: z.string(), matches: z.string() }) }),
+  // asks between agents, by how they answered
+  z.object({ asks: z.object({ count: z.number(), status: z.string().optional() }) }),
   // where a table sits in its module (core step 3a): a main table, part of a row, or setup
   z.object({
     place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup', 'people']) }),
@@ -387,6 +394,8 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       saw: `${docs.length}: ${docs.map((d) => `${d.title} (${d.chunks})`).join('; ')}`,
     }
   }
+  const about = agentCheck(check, world, user.id)
+  if (about) return about
   if ('rows_in' in check) {
     const t = world.shape.table(check.rows_in.table)
     const n = t ? world.records.count(t.id) : -1

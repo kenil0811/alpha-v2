@@ -109,7 +109,12 @@ export function append(db: Db, line: LineInput): Line {
     module_id: line.module ?? null,
     run_id: line.run ?? null,
     card_id: line.card ?? null,
-    agent_id: line.agent ?? (line.actor.kind === 'alpha' ? (line.actor.id ?? null) : null),
+    agent_id:
+      line.agent !== undefined
+        ? line.agent
+        : line.actor.kind === 'alpha'
+          ? (line.actor.id ?? null)
+          : null,
   }
   // chained to the line before (step 2, part 3)
   const hash = hashOf(lastHash(db), row)
