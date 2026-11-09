@@ -19,3 +19,5 @@ message box goes until step 7.
   developer's Alpha. Settings has no Modules any more.
 - Left from step 2 and gone now: the `keep` tool's words about a schedule that takes tasks, and a
   task's owner of kind agent on its route.
+
+Journeys: all once on 9 Nov ($3.28; summary `docs/journeys/2026-11-09-1310-summary.md`), all passed but the one that waits on step 8.
