@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, listen } from './api.ts'
 import { Conversation } from './Conversation.tsx'
 import { Button } from './ui/button.tsx'
+import { Section } from './ui/section.tsx'
 
 export function TaskThread({ task, onChange }: { task: TaskView; onChange: () => void }) {
   const [stream, setStream] = useState<Stream | null>(null)
@@ -28,7 +29,7 @@ export function TaskThread({ task, onChange }: { task: TaskView; onChange: () =>
     !stream.busy &&
     !stream.cards.some((c) => c.task === task.id)
   return (
-    <div className="flex flex-col gap-2">
+    <Section title="Work" about={`${task.agent.name} works on this here. Write to steer it.`}>
       {stuck && (
         <Button
           size="sm"
@@ -47,6 +48,6 @@ export function TaskThread({ task, onChange }: { task: TaskView; onChange: () =>
           task={task.id}
         />
       </div>
-    </div>
+    </Section>
   )
 }

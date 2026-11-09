@@ -126,7 +126,9 @@ export function makeViews(ctx: BaseCtx) {
     // who can own it: the person or Alpha
     const owners = [
       { kind: 'person' as const, id: user.id, name: 'You' },
-      { kind: 'alpha' as const, id: null, name: 'Alpha' },
+      ...(t.owner.kind === 'alpha' && !t.owner.id
+        ? [{ kind: 'alpha' as const, id: null, name: 'Alpha' }]
+        : []),
       { kind: 'alpha' as const, id: CHIEF, name: CHIEF_CARD.name },
       ...world.agents.list().map((a) => ({ kind: 'alpha' as const, id: a.id, name: a.name })),
     ]

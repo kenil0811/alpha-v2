@@ -132,7 +132,13 @@ export function change(
     if (patch.owner !== undefined) {
       sets.push('owner_kind = ?', 'owner_id = ?')
       args.push(patch.owner.kind, patch.owner.id ?? null)
-      said.push(`for ${patch.owner.kind === 'person' ? 'you' : 'Alpha'}`)
+      said.push(
+        `for ${
+          patch.owner.kind === 'person'
+            ? 'you'
+            : tasks.ownerWords({ owner: { kind: 'alpha', id: patch.owner.id ?? null } } as Task)
+        }`,
+      )
     }
     if (patch.parent !== undefined) {
       if (patch.parent) {

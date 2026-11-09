@@ -81,6 +81,7 @@ export function Conversation({
   const { scroller, content, onScroll, away, toLatest } = useFollow(
     task ?? agent?.id ?? 'chief',
     stream !== null,
+    !task || stream?.busy === true, // a finished task opens at the top of what it found
   )
   // your own message brings you back to the end
   const said = items.filter((i) => i.kind === 'said').length

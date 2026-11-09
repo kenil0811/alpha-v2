@@ -2,7 +2,7 @@
 // lets go the moment you scroll up and takes hold again when you come back down.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-export function useFollow(conversation: string, loaded: boolean) {
+export function useFollow(conversation: string, loaded: boolean, opensAtEnd = true) {
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
@@ -45,10 +45,10 @@ export function useFollow(conversation: string, loaded: boolean) {
   useLayoutEffect(() => {
     const el = scroller.current
     if (!el) return
-    el.scrollTop = el.scrollHeight
+    pinned.current = opensAtEnd
+    if (opensAtEnd) el.scrollTop = el.scrollHeight
     ours.current = el.scrollTop
     seen.current = el.scrollTop
-    pinned.current = true
     setAway(false)
   }, [conversation, loaded])
 
