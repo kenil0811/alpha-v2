@@ -115,16 +115,12 @@ export function TableView({
   }, [key, viewId, config])
   const dirty = differs(config, saved)
   const [problem, setProblem] = useState<string | null>(null)
+  // a link that names a value opens where it came from; one that names a row opens the row
+  const namedField = openField
+    ? data.fields.find((f) => f.name === openField || f.slug === openField)
+    : undefined
   const [picked, setPicked] = useState<{ row: string; field: string } | null>(
-    openRow
-      ? {
-          row: openRow,
-          field:
-            data.fields.find((f) => f.name === openField || f.slug === openField)?.slug ??
-            data.fields[0]?.slug ??
-            '',
-        }
-      : null,
+    openRow && namedField ? { row: openRow, field: namedField.slug } : null,
   )
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
@@ -140,7 +136,14 @@ export function TableView({
   useEffect(() => setPage(0), [config]) // back to the first page when the view changes
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [pasting, setPasting] = useState<PastePlan | null>(null)
-  const [opened, setOpened] = useState<string | null>(null)
+  const [opened, setOpened] = useState<string | null>(openRow && !namedField ? openRow : null)
+  // the address names another row or value while this table is showing
+  const namedSlug = namedField?.slug
+  useEffect(() => {
+    if (!openRow) return
+    setPicked(namedSlug ? { row: openRow, field: namedSlug } : null)
+    setOpened(namedSlug ? null : openRow)
+  }, [openRow, namedSlug])
   // a mirror's rows still at its source, or only those gone from it (rules D8)
   const [showingGone, setShowingGone] = useState(false)
   const present = useMemo(() => mirrorRows(data.rows, showingGone), [data.rows, showingGone])
@@ -155,7 +158,6 @@ export function TableView({
 
   // a row's notes are on its view, not a column (core step 3b)
   const fields = useMemo(() => data.fields.filter((f) => f.kind !== 'notes'), [data.fields])
-  const notes = data.fields.filter((f) => f.kind === 'notes')
   const shown = columns(fields, config)
   const base = useMemo(() => {
     if (only) return present.filter((r) => only.includes(r.id))
@@ -528,11 +530,11 @@ export function TableView({
                   config={config}
                   names={data.names}
                   tasks={taskCounts}
-                  picked={picked}
+                  panelRow={opened ?? picked?.row ?? null}
                   openRow={openRow ?? null}
                   ticked={ticked}
                   readOnly={!!kept && !own?.editable.length}
-                  onPick={(p) => {
+                  onSource={(p) => {
                     if (kept) return
                     setPicked(p)
                     setOpened(null)
@@ -644,7 +646,7 @@ export function TableView({
               tableId={data.id}
               kinds={data.documents}
               row={openedRow}
-              fields={[...shown, ...notes]}
+              fields={data.fields}
               names={data.names}
               onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
               title={first ? show(first, openedRow.values[first.slug], data.names) : ''}

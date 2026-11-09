@@ -1,7 +1,7 @@
 // The side panel: detail on the right, 320px, pushing the content rather than covering it. Given
 // `width`, it is the person's to size: its left edge drags it wider (up to two thirds of the
 // window) or, dragged all the way in, closes it, Expand makes it half the window and back, and Open page opens it as a screen.
-import { ArrowLeft, Maximize2, Minimize2, SquareArrowOutUpRight, X } from 'lucide-react'
+import { Maximize2, Minimize2, SquareArrowOutUpRight, X } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Button, IconButton } from './button.tsx'
 import { cn } from './cn.ts'
@@ -18,7 +18,6 @@ export function SidePanel({
   full,
   head,
   keep,
-  onBack,
 }: {
   title: string
   onClose: () => void
@@ -26,7 +25,6 @@ export function SidePanel({
   width?: number | null // the person's width; none is the usual 320px
   onWidth?: (w: number | null) => void // the width they left it at
   full?: string // where Open page goes: a large button across the panel's foot (Batch D, 79.10)
-  onBack?: (() => void) | undefined // a step back inside the panel (79.8)
   head?: ReactNode // a header of its own, in place of the title and its buttons
   keep?: number // the room it always leaves the rest of the window (the rail and the screen)
 }) {
@@ -69,11 +67,6 @@ export function SidePanel({
       )}
       {head ?? (
         <div className="flex h-11.5 shrink-0 items-center gap-0.5 border-hair border-b pr-2 pl-4.5 font-semibold text-ink text-md">
-          {onBack && (
-            <IconButton label="Back" onClick={onBack}>
-              <ArrowLeft className="size-4" />
-            </IconButton>
-          )}
           <span className="flex-1 truncate">{title}</span>
           {sizable && (
             <IconButton

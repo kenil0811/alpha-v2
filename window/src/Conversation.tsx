@@ -3,7 +3,7 @@
 // chip as a lens; one live message per turn becoming the outcome; cards inline; the composer at the
 // foot. Only the conversation is here: what happened otherwise is on Activity (clean base, 7 Nov).
 // A module's Conversation tab and Ask (⌘J) show it through a lens.
-import type { CardView, LiveEvent, Stream, WorkingModuleView } from '@alpha/core/api'
+import type { CardView, LiveEvent, Stream } from '@alpha/core/api'
 import { ArrowUp, Check, ChevronRight, FolderUp, ImageUp, Plus } from 'lucide-react'
 import {
   type DragEvent,

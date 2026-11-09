@@ -332,7 +332,7 @@ export function makeViews(ctx: BaseCtx) {
         if (p.source.connector === 'kit')
           return {
             kind: 'looked_up',
-            words: `Set up by the kit ${p.source.account ?? ''}`.trim(),
+            words: `Set up by the module ${p.source.account ?? ''}`.trim(),
             at,
           }
         if (by) return { kind: 'looked_up', words: `Read by ${by.slice(', read by '.length)}`, at }

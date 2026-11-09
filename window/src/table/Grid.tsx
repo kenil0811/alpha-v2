@@ -96,10 +96,10 @@ export function Grid({
   config,
   names,
   tasks,
-  picked,
+  panelRow,
   openRow,
   ticked,
-  onPick,
+  onSource,
   onConfig,
   onTick,
   onEdit,
@@ -119,10 +119,10 @@ export function Grid({
   config: ViewConfig
   names: Record<string, string>
   tasks: Record<string, number> // open tasks on each row
-  picked: { row: string; field: string } | null
-  openRow: string | null
+  panelRow: string | null // the row a panel beside the table shows
+  openRow: string | null // the row the address names: brought into view
   ticked: Set<string>
-  onPick: (p: { row: string; field: string }) => void
+  onSource: (p: { row: string; field: string }) => void // where a value came from
   onConfig: (c: ViewConfig) => void
   onTick: (ids: Set<string>) => void
   onEdit: (row: RowView, field: FieldView, value: unknown) => Promise<boolean>
@@ -159,25 +159,26 @@ export function Grid({
       setMenu({ row, field, x: r.left + 8, y: r.bottom })
     },
   })
-  // A first click opens the source panel a moment later, so a double-click can change the value
-  // instead (the panel would push the table and move the cell under the second click). With the
-  // panel already open, a click shows the new value at once.
+  // A click anywhere on a row opens it a moment later, so a double-click can change the value
+  // instead (the panel would push the table and move the cell under the second click). With a
+  // panel already open, a click shows the other row at once.
   const soon = useRef<number | undefined>(undefined)
   // ⇧↓ and ⇧↑ stretch the picked cell over the next rows down, for ⌘D and a paste
   const [range, setRange] = useState<{ row: string; field: string; n: number } | null>(null)
   const at = useRef<{ row: string; field: string } | null>(null) // the cell last clicked, at once
+  const [cell, setCell] = useState<{ row: string; field: string } | null>(null)
   const pick = (p: { row: string; field: string }) => {
     at.current = p
+    setCell(p)
     setRange(null)
     window.clearTimeout(soon.current)
-    if (picked) onPick(p)
-    else soon.current = window.setTimeout(() => onPick(p), 250)
+    if (panelRow) onOpen(p.row)
+    else soon.current = window.setTimeout(() => onOpen(p.row), 250)
   }
-  // a click on a row's name opens it, a moment later for the same reason
-  const open = (row: string) => {
-    window.clearTimeout(soon.current)
-    soon.current = window.setTimeout(() => onOpen(row), 250)
-  }
+  // the panel closed: no cell stays marked for it
+  useEffect(() => {
+    if (!panelRow) setCell(null)
+  }, [panelRow])
   const startEditing = (p: { row: string; field: string }) => {
     window.clearTimeout(soon.current)
     setEditing(p)
@@ -238,7 +239,7 @@ export function Grid({
     return drawn.slice(i + 1).filter((r) => ticked.has(r.id))
   }
   const keys = (e: KeyboardEvent<HTMLDivElement>) => {
-    const from = at.current ?? picked
+    const from = at.current
     if (!from || editing || (e.target as HTMLElement).tagName !== 'BUTTON') return
     const n = range?.row === from.row && range.field === from.field ? range.n : 0
     if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
@@ -269,7 +270,7 @@ export function Grid({
   // become new rows. One value goes into every row of the range or ticked below as well. Nothing
   // is written until the person says yes.
   const paste = (e: ClipboardEvent<HTMLDivElement>) => {
-    const from = at.current ?? picked
+    const from = at.current
     if (!from || editing) return
     const text = e.clipboardData.getData('text/plain')
     if (!text) return
@@ -393,7 +394,7 @@ export function Grid({
                 id={`row-${r.id}`}
                 data-index={v.index}
                 ref={virtual.measureElement}
-                className={cn('group/row', r.id === openRow && '[&>td]:bg-accent-soft')}
+                className={cn('group/row', r.id === panelRow && '[&>td]:bg-accent-soft')}
               >
                 <td
                   {...menuOn(r, null)}
@@ -452,13 +453,11 @@ export function Grid({
                           wrap={layout.wrap.includes(f.id)}
                           tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
                           tone={toneOf(config, f, r.values[f.slug])}
-                          selected={picked?.row === r.id && picked.field === f.slug}
+                          selected={cell?.row === r.id && cell.field === f.slug}
                           inRange={inRange(r.id, f.slug)}
-                          // a row kept on its own page opens there from its name
-                          onPick={() => (readOnly && i === 0 ? onOpen(r.id) : pick(here))}
+                          onPick={() => pick(here)}
                           onEdit={!readOnly && canEdit(f) ? () => startEditing(here) : undefined}
                           fixed={!readOnly && canEdit(f) ? undefined : whyFixed(f, readOnly)}
-                          onOpen={i === 0 ? () => open(r.id) : undefined}
                         />
                       )}
                     </td>
@@ -526,7 +525,7 @@ export function Grid({
             onDone={() => setMenu(null)}
             onEdit={() => menu.field && startEditing({ row: menu.row.id, field: menu.field.slug })}
             onClear={() => menu.field && onEdit(menu.row, menu.field, null)}
-            onSource={() => menu.field && onPick({ row: menu.row.id, field: menu.field.slug })}
+            onSource={() => menu.field && onSource({ row: menu.row.id, field: menu.field.slug })}
             onHistory={() => menu.field && setPast({ row: menu.row, field: menu.field })}
             onOpen={() => onOpen(menu.row.id)}
             onDuplicate={() => onDuplicate?.(menu.row)}
@@ -784,7 +783,6 @@ function Cell({
   onPick,
   onEdit,
   fixed,
-  onOpen,
 }: {
   field: FieldView
   row: RowView
@@ -798,7 +796,6 @@ function Cell({
   onPick: () => void
   onEdit: (() => void) | undefined
   fixed: string | undefined // why it can't be changed here
-  onOpen: (() => void) | undefined
 }) {
   const value = r.values[f.slug]
   const source = r.sources[f.slug]
@@ -818,15 +815,13 @@ function Cell({
         // WebKit does not focus a button on a click; the cell needs it for Enter, F2 and a paste
         onClick={(e) => {
           e.currentTarget.focus({ preventScroll: true })
-          // the name opens the row; the rest of the cell picks it
-          if (onOpen && (e.target as HTMLElement).closest('[data-name]')) onOpen()
-          else onPick()
+          onPick()
         }}
         onDoubleClick={(e) => (onEdit ? onEdit() : tipNow(e.currentTarget))}
         onKeyDown={key}
         data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : fixed}
         className={cn(
-          'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
+          'group flex w-full min-w-0 cursor-pointer items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
           selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
@@ -845,15 +840,12 @@ function Cell({
           <span
             className={cn(
               wrap ? 'break-words' : 'truncate',
-              'decoration-dotted decoration-ink-3 underline-offset-3 group-hover:underline',
               first && 'font-medium',
-              onOpen && 'cursor-pointer',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
               tone && INK[tone],
             )}
-            data-name={onOpen ? '' : undefined}
-            data-tip={onOpen ? `Open ${text}` : text.length > 30 ? text : undefined}
+            data-tip={text.length > 30 ? text : undefined}
           >
             {text}
           </span>

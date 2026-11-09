@@ -352,6 +352,7 @@ function PersonPage({
           >
             <div className="overflow-hidden rounded-lg border border-line bg-surface">
               <FieldList
+                tableId={t.table.id}
                 fields={t.fields}
                 row={t.row ?? { id: '', values: {}, sources: {} }}
                 names={{}}

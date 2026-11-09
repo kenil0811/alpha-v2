@@ -73,7 +73,7 @@ export function App() {
   const windowWidth = useWindowWidth()
   const room = roomBeside(windowWidth, layout, asking)
   // a task, a run, a person or a row open beside the page, from the address (Batch A, pick 2)
-  const { base: besideBase, opened, trail } = splitBeside(window.location.hash)
+  const { base: besideBase, opened } = splitBeside(window.location.hash)
   useOpenBeside(room)
   const setAsking = useCallback(
     (open: boolean | ((was: boolean) => boolean)) =>
@@ -380,8 +380,6 @@ export function App() {
         {opened && room && (
           <OpenedPanel
             opened={opened}
-            trail={trail}
-            base={besideBase}
             version={version}
             width={besideWidth(windowWidth, layout, asking)}
             onClose={() => {

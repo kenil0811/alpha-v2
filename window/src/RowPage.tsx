@@ -71,6 +71,7 @@ export function RowPage({
         />
         <div className="overflow-hidden rounded-lg border border-line bg-surface">
           <RowBody
+            page
             tableId={view.table.id}
             kinds={view.documents}
             row={view.row}

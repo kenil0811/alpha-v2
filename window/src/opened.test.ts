@@ -14,9 +14,8 @@ describe('what is open beside the page', () => {
     expect(splitBeside('#/table/t_9?only=r_1,r_2&beside=person/p_3')).toEqual({
       base: '#/table/t_9?only=r_1,r_2',
       opened: { kind: 'person', id: 'p_3' },
-      trail: [{ kind: 'person', id: 'p_3' }],
     })
-    expect(splitBeside('#/module/m_1')).toEqual({ base: '#/module/m_1', opened: null, trail: [] })
+    expect(splitBeside('#/module/m_1')).toEqual({ base: '#/module/m_1', opened: null })
     // the page under it is the same place it was
     expect(placeOf('#/module/m_1?beside=task/t_1')).toEqual(placeOf('#/module/m_1'))
   })
@@ -31,7 +30,7 @@ describe('what is open beside the page', () => {
     expect(linkBeside('#/module/m_1', '#/')).toBeNull() // a screen is a place, not beside
   })
 
-  it('has its own page, and Back closes it', () => {
+  it('has its own page', () => {
     expect(pageOf({ kind: 'run', id: 'r_1' })).toBe('#/run/r_1')
     expect(pageOf({ kind: 'person', id: 'p_1' })).toBe('#/people/p_1')
   })
@@ -45,19 +44,5 @@ describe('what is open beside the page', () => {
     const at = withBeside('#/module/m_1', rows)
     expect(splitBeside(at).opened).toEqual(rows)
     expect(pageOf({ kind: 'rows', id: 't_9:r_1,r_2' })).toBe('#/table/t_9?only=r_1,r_2')
-  })
-
-  it('goes a step further inside the panel, each step kept, and its own Back returns one (79.8)', () => {
-    const steps = [
-      { kind: 'task', id: 't_1' },
-      { kind: 'row', id: 'r_2' },
-    ] as const
-    const at = withBeside('#/module/m_1', [...steps])
-    expect(at).toBe('#/module/m_1?beside=task/t_1;row/r_2')
-    expect(splitBeside(at)).toEqual({
-      base: '#/module/m_1',
-      opened: { kind: 'row', id: 'r_2' },
-      trail: [...steps],
-    })
   })
 })

@@ -1,6 +1,7 @@
 // A row's menu, opened from the grid by a right-click, Shift+F10 or its ⋮: the cell's own lines
 // (Edit, Copy, Clear, where it came from, its history) when it was opened on a cell, then the row's (Open,
-// Duplicate, Copy link, Delete row). A line that can't be used here stays, greyed, saying why.
+// Duplicate, Copy link, Delete row). A line that can't be used here stays, greyed, saying why. A
+// value in a row's panel gets the cell's lines alone.
 import type { FieldView, RowView } from '@alpha/core/api'
 import {
   Copy,
@@ -43,9 +44,9 @@ export function RowMenu({
   onClear: () => void
   onSource: () => void
   onHistory: () => void
-  onOpen: () => void
-  onDuplicate: () => void
-  onRemove: () => void
+  onOpen?: (() => void) | undefined // none: the cell's lines alone
+  onDuplicate?: (() => void) | undefined
+  onRemove?: (() => void) | undefined
 }) {
   const then = (fn: () => void) => () => {
     onDone()
@@ -88,32 +89,36 @@ export function RowMenu({
             <History className="size-3.5 text-ink-3" />
             History
           </MenuItem>
-          <MenuLine />
+          {onOpen && <MenuLine />}
         </>
       )}
-      <MenuItem onClick={then(onOpen)}>
-        <PanelRightOpen className="size-3.5 text-ink-3" />
-        Open
-      </MenuItem>
-      <MenuItem reason={kept} onClick={then(onDuplicate)}>
-        <CopyPlus className="size-3.5 text-ink-3" />
-        Duplicate
-      </MenuItem>
-      <MenuItem
-        onClick={then(() =>
-          navigator.clipboard?.writeText(
-            `${location.origin}${location.pathname}#/table/${tableId}/${r.id}`,
-          ),
-        )}
-      >
-        <Link className="size-3.5 text-ink-3" />
-        Copy link
-      </MenuItem>
-      <MenuLine />
-      <MenuItem danger reason={kept} onClick={then(onRemove)}>
-        <Trash2 className="size-3.5" />
-        Delete row
-      </MenuItem>
+      {onOpen && (
+        <>
+          <MenuItem onClick={then(onOpen)}>
+            <PanelRightOpen className="size-3.5 text-ink-3" />
+            Open
+          </MenuItem>
+          <MenuItem reason={kept} onClick={then(() => onDuplicate?.())}>
+            <CopyPlus className="size-3.5 text-ink-3" />
+            Duplicate
+          </MenuItem>
+          <MenuItem
+            onClick={then(() =>
+              navigator.clipboard?.writeText(
+                `${location.origin}${location.pathname}#/table/${tableId}/${r.id}`,
+              ),
+            )}
+          >
+            <Link className="size-3.5 text-ink-3" />
+            Copy link
+          </MenuItem>
+          <MenuLine />
+          <MenuItem danger reason={kept} onClick={then(() => onRemove?.())}>
+            <Trash2 className="size-3.5" />
+            Delete row
+          </MenuItem>
+        </>
+      )}
     </>
   )
 }

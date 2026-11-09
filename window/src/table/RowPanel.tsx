@@ -1,12 +1,13 @@
-// A row's view (core step 3b, Kenil's yes 27 Oct), one view drawn in the side panel and, with Open
-// full, as the row's own page: every field with its value and mark, each opening to where it came
-// from (a double-click changes it instead, as the person's word); its notes; the rows that are part
-// of it (a deal's yearly figures, step 3a) as small tables with New; the rows that link to it and
-// the notes that mention it; the pages and files its values were read from; its tasks; and the
-// documents on it (a deal's CIM), which a file dropped on the view joins at once.
+// A row's view (core step 3b, Kenil's yes 27 Oct), drawn in the side panel and, with Open page, as
+// the row's own page: every field with its value and mark (a double-click changes it, as the
+// person's word; a right-click says where it came from, its history and the rest); its notes; the
+// rows that are part of it (a deal's yearly figures, step 3a) as small tables with New; its tasks;
+// and the documents on it (a deal's CIM), which a file dropped on the view joins at once. Its own
+// page also has the rows that link to it, the notes that mention it, and the pages and files its
+// values were read from (clean base step 6).
 import type { FieldView, RowAround, RowFileView, RowView, TasksView } from '@alpha/core/api'
 import { ExternalLink, FileText, Plus, X } from 'lucide-react'
-import { type DragEvent, useEffect, useRef, useState } from 'react'
+import { type DragEvent, useEffect, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
 import { NewTask, TaskList } from '../Tasks.tsx'
@@ -15,11 +16,14 @@ import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { DropZone, dropped } from '../ui/drop-zone.tsx'
 import { Select } from '../ui/field.tsx'
+import { Popover } from '../ui/popover.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 import { AddRow } from './AddRow.tsx'
+import { CellHistory } from './CellHistory.tsx'
 import { EditCell } from './EditCell.tsx'
 import { ReadLine } from './Mirror.tsx'
 import { Notes } from './Notes.tsx'
+import { RowMenu } from './RowMenu.tsx'
 import { TagChips } from './Tags.tsx'
 import { canEdit, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
 
@@ -44,6 +48,7 @@ export function RowBody({
   names,
   onField,
   onEdit,
+  page = false,
 }: {
   tableId: string
   kinds: string[] | null // the kinds of document the table's rows take
@@ -52,6 +57,7 @@ export function RowBody({
   names: Record<string, string>
   onField: (slug: string) => void
   onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined // none: kept elsewhere
+  page?: boolean // the row's own page: what links to it and where it was read from too
 }) {
   const path = `/api/tables/${tableId}/rows/${row.id}/files`
   const [files, setFiles] = useState<RowFileView[]>([])
@@ -114,7 +120,14 @@ export function RowBody({
         onDrop={drop}
       >
         <ReadLine row={row} />
-        <FieldList fields={fields} row={row} names={names} onField={onField} onEdit={onEdit} />
+        <FieldList
+          tableId={tableId}
+          fields={fields}
+          row={row}
+          names={names}
+          onField={onField}
+          onEdit={onEdit}
+        />
         {notes && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="font-semibold text-ink-3 text-sm">{notes.name}</div>
@@ -153,7 +166,7 @@ export function RowBody({
             )}
           </div>
         ))}
-        {around && (around.links.length > 0 || around.mentions.length > 0) && (
+        {page && around && (around.links.length > 0 || around.mentions.length > 0) && (
           <div className="flex flex-col gap-2 border-hair border-b p-4.5">
             <div className="font-semibold text-ink-3 text-sm">Linked here</div>
             {[
@@ -186,7 +199,7 @@ export function RowBody({
             ))}
           </div>
         )}
-        {places.size > 0 && (
+        {page && places.size > 0 && (
           <div className="flex flex-col gap-2 p-4.5">
             <div className="font-semibold text-ink-3 text-sm">Read from</div>
             <div className="flex flex-wrap gap-1.5">
@@ -362,15 +375,18 @@ function PartTable({ part }: { part: RowAround['parts'][number] }) {
   )
 }
 
-// A row's fields, each with where it came from; a double-click changes one that can be typed. The
-// row's view draws it, and a person's page draws their rows of one-row-per-person tables with it.
+// A row's fields, every one: a double-click (or Enter or F2) changes one that can be typed, a
+// right-click (or Shift+F10) opens the cell's menu with where it came from. The row's view draws it,
+// and a person's page draws their rows of one-row-per-person tables with it.
 export function FieldList({
+  tableId,
   fields,
   row,
   names,
   onField,
   onEdit,
 }: {
+  tableId: string
   fields: FieldView[]
   row: RowView
   names: Record<string, string>
@@ -378,80 +394,118 @@ export function FieldList({
   onEdit?: ((field: FieldView, value: unknown) => Promise<boolean>) | undefined
 }) {
   const [editing, setEditing] = useState<string | null>(null)
-  // a click waits a moment, so a double-click can change the value instead of opening its source
-  const click = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [menu, setMenu] = useState<{ field: FieldView; x: number; y: number } | null>(null)
+  const [past, setPast] = useState<FieldView | null>(null)
+  const first = fields[0]
   return (
-    <dl className="flex flex-col">
-      {fields
-        .filter((f) => f.kind !== 'notes')
-        .map((f) => {
-          const source = row.sources[f.slug]
-          const text = show(f, row.values[f.slug], names)
-          const editable = !!onEdit && canEdit(f)
-          if (editing === f.slug && onEdit)
+    <>
+      <dl className="flex flex-col">
+        {fields
+          .filter((f) => f.kind !== 'notes')
+          .map((f) => {
+            const source = row.sources[f.slug]
+            const text = show(f, row.values[f.slug], names)
+            const editable = !!onEdit && canEdit(f)
+            if (editing === f.slug && onEdit)
+              return (
+                <div
+                  key={f.id}
+                  className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5"
+                >
+                  <dt className="text-ink-3 text-sm">{f.name}</dt>
+                  <EditCell
+                    field={f}
+                    value={row.values[f.slug]}
+                    onDone={async (v) => {
+                      const ok = v === undefined || (await onEdit(f, v))
+                      if (ok) setEditing(null)
+                      return ok
+                    }}
+                  />
+                </div>
+              )
             return (
-              <div key={f.id} className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5">
-                <dt className="text-ink-3 text-sm">{f.name}</dt>
-                <EditCell
-                  field={f}
-                  value={row.values[f.slug]}
-                  onDone={async (v) => {
-                    const ok = v === undefined || (await onEdit(f, v))
-                    if (ok) setEditing(null)
-                    return ok
-                  }}
-                />
-              </div>
+              <button
+                key={f.id}
+                type="button"
+                title={
+                  editable
+                    ? 'Double-click to change it; right-click for where it came from'
+                    : 'Right-click for where it came from'
+                }
+                onDoubleClick={() => editable && setEditing(f.slug)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setMenu({ field: f, x: e.clientX, y: e.clientY })
+                }}
+                onKeyDown={(e) => {
+                  if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+                    e.preventDefault()
+                    const r = e.currentTarget.getBoundingClientRect()
+                    setMenu({ field: f, x: r.left + 8, y: r.bottom })
+                  } else if (editable && (e.key === 'Enter' || e.key === 'F2')) {
+                    e.preventDefault()
+                    setEditing(f.slug)
+                  }
+                }}
+                className="flex cursor-default flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
+              >
+                <dt
+                  className="flex items-center gap-2 text-ink-3 text-sm"
+                  title={f.about ?? f.summary ?? undefined}
+                >
+                  {f.name}
+                  {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
+                </dt>
+                <dd
+                  className={cn(
+                    'whitespace-pre-wrap break-words text-md',
+                    text ? 'text-ink' : 'text-ink-3',
+                    source && MARK[source.kind] && 'italic',
+                  )}
+                >
+                  {isTags(f) && text ? (
+                    <TagChips field={f} value={row.values[f.slug]} />
+                  ) : (
+                    text || EMPTY_WORDS
+                  )}
+                  {text && source && MARK[source.kind] && (
+                    <span className="ml-1.5 text-ink-3 text-sm not-italic">
+                      {MARK[source.kind]} {KIND_WORDS[source.kind]}
+                    </span>
+                  )}
+                </dd>
+              </button>
             )
-          return (
-            <button
-              key={f.id}
-              type="button"
-              title={
-                editable
-                  ? 'Click for where it came from; double-click to change it'
-                  : 'Where it came from'
-              }
-              onClick={() => {
-                if (!editable) return onField(f.slug)
-                if (click.current) clearTimeout(click.current)
-                click.current = setTimeout(() => onField(f.slug), 250)
-              }}
-              onDoubleClick={() => {
-                if (!editable) return
-                if (click.current) clearTimeout(click.current)
-                setEditing(f.slug)
-              }}
-              className="flex flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
-            >
-              <dt
-                className="flex items-center gap-2 text-ink-3 text-sm"
-                title={f.about ?? f.summary ?? undefined}
-              >
-                {f.name}
-                {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}
-              </dt>
-              <dd
-                className={cn(
-                  'whitespace-pre-wrap break-words text-md',
-                  text ? 'text-ink' : 'text-ink-3',
-                  source && MARK[source.kind] && 'italic',
-                )}
-              >
-                {isTags(f) && text ? (
-                  <TagChips field={f} value={row.values[f.slug]} />
-                ) : (
-                  text || EMPTY_WORDS
-                )}
-                {text && source && MARK[source.kind] && (
-                  <span className="ml-1.5 text-ink-3 text-sm not-italic">
-                    {MARK[source.kind]} {KIND_WORDS[source.kind]}
-                  </span>
-                )}
-              </dd>
-            </button>
-          )
-        })}
-    </dl>
+          })}
+      </dl>
+      <Popover point={menu && { x: menu.x, y: menu.y }} open={!!menu} onClose={() => setMenu(null)}>
+        {menu && (
+          <RowMenu
+            tableId={tableId}
+            row={row}
+            field={menu.field}
+            names={names}
+            readOnly={!onEdit}
+            elsewhere={false}
+            onDone={() => setMenu(null)}
+            onEdit={() => setEditing(menu.field.slug)}
+            onClear={() => void onEdit?.(menu.field, null)}
+            onSource={() => onField(menu.field.slug)}
+            onHistory={() => setPast(menu.field)}
+          />
+        )}
+      </Popover>
+      {past && (
+        <CellHistory
+          tableId={tableId}
+          row={row.id}
+          field={past}
+          rowName={first ? show(first, row.values[first.slug], names) : ''}
+          names={names}
+          onClose={() => setPast(null)}
+        />
+      )}
+    </>
   )
 }

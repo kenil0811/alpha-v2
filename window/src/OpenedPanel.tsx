@@ -2,8 +2,8 @@
 // a schedule, a rule and the rows a figure counted (Batch D, 79.6, 79.7): its own page, narrow, in
 // the side panel, with Open page to the page itself at the panel's foot (79.10). A link to one of
 // them opens it here when the window has room beside the page (room.ts); a ⌘-click, Open page, or
-// no room goes to the page, as before. A link inside the panel opens a step further in it, and the
-// panel's own Back returns (79.8); what was clicked to open it stays in sight to its left (79.9).
+// no room goes to the page, as before. A link inside the panel replaces what it shows (clean base
+// step 6); what was clicked to open it stays in sight to its left (79.9).
 import type { TableView as TableData } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
@@ -16,8 +16,7 @@ import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
-// A click on a link to one of these kinds opens it beside the page, in the address: a step further
-// when the link is inside the panel, afresh when it is outside it.
+// A click on a link to one of these kinds opens it beside the page, in the address.
 export function useOpenBeside(room: boolean): void {
   useEffect(() => {
     if (!room) return
@@ -26,12 +25,12 @@ export function useOpenBeside(room: boolean): void {
       const a = (e.target as Element | null)?.closest?.('a[href]')
       const href = a?.getAttribute('href')
       if (!a || !href) return
-      const { base, trail } = splitBeside(window.location.hash)
+      const { base } = splitBeside(window.location.hash)
       const opened = linkBeside(href, base)
       if (!opened) return
       e.preventDefault()
       const inside = !!a.closest('[data-beside]')
-      window.location.hash = withBeside(base, inside ? [...trail, opened] : [opened])
+      window.location.hash = withBeside(base, opened)
       // what was clicked stays in sight, to the left of the panel it opened
       if (!inside) setTimeout(() => a.scrollIntoView({ block: 'nearest', inline: 'nearest' }), 120)
     }
@@ -42,15 +41,11 @@ export function useOpenBeside(room: boolean): void {
 
 export function OpenedPanel({
   opened,
-  trail,
-  base,
   version,
   width: start,
   onClose,
 }: {
   opened: Opened
-  trail: Opened[] // every step to it: Back returns one
-  base: string // the page's own address
   version: number
   width: number // where it starts (room.ts besideWidth); the person may drag it
   onClose: () => void
@@ -74,13 +69,6 @@ export function OpenedPanel({
     <SidePanel
       title={name || '…'}
       onClose={onClose}
-      onBack={
-        trail.length > 1
-          ? () => {
-              window.location.hash = withBeside(base, trail.slice(0, -1))
-            }
-          : undefined
-      }
       full={pageOf(opened)}
       width={width}
       onWidth={setWidth}
