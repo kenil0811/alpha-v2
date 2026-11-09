@@ -150,7 +150,9 @@ export function AgentPage({
   onName: (name: string) => void
 }) {
   const [a, setA] = useState<AgentDetail | null | undefined>(undefined)
+  const gone = useRef(false) // deleted just now: nothing left to load
   const load = useCallback(() => {
+    if (gone.current) return
     api.get<AgentDetail>(`/api/agents/${id}`).then(
       (d) => {
         setA(d)
@@ -225,6 +227,7 @@ export function AgentPage({
             setAsking(false)
             act(async () => {
               await api.post(`/api/agents/${a.id}/remove`)
+              gone.current = true
               window.location.hash = '#/intelligence/agents'
             })
           }}
