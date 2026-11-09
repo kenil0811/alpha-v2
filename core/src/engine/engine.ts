@@ -73,6 +73,10 @@ export class Engine {
   // After a restart: work that had not started goes on; work left half done is not replayed, and
   // the asker is told that its outcome is unknown.
   resumeAsks(): void {
+    for (const ask of this.world.asks.unreported()) {
+      const user = this.world.user(ask.user)
+      if (user) this.bus.settled(user, ask, null)
+    }
     for (const ask of this.world.asks.inState('running')) {
       this.world.asks.settle(ask.id, 'unknown', null)
       const user = this.world.user(ask.user)
@@ -128,6 +132,12 @@ export class Engine {
   }
 
   // An agent was deleted: its sessions end with it.
+  // A new model takes effect on the agent's next turn, in the same conversation.
+  useModel(agent: string, model: string): void {
+    for (const [id, d] of this.desks)
+      if (id.endsWith(`:${agent}`)) void d.session?.setModel?.(model)
+  }
+
   closeAgent(agent: string): void {
     for (const [id, d] of this.desks)
       if (id.endsWith(`:${agent}`)) {

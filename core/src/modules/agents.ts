@@ -28,7 +28,7 @@ export function instructionsOf(world: World, id: string): string {
   return existsSync(f) ? readFileSync(f, 'utf8').trim() : ''
 }
 
-function modelOf(model: string | null | undefined): string | null | undefined {
+export function modelOf(model: string | null | undefined): string | null | undefined {
   if (model === undefined || model === null) return model
   const known = config.models().agents
   if (!known.includes(model))

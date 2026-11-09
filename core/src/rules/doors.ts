@@ -298,6 +298,7 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/memories/:id/remove': "an agent's memory, which is no row or module",
   'POST /api/agents/:id/undo': "an agent's own folder, which is no module",
   'POST /api/agents/:id/remove': 'an agent, which is no row or module',
+  'POST /api/agents/:id/model': 'the model an agent runs on, which is no row or module',
   'tool memory': "an agent's memory, which is no row or module",
   'tool list_agents': 'reads the team',
   'tool ask_agent': 'asks another agent, whose own turn goes through these doors',

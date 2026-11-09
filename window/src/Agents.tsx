@@ -2,17 +2,17 @@
 // first, and an agent's page shows what it is, its memories and its skills. An agent is made and
 // changed in a conversation with the Chief of staff, so nothing here is a form to fill in.
 import type { AgentDetail, AgentView, MemoryView } from '@alpha/core/api'
-import { Bot, MessageSquare, Plus, Trash2, X } from 'lucide-react'
+import { Bot, Check, MessageSquare, Plus, Trash2, X } from 'lucide-react'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { useLayout } from './layout.ts'
 import { Record } from './Record.tsx'
+import { MODEL_NAMES } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Empty, Section } from './ui/section.tsx'
 import { Words } from './ui/words.tsx'
@@ -47,7 +47,7 @@ export function AgentsSection({ version }: { version: number }) {
               </a>
             }
             sub={`${a.title} · ${a.description}`}
-            actions={a.model && <span className="text-ink-3 text-sm">{a.model}</span>}
+            actions={<span className="text-ink-3 text-sm">{MODEL_NAMES[a.model] ?? a.model}</span>}
           />
         ))}
       </List>
@@ -57,6 +57,52 @@ export function AgentsSection({ version }: { version: number }) {
         </Empty>
       )}
     </Section>
+  )
+}
+
+// The model an agent runs on, by its name: the owner changes it here.
+export function ModelPicker({ agent }: { agent: Pick<AgentView, 'id' | 'model'> }) {
+  const [choices, setChoices] = useState<{ models: string[]; canChange: boolean } | null>(null)
+  const anchor = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    api
+      .get<{ models: string[]; canChange: boolean }>('/api/models')
+      .then(setChoices, () => undefined)
+  }, [])
+  const name = MODEL_NAMES[agent.model] ?? agent.model
+  if (!choices?.canChange) return <span className="text-ink-3 text-sm">{name}</span>
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-haspopup="menu"
+        aria-label={`Model: ${name}`}
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-md px-1.5 py-0.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+      >
+        {name}
+      </button>
+      <Popover
+        anchor={anchor as RefObject<HTMLElement | null>}
+        open={open}
+        onClose={() => setOpen(false)}
+      >
+        {choices.models.map((m) => (
+          <MenuItem
+            key={m}
+            onClick={() => {
+              setOpen(false)
+              void api.post(`/api/agents/${agent.id}/model`, { model: m })
+            }}
+          >
+            {m === agent.model && <Check className="size-3.5 text-ink-3" />}
+            {MODEL_NAMES[m] ?? m}
+          </MenuItem>
+        ))}
+      </Popover>
+    </>
   )
 }
 
@@ -184,7 +230,7 @@ export function AgentPage({
           <MessageSquare className="size-3.5" />
           Open conversation
         </Button>
-        {a.model && <Pill>{a.model}</Pill>}
+        <ModelPicker agent={a} />
         {!a.chief && (
           <Button size="sm" variant="ghost" onClick={() => setAsking(true)}>
             <Trash2 className="size-3.5" />

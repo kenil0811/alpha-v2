@@ -637,7 +637,7 @@ export interface AgentView {
   name: string
   title: string
   description: string
-  model: string | null
+  model: string // what it runs on now
   chief: boolean
 }
 

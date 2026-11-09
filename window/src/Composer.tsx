@@ -3,6 +3,7 @@
 import type { AgentView } from '@alpha/core/api'
 import { ArrowUp, Bot, FolderUp, ImageUp, Plus } from 'lucide-react'
 import { type KeyboardEvent, type RefObject, useRef, useState } from 'react'
+import { ModelPicker } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import type { Module } from './stream.ts'
 import { IconButton } from './ui/button.tsx'
@@ -203,6 +204,7 @@ export function Composer({
             e.target.value = ''
           }}
         />
+        {agent && <ModelPicker agent={agent} />}
         <span className="ml-auto text-ink-3 text-xs">
           {compact ? '' : 'Return to send · Shift-Return for a new line'}
         </span>

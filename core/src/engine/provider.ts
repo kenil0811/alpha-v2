@@ -37,6 +37,7 @@ export type SessionEvent =
 export interface Session {
   send(text: string): void
   interrupt(): Promise<void>
+  setModel?(model: string): Promise<void> // from the next turn, in the same conversation
   close(): void
   events(): AsyncIterable<SessionEvent>
 }

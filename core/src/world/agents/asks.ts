@@ -168,7 +168,12 @@ export class AgentAsks {
 
   // What this agent asked for this person and has not heard back on.
   waitingFor(user: string, from: string): AgentAsk[] {
-    return OPEN.flatMap((s) => this.inState(s)).filter((a) => a.user === user && a.from === from)
+    return this.where('reported = 0 AND user_id = ? AND from_agent = ?', user, from)
+  }
+
+  // Settled but never reported: a restart came between the answer and the end of its turn.
+  unreported(): AgentAsk[] {
+    return this.where(`reported = 0 AND state NOT IN ('queued', 'running')`)
   }
 
   // The first ask of a chain: the one the person's own conversation made.

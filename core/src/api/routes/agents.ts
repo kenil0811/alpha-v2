@@ -4,8 +4,9 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
+import { config } from '../../config.ts'
 import { skillsOf } from '../../engine/context.ts'
-import { instructionsOf, removeAgent, undoAgentChange } from '../../modules/agents.ts'
+import { instructionsOf, modelOf, removeAgent, undoAgentChange } from '../../modules/agents.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
@@ -16,7 +17,8 @@ export function registerAgents(ctx: Ctx): void {
   const person = () => ({ actor: { kind: 'person' as const, id: user.id }, user: user.id })
   const live = () => engine.events.emit('event', { type: 'lines', user: user.id })
 
-  const chief = (): AgentView => ({ ...CHIEF_CARD, model: null, chief: true })
+  const running = (id: string) => world.agents.modelOf(id) ?? config.models().desk
+  const chief = (): AgentView => ({ ...CHIEF_CARD, model: running(CHIEF), chief: true })
   const known = (id: string) => {
     if (id !== CHIEF && !world.agents.get(id)) throw new Refused('That agent is not there.')
   }
@@ -39,11 +41,35 @@ export function registerAgents(ctx: Ctx): void {
         name: a.name,
         title: a.title,
         description: a.description,
-        model: a.model,
+        model: running(a.id),
         chief: false,
       })),
     ],
   )
+
+  app.get('/api/models', async () => ({
+    models: config.models().agents,
+    canChange: user.role === 'owner',
+  }))
+
+  app.post('/api/agents/:id/model', async (req) => {
+    if (user.role !== 'owner') throw new Refused('Only the owner can do that.')
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { model } = z.object({ model: z.string() }).parse(req.body)
+    known(id)
+    modelOf(model)
+    if (id === CHIEF) world.agents.setChiefModel(model)
+    else world.agents.change(id, { model })
+    world.line({
+      ...person(),
+      kind: 'agent_changed',
+      words: `Changed the model ${id === CHIEF ? CHIEF_CARD.name : world.agents.get(id)?.name} runs on.`,
+      data: { changed: id, model },
+    })
+    engine.useModel(id, model)
+    live()
+    return { model }
+  })
 
   app.get('/api/agents/:id', async (req): Promise<AgentDetail> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
@@ -59,7 +85,7 @@ export function registerAgents(ctx: Ctx): void {
       name: a.name,
       title: a.title,
       description: a.description,
-      model: a.model,
+      model: running(a.id),
       chief: false,
       instructions: instructionsOf(world, id),
       skills: skillsOf(dir),

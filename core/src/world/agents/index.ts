@@ -57,6 +57,24 @@ export class Agents {
   private db: Db
   private dir: string
 
+  // The model someone chose for an agent; none is the desk's. The Chief of staff has no row, so
+  // its choice is kept in meta.
+  modelOf(id: string | null): string | null {
+    if (id && id !== CHIEF) return this.get(id)?.model ?? null
+    return (
+      one<{ value: string }>(this.db, "SELECT value FROM meta WHERE key = 'chief_model'")?.value ??
+      null
+    )
+  }
+
+  setChiefModel(model: string): void {
+    run(
+      this.db,
+      "INSERT INTO meta (key, value) VALUES ('chief_model', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      model,
+    )
+  }
+
   constructor(db: Db, dir: string) {
     this.db = db
     this.dir = dir

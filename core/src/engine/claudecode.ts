@@ -107,6 +107,9 @@ export class ClaudeCodeProvider implements Provider {
       interrupt: async () => {
         await q.interrupt().catch(() => undefined)
       },
+      setModel: async (model) => {
+        await q.setModel(model).catch(() => undefined)
+      },
       close: () => {
         box.close()
         q.close()

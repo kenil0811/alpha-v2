@@ -149,6 +149,27 @@ describe('agents asking each other', () => {
     expect(told.at(-1)?.agent).toBe(CHIEF)
   })
 
+  it('reports after a restart an answer that had not reached its asker', async () => {
+    const made = world.asks.add({
+      root: 'r1',
+      user: user.id,
+      from: CHIEF,
+      fromTurn: 'r1',
+      parent: null,
+      to: ids.Scout as string,
+      hop: 1,
+      brief: { objective: 'Find it', known: 'x', answerWanted: 'x', limits: 'x' },
+    })
+    world.asks.start(made.id)
+    world.asks.settle(made.id, 'answered', { status: 'done', result: 'Found.' })
+    expect(world.asks.waitingFor(user.id, CHIEF).map((x) => x.id)).toEqual([made.id])
+    script = async () => 'Told them.'
+    engine.resumeAsks()
+    await settled()
+    expect(lines(null, ['answered'])).toEqual(['Found.'])
+    expect(world.asks.waitingFor(user.id, CHIEF)).toEqual([])
+  })
+
   it('starts no follow-up on a yes that comes after the ask is answered', async () => {
     let cardId = ''
     script = async (t, agent, d) => {

@@ -39,7 +39,7 @@ export { fileWall } from './filewall.ts'
 export class Desk {
   private world: World
   private user: User
-  private session: Session | null = null
+  session: Session | null = null
   private queue: Turn[] = []
   private running: (Turn & { reply: string; doing: string | null }) | null = null
   private fresh = false
@@ -117,7 +117,7 @@ export class Desk {
     const a = this.named ? this.world.agents.get(this.named) : undefined
     return fingerprint(
       this.connectors?.toolNames() ?? [],
-      a ? [a.name, a.title, a.description, a.model ?? '', a.updatedAt].join('|') : '',
+      a ? [a.name, a.title, a.description, a.updatedAt].join('|') : '',
     )
   }
 
@@ -380,7 +380,7 @@ export class Desk {
         : this.granted,
       userName: this.user.name,
       ...(resume ? { resume } : {}),
-      ...(agent?.model ? { model: agent.model } : {}),
+      model: this.world.agents.modelOf(this.named) ?? config.models().desk,
       ...(agent
         ? {
             identity: config.agentPrompt({

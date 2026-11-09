@@ -25,6 +25,8 @@ during a conversation.
 - An ask stays open while a card from its work waits. The follow-up after the person's answer is that
   work, not a turn in the agent's chat; after the ask is answered, nothing runs.
 - Settings › Permissions: Scripts can reach any website, a rule by a switch, off on a fresh install.
+- Every agent's model shows beside the composer and on its page, and the owner changes it there; it
+  takes effect on the next turn, in the same conversation.
 - A reply is straight on the page, as in Claude Code: no box, tables in the column, steps on one line.
 - The conversation has the agents down its left, and the assistant has a picker. @ picks teammates, the
   lens goes, Intelligence opens on Agents, and Usage has By agent.

@@ -169,7 +169,9 @@ export function agentTools(t: Tooling): ToolEntry[] {
               unblock: a.unblock,
             },
           )
-          return ok('Sent to who asked.')
+          return ok(
+            'Sent to who asked. That finishes this work: end your turn now and write nothing more.',
+          )
         }),
       { alwaysLoad: true },
     ),
