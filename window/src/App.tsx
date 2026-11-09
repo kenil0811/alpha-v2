@@ -40,7 +40,6 @@ import { Tasks } from './Tasks.tsx'
 import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { inside } from './tree.ts'
-import { setFoldLines } from './ui/fold.tsx'
 
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
@@ -196,7 +195,6 @@ export function App() {
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
         setLayout(me.layout)
-        setFoldLines(me.foldLines)
       },
       () => undefined,
     )

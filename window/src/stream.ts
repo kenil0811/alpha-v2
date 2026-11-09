@@ -37,6 +37,9 @@ export interface Asked {
   answer: { words: string; status: string; evidence: string | null; unblock: string | null } | null
 }
 
+// A turn in the order it happened: what the model wrote, and the steps between.
+export type Part = { kind: 'text'; text: string } | { kind: 'steps'; steps: Step[] }
+
 export type Item =
   | { kind: 'said'; id: number; words: string; at: string }
   | {
@@ -45,6 +48,7 @@ export type Item =
       reply: string | null
       error: string | null
       steps: Step[]
+      parts: Part[]
       cards: string[]
       answered: Record<string, Answered>
       at: string
@@ -89,6 +93,7 @@ export function group(lines: StreamLine[]): Item[] {
         reply: null,
         error: null,
         steps: [],
+        parts: [],
         cards: [],
         answered: {},
         at,
@@ -101,6 +106,13 @@ export function group(lines: StreamLine[]): Item[] {
       items.push(a)
     }
     return a
+  }
+
+  const addStep = (a: Extract<Item, { kind: 'alpha' }>, step: Step) => {
+    a.steps.push(step)
+    const last = a.parts.at(-1)
+    if (last?.kind === 'steps') last.steps.push(step)
+    else a.parts.push({ kind: 'steps', steps: [step] })
   }
 
   for (const l of lines) {
@@ -158,7 +170,7 @@ export function group(lines: StreamLine[]): Item[] {
     if (!a.module && l.module) a.module = l.module
     if (l.kind === 'call') {
       const step: Step = { id: l.id, words: l.words, ok: null, results: [] }
-      a.steps.push(step)
+      addStep(a, step)
       calls.set(String(l.data.call), step)
       open = step
     } else if (l.kind === 'called') {
@@ -167,7 +179,7 @@ export function group(lines: StreamLine[]): Item[] {
       if (step === open) open = null
     } else if (RESULTS.has(l.kind)) {
       if (open) open.results.push(l.words)
-      else a.steps.push({ id: l.id, words: l.words, ok: true, results: [] })
+      else addStep(a, { id: l.id, words: l.words, ok: true, results: [] })
     } else if (l.kind === 'asking') {
       const one: Asked = {
         id: String(l.data.ask),
@@ -188,8 +200,11 @@ export function group(lines: StreamLine[]): Item[] {
       })
     } else if (l.kind === 'card_opened' && l.card) {
       a.cards.push(l.card)
+    } else if (l.kind === 'along') {
+      a.parts.push({ kind: 'text', text: l.words })
     } else if (l.kind === 'replied') {
       a.reply = l.words
+      a.parts.push({ kind: 'text', text: l.words })
     } else if (l.kind === 'error') {
       a.error = l.words
     }

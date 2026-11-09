@@ -30,6 +30,8 @@ during a conversation.
 - Settings › Permissions: Scripts can reach any website, a rule by a switch, off on a fresh install.
 - Every agent's model shows beside the composer and on its page, and the owner changes it there; it
   takes effect on the next turn, in the same conversation.
+- A turn stays as it streamed: every piece of text the model wrote, in order with its steps (`along` in
+  the journal), and no folding. The chat only follows to the bottom when you are at the bottom.
 - A reply is straight on the page, as in Claude Code: no box, tables in the column, steps on one line.
 - The conversation has the agents down its left, and the assistant has a picker. @ picks teammates, the
   lens goes, Intelligence opens on Agents, and Usage has By agent.

@@ -90,11 +90,11 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | A1 | The assistant's header: fold, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
-| A2 | The person's words in a light bubble on the right; Alpha's straight on the page with no box, as in Claude Code. A turn's steps fold into one grey line above its words; a table stays in the column | 26 Oct, 9 Nov | — |
+| A2 | The person's words in a light bubble on the right; Alpha's straight on the page with no box, as in Claude Code. Steps sit between the words where they happened, one grey line each run, folded once done; a table stays in the column | 26 Oct, 9 Nov | — |
 | A3 | The composer's +: files, a folder; @ picks teammates, and the picks travel with the message. The model the agent runs on shows beside the +; the owner changes it there or on the agent's page. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
 | A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
-| A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
+| A6 | A reply shows whole and stays as it streamed, as in Claude Code: what the model wrote and the steps between, in order, nothing folded or replaced at the end | 9 Nov | test |
 | A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a run's report are on Activity. Nothing runs beside it | 7 Nov | test (stream) |
 | A8 | What one agent asks another stays out of the asked agent's chat, which shows only a quiet Working for … while it runs. The asker's chat shows one line for each ask, with Stop while it waits and the answer and evidence folded on it, and then one reply. A message naming one agent goes straight to it and its answer is the reply; several go through the Chief of staff | 9 Nov | test |
 

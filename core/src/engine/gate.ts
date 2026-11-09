@@ -21,7 +21,7 @@ export interface CallContext {
 export interface GateOptions {
   connectors?: ConnectorService | null
   // a journal line landed, or the reply's live words changed
-  emit?: (e: { type: 'lines' } | { type: 'doing'; words: string }) => void
+  emit?: (e: { type: 'lines' } | { type: 'step' } | { type: 'doing'; words: string }) => void
 }
 
 export class Gatekeeper {
@@ -70,6 +70,7 @@ export class Gatekeeper {
       : undefined
     const words = says?.words ?? this.words(toolName, input)
     const name = toolName.replace(`mcp__${SERVER}__`, '')
+    this.emit({ type: 'step' }) // what the model wrote before this step is kept before its line
     this.world.line({
       actor: this.actor(),
       kind: 'call',

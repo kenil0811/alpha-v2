@@ -12,9 +12,12 @@ import { type Hands, TOOL_NAMES } from './tools/index.ts'
 
 export type { QueryFn } from './claudecode.ts'
 
+// A turn as it happens, in order: what the model wrote and the steps between.
+export type TurnPart = { kind: 'text'; text: string } | { kind: 'step'; words: string }
+
 export type DeskEvent =
   | { type: 'lines' }
-  | { type: 'live'; turn: string; text: string; doing: string | null }
+  | { type: 'live'; turn: string; text: string; doing: string | null; parts: TurnPart[] }
   | { type: 'busy'; turn: string }
   | { type: 'idle' }
 

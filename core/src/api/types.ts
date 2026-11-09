@@ -581,7 +581,14 @@ export interface UndoView {
 
 export type LiveEvent =
   | { type: 'lines'; agent?: string }
-  | { type: 'live'; turn: string; text: string; doing: string | null; agent?: string }
+  | {
+      type: 'live'
+      turn: string
+      text: string
+      doing: string | null
+      parts: ({ kind: 'text'; text: string } | { kind: 'step'; words: string })[]
+      agent?: string
+    }
   | { type: 'busy'; turn: string; agent?: string }
   | { type: 'idle'; agent?: string }
 

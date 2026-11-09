@@ -18,6 +18,32 @@ const line = (kind: string, words: string, more: Partial<StreamLine> = {}): Stre
 })
 
 describe('the stream', () => {
+  it('keeps a turn’s words and steps in the order they came', () => {
+    n = 0
+    const said = line('said', 'find it', { actor: 'person' })
+    const turn = String(said.id)
+    const items = group([
+      said,
+      line('along', 'Let me look.', { turn }),
+      line('call', 'Searched the web', { turn, data: { call: 'a' } }),
+      line('called', 'Done.', { turn, data: { call: 'a', ok: true } }),
+      line('along', 'One more.', { turn }),
+      line('call', 'Read a page', { turn, data: { call: 'b' } }),
+      line('called', 'Done.', { turn, data: { call: 'b', ok: true } }),
+      line('replied', 'Here it is.', { turn }),
+    ])
+    expect(items[1]).toMatchObject({
+      reply: 'Here it is.',
+      parts: [
+        { kind: 'text', text: 'Let me look.' },
+        { kind: 'steps', steps: [{ words: 'Searched the web', ok: true }] },
+        { kind: 'text', text: 'One more.' },
+        { kind: 'steps', steps: [{ words: 'Read a page', ok: true }] },
+        { kind: 'text', text: 'Here it is.' },
+      ],
+    })
+  })
+
   it('puts a teammate’s answer on the line that asked, and the asking turn’s words stay as they were', () => {
     n = 0
     const said = line('said', 'ask Scout', { actor: 'person' })
@@ -81,6 +107,21 @@ describe('the stream', () => {
           results: ['Added a row to Meals: Food eggs.'],
         },
         { id: 5, words: 'Asked: Which meal?', ok: true, results: [] },
+      ],
+      parts: [
+        {
+          kind: 'steps',
+          steps: [
+            {
+              id: 2,
+              words: 'Added a row to Meals',
+              ok: true,
+              results: ['Added a row to Meals: Food eggs.'],
+            },
+            { id: 5, words: 'Asked: Which meal?', ok: true, results: [] },
+          ],
+        },
+        { kind: 'text', text: 'Logged two eggs.' },
       ],
       cards: ['c_1'],
       answered: {},

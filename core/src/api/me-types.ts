@@ -8,7 +8,6 @@ export interface Me {
   tenant: string
   theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
   layout: Layout
-  foldLines: number // a finished reply's lines shown before More (limits.yaml)
 }
 
 // How the person left the window (UI batch 2, 26 Oct: all of it here, none in the browser).

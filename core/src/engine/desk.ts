@@ -25,6 +25,16 @@ import {
   teamOf,
   turnLayer,
 } from './context.ts'
+import {
+  addBreak,
+  addStep,
+  addText,
+  liveOf,
+  type Running,
+  settleAsk,
+  startTurn,
+  textSoFar,
+} from './desk-turn.ts'
 import { type DeskEvent, type DeskOptions, fingerprint, type Turn } from './desk-types.ts'
 import { fileWall } from './filewall.ts'
 import { Gatekeeper } from './gate.ts'
@@ -43,7 +53,7 @@ export class Desk {
   private user: User
   session: Session | null = null
   private queue: Turn[] = []
-  private running: (Turn & { reply: string; doing: string | null }) | null = null
+  private running: Running | null = null
   private fresh = false
   private stopping = false
   private here: Here
@@ -95,14 +105,10 @@ export class Desk {
       connectors: this.connectors,
       emit: (e) => {
         if (e.type === 'lines') this.emit({ type: 'lines' })
+        else if (e.type === 'step') this.keepText()
         else if (this.running) {
-          this.running.doing = e.words
-          this.emit({
-            type: 'live',
-            turn: this.running.turn,
-            text: this.running.reply,
-            doing: e.words,
-          })
+          addStep(this.running, e.words)
+          this.emit(liveOf(this.running))
         }
       },
     })
@@ -339,7 +345,7 @@ export class Desk {
     // an agent that was edited starts again from its new definition
     if (this.session && this.named && this.openedWith !== this.fingerprint) this.close()
     if (!this.session) this.open()
-    this.running = { ...next, reply: '', doing: null }
+    this.running = startTurn(next)
     this.here.current = {
       user: this.user,
       turn: next.turn,
@@ -512,12 +518,12 @@ export class Desk {
     if (!running) return
     if (e.type === 'text') {
       if (e.sub) return
-      running.reply += e.delta
-      this.emit({ type: 'live', turn: running.turn, text: running.reply, doing: running.doing })
+      addText(running, e.delta)
+      this.emit(liveOf(running))
       return
     }
     if (e.type === 'break') {
-      if (running.reply && !e.sub) running.reply += '\n\n'
+      if (!e.sub) addBreak(running)
       return
     }
     if (e.type === 'result') {
@@ -528,13 +534,15 @@ export class Desk {
         { kind: 'turn', turn: running.turn, module: running.from?.id ?? null, agent: this.named },
         spent,
       )
+      if (stopped || !e.ok) this.keepText()
+      const shown = textSoFar(running)
       this.world.line({
         actor: this.actor,
         kind: e.ok || stopped ? 'replied' : 'error',
         words: stopped
           ? 'Stopped.'
           : e.ok
-            ? e.text || 'Done.'
+            ? shown || e.text || 'Done.'
             : 'Something went wrong, and nothing more was done.',
         data: { ...e.data, spent: costOf(spent) },
         user: this.user.id,
@@ -544,7 +552,7 @@ export class Desk {
       if (e.ok && !stopped) for (const keep of this.here.afterTurn) keep()
       this.here.afterTurn = []
       this.world.markSeen(this.user.id, this.world.lastLineId(), this.agentId)
-      this.settleAsk(running, e, stopped, costOf(spent))
+      settleAsk(this.world, this.bus, this.user, running, e, stopped, costOf(spent))
       this.running = null
       this.stopping = false
       this.emit({ type: 'lines' })
@@ -553,31 +561,17 @@ export class Desk {
     }
   }
 
-  // A teammate's ask this turn served: answered with the answer tool, or by its last words; left
-  // open while the answers to what this turn asked, or a card it raised, are still to come.
-  private settleAsk(
-    running: Turn,
-    e: { ok: boolean; text: string },
-    stopped: boolean,
-    spent: number | null,
-  ): void {
-    if (!running.ask) return
-    const asks = this.world.asks
-    const row = asks.get(running.ask)
-    if (!row) return
-    const waiting =
-      asks.ofTurn(running.turn).some((x) => OPEN.includes(x.state)) ||
-      this.world.cards.waiting(this.user.id).some((c) => askOfTurn(c.turn) === row.id)
-    if (row.state === 'running' && !waiting)
-      asks.settle(
-        row.id,
-        stopped ? 'stopped' : e.ok ? 'answered' : 'failed',
-        stopped ? null : { status: e.ok ? 'done' : 'failed', result: e.text || 'Nothing to say.' },
-      )
-    const now = asks.get(row.id) as AgentAsk
-    if (now.state !== 'running') this.bus?.settled(this.user, now, spent)
-    // named by the person and still waiting on a card: what it has so far goes to them now
-    else if (now.brief.direct && e.text) this.bus?.interim(this.user, now, e.text)
+  // What the model has written since its last step, kept before the step that follows it.
+  private keepText(): void {
+    const words = this.running && textSoFar(this.running)
+    if (!this.running || !words) return
+    this.world.line({
+      actor: this.actor,
+      kind: 'along',
+      words,
+      user: this.user.id,
+      turn: this.running.turn,
+    })
   }
 
   private startOwnTurn(words: string): void {
@@ -588,7 +582,7 @@ export class Desk {
       user: this.user.id,
     })
     const turn = `n${line.id}`
-    this.running = { turn, text: '', said: null, message: null, reply: '', doing: null }
+    this.running = startTurn({ turn, text: '', said: null, message: null })
     this.here.current = { user: this.user, turn, said: null, message: null, agent: this.named }
     this.emit({ type: 'busy', turn })
     this.emit({ type: 'lines' })

@@ -9,6 +9,7 @@ import type { Stream, StreamLine } from '../types.ts'
 // What the stream shows: the person's sentences, Alpha's replies, the steps and what they made.
 const STREAM_KINDS = [
   'said',
+  'along',
   'replied',
   'error',
   'limit',

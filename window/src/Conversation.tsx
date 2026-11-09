@@ -16,16 +16,20 @@ import {
   group,
   type Item,
   type Module,
+  type Part,
   type Step,
 } from './stream.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { dropped } from './ui/drop-zone.tsx'
-import { Fold } from './ui/fold.tsx'
 import { Words } from './ui/words.tsx'
 
 export interface Live {
-  [turn: string]: { text: string; doing: string | null }
+  [turn: string]: {
+    text: string
+    doing: string | null
+    parts: ({ kind: 'text'; text: string } | { kind: 'step'; words: string })[]
+  }
 }
 
 const clock = (at: string) =>
@@ -78,9 +82,15 @@ export function Conversation({
     return () => window.removeEventListener('alpha:ask', take)
   }, [])
 
+  // follows the reply only while you are at the bottom; your own message brings you back there
+  const pinned = useRef(true)
+  const said = items.filter((i) => i.kind === 'said').length
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' })
-  }, [items.length, live])
+    pinned.current = true
+  }, [said])
+  useEffect(() => {
+    if (pinned.current) end.current?.scrollIntoView({ block: 'end' })
+  }, [items, live])
 
   const drop = async (e: DragEvent) => {
     e.preventDefault()
@@ -112,7 +122,13 @@ export function Conversation({
       onDrop={drop}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="@container flex-1 overflow-y-auto">
+        <div
+          className="@container flex-1 overflow-y-auto"
+          onScroll={(e) => {
+            const el = e.currentTarget
+            pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+          }}
+        >
           <div
             className={cn(
               'mx-auto flex flex-col gap-5',
@@ -291,14 +307,20 @@ function Entry({
   // one agent named by the person answers it itself
   const asking = item.asks.length > 0
   const direct = item.asks.find((a) => a.direct)?.answer?.words ?? null
-  const text =
-    direct ?? (asking ? (item.error ?? '') : (item.reply ?? item.error ?? live?.text ?? ''))
-  const doing = working ? (live?.doing ?? 'Working on it…') : null
+  // what is streaming until its reply is in the journal, so nothing goes in between
+  const streaming = !item.reply && !item.error && !!live?.parts?.length
+  const parts: Part[] = asking
+    ? direct
+      ? [{ kind: 'text', text: direct }]
+      : []
+    : streaming
+      ? partsOf(live?.parts ?? [])
+      : item.parts
   if (
-    !text &&
+    !parts.length &&
+    !item.error &&
     !working &&
     !item.cards.length &&
-    !item.steps.length &&
     !item.asks.length &&
     !item.notes.length &&
     !item.changes.length
@@ -309,23 +331,16 @@ function Entry({
       {item.asks.map((a) => (
         <AskLine key={a.id} ask={a} waiting={waiting.find((w) => w.id === a.id)} />
       ))}
-      {(doing || (item.steps.length > 0 && !asking)) && (
-        <WorkLine
-          steps={item.steps}
-          module={item.module}
-          at={item.at}
-          doing={doing}
-          agentId={agentId}
-        />
+      {parts.map((part, i) =>
+        part.kind === 'text' ? (
+          <div key={i} className="min-w-0">
+            <Words text={part.text} />
+          </div>
+        ) : (
+          <Steps key={i} steps={part.steps} active={working && i === parts.length - 1} />
+        ),
       )}
-      {text && (
-        <div className={cn('min-w-0', item.error && 'text-bad')}>
-          {/* a finished reply folds when long; one still coming in shows whole */}
-          <Fold id={item.turn} whole={working || !(item.reply || direct)}>
-            <Words text={text} />
-          </Fold>
-        </div>
-      )}
+      {item.error && <div className="text-bad">{item.error}</div>}
       {item.notes.map((w) => (
         <div key={w} className="flex items-center gap-1.5 text-ink-3 text-sm">
           <Check className="size-3.5 shrink-0" />
@@ -348,6 +363,7 @@ function Entry({
           </div>
         )
       })}
+      {working && <Working agentId={agentId} />}
     </div>
   )
 }
@@ -458,36 +474,42 @@ function Change({ change }: { change: AgentChange }) {
   )
 }
 
-// A turn's steps on one grey line above its words, folded; while it runs, what it is doing and Stop.
-function WorkLine({
-  steps,
-  module,
-  at,
-  doing,
-  agentId,
-}: {
-  steps: Step[]
-  module: Module
-  at: string
-  doing: string | null
-  agentId: string
-}) {
-  if (doing)
-    return (
-      <div className="flex items-center gap-2 text-ink-3 text-sm">
-        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-        <span className="min-w-0 truncate">{doing}</span>
-        <span className="ml-auto shrink-0">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => api.post('/api/stop', { agent: agentId })}
-          >
-            Stop
-          </Button>
-        </span>
-      </div>
-    )
+// A turn's live parts in the shape the journal gives them, so the two read the same.
+function partsOf(live: Live[string]['parts']): Part[] {
+  const out: Part[] = []
+  live.forEach((p, i) => {
+    if (p.kind === 'text') {
+      out.push({ kind: 'text', text: p.text })
+      return
+    }
+    const step: Step = { id: i, words: p.words, ok: null, results: [] }
+    const last = out.at(-1)
+    if (last?.kind === 'steps') last.steps.push(step)
+    else out.push({ kind: 'steps', steps: [step] })
+  })
+  return out
+}
+
+// The steps between two pieces of text: listed while they run, then one grey line that opens.
+function Steps({ steps, active }: { steps: Step[]; active: boolean }) {
+  const list = (
+    <ol className="flex flex-col gap-1">
+      {steps.map((s) => (
+        <li key={s.id} className="flex min-w-0 flex-col">
+          <span className={cn('truncate', s.ok === false && 'text-bad')}>
+            {s.ok === false ? 'Did not work: ' : ''}
+            {s.words}
+          </span>
+          {s.results.map((r) => (
+            <span key={r} className="truncate text-ink-3">
+              {r}
+            </span>
+          ))}
+        </li>
+      ))}
+    </ol>
+  )
+  if (active) return <div className="text-ink-3 text-sm">{list}</div>
   return (
     <details className="group text-ink-3 text-sm">
       <summary className="inline-flex cursor-pointer select-none list-none items-center gap-1 rounded-sm py-0.5 pr-1.5 pl-0.5 hover:bg-hover hover:text-ink">
@@ -495,29 +517,28 @@ function WorkLine({
         <span>
           Ran {steps.length} step{steps.length === 1 ? '' : 's'}
         </span>
-        {module && <span>· {module.name}</span>}
-        <span>· {clock(at)}</span>
       </summary>
-      <ol className="mt-1.5 ml-2 flex flex-col gap-1.5 border-line border-l pl-3">
-        {steps.map((s) => (
-          <li key={s.id} className="text-ink-2">
-            <span className={cn(s.ok === false && 'text-bad')}>
-              {s.ok === false ? 'Did not work: ' : ''}
-              {s.words}
-            </span>
-            {s.results.map((r) => (
-              <div key={r} className="text-ink-3">
-                {r}
-              </div>
-            ))}
-          </li>
-        ))}
-      </ol>
+      <div className="mt-1.5 ml-2 border-line border-l pl-3">{list}</div>
     </details>
+  )
+}
+
+// Under a turn while it runs: that it is working, and Stop.
+function Working({ agentId }: { agentId: string }) {
+  return (
+    <div className="flex items-center gap-2 text-ink-3 text-sm">
+      <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+      <span>Working on it…</span>
+      <span className="ml-auto shrink-0">
+        <Button size="sm" variant="ghost" onClick={() => api.post('/api/stop', { agent: agentId })}>
+          Stop
+        </Button>
+      </span>
+    </div>
   )
 }
 
 export function applyLive(live: Live, e: LiveEvent): Live {
   if (e.type !== 'live') return live
-  return { ...live, [e.turn]: { text: e.text, doing: e.doing } }
+  return { ...live, [e.turn]: { text: e.text, doing: e.doing, parts: e.parts } }
 }

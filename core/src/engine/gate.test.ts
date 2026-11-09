@@ -51,7 +51,7 @@ describe('the gate adapter', () => {
       ['call', 'Added a row to Meals'],
       ['called', 'Done.'],
     ])
-    expect(events).toEqual(['doing', 'lines'])
+    expect(events).toEqual(['step', 'doing', 'lines'])
   })
 
   it('puts a connector’s send on a card with the connector’s own preview, and the shell’s reach outside too', async () => {
