@@ -33,6 +33,7 @@ export interface AgentChange {
 export interface Asked {
   id: string
   words: string
+  direct: boolean // the person named this agent: its answer is the reply
   answer: { words: string; status: string; evidence: string | null; unblock: string | null } | null
 }
 
@@ -167,7 +168,12 @@ export function group(lines: StreamLine[]): Item[] {
       if (open) open.results.push(l.words)
       else a.steps.push({ id: l.id, words: l.words, ok: true, results: [] })
     } else if (l.kind === 'asking') {
-      const one: Asked = { id: String(l.data.ask), words: l.words, answer: null }
+      const one: Asked = {
+        id: String(l.data.ask),
+        words: l.words,
+        direct: l.data.direct === true,
+        answer: null,
+      }
       asked.set(one.id, one)
       a.asks.push(one)
     } else if (l.kind === 'noted') {

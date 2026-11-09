@@ -455,7 +455,7 @@ export function shown(kind: string, data: Record<string, unknown>): Record<strin
   if (kind === 'called') return { call: data.call, ok: data.ok }
   if (kind === 'card_closed') return { state: data.state, answer: data.answer ?? null }
   if (kind === 'made' || kind === 'wrote' || kind === 'shaped') return { table: data.table ?? null }
-  if (kind === 'asking') return { ask: data.ask }
+  if (kind === 'asking') return { ask: data.ask, direct: data.direct === true }
   if (kind === 'answered')
     return {
       ask: data.ask,

@@ -16,8 +16,10 @@ import { answersText, askText, cardWords, carryingOn } from './ask-words.ts'
 import { ClaudeCodeProvider } from './claudecode.ts'
 import {
   handover,
+  heardDirectly,
   lastWords,
   memoryLayer,
+  newsOf,
   ownFolderLayer,
   startLayer,
   teamOf,
@@ -59,9 +61,11 @@ export class Desk {
   private handingOver = false
   private knownMemories = new Set<string>()
   private knownTeam = new Map<string, string>()
+  private heardUpTo = 0
 
   constructor(world: World, user: User, options: DeskOptions = {}) {
     this.world = world
+    this.heardUpTo = world.lastLineId() // what came before this desk is in its session or handover
     this.user = user
     this.emit = options.emit ?? (() => {})
     this.granted = options.granted ?? []
@@ -149,22 +153,12 @@ export class Desk {
       : []
   }
 
-  // What changed in its memory or team since the session began, said once on the next turn.
+  // What is new since the last turn, said once.
   private news(): string[] {
-    const out: string[] = []
-    const fresh = memoryLayer(this.world, this.agentId, this.user.id)
-    const added = this.world.memories
-      .essentials(this.agentId, this.user.id, config.limits().essential_memory_bytes)
-      .filter((m) => !this.knownMemories.has(m.id))
-    for (const m of added) this.knownMemories.add(m.id)
-    if (added.length && fresh.ids.length)
-      out.push(`New in your notes:\n${added.map((m) => `- ${m.text}`).join('\n')}`)
-    const team = teamOf(this.world, this.agentId)
-    const changed = team.filter((t) => this.knownTeam.get(t.id) !== t.stamp)
-    for (const t of changed) this.knownTeam.set(t.id, t.stamp)
-    if (changed.length)
-      out.push(`New or changed teammates:\n${changed.map((t) => t.line).join('\n')}`)
-    return out
+    const heard = heardDirectly(this.world, this.user.id, this.named, this.heardUpTo)
+    this.heardUpTo = heard.upTo
+    const known = { memories: this.knownMemories, team: this.knownTeam }
+    return [...newsOf(this.world, this.agentId, this.user.id, known), ...heard.said]
   }
 
   // The tools the model has: the world's and every connector's, one registry.
@@ -264,7 +258,7 @@ export class Desk {
     this.world.line({
       actor: ask.from === CHIEF ? { kind: 'alpha' } : { kind: 'alpha', id: ask.from },
       kind: 'asked',
-      words: `${fromName} asks: ${ask.brief.objective}`,
+      words: `${ask.brief.direct ? 'You asked' : `${fromName} asks`}: ${ask.brief.objective}`,
       data: { ask: ask.id, from: ask.from, name: fromName, brief: ask.brief },
       user: this.user.id,
       agent: this.named,
@@ -273,11 +267,11 @@ export class Desk {
     this.queue.push({
       turn: `a${ask.id}`,
       text,
-      said: null,
-      message: null,
+      said: ask.brief.direct ? { message: ask.brief.direct.said, user: this.user.id } : null,
+      message: ask.brief.direct ? ask.brief.objective : null,
       ask: ask.id,
       root: ask.root,
-      low: true,
+      low: !ask.brief.direct,
     })
     this.emit({ type: 'lines' })
     this.pump()

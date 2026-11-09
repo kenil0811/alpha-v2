@@ -287,9 +287,12 @@ function Entry({
       </div>
     )
   }
-  // a turn that asked teammates says nothing of its own: the reply comes when they have answered
+  // a turn that asked teammates says nothing of its own: the reply comes when they have answered;
+  // one agent named by the person answers it itself
   const asking = item.asks.length > 0
-  const text = asking ? (item.error ?? '') : (item.reply ?? item.error ?? live?.text ?? '')
+  const direct = item.asks.find((a) => a.direct)?.answer?.words ?? null
+  const text =
+    direct ?? (asking ? (item.error ?? '') : (item.reply ?? item.error ?? live?.text ?? ''))
   const doing = working ? (live?.doing ?? 'Working on it…') : null
   if (
     !text &&
@@ -318,7 +321,7 @@ function Entry({
       {text && (
         <div className={cn('min-w-0', item.error && 'text-bad')}>
           {/* a finished reply folds when long; one still coming in shows whole */}
-          <Fold id={item.turn} whole={working || !item.reply}>
+          <Fold id={item.turn} whole={working || !(item.reply || direct)}>
             <Words text={text} />
           </Fold>
         </div>
@@ -353,6 +356,7 @@ function Entry({
 function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][number] | undefined }) {
   const head = waiting ? ask.words : ask.words.replace(/^Asking /, 'Asked ')
   const said = ask.answer
+  const name = ask.direct ? head.replace(/^Asked /, '') : head
   const tag = !said
     ? waiting
       ? null
@@ -365,6 +369,14 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][numb
           ? 'Stopped'
           : null
   const mark = tag && <span className={tag === 'Failed' ? 'text-bad' : 'text-warn'}>{tag}</span>
+  if (said && ask.direct && !said.evidence && !said.unblock)
+    return (
+      <div className="flex items-center gap-1.5 text-ink-3 text-sm">
+        <Bot className="size-3.5 shrink-0" />
+        <span>{name}</span>
+        {mark}
+      </div>
+    )
   if (!said)
     return (
       <div className="flex items-center gap-1.5 text-ink-3 text-sm">
@@ -395,13 +407,15 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][numb
     <details className="group text-ink-3 text-sm">
       <summary className="flex cursor-pointer select-none list-none items-start gap-1.5">
         <ChevronRight className="mt-0.5 size-3.5 shrink-0 transition-transform group-open:rotate-90" />
-        <span className="min-w-0">{head}</span>
+        <span className="min-w-0">{name}</span>
         {mark}
       </summary>
       <div className="mt-1.5 ml-2 flex flex-col gap-1.5 border-line border-l pl-3">
-        <div className="text-ink-2">
-          <Words text={said.words} />
-        </div>
+        {!ask.direct && (
+          <div className="text-ink-2">
+            <Words text={said.words} />
+          </div>
+        )}
         {said.unblock && <div className="text-warn">What would unblock it: {said.unblock}</div>}
         {said.evidence && <div>{said.evidence}</div>}
       </div>

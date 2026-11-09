@@ -265,12 +265,15 @@ export function handover(world: World, userId: string, agent: string): string {
   const lines = world.lines({
     user: userId,
     agent: agent === CHIEF ? null : agent,
-    kinds: ['said', 'replied'],
+    kinds: ['said', 'replied', 'answered'],
   })
   let left = config.limits().handover_characters
   const kept: string[] = []
   for (const l of [...lines].reverse()) {
-    const one = `${l.kind === 'said' ? 'They said' : 'You said'}: ${l.words}`
+    if (l.kind === 'answered' && l.data.direct !== true) continue
+    const who =
+      l.kind === 'said' ? 'They said' : l.kind === 'answered' ? `${l.data.name} said` : 'You said'
+    const one = `${who}: ${l.words}`
     if (one.length > left) break
     left -= one.length
     kept.unshift(one)
@@ -278,6 +281,72 @@ export function handover(world: World, userId: string, agent: string): string {
   return kept.length
     ? `## The conversation so far\nThis session is new; this is what was said before it, oldest first.\n\n${kept.join('\n\n')}`
     : ''
+}
+
+// What changed in its memory or team since the session began, said once on the next turn.
+export function newsOf(
+  world: World,
+  agentId: string,
+  userId: string,
+  known: { memories: Set<string>; team: Map<string, string> },
+): string[] {
+  const out: string[] = []
+  const fresh = memoryLayer(world, agentId, userId)
+  const added = world.memories
+    .essentials(agentId, userId, config.limits().essential_memory_bytes)
+    .filter((m) => !known.memories.has(m.id))
+  for (const m of added) known.memories.add(m.id)
+  if (added.length && fresh.ids.length)
+    out.push(`New in your notes:\n${added.map((m) => `- ${m.text}`).join('\n')}`)
+  const team = teamOf(world, agentId)
+  const changed = team.filter((t) => known.team.get(t.id) !== t.stamp)
+  for (const t of changed) known.team.set(t.id, t.stamp)
+  if (changed.length)
+    out.push(`New or changed teammates:\n${changed.map((t) => t.line).join('\n')}`)
+  return out
+}
+
+// What was said in this conversation to one teammate by name, without this agent in between:
+// said once on its next turn, so it can carry on from there.
+export function heardDirectly(
+  world: World,
+  userId: string,
+  agent: string | null,
+  after: number,
+): { said: string[]; upTo: number } {
+  const lines = world
+    .lines({ user: userId, agent, kinds: ['answered'], after })
+    .filter((l) => l.data.direct === true)
+  return {
+    said: lines.map(
+      (l) =>
+        `In this conversation they wrote to ${l.data.name} by name: “${l.data.asked}”\n${l.data.name} answered, and they have read it:\n${l.words}`,
+    ),
+    upTo: lines.at(-1)?.id ?? after,
+  }
+}
+
+// What came before a message written to one teammate, word for word, from the conversation it
+// was written in: everything since that teammate was last addressed there.
+export function recentFor(world: World, userId: string, asker: string, to: string): string {
+  const lines = world.lines({
+    user: userId,
+    agent: asker === CHIEF ? null : asker,
+    kinds: ['said', 'replied', 'answered', 'asking'],
+  })
+  const since = lines.findLastIndex((l) => l.kind === 'asking' && l.data.to === to) + 1
+  let left = config.limits().handover_characters
+  const kept: string[] = []
+  for (const l of lines.slice(since).reverse()) {
+    if (l.kind === 'asking' || (l.kind === 'answered' && l.data.from === to)) continue
+    const who =
+      l.kind === 'said' ? 'They' : l.kind === 'answered' ? String(l.data.name) : 'The agent here'
+    const one = `${who}: ${l.words}`
+    if (one.length > left) break
+    left -= one.length
+    kept.unshift(one)
+  }
+  return kept.join('\n\n')
 }
 
 // The person's last messages, word for word, after a compaction: a summary loses the detail.

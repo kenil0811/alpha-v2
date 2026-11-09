@@ -1,0 +1,31 @@
+name: one-named-agent-answers
+title: 'One agent named in a message answers it, and the work carries on from either conversation'
+why: >
+  Clean base step 7, on Kenil's look: a message that names one agent goes straight to it, with no
+  turn of the Chief of staff in between, and it answers there. Afterwards the Chief of staff knows
+  what was said, and so does the agent in its own conversation. A made-up firm's agent, on a fresh
+  tenant.
+steps:
+  - say: >
+      Make an agent called Pricer. It answers what things cost, and its instructions are: a widget
+      costs 12 dollars, the source is the price list.
+    checks:
+      - agents: 1
+      - errors: 0
+  - say: '@Pricer what does a widget cost?'
+    named: [Pricer]
+    checks:
+      - asks: { count: 1 }
+      - reply_matches: '12'
+      - errors: 0
+  - say: What did Pricer just say a widget costs? Answer from this conversation, in a line.
+    checks:
+      - asks: { count: 1 }
+      - reply_matches: '12'
+      - errors: 0
+  - say: What did you tell me a widget costs, a moment ago?
+    to: Pricer
+    checks:
+      - asks: { count: 1 }
+      - reply_matches: '12'
+      - errors: 0

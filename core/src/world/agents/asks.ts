@@ -17,6 +17,7 @@ export interface Brief {
   known: string
   answerWanted: string
   limits: string
+  direct?: { said: number } | undefined // the person named this agent: their own message, not a teammate's
 }
 
 export interface Answer {

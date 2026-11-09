@@ -149,6 +149,29 @@ describe('agents asking each other', () => {
     expect(told.at(-1)?.agent).toBe(CHIEF)
   })
 
+  it('sends one named agent the person’s own words, with no turn of the Chief of staff', async () => {
+    script = async (t, agent) => (agent === CHIEF ? 'From the Chief.' : `Answered: ${t.slice(-14)}`)
+    engine.say(user, 'we sell widgets')
+    await settled()
+    told.length = 0
+    engine.say(user, '@Scout what do we sell?', null, CHIEF, [ids.Scout as string])
+    await settled()
+    expect(told.map((x) => x.agent)).toEqual([ids.Scout])
+    expect(told[0]?.text).toContain('They: we sell widgets')
+    expect(told[0]?.text).toContain('what do we sell?')
+    expect(told[0]?.text).not.toContain('@Scout')
+    expect(told[0]?.text).not.toContain('teammate')
+    const chat = world
+      .lines({ user: user.id, agent: null, kinds: ['said', 'answered'] })
+      .map((l) => l.kind)
+    expect(chat).toEqual(['said', 'said', 'answered'])
+    expect(repliesIn(ids.Scout as string).every((turn) => turn.startsWith('a'))).toBe(true)
+    // the Chief of staff hears it on its next turn, once
+    engine.say(user, 'and now?')
+    await settled()
+    expect(told.at(-1)?.agent).toBe(CHIEF)
+  })
+
   it('reports after a restart an answer that had not reached its asker', async () => {
     const made = world.asks.add({
       root: 'r1',

@@ -18,6 +18,15 @@ export const carryingOn = (card: Card): string =>
 
 export function askText(ask: AgentAsk, fromName: string): string {
   const b = ask.brief
+  if (b.direct)
+    return [
+      ...(b.known
+        ? [
+            `What came before this in their conversation with ${fromName}, word for word, as context and not a request:\n\n${b.known}`,
+          ]
+        : []),
+      `They wrote this to you by name in that conversation, and your reply goes straight to them there:\n\n${b.objective}`,
+    ].join('\n\n')
   return [
     `A request from your teammate ${fromName}. It is a teammate's request and not the person's own words.`,
     `Objective: ${b.objective}`,

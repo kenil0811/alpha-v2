@@ -53,6 +53,7 @@ const Journey = z.object({
       say: z.string().optional(),
       in: z.string().optional(), // say it in this module's Conversation
       to: z.string().optional(), // say it to this agent, in its own conversation
+      named: z.array(z.string()).optional(), // the agents picked with @ in the message
 
       // the first waiting card answered; a schedule's draft can be sent with Always when offered; on
       // its own page, through the window's routes (Batch B, pick 13)
@@ -251,7 +252,8 @@ export async function runOne(
       what = `Said “${words}”${m ? ` in ${m.name}` : ''}`
       const agent = step.to ? world.agents.byName(step.to) : undefined
       if (step.to && !agent) throw new Error(`Step ${i + 1}: no agent ${step.to} to say it to.`)
-      engine.say(user, words, m ? { id: m.id, name: m.name } : null, agent?.id)
+      const named = (step.named ?? []).map((n) => world.agents.byName(n)?.id ?? n)
+      engine.say(user, words, m ? { id: m.id, name: m.name } : null, agent?.id, named)
     } else if (step.answer) {
       const card = world.cards.waiting(user.id)[0]
       // no card to answer fails the journey, and the journeys after it still run

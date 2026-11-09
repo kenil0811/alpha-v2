@@ -9,6 +9,7 @@ import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
 import { type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../world/rules.ts'
 import type { User, World } from '../world/world.ts'
+import { recentFor } from './context.ts'
 import { Desk, type DeskEvent, type DeskOptions } from './desk.ts'
 import { ASK_MORE } from './tools/agents.ts'
 
@@ -51,6 +52,7 @@ export class Engine {
           ask: ask.id,
           from: ask.to,
           name: this.nameOf(ask.to),
+          ...(ask.brief.direct ? { direct: true, asked: ask.brief.objective } : {}),
           status: a?.status ?? ask.state,
           evidence: a?.evidence ?? null,
           unblock: a?.unblock ?? null,
@@ -65,7 +67,7 @@ export class Engine {
         agent: ask.from,
       } satisfies EngineEvent)
       const all = this.world.asks.ofTurn(ask.fromTurn)
-      if (!all.every((x) => x.reported)) return
+      if (!all.every((x) => x.reported) || ask.brief.direct) return
       this.desk(user, ask.from).takeAnswers(all, this.nameOf)
     },
   }
@@ -216,7 +218,63 @@ export class Engine {
     agent = CHIEF,
     named: string[] = [],
   ): string {
+    // one teammate named: straight to it, and its answer is the reply here
+    const [one, ...more] = named
+    if (one && !more.length && one !== agent) return this.sayDirect(user, words, from, agent, one)
     return this.desk(user, agent).say(words, from, named)
+  }
+
+  // A message that names one teammate needs no turn of the agent it was written beside. The
+  // teammate gets the person's own words and what came before them, and answers them itself.
+  private sayDirect(
+    user: User,
+    words: string,
+    from: { id: string; name: string } | null,
+    agent: string,
+    to: string,
+  ): string {
+    this.desk(user, agent) // made now, so it hears of this answer on its next turn
+    const name = this.nameOf(to)
+    const before = recentFor(this.world, user.id, agent, to)
+    const line = this.world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'said',
+      words,
+      user: user.id,
+      module: from?.id ?? null,
+      agent: agent === CHIEF ? null : agent,
+    })
+    const turn = String(line.id)
+    const objective = words.startsWith(`@${name}`) ? words.slice(name.length + 1).trim() : words
+    const ask = this.world.asks.add({
+      root: turn,
+      user: user.id,
+      from: agent,
+      fromTurn: turn,
+      parent: null,
+      to,
+      hop: 1,
+      brief: {
+        objective: objective || words,
+        known: [from ? `They are on ${from.name} in Alpha.` : '', before]
+          .filter(Boolean)
+          .join('\n\n'),
+        answerWanted: '',
+        limits: '',
+        direct: { said: line.id },
+      },
+    })
+    this.world.line({
+      actor: agent === CHIEF ? { kind: 'alpha' } : { kind: 'alpha', id: agent },
+      kind: 'asking',
+      words: `Asking ${name}`,
+      data: { ask: ask.id, to, name, direct: true },
+      user: user.id,
+      turn,
+    })
+    this.events.emit('event', { type: 'lines', user: user.id, agent } satisfies EngineEvent)
+    this.bus.deliver(user, ask)
+    return turn
   }
 
   async stop(user: User, agent = CHIEF): Promise<void> {
