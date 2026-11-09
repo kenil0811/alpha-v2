@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { schedules } from '../../modules/schedules.ts'
+import { askOfTurn } from '../../world/agents/asks.ts'
 import { CHIEF } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
@@ -32,7 +33,6 @@ const STREAM_KINDS = [
   'reminder',
   'noted',
   'asking',
-  'asked',
   'answered',
   'agent_made',
   'agent_changed',
@@ -61,6 +61,8 @@ export function registerStream(ctx: Ctx): void {
         ...(q.before !== undefined ? { before: q.before } : {}),
         limit: q.limit ?? 400,
       })
+      // what an agent does for a teammate is not its conversation with this person
+      .filter((l) => !askOfTurn(l.turn))
       .map(
         (l): StreamLine => ({
           id: l.id,
@@ -82,8 +84,13 @@ export function registerStream(ctx: Ctx): void {
       cards: world.cards.waiting(user.id).map(cardOut),
       asked: world.cards
         .waiting(user.id)
-        .filter((c) => c.turn?.startsWith('a') && world.asks.get(c.turn.slice(1))?.from === agent)
+        .filter((c) => {
+          const ask = askOfTurn(c.turn)
+          return ask !== null && world.asks.topOf(ask)?.from === agent
+        })
         .map((c) => c.id),
+      waiting: world.asks.waitingFor(user.id, agent).map((a) => a.id),
+      serving: engine.serving(user, agent),
       busy: engine.busy(user, agent),
       running: (engine.hands?.runner.runs(50) ?? [])
         .filter((r) => r.state === 'running')
@@ -138,8 +145,11 @@ export function registerStream(ctx: Ctx): void {
   })
 
   app.post('/api/stop', async (req) => {
-    const { agent } = z.object({ agent: z.string().optional() }).parse(req.body ?? {})
-    await engine.stop(user, agent ?? CHIEF)
+    const { agent, ask } = z
+      .object({ agent: z.string().optional(), ask: z.string().optional() })
+      .parse(req.body ?? {})
+    if (ask) engine.stopAsked(user, ask)
+    else await engine.stop(user, agent ?? CHIEF)
     return { ok: true }
   })
 }

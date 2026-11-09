@@ -40,6 +40,66 @@ describe('the api over a world', () => {
 
   const app = () => buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700, 4701] })
 
+  it('keeps what an agent did for a teammate out of its chat, and tells the asker what is still out', async () => {
+    const a = app()
+    const owner = world.owner('Kenil')
+    const scout = world.agents.add({
+      id: 'ag_scout',
+      name: 'Scout',
+      title: 'Researcher',
+      description: 'Finds things out.',
+      model: null,
+      madeBy: owner.id,
+    })
+    const ask = world.asks.add({
+      root: '1',
+      user: owner.id,
+      from: 'chief',
+      fromTurn: '1',
+      parent: null,
+      to: scout.id,
+      hop: 1,
+      brief: { objective: 'Find it', known: 'Nothing', answerWanted: 'A line', limits: 'None' },
+    })
+    const turn = `a${ask.id}`
+    world.line({
+      actor: { kind: 'person' },
+      kind: 'said',
+      words: 'hello Scout',
+      user: owner.id,
+      agent: scout.id,
+    })
+    world.line({
+      actor: { kind: 'alpha', id: scout.id },
+      kind: 'replied',
+      words: 'For the Chief',
+      user: owner.id,
+      turn,
+    })
+    world.line({
+      actor: { kind: 'alpha', id: scout.id },
+      kind: 'replied',
+      words: 'Later, for the Chief',
+      user: owner.id,
+      turn: `${turn}.9`,
+    })
+    const get = async (url: string) => (await a.inject({ url, headers: ok })).json() as Stream
+    const his = await get(`/api/stream?agent=${scout.id}`)
+    expect(his.lines.map((l) => l.words)).toEqual(['hello Scout'])
+    expect((await get('/api/stream')).waiting).toEqual([ask.id])
+    expect(his.waiting).toEqual([])
+    const stop = await a.inject({
+      method: 'POST',
+      url: '/api/stop',
+      headers: ok,
+      payload: { ask: ask.id },
+    })
+    expect(stop.statusCode).toBe(200)
+    expect((await get('/api/stream')).waiting).toEqual([])
+    expect(world.asks.get(ask.id)?.state).toBe('stopped')
+    await a.close()
+  })
+
   it('gives the Mac app the reminders and cards since it last asked, each with its place', async () => {
     const shell = { seen: 0 }
     const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700], shell })

@@ -18,6 +18,40 @@ const line = (kind: string, words: string, more: Partial<StreamLine> = {}): Stre
 })
 
 describe('the stream', () => {
+  it('puts a teammate’s answer on the line that asked, and the asking turn’s words stay as they were', () => {
+    n = 0
+    const said = line('said', 'ask Scout', { actor: 'person' })
+    const turn = String(said.id)
+    const items = group([
+      said,
+      line('asking', 'Asking Scout: find it', { turn, data: { ask: 'k1' } }),
+      line('replied', 'I have asked Scout.', { turn }),
+      line('answered', 'It is Agra.', {
+        data: { ask: 'k1', status: 'done', evidence: 'One search', unblock: null },
+      }),
+      line('noticed', 'The answers came back.'),
+      line('replied', 'Agra, says Scout.', { turn: 'n5' }),
+    ])
+    expect(items).toHaveLength(3)
+    expect(items[1]).toMatchObject({
+      kind: 'alpha',
+      turn,
+      asks: [
+        {
+          id: 'k1',
+          words: 'Asking Scout: find it',
+          answer: { words: 'It is Agra.', status: 'done', evidence: 'One search', unblock: null },
+        },
+      ],
+    })
+    expect(items[2]).toMatchObject({
+      kind: 'alpha',
+      turn: 'n5',
+      reply: 'Agra, says Scout.',
+      asks: [],
+    })
+  })
+
   it('groups a turn into the sentence and one message with its steps, results and cards', () => {
     n = 0
     const said = line('said', 'log two eggs', { actor: 'person' })

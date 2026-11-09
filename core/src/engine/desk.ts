@@ -290,16 +290,18 @@ export class Desk {
   takeAnswers(asks: AgentAsk[], names: (id: string) => string): void {
     const first = asks[0]
     if (!first) return
+    const serving = first.parent ? `a${first.parent}.${this.world.lastLineId()}` : null
     const line = this.world.line({
       actor: { kind: 'system' },
       kind: 'noticed',
       words: 'The answers came back.',
       user: this.user.id,
       agent: this.named,
+      ...(serving ? { turn: serving } : {}),
     })
     const text = answersText(asks, names)
     this.queue.push({
-      turn: `n${line.id}`,
+      turn: serving ?? `n${line.id}`,
       text,
       said: null,
       message: null,
@@ -317,9 +319,10 @@ export class Desk {
     if (this.running?.ask === id) void this.stop()
   }
 
-  // The person's request the running turn serves.
-  get runningRoot(): string | null {
-    return this.running ? (this.running.root ?? this.running.turn) : null
+  // What the running turn serves: the person's request, and a teammate's ask when it is one.
+  get serving(): { root: string; ask: string | null } | null {
+    const r = this.running
+    return r ? { root: r.root ?? r.turn, ask: r.ask ?? null } : null
   }
 
   async stop(): Promise<void> {

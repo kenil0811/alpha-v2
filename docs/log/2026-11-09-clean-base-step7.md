@@ -18,5 +18,7 @@ during a conversation.
   come back together in one turn. A middle agent waits for its own answers before it answers. Work a
   restart left half done is reported as unknown and not replayed.
 - One rule, R6: one request makes at most 8 asks and 4 hops, then waits for Continue; Alpha counts.
+- On his look: one answer. The asker's chat shows a line for each ask, with the answer folded on it, and
+  then one reply; the asked agent's chat shows only what the person and it said to each other.
 - The conversation has the agents down its left, and the assistant has a picker. @ picks teammates, the
   lens goes, Intelligence opens on Agents, and Usage has By agent.

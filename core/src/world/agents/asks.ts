@@ -7,6 +7,11 @@ import { Refused } from '../kinds.ts'
 export type AskState = 'queued' | 'running' | 'answered' | 'failed' | 'stopped' | 'unknown'
 export const OPEN: AskState[] = ['queued', 'running']
 
+// A turn that serves a teammate's request carries the ask in its id: `a<ask>`, and `a<ask>.<n>` for
+// the turn that reads the answers it was itself waiting on.
+export const askOfTurn = (turn: string | null | undefined): string | null =>
+  turn?.startsWith('a') ? (turn.slice(1).split('.')[0] ?? null) : null
+
 export interface Brief {
   objective: string
   known: string
@@ -159,6 +164,18 @@ export class AgentAsks {
 
   inState(state: AskState): AgentAsk[] {
     return this.where('state = ?', state)
+  }
+
+  // What this agent asked for this person and has not heard back on.
+  waitingFor(user: string, from: string): AgentAsk[] {
+    return OPEN.flatMap((s) => this.inState(s)).filter((a) => a.user === user && a.from === from)
+  }
+
+  // The first ask of a chain: the one the person's own conversation made.
+  topOf(id: string): AgentAsk | undefined {
+    let at = this.get(id)
+    while (at?.parent) at = this.get(at.parent)
+    return at
   }
 
   // How many asks this request may make: the first allowance, and more on each Continue.

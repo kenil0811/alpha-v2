@@ -28,6 +28,8 @@ export function answersText(asks: AgentAsk[], names: (id: string) => string): st
   return [
     "Your teammates answered. These are their words and not the person's, and what they say they did is their own report.",
     ...said,
-    'Carry on with what you were doing.',
+    asks[0]?.parent
+      ? 'Carry on with what you were doing.'
+      : 'Carry on with what you were doing. What you wrote after asking was not shown to the person, so your reply now has to say all they need.',
   ].join('\n\n')
 }

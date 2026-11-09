@@ -200,9 +200,28 @@ export class Engine {
 
   async stop(user: User, agent = CHIEF): Promise<void> {
     const desk = this.desk(user, agent)
-    const root = desk.runningRoot
+    const root = desk.serving?.root
     if (root) this.stopChain(user, root)
     await desk.stop()
+  }
+
+  // Stop on the line that asked: the chain that ask belongs to.
+  stopAsked(user: User, id: string): void {
+    const ask = this.world.asks.get(id)
+    if (ask?.user !== user.id) return
+    this.stopChain(user, ask.root)
+    this.events.emit('event', {
+      type: 'lines',
+      user: user.id,
+      agent: ask.from,
+    } satisfies EngineEvent)
+  }
+
+  // Who this agent is working for just now, when a teammate asked it.
+  serving(user: User, agent = CHIEF): string | null {
+    const id = this.desks.get(`${user.id}:${agent}`)?.serving?.ask
+    const ask = id ? this.world.asks.get(id) : undefined
+    return ask ? this.nameOf(ask.from) : null
   }
 
   // A schedule's draft answered with the card's own buttons or in words: sent as drafted only on

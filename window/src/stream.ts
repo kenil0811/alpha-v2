@@ -29,6 +29,13 @@ export interface AgentChange {
   path: string | null
 }
 
+// One teammate asked, and what it answered once it has.
+export interface Asked {
+  id: string
+  words: string
+  answer: { words: string; status: string; evidence: string | null; unblock: string | null } | null
+}
+
 export type Item =
   | { kind: 'said'; id: number; words: string; at: string }
   | {
@@ -41,26 +48,12 @@ export type Item =
       answered: Record<string, Answered>
       at: string
       module: Module
-      asks: string[] // who it asked, as said
+      asks: Asked[] // who it asked, each with its answer
       notes: string[] // what it noted to remember
       changes: AgentChange[] // changes to an agent, each one that can be undone
     }
   // a failure said in the chat: a limit reached, an error or a refusal outside a turn
   | { kind: 'note'; id: number; words: string; at: string }
-  // a teammate's request, in the conversation of the agent asked
-  | { kind: 'asked'; id: number; words: string; at: string }
-  // a teammate's answer, under its name, in the asker's conversation
-  | {
-      kind: 'answered'
-      id: number
-      name: string
-      words: string
-      status: string
-      evidence: string | null
-      unblock: string | null
-      spent: number | null
-      at: string
-    }
   // a card a schedule's run opened, outside any turn
   | { kind: 'card'; id: string; at: string; module: Module; answered: Answered | null }
 
@@ -83,6 +76,7 @@ export function group(lines: StreamLine[]): Item[] {
   const turns = new Map<string, Extract<Item, { kind: 'alpha' }>>()
   const calls = new Map<string, Step>()
   const closed = new Map<string, Answered>()
+  const asked = new Map<string, Asked>()
   let open: Step | null = null
 
   const alpha = (turn: string, at: string) => {
@@ -124,22 +118,16 @@ export function group(lines: StreamLine[]): Item[] {
       items.push({ kind: 'note', id: l.id, words: l.words, at: l.at })
       continue
     }
-    if (l.kind === 'asked') {
-      items.push({ kind: 'asked', id: l.id, words: l.words, at: l.at })
-      continue
-    }
+    // a teammate's answer sits on the line that asked it
     if (l.kind === 'answered') {
-      items.push({
-        kind: 'answered',
-        id: l.id,
-        name: String(l.data.name ?? 'A teammate'),
-        words: l.words,
-        status: String(l.data.status ?? ''),
-        evidence: (l.data.evidence as string | null) ?? null,
-        unblock: (l.data.unblock as string | null) ?? null,
-        spent: (l.data.spent as number | null) ?? null,
-        at: l.at,
-      })
+      const one = asked.get(String(l.data.ask))
+      if (one)
+        one.answer = {
+          words: l.words,
+          status: String(l.data.status ?? ''),
+          evidence: (l.data.evidence as string | null) ?? null,
+          unblock: (l.data.unblock as string | null) ?? null,
+        }
       continue
     }
     if (l.kind === 'card_closed') {
@@ -179,7 +167,9 @@ export function group(lines: StreamLine[]): Item[] {
       if (open) open.results.push(l.words)
       else a.steps.push({ id: l.id, words: l.words, ok: true, results: [] })
     } else if (l.kind === 'asking') {
-      a.asks.push(l.words)
+      const one: Asked = { id: String(l.data.ask), words: l.words, answer: null }
+      asked.set(one.id, one)
+      a.asks.push(one)
     } else if (l.kind === 'noted') {
       a.notes.push(l.words)
     } else if (l.kind === 'agent_made' || l.kind === 'agent_changed') {

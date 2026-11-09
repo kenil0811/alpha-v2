@@ -12,6 +12,7 @@ import { Composer } from './Composer.tsx'
 import {
   type AgentChange,
   type Answered,
+  type Asked,
   group,
   type Item,
   type Module,
@@ -137,6 +138,7 @@ export function Conversation({
                     live={item.kind === 'alpha' ? live[item.turn] : undefined}
                     working={item.kind === 'alpha' && busyTurn === item.turn}
                     cards={cards}
+                    waiting={stream?.waiting ?? []}
                     onChangeCard={changeCard}
                     name={agent?.name ?? 'Chief of staff'}
                     agentId={agent?.id ?? 'chief'}
@@ -149,6 +151,12 @@ export function Conversation({
               .map((id) => (
                 <CardBox key={id} id={id} card={cards.get(id) as CardView} onChange={changeCard} />
               ))}
+            {stream?.serving && (
+              <div className="flex items-center gap-1.5 text-ink-3 text-sm">
+                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+                Working for {stream.serving}
+              </div>
+            )}
             <div ref={end} />
           </div>
         </div>
@@ -244,6 +252,7 @@ function Entry({
   live,
   working,
   cards,
+  waiting,
   name,
   agentId,
   onChangeCard,
@@ -252,6 +261,7 @@ function Entry({
   live: Live[string] | undefined
   working: boolean
   cards: Map<string, CardView>
+  waiting: string[]
   name: string
   agentId: string
   onChangeCard: (c: CardView) => void
@@ -263,14 +273,6 @@ function Entry({
       </div>
     )
   if (item.kind === 'note') return <div className="text-center text-sm text-warn">{item.words}</div>
-  if (item.kind === 'asked')
-    return (
-      <div className="flex items-start gap-2 text-ink-2 text-md">
-        <Bot className="mt-0.5 size-4 shrink-0 text-ink-3" />
-        <span className="min-w-0">{item.words}</span>
-      </div>
-    )
-  if (item.kind === 'answered') return <Answer item={item} />
   if (item.kind === 'card') {
     const card = cards.get(item.id)
     if (!card && !(item.answered && answerOf(item.answered.words))) return null
@@ -285,7 +287,9 @@ function Entry({
       </div>
     )
   }
-  const text = item.reply ?? item.error ?? live?.text ?? ''
+  // a turn that asked teammates says nothing of its own: the reply comes when they have answered
+  const asking = item.asks.length > 0
+  const text = asking ? (item.error ?? '') : (item.reply ?? item.error ?? live?.text ?? '')
   if (
     !text &&
     !working &&
@@ -298,11 +302,8 @@ function Entry({
     return null
   return (
     <div className="flex flex-col gap-2.25">
-      {item.asks.map((w) => (
-        <div key={w} className="flex items-center gap-1.5 text-ink-3 text-sm">
-          <Bot className="size-3.5 shrink-0" />
-          {w}
-        </div>
+      {item.asks.map((a) => (
+        <AskLine key={a.id} ask={a} waiting={waiting.includes(a.id)} />
       ))}
       {text && (
         <div
@@ -339,15 +340,17 @@ function Entry({
           </div>
         )
       })}
-      {item.steps.length > 0 && <Work steps={item.steps} />}
-      <Ran
-        module={item.module}
-        at={item.at}
-        steps={item.steps.length}
-        doing={working ? (live?.doing ?? 'Working on it…') : null}
-        name={name}
-        agentId={agentId}
-      />
+      {item.steps.length > 0 && !asking && <Work steps={item.steps} />}
+      {(!asking || working) && (
+        <Ran
+          module={item.module}
+          at={item.at}
+          steps={item.steps.length}
+          doing={working ? (live?.doing ?? 'Working on it…') : null}
+          name={name}
+          agentId={agentId}
+        />
+      )}
     </div>
   )
 }
@@ -394,28 +397,60 @@ function Ran({
   )
 }
 
-// A teammate's answer, under its name, with what it cost and what would unblock it.
-function Answer({ item }: { item: Extract<Item, { kind: 'answered' }> }) {
+// One teammate asked: Stop while it works, then its answer and evidence behind a fold.
+function AskLine({ ask, waiting }: { ask: Asked; waiting: boolean }) {
+  const head = waiting ? ask.words : ask.words.replace(/^Asking /, 'Asked ')
+  const said = ask.answer
+  const tag = !said
+    ? waiting
+      ? null
+      : 'Stopped'
+    : said.status === 'blocked'
+      ? 'Blocked'
+      : said.status === 'failed'
+        ? 'Failed'
+        : said.status === 'stopped'
+          ? 'Stopped'
+          : null
+  const mark = tag && <span className={tag === 'Failed' ? 'text-bad' : 'text-warn'}>{tag}</span>
+  if (!said)
+    return (
+      <div className="flex items-center gap-1.5 text-ink-3 text-sm">
+        {waiting ? (
+          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+        ) : (
+          <Bot className="size-3.5 shrink-0" />
+        )}
+        <span className="min-w-0">{head}</span>
+        {mark}
+        {waiting && (
+          <span className="ml-auto shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => api.post('/api/stop', { ask: ask.id })}
+            >
+              Stop
+            </Button>
+          </span>
+        )}
+      </div>
+    )
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2 text-ink-3 text-sm">
-        <Bot className="size-3.5 shrink-0" />
-        <span className="font-medium text-ink-2">{item.name}</span>
-        {item.status === 'blocked' && <span className="text-warn">Blocked</span>}
-        {item.status === 'failed' && <span className="text-bad">Failed</span>}
-        <span>{clock(item.at)}</span>
-        {item.spent !== null && item.spent > 0 && <span>${item.spent.toFixed(2)}</span>}
+    <details className="group text-ink-3 text-sm">
+      <summary className="flex cursor-pointer select-none list-none items-start gap-1.5">
+        <ChevronRight className="mt-0.5 size-3.5 shrink-0 transition-transform group-open:rotate-90" />
+        <span className="min-w-0">{head}</span>
+        {mark}
+      </summary>
+      <div className="mt-1.5 ml-2 flex flex-col gap-1.5 border-line border-l pl-3">
+        <div className="text-ink-2">
+          <Words text={said.words} wideTables />
+        </div>
+        {said.unblock && <div className="text-warn">What would unblock it: {said.unblock}</div>}
+        {said.evidence && <div>{said.evidence}</div>}
       </div>
-      <div className="max-w-full self-start rounded-2xl rounded-bl-sm border border-hair bg-surface px-4 py-3">
-        <Fold id={`answered${item.id}`} whole={false}>
-          <Words text={item.words} wideTables />
-        </Fold>
-      </div>
-      {item.unblock && (
-        <div className="text-sm text-warn">What would unblock it: {item.unblock}</div>
-      )}
-      {item.evidence && <div className="text-ink-3 text-sm">{item.evidence}</div>}
-    </div>
+    </details>
   )
 }
 
