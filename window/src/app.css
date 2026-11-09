@@ -33,32 +33,32 @@
 
 :root {
   /* the rail */
-  --rail: #f5f4ef;
-  --rail-ink: #141413;
-  --rail-ink-2: #5e5d59;
-  --rail-ink-3: #6f6e68;
-  --rail-hover: #ebe9e1;
-  --rail-sel: #ffffff;
-  --rail-line: #e4e2d9;
+  --rail: #f4f4f4;
+  --rail-ink: #131313;
+  --rail-ink-2: #383838;
+  --rail-ink-3: #6f6f6f;
+  --rail-hover: #ebebeb;
+  --rail-sel: #e6e6e6;
+  --rail-line: #e4e4e4;
 
   /* surfaces, back to front */
-  --canvas: #faf9f5;
+  --canvas: #fbfbfb;
   --surface: #ffffff;
-  --sunk: #f0eee6;
-  --hover: #ebe9e1;
+  --sunk: #f0f0f0;
+  --hover: #ebebeb;
 
   /* ink and lines; neutrals lean toward the accent */
-  --ink: #141413;
-  --ink-2: #5e5d59;
-  --ink-3: #6f6e68;
-  --line: #dedcd1;
-  --hair: #e8e6dc;
+  --ink: #131313;
+  --ink-2: #383838;
+  --ink-3: #6f6f6f;
+  --line: #dcdcdc;
+  --hair: #e9e9e9;
 
   /* the one accent */
   --accent: #b5542f;
   --accent-ink: #ffffff;
-  --accent-soft: #f6e9e2;
-  --accent-line: #e6c4b4;
+  --accent-soft: #ececec;
+  --accent-line: #cfcfcf;
   /* a choice's own colour by its place in its field (Batch E, 66.9), eight and round again */
   --opt-1: #2f5f8a;
   --opt-1-soft: #e5eef7;
@@ -77,7 +77,7 @@
   --opt-8: #66553f;
   --opt-8-soft: #eee9e2;
   /* the side panel's firmer edge and the soft shadow it casts on the page (Batch E, 66.15) */
-  --edge: #cfccc0;
+  --edge: #d0d0d0;
   --elev-side: -10px 0 24px -12px rgb(20 20 19 / 0.3);
 
   /* states only: done or fits, waits on you or unsure, failed */
@@ -114,26 +114,26 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --rail: #1f1e1d;
-    --rail-ink: #faf9f5;
-    --rail-ink-2: #c2c0b6;
-    --rail-ink-3: #9c9a92;
-    --rail-hover: #2b2a28;
-    --rail-sel: #30302e;
-    --rail-line: #33322f;
-    --canvas: #262624;
-    --surface: #30302e;
-    --sunk: #1f1e1d;
-    --hover: #3a3936;
-    --ink: #faf9f5;
-    --ink-2: #c2c0b6;
-    --ink-3: #9c9a92;
-    --line: #45443f;
-    --hair: #383732;
+    --rail: #171717;
+    --rail-ink: #ededed;
+    --rail-ink-2: #c2c2c2;
+    --rail-ink-3: #959595;
+    --rail-hover: #242424;
+    --rail-sel: #2c2c2c;
+    --rail-line: #2a2a2a;
+    --canvas: #191919;
+    --surface: #202020;
+    --sunk: #242424;
+    --hover: #2a2a2a;
+    --ink: #ededed;
+    --ink-2: #c2c2c2;
+    --ink-3: #959595;
+    --line: #333333;
+    --hair: #2a2a2a;
     --accent: #d97757;
     --accent-ink: #141413;
-    --accent-soft: #3d2c24;
-    --accent-line: #7a4d3a;
+    --accent-soft: #2c2c2c;
+    --accent-line: #444444;
     --opt-1: #8db4dc;
     --opt-1-soft: #1b2b3b;
     --opt-2: #e0b373;
@@ -150,7 +150,7 @@
     --opt-7-soft: #3a201e;
     --opt-8: #cbb89c;
     --opt-8-soft: #2e2820;
-    --edge: #4a4943;
+    --edge: #444444;
     --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
     --good: #8cc29c;
     --good-soft: #182a1f;
@@ -166,26 +166,26 @@
 }
 
 :root[data-theme="dark"] {
-  --rail: #1f1e1d;
-  --rail-ink: #faf9f5;
-  --rail-ink-2: #c2c0b6;
-  --rail-ink-3: #9c9a92;
-  --rail-hover: #2b2a28;
-  --rail-sel: #30302e;
-  --rail-line: #33322f;
-  --canvas: #262624;
-  --surface: #30302e;
-  --sunk: #1f1e1d;
-  --hover: #3a3936;
-  --ink: #faf9f5;
-  --ink-2: #c2c0b6;
-  --ink-3: #9c9a92;
-  --line: #45443f;
-  --hair: #383732;
+  --rail: #171717;
+  --rail-ink: #ededed;
+  --rail-ink-2: #c2c2c2;
+  --rail-ink-3: #959595;
+  --rail-hover: #242424;
+  --rail-sel: #2c2c2c;
+  --rail-line: #2a2a2a;
+  --canvas: #191919;
+  --surface: #202020;
+  --sunk: #242424;
+  --hover: #2a2a2a;
+  --ink: #ededed;
+  --ink-2: #c2c2c2;
+  --ink-3: #959595;
+  --line: #333333;
+  --hair: #2a2a2a;
   --accent: #d97757;
   --accent-ink: #141413;
-  --accent-soft: #3d2c24;
-  --accent-line: #7a4d3a;
+  --accent-soft: #2c2c2c;
+  --accent-line: #444444;
   --opt-1: #8db4dc;
   --opt-1-soft: #1b2b3b;
   --opt-2: #e0b373;
@@ -202,7 +202,7 @@
   --opt-7-soft: #3a201e;
   --opt-8: #cbb89c;
   --opt-8-soft: #2e2820;
-  --edge: #4a4943;
+  --edge: #444444;
   --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
   --good: #8cc29c;
   --good-soft: #182a1f;
@@ -283,7 +283,7 @@
   --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* seven sizes and no others; text-sm is 12px here, not Tailwind's 14px */
+  /* eight sizes and no others; text-sm is 12px here, not Tailwind's 14px */
   --text-*: initial;
   --text-xs: 11px;
   --text-xs--line-height: 16px;
@@ -293,6 +293,8 @@
   --text-md--line-height: 20px;
   --text-base: 14px;
   --text-base--line-height: 22px;
+  --text-chat: 15px;
+  --text-chat--line-height: 21px;
   --text-lg: 16px;
   --text-lg--line-height: 22px;
   --text-xl: 20px;
@@ -308,6 +310,7 @@
 
   /* the frame's widths: the stream (720px of text in 32px gutters), a page */
   --container-stream: 784px;
+  --container-composer: 768px;
   --container-page: 1200px;
 
   --radius-sm: 6px;

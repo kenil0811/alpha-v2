@@ -3,7 +3,7 @@
 // turn becoming the outcome; cards inline; the composer at the foot. One conversation per person
 // and agent (clean base step 7), the Chief of staff first. What happened otherwise is on Activity.
 import type { AgentView, CardView, LiveEvent, Stream } from '@alpha/core/api'
-import { Bot, Check, ChevronRight, FileText, Search, SquareTerminal, Wrench } from 'lucide-react'
+import { ArrowDown, Check, ChevronRight } from 'lucide-react'
 import { type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { takeAsk } from './ask.ts'
@@ -85,6 +85,7 @@ export function Conversation({
 
   // follows the reply only while you are at the bottom; your own message brings you back there
   const pinned = useRef(true)
+  const [away, setAway] = useState(false) // scrolled up: an arrow back to the latest
   const said = items.filter((i) => i.kind === 'said').length
   useEffect(() => {
     pinned.current = true
@@ -128,12 +129,13 @@ export function Conversation({
           onScroll={(e) => {
             const el = e.currentTarget
             pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+            setAway(!pinned.current)
           }}
         >
           <div
             className={cn(
-              'mx-auto flex flex-col gap-5',
-              compact ? 'px-4 pt-4 pb-3 text-md' : 'max-w-stream px-8 pt-7 pb-5',
+              'mx-auto flex flex-col gap-6',
+              compact ? 'px-4 pt-4 pb-3' : 'max-w-stream px-8 pt-7 pb-5 text-chat',
             )}
           >
             {items.length === 0 && (
@@ -187,10 +189,25 @@ export function Conversation({
         )}
         <div
           className={cn(
-            'mx-auto flex w-full flex-col gap-2',
-            compact ? 'px-3 pt-1 pb-3' : 'max-w-stream px-8 pt-1.5 pb-4',
+            'relative mx-auto flex w-full flex-col gap-2',
+            compact ? 'px-3 pt-1 pb-3' : 'max-w-composer px-4 pt-1.5 pb-3',
           )}
         >
+          {away && (
+            <button
+              type="button"
+              aria-label="Go to the latest"
+              data-tip="Go to the latest"
+              onClick={() => {
+                pinned.current = true
+                setAway(false)
+                end.current?.scrollIntoView({ block: 'end' })
+              }}
+              className="-top-9 -translate-x-1/2 absolute left-1/2 grid size-8 place-items-center rounded-full border border-line bg-surface text-ink-2 hover:text-ink"
+            >
+              <ArrowDown className="size-4" />
+            </button>
+          )}
           <Composer
             words={words}
             setWords={setWords}
@@ -276,7 +293,7 @@ function Entry({
 }) {
   if (item.kind === 'said')
     return (
-      <div className="max-w-[85%] self-end whitespace-pre-wrap rounded-xl bg-sunk px-3.5 py-2 text-ink">
+      <div className="max-w-[85%] self-end whitespace-pre-wrap rounded-xl bg-sunk px-4 py-3 text-ink">
         {item.words}
       </div>
     )
@@ -319,7 +336,7 @@ function Entry({
   )
     return null
   return (
-    <div className="group/turn flex flex-col gap-3">
+    <div className="group/turn flex flex-col gap-4">
       {item.asks.map((a) => (
         <AskLine key={a.id} ask={a} waiting={waiting.find((w) => w.id === a.id)} />
       ))}
@@ -385,20 +402,17 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][numb
   const mark = tag && <span className={tag === 'Failed' ? 'text-bad' : 'text-warn'}>{tag}</span>
   if (said && ask.direct && !said.evidence && !said.unblock)
     return (
-      <div className="flex items-center gap-1.5 text-ink-3 text-sm">
-        <Bot className="size-3.5 shrink-0" />
+      <div className="flex items-center gap-1.5 text-ink-3">
         <span>{name}</span>
         {mark}
       </div>
     )
   if (!said)
     return (
-      <div className="flex items-center gap-1.5 text-ink-3 text-sm">
+      <div className="flex items-center gap-1.5 text-ink-3">
         {waiting ? (
           <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-        ) : (
-          <Bot className="size-3.5 shrink-0" />
-        )}
+        ) : null}
         <span className="min-w-0">
           {head}
           {waiting?.doing && <span className="block text-ink-3">{waiting.doing}</span>}
@@ -418,11 +432,11 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][numb
       </div>
     )
   return (
-    <details className="group text-ink-3 text-sm">
-      <summary className="flex cursor-pointer select-none list-none items-start gap-1.5">
-        <ChevronRight className="mt-0.5 size-3.5 shrink-0 transition-transform group-open:rotate-90" />
-        <span className="min-w-0">{name}</span>
+    <details className="group text-ink-3">
+      <summary className="flex cursor-pointer select-none list-none items-center gap-1 hover:text-ink-2">
+        <span className="min-w-0 truncate">{name}</span>
         {mark}
+        <ChevronRight className="size-3.5 shrink-0 transition-transform group-open:rotate-90" />
       </summary>
       <div className="mt-1.5 ml-2 flex flex-col gap-1.5 border-line border-l pl-3">
         {!ask.direct && (
@@ -488,55 +502,63 @@ function partsOf(live: Live[string]['parts']): Part[] {
   return out
 }
 
-const stepIcon = (words: string) =>
-  /^Searched/.test(words)
-    ? Search
-    : /^Read/.test(words)
-      ? FileText
-      : /^Ran/.test(words)
-        ? SquareTerminal
-        : /^(Asked|Started)/.test(words)
-          ? Bot
-          : Wrench
+// What a run of steps did, in a few words.
+function summaryOf(steps: Step[]): string {
+  const first = steps[0]
+  if (first && steps.length === 1) return first.words
+  const count = (re: RegExp) => steps.filter((s) => re.test(s.words)).length
+  const searched = count(/^Searched the web/)
+  const read = count(/^Read /)
+  const ran = count(/^Ran/)
+  const rest = steps.length - searched - read - ran
+  if (rest === steps.length) return `Ran ${steps.length} steps`
+  const said = [
+    searched && (searched === 1 ? 'searched the web' : `searched the web ${searched} times`),
+    read && (read === 1 ? 'read a page' : `read ${read} pages`),
+    ran && (ran === 1 ? 'ran a command' : `ran ${ran} commands`),
+    rest && (rest === 1 ? 'one more step' : `${rest} more steps`),
+  ]
+    .filter(Boolean)
+    .join(', ')
+  return `${said[0]?.toUpperCase()}${said.slice(1)}`
+}
 
+// One step, its verb quieter than what it acted on.
 function StepRow({ step }: { step: Step }) {
-  const Icon = stepIcon(step.words)
+  const at = step.words.indexOf(' ')
   return (
-    <li className="flex min-w-0 flex-col">
-      <span className={cn('flex min-w-0 items-center gap-2', step.ok === false && 'text-bad')}>
-        <Icon className="size-3.5 shrink-0" />
-        <span className="truncate">
-          {step.ok === false ? 'Did not work: ' : ''}
-          {step.words}
-        </span>
+    <div className="flex min-w-0 flex-col border-hair border-t px-3 py-2 first:border-t-0">
+      <span className="truncate">
+        {step.ok === false && <span className="text-bad">Failed </span>}
+        <span className="text-ink-3">{at > 0 ? step.words.slice(0, at) : step.words}</span>
+        {at > 0 && <span className="text-ink-2">{step.words.slice(at)}</span>}
       </span>
       {step.results.map((r) => (
-        <span key={r} className="truncate pl-5.5 text-ink-3">
+        <span key={r} className="truncate text-ink-3">
           {r}
         </span>
       ))}
-    </li>
+    </div>
   )
 }
 
-// The steps between two pieces of text: listed while they run; once done one shows as itself and
-// several as one line that opens.
+// The steps between two pieces of text: what is happening while they run, then one quiet line
+// that opens to each of them.
 function Steps({ steps, active }: { steps: Step[]; active: boolean }) {
-  const list = (
-    <ol className="flex flex-col gap-1">
-      {steps.map((s) => (
-        <StepRow key={s.id} step={s} />
-      ))}
-    </ol>
-  )
-  if (active || steps.length === 1) return <div className="text-ink-3 text-sm">{list}</div>
+  if (active) return <div className="truncate text-ink-3">{steps.at(-1)?.words}</div>
+  const failed = steps.some((s) => s.ok === false)
   return (
-    <details className="group text-ink-3 text-sm">
-      <summary className="inline-flex cursor-pointer select-none list-none items-center gap-1 rounded-sm py-0.5 pr-1.5 pl-0.5 hover:bg-hover hover:text-ink">
-        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
-        <span>Ran {steps.length} steps</span>
+    <details className="group text-ink-3">
+      <summary className="inline-flex max-w-full cursor-pointer select-none list-none items-center gap-1 hover:text-ink-2">
+        <span className="truncate">{summaryOf(steps)}</span>
+        {failed && <span className="text-bad">Failed</span>}
+        <ChevronRight className="size-3.5 shrink-0 transition-transform group-open:rotate-90" />
       </summary>
-      <div className="mt-1.5 ml-2 border-line border-l pl-3">{list}</div>
+      <div className="mt-2 overflow-hidden rounded-lg border border-hair">
+        {steps.map((s) => (
+          <StepRow key={s.id} step={s} />
+        ))}
+      </div>
     </details>
   )
 }
@@ -544,8 +566,8 @@ function Steps({ steps, active }: { steps: Step[]; active: boolean }) {
 // Under a turn while it runs.
 function Working() {
   return (
-    <div className="flex items-center gap-2 text-ink-3 text-sm">
-      <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+    <div className="flex items-center gap-2 text-ink-3">
+      <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-ink-3" />
       <span>Working on it…</span>
     </div>
   )

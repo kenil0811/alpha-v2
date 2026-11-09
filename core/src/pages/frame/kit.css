@@ -1,18 +1,18 @@
 /* Alpha's page kit: the look of a page's blocks, from the window's variables only. The light
    values here are what a printed page uses; in the window, the window sends its own. */
 :root {
-  --canvas: #faf9f5;
+  --canvas: #fbfbfb;
   --surface: #ffffff;
-  --sunk: #f0eee6;
-  --hover: #ebe9e1;
-  --ink: #141413;
-  --ink-2: #5e5d59;
-  --ink-3: #6f6e68;
-  --line: #dedcd1;
-  --hair: #e8e6dc;
+  --sunk: #f0f0f0;
+  --hover: #ebebeb;
+  --ink: #131313;
+  --ink-2: #383838;
+  --ink-3: #6f6f6f;
+  --line: #dcdcdc;
+  --hair: #e9e9e9;
   --accent: #b5542f;
-  --accent-soft: #f6e9e2;
-  --accent-line: #e6c4b4;
+  --accent-soft: #ececec;
+  --accent-line: #cfcfcf;
   --good: #3b7550;
   --good-soft: #e6f0e8;
   --warn: #8f5d1b;

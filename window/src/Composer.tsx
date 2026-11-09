@@ -115,45 +115,34 @@ export function Composer({
     }
   }
   return (
-    <div className="relative flex flex-col gap-1 rounded-2xl border border-line bg-surface py-2.5 pr-2.5 pl-3.5 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
-      {shown.length > 0 && (
-        <div
-          role="listbox"
-          aria-label="Teammates"
-          className="absolute inset-x-3 bottom-full z-(--z-raised) mb-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-pop"
-        >
-          {shown.map((a, i) => (
-            <button
-              key={a.id}
-              type="button"
-              role="option"
-              aria-selected={i === pick}
-              onMouseDown={(e) => e.preventDefault()} // the composer keeps the caret
-              onClick={() => choose(a)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 text-left text-ink text-md',
-                i === pick ? 'bg-hover' : 'hover:bg-hover',
-              )}
-            >
-              <Bot className="size-3.5 shrink-0 text-ink-3" />
-              {a.name}
-              <span className="truncate text-ink-3 text-sm">{a.title}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <textarea
-        ref={area}
-        rows={1}
-        value={words}
-        onChange={(e) => type(e.target.value, e.target.selectionStart)}
-        onBlur={() => setQuery(null)}
-        onKeyDown={key}
-        placeholder={`Message ${agent?.name ?? 'Chief of staff'}`}
-        aria-label={`Message ${agent?.name ?? 'Chief of staff'}`}
-        className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
-      />
-      <div className="flex items-center gap-1">
+    <div className="flex flex-col gap-1.5">
+      <div className="relative flex items-end gap-1.5 rounded-xl border border-line bg-surface px-2 py-1.5 focus-within:border-accent-line">
+        {shown.length > 0 && (
+          <div
+            role="listbox"
+            aria-label="Teammates"
+            className="absolute inset-x-3 bottom-full z-(--z-raised) mb-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-pop"
+          >
+            {shown.map((a, i) => (
+              <button
+                key={a.id}
+                type="button"
+                role="option"
+                aria-selected={i === pick}
+                onMouseDown={(e) => e.preventDefault()} // the composer keeps the caret
+                onClick={() => choose(a)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 text-left text-ink text-md',
+                  i === pick ? 'bg-hover' : 'hover:bg-hover',
+                )}
+              >
+                <Bot className="size-3.5 shrink-0 text-ink-3" />
+                {a.name}
+                <span className="truncate text-ink-3 text-sm">{a.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <IconButton
           ref={plus}
           label="Add files and more"
@@ -204,8 +193,17 @@ export function Composer({
             e.target.value = ''
           }}
         />
-        <span className="ml-auto" />
-        {agent && <ModelPicker agent={agent} />}
+        <textarea
+          ref={area}
+          rows={1}
+          value={words}
+          onChange={(e) => type(e.target.value, e.target.selectionStart)}
+          onBlur={() => setQuery(null)}
+          onKeyDown={key}
+          placeholder={`Message ${agent?.name ?? 'Chief of staff'}`}
+          aria-label={`Message ${agent?.name ?? 'Chief of staff'}`}
+          className="max-h-30 min-h-7 min-w-0 flex-1 resize-none self-center bg-transparent py-0.75 text-chat text-ink outline-none placeholder:text-ink-3"
+        />
         {running && !words.trim() ? (
           <button
             type="button"
@@ -229,6 +227,7 @@ export function Composer({
           </button>
         )}
       </div>
+      <div className="flex justify-end px-2">{agent && <ModelPicker agent={agent} />}</div>
     </div>
   )
 }

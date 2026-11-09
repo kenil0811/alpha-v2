@@ -29,7 +29,7 @@ function Code({ children }: { children?: ReactNode }) {
 
 export function Words({ text }: { text: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-3 leading-relaxed [&_a]:text-accent [&_a]:underline [&_a]:underline-offset-2 [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-sunk [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-px [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-md [&_h1]:mt-2 [&_h1]:font-sans [&_h1]:font-semibold [&_h1]:text-lg [&_h2]:mt-2 [&_h2]:font-sans [&_h2]:font-semibold [&_h2]:text-lg [&_h3]:mt-1 [&_h3]:font-sans [&_h3]:font-semibold [&_h3]:text-base [&_h4]:font-sans [&_h4]:font-semibold [&_h4]:text-base [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_li]:marker:text-ink-3 [&_blockquote]:border-line [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-ink-2 [&_hr]:border-hair [&_strong]:font-semibold">
+    <div className="flex min-w-0 flex-col gap-2.5 [&_a]:underline [&_a]:decoration-ink-3 [&_a]:underline-offset-2 [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-hover [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-px [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-md [&_h1]:mt-3 [&_h1]:font-sans [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:font-sans [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:font-sans [&_h3]:font-semibold [&_h4]:mt-2 [&_h4]:font-sans [&_h4]:font-semibold [&_ul]:list-disc [&_ul]:pl-7.5 [&_ol]:list-decimal [&_ol]:pl-7.5 [&_li]:my-0.5 [&_li]:pl-2 [&_blockquote]:border-line [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-ink-2 [&_hr]:border-hair [&_strong]:font-semibold">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{

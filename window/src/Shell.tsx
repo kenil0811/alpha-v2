@@ -54,11 +54,10 @@ function Nav({
       className={cn(
         'group relative flex w-full shrink-0 items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink',
         small ? 'h-7' : 'h-7.5',
-        current &&
-          'bg-accent-soft font-medium text-accent before:absolute before:inset-y-1.5 before:left-0 before:w-0.75 before:rounded-full before:bg-accent hover:bg-accent-soft hover:text-accent',
+        current && 'bg-rail-sel font-medium text-rail-ink',
       )}
     >
-      <span className={cn('shrink-0 text-rail-ink-3', current && 'text-accent')}>{icon}</span>
+      <span className={cn('shrink-0 text-rail-ink-3', current && 'text-rail-ink')}>{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {extra}
     </a>
@@ -660,14 +659,14 @@ export function Bar({
       data-tauri-drag-region
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
-      <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region></div>
+      <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
+        {plain && (
+          <h1 className="min-w-0 truncate font-medium font-sans text-chat text-ink">{name}</h1>
+        )}
+      </div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        {plain ? (
-          <h1 className="hidden min-w-0 truncate font-medium font-sans text-ink text-md peer-empty:block">
-            {name}
-          </h1>
-        ) : (
+        {!plain && (
           <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">
             {name}
           </h1>
