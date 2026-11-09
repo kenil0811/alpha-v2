@@ -46,6 +46,7 @@ export interface StreamLine {
 
 export interface CardView {
   id: string
+  task: string | null // raised in this task's own thread
   kind: string
   state: string
   words: string
@@ -580,7 +581,7 @@ export interface UndoView {
 }
 
 export type LiveEvent =
-  | { type: 'lines'; agent?: string }
+  | { type: 'lines'; agent?: string; task?: string }
   | {
       type: 'live'
       turn: string
@@ -588,9 +589,10 @@ export type LiveEvent =
       doing: string | null
       parts: ({ kind: 'text'; text: string } | { kind: 'step'; words: string })[]
       agent?: string
+      task?: string
     }
-  | { type: 'busy'; turn: string; agent?: string }
-  | { type: 'idle'; agent?: string }
+  | { type: 'busy'; turn: string; agent?: string; task?: string }
+  | { type: 'idle'; agent?: string; task?: string }
 
 // A task as a list shows it: its state, due, priority, owner and where it sits.
 export interface TaskLineView {
@@ -618,6 +620,7 @@ export interface TasksView {
 
 // A task's page.
 export interface TaskView extends TaskLineView {
+  agent: AgentView | null // the agent that has it
   notes: string | null
   remindedAt: string | null
   madeBy: string
@@ -662,4 +665,5 @@ export interface AgentDetail extends AgentView {
   skills: { name: string; description: string }[]
   files: string[]
   memories: MemoryView[]
+  tasks: { id: string; title: string; state: string }[]
 }

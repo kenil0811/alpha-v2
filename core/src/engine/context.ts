@@ -306,6 +306,14 @@ export function newsOf(
   return out
 }
 
+// Who the person picked with @ for this message.
+export function pickedLine(world: World, named: string[]): string[] {
+  const names = named
+    .map((id) => (id === CHIEF ? 'the Chief of staff' : (world.agents.get(id)?.name ?? '')))
+    .filter(Boolean)
+  return names.length ? [`They picked these teammates with @: ${names.join(', ')}. Ask them.`] : []
+}
+
 // What was said in this conversation to one teammate by name, without this agent in between:
 // said once on its next turn, so it can carry on from there.
 export function heardDirectly(

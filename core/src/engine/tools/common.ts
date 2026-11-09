@@ -40,6 +40,7 @@ export interface Here {
 export interface AgentBus {
   deliver(user: User, ask: AgentAsk): void // the receiver starts when it can
   stop(user: User, ask: AgentAsk): void // the asker called it off
+  giveTask?(user: User, id: string, from: { root: string | null; hop: number }): void
 }
 
 // What reaches past the world's tables: the browser engine and the runner of module scripts.

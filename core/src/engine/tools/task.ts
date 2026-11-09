@@ -1,9 +1,11 @@
 // The task tool: find, add, change, remove (design §12).
 
 import { z } from 'zod'
+import { config } from '../../config.ts'
+import { CHIEF } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Table } from '../../world/shape/index.ts'
-import { PRIORITIES, type Task } from '../../world/tasks/index.ts'
+import { PRIORITIES, type Task, taskOfTurn } from '../../world/tasks/index.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
 import { guard, ok, tool } from './common.ts'
@@ -14,7 +16,7 @@ export function taskTools({ world, here, ctx }: Tooling): ToolEntry[] {
       'task',
       [
         "Keep the person's tasks: one list of all work, each on the place it concerns. Read them in the view tasks.",
-        'Actions: add (on the place it concerns, with due, remind_at, repeat, priority, owner, parent, touches), change, start, wait, done, drop, reopen (one task by id), remove (ids, with asked_in: the person’s words), find (open tasks by words and place). Read the task grammar with guide (about: tasks) before you add or change one.',
+        'Actions: add (on the place it concerns, with due, remind_at, repeat, priority, owner (me, alpha, or an agent’s name: that agent starts on it at once), parent, touches), change, start, wait, done, drop, reopen (one task by id), remove (ids, with asked_in: the person’s words), find (open tasks by words and place). Read the task grammar with guide (about: tasks) before you add or change one.',
       ].join('\n'),
       {
         action: z.enum([
@@ -61,7 +63,33 @@ export function taskTools({ world, here, ctx }: Tooling): ToolEntry[] {
             if (/^(me|you|the person|person)$/i.test(o.trim()))
               return { kind: 'person' as const, id: here.current.user.id }
             if (/^alpha$/i.test(o.trim())) return { kind: 'alpha' as const, id: null }
-            throw new Refused(`The owner is me or alpha, not ${o}.`)
+            if (/^chief( of staff)?$/i.test(o.trim())) return { kind: 'alpha' as const, id: CHIEF }
+            const agent = world.agents.byName(o.trim())
+            if (agent) return { kind: 'alpha' as const, id: agent.id }
+            throw new Refused(`The owner is me, alpha or an agent's name, not ${o}.`)
+          }
+          // an agent set on a task starts on it; a request gives out only so many, a chain goes
+          // only so deep, and Alpha counts them
+          const give = (t: Task) => {
+            if (!(t.owner.kind === 'alpha' && t.owner.id)) return
+            const cur = here.current
+            const root = cur.root ?? cur.turn
+            const limits = config.limits()
+            const parent = cur.ask ? world.asks.get(cur.ask)?.hop : undefined
+            const own = taskOfTurn(cur.turn)
+            const hop = (parent ?? (own ? world.tasks.get(own)?.given?.hop : 0) ?? 0) + 1
+            if (hop > limits.hops_in_a_chain)
+              throw new Refused(
+                `This chain is ${limits.hops_in_a_chain} steps deep, so it stops here.`,
+              )
+            if (
+              root &&
+              world.tasks.givenIn(root) + world.asks.ofRoot(root).length >= limits.asks_per_request
+            )
+              throw new Refused(
+                `This request has given out ${limits.asks_per_request} pieces of work, so it stops here. Tell the person.`,
+              )
+            here.bus?.giveTask?.(cur.user, t.id, { root: root ?? null, hop })
           }
           const shown = (t: Task) => ({
             id: t.id,
@@ -101,6 +129,7 @@ export function taskTools({ world, here, ctx }: Tooling): ToolEntry[] {
                 },
                 c,
               )
+              give(t)
               return ok({
                 task: shown(t),
                 ...(similar.length ? { similar: similar.map(shown) } : {}),
@@ -123,6 +152,7 @@ export function taskTools({ world, here, ctx }: Tooling): ToolEntry[] {
                 },
                 c,
               )
+              if (a.owner !== undefined) give(t)
               return ok({ task: shown(t) })
             }
             case 'start':

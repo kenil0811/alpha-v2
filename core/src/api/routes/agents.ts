@@ -9,6 +9,7 @@ import { skillsOf } from '../../engine/context.ts'
 import { instructionsOf, modelOf, removeAgent, undoAgentChange } from '../../modules/agents.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
+import { STATE_WORDS } from '../../world/tasks/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { AgentDetail, AgentView, MemoryView } from '../types.ts'
 
@@ -22,6 +23,11 @@ export function registerAgents(ctx: Ctx): void {
   const known = (id: string) => {
     if (id !== CHIEF && !world.agents.get(id)) throw new Refused('That agent is not there.')
   }
+  const tasksOf = (id: string) =>
+    world.tasks
+      .list({ owner: { kind: 'alpha', id } })
+      .slice(0, 20)
+      .map((t) => ({ id: t.id, title: t.title, state: STATE_WORDS[t.state] }))
   const memoriesOf = (id: string): MemoryView[] =>
     world.memories.list(id, user.id).map((m) => ({
       id: m.id,
@@ -75,7 +81,14 @@ export function registerAgents(ctx: Ctx): void {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     known(id)
     if (id === CHIEF)
-      return { ...chief(), instructions: '', skills: [], files: [], memories: memoriesOf(id) }
+      return {
+        ...chief(),
+        instructions: '',
+        skills: [],
+        files: [],
+        memories: memoriesOf(id),
+        tasks: tasksOf(id),
+      }
     const a = world.agents.get(id)
     if (!a) throw new Refused('That agent is not there.')
     const dir = world.agents.dirOf(id)
@@ -91,6 +104,7 @@ export function registerAgents(ctx: Ctx): void {
       skills: skillsOf(dir),
       files: existsSync(filesDir) ? readdirSync(filesDir) : [],
       memories: memoriesOf(id),
+      tasks: tasksOf(id),
     }
   })
 

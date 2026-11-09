@@ -6,7 +6,7 @@ import { keptEdit, keptField, keptTable } from '../kept.ts'
 import type { KeptTable, TasksView, TaskView } from '../types.ts'
 
 export function registerTasks(ctx: Ctx): void {
-  const { app, world, user, options, live, asPerson } = ctx
+  const { app, world, user, options, live, asPerson, engine } = ctx
   const { placeOf, lineOf, taskOut, given, today, inDays } = ctx.views
 
   const LISTS: Record<string, () => Task[]> = {
@@ -21,6 +21,14 @@ export function registerTasks(ctx: Ctx): void {
         .filter((t) => t.state === 'done' || t.state === 'dropped')
         .sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''))
         .slice(0, 200),
+    // what agents finished in the last day, for Home
+    finished: () =>
+      world.tasks
+        .list({ state: 'done' })
+        .filter(
+          (t) => t.given && (t.doneAt ?? '') > new Date(Date.now() - 86_400_000).toISOString(),
+        )
+        .slice(0, 10),
   }
   // Tasks as a table (UI batch 2, 26 Oct): a saved list's tasks, each changed in a cell or by
   // dragging it across the board, as the person's word on the task's own record
@@ -135,7 +143,17 @@ export function registerTasks(ctx: Ctx): void {
       body: string
       open: string
     }[] = []
-    for (const l of world.lines({ after, kinds: ['reminder', 'card_opened'] })) {
+    for (const l of world.lines({ after, kinds: ['reminder', 'card_opened', 'task_finished'] })) {
+      if (l.kind === 'task_finished') {
+        notices.push({
+          id: `line-${l.id}`,
+          title: 'Finished',
+          subtitle: null,
+          body: l.words,
+          open: `#/tasks/${String((l.data as { task?: string }).task ?? '')}`,
+        })
+        continue
+      }
       if (l.kind === 'reminder') {
         const t = world.tasks.get(String((l.data as { task?: string }).task ?? ''))
         if (!t) continue
@@ -199,6 +217,7 @@ export function registerTasks(ctx: Ctx): void {
       >[0],
       asPerson,
     )
+    if (b.owner?.kind === 'alpha' && b.owner.id) engine.tasks.give(user, t.id)
     live()
     return taskOut(t.id)
   })
@@ -214,6 +233,14 @@ export function registerTasks(ctx: Ctx): void {
       } as Parameters<typeof world.tasks.change>[1],
       asPerson,
     )
+    if (b.owner?.kind === 'alpha' && b.owner.id) engine.tasks.give(user, id)
+    live()
+    return taskOut(id)
+  })
+
+  app.post('/api/tasks/:id/run', async (req): Promise<TaskView | undefined> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    engine.tasks.again(user, id)
     live()
     return taskOut(id)
   })

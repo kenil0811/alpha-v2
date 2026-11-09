@@ -21,6 +21,7 @@ import {
   memoryLayer,
   newsOf,
   ownFolderLayer,
+  pickedLine,
   startLayer,
   teamOf,
   turnLayer,
@@ -29,11 +30,13 @@ import {
   addBreak,
   addStep,
   addText,
+  limitLine,
   liveOf,
   type Running,
   settleAsk,
   startTurn,
   textSoFar,
+  turnAfterLimit,
 } from './desk-turn.ts'
 import { type DeskEvent, type DeskOptions, fingerprint, type Turn } from './desk-types.ts'
 import { fileWall } from './filewall.ts'
@@ -66,6 +69,7 @@ export class Desk {
   private hands: Hands | undefined
   private starts: () => string[]
   private agentId: string
+  private lane: string | null // a task's own thread with this agent
   private bus: DeskOptions['bus']
   private openedWith = ''
   private handingOver = false
@@ -84,6 +88,7 @@ export class Desk {
     this.prompt = options.prompt ?? 'alone'
     this.starts = options.starts ?? (() => [])
     this.agentId = options.agent ?? CHIEF
+    this.lane = options.lane ?? null
     this.here = {
       current: { user, turn: null, said: null, message: null, agent: this.named },
       fromSubagent: false,
@@ -145,18 +150,13 @@ export class Desk {
   }
 
   // The teammates the person picked with @ on this message.
-  private pickedLine(): string[] {
-    const named = this.here.current.named ?? []
-    return named.length
-      ? [
-          `They picked these teammates with @: ${named
-            .map((id) =>
-              id === CHIEF ? 'the Chief of staff' : (this.world.agents.get(id)?.name ?? ''),
-            )
-            .filter(Boolean)
-            .join(', ')}. Ask them.`,
-        ]
-      : []
+  // Where this desk's session is kept: an agent's chat, or one task's thread with it.
+  private get sessionKey(): string {
+    return this.lane ? `${this.agentId}#${this.lane}` : this.agentId
+  }
+
+  private laneTurn(): string | null {
+    return this.lane ? `task:${this.lane}:${this.world.lastLineId()}` : null
   }
 
   // What is new since the last turn, said once.
@@ -203,6 +203,7 @@ export class Desk {
     from: { id: string; name: string } | null = null,
     named: string[] = [],
   ): string {
+    const own = this.laneTurn()
     const line = this.world.line({
       actor: { kind: 'person', id: this.user.id },
       kind: 'said',
@@ -210,8 +211,9 @@ export class Desk {
       user: this.user.id,
       module: from?.id ?? null,
       agent: this.named,
+      ...(own ? { turn: own } : {}),
     })
-    const turn = String(line.id)
+    const turn = own ?? String(line.id)
     // a person's own message goes ahead of what teammates sent
     const at = this.queue.findIndex((t) => t.low)
     this.queue.splice(at < 0 ? this.queue.length : at, 0, {
@@ -234,7 +236,7 @@ export class Desk {
     const serving = askOfTurn(card.turn)
     const ask = serving ? this.world.asks.get(serving) : undefined
     if (serving && !(ask && OPEN.includes(ask.state))) return
-    const turn = serving ? `a${serving}.${this.world.lastLineId()}` : null
+    const turn = serving ? `a${serving}.${this.world.lastLineId()}` : this.laneTurn()
     const line = this.world.line({
       actor: { kind: 'system' },
       kind: 'noticed',
@@ -255,6 +257,22 @@ export class Desk {
       message: null,
       ...(more ? { root: more.root, ask: more.ask } : ask ? { root: ask.root, ask: ask.id } : {}),
     })
+    this.emit({ type: 'lines' })
+    this.pump()
+  }
+
+  // Work given to this task's thread: a turn of its own, with nothing said for it.
+  takeWork(words: string, text: string): void {
+    const turn = this.laneTurn() as string
+    this.world.line({
+      actor: { kind: 'system' },
+      kind: 'noticed',
+      words,
+      user: this.user.id,
+      agent: this.named,
+      turn,
+    })
+    this.queue.push({ turn, text, said: null, message: null })
     this.emit({ type: 'lines' })
     this.pump()
   }
@@ -287,7 +305,7 @@ export class Desk {
   takeAnswers(asks: AgentAsk[], names: (id: string) => string): void {
     const first = asks[0]
     if (!first) return
-    const serving = first.parent ? `a${first.parent}.${this.world.lastLineId()}` : null
+    const serving = first.parent ? `a${first.parent}.${this.world.lastLineId()}` : this.laneTurn()
     const line = this.world.line({
       actor: { kind: 'system' },
       kind: 'noticed',
@@ -365,10 +383,10 @@ export class Desk {
 
   private open(): void {
     const agent = this.named ? this.world.agents.get(this.named) : undefined
-    const kept = this.world.desk(this.user.id, this.agentId)
+    const kept = this.world.desk(this.user.id, this.sessionKey)
     const resume = kept && kept.tools === this.fingerprint ? kept.sessionId : undefined
     this.fresh = !resume
-    this.handingOver = !resume
+    this.handingOver = !resume && !this.lane
     this.openedWith = this.fingerprint
     const deskDir = realpathSync(this.world.deskDir(this.user.id, this.agentId))
     const modules = realpathSync(this.world.paths.modules)
@@ -411,10 +429,10 @@ export class Desk {
           turnLayer(
             this.world,
             this.user.id,
-            this.world.desk(this.user.id, this.agentId)?.seenJournalId ?? 0,
+            this.world.desk(this.user.id, this.sessionKey)?.seenJournalId ?? 0,
             this.here.current.message,
             this.here.current.from ?? null,
-            [...this.pickedLine(), ...this.news()],
+            [...pickedLine(this.world, this.here.current.named ?? []), ...this.news()],
           ),
         takeFresh: () => {
           const was = this.fresh
@@ -473,30 +491,15 @@ export class Desk {
         e.sessionId,
         this.fingerprint,
         { kind: 'system' },
-        this.agentId,
+        this.sessionKey,
       )
       return
     }
     if (e.type === 'limit') {
       const at = e.resetsAt
-      this.world.line({
-        actor: { kind: 'system' },
-        kind: 'limit',
-        words: at
-          ? `Your Claude usage window is closed until ${at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. I'll carry on then.`
-          : 'Your Claude usage window is closed for now.',
-        data: { info: e.info },
-        user: this.user.id,
-        agent: this.named,
-        turn: this.running?.turn ?? null,
-      })
+      this.world.line(limitLine(e, this.user.id, this.named, this.running?.turn ?? null))
       if (at && this.running) {
-        const again: Turn = {
-          turn: this.running.turn,
-          text: 'The usage window is open again: carry on with what was asked.',
-          said: null,
-          message: null,
-        }
+        const again = turnAfterLimit(this.running.turn)
         setTimeout(
           () => {
             this.queue.push(again)
@@ -551,12 +554,12 @@ export class Desk {
       // what this turn kept only if it finished: a turn that failed or was stopped saves nothing
       if (e.ok && !stopped) for (const keep of this.here.afterTurn) keep()
       this.here.afterTurn = []
-      this.world.markSeen(this.user.id, this.world.lastLineId(), this.agentId)
+      this.world.markSeen(this.user.id, this.world.lastLineId(), this.sessionKey)
       settleAsk(this.world, this.bus, this.user, running, e, stopped, costOf(spent))
       this.running = null
       this.stopping = false
       this.emit({ type: 'lines' })
-      this.emit({ type: 'idle' })
+      this.emit({ type: 'idle', outcome: stopped ? 'stopped' : e.ok ? 'ok' : 'failed' })
       this.pump()
     }
   }
@@ -575,13 +578,15 @@ export class Desk {
   }
 
   private startOwnTurn(words: string): void {
+    const own = this.laneTurn()
     const line = this.world.line({
       actor: this.actor,
       kind: 'noticed',
       words,
       user: this.user.id,
+      ...(own ? { turn: own } : {}),
     })
-    const turn = `n${line.id}`
+    const turn = own ?? `n${line.id}`
     this.running = startTurn({ turn, text: '', said: null, message: null })
     this.here.current = { user: this.user, turn, said: null, message: null, agent: this.named }
     this.emit({ type: 'busy', turn })

@@ -8,12 +8,14 @@ import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
 import { type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../world/rules.ts'
+import { taskOfTurn } from '../world/tasks/index.ts'
 import type { User, World } from '../world/world.ts'
 import { recentFor } from './context.ts'
 import { Desk, type DeskEvent, type DeskOptions } from './desk.ts'
+import { TaskRuns } from './task-runs.ts'
 import { ASK_MORE } from './tools/agents.ts'
 
-export type EngineEvent = DeskEvent & { user: string; agent?: string }
+export type EngineEvent = DeskEvent & { user: string; agent?: string; task?: string }
 
 export class Engine {
   readonly world: World
@@ -21,9 +23,16 @@ export class Engine {
   private desks = new Map<string, Desk>()
   private options: Omit<DeskOptions, 'emit'>
 
+  readonly tasks: TaskRuns
+
   constructor(world: World, options: Omit<DeskOptions, 'emit'> = {}) {
     this.world = world
     this.options = options
+    this.tasks = new TaskRuns(
+      world,
+      (user, agent, task) => this.desk(user, agent, task),
+      (user, agent, task) => this.closeLane(user, agent, task),
+    )
   }
 
   private nameOf = (id: string): string =>
@@ -33,6 +42,9 @@ export class Engine {
   private bus = {
     deliver: (user: User, ask: AgentAsk): void => {
       this.desk(user, ask.to).takeAsk(ask, this.nameOf(ask.from))
+    },
+    giveTask: (user: User, id: string, from: { root: string | null; hop: number }): void => {
+      this.tasks.give(user, id, from)
     },
     stop: (user: User, ask: AgentAsk): void => {
       this.desk(user, ask.to).stopAsk(ask.id)
@@ -60,7 +72,7 @@ export class Engine {
       })
       const all = this.world.asks.ofTurn(ask.fromTurn)
       if (!all.every((x) => x.reported) || ask.brief.direct) return
-      this.desk(user, ask.from).takeAnswers(all, this.nameOf)
+      this.desk(user, ask.from, taskOfTurn(ask.fromTurn) ?? undefined).takeAnswers(all, this.nameOf)
     },
   }
 
@@ -92,8 +104,8 @@ export class Engine {
   }
 
   // One desk per person and agent.
-  desk(user: User, agent = CHIEF): Desk {
-    const id = `${user.id}:${agent}`
+  desk(user: User, agent = CHIEF, lane?: string): Desk {
+    const id = `${user.id}:${agent}${lane ? `:${lane}` : ''}`
     let d = this.desks.get(id)
     if (!d) {
       let reported: string | null = null // the step last shown to whoever asked this agent
@@ -104,10 +116,18 @@ export class Engine {
         {
           ...this.options,
           agent,
+          ...(lane ? { lane } : {}),
           bus: this.bus,
           granted: this.folders(),
           emit: (e) => {
-            this.events.emit('event', { ...e, user: user.id, agent } satisfies EngineEvent)
+            this.events.emit('event', {
+              ...e,
+              user: user.id,
+              agent,
+              ...(lane ? { task: lane } : {}),
+            } satisfies EngineEvent)
+            if (lane && e.type === 'idle')
+              this.tasks.idle(user, agent, lane, e.outcome, this.desks.get(id)?.working ?? false)
             // what a teammate is doing shows on the line that asked it
             if (e.type === 'live' && e.doing !== reported && this.desks.get(id)?.serving?.ask) {
               reported = e.doing
@@ -129,12 +149,12 @@ export class Engine {
   // A new model takes effect on the agent's next turn, in the same conversation.
   useModel(agent: string, model: string): void {
     for (const [id, d] of this.desks)
-      if (id.endsWith(`:${agent}`)) void d.session?.setModel?.(model)
+      if (id.split(':')[1] === agent) void d.session?.setModel?.(model)
   }
 
   closeAgent(agent: string): void {
     for (const [id, d] of this.desks)
-      if (id.endsWith(`:${agent}`)) {
+      if (id.split(':')[1] === agent) {
         d.close()
         this.desks.delete(id)
       }
@@ -235,6 +255,7 @@ export class Engine {
       },
       user: user.id,
       agent: ask.from === CHIEF ? null : ask.from,
+      ...(taskOfTurn(ask.fromTurn) ? { turn: ask.fromTurn } : {}),
     })
     this.events.emit('event', {
       type: 'lines',
@@ -374,7 +395,13 @@ export class Engine {
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
     // the desk carries on only with a card its own turn opened, or a run it started; a schedule's
     // card from a scheduled run is the run's to go on with (item 41, 25 Oct)
-    if (card.turn) this.desk(user, card.agent ?? CHIEF).cardAnswered(card)
+    const task = taskOfTurn(card.turn)
+    if (task && card.state !== 'waiting' && this.world.tasks.get(task)?.state === 'waiting')
+      this.world.tasks.setState(task, 'doing', {
+        actor: { kind: 'person', id: user.id },
+        user: user.id,
+      })
+    if (card.turn) this.desk(user, card.agent ?? CHIEF, task ?? undefined).cardAnswered(card)
     return card
   }
 
@@ -397,8 +424,14 @@ export class Engine {
     )
   }
 
-  busy(user: User, agent = CHIEF): boolean {
-    return this.desks.get(`${user.id}:${agent}`)?.busy ?? false
+  busy(user: User, agent = CHIEF, lane?: string): boolean {
+    return this.desks.get(`${user.id}:${agent}${lane ? `:${lane}` : ''}`)?.busy ?? false
+  }
+
+  private closeLane(user: User, agent: string, task: string): void {
+    const id = `${user.id}:${agent}:${task}`
+    this.desks.get(id)?.close()
+    this.desks.delete(id)
   }
 
   close(): void {

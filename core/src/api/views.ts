@@ -1,9 +1,11 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FastifyReply } from 'fastify'
+import { config } from '../config.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { readSchedule, type Schedule } from '../modules/schedules.ts'
 import { pagesOf } from '../pages/pages.ts'
+import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
 import type { Provenance } from '../world/kinds.ts'
 import { besideFrom, type RecordOut, resetWords } from '../world/records/index.ts'
@@ -11,6 +13,7 @@ import type { Module, Table } from '../world/shape/index.ts'
 import { manifestSays } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { Task } from '../world/tasks/index.ts'
+import { taskOfTurn } from '../world/tasks/index.ts'
 import type { View } from '../world/views.ts'
 import { activityView } from './activity-view.ts'
 import type { BaseCtx } from './ctx.ts'
@@ -124,9 +127,28 @@ export function makeViews(ctx: BaseCtx) {
     const owners = [
       { kind: 'person' as const, id: user.id, name: 'You' },
       { kind: 'alpha' as const, id: null, name: 'Alpha' },
+      { kind: 'alpha' as const, id: CHIEF, name: CHIEF_CARD.name },
+      ...world.agents.list().map((a) => ({ kind: 'alpha' as const, id: a.id, name: a.name })),
     ]
+    const agentId = t.owner.kind === 'alpha' ? t.owner.id : null
+    const had = agentId && agentId !== CHIEF ? world.agents.get(agentId) : undefined
+    const agent = !agentId
+      ? null
+      : agentId === CHIEF
+        ? { ...CHIEF_CARD, model: world.agents.modelOf(CHIEF) ?? config.models().desk, chief: true }
+        : had
+          ? {
+              id: had.id,
+              name: had.name,
+              title: had.title,
+              description: had.description,
+              model: had.model ?? config.models().desk,
+              chief: false,
+            }
+          : null
     return {
       ...lineOf(t),
+      agent,
       notes: t.notes,
       remindedAt: t.remindedAt,
       madeBy: t.madeBy.startsWith('person')
@@ -428,6 +450,7 @@ export function cardView(c: Card): CardView {
   const input = (c.call?.input ?? {}) as { connector?: unknown; host?: unknown }
   return {
     id: c.id,
+    task: taskOfTurn(c.turn),
     kind: c.kind,
     state: c.state,
     words: c.words,

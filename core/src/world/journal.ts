@@ -151,6 +151,7 @@ export function lines(
   where: {
     user?: string
     turn?: string
+    turnPrefix?: string // every turn of one task's thread
     run?: string
     agent?: string | null // whose conversation: null is the Chief of staff's
     kinds?: string[]
@@ -168,6 +169,10 @@ export function lines(
   if (where.turn !== undefined) {
     conds.push('turn_id = ?')
     params.push(where.turn)
+  }
+  if (where.turnPrefix !== undefined) {
+    conds.push('turn_id LIKE ?')
+    params.push(`${where.turnPrefix}%`)
   }
   if (where.run !== undefined) {
     conds.push('run_id = ?')

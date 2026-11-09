@@ -214,13 +214,13 @@ export function App() {
           setVersion((v) => v + 1)
         }
         // what is under way shows only in that agent's own conversation
-        const here = e.type === 'lines' || (e.agent ?? CHIEF) === chosenRef.current
+        const here = e.type === 'lines' || ((e.agent ?? CHIEF) === chosenRef.current && !e.task)
         if (e.type === 'busy' && here) setBusyTurn(e.turn)
         if (e.type === 'idle') {
           if (here) setBusyTurn(null)
           void refresh()
         }
-        if (e.type === 'live' && here) applyLive(e)
+        if (e.type === 'live') applyLive(e) // kept by turn, so a task's thread can read its own
       }),
     [refresh],
   )

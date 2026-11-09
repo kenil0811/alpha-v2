@@ -249,6 +249,17 @@ export function AgentPage({
         </section>
       )}
       <Memories id={a.id} memories={a.memories} onChange={load} />
+      {a.tasks.length > 0 && (
+        <section className="flex flex-col gap-1.5">
+          <h2 className="font-medium font-serif text-ink text-xl">Tasks</h2>
+          {a.tasks.map((t) => (
+            <a key={t.id} href={`#/tasks/${t.id}`} className="flex items-center gap-3 text-md">
+              <span className="min-w-0 flex-1 truncate text-ink hover:underline">{t.title}</span>
+              <span className="shrink-0 text-ink-3 text-sm">{t.state}</span>
+            </a>
+          ))}
+        </section>
+      )}
       {a.skills.length > 0 && (
         <section className="flex flex-col gap-1.5">
           <h2 className="font-medium font-serif text-ink text-xl">Skills</h2>

@@ -50,6 +50,6 @@ describe('the task tool', () => {
     expect(world.tasks.get(own.id)?.state).toBe('done')
     const out = await task.handler({ action: 'add', title: 'Count the flour', owner: 'Helper' })
     expect(out.isError).toBe(true)
-    expect(text(out)).toBe('The owner is me or alpha, not Helper.')
+    expect(text(out)).toBe("The owner is me, alpha or an agent's name, not Helper.")
   })
 })

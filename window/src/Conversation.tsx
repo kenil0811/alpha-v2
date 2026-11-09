@@ -49,6 +49,7 @@ export function Conversation({
   agent = null,
   agents = [],
   compact = false,
+  task,
 }: {
   stream: Stream | null
   busyTurn: string | null
@@ -56,6 +57,7 @@ export function Conversation({
   agent?: AgentView | null // whose conversation this is
   agents?: AgentView[] // the team, for @
   compact?: boolean // in the Ask panel: narrow
+  task?: string // this is a task's own thread
 }) {
   const items = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
@@ -77,7 +79,7 @@ export function Conversation({
   }, [])
 
   const { scroller, content, onScroll, away, toLatest } = useFollow(
-    agent?.id ?? 'chief',
+    task ?? agent?.id ?? 'chief',
     stream !== null,
   )
   // your own message brings you back to the end
@@ -197,6 +199,7 @@ export function Conversation({
             agent={agent}
             agents={agents}
             running={busyTurn !== null}
+            {...(task ? { task } : {})}
           />
         </div>
       </div>

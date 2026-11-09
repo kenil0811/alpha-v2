@@ -19,7 +19,7 @@ export type DeskEvent =
   | { type: 'lines' }
   | { type: 'live'; turn: string; text: string; doing: string | null; parts: TurnPart[] }
   | { type: 'busy'; turn: string }
-  | { type: 'idle' }
+  | { type: 'idle'; outcome?: 'ok' | 'stopped' | 'failed' }
 
 export interface DeskOptions {
   // the model behind the desk, or how to pick it when a session opens (the route can change);
@@ -34,6 +34,7 @@ export interface DeskOptions {
   hands?: Hands
   route?: ModelRoute // how this install reaches Claude: the person's subscription or a key
   agent?: string // whose desk this is; the Chief of staff's when none
+  lane?: string // a task's own thread with that agent
   bus?: AgentBus & {
     settled(user: User, ask: AgentAsk, spent: number | null): void
     interim(user: User, ask: AgentAsk, words: string): void

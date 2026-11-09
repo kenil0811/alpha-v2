@@ -25,6 +25,7 @@ export function Composer({
   agent,
   agents,
   running,
+  task,
 }: {
   words: string
   setWords: (w: string) => void
@@ -34,6 +35,7 @@ export function Composer({
   agent: AgentView | null
   agents: AgentView[]
   running: boolean // the agent is working: an empty box's button is Stop
+  task?: string // written on a task's own page
 }) {
   // the box grows with what is typed, up to its most, then scrolls
   useLayoutEffect(() => {
@@ -88,7 +90,7 @@ export function Composer({
       await api.post('/api/say', {
         words: w,
         ...(from ? { from: from.id } : {}),
-        ...(agent && !agent.chief ? { agent: agent.id } : {}),
+        ...(task ? { task } : agent && !agent.chief ? { agent: agent.id } : {}),
         ...(named.length ? { named } : {}),
       })
     } catch (err) {
@@ -216,7 +218,9 @@ export function Composer({
             type="button"
             aria-label="Stop"
             data-tip="Stop"
-            onClick={() => void api.post('/api/stop', { agent: agent?.id ?? 'chief' })}
+            onClick={() =>
+              void api.post('/api/stop', task ? { task } : { agent: agent?.id ?? 'chief' })
+            }
             className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-accent-ink"
           >
             <Square className="size-3 fill-current" />

@@ -119,12 +119,12 @@ export function group(lines: StreamLine[]): Item[] {
     if (l.kind === 'said') {
       items.push({ kind: 'said', id: l.id, words: l.words, at: l.at })
       // asked from a module (Ask, ⌘J): the turn belongs to it
-      alpha(String(l.id), l.at).module = l.module
+      alpha(l.turn ?? String(l.id), l.at).module = l.module
       continue
     }
     // Alpha carrying on by itself after a yes: its turn, with nothing said for it
     if (l.kind === 'noticed') {
-      alpha(`n${l.id}`, l.at)
+      alpha(l.turn ?? `n${l.id}`, l.at)
       continue
     }
     if (l.kind === 'limit') {

@@ -41,6 +41,34 @@ export function textSoFar(r: Running): string | null {
   return last?.kind === 'text' ? last.text.trim() || null : null
 }
 
+// The usage window closed: said in the conversation, and the turn that picks up when it opens.
+export function limitLine(
+  e: { resetsAt: Date | null; info: unknown },
+  user: string,
+  agent: string | null,
+  turn: string | null,
+) {
+  const at = e.resetsAt
+  return {
+    actor: { kind: 'system' as const },
+    kind: 'limit',
+    words: at
+      ? `Your Claude usage window is closed until ${at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. I'll carry on then.`
+      : 'Your Claude usage window is closed for now.',
+    data: { info: e.info },
+    user,
+    agent,
+    turn,
+  }
+}
+
+export const turnAfterLimit = (turn: string): Turn => ({
+  turn,
+  text: 'The usage window is open again: carry on with what was asked.',
+  said: null,
+  message: null,
+})
+
 // A teammate's ask this turn served: answered with the answer tool, or by its last words; left
 // open while the answers to what this turn asked, or a card it raised, are still to come.
 export function settleAsk(

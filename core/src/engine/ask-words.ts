@@ -2,6 +2,7 @@
 // they are never taken for the person's own.
 import type { AgentAsk } from '../world/agents/asks.ts'
 import type { Card } from '../world/cards.ts'
+import type { Task } from '../world/tasks/index.ts'
 
 // What a desk is told when a card it raised is answered, and the line that says it carries on.
 export const cardWords = (card: Card): string =>
@@ -54,5 +55,17 @@ export function answersText(asks: AgentAsk[], names: (id: string) => string): st
     asks[0]?.parent
       ? 'Carry on with what you were doing.'
       : 'Carry on with what you were doing. What you wrote after asking was not shown to the person, so your reply now has to say all they need.',
+  ].join('\n\n')
+}
+
+// What an agent is told when it is given a task: the task and where it sits, not the person's chat.
+export function taskText(t: Task, place: string | null, giver: string): string {
+  return [
+    `${giver} has given you a task. Work on it now, on your own, and finish it.`,
+    `Task: ${t.title}`,
+    ...(t.notes ? [`Notes: ${t.notes}`] : []),
+    ...(place ? [`It sits on: ${place}`] : []),
+    ...(t.due ? [`Due: ${t.due}`] : []),
+    'Your last message is the result, so make it what they need to read.',
   ].join('\n\n')
 }

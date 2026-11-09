@@ -44,12 +44,14 @@ export function Home({
 }) {
   const [setup, reloadSetup] = useSetup()
   const [tasks, setTasks] = useState<TasksView | null>(null)
+  const [finished, setFinished] = useState<TasksView | null>(null)
   // a load that failed is said, with Try again, never shown as a quiet day (item 30, 25 Oct)
   const [failed, setFailed] = useState(false)
   const [words, setWords] = useState('')
   const ask = useRef<HTMLInputElement>(null)
   const last = stream?.lastId
   const load = useCallback(() => {
+    api.get<TasksView>('/api/tasks?list=finished').then(setFinished, () => undefined)
     api.get<TasksView>('/api/tasks?list=today').then(
       (t) => {
         setTasks(t)
@@ -135,6 +137,12 @@ export function Home({
                       : { href: `#/intelligence/connections?connect=${a.connector}` })}
               />
             ))}
+          </Group>
+        )}
+
+        {finished && finished.lines.length > 0 && (
+          <Group title="Finished by your agents">
+            <TaskList lines={finished.lines} onChange={load} />
           </Group>
         )}
 

@@ -1,7 +1,7 @@
 // The task store (design §4): places resolved from words, tasks read by what they are (open or
 // all, on a place, an owner, a day), what may be the same task, and the counts. Changes are in
 // changes.ts as functions of the store.
-import { all, type Db, one } from '../db.ts'
+import { all, type Db, one, run } from '../db.ts'
 import { append } from '../journal.ts'
 import { Refused } from '../kinds.ts'
 import type { Shape, WriteCtx } from '../shape/index.ts'
@@ -93,6 +93,7 @@ export class Tasks {
       repeat: r.repeat,
       priority: r.priority,
       owner: { kind: r.owner_kind, id: r.owner_id },
+      given: r.given_by ? { by: r.given_by, root: r.given_root, hop: r.given_hop } : null,
       parent: r.parent_id,
       place: {
         module: r.module_id,
@@ -252,7 +253,33 @@ export class Tasks {
     }
   }
 
+  // An agent was set on it: by whom, and where in a chain of requests.
+  markGiven(id: string, given: NonNullable<Task['given']>): void {
+    run(
+      this.db,
+      'UPDATE tasks SET given_by = ?, given_root = ?, given_hop = ? WHERE id = ?',
+      given.by,
+      given.root,
+      given.hop,
+      id,
+    )
+  }
+
+  // How many tasks one request has given out.
+  givenIn(root: string): number {
+    return (
+      one<{ n: number }>(this.db, 'SELECT count(*) AS n FROM tasks WHERE given_root = ?', root)
+        ?.n ?? 0
+    )
+  }
+
   ownerWords(t: Task): string {
+    if (t.owner.id === 'chief') return 'Chief of staff'
+    if (t.owner.kind === 'alpha' && t.owner.id)
+      return (
+        one<{ name: string }>(this.db, 'SELECT name FROM agents WHERE id = ?', t.owner.id)?.name ??
+        'An agent'
+      )
     if (t.owner.kind === 'alpha') return 'Alpha'
     return (t.owner.id ? this.personName(t.owner.id) : null) ?? 'You'
   }

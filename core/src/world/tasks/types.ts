@@ -8,6 +8,10 @@ export const PRIORITIES = ['high', 'normal', 'low'] as const
 export type Priority = (typeof PRIORITIES)[number]
 export const OPEN: TaskState[] = ['todo', 'doing', 'waiting']
 
+// A turn in a task's own thread carries the task in its id.
+export const taskOfTurn = (turn: string | null | undefined): string | null =>
+  turn?.startsWith('task:') ? (turn.split(':')[1] ?? null) : null
+
 export const STATE_WORDS: Record<TaskState, string> = {
   todo: 'To do',
   doing: 'In progress',
@@ -55,7 +59,8 @@ export interface Task {
   remindedAt: string | null
   repeat: string | null // as the person said it
   priority: Priority
-  owner: { kind: 'person' | 'alpha'; id: string | null }
+  owner: { kind: 'person' | 'alpha'; id: string | null } // alpha with an id: that agent's
+  given: { by: string; root: string | null; hop: number } | null // who set an agent on it
   parent: string | null
   place: Place
   placedBy: string | null // the person, Alpha, or where it was made
@@ -97,6 +102,9 @@ export interface TaskRow {
   priority: Priority
   owner_kind: 'person' | 'alpha'
   owner_id: string | null
+  given_by: string | null
+  given_root: string | null
+  given_hop: number
   parent_id: string | null
   module_id: string | null
   table_id: string | null

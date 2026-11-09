@@ -9,6 +9,7 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useStat
 import { api, Problem } from './api.ts'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
+import { TaskThread } from './TaskThread.tsx'
 import { dueWords } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -461,6 +462,7 @@ function TaskPage({
           </Labelled>
         </div>
 
+        {t.agent && <TaskThread task={t} onChange={load} />}
         <Section title="Notes">
           <textarea
             aria-label="Notes"
