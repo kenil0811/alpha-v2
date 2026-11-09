@@ -2,7 +2,7 @@
 // and a folder on its +, and @ to pick teammates, whose ids travel with the message.
 import type { AgentView } from '@alpha/core/api'
 import { ArrowUp, Bot, FolderUp, ImageUp, Plus, Square } from 'lucide-react'
-import { type KeyboardEvent, type RefObject, useRef, useState } from 'react'
+import { type KeyboardEvent, type RefObject, useLayoutEffect, useRef, useState } from 'react'
 import { ModelPicker } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import type { Module } from './stream.ts'
@@ -35,6 +35,13 @@ export function Composer({
   agents: AgentView[]
   running: boolean // the agent is working: an empty box's button is Stop
 }) {
+  // the box grows with what is typed, up to its most, then scrolls
+  useLayoutEffect(() => {
+    const el = area.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [words, area])
   const file = useRef<HTMLInputElement>(null)
   const folder = useRef<HTMLInputElement>(null)
   const plus = useRef<HTMLButtonElement>(null)
@@ -202,7 +209,7 @@ export function Composer({
           onKeyDown={key}
           placeholder={`Message ${agent?.name ?? 'Chief of staff'}`}
           aria-label={`Message ${agent?.name ?? 'Chief of staff'}`}
-          className="max-h-30 min-h-7 min-w-0 flex-1 resize-none self-center bg-transparent py-0.75 text-chat text-ink outline-none placeholder:text-ink-3"
+          className="max-h-40 min-h-7 min-w-0 flex-1 resize-none self-center overflow-y-auto bg-transparent py-0.75 text-chat text-ink outline-none placeholder:text-ink-3"
         />
         {running && !words.trim() ? (
           <button

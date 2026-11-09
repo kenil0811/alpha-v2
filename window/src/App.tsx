@@ -15,12 +15,13 @@ import { AgentPage, AgentPicker, AgentRail, CHIEF, useAgents } from './Agents.ts
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
 import { CardPage } from './CardPage.tsx'
-import { applyLive, Conversation, type Live } from './Conversation.tsx'
+import { Conversation } from './Conversation.tsx'
 import { FileView } from './FileView.tsx'
 import { Find } from './Find.tsx'
 import { Home } from './Home.tsx'
 import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
+import { applyLive, clearLive } from './live.ts'
 import { ModuleScreen } from './Module.tsx'
 import { NewModule } from './NewModule.tsx'
 import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
@@ -46,7 +47,6 @@ export function App() {
   const [stream, setStream] = useState<Stream | null>(null)
   const [modules, setModules] = useState<ModuleSummary[]>([])
   const [table, setTable] = useState<TableData | null>(null)
-  const [live, setLive] = useState<Live>({})
   const [busyTurn, setBusyTurn] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [owner, setOwner] = useState(true) // a member does not set Alpha up
@@ -220,7 +220,7 @@ export function App() {
           if (here) setBusyTurn(null)
           void refresh()
         }
-        if (e.type === 'live' && here) setLive((l) => applyLive(l, e))
+        if (e.type === 'live' && here) applyLive(e)
       }),
     [refresh],
   )
@@ -229,7 +229,7 @@ export function App() {
   useEffect(() => {
     if (!chosen) return
     setBusyTurn(null)
-    setLive({})
+    clearLive()
     void refresh()
   }, [chosen, refresh])
 
@@ -315,7 +315,6 @@ export function App() {
                     <div className="min-w-0 flex-1">
                       <Conversation
                         stream={stream}
-                        live={live}
                         busyTurn={busyTurn}
                         agent={agentHere}
                         agents={agents}
@@ -418,7 +417,6 @@ export function App() {
           >
             <Conversation
               stream={stream}
-              live={live}
               busyTurn={busyTurn}
               from={moduleHere}
               compact

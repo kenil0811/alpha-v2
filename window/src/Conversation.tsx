@@ -2,13 +2,15 @@
 // important things): the person's sentences and one agent's replies in order, one live message per
 // turn becoming the outcome; cards inline; the composer at the foot. One conversation per person
 // and agent (clean base step 7), the Chief of staff first. What happened otherwise is on Activity.
-import type { AgentView, CardView, LiveEvent, Stream } from '@alpha/core/api'
+import type { AgentView, CardView, Stream } from '@alpha/core/api'
 import { ArrowDown, Check, ChevronRight } from 'lucide-react'
-import { type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type DragEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { takeAsk } from './ask.ts'
 import { CardBox } from './CardBox.tsx'
 import { Composer } from './Composer.tsx'
+import { useFollow } from './follow.ts'
+import { type LiveParts, useLiveTurn } from './live.ts'
 import {
   type AgentChange,
   type Answered,
@@ -23,15 +25,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { CopyButton } from './ui/copy.tsx'
 import { dropped } from './ui/drop-zone.tsx'
-import { Words } from './ui/words.tsx'
-
-export interface Live {
-  [turn: string]: {
-    text: string
-    doing: string | null
-    parts: ({ kind: 'text'; text: string } | { kind: 'step'; words: string })[]
-  }
-}
+import { StreamedWords, Words } from './ui/words.tsx'
 
 const clock = (at: string) =>
   new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -46,9 +40,10 @@ function dayOf(at: string): string {
   return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+const NONE: Stream['waiting'] = []
+
 export function Conversation({
   stream,
-  live,
   busyTurn,
   from = null,
   agent = null,
@@ -56,7 +51,6 @@ export function Conversation({
   compact = false,
 }: {
   stream: Stream | null
-  live: Live
   busyTurn: string | null
   from?: Module // asked from a module's screen
   agent?: AgentView | null // whose conversation this is
@@ -65,7 +59,6 @@ export function Conversation({
 }) {
   const items = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
-  const end = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [words, setWords] = useState('')
@@ -83,16 +76,15 @@ export function Conversation({
     return () => window.removeEventListener('alpha:ask', take)
   }, [])
 
-  // follows the reply only while you are at the bottom; your own message brings you back there
-  const pinned = useRef(true)
-  const [away, setAway] = useState(false) // scrolled up: an arrow back to the latest
+  const { scroller, content, onScroll, away, toLatest } = useFollow(
+    agent?.id ?? 'chief',
+    stream !== null,
+  )
+  // your own message brings you back to the end
   const said = items.filter((i) => i.kind === 'said').length
   useEffect(() => {
-    pinned.current = true
-  }, [said])
-  useEffect(() => {
-    if (pinned.current) end.current?.scrollIntoView({ block: 'end' })
-  }, [items, live, busyTurn])
+    if (said) toLatest()
+  }, [said, toLatest])
 
   const drop = async (e: DragEvent) => {
     e.preventDefault()
@@ -106,10 +98,10 @@ export function Conversation({
     }
   }
   // "Change something" on a card: the composer, started with the card's words
-  const changeCard = (card: CardView) => {
+  const changeCard = useCallback((card: CardView) => {
     setWords(`About “${card.words.replace(/\?$/, '')}”: `)
     composer.current?.focus()
-  }
+  }, [])
 
   let lastDay = ''
   return (
@@ -124,15 +116,9 @@ export function Conversation({
       onDrop={drop}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <div
-          className="@container flex-1 overflow-y-auto"
-          onScroll={(e) => {
-            const el = e.currentTarget
-            pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-            setAway(!pinned.current)
-          }}
-        >
+        <div className="@container flex-1 overflow-y-auto" ref={scroller} onScroll={onScroll}>
           <div
+            ref={content}
             className={cn(
               'mx-auto flex flex-col gap-6',
               compact ? 'px-4 pt-4 pb-3' : 'max-w-stream px-8 pt-7 pb-5 text-chat',
@@ -154,10 +140,9 @@ export function Conversation({
                   {line && <DayLine day={day} />}
                   <Entry
                     item={item}
-                    live={item.kind === 'alpha' ? live[item.turn] : undefined}
                     working={item.kind === 'alpha' && busyTurn === item.turn}
                     cards={cards}
-                    waiting={stream?.waiting ?? []}
+                    waiting={stream?.waiting ?? NONE}
                     onChangeCard={changeCard}
                     name={agent?.name ?? 'Chief of staff'}
                   />
@@ -175,7 +160,6 @@ export function Conversation({
                 Working for {stream.serving}
               </div>
             )}
-            <div ref={end} />
           </div>
         </div>
         {problem && (
@@ -198,11 +182,7 @@ export function Conversation({
               type="button"
               aria-label="Go to the latest"
               data-tip="Go to the latest"
-              onClick={() => {
-                pinned.current = true
-                setAway(false)
-                end.current?.scrollIntoView({ block: 'end' })
-              }}
+              onClick={toLatest}
               className="-top-9 -translate-x-1/2 absolute left-1/2 grid size-8 place-items-center rounded-full border border-line bg-surface text-ink-2 hover:text-ink"
             >
               <ArrowDown className="size-4" />
@@ -274,9 +254,8 @@ function AnsweredLine({ answered }: { answered: Answered }) {
   )
 }
 
-function Entry({
+const Entry = memo(function Entry({
   item,
-  live,
   working,
   cards,
   waiting,
@@ -284,13 +263,13 @@ function Entry({
   onChangeCard,
 }: {
   item: Item
-  live: Live[string] | undefined
   working: boolean
   cards: Map<string, CardView>
   waiting: Stream['waiting']
   name: string
   onChangeCard: (c: CardView) => void
 }) {
+  const live = useLiveTurn(item.kind === 'alpha' ? item.turn : null)
   if (item.kind === 'said')
     return (
       <div className="max-w-[85%] self-end whitespace-pre-wrap rounded-xl bg-sunk px-4 py-3 text-ink">
@@ -343,7 +322,7 @@ function Entry({
       {parts.map((part, i) =>
         part.kind === 'text' ? (
           <div key={i} className="min-w-0">
-            <Words text={part.text} />
+            <StreamedWords text={part.text} streaming={streaming && i === parts.length - 1} />
           </div>
         ) : (
           <Steps key={i} steps={part.steps} active={working && i === parts.length - 1} />
@@ -381,7 +360,7 @@ function Entry({
       )}
     </div>
   )
-}
+})
 
 // One teammate asked: Stop while it works, then its answer and evidence behind a fold.
 function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][number] | undefined }) {
@@ -487,7 +466,7 @@ function Change({ change }: { change: AgentChange }) {
 }
 
 // A turn's live parts in the shape the journal gives them, so the two read the same.
-function partsOf(live: Live[string]['parts']): Part[] {
+function partsOf(live: LiveParts): Part[] {
   const out: Part[] = []
   live.forEach((p, i) => {
     if (p.kind === 'text') {
@@ -571,9 +550,4 @@ function Working() {
       <span>Working on it…</span>
     </div>
   )
-}
-
-export function applyLive(live: Live, e: LiveEvent): Live {
-  if (e.type !== 'live') return live
-  return { ...live, [e.turn]: { text: e.text, doing: e.doing, parts: e.parts } }
 }
