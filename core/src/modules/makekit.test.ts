@@ -92,9 +92,7 @@ describe('Make this a kit', () => {
     const made = makeKit(world, id, join(home, 'Desktop'), ctx)
     expect(made).toMatchObject({ name: 'Rentals', version: '0.1.0' })
     expect(made.file.endsWith('rentals-0.1.0.alphakit')).toBe(true)
-    expect(made.words).toMatch(
-      /^Made Rentals 0\.1\.0 as a kit: 2 tables, 1 schedule, 1 skill, no rows\./,
-    )
+    expect(made.words).toMatch(/^Made Rentals 0\.1\.0: 2 tables, 1 schedule, 1 skill, no rows\./)
     const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     const manifest = parse(readFileSync(join(dir, 'module.yaml'), 'utf8'))
     expect(manifest).toMatchObject({
@@ -196,7 +194,7 @@ describe('Make this a kit', () => {
       alpha,
     )
     expect(() => makeKit(world, m2.id, join(home, 'Desktop'), ctx)).toThrow(
-      /reaches Helpers list in Helpers, which came from no kit or connector/,
+      /reaches Helpers list in Helpers, which was not installed from a pack or a connector/,
     )
   })
 
@@ -205,9 +203,7 @@ describe('Make this a kit', () => {
     writeFileSync(join(m.dir, 'NOTES.md'), '# Bakery\n\nChanged by the person.\n')
     const made = makeKit(world, m.id, join(home, 'Desktop'), ctx)
     expect(made.file.endsWith('bakery-0.1.0.alphakit')).toBe(true)
-    expect(made.words).toMatch(
-      /^Packed Bakery 0\.1\.0 as a kit: 2 tables, 1 schedule, 2 skills, no rows\./,
-    )
+    expect(made.words).toMatch(/^Packed Bakery 0\.1\.0: 2 tables, 1 schedule, 2 skills, no rows\./)
     const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     expect(readFileSync(join(dir, 'NOTES.md'), 'utf8')).toContain('Changed by the person')
     expect(existsSync(join(dir, 'setup.yaml'))).toBe(false)

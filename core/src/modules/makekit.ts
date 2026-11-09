@@ -86,7 +86,7 @@ function usesOf(world: World, module: Module, dir: string): Record<string, unkno
     const connector = /^connector:(.+)$/.exec(madeBy?.made_by ?? '')?.[1]
     if (connector) return { connector, tables: [...tables] }
     throw new Refused(
-      `It reaches ${[...tables].join(', ')} in ${other?.name ?? 'another module'}, which came from no kit or connector: a kit can only use those. Make ${other?.name ?? 'that module'} a kit first.`,
+      `It reaches ${[...tables].join(', ')} in ${other?.name ?? 'another module'}, which was not installed from a pack or a connector: a pack can only use those. Pack ${other?.name ?? 'that module'} first.`,
     )
   })
 }
@@ -144,7 +144,8 @@ export function makeKit(world: World, moduleId: string, outDir: string, ctx: Wri
     const problems = checkKit(dir, {
       kits: installedKits(world).map((k) => ({ name: k.kit, version: k.version })),
     })
-    if (problems.length) throw new Refused(`The kit is not right yet: ${problems.join(' ')}`)
+    if (problems.length)
+      throw new Refused(`This module is not ready to pack: ${problems.join(' ')}`)
     const manifest = parse(readFileSync(join(dir, 'module.yaml'), 'utf8')) as {
       name: string
       version: string
@@ -165,7 +166,7 @@ export function makeKit(world: World, moduleId: string, outDir: string, ctx: Wri
       skills ? count(skills, 'skill') : '',
       pages ? count(pages, 'page') : '',
     ].filter(Boolean)
-    const words = `${fromKit ? 'Packed' : 'Made'} ${manifest.name} ${manifest.version} as a kit: ${parts.join(', ')}, no rows. It is at ${file}.`
+    const words = `${fromKit ? 'Packed' : 'Made'} ${manifest.name} ${manifest.version}: ${parts.join(', ')}, no rows. It is at ${file}.`
     append(world.db, {
       actor: ctx.actor,
       kind: 'packed',

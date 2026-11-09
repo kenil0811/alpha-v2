@@ -165,7 +165,7 @@ export function syncSchedules(world: World, module: Module, state: 'on' | 'pause
           module: module.id,
         })
     } else {
-      const id = newId('a')
+      const id = newId('sch')
       kept.add(id)
       run(
         world.db,
