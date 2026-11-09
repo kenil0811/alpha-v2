@@ -317,6 +317,7 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/modules/:id/pages/:name/ask': 'a question about a page, answered in a conversation',
   'POST /api/modules/:id/pages/:name/pdf': 'a page printed',
   'POST /api/rules/:id/*': 'a rule’s yes or no, which the gates hold',
+  'POST /api/rules/any-site': 'the owner’s switch for one rule, which the gates hold',
   'POST /api/instructions/remove': 'a standing instruction, the person’s words',
   'POST /api/instructions/change': 'a standing instruction, the person’s words',
   'POST /api/data/backup': 'a copy of the world; nothing in it changes',

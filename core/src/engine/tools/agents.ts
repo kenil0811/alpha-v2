@@ -62,6 +62,7 @@ export function agentTools(t: Tooling): ToolEntry[] {
       'ask_agent',
       [
         'Ask one or several teammates, each named in to. They see none of this conversation, so the brief must stand alone: objective (what you need done), known (what is already known, with ids of rows and documents), answer_wanted (the form of the answer), limits (what not to do, and how far to go).',
+        'Keep the objective the size of what was asked: pass a plain question on as a plain question, never widened into a study.',
         'After asking, end your turn: their answers come together as a new message. What they say is a teammate’s word, not the person’s, and what they claim to have done is their own report, so check anything that matters.',
       ].join('\n'),
       {

@@ -28,14 +28,13 @@ import { AccountsSection, Foot } from './Accounts.tsx'
 import { Activity } from './Activity.tsx'
 import { AgentsSection } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
-import { startAsk } from './ask.ts'
 import { HowToWork } from './HowToWork.tsx'
 import { Modules, when } from './Modules.tsx'
 import { Reach } from './Reach.tsx'
+import { AnySite, Embedded, Standing } from './Rules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
-import { TableView } from './TableView.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -285,6 +284,7 @@ function Permissions({ version, owner }: { version: number; owner: boolean }) {
         title="Rules"
         about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule holds once you save it on its card."
       >
+        {owner && <AnySite />}
         <WaitingRules version={version} />
         <Standing version={version} />
       </Section>
@@ -406,29 +406,6 @@ function DataSection() {
       {said && <div className="text-ink-2 text-md">{said}</div>}
       {problem && <div className="text-bad text-md">{problem}</div>}
     </Section>
-  )
-}
-
-// The rules (core step 2): every allow and deny across Alpha, yours and what Alpha noticed, each
-// with where it holds and how often it was used; a revoked one stays listed as history. A rule's
-// page revokes it, or approves or dismisses what Alpha noticed. Shown under Permissions.
-function Standing({ version }: { version: number }) {
-  const [data, setData] = useState<KeptTable | null>(null)
-  const load = useCallback(() => {
-    api.get<KeptTable>('/api/kept/rules').then(setData, () => setData(null))
-  }, [])
-  useEffect(() => {
-    if (version >= 0) load()
-  }, [load, version])
-  if (!data) return null
-  return (
-    <Embedded
-      data={data}
-      open={(id) => {
-        window.location.hash = `#/rule/${id}`
-      }}
-      onNew={() => startAsk('From now on, ')}
-    />
   )
 }
 
@@ -1028,24 +1005,6 @@ function FolderForm({
       </div>
       {problem && <div className="text-bad text-md">{problem}</div>}
     </form>
-  )
-}
-
-// A shared table inside a page that scrolls: a fixed height, its own frame and nothing around it,
-// its edges in line with the section's title.
-function Embedded({
-  data,
-  open,
-  onNew,
-}: {
-  data: KeptTable
-  open: (id: string) => void
-  onNew?: () => void
-}) {
-  return (
-    <div className="-mx-7 h-[min(520px,70vh)]">
-      <TableView data={data} kept={onNew ? { open, onNew } : { open }} />
-    </div>
   )
 }
 

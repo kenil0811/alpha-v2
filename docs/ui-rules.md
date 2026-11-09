@@ -90,7 +90,7 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | A1 | The assistant's header: fold, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
-| A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
+| A2 | The person's words in a light bubble on the right; Alpha's straight on the page with no box, as in Claude Code. A turn's steps fold into one grey line above its words; a table stays in the column | 26 Oct, 9 Nov | — |
 | A3 | The composer's +: files, a folder; @ picks teammates, and the picks travel with the message. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
 | A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |

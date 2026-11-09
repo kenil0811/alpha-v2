@@ -103,6 +103,77 @@ const lines = (agent: string | null, kinds: string[]) =>
   world.lines({ user: user.id, agent, kinds }).map((l) => l.words)
 
 describe('agents asking each other', () => {
+  const raiseCard = (id: string) =>
+    world.cards.open({
+      kind: 'permission',
+      gate: 'leaves_world',
+      options: ['Let it', 'Not now'],
+      words: 'Let a script reach example.com?',
+      detail: null,
+      restsOn: [],
+      cannotUndo: null,
+      call: { tool: 'network', input: { host: 'example.com' } },
+      actor: { kind: 'alpha', id: ids.Scout as string },
+      user: user.id,
+      turn: `a${id}`,
+      module: null,
+      agent: ids.Scout as string,
+    })
+  const repliesIn = (agent: string) =>
+    world.lines({ user: user.id, agent, kinds: ['replied'] }).map((l) => l.turn ?? '')
+
+  it('keeps an ask open while a card from its work waits; the follow-up is that work', async () => {
+    script = async (t, agent, d) => {
+      if (agent === CHIEF && t === 'find it') {
+        await ask(d(), ['Scout'], 'Find deals')
+        return 'I asked.'
+      }
+      if (agent === ids.Scout && t.startsWith('A request')) {
+        raiseCard((world.asks.inState('running')[0] as { id: string }).id)
+        return 'I need a yes first.'
+      }
+      if (agent === ids.Scout && t.includes('said yes')) return 'Found them after the yes.'
+      return 'Done.'
+    }
+    engine.say(user, 'find it')
+    await settled()
+    const open = world.asks.inState('running')
+    expect(open).toHaveLength(1)
+    const card = world.cards.waiting(user.id)[0]
+    engine.answer(user, card?.id as string, 'Let it')
+    await settled()
+    const after = world.asks.get(open[0]?.id as string)
+    expect(after?.state).toBe('answered')
+    expect(after?.answer?.result).toBe('Found them after the yes.')
+    expect(repliesIn(ids.Scout as string).every((turn) => turn.startsWith('a'))).toBe(true)
+    expect(told.at(-1)?.agent).toBe(CHIEF)
+  })
+
+  it('starts no follow-up on a yes that comes after the ask is answered', async () => {
+    let cardId = ''
+    script = async (t, agent, d) => {
+      if (agent === CHIEF && t === 'find it') {
+        await ask(d(), ['Scout'], 'Find deals')
+        return 'I asked.'
+      }
+      if (agent === ids.Scout && t.startsWith('A request')) {
+        const running = world.asks.inState('running')[0] as { id: string }
+        const card = raiseCard(running.id)
+        cardId = card.id
+        engine.answer(user, card.id, 'Let it')
+        return 'Found them without it.'
+      }
+      return 'Done.'
+    }
+    engine.say(user, 'find it')
+    await settled()
+    expect(cardId).not.toBe('')
+    expect(told.filter((x) => x.agent === ids.Scout).map((x) => x.text.slice(0, 9))).toEqual([
+      'A request',
+    ])
+    expect(world.asks.inState('running')).toEqual([])
+  })
+
   it('ends the asker’s turn, and brings several answers back in one turn', async () => {
     script = async (t, agent, d) => {
       if (agent === CHIEF && t === 'find it') {

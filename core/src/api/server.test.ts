@@ -86,7 +86,7 @@ describe('the api over a world', () => {
     const get = async (url: string) => (await a.inject({ url, headers: ok })).json() as Stream
     const his = await get(`/api/stream?agent=${scout.id}`)
     expect(his.lines.map((l) => l.words)).toEqual(['hello Scout'])
-    expect((await get('/api/stream')).waiting).toEqual([ask.id])
+    expect((await get('/api/stream')).waiting).toEqual([{ id: ask.id, doing: null }])
     expect(his.waiting).toEqual([])
     const stop = await a.inject({
       method: 'POST',

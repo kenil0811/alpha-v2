@@ -1,6 +1,20 @@
 // The words a teammate's request and its answers reach an agent in: marked as a teammate's, so
 // they are never taken for the person's own.
 import type { AgentAsk } from '../world/agents/asks.ts'
+import type { Card } from '../world/cards.ts'
+
+// What a desk is told when a card it raised is answered, and the line that says it carries on.
+export const cardWords = (card: Card): string =>
+  card.kind !== 'permission'
+    ? `The person answered your question “${card.words}”: ${card.answer}`
+    : card.state === 'yes'
+      ? `The person said yes on the card: “${card.words}”. Go ahead with it now.`
+      : `The person said no on the card: “${card.words}”. Leave it.`
+
+export const carryingOn = (card: Card): string =>
+  card.kind !== 'permission'
+    ? 'Carrying on with your answer.'
+    : `Carrying on after your ${card.state === 'yes' ? 'yes' : 'no'}.`
 
 export function askText(ask: AgentAsk, fromName: string): string {
   const b = ask.brief

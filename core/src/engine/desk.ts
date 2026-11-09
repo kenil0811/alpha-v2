@@ -7,12 +7,12 @@ import { realpathSync } from 'node:fs'
 import { config } from '../config.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { instructionsOf } from '../modules/agents.ts'
-import type { AgentAsk } from '../world/agents/asks.ts'
+import { type AgentAsk, askOfTurn, OPEN } from '../world/agents/asks.ts'
 import { CHIEF } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
 import type { Actor } from '../world/journal.ts'
 import type { User, World } from '../world/world.ts'
-import { answersText, askText } from './ask-words.ts'
+import { answersText, askText, cardWords, carryingOn } from './ask-words.ts'
 import { ClaudeCodeProvider } from './claudecode.ts'
 import {
   handover,
@@ -230,33 +230,30 @@ export class Desk {
   // A permission card answered in the window: the desk is told, and carries on.
   cardAnswered(card: Card): void {
     if (card.kind !== 'permission' && card.kind !== 'question') return
-    const words =
-      card.kind === 'permission'
-        ? card.state === 'yes'
-          ? `The person said yes on the card: “${card.words}”. Go ahead with it now.`
-          : `The person said no on the card: “${card.words}”. Leave it.`
-        : `The person answered your question “${card.words}”: ${card.answer}`
+    // raised while working for a teammate: the follow-up is that work, while it is still open
+    const serving = askOfTurn(card.turn)
+    const ask = serving ? this.world.asks.get(serving) : undefined
+    if (serving && !(ask && OPEN.includes(ask.state))) return
+    const turn = serving ? `a${serving}.${this.world.lastLineId()}` : null
     const line = this.world.line({
       actor: { kind: 'system' },
       kind: 'noticed',
-      words:
-        card.kind === 'permission'
-          ? `Carrying on after your ${card.state === 'yes' ? 'yes' : 'no'}.`
-          : 'Carrying on with your answer.',
+      words: carryingOn(card),
       user: this.user.id,
       card: card.id,
       agent: this.named,
+      ...(turn ? { turn } : {}),
     })
     const more =
       card.call?.tool === ASK_MORE
         ? (card.call.input as { root: string; ask: string | null })
         : null
     this.queue.push({
-      turn: `n${line.id}`,
-      text: words,
+      turn: turn ?? `n${line.id}`,
+      text: cardWords(card),
       said: null,
       message: null,
-      ...(more ? { root: more.root, ask: more.ask } : {}),
+      ...(more ? { root: more.root, ask: more.ask } : ask ? { root: ask.root, ask: ask.id } : {}),
     })
     this.emit({ type: 'lines' })
     this.pump()
@@ -337,7 +334,13 @@ export class Desk {
   }
 
   private pump(): void {
-    if (this.running || !this.queue.length) return
+    if (this.running) return
+    // a follow-up to a request already answered has no one waiting for it
+    this.queue = this.queue.filter((t) => {
+      const state = t.ask ? this.world.asks.get(t.ask)?.state : undefined
+      return !state || OPEN.includes(state)
+    })
+    if (!this.queue.length) return
     const next = this.queue.shift() as Turn
     // an agent that was edited starts again from its new definition
     if (this.session && this.named && this.openedWith !== this.fingerprint) this.close()
@@ -557,7 +560,7 @@ export class Desk {
   }
 
   // A teammate's ask this turn served: answered with the answer tool, or by its last words; left
-  // open while the answers to what this turn asked in its turn are still to come.
+  // open while the answers to what this turn asked, or a card it raised, are still to come.
   private settleAsk(
     running: Turn,
     e: { ok: boolean; text: string },
@@ -568,9 +571,9 @@ export class Desk {
     const asks = this.world.asks
     const row = asks.get(running.ask)
     if (!row) return
-    const waiting = asks
-      .ofTurn(running.turn)
-      .some((x) => x.state === 'queued' || x.state === 'running')
+    const waiting =
+      asks.ofTurn(running.turn).some((x) => OPEN.includes(x.state)) ||
+      this.world.cards.waiting(this.user.id).some((c) => askOfTurn(c.turn) === row.id)
     if (row.state === 'running' && !waiting)
       asks.settle(
         row.id,

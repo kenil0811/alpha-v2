@@ -98,6 +98,7 @@ export class Engine {
     const id = `${user.id}:${agent}`
     let d = this.desks.get(id)
     if (!d) {
+      let reported: string | null = null // the step last shown to whoever asked this agent
       // a plain copy: the api's user reads the request it is in, and a desk outlives requests
       d = new Desk(
         this.world,
@@ -107,8 +108,18 @@ export class Engine {
           agent,
           bus: this.bus,
           granted: this.folders(),
-          emit: (e) =>
-            this.events.emit('event', { ...e, user: user.id, agent } satisfies EngineEvent),
+          emit: (e) => {
+            this.events.emit('event', { ...e, user: user.id, agent } satisfies EngineEvent)
+            // what a teammate is doing shows on the line that asked it
+            if (e.type === 'live' && e.doing !== reported && this.desks.get(id)?.serving?.ask) {
+              reported = e.doing
+              this.events.emit('event', {
+                type: 'lines',
+                user: user.id,
+                agent,
+              } satisfies EngineEvent)
+            }
+          },
         },
       )
       this.desks.set(id, d)

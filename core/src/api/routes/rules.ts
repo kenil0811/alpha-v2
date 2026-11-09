@@ -2,6 +2,7 @@
 // acts on them: Revoke, and Approve or Dismiss on what Alpha noticed. A rule is made only on its
 // Save card (cards.ts, the engine's answer).
 import { z } from 'zod'
+import { Refused } from '../../world/kinds.ts'
 import { type Rule, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/rules.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptField, keptTable } from '../kept.ts'
@@ -97,6 +98,37 @@ export function registerRules(ctx: Ctx): void {
         { editable: [], why: 'Open a rule to revoke it; its page asks first.' },
       ),
   )
+
+  // The one standing choice at the top of Permissions: a rule like any other, that scripts may
+  // reach any site, so it is listed, used and revoked as every rule is.
+  const anySite = () =>
+    world.rules.list().find((r) => {
+      const { does, ...narrower } = r.covers
+      return (
+        r.side === 'allow' &&
+        r.kind === 'approved' &&
+        !r.revokedAt &&
+        r.module === null &&
+        r.schedule === null &&
+        does.length === 1 &&
+        does[0] === 'reach' &&
+        Object.keys(narrower).length === 0
+      )
+    })
+  app.get('/api/rules/any-site', async () => ({ on: !!anySite() }))
+  app.post('/api/rules/any-site', async (req) => {
+    if (user.role !== 'owner') throw new Refused('Only the owner can do that.')
+    const { on } = z.object({ on: z.boolean() }).parse(req.body)
+    const had = anySite()
+    if (on && !had)
+      world.rules.save(
+        { side: 'allow', module: null, schedule: null, covers: { does: ['reach'] }, said: null },
+        asPerson,
+      )
+    if (!on && had) world.rules.revoke(had.id, asPerson)
+    live()
+    return { on }
+  })
 
   for (const act of ['revoke', 'approve'] as const)
     app.post(`/api/rules/:id/${act}`, async (req): Promise<RuleView> => {

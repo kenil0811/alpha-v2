@@ -20,5 +20,11 @@ during a conversation.
 - One rule, R6: one request makes at most 8 asks and 4 hops, then waits for Continue; Alpha counts.
 - On his look: one answer. The asker's chat shows a line for each ask, with the answer folded on it, and
   then one reply; the asked agent's chat shows only what the person and it said to each other.
+- Timed against Claude Code on the same model (Tesla 21 s against 2 min 46 s): the extra time was
+  extra work, so a plain question now gets a plain answer, and the ask line says what the agent is doing.
+- An ask stays open while a card from its work waits. The follow-up after the person's answer is that
+  work, not a turn in the agent's chat; after the ask is answered, nothing runs.
+- Settings › Permissions: Scripts can reach any website, a rule by a switch, off on a fresh install.
+- A reply is straight on the page, as in Claude Code: no box, tables in the column, steps on one line.
 - The conversation has the agents down its left, and the assistant has a picker. @ picks teammates, the
   lens goes, Intelligence opens on Agents, and Usage has By agent.

@@ -261,7 +261,7 @@ function Entry({
   live: Live[string] | undefined
   working: boolean
   cards: Map<string, CardView>
-  waiting: string[]
+  waiting: Stream['waiting']
   name: string
   agentId: string
   onChangeCard: (c: CardView) => void
@@ -290,6 +290,7 @@ function Entry({
   // a turn that asked teammates says nothing of its own: the reply comes when they have answered
   const asking = item.asks.length > 0
   const text = asking ? (item.error ?? '') : (item.reply ?? item.error ?? live?.text ?? '')
+  const doing = working ? (live?.doing ?? 'Working on it…') : null
   if (
     !text &&
     !working &&
@@ -303,18 +304,22 @@ function Entry({
   return (
     <div className="flex flex-col gap-2.25">
       {item.asks.map((a) => (
-        <AskLine key={a.id} ask={a} waiting={waiting.includes(a.id)} />
+        <AskLine key={a.id} ask={a} waiting={waiting.find((w) => w.id === a.id)} />
       ))}
+      {(doing || (item.steps.length > 0 && !asking)) && (
+        <WorkLine
+          steps={item.steps}
+          module={item.module}
+          at={item.at}
+          doing={doing}
+          agentId={agentId}
+        />
+      )}
       {text && (
-        <div
-          className={cn(
-            'max-w-full self-start rounded-2xl rounded-bl-sm border border-hair bg-surface px-4 py-3',
-            item.error && 'text-bad',
-          )}
-        >
+        <div className={cn('min-w-0', item.error && 'text-bad')}>
           {/* a finished reply folds when long; one still coming in shows whole */}
           <Fold id={item.turn} whole={working || !item.reply}>
-            <Words text={text} wideTables />
+            <Words text={text} />
           </Fold>
         </div>
       )}
@@ -340,65 +345,12 @@ function Entry({
           </div>
         )
       })}
-      {item.steps.length > 0 && !asking && <Work steps={item.steps} />}
-      {(!asking || working) && (
-        <Ran
-          module={item.module}
-          at={item.at}
-          steps={item.steps.length}
-          doing={working ? (live?.doing ?? 'Working on it…') : null}
-          name={name}
-          agentId={agentId}
-        />
-      )}
-    </div>
-  )
-}
-
-// The grey line under a reply: who answered, what ran, and Stop while it runs.
-function Ran({
-  module,
-  at,
-  steps,
-  doing,
-  name,
-  agentId,
-}: {
-  module: Module
-  at: string
-  steps: number
-  doing: string | null
-  name: string
-  agentId: string
-}) {
-  return (
-    <div className="flex items-center gap-2 text-ink-3 text-sm">
-      {doing && (
-        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
-      )}
-      <span className="font-medium text-ink-2">{name}</span>
-      {module && <span>{module.name}</span>}
-      <span>{clock(at)}</span>
-      <span className="min-w-0 truncate">
-        {doing ?? (steps ? `Ran ${steps} step${steps === 1 ? '' : 's'}` : 'Answered')}
-      </span>
-      {doing && (
-        <span className="ml-auto shrink-0">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => api.post('/api/stop', { agent: agentId })}
-          >
-            Stop
-          </Button>
-        </span>
-      )}
     </div>
   )
 }
 
 // One teammate asked: Stop while it works, then its answer and evidence behind a fold.
-function AskLine({ ask, waiting }: { ask: Asked; waiting: boolean }) {
+function AskLine({ ask, waiting }: { ask: Asked; waiting: Stream['waiting'][number] | undefined }) {
   const head = waiting ? ask.words : ask.words.replace(/^Asking /, 'Asked ')
   const said = ask.answer
   const tag = !said
@@ -421,7 +373,10 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: boolean }) {
         ) : (
           <Bot className="size-3.5 shrink-0" />
         )}
-        <span className="min-w-0">{head}</span>
+        <span className="min-w-0">
+          {head}
+          {waiting?.doing && <span className="block text-ink-3">{waiting.doing}</span>}
+        </span>
         {mark}
         {waiting && (
           <span className="ml-auto shrink-0">
@@ -445,7 +400,7 @@ function AskLine({ ask, waiting }: { ask: Asked; waiting: boolean }) {
       </summary>
       <div className="mt-1.5 ml-2 flex flex-col gap-1.5 border-line border-l pl-3">
         <div className="text-ink-2">
-          <Words text={said.words} wideTables />
+          <Words text={said.words} />
         </div>
         {said.unblock && <div className="text-warn">What would unblock it: {said.unblock}</div>}
         {said.evidence && <div>{said.evidence}</div>}
@@ -489,13 +444,45 @@ function Change({ change }: { change: AgentChange }) {
   )
 }
 
-function Work({ steps }: { steps: Step[] }) {
+// A turn's steps on one grey line above its words, folded; while it runs, what it is doing and Stop.
+function WorkLine({
+  steps,
+  module,
+  at,
+  doing,
+  agentId,
+}: {
+  steps: Step[]
+  module: Module
+  at: string
+  doing: string | null
+  agentId: string
+}) {
+  if (doing)
+    return (
+      <div className="flex items-center gap-2 text-ink-3 text-sm">
+        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
+        <span className="min-w-0 truncate">{doing}</span>
+        <span className="ml-auto shrink-0">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => api.post('/api/stop', { agent: agentId })}
+          >
+            Stop
+          </Button>
+        </span>
+      </div>
+    )
   return (
     <details className="group text-ink-3 text-sm">
       <summary className="inline-flex cursor-pointer select-none list-none items-center gap-1 rounded-sm py-0.5 pr-1.5 pl-0.5 hover:bg-hover hover:text-ink">
         <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
-        <span className="group-open:hidden">Show the work</span>
-        <span className="hidden group-open:inline">Hide the work</span>
+        <span>
+          Ran {steps.length} step{steps.length === 1 ? '' : 's'}
+        </span>
+        {module && <span>· {module.name}</span>}
+        <span>· {clock(at)}</span>
       </summary>
       <ol className="mt-1.5 ml-2 flex flex-col gap-1.5 border-line border-l pl-3">
         {steps.map((s) => (

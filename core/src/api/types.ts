@@ -227,7 +227,7 @@ export interface Stream {
   lines: StreamLine[]
   cards: CardView[] // every card waiting for the person
   asked: string[] // those raised by agents this conversation asked
-  waiting: string[] // this conversation's asks not answered yet
+  waiting: { id: string; doing: string | null }[] // this conversation's asks not answered yet
   serving: string | null // the teammate this agent is working for just now
   busy: boolean
   running: { id: string; name: string; module: string | null }[] // schedules' runs going now

@@ -89,7 +89,19 @@ export function registerStream(ctx: Ctx): void {
           return ask !== null && world.asks.topOf(ask)?.from === agent
         })
         .map((c) => c.id),
-      waiting: world.asks.waitingFor(user.id, agent).map((a) => a.id),
+      waiting: world.asks.waitingFor(user.id, agent).map((a) => ({
+        id: a.id,
+        doing:
+          world
+            .lines({
+              user: user.id,
+              agent: a.to === CHIEF ? null : a.to,
+              kinds: ['call'],
+              limit: 40,
+            })
+            .filter((l) => askOfTurn(l.turn) === a.id)
+            .at(-1)?.words ?? null,
+      })),
       serving: engine.serving(user, agent),
       busy: engine.busy(user, agent),
       running: (engine.hands?.runner.runs(50) ?? [])
