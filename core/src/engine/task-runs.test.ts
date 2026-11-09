@@ -193,6 +193,17 @@ describe('a task given to an agent', () => {
     ).toEqual(['one more thing'])
   })
 
+  it('runs again from Waiting when the person asks', async () => {
+    const id = task('Try again')
+    world.tasks.markGiven(id, { by: user.id, root: null, hop: 0 })
+    world.tasks.setState(id, 'waiting', { actor: { kind: 'alpha', id: scout }, user: user.id })
+    engine.tasks.again(user, id)
+    expect(world.tasks.get(id)?.state).toBe('doing')
+    await settled()
+    expect(world.tasks.get(id)?.state).toBe('done')
+    expect(told.at(-1)).toContain('carry on with this task')
+  })
+
   it('after a restart waits for the person, and is not replayed', async () => {
     const id = task('Interrupted')
     world.tasks.markGiven(id, { by: user.id, root: null, hop: 0 })
