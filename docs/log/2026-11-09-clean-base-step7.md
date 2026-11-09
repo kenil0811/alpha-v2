@@ -33,7 +33,7 @@ during a conversation.
 - A turn stays as it streamed: every piece of text the model wrote, in order with its steps (`along` in
   the journal), and no folding. The chat only follows to the bottom when you are at the bottom.
 - The chat restyled after Claude Code on his word: a plain bubble, steps as rows with icons, Stop inside Send, code blocks and Copy on hover, bordered tables, a small title.
-- Colours and the chat matched to Claude Code as measured in his Chrome (neutral greys, 15/21 text, step summaries, the box and the model under it); the page kit and the Mac app's first screens follow.
+- Colours and the chat matched to Claude Code as measured in his Chrome (neutral greys, 15/21 text, step summaries, the box and the model under it); the page kit and the Mac app's first screens follow. The accent is blue, not Claude's clay (his call).
 - Smooth on his word: a word arriving redraws only its own turn, text is shown a whole word at a time at a steady pace, and the scroll eases to the end and lets go when you scroll up (measured at 60 fps, at most 17 characters and 9 pixels a frame).
 - A reply is straight on the page, as in Claude Code: no box, tables in the column, steps on one line.
 - The conversation has the agents down its left, and the assistant has a picker. @ picks teammates, the
