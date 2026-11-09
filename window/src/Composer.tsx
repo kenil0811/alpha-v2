@@ -234,7 +234,17 @@ export function Composer({
           </button>
         )}
       </div>
-      <div className="flex justify-end px-2">{agent && <ModelPicker agent={agent} />}</div>
+      <div className="flex min-h-6 items-center justify-between gap-3 px-2">
+        <span className="flex min-w-0 items-center gap-2 text-ink-3 text-sm">
+          {running && (
+            <>
+              <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-ink-3" />
+              Working on it…
+            </>
+          )}
+        </span>
+        {agent && <ModelPicker agent={agent} />}
+      </div>
     </div>
   )
 }

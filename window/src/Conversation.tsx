@@ -351,11 +351,13 @@ const Entry = memo(function Entry({
           </div>
         )
       })}
-      {working && <Working />}
-      {!working && parts.some((p) => p.kind === 'text') && (
+      {parts.some((p) => p.kind === 'text') && (
         <CopyButton
           text={() => parts.flatMap((p) => (p.kind === 'text' ? [p.text] : [])).join('\n\n')}
-          className="-my-2 self-start opacity-0 transition-opacity group-hover/turn:opacity-100"
+          className={cn(
+            '-my-2 self-start transition-opacity',
+            working ? 'invisible' : 'opacity-0 group-hover/turn:opacity-100',
+          )}
         />
       )}
     </div>
@@ -539,15 +541,5 @@ function Steps({ steps, active }: { steps: Step[]; active: boolean }) {
         ))}
       </div>
     </details>
-  )
-}
-
-// Under a turn while it runs.
-function Working() {
-  return (
-    <div className="flex items-center gap-2 text-ink-3">
-      <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-ink-3" />
-      <span>Working on it…</span>
-    </div>
   )
 }

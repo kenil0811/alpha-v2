@@ -29,9 +29,11 @@ export function useFollow(conversation: string, loaded: boolean) {
 
   useEffect(() => {
     const box = content.current
-    if (!box) return
+    const view = scroller.current
+    if (!box || !view) return
     const watch = new ResizeObserver(follow)
     watch.observe(box)
+    watch.observe(view) // the message box growing or shrinking moves the end too
     return () => {
       watch.disconnect()
       cancelAnimationFrame(frame.current)
