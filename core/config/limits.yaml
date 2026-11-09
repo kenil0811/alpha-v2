@@ -48,7 +48,7 @@ health_fewer_rows_ratio: 0.5
 # Nothing new from a connection for this many days is worth a line.
 health_quiet_days: 7
 
-# Runs of an agent that did not finish, one a tick, before a card on Home asks whether to try
+# Runs of a schedule that did not finish, one a tick, before a card on Home asks whether to try
 # again or leave it (item 16 of the problems list, 25 Oct).
 run_retries: 3
 

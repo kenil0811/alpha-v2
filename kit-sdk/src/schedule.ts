@@ -1,4 +1,4 @@
-// An agent's file as the kit API says it, schema version 1 (decision 6): its front matter is
+// A schedule's file as the kit API says it (decision 6): its front matter is
 // declared here and enforced by the core; the body stays the brief, prose for the model's
 // judgement. A trigger may be one, or a list.
 import { parse } from 'yaml'
@@ -26,7 +26,7 @@ export type Runs = z.infer<typeof Runs>
 
 export const BUDGET = { minutes: 15, runs: 24 } as const
 
-export const AgentFront = z.object({
+export const ScheduleFront = z.object({
   name: z.string().optional(),
   description: z.string().optional(), // one line for Settings and the kit directory
   trigger: z.union([Trigger, z.array(Trigger).min(1)]),
@@ -61,7 +61,7 @@ export const AgentFront = z.object({
     })
     .default({ minutes: BUDGET.minutes, runs: BUDGET.runs }),
 })
-export type AgentFrontMatter = z.infer<typeof AgentFront>
+export type ScheduleFrontMatter = z.infer<typeof ScheduleFront>
 
 // A trigger, or a list of them, as a list.
 export function triggersOf(t: Trigger | Trigger[] | null | undefined): Trigger[] {
@@ -69,12 +69,12 @@ export function triggersOf(t: Trigger | Trigger[] | null | undefined): Trigger[]
   return Array.isArray(t) ? t : [t]
 }
 
-// The front matter and the brief of one agent file.
-export function parseAgentText(
+// The front matter and the brief of one schedule file.
+export function parseScheduleText(
   text: string,
   file: string,
-): { front: AgentFrontMatter; brief: string } {
+): { front: ScheduleFrontMatter; brief: string } {
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text)
   if (!m) throw new Error(`${file} has no front matter.`)
-  return { front: AgentFront.parse(parse(m[1] as string)), brief: (m[2] as string).trim() }
+  return { front: ScheduleFront.parse(parse(m[1] as string)), brief: (m[2] as string).trim() }
 }

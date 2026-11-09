@@ -482,7 +482,7 @@ export class ConnectorService {
     return conn
   }
 
-  // A connector's tool run by the core itself, on the person's yes already given (an agent's draft
+  // A connector's tool run by the core itself, on the person's yes already given (a schedule's draft
   // sent from its card): the gate is behind it, so it runs as asked. No connector named: the
   // person's mail, whichever connected connector sends.
   async runTool(
@@ -539,7 +539,7 @@ export class ConnectorService {
   }
 
   // What a rule calls the tool (gmail.send; a rule through gmail covers all of Gmail's), as an
-  // agent's draft names its send: never the gate's key, which a rule's words never hold.
+  // schedule's draft names its send: never the gate's key, which a rule's words never hold.
   ruleName(name: string): string | undefined {
     const t = this.toolOf(name)
     return t ? `${t.c.manifest.name}.${t.tool}` : undefined

@@ -1,5 +1,5 @@
 # The counter's run on two orders.
-agent: Counter
+schedule: Counter
 rows:
   Orders:
     - { Item: Flour, Quantity: 2 }

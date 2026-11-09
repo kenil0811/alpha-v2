@@ -5,8 +5,8 @@ import { Refused } from '../../world/kinds.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
 import { hashOf, resolveConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
-import { syncAgents } from '../agents.ts'
 import { commitAll } from '../git.ts'
+import { syncSchedules } from '../schedules.ts'
 import { installedKits, readKit, sha } from './read.ts'
 import { currentRowHash, landSetup } from './shape.ts'
 
@@ -95,7 +95,7 @@ export async function takeBack(
       what.path,
       sha(readFileSync(from)),
     )
-    syncAgents(world, module, 'paused')
+    syncSchedules(world, module, 'paused')
     world.line({
       actor: ctx.actor,
       kind: 'installed',

@@ -27,11 +27,11 @@ import { ConnectorService } from '../connectors/service.ts'
 import { revertAll } from '../connectors/takeback.ts'
 import { Engine } from '../engine/engine.ts'
 import { stillReading } from '../files/documents.ts'
-import { agents, setAgentState } from '../modules/agents.ts'
 import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
-import { AgentRunner } from '../modules/runs/index.ts'
+import { ScheduleRunner } from '../modules/runs/index.ts'
+import { schedules, setScheduleState } from '../modules/schedules.ts'
 import { Refused } from '../world/kinds.ts'
 import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
@@ -53,7 +53,7 @@ const Journey = z.object({
       say: z.string().optional(),
       in: z.string().optional(), // say it in this module's Conversation
 
-      // the first waiting card answered; an agent's draft can be sent with Always when offered; on
+      // the first waiting card answered; a schedule's draft can be sent with Always when offered; on
       // its own page, through the window's routes (Batch B, pick 13)
       answer: z
         .object({
@@ -92,17 +92,17 @@ const Journey = z.object({
       // the rule waiting on its Save card approved from a module's Governance, by its name, through
       // the window's routes (Batch B, pick 18)
       approve_rule: z.string().optional(),
-      // a kit installed from a folder, its agents on when the journey says so (all, or those named)
+      // a kit installed from a folder, its schedules on when the journey says so (all, or those named)
       kit: z
         .object({
           from: z.string(),
-          agents: z.union([z.enum(['on', 'paused']), z.array(z.string())]).default('paused'),
+          schedules: z.union([z.enum(['on', 'paused']), z.array(z.string())]).default('paused'),
           signed: z.boolean().optional(), // from a pack signed with a key the journey makes (M1)
         })
         .optional(),
-      // the scheduler's tick: agents whose time or change has come run now
+      // the scheduler's tick: schedules whose time or change has come run now
       due: z.boolean().optional(),
-      // every waiting card of an agent's rows decided: each row not yet decided takes this choice
+      // every waiting card of a schedule's rows decided: each row not yet decided takes this choice
       review: z.object({ choice: z.string(), words: z.string().optional() }).optional(),
       // Revert from Activity, as the person: the newest run or turn that wrote rows, or revert
       revert: z.enum(['last_run', 'last_turn', 'last_revert']).optional(),
@@ -175,16 +175,16 @@ export async function runOne(
     // journeys never read a real site: only the made-up ones served on this Mac
     only: ['127.0.0.1', 'localhost'],
   })
-  const runner = new AgentRunner(world, () => browser, {
+  const runner = new ScheduleRunner(world, () => browser, {
     owner: user.id,
   })
   const drafts = new Drafts(
     world,
     { send: (connector, message) => connectors.runTool(connector, 'send', { ...message }) },
     user,
-    (agent, module) => {
-      const a = agents(world, module).find((x) => x.name === agent)
-      if (a) void runner.runAgent(a).catch(() => undefined)
+    (schedule, module) => {
+      const a = schedules(world, module).find((x) => x.name === schedule)
+      if (a) void runner.runSchedule(a).catch(() => undefined)
     },
   )
   runner.drafts = drafts
@@ -232,7 +232,7 @@ export async function runOne(
   const started = Date.now()
   for (const [i, step] of journey.steps.entries()) {
     const t0 = Date.now()
-    // a said sentence and an answered question start a desk turn; an agent's draft answered does
+    // a said sentence and an answered question start a desk turn; a schedule's draft answered does
     // not, nor an answer with no card to answer, which is waited on no longer (it waited out the
     // step's ten minutes, 29 Oct)
     const first = step.answer ? world.cards.waiting(user.id)[0] : undefined
@@ -432,15 +432,15 @@ export async function runOne(
         const m = step.kit.signed
           ? await installSigned(world, from, home, person)
           : await install(world, from, person)
-        const on = step.kit.agents
-        for (const a of agents(world, m.id))
-          setAgentState(
+        const on = step.kit.schedules
+        for (const a of schedules(world, m.id))
+          setScheduleState(
             world,
             a.id,
             Array.isArray(on) ? (on.includes(a.name) ? 'on' : 'paused') : on,
             user.id,
           )
-        what = `Installed the kit ${step.kit.from}, ${Array.isArray(on) ? `${on.join(', ')} on` : `its agents ${on}`}`
+        what = `Installed the kit ${step.kit.from}, ${Array.isArray(on) ? `${on.join(', ')} on` : `its schedules ${on}`}`
       } catch (err) {
         if (!(err instanceof Refused)) throw err
         passed = false
@@ -491,7 +491,7 @@ export async function runOne(
       }
     } else throw new Error(`Step ${i + 1} neither says, answers, nor connects.`)
     const finished = await done
-    // an agent's run the turn started (on a task, say) ends before the world is judged
+    // a schedule's run the turn started (on a task, say) ends before the world is judged
     for (
       let w = 0;
       w < 300 && world.db.prepare("SELECT 1 FROM runs WHERE state = 'running'").get();

@@ -6,8 +6,8 @@ import { Refused } from '../../world/kinds.ts'
 import type { Module, WriteCtx } from '../../world/shape/index.ts'
 import { setBusinessCase } from '../../world/shape/manifest.ts'
 import type { World } from '../../world/world.ts'
-import { syncAgents } from '../agents.ts'
 import { commitAll } from '../git.ts'
+import { syncSchedules } from '../schedules.ts'
 import { checked, readKit, sha } from './read.ts'
 import { currentRowHash, landSetup, placeModule, shapeTables, shapeViews } from './shape.ts'
 
@@ -19,7 +19,7 @@ export async function install(
   ctx: WriteCtx,
   options: { signed?: boolean } = {},
 ): Promise<Module> {
-  const { note } = checked(kitDir, world)
+  checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
   // the kit's module by its lasting key, so a renamed one is still this kit's (call 6)
   const known = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
@@ -63,15 +63,15 @@ export async function install(
       kitDir,
       now(),
       now(),
-      manifest.api ?? 1,
+      manifest.api as number,
       manifest.maintainer ? JSON.stringify(manifest.maintainer) : null,
       manifest.core ? 'Alpha' : manifest.managed && options.signed ? 'Kenil' : null,
     )
-    const agents = syncAgents(world, m, 'paused')
+    const schedules = syncSchedules(world, m, 'paused')
     world.line({
       actor: ctx.actor,
       kind: 'installed',
-      words: `Installed ${kitName}: ${manifest.tables.length} table${manifest.tables.length === 1 ? '' : 's'}, ${rows.landed} setup row${rows.landed === 1 ? '' : 's'}${agents ? `, ${agents} agent${agents === 1 ? '' : 's'} (paused)` : ''}${note}.`,
+      words: `Installed ${kitName}: ${manifest.tables.length} table${manifest.tables.length === 1 ? '' : 's'}, ${rows.landed} setup row${rows.landed === 1 ? '' : 's'}${schedules ? `, ${schedules} schedule${schedules === 1 ? '' : 's'} (paused)` : ''}.`,
       data: { module: m.id, kit: manifest.name, version: manifest.version },
       user: ctx.user ?? null,
       module: m.id,
@@ -181,7 +181,7 @@ export async function update(
       manifest.version,
       kitDir,
       now(),
-      manifest.api ?? 1,
+      manifest.api as number,
       manifest.maintainer ? JSON.stringify(manifest.maintainer) : null,
       module.id,
     )
@@ -196,7 +196,7 @@ export async function update(
       mkdirSync(dirname(join(module.dir, f)), { recursive: true })
       copyFileSync(join(kitDir, f), join(module.dir, f))
     }
-    syncAgents(world, module, 'paused')
+    syncSchedules(world, module, 'paused')
     world.line({
       actor: ctx.actor,
       kind: 'installed',

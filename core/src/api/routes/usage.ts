@@ -1,5 +1,5 @@
 // What the model was used for and what it spent, a month at a time (core plan step 5): desk turns
-// under the module they were asked in (Alpha's, asked on Home), agents' runs under their agent.
+// under the module they were asked in (Alpha's, asked on Home), schedules' runs under their schedule.
 import { z } from 'zod'
 import { monthOf } from '../../world/day.ts'
 import type { SpendRow } from '../../world/spend.ts'
@@ -28,9 +28,9 @@ export function registerUsage(ctx: Ctx): void {
       atApiPrices: (engine.route?.name ?? 'subscription') === 'subscription',
       total: sumOf('All', rows),
       byModule: grouped(rows, (r) => moduleName(r.module_id)),
-      byAgent: grouped(
-        rows.filter((r) => r.agent),
-        (r) => r.agent as string,
+      bySchedule: grouped(
+        rows.filter((r) => r.schedule),
+        (r) => r.schedule as string,
       ),
       byModel: grouped(rows, (r) => r.model),
     }

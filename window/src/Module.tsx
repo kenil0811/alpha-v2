@@ -2,7 +2,7 @@
 // Organizations when people live in it (module.yaml's people: true), an Overview of the modules
 // inside it when it holds any (a plain list: each one's name, where it comes from and what goes on
 // in it right now; Kenil, 21 Oct), its pages (design §13), its tables with their counts, its
-// Conversation (Home through the module's lens) and its Agents and notes: its agents, the notes
+// Conversation (Home through the module's lens) and its Schedules and notes: its schedules, the notes
 // Alpha reads first, what ran lately, and what Alpha may do here. Nothing sits under a table or a
 // page (Kenil, 26 Oct). A module holding others opens on its Overview, else on its front page,
 // else its first table.
@@ -17,7 +17,7 @@ import { Bot, Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { ModuleCase } from './ModuleCase.tsx'
-import { AllAgents, when } from './ModulesAndAgents.tsx'
+import { AllSchedules, when } from './ModulesAndSchedules.tsx'
 import { PageView } from './PageView.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
@@ -31,7 +31,7 @@ export type ModuleTab =
   | { kind: 'page'; name: string }
   | { kind: 'table'; id: string }
   | { kind: 'conversation' }
-  | { kind: 'agents' }
+  | { kind: 'schedules' }
 
 export function ModuleScreen({
   moduleId,
@@ -60,7 +60,7 @@ export function ModuleScreen({
   // table, else the conversation
   const front = m?.pages.find((p) => p.front)
   const holds = (m?.modules.length ?? 0) > 0
-  // its main tables are its tabs; a part shows on its row, a setup table under Agents and notes
+  // its main tables are its tabs; a part shows on its row, a setup table under Schedules and notes
   const first = m?.tables.find((t) => t.place === 'main')
   const current: ModuleTab =
     tab ??
@@ -111,8 +111,8 @@ export function ModuleScreen({
           )
         ) : current.kind === 'conversation' ? (
           conversation
-        ) : current.kind === 'agents' ? (
-          m && <AgentsAndNotes m={m} version={version} onChange={load} />
+        ) : current.kind === 'schedules' ? (
+          m && <SchedulesAndNotes m={m} version={version} onChange={load} />
         ) : table && table.id === current.id ? (
           renderTable(table, m?.tables.find((x) => x.id === table.id) ?? null)
         ) : (
@@ -126,7 +126,7 @@ export function ModuleScreen({
 // A module's own tabs after People and the Overview: its pages, its main tables with their counts
 // (a table that is part of a row, or setup, is not a tab: core step 3a), then the parts and setup
 // tables kept as tabs (28 Oct), its
-// Conversation and its Agents and notes; People's screen shows them too, none chosen.
+// Conversation and its Schedules and notes; People's screen shows them too, none chosen.
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
@@ -155,10 +155,10 @@ export const moduleTabs = (
     sel: current?.kind === 'conversation',
   },
   {
-    key: 'agents',
-    href: `#/module/${m.id}/agents`,
-    label: 'Agents and notes',
-    sel: current?.kind === 'agents',
+    key: 'schedules',
+    href: `#/module/${m.id}/schedules`,
+    label: 'Schedules and notes',
+    sel: current?.kind === 'schedules',
   },
 ]
 
@@ -169,18 +169,18 @@ export const peopleTabs = (kind: 'person' | 'company' | null): Tab[] => [
 ]
 
 // The modules inside this one, a row each: its name, where it comes from, and what goes on in
-// it right now (agents on and running, open tasks); what waits on the person stands out.
+// it right now (schedules on and running, open tasks); what waits on the person stands out.
 function Overview({ m }: { m: ModuleView }) {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-page px-7 py-6">
         <List>
           {m.modules.map((c) => {
-            const quiet = !c.agents && !c.running && !c.needs && !c.tasks
+            const quiet = !c.schedules && !c.running && !c.needs && !c.tasks
             const sub = [
               c.kit ? `From ${c.kit}` : 'Made in a conversation',
-              c.agents
-                ? `${c.agents} agent${c.agents === 1 ? '' : 's'} on${c.running ? `, ${c.running} running` : ''}`
+              c.schedules
+                ? `${c.schedules} schedule${c.schedules === 1 ? '' : 's'} on${c.running ? `, ${c.running} running` : ''}`
                 : c.running
                   ? `${c.running} running`
                   : '',
@@ -220,7 +220,7 @@ function Overview({ m }: { m: ModuleView }) {
   )
 }
 
-// A part of the Agents and notes tab: its title in serif, a grey line saying what it is, its
+// A part of the Schedules and notes tab: its title in serif, a grey line saying what it is, its
 // content; no card around it (Kenil, 26 Oct).
 function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
   return (
@@ -232,9 +232,9 @@ function Section({ title, sub, children }: { title: string; sub: string; childre
   )
 }
 
-// The Agents and notes tab: where the module comes from, then its agents, the notes Alpha reads
+// The Schedules and notes tab: where the module comes from, then its schedules, the notes Alpha reads
 // first, what ran lately and what Alpha may do here.
-function AgentsAndNotes({
+function SchedulesAndNotes({
   m,
   version,
   onChange,
@@ -254,15 +254,15 @@ function AgentsAndNotes({
   }, [m.id, version])
   const { busy, on, problem, act } = useAct(onChange)
   const turn = (id: string, state: boolean) =>
-    act(() => api.post(`/api/agents/${id}`, { state: state ? 'on' : 'paused' }), id)
-  const running = m.agents.filter((a) => a.state === 'on').length
+    act(() => api.post(`/api/schedules/${id}`, { state: state ? 'on' : 'paused' }), id)
+  const running = m.schedules.filter((a) => a.state === 'on').length
   const about = [
     m.kit
       ? `From ${m.kit.name}, version ${m.kit.version}`
       : m.modules.length && !m.tables.length
         ? ''
         : 'Made in a conversation',
-    m.agents.length ? `${running} agent${running === 1 ? '' : 's'} on` : '',
+    m.schedules.length ? `${running} schedule${running === 1 ? '' : 's'} on` : '',
     m.modules.length ? `${m.modules.length} module${m.modules.length === 1 ? '' : 's'} inside` : '',
     m.sites ? `reads ${m.sites} site${m.sites === 1 ? '' : 's'}` : '',
   ]
@@ -274,23 +274,23 @@ function AgentsAndNotes({
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
-        <Section title="Agents" sub={`The agents that work on ${m.name}.`}>
+        <Section title="Schedules" sub={`The schedules that work on ${m.name}.`}>
           <div className="flex flex-col gap-2">
-            {m.agents.length > 1 && (
+            {m.schedules.length > 1 && (
               <div className="flex justify-end">
-                <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+                <AllSchedules moduleId={m.id} schedules={m.schedules} onChange={onChange} />
               </div>
             )}
-            {m.agents.length === 0 ? (
-              <p className="text-ink-2 text-md">No agents yet. Ask Alpha to keep one.</p>
+            {m.schedules.length === 0 ? (
+              <p className="text-ink-2 text-md">No schedules yet. Ask Alpha to keep one.</p>
             ) : (
               <List>
-                {m.agents.map((a) => (
+                {m.schedules.map((a) => (
                   <Row
                     key={a.id}
                     lead={<Bot className="size-4 text-ink-3" />}
                     title={
-                      <a href={`#/agent/${a.id}`} className="hover:underline">
+                      <a href={`#/schedule/${a.id}`} className="hover:underline">
                         {a.name}
                       </a>
                     }
@@ -316,7 +316,7 @@ function AgentsAndNotes({
         {m.tables.some((t) => t.place !== 'main') && (
           <Section
             title="Tables"
-            sub={`Setup its agents read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
+            sub={`Setup its schedules read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
           >
             <ul className="flex flex-col">
               {m.tables

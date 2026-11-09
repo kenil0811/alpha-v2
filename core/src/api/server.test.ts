@@ -201,7 +201,13 @@ describe('the api over a world', () => {
     ])
     const view = (await a.inject({ url: `/api/modules/${shops.id}`, headers: ok })).json()
     expect(view.modules.map((m: { name: string }) => m.name)).toEqual(['Bakery'])
-    expect(view.modules[0]).toMatchObject({ kit: null, agents: 0, running: 0, needs: 0, tasks: 0 })
+    expect(view.modules[0]).toMatchObject({
+      kit: null,
+      schedules: 0,
+      running: 0,
+      needs: 0,
+      tasks: 0,
+    })
     const loop = await a.inject({
       method: 'POST',
       url: `/api/modules/${shops.id}/place`,
@@ -245,7 +251,7 @@ describe('the api over a world', () => {
     await a.close()
   })
 
-  it('serves People, Tasks, Agents and the rules as tables, each changed where the core allows it', async () => {
+  it('serves People, Tasks, Schedules and the rules as tables, each changed where the core allows it', async () => {
     const me = world.owner('Kenil')
     const person = { actor: { kind: 'person' as const, id: me.id }, user: me.id }
     const connector = { kind: 'connector' as const, id: 'contacts' }
@@ -331,26 +337,26 @@ describe('the api over a world', () => {
     await a.close()
   })
 
-  it('pauses an agent from its cell, and finds where People lives by module.yaml', async () => {
+  it('pauses a schedule from its cell, and finds where People lives by module.yaml', async () => {
     const m = await install(world, join(import.meta.dirname, '..', 'modules', 'test-kit'), {
       actor: { kind: 'alpha' },
     })
     const a = app()
     const get = async (path: string) => (await a.inject({ url: path, headers: ok })).json()
-    const agents = await get('/api/kept/agents')
-    const counter = agents.rows.find(
-      (r: { values: { agent: string } }) => r.values.agent === 'Counter',
+    const schedules = await get('/api/kept/schedules')
+    const counter = schedules.rows.find(
+      (r: { values: { schedule: string } }) => r.values.schedule === 'Counter',
     )
     expect(counter.values.state).toBe('Paused')
     await a.inject({
       method: 'POST',
-      url: `/api/kept/agents/rows/${counter.id}`,
+      url: `/api/kept/schedules/rows/${counter.id}`,
       headers: ok,
       payload: { field: 'State', value: 'On' },
     })
     expect(
-      (await get('/api/kept/agents')).rows.find((r: { id: string }) => r.id === counter.id).values
-        .state,
+      (await get('/api/kept/schedules')).rows.find((r: { id: string }) => r.id === counter.id)
+        .values.state,
     ).toBe('On')
     // no module says it holds People until its module.yaml does
     expect((await get('/api/modules')).find((x: { id: string }) => x.id === m.id).people).toBe(
@@ -408,16 +414,16 @@ describe('the api over a world', () => {
     world.records.land(
       t.id,
       [{ key: 'HP101', values: { Name: 'Harbor firm', Stage: 'New' } }],
-      { connector: 'agent:Reader' },
-      { actor: { kind: 'agent', id: 'Reader' } },
+      { connector: 'schedule:Reader' },
+      { actor: { kind: 'schedule', id: 'Reader' } },
     )
     const [row] = world.records.list(t.id)
     world.line({
-      actor: { kind: 'agent', id: 'Figures' },
+      actor: { kind: 'schedule', id: 'Figures' },
       kind: 'told',
       words: 'Figures: 1 new deal fits your thesis.',
       data: {
-        agent: 'Figures',
+        schedule: 'Figures',
         about: {
           table: t.id,
           rows: [row?.id],
@@ -513,8 +519,8 @@ describe('the api over a world', () => {
       ],
       { actor: { kind: 'alpha' } },
     )
-    const src = { connector: 'agent:Reader' }
-    const ctx = { actor: { kind: 'agent' as const, id: 'Reader' } }
+    const src = { connector: 'schedule:Reader' }
+    const ctx = { actor: { kind: 'schedule' as const, id: 'Reader' } }
     world.records.land(
       t.id,
       [{ key: 'A1', values: { Name: 'A firm', SDE: { amount: 300000, currency: 'USD' } } }],

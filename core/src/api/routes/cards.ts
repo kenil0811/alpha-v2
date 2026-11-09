@@ -6,11 +6,11 @@ import {
   MAINTAINED_SHAPE,
   type ShapeAction,
 } from '../../engine/tools/index.ts'
-import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { keep } from '../../modules/keep.ts'
 import { installedKits, recordChange } from '../../modules/kits/index.ts'
 import { RUN_AGAIN } from '../../modules/runs/index.ts'
+import { schedules } from '../../modules/schedules.ts'
 import { Refused } from '../../world/kinds.ts'
 import { type Redo, redo } from '../../world/shape/index.ts'
 import type { Ctx } from '../ctx.ts'
@@ -38,20 +38,20 @@ export function registerCards(ctx: Ctx): void {
     return cardOut(c)
   })
 
-  // An agent's rows on a card: the person's choice on some, or on every one not yet decided.
+  // A schedule's rows on a card: the person's choice on some, or on every one not yet decided.
   app.post('/api/cards/:id/rows', async (req): Promise<CardView | null> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { rows, value } = z
       .object({ rows: z.union([z.array(z.string()).min(1), z.literal('rest')]), value: z.string() })
       .parse(req.body)
     const reviews = engine.hands?.runner?.reviews
-    if (!reviews) throw new Refused('Agents are not set up in this core.')
+    if (!reviews) throw new Refused('Schedules are not set up in this core.')
     reviews.choose(id, rows, value, asPerson)
     live()
     const c = world.cards.get(id)
     return c ? cardOut(c) : null
   })
-  // An agent's draft: sent as it is or as the person changed it (with Always when offered), or
+  // A schedule's draft: sent as it is or as the person changed it (with Always when offered), or
   // held with a reason.
   app.post('/api/cards/:id/send', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
@@ -124,13 +124,13 @@ export function registerCards(ctx: Ctx): void {
     try {
       const c = world.cards.get(id)
       if (c?.call?.tool === DRAFT) return cardOut(await engine.answerDraft(user, id, answer))
-      // an agent that did not finish three times: one more run now, or left as if it had run
+      // a schedule that did not finish three times: one more run now, or left as if it had run
       if (c?.call?.tool === RUN_AGAIN && engine.hands?.runner) {
         const runner = engine.hands.runner
-        const input = c.call.input as { agent: string; cursor: string | null }
+        const input = c.call.input as { schedule: string; cursor: string | null }
         if (answer === c.options[0])
-          void runner.retry(input.agent, { user: user.id, turn: null }).catch(() => undefined)
-        else runner.leave(input.agent, input.cursor)
+          void runner.retry(input.schedule, { user: user.id, turn: null }).catch(() => undefined)
+        else runner.leave(input.schedule, input.cursor)
         const out = world.cards.answer(id, answer, person)
         live()
         return cardOut(out)
@@ -163,7 +163,7 @@ export function registerCards(ctx: Ctx): void {
         if (drafts)
           await drafts.propose(
             {
-              agent: 'Alpha',
+              schedule: 'Alpha',
               module: m.id,
               kind: 'request to the maintainer',
               key: null,
@@ -211,12 +211,12 @@ export function registerCards(ctx: Ctx): void {
   })
 
   // A site's sign-in: it opens in the person's own Google Chrome on this Mac, they sign in there
-  // themselves, and when they quit that Chrome the card is answered and the agent that met the
+  // themselves, and when they quit that Chrome the card is answered and the schedule that met the
   // sign-in runs again.
   app.post('/api/cards/:id/sign-in', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const card = world.cards.get(id)
-    const input = (card?.call?.input ?? {}) as { url?: string; agent?: string | null }
+    const input = (card?.call?.input ?? {}) as { url?: string; schedule?: string | null }
     if (card?.state !== 'waiting' || card.call?.tool !== 'site_sign_in' || !input.url)
       throw new Refused('That sign-in is not waiting.')
     const hands = engine.hands
@@ -226,8 +226,8 @@ export function registerCards(ctx: Ctx): void {
     void (async () => {
       await hands.browser().signIn(url)
       world.cards.answer(id, 'Sign in', { kind: 'person', id: user.id })
-      const agent = agents(world).find((a) => a.id === input.agent)
-      if (agent) await hands.runner.runAgent(agent, { user: user.id, turn: null })
+      const schedule = schedules(world).find((a) => a.id === input.schedule)
+      if (schedule) await hands.runner.runSchedule(schedule, { user: user.id, turn: null })
       engine.events.emit('event', { type: 'lines', user: user.id })
     })().catch(() => undefined)
     return { opened: true }

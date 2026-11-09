@@ -9,7 +9,7 @@ export type Place =
   | { at: 'parts' }
   | { at: 'plugin'; name: string } // a plugin's own page (onboarding in Alpha, 2 Nov)
   | { at: 'new' }
-  | { at: 'item'; kind: 'agent' | 'run' | 'rule'; id: string }
+  | { at: 'item'; kind: 'schedule' | 'run' | 'rule'; id: string }
   | { at: 'row'; id: string }
   | { at: 'card'; id: string } // a card on its own page (Batch B, pick 13)
   | {
@@ -23,7 +23,7 @@ export type Place =
   | {
       at: 'module'
       id: string
-      tab: 'overview' | 'conversation' | 'agents' | null
+      tab: 'overview' | 'conversation' | 'schedules' | null
       page: string | null
     }
   | { at: 'settings'; section: string | null; open: null }
@@ -99,16 +99,24 @@ export function placeOf(address: string): Place {
   // a row's own page (core step 3b), a card's (Batch B, pick 13)
   const rw = /^#\/(row|card)\/([\w-]+)$/.exec(hash)
   if (rw?.[2]) return { at: rw[1] === 'card' ? 'card' : 'row', id: rw[2] }
-  const it = /^#\/(agent|run|rule)\/([\w-]+)$/.exec(hash)
-  if (it?.[1] && it[2]) return { at: 'item', kind: it[1] as 'agent' | 'run' | 'rule', id: it[2] }
-  const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|agents|page\/([\w-]+)))?$/.exec(hash)
+  const it = /^#\/(schedule|run|rule)\/([\w-]+)$/.exec(hash)
+  if (it?.[1] && it[2]) return { at: 'item', kind: it[1] as 'schedule' | 'run' | 'rule', id: it[2] }
+  const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|schedules|page\/([\w-]+)))?$/.exec(
+    hash,
+  )
   if (mod?.[1])
     return {
       at: 'module',
       id: mod[1],
       tab:
-        mod[2] === 'overview' || mod[2] === 'conversation' || mod[2] === 'agents' ? mod[2] : null,
+        mod[2] === 'overview' || mod[2] === 'conversation' || mod[2] === 'schedules'
+          ? mod[2]
+          : null,
       page: mod[3] ?? null,
     }
   return { at: 'home' }
 }
+
+// A schedule's own page sits under Intelligence on the rail.
+export const inIntelligence = (p: Place): boolean =>
+  p.at === 'intelligence' || (p.at === 'item' && p.kind === 'schedule')

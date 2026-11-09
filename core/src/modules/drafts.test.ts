@@ -1,4 +1,4 @@
-// An agent's drafts, Always and Revoke, with a stand-in for the mail: nothing is sent anywhere.
+// A schedule's drafts, Always and Revoke, with a stand-in for the mail: nothing is sent anywhere.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -35,7 +35,7 @@ function setUp() {
   const sent: Message[] = []
   const drafts = new Drafts(world, { send: async (_c, msg) => sent.push(msg) }, owner)
   const draft = (i: number): Draft => ({
-    agent: 'Outreach',
+    schedule: 'Outreach',
     module: m.id,
     kind: 'quote request',
     key: rows[i] as string,
@@ -51,8 +51,8 @@ function setUp() {
   return { owner, m, drafts, draft, sent }
 }
 
-describe('an agent’s drafts', () => {
-  it('wait on a card, go as the person changed them, and a Not now keeps its reason for the agent', async () => {
+describe('a schedule’s drafts', () => {
+  it('wait on a card, go as the person changed them, and a Not now keeps its reason for the schedule', async () => {
     const s = setUp()
     const first = await s.drafts.propose(s.draft(0), null)
     expect(first.sent).toBe(false)
@@ -172,7 +172,7 @@ describe('an agent’s drafts', () => {
       s.owner,
       true,
     )
-    // under Always, the Garage request goes at once; the run stops before its agent writes it down
+    // under Always, the Garage request goes at once; the run stops before its schedule writes it down
     expect(await s.drafts.propose(s.draft(4), null)).toEqual({ sent: true, card: null })
     // the retried run drafts it again: it waits on a card saying when it went, and nothing goes
     const again = await s.drafts.propose(s.draft(4), null)

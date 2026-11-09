@@ -313,7 +313,7 @@ export class World {
   }
 
   // A file put on a row, with its kind (one the row's table takes, when it names them). The same
-  // file on the same row again only changes its kind. Journaled as filed, so the agents waiting
+  // file on the same row again only changes its kind. Journaled as filed, so the schedules waiting
   // on a filing read it with the rows it sits on.
   placeFile(hash: string, recordId: string, kind: string | null, ctx: WriteCtx): RowFile {
     return tx(this.db, () => {

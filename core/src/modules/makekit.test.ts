@@ -1,5 +1,5 @@
 // Make this a kit: a module made in a conversation leaves as a kit pack, checked and installable,
-// with its shape, notes, agents and skills and none of its rows; a kit module is packed as it is.
+// with its shape, notes, schedules and skills and none of its rows; a kit module is packed as it is.
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,10 +7,10 @@ import { checkKit } from '@alpha/kit-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { World } from '../world/world.ts'
-import { agents } from './agents.ts'
 import { install } from './kits/index.ts'
 import { makeKit } from './makekit.ts'
 import { unpack } from './packs.ts'
+import { schedules } from './schedules.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
 let home: string
@@ -29,7 +29,7 @@ afterEach(() => {
 })
 
 // A module as a conversation leaves it: two tables, a relation between them, a view, notes, an
-// agent with its skill, and a row.
+// schedule with its skill, and a row.
 function rentals(): string {
   const m = world.shape.makeModule('Rentals', alpha)
   const sources = world.shape.makeTable(
@@ -76,9 +76,9 @@ function rentals(): string {
   )
   mkdirSync(join(m.dir, 'skills', 'reader'), { recursive: true })
   writeFileSync(join(m.dir, 'skills', 'reader', 'run.js'), 'export default async () => ({})\n')
-  mkdirSync(join(m.dir, 'agents'), { recursive: true })
+  mkdirSync(join(m.dir, 'schedules'), { recursive: true })
   writeFileSync(
-    join(m.dir, 'agents', 'avenue.md'),
+    join(m.dir, 'schedules', 'avenue.md'),
     '---\nname: Avenue\ndescription: Reads the Avenue page.\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/reader/run.js }\ntouches: [Rental listings, Rental sources]\n---\nReads it.\n',
   )
   mkdirSync(join(m.dir, '.claude'))
@@ -93,14 +93,14 @@ describe('Make this a kit', () => {
     expect(made).toMatchObject({ name: 'Rentals', version: '0.1.0' })
     expect(made.file.endsWith('rentals-0.1.0.alphakit')).toBe(true)
     expect(made.words).toMatch(
-      /^Made Rentals 0\.1\.0 as a kit: 2 tables, 1 agent, 1 skill, no rows\./,
+      /^Made Rentals 0\.1\.0 as a kit: 2 tables, 1 schedule, 1 skill, no rows\./,
     )
     const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     const manifest = parse(readFileSync(join(dir, 'module.yaml'), 'utf8'))
     expect(manifest).toMatchObject({
       name: 'Rentals',
       version: '0.1.0',
-      api: 1,
+      api: 2,
       description: 'Homes and apartments for rent, gathered from listings pages.',
       network: [],
     })
@@ -124,12 +124,12 @@ describe('Make this a kit', () => {
       { name: 'Cheapest first', sorts: [{ field: 'Rent per month', dir: 'asc' }] },
     ])
     expect(existsSync(join(dir, 'NOTES.md'))).toBe(true)
-    expect(existsSync(join(dir, 'agents', 'avenue.md'))).toBe(true)
+    expect(existsSync(join(dir, 'schedules', 'avenue.md'))).toBe(true)
     expect(existsSync(join(dir, 'skills', 'reader', 'run.js'))).toBe(true)
     expect(existsSync(join(dir, '.claude'))).toBe(false)
     expect(existsSync(join(dir, 'setup.yaml'))).toBe(false)
     expect(checkKit(dir)).toEqual([])
-    // it installs into another world: the shape and the agent, none of the rows
+    // it installs into another world: the shape and the schedule, none of the rows
     const other = await World.open(join(home, 'tenants', 't_other'))
     try {
       const m = await install(other, dir, ctx)
@@ -138,7 +138,7 @@ describe('Make this a kit', () => {
         ['Rental listings', 3],
       ])
       expect(other.records.count(other.shape.table('Rental sources')?.id as string)).toBe(0)
-      expect(agents(other, m.id).map((a) => [a.name, a.state])).toEqual([['Avenue', 'paused']])
+      expect(schedules(other, m.id).map((a) => [a.name, a.state])).toEqual([['Avenue', 'paused']])
       expect(other.views.list(other.shape.table('Rental listings')?.id as string)[0]?.name).toBe(
         'Cheapest first',
       )
@@ -206,7 +206,7 @@ describe('Make this a kit', () => {
     const made = makeKit(world, m.id, join(home, 'Desktop'), ctx)
     expect(made.file.endsWith('bakery-0.1.0.alphakit')).toBe(true)
     expect(made.words).toMatch(
-      /^Packed Bakery 0\.1\.0 as a kit: 2 tables, 1 agent, 2 skills, no rows\./,
+      /^Packed Bakery 0\.1\.0 as a kit: 2 tables, 1 schedule, 2 skills, no rows\./,
     )
     const { dir } = unpack(made.file, join(home, 'kits'), { developer: true })
     expect(readFileSync(join(dir, 'NOTES.md'), 'utf8')).toContain('Changed by the person')

@@ -35,7 +35,7 @@ afterEach(() => {
 const rule = (module: string | null, to: string): RuleSpec => ({
   side: 'deny',
   module,
-  agent: null,
+  schedule: null,
   covers: { does: ['send'], to: { outside: [to] } },
   said: `never email anyone outside ${to}`,
 })

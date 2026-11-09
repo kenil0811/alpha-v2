@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { exportsDir } from '../../data.ts'
-import { agents, setAgentState, whenWords } from '../../modules/agents.ts'
 import {
   install,
   installedKits,
@@ -14,6 +13,7 @@ import {
 } from '../../modules/kits/index.ts'
 import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
+import { schedules, setScheduleState, whenWords } from '../../modules/schedules.ts'
 import { FOLDERS } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
@@ -29,18 +29,18 @@ export function registerKits(ctx: Ctx): void {
   }
   const { needsOf } = ctx.views
 
-  // Kits and agents (design §10, §11): what each module does on its own.
+  // Kits and schedules (design §10, §11): what each module does on its own.
   app.get('/api/working', async (): Promise<WorkingModuleView[]> => working())
-  // Every module's agents as one table (UI batch 2, 26 Oct): each turned On or Paused in a cell
-  const WHY = 'An agent is turned on or paused here; the rest is in its file.'
+  // Every module's schedules as one table (UI batch 2, 26 Oct): each turned On or Paused in a cell
+  const WHY = 'A schedule is turned on or paused here; the rest is in its file.'
   app.get(
-    '/api/kept/agents',
+    '/api/kept/schedules',
     async (): Promise<KeptTable> =>
       keptTable(
-        'agents',
-        'Agents',
+        'schedules',
+        'Schedules',
         [
-          keptField('Agent', 'text'),
+          keptField('Schedule', 'text'),
           keptField('Module', 'text'),
           keptField('State', 'choice', { On: 'good', Paused: 'warn' }),
           keptField('Runs', 'text'),
@@ -48,10 +48,10 @@ export function registerKits(ctx: Ctx): void {
           keptField('Needs', 'text'),
         ],
         working().flatMap((m) =>
-          m.agents.map((a) => ({
+          m.schedules.map((a) => ({
             id: a.id,
             values: {
-              agent: a.name,
+              schedule: a.name,
               module: m.name,
               state: a.state === 'on' ? 'On' : 'Paused',
               runs: a.running ? `${a.when}, running now` : a.when,
@@ -63,11 +63,11 @@ export function registerKits(ctx: Ctx): void {
         { editable: ['State'], why: WHY },
       ),
   )
-  app.post('/api/kept/agents/rows/:id', async (req) => {
+  app.post('/api/kept/schedules/rows/:id', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { value } = keptEdit(req.body, ['State'], WHY)
-    if (value !== 'On' && value !== 'Paused') throw new Refused('An agent is On or Paused.')
-    setAgentState(world, id, value === 'On' ? 'on' : 'paused', user.id)
+    if (value !== 'On' && value !== 'Paused') throw new Refused('A schedule is On or Paused.')
+    setScheduleState(world, id, value === 'On' ? 'on' : 'paused', user.id)
     live()
     return { ok: true }
   })
@@ -76,7 +76,7 @@ export function registerKits(ctx: Ctx): void {
     const running = new Set(
       (engine.hands?.runner.runs(200) ?? [])
         .filter((r) => r.state === 'running')
-        .map((r) => r.agent),
+        .map((r) => r.schedule),
     )
     return world.shape
       .modules()
@@ -96,7 +96,7 @@ export function registerKits(ctx: Ctx): void {
                 changes: k.maintainer ? unseenChanges(world, m.id) : 0,
               }
             : null,
-          agents: agents(world, m.id).map((a) => ({
+          schedules: schedules(world, m.id).map((a) => ({
             id: a.id,
             name: a.name,
             state: a.state,
@@ -108,7 +108,7 @@ export function registerKits(ctx: Ctx): void {
           })),
         }
       })
-      .filter((m) => m.kit || m.agents.length)
+      .filter((m) => m.kit || m.schedules.length)
   }
 
   // A kit is installed from a folder on this Mac, or updated from one by the ownership rule.
@@ -203,37 +203,37 @@ export function registerKits(ctx: Ctx): void {
     return { ok: true }
   })
 
-  app.post('/api/agents/:id', async (req) => {
+  app.post('/api/schedules/:id', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { state } = z.object({ state: z.enum(['on', 'paused']) }).parse(req.body)
-    setAgentState(world, id, state, user.id)
+    setScheduleState(world, id, state, user.id)
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { ok: true }
   })
 
-  // Every agent of a module on, or paused, at once (a kit's readers start paused).
-  app.post('/api/modules/:id/agents', async (req) => {
+  // Every schedule of a module on, or paused, at once (a kit's readers start paused).
+  app.post('/api/modules/:id/schedules', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { state } = z.object({ state: z.enum(['on', 'paused']) }).parse(req.body)
     const m = world.shape.module(id)
     if (!m) throw new Refused('That module is not there.')
-    const list = agents(world, m.id)
-    for (const a of list) setAgentState(world, a.id, state, user.id)
+    const list = schedules(world, m.id)
+    for (const a of list) setScheduleState(world, a.id, state, user.id)
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { changed: list.length }
   })
 
-  // Run an agent now; its outcome reaches Activity, not this answer.
-  app.post('/api/agents/:id/run', async (req) => {
+  // Run a schedule now; its outcome reaches Activity, not this answer.
+  app.post('/api/schedules/:id/run', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const runner = engine.hands?.runner
-    const a = agents(world).find((x) => x.id === id)
-    if (!runner || !a) throw new Refused('That agent is not there.')
-    // the person asked for it now: a paused agent runs this once; a busy one says so at once,
+    const a = schedules(world).find((x) => x.id === id)
+    if (!runner || !a) throw new Refused('That schedule is not there.')
+    // the person asked for it now: a paused schedule runs this once; a busy one says so at once,
     // beside the button (item 29, 25 Oct), and the run goes on behind
     runner.refuseRun(a, { asked: true })
     void runner
-      .runAgent(a, { user: user.id, turn: null }, {}, { asked: true })
+      .runSchedule(a, { user: user.id, turn: null }, {}, { asked: true })
       .catch(() => undefined)
     return { ok: true }
   })

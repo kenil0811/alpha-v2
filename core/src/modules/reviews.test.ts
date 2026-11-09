@@ -1,4 +1,4 @@
-// An agent's script reading people, having the model sort them, and putting rows to the person on
+// A schedule's script reading people, having the model sort them, and putting rows to the person on
 // one card, on the made-up kit (test-kit/): never a client's, never the real model.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -9,7 +9,7 @@ import type { Ask } from '../files/reading.ts'
 import { World } from '../world/world.ts'
 import { judge } from './judging.ts'
 import { install } from './kits/index.ts'
-import { AgentRunner } from './runs/index.ts'
+import { ScheduleRunner } from './runs/index.ts'
 
 let home: string
 let world: World
@@ -106,7 +106,7 @@ describe('rows put to the person', () => {
         return { people: people.length, fits: fits.length, card: out.card, since: alpha.input.lastRun ?? null }
       }`,
     )
-    const runner = new AgentRunner(world, () => engine, { owner: 'u_1', judge: fakeJudge })
+    const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1', judge: fakeJudge })
     const run = await runner.runScript(m, 'skills/picks.js', {}, 'Picks', null)
     expect(run.state).toBe('ok')
     const { people, fits, card } = run.result as { people: number; fits: number; card: string }
@@ -143,7 +143,7 @@ describe('rows put to the person', () => {
         return alpha.review({ words: 'x', table: 'Suppliers', field: 'Name', choices: ['Yes'], rows })
       }`,
     )
-    const runner = new AgentRunner(world, () => engine, { owner: 'u_1', judge: fakeJudge })
+    const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1', judge: fakeJudge })
     const bad = await runner.runScript(m, 'skills/bad.js', {}, 'Bad', null)
     expect(bad.state).toBe('failed')
     expect(bad.words).toMatch(/no choice field Name/)

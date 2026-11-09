@@ -35,7 +35,7 @@ export interface AboutRows {
 export interface StreamLine {
   id: number
   at: string
-  actor: 'person' | 'alpha' | 'agent' | 'connector' | 'system'
+  actor: 'person' | 'alpha' | 'schedule' | 'connector' | 'system'
   kind: string
   words: string
   turn: string | null
@@ -59,12 +59,12 @@ export interface CardView {
   restsOn: string[] // what the card rests on, in words
   module: string | null // the module it belongs to, for a lens
   filing?: FilingView | null // a file from the mail: where it is proposed to go
-  draft?: DraftView | null // an agent's email for the person's yes
+  draft?: DraftView | null // a schedule's email for the person's yes
   match?: MatchView | null // people or companies that may be one, side by side
-  review?: ReviewView | null // rows an agent puts to the person, a choice on each
+  review?: ReviewView | null // rows a schedule puts to the person, a choice on each
 }
 
-// Rows an agent puts to the person on one card: each with why, and the choices it offers.
+// Rows a schedule puts to the person on one card: each with why, and the choices it offers.
 export interface ReviewView {
   table: string
   field: string
@@ -146,9 +146,9 @@ export interface PersonView {
   createdAt: string
 }
 
-// An agent's draft on its card: the email to change, what it is about, the Not now reasons, and Always when three unchanged sends of its kind have earned it.
+// A schedule's draft on its card: the email to change, what it is about, the Not now reasons, and Always when three unchanged sends of its kind have earned it.
 export interface DraftView {
-  agent: string
+  schedule: string
   kind: string
   message: { to: string; cc?: string; subject: string; body: string }
   note: string | null
@@ -181,7 +181,7 @@ export interface RuleView {
   said: string | null // the words it was asked in
   side: 'allow' | 'deny'
   kind: 'approved' | 'inferred'
-  where: string // all of Alpha, a module or an agent, in words
+  where: string // all of Alpha, a module or a schedule, in words
   module: string | null
   madeBy: string
   madeAt: string
@@ -198,7 +198,7 @@ export interface WaitingRuleView {
   card: string
   words: string // the rule as it would hold, in code's own words
   side: 'allow' | 'deny'
-  where: string // all of Alpha, a module or an agent, in words
+  where: string // all of Alpha, a module or a schedule, in words
   askedAt: string
   yes: string
   no: string
@@ -227,7 +227,7 @@ export interface Stream {
   lines: StreamLine[]
   cards: CardView[]
   busy: boolean
-  running: { id: string; name: string; module: string | null }[] // agents' runs going now
+  running: { id: string; name: string; module: string | null }[] // schedules' runs going now
   reading: { connection: string; title: string; account: string }[] // connections being read now
   // connections that need the person to sign in; one read as them signs in in Chrome
   // connections that need the person: a sign-in, or the customer's own step (waiting, with what)
@@ -344,7 +344,7 @@ export interface TableView {
   readBy: ReadByView[] // the connections that fill it, read again from its ⋮ (Batch B, pick 15)
 }
 
-// A list kept outside a module's tables (people, organizations, tasks, agents, standing
+// A list kept outside a module's tables (people, organizations, tasks, schedules, standing
 // permissions), served as a table to draw and edit in place (UI batch 2, 26 Oct).
 export interface KeptTable extends TableView {
   kept: { name: string; editable: string[]; why: string; counts?: Record<string, number> }
@@ -449,8 +449,8 @@ export interface DataPageView {
   exportsTo: string // where Take my data puts the archive
 }
 
-// An agent as Settings shows it: its trigger in words, on or paused.
-export interface AgentView {
+// A schedule as Settings shows it: its trigger in words, on or paused.
+export interface ScheduleView {
   id: string
   name: string
   state: 'on' | 'paused'
@@ -474,7 +474,7 @@ export interface WorkingModuleView {
     core: boolean // Alpha's own kit: kept by the core, never uninstalled
     changes: number // changes of the person's a maintained kit's maintainer has not seen
   } | null
-  agents: AgentView[]
+  schedules: ScheduleView[]
 }
 
 // What of a kit is the person's now: changed files, rows, views and fields, and the fields the kit no longer uses with the rows still under them.
@@ -492,7 +492,7 @@ export interface ModuleView {
   name: string
   people: boolean // People and Organizations are its tabs
   kit: { name: string; version: string } | null
-  agents: AgentView[]
+  schedules: ScheduleView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written
   // what it is for (core step 3e), and whose words: the kit's, Alpha's (assumed) or the person's
@@ -511,7 +511,7 @@ export interface ModuleView {
 // A module inside another, as the parent's Overview lists it: where it comes from and what goes on in it now, the modules inside it counted too.
 export interface InsideModuleView extends ModuleSummary {
   kit: string | null
-  agents: number // on
+  schedules: number // on
   running: number
   needs: number // cards waiting on the person
   tasks: number // open
@@ -540,10 +540,10 @@ export interface ModelView {
   providers: ProviderView[]
 }
 
-// A run in Activity: an agent's or a reader's, or a connection reading its account.
+// A run in Activity: a schedule's or a reader's, or a connection reading its account.
 export interface RunView {
   id: string
-  // an agent's run, a connection's read, Alpha's turn changing rows, a removal, a person's revert
+  // a schedule's run, a connection's read, Alpha's turn changing rows, a removal, a person's revert
   kind: 'run' | 'read' | 'turn' | 'removal' | 'revert'
   name: string
   module: string | null // its name
@@ -560,7 +560,7 @@ export interface RunView {
   undo: { target: UndoTarget; label: 'Revert' | 'Bring back'; what: string } | null
 }
 
-// What a revert puts back: an agent's run, a turn of Alpha's, or one line (a removal, a revert).
+// What a revert puts back: a schedule's run, a turn of Alpha's, or one line (a removal, a revert).
 export type UndoTarget = { run: string } | { turn: string } | { line: number }
 
 // What Revert or Bring back would do, said before it does it.

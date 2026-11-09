@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { agents } from '../../modules/agents.ts'
+import { schedules } from '../../modules/schedules.ts'
 import type { Ctx } from '../ctx.ts'
 import type { Stream, StreamLine } from '../types.ts'
 
@@ -62,7 +62,7 @@ export function registerStream(ctx: Ctx): void {
           module: moduleOf(l.module),
           data:
             l.kind === 'told'
-              ? { about: aboutRows(l.data.about), agent: l.data.agent ?? null }
+              ? { about: aboutRows(l.data.about), schedule: l.data.schedule ?? null }
               : shown(l.kind, l.data),
         }),
       )
@@ -74,7 +74,7 @@ export function registerStream(ctx: Ctx): void {
         .filter((r) => r.state === 'running')
         .map((r) => ({
           id: r.id,
-          name: (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try',
+          name: (r.schedule && schedules(world).find((a) => a.id === r.schedule)?.name) || 'A try',
           module: r.module,
         })),
       attention: world.connections

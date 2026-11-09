@@ -1,5 +1,5 @@
 // A task, a run, a person or a row open beside the page (Batch A, pick 2, Kenil's yes 1 Nov), and
-// an agent, a rule and the rows a figure counted (Batch D, 79.6, 79.7): its own page, narrow, in
+// a schedule, a rule and the rows a figure counted (Batch D, 79.6, 79.7): its own page, narrow, in
 // the side panel, with Open page to the page itself at the panel's foot (79.10). A link to one of
 // them opens it here when the window has room beside the page (room.ts); a ⌘-click, Open page, or
 // no room goes to the page, as before. A link inside the panel opens a step further in it, and the
@@ -63,7 +63,7 @@ export function OpenedPanel({
       <RowPage id={opened.id} version={version} onPlace={(p) => setName(p?.title ?? '')} />
     ) : opened.kind === 'task' ? (
       <Tasks list="open" id={opened.id} version={version} onName={setName} />
-    ) : opened.kind === 'run' || opened.kind === 'agent' || opened.kind === 'rule' ? (
+    ) : opened.kind === 'run' || opened.kind === 'schedule' || opened.kind === 'rule' ? (
       <ItemPage kind={opened.kind} id={opened.id} version={version} onName={setName} />
     ) : opened.kind === 'rows' ? (
       <RowsBeside id={opened.id} version={version} onName={setName} />

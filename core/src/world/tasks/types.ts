@@ -62,7 +62,7 @@ export interface Task {
   placedWhy: string | null
   refs: Ref[]
   madeBy: string
-  run: string | null // the run it serves (agents on tasks)
+  run: string | null // the run it serves (schedules on tasks)
   createdAt: string
   updatedAt: string
   doneAt: string | null

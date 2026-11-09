@@ -1,4 +1,4 @@
-// Runs of a made-up kit's agents, with a stand-in for the browser engine: never a real site.
+// Runs of a made-up kit's schedules, with a stand-in for the browser engine: never a real site.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -21,9 +21,9 @@ vi.mock('../scripts/run.ts', async (original) => {
 
 import { run as exec } from '../world/db.ts'
 import { World } from '../world/world.ts'
-import { type Agent, agents, setAgentState, syncAgents } from './agents.ts'
 import { install } from './kits/index.ts'
-import { AgentRunner } from './runs/index.ts'
+import { ScheduleRunner } from './runs/index.ts'
+import { type Schedule, schedules, setScheduleState, syncSchedules } from './schedules.ts'
 
 let home: string
 let world: World
@@ -58,29 +58,29 @@ afterEach(() => {
 describe('a run', () => {
   it('ends the runs a stopped core left running, and Stop ends one nothing runs any more', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const agent = agents(world, m.id)[0] as Agent
+    const schedule = schedules(world, m.id)[0] as Schedule
     // two rows a crashed core left behind, as its table would hold them
     for (const id of ['n_left1', 'n_left2'])
       exec(
         world.db,
-        "INSERT INTO runs (id, agent_id, module_id, started_at, state, data) VALUES (?, ?, ?, ?, 'running', '{}')",
+        "INSERT INTO runs (id, schedule_id, module_id, started_at, state, data) VALUES (?, ?, ?, ?, 'running', '{}')",
         id,
-        agent.id,
+        schedule.id,
         m.id,
         '2026-10-23T07:01:00.000Z',
       )
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     const left = runner.runs(10).filter((r) => r.id.startsWith('n_left'))
     expect(left.map((r) => [r.state, r.words])).toEqual([
-      ['failed', `${agent.name} was cut short when the core stopped.`],
-      ['failed', `${agent.name} was cut short when the core stopped.`],
+      ['failed', `${schedule.name} was cut short when the core stopped.`],
+      ['failed', `${schedule.name} was cut short when the core stopped.`],
     ])
     expect(world.lines({ kinds: ['run_ended'] }).map((l) => l.words)).toHaveLength(2)
     // a row left running by another core while this one runs: Stop ends it
     exec(
       world.db,
-      "INSERT INTO runs (id, agent_id, module_id, started_at, state, data) VALUES ('n_left3', ?, ?, ?, 'running', '{}')",
-      agent.id,
+      "INSERT INTO runs (id, schedule_id, module_id, started_at, state, data) VALUES ('n_left3', ?, ?, ?, 'running', '{}')",
+      schedule.id,
       m.id,
       '2026-10-23T07:02:00.000Z',
     )
@@ -89,13 +89,13 @@ describe('a run', () => {
     expect(runner.stop('n_nothing')).toBe(false)
   })
 
-  it('runs an agent’s script in its sandbox and reports its outcome', async () => {
+  it('runs a schedule’s script in its sandbox and reports its outcome', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
-    const [counter] = agents(world, m.id)
+    const runner = new ScheduleRunner(world, () => engine)
+    const [counter] = schedules(world, m.id)
     // installed paused: it runs now only because the person asked
-    await expect(runner.runAgent(counter as never)).rejects.toThrow(/is paused/)
-    const out = await runner.runAgent(counter as never, undefined, {}, { asked: true })
+    await expect(runner.runSchedule(counter as never)).rejects.toThrow(/is paused/)
+    const out = await runner.runSchedule(counter as never, undefined, {}, { asked: true })
     expect(out.state).toBe('ok')
     expect(out.result).toEqual({ orders: 0 })
     expect(runner.runs().map((r) => [r.state, r.words])).toEqual([['ok', 'Counter finished.']])
@@ -105,19 +105,19 @@ describe('a run', () => {
     ])
   }, 60_000)
 
-  it('runs an agent once at a time: a second run while one is going is turned away', async () => {
+  it('runs a schedule once at a time: a second run while one is going is turned away', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
       join(m.dir, 'skills', 'count', 'run.js'),
       'export default async () => { await new Promise((r) => setTimeout(r, 1500)); return { slow: true } }',
     )
-    const runner = new AgentRunner(world, () => engine)
-    const [counter] = agents(world, m.id)
-    setAgentState(world, counter?.id as string, 'on', 'u_1')
-    const on = agents(world, m.id)[0] as Agent
-    const first = runner.runAgent(on)
+    const runner = new ScheduleRunner(world, () => engine)
+    const [counter] = schedules(world, m.id)
+    setScheduleState(world, counter?.id as string, 'on', 'u_1')
+    const on = schedules(world, m.id)[0] as Schedule
+    const first = runner.runSchedule(on)
     await new Promise((r) => setTimeout(r, 300))
-    await expect(runner.runAgent(on, undefined, {}, { asked: true })).rejects.toThrow(
+    await expect(runner.runSchedule(on, undefined, {}, { asked: true })).rejects.toThrow(
       /busy with another run/,
     )
     expect((await first).state).toBe('ok')
@@ -126,7 +126,7 @@ describe('a run', () => {
 
   it('reads only sites on its module’s list; a new one waits on the person’s yes, then stays allowed', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine, { owner: 'u_1' })
+    const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1' })
     const first = await runner.runScript(
       m,
       'skills/read/run.js',
@@ -152,7 +152,7 @@ describe('a run', () => {
     const rows = world.records.list(world.shape.table('Suppliers')?.id as string)
     const oat = rows.find((r) => r.values.name === 'Oat Mill')
     expect(oat?.provenance.name?.source).toMatchObject({
-      connector: 'agent:Reader',
+      connector: 'schedule:Reader',
       item: 'S1',
       url: 'https://supplies.example/list/S1',
     })
@@ -172,7 +172,7 @@ describe('a run', () => {
 })
 
 describe('a site that wants a sign-in', () => {
-  it('fails the run and puts a Sign in card in front of the person, once per agent', async () => {
+  it('fails the run and puts a Sign in card in front of the person, once per schedule', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const wants = {
       open: async () => ({}),
@@ -186,15 +186,15 @@ describe('a site that wants a sign-in', () => {
       },
     } as unknown as BrowserEngine
     const owner = world.owner('Kenil')
-    const agent = agents(world, m.id)[0]?.id as string
-    const runner = new AgentRunner(world, () => wants, { owner: owner.id })
+    const schedule = schedules(world, m.id)[0]?.id as string
+    const runner = new ScheduleRunner(world, () => wants, { owner: owner.id })
     for (let i = 0; i < 2; i++) {
       const out = await runner.runScript(
         m,
         'skills/read/run.js',
         { url: 'https://example.com/members' },
         'Reader',
-        agent,
+        schedule,
       )
       expect(out.state).toBe('failed')
     }
@@ -204,7 +204,7 @@ describe('a site that wants a sign-in', () => {
     ])
     expect(cards[0]?.call).toEqual({
       tool: 'site_sign_in',
-      input: { host: 'example.com', url: 'https://example.com/members', agent },
+      input: { host: 'example.com', url: 'https://example.com/members', schedule },
     })
   })
 })
@@ -212,7 +212,7 @@ describe('a site that wants a sign-in', () => {
 describe('a script’s rows', () => {
   it('reads rows with their values by field name, and lands a url only as a web link', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     writeFileSync(
       join(m.dir, 'skills/names.js'),
       "export default async (alpha) => (await alpha.rows.list('Suppliers')).map((r) => [r.key, r.values.Name])",
@@ -234,7 +234,7 @@ describe('a script’s rows', () => {
 describe('a script’s figures', () => {
   it('never write over a value the person said', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     const suppliers = world.shape.table('Suppliers')?.id as string
     const mill = world.records.list(suppliers)[0]?.id as string
     world.records.change(
@@ -267,7 +267,7 @@ describe('a script’s figures', () => {
 
   it('read a filed document’s cells, and land values that cite their cell', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     const { file } = world.files.take(new TextEncoder().encode('b'), 'prices.xlsx', 'x', ctx)
     world.files.addDocument(
       file.hash,
@@ -303,38 +303,43 @@ describe('a script’s figures', () => {
 })
 
 describe('a run on a yes', () => {
-  it('runs an agent again once the person said yes on a card its run opened, and only then', async () => {
+  it('runs a schedule again once the person said yes on a card its run opened, and only then', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine, { owner: 'u_1' })
+    const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1' })
     writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async (alpha) => alpha.input')
     writeFileSync(
-      join(m.dir, 'agents/asker.md'),
+      join(m.dir, 'schedules/asker.md'),
       '---\nname: Asker\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/echo.js }\n---\nAsks.\n',
     )
-    syncAgents(world, m, 'on')
-    const a = agents(world, m.id).find((x) => x.name === 'Asker') as Agent
+    syncSchedules(world, m, 'on')
+    const a = schedules(world, m.id).find((x) => x.name === 'Asker') as Schedule
     // its last run ended on a sign-in card yesterday, and it is not due by its trigger today
     exec(
       world.db,
-      "INSERT INTO runs (id, agent_id, module_id, started_at, ended_at, state, data) VALUES ('n_asked', ?, ?, ?, ?, 'failed', '{}')",
+      "INSERT INTO runs (id, schedule_id, module_id, started_at, ended_at, state, data) VALUES ('n_asked', ?, ?, ?, ?, 'failed', '{}')",
       a.id,
       m.id,
       '2026-10-24T07:00:00.000Z',
       '2026-10-24T07:00:05.000Z',
     )
-    exec(world.db, 'UPDATE agents SET last_run_at = ? WHERE id = ?', new Date().toISOString(), a.id)
+    exec(
+      world.db,
+      'UPDATE schedules SET last_run_at = ? WHERE id = ?',
+      new Date().toISOString(),
+      a.id,
+    )
     const card = world.cards.open({
       kind: 'permission',
       gate: 'sign_in',
       words: 'mill.example wants you to sign in',
       options: ['Sign in', 'Not now'],
       call: { tool: 'site_sign_in', input: { host: 'mill.example' } },
-      actor: { kind: 'agent', id: 'n_asked' },
+      actor: { kind: 'schedule', id: 'n_asked' },
       user: 'u_1',
       module: m.id,
       run: 'n_asked',
     })
-    const runsOfAsker = () => runner.runs(20).filter((r) => r.agent === a.id)
+    const runsOfAsker = () => runner.runs(20).filter((r) => r.schedule === a.id)
     await runner.runDue()
     expect(runsOfAsker()).toHaveLength(1) // the card waits: nothing runs
     world.cards.answer(card.id, 'Sign in', { kind: 'person', id: 'u_1' })
@@ -352,15 +357,15 @@ describe('a run on a yes', () => {
 })
 
 describe('triggers', () => {
-  it('run an agent on a change in any of its tables, handing its script its input', async () => {
+  it('run a schedule on a change in any of its tables, handing its script its input', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async (alpha) => alpha.input')
     writeFileSync(
-      join(m.dir, 'agents/watcher.md'),
+      join(m.dir, 'schedules/watcher.md'),
       '---\nname: Watcher\ntrigger: { changes: [Orders, Suppliers] }\nruns: { script: skills/echo.js, input: { say: hi } }\n---\nWatches.\n',
     )
-    syncAgents(world, m, 'on')
+    syncSchedules(world, m, 'on')
     await runner.runDue() // the kit's own rows count as a change, once
     expect(runner.runs().map((r) => r.words)).toEqual(['Watcher finished.'])
     await runner.runDue()
@@ -380,15 +385,15 @@ describe('triggers', () => {
     expect(data.data).toContain('"say":"hi"')
   }, 60_000)
 
-  it('run an agent when a document is filed', async () => {
+  it('run a schedule when a document is filed', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async () => null')
     writeFileSync(
-      join(m.dir, 'agents/filer.md'),
+      join(m.dir, 'schedules/filer.md'),
       '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: skills/echo.js }\n---\nReads what is filed.\n',
     )
-    syncAgents(world, m, 'on')
+    syncSchedules(world, m, 'on')
     await runner.runDue()
     expect(runner.runs()).toHaveLength(0)
     const { file } = world.files.take(new TextEncoder().encode('a'), 'june.xlsx', 'x', ctx)
@@ -403,15 +408,15 @@ describe('triggers', () => {
     expect(runner.runs().map((r) => r.words)).toEqual(['Filer finished.'])
   }, 60_000)
 
-  it('run an agent that is on when its time comes, and never one that is paused', async () => {
+  it('run a schedule that is on when its time comes, and never one that is paused', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     const at8 = new Date()
     at8.setHours(8, 0, 0, 0)
     await runner.runDue(at8.getTime())
     expect(runner.runs()).toHaveLength(0)
-    const [counter] = agents(world, m.id)
-    setAgentState(world, counter?.id as string, 'on', 'u_1')
+    const [counter] = schedules(world, m.id)
+    setScheduleState(world, counter?.id as string, 'on', 'u_1')
     await runner.runDue(at8.getTime())
     expect(runner.runs()).toHaveLength(1)
     await runner.runDue(at8.getTime() + 60_000)
@@ -426,9 +431,9 @@ describe('what a script may not touch', () => {
       join(m.dir, 'skills', 'count', 'run.js'),
       'import { writeFileSync, readFileSync } from "node:fs"; export default async () => { const f = process.cwd() + "/module.yaml"; writeFileSync(f, readFileSync(f, "utf8") + "  - evil.example\\n"); return { wrote: true } }',
     )
-    const runner = new AgentRunner(world, () => engine)
-    const [counter] = agents(world, m.id)
-    const out = await runner.runAgent(counter as never, undefined, {}, { asked: true })
+    const runner = new ScheduleRunner(world, () => engine)
+    const [counter] = schedules(world, m.id)
+    const out = await runner.runSchedule(counter as never, undefined, {}, { asked: true })
     expect(out.state).toBe('failed')
     expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).not.toContain('evil.example')
   }, 60_000)
@@ -437,11 +442,11 @@ describe('what a script may not touch', () => {
 describe('a run that did not finish', () => {
   it('ends as failed when the script could not even start, never left running', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
-    const runner = new AgentRunner(world, () => engine)
-    const [counter] = agents(world, m.id)
+    const runner = new ScheduleRunner(world, () => engine)
+    const [counter] = schedules(world, m.id)
     sandboxDown.value = true
     try {
-      const out = await runner.runAgent(counter as never, undefined, {}, { asked: true })
+      const out = await runner.runSchedule(counter as never, undefined, {}, { asked: true })
       expect(out.state).toBe('failed')
       expect(out.words).toBe('Counter did not finish: the sandbox did not start')
       expect(runner.runs().map((r) => r.state)).toEqual(['failed'])
@@ -456,9 +461,9 @@ describe('a run that did not finish', () => {
       join(m.dir, 'skills', 'count', 'run.js'),
       'export default async () => { throw new Error("boom") }',
     )
-    const runner = new AgentRunner(world, () => engine)
-    const [counter] = agents(world, m.id)
-    setAgentState(world, counter?.id as string, 'on', 'u_1')
+    const runner = new ScheduleRunner(world, () => engine)
+    const [counter] = schedules(world, m.id)
+    setScheduleState(world, counter?.id as string, 'on', 'u_1')
     // yesterday at 08:00: Leave it stamps the real clock, which is after it at any time of today
     const at8 = new Date()
     at8.setDate(at8.getDate() - 1)
@@ -481,15 +486,15 @@ describe('a run that did not finish', () => {
     expect(runner.runs()).toHaveLength(4)
   }, 60_000)
 
-  it('runs the due agents in a lane of their own: the tick is back at once', async () => {
+  it('runs the due schedules in a lane of their own: the tick is back at once', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     writeFileSync(
       join(m.dir, 'skills', 'count', 'run.js'),
       'export default async () => { await new Promise((r) => setTimeout(r, 1200)); return { slow: true } }',
     )
-    const runner = new AgentRunner(world, () => engine)
-    const [counter] = agents(world, m.id)
-    setAgentState(world, counter?.id as string, 'on', 'u_1')
+    const runner = new ScheduleRunner(world, () => engine)
+    const [counter] = schedules(world, m.id)
+    setScheduleState(world, counter?.id as string, 'on', 'u_1')
     const at8 = new Date()
     at8.setHours(8, 0, 0, 0)
     const t0 = Date.now()
@@ -503,17 +508,17 @@ describe('a run that did not finish', () => {
   }, 60_000)
 })
 
-describe('an agent woken by a filing', () => {
+describe('a schedule woken by a filing', () => {
   it('is handed the documents filed or put on a row, with their rows, and can place one', async () => {
     const kit = join(home, 'filing-kit')
-    mkdirSync(join(kit, 'agents'), { recursive: true })
+    mkdirSync(join(kit, 'schedules'), { recursive: true })
     mkdirSync(join(kit, 'skills', 'file'), { recursive: true })
     writeFileSync(
       join(kit, 'module.yaml'),
-      'name: Desk\nversion: 0.1.0\ntables:\n  - name: Jobs\n    documents: [Brief, Invoice]\n    fields:\n      - { name: Name, kind: text }\n',
+      'name: Desk\nversion: 0.1.0\napi: 2\ntables:\n  - name: Jobs\n    documents: [Brief, Invoice]\n    fields:\n      - { name: Name, kind: text }\n',
     )
     writeFileSync(
-      join(kit, 'agents', 'filer.md'),
+      join(kit, 'schedules', 'filer.md'),
       '---\nname: Filer\ntrigger: { filed: true }\nruns: { script: skills/file/run.js }\ntouches: [Jobs]\n---\nFiles briefs.\n',
     )
     writeFileSync(
@@ -527,8 +532,8 @@ describe('an agent woken by a filing', () => {
 `,
     )
     const m = await install(world, kit, ctx)
-    const [filer] = agents(world, m.id)
-    setAgentState(world, filer?.id as string, 'on', 'u_1')
+    const [filer] = schedules(world, m.id)
+    setScheduleState(world, filer?.id as string, 'on', 'u_1')
     const jobs = world.shape.table('Jobs')?.id as string
     world.records.add(
       jobs,
@@ -538,7 +543,7 @@ describe('an agent woken by a filing', () => {
         said: null,
       },
     )
-    const runner = new AgentRunner(world, () => engine)
+    const runner = new ScheduleRunner(world, () => engine)
     await runner.runDue()
     const bytes = new TextEncoder().encode('name,size\nshelf,2\n')
     const { file } = world.files.take(bytes, 'brief.csv', 'text/csv', ctx)

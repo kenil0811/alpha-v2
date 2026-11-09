@@ -173,7 +173,7 @@ const SIGNED_IN = '.signed-in-with-chrome'
 export function robotsAllow(robots: string, path: string): boolean {
   const disallow: string[] = []
   const allow: string[] = []
-  let agents: string[] = []
+  let schedules: string[] = []
   let inRules = false
   for (const raw of robots.split(/\r?\n/)) {
     const line = raw.replace(/#.*/, '').trim()
@@ -183,12 +183,12 @@ export function robotsAllow(robots: string, path: string): boolean {
     const value = (m[2] as string).trim()
     if (key === 'user-agent') {
       // a User-agent line after rules starts the next group
-      if (inRules) agents = []
+      if (inRules) schedules = []
       inRules = false
-      agents.push(value)
+      schedules.push(value)
     } else if (key !== 'sitemap') {
       inRules = true
-      if (!value || !agents.includes('*')) continue
+      if (!value || !schedules.includes('*')) continue
       if (key === 'disallow') disallow.push(value)
       else if (key === 'allow') allow.push(value)
     }

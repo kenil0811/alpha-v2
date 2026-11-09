@@ -1,7 +1,7 @@
 // Settings › Modules (design §10, §11): what each module does on its own, and its
-// agents, each on or paused, folded under the module until opened. A module is installed from a
+// schedules, each on or paused, folded under the module until opened. A module is installed from a
 // folder or a file. The core calls a module's package a kit; a person never reads that word.
-import type { AgentView, WorkingModuleView, YoursView } from '@alpha/core/api'
+import type { ScheduleView, WorkingModuleView, YoursView } from '@alpha/core/api'
 import { ChevronDown, ChevronRight, Package, Trash2 } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
@@ -24,7 +24,7 @@ export function when(at: string | null): string {
   })
 }
 
-export function ModulesAndAgents({ version }: { version: number }) {
+export function ModulesAndSchedules({ version }: { version: number }) {
   const [modules, setModules] = useState<WorkingModuleView[] | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const load = useCallback(() => {
@@ -57,7 +57,7 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
   const [busy, setBusy] = useState(false)
   const [said, setSaid] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
-  const on = m.agents.filter((a) => a.state === 'on').length
+  const on = m.schedules.filter((a) => a.state === 'on').length
   const Fold = open ? ChevronDown : ChevronRight
   const updateModule = async () => {
     setBusy(true)
@@ -120,9 +120,15 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
           <>
             <span>
               {origin(m)}
-              {m.agents.length > 0 &&
-                ` · ${m.agents.length === 1 ? 'one agent' : `${m.agents.length} agents`}, ${
-                  on === m.agents.length ? (on === 1 ? 'on' : 'all on') : on ? `${on} on` : 'paused'
+              {m.schedules.length > 0 &&
+                ` · ${m.schedules.length === 1 ? 'one schedule' : `${m.schedules.length} schedules`}, ${
+                  on === m.schedules.length
+                    ? on === 1
+                      ? 'on'
+                      : 'all on'
+                    : on
+                      ? `${on} on`
+                      : 'paused'
                 }`}
             </span>
             {said && <div className="text-ink-2">{said}</div>}
@@ -131,8 +137,8 @@ function ModuleWork({ module: m, onChange }: { module: WorkingModuleView; onChan
       >
         {/* under the name, not beside it: Settings' column is too narrow for three buttons */}
         <div className="flex flex-wrap items-center gap-2 px-4 pb-3 pl-15">
-          {m.agents.length > 1 && (
-            <AllAgents moduleId={m.id} agents={m.agents} onChange={onChange} />
+          {m.schedules.length > 1 && (
+            <AllSchedules moduleId={m.id} schedules={m.schedules} onChange={onChange} />
           )}
           {m.kit && (
             <Button size="sm" variant="ghost" disabled={busy} onClick={updateModule}>
@@ -155,7 +161,7 @@ function origin(m: WorkingModuleView): string {
   const from = m.kit
   if (!from) return 'Made in a conversation'
   if (from.core)
-    return `Alpha's own, version ${from.version}: kept up to date by Alpha; its agents can be paused`
+    return `Alpha's own, version ${from.version}: kept up to date by Alpha; its schedules can be paused`
   const by = from.maintainer ? `, maintained by ${from.maintainer.name}` : ''
   const unseen = from.changes
     ? ` · ${from.changes} change${from.changes === 1 ? '' : 's'} of yours the maintainer has not seen`
@@ -163,18 +169,18 @@ function origin(m: WorkingModuleView): string {
   return `From ${from.name}, version ${from.version} (API ${from.api})${by}${unseen}`
 }
 
-// Every agent of a module on at once, or all paused once they are all on.
-export function AllAgents({
+// Every schedule of a module on at once, or all paused once they are all on.
+export function AllSchedules({
   moduleId,
-  agents,
+  schedules,
   onChange,
 }: {
   moduleId: string
-  agents: AgentView[]
+  schedules: ScheduleView[]
   onChange: () => void
 }) {
   const { busy, problem, act } = useAct(onChange)
-  const allOn = agents.every((a) => a.state === 'on')
+  const allOn = schedules.every((a) => a.state === 'on')
   return (
     <>
       <Refusal words={problem} />
@@ -182,7 +188,9 @@ export function AllAgents({
         size="sm"
         disabled={busy}
         onClick={() =>
-          act(() => api.post(`/api/modules/${moduleId}/agents`, { state: allOn ? 'paused' : 'on' }))
+          act(() =>
+            api.post(`/api/modules/${moduleId}/schedules`, { state: allOn ? 'paused' : 'on' }),
+          )
         }
       >
         {allOn ? 'Pause all' : 'Turn on all'}

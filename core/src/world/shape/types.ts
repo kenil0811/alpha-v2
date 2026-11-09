@@ -70,7 +70,7 @@ export interface Table {
   key: string | null // the name the kit or connector that made it gave it (call 6); none for others
   mirror: string | null // the system that keeps its rows' record, for one a connection fills (D1)
   hidden: boolean // out of the sidebar
-  setup: boolean // what the module's agents read: under Agents and notes, not a tab (step 3a)
+  setup: boolean // what the module's schedules read: under Schedules and notes, not a tab (step 3a)
   tab: boolean // kept as a tab of its module wherever it sits, by the person or its kit (28 Oct)
   addedOn: string | null // Alpha adds a row only once the person has answered this on a card
   fields: Field[]

@@ -1,6 +1,6 @@
 // `alpha kit test <dir>` (decision 9): a kit's skills run against a fixture world and recorded
 // answers, without the model, and the rows they land are compared with what the kit's test
-// expects. A case is tests/<name>.yaml in the kit: which agent or script, its input, the rows to
+// expects. A case is tests/<name>.yaml in the kit: which schedule or script, its input, the rows to
 // seed, the pages a browser call gets, the model's recorded answers, and what to expect. A
 // refusal by a wall fails the case. `--record` runs the model for real and writes its answers
 // into the case, to replay from then on.
@@ -16,12 +16,12 @@ import type { Ask } from '../files/reading.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table } from '../world/shape/index.ts'
 import { World } from '../world/world.ts'
-import { agents } from './agents.ts'
 import { install } from './kits/index.ts'
-import { AgentRunner } from './runs/index.ts'
+import { ScheduleRunner } from './runs/index.ts'
+import { schedules } from './schedules.ts'
 
 const Case = z.object({
-  agent: z.string().optional(),
+  schedule: z.string().optional(),
   script: z.string().optional(),
   input: z.record(z.string(), z.unknown()).default({}),
   rows: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).default({}),
@@ -81,7 +81,7 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
   const parsed = Case.safeParse(parse(readFileSync(file, 'utf8')) ?? {})
   if (!parsed.success) throw new Refused(`The case is not right: ${z.prettifyError(parsed.error)}`)
   const c = parsed.data
-  if (!c.agent && !c.script) throw new Refused('A case names an agent, or a script to run.')
+  if (!c.schedule && !c.script) throw new Refused('A case names a schedule, or a script to run.')
   const home = mkdtempSync(join(tmpdir(), 'alpha-kit-test-'))
   const world = await World.open(join(home, 'tenants', 't_test'))
   const recorded = new Map(c.answers.map((a) => [a.key, a.answer]))
@@ -133,13 +133,13 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
       learned.push({ key, about: prompt.slice(0, 120).replace(/\s+/g, ' '), answer: out.answer })
       return out
     }
-    const runner = new AgentRunner(world, () => engine, { owner: null, ask, judge: ask })
-    const out = c.agent
+    const runner = new ScheduleRunner(world, () => engine, { owner: null, ask, judge: ask })
+    const out = c.schedule
       ? await (async () => {
-          const a = agents(world, module.id).find((x) => x.name === c.agent)
-          if (!a) throw new Refused(`The kit has no agent called ${c.agent}.`)
-          // a kit's test is its author asking: a paused agent runs for it
-          return runner.runAgent(a, undefined, c.input, { asked: true })
+          const a = schedules(world, module.id).find((x) => x.name === c.schedule)
+          if (!a) throw new Refused(`The kit has no schedule called ${c.schedule}.`)
+          // a kit's test is its author asking: a paused schedule runs for it
+          return runner.runSchedule(a, undefined, c.input, { asked: true })
         })()
       : await runner.runScript(module, c.script as string, c.input, 'the test', null)
     const refused = world

@@ -1,10 +1,10 @@
-// When an agent next runs, as Today's "Coming up" shows it.
+// When a schedule next runs, as Today's "Coming up" shows it.
 import { describe, expect, it } from 'vitest'
-import { nextRun } from './agents.ts'
+import { nextRun } from './schedules.ts'
 
 const at = (s: string) => new Date(s).getTime()
 
-describe('an agent’s next run', () => {
+describe('a schedule’s next run', () => {
   it('is tomorrow at its hour when it ran today', () => {
     const next = nextRun(
       { every: 'day', at: '07:00' },

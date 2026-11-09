@@ -59,7 +59,7 @@ describe('kit packs', () => {
     expect(() => unpack(other, kits, off)).toThrow(UNSIGNED)
     const signed = signPack(pack(KIT, join(home, 'signed')), mine.privatePem)
     expect(await installPack(world, signed, kits, ctx, off)).toBe(
-      'Installed Bakery 0.1.0, its agents paused.',
+      'Installed Bakery 0.1.0, its schedules paused.',
     )
   })
 

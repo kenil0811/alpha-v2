@@ -124,7 +124,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
           <span className="min-w-0 flex-1">
             <span className="block font-medium text-ink">Keep this Mac awake while plugged in</span>
             <span className="block text-ink-3 text-sm">
-              So agents run on time; the screen still turns off, and on battery the Mac sleeps
+              So schedules run on time; the screen still turns off, and on battery the Mac sleeps
             </span>
           </span>
           <Switch

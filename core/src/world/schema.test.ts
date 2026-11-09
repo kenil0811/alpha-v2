@@ -46,7 +46,7 @@ describe('the world’s shape', () => {
   it('holds nothing the clean base took away', () => {
     expect(made('table')).not.toContain('desk_messages')
     expect(columns('connections')).not.toContain('never')
-    expect(columns('agents')).not.toContain('tasks')
+    expect(columns('schedules')).not.toContain('tasks')
     expect(columns('runs')).not.toContain('task_id')
     expect(world.db.prepare("SELECT 1 FROM meta WHERE key = 'undo_since'").get()).toBeUndefined()
     expect(readFileSync(join(import.meta.dirname, 'schema.sql'), 'utf8')).not.toMatch(/'priced'/)
@@ -56,6 +56,6 @@ describe('the world’s shape', () => {
     const add = world.db.prepare(
       "INSERT INTO tasks (id, title, state, owner_kind, made_by, created_at, updated_at) VALUES ('t', 'x', 'todo', ?, 'a', 'now', 'now')",
     )
-    expect(() => add.run('agent')).toThrow(/CHECK/)
+    expect(() => add.run('schedule')).toThrow(/CHECK/)
   })
 })

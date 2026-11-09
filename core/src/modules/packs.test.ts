@@ -17,8 +17,8 @@ import { join, relative } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { one } from '../world/db.ts'
 import { World } from '../world/world.ts'
-import { agents } from './agents.ts'
 import { installInbox, installPack, pack, unpack } from './packs.ts'
+import { schedules } from './schedules.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
 const sha = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
@@ -100,20 +100,20 @@ describe('kit packs', () => {
     expect(existsSync(join(kits, 'bakery'))).toBe(false)
   })
 
-  it('go in from the inbox at start, agents paused, and a newer one updates the kit', async () => {
+  it('go in from the inbox at start, schedules paused, and a newer one updates the kit', async () => {
     const kits = join(home, 'kits')
     mkdirSync(join(kits, 'inbox'), { recursive: true })
     pack(KIT, join(kits, 'inbox'))
     writeFileSync(join(kits, 'inbox', 'broken.alphakit'), 'not a pack')
     const said = await installInbox(world, kits, ctx, DEV)
     expect(said).toEqual([
-      'Installed Bakery 0.1.0, its agents paused.',
+      'Installed Bakery 0.1.0, its schedules paused.',
       'broken.alphakit did not go in: That file is not a kit pack.',
     ])
     expect(existsSync(join(kits, 'inbox', 'done', 'bakery-0.1.0.alphakit'))).toBe(true)
     expect(existsSync(join(kits, 'inbox', 'failed', 'broken.alphakit.txt'))).toBe(true)
     const m = world.shape.module('Bakery')
-    expect(agents(world, m?.id).every((a) => a.state === 'paused')).toBe(true)
+    expect(schedules(world, m?.id).every((a) => a.state === 'paused')).toBe(true)
     const next = join(home, 'next')
     cpSync(KIT, next, { recursive: true })
     writeFileSync(

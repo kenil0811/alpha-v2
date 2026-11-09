@@ -31,7 +31,7 @@ export interface GateInput {
   turn?: string | null
   module?: string | null
   table?: string | null // the table it writes, removes from or reads, by id
-  agent?: string | null // the agent making the call, by name
+  schedule?: string | null // the schedule making the call, by name
   named?: string | null // what a rule calls the tool, where its gate key differs (gmail.send)
 }
 
@@ -96,7 +96,7 @@ export function factsOf(input: GateInput): CallFacts {
     site,
     table: input.table ?? null,
     module: input.module ?? null,
-    agent: input.agent ?? null,
+    schedule: input.schedule ?? null,
     own: !!input.ownEntries,
   }
 }

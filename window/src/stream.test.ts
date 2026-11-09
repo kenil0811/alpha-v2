@@ -84,7 +84,7 @@ describe('the stream', () => {
   it('leaves out what Activity has, and says a failure', () => {
     n = 0
     const items = group([
-      line('told', 'Morning: nothing is due.', { actor: 'agent' }),
+      line('told', 'Morning: nothing is due.', { actor: 'schedule' }),
       line('filed', 'Filed a quote on Acme.'),
       line('rule_saved', 'Never email outside example.com.'),
       line('card_closed', 'Yes: Remove a row?', { actor: 'person', data: { state: 'yes' } }),
@@ -99,12 +99,12 @@ describe('the stream', () => {
     ])
   })
 
-  it('shows a card an agent’s run opened as a card, with its module', () => {
+  it('shows a card a schedule’s run opened as a card, with its module', () => {
     n = 0
     const deals = { id: 'm_1', name: 'Listings' }
     const items = group([
       line('card_opened', 'Let Listings read example.com?', {
-        actor: 'agent',
+        actor: 'schedule',
         card: 'c_9',
         module: deals,
       }),

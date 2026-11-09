@@ -1,4 +1,4 @@
-// Files that come in by mail (design §12): what an agent pulls in from outside is filed on the
+// Files that come in by mail (design §12): what a schedule pulls in from outside is filed on the
 // person's yes. For each new email with attachments, the model proposes where each file belongs
 // (a row of a table whose rows take documents, and its kind), and a card asks once per file,
 // with the email, what the file is, how sure and why. File it puts it on that row and reads it,
@@ -390,7 +390,7 @@ export class Intake {
     if (!domain || !rec || !kind) return null
     return {
       action: 'file_from_mail',
-      agent: null,
+      schedule: null,
       module: rec.table.module.id,
       place: { from: domain, row: rec.record.id, kind },
     }
@@ -413,7 +413,7 @@ export class Intake {
       actor: { kind: 'system' },
       kind: 'told',
       words: `Filed ${f.name} from ${f.from} on ${where} (your standing permission).`,
-      data: { agent: 'Mail', about: { table: rec?.table.id ?? '', rows: [row] } },
+      data: { schedule: 'Mail', about: { table: rec?.table.id ?? '', rows: [row] } },
       user: this.owner.id,
       module: rec?.table.module.id ?? null,
     })

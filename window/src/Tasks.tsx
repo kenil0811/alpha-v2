@@ -1,5 +1,5 @@
 // Tasks (Kenil's plan, 21 Oct, Ledger): one list of all work, each task on the place it concerns.
-// Saved lists (Today, This week, Overdue, Waiting for you, Agents, All open, Done) in four views:
+// Saved lists (Today, This week, Overdue, Waiting for you, Schedules, All open, Done) in four views:
 // a list, a tree by place, a board by state and a calendar by due date. New under the list. A
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
 // its checklist, the place's values and the other tasks there, and its history.

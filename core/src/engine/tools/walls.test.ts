@@ -131,7 +131,7 @@ describe('the walls', () => {
     mkdirSync(kit)
     const yaml = (decides: string) => `name: Book
 version: 0.1.${decides.length}
-api: 1
+api: 2
 business_case: { for: The owner, keeps: Their books, decides: ${decides} }
 tables:
   - name: Entries

@@ -7,7 +7,7 @@ import { wordsOf } from '../api.ts'
 
 export interface Act {
   busy: boolean // an act is under way
-  on: string | null // what the last act was on (a row, an agent), when it said
+  on: string | null // what the last act was on (a row, a schedule), when it said
   problem: string | null // the refusal's words, until the next act
   act: (fn: () => Promise<unknown>, on?: string) => Promise<boolean>
 }

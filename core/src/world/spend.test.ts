@@ -1,6 +1,6 @@
 // What each use of the model spent (core plan step 5, Kenil's yes 28 Oct): a desk turn's share of
 // its session's running total, nothing counted from
-// before it shipped, and Settings' month by module, agent and model.
+// before it shipped, and Settings' month by module, schedule and model.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -83,7 +83,7 @@ describe('a desk turn', () => {
 })
 
 describe('Settings › Model › Usage', () => {
-  it('gives a month by module, agent and model, largest first', async () => {
+  it('gives a month by module, schedule and model, largest first', async () => {
     const m = world.shape.makeModule('Garden', { actor: { kind: 'alpha' } })
     const opus = (usd: number) => [
       {
@@ -98,7 +98,7 @@ describe('Settings › Model › Usage', () => {
     ]
     world.spend.add({ kind: 'turn', turn: '1' }, opus(0.05))
     world.spend.add({ kind: 'turn', turn: '2', module: m.id }, opus(0.2))
-    world.spend.add({ kind: 'run', run: 'r_1', module: m.id, agent: 'Waterer' }, opus(0.01))
+    world.spend.add({ kind: 'run', run: 'r_1', module: m.id, schedule: 'Waterer' }, opus(0.01))
     const engine = new Engine(world)
     const a = buildServer({ engine, user: world.owner('Kenil'), token, ports: [4700] })
     const u = (await a.inject({ url: '/api/usage', headers: ok })).json() as UsageView
@@ -110,7 +110,7 @@ describe('Settings › Model › Usage', () => {
       ['Garden', 1, 1],
       ['Alpha', 1, 0],
     ])
-    expect(u.byAgent.map((r) => r.name)).toEqual(['Waterer'])
+    expect(u.bySchedule.map((r) => r.name)).toEqual(['Waterer'])
     expect(u.byModel.map((r) => r.name)).toEqual(['claude-opus-5-5'])
     expect(world.spend.of({ turn: '2' })).toBeCloseTo(0.2)
   })

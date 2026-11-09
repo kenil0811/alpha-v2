@@ -188,7 +188,7 @@ export class Cards {
     ).map(toCard)
   }
 
-  // A person's answer. Only a person answers a card: an agent never can (design §7, a wall).
+  // A person's answer. Only a person answers a card: a schedule never can (design §7, a wall).
   // `said` keeps the answer in fuller words than its option (Added 1 of 2).
   answer(id: string, answer: string, by: Actor, said?: string): Card {
     if (by.kind !== 'person') throw new Refused('Only the person can answer a card.')
@@ -211,7 +211,7 @@ export class Cards {
   }
 
   // Whether anything was ever sent to this address from here: a yes on a card for this tool to
-  // it, or an agent's draft the person let go (the journal's own record of every send).
+  // it, or a schedule's draft the person let go (the journal's own record of every send).
   approvedTo(tool: string, to: string): boolean {
     return (
       !!one(

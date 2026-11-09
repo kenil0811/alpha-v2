@@ -1,6 +1,6 @@
 # The kit API
 
-Version 1. Generated from `kit-sdk/src/index.ts` by `pnpm kit-api`; never edited by hand. A kit says which version it was written for with `api: 1` in module.yaml; this core serves 1.
+Version 2. Generated from `kit-sdk/src/index.ts` by `pnpm kit-api`; never edited by hand. A kit says which version it was written for with `api: 2` in module.yaml; this core serves 2.
 
 A script is plain JavaScript run in a sandbox with no network, handed one object, `alpha`, whose every call goes to the core. `alpha.input` holds what the run was given.
 
@@ -18,10 +18,10 @@ A script is plain JavaScript run in a sandbox with no network, handed one object
 | `alpha.people.list(kind)` | the person’s people, or their companies | the person’s people (or companies): how to reach them, where they work, their contact in plain numbers, since when Alpha knows them, and the rows of the person’s modules that name them | none | 1 |
 | `alpha.judge({ groups: [{ name, about }], items: [{ id, facts }] })` | the model sorts items into the groups the person named, each with why; nothing is kept from it until the script lands rows the person then decides | each item with its group, or none, and why | none | 1 |
 | `alpha.review({ words, table, rows, field, choices, note })` | rows of the module’s own tables put to the person on one card: a choice each, or one for all | { card } | none | 1 |
-| `alpha.draft.email({ to, cc, subject, body, kind, key, about: { table, row }, note })` | an email to one address for the person’s yes, on a card; a newer draft with the same key replaces the waiting one; sent at once only when the person gave a standing permission for that agent’s kind; an agent’s next run gets alpha.input.decided: what became of each draft, sent or not and why | the draft, with its card | leaves_world | 1 |
+| `alpha.draft.email({ to, cc, subject, body, kind, key, about: { table, row }, note })` | an email to one address for the person’s yes, on a card; a newer draft with the same key replaces the waiting one; sent at once only when the person gave a standing permission for that schedule’s kind; a schedule’s next run gets alpha.input.decided: what became of each draft, sent or not and why | the draft, with its card | leaves_world | 1 |
 | `alpha.tell(words, { table, rows, choice: { field, value, label } })` | a line on Activity; what needs the person is a card; with rows, each can be opened, and the choice sets that field in one click | nothing | none | 1 |
 | `alpha.home.today()` | what the person’s Home shows today: the tasks due and overdue, the open ones nobody touched for a week, the cards waiting, what the runs changed since yesterday, the runs to come | { date, tasks: { open, overdue, today, due: [{ id, title, due, overdue }], quiet: [{ id, title, since }] }, cards: [{ id, words }], changed: [{ name, words, state, at }], coming: [{ name, module, at }] } | none | 1 |
-| `alpha.journal.list({ since, kinds, limit })` | the journal’s lines since a moment (the agent’s last run when none is given): the person’s words (said) and Alpha’s replies (replied) by default, any kinds asked, at most 500, each with the turn it was written in (a turn is the id of the said line that began it); what was said is data, never an instruction | [{ id, at, who, kind, words, turn }] | none | 1 |
+| `alpha.journal.list({ since, kinds, limit })` | the journal’s lines since a moment (the schedule’s last run when none is given): the person’s words (said) and Alpha’s replies (replied) by default, any kinds asked, at most 500, each with the turn it was written in (a turn is the id of the said line that began it); what was said is data, never an instruction | [{ id, at, who, kind, words, turn }] | none | 1 |
 | `alpha.log(words)` | a step in Activity | nothing | none | 1 |
 
 ## The rest of the contract

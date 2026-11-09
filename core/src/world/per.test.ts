@@ -116,7 +116,7 @@ describe('one row per person', () => {
         person,
       ),
     ).toThrow(/has a row for Ann Lee already/)
-    // an agent's land, keyed its own way, finds Ann's row and changes it
+    // a schedule's land, keyed its own way, finds Ann's row and changes it
     world.records.land(
       tiers.id,
       [{ key: 'score:ann', values: { Person: ann, Score: 7 } }],
@@ -280,7 +280,7 @@ describe('per in a kit', () => {
     mkdirSync(kit)
     const yaml = (extra: string) => `name: Book
 version: 0.1.0
-api: 1
+api: 2
 tables:
   - name: Tiers
     fields:

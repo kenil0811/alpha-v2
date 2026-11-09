@@ -76,7 +76,7 @@ export const Manifest = z.object({
   // changed only by a newer pack signed by Kenil's key (rules M1): counts only from a signed pack
   managed: z.boolean().optional(),
   // Alpha's own kit (decision 13): installed and kept up to date by the core, never uninstalled;
-  // its agents can still be paused
+  // its schedules can still be paused
   core: z.boolean().optional(),
   // the module People and Organizations live in, as its tabs (UI batch 2, 26 Oct): Network's
   people: z.boolean().optional(),
@@ -100,7 +100,7 @@ export const Manifest = z.object({
     .optional(),
   description: z.string().optional(),
   // what the module is for (core step 3e): who it is for, what it keeps track of, and the decisions
-  // it serves; read by Alpha before anything in it, shown at the top of Agents and notes
+  // it serves; read by Alpha before anything in it, shown at the top of Schedules and notes
   business_case: z
     .object({ for: z.string().min(1), keeps: z.string().min(1), decides: z.string().min(1) })
     .optional(),
@@ -111,7 +111,7 @@ export const Manifest = z.object({
       z.object({
         name: z.string(),
         about: z.string().optional(), // one sentence on what a row of it is
-        // what the module's agents read (sources, goals, rules): under Agents and notes, not a tab
+        // what the module's schedules read (sources, goals, rules): under Schedules and notes, not a tab
         setup: z.boolean().optional(),
         // a part or a setup table kept as a tab too, every row of it; the person's choice stands
         tab: z.boolean().optional(),

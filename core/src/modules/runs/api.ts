@@ -4,29 +4,29 @@ import { dayOf, dayOfWhen } from '../../world/day.ts'
 import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import { type Field, findField, type Module, type Table } from '../../world/shape/index.ts'
-import { agents, nextRun } from '../agents.ts'
 import { type JudgeSpec, judge } from '../judging.ts'
-import type { AgentRunner } from './runner.ts'
+import { nextRun, schedules } from '../schedules.ts'
+import type { ScheduleRunner } from './runner.ts'
 import type { RunFor } from './types.ts'
 import type { Walls } from './walls.ts'
 
 export function api(
-  runner: AgentRunner,
+  runner: ScheduleRunner,
   module: Module,
   label: string,
   runId: string,
   who: RunFor,
-  agentId: string | null,
+  scheduleId: string | null,
   walls: Walls | null = null,
 ) {
-  const actor = { kind: 'agent' as const, id: label }
-  // what the run's asks spend is the run's, under its agent and module (core plan step 5)
+  const actor = { kind: 'schedule' as const, id: label }
+  // what the run's asks spend is the run's, under its schedule and module (core plan step 5)
   const spending =
     (ask: Ask): Ask =>
     async (prompt, schema) => {
       const out = await ask(prompt, schema)
       runner.world.spend.add(
-        { kind: 'run', run: runId, module: module.id, agent: label },
+        { kind: 'run', run: runId, module: module.id, schedule: label },
         out.uses ?? [],
       )
       return out
@@ -132,7 +132,7 @@ export function api(
       return runner.world.records.land(
         t.id,
         items,
-        { connector: `agent:${label}`, account: module.name },
+        { connector: `schedule:${label}`, account: module.name },
         ctx,
       )
     },
@@ -239,7 +239,7 @@ export function api(
           rows: Array.isArray(p.rows) ? p.rows.map(String) : [],
           note: p.note ? String(p.note) : null,
         },
-        { agent: label, module: module.id, run: runId },
+        { schedule: label, module: module.id, run: runId },
       )
       runner.notify()
       return { card: card.id }
@@ -252,7 +252,7 @@ export function api(
       const t = about ? tableOf(about.table) : null
       const out = await runner.drafts.propose(
         {
-          agent: label,
+          schedule: label,
           module: module.id,
           kind: String(p.kind ?? 'email'),
           key: p.key ? String(p.key) : null,
@@ -332,14 +332,14 @@ export function api(
     'browser.open': async (p: Record<string, unknown>) => {
       affecting('browser.open')
       runner.reach(module, String(p.url), runId, who)
-      return runner.browse(module, String(p.url), label, runId, agentId, who, () =>
+      return runner.browse(module, String(p.url), label, runId, scheduleId, who, () =>
         runner.engine().open(String(p.url)),
       )
     },
     'browser.extract': async (p: Record<string, unknown>) => {
       affecting('browser.extract')
       runner.reach(module, String(p.url), runId, who)
-      return runner.browse(module, String(p.url), label, runId, agentId, who, () =>
+      return runner.browse(module, String(p.url), label, runId, scheduleId, who, () =>
         runner.engine().extract(String(p.url), p.spec as ExtractSpec),
       )
     },
@@ -381,7 +381,7 @@ export function api(
         actor,
         kind: 'told',
         words: `${label}: ${words}`,
-        data: { agent: label, ...(rows ? { about: rows } : {}) },
+        data: { schedule: label, ...(rows ? { about: rows } : {}) },
         run: runId,
         module: module.id,
         user: who.user ?? runner.owner,
@@ -389,10 +389,10 @@ export function api(
       runner.notify()
       return null
     },
-    // The journal's lines since a moment, for an agent that notices what was said (Watson).
+    // The journal's lines since a moment, for a schedule that notices what was said (Watson).
     'journal.list': async (p: Record<string, unknown>) => {
       const w = runner.world
-      const me = agentId ? agents(w).find((a) => a.id === agentId) : undefined
+      const me = scheduleId ? schedules(w).find((a) => a.id === scheduleId) : undefined
       const since =
         typeof p.since === 'string' && p.since
           ? p.since
@@ -413,7 +413,7 @@ export function api(
           turn: l.turn ?? null,
         }))
     },
-    // What the person's Home shows today, for an agent that speaks for Alpha (Morning).
+    // What the person's Home shows today, for a schedule that speaks for Alpha (Morning).
     'home.today': async () => {
       const w = runner.world
       const now = Date.now()
@@ -435,21 +435,21 @@ export function api(
       const cards = w.cards
         .waiting(runner.owner ?? undefined)
         .map((c) => ({ id: c.id, words: c.words }))
-      const names = new Map(agents(w).map((a) => [a.id, a.name]))
+      const names = new Map(schedules(w).map((a) => [a.id, a.name]))
       const modules = new Map(w.shape.modules().map((m) => [m.id, m.name]))
       const since = new Date(now - 86_400_000).toISOString()
       const changed = runner
         .runs(200)
         .filter((r) => r.startedAt > since && r.state !== 'running' && r.words)
         .map((r) => ({
-          name: r.agent ? (names.get(r.agent) ?? 'A try') : 'A try',
+          name: r.schedule ? (names.get(r.schedule) ?? 'A try') : 'A try',
           words: r.words ?? '',
           state: r.state,
           at: r.endedAt ?? r.startedAt,
         }))
-      // the runs to come, the asking agent's own left out
-      const coming = agents(w)
-        .filter((a) => a.state === 'on' && a.id !== agentId)
+      // the runs to come, the asking schedule's own left out
+      const coming = schedules(w)
+        .filter((a) => a.state === 'on' && a.id !== scheduleId)
         .flatMap((a) => {
           const next = nextRun(a.trigger, a.lastRunAt, now)
           return next

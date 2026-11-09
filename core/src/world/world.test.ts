@@ -287,7 +287,7 @@ describe('rows a connection lands', () => {
           provenance: { kind: 'computed', source: { formula: 'counted from the receipt' } },
         },
       ],
-      { actor: { kind: 'agent', id: 'Figures' } },
+      { actor: { kind: 'schedule', id: 'Figures' } },
     )
     world.records.land(t.id, [{ key: 'a', values: { Quantity: 2 } }], src, ctx)
     expect(world.records.list(t.id)[0]?.values.quantity).toBe(4)
@@ -352,9 +352,9 @@ describe('cards', () => {
     expect(world.cards.waiting().map((c) => c.id)).toEqual([second.id])
   })
 
-  it('lets the call through once on a yes, never on an agent’s answer', () => {
+  it('lets the call through once on a yes, never on a schedule’s answer', () => {
     const card = world.cards.open({ kind: 'permission', words: 'Remove eggs?', call, actor: alpha })
-    expect(() => world.cards.answer(card.id, 'Yes', { kind: 'agent', id: 'morning' })).toThrow(
+    expect(() => world.cards.answer(card.id, 'Yes', { kind: 'schedule', id: 'morning' })).toThrow(
       Refused,
     )
     expect(world.cards.useYes(call, 6)).toBeUndefined()

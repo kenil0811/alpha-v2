@@ -1,6 +1,6 @@
 # A kit of Alpha's own, made up for the rule tests (M1): the base ships none.
 name: Alpha
-api: 1
+api: 2
 version: 0.1.0
 core: true
 business_case:

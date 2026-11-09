@@ -83,7 +83,7 @@ export function TableView({
   summary?: TableSummary | null // where it sits in its module, and whether it is kept as a tab
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // no room beside the page with the assistant open: the row panel gives way
-  // a list kept outside the module's tables (people, tasks, agents…), served by the core as a
+  // a list kept outside the module's tables (people, tasks, schedules…), served by the core as a
   // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved. New adds
   // one in the page's own way, when it has one.

@@ -36,8 +36,8 @@ describe('what is open beside the page', () => {
     expect(pageOf({ kind: 'person', id: 'p_1' })).toBe('#/people/p_1')
   })
 
-  it('opens an agent, a rule and the rows a figure counted too (Batch D, 79.6, 79.7)', () => {
-    expect(linkBeside('#/agent/a_1', '#/')).toEqual({ kind: 'agent', id: 'a_1' })
+  it('opens a schedule, a rule and the rows a figure counted too (Batch D, 79.6, 79.7)', () => {
+    expect(linkBeside('#/schedule/a_1', '#/')).toEqual({ kind: 'schedule', id: 'a_1' })
     expect(linkBeside('#/rule/u_1', '#/settings/permissions')).toEqual({ kind: 'rule', id: 'u_1' })
     const rows = linkBeside('#/table/t_9?only=r_1,r_2', '#/module/m_1')
     expect(rows).toEqual({ kind: 'rows', id: 't_9:r_1,r_2' })

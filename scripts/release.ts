@@ -2,7 +2,7 @@
 // the repository, carrying its own Node and uv (each checked against its published SHA-256), its
 // production packages (Claude Code comes inside the Agent SDK's package), the built window and
 // the helper built for macOS 14 and signed; then a smoke test that starts the core from the staged
-// app with an empty home and only macOS's own PATH, installs a made-up kit and runs its agent in
+// app with an empty home and only macOS's own PATH, installs a made-up kit and runs its schedule in
 // the sandbox; then install.sh and the kits go in, and last a MANIFEST of every file's hash and
 // the app's seal. It refuses to finish if any of that fails.
 //   pnpm release [version] [--working-tree] [--client <client repository>]
@@ -191,7 +191,7 @@ chmodSync(join(app, 'bin', 'alpha'), 0o755)
 writeFileSync(join(app, 'VERSION'), `${version}\n`)
 
 // 7. The smoke test: the core from the staged app, with an empty home and macOS's own PATH only,
-// answering, serving the window, installing a made-up kit and running its agent in the sandbox.
+// answering, serving the window, installing a made-up kit and running its schedule in the sandbox.
 say('Smoke test: the staged app with an empty home and only the system PATH')
 const smoke = mkdtempSync(join(tmpdir(), 'alpha-smoke-'))
 const port = 4796
@@ -258,18 +258,18 @@ if (!page.includes('<div id="root">')) fail('the window was not served')
 const kit = await call('/api/kits', { folder: join(app, 'core', 'src', 'modules', 'test-kit') })
 if (!kit.ok) fail(`a made-up kit did not install: ${JSON.stringify(kit.data)}`)
 const view = await call(`/api/modules/${String(kit.data.module)}`)
-const agent = (view.data.agents as { id: string; name: string }[] | undefined)?.find(
+const schedule = (view.data.schedules as { id: string; name: string }[] | undefined)?.find(
   (a) => a.name === 'Counter',
 )
-if (!agent) fail('the made-up kit has no Counter agent')
-await call(`/api/agents/${agent?.id}/run`, {})
+if (!schedule) fail('the made-up kit has no Counter schedule')
+await call(`/api/schedules/${schedule?.id}/run`, {})
 let ran = ''
 for (let i = 0; i < 30 && !ran; i++) {
   await new Promise((r) => setTimeout(r, 1000))
   const runs = (await call('/api/activity')).data as unknown as { name: string; state: string }[]
   ran = runs.find((r) => r.name === 'Counter' && r.state !== 'running')?.state ?? ''
 }
-if (ran !== 'ok') fail(`the made-up kit's agent did not run in the sandbox (${ran || 'no run'})`)
+if (ran !== 'ok') fail(`the made-up kit's schedule did not run in the sandbox (${ran || 'no run'})`)
 if (!existsSync(join(smoke, 'Logs', 'core.log'))) fail('no log was written')
 // the alpha command's own helpers: a backup and a report, from the staged app
 execFileSync(

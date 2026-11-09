@@ -1,15 +1,15 @@
 // The desk's other hands: ask (a card), remember (instructions), rule (a rule on its Save card),
-// connect, look (a page, a module, a row), keep (a file in a module) and run (an agent or a
+// connect, look (a page, a module, a row), keep (a file in a module) and run (a schedule or a
 // script, for a try).
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { FILING, type Filing } from '../../files/intake.ts'
-import { agents } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { keep } from '../../modules/keep.ts'
-import type { AgentRunner } from '../../modules/runs/index.ts'
+import type { ScheduleRunner } from '../../modules/runs/index.ts'
+import { schedules } from '../../modules/schedules.ts'
 import { pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { DOES, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/rules.ts'
@@ -59,7 +59,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
             const choice = a.choice ?? ''
             if (card.options.length && !card.options.includes(choice))
               throw new Refused(`The choices on that card are ${card.options.join(', ')}.`)
-            // an agent's draft is sent or held, a file from the mail filed or declined, as drafted
+            // a schedule's draft is sent or held, a file from the mail filed or declined, as drafted
             const no = choice === card.options[1]
             if (card.call?.tool === DRAFT && hands?.drafts) {
               const done = no
@@ -130,7 +130,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
       'rule',
       [
         'What Alpha may or may not do from now on, when the person says so (“never email anyone outside the firm”, “never delete deals”, “Watson may send follow-ups”), as code will hold it; or one you noticed they keep to without saying it. Use this, never remember, for anything about sending, removing, reading, opening a site or signing in.',
-        'side: deny or allow. does: what Alpha does that it covers (read, change, remove, send, reach a site, sign_in). Then only what narrows it: through (tools or connectors: gmail, gmail.send, change); for a send, to_inside (domains: the addresses at them, as in “anyone at example.com”), to_outside (domains: every address not at them, as in “anyone outside the firm”) or to (whole addresses); sites (hosts) for reach; tables (by name). module: it holds in that module only; agent: that agent only; neither: all of Alpha. words: the person’s own words asking for it.',
+        'side: deny or allow. does: what Alpha does that it covers (read, change, remove, send, reach a site, sign_in). Then only what narrows it: through (tools or connectors: gmail, gmail.send, change); for a send, to_inside (domains: the addresses at them, as in “anyone at example.com”), to_outside (domains: every address not at them, as in “anyone outside the firm”) or to (whole addresses); sites (hosts) for reach; tables (by name). module: it holds in that module only; schedule: that schedule only; neither: all of Alpha. words: the person’s own words asking for it.',
         'It opens a card showing the rule in code’s own words, for the person to Save: only their Save makes it a rule. With noticed (the journal line ids it comes from) it is kept as noticed instead, never approved, for them to approve or dismiss in Governance.',
         'Words that say none of these (be polite to brokers) are not a rule: say so, and offer to keep them in the module’s notes.',
       ].join('\n'),
@@ -144,7 +144,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
         sites: z.array(z.string()).optional(),
         tables: z.array(z.string()).optional(),
         module: z.string().optional(),
-        agent: z.string().optional(),
+        schedule: z.string().optional(),
         words: z.string().optional(),
         noticed: z.array(z.number().int()).optional(),
       },
@@ -155,7 +155,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
           const spec = world.rules.check({
             side: a.side,
             module: module?.id ?? null,
-            agent: a.agent?.trim() || null,
+            schedule: a.schedule?.trim() || null,
             covers: {
               does: a.does,
               ...(a.through ? { through: a.through } : {}),
@@ -256,8 +256,8 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
     tool(
       'keep',
       [
-        'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), an agent (agents/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
-        'An agent file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed), `tasks: true` when it takes the tasks given to it (then the trigger may be left out: it runs only for them; its script reads the task from alpha.input.task, whose place.row is the row’s id and values that row’s values by field name, and ends with alpha.task.done(words) or alpha.task.wait(words)), and `runs: { script: <path in the module> }`, then its brief: what it does, and for an agent that takes tasks, which tasks. Keep its script first. An agent kept here is on.',
+        'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), a schedule (schedules/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
+        'A schedule file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed), and `runs: { script: <path in the module> }`, then its brief: what it does. Keep its script first. A schedule kept here is on.',
         'Before you write a page or a script, read its grammar with guide (about: pages, or scripts).',
       ].join('\n'),
       { module: z.string(), path: z.string(), content: z.string().optional() },
@@ -285,10 +285,10 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
     ),
     tool(
       'run',
-      'Run a module’s agent, or one of its scripts with an input, now: to try a reader before it runs on its own. Its steps go to Activity and its outcome comes back here. A site not on the module’s list waits on the person’s yes on a card.',
+      'Run a module’s schedule, or one of its scripts with an input, now: to try a reader before it runs on its own. Its steps go to Activity and its outcome comes back here. A site not on the module’s list waits on the person’s yes on a card.',
       {
         module: z.string(),
-        agent: z.string().optional(),
+        schedule: z.string().optional(),
         script: z.string().optional(),
         input: z.record(z.string(), z.unknown()).optional(),
       },
@@ -298,13 +298,13 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
           const module = world.shape.module(a.module)
           if (!module) throw new Refused(`There is no module called ${a.module}.`)
           const who = { user: here.current.user.id, turn: here.current.turn }
-          let out: Awaited<ReturnType<AgentRunner['runScript']>>
-          if (a.agent) {
-            const agent = agents(world, module.id).find(
-              (x) => x.name.toLowerCase() === a.agent?.toLowerCase(),
+          let out: Awaited<ReturnType<ScheduleRunner['runScript']>>
+          if (a.schedule) {
+            const schedule = schedules(world, module.id).find(
+              (x) => x.name.toLowerCase() === a.schedule?.toLowerCase(),
             )
-            if (!agent) throw new Refused(`${module.name} has no agent called ${a.agent}.`)
-            out = await hands.runner.runAgent(agent, who, {}, { asked: true })
+            if (!schedule) throw new Refused(`${module.name} has no schedule called ${a.schedule}.`)
+            out = await hands.runner.runSchedule(schedule, who, {}, { asked: true })
           } else if (a.script) {
             out = await hands.runner.runScript(
               module,
@@ -314,7 +314,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
               null,
               who,
             )
-          } else throw new Refused('Give the agent or the script to run.')
+          } else throw new Refused('Give the schedule or the script to run.')
           const result = JSON.stringify(out.result ?? null)
           return ok({
             state: out.state,

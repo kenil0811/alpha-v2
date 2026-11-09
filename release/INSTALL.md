@@ -37,7 +37,7 @@ The steps to install Alpha from the file Kenil sends you.
 8. **Calendar and contacts.** If your Google account isn't on the Mac yet, add it in System
    Settings › Internet Accounts with Calendars and Contacts on. Then connect Calendar and Contacts
    in Alpha's Intelligence › Connections; macOS asks once for each, and you choose Allow.
-9. **Your modules are already there.** They are in the rail, and their agents start paused.
+9. **Your modules are already there.** They are in the rail, and their schedules start paused.
    Check their settings (a deal search's sources and thesis, say), then press Turn on all in
    Settings › Modules.
 10. **Sites that need your sign-in.** When a Sign in card appears, press Sign in. Chrome opens

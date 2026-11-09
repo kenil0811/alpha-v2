@@ -1,7 +1,7 @@
 # A made-up kit someone else maintains, for the rule tests (docs/rules.md, M4): never a client's.
 name: Supply
 version: 0.1.0
-api: 1
+api: 2
 maintainer: { name: Mira, address: mira@example.com }
 tables:
   - name: Parts

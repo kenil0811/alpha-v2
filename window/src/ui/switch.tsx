@@ -1,4 +1,4 @@
-// A switch for something that is on or off (an agent, connection tables in the rail).
+// A switch for something that is on or off (a schedule, connection tables in the rail).
 import { cn } from './cn.ts'
 
 export function Switch({

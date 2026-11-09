@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { type Draft, Drafts, type Message } from '../modules/drafts.ts'
-import { AgentRunner } from '../modules/runs/index.ts'
+import { ScheduleRunner } from '../modules/runs/index.ts'
 import { World } from '../world/world.ts'
 import { Engine } from './engine.ts'
 
@@ -37,12 +37,12 @@ function setUp() {
   )
   const sent: Message[] = []
   const drafts = new Drafts(world, { send: async (_c, msg) => sent.push(msg) }, owner)
-  const runner = new AgentRunner(world, () => ({}) as BrowserEngine, { owner: owner.id })
+  const runner = new ScheduleRunner(world, () => ({}) as BrowserEngine, { owner: owner.id })
   engine = new Engine(world, {
     hands: { browser: () => ({}) as BrowserEngine, runner, drafts },
   })
   const draft = (subject: string): Draft => ({
-    agent: 'Outreach',
+    schedule: 'Outreach',
     module: m.id,
     kind: 'quote request',
     key: null,
@@ -72,14 +72,14 @@ describe('the engine on a card', () => {
 
   it('tells the desk of a card only when its own turn opened it', () => {
     const { owner } = setUp()
-    // an agent's card from a scheduled run: no turn, so the desk hears nothing of the yes
+    // a schedule's card from a scheduled run: no turn, so the desk hears nothing of the yes
     const card = world.cards.open({
       kind: 'permission',
       gate: 'leaves_world',
       words: 'Let Watson reach mill.example?',
       options: ['Let it', 'Not now'],
       call: { tool: 'network', input: { host: 'mill.example' } },
-      actor: { kind: 'agent', id: 'n_run' },
+      actor: { kind: 'schedule', id: 'n_run' },
       user: owner.id,
     })
     const out = engine.answer(owner, card.id, 'Let it')

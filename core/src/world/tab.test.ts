@@ -32,7 +32,7 @@ async function book(version: string, tab: string) {
     join(kit, 'module.yaml'),
     `name: Book
 version: ${version}
-api: 1
+api: 2
 business_case: { for: The owner, keeps: Deals, decides: Which to buy }
 tables:
   - name: Deals
@@ -87,7 +87,7 @@ it('is checked in a kit: tab is for a part or a setup table', async () => {
     join(kit, 'module.yaml'),
     `name: Book
 version: 0.1.0
-api: 1
+api: 2
 tables:
   - name: Deals
     tab: true

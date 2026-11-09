@@ -18,12 +18,12 @@ import { Intake } from './files/intake.ts'
 import type { Ask } from './files/reading.ts'
 import { readInstall, writeInstall } from './install.ts'
 import { logToFile } from './log.ts'
-import { agents } from './modules/agents.ts'
 import { keepDefaults } from './modules/defaults.ts'
 import { Drafts } from './modules/drafts.ts'
 import { checkSigned } from './modules/kits/index.ts'
 import { installInbox } from './modules/packs.ts'
-import { AgentRunner } from './modules/runs/index.ts'
+import { ScheduleRunner } from './modules/runs/index.ts'
+import { schedules } from './modules/schedules.ts'
 import { platformHere } from './platform/index.ts'
 import { loadPlugins, PLUGINS_DIR, Plugins } from './plugins/plugins.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
@@ -197,7 +197,7 @@ const browserEngine = () => {
 // engine is made after it, so until then there is no window to tell (a start with orphans
 // crashed on this, 24 Oct).
 let started: Engine | null = null
-const runner = new AgentRunner(world, browserEngine, {
+const runner = new ScheduleRunner(world, browserEngine, {
   owner: user.id,
   ask,
   judge: (prompt, schema) => claudeCode.ask(config.judging(), prompt, schema),
@@ -210,14 +210,14 @@ const intake = new Intake(
   ask,
   user,
 )
-// Agents' drafts, sent from the person's own mail on their yes.
+// Schedules' drafts, sent from the person's own mail on their yes.
 const drafts = new Drafts(
   world,
   { send: (connector, message) => connectors.runTool(connector, 'send', { ...message }) },
   user,
-  (agent, module) => {
-    const a = agents(world, module).find((x) => x.name === agent)
-    if (a) void runner.runAgent(a).catch(() => undefined)
+  (schedule, module) => {
+    const a = schedules(world, module).find((x) => x.name === schedule)
+    if (a) void runner.runSchedule(a).catch(() => undefined)
   },
 )
 runner.drafts = drafts
@@ -255,7 +255,7 @@ const scheduler = new Scheduler(world, [
       if (await intake.due()) engine.events.emit('event', { type: 'lines', user: user.id })
     },
   },
-  // agents in their own lane: the tick goes on while they run (item 15 of the problems list)
+  // schedules in their own lane: the tick goes on while they run (item 15 of the problems list)
   { run: async (now) => runner.startDue(now) },
   // tasks' reminders as they come due (a Mac notification and a line on Home), and repeats made
   {
@@ -301,7 +301,7 @@ const scheduler = new Scheduler(world, [
   },
 ])
 scheduler.start()
-// A change runs the agents waiting on it soon after, not at the next minute's tick.
+// A change runs the schedules waiting on it soon after, not at the next minute's tick.
 let kick: ReturnType<typeof setTimeout> | null = null
 engine.events.on('event', (e: { type: string }) => {
   if (e.type !== 'lines' || kick) return

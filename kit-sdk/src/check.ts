@@ -5,10 +5,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
-import { AgentFront, triggersOf } from './agent.ts'
 import { CALLS } from './index.ts'
 import { API_VERSIONS_SERVED } from './kinds.ts'
 import { type KitManifest, Manifest, Setup } from './manifest.ts'
+import { ScheduleFront, triggersOf } from './schedule.ts'
 
 export interface CheckOptions {
   // the kits a `uses` may name, with their versions, when known (the installed ones, or the
@@ -163,20 +163,20 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
           problems.push(`setup.yaml has rows for ${table}, which the kit has no table called.`)
   }
   const gated = new Set(CALLS.filter((c) => c.effect).map((c) => c.name))
-  const agentsDir = join(dir, 'agents')
-  const agentFiles = existsSync(agentsDir)
-    ? readdirSync(agentsDir).filter((f) => f.endsWith('.md'))
+  const schedulesDir = join(dir, 'schedules')
+  const scheduleFiles = existsSync(schedulesDir)
+    ? readdirSync(schedulesDir).filter((f) => f.endsWith('.md'))
     : []
-  for (const f of agentFiles) {
-    const text = readFileSync(join(agentsDir, f), 'utf8')
+  for (const f of scheduleFiles) {
+    const text = readFileSync(join(schedulesDir, f), 'utf8')
     const fm = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text)
     if (!fm) {
-      problems.push(`agents/${f} has no front matter.`)
+      problems.push(`schedules/${f} has no front matter.`)
       continue
     }
-    const front = AgentFront.safeParse(parse(fm[1] as string))
+    const front = ScheduleFront.safeParse(parse(fm[1] as string))
     if (!front.success) {
-      problems.push(`agents/${f} is not right: ${z.prettifyError(front.error)}`)
+      problems.push(`schedules/${f} is not right: ${z.prettifyError(front.error)}`)
       continue
     }
     const a = front.data

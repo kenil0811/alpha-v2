@@ -52,15 +52,12 @@ export function readKit(dir: string): {
   return { manifest: parsed.data, setup, files: walk(dir) }
 }
 
-// What the checker finds wrong, as one refusal; a missing api is taken as 1 for now (from the
-// first public release it is required) and said in the install's words.
-export function checked(dir: string, world: World): { note: string } {
+// What the checker finds wrong, as one refusal.
+export function checked(dir: string, world: World): void {
   const problems = checkKit(dir, {
     kits: installedKits(world).map((k) => ({ name: k.kit, version: k.version })),
-  }).filter((p) => !p.startsWith('module.yaml says no api'))
+  })
   if (problems.length) throw new Refused(`The kit is not right: ${problems.join(' ')}`)
-  const { manifest } = readKit(dir)
-  return { note: manifest.api === undefined ? ' (module.yaml says no api; taken as 1)' : '' }
 }
 
 export interface KitInfo {

@@ -1,4 +1,4 @@
-// The task tool's walls: only the run's own word makes an agent's task done (design §12, Q93;
+// The task tool's walls: only the run's own word makes a schedule's task done (design §12, Q93;
 // item 41 of the problems list, 25 Oct).
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -14,7 +14,7 @@ let home: string
 let world: World
 let user: User
 let task: ToolEntry
-let _helper: string // the test kit's agent that takes tasks
+let _helper: string // the test kit's schedule that takes tasks
 
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'alpha-task-tool-'))

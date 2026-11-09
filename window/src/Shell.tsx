@@ -24,7 +24,7 @@ import { createContext, type ReactNode, useContext, useRef, useState } from 'rea
 import { api } from './api.ts'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
-import type { Place } from './place.ts'
+import { inIntelligence, type Place } from './place.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
@@ -219,7 +219,7 @@ export function Rail({
           href="#/intelligence"
           icon={<Sparkles className="size-4" />}
           label="Intelligence"
-          current={place.at === 'intelligence' || (place.at === 'item' && place.kind === 'agent')}
+          current={inIntelligence(place)}
         />
         <Nav
           href="#/settings"

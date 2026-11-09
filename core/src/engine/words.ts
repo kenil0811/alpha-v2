@@ -105,8 +105,8 @@ export function stepWords(tool: string, input: Input): string {
     case 'keep': {
       const [place, name] = s(input.path).split('/')
       const what =
-        place === 'agents'
-          ? `the agent ${(name ?? '').replace(/\.md$/, '')}`
+        place === 'schedules'
+          ? `the schedule ${(name ?? '').replace(/\.md$/, '')}`
           : place === 'skills'
             ? `the skill ${name ?? ''}`
             : place === 'pages'
@@ -115,7 +115,7 @@ export function stepWords(tool: string, input: Input): string {
       return `Kept ${what} in ${s(input.module)}`
     }
     case 'run':
-      return `Ran ${s(input.agent) || basename(s(input.script))} to try it`
+      return `Ran ${s(input.schedule) || basename(s(input.script))} to try it`
     case 'connect':
       return `Connect ${s(input.connector)}`
     default:

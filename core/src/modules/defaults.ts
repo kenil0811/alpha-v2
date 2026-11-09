@@ -1,13 +1,13 @@
 // Alpha's own modules (Kenil, 21 Oct: Network, for every client): kits shipped in core/kits,
 // installed at start where they are missing and updated where a newer version ships, under the
-// ownership rule (what the person changed is kept). Being Alpha's own, their agents start on.
+// ownership rule (what the person changed is kept). Being Alpha's own, their schedules start on.
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { run } from '../world/db.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
-import { agents } from './agents.ts'
 import { install, installedKits, readKit, update } from './kits/index.ts'
+import { schedules } from './schedules.ts'
 
 export const DEFAULT_KITS = join(import.meta.dirname, '..', '..', 'kits')
 
@@ -61,29 +61,29 @@ async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<str
   const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined
   if (!m) {
     const made = await install(world, folder, ctx)
-    for (const a of agents(world, made.id)) {
-      run(world.db, "UPDATE agents SET state = 'on' WHERE id = ?", a.id)
+    for (const a of schedules(world, made.id)) {
+      run(world.db, "UPDATE schedules SET state = 'on' WHERE id = ?", a.id)
       world.line({
         actor: ctx.actor,
-        kind: 'agent',
+        kind: 'schedule',
         words: `Turned on ${a.name}: ${manifest.name} is Alpha's own.`,
-        data: { agent: a.id, state: 'on' },
+        data: { schedule: a.id, state: 'on' },
         module: made.id,
       })
     }
     return `Installed ${manifest.name} ${manifest.version}, Alpha's own.`
   } else if (k?.kit === manifest.name && newer(manifest.version, k.version)) {
-    // an agent the newer version brings starts on, being Alpha's own; one the person paused
+    // a schedule the newer version brings starts on, being Alpha's own; one the person paused
     // stays paused (the ownership rule)
-    const before = new Set(agents(world, m.id).map((a) => a.id))
+    const before = new Set(schedules(world, m.id).map((a) => a.id))
     await update(world, manifest.name, folder, ctx)
-    for (const a of agents(world, m.id).filter((x) => !before.has(x.id))) {
-      run(world.db, "UPDATE agents SET state = 'on' WHERE id = ?", a.id)
+    for (const a of schedules(world, m.id).filter((x) => !before.has(x.id))) {
+      run(world.db, "UPDATE schedules SET state = 'on' WHERE id = ?", a.id)
       world.line({
         actor: ctx.actor,
-        kind: 'agent',
+        kind: 'schedule',
         words: `Turned on ${a.name}: ${manifest.name} is Alpha's own.`,
-        data: { agent: a.id, state: 'on' },
+        data: { schedule: a.id, state: 'on' },
         module: m.id,
       })
     }

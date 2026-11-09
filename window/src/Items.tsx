@@ -1,8 +1,8 @@
-// A page for each agent, run and rule (item 50, 25 Oct; rules core step 2), so each can be linked
-// to, reviewed and shared: #/agent/<id>, #/run/<id>, #/rule/<id>. Each is built from what the
+// A page for each schedule, run and rule (item 50, 25 Oct; rules core step 2), so each can be linked
+// to, reviewed and shared: #/schedule/<id>, #/run/<id>, #/rule/<id>. Each is built from what the
 // core already serves (/api/working, /api/activity, /api/rules) and comes again when the world
 // changes, so a running run's steps arrive as they happen.
-import type { AgentView, RuleView, RunView, WorkingModuleView } from '@alpha/core/api'
+import type { RuleView, RunView, ScheduleView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
 import { api } from './api.ts'
@@ -16,7 +16,7 @@ import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
 
-export type ItemKind = 'agent' | 'run' | 'rule'
+export type ItemKind = 'schedule' | 'run' | 'rule'
 
 // The bar holds the way back (the crumb); the page names what the item is, then its title.
 function Page({ kind, title, children }: { kind: string; title: string; children: ReactNode }) {
@@ -42,12 +42,13 @@ function Facts({ lines }: { lines: [string, ReactNode][] }) {
   )
 }
 
-// The module and agent a run or an agent belongs to, found among what does work on its own.
-function findAgent(
+// The module and schedule a run or a schedule belongs to, found among what does work on its own.
+function findSchedule(
   modules: WorkingModuleView[],
-  pick: (m: WorkingModuleView, a: AgentView) => boolean,
+  pick: (m: WorkingModuleView, a: ScheduleView) => boolean,
 ) {
-  for (const m of modules) for (const a of m.agents) if (pick(m, a)) return { module: m, agent: a }
+  for (const m of modules)
+    for (const a of m.schedules) if (pick(m, a)) return { module: m, schedule: a }
   return null
 }
 
@@ -74,33 +75,34 @@ export function ItemPage({
   const runs = useLoaded<RunView[]>('/api/activity', version)
   const rules = useLoaded<RuleView[]>('/api/rules', version)
   // what the page is about, found before anything is drawn, so its name reaches the bar
-  const agent = kind === 'agent' && working ? findAgent(working, (_, a) => a.id === id) : null
+  const schedule =
+    kind === 'schedule' && working ? findSchedule(working, (_, a) => a.id === id) : null
   const run = kind === 'run' ? runs?.find((r) => r.id === id) : undefined
   const rule = kind === 'rule' ? rules?.find((r) => r.id === id) : undefined
-  const name = agent?.agent.name ?? run?.name ?? (rule ? 'A rule' : undefined)
+  const name = schedule?.schedule.name ?? run?.name ?? (rule ? 'A rule' : undefined)
   useEffect(() => {
     onName(name ?? '')
   }, [name, onName])
-  const loaded = { agent: working, run: runs, rule: rules }[kind]
+  const loaded = { schedule: working, run: runs, rule: rules }[kind]
   if (loaded === undefined) return <Loading />
-  if (agent)
+  if (schedule)
     return (
-      <AgentPage
-        module={agent.module}
-        agent={agent.agent}
+      <SchedulePage
+        module={schedule.module}
+        schedule={schedule.schedule}
         runs={(runs ?? []).filter(
-          (r) => r.moduleId === agent.module.id && r.name === agent.agent.name,
+          (r) => r.moduleId === schedule.module.id && r.name === schedule.schedule.name,
         )}
       />
     )
   if (run) {
     const by = working
-      ? findAgent(working, (m, a) => m.id === run.moduleId && a.name === run.name)
+      ? findSchedule(working, (m, a) => m.id === run.moduleId && a.name === run.name)
       : null
-    return <RunPage run={run} agent={by?.agent ?? null} />
+    return <RunPage run={run} schedule={by?.schedule ?? null} />
   }
   if (rule) return <RulePage rule={rule} />
-  return <Gone what={{ agent: 'This agent', run: 'This run', rule: 'This rule' }[kind]} />
+  return <Gone what={{ schedule: 'This schedule', run: 'This run', rule: 'This rule' }[kind]} />
 }
 
 const Loading = () => <p className="p-6 text-ink-3">Loading…</p>
@@ -108,19 +110,19 @@ const Gone = ({ what }: { what: string }) => (
   <p className="p-6 text-ink-2">{what} is not there any more.</p>
 )
 
-function AgentPage({
+function SchedulePage({
   module: m,
-  agent: a,
+  schedule: a,
   runs,
 }: {
   module: WorkingModuleView
-  agent: AgentView
+  schedule: ScheduleView
   runs: RunView[]
 }) {
   // what changes comes back through the world's next change, which loads the page again
   const { busy, problem, act } = useAct()
   return (
-    <Page kind={`Agent in ${m.name}`} title={a.name}>
+    <Page kind={`Schedule in ${m.name}`} title={a.name}>
       {a.description && <p className="text-ink-2 text-md">{a.description}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <Switch
@@ -128,7 +130,7 @@ function AgentPage({
           label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
           disabled={busy}
           onChange={(on) =>
-            act(() => api.post(`/api/agents/${a.id}`, { state: on ? 'on' : 'paused' }))
+            act(() => api.post(`/api/schedules/${a.id}`, { state: on ? 'on' : 'paused' }))
           }
         />
         <span className="text-ink-2 text-md">{a.state === 'on' ? 'On' : 'Paused'}</span>
@@ -136,7 +138,7 @@ function AgentPage({
           label="Run now"
           at={a.lastRunAt}
           busy={busy || a.running}
-          onClick={() => act(() => api.post(`/api/agents/${a.id}/run`))}
+          onClick={() => act(() => api.post(`/api/schedules/${a.id}/run`))}
         />
         {a.running && <Pill tone="accent">Running</Pill>}
         {a.needs && <Pill tone="warn">{a.needs}</Pill>}
@@ -176,17 +178,17 @@ function AgentPage({
   )
 }
 
-function RunPage({ run, agent }: { run: RunView; agent: AgentView | null }) {
+function RunPage({ run, schedule }: { run: RunView; schedule: ScheduleView | null }) {
   return (
     <Page kind="Run" title={run.name}>
       <Facts
         lines={[
-          ...(agent
+          ...(schedule
             ? ([
                 [
-                  'Agent',
-                  <a key="a" href={`#/agent/${agent.id}`} className="hover:underline">
-                    {agent.name}
+                  'Schedule',
+                  <a key="a" href={`#/schedule/${schedule.id}`} className="hover:underline">
+                    {schedule.name}
                   </a>,
                 ],
               ] as [string, ReactNode][])

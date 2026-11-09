@@ -34,8 +34,8 @@ rule('D1', 'every table is Alpha’s own or a mirror, and a mirror names the sys
 
 rule('D2', 'the person’s value beats every machine’s', {
   acts: ['set', 'clear', 'land'],
-  // the machines: Alpha on its own, an agent's script, a connection
-  doors: (d) => d.by === 'alpha' || d.by === 'agent' || d.by === 'connector',
+  // the machines: Alpha on its own, a schedule's script, a connection
+  doors: (d) => d.by === 'alpha' || d.by === 'schedule' || d.by === 'connector',
   given: (w, d) => w.personSets(w.target(d), theirs(w.target(d))),
   attempt: (a, act, d, w) => {
     const t = w.target(d)
@@ -50,12 +50,12 @@ rule('D2', 'the person’s value beats every machine’s', {
   cases: {
     // a run changed the supplier's name; the person then typed its email
     'a revert of a machine’s run leaves the person’s value': async (w) => {
-      const t = w.target({ by: 'agent' })
+      const t = w.target({ by: 'schedule' })
       w.world.records.land(
         w.table('Suppliers').id,
         [{ key: 'harbor', values: { Name: 'Harbor Mills Ltd', Email: MACHINE.Suppliers } }],
-        { connector: 'agent:Counter', account: 'Bakery' },
-        { actor: { kind: 'agent', id: 'Counter' }, run: 'run_name' },
+        { connector: 'schedule:Counter', account: 'Bakery' },
+        { actor: { kind: 'schedule', id: 'Counter' }, run: 'run_name' },
       )
       await w.personSets(t, PERSON.Suppliers)
       revert(w.world.records, { run: 'run_name' }, asPerson(w), 'the run')
@@ -115,7 +115,7 @@ rule('D4', 'a row the person removed stays removed', {
   },
   cases: {
     'Bring back returns it': async (w) => {
-      const t = w.target({ by: 'agent' })
+      const t = w.target({ by: 'schedule' })
       await drive(w, 'window: remove').remove(t)
       const removed = w.world.lines({ kinds: ['removed'] }).at(-1)
       if (!removed) return false

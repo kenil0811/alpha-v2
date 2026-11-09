@@ -2,7 +2,7 @@
 // to a Mac with no repository on it. Packed with `pnpm kit pack <folder>`; on the Mac, a pack is
 // kept unpacked in Alpha's folder (kits/<name>/<version>), so later updates have the kit's own
 // files to compare with, and installed or updated as installing from a folder does: within its
-// module's parent, agents paused, the ownership rule on update. Packs dropped in kits/inbox are
+// module's parent, schedules paused, the ownership rule on update. Packs dropped in kits/inbox are
 // installed when the core starts; Settings takes one from a file. A pack goes in only signed by
 // Kenil, or while the developer switch is on (step 2, part 1, slice 3); once in, its module is the
 // person's to change, by the ownership rule, so it is not checked again.
@@ -154,7 +154,7 @@ export async function installPack(
     return `Updated ${name} to ${version}: ${r.replaced.length + r.added.length} files new or replaced, ${r.kept.length} of your changes kept.`
   }
   await install(world, dir, ctx, { signed })
-  return `Installed ${name} ${version}, its agents paused.`
+  return `Installed ${name} ${version}, its schedules paused.`
 }
 
 // The packs in kits/inbox, installed at start; each one moved to kits/inbox/done once in, or to

@@ -1,6 +1,6 @@
 // A rule world (docs/rules.md, R3): a fresh tenant of its own for each rule's door, holding what
 // the rules are about. An open kit's module (the installer's made-up Bakery) with a supplier an
-// agent read; a connector's tables (a made-up mailbox) with one message it read; and, when a rule
+// schedule read; a connector's tables (a made-up mailbox) with one message it read; and, when a rule
 // asks, a managed kit, a kit someone else maintains, Alpha's own kit and the made-up plugin. The
 // window answers through the server, as the person; nothing calls the model.
 import { generateKeyPairSync } from 'node:crypto'
@@ -105,12 +105,12 @@ export class RuleWorld {
       if (k === 'alpha') await keepKit(w.world, KITS.alpha, { actor: { kind: 'system' } })
       else if (k === 'managed') await w.installSigned(KITS.managed)
       else await install(w.world, KITS[k], person)
-    // a supplier the Counter agent read, and a message the mailbox read
+    // a supplier the Counter schedule read, and a message the mailbox read
     w.world.records.land(
       w.table('Suppliers').id,
       [{ key: 'harbor', values: { Name: 'Harbor Mills', Email: 'orders@harbor.example' } }],
-      { connector: 'agent:Counter', account: 'Bakery' },
-      { actor: { kind: 'agent', id: 'Counter' }, run: 'run_seed' },
+      { connector: 'schedule:Counter', account: 'Bakery' },
+      { actor: { kind: 'schedule', id: 'Counter' }, run: 'run_seed' },
     )
     landIn(w.world, MAILBOX)
     w.landMail('m1', { From: 'priya@harbor.example', Subject: 'The Harbor deal' })

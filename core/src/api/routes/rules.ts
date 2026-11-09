@@ -11,10 +11,10 @@ export function registerRules(ctx: Ctx): void {
   const { app, world, user, live, asPerson } = ctx
   const { byWords } = ctx.views
 
-  const whereOf = (s: Pick<RuleSpec, 'module' | 'agent'>) =>
+  const whereOf = (s: Pick<RuleSpec, 'module' | 'schedule'>) =>
     s.module
       ? (world.shape.module(s.module)?.name ?? 'A module removed since')
-      : (s.agent ?? 'All of Alpha')
+      : (s.schedule ?? 'All of Alpha')
 
   const ruleOut = (r: Rule): RuleView => ({
     id: r.id,

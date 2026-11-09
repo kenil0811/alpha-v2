@@ -1,5 +1,5 @@
-// Keeping a file in a module (design §5, `keep`): a skill, an agent, a page or the module's notes.
-// Each keep is a commit in the module's folder, so its versions can be read back; an agent kept
+// Keeping a file in a module (design §5, `keep`): a skill, a schedule, a page or the module's notes.
+// Each keep is a commit in the module's folder, so its versions can be read back; a schedule kept
 // from the desk starts on, since the person asked for it.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
@@ -9,11 +9,11 @@ import { refuseManaged } from '../world/maintained.ts'
 import { asks } from '../world/shape/asks.ts'
 import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
-import { parseAgent, syncAgents, whenWords } from './agents.ts'
 import { commitAll } from './git.ts'
 import { installedKits } from './kits/index.ts'
+import { parseSchedule, syncSchedules, whenWords } from './schedules.ts'
 
-const PLACES = ['skills/', 'agents/', 'pages/', 'files/']
+const PLACES = ['skills/', 'schedules/', 'pages/', 'files/']
 
 // A path inside the module, in one of its places; module.yaml and setup rows change by other ways.
 export function placeOf(path: string): string {
@@ -28,8 +28,8 @@ export function placeOf(path: string): string {
 }
 
 function check(module: Module, rel: string, text: string): string | null {
-  if (/^agents\/[^/]+\.md$/.test(rel)) {
-    const a = parseAgent(text, rel)
+  if (/^schedules\/[^/]+\.md$/.test(rel)) {
+    const a = parseSchedule(text, rel)
     if (!existsSync(join(module.dir, a.runs.script)))
       throw new Refused(`${a.name} runs ${a.runs.script}, which is not kept yet: keep it first.`)
     return `${a.name} is on, ${whenWords(a.trigger)}`
@@ -51,7 +51,7 @@ function shipped(world: World, module: Module, rel: string): boolean {
 }
 
 // The file's words, given or already written in the folder; checked, committed, and the module's
-// agents read again.
+// schedules read again.
 export async function keep(
   world: World,
   module: Module,
@@ -63,7 +63,7 @@ export async function keep(
   const full = join(module.dir, rel)
   const text = content ?? (existsSync(full) ? readFileSync(full, 'utf8') : null)
   if (text === null) throw new Refused(`${rel} is not in ${module.name} yet: give its words.`)
-  const agent = check(module, rel, text)
+  const schedule = check(module, rel, text)
   // nothing is kept in a managed module (rules M2); a file a kit someone else maintains shipped
   // asks the person first (M4), and one the firm adds to its module, as a source's own reader, is
   // theirs (Kenil, 5 Nov)
@@ -80,9 +80,9 @@ export async function keep(
     writeFileSync(full, content)
   }
   const commit = await commitAll(module.dir, `Kept ${rel}`)
-  syncAgents(world, module, 'on')
+  syncSchedules(world, module, 'on')
   const words = commit
-    ? `Kept ${rel} in ${module.name}${agent ? `; ${agent}` : ''}.`
+    ? `Kept ${rel} in ${module.name}${schedule ? `; ${schedule}` : ''}.`
     : `${rel} in ${module.name} was already kept as it is.`
   world.line({
     actor: ctx.actor,

@@ -1,5 +1,5 @@
-// An agent's draft on its card (design §7, §12): the whole email, which the person can change
-// before Send it; Not now asks why, from a few reasons the agent sees on its next run. After three
+// A schedule's draft on its card (design §7, §12): the whole email, which the person can change
+// before Send it; Not now asks why, from a few reasons the schedule sees on its next run. After three
 // unchanged sends of its kind the card offers Always, confirmed in a second step here.
 import type { CardView, DraftView } from '@alpha/core/api'
 import { TriangleAlert } from 'lucide-react'
@@ -43,7 +43,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
     <Card label="Leaves your world" waits="Waits for you">
       <div className="font-medium text-ink text-lg">{card.words}</div>
       <div className="text-ink-3 text-sm">
-        {draft.agent}'s {draft.kind}
+        {draft.schedule}'s {draft.kind}
         {draft.about && (
           <>
             {' for '}
@@ -140,7 +140,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
               className="flex-1"
               value={words}
               onChange={(e) => setWords(e.target.value)}
-              placeholder="Anything to add, for the agent"
+              placeholder="Anything to add, for the schedule"
             />
             <Button type="submit" disabled={busy || !reason}>
               Decline

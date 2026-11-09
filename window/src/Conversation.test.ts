@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { answerOf, mentionAt } from './Conversation.tsx'
 
-test('an @ at the start or after a space addresses an agent', () => {
+test('an @ at the start or after a space addresses a schedule', () => {
   expect(mentionAt('@')).toBe('')
   expect(mentionAt('ask @Deal wa')).toBe('Deal wa')
   expect(mentionAt('mail me@home')).toBeNull()

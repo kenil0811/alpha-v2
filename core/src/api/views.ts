@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FastifyReply } from 'fastify'
-import { type Agent, readAgent } from '../modules/agents.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
+import { readSchedule, type Schedule } from '../modules/schedules.ts'
 import { pagesOf } from '../pages/pages.ts'
 import type { Card } from '../world/cards.ts'
 import type { Provenance } from '../world/kinds.ts'
@@ -131,7 +131,7 @@ export function makeViews(ctx: BaseCtx) {
       remindedAt: t.remindedAt,
       madeBy: t.madeBy.startsWith('person')
         ? 'You'
-        : t.madeBy.startsWith('agent:')
+        : t.madeBy.startsWith('schedule:')
           ? t.madeBy.slice(6)
           : 'Alpha',
       placedBy: t.placedBy,
@@ -188,12 +188,12 @@ export function makeViews(ctx: BaseCtx) {
 
   // The modules the window shows: each with a page or a table in sight, and the modules they sit
   // inside (a module only of a connection's hidden tables stays out).
-  // What an agent needs that is not there, in words, from its file.
-  const needsOf = (m: Module, a: Agent): string | null => {
+  // What a schedule needs that is not there, in words, from its file.
+  const needsOf = (m: Module, a: Schedule): string | null => {
     const path = join(m.dir, a.file)
     if (!existsSync(path)) return null
     try {
-      const missing = unmetNeeds(world, readAgent(path))
+      const missing = unmetNeeds(world, readSchedule(path))
       return missing.length ? `needs ${missing.join(' and ')}` : null
     } catch {
       return null
@@ -226,7 +226,7 @@ export function makeViews(ctx: BaseCtx) {
   const byWords = (madeBy: string): string => {
     const [kind, id] = madeBy.split(/:(.*)/s)
     if (kind === 'person') return id === user.id ? 'You' : (world.user(id ?? '')?.name ?? 'Someone')
-    if (kind === 'agent' || kind === 'connector') return id ?? kind
+    if (kind === 'schedule' || kind === 'connector') return id ?? kind
     if (kind === 'system') return 'Its kit'
     return 'Alpha'
   }
@@ -319,8 +319,8 @@ export function makeViews(ctx: BaseCtx) {
             },
           }
         }
-        const by = p.source.connector?.startsWith('agent:')
-          ? `, read by ${p.source.connector.slice('agent:'.length)}`
+        const by = p.source.connector?.startsWith('schedule:')
+          ? `, read by ${p.source.connector.slice('schedule:'.length)}`
           : ''
         if (p.source.url)
           return {

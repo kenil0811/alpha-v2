@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { agents, whenWords } from '../../modules/agents.ts'
 import { installedKits } from '../../modules/kits/index.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
+import { schedules, whenWords } from '../../modules/schedules.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
@@ -70,11 +70,11 @@ export function registerModules(ctx: Ctx): void {
     const running = new Set(
       (engine.hands?.runner.runs(200) ?? [])
         .filter((r) => r.state === 'running')
-        .map((r) => r.agent),
+        .map((r) => r.schedule),
     )
     const notes = join(m.dir, 'NOTES.md')
     const everyModule = world.shape.modules()
-    const everyAgent = agents(world)
+    const everySchedule = schedules(world)
     const waiting = world.cards.waiting(user.id)
     const openTasks = world.tasks.list({ open: true })
     return {
@@ -82,7 +82,7 @@ export function registerModules(ctx: Ctx): void {
       name: m.name,
       people: livesPeople(m),
       kit: k ? { name: k.kit, version: k.version } : null,
-      agents: agents(world, m.id).map((a) => ({
+      schedules: schedules(world, m.id).map((a) => ({
         id: a.id,
         name: a.name,
         state: a.state,
@@ -114,11 +114,11 @@ export function registerModules(ctx: Ctx): void {
                 grew = true
               }
           }
-          const its = everyAgent.filter((a) => within.has(a.module))
+          const its = everySchedule.filter((a) => within.has(a.module))
           return {
             ...c,
             kit: installedKits(world).find((x) => x.module === c.id)?.kit ?? null,
-            agents: its.filter((a) => a.state === 'on').length,
+            schedules: its.filter((a) => a.state === 'on').length,
             running: its.filter((a) => running.has(a.id)).length,
             needs: waiting.filter((x) => x.module && within.has(x.module)).length,
             tasks: openTasks.filter((t) => t.place.module && within.has(t.place.module)).length,

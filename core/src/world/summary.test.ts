@@ -319,7 +319,7 @@ describe('a summary', () => {
     mkdirSync(kit)
     const manifest = (extra: string) => `name: Studio
 version: 0.1.0
-api: 1
+api: 2
 tables:
   - name: Clients
     fields:

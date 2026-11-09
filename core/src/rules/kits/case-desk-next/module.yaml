@@ -1,7 +1,7 @@
 # The made-up managed kit's next version, not signed (docs/rules.md, M3): never a client's.
 name: Case desk
 version: 0.2.0
-api: 1
+api: 2
 managed: true
 tables:
   - name: Cases

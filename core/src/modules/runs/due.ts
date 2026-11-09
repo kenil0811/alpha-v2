@@ -1,23 +1,25 @@
-// What is due: each agent's triggers, read against the clock and the journal, one run at a time.
+// What is due: each schedule's triggers, read against the clock and the journal, one run at a time.
 import { type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { config } from '../../config.ts'
 import { all, run as exec, one } from '../../world/db.ts'
-import { type Agent, agents } from '../agents.ts'
-import type { AgentRunner } from './runner.ts'
+import { type Schedule, schedules } from '../schedules.ts'
+import type { ScheduleRunner } from './runner.ts'
 import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome, type RunRowDb } from './types.ts'
 
-// What is due by each agent's trigger, and tasks whose cards are all decided. One run of an
-// agent at a time.
-export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<void> {
+// What is due by each schedule's trigger, and tasks whose cards are all decided. One run of an
+// schedule at a time.
+export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promise<void> {
   resumeRuns(runner)
-  for (const a of agents(runner.world)) {
+  for (const a of schedules(runner.world)) {
     if (a.state !== 'on' || !triggersOf(a.trigger).length) continue
-    if (one(runner.world.db, "SELECT 1 FROM runs WHERE agent_id = ? AND state = 'running'", a.id))
+    if (
+      one(runner.world.db, "SELECT 1 FROM runs WHERE schedule_id = ? AND state = 'running'", a.id)
+    )
       continue
     // waiting on the person's Try again or Leave it
     if (runner.held.has(a.id)) continue
-    // where the journal stands as the agent is judged: its place moves here only after a run
+    // where the journal stands as the schedule is judged: its place moves here only after a run
     // that ended well, so a failed run is handed the same things again (item 16, 25 Oct)
     const cursorTo = readsJournal(a) ? String(runner.world.lastLineId()) : null
     const given = runner.due(a, nowMs)
@@ -30,7 +32,7 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
       if (nowMs - said >= 86_400_000) {
         runner.budgetSaid.set(a.id, nowMs)
         runner.world.line({
-          actor: { kind: 'agent', id: a.name },
+          actor: { kind: 'schedule', id: a.name },
           kind: 'run_step',
           words: `${a.name} has run ${file.budget.runs} time${file.budget.runs === 1 ? '' : 's'} in a day, its budget; it runs again tomorrow.`,
           module: module.id,
@@ -38,7 +40,7 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
       }
       continue
     }
-    const out = await runner.runAgent(a, undefined, given).catch(
+    const out = await runner.runSchedule(a, undefined, given).catch(
       (err): RunOutcome => ({
         id: '',
         state: 'failed',
@@ -51,7 +53,7 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
       // the run counts at the tick's time, the clock its next one is judged by
       exec(
         runner.world.db,
-        'UPDATE agents SET cursor = coalesce(?, cursor), last_run_at = ? WHERE id = ?',
+        'UPDATE schedules SET cursor = coalesce(?, cursor), last_run_at = ? WHERE id = ?',
         cursorTo,
         new Date(nowMs).toISOString(),
         a.id,
@@ -62,15 +64,15 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
     runner.failures.set(a.id, failed)
     const limit = config.limits().run_retries
     if (failed < limit) continue
-    // enough: the person decides on a card, and the agent waits on it
+    // enough: the person decides on a card, and the schedule waits on it
     const files = given.filed?.map((f) => f.name) ?? []
     const card = runner.world.cards.open({
       kind: 'suggestion',
       words: `${a.name} did not finish ${failed} times${files.length ? ` on ${files.join(', ')}` : ''}: ${out.words}`,
       restsOn: [`${a.name}'s last ${failed} runs`],
       options: ['Try again', 'Leave it'],
-      call: { tool: RUN_AGAIN, input: { agent: a.id, cursor: cursorTo } },
-      actor: { kind: 'agent', id: a.name },
+      call: { tool: RUN_AGAIN, input: { schedule: a.id, cursor: cursorTo } },
+      actor: { kind: 'schedule', id: a.name },
       user: runner.owner,
       module: a.module,
     })
@@ -79,17 +81,17 @@ export async function runDue(runner: AgentRunner, nowMs = Date.now()): Promise<v
   }
 }
 
-// An agent's run that opened a card (a sign-in, a site to reach, a removal) and ended on it goes
+// A schedule's run that opened a card (a sign-in, a site to reach, a removal) and ended on it goes
 // again at the next tick once the person has said yes, as a task's does (item 39 of the problems
-// list, 25 Oct): the yes is used while it still means what it meant, not at the agent's next
+// list, 25 Oct): the yes is used while it still means what it meant, not at the schedule's next
 // trigger, which can be the next day. A card the desk's own turn opened is the desk's to carry
 // on; a draft's yes sends the draft itself and starts nothing.
-export function resumeRuns(runner: AgentRunner): void {
-  for (const a of agents(runner.world)) {
+export function resumeRuns(runner: ScheduleRunner): void {
+  for (const a of schedules(runner.world)) {
     if (runner.held.has(a.id)) continue
     const last = one<RunRowDb>(
       runner.world.db,
-      'SELECT * FROM runs WHERE agent_id = ? ORDER BY started_at DESC LIMIT 1',
+      'SELECT * FROM runs WHERE schedule_id = ? ORDER BY started_at DESC LIMIT 1',
       a.id,
     )
     const ended = last?.ended_at
@@ -97,39 +99,47 @@ export function resumeRuns(runner: AgentRunner): void {
     const cards = all<{ state: string; decided_at: string | null }>(
       runner.world.db,
       `SELECT state, decided_at FROM cards WHERE run_id = ? AND kind = 'permission' AND turn_id IS NULL
-         AND json_extract(call, '$.tool') != 'agent_draft'`,
+         AND json_extract(call, '$.tool') != 'schedule_draft'`,
       last.id,
     )
     if (!cards.length || cards.some((c) => c.state === 'waiting')) continue
     if (!cards.some((c) => c.state === 'yes' && c.decided_at && c.decided_at > ended)) continue
     runner.world.line({
-      actor: { kind: 'agent', id: a.name },
+      actor: { kind: 'schedule', id: a.name },
       kind: 'run_step',
       words: `${a.name} runs again on your yes.`,
       module: a.module,
     })
-    // the run started here is the agent's newest, so the next tick finds no yes after it
+    // the run started here is the schedule's newest, so the next tick finds no yes after it
     runner
-      .runAgent(a, { user: runner.owner, turn: null }, {}, { asked: true })
+      .runSchedule(a, { user: runner.owner, turn: null }, {}, { asked: true })
       .catch(() => undefined)
   }
 }
 
-// Whether any of an agent's triggers reads the journal (a filing, a change), so its place in it
+// Whether any of a schedule's triggers reads the journal (a filing, a change), so its place in it
 // matters.
-function readsJournal(a: Agent): boolean {
+function readsJournal(a: Schedule): boolean {
   return triggersOf(a.trigger).some((t) => 'filed' in t || 'changes' in t)
 }
 
-// Whether an agent is due, and what its trigger hands it when it is (a filing's documents).
-export function due(runner: AgentRunner, a: Agent, nowMs: number): false | { filed?: Filed[] } {
+// Whether a schedule is due, and what its trigger hands it when it is (a filing's documents).
+export function due(
+  runner: ScheduleRunner,
+  a: Schedule,
+  nowMs: number,
+): false | { filed?: Filed[] } {
   const is = runner.isDue(a, nowMs)
   return is === true ? {} : is
 }
 
 // Due by any of its triggers. The ones that read the journal (filed, changes) share the
-// agent's cursor: it is read once before and moved once after, so a list of them agrees.
-export function isDue(runner: AgentRunner, a: Agent, nowMs: number): boolean | { filed: Filed[] } {
+// schedule's cursor: it is read once before and moved once after, so a list of them agrees.
+export function isDue(
+  runner: ScheduleRunner,
+  a: Schedule,
+  nowMs: number,
+): boolean | { filed: Filed[] } {
   const seen = Number(a.cursor ?? 0)
   let due: boolean | { filed: Filed[] } = false
   let reads = false
@@ -146,8 +156,8 @@ export function isDue(runner: AgentRunner, a: Agent, nowMs: number): boolean | {
 }
 
 export function isDueBy(
-  runner: AgentRunner,
-  a: Agent,
+  runner: ScheduleRunner,
+  a: Schedule,
   t: Trigger,
   nowMs: number,
   seen: number,
@@ -167,11 +177,11 @@ export function isDueBy(
     return !!next && next.getTime() <= nowMs
   }
   if ('filed' in t) {
-    // a document read, or put on a row, since the agent last looked (not by the agent itself)
+    // a document read, or put on a row, since the schedule last looked (not by the schedule itself)
     const files = new Set<string>()
     for (const l of runner.world.lines({ after: seen, kinds: ['filed'] })) {
       const d = l.data as { file?: string; document?: string; record?: string; off?: boolean }
-      if (l.actor.kind === 'agent' && l.actor.id === a.name) continue
+      if (l.actor.kind === 'schedule' && l.actor.id === a.name) continue
       if (d.file && (d.document || (d.record && !d.off))) files.add(d.file)
     }
     const filed: Filed[] = []
@@ -205,18 +215,21 @@ export function isDueBy(
         (l.data as { table?: string }).table,
         ...((l.data as { tables?: string[] }).tables ?? []),
       ].some((id) => tables.has(id)) &&
-      !(l.actor.kind === 'agent' && l.actor.id === a.name) &&
+      !(l.actor.kind === 'schedule' && l.actor.id === a.name) &&
       !undidOwn(runner, l.data, a),
   )
   return lines.length > 0
 }
 
-// A revert of the agent's own run does not wake it to do that work again.
-function undidOwn(runner: AgentRunner, data: Record<string, unknown>, a: Agent): boolean {
+// A revert of the schedule's own run does not wake it to do that work again.
+function undidOwn(runner: ScheduleRunner, data: Record<string, unknown>, a: Schedule): boolean {
   const run = (data.target as { run?: string } | undefined)?.run
   return (
     !!run &&
-    one<{ agent_id: string | null }>(runner.world.db, 'SELECT agent_id FROM runs WHERE id = ?', run)
-      ?.agent_id === a.id
+    one<{ schedule_id: string | null }>(
+      runner.world.db,
+      'SELECT schedule_id FROM runs WHERE id = ?',
+      run,
+    )?.schedule_id === a.id
   )
 }

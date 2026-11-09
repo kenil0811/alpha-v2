@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { checkSigned, install } from '../modules/kits/index.ts'
 import { api } from '../modules/runs/api.ts'
-import type { AgentRunner } from '../modules/runs/runner.ts'
+import type { ScheduleRunner } from '../modules/runs/runner.ts'
 import type { Act } from './doors.ts'
 import type { Acts } from './drive.ts'
 import { drive, refusal, refusedWith, rule } from './rule.ts'
@@ -153,11 +153,11 @@ rule(
   },
 )
 
-// The scripts' API the Counter agent is given, its walls from its file (touches: [Orders]).
+// The scripts' API the Counter schedule is given, its walls from its file (touches: [Orders]).
 function counter(w: RuleWorld) {
   const bakery = w.world.shape.module('Bakery')
   if (!bakery) throw new Error('The rule world has no Bakery.')
-  const runner = { world: w.world } as unknown as AgentRunner
+  const runner = { world: w.world } as unknown as ScheduleRunner
   const walls = {
     kind: 'file' as const,
     touches: new Set(['orders']),
@@ -171,14 +171,14 @@ const landsOrder = async (w: RuleWorld, table: string, values: Record<string, un
 
 rule('M5', 'kit code finds tables and fields by their lasting key', {
   cases: {
-    'an agent’s script still lands in its table after the person renames it': async (w) => {
+    'a schedule’s script still lands in its table after the person renames it': async (w) => {
       await drive(w, 'window: a table’s about, name, fields, tab').renameTable(
         'Orders',
         'Purchases',
       )
       return (await landsOrder(w, 'Orders', { Item: 'Flour' })) && w.rows('Purchases') === 1
     },
-    'an agent’s script still lands a field after the person has it renamed': async (w) => {
+    'a schedule’s script still lands a field after the person has it renamed': async (w) => {
       await drive(w, 'alpha: shape').renameField('Orders', 'Item', 'Product')
       return (
         (await landsOrder(w, 'Orders', { Item: 'Flour' })) &&

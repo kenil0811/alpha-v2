@@ -73,9 +73,9 @@ function partOfGiven(table: Table, vals: Record<string, unknown>, fresh: boolean
       )
 }
 
-// Code a kit, a connection or an agent's script runs names fields by their lasting keys (rules M5).
+// Code a kit, a connection or a schedule's script runs names fields by their lasting keys (rules M5).
 const byCode = (ctx: RecordCtx): boolean =>
-  ctx.actor.kind === 'agent' ||
+  ctx.actor.kind === 'schedule' ||
   ctx.actor.kind === 'connector' ||
   (ctx.actor.kind === 'system' && !!ctx.actor.id?.startsWith('kit:'))
 

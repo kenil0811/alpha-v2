@@ -6,7 +6,7 @@ import { decide, refusedBy } from '../../gates/gates.ts'
 import { one } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Module } from '../../world/shape/index.ts'
-import type { AgentRunner } from './runner.ts'
+import type { ScheduleRunner } from './runner.ts'
 import type { RunFor } from './types.ts'
 
 export function moduleNetwork(module: Module): string[] {
@@ -29,7 +29,7 @@ export const onList = (list: string[], host: string) =>
 // Sites a module's scripts may read: its list, or a yes on a card for that site (gate 1), which
 // puts the site on the list for good.
 export function reach(
-  runner: AgentRunner,
+  runner: ScheduleRunner,
   module: Module,
   url: string,
   runId: string,
@@ -41,11 +41,11 @@ export function reach(
   } catch {
     throw new Refused(`That is not a link: ${url}`)
   }
-  // the agent whose run it is, by name: a rule may be its own
-  const agent =
+  // the schedule whose run it is, by name: a rule may be its own
+  const schedule =
     one<{ name: string }>(
       runner.world.db,
-      'SELECT a.name FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = ?',
+      'SELECT a.name FROM runs r JOIN schedules a ON a.id = r.schedule_id WHERE r.id = ?',
       runId,
     )?.name ?? null
   // a deny rule closes a site even on the module's list
@@ -56,14 +56,19 @@ export function reach(
     site: host,
     table: null,
     module: module.id,
-    agent,
+    schedule,
     own: false,
   }).deny
   if (denied) {
     runner.world.rules.used(
       denied,
       `Refused: ${module.name} reading ${host}. Your rule: ${denied.words}`,
-      { actor: { kind: 'agent', id: agent ?? runId }, user: who.user, turn: who.turn, run: runId },
+      {
+        actor: { kind: 'schedule', id: schedule ?? runId },
+        user: who.user,
+        turn: who.turn,
+        run: runId,
+      },
       true,
     )
     throw new Refused(refusedBy(denied))
@@ -77,11 +82,11 @@ export function reach(
     restsOn: [`a run of ${module.name}’s reader`],
     detail: `${module.name}'s readers would open pages on ${host} at a person's pace, keeping to its robots rules.`,
     cannotUndo: 'What a reader asks a site for leaves your world.',
-    actor: { kind: 'agent', id: runId },
+    actor: { kind: 'schedule', id: runId },
     user: who.user,
     turn: who.turn,
     module: module.id,
-    agent,
+    schedule,
   })
   if (!verdict.pass)
     throw new Refused(
@@ -98,14 +103,14 @@ export function reach(
 }
 
 // A site that wants the person to sign in: a card with Sign in, which opens the site in a window
-// of Alpha's browser where they sign in themselves; then the agent runs again (api: sign-in).
+// of Alpha's browser where they sign in themselves; then the schedule runs again (api: sign-in).
 export function wantsSignIn(
-  runner: AgentRunner,
+  runner: ScheduleRunner,
   module: Module,
   url: string,
   label: string,
   runId: string,
-  agentId: string | null,
+  scheduleId: string | null,
   who: RunFor,
 ): void {
   const host = new URL(url).host.toLowerCase()
@@ -116,8 +121,8 @@ export function wantsSignIn(
     detail: `${label} could not read ${host} without your sign-in. Sign in opens the site in a window of Alpha's browser; you type your login there yourself, Alpha never sees it, and the reader reads as you from then on.`,
     restsOn: [`a run of ${label}`],
     options: ['Sign in', 'Not now'],
-    call: { tool: 'site_sign_in', input: { host, url, agent: agentId } },
-    actor: { kind: 'agent', id: runId },
+    call: { tool: 'site_sign_in', input: { host, url, schedule: scheduleId } },
+    actor: { kind: 'schedule', id: runId },
     user: who.user ?? runner.owner,
     module: module.id,
     run: runId,
@@ -125,12 +130,12 @@ export function wantsSignIn(
 }
 
 export async function browse<T>(
-  runner: AgentRunner,
+  runner: ScheduleRunner,
   module: Module,
   url: string,
   label: string,
   runId: string,
-  agentId: string | null,
+  scheduleId: string | null,
   who: RunFor,
   read: () => Promise<T>,
 ): Promise<T> {
@@ -138,7 +143,7 @@ export async function browse<T>(
     return await read()
   } catch (err) {
     if ((err as { kind?: string }).kind === 'sign_in')
-      runner.wantsSignIn(module, url, label, runId, agentId, who)
+      runner.wantsSignIn(module, url, label, runId, scheduleId, who)
     throw err
   }
 }

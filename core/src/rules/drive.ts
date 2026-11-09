@@ -1,12 +1,12 @@
 // Each door driven as the core drives it (docs/rules.md, R3): the window through its routes, as
-// the person; Alpha's tools through the gate and then the tool, as a turn does; an agent through
+// the person; Alpha's tools through the gate and then the tool, as a turn does; a schedule through
 // the scripts' API; a connector through its landing; a plugin through its host; a kit through its
 // installer. A door that refuses throws Refused, with its words; anything else that goes wrong
 // is the test's own failure, never taken for a refusal.
 import { SERVER, worldTools } from '../engine/tools/index.ts'
 import { update } from '../modules/kits/index.ts'
 import { api } from '../modules/runs/api.ts'
-import type { AgentRunner } from '../modules/runs/runner.ts'
+import type { ScheduleRunner } from '../modules/runs/runner.ts'
 import { Refused } from '../world/kinds.ts'
 import { revert } from '../world/records/index.ts'
 import { KITS, type RuleWorld, type Target } from './world.ts'
@@ -50,11 +50,11 @@ export async function alpha(
   throw new Refused(text)
 }
 
-// The scripts' API an agent of the open kit is given, as its runner gives it (no walls: a run's
-// own are tried with its agent's touches, M5).
+// The scripts' API a schedule of the open kit is given, as its runner gives it (no walls: a run's
+// own are tried with its schedule's touches, M5).
 function script(w: RuleWorld, table: string) {
   const t = w.table(table)
-  const runner = { world: w.world } as unknown as AgentRunner
+  const runner = { world: w.world } as unknown as ScheduleRunner
   return api(runner, t.module, 'Counter', 'run_rules', { user: w.user.id, turn: null }, null)
 }
 
@@ -118,7 +118,7 @@ export const DRIVERS: Record<string, (w: RuleWorld) => Partial<Acts>> = {
       await alpha(w, 'change', { table: t.table, remove: [t.row] })
     },
   }),
-  'agent: a script': (w) => ({
+  'schedule: a script': (w) => ({
     // a script's figure for a value: what it works out
     set: async (t, value) => {
       await script(w, t.table)['rows.compute']({

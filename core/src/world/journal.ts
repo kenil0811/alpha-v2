@@ -3,7 +3,7 @@ import { hashOf, lastHash } from './audit.ts'
 import { all, type Db, json, now, one, parse, run } from './db.ts'
 import { Refused } from './kinds.ts'
 
-export type ActorKind = 'person' | 'alpha' | 'agent' | 'connector' | 'system'
+export type ActorKind = 'person' | 'alpha' | 'schedule' | 'connector' | 'system'
 
 export interface Actor {
   kind: ActorKind

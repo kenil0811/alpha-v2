@@ -9,7 +9,7 @@ The archive `alpha-data-<date>.tar.gz` unpacks to one folder, `alpha-data/`:
 | --- | --- |
 | `world.sqlite` | the world: every table, row, value with its provenance, card, task, person and journal line, as one SQLite database (open it with `sqlite3`, DB Browser or Datasette; each module's tables are ordinary tables named by their slug, a list relation's links a table of their own, every value's source in `provenance`). Rows waiting in the trash are left out: the archive holds what is there |
 | `files/` | every file Alpha keeps, by the SHA-256 of its bytes |
-| `modules/` | the module folders: each kit's agents, skills, pages and notes as installed and as changed |
+| `modules/` | the module folders: each kit's schedules, skills, pages and notes as installed and as changed |
 | `instructions/` | the standing instructions, one Markdown file for everyone and one per person |
 | `connectors/` | the connectors added from Settings, each its folder |
 | `alpha.yaml` | what the installer knew about the install |

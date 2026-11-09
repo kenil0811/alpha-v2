@@ -17,11 +17,11 @@ export type Act =
   | 'renameTable'
   | 'renameField'
   | 'describe' // a table's sentence on what its rows are
-  | 'keep' // a file in a module: an agent, a skill, a page, NOTES.md
+  | 'keep' // a file in a module: a schedule, a skill, a page, NOTES.md
 
 export interface Door {
   name: string
-  by: 'person' | 'alpha' | 'agent' | 'connector' | 'plugin' | 'kit'
+  by: 'person' | 'alpha' | 'schedule' | 'connector' | 'plugin' | 'kit'
   changes: 'rows' | 'module'
   where: string[]
   can: Act[]
@@ -76,12 +76,12 @@ export const DOORS: Door[] = [
     can: [],
   },
   {
-    name: 'window: a kept list (people, agents, tasks)',
+    name: 'window: a kept list (people, schedules, tasks)',
     by: 'person',
     changes: 'rows',
     where: [
       'POST /api/kept/*/rows/:id',
-      'POST /api/kept/agents/rows/:id',
+      'POST /api/kept/schedules/rows/:id',
       'POST /api/kept/tasks/rows/:id',
       'POST /api/tasks',
       'POST /api/tasks/:id',
@@ -140,8 +140,8 @@ export const DOORS: Door[] = [
   { name: 'alpha: file', by: 'alpha', changes: 'rows', where: ['tool file'], can: [] },
   { name: 'alpha: task', by: 'alpha', changes: 'rows', where: ['tool task'], can: [] },
   {
-    name: 'agent: a script',
-    by: 'agent',
+    name: 'schedule: a script',
+    by: 'schedule',
     changes: 'rows',
     where: ['the scripts’ API (modules/runs/api.ts)'],
     can: ['set', 'add', 'land'],
@@ -221,10 +221,14 @@ export const DOORS: Door[] = [
     can: [],
   },
   {
-    name: 'window: agents',
+    name: 'window: schedules',
     by: 'person',
     changes: 'module',
-    where: ['POST /api/agents/:id', 'POST /api/agents/:id/run', 'POST /api/modules/:id/agents'],
+    where: [
+      'POST /api/schedules/:id',
+      'POST /api/schedules/:id/run',
+      'POST /api/modules/:id/schedules',
+    ],
     can: [],
   },
   {
@@ -321,7 +325,7 @@ export const NOT_DOORS: Record<string, string> = {
   'tool ask': 'a card to the person',
   'tool remember': 'a standing instruction, the person’s words',
   'tool rule': 'a rule for the gates, on the person’s yes',
-  'tool run': 'starts an agent, whose script is the agent’s door',
+  'tool run': 'starts a schedule, whose script is the schedule’s door',
   'plugin person': 'reads',
   'plugin rows': 'reads',
   'plugin catalogue': 'reads',

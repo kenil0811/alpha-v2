@@ -86,7 +86,7 @@ export function Parts() {
                   { value: 'board', label: 'Board' },
                 ]}
               />
-              <Switch checked={on} onChange={setOn} label="An agent" />
+              <Switch checked={on} onChange={setOn} label="A schedule" />
               <Field placeholder="A field" />
               <Select defaultValue="New">
                 <option>New</option>
@@ -114,9 +114,9 @@ export function Parts() {
               <Row
                 indent
                 lead={<Bot className="size-4 text-ink-3" />}
-                title="An agent"
+                title="A schedule"
                 sub="Runs every day at 07:00"
-                actions={<Switch checked={on} onChange={setOn} label="An agent" />}
+                actions={<Switch checked={on} onChange={setOn} label="A schedule" />}
               />
             </List>
           </Section>

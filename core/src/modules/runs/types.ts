@@ -1,7 +1,7 @@
 // Runs (design §11): a run's outcome, who it is for, its row, a proposed task, a filing.
 import { parse as fromJson } from '../../world/db.ts'
 
-// The card that asks whether an agent that did not finish three times runs again or is left.
+// The card that asks whether a schedule that did not finish three times runs again or is left.
 export const RUN_AGAIN = 'run_again'
 
 export interface RunOutcome {
@@ -18,7 +18,7 @@ export interface RunFor {
 
 export interface RunRow {
   id: string
-  agent: string | null
+  schedule: string | null
   module: string | null
   startedAt: string
   endedAt: string | null
@@ -29,7 +29,7 @@ export interface RunRow {
 
 export const CHANGE_KINDS = ['wrote', 'changed', 'landed', 'removed', 'reverted']
 
-// What a filing hands the agents waiting on one: each document read or put on a row since they
+// What a filing hands the schedules waiting on one: each document read or put on a row since they
 // last looked, with the rows it sits on.
 export interface Filed {
   file: string
@@ -41,7 +41,7 @@ export interface Filed {
 
 export interface RunRowDb {
   id: string
-  agent_id: string | null
+  schedule_id: string | null
   module_id: string | null
   started_at: string
   ended_at: string | null
@@ -53,7 +53,7 @@ export interface RunRowDb {
 export function toRun(r: RunRowDb): RunRow {
   return {
     id: r.id,
-    agent: r.agent_id,
+    schedule: r.schedule_id,
     module: r.module_id,
     startedAt: r.started_at,
     endedAt: r.ended_at,

@@ -162,7 +162,7 @@ export function shapeTables(
         })
       }
     }
-    // a new version's setup tables move under Agents and notes; where a table shows is the
+    // a new version's setup tables move under Schedules and notes; where a table shows is the
     // person's after that, so a kit never takes one back out
     if (spec.setup && !(world.shape.table(t.id) as Table).setup)
       world.shape.setSetup(t.id, true, ctx)

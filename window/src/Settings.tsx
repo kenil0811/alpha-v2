@@ -1,4 +1,4 @@
-// Settings (design §14): connections, folders, and modules with their agents. Connecting is the
+// Settings (design §14): connections, folders, and modules with their schedules. Connecting is the
 // person's own act here: what they type goes to the Keychain, never to the model.
 import type {
   CardView,
@@ -29,7 +29,7 @@ import { Activity } from './Activity.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { HowToWork } from './HowToWork.tsx'
-import { ModulesAndAgents, when } from './ModulesAndAgents.tsx'
+import { ModulesAndSchedules, when } from './ModulesAndSchedules.tsx'
 import { Reach } from './Reach.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
@@ -78,10 +78,10 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'The accounts Alpha reads, its agents and how you asked it to work.',
+    about: 'The accounts Alpha reads, its schedules and how you asked it to work.',
     tabs: [
       ['connections', 'Connections'],
-      ['agents', 'Agents'],
+      ['schedules', 'Schedules'],
       ['work', 'How to work'],
     ],
   },
@@ -144,7 +144,7 @@ export function Settings({
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
     work: <HowToWork version={version} />,
-    agents: <Agents version={version} />,
+    schedules: <Schedules version={version} />,
     connections: (
       <>
         <Section
@@ -199,7 +199,7 @@ export function Settings({
         </Section>
       </>
     ),
-    modules: <ModulesAndAgents version={version} />,
+    modules: <ModulesAndSchedules version={version} />,
     permissions: <Permissions version={version} owner={!member} />,
     model: <ModelSection />,
     usage: <UsageSection />,
@@ -1046,21 +1046,21 @@ function Embedded({
   )
 }
 
-// Intelligence's Agents: every agent in one shared table, each opening its page; then the modules
+// Intelligence's Schedules: every schedule in one shared table, each opening its page; then the modules
 // they come from, to install, update and pack.
-function Agents({ version }: { version: number }) {
-  // every module's agents as one table from the core: On or Paused changes in its cell
+function Schedules({ version }: { version: number }) {
+  // every module's schedules as one table from the core: On or Paused changes in its cell
   const [data, setData] = useState<KeptTable | null>(null)
   useEffect(() => {
-    if (version >= 0) api.get<KeptTable>('/api/kept/agents').then(setData, () => setData(null))
+    if (version >= 0) api.get<KeptTable>('/api/kept/schedules').then(setData, () => setData(null))
   }, [version])
   return (
-    <Section title="Agents" about="Every agent, what it does and when it last ran.">
+    <Section title="Schedules" about="Every schedule, what it does and when it last ran.">
       {data && (
         <Embedded
           data={data}
           open={(id) => {
-            window.location.hash = `#/agent/${id}`
+            window.location.hash = `#/schedule/${id}`
           }}
         />
       )}

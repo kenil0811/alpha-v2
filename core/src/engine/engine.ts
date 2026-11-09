@@ -111,7 +111,7 @@ export class Engine {
     return this.desk(user).stop()
   }
 
-  // An agent's draft answered with the card's own buttons or in words: sent as drafted only on
+  // A schedule's draft answered with the card's own buttons or in words: sent as drafted only on
   // its yes, Send it; anything else holds it, the words typed kept as the reason (item 41 of the
   // problems list, 25 Oct).
   async answerDraft(user: User, cardId: string, answer: string): Promise<Card> {
@@ -156,7 +156,7 @@ export class Engine {
       })
     const card = this.world.cards.answer(cardId, answer, { kind: 'person', id: user.id })
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
-    // the desk carries on only with a card its own turn opened, or a run it started; an agent's
+    // the desk carries on only with a card its own turn opened, or a run it started; a schedule's
     // card from a scheduled run is the run's to go on with (item 41, 25 Oct)
     if (card.turn) this.desk(user).cardAnswered(card)
     return card

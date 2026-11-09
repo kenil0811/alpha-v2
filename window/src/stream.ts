@@ -37,7 +37,7 @@ export type Item =
     }
   // a failure said in the chat: a limit reached, an error or a refusal outside a turn
   | { kind: 'note'; id: number; words: string; at: string }
-  // a card an agent's run opened, outside any turn
+  // a card a schedule's run opened, outside any turn
   | { kind: 'card'; id: string; at: string; module: Module; answered: Answered | null }
 
 const RESULTS = new Set([

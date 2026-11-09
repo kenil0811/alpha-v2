@@ -80,12 +80,12 @@ if (verb === 'backup' && where) {
       say(
         `  connection ${k.connector}: ${k.state}${k.health ? `, ${k.health}` : ''}, last read ${k.last_sync_at ?? 'never'}`,
       )
-    for (const a of db.prepare('SELECT name, state, last_run_at FROM agents').all() as {
+    for (const a of db.prepare('SELECT name, state, last_run_at FROM schedules').all() as {
       name: string
       state: string
       last_run_at: string | null
     }[])
-      say(`  agent ${a.name}: ${a.state}, last ran ${a.last_run_at ?? 'never'}`)
+      say(`  schedule ${a.name}: ${a.state}, last ran ${a.last_run_at ?? 'never'}`)
     for (const e of db
       .prepare("SELECT at, words FROM journal WHERE kind = 'error' ORDER BY id DESC LIMIT 20")
       .all() as { at: string; words: string }[])

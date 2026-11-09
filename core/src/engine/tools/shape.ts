@@ -45,7 +45,7 @@ const SHAPE_INPUT = {
   default: z.boolean().optional(),
   about: z.string().optional(), // one sentence on what a table, a field or a view means
   what: z.enum(['table', 'field', 'view']).optional(), // what describe describes; field when field is given
-  setup: z.boolean().optional(), // make_table and setup: a table the module's agents read
+  setup: z.boolean().optional(), // make_table and setup: a table the module's schedules read
   part_of: z.boolean().optional(), // part_of: the relation field's rows are part of their row, or not
   tab: z.boolean().optional(), // keep_tab: a part or setup table shown as a tab too, or not
   per: z.boolean().optional(), // per: false takes a table's one row per person off
@@ -258,7 +258,7 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
       const t = world.shape.setSetup(tableOf(world, table).id, a.setup !== false, c)
       return say(
         t.setup
-          ? `${t.name} is setup now, under ${t.module.name}'s Agents and notes.`
+          ? `${t.name} is setup now, on ${t.module.name}'s Setup.`
           : `${t.name} is one of ${t.module.name}'s main tables again.`,
       )
     }
@@ -302,7 +302,7 @@ export function shapeTools({ world, ctx }: Tooling): ToolEntry[] {
         'remove_view: give table and field (the view’s name).',
         'place_module: put a module inside another; give module and within (the module it goes inside; leave within out for the top level). A module never goes inside itself or one of its own.',
         'part_of: give table, field (a relation to one row) and part_of (false to undo): its rows become part of the row they point at, as a deal’s yearly figures are part of the deal. A part shows on its row, not as a tab; it goes and comes back with it; it is never without one. A table whose rows each belong to one row of another is made with that relation part_of: true; then it needs no tab of its own.',
-        'setup: give table and setup (false to undo): a table the module’s agents read (sources, goals, rules, templates), shown under Agents and notes, not as a tab. make_table takes setup: true too.',
+        'setup: give table and setup (false to undo): a table the module’s schedules read (sources, goals, rules, templates), shown on its Setup, not as a tab. make_table takes setup: true too.',
         'keep_tab: give table and tab (false to undo): a part or a setup table kept as a tab of its module too, every row of it, when the person asks for it to be always there. Its rows stay part of their row, or setup: when a part should be a tab, this is the way, never part_of: false.',
         'many: give table and field: a relation comes to hold a list of rows, or a choice several of its choices (tags); each row keeps its one value as the first.',
         'per: give table and field (a person field), and per: false to undo: the table holds one row per person (how close each one is, their tier); rows that share a person fold into one; a second row for someone is refused, and a merge of two people folds their rows. make_table takes per: person on a person field too.',

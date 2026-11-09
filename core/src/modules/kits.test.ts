@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { run } from '../world/db.ts'
 import { World } from '../world/world.ts'
-import { agents } from './agents.ts'
 import { history } from './git.ts'
 import { install, installedKits, takeBack, update, yours } from './kits/index.ts'
+import { schedules } from './schedules.ts'
 
 const KIT = join(import.meta.dirname, 'test-kit')
 let home: string
@@ -27,7 +27,7 @@ afterEach(() => {
 })
 
 describe('installing a kit', () => {
-  it('makes its tables, lands its setup rows as the kit’s, and leaves its agents paused', async () => {
+  it('makes its tables, lands its setup rows as the kit’s, and leaves its schedules paused', async () => {
     const m = await install(world, KIT, ctx)
     expect(world.shape.tables(m.id).map((t) => [t.name, t.fields.map((f) => f.name)])).toEqual([
       ['Orders', ['Item', 'Quantity', 'Supplier']],
@@ -45,7 +45,7 @@ describe('installing a kit', () => {
       basis: "the address on the mill's invoices",
     })
     expect(world.records.count(world.shape.table('Orders')?.id as string)).toBe(0)
-    expect(agents(world, m.id).map((a) => [a.name, a.state, a.trigger])).toEqual([
+    expect(schedules(world, m.id).map((a) => [a.name, a.state, a.trigger])).toEqual([
       ['Counter', 'paused', { every: 'day', at: '07:00' }],
     ])
     expect(installedKits(world)).toEqual([
@@ -54,7 +54,7 @@ describe('installing a kit', () => {
         kit: 'Bakery',
         version: '0.1.0',
         source: KIT,
-        api: 1,
+        api: 2,
         maintainer: null,
         core: false,
       },
@@ -62,7 +62,7 @@ describe('installing a kit', () => {
     expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('example.com')
     expect((await history(m.dir)).map((c) => c.message)).toEqual(['Installed Bakery 0.1.0'])
     expect(world.lines({ kinds: ['installed'] })[0]?.words).toBe(
-      'Installed Bakery 0.1.0: 2 tables, 2 setup rows, 1 agent (paused).',
+      'Installed Bakery 0.1.0: 2 tables, 2 setup rows, 1 schedule (paused).',
     )
     await expect(install(world, KIT, ctx)).rejects.toThrow(/already installed/)
   })
@@ -126,13 +126,13 @@ describe('updating a kit', () => {
     expect(field('Grade')).toEqual({ A: 'bad', B: 'good' })
   })
 
-  it('keeps a renamed agent whole: its id, its state and its last run (matched by its file)', async () => {
+  it('keeps a renamed schedule whole: its id, its state and its last run (matched by its file)', async () => {
     const m = await install(world, KIT, ctx)
-    const before = agents(world, m.id).find((a) => a.name === 'Counter')
+    const before = schedules(world, m.id).find((a) => a.name === 'Counter')
     if (!before) throw new Error('no Counter')
     run(
       world.db,
-      "UPDATE agents SET state = 'on', last_run_at = ? WHERE id = ?",
+      "UPDATE schedules SET state = 'on', last_run_at = ? WHERE id = ?",
       '2026-10-25T07:00:00.000Z',
       before.id,
     )
@@ -143,14 +143,14 @@ describe('updating a kit', () => {
       readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('version: 0.1.0', 'version: 0.2.0'),
     )
     writeFileSync(
-      join(next, 'agents', 'counter.md'),
-      readFileSync(join(KIT, 'agents', 'counter.md'), 'utf8').replace(
+      join(next, 'schedules', 'counter.md'),
+      readFileSync(join(KIT, 'schedules', 'counter.md'), 'utf8').replace(
         'name: Counter',
         'name: Order counter',
       ),
     )
     await update(world, 'Bakery', next, ctx)
-    const after = agents(world, m.id)
+    const after = schedules(world, m.id)
     expect(after.map((a) => a.name)).toEqual(['Order counter'])
     expect(after[0]).toMatchObject({
       id: before.id,
@@ -440,7 +440,7 @@ describe('a module inside another', () => {
 })
 
 describe('Alpha’s own modules', () => {
-  it('installs each shipped kit once with its agents on, and updates it when a newer one ships', async () => {
+  it('installs each shipped kit once with its schedules on, and updates it when a newer one ships', async () => {
     const { keepDefaults, newer } = await import('./defaults.ts')
     const dir = join(home, 'defaults')
     cpSync(KIT, join(dir, 'bakery'), { recursive: true })
@@ -448,8 +448,8 @@ describe('Alpha’s own modules', () => {
     expect(await keepDefaults(world, system, dir)).toEqual(["Installed Bakery 0.1.0, Alpha's own."])
     const m = world.shape.module('Bakery')
     expect(m).toBeTruthy()
-    const { agents } = await import('./agents.ts')
-    expect(agents(world, m?.id).every((a) => a.state === 'on')).toBe(true)
+    const { schedules } = await import('./schedules.ts')
+    expect(schedules(world, m?.id).every((a) => a.state === 'on')).toBe(true)
     expect(await keepDefaults(world, system, dir)).toEqual([])
     writeFileSync(
       join(dir, 'bakery', 'module.yaml'),
@@ -479,21 +479,18 @@ describe('the contracts a kit signs (step 2)', () => {
   it('refuses a kit that uses one not there, or an api this Alpha does not serve', async () => {
     const uses = copyKit((m) => `${m}uses:\n  - { kit: Orchard, min: '0.2' }\n`)
     await expect(install(world, uses, ctx)).rejects.toThrow(/uses Orchard, which is not there/)
-    const api = copyKit((m) => m.replace('api: 1', 'api: 7'))
-    await expect(install(world, api, ctx)).rejects.toThrow(/api: 7; this Alpha serves 1/)
+    const api = copyKit((m) => m.replace('api: 2', 'api: 7'))
+    await expect(install(world, api, ctx)).rejects.toThrow(/api: 7; this Alpha serves 2/)
   })
 
-  it('takes a kit with no api as 1 for now, and says so', async () => {
-    const dir = copyKit((m) => m.replace('api: 1\n', ''))
-    const m = await install(world, dir, ctx)
-    expect(installedKits(world)[0]?.api).toBe(1)
-    expect(world.lines({ kinds: ['installed'] })[0]?.words).toMatch(/says no api; taken as 1/)
-    expect(m.name).toBe('Bakery')
+  it('refuses a kit that says no api', async () => {
+    const dir = copyKit((m) => m.replace('api: 2\n', ''))
+    await expect(install(world, dir, ctx)).rejects.toThrow(/says no api/)
   })
 
-  it('keeps who maintains a kit, and an agent’s description', async () => {
+  it('keeps who maintains a kit, and a schedule’s description', async () => {
     const dir = copyKit((m) => `${m}maintainer: { name: Avilo, address: kits@avilo.example }\n`, {
-      'agents/counter.md':
+      'schedules/counter.md':
         '---\nname: Counter\ndescription: Counts the orders.\ntrigger: [{ every: day, at: "07:00" }, { changes: Orders }]\nruns: { script: skills/count/run.js }\ntouches: [Orders]\nbudget: { minutes: 5 }\n---\nCounts the orders each morning.\n',
     })
     const m = await install(world, dir, ctx)
@@ -501,14 +498,14 @@ describe('the contracts a kit signs (step 2)', () => {
       name: 'Avilo',
       address: 'kits@avilo.example',
     })
-    const [counter] = agents(world, m.id)
+    const [counter] = schedules(world, m.id)
     expect(counter?.description).toBe('Counts the orders.')
     expect(Array.isArray(counter?.trigger) ? counter.trigger.length : 0).toBe(2)
   })
 
   it('says what is wrong with a kit before anything installs', async () => {
     const dir = copyKit((m) => m, {
-      'agents/bad.md':
+      'schedules/bad.md':
         '---\nname: Bad\ntrigger: { changes: Nowhere }\nruns: { script: skills/none/run.js }\ntouches: [Elsewhere]\neffects: [fly]\n---\n',
     })
     await expect(install(world, dir, ctx)).rejects.toThrow(

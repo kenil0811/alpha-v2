@@ -1,6 +1,6 @@
 // Where a table sits in its module (core step 3a, Kenil's yes 27 Oct): a relation can be part of
 // the row it points at (a deal's Financials are part of the deal), and a table can be setup (what
-// the module's agents read). A module's tabs are its main tables: neither part of another nor
+// the module's schedules read). A module's tabs are its main tables: neither part of another nor
 // setup. No roles, no order to keep, no cap: the place falls out of what the rows are.
 import { all, json, one, parse, run, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
@@ -43,7 +43,7 @@ export function setSetup(shape: Shape, tableId: string, setup: boolean, ctx: Wri
       actor: ctx.actor,
       kind: 'shaped',
       words: setup
-        ? `${table.name} is setup for ${table.module.name}'s agents now, under Agents and notes.`
+        ? `${table.name} is setup for ${table.module.name}'s schedules now, under Schedules and notes.`
         : `${table.name} is one of ${table.module.name}'s own tables again.`,
       data: { table: table.id, setup },
       user: ctx.user ?? null,

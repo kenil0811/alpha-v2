@@ -1,7 +1,7 @@
-// An agent's drafts (design §7, §12): a kit's script drafts an email, which waits on a card with
+// A schedule's drafts (design §7, §12): a kit's script drafts an email, which waits on a card with
 // the whole of it. The person can change it, send it from their own mail, or say Not now with a
-// reason, and the agent is told what became of each draft on its next run. After three unchanged
-// sends of one agent's one kind of message the card offers Always: a standing permission that
+// reason, and the schedule is told what became of each draft on its next run. After three unchanged
+// sends of one schedule's one kind of message the card offers Always: a standing permission that
 // then sends that kind without a card, each one a line on Home. Scripts reach no network: the
 // core sends, through the person's connection.
 import { refusedBy } from '../gates/gates.ts'
@@ -11,7 +11,7 @@ import { Refused } from '../world/kinds.ts'
 import type { Covered, Rule } from '../world/rules.ts'
 import type { User, World } from '../world/world.ts'
 
-export const DRAFT = 'agent_draft'
+export const DRAFT = 'schedule_draft'
 
 export interface Message {
   to: string
@@ -21,17 +21,17 @@ export interface Message {
 }
 
 export interface Draft {
-  agent: string
+  schedule: string
   module: string
   kind: string // the kind of message, in the kit's words: CIM request
-  key: string | null // one waiting draft per agent and key (a deal): a newer one replaces it
+  key: string | null // one waiting draft per schedule and key (a deal): a newer one replaces it
   connector: string | null // the connector it goes from; none: the person's mail, whichever sends
   message: Message
   about: { table: string; row: string } | null
   note: string | null // where the address came from, and the like
 }
 
-// What became of a draft, handed to its agent's next run.
+// What became of a draft, handed to its schedule's next run.
 export interface Outcome {
   key: string | null
   kind: string
@@ -66,7 +66,7 @@ export class Drafts {
   private sender: Sender
   private owner: User
   // the drafter runs again once its draft is decided, to hear what became of it
-  private back: (agent: string, module: string) => void
+  private back: (schedule: string, module: string) => void
   // the cards being sent right now: a second Send it on one of them is turned away (item 10 of
   // the problems list, 24 Oct), and a send that fails leaves the card waiting as it was
   private sending = new Set<string>()
@@ -75,7 +75,7 @@ export class Drafts {
     world: World,
     sender: Sender,
     owner: User,
-    back: (agent: string, module: string) => void = () => {},
+    back: (schedule: string, module: string) => void = () => {},
   ) {
     this.world = world
     this.sender = sender
@@ -83,13 +83,13 @@ export class Drafts {
     this.back = back
   }
 
-  covered(d: Pick<Draft, 'agent' | 'module' | 'kind'>): Covered {
-    return { action: 'send_email', agent: d.agent, module: d.module, place: { kind: d.kind } }
+  covered(d: Pick<Draft, 'schedule' | 'module' | 'kind'>): Covered {
+    return { action: 'send_email', schedule: d.schedule, module: d.module, place: { kind: d.kind } }
   }
 
-  sentence(d: Pick<Draft, 'agent' | 'module' | 'kind'>): string {
+  sentence(d: Pick<Draft, 'schedule' | 'module' | 'kind'>): string {
     const m = this.world.shape.module(d.module)?.name ?? 'its module'
-    return `Always send ${m}'s ${plural(d.kind)} (drafted by ${d.agent}) without asking`
+    return `Always send ${m}'s ${plural(d.kind)} (drafted by ${d.schedule}) without asking`
   }
 
   private aboutWords(d: Draft): string {
@@ -109,7 +109,7 @@ export class Drafts {
       throw new Refused('A draft needs a subject and a body.')
     if (d.about && !this.world.records.get(d.about.row))
       throw new Refused('The row the draft is about is not there.')
-    this.denied(d, d.message, { kind: 'agent', id: d.agent }, run)
+    this.denied(d, d.message, { kind: 'schedule', id: d.schedule }, run)
     // under a standing permission, an address the person has sent this kind to before goes at
     // once; a new recipient is a card of its own, saying so (Kenil, 24 Oct, item 7)
     const p = this.world.rules.covering(this.covered(d))
@@ -126,10 +126,10 @@ export class Drafts {
       for (const c of this.world.cards.waiting())
         if (c.call?.tool === DRAFT) {
           const was = c.call.input as Draft
-          if (was.agent === d.agent && was.module === d.module && was.key === d.key)
+          if (was.schedule === d.schedule && was.module === d.module && was.key === d.key)
             this.world.cards.withdraw(
               c.id,
-              { kind: 'agent', id: d.agent },
+              { kind: 'schedule', id: d.schedule },
               'A newer draft replaces it.',
             )
         }
@@ -140,7 +140,7 @@ export class Drafts {
       words: `Send the ${d.kind}${this.aboutWords(d)} to ${m.to}${p ? ', a new recipient' : ''}?`,
       detail: `To: ${m.to}${m.cc ? `\nCc: ${m.cc}` : ''}\nSubject: ${m.subject}\n\n${m.body}`,
       restsOn: [
-        `${d.agent}'s draft${d.note ? ` (${d.note})` : ''}`,
+        `${d.schedule}'s draft${d.note ? ` (${d.note})` : ''}`,
         ...(went ? [`It went to ${m.to} on ${went.slice(0, 10)} already.`] : []),
         ...(p && !went
           ? [
@@ -151,7 +151,7 @@ export class Drafts {
       cannotUndo: 'Once it has gone, it cannot be called back.',
       options: ['Send it', 'Not now'],
       call: { tool: DRAFT, input: d },
-      actor: { kind: 'agent', id: d.agent },
+      actor: { kind: 'schedule', id: d.schedule },
       user: this.owner.id,
       module: d.module,
       run,
@@ -194,7 +194,7 @@ export class Drafts {
     this.world.rules.decided(this.covered(d), { yes: true, changed, card: cardId }, ctx)
     this.outcome(d, m, 'sent', null, changed, ctx.actor)
     if (always) this.world.rules.grant(this.covered(d), this.sentence(d), { ...ctx, card: cardId })
-    this.back(d.agent, d.module)
+    this.back(d.schedule, d.module)
     return card
   }
 
@@ -213,7 +213,7 @@ export class Drafts {
       false,
       ctx.actor,
     )
-    this.back(d.agent, d.module)
+    this.back(d.schedule, d.module)
     return card
   }
 
@@ -221,7 +221,7 @@ export class Drafts {
   private denied(
     d: Draft,
     m: Message,
-    actor: { kind: 'agent' | 'person'; id: string },
+    actor: { kind: 'schedule' | 'person'; id: string },
     run: string | null,
   ): void {
     const deny = this.world.rules.judge({
@@ -231,7 +231,7 @@ export class Drafts {
       site: null,
       table: null,
       module: d.module,
-      agent: d.agent,
+      schedule: d.schedule,
       own: false,
     }).deny
     if (!deny) return
@@ -254,11 +254,11 @@ export class Drafts {
       { actor, user: this.owner.id, run },
     )
     this.world.line({
-      actor: { kind: 'agent', id: d.agent },
+      actor: { kind: 'schedule', id: d.schedule },
       kind: 'told',
-      words: `${d.agent}: Sent the ${d.kind}${this.aboutWords(d)} to ${m.to} (your standing permission).`,
+      words: `${d.schedule}: Sent the ${d.kind}${this.aboutWords(d)} to ${m.to} (your standing permission).`,
       data: {
-        agent: d.agent,
+        schedule: d.schedule,
         ...(d.about ? { about: { table: d.about.table, rows: [d.about.row] } } : {}),
       },
       user: this.owner.id,
@@ -284,7 +284,7 @@ export class Drafts {
           ? `Sent the ${d.kind}${this.aboutWords(d)} to ${m.to}${changed ? ', changed first' : ''}.`
           : `Did not send the ${d.kind}${this.aboutWords(d)}: ${reason}.`,
       data: {
-        agent: d.agent,
+        schedule: d.schedule,
         module: d.module,
         key: d.key,
         kind: d.kind,
@@ -300,33 +300,36 @@ export class Drafts {
     })
   }
 
-  // Whether this kind of message has gone from this agent to this address before, on the
+  // Whether this kind of message has gone from this schedule to this address before, on the
   // person's yes or under their standing permission: the journal's own record of every send.
-  private approved(d: Pick<Draft, 'agent' | 'module' | 'kind'>, to: string): boolean {
+  private approved(d: Pick<Draft, 'schedule' | 'module' | 'kind'>, to: string): boolean {
     return !!one(
       this.world.db,
       `SELECT 1 FROM journal WHERE kind = 'draft_decided' AND module_id = ?
-         AND json_extract(data, '$.agent') = ? AND json_extract(data, '$.kind') = ?
+         AND json_extract(data, '$.schedule') = ? AND json_extract(data, '$.kind') = ?
          AND json_extract(data, '$.outcome') = 'sent' AND lower(json_extract(data, '$.to')) = lower(?)`,
       d.module,
-      d.agent,
+      d.schedule,
       d.kind,
       to.trim(),
     )
   }
 
-  // When this agent sent this thing (its kind and key) to this address, if it did.
-  private wentOn(d: Pick<Draft, 'agent' | 'module' | 'kind' | 'key'>, to: string): string | null {
+  // When this schedule sent this thing (its kind and key) to this address, if it did.
+  private wentOn(
+    d: Pick<Draft, 'schedule' | 'module' | 'kind' | 'key'>,
+    to: string,
+  ): string | null {
     if (!d.key) return null
     return (
       one<{ at: string }>(
         this.world.db,
         `SELECT at FROM journal WHERE kind = 'draft_decided' AND module_id = ?
-           AND json_extract(data, '$.agent') = ? AND json_extract(data, '$.kind') = ?
+           AND json_extract(data, '$.schedule') = ? AND json_extract(data, '$.kind') = ?
            AND json_extract(data, '$.key') = ? AND json_extract(data, '$.outcome') = 'sent'
            AND lower(json_extract(data, '$.to')) = lower(?) ORDER BY id DESC LIMIT 1`,
         d.module,
-        d.agent,
+        d.schedule,
         d.kind,
         d.key,
         to.trim(),
@@ -334,16 +337,16 @@ export class Drafts {
     )
   }
 
-  // What became of an agent's drafts since it last ran, for its next run.
-  outcomes(agent: string, module: string, since: string | null): Outcome[] {
+  // What became of a schedule's drafts since it last ran, for its next run.
+  outcomes(schedule: string, module: string, since: string | null): Outcome[] {
     return all<{ at: string; data: string }>(
       this.world.db,
       "SELECT at, data FROM journal WHERE kind = 'draft_decided' AND module_id = ? AND at > ? ORDER BY id",
       module,
       since ?? '',
     )
-      .map((r) => ({ at: r.at, d: parse<Outcome & { agent: string }>(r.data, {} as never) }))
-      .filter((r) => r.d.agent === agent)
+      .map((r) => ({ at: r.at, d: parse<Outcome & { schedule: string }>(r.data, {} as never) }))
+      .filter((r) => r.d.schedule === schedule)
       .map(({ at, d }) => ({
         key: d.key,
         kind: d.kind,
@@ -363,7 +366,7 @@ export class Drafts {
     const d = card.call.input as Draft
     const rec = d.about ? this.world.records.get(d.about.row) : undefined
     return {
-      agent: d.agent,
+      schedule: d.schedule,
       kind: d.kind,
       message: d.message,
       note: d.note,

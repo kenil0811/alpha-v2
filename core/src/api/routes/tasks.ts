@@ -177,7 +177,7 @@ export function registerTasks(ctx: Ctx): void {
     repeat: z.string().nullable().optional(),
     priority: z.enum(['high', 'normal', 'low']).optional(),
     owner: z
-      .object({ kind: z.enum(['person', 'alpha', 'agent']), id: z.string().nullable().optional() })
+      .object({ kind: z.enum(['person', 'alpha']), id: z.string().nullable().optional() })
       .optional(),
     parent: z.string().nullable().optional(),
     on: z

@@ -393,7 +393,7 @@ function Work({ steps }: { steps: Step[] }) {
   )
 }
 
-// The words before the caret that address an agent: "@" at the start or after a space, then a name.
+// The words before the caret that address a schedule: "@" at the start or after a space, then a name.
 export function mentionAt(text: string): string | null {
   const m = /(?:^|\s)@([^@\n]*)$/.exec(text)
   return m ? (m[1] ?? '') : null
@@ -424,23 +424,23 @@ function Composer({
     for (const f of Array.from(files ?? []))
       await api.upload(f).catch(() => onProblem(`${f.name} did not go in.`))
   }
-  // "@" suggests the agents of every module; loaded the first time it is typed
-  const [agents, setAgents] = useState<string[] | null>(null)
+  // "@" suggests the schedules of every module; loaded the first time it is typed
+  const [schedules, setSchedules] = useState<string[] | null>(null)
   const [query, setQuery] = useState<string | null>(null)
   const [pick, setPick] = useState(0)
   const shown =
-    query === null || !agents
+    query === null || !schedules
       ? []
-      : agents.filter((a) => a.toLowerCase().startsWith(query.toLowerCase())).slice(0, 6)
+      : schedules.filter((a) => a.toLowerCase().startsWith(query.toLowerCase())).slice(0, 6)
   const type = (w: string, caret: number) => {
     setWords(w)
     const q = mentionAt(w.slice(0, caret))
     setQuery(q)
     setPick(0)
-    if (q !== null && !agents)
+    if (q !== null && !schedules)
       api.get<WorkingModuleView[]>('/api/working').then(
-        (ms) => setAgents([...new Set(ms.flatMap((m) => m.agents.map((a) => a.name)))]),
-        () => setAgents([]),
+        (ms) => setSchedules([...new Set(ms.flatMap((m) => m.schedules.map((a) => a.name)))]),
+        () => setSchedules([]),
       )
   }
   const choose = (name: string) => {
@@ -491,7 +491,7 @@ function Composer({
       {shown.length > 0 && (
         <div
           role="listbox"
-          aria-label="Agents"
+          aria-label="Schedules"
           className="absolute inset-x-3 bottom-full mb-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-pop"
         >
           {shown.map((a, i) => (
@@ -520,7 +520,7 @@ function Composer({
         onChange={(e) => type(e.target.value, e.target.selectionStart)}
         onKeyDown={key}
         onBlur={() => setQuery(null)}
-        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha, or @ an agent'}
+        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha, or @ a schedule'}
         aria-label={from ? `Ask about ${from.name}` : 'Message Alpha'}
         className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
       />

@@ -2,7 +2,7 @@
 // and says what it saw. The runner (run.ts) judges every step's checks here.
 import { join } from 'node:path'
 import { z } from 'zod'
-import { agents } from '../modules/agents.ts'
+import { schedules } from '../modules/schedules.ts'
 import { printPage } from '../pages/pages.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
@@ -24,11 +24,11 @@ export const Check = z.union([
     place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup', 'people']) }),
   }),
   // what the model's use cost, kept (core plan step 5): under a module (Alpha's, asked on Home),
-  // an agent or a model, more than nothing
+  // a schedule or a model, more than nothing
   z.object({
     spent: z.object({
       module: z.string().optional(),
-      agent: z.string().optional(),
+      schedule: z.string().optional(),
       model: z.string().optional(),
     }),
   }),
@@ -93,7 +93,7 @@ export const Check = z.union([
   z.object({
     refused: z.object({ connector: z.string(), host: z.string(), count: z.number() }),
   }),
-  z.object({ agents_on: z.number() }),
+  z.object({ schedules_on: z.number() }),
   z.object({ last_run: z.enum(['ok', 'failed', 'stopped']) }),
   z.object({ looked_up_from: z.object({ table: z.string(), url: z.string() }) }),
   z.object({ question: z.object({ words: z.string().optional(), options: z.string() }) }),
@@ -213,11 +213,11 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
     const rows = kept
       ? (world.db
           .prepare(
-            'SELECT module_id, agent, model, input + output + cache_read + cache_write AS tokens, usd FROM spend',
+            'SELECT module_id, schedule, model, input + output + cache_read + cache_write AS tokens, usd FROM spend',
           )
           .all() as {
           module_id: string | null
-          agent: string | null
+          schedule: string | null
           model: string
           tokens: number
           usd: number | null
@@ -227,7 +227,7 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       (r) =>
         (!c.module ||
           ((r.module_id && world.shape.module(r.module_id)?.name) || 'Alpha') === c.module) &&
-        (!c.agent || r.agent === c.agent) &&
+        (!c.schedule || r.schedule === c.schedule) &&
         (!c.model || r.model === c.model),
     )
     const usd = mine.reduce((s, r) => s + (r.usd ?? 0), 0)
@@ -484,9 +484,13 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       saw: String(n),
     }
   }
-  if ('agents_on' in check) {
-    const n = agents(world).filter((a) => a.state === 'on').length
-    return { check: `agents on: ${check.agents_on}`, ok: n === check.agents_on, saw: String(n) }
+  if ('schedules_on' in check) {
+    const n = schedules(world).filter((a) => a.state === 'on').length
+    return {
+      check: `schedules on: ${check.schedules_on}`,
+      ok: n === check.schedules_on,
+      saw: String(n),
+    }
   }
   if ('last_run' in check) {
     const r = world.db

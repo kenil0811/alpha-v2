@@ -1,12 +1,12 @@
-// Agents (design §11): an agent is a file `agents/<name>.md` in its module, with front matter
-// (its trigger, what it runs, what it may touch) and its brief. The world keeps each agent's state
+// Schedules (design §11): a schedule is a file `schedules/<name>.md` in its module, with front matter
+// (its trigger, what it runs, what it may touch) and its brief. The world keeps each schedule's state
 // (on or paused) and its trigger as read; the file stays the truth.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  AgentFront,
-  type AgentFrontMatter,
   type Runs,
+  ScheduleFront,
+  type ScheduleFrontMatter,
   type Trigger,
   triggersOf,
 } from '@alpha/kit-sdk'
@@ -18,7 +18,7 @@ import { Refused } from '../world/kinds.ts'
 import type { Module } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 
-// The trigger, the script and the front matter are the kit API's (kit-sdk), schema version 1.
+// The trigger, the script and the front matter are the kit API's (kit-sdk).
 export type { Runs, Trigger }
 
 // A trigger as the person reads it.
@@ -28,7 +28,7 @@ export function whenWords(t: Trigger | Trigger[] | null): string {
 
 function oneWhen(t: Trigger): string {
   if ('every' in t) return `every ${t.every}${t.at ? ` at ${t.at}` : ''}`
-  if ('cron' in t) return `on the schedule ${t.cron}`
+  if ('cron' in t) return `at the times ${t.cron}`
   if ('filed' in t) return 'when a document is filed'
   const tables = Array.isArray(t.changes) ? t.changes : [t.changes]
   return `when ${tables.join(' or ')} change${tables.length === 1 ? 's' : ''}`
@@ -69,7 +69,7 @@ function nextRunOf(t: Trigger, lastRunAt: string | null, nowMs: number): Date | 
   return null
 }
 
-export interface Agent {
+export interface Schedule {
   id: string
   module: string
   name: string
@@ -82,7 +82,7 @@ export interface Agent {
   lastRunAt: string | null
 }
 
-export interface AgentFile {
+export interface ScheduleFile {
   name: string
   description: string | null
   trigger: Trigger | Trigger[] | null
@@ -90,21 +90,21 @@ export interface AgentFile {
   touches: string[]
   effects: string[] | null // null: the file says nothing, an older one
   needs: { connectors: string[]; tables: string[] }
-  input: AgentFrontMatter['input'] | null
+  input: ScheduleFrontMatter['input'] | null
   budget: { minutes: number; runs: number }
   brief: string
 }
 
-export function readAgent(file: string): AgentFile {
-  return parseAgent(readFileSync(file, 'utf8'), file)
+export function readSchedule(file: string): ScheduleFile {
+  return parseSchedule(readFileSync(file, 'utf8'), file)
 }
 
-export function parseAgent(text: string, file: string): AgentFile {
+export function parseSchedule(text: string, file: string): ScheduleFile {
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text)
   if (!m) throw new Refused(`${file} has no front matter.`)
-  const front = AgentFront.safeParse(parse(m[1] as string))
+  const front = ScheduleFront.safeParse(parse(m[1] as string))
   if (!front.success)
-    throw new Refused(`The agent ${file} is not right: ${z.prettifyError(front.error)}`)
+    throw new Refused(`The schedule ${file} is not right: ${z.prettifyError(front.error)}`)
   const name = front.data.name ?? (file.split('/').pop() as string).replace(/\.md$/, '')
   return {
     name,
@@ -120,27 +120,27 @@ export function parseAgent(text: string, file: string): AgentFile {
   }
 }
 
-// The module's agents as its files say: new ones start in `state`, known ones keep theirs, and
-// one whose file is gone goes. An agent is known by its file first, then its name, so a rename
+// The module's schedules as its files say: new ones start in `state`, known ones keep theirs, and
+// one whose file is gone goes. A schedule is known by its file first, then its name, so a rename
 // in the file keeps it whole: its state, last run and history (item 47, 25 Oct). Returns how
 // many there are.
-export function syncAgents(world: World, module: Module, state: 'on' | 'paused'): number {
-  const dir = join(module.dir, 'agents')
+export function syncSchedules(world: World, module: Module, state: 'on' | 'paused'): number {
+  const dir = join(module.dir, 'schedules')
   const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.md')) : []
-  const kept = new Set<string>() // the ids of the agents still there
+  const kept = new Set<string>() // the ids of the schedules still there
   for (const f of files) {
-    const a = readAgent(join(dir, f))
+    const a = readSchedule(join(dir, f))
     const byFile = all<{ id: string; name: string }>(
       world.db,
-      'SELECT id, name FROM agents WHERE module_id = ? AND file = ?',
+      'SELECT id, name FROM schedules WHERE module_id = ? AND file = ?',
       module.id,
-      `agents/${f}`,
+      `schedules/${f}`,
     )[0]
     const known =
       (byFile && !kept.has(byFile.id) ? byFile : undefined) ??
       all<{ id: string; name: string }>(
         world.db,
-        'SELECT id, name FROM agents WHERE module_id = ? AND name = ?',
+        'SELECT id, name FROM schedules WHERE module_id = ? AND name = ?',
         module.id,
         a.name,
       ).find((x) => !kept.has(x.id))
@@ -148,9 +148,9 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
       kept.add(known.id)
       run(
         world.db,
-        'UPDATE agents SET name = ?, file = ?, trigger = ?, runs = ?, description = ? WHERE id = ?',
+        'UPDATE schedules SET name = ?, file = ?, trigger = ?, runs = ?, description = ? WHERE id = ?',
         a.name,
-        `agents/${f}`,
+        `schedules/${f}`,
         json(a.trigger),
         json(a.runs),
         a.description,
@@ -161,7 +161,7 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
           actor: { kind: 'system' },
           kind: 'shaped',
           words: `${known.name} is now called ${a.name}.`,
-          data: { agent: known.id, from: known.name, to: a.name },
+          data: { schedule: known.id, from: known.name, to: a.name },
           module: module.id,
         })
     } else {
@@ -169,11 +169,11 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
       kept.add(id)
       run(
         world.db,
-        'INSERT INTO agents (id, module_id, name, file, state, trigger, runs, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO schedules (id, module_id, name, file, state, trigger, runs, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         id,
         module.id,
         a.name,
-        `agents/${f}`,
+        `schedules/${f}`,
         state,
         json(a.trigger),
         json(a.runs),
@@ -183,18 +183,18 @@ export function syncAgents(world: World, module: Module, state: 'on' | 'paused')
   }
   for (const a of all<{ id: string; name: string }>(
     world.db,
-    'SELECT id, name FROM agents WHERE module_id = ?',
+    'SELECT id, name FROM schedules WHERE module_id = ?',
     module.id,
   ))
     if (!kept.has(a.id)) {
-      run(world.db, 'DELETE FROM agents WHERE id = ?', a.id)
+      run(world.db, 'DELETE FROM schedules WHERE id = ?', a.id)
       // its rules go with it (core step 2); the journal keeps them
-      world.rules.removeScoped({ agent: a.name }, { actor: { kind: 'system' } })
+      world.rules.removeScoped({ schedule: a.name }, { actor: { kind: 'system' } })
     }
   return kept.size
 }
 
-interface AgentRow {
+interface ScheduleRow {
   id: string
   module_id: string
   name: string
@@ -207,10 +207,10 @@ interface AgentRow {
   last_run_at: string | null
 }
 
-export function agents(world: World, moduleId?: string): Agent[] {
-  return all<AgentRow>(
+export function schedules(world: World, moduleId?: string): Schedule[] {
+  return all<ScheduleRow>(
     world.db,
-    `SELECT * FROM agents ${moduleId ? 'WHERE module_id = ?' : ''} ORDER BY name`,
+    `SELECT * FROM schedules ${moduleId ? 'WHERE module_id = ?' : ''} ORDER BY name`,
     ...(moduleId ? [moduleId] : []),
   ).map((r) => ({
     id: r.id,
@@ -226,21 +226,21 @@ export function agents(world: World, moduleId?: string): Agent[] {
   }))
 }
 
-export function setAgentState(
+export function setScheduleState(
   world: World,
   id: string,
   state: 'on' | 'paused',
   user: string,
 ): void {
-  const a = agents(world).find((x) => x.id === id)
-  if (!a) throw new Refused('That agent is not there.')
+  const a = schedules(world).find((x) => x.id === id)
+  if (!a) throw new Refused('That schedule is not there.')
   if (a.state === state) return
-  run(world.db, 'UPDATE agents SET state = ? WHERE id = ?', state, id)
+  run(world.db, 'UPDATE schedules SET state = ? WHERE id = ?', state, id)
   world.line({
     actor: { kind: 'person', id: user },
-    kind: 'agent',
+    kind: 'schedule',
     words: state === 'on' ? `Turned on ${a.name}.` : `Paused ${a.name}.`,
-    data: { agent: id, state },
+    data: { schedule: id, state },
     user,
     module: a.module,
   })

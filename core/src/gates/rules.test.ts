@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { worldTools } from '../engine/tools/index.ts'
 import { Drafts } from '../modules/drafts.ts'
 import { reach } from '../modules/runs/reach.ts'
-import type { AgentRunner } from '../modules/runs/runner.ts'
+import type { ScheduleRunner } from '../modules/runs/runner.ts'
 import { Refused } from '../world/kinds.ts'
 import type { RuleSpec } from '../world/rules.ts'
 import { SAVE_RULE } from '../world/rules.ts'
@@ -43,7 +43,7 @@ const send = (to: string): GateInput => ({
 const outside = (side: 'allow' | 'deny' = 'deny'): RuleSpec => ({
   side,
   module: null,
-  agent: null,
+  schedule: null,
   covers:
     side === 'deny'
       ? { does: ['send'], to: { outside: ['avilo.com'] } }
@@ -64,7 +64,7 @@ describe('a rule', () => {
       world.rules.describe({
         side: 'deny',
         module: m.id,
-        agent: null,
+        schedule: null,
         covers: { does: ['remove'], tables: [deals.id] },
       }),
     ).toBe('Alpha must never delete rows in Deals in DealPilot.')
@@ -72,7 +72,7 @@ describe('a rule', () => {
       world.rules.describe({
         side: 'allow',
         module: null,
-        agent: 'Watson',
+        schedule: 'Watson',
         covers: { does: ['send'], through: ['gmail'] },
       }),
     ).toBe('Watson may send anything through gmail without asking.')
@@ -157,7 +157,7 @@ describe('an approved deny', () => {
       {
         side: 'deny',
         module: null,
-        agent: null,
+        schedule: null,
         covers: { does: ['send'], to: { inside: ['example.com'] } },
         said: null,
       },
@@ -183,7 +183,7 @@ describe('an approved deny', () => {
       {
         side: 'deny',
         module: m.id,
-        agent: null,
+        schedule: null,
         covers: { does: ['remove'], tables: [deals.id] },
         said: null,
       },
@@ -208,13 +208,13 @@ describe('an approved deny', () => {
     expect(world.rules.get(r.id)?.revokedAt).not.toBeNull()
   })
 
-  it('refuses an agent’s draft, and the person’s own Send of it', async () => {
+  it('refuses a schedule’s draft, and the person’s own Send of it', async () => {
     const owner = world.owner()
     const m = world.shape.makeModule('Desk', { actor: alpha })
     const sent: unknown[] = []
     const drafts = new Drafts(world, { send: async (_c, msg) => void sent.push(msg) }, owner)
     const draft = (to: string) => ({
-      agent: 'Outreach',
+      schedule: 'Outreach',
       module: m.id,
       kind: 'quote request',
       key: null,
@@ -238,20 +238,20 @@ describe('an approved deny', () => {
     expect(sent).toEqual([])
   })
 
-  it('closes a site to an agent’s reader even on its module’s list', () => {
+  it('closes a site to a schedule’s reader even on its module’s list', () => {
     const m = world.shape.makeModule('DealPilot', { actor: alpha })
     mkdirSync(m.dir, { recursive: true })
     world.rules.save(
       {
         side: 'deny',
         module: null,
-        agent: null,
+        schedule: null,
         covers: { does: ['reach'], sites: ['crexi.com'] },
         said: null,
       },
       person,
     )
-    const runner = { world } as unknown as AgentRunner
+    const runner = { world } as unknown as ScheduleRunner
     expect(() =>
       reach(runner, m, 'https://www.crexi.com/listings', 'run_1', { user: null, turn: null }),
     ).toThrow(/^Refused by the person's rule: “Alpha must never open crexi.com/)
@@ -283,7 +283,7 @@ describe('what Alpha noticed', () => {
       {
         side: 'deny',
         module: null,
-        agent: null,
+        schedule: null,
         covers: { does: ['read', 'change', 'send'] },
         said: null,
       },

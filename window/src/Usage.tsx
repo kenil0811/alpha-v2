@@ -1,5 +1,5 @@
 // What the model was used for and what it cost, a month at a time (core plan step 5, Kenil's yes
-// 28 Oct): Settings › Usage: the month's total, then by module, by agent and by model,
+// 28 Oct): Settings › Usage: the month's total, then by module, by schedule and by model,
 // largest first. On the subscription the cost is what it would be on an API key, and says so.
 import type { UsageRow, UsageView } from '@alpha/core/usage'
 import { useEffect, useState } from 'react'
@@ -32,10 +32,10 @@ export function UsageSection() {
   return (
     <Section
       title="Usage"
-      about="What each use of the model cost: Alpha's turns under the module they were asked in, agents' runs under their agent. Counted from 28 Oct 2026."
+      about="What each use of the model cost: Alpha's turns under the module they were asked in, schedules' runs under their schedule. Counted from 28 Oct 2026."
     >
       {u && !u.months.length ? (
-        <Empty>Nothing used yet. Each turn and each agent's use of the model shows here.</Empty>
+        <Empty>Nothing used yet. Each turn and each schedule's use of the model shows here.</Empty>
       ) : (
         u && (
           <div className="flex flex-col gap-4">
@@ -71,7 +71,7 @@ export function UsageSection() {
               </p>
             )}
             <UsageTable title="By module" rows={u.byModule} />
-            {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
+            {u.bySchedule.length > 0 && <UsageTable title="By schedule" rows={u.bySchedule} />}
             <UsageTable
               title="By model"
               rows={u.byModel.map((r) => ({ ...r, name: MODEL_NAMES[r.name] ?? r.name }))}

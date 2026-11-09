@@ -14,7 +14,7 @@ CREATE TABLE meta (
 CREATE TABLE journal (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,
-  actor_kind TEXT NOT NULL CHECK (actor_kind IN ('person', 'alpha', 'agent', 'connector', 'system')),
+  actor_kind TEXT NOT NULL CHECK (actor_kind IN ('person', 'alpha', 'schedule', 'connector', 'system')),
   actor_id TEXT,
   source TEXT,
   kind TEXT NOT NULL,
@@ -293,7 +293,7 @@ CREATE TABLE rules (
   side TEXT NOT NULL CHECK (side IN ('allow', 'deny')),
   kind TEXT NOT NULL CHECK (kind IN ('approved', 'inferred')),
   module_id TEXT,
-  agent TEXT,
+  schedule TEXT,
   covers TEXT NOT NULL,
   source TEXT NOT NULL DEFAULT '{}',
   made_by TEXT NOT NULL,
@@ -325,7 +325,7 @@ CREATE TABLE spend (
   turn TEXT,
   run TEXT,
   module_id TEXT,
-  agent TEXT,
+  schedule TEXT,
   model TEXT NOT NULL,
   input INTEGER NOT NULL DEFAULT 0,
   output INTEGER NOT NULL DEFAULT 0,
@@ -337,7 +337,7 @@ CREATE TABLE spend (
 CREATE INDEX spend_at ON spend (at);
 CREATE INDEX spend_turn ON spend (turn);
 
--- ---- Kits and agents ----
+-- ---- Kits and schedules ----
 
 -- The kit a module came from, who keeps it, and who manages it.
 CREATE TABLE kits (
@@ -377,8 +377,8 @@ CREATE TABLE kit_changes (
   seen_at TEXT
 );
 
--- An agent as its file says, and whether it is on.
-CREATE TABLE agents (
+-- A schedule as its file says, and whether it is on.
+CREATE TABLE schedules (
   id TEXT PRIMARY KEY,
   module_id TEXT NOT NULL REFERENCES modules (id),
   name TEXT NOT NULL,
@@ -392,10 +392,10 @@ CREATE TABLE agents (
   UNIQUE (module_id, name)
 );
 
--- Each run of an agent or a script.
+-- Each run of a schedule or a script.
 CREATE TABLE runs (
   id TEXT PRIMARY KEY,
-  agent_id TEXT REFERENCES agents (id),
+  schedule_id TEXT REFERENCES schedules (id),
   module_id TEXT REFERENCES modules (id),
   started_at TEXT NOT NULL,
   ended_at TEXT,
@@ -403,7 +403,7 @@ CREATE TABLE runs (
   words TEXT,
   data TEXT NOT NULL DEFAULT '{}'
 );
-CREATE INDEX runs_agent ON runs (agent_id, started_at);
+CREATE INDEX runs_schedule ON runs (schedule_id, started_at);
 
 -- ---- People and organizations ----
 

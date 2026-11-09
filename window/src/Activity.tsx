@@ -1,4 +1,4 @@
-// Settings › Activity (design §11, Ledger; Kenil's 15, 6 Nov): what waits for the person, then every run of an agent or a reader and every read of a
+// Settings › Activity (design §11, Ledger; Kenil's 15, 6 Nov): what waits for the person, then every run of a schedule or a reader and every read of a
 // connection, newest first, in one list by day, with Alpha's turns that changed rows, removals
 // and reverts (core step 1). A run shows its time, name, module, state, one line of what
 // happened, how long it took and whether the model was used; it opens to its steps. Runs that
@@ -118,7 +118,7 @@ export function Activity({ version, cards }: { version: number; cards: CardView[
           <p className="mt-4 text-ink-2 text-md">
             {only === 'failed'
               ? 'Everything that ran finished.'
-              : 'Nothing has run on its own yet. Agents, readers and connections show their runs here, and Alpha its changes to your tables.'}
+              : 'Nothing has run on its own yet. Schedules, readers and connections show their runs here, and Alpha its changes to your tables.'}
           </p>
         )}
         {days.map(([day, list]) => (

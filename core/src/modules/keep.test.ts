@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
-import { agents } from './agents.ts'
 import { history } from './git.ts'
 import { keep } from './keep.ts'
+import { schedules } from './schedules.ts'
 
 let home: string
 let world: World
@@ -22,13 +22,13 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true })
 })
 
-const AGENT =
+const SCHEDULE =
   '---\nname: Reader\ntrigger: { every: day, at: "06:30" }\nruns: { script: skills/read/run.js }\n---\nReads the list each morning.\n'
 
 describe('keep', () => {
-  it('keeps a reader and its agent as commits, and the agent is on', async () => {
+  it('keeps a reader and its schedule as commits, and the schedule is on', async () => {
     const m = world.shape.makeModule('Listings', ctx)
-    await expect(keep(world, m, 'agents/reader.md', AGENT, ctx)).rejects.toThrow(
+    await expect(keep(world, m, 'schedules/reader.md', SCHEDULE, ctx)).rejects.toThrow(
       /skills\/read\/run.js, which is not kept yet/,
     )
     await keep(
@@ -45,17 +45,17 @@ describe('keep', () => {
       'export default async () => ({ words: "ok" })\n',
       ctx,
     )
-    const said = await keep(world, m, 'agents/reader.md', AGENT, ctx)
-    expect(said).toBe('Kept agents/reader.md in Listings; Reader is on, every day at 06:30.')
-    expect(agents(world, m.id).map((a) => [a.name, a.state])).toEqual([['Reader', 'on']])
+    const said = await keep(world, m, 'schedules/reader.md', SCHEDULE, ctx)
+    expect(said).toBe('Kept schedules/reader.md in Listings; Reader is on, every day at 06:30.')
+    expect(schedules(world, m.id).map((a) => [a.name, a.state])).toEqual([['Reader', 'on']])
     expect((await history(m.dir)).map((c) => c.message)).toEqual([
-      'Kept agents/reader.md',
+      'Kept schedules/reader.md',
       'Kept skills/read/run.js',
       'Kept skills/read/SKILL.md',
     ])
     expect(readFileSync(join(m.dir, 'skills/read/run.js'), 'utf8')).toContain('words')
-    expect(await keep(world, m, 'agents/reader.md', undefined, ctx)).toBe(
-      'agents/reader.md in Listings was already kept as it is.',
+    expect(await keep(world, m, 'schedules/reader.md', undefined, ctx)).toBe(
+      'schedules/reader.md in Listings was already kept as it is.',
     )
   })
 
@@ -71,7 +71,7 @@ describe('keep', () => {
       /needs front matter/,
     )
     await expect(
-      keep(world, m, 'agents/bad.md', '---\ntrigger: { every: fortnight }\n---\n', ctx),
+      keep(world, m, 'schedules/bad.md', '---\ntrigger: { every: fortnight }\n---\n', ctx),
     ).rejects.toThrow(/is not right/)
   })
 })

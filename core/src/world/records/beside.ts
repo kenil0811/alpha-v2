@@ -79,7 +79,7 @@ export function removedBefore(records: Records, table: Table, key: string): bool
 export function besideFrom(b: Beside): string {
   if (b.kind !== 'looked_up') return 'Alpha'
   const c = b.source?.connector
-  return c && !c.startsWith('agent:') ? `${c[0]?.toUpperCase() ?? ''}${c.slice(1)}` : 'the page'
+  return c && !c.startsWith('schedule:') ? `${c[0]?.toUpperCase() ?? ''}${c.slice(1)}` : 'the page'
 }
 export const resetWords = (b: Beside): string =>
   b.kind === 'looked_up' ? `what ${besideFrom(b)} says` : 'Alpha’s figure'

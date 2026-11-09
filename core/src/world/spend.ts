@@ -1,5 +1,5 @@
 // What each use of the model spent (core plan step 5, Kenil's yes 28 Oct): a row per model per use,
-// with its tokens and its cost, and what it served (a desk turn, an agent's run, a small ask).
+// with its tokens and its cost, and what it served (a desk turn, a schedule's run, a small ask).
 // Claude Code says a cost itself, at API prices; a session says running totals, so a turn's own
 // share is the total now less the total before. Nothing is capped: this only says what was spent.
 import { monthOf, monthSpan } from './day.ts'
@@ -20,7 +20,7 @@ export interface SpendFor {
   turn?: string | null
   run?: string | null
   module?: string | null
-  agent?: string | null
+  schedule?: string | null
 }
 
 export interface SpendRow {
@@ -29,7 +29,7 @@ export interface SpendRow {
   turn: string | null
   run: string | null
   module_id: string | null
-  agent: string | null
+  schedule: string | null
   model: string
   input: number
   output: number
@@ -91,14 +91,14 @@ export class Spend {
     for (const u of uses)
       run(
         this.db,
-        `INSERT INTO spend (at, kind, turn, run, module_id, agent, model, input, output, cache_read,
+        `INSERT INTO spend (at, kind, turn, run, module_id, schedule, model, input, output, cache_read,
           cache_write, usd, how) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         at,
         what.kind,
         what.turn ?? null,
         what.run ?? null,
         what.module ?? null,
-        what.agent ?? null,
+        what.schedule ?? null,
         u.model,
         u.input,
         u.output,

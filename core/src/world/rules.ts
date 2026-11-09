@@ -1,10 +1,10 @@
 // Rules (design §7, core step 2, Kenil's yes 27 Oct): one store of allows and denies, each
-// approved by the person or inferred by Alpha, scoped to all of Alpha, a module or an agent, and
+// approved by the person or inferred by Alpha, scoped to all of Alpha, a module or a schedule, and
 // covering a call in parts code matches: what it does (read, change, remove, send, reach a site,
 // sign in), through which tool, to which addresses, which sites, which tables. Only the person
 // makes a rule approved (a wall). The gates check every call against the live rules before it
 // runs (gates.ts). Standing permissions (design §12) are approved allow rules that cover exactly
-// one agent's one kind of thing: one is granted only on a card that offered Always, and a card
+// one schedule's one kind of thing: one is granted only on a card that offered Always, and a card
 // offers Always only after three unchanged yeses in a row for exactly that.
 import type { Effect } from '@alpha/connector-sdk'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
@@ -29,7 +29,7 @@ export interface Covers {
 export interface RuleSpec {
   side: 'allow' | 'deny'
   module: string | null
-  agent: string | null
+  schedule: string | null
   covers: Covers
   said: string | null // the words it was asked in
 }
@@ -54,15 +54,15 @@ export interface CallFacts {
   site: string | null
   table: string | null
   module: string | null
-  agent: string | null
+  schedule: string | null
   own: boolean // the rows it writes or removes are the person's own
 }
 
-// What a yes or a standing permission covers: the action (send_email, file_from_mail), the agent
-// and its module when an agent asks, and the place (a kind of message; a sender, a row and a kind).
+// What a yes or a standing permission covers: the action (send_email, file_from_mail), the schedule
+// and its module when a schedule asks, and the place (a kind of message; a sender, a row and a kind).
 export interface Covered {
   action: string
-  agent: string | null
+  schedule: string | null
   module: string | null
   place: Record<string, string>
 }
@@ -79,7 +79,7 @@ export const ALWAYS_AFTER = 3
 // One key per thing covered, whatever order its place was written in.
 export function keyOf(c: Covered): string {
   const place = Object.fromEntries(Object.entries(c.place).sort(([a], [b]) => a.localeCompare(b)))
-  return JSON.stringify([c.action, c.agent, c.module, place])
+  return JSON.stringify([c.action, c.schedule, c.module, place])
 }
 
 interface RuleRow {
@@ -89,7 +89,7 @@ interface RuleRow {
   side: 'allow' | 'deny'
   kind: 'approved' | 'inferred'
   module_id: string | null
-  agent: string | null
+  schedule: string | null
   covers: string
   source: string
   made_by: string
@@ -106,7 +106,7 @@ const toRule = (r: RuleRow): Rule => ({
   side: r.side,
   kind: r.kind,
   module: r.module_id,
-  agent: r.agent,
+  schedule: r.schedule,
   covers: parse<Covers>(r.covers, { does: [] }),
   source: parse(r.source, {}),
   madeBy: r.made_by,
@@ -120,7 +120,7 @@ const coveredOf = (r: Rule): Covered | null =>
   r.covers.always
     ? {
         action: r.covers.always.action,
-        agent: r.agent,
+        schedule: r.schedule,
         module: r.module,
         place: r.covers.always.place,
       }
@@ -149,13 +149,13 @@ const within = (host: string, d: string) => host === d || host.endsWith(`.${d}`)
 // A send's recipients: a deny covers it when any one of them is one it names (a mixed send to the
 // firm and outside is still outside), an allow only when every one is (Kenil's look, 27 Oct).
 export function covers(
-  r: Pick<Rule, 'side' | 'module' | 'agent' | 'covers'>,
+  r: Pick<Rule, 'side' | 'module' | 'schedule' | 'covers'>,
   f: CallFacts,
 ): boolean {
   const c = r.covers
   if (c.always) return false // a standing permission covers its own one thing (covering)
   if (r.module && r.module !== f.module) return false
-  if (r.agent && r.agent.toLowerCase() !== (f.agent ?? '').toLowerCase()) return false
+  if (r.schedule && r.schedule.toLowerCase() !== (f.schedule ?? '').toLowerCase()) return false
   if (!c.does.includes(doesOf(f))) return false
   if (c.through?.length && !c.through.some((t) => f.tool === t || f.tool.startsWith(`${t}.`)))
     return false
@@ -201,7 +201,7 @@ export class Rules {
   }
 
   // A rule in code's own words: what it holds, never what the model said it holds.
-  describe(s: Pick<RuleSpec, 'side' | 'module' | 'agent' | 'covers'>): string {
+  describe(s: Pick<RuleSpec, 'side' | 'module' | 'schedule' | 'covers'>): string {
     const c = s.covers
     const tables = (c.tables ?? []).map((t) => this.shape.table(t)?.name ?? 'a table removed since')
     const what = c.does.map((d) => {
@@ -223,8 +223,8 @@ export class Rules {
     })
     const through = c.through?.length ? ` through ${or(c.through)}` : ''
     const module = s.module ? this.shape.module(s.module)?.name : null
-    const where = module ? ` in ${module}` : s.agent ? '' : ', anywhere in Alpha'
-    const who = s.agent ?? 'Alpha'
+    const where = module ? ` in ${module}` : s.schedule ? '' : ', anywhere in Alpha'
+    const who = s.schedule ?? 'Alpha'
     return s.side === 'deny'
       ? `${who} must never ${or(what)}${through}${where}.`
       : `${who} may ${or(what)}${through}${where} without asking.`
@@ -301,14 +301,16 @@ export class Rules {
   }
 
   // The approved rules in force where a turn or a run works, in their words, for the model.
-  inForce(where: { module?: string | null; agent?: string | null } = {}): string[] {
+  inForce(where: { module?: string | null; schedule?: string | null } = {}): string[] {
     return this.live()
       .filter(
         (r) =>
           r.kind === 'approved' &&
           !r.covers.always &&
           (!r.module || !where.module || r.module === where.module) &&
-          (!r.agent || !where.agent || r.agent.toLowerCase() === where.agent.toLowerCase()),
+          (!r.schedule ||
+            !where.schedule ||
+            r.schedule.toLowerCase() === where.schedule.toLowerCase()),
       )
       .map((r) => r.words)
   }
@@ -323,7 +325,7 @@ export class Rules {
     const id = newId('rule')
     run(
       this.db,
-      `INSERT INTO rules (id, words, said, side, kind, module_id, agent, covers, source, made_by,
+      `INSERT INTO rules (id, words, said, side, kind, module_id, schedule, covers, source, made_by,
          made_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       words,
@@ -331,7 +333,7 @@ export class Rules {
       s.side,
       kind,
       s.module,
-      s.agent,
+      s.schedule,
       json(s.covers),
       json(source),
       `${ctx.actor.kind}${ctx.actor.id ? `:${ctx.actor.id}` : ''}`,
@@ -443,19 +445,19 @@ export class Rules {
     })
   }
 
-  // A module or an agent removed: its rules go with it; the journal keeps them.
-  removeScoped(where: { module?: string; agent?: string }, ctx: WriteCtx): number {
+  // A module or a schedule removed: its rules go with it; the journal keeps them.
+  removeScoped(where: { module?: string; schedule?: string }, ctx: WriteCtx): number {
     const rules = this.list().filter(
       (r) =>
         (where.module && r.module === where.module) ||
-        (where.agent && r.agent?.toLowerCase() === where.agent.toLowerCase()),
+        (where.schedule && r.schedule?.toLowerCase() === where.schedule.toLowerCase()),
     )
     for (const r of rules) {
       run(this.db, 'DELETE FROM rules WHERE id = ?', r.id)
       append(this.db, {
         actor: ctx.actor,
         kind: 'rule_removed',
-        words: `A rule went with ${where.module ? 'its module' : 'its agent'}: ${r.words}`,
+        words: `A rule went with ${where.module ? 'its module' : 'its schedule'}: ${r.words}`,
         data: { rule: r.id },
         user: ctx.user ?? null,
         module: r.module,
@@ -524,7 +526,7 @@ export class Rules {
         {
           side: 'allow',
           module: c.module,
-          agent: c.agent,
+          schedule: c.schedule,
           covers: {
             does: [c.action === 'send_email' ? 'send' : 'change'],
             always: { action: c.action, place: c.place },

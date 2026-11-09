@@ -191,7 +191,7 @@ export function change(
 }
 
 // A state set; done or dropped makes a repeating task's next one, once.
-// A new state, journaled; `words` says it when an agent's run settles the task (what it did,
+// A new state, journaled; `words` says it when a schedule's run settles the task (what it did,
 // or why it waits).
 export function setState(
   tasks: Tasks,

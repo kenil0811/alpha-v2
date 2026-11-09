@@ -105,7 +105,7 @@ describe('the gate adapter', () => {
         {
           side: 'deny',
           module: null,
-          agent: null,
+          schedule: null,
           said: 'never email outside',
           covers: { does: ['send'], through, to: { outside: ['example.com'] } },
         },

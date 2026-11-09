@@ -1,4 +1,4 @@
-// Rows an agent puts to the person (design §12, D7: batch cards): one card in Needs you with the
+// Rows a schedule puts to the person (design §12, D7: batch cards): one card in Needs you with the
 // rows it is about, each with the few choices it offers (In or Left out; Draft a note or Not now)
 // and one button for all. A choice is the person's word on that row's field, journaled as when
 // they set it in the window, so a later run never writes over it; the card is answered when every
@@ -16,7 +16,7 @@ export interface ReviewInput {
   field: string // the choice field the person decides, by name
   choices: string[] // two or three of its choices, the first the usual yes
   rows: string[]
-  note: string | null // a field shown under each row: why the agent put it there
+  note: string | null // a field shown under each row: why the schedule put it there
 }
 
 export interface ReviewView {
@@ -40,7 +40,7 @@ export class Reviews {
   // its own.
   open(
     input: Omit<ReviewInput, 'table'> & { table: Table },
-    by: { agent: string; module: string; run: string },
+    by: { schedule: string; module: string; run: string },
   ): Card {
     const t = input.table
     const f = t.fields.find((x) => x.name === input.field)
@@ -63,7 +63,7 @@ export class Reviews {
         tool: REVIEW,
         input: { ...input, table: t.id, rows, choices: input.choices } satisfies ReviewInput,
       },
-      actor: { kind: 'agent', id: by.agent },
+      actor: { kind: 'schedule', id: by.schedule },
       module: by.module,
       run: by.run,
       user: this.owner,

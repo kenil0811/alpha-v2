@@ -373,7 +373,7 @@ export function revert(
     for (const t of trash)
       putInTrash(records, t.table, t.id, t.kept, t.to ?? backFrom.get(t.id) ?? line)
     tagVersions(records, versions, line.id)
-    // the people they name, and the agents that wake on rows, hear of what changed and came back
+    // the people they name, and the schedules that wake on rows, hear of what changed and came back
     const heard = new Map<string, string[]>()
     for (const id of [...changed, ...returned].filter((id) => records.tableOf(id))) {
       const t = tableOf.get(id) as Table

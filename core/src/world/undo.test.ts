@@ -175,11 +175,11 @@ describe('the trash', () => {
 })
 
 describe('Revert', () => {
-  const agent = { kind: 'agent' as const, id: 'Watson' }
+  const schedule = { kind: 'schedule' as const, id: 'Watson' }
 
   function aRun() {
     const s = shop()
-    const ctx = { actor: agent, run: 'run_1' }
+    const ctx = { actor: schedule, run: 'run_1' }
     const [n1, n2] = world.records.add(
       s.deals.id,
       [
@@ -277,7 +277,7 @@ describe('Revert', () => {
     expect(world.records.byKey(sources.id, 'b')).toBeUndefined()
   })
 
-  it('reverts a turn of Alpha’s, and tells the agents watching', () => {
+  it('reverts a turn of Alpha’s, and tells the schedules watching', () => {
     const { deals } = shop()
     world.records.add(deals.id, [{ values: { Name: 'From chat' }, provenance: stated }], {
       actor: alpha,

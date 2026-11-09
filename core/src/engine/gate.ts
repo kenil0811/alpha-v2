@@ -14,7 +14,7 @@ import { stepWords } from './words.ts'
 
 export interface CallContext {
   callId: string
-  subagent: string | null // the background agent making the call, when one is
+  subagent: string | null // the background schedule making the call, when one is
 }
 
 export interface GateOptions {
@@ -144,7 +144,7 @@ export class Gatekeeper {
       turn: cur.turn,
       module: table?.module.id ?? cur.from?.id ?? null,
       table: table?.id ?? null,
-      agent: call.subagent,
+      schedule: call.subagent,
     })
     return this.decision(verdict)
   }
@@ -155,7 +155,7 @@ export class Gatekeeper {
     input: Record<string, unknown>,
     words: string,
     message: string | null,
-    agent: string | null,
+    schedule: string | null,
     says: CallSays | undefined,
     callId: string,
   ): Decision {
@@ -163,7 +163,7 @@ export class Gatekeeper {
     const cur = this.here.current
     const tool = this.connectors?.keyOf(toolName) ?? toolName
     const effect = says?.effect
-    // a send to an address nothing has gone to from here is said on the card, as an agent's
+    // a send to an address nothing has gone to from here is said on the card, as a schedule's
     // draft says it (item 39 of the problems list, 25 Oct)
     const to = typeof input.to === 'string' ? input.to.trim() : ''
     const fresh =
@@ -191,7 +191,7 @@ export class Gatekeeper {
       user: this.user.id,
       turn: cur.turn,
       module: cur.from?.id ?? null,
-      agent,
+      schedule,
       named: this.connectors?.ruleName(toolName) ?? null,
     })
     // went on the person's yes: said with how it went, so Activity puts it under that card's turn

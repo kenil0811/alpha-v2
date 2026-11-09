@@ -1,12 +1,12 @@
 # UI contributions
 
-This guide is for anyone contributing to Alpha's UI and UX, and for the AI agents working for
+This guide is for anyone contributing to Alpha's UI and UX, and for the AI schedules working for
 them. It says which changes you can make and merge yourself, which go to the lab branch for
 Kenil, and how to do each.
 
-**Agents:** read all of it before you change anything. Where it differs from `CLAUDE.md`, this
+**Schedules:** read all of it before you change anything. Where it differs from `CLAUDE.md`, this
 guide wins for UI contributions. The short version to follow is at the end, under "For your
-AI agent".
+AI schedule".
 
 ## The idea in one minute
 
@@ -54,7 +54,7 @@ for that judgement, not walls.
    Those are core.
 2. **It changes what a press does.** Saving, editing, deleting, sending a draft, answering a card
    (Approve or Decline), permissions and rules, Revert and Bring back, connections and sign-ins,
-   starting or stopping an agent. Moving or restyling these buttons is Lane 1. Changing what
+   starting or stopping a schedule. Moving or restyling these buttons is Lane 1. Changing what
    happens when they are pressed, when it happens, or what gets sent is Lane 2.
 3. **It removes or weakens something that keeps the person safe or told the truth.** The
    confirmation before deleting or sending, a preview of what will happen, a refusal and its
@@ -72,7 +72,7 @@ for that judgement, not walls.
 
 ## Set up once
 
-The first time, on a Mac, ask your agent to:
+The first time, on a Mac, ask your schedule to:
 
 ```bash
 git clone https://github.com/kenil0811/alpha-v2.git
@@ -154,7 +154,7 @@ That is expected: the lab is where ideas are shown working, not code waiting to 
    ```
 2. Build it. You are free here: any folder, any screen, the core too. Still use the shared pieces
    and the tokens, so that what Kenil picks fits the rest of Alpha. Before touching the core's
-   world, its routes or tools, an agent's scripts, a connector's tables or a plugin, read
+   world, its routes or tools, a schedule's scripts, a connector's tables or a plugin, read
    `docs/rules.md`: who may change a module and who owns the data. A new route that writes goes in
    `core/src/rules/doors.ts`, or `pnpm check` fails.
 3. `pnpm format` and `pnpm check`. It still has to pass.
@@ -209,7 +209,7 @@ conflicts are resolved the same way.
 The checks cannot see the look; you have to. Before any pull request:
 
 - Open every screen the change shows on. A change to a shared piece in `window/src/ui/` shows on
-  many screens: ask your agent where it is used, and look at each one.
+  many screens: ask your schedule where it is used, and look at each one.
 - Light and dark (the workspace menu at the top of the rail, then Appearance).
 - A big window (1440 × 900) and a small one (1024 × 700), with the assistant open and folded, and
   the rail folded.
@@ -253,7 +253,7 @@ Whatever the rules say on a given day, keep to these, because they keep the wind
 - Run a lab build on your everyday Alpha's data.
 - Edit or copy from `alpha-brain` (the old Alpha).
 
-## For your AI agent
+## For your AI schedule
 
 Claude Code reads `CLAUDE.md`, which points here. Paste this at the start of a session anyway:
 

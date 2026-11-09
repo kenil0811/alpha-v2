@@ -1,5 +1,5 @@
 // The window (design §14): the rail, a bar over each screen, the screen (Home, Settings or a
-// module: its tables, conversation, agents and notes) and the assistant on the right of every
+// module: its tables, conversation, schedules and notes) and the assistant on the right of every
 // screen but the whole conversation's own, through the module's lens on a module's screen. ⌘J
 // folds it and opens it again (Vikas, 25 Oct).
 import type {
@@ -254,7 +254,7 @@ export function App() {
         return r ? titleOf(table.fields, r) : '…'
       }
       case 'module': {
-        if (place.tab === 'agents') return 'Agents and notes'
+        if (place.tab === 'schedules') return 'Schedules and notes'
         if (place.tab === 'conversation') return 'Conversation'
         if (place.tab === 'overview' || (!place.page && modules.some((x) => x.parent === place.id)))
           return 'Overview'

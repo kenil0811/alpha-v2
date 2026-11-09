@@ -1,11 +1,11 @@
 // A managed kit's files as they were signed (docs/rules.md, M3): each compared with its hash at
-// every start. One changed since stops the kit's agents, and a card says which, until a newer
+// every start. One changed since stops the kit's schedules, and a card says which, until a newer
 // signed pack puts them right. The kit's own install and update keep the hashes.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { all, run } from '../../world/db.ts'
 import type { World } from '../../world/world.ts'
-import { agents } from '../agents.ts'
+import { schedules } from '../schedules.ts'
 import { sha } from './read.ts'
 
 export function checkSigned(world: World, user: string | null = null): string[] {
@@ -27,9 +27,9 @@ export function checkSigned(world: World, user: string | null = null): string[] 
       })
       .map((f) => f.path)
     if (!changed.length) continue
-    for (const a of agents(world, m.id))
-      run(world.db, "UPDATE agents SET state = 'paused' WHERE id = ?", a.id)
-    const words = `${m.name}'s agents are stopped: ${changed.join(', ')} changed since ${k.kit} was signed. A newer signed pack puts it right.`
+    for (const a of schedules(world, m.id))
+      run(world.db, "UPDATE schedules SET state = 'paused' WHERE id = ?", a.id)
+    const words = `${m.name}'s schedules are stopped: ${changed.join(', ')} changed since ${k.kit} was signed. A newer signed pack puts it right.`
     if (!world.cards.waiting().some((c) => c.words === words))
       world.cards.open({
         kind: 'suggestion',

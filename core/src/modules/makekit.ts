@@ -2,7 +2,7 @@
 // a kit in one action. Its module.yaml already mirrors its shape (shape.writeManifest: tables,
 // fields, choices, relations, keys, views, documents, people, where it sits, its network); the kit
 // adds a version, the kit API it was written for, a description from its notes and what it uses
-// of other kits and connectors. Its notes, agents, skills and pages go with it; its rows never.
+// of other kits and connectors. Its notes, schedules, skills and pages go with it; its rows never.
 // The folder is checked as `pnpm kit check` does and packed as `pnpm kit pack` does. On a module
 // that came from a kit the same action packs the kit as it is now, its version kept.
 import {
@@ -23,12 +23,12 @@ import { append } from '../world/journal.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
-import { parseAgent } from './agents.ts'
 import { installedKits } from './kits/index.ts'
 import { pack } from './packs.ts'
+import { parseSchedule } from './schedules.ts'
 
 // What of a module's folder goes with the kit: never its git history or a tool's own folder.
-const TAKEN = ['NOTES.md', 'agents', 'skills', 'pages']
+const TAKEN = ['NOTES.md', 'schedules', 'skills', 'pages']
 const FIRST_VERSION = '0.1.0'
 
 export interface MadeKit {
@@ -67,10 +67,10 @@ function usesOf(world: World, module: Module, dir: string): Record<string, unkno
       const target = world.shape.table(f.relatesTo)
       if (target) reach(target.name, `${t.name}'s ${f.name}`)
     }
-  const agentsDir = join(dir, 'agents')
-  if (existsSync(agentsDir))
-    for (const f of readdirSync(agentsDir).filter((x) => x.endsWith('.md'))) {
-      const a = parseAgent(readFileSync(join(agentsDir, f), 'utf8'), `agents/${f}`)
+  const schedulesDir = join(dir, 'schedules')
+  if (existsSync(schedulesDir))
+    for (const f of readdirSync(schedulesDir).filter((x) => x.endsWith('.md'))) {
+      const a = parseSchedule(readFileSync(join(schedulesDir, f), 'utf8'), `schedules/${f}`)
       for (const t of [...a.touches, ...a.needs.tables]) reach(t, a.name)
     }
   const kits = installedKits(world)
@@ -151,8 +151,8 @@ export function makeKit(world: World, moduleId: string, outDir: string, ctx: Wri
       tables: unknown[]
     }
     const file = pack(dir, outDir)
-    const agents = existsSync(join(dir, 'agents'))
-      ? readdirSync(join(dir, 'agents')).filter((f) => f.endsWith('.md')).length
+    const schedules = existsSync(join(dir, 'schedules'))
+      ? readdirSync(join(dir, 'schedules')).filter((f) => f.endsWith('.md')).length
       : 0
     const skills = existsSync(join(dir, 'skills'))
       ? readdirSync(join(dir, 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory())
@@ -161,7 +161,7 @@ export function makeKit(world: World, moduleId: string, outDir: string, ctx: Wri
     const pages = existsSync(join(dir, 'pages')) ? readdirSync(join(dir, 'pages')).length : 0
     const parts = [
       count(manifest.tables?.length ?? 0, 'table'),
-      agents ? count(agents, 'agent') : '',
+      schedules ? count(schedules, 'schedule') : '',
       skills ? count(skills, 'skill') : '',
       pages ? count(pages, 'page') : '',
     ].filter(Boolean)

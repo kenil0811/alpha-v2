@@ -1,6 +1,7 @@
 // Activity (core step 1): what the window lists, newest first, from the journal and the runs.
-import { agents } from '../modules/agents.ts'
+
 import type { RunRow } from '../modules/runs/index.ts'
+import { schedules } from '../modules/schedules.ts'
 import type { Line } from '../world/journal.ts'
 import { undoable } from '../world/records/index.ts'
 import type { BaseCtx } from './ctx.ts'
@@ -11,7 +12,7 @@ export function activityView(
   byWords: (madeBy: string) => string,
 ): { activity: () => RunView[]; runOut: (r: RunRow) => RunView } {
   const { world, engine } = ctx
-  // Activity: agents' runs and connections' reads, newest first, and (core step 1) Alpha's turns
+  // Activity: schedules' runs and connections' reads, newest first, and (core step 1) Alpha's turns
   // that changed rows, removals outside both, and the person's reverts, each with its Revert or
   // Bring back where it can be undone. A run that ended having changed nothing is quiet, so the
   // window can fold it.
@@ -25,7 +26,7 @@ export function activityView(
     const steps = world
       .lines({ run: r.id, kinds: ['run_step', 'told', ...ROWS, 'card_opened', 'task'] })
       .map((l) => ({ id: l.id, at: l.at, kind: l.kind, words: l.words }))
-    const name = (r.agent && agents(world).find((a) => a.id === r.agent)?.name) || 'A try'
+    const name = (r.schedule && schedules(world).find((a) => a.id === r.schedule)?.name) || 'A try'
     return {
       id: r.id,
       kind: 'run',
