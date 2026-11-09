@@ -36,7 +36,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| O1 | Home is the important things: the date, the greeting and one line to ask Alpha; what needs the person, each card answered there; Overdue, Due today and This week as tiles (Overdue red only when it has some); what changed since they last looked, kept until they clear it; what is running; each agent's next run | 20 Oct, 26 Oct | — |
+| O1 | Home is the date, the greeting, one line to ask Alpha, what needs the person only while something waits (each card answered there, and a sign-in), today's tasks, and Getting Alpha ready until it is done. Nothing else | 20 Oct, 26 Oct, 9 Nov | — |
 | O2 | No modules on Home (they are in the rail); the conversation is the assistant beside it, never in Home's own space | 26 Oct | — |
 
 ## Module page
@@ -89,11 +89,11 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| A1 | The assistant's header: fold, face and name, the bell; no Expand, no Open whole conversation | 26 Oct, 7 Nov | test |
+| A1 | The assistant's header: fold, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
 | A3 | The composer's +: files, a folder; @ names an agent. The way to Claude is Settings' business | 26 Oct, 7 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
-| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open and Activity, each named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
+| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
 | A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
 | A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a run's report are on Activity. Nothing runs beside it | 7 Nov | test (stream) |
 
@@ -102,9 +102,11 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | I1 | Intelligence: Connections, Agents, How to work | 26 Oct, 7 Nov | — |
-| I2 | Settings: Model, Modules, Permissions, Data, Appearance, one at a time | 26 Oct, 7 Nov | — |
-| I3 | Settings › Model: each way on its row with its state, its key and Use this; under them Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
+| I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity (and Modules until step 5), one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
+| I3 | Settings › Model: each way on its row with its state, its key and Use this. Settings › Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov | test |
+| I5 | Settings › Activity lists what waits for the person above every run, and is the only place a run's report is read | 9 Nov | — |
+| I6 | Settings › Data: the last ten backups, Go back on any, Back up now; taking data out, bringing it in and deleting it are the `alpha` command's | 9 Nov | — |
 
 ## Wording
 

@@ -18,14 +18,6 @@ export function dayWords(at: string): string {
   return `${date} at ${clock(d)}`
 }
 
-// Where "since you last looked" starts: today, or when the person last cleared it.
-export function sinceWords(since: string): string {
-  const d = new Date(since)
-  if (d.getTime() === new Date().setHours(0, 0, 0, 0)) return 'Today, until you clear it'
-  if (d.toDateString() === new Date().toDateString()) return `Since you cleared it at ${clock(d)}`
-  return `Since you cleared it ${dayWords(since)}`
-}
-
 // A due as a person says it: Today, Tomorrow, Fri 24 Oct, with its time when it has one.
 export function dueWords(due: string): string {
   const d = new Date(due.includes('T') ? due : `${due}T12:00:00`)

@@ -82,7 +82,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
     })),
     {
       done: view.chrome,
-      words: view.chrome ? 'Google Chrome is on this Mac' : 'Google Chrome',
+      words: view.chrome ? 'Google Chrome is on this computer' : 'Google Chrome',
       sub: 'Only for sites you sign in to; Alpha opens them in Chrome for you to sign in yourself',
     },
   ]

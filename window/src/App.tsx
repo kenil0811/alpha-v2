@@ -1,5 +1,5 @@
-// The window (design §14): the rail, a bar over each screen, the screen (Home, Activity, Settings
-// or a module: its tables, conversation, agents and notes) and the assistant on the right of every
+// The window (design §14): the rail, a bar over each screen, the screen (Home, Settings or a
+// module: its tables, conversation, agents and notes) and the assistant on the right of every
 // screen but the whole conversation's own, through the module's lens on a module's screen. ⌘J
 // folds it and opens it again (Vikas, 25 Oct).
 import type {
@@ -11,7 +11,6 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Activity } from './Activity.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
 import { CardPage } from './CardPage.tsx'
@@ -227,8 +226,6 @@ export function App() {
         return 'Waits for you'
       case 'item':
         return itemName || '…'
-      case 'activity':
-        return 'Activity'
       case 'tasks':
         return place.id ? taskName || '…' : 'Tasks'
       case 'people':
@@ -300,12 +297,7 @@ export function App() {
             <div className="flex min-h-0 flex-1">
               <div className="min-w-0 flex-1">
                 {place.at === 'home' ? (
-                  <Home
-                    stream={stream}
-                    modules={modules}
-                    name={name}
-                    onAsked={() => setAsking(true)}
-                  />
+                  <Home stream={stream} name={name} onAsked={() => setAsking(true)} />
                 ) : place.at === 'conversation' ? (
                   <Conversation
                     stream={stream}
@@ -322,8 +314,6 @@ export function App() {
                   <NewModule modules={modules} onAsked={() => setAsking(true)} />
                 ) : place.at === 'file' ? (
                   <FileView place={place.place} onName={setFileName} />
-                ) : place.at === 'activity' ? (
-                  <Activity version={version} />
                 ) : place.at === 'row' ? (
                   <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
                 ) : place.at === 'card' ? (
@@ -352,6 +342,7 @@ export function App() {
                     tab={place.section}
                     open={place.open}
                     version={version}
+                    cards={stream?.cards ?? []}
                   />
                 ) : place.at === 'module' || table ? (
                   <ModuleScreen
@@ -416,7 +407,6 @@ export function App() {
             onFold={(f) => setAsking(!f)}
             title={moduleHere ? `Ask about ${moduleHere.name}` : 'Alpha'}
             mood={stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'}
-            running={(stream?.running.length ?? 0) + (stream?.reading.length ?? 0)}
             width={layout.panel}
             onWidth={(panel) => changeLayout({ panel })}
           >

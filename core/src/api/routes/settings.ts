@@ -5,7 +5,6 @@ import { config } from '../../config.ts'
 import {
   applyBring,
   backupNow,
-  copyNewestBackup,
   dataView,
   markRestart,
   prepareBring,
@@ -21,7 +20,7 @@ import type { Ctx } from '../ctx.ts'
 import type { DataPageView, InstructionView, ModelView, SetupView } from '../types.ts'
 
 export function registerSettings(ctx: Ctx): void {
-  const { app, world, engine, user, options, person, live } = ctx
+  const { app, world, engine, user, options, live } = ctx
 
   // What Alpha remembers, each line removable by the person (the instructions files, design §6).
   const instructionLines = (who: 'me' | 'everyone') => {
@@ -87,7 +86,7 @@ export function registerSettings(ctx: Ctx): void {
   const canWords = (can: Capabilities) =>
     [
       'the world, your connections and documents',
-      can.shell ? 'a shell on this Mac' : '',
+      can.shell ? 'a shell on this computer' : '',
       can.files ? 'files in its own folder and the modules' : '',
       can.web ? 'the web' : '',
       can.subagents ? 'background work' : '',
@@ -191,21 +190,6 @@ export function registerSettings(ctx: Ctx): void {
       markRestart(paths, `Brought the data in from ${archive}.`)
     })
     return { restarting: true }
-  })
-  app.post('/api/data/copy', async (req) => {
-    const { folder } = z.object({ folder: z.string().trim() }).parse(req.body)
-    if (folder && !existsSync(folder)) throw new Refused('That folder is not there.')
-    data().setCopy(folder || null)
-    if (folder) copyNewestBackup(world.paths.backups, folder)
-    world.line({
-      actor: person,
-      kind: 'data',
-      words: folder
-        ? `A copy of the newest backup goes to ${folder} each day.`
-        : 'No copy of the backups goes anywhere now.',
-      user: user.id,
-    })
-    return { copyTo: folder || null }
   })
   app.post('/api/data/remove', async (req) => {
     const { name } = z.object({ name: z.string() }).parse(req.body)

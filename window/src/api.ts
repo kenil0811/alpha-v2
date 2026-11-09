@@ -24,7 +24,7 @@ export class Problem extends Error {}
 
 // The window's words for a core that gave none: it is on this Mac, so "not answering" is the
 // whole story (item 30 of the problems list, 25 Oct).
-export const NOT_ANSWERING = "Alpha isn't answering on this Mac right now."
+export const NOT_ANSWERING = "Alpha isn't answering right now."
 
 // A failure in words a person reads: the core's own when it refused, else the line above (never
 // the browser's, like "Load failed").

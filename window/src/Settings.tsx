@@ -1,6 +1,7 @@
 // Settings (design §14): connections, folders, and modules with their agents. Connecting is the
 // person's own act here: what they type goes to the Keychain, never to the model.
 import type {
+  CardView,
   ConnectionView,
   ConnectorsView,
   ConnectorView,
@@ -22,6 +23,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { Activity } from './Activity.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { HowToWork } from './HowToWork.tsx'
@@ -36,7 +38,7 @@ import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
-import { Confirm, Dialog } from './ui/dialog.tsx'
+import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
@@ -84,13 +86,15 @@ const PAGES = {
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs on this Mac: its model, modules, permissions, data and how it looks.',
+    about: 'How Alpha runs: its model, what it costs, its data, and what it did.',
     tabs: [
       ['model', 'Model'],
-      ['modules', 'Modules'],
-      ['permissions', 'Permissions'],
+      ['usage', 'Usage'],
       ['data', 'Data'],
       ['appearance', 'Appearance'],
+      ['permissions', 'Permissions'],
+      ['activity', 'Activity'],
+      ['modules', 'Modules'],
     ],
   },
 } as const
@@ -100,11 +104,13 @@ export function Settings({
   tab,
   open,
   version,
+  cards,
 }: {
   page: keyof typeof PAGES
   tab: string | null
   open: string | null
   version: number
+  cards: CardView[]
 }) {
   const [view, setView] = useState<ConnectorsView | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -185,12 +191,9 @@ export function Settings({
     ),
     modules: <ModulesAndAgents version={version} />,
     permissions: <Permissions version={version} />,
-    model: (
-      <div className="flex flex-col gap-7">
-        <ModelSection />
-        <UsageSection />
-      </div>
-    ),
+    model: <ModelSection />,
+    usage: <UsageSection />,
+    activity: <Activity version={version} cards={cards} />,
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
   }
@@ -243,8 +246,24 @@ export function Settings({
           </SideList>
           <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
+        <Version />
       </div>
     </div>
+  )
+}
+
+// The version the core runs, at Settings' foot.
+function Version() {
+  const [health, setHealth] = useState<{ version: string; build?: string } | null>(null)
+  useEffect(() => {
+    api.get<{ version: string; build?: string }>('/api/health').then(setHealth, () => undefined)
+  }, [])
+  if (!health) return null
+  return (
+    <p className="text-ink-3 text-sm">
+      Alpha {health.version}
+      {health.build ? ` · build ${health.build}` : ''}
+    </p>
   )
 }
 
@@ -254,7 +273,7 @@ function Permissions({ version }: { version: number }) {
   const [view, reload] = useSetup()
   return (
     <>
-      <Section title="On this Mac" about="What Alpha may reach on this Mac.">
+      <Section title="On this computer" about="What Alpha may reach on this computer.">
         {view ? (
           <SetupList view={view} onChange={reload} />
         ) : (
@@ -272,8 +291,8 @@ function Permissions({ version }: { version: number }) {
   )
 }
 
-// The person's own data (decision 12): what the world holds, its backups, a backup now, going
-// back, taking it as one archive, bringing one in, a copy in a folder, and deleting it all.
+// The person's own data (Kenil's 12.3, 6 Nov): the last ten backups, going back to any, a backup
+// now. Taking it, bringing it in and deleting it are the `alpha` command's.
 const mb = (n: number) => (n < 1e6 ? `${Math.round(n / 1e3)} KB` : `${(n / 1e6).toFixed(1)} MB`)
 
 function DataSection() {
@@ -282,26 +301,14 @@ function DataSection() {
   const [said, setSaid] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [restarting, setRestarting] = useState(false)
-  const [folder, setFolder] = useState('')
-  const [archive, setArchive] = useState('')
-  const [removing, setRemoving] = useState(false)
-  const [typed, setTyped] = useState('')
   const [goingBack, setGoingBack] = useState<string | null>(null) // the backup asked about
-  const [bringing, setBringing] = useState(false)
-  const [setup] = useSetup()
   const load = useCallback(() => {
-    api.get<DataPageView>('/api/data').then(
-      (v) => {
-        setView(v)
-        setFolder(v.copyTo ?? '')
-      },
-      () => setView(null),
-    )
+    api.get<DataPageView>('/api/data').then(setView, () => setView(null))
   }, [])
   useEffect(() => {
     load()
   }, [load])
-  // after a restore, a bring-in or a removal the core goes and comes back: wait for it, then reload
+  // after a restore the core goes and comes back: wait for it, then reload
   useEffect(() => {
     if (!restarting) return
     const t = setInterval(() => {
@@ -314,10 +321,7 @@ function DataSection() {
     }, 2000)
     return () => clearInterval(t)
   }, [restarting])
-  const act = async (
-    fn: () => Promise<{ restarting?: boolean; file?: string; copyTo?: string | null }>,
-    words?: string,
-  ) => {
+  const act = async (fn: () => Promise<{ restarting?: boolean }>, words?: string) => {
     setBusy(true)
     setProblem(null)
     setSaid(null)
@@ -329,7 +333,7 @@ function DataSection() {
           'Alpha is restarting; this page comes back when it does. If it does not within a minute, start Alpha again.',
         )
       } else {
-        setSaid(out.file ? `Your data is in ${out.file}.` : (words ?? null))
+        setSaid(words ?? null)
         load()
       }
     } catch (err) {
@@ -340,29 +344,13 @@ function DataSection() {
   }
   if (!view)
     return (
-      <Section title="Data" about="Your world, its backups, and where it goes.">
+      <Section title="Data" about="Your backups.">
         <p className="text-ink-2 text-md">{problem ?? 'Loading…'}</p>
       </Section>
     )
   return (
-    <Section
-      title="Data"
-      about="Your world, its backups, and where it goes. Everything here is yours to take or delete."
-    >
-      {setup && (
-        <p className="text-ink-2 text-md">
-          Alpha for {setup.install.owner}, on port {setup.install.port}. Its data is in{' '}
-          {setup.install.home}; a report goes to{' '}
-          {setup.install.reportTo ?? 'whoever gave you Alpha'}.
-        </p>
-      )}
-      <p className="text-ink-2 text-md">
-        The world holds {view.world.rows.toLocaleString()} rows and{' '}
-        {view.world.lines.toLocaleString()} lines of Activity ({mb(view.world.size)}, shape version{' '}
-        {view.world.version}); {view.files.count.toLocaleString()} files ({mb(view.files.size)});
-        the modules {mb(view.modules.size)}.
-      </p>
-      <div className="flex flex-wrap gap-2">
+    <Section title="Data" about="Your last ten backups. Go back to any of them, or take one now.">
+      <div>
         <Button
           size="sm"
           disabled={busy || restarting}
@@ -370,17 +358,10 @@ function DataSection() {
         >
           Back up now
         </Button>
-        <Button
-          size="sm"
-          disabled={busy || restarting}
-          onClick={() => act(() => api.post('/api/data/export'))}
-        >
-          Take my data
-        </Button>
       </div>
       {view.backups.length > 0 && (
         <List>
-          {view.backups.map((b) => (
+          {view.backups.slice(0, 10).map((b) => (
             <Row
               key={b.name}
               title={`${when(b.at)} · ${mb(b.size)}`}
@@ -407,45 +388,6 @@ function DataSection() {
           ))}
         </List>
       )}
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void act(
-            () => api.post('/api/data/copy', { folder: folder.trim() }),
-            folder.trim()
-              ? `A copy of the newest backup goes to ${folder.trim()} each day.`
-              : 'No copy goes anywhere now.',
-          )
-        }}
-      >
-        <Field
-          className="flex-1"
-          value={folder}
-          placeholder="Keep a copy of the newest backup in a folder, like /Users/you/Library/Mobile Documents/com~apple~CloudDocs/Alpha"
-          onChange={(e) => setFolder(e.target.value)}
-        />
-        <Button type="submit" size="sm" disabled={busy || restarting}>
-          {folder.trim() ? 'Keep a copy there' : 'Keep no copy'}
-        </Button>
-      </form>
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          setBringing(true)
-        }}
-      >
-        <Field
-          className="flex-1"
-          value={archive}
-          placeholder="Bring data in from an archive, like /Users/you/Desktop/alpha-data-2026-10-23.tar.gz (a fresh install only)"
-          onChange={(e) => setArchive(e.target.value)}
-        />
-        <Button type="submit" size="sm" disabled={busy || restarting || !archive.trim()}>
-          Bring data in
-        </Button>
-      </form>
       <Confirm
         open={!!goingBack}
         title="Go back to this backup?"
@@ -460,58 +402,8 @@ function DataSection() {
       >
         Alpha backs up now first, then restarts on this one.
       </Confirm>
-      <Confirm
-        open={bringing}
-        title="Bring this data in?"
-        yes="Bring it in and restart"
-        busy={busy || restarting}
-        onClose={() => setBringing(false)}
-        onYes={() => {
-          setBringing(false)
-          void act(() => api.post('/api/data/import', { archive: archive.trim() }))
-        }}
-      >
-        Alpha restarts on the data in {archive.trim()}. This works on a fresh install only.
-      </Confirm>
       {said && <div className="text-ink-2 text-md">{said}</div>}
       {problem && <div className="text-bad text-md">{problem}</div>}
-      <div>
-        <Button
-          size="sm"
-          variant="danger"
-          disabled={busy || restarting}
-          onClick={() => setRemoving(true)}
-        >
-          Delete my data
-        </Button>
-      </div>
-      <Dialog
-        open={removing}
-        title="Delete all your data?"
-        onClose={() => setRemoving(false)}
-        actions={
-          <>
-            <Button variant="ghost" onClick={() => setRemoving(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              disabled={busy || restarting || !typed.trim()}
-              onClick={() => void act(() => api.post('/api/data/remove', { name: typed }))}
-            >
-              Delete everything
-            </Button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          <p>
-            Every world, file, module, backup and sign-in Alpha keeps for you goes to the Trash, and
-            Alpha goes back to its first open. Type your name as Alpha knows it to go on.
-          </p>
-          <Field value={typed} placeholder="Your name" onChange={(e) => setTyped(e.target.value)} />
-        </div>
-      </Dialog>
     </Section>
   )
 }
@@ -682,7 +574,7 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
       <List>
         <Row
           title="Look"
-          sub="Match Mac follows your Mac's light or dark setting."
+          sub="Match system follows this computer's light or dark setting."
           actions={
             <Segmented
               label="Look"
@@ -693,7 +585,7 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
                 void act(() => api.post('/api/appearance', { theme: t }))
               }}
               options={[
-                { value: 'mac', label: 'Match Mac' },
+                { value: 'mac', label: 'Match system' },
                 { value: 'light', label: 'Light' },
                 { value: 'dark', label: 'Dark' },
               ]}

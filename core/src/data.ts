@@ -73,7 +73,7 @@ export function exportsDir(): string {
   return existsSync(desk) ? desk : homedir()
 }
 
-export function dataView(world: World, install: Install): DataPageView {
+export function dataView(world: World, _install: Install): DataPageView {
   const p = world.paths
   const worldSize = ['', '-wal'].reduce(
     (n, s) => n + (existsSync(p.world + s) ? statSync(p.world + s).size : 0),
@@ -89,7 +89,6 @@ export function dataView(world: World, install: Install): DataPageView {
     files: sizeOf(p.files),
     modules: { size: sizeOf(p.modules).size },
     backups: listBackups(p.backups),
-    copyTo: install.backupsCopy,
     exportsTo: exportsDir(),
   }
 }

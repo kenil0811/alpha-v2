@@ -1,44 +1,19 @@
 // The assistant on the right of every screen (Vikas, 25 Oct): always there.
-// Open, its header has the fold control, Alpha's face and name in the middle and the bell for
-// Activity; its edge drags it wider. Folded, it is a strip with the face, the name and the bell, and
-// a click anywhere on it opens it again. ⌘J folds and opens it.
-import { Bell, PanelRightClose, PanelRightOpen } from 'lucide-react'
+// Open, its header has the fold control and Alpha's face and name in the middle; its edge drags it
+// wider. Folded, it is a strip with the face and the name, and a click anywhere on it opens it
+// again. ⌘J folds and opens it.
+import { PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Face, type Mood } from './Face.tsx'
 import { IconButton } from './ui/button.tsx'
 import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
-function BellLink({ running, labelled = false }: { running: number; labelled?: boolean }) {
-  return (
-    <a
-      href="#/activity"
-      aria-label={running ? `Activity, ${running} running` : 'Activity'}
-      data-tip={running ? `Activity, ${running} running` : 'Activity'}
-      className={
-        labelled
-          ? stripItem()
-          : 'relative grid size-7.5 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-hover hover:text-ink'
-      }
-    >
-      <Bell className="size-4" />
-      {labelled && <span className={stripName}>Activity</span>}
-      {running > 0 && (
-        <span
-          className="absolute top-1 right-1 size-2 animate-pulse rounded-full bg-accent"
-          aria-hidden="true"
-        />
-      )}
-    </a>
-  )
-}
-
 export function Assistant({
   folded,
   onFold,
   title,
   mood,
-  running,
   width,
   onWidth,
   children,
@@ -47,7 +22,6 @@ export function Assistant({
   onFold: (folded: boolean) => void
   title: string // Alpha, or the module it is asked about
   mood: Mood
-  running: number
   width: number | null
   onWidth: (w: number | null) => void
   children: ReactNode
@@ -102,7 +76,6 @@ export function Assistant({
           <PanelRightOpen className="size-4" />
           <span className={stripName}>Open</span>
         </button>
-        <BellLink running={running} labelled />
       </aside>
     )
   return (
@@ -125,7 +98,6 @@ export function Assistant({
             </span>
             <span className="truncate font-semibold text-ink text-md">{title}</span>
           </span>
-          <BellLink running={running} />
         </div>
       }
     >

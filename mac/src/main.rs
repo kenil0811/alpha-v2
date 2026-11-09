@@ -56,7 +56,7 @@ impl Core {
         format!("http://127.0.0.1:{}", self.port)
     }
 
-    /// The window's address at a place in it (`#/activity`), with the token.
+    /// The window's address at a place in it (`#/settings/activity`), with the token.
     fn url(&self, hash: &str) -> Option<Url> {
         let token = self.token()?;
         Url::parse(&format!("{}/?t={}{}", self.origin(), token, hash)).ok()
@@ -335,7 +335,7 @@ fn menu_bar_mark(app: &AppHandle, core: &Core) -> tauri::Result<Mark> {
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "open" => show(app, &core, None),
             "needs" => show(app, &core, Some("#/")),
-            "activity" => show(app, &core, Some("#/activity")),
+            "activity" => show(app, &core, Some("#/settings/activity")),
             "settings" => show(app, &core, Some("#/settings")),
             "quit" => app.exit(0),
             _ => {}

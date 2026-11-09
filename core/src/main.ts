@@ -332,7 +332,6 @@ const app = buildServer({
   data: {
     home,
     install: () => readInstall(home),
-    setCopy: (folder) => writeInstall(home, { backupsCopy: folder }),
     secrets,
     // the world closed, the change applied, the process gone: the login item starts it again
     // (an unsuccessful exit, as its plist asks); a development run is started again by hand

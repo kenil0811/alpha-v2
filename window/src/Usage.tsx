@@ -1,5 +1,5 @@
 // What the model was used for and what it cost, a month at a time (core plan step 5, Kenil's yes
-// 28 Oct): under Settings › Model, the month's total, then by module, by agent and by model,
+// 28 Oct): Settings › Usage: the month's total, then by module, by agent and by model,
 // largest first. On the subscription the cost is what it would be on an API key, and says so.
 import type { UsageRow, UsageView } from '@alpha/core/usage'
 import { useEffect, useState } from 'react'

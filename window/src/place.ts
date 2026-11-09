@@ -6,7 +6,6 @@ import { splitBeside } from './opened.ts'
 export type Place =
   | { at: 'home' }
   | { at: 'conversation' }
-  | { at: 'activity' }
   | { at: 'parts' }
   | { at: 'plugin'; name: string } // a plugin's own page (onboarding in Alpha, 2 Nov)
   | { at: 'new' }
@@ -81,7 +80,6 @@ export function placeOf(address: string): Place {
     return s[1] === 'settings'
       ? { at: 'settings', section: s[2] ?? null, open: null }
       : { at: 'intelligence', section: s[2] ?? null, open: null }
-  if (hash === '#/activity') return { at: 'activity' }
   const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+))?$/.exec(hash)
   if (tk)
     return {

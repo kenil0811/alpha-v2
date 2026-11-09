@@ -15,7 +15,7 @@ const LEFT: Record<string, number> = {
   'core/src/api/types.ts': 660, // the window's contract, one file by design (Kenil, 24 Oct)
   // the window's big screens as they stood after the clean base's delete (7 Nov): they may only
   // shrink
-  'window/src/Settings.tsx': 1180,
+  'window/src/Settings.tsx': 1072,
   'window/src/table/Grid.tsx': 1272,
   'window/src/Shell.tsx': 692,
   'window/src/TableView.tsx': 856,

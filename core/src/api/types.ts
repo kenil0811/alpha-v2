@@ -446,7 +446,6 @@ export interface DataPageView {
   files: { size: number; count: number }
   modules: { size: number }
   backups: BackupView[] // newest first
-  copyTo: string | null // the folder a copy of the newest backup goes to each day
   exportsTo: string // where Take my data puts the archive
 }
 
@@ -569,13 +568,6 @@ export interface UndoView {
   can: boolean
   words: string
   left: string[]
-}
-
-// Today, beside the stream on a wide window: what changed since the person last cleared it, and what is coming up; what needs them and what runs come with the stream.
-export interface TodayView {
-  since: string // when they last cleared it, or the start of today
-  changed: RunView[] // runs and reads that ended having changed something, or did not finish
-  coming: { agent: string; name: string; module: string; moduleName: string; at: string }[]
 }
 
 export type LiveEvent =

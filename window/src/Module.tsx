@@ -392,7 +392,10 @@ function AgentsAndNotes({
               ))}
             </ul>
           )}
-          <a href="#/activity" className="mt-1 inline-block text-accent text-sm hover:underline">
+          <a
+            href="#/settings/activity"
+            className="mt-1 inline-block text-accent text-sm hover:underline"
+          >
             All activity
           </a>
         </Section>

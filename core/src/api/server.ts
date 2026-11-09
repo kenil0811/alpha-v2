@@ -60,7 +60,6 @@ export interface ServerOptions {
   data?: {
     home: string
     install: () => Install
-    setCopy: (folder: string | null) => void
     secrets: SecretStore
     restart: (words: string, apply: () => Promise<void>) => Promise<void>
   }

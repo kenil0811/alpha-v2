@@ -1,13 +1,15 @@
-// Activity (design §11, Ledger): every run of an agent or a reader and every read of a
+// Settings › Activity (design §11, Ledger; Kenil's 15, 6 Nov): what waits for the person, then every run of an agent or a reader and every read of a
 // connection, newest first, in one list by day, with Alpha's turns that changed rows, removals
 // and reverts (core step 1). A run shows its time, name, module, state, one line of what
 // happened, how long it took and whether the model was used; it opens to its steps. Runs that
 // changed nothing fold into one line per name and day. A running one can be stopped; one that
 // wrote rows has Revert behind its ⋮, a removal Bring back, both said first in the one pop-up.
-import type { RunView, UndoView } from '@alpha/core/api'
+import type { CardView, RunView, UndoView } from '@alpha/core/api'
 import { ChevronRight, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
+import { startAsk } from './ask.ts'
+import { CardBox } from './CardBox.tsx'
 import { RUN_STATE } from './runState.ts'
 import { usdWords } from './Usage.tsx'
 import { Button } from './ui/button.tsx'
@@ -17,6 +19,7 @@ import { Confirm } from './ui/dialog.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
+import { Section } from './ui/section.tsx'
 
 // a run's time in the mono column: 24-hour, so it never wraps
 const time = (at: string) =>
@@ -60,7 +63,7 @@ function fold(runs: RunView[]): Line[] {
   return out
 }
 
-export function Activity({ version }: { version: number }) {
+export function Activity({ version, cards }: { version: number; cards: CardView[] }) {
   const [runs, setRuns] = useState<RunView[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [only, setOnly] = useState<'all' | 'failed'>('all')
@@ -81,10 +84,21 @@ export function Activity({ version }: { version: number }) {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-page flex-col px-8 pt-7 pb-10">
+    <div className="flex flex-col">
+      <div className="flex flex-col">
+        {cards.length > 0 && (
+          <Section title="Waiting for you">
+            {cards.map((c) => (
+              <CardBox
+                key={c.id}
+                id={c.id}
+                card={c}
+                onChange={(card) => startAsk(`About “${card.words.replace(/\?$/, '')}”: `)}
+              />
+            ))}
+          </Section>
+        )}
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl text-ink">Activity</h1>
           <span className="flex-1" />
           {/* cuts of one list, each with its count (Batch D, 66.16) */}
           <Cuts label="Show">

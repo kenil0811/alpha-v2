@@ -250,7 +250,7 @@ export const CALLS: Call[] = [
     }),
     answer: 'nothing',
     words:
-      'a line on the person’s Home, for what is worth their attention; with rows, each can be opened, and the choice sets that field in one click',
+      'a line on Activity; what needs the person is a card; with rows, each can be opened, and the choice sets that field in one click',
     effect: null,
     since: 1,
   },

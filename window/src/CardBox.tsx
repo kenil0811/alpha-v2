@@ -175,8 +175,8 @@ function CardBody({
       </Actions>
       {opened && (
         <div className="text-ink-2 text-sm">
-          {card.site} is open in Google Chrome on your Mac. Sign in there, then quit that Chrome
-          with ⌘Q; the reader runs again.
+          {card.site} is open in Google Chrome on this computer. Sign in there, then quit that
+          Chrome with ⌘Q; the reader runs again.
         </div>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}
