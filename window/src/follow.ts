@@ -7,6 +7,7 @@ export function useFollow(conversation: string, loaded: boolean) {
   const content = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const ours = useRef(-1) // where this code last put the scroll, to tell it from the person's
+  const seen = useRef(0) // where the scroll was at the last event, to tell up from down
   const frame = useRef(0)
   const [away, setAway] = useState(false)
 
@@ -16,8 +17,9 @@ export function useFollow(conversation: string, loaded: boolean) {
     if (!el || !pinned.current) return
     const gap = el.scrollHeight - el.clientHeight - el.scrollTop
     if (gap <= 0.5) return
-    el.scrollTop += Math.max(1, gap * 0.22)
+    el.scrollTop += Math.max(1, gap * 0.3)
     ours.current = el.scrollTop
+    seen.current = el.scrollTop
     frame.current = requestAnimationFrame(step)
   }, [])
 
@@ -43,15 +45,22 @@ export function useFollow(conversation: string, loaded: boolean) {
     if (!el) return
     el.scrollTop = el.scrollHeight
     ours.current = el.scrollTop
+    seen.current = el.scrollTop
     pinned.current = true
     setAway(false)
   }, [conversation, loaded])
 
   const onScroll = useCallback(() => {
     const el = scroller.current
-    if (!el || Math.abs(el.scrollTop - ours.current) < 2) return
-    ours.current = -1
-    const atEnd = el.scrollHeight - el.clientHeight - el.scrollTop < 40
+    if (!el) return
+    const top = el.scrollTop
+    const before = seen.current
+    seen.current = top
+    if (Math.abs(top - ours.current) < 1) return
+    const gap = el.scrollHeight - el.clientHeight - top
+    // any move upward is the person's, however small; coming back near the end picks up again
+    const atEnd = gap < 2 || (top > before && gap < 40)
+    if (atEnd === pinned.current) return
     pinned.current = atEnd
     setAway(!atEnd)
     if (!atEnd && frame.current) {
