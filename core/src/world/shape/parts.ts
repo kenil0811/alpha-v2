@@ -43,7 +43,7 @@ export function setSetup(shape: Shape, tableId: string, setup: boolean, ctx: Wri
       actor: ctx.actor,
       kind: 'shaped',
       words: setup
-        ? `${table.name} is setup for ${table.module.name}'s schedules now, under Schedules and notes.`
+        ? `${table.name} is setup for ${table.module.name}'s schedules now, on its Setup.`
         : `${table.name} is one of ${table.module.name}'s own tables again.`,
       data: { table: table.id, setup },
       user: ctx.user ?? null,

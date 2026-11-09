@@ -23,7 +23,7 @@ export type Place =
   | {
       at: 'module'
       id: string
-      tab: 'overview' | 'conversation' | 'schedules' | null
+      tab: 'overview' | 'setup' | null
       page: string | null
     }
   | { at: 'settings'; section: string | null; open: null }
@@ -101,17 +101,12 @@ export function placeOf(address: string): Place {
   if (rw?.[2]) return { at: rw[1] === 'card' ? 'card' : 'row', id: rw[2] }
   const it = /^#\/(schedule|run|rule)\/([\w-]+)$/.exec(hash)
   if (it?.[1] && it[2]) return { at: 'item', kind: it[1] as 'schedule' | 'run' | 'rule', id: it[2] }
-  const mod = /^#\/module\/([^/]+)(?:\/(overview|conversation|schedules|page\/([\w-]+)))?$/.exec(
-    hash,
-  )
+  const mod = /^#\/module\/([^/]+)(?:\/(overview|setup|page\/([\w-]+)))?$/.exec(hash)
   if (mod?.[1])
     return {
       at: 'module',
       id: mod[1],
-      tab:
-        mod[2] === 'overview' || mod[2] === 'conversation' || mod[2] === 'schedules'
-          ? mod[2]
-          : null,
+      tab: mod[2] === 'overview' || mod[2] === 'setup' ? mod[2] : null,
       page: mod[3] ?? null,
     }
   return { at: 'home' }

@@ -4,7 +4,7 @@
 // foot. Only the conversation is here: what happened otherwise is on Activity (clean base, 7 Nov).
 // A module's Conversation tab and Ask (⌘J) show it through a lens.
 import type { CardView, LiveEvent, Stream, WorkingModuleView } from '@alpha/core/api'
-import { ArrowUp, Bot, Check, ChevronRight, FolderUp, ImageUp, Plus } from 'lucide-react'
+import { ArrowUp, Check, ChevronRight, FolderUp, ImageUp, Plus } from 'lucide-react'
 import {
   type DragEvent,
   type KeyboardEvent,
@@ -393,12 +393,6 @@ function Work({ steps }: { steps: Step[] }) {
   )
 }
 
-// The words before the caret that address a schedule: "@" at the start or after a space, then a name.
-export function mentionAt(text: string): string | null {
-  const m = /(?:^|\s)@([^@\n]*)$/.exec(text)
-  return m ? (m[1] ?? '') : null
-}
-
 function Composer({
   words,
   setWords,
@@ -424,37 +418,10 @@ function Composer({
     for (const f of Array.from(files ?? []))
       await api.upload(f).catch(() => onProblem(`${f.name} did not go in.`))
   }
-  // "@" suggests the schedules of every module; loaded the first time it is typed
-  const [schedules, setSchedules] = useState<string[] | null>(null)
-  const [query, setQuery] = useState<string | null>(null)
-  const [pick, setPick] = useState(0)
-  const shown =
-    query === null || !schedules
-      ? []
-      : schedules.filter((a) => a.toLowerCase().startsWith(query.toLowerCase())).slice(0, 6)
-  const type = (w: string, caret: number) => {
-    setWords(w)
-    const q = mentionAt(w.slice(0, caret))
-    setQuery(q)
-    setPick(0)
-    if (q !== null && !schedules)
-      api.get<WorkingModuleView[]>('/api/working').then(
-        (ms) => setSchedules([...new Set(ms.flatMap((m) => m.schedules.map((a) => a.name)))]),
-        () => setSchedules([]),
-      )
-  }
-  const choose = (name: string) => {
-    const caret = area.current?.selectionStart ?? words.length
-    const before = words.slice(0, caret).replace(/@[^@\n]*$/, `@${name} `)
-    setWords(before + words.slice(caret))
-    setQuery(null)
-    requestAnimationFrame(() => area.current?.setSelectionRange(before.length, before.length))
-  }
   const send = async () => {
     const w = words.trim()
     if (!w) return
     setWords('')
-    setQuery(null)
     try {
       await api.post('/api/say', { words: w, ...(from ? { from: from.id } : {}) })
     } catch (err) {
@@ -463,24 +430,6 @@ function Composer({
     }
   }
   const key = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (shown.length) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        const step = e.key === 'ArrowDown' ? 1 : shown.length - 1
-        setPick((p) => (p + step) % shown.length)
-        return
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault()
-        choose(shown[pick] ?? '')
-        return
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault() // App's Escape would fold the assistant too
-        setQuery(null)
-        return
-      }
-    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       void send()
@@ -488,39 +437,13 @@ function Composer({
   }
   return (
     <div className="relative flex flex-col gap-1 rounded-3xl border border-line bg-surface py-2.5 pr-2.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
-      {shown.length > 0 && (
-        <div
-          role="listbox"
-          aria-label="Schedules"
-          className="absolute inset-x-3 bottom-full mb-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-pop"
-        >
-          {shown.map((a, i) => (
-            <button
-              key={a}
-              type="button"
-              role="option"
-              aria-selected={i === pick}
-              onMouseDown={(e) => e.preventDefault()} // the composer keeps the caret
-              onClick={() => choose(a)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 text-left text-ink text-md',
-                i === pick ? 'bg-hover' : 'hover:bg-hover',
-              )}
-            >
-              <Bot className="size-3.5 shrink-0 text-ink-3" />
-              {a}
-            </button>
-          ))}
-        </div>
-      )}
       <textarea
         ref={area}
         rows={1}
         value={words}
-        onChange={(e) => type(e.target.value, e.target.selectionStart)}
+        onChange={(e) => setWords(e.target.value)}
         onKeyDown={key}
-        onBlur={() => setQuery(null)}
-        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha, or @ a schedule'}
+        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha'}
         aria-label={from ? `Ask about ${from.name}` : 'Message Alpha'}
         className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
       />

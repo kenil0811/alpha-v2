@@ -1,51 +1,37 @@
 // A module's screen (design §14, Ledger): its name in the bar, then one row of tabs: People and
 // Organizations when people live in it (module.yaml's people: true), an Overview of the modules
 // inside it when it holds any (a plain list: each one's name, where it comes from and what goes on
-// in it right now; Kenil, 21 Oct), its pages (design §13), its tables with their counts, its
-// Conversation (Home through the module's lens) and its Schedules and notes: its schedules, the notes
-// Alpha reads first, what ran lately, and what Alpha may do here. Nothing sits under a table or a
-// page (Kenil, 26 Oct). A module holding others opens on its Overview, else on its front page,
-// else its first table.
-import type {
-  ModuleView,
-  RuleView,
-  RunView,
-  TableView as TableData,
-  TableSummary,
-} from '@alpha/core/api'
-import { Bot, Briefcase, LayoutDashboard } from 'lucide-react'
+// in it right now; Kenil, 21 Oct), its pages (design §13) with the front one first, its tables with
+// their counts, and Setup, always last: all the rest about the module (ModuleSetup.tsx). Nothing
+// sits under a table or a page (Kenil, 26 Oct). A module holding others opens on its Overview, else
+// on its front page, else its first table, else its Setup.
+import type { ModuleView, TableView as TableData, TableSummary } from '@alpha/core/api'
+import { Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { ModuleCase } from './ModuleCase.tsx'
-import { AllSchedules, when } from './ModulesAndSchedules.tsx'
+import { ModuleSetup } from './ModuleSetup.tsx'
 import { PageView } from './PageView.tsx'
-import { Refusal, useAct } from './ui/act.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
-import { Switch } from './ui/switch.tsx'
 import { type Tab, Tabs } from './ui/tabs.tsx'
-import { Words } from './ui/words.tsx'
 
 export type ModuleTab =
   | { kind: 'overview' }
   | { kind: 'page'; name: string }
   | { kind: 'table'; id: string }
-  | { kind: 'conversation' }
-  | { kind: 'schedules' }
+  | { kind: 'setup' }
 
 export function ModuleScreen({
   moduleId,
   tab,
   version,
   table,
-  conversation,
   renderTable,
 }: {
   moduleId: string
   tab: ModuleTab | null
   version: number
   table: TableData | null
-  conversation: ReactNode
   renderTable: (t: TableData, summary: TableSummary | null) => ReactNode
 }) {
   const [m, setM] = useState<ModuleView | null>(null)
@@ -57,10 +43,10 @@ export function ModuleScreen({
   }, [load, version])
 
   // with no tab named, the Overview of the modules inside, else the front page, else the first
-  // table, else the conversation
+  // table, else Setup
   const front = m?.pages.find((p) => p.front)
   const holds = (m?.modules.length ?? 0) > 0
-  // its main tables are its tabs; a part shows on its row, a setup table under Schedules and notes
+  // its main tables are its tabs; a part shows on its row, a setup table on Setup
   const first = m?.tables.find((t) => t.place === 'main')
   const current: ModuleTab =
     tab ??
@@ -70,7 +56,7 @@ export function ModuleScreen({
         ? { kind: 'page', name: front.name }
         : first
           ? { kind: 'table', id: first.id }
-          : { kind: 'conversation' })
+          : { kind: 'setup' })
   // the module's own address opens its first table, as that table's address; only once this
   // module's own data is here (the last module's, still shown, would send it back there)
   const firstTable = !tab && m && m.id === moduleId && !front && !holds ? first?.id : undefined
@@ -109,10 +95,8 @@ export function ModuleScreen({
           ) : (
             <p className="p-7 text-ink-3">{m ? 'That page is not there.' : 'Loading…'}</p>
           )
-        ) : current.kind === 'conversation' ? (
-          conversation
-        ) : current.kind === 'schedules' ? (
-          m && <SchedulesAndNotes m={m} version={version} onChange={load} />
+        ) : current.kind === 'setup' ? (
+          m && <ModuleSetup m={m} onChange={load} />
         ) : table && table.id === current.id ? (
           renderTable(table, m?.tables.find((x) => x.id === table.id) ?? null)
         ) : (
@@ -123,21 +107,23 @@ export function ModuleScreen({
   )
 }
 
-// A module's own tabs after People and the Overview: its pages, its main tables with their counts
-// (a table that is part of a row, or setup, is not a tab: core step 3a), then the parts and setup
-// tables kept as tabs (28 Oct), its
-// Conversation and its Schedules and notes; People's screen shows them too, none chosen.
+// A module's own tabs after People and the Overview: its pages, the front one first, its main
+// tables with their counts (a table that is part of a row, or setup, is not a tab: core step 3a),
+// then the parts and setup tables kept as tabs (28 Oct), and Setup. People's screen shows them
+// too, none chosen.
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
 ): Tab[] => [
-  ...m.pages.map((p) => ({
-    key: `p:${p.name}`,
-    href: `#/module/${m.id}/page/${p.name}`,
-    label: p.title,
-    icon: <LayoutDashboard className="size-3.5" />,
-    sel: current?.kind === 'page' && current.name === p.name,
-  })),
+  ...[...m.pages]
+    .sort((a, b) => Number(!!b.front) - Number(!!a.front))
+    .map((p) => ({
+      key: `p:${p.name}`,
+      href: `#/module/${m.id}/page/${p.name}`,
+      label: p.title,
+      icon: <LayoutDashboard className="size-3.5" />,
+      sel: current?.kind === 'page' && current.name === p.name,
+    })),
   ...[
     ...m.tables.filter((t) => t.place === 'main'),
     ...m.tables.filter((t) => t.place !== 'main' && t.tab),
@@ -149,16 +135,10 @@ export const moduleTabs = (
     sel: current?.kind === 'table' && current.id === t.id,
   })),
   {
-    key: 'conversation',
-    href: `#/module/${m.id}/conversation`,
-    label: 'Conversation',
-    sel: current?.kind === 'conversation',
-  },
-  {
-    key: 'schedules',
-    href: `#/module/${m.id}/schedules`,
-    label: 'Schedules and notes',
-    sel: current?.kind === 'schedules',
+    key: 'setup',
+    href: `#/module/${m.id}/setup`,
+    label: 'Setup',
+    sel: current?.kind === 'setup',
   },
 ]
 
@@ -215,190 +195,6 @@ function Overview({ m }: { m: ModuleView }) {
             )
           })}
         </List>
-      </div>
-    </div>
-  )
-}
-
-// A part of the Schedules and notes tab: its title in serif, a grey line saying what it is, its
-// content; no card around it (Kenil, 26 Oct).
-function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col">
-      <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
-      <p className="mt-0.5 mb-2.5 text-ink-3 text-sm">{sub}</p>
-      {children}
-    </section>
-  )
-}
-
-// The Schedules and notes tab: where the module comes from, then its schedules, the notes Alpha reads
-// first, what ran lately and what Alpha may do here.
-function SchedulesAndNotes({
-  m,
-  version,
-  onChange,
-}: {
-  m: ModuleView
-  version: number
-  onChange: () => void
-}) {
-  const [runs, setRuns] = useState<RunView[] | null>(null)
-  const [_rules, _setRules] = useState<RuleView[] | null>(null)
-  useEffect(() => {
-    if (version < 0) return
-    api.get<RunView[]>('/api/activity').then(
-      (all) => setRuns(all.filter((r) => r.moduleId === m.id).slice(0, 5)),
-      () => setRuns([]),
-    )
-  }, [m.id, version])
-  const { busy, on, problem, act } = useAct(onChange)
-  const turn = (id: string, state: boolean) =>
-    act(() => api.post(`/api/schedules/${id}`, { state: state ? 'on' : 'paused' }), id)
-  const running = m.schedules.filter((a) => a.state === 'on').length
-  const about = [
-    m.kit
-      ? `From ${m.kit.name}, version ${m.kit.version}`
-      : m.modules.length && !m.tables.length
-        ? ''
-        : 'Made in a conversation',
-    m.schedules.length ? `${running} schedule${running === 1 ? '' : 's'} on` : '',
-    m.modules.length ? `${m.modules.length} module${m.modules.length === 1 ? '' : 's'} inside` : '',
-    m.sites ? `reads ${m.sites} site${m.sites === 1 ? '' : 's'}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
-
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="flex max-w-page flex-col gap-7 px-7 py-6">
-        {about && <p className="text-ink-3 text-sm">{about}</p>}
-        <ModuleCase m={m} onChange={onChange} />
-        <Section title="Schedules" sub={`The schedules that work on ${m.name}.`}>
-          <div className="flex flex-col gap-2">
-            {m.schedules.length > 1 && (
-              <div className="flex justify-end">
-                <AllSchedules moduleId={m.id} schedules={m.schedules} onChange={onChange} />
-              </div>
-            )}
-            {m.schedules.length === 0 ? (
-              <p className="text-ink-2 text-md">No schedules yet. Ask Alpha to keep one.</p>
-            ) : (
-              <List>
-                {m.schedules.map((a) => (
-                  <Row
-                    key={a.id}
-                    lead={<Bot className="size-4 text-ink-3" />}
-                    title={
-                      <a href={`#/schedule/${a.id}`} className="hover:underline">
-                        {a.name}
-                      </a>
-                    }
-                    sub={`${a.state === 'on' ? 'Runs' : 'Would run'} ${a.when} · last ran ${when(a.lastRunAt)}`}
-                    actions={
-                      <>
-                        {on === a.id && <Refusal words={problem} />}
-                        {a.running && <Pill tone="accent">Running</Pill>}
-                        <Switch
-                          checked={a.state === 'on'}
-                          disabled={busy && on === a.id}
-                          label={a.state === 'on' ? `Pause ${a.name}` : `Turn on ${a.name}`}
-                          onChange={(on) => turn(a.id, on)}
-                        />
-                      </>
-                    }
-                  />
-                ))}
-              </List>
-            )}
-          </div>
-        </Section>
-        {m.tables.some((t) => t.place !== 'main') && (
-          <Section
-            title="Tables"
-            sub={`Setup its schedules read${m.tables.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''}${m.tables.some((t) => t.place === 'people') ? ", and the ones that are People's columns" : ''}. Each opens on its own too.`}
-          >
-            <ul className="flex flex-col">
-              {m.tables
-                .filter((t) => t.place !== 'main')
-                .map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
-                  >
-                    <a
-                      href={`#/table/${t.id}`}
-                      className="min-w-0 flex-1 truncate text-ink hover:underline"
-                    >
-                      {t.name}
-                    </a>
-                    <span className="text-ink-3">
-                      {t.place === 'setup'
-                        ? 'Setup'
-                        : t.place === 'people'
-                          ? "People's columns"
-                          : `Part of ${t.of ?? 'a row'}`}
-                    </span>
-                    {t.place !== 'people' && (
-                      <button
-                        type="button"
-                        disabled={busy && on === t.id}
-                        onClick={() =>
-                          act(() => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }), t.id)
-                        }
-                        className={
-                          t.tab
-                            ? 'text-accent hover:underline'
-                            : 'text-ink-3 hover:text-ink hover:underline'
-                        }
-                      >
-                        {t.tab ? 'A tab' : 'Keep as a tab'}
-                      </button>
-                    )}
-                    <span className="w-14 text-right text-ink-3 tabular-nums">
-                      {t.rows.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </Section>
-        )}
-        <Section
-          title="Notes"
-          sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
-        >
-          <div className="text-md">
-            <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
-          </div>
-        </Section>
-        <Section title="Recent activity" sub={`What ran in ${m.name} lately.`}>
-          {runs === null ? (
-            <p className="text-ink-3 text-md">Loading…</p>
-          ) : runs.length === 0 ? (
-            <p className="text-ink-2 text-md">Nothing has run here yet.</p>
-          ) : (
-            <ul className="flex flex-col">
-              {runs.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
-                >
-                  <span className="w-28 shrink-0 text-ink-3 tabular-nums">{when(r.startedAt)}</span>
-                  <span className="min-w-0 flex-1 truncate text-ink">
-                    {r.name}
-                    {r.words && <span className="text-ink-3"> · {r.words}</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <a
-            href="#/settings/activity"
-            className="mt-1 inline-block text-accent text-sm hover:underline"
-          >
-            All activity
-          </a>
-        </Section>
       </div>
     </div>
   )

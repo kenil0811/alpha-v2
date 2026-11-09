@@ -148,7 +148,7 @@ function SchedulePage({
         lines={[
           [
             'Module',
-            <a key="m" href={`#/module/${m.id}`} className="hover:underline">
+            <a key="m" href={`#/module/${m.id}/setup`} className="hover:underline">
               {m.name}
             </a>,
           ],

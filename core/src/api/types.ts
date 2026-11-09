@@ -491,7 +491,13 @@ export interface ModuleView {
   id: string
   name: string
   people: boolean // People and Organizations are its tabs
-  kit: { name: string; version: string } | null
+  kit: {
+    name: string
+    version: string
+    maintainer: { name: string; address: string } | null
+    core: boolean
+    changes: number
+  } | null
   schedules: ScheduleView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written

@@ -43,8 +43,8 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| M1 | A module's tabs: People and Organizations where its module.yaml says so, its pages, its main tables with their counts (a table part of a row, setup, or one row per person in People's module is not a tab), then the parts and setup tables kept as tabs, Conversation, Schedules and notes | 26 Oct, 27 Oct, 28 Oct | — |
-| M2 | Nothing sits under a table or a page; what the module is for (its business case, Edit beside it, assumed while Alpha's), schedules, the module's other tables (setup, and parts with what they are part of, each with Keep as a tab, reading A tab while it is one; the same in the table's ⋯ menu), notes, and recent activity are the Schedules and notes tab | 26 Oct, 27 Oct, 28 Oct | — |
+| M1 | A module's tabs: People and Organizations where its module.yaml says so, an Overview when modules sit inside it, its pages with the front one first, its main tables with their counts (a table part of a row, setup, or one row per person in People's module is not a tab), then the parts and setup tables kept as tabs, and Setup, always last. A module opens on its Overview, else its front page, else its first table, else Setup | 26 Oct, 27 Oct, 28 Oct, 9 Nov | — |
+| M2 | Nothing sits under a table or a page; where the module comes from, what it is for (its business case, Edit beside it, assumed while Alpha's), its schedules with Run now and on or paused, the module's other tables (setup, and parts with what they are part of, each with Keep as a tab, reading A tab while it is one; the same in the table's ⋯ menu), notes, what is the person's against the module's own, and Pack it are the Setup tab | 26 Oct, 27 Oct, 28 Oct, 9 Nov | — |
 | M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
 
 ## Table and toolbar
@@ -91,7 +91,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | A1 | The assistant's header: fold, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
-| A3 | The composer's +: files, a folder; @ names a schedule. The way to Claude is Settings' business | 26 Oct, 7 Nov | — |
+| A3 | The composer's +: files, a folder. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
 | A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
 | A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
@@ -101,8 +101,8 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| I1 | Intelligence: Connections, Schedules, How to work | 26 Oct, 7 Nov | — |
-| I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity, People where people sign in (and Modules until step 5), one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
+| I1 | Intelligence: Modules, Schedules, Connections, How to work. Modules lists every module and opens its Setup; installing one is below the list, the owner's alone. Schedules is one table, a row opening its page | 26 Oct, 7 Nov, 9 Nov | — |
+| I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity, People where people sign in, one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this. Settings › Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by schedule and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov | test |
 | I5 | Settings › Activity lists what waits for the person above every run, and is the only place a run's report is read | 9 Nov | — |

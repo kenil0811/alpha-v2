@@ -1,5 +1,5 @@
 // What a module is for (core step 3e): who it is for, what it keeps track of and the decisions it
-// serves, at the top of Schedules and notes. Alpha's words show as assumed until the person changes
+// serves, at the top of Setup. Alpha's words show as assumed until the person changes
 // them; Edit makes them theirs, and a kit's update never writes over theirs.
 import type { ModuleView } from '@alpha/core/api'
 import { Pencil } from 'lucide-react'

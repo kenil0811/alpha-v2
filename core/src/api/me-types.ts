@@ -4,6 +4,7 @@
 export interface Me {
   user: { id: string; name: string; role: 'owner' | 'member' }
   signIn: boolean // each person signs in here
+  developer: boolean // alpha.yaml says so: modules and connectors come from folders too
   tenant: string
   theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
   layout: Layout

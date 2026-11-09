@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { installedKits } from '../../modules/kits/index.ts'
+import { installedKits, unseenChanges } from '../../modules/kits/index.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
 import { schedules, whenWords } from '../../modules/schedules.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
@@ -81,7 +81,15 @@ export function registerModules(ctx: Ctx): void {
       id: m.id,
       name: m.name,
       people: livesPeople(m),
-      kit: k ? { name: k.kit, version: k.version } : null,
+      kit: k
+        ? {
+            name: k.kit,
+            version: k.version,
+            maintainer: k.maintainer,
+            core: k.core,
+            changes: k.maintainer ? unseenChanges(world, m.id) : 0,
+          }
+        : null,
       schedules: schedules(world, m.id).map((a) => ({
         id: a.id,
         name: a.name,

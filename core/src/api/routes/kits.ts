@@ -78,37 +78,34 @@ export function registerKits(ctx: Ctx): void {
         .filter((r) => r.state === 'running')
         .map((r) => r.schedule),
     )
-    return world.shape
-      .modules()
-      .map((m) => {
-        const k = kits.get(m.id)
-        return {
-          id: m.id,
-          name: m.name,
-          kit: k
-            ? {
-                name: k.kit,
-                version: k.version,
-                source: k.source,
-                api: k.api,
-                maintainer: k.maintainer,
-                core: k.core,
-                changes: k.maintainer ? unseenChanges(world, m.id) : 0,
-              }
-            : null,
-          schedules: schedules(world, m.id).map((a) => ({
-            id: a.id,
-            name: a.name,
-            state: a.state,
-            description: a.description,
-            needs: needsOf(m, a),
-            when: whenWords(a.trigger),
-            lastRunAt: a.lastRunAt,
-            running: running.has(a.id),
-          })),
-        }
-      })
-      .filter((m) => m.kit || m.schedules.length)
+    return world.shape.modules().map((m) => {
+      const k = kits.get(m.id)
+      return {
+        id: m.id,
+        name: m.name,
+        kit: k
+          ? {
+              name: k.kit,
+              version: k.version,
+              source: k.source,
+              api: k.api,
+              maintainer: k.maintainer,
+              core: k.core,
+              changes: k.maintainer ? unseenChanges(world, m.id) : 0,
+            }
+          : null,
+        schedules: schedules(world, m.id).map((a) => ({
+          id: a.id,
+          name: a.name,
+          state: a.state,
+          description: a.description,
+          needs: needsOf(m, a),
+          when: whenWords(a.trigger),
+          lastRunAt: a.lastRunAt,
+          running: running.has(a.id),
+        })),
+      }
+    })
   }
 
   // A kit is installed from a folder on this Mac, or updated from one by the ownership rule.

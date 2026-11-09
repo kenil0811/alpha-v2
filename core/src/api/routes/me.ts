@@ -30,6 +30,7 @@ export function registerMe(ctx: Ctx): void {
     return {
       user: { id: user.id, name: user.name, role: user.role },
       signIn: !!options.signIn,
+      developer: options.data?.install().developer ?? false,
       tenant: world.tenant,
       theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
       layout: layoutOf(),

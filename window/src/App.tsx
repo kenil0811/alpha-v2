@@ -1,5 +1,5 @@
 // The window (design §14): the rail, a bar over each screen, the screen (Home, Settings or a
-// module: its tables, conversation, schedules and notes) and the assistant on the right of every
+// module: its pages, tables and Setup) and the assistant on the right of every
 // screen but the whole conversation's own, through the module's lens on a module's screen. ⌘J
 // folds it and opens it again (Vikas, 25 Oct).
 import type {
@@ -100,10 +100,7 @@ export function App() {
     () => placed && { id: placed.id, name: placed.name, ids: inside(modules, placed.id) },
     [placed?.id, placed?.name, modules, placed],
   )
-  const askable = !(
-    place.at === 'conversation' ||
-    (place.at === 'module' && place.tab === 'conversation')
-  )
+  const askable = place.at !== 'conversation'
   const askableRef = useRef(askable)
   askableRef.current = askable
   useEffect(() => {
@@ -254,8 +251,7 @@ export function App() {
         return r ? titleOf(table.fields, r) : '…'
       }
       case 'module': {
-        if (place.tab === 'schedules') return 'Schedules and notes'
-        if (place.tab === 'conversation') return 'Conversation'
+        if (place.tab === 'setup') return 'Setup'
         if (place.tab === 'overview' || (!place.page && modules.some((x) => x.parent === place.id)))
           return 'Overview'
         const pages = modules.find((x) => x.id === place.id)?.pages
@@ -373,16 +369,6 @@ export function App() {
                         quiet={(asking && !room) || !!opened}
                       />
                     )}
-                    conversation={
-                      <Conversation
-                        stream={stream}
-                        live={live}
-                        busyTurn={busyTurn}
-                        lens={moduleHere}
-                        onLens={() => undefined}
-                        from={moduleHere}
-                      />
-                    }
                   />
                 ) : (
                   <p className="p-6 text-ink-3">That table is not there.</p>

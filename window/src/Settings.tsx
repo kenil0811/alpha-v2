@@ -29,7 +29,7 @@ import { Activity } from './Activity.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { HowToWork } from './HowToWork.tsx'
-import { ModulesAndSchedules, when } from './ModulesAndSchedules.tsx'
+import { Modules, when } from './Modules.tsx'
 import { Reach } from './Reach.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
@@ -78,10 +78,11 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'The accounts Alpha reads, its schedules and how you asked it to work.',
+    about: 'Your modules, their schedules, the accounts Alpha reads and how you asked it to work.',
     tabs: [
-      ['connections', 'Connections'],
+      ['modules', 'Modules'],
       ['schedules', 'Schedules'],
+      ['connections', 'Connections'],
       ['work', 'How to work'],
     ],
   },
@@ -97,7 +98,6 @@ const PAGES = {
       ['permissions', 'Permissions'],
       ['activity', 'Activity'],
       ['people', 'People'],
-      ['modules', 'Modules'],
     ],
   },
 } as const
@@ -199,7 +199,7 @@ export function Settings({
         </Section>
       </>
     ),
-    modules: <ModulesAndSchedules version={version} />,
+    modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
     permissions: <Permissions version={version} owner={!member} />,
     model: <ModelSection />,
     usage: <UsageSection />,
@@ -1046,8 +1046,7 @@ function Embedded({
   )
 }
 
-// Intelligence's Schedules: every schedule in one shared table, each opening its page; then the modules
-// they come from, to install, update and pack.
+// Intelligence's Schedules: every schedule in one shared table, each opening its page.
 function Schedules({ version }: { version: number }) {
   // every module's schedules as one table from the core: On or Paused changes in its cell
   const [data, setData] = useState<KeptTable | null>(null)
