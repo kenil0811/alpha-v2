@@ -20,3 +20,8 @@ lasts 30 days (`session_days`).
 - Rule A6, in `core/src/rules/access.test.ts`.
 - Not tried against a real tenant: Microsoft sign-in is tested on the made-up provider of the sign-in
   tests. Real hosting is step 9.
+
+Journeys: all once ($3.26). `a-reader-for-a-list` failed, as it did once in 4a, on the same check (the
+reader the model wrote kept the list page as each row's source); it then passed three times running.
+Two of its last six runs failed: the model's choice, not this change, and worth a look when the check
+is next touched.
