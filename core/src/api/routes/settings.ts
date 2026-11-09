@@ -157,12 +157,19 @@ export function registerSettings(ctx: Ctx): void {
   })
   // The person's own data, from within Alpha (decision 12): what it holds, a backup now, going
   // back, taking it, bringing it in, a copy in a folder, removing it all on their word.
+  const owner = () => {
+    if (user.role !== 'owner') throw new Refused('Only the owner can do that.')
+  }
   const data = () => {
+    owner()
     if (!options.data) throw new Refused('The data page is not set up in this core.')
     return options.data
   }
   app.get('/api/data', async (): Promise<DataPageView> => dataView(world, data().install()))
-  app.post('/api/data/backup', async () => backupNow(world, { user: user.id }))
+  app.post('/api/data/backup', async () => {
+    data()
+    return backupNow(world, { user: user.id })
+  })
   app.post('/api/data/restore', async (req) => {
     const { name } = z.object({ name: z.string().regex(/^world-[\w.-]+\.sqlite$/) }).parse(req.body)
     const file = join(world.paths.backups, name)
@@ -211,6 +218,7 @@ export function registerSettings(ctx: Ctx): void {
 
   // The route, the person's choice: their own subscription, or an API key kept in the Keychain.
   app.post('/api/model', async (req): Promise<ModelView> => {
+    owner()
     const { route, key } = z
       .object({
         route: z.enum(['subscription', 'key']),

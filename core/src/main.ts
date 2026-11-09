@@ -324,6 +324,7 @@ const app = buildServer({
   engine,
   user,
   token,
+  ...(install.signIn ? { signIn: { days: install.sessionDays } } : {}),
   setup,
   ports: [port, windowPort],
   browsers: join(home, 'browsers'),
@@ -386,7 +387,13 @@ try {
   process.exit(1)
 }
 console.log(`Alpha's core is listening on 127.0.0.1:${port}, data in ${home}`)
-console.log(`Open Alpha: http://127.0.0.1:${served ? port : windowPort}/?t=${token}`)
+const opensAt = `http://127.0.0.1:${served ? port : windowPort}/`
+if (install.signIn) {
+  // until the owner has a password, each start prints a new one-time link to set it
+  const link = world.accounts.ownerLink(user)
+  if (link) console.log(`Set the owner's password: ${opensAt}?link=${encodeURIComponent(link)}`)
+  else console.log(`Open Alpha: ${opensAt}`)
+} else console.log(`Open Alpha: ${opensAt}?t=${token}`)
 
 const shutdown = async () => {
   scheduler.stop()

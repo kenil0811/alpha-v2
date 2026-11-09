@@ -147,6 +147,8 @@ export function slugify(name: string): string {
 export const RESERVED = new Set([
   'journal',
   'users',
+  'accounts',
+  'sessions',
   'modules',
   'tables',
   'fields',

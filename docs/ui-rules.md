@@ -102,11 +102,12 @@ held by review. Dates are 2026.
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | I1 | Intelligence: Connections, Agents, How to work | 26 Oct, 7 Nov | — |
-| I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity (and Modules until step 5), one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
+| I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity, People where people sign in (and Modules until step 5), one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this. Settings › Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by agent and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov | test |
 | I5 | Settings › Activity lists what waits for the person above every run, and is the only place a run's report is read | 9 Nov | — |
 | I6 | Settings › Data: the last ten backups, Go back on any, Back up now; taking data out, bringing it in and deleting it are the `alpha` command's | 9 Nov | — |
+| I7 | Where Alpha asks people to sign in, Settings has People for the owner (who may sign in, a one-time link to pass on, Delete) and the foot says who is signed in with Sign out; a member sees no Model, Data or People, and no setup on Home | 9 Nov | — |
 
 ## Wording
 

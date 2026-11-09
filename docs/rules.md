@@ -76,6 +76,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | A3 | The chain's newest hash is written outside the world every day, into the backup's manifest and the report, so a rewritten tail cannot verify | 4 Nov | skip (step 7) |
 | A4 | A line that adds, changes or lands rows carries a digest of the values it wrote, so `pnpm journal verify` finds a value changed in the file | 4 Nov | skip (step 7) |
 | A5 | In a firm with users, reading a managed module's records is a journal line, folded after its days like the model's reads | 4 Nov | step 8 |
+| A6 | Where Alpha asks people to sign in, every request but the sign-in pages carries a live session and acts as that person: their conversation and the cards raised in it are theirs alone, and only the owner sets the model, the data, who may sign in, and installs a pack | 9 Nov | test |
 
 ## Reliability
 

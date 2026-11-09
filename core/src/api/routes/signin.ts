@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import type { BaseCtx } from '../ctx.ts'
 import type { SignInAppView } from '../types.ts'
+import { COOKIE } from './session.ts'
 
 export const BACK = '/api/sign-in/back'
 
@@ -50,7 +51,7 @@ p{margin:0;color:var(--ink2)}
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 export function registerSignIn(ctx: BaseCtx): void {
-  const { app, engine, live, asPerson } = ctx
+  const { app, engine, live, asPerson, options, world } = ctx
 
   app.post('/api/sign-in-apps/:provider', async (req) => {
     const { provider } = z.object({ provider: z.string() }).parse(req.params)
@@ -71,6 +72,28 @@ export function registerSignIn(ctx: BaseCtx): void {
     reply.type('text/html; charset=utf-8')
     if (!service || !signIn)
       return page('Not signed in', 'Signing in is not set up in this Alpha.', false)
+    // someone signing in to Alpha itself, not connecting an account
+    if (options.signIn && signIn.isPerson(q.state)) {
+      try {
+        const email = await signIn.backPerson(q)
+        const token = world.accounts.signInByEmail(email, options.signIn.days)
+        if (!token)
+          return page(
+            'Not signed in',
+            `${esc(email)} has no account in this Alpha. Ask its owner to add you.`,
+            false,
+          )
+        reply.header(
+          'set-cookie',
+          `${COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${
+            options.signIn.days * 86_400
+          }${req.protocol === 'https' ? '; Secure' : ''}`,
+        )
+        return reply.redirect('/')
+      } catch (err) {
+        return page('Not signed in', esc(err instanceof Error ? err.message : String(err)), false)
+      }
+    }
     let out: Awaited<ReturnType<typeof signIn.back>>
     try {
       out = await signIn.back(q)

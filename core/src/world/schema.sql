@@ -45,6 +45,28 @@ CREATE TABLE users (
   created_at TEXT NOT NULL
 );
 
+-- How a person signs in, on an Alpha that asks: their email and password, or a link to set one.
+CREATE TABLE accounts (
+  user_id TEXT PRIMARY KEY REFERENCES users (id),
+  email TEXT UNIQUE COLLATE NOCASE,
+  password TEXT,
+  link_hash TEXT,
+  link_until TEXT,
+  failed INTEGER NOT NULL DEFAULT 0,
+  wait_until TEXT,
+  last_in TEXT,
+  gone_at TEXT
+);
+
+-- A browser that is signed in, by the hash of its cookie.
+CREATE TABLE sessions (
+  hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users (id),
+  created_at TEXT NOT NULL,
+  until TEXT NOT NULL
+);
+CREATE INDEX sessions_user ON sessions (user_id);
+
 -- A person's own settings in the window.
 CREATE TABLE preferences (
   user_id TEXT NOT NULL REFERENCES users (id),

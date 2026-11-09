@@ -34,10 +34,12 @@ function greeting(name: string): string {
 export function Home({
   stream,
   name,
+  owner,
   onAsked,
 }: {
   stream: Stream | null
   name: string
+  owner: boolean
   onAsked: () => void // the answer opens on the right
 }) {
   const [setup, reloadSetup] = useSetup()
@@ -154,7 +156,7 @@ export function Home({
           {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} onChange={load} />}
         </Group>
 
-        {setup && unready(setup) && (
+        {owner && setup && unready(setup) && (
           <Group
             title="Getting Alpha ready"
             sub="Alpha works meanwhile; these finish setting it up"

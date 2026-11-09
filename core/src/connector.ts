@@ -21,10 +21,11 @@ async function add(path: string): Promise<void> {
   const answer = await fetch(`${base}/api/connectors${isFolder ? '' : '/pack'}`, {
     method: 'POST',
     headers: isFolder
-      ? { 'content-type': 'application/json', 'x-alpha-token': token }
+      ? { 'content-type': 'application/json', 'x-alpha-token': token, 'x-alpha-cli': '1' }
       : {
           'content-type': 'application/octet-stream',
           'x-alpha-token': token,
+          'x-alpha-cli': '1',
           'x-file-name': encodeURIComponent(basename(path)),
         },
     body: isFolder ? JSON.stringify({ folder: path }) : readFileSync(path),

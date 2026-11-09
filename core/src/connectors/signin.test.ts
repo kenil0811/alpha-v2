@@ -31,6 +31,7 @@ const svc = {
   refreshes: 0,
   refusal: null as null | { error: string; error_codes: number[]; error_description: string },
   issued: [] as string[],
+  who: 'priya@bridge.example.com',
 }
 
 beforeEach(async () => {
@@ -76,6 +77,7 @@ beforeEach(async () => {
           access_token: 'access-1',
           refresh_token: 'refresh-1',
           expires_in: 3600,
+          id_token: `x.${Buffer.from(JSON.stringify({ preferred_username: svc.who })).toString('base64url')}.y`,
         })
       }
       svc.refreshes++
@@ -148,6 +150,22 @@ async function signInAs(signIn: SignIn, url: string) {
 }
 
 describe('the organisation’s sign-in app', () => {
+  it('signs a person in to Alpha by who the provider says they are, keeping no token', async () => {
+    const { signIn } = setUp()
+    signIn.setApp('microsoft', APP, kenil())
+    const url = new URL(signIn.startPerson('microsoft'))
+    expect(url.searchParams.get('scope')).toBe('openid email profile')
+    const state = url.searchParams.get('state') ?? ''
+    expect(signIn.isPerson(state)).toBe(true)
+    const res = await fetch(url.toString(), { redirect: 'manual' })
+    const back = new URL(res.headers.get('location') ?? '')
+    await expect(signIn.backPerson(Object.fromEntries(back.searchParams))).resolves.toBe(
+      'priya@bridge.example.com',
+    )
+    expect(signIn.isPerson(state)).toBe(false) // spent
+    expect(JSON.stringify(world.lines({}))).not.toContain('access-1')
+  })
+
   it('is set once, checked for what its ids look like, and journaled', () => {
     const { signIn } = setUp()
     expect(() =>

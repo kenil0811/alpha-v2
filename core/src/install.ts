@@ -22,6 +22,8 @@ export interface Install {
   keepAwake: boolean // the Mac kept from sleeping while plugged in
   prepareReaders: boolean // the readers' downloads started at start
   developer: boolean // folders and packs not signed by Kenil load (the switch for him, no window)
+  signIn: boolean // each person signs in (a hosted Alpha); off, the per-install token
+  sessionDays: number // how long a sign-in lasts
   backupsCopy: string | null // a folder of the person's where a copy of the newest backup goes each day
 }
 
@@ -38,6 +40,8 @@ const Shape = z
     prepare_readers: z.boolean(),
     backups_copy: z.string().nullable(),
     developer: z.boolean(),
+    sign_in: z.boolean(),
+    session_days: z.number().int().positive(),
   })
   .partial()
 
@@ -53,6 +57,8 @@ const DEFAULTS: Install = {
   prepareReaders: false,
   backupsCopy: null,
   developer: false,
+  signIn: false,
+  sessionDays: 30,
 }
 
 function fromFile(home: string): Partial<Install> {
@@ -73,6 +79,8 @@ function fromFile(home: string): Partial<Install> {
     ...(f.prepare_readers !== undefined ? { prepareReaders: f.prepare_readers } : {}),
     ...(f.backups_copy !== undefined ? { backupsCopy: f.backups_copy } : {}),
     ...(f.developer !== undefined ? { developer: f.developer } : {}),
+    ...(f.sign_in !== undefined ? { signIn: f.sign_in } : {}),
+    ...(f.session_days !== undefined ? { sessionDays: f.session_days } : {}),
   }
 }
 

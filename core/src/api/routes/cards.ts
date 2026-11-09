@@ -22,6 +22,14 @@ export function registerCards(ctx: Ctx): void {
 
   // A card on its own page (Batch B, pick 13): the card the stream shows, answered there by the
   // routes below; one not there, or another person's, is not there.
+  // A card raised for one person is theirs alone, by every way of acting on it (rule A6).
+  app.addHook('preHandler', async (req, reply) => {
+    if (!(req.routeOptions?.url ?? '').startsWith('/api/cards/:id')) return
+    const c = world.cards.get((req.params as { id: string }).id)
+    if (c?.user && c.user !== user.id)
+      return reply.code(404).send({ problem: 'That card is not there.' })
+  })
+
   app.get('/api/cards/:id', async (req, reply): Promise<CardView | undefined> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const c = world.cards.get(id)

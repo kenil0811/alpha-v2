@@ -27,6 +27,8 @@ const KEY = (provider: string) => `sign_in_app:${provider}`
 // a sign-in started and not finished is forgotten after this; a short-lived token is renewed this
 // long before it runs out
 const PENDING_MS = 15 * 60_000
+// all a sign-in to Alpha itself asks of the provider
+const WHO = 'openid email profile'
 const EARLY_MS = 5 * 60_000
 
 export interface SignInOptions {
@@ -48,6 +50,7 @@ interface Tokens {
   access_token?: string
   refresh_token?: string
   expires_in?: number
+  id_token?: string
 }
 
 export class SignIn {
@@ -140,6 +143,68 @@ export class SignIn {
 
   private scopes(c: Connector, p: Provider): string {
     return [...(c.manifest.oauth?.scopes ?? []), ...p.always].join(' ')
+  }
+
+  // The provider's own page for signing in to Alpha itself (the clean base, step 4b): it asks only
+  // who they are, and gives no token Alpha keeps.
+  startPerson(provider: string): string {
+    const p = this.provider(provider)
+    const app = this.app(p.name)
+    if (!app) throw new Refused(`${p.title}'s sign-in app is not set up in this Alpha.`)
+    for (const [k, v] of this.pending) if (v.until < this.now()) this.pending.delete(k)
+    const verifier = b64url(randomBytes(32))
+    const state = b64url(randomBytes(24))
+    this.pending.set(state, {
+      connection: '',
+      verifier,
+      provider: p.name,
+      scopes: WHO,
+      until: this.now() + PENDING_MS,
+    })
+    const u = new URL(p.authorize(app))
+    for (const [k, v] of Object.entries({
+      client_id: app.app,
+      response_type: 'code',
+      response_mode: 'query',
+      redirect_uri: this.options.back(),
+      scope: WHO,
+      state,
+      code_challenge: b64url(createHash('sha256').update(verifier).digest()),
+      code_challenge_method: 'S256',
+      ...p.ask,
+    }))
+      u.searchParams.set(k, v)
+    return u.toString()
+  }
+
+  // Whether this answer is someone signing in to Alpha, not a connection's.
+  isPerson(state: string | undefined): boolean {
+    return !!state && this.pending.get(state)?.connection === ''
+  }
+
+  // The provider's answer for a person signing in to Alpha: their email, as it vouches for it.
+  async backPerson(q: Record<string, string | undefined>): Promise<string> {
+    const pend = q.state ? this.pending.get(q.state) : undefined
+    if (q.state) this.pending.delete(q.state)
+    if (!pend || pend.until < this.now())
+      throw new Refused('This sign-in is too old: start it again from Alpha.')
+    const p = this.provider(pend.provider)
+    const app = this.app(p.name)
+    if (!app || !q.code) throw new Refused(q.error_description ?? 'The sign-in did not finish.')
+    const t = await this.trade(p, app, {
+      grant_type: 'authorization_code',
+      code: q.code,
+      redirect_uri: this.options.back(),
+      code_verifier: pend.verifier,
+      scope: pend.scopes,
+    })
+    // straight from the provider's token address over TLS, so its signature needs no second check
+    const claims = JSON.parse(
+      Buffer.from((t.id_token ?? '').split('.')[1] ?? '', 'base64url').toString() || '{}',
+    ) as { email?: string; preferred_username?: string }
+    const email = claims.email ?? claims.preferred_username
+    if (!email) throw new Refused('Microsoft did not say which account signed in.')
+    return email
   }
 
   // The provider's own sign-in page for this connection: where the person signs in themselves.

@@ -4,7 +4,7 @@ import type { Ctx } from '../ctx.ts'
 import type { FoundRow, Layout, Me } from '../types.ts'
 
 export function registerMe(ctx: Ctx): void {
-  const { app, world, user } = ctx
+  const { app, world, user, options } = ctx
 
   const layoutOf = (): Layout => {
     const folded = world.preference(user.id, 'rail_folded_modules')
@@ -28,7 +28,8 @@ export function registerMe(ctx: Ctx): void {
   app.get('/api/me', async (): Promise<Me> => {
     const theme = world.preference(user.id, 'theme')
     return {
-      user: { id: user.id, name: user.name },
+      user: { id: user.id, name: user.name, role: user.role },
+      signIn: !!options.signIn,
       tenant: world.tenant,
       theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
       layout: layoutOf(),

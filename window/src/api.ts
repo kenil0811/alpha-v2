@@ -50,6 +50,8 @@ async function call<T>(
     ...(body !== undefined ? { body: body instanceof Blob ? body : JSON.stringify(body) } : {}),
   })
   const data = (await res.json().catch(() => ({}))) as T & { problem?: string }
+  // a session that ran out: the sign-in page again
+  if (res.status === 401) window.dispatchEvent(new Event('alpha:signed-out'))
   if (!res.ok) throw new Problem(data.problem ?? NOT_ANSWERING)
   return data
 }

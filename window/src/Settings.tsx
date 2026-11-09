@@ -7,6 +7,7 @@ import type {
   ConnectorView,
   DataPageView,
   KeptTable,
+  Me,
   ModelView,
 } from '@alpha/core/api'
 import {
@@ -23,6 +24,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { AccountsSection, Foot } from './Accounts.tsx'
 import { Activity } from './Activity.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
@@ -94,6 +96,7 @@ const PAGES = {
       ['appearance', 'Appearance'],
       ['permissions', 'Permissions'],
       ['activity', 'Activity'],
+      ['people', 'People'],
       ['modules', 'Modules'],
     ],
   },
@@ -122,7 +125,14 @@ export function Settings({
   }, [load, version])
 
   const p = PAGES[page]
-  const tabs = p.tabs
+  const [me, setMe] = useState<Me | null>(null)
+  useEffect(() => {
+    api.get<Me>('/api/me').then(setMe, () => undefined)
+  }, [])
+  // a member does not see the owner's sections; People only where people sign in
+  const member = me?.user.role === 'member'
+  const hidden = new Set(member ? ['model', 'data', 'people'] : me?.signIn ? [] : ['people'])
+  const tabs = (p.tabs as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
   const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
   if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
   // a connector that names a place on this Mac (a folder) is a list under Folders; every other
@@ -190,10 +200,11 @@ export function Settings({
       </>
     ),
     modules: <ModulesAndAgents version={version} />,
-    permissions: <Permissions version={version} />,
+    permissions: <Permissions version={version} owner={!member} />,
     model: <ModelSection />,
     usage: <UsageSection />,
     activity: <Activity version={version} cards={cards} />,
+    people: <AccountsSection />,
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
   }
@@ -246,40 +257,27 @@ export function Settings({
           </SideList>
           <div className="flex min-w-0 flex-col gap-8">{body[at]}</div>
         </div>
-        <Version />
+        <Foot me={me} />
       </div>
     </div>
   )
 }
 
-// The version the core runs, at Settings' foot.
-function Version() {
-  const [health, setHealth] = useState<{ version: string; build?: string } | null>(null)
-  useEffect(() => {
-    api.get<{ version: string; build?: string }>('/api/health').then(setHealth, () => undefined)
-  }, [])
-  if (!health) return null
-  return (
-    <p className="text-ink-3 text-sm">
-      Alpha {health.version}
-      {health.build ? ` · build ${health.build}` : ''}
-    </p>
-  )
-}
-
 // Permissions: what Alpha has on this Mac (Claude's sign-in, the readers' downloads, Contacts and
 // Calendar, Chrome), then what it does without asking because the person said Always.
-function Permissions({ version }: { version: number }) {
+function Permissions({ version, owner }: { version: number; owner: boolean }) {
   const [view, reload] = useSetup()
   return (
     <>
-      <Section title="On this computer" about="What Alpha may reach on this computer.">
-        {view ? (
-          <SetupList view={view} onChange={reload} />
-        ) : (
-          <p className="text-ink-2 text-md">This core does not say.</p>
-        )}
-      </Section>
+      {owner && (
+        <Section title="On this computer" about="What Alpha may reach on this computer.">
+          {view ? (
+            <SetupList view={view} onChange={reload} />
+          ) : (
+            <p className="text-ink-2 text-md">This core does not say.</p>
+          )}
+        </Section>
+      )}
       <Section
         title="Rules"
         about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule holds once you save it on its card."

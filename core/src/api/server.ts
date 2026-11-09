@@ -1,12 +1,14 @@
-// The api the window talks to (design §2, §14): HTTP and a websocket on loopback. Every request,
-// HTTP or websocket, checks its Host, its Origin and the per-install token.
+// The api the window talks to (design §2, §14): HTTP and a websocket. Every request, HTTP or
+// websocket, checks its Host and its Origin, then who is asking: the per-install token on a Mac
+// install, or a person's session where this Alpha asks them to sign in (the clean base, step 4b).
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { SecretStore } from '@alpha/connector-sdk'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
-import Fastify, { type FastifyInstance } from 'fastify'
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
 import type { Install } from '../install.ts'
@@ -27,6 +29,7 @@ import { registerPeople } from './routes/people.ts'
 import { registerReadNow } from './routes/readnow.ts'
 import { registerRows } from './routes/rows.ts'
 import { registerRules } from './routes/rules.ts'
+import { COOKIE, cookieIn, registerSession, SESSION_PATHS } from './routes/session.ts'
 import { registerSettings } from './routes/settings.ts'
 import { BACK, registerSignIn } from './routes/signin.ts'
 import { registerStream } from './routes/stream.ts'
@@ -48,6 +51,7 @@ export interface ServerOptions {
   user?: User
   token?: string
   ports?: number[] // the core's and the dev window's
+  signIn?: { days: number } // each person signs in, for this long; none: the per-install token
   windowDir?: string // the built window, served at / when it is there
   browsers?: string // where the core's own browser is kept, for printing pages
   setup?: Setup // what this Mac still needs: Claude's sign-in, connections, the readers' downloads
@@ -78,9 +82,25 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   })()
   app.get('/api/health', async (): Promise<Health> => ({ ok: true, version: VERSION, build }))
 
-  const { engine, user, token } = options
-  if (!engine || !user) return app
+  const { engine, user: owner, token } = options
+  if (!engine || !owner) return app
   const world = engine.world
+  // who this request is: the signed-in person where Alpha asks, else its owner. `user` reads the
+  // request it is used in, so every route below is about whoever is asking.
+  const asking = new AsyncLocalStorage<User>()
+  const who = new WeakMap<FastifyRequest, User>()
+  const me = () => asking.getStore() ?? owner
+  const user: User = {
+    get id() {
+      return me().id
+    },
+    get name() {
+      return me().name
+    },
+    get role() {
+      return me().role
+    },
+  }
   // a connection's connector, as the loaded set describes it
   const connectorOf = (name: string) => {
     if (!engine.connectors) throw new Refused('Connectors are not set up in this core.')
@@ -115,17 +135,43 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (hosts.size && !hosts.has(host)) return deny(reply, 'This address is not Alpha’s.')
     if (origin && hosts.size && !hosts.has(origin.replace(/^https?:\/\//, '')))
       return deny(reply, 'This page is not Alpha’s.')
-    if (token && given !== token && !back)
+    if (back || SESSION_PATHS.has(path)) return
+    if (options.signIn) {
+      // the alpha command on this machine says so and holds the token: it acts as the owner
+      if (req.headers['x-alpha-cli'] && token && given === token) return
+      const person = world.accounts.userOf(cookieIn(req.headers.cookie, COOKIE))
+      if (!person) return reply.code(401).send({ problem: 'Sign in to Alpha.' })
+      who.set(req, person)
+      return
+    }
+    if (token && given !== token)
       return deny(reply, 'Open Alpha from the address the core printed.')
+  })
+  // after the body is read, so the route and all that it starts run as this person
+  app.addHook('preHandler', (req, _reply, done) => {
+    const person = who.get(req)
+    if (person) asking.run(person, done)
+    else done()
   })
 
   app.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => done(null, body))
 
-  const person = { kind: 'person' as const, id: user.id }
+  const person = {
+    kind: 'person' as const,
+    get id() {
+      return user.id
+    },
+  }
   const live = () => engine.events.emit('event', { type: 'lines', user: user.id })
-  const asPerson = { actor: person, user: user.id }
+  const asPerson = {
+    actor: person,
+    get user() {
+      return user.id
+    },
+  }
   const base: BaseCtx = { app, world, engine, user, options, person, live, asPerson, connectorOf }
   const ctx: Ctx = { ...base, views: makeViews(base) }
+  registerSession(ctx)
   registerMe(ctx)
   registerStream(ctx)
   registerCards(ctx)
@@ -157,9 +203,12 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   void app.register(websocket)
   void app.register(async (scope) => {
-    scope.get('/ws', { websocket: true }, (socket) => {
+    scope.get('/ws', { websocket: true }, (socket, req) => {
+      const id = (who.get(req) ?? owner).id
+      // a change to the world reaches every window; a person's streaming reply only theirs
       const send = (e: EngineEvent) => {
-        if (e.user === user.id) socket.send(JSON.stringify({ ...e, user: undefined }))
+        if (e.type === 'lines' || e.user === id)
+          socket.send(JSON.stringify({ ...e, user: undefined }))
       }
       engine.events.on('event', send)
       socket.on('close', () => engine.events.off('event', send))

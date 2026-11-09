@@ -72,12 +72,12 @@ case "$1" in
     ;;
   export)
     answering || start
-    curl -s -X POST -H "x-alpha-token: $(token)" "http://127.0.0.1:$PORT/api/data/export" | sed -n 's/.*"file":"\([^"]*\)".*/Your data is in \1/p'
+    curl -s -X POST -H "x-alpha-token: $(token)" -H "x-alpha-cli: 1" "http://127.0.0.1:$PORT/api/data/export" | sed -n 's/.*"file":"\([^"]*\)".*/Your data is in \1/p'
     ;;
   import)
     [ -f "$2" ] || { say "Say which archive, like ~/Desktop/alpha-data-2026-11-09.tar.gz (it works on a fresh install only)"; exit 1; }
     answering || start
-    curl -s -X POST -H "x-alpha-token: $(token)" -H 'content-type: application/json' \
+    curl -s -X POST -H "x-alpha-token: $(token)" -H "x-alpha-cli: 1" -H 'content-type: application/json' \
       -d "{\"archive\":\"$(cd "$(dirname "$2")" && pwd)/$(basename "$2")\"}" "http://127.0.0.1:$PORT/api/data/import"
     say ""
     say "Alpha is restarting on that data."

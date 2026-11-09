@@ -23,6 +23,10 @@ import type { KeptTable, WorkingModuleView, YoursView } from '../types.ts'
 export function registerKits(ctx: Ctx): void {
   const { app, world, engine, user, person, live, options } = ctx
   const developer = () => options.data?.install().developer ?? false
+  // installing a pack is the owner's (rule M7), until rule M6's setting is built
+  const owner = () => {
+    if (user.role !== 'owner') throw new Refused('Only the owner can install a module.')
+  }
   const { needsOf } = ctx.views
 
   // Kits and agents (design §10, §11): what each module does on its own.
@@ -109,6 +113,7 @@ export function registerKits(ctx: Ctx): void {
 
   // A kit is installed from a folder on this Mac, or updated from one by the ownership rule.
   app.post('/api/kits', async (req) => {
+    owner()
     const { folder } = z.object({ folder: z.string().trim().min(1) }).parse(req.body)
     if (!developer()) throw new Refused(FOLDERS)
     const m = await install(world, folder, {
@@ -121,6 +126,7 @@ export function registerKits(ctx: Ctx): void {
 
   // A kit pack sent as a file: kept unpacked in Alpha's folder, then installed, or its kit updated.
   app.post('/api/kits/pack', async (req) => {
+    owner()
     const name = decodeURIComponent(String(req.headers['x-file-name'] ?? 'kit.alphakit'))
     const dir = mkdtempSync(join(tmpdir(), 'alpha-kit-'))
     try {
@@ -141,6 +147,7 @@ export function registerKits(ctx: Ctx): void {
   })
 
   app.post('/api/kits/:module/update', async (req) => {
+    owner()
     const { module } = z.object({ module: z.string() }).parse(req.params)
     const { folder } = z.object({ folder: z.string().trim().optional() }).parse(req.body ?? {})
     const m = world.shape.module(module)

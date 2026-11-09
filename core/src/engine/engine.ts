@@ -22,14 +22,20 @@ export class Engine {
   }
 
   desk(user: User): Desk {
-    let d = this.desks.get(user.id)
+    const id = user.id
+    let d = this.desks.get(id)
     if (!d) {
-      d = new Desk(this.world, user, {
-        ...this.options,
-        granted: this.folders(),
-        emit: (e) => this.events.emit('event', { ...e, user: user.id } satisfies EngineEvent),
-      })
-      this.desks.set(user.id, d)
+      // a plain copy: the api's user reads the request it is in, and a desk outlives requests
+      d = new Desk(
+        this.world,
+        { id: user.id, name: user.name, role: user.role },
+        {
+          ...this.options,
+          granted: this.folders(),
+          emit: (e) => this.events.emit('event', { ...e, user: id } satisfies EngineEvent),
+        },
+      )
+      this.desks.set(id, d)
     }
     return d
   }

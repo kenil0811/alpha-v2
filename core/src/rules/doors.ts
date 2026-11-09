@@ -290,6 +290,12 @@ export const DOORS: Door[] = [
 // What writes, but changes neither a row nor a module, and why it is not a door.
 export const NOT_DOORS: Record<string, string> = {
   'POST /api/undo/preview': 'says what a revert would do, and does nothing',
+  'POST /api/session': 'a person signing in',
+  'POST /api/session/out': 'a person signing out',
+  'POST /api/session/link': 'a person setting their password from a link',
+  'POST /api/accounts': 'the owner adding a person who may sign in',
+  'POST /api/accounts/:id/link': 'the owner making a new sign-in link',
+  'POST /api/accounts/:id/remove': 'the owner removing a person’s way in; their history stays',
   'POST /api/runs/:id/stop': 'stops a run under way; what it wrote stays',
   'POST /api/connections/:id/allow': 'a host a connection may reach, held by its gate',
   'POST /api/layout': 'how the person left the window',

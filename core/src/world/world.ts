@@ -1,8 +1,10 @@
 // One tenant's world: the SQLite file and what lives beside it (design §3, §4). Every write is a
 // function of the world that writes its journal line in the same transaction.
+
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { join } from 'node:path'
+import { Accounts } from './accounts.ts'
 import { Cards } from './cards.ts'
 import { Connections } from './connections.ts'
 import { all, type Db, newId, now, one, openDb, run, tx } from './db.ts'
@@ -98,6 +100,7 @@ export class World {
   readonly spend: Spend
   readonly people: People
   readonly tasks: Tasks
+  readonly accounts: Accounts
   readonly db: Db
   readonly paths: TenantPaths
   readonly tenant: string
@@ -132,6 +135,7 @@ export class World {
       if (card.call?.tool === FOLD_PICK) pickFolded(this.records, card, answer, by)
     }
     this.tasks = new Tasks(db, this.shape, (id) => this.user(id)?.name ?? null)
+    this.accounts = new Accounts(db)
     this.shape.onGone = (ids) => this.people.gone(ids)
     this.shape.asks = (module, redo, ctx) => askMaintainer(this, module, redo, ctx)
   }

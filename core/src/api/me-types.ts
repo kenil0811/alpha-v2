@@ -2,7 +2,8 @@
 // §14), never in the browser. Re-exported by types.ts, the window's one import.
 
 export interface Me {
-  user: { id: string; name: string }
+  user: { id: string; name: string; role: 'owner' | 'member' }
+  signIn: boolean // each person signs in here
   tenant: string
   theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
   layout: Layout

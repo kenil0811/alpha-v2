@@ -49,6 +49,7 @@ export function App() {
   const [live, setLive] = useState<Live>({})
   const [busyTurn, setBusyTurn] = useState<string | null>(null)
   const [name, setName] = useState('')
+  const [owner, setOwner] = useState(true) // a member does not set Alpha up
   const [fileName, setFileName] = useState('')
   const [personName, setPersonName] = useState('')
   const [taskName, setTaskName] = useState('')
@@ -185,6 +186,7 @@ export function App() {
     api.get<Me>('/api/me').then(
       (me) => {
         setName(me.user.name)
+        setOwner(me.user.role === 'owner')
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
         setLayout(me.layout)
@@ -297,7 +299,7 @@ export function App() {
             <div className="flex min-h-0 flex-1">
               <div className="min-w-0 flex-1">
                 {place.at === 'home' ? (
-                  <Home stream={stream} name={name} onAsked={() => setAsking(true)} />
+                  <Home stream={stream} name={name} owner={owner} onAsked={() => setAsking(true)} />
                 ) : place.at === 'conversation' ? (
                   <Conversation
                     stream={stream}
