@@ -24,7 +24,7 @@ export interface Chained {
   hash: string | null
 }
 
-const COLUMNS =
+export const COLUMNS =
   'id, at, actor_kind, actor_id, source, kind, words, data, user_id, turn_id, module_id, run_id, card_id, hash'
 
 // A line's hash: over the line before's, then every field of its own, in one order.
@@ -56,27 +56,6 @@ export function lastHash(db: Db): string | null {
   return (
     one<{ hash: string | null }>(db, 'SELECT hash FROM journal ORDER BY id DESC LIMIT 1')?.hash ??
     null
-  )
-}
-
-// A journal from before the chain, chained once, oldest line first (the migration, under the
-// append-only trigger dropped for it).
-export function chain(db: Db): void {
-  let prev: string | null = null
-  for (const l of all<Chained>(db, `SELECT ${COLUMNS} FROM journal ORDER BY id`)) {
-    prev = hashOf(prev, l)
-    run(db, 'UPDATE journal SET hash = ? WHERE id = ?', prev, l.id)
-  }
-}
-
-// Migration 28: the hash column, and the lines there already chained, the append-only trigger
-// dropped for it and put back.
-export function chainJournal(db: Db): void {
-  db.exec('ALTER TABLE journal ADD COLUMN hash TEXT')
-  db.exec('DROP TRIGGER journal_unchanged')
-  chain(db)
-  db.exec(
-    "CREATE TRIGGER journal_unchanged BEFORE UPDATE ON journal BEGIN SELECT RAISE(ABORT, 'the journal is append-only'); END",
   )
 }
 

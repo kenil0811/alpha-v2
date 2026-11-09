@@ -10,11 +10,9 @@ import { worldTools } from '../engine/tools/index.ts'
 import { Drafts } from '../modules/drafts.ts'
 import { reach } from '../modules/runs/reach.ts'
 import type { AgentRunner } from '../modules/runs/runner.ts'
-import { openDb } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { RuleSpec } from '../world/rules.ts'
 import { SAVE_RULE } from '../world/rules.ts'
-import { MIGRATIONS } from '../world/schema.ts'
 import { World } from '../world/world.ts'
 import { decide, type GateInput } from './gates.ts'
 
@@ -324,62 +322,5 @@ describe('what Alpha noticed', () => {
     world.rules.approve(r.id, person)
     expect(decide(world, send('bob@gmail.com'))).toMatchObject({ pass: false, card: null })
     expect(() => world.rules.approve(r.id, { actor: alpha })).toThrow(Refused)
-  })
-})
-
-describe('standing permissions', () => {
-  it('move into rules as approved allows, with their counts, and the table goes', async () => {
-    const dir = join(home, 'tenants', 't_old')
-    mkdirSync(dir, { recursive: true })
-    const db = openDb(join(dir, 'world.sqlite'))
-    for (const m of MIGRATIONS.slice(0, 21)) {
-      if (typeof m === 'string') db.exec(m)
-      else m(db)
-    }
-    db.exec('PRAGMA user_version = 21')
-    db.prepare(
-      `INSERT INTO permissions (id, sentence, action, agent, module_id, place, granted_by, granted_at,
-         card_id, uses, last_used_at) VALUES ('p_1', 'Always send quotes without asking', 'send_email',
-         'Outreach', NULL, '{"kind":"quote request"}', 'person:u_1', '2026-10-21T10:00:00.000Z', 'c_1', 4,
-         '2026-10-22T10:00:00.000Z')`,
-    ).run()
-    db.close()
-    const old = await World.open(dir)
-    try {
-      const [r] = old.rules.list()
-      expect(r).toMatchObject({
-        id: 'p_1',
-        words: 'Always send quotes without asking',
-        side: 'allow',
-        kind: 'approved',
-        agent: 'Outreach',
-        uses: 4,
-        source: { card: 'c_1' },
-        covers: {
-          does: ['send'],
-          always: { action: 'send_email', place: { kind: 'quote request' } },
-        },
-      })
-      expect(
-        old.rules.covering({
-          action: 'send_email',
-          agent: 'Outreach',
-          module: null,
-          place: { kind: 'quote request' },
-        })?.id,
-      ).toBe('p_1')
-      expect(
-        old.db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'permissions'").get(),
-      ).toBeUndefined()
-    } finally {
-      old.close()
-    }
-  })
-
-  it('go with an agent its kit no longer has', () => {
-    world.rules.save({ ...outside(), agent: 'Scout' }, person)
-    expect(world.rules.removeScoped({ agent: 'Scout' }, { actor: { kind: 'system' } })).toBe(1)
-    expect(world.rules.list()).toEqual([])
-    expect(world.lines({ kinds: ['rule_removed'] })).toHaveLength(1)
   })
 })

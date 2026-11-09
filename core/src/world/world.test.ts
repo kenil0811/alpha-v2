@@ -1,11 +1,8 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createTableSql } from './ddl.ts'
 import { Refused } from './kinds.ts'
-import { lastingKeys } from './migrate30.ts'
 import { MIGRATIONS } from './schema.ts'
 import { World } from './world.ts'
 
@@ -198,80 +195,12 @@ describe('the world', () => {
   })
 })
 
-describe('migrations', () => {
-  it('bring an older world up to date, backing it up first', async () => {
-    const dir = join(home, 'tenants', 't_old')
-    mkdirSync(dir, { recursive: true })
-    const db = new DatabaseSync(join(dir, 'world.sqlite'))
-    db.exec(MIGRATIONS[0] as string)
-    db.exec('PRAGMA user_version = 1')
-    db.close()
-    const old = await World.open(dir)
-    expect(old.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: MIGRATIONS.length })
-    expect(readdirSync(join(dir, 'backups'))).toEqual([
-      expect.stringMatching(/^world-.*-v1\.sqlite$/),
-    ])
-    expect(old.connections.list()).toEqual([])
-    old.close()
-  })
-})
-
-describe('the lasting keys (migration 30, call 6)', () => {
-  it('key the tables and modules kits and connectors made, by their names, and no others', async () => {
-    const dir = join(home, 'tenants', 't_keys')
-    mkdirSync(dir, { recursive: true })
-    const db = new DatabaseSync(join(dir, 'world.sqlite'))
-    const before = MIGRATIONS.indexOf(lastingKeys)
-    for (const m of MIGRATIONS.slice(0, before)) typeof m === 'string' ? db.exec(m) : m(db)
-    const at = '2026-10-31T09:00:00.000Z'
-    const mod = db.prepare(
-      'INSERT INTO modules (id, name, slug, made_by, created_at) VALUES (?, ?, ?, ?, ?)',
-    )
-    mod.run('m_kit', 'Deals Hub', 'deals-hub', 'system:kit:DealPilot', at)
-    mod.run('m_mail', 'Mail', 'mail', 'connector:gmail', at)
-    mod.run('m_own', 'Garden', 'garden', 'person:u_1', at)
-    db.prepare(
-      'INSERT INTO kits (module_id, kit, version, source, installed_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run('m_kit', 'DealPilot', '0.6.0', '/kits/dealpilot', at, at)
-    const table = db.prepare(
-      'INSERT INTO tables (id, module_id, name, slug, made_by, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-    for (const [id, module, name, by] of [
-      ['t_deals', 'm_kit', 'Deals', 'system:kit:DealPilot'],
-      ['t_mail', 'm_mail', 'Mail', 'connector:gmail'],
-      ['t_beds', 'm_own', 'Beds', 'alpha'],
-    ] as const) {
-      table.run(id, module, name, name.toLowerCase(), by, at)
-      for (const sql of createTableSql(name.toLowerCase(), id, [])) db.exec(sql)
-    }
-    db.exec(`PRAGMA user_version = ${before}`)
-    db.close()
-    const old = await World.open(dir)
-    const keys = (sql: string) =>
-      old.db
-        .prepare(sql)
-        .all()
-        .map((r) => Object.values(r))
-    expect(keys('SELECT name, key FROM modules ORDER BY name')).toEqual([
-      ['Deals Hub', 'DealPilot'],
-      ['Garden', null],
-      ['Mail', 'Mail'],
-    ])
-    expect(keys('SELECT name, key FROM tables ORDER BY name')).toEqual([
-      ['Beds', null],
-      ['Deals', 'Deals'],
-      ['Mail', 'Mail'],
-    ])
-    old.close()
-  })
-})
-
-describe('a world from a newer Alpha', () => {
+describe('a world of another shape', () => {
   it('is refused, never opened and misread', async () => {
     world.db.exec(`PRAGMA user_version = ${MIGRATIONS.length + 1}`)
     world.close()
     await expect(World.open(join(home, 'tenants', 't_test'))).rejects.toThrow(
-      /made by a newer Alpha/,
+      /made by a newer Alpha, or before the clean base/,
     )
     world = await World.open(join(home, 'tenants', 't_other'))
   })

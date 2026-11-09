@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Gatekeeper } from '../engine/gate.ts'
 import type { Here } from '../engine/tools/index.ts'
-import { chain, exportLines, fold, verify, verifyExport } from './audit.ts'
+import { COLUMNS, exportLines, fold, hashOf, verify, verifyExport } from './audit.ts'
 import type { User } from './world.ts'
 import { World } from './world.ts'
 
@@ -117,5 +117,9 @@ describe('the fold', () => {
 // chains a journal.
 function rechain(w: World) {
   w.db.exec('DROP TRIGGER IF EXISTS journal_unchanged')
-  chain(w.db)
+  let prev: string | null = null
+  for (const l of w.db.prepare(`SELECT ${COLUMNS} FROM journal ORDER BY id`).all() as never[]) {
+    prev = hashOf(prev, l)
+    w.db.prepare('UPDATE journal SET hash = ? WHERE id = ?').run(prev, (l as { id: number }).id)
+  }
 }

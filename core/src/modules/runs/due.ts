@@ -89,7 +89,7 @@ export function resumeRuns(runner: AgentRunner): void {
     if (runner.held.has(a.id)) continue
     const last = one<RunRowDb>(
       runner.world.db,
-      'SELECT * FROM runs WHERE agent_id = ? AND task_id IS NULL ORDER BY started_at DESC LIMIT 1',
+      'SELECT * FROM runs WHERE agent_id = ? ORDER BY started_at DESC LIMIT 1',
       a.id,
     )
     const ended = last?.ended_at

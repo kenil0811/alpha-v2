@@ -51,7 +51,7 @@ describe('the person’s data', () => {
     )
     const v = dataView(world, readInstall(home, {}))
     expect(v.world.rows).toBe(1)
-    expect(v.world.version).toBeGreaterThan(17)
+    expect(v.world.version).toBe(1)
     expect(v.world.size).toBeGreaterThan(0)
     const b = await backupNow(world, { user: world.owner().id })
     expect(b.kind).toBe('now')
