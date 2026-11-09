@@ -31,7 +31,10 @@ export interface DeskOptions {
   hands?: Hands
   route?: ModelRoute // how this install reaches Claude: the person's subscription or a key
   agent?: string // whose desk this is; the Chief of staff's when none
-  bus?: AgentBus & { settled(user: User, ask: AgentAsk, spent: number | null): void }
+  bus?: AgentBus & {
+    settled(user: User, ask: AgentAsk, spent: number | null): void
+    interim(user: User, ask: AgentAsk, words: string): void
+  }
   // blocks plugins add to the start of a conversation (onboarding 4a); none when there are none
   starts?: () => string[]
   // Alpha's words alone (measured 24 Oct: six journeys, three runs each way; alone passed 17 of

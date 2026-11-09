@@ -172,6 +172,23 @@ describe('agents asking each other', () => {
     expect(told.at(-1)?.agent).toBe(CHIEF)
   })
 
+  it('shows a named agent’s first answer while its card waits, then the rest after the yes', async () => {
+    script = async (t, agent) => {
+      if (agent !== ids.Scout) return 'From the Chief.'
+      if (t.includes('said yes')) return 'And the rest.'
+      raiseCard((world.asks.inState('running')[0] as { id: string }).id)
+      return 'What I have so far.'
+    }
+    engine.say(user, '@Scout find it', null, CHIEF, [ids.Scout as string])
+    await settled()
+    expect(lines(null, ['answered'])).toEqual(['What I have so far.'])
+    expect(world.asks.inState('running')).toHaveLength(1)
+    engine.answer(user, world.cards.waiting(user.id)[0]?.id as string, 'Let it')
+    await settled()
+    expect(lines(null, ['answered'])).toEqual(['What I have so far.', 'And the rest.'])
+    expect(world.asks.inState('running')).toEqual([])
+  })
+
   it('reports after a restart an answer that had not reached its asker', async () => {
     const made = world.asks.add({
       root: 'r1',

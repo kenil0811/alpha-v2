@@ -39,33 +39,25 @@ export class Engine {
       this.world.asks.settle(ask.id, 'stopped', null)
       this.bus.settled(user, this.world.asks.get(ask.id) as AgentAsk, null)
     },
+    interim: (user: User, ask: AgentAsk, words: string): void => {
+      this.answerLine(user, ask, words, {
+        status: 'done',
+        evidence: null,
+        unblock: null,
+        spent: null,
+      })
+    },
     // An answer shows in the asker's conversation under the teammate's name; once every answer
     // that turn asked for has been reported, the asker reads them all in one turn.
     settled: (user: User, ask: AgentAsk, spent: number | null): void => {
       if (!this.world.asks.report(ask.id)) return
       const a = ask.answer
-      this.world.line({
-        actor: ask.to === CHIEF ? { kind: 'alpha' } : { kind: 'alpha', id: ask.to },
-        kind: 'answered',
-        words: a?.result ?? `${this.nameOf(ask.to)} did not answer.`,
-        data: {
-          ask: ask.id,
-          from: ask.to,
-          name: this.nameOf(ask.to),
-          ...(ask.brief.direct ? { direct: true, asked: ask.brief.objective } : {}),
-          status: a?.status ?? ask.state,
-          evidence: a?.evidence ?? null,
-          unblock: a?.unblock ?? null,
-          spent,
-        },
-        user: user.id,
-        agent: ask.from === CHIEF ? null : ask.from,
+      this.answerLine(user, ask, a?.result ?? `${this.nameOf(ask.to)} did not answer.`, {
+        status: a?.status ?? ask.state,
+        evidence: a?.evidence ?? null,
+        unblock: a?.unblock ?? null,
+        spent,
       })
-      this.events.emit('event', {
-        type: 'lines',
-        user: user.id,
-        agent: ask.from,
-      } satisfies EngineEvent)
       const all = this.world.asks.ofTurn(ask.fromTurn)
       if (!all.every((x) => x.reported) || ask.brief.direct) return
       this.desk(user, ask.from).takeAnswers(all, this.nameOf)
@@ -222,6 +214,33 @@ export class Engine {
     const [one, ...more] = named
     if (one && !more.length && one !== agent) return this.sayDirect(user, words, from, agent, one)
     return this.desk(user, agent).say(words, from, named)
+  }
+
+  private answerLine(
+    user: User,
+    ask: AgentAsk,
+    words: string,
+    more: Record<string, unknown>,
+  ): void {
+    this.world.line({
+      actor: ask.to === CHIEF ? { kind: 'alpha' } : { kind: 'alpha', id: ask.to },
+      kind: 'answered',
+      words,
+      data: {
+        ask: ask.id,
+        from: ask.to,
+        name: this.nameOf(ask.to),
+        ...(ask.brief.direct ? { direct: true, asked: ask.brief.objective } : {}),
+        ...more,
+      },
+      user: user.id,
+      agent: ask.from === CHIEF ? null : ask.from,
+    })
+    this.events.emit('event', {
+      type: 'lines',
+      user: user.id,
+      agent: ask.from,
+    } satisfies EngineEvent)
   }
 
   // A message that names one teammate needs no turn of the agent it was written beside. The

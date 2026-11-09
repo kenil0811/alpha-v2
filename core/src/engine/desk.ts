@@ -576,6 +576,8 @@ export class Desk {
       )
     const now = asks.get(row.id) as AgentAsk
     if (now.state !== 'running') this.bus?.settled(this.user, now, spent)
+    // named by the person and still waiting on a card: what it has so far goes to them now
+    else if (now.brief.direct && e.text) this.bus?.interim(this.user, now, e.text)
   }
 
   private startOwnTurn(words: string): void {

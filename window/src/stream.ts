@@ -124,7 +124,8 @@ export function group(lines: StreamLine[]): Item[] {
       const one = asked.get(String(l.data.ask))
       if (one)
         one.answer = {
-          words: l.words,
+          // one agent named by the person may say more after a card is answered
+          words: one.direct && one.answer ? `${one.answer.words}\n\n${l.words}` : l.words,
           status: String(l.data.status ?? ''),
           evidence: (l.data.evidence as string | null) ?? null,
           unblock: (l.data.unblock as string | null) ?? null,
