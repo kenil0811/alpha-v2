@@ -10,10 +10,15 @@ const DIR = join(import.meta.dirname, '..', 'config')
 const Models = z.object({
   desk: z.string().min(1),
   eyes: z.string().min(1),
+  agents: z.array(z.string().min(1)).min(1),
 })
 
 const Limits = z.object({
   query_page_rows: z.number().int().positive(),
+  memory_characters: z.number().int().positive(),
+  essential_memory_bytes: z.number().int().positive(),
+  handover_characters: z.number().int().positive(),
+  messages_after_compaction: z.number().int().min(0),
   search_hits: z.number().int().positive(),
   hint_lines: z.number().int().positive(),
   changed_lines: z.number().int().positive(),
@@ -85,6 +90,16 @@ export const config = {
   words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
+  // who an agent is: its name, title, description and instructions fill the blanks
+  agentPrompt: (
+    a: { name: string; title: string; description: string; instructions: string },
+    dir?: string,
+  ) =>
+    load('agent.md', (t) => t.trim(), dir)
+      .replaceAll('{name}', a.name)
+      .replaceAll('{title}', a.title)
+      .replaceAll('{description}', a.description)
+      .replaceAll('{instructions}', a.instructions),
   // how the model reads a document into the values a kit names
   reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
   // how the model sorts a person's items into the groups they named

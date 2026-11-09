@@ -53,12 +53,15 @@ export interface SessionSpec {
   granted: string[] // folders the person granted, read-only
   userName: string
   resume?: string
+  model?: string // an agent's own; the desk's when none
+  identity?: string // who an agent is, after Alpha's own words
   registry: Registry
   gate: Gatekeeper
   context: {
     start(): string // the start layer (a fresh session's first message, and after compaction)
     turn(): string // the per-turn layer
     takeFresh(): boolean // true once, on a fresh session's first message
+    compacted?(): string // added after a compaction: the person's last messages, word for word
   }
   files: (tool: string, input: Record<string, unknown>) => Decision // Read, Write, Edit paths
   prompt: 'appended' | 'alone' // Alpha's words appended to the route's own prompt, or alone

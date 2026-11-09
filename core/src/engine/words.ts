@@ -103,6 +103,10 @@ export function stepWords(tool: string, input: Input): string {
       return `Looked at ${URL.canParse(url) ? new URL(url).host : 'a page'}`
     }
     case 'keep': {
+      if (s(input.agent))
+        return input.define
+          ? `Kept the agent ${s(input.agent)}`
+          : `Kept ${basename(s(input.path))} for ${s(input.agent)}`
       const [place, name] = s(input.path).split('/')
       const what =
         place === 'schedules'
@@ -114,6 +118,8 @@ export function stepWords(tool: string, input: Input): string {
               : basename(s(input.path))
       return `Kept ${what} in ${s(input.module)}`
     }
+    case 'memory':
+      return input.action === 'search' ? 'Looked in its memory' : 'Noted something to remember'
     case 'run':
       return `Ran ${s(input.schedule) || basename(s(input.script))} to try it`
     case 'connect':

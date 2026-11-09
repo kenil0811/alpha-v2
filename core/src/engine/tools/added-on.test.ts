@@ -29,6 +29,7 @@ beforeEach(async () => {
       current: { user, turn: '1', said: null, message: 'add Harbor Mills as a supplier' },
       fromSubagent: false,
       touched: new Set<string>(),
+      afterTurn: [],
     },
     ctx: () => ({ actor: { kind: 'alpha' }, user: user.id, turn: '1', said: null }),
   }

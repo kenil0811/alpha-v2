@@ -26,6 +26,7 @@ beforeEach(async () => {
     current: { user, turn: '1', said: null, message: 'log two eggs' },
     fromSubagent: false,
     touched: new Set<string>(),
+    afterTurn: [],
   }
 })
 

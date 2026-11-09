@@ -16,5 +16,6 @@ export interface UsageView {
   total: UsageRow
   byModule: UsageRow[]
   bySchedule: UsageRow[]
+  byAgent: UsageRow[]
   byModel: UsageRow[]
 }

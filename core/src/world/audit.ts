@@ -21,11 +21,12 @@ export interface Chained {
   module_id: string | null
   run_id: string | null
   card_id: string | null
+  agent_id: string | null
   hash: string | null
 }
 
 export const COLUMNS =
-  'id, at, actor_kind, actor_id, source, kind, words, data, user_id, turn_id, module_id, run_id, card_id, hash'
+  'id, at, actor_kind, actor_id, source, kind, words, data, user_id, turn_id, module_id, run_id, card_id, agent_id, hash'
 
 // A line's hash: over the line before's, then every field of its own, in one order.
 export function hashOf(prev: string | null, l: Omit<Chained, 'hash'>): string {
@@ -46,6 +47,7 @@ export function hashOf(prev: string | null, l: Omit<Chained, 'hash'>): string {
         l.module_id,
         l.run_id,
         l.card_id,
+        l.agent_id,
       ]),
     )
     .digest('hex')

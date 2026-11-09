@@ -627,3 +627,29 @@ export interface TaskView extends TaskLineView {
   history: { at: string; words: string }[]
   owners: { kind: 'person' | 'alpha'; id: string | null; name: string }[]
 }
+
+// An agent as the window reads it (clean base step 7); the Chief of staff is first and has no row.
+export interface AgentView {
+  id: string
+  name: string
+  title: string
+  description: string
+  model: string | null
+  chief: boolean
+}
+
+export interface MemoryView {
+  id: string
+  text: string
+  essential: boolean
+  yours: boolean // a person wrote or edited it: the agent cannot change it
+  firm: boolean // for everyone here, not only this person
+  at: string
+}
+
+export interface AgentDetail extends AgentView {
+  instructions: string
+  skills: { name: string; description: string }[]
+  files: string[]
+  memories: MemoryView[]
+}

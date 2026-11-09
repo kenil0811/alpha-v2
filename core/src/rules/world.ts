@@ -89,6 +89,7 @@ export class RuleWorld {
       current: { user: this.user, turn: 't1', said: null, message: 'Tidy up the suppliers.' },
       fromSubagent: false,
       touched: new Set<string>(),
+      afterTurn: [],
     }
     this.gate = new Gatekeeper(world, this.here, this.user)
   }

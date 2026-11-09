@@ -26,6 +26,7 @@ beforeEach(async () => {
       current: { user, turn: '1', said: null, message: 'mark it done' },
       fromSubagent: false,
       touched: new Set<string>(),
+      afterTurn: [],
     },
     ctx: () => ({ actor: { kind: 'alpha' }, user: user.id, turn: '1', said: null }),
   }

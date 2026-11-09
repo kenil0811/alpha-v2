@@ -7,6 +7,7 @@ import type { CallSays } from '../connectors/process.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { undoOf } from '../connectors/takeback.ts'
 import { decide, gateOf } from '../gates/gates.ts'
+import type { Actor } from '../world/journal.ts'
 import type { User, World } from '../world/world.ts'
 import type { Decision } from './provider.ts'
 import { EFFECTS, type Here, SERVER } from './tools/index.ts'
@@ -42,6 +43,12 @@ export class Gatekeeper {
     this.emit = options.emit ?? (() => {})
   }
 
+  // Alpha, in the voice of whichever agent this turn is.
+  private actor(): Actor {
+    const agent = this.here.current.agent
+    return agent ? { kind: 'alpha', id: agent } : { kind: 'alpha' }
+  }
+
   // What a call of Alpha's or the route's own is called where the person reads it; a connector's
   // tool says its own (`says`).
   words(toolName: string, input: Record<string, unknown>): string {
@@ -64,7 +71,7 @@ export class Gatekeeper {
     const words = says?.words ?? this.words(toolName, input)
     const name = toolName.replace(`mcp__${SERVER}__`, '')
     this.world.line({
-      actor: { kind: 'alpha' },
+      actor: this.actor(),
       kind: 'call',
       words,
       // a connector's call says what it is, so Activity can show the writes and sends that went
@@ -139,7 +146,7 @@ export class Gatekeeper {
       ownEntries,
       askedIn: typeof input.asked_in === 'string' ? input.asked_in : null,
       message: call.subagent ? null : cur.message,
-      actor: { kind: 'alpha' },
+      actor: this.actor(),
       user: this.user.id,
       turn: cur.turn,
       module: table?.module.id ?? cur.from?.id ?? null,
@@ -168,7 +175,7 @@ export class Gatekeeper {
     const to = typeof input.to === 'string' ? input.to.trim() : ''
     const fresh =
       !!to &&
-      gateOf({ call: { tool, input }, effect, preview: '', actor: { kind: 'alpha' } }) ===
+      gateOf({ call: { tool, input }, effect, preview: '', actor: this.actor() }) ===
         'leaves_world' &&
       !this.world.cards.approvedTo(tool, to)
     const verdict = decide(this.world, {
@@ -187,7 +194,7 @@ export class Gatekeeper {
           ? says.undo.said
           : 'Once it has gone, it cannot be called back.',
       message,
-      actor: { kind: 'alpha' },
+      actor: this.actor(),
       user: this.user.id,
       turn: cur.turn,
       module: cur.from?.id ?? null,
@@ -209,7 +216,7 @@ export class Gatekeeper {
       yes: 'Let it',
       restsOn: [],
       cannotUndo: 'What a script sends to that site leaves your world.',
-      actor: { kind: 'alpha' },
+      actor: this.actor(),
       user: this.user.id,
       turn: cur.turn,
     })
@@ -243,7 +250,7 @@ export class Gatekeeper {
         ? await undoOf(this.connectors, made.tool, made.input, result)
         : null
     this.world.line({
-      actor: { kind: 'alpha' },
+      actor: this.actor(),
       kind: 'called',
       words: call.ok ? 'Done.' : 'That step did not work.',
       data: {

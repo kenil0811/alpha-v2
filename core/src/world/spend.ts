@@ -21,6 +21,7 @@ export interface SpendFor {
   run?: string | null
   module?: string | null
   schedule?: string | null
+  agent?: string | null
 }
 
 export interface SpendRow {
@@ -37,6 +38,7 @@ export interface SpendRow {
   cache_write: number
   usd: number | null
   how: Use['how']
+  agent: string | null
 }
 
 const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
@@ -92,7 +94,7 @@ export class Spend {
       run(
         this.db,
         `INSERT INTO spend (at, kind, turn, run, module_id, schedule, model, input, output, cache_read,
-          cache_write, usd, how) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          cache_write, usd, how, agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         at,
         what.kind,
         what.turn ?? null,
@@ -106,6 +108,7 @@ export class Spend {
         u.cacheWrite,
         u.usd,
         u.how,
+        what.agent ?? null,
       )
   }
 

@@ -6,11 +6,23 @@
 import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { config } from '../config.ts'
 import type { ConnectorService } from '../connectors/service.ts'
+import { instructionsOf } from '../modules/agents.ts'
+import { CHIEF } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
+import type { Actor } from '../world/journal.ts'
 import type { User, World } from '../world/world.ts'
 import { ClaudeCodeProvider, type QueryFn } from './claudecode.ts'
-import { startLayer, turnLayer } from './context.ts'
+import {
+  handover,
+  lastWords,
+  memoryLayer,
+  ownFolderLayer,
+  startLayer,
+  teamOf,
+  turnLayer,
+} from './context.ts'
 import { Gatekeeper } from './gate.ts'
 import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
 import { Registry } from './registry.ts'
@@ -38,6 +50,7 @@ export interface DeskOptions {
   connectors?: ConnectorService
   hands?: Hands
   route?: ModelRoute // how this install reaches Claude: the person's subscription or a key
+  agent?: string // whose desk this is; the Chief of staff's when none
   // blocks plugins add to the start of a conversation (onboarding 4a); none when there are none
   starts?: () => string[]
   // Alpha's words alone (measured 24 Oct: six journeys, three runs each way; alone passed 17 of
@@ -56,9 +69,9 @@ interface Turn {
 }
 
 // A kept session is resumed only with the same tools (v1 crashed resuming one made on others).
-export function fingerprint(connectorTools: string[]): string {
+export function fingerprint(connectorTools: string[], agent = ''): string {
   return createHash('sha256')
-    .update([...TOOL_NAMES, ...connectorTools].join(','))
+    .update([...TOOL_NAMES, ...connectorTools, ...(agent ? [agent] : [])].join(','))
     .digest('hex')
     .slice(0, 16)
 }
@@ -80,6 +93,11 @@ export class Desk {
   private connectors: ConnectorService | null
   private hands: Hands | undefined
   private starts: () => string[]
+  private agentId: string
+  private openedWith = ''
+  private handingOver = false
+  private knownMemories = new Set<string>()
+  private knownTeam = new Map<string, string>()
 
   constructor(world: World, user: User, options: DeskOptions = {}) {
     this.world = world
@@ -90,10 +108,12 @@ export class Desk {
     this.hands = options.hands
     this.prompt = options.prompt ?? 'alone'
     this.starts = options.starts ?? (() => [])
+    this.agentId = options.agent ?? CHIEF
     this.here = {
-      current: { user, turn: null, said: null, message: null },
+      current: { user, turn: null, said: null, message: null, agent: this.named },
       fromSubagent: false,
       touched: new Set(),
+      afterTurn: [],
     }
     const given = options.provider
     const own = given
@@ -121,8 +141,52 @@ export class Desk {
     })
   }
 
+  // The agent this desk is, by id; none for the Chief of staff.
+  private get named(): string | null {
+    return this.agentId === CHIEF ? null : this.agentId
+  }
+
+  private get actor(): Actor {
+    return this.named ? { kind: 'alpha', id: this.named } : { kind: 'alpha' }
+  }
+
   get fingerprint(): string {
-    return fingerprint(this.connectors?.toolNames() ?? [])
+    const a = this.named ? this.world.agents.get(this.named) : undefined
+    return fingerprint(
+      this.connectors?.toolNames() ?? [],
+      a ? [a.name, a.title, a.description, a.model ?? '', a.updatedAt].join('|') : '',
+    )
+  }
+
+  // What this session is told once: its memory, its team and its folder.
+  private whoLayers(): string[] {
+    const memory = memoryLayer(this.world, this.agentId, this.user.id)
+    this.knownMemories = new Set(memory.ids)
+    const team = teamOf(this.world, this.agentId)
+    this.knownTeam = new Map(team.map((t) => [t.id, t.stamp]))
+    return [
+      memory.text,
+      team.length ? `## Your teammates\n${team.map((t) => t.line).join('\n')}` : '',
+      ownFolderLayer(this.world, this.agentId),
+    ].filter(Boolean)
+  }
+
+  // What changed in its memory or team since the session began, said once on the next turn.
+  private news(): string[] {
+    const out: string[] = []
+    const fresh = memoryLayer(this.world, this.agentId, this.user.id)
+    const added = this.world.memories
+      .essentials(this.agentId, this.user.id, config.limits().essential_memory_bytes)
+      .filter((m) => !this.knownMemories.has(m.id))
+    for (const m of added) this.knownMemories.add(m.id)
+    if (added.length && fresh.ids.length)
+      out.push(`New in your notes:\n${added.map((m) => `- ${m.text}`).join('\n')}`)
+    const team = teamOf(this.world, this.agentId)
+    const changed = team.filter((t) => this.knownTeam.get(t.id) !== t.stamp)
+    for (const t of changed) this.knownTeam.set(t.id, t.stamp)
+    if (changed.length)
+      out.push(`New or changed teammates:\n${changed.map((t) => t.line).join('\n')}`)
+    return out
   }
 
   // The tools the model has: the world's and every connector's, one registry.
@@ -158,6 +222,7 @@ export class Desk {
       words,
       user: this.user.id,
       module: from?.id ?? null,
+      agent: this.named,
     })
     const turn = String(line.id)
     this.queue.push({
@@ -190,6 +255,7 @@ export class Desk {
           : 'Carrying on with your answer.',
       user: this.user.id,
       card: card.id,
+      agent: this.named,
     })
     this.queue.push({ turn: `n${line.id}`, text: words, said: null, message: null })
     this.emit({ type: 'lines' })
@@ -210,6 +276,8 @@ export class Desk {
   private pump(): void {
     if (this.running || !this.queue.length) return
     const next = this.queue.shift() as Turn
+    // an agent that was edited starts again from its new definition
+    if (this.session && this.named && this.openedWith !== this.fingerprint) this.close()
     if (!this.session) this.open()
     this.running = { ...next, reply: '', doing: null }
     this.here.current = {
@@ -218,50 +286,72 @@ export class Desk {
       said: next.said,
       message: next.message,
       from: next.from ?? null,
+      agent: this.named,
     }
+    this.here.afterTurn = []
     this.emit({ type: 'busy', turn: next.turn })
     this.session?.send(next.text)
   }
 
   private open(): void {
-    const kept = this.world.desk(this.user.id)
+    const agent = this.named ? this.world.agents.get(this.named) : undefined
+    const kept = this.world.desk(this.user.id, this.agentId)
     const resume = kept && kept.tools === this.fingerprint ? kept.sessionId : undefined
     this.fresh = !resume
-    const deskDir = realpathSync(this.world.deskDir(this.user.id))
+    this.handingOver = !resume
+    this.openedWith = this.fingerprint
+    const deskDir = realpathSync(this.world.deskDir(this.user.id, this.agentId))
     const modules = realpathSync(this.world.paths.modules)
     const session = this.provider().session({
       deskDir,
       modules,
-      granted: this.granted,
+      granted: agent
+        ? [...this.granted, realpathSync(this.world.agents.dirOf(agent.id))]
+        : this.granted,
       userName: this.user.name,
       ...(resume ? { resume } : {}),
+      ...(agent?.model ? { model: agent.model } : {}),
+      ...(agent
+        ? {
+            identity: config.agentPrompt({
+              name: agent.name,
+              title: agent.title,
+              description: agent.description,
+              instructions: instructionsOf(this.world, agent.id),
+            }),
+          }
+        : {}),
       registry: this.registry(),
       gate: this.gate,
       context: {
         start: () => {
           // the start layer is the fresh start: every table is described again on its first touch
           this.here.touched.clear()
+          const earlier = this.handingOver ? handover(this.world, this.user.id, this.agentId) : ''
+          this.handingOver = false
           return startLayer(
             this.world,
             this.user.id,
-            this.world.deskDir(this.user.id),
+            deskDir,
             this.connectors?.describe() ?? null,
-            this.starts(),
+            [...this.starts(), ...this.whoLayers(), ...(earlier ? [earlier] : [])],
           )
         },
         turn: () =>
           turnLayer(
             this.world,
             this.user.id,
-            this.world.desk(this.user.id)?.seenJournalId ?? 0,
+            this.world.desk(this.user.id, this.agentId)?.seenJournalId ?? 0,
             this.here.current.message,
             this.here.current.from ?? null,
+            this.news(),
           ),
         takeFresh: () => {
           const was = this.fresh
           this.fresh = false
           return was
         },
+        compacted: () => lastWords(this.world, this.user.id, this.agentId),
       },
       files: (tool, input) => this.files(tool, input, deskDir, modules),
       prompt: this.prompt,
@@ -291,6 +381,7 @@ export class Desk {
         words: 'The desk stopped unexpectedly; your next message starts it again.',
         data: { error: err instanceof Error ? err.message : String(err) },
         user: this.user.id,
+        agent: this.named,
         turn: this.running?.turn ?? null,
       })
     }
@@ -307,7 +398,13 @@ export class Desk {
 
   private handle(e: SessionEvent): void {
     if (e.type === 'init') {
-      this.world.keepDesk(this.user.id, e.sessionId, this.fingerprint, { kind: 'system' })
+      this.world.keepDesk(
+        this.user.id,
+        e.sessionId,
+        this.fingerprint,
+        { kind: 'system' },
+        this.agentId,
+      )
       return
     }
     if (e.type === 'limit') {
@@ -320,6 +417,7 @@ export class Desk {
           : 'Your Claude usage window is closed for now.',
         data: { info: e.info },
         user: this.user.id,
+        agent: this.named,
         turn: this.running?.turn ?? null,
       })
       if (at && this.running) {
@@ -363,11 +461,11 @@ export class Desk {
       // what the turn spent, under the module it was asked in (core plan step 5)
       const spent = turnSpent(this.world, this.user.id, e.data)
       this.world.spend.add(
-        { kind: 'turn', turn: running.turn, module: running.from?.id ?? null },
+        { kind: 'turn', turn: running.turn, module: running.from?.id ?? null, agent: this.named },
         spent,
       )
       this.world.line({
-        actor: { kind: 'alpha' },
+        actor: this.actor,
         kind: e.ok || stopped ? 'replied' : 'error',
         words: stopped
           ? 'Stopped.'
@@ -378,7 +476,10 @@ export class Desk {
         user: this.user.id,
         turn: running.turn,
       })
-      this.world.markSeen(this.user.id, this.world.lastLineId())
+      // what this turn kept only if it finished: a turn that failed or was stopped saves nothing
+      if (e.ok && !stopped) for (const keep of this.here.afterTurn) keep()
+      this.here.afterTurn = []
+      this.world.markSeen(this.user.id, this.world.lastLineId(), this.agentId)
       this.running = null
       this.stopping = false
       this.emit({ type: 'lines' })
@@ -389,14 +490,14 @@ export class Desk {
 
   private startOwnTurn(words: string): void {
     const line = this.world.line({
-      actor: { kind: 'alpha' },
+      actor: this.actor,
       kind: 'noticed',
       words,
       user: this.user.id,
     })
     const turn = `n${line.id}`
     this.running = { turn, text: '', said: null, message: null, reply: '', doing: null }
-    this.here.current = { user: this.user, turn, said: null, message: null }
+    this.here.current = { user: this.user, turn, said: null, message: null, agent: this.named }
     this.emit({ type: 'busy', turn })
     this.emit({ type: 'lines' })
   }

@@ -218,7 +218,9 @@ export class ClaudeCodeProvider implements Provider {
       return {
         hookSpecificOutput: {
           hookEventName: 'SessionStart',
-          additionalContext: spec.context.start(),
+          additionalContext: [spec.context.start(), spec.context.compacted?.() ?? '']
+            .filter(Boolean)
+            .join('\n\n'),
         },
       }
     }
@@ -233,7 +235,7 @@ export class ClaudeCodeProvider implements Provider {
         : { behavior: 'deny', message: d.reason ?? `${toolName} is not one of Alpha's tools.` }
     }
     return {
-      model: config.models().desk,
+      model: spec.model ?? config.models().desk,
       cwd: deskDir,
       env,
       settingSources: [],
@@ -259,13 +261,8 @@ export class ClaudeCodeProvider implements Provider {
       includePartialMessages: true,
       systemPrompt:
         spec.prompt === 'alone'
-          ? { type: 'custom', prompt: config.systemPrompt(spec.userName), snapshot: false }
-          : {
-              type: 'preset',
-              preset: 'claude_code',
-              append: config.systemPrompt(spec.userName),
-              snapshot: false,
-            },
+          ? { type: 'custom', prompt: promptOf(spec), snapshot: false }
+          : { type: 'preset', preset: 'claude_code', append: promptOf(spec), snapshot: false },
       hooks: {
         PreToolUse: [{ hooks: [beforeCall] }],
         PostToolUse: [{ hooks: [afterCall] }],
@@ -277,6 +274,10 @@ export class ClaudeCodeProvider implements Provider {
     }
   }
 }
+
+// Alpha's words, then who this agent is.
+const promptOf = (spec: SessionSpec) =>
+  [config.systemPrompt(spec.userName), spec.identity ?? ''].filter(Boolean).join('\n\n')
 
 // The SDK's messages as the desk hears them.
 async function* translate(q: Query): AsyncIterable<SessionEvent> {

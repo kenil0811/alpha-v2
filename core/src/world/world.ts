@@ -4,7 +4,10 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { join } from 'node:path'
+import { config } from '../config.ts'
 import { Accounts } from './accounts.ts'
+import { Agents, CHIEF } from './agents/index.ts'
+import { Memories } from './agents/memory.ts'
 import { Cards } from './cards.ts'
 import { Connections } from './connections.ts'
 import { all, type Db, newId, now, one, openDb, run, tx } from './db.ts'
@@ -71,6 +74,7 @@ export interface TenantPaths {
   files: string
   modules: string
   desks: string
+  agents: string
   instructions: string
   backups: string
   envs: string // per Mac, beside the tenants: Docling's environment
@@ -83,6 +87,7 @@ export function tenantPaths(dir: string): TenantPaths {
     files: join(dir, 'files'),
     modules: join(dir, 'modules'),
     desks: join(dir, 'desk'),
+    agents: join(dir, 'agents'),
     instructions: join(dir, 'instructions'),
     backups: join(dir, 'backups'),
     envs: join(dir, '..', '..', 'envs'),
@@ -98,6 +103,8 @@ export class World {
   readonly connections: Connections
   readonly rules: Rules
   readonly spend: Spend
+  readonly agents: Agents
+  readonly memories: Memories
   readonly people: People
   readonly tasks: Tasks
   readonly accounts: Accounts
@@ -120,6 +127,8 @@ export class World {
     this.connections = new Connections(db)
     this.rules = new Rules(db, this.shape)
     this.spend = new Spend(db)
+    this.agents = new Agents(db, paths.agents)
+    this.memories = new Memories(db, () => config.limits().memory_characters)
     this.people = new People(db, this.shape, this.cards)
     this.records.watch = this.people
     this.people.records = this.records
@@ -142,7 +151,14 @@ export class World {
 
   static async open(dir: string, options: { pageRows?: number } = {}): Promise<World> {
     const paths = tenantPaths(dir)
-    for (const d of [paths.dir, paths.files, paths.modules, paths.desks, paths.instructions])
+    for (const d of [
+      paths.dir,
+      paths.files,
+      paths.modules,
+      paths.desks,
+      paths.agents,
+      paths.instructions,
+    ])
       mkdirSync(d, { recursive: true })
     const db = openDb(paths.world)
     await migrate(db, paths.world, paths.backups)
@@ -250,17 +266,19 @@ export class World {
     })
   }
 
-  deskDir(user: string): string {
-    const d = join(this.paths.desks, user)
+  deskDir(user: string, agent = CHIEF): string {
+    const d =
+      agent === CHIEF ? join(this.paths.desks, user) : join(this.paths.desks, user, 'agents', agent)
     mkdirSync(d, { recursive: true })
     return d
   }
 
-  desk(user: string): DeskSession | undefined {
+  desk(user: string, agent = CHIEF): DeskSession | undefined {
     const r = one<{ user_id: string; session_id: string; tools: string; seen_journal_id: number }>(
       this.db,
-      'SELECT user_id, session_id, tools, seen_journal_id FROM desk_sessions WHERE user_id = ?',
+      'SELECT user_id, session_id, tools, seen_journal_id FROM desk_sessions WHERE user_id = ? AND agent_id = ?',
       user,
+      agent,
     )
     return r
       ? {
@@ -272,17 +290,18 @@ export class World {
       : undefined
   }
 
-  keepDesk(user: string, sessionId: string, tools: string, actor: Actor): void {
+  keepDesk(user: string, sessionId: string, tools: string, actor: Actor, agent = CHIEF): void {
     tx(this.db, () => {
-      const known = this.desk(user)
+      const known = this.desk(user, agent)
       if (known?.sessionId === sessionId) return
       run(
         this.db,
-        `INSERT INTO desk_sessions (user_id, session_id, tools, seen_journal_id, started_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT (user_id) DO UPDATE SET session_id = excluded.session_id, tools = excluded.tools,
+        `INSERT INTO desk_sessions (user_id, agent_id, session_id, tools, seen_journal_id, started_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT (user_id, agent_id) DO UPDATE SET session_id = excluded.session_id, tools = excluded.tools,
            started_at = excluded.started_at`,
         user,
+        agent,
         sessionId,
         tools,
         known?.seenJournalId ?? 0,
@@ -294,21 +313,23 @@ export class World {
         words: known ? 'Started a fresh desk session.' : 'Started the desk session.',
         data: { session: sessionId, tools },
         user,
+        agent: agent === CHIEF ? null : agent,
       })
     })
   }
 
-  forgetDesk(user: string): void {
-    run(this.db, 'DELETE FROM desk_sessions WHERE user_id = ?', user)
+  forgetDesk(user: string, agent = CHIEF): void {
+    run(this.db, 'DELETE FROM desk_sessions WHERE user_id = ? AND agent_id = ?', user, agent)
   }
 
-  markSeen(user: string, journalId: number): void {
+  markSeen(user: string, journalId: number, agent = CHIEF): void {
     run(
       this.db,
-      'UPDATE desk_sessions SET seen_journal_id = ?, last_turn_at = ? WHERE user_id = ?',
+      'UPDATE desk_sessions SET seen_journal_id = ?, last_turn_at = ? WHERE user_id = ? AND agent_id = ?',
       journalId,
       now(),
       user,
+      agent,
     )
   }
 

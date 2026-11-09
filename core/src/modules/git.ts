@@ -37,3 +37,17 @@ export async function history(
     at: new Date(c.commit.author.timestamp * 1000).toISOString(),
   }))
 }
+
+// A file as it was just before a commit; gone again if that commit made it.
+export async function restoreFile(dir: string, commit: string, path: string): Promise<void> {
+  const { commit: c } = await git.readCommit({ fs, dir, oid: commit })
+  const parent = c.parent[0]
+  const full = `${dir}/${path}`
+  try {
+    if (!parent) throw new Error('no parent')
+    const { blob } = await git.readBlob({ fs, dir, oid: parent, filepath: path })
+    fs.writeFileSync(full, Buffer.from(blob))
+  } catch {
+    fs.rmSync(full, { force: true })
+  }
+}

@@ -98,6 +98,7 @@ describe('a rule', () => {
       current: { user: world.owner(), turn: '1', said: null, message: null },
       fromSubagent: false,
       touched: new Set(),
+      afterTurn: [],
     })
     const tool = tools.find((t) => t.name === 'rule')
     const out = await tool?.handler({

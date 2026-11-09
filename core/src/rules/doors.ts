@@ -293,6 +293,12 @@ export const DOORS: Door[] = [
 
 // What writes, but changes neither a row nor a module, and why it is not a door.
 export const NOT_DOORS: Record<string, string> = {
+  'POST /api/agents/:id/memories': "an agent's memory, which is no row or module",
+  'POST /api/memories/:id': "an agent's memory, which is no row or module",
+  'POST /api/memories/:id/remove': "an agent's memory, which is no row or module",
+  'POST /api/agents/:id/undo': "an agent's own folder, which is no module",
+  'POST /api/agents/:id/remove': 'an agent, which is no row or module',
+  'tool memory': "an agent's memory, which is no row or module",
   'POST /api/undo/preview': 'says what a revert would do, and does nothing',
   'POST /api/session': 'a person signing in',
   'POST /api/session/out': 'a person signing out',

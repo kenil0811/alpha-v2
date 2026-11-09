@@ -6,6 +6,7 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { FILING, type Filing } from '../../files/intake.ts'
+import { keepAgent, keepAgentFile } from '../../modules/agents.ts'
 import { DRAFT } from '../../modules/drafts.ts'
 import { keep } from '../../modules/keep.ts'
 import type { ScheduleRunner } from '../../modules/runs/index.ts'
@@ -28,7 +29,8 @@ import {
   VIEWS,
 } from './common.ts'
 
-export function deskTools({ world, here, hands, connectors, ctx }: Tooling): ToolEntry[] {
+export function deskTools(t: Tooling): ToolEntry[] {
+  const { world, here, hands, connectors, ctx } = t
   return [
     tool(
       'ask',
@@ -95,7 +97,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
             words: a.question.trim(),
             detail: a.detail?.trim() || null,
             options: a.options ?? [],
-            actor: { kind: 'alpha' },
+            actor: t.ctx().actor,
             user: here_.user.id,
             turn: here_.turn,
           })
@@ -115,7 +117,7 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
             `${existsSync(file) && readFileSync(file, 'utf8').length ? '' : '# Standing instructions\n\n'}- ${a.instruction.trim()}\n`,
           )
           world.line({
-            actor: { kind: 'alpha' },
+            actor: t.ctx().actor,
             kind: 'remembered',
             words: `Will remember: ${a.instruction.trim()}`,
             data: { for: a.for },
@@ -183,13 +185,13 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
           // one rule waits on its Save at a time in a turn: a newer one replaces the one before
           for (const c of world.cards.waiting())
             if (c.call?.tool === SAVE_RULE && c.turn && c.turn === here.current.turn)
-              world.cards.withdraw(c.id, { kind: 'alpha' }, 'A newer wording replaces it.')
+              world.cards.withdraw(c.id, t.ctx().actor, 'A newer wording replaces it.')
           const card = world.cards.open({
             kind: 'question',
             words: `Save this rule? ${words}`,
             options: [SAVE_ANSWERS.yes, SAVE_ANSWERS.no],
             call: { tool: SAVE_RULE, input: spec },
-            actor: { kind: 'alpha' },
+            actor: t.ctx().actor,
             user: here.current.user.id,
             turn: here.current.turn,
             module: spec.module,
@@ -258,11 +260,35 @@ export function deskTools({ world, here, hands, connectors, ctx }: Tooling): Too
       [
         'Keep a file in a module: a skill (skills/<name>/SKILL.md with front matter name and description, and its script, say skills/<name>/run.js), a schedule (schedules/<name>.md), a page (pages/…) or NOTES.md. Give content, or leave it out to keep what you wrote there with Write. Each keep is a commit in the module’s folder.',
         'A schedule file: front matter `name`, `trigger` ({ every: hour | day | week, at: "07:00" }, { cron: "…" }, { changes: <table> } or { filed: true }, a document filed), and `runs: { script: <path in the module> }`, then its brief: what it does. Keep its script first. A schedule kept here is on.',
+        'An agent: agent: its name, with define: { title (its job in a few words), description (when to use it; teammates decide from this), instructions (how it works and what a good answer looks like), model } makes it or changes it, and the Chief of staff alone makes one or changes another. agent with path skills/<name>/SKILL.md or files/… keeps a skill or file in that agent’s folder, and improve a skill you have before making another.',
         'Before you write a page or a script, read its grammar with guide (about: pages, or scripts).',
       ].join('\n'),
-      { module: z.string(), path: z.string(), content: z.string().optional() },
+      {
+        module: z.string().optional(),
+        path: z.string().optional(),
+        content: z.string().optional(),
+        agent: z.string().optional(),
+        define: z
+          .object({
+            name: z.string(),
+            title: z.string(),
+            description: z.string(),
+            instructions: z.string(),
+            model: z.string().nullable(),
+          })
+          .partial()
+          .optional(),
+      },
       async (a) =>
         guardAsync(async () => {
+          if (a.agent) {
+            const by = here.current.agent ?? null
+            if (a.define) return ok(await keepAgent(world, a.agent, a.define, ctx(), by))
+            if (!a.path || a.content === undefined)
+              throw new Refused('Give the agent’s file and its words, or define the agent.')
+            return ok(await keepAgentFile(world, a.agent, a.path, a.content, ctx(), by))
+          }
+          if (!a.module || !a.path) throw new Refused('Name the module and the path, or the agent.')
           const module = world.shape.module(a.module) ?? world.shape.makeModule(a.module, ctx())
           return ok(await keep(world, module, a.path, a.content, ctx()))
         }),

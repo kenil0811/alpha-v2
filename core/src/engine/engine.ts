@@ -2,13 +2,14 @@
 import { EventEmitter } from 'node:events'
 import { takeIn } from '../files/documents.ts'
 import { FILING, type Filing } from '../files/intake.ts'
+import { CHIEF } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
 import { Refused } from '../world/kinds.ts'
 import { type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../world/rules.ts'
 import type { User, World } from '../world/world.ts'
 import { Desk, type DeskEvent, type DeskOptions } from './desk.ts'
 
-export type EngineEvent = DeskEvent & { user: string }
+export type EngineEvent = DeskEvent & { user: string; agent?: string }
 
 export class Engine {
   readonly world: World
@@ -21,8 +22,9 @@ export class Engine {
     this.options = options
   }
 
-  desk(user: User): Desk {
-    const id = user.id
+  // One desk per person and agent.
+  desk(user: User, agent = CHIEF): Desk {
+    const id = `${user.id}:${agent}`
     let d = this.desks.get(id)
     if (!d) {
       // a plain copy: the api's user reads the request it is in, and a desk outlives requests
@@ -31,13 +33,24 @@ export class Engine {
         { id: user.id, name: user.name, role: user.role },
         {
           ...this.options,
+          agent,
           granted: this.folders(),
-          emit: (e) => this.events.emit('event', { ...e, user: id } satisfies EngineEvent),
+          emit: (e) =>
+            this.events.emit('event', { ...e, user: user.id, agent } satisfies EngineEvent),
         },
       )
       this.desks.set(id, d)
     }
     return d
+  }
+
+  // An agent was deleted: its sessions end with it.
+  closeAgent(agent: string): void {
+    for (const [id, d] of this.desks)
+      if (id.endsWith(`:${agent}`)) {
+        d.close()
+        this.desks.delete(id)
+      }
   }
 
   get connectors() {
@@ -103,12 +116,17 @@ export class Engine {
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
   }
 
-  say(user: User, words: string, from: { id: string; name: string } | null = null): string {
-    return this.desk(user).say(words, from)
+  say(
+    user: User,
+    words: string,
+    from: { id: string; name: string } | null = null,
+    agent = CHIEF,
+  ): string {
+    return this.desk(user, agent).say(words, from)
   }
 
-  stop(user: User): Promise<void> {
-    return this.desk(user).stop()
+  stop(user: User, agent = CHIEF): Promise<void> {
+    return this.desk(user, agent).stop()
   }
 
   // A schedule's draft answered with the card's own buttons or in words: sent as drafted only on
@@ -158,7 +176,7 @@ export class Engine {
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
     // the desk carries on only with a card its own turn opened, or a run it started; a schedule's
     // card from a scheduled run is the run's to go on with (item 41, 25 Oct)
-    if (card.turn) this.desk(user).cardAnswered(card)
+    if (card.turn) this.desk(user, card.agent ?? CHIEF).cardAnswered(card)
     return card
   }
 
@@ -172,8 +190,8 @@ export class Engine {
     return out
   }
 
-  busy(user: User): boolean {
-    return this.desks.get(user.id)?.busy ?? false
+  busy(user: User, agent = CHIEF): boolean {
+    return this.desks.get(`${user.id}:${agent}`)?.busy ?? false
   }
 
   close(): void {

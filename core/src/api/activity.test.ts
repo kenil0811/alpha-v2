@@ -50,6 +50,7 @@ describe('Activity', () => {
       },
       fromSubagent: false,
       touched: new Set<string>(),
+      afterTurn: [],
     }
     const gate = new Gatekeeper(world, here, user, { connectors })
     const mail = { to: 'priya@harbor.example', subject: 'The CIM', body: 'Could you send it?' }

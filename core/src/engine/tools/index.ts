@@ -5,6 +5,7 @@
 import type { ConnectorService } from '../../connectors/service.ts'
 import type { World } from '../../world/world.ts'
 import type { ToolEntry } from '../registry.ts'
+import { agentTools } from './agents.ts'
 import { EFFECTS, type Hands, type Here, type Tooling } from './common.ts'
 import { deskTools } from './desk.ts'
 import { rowTools } from './rows.ts'
@@ -33,7 +34,9 @@ export function worldTools(
     hands,
     connectors,
     ctx: () => ({
-      actor: { kind: 'alpha' as const },
+      actor: here.current.agent
+        ? { kind: 'alpha' as const, id: here.current.agent }
+        : { kind: 'alpha' as const },
       user: here.current.user.id,
       turn: here.current.turn,
       said: here.fromSubagent ? null : here.current.said,
@@ -42,9 +45,17 @@ export function worldTools(
   // in the order the model has always read them
   const [query, search, ...rows] = rowTools(t)
   const [ask, remember, ...rest] = deskTools(t)
-  return [query, search, ...shapeTools(t), ...rows, ask, remember, ...taskTools(t), ...rest].filter(
-    (x): x is ToolEntry => !!x,
-  )
+  return [
+    query,
+    search,
+    ...shapeTools(t),
+    ...rows,
+    ask,
+    remember,
+    ...agentTools(t),
+    ...taskTools(t),
+    ...rest,
+  ].filter((x): x is ToolEntry => !!x)
 }
 
 export const TOOL_NAMES = Object.keys(EFFECTS).sort()

@@ -6,6 +6,7 @@ import type { ConnectorService } from '../../connectors/service.ts'
 import type { Intake } from '../../files/intake.ts'
 import type { Drafts } from '../../modules/drafts.ts'
 import type { ScheduleRunner } from '../../modules/runs/index.ts'
+import type { Actor } from '../../world/journal.ts'
 import { FIELD_KINDS, PROVENANCE_KINDS, Refused, type Said } from '../../world/kinds.ts'
 import type { Table } from '../../world/shape/index.ts'
 import type { User, World } from '../../world/world.ts'
@@ -18,6 +19,8 @@ export interface TurnContext {
   said: Said | null
   message: string | null
   from?: { id: string; name: string } | null // the module the person asked from (Ask, ⌘J)
+  agent?: string | null // whose conversation this is; none is the Chief of staff's
+  ask?: string | null // the ask this turn answers, when another agent asked
 }
 
 export interface Here {
@@ -26,6 +29,8 @@ export interface Here {
   // the tables whose fields and meanings the model has been given this session (context by
   // mode, 24 Oct): a table is described on its first touch, again after compaction
   touched: Set<string>
+  // what a turn keeps only if it finishes: a turn that fails saves nothing
+  afterTurn: (() => void)[]
 }
 
 // What reaches past the world's tables: the browser engine and the runner of module scripts.
@@ -151,6 +156,7 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   file: (i) => (i.action === 'read' ? 'read' : 'write'),
   ask: () => 'write',
   remember: () => 'write',
+  memory: (i) => (i.action === 'search' ? 'read' : 'write'),
   task: (i) => (i.action === 'remove' ? 'remove' : i.action === 'find' ? 'read' : 'write'),
   connect: () => 'sign_in',
   look: () => 'read',
@@ -197,7 +203,7 @@ export interface Tooling {
   here: Here
   hands?: Hands | undefined
   connectors?: ConnectorService | undefined
-  ctx: () => { actor: { kind: 'alpha' }; user: string; turn: string | null; said: Said | null }
+  ctx: () => { actor: Actor; user: string; turn: string | null; said: Said | null }
 }
 
 // Where the person's standing instructions are kept: theirs, or everyone's.

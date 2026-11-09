@@ -32,6 +32,10 @@ export function registerUsage(ctx: Ctx): void {
         rows.filter((r) => r.schedule),
         (r) => r.schedule as string,
       ),
+      byAgent: grouped(
+        rows.filter((r) => r.kind === 'turn'),
+        (r) => (r.agent && world.agents.get(r.agent)?.name) || 'Chief of staff',
+      ),
       byModel: grouped(rows, (r) => r.model),
     }
   })

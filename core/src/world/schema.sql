@@ -25,11 +25,13 @@ CREATE TABLE journal (
   module_id TEXT,
   run_id TEXT,
   card_id TEXT,
+  agent_id TEXT,
   hash TEXT
 );
 CREATE INDEX journal_user ON journal (user_id, id);
 CREATE INDEX journal_turn ON journal (turn_id, id);
 CREATE INDEX journal_module ON journal (module_id, id);
+CREATE INDEX journal_agent ON journal (agent_id, user_id, id);
 CREATE TRIGGER journal_indexed AFTER INSERT ON journal BEGIN INSERT INTO journal_fts (rowid, words) VALUES (new.id, new.words); END;
 CREATE TRIGGER journal_kept BEFORE DELETE ON journal BEGIN SELECT RAISE(ABORT, 'the journal is never deleted'); END;
 CREATE TRIGGER journal_unchanged BEFORE UPDATE ON journal BEGIN SELECT RAISE(ABORT, 'the journal is append-only'); END;
@@ -280,7 +282,8 @@ CREATE TABLE cards (
   turn_id TEXT,
   created_at TEXT NOT NULL,
   detail TEXT,
-  lapsed_at TEXT
+  lapsed_at TEXT,
+  agent_id TEXT
 );
 CREATE INDEX cards_state ON cards (state, created_at);
 CREATE INDEX cards_call ON cards (call_key, state);
@@ -307,15 +310,51 @@ CREATE INDEX rules_live ON rules (revoked_at, side);
 
 -- ---- The model ----
 
--- Each person's one session with Alpha.
+-- Each person's session with each agent (the Chief of staff is 'chief').
 CREATE TABLE desk_sessions (
-  user_id TEXT PRIMARY KEY REFERENCES users (id),
+  user_id TEXT NOT NULL REFERENCES users (id),
+  agent_id TEXT NOT NULL DEFAULT 'chief',
   session_id TEXT NOT NULL,
   tools TEXT NOT NULL,
   seen_journal_id INTEGER NOT NULL DEFAULT 0,
   started_at TEXT NOT NULL,
-  last_turn_at TEXT
+  last_turn_at TEXT,
+  PRIMARY KEY (user_id, agent_id)
 );
+
+-- An agent: its name, its job, when to use it, and its model. Its instructions and skills are
+-- files in its folder. Reach is empty for now: every agent reaches what the Chief of staff does.
+CREATE TABLE agents (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  model TEXT,
+  reach TEXT,
+  made_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- What an agent remembers: short facts, the firm's (no person) or one person's.
+CREATE TABLE agent_memories (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  user_id TEXT,
+  text TEXT NOT NULL,
+  normalized TEXT NOT NULL,
+  essential INTEGER NOT NULL DEFAULT 0,
+  origin TEXT NOT NULL CHECK (origin IN ('agent', 'person')),
+  said_by TEXT,
+  turn_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX agent_memories_one ON agent_memories (agent_id, COALESCE(user_id, ''), normalized);
+CREATE VIRTUAL TABLE agent_memories_fts USING fts5 (text, content = 'agent_memories', content_rowid = 'rowid', tokenize = 'porter unicode61');
+CREATE TRIGGER agent_memories_indexed AFTER INSERT ON agent_memories BEGIN INSERT INTO agent_memories_fts (rowid, text) VALUES (new.rowid, new.text); END;
+CREATE TRIGGER agent_memories_gone AFTER DELETE ON agent_memories BEGIN INSERT INTO agent_memories_fts (agent_memories_fts, rowid, text) VALUES ('delete', old.rowid, old.text); END;
+CREATE TRIGGER agent_memories_changed AFTER UPDATE OF text ON agent_memories BEGIN INSERT INTO agent_memories_fts (agent_memories_fts, rowid, text) VALUES ('delete', old.rowid, old.text); INSERT INTO agent_memories_fts (rowid, text) VALUES (new.rowid, new.text); END;
 
 -- What each use of the model spent.
 CREATE TABLE spend (
@@ -332,7 +371,8 @@ CREATE TABLE spend (
   cache_read INTEGER NOT NULL DEFAULT 0,
   cache_write INTEGER NOT NULL DEFAULT 0,
   usd REAL,
-  how TEXT NOT NULL CHECK (how IN ('reported', 'unpriced'))
+  how TEXT NOT NULL CHECK (how IN ('reported', 'unpriced')),
+  agent TEXT
 );
 CREATE INDEX spend_at ON spend (at);
 CREATE INDEX spend_turn ON spend (turn);

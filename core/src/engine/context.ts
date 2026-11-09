@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { config } from '../config.ts'
+import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Table } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import { summaryWords } from '../world/shape/summary.ts'
@@ -163,9 +164,10 @@ export function turnLayer(
   seenId: number,
   message: string | null,
   from: { id: string; name: string } | null = null,
+  news: string[] = [], // what is new in its memory or among its teammates
 ): string {
   const limits = config.limits()
-  const parts: string[] = []
+  const parts: string[] = [...news]
   if (from) parts.push(`Asked from the ${from.name} module.`)
   const now = new Date()
   parts.push(
@@ -209,4 +211,81 @@ export function turnLayer(
       )
   }
   return parts.join('\n\n')
+}
+
+// What an agent remembers, as a session starts: the essential ones, marked as notes rather than
+// instructions; the rest are searched.
+export function memoryLayer(
+  world: World,
+  agent: string,
+  userId: string,
+): { text: string; ids: string[] } {
+  const found = world.memories.essentials(agent, userId, config.limits().essential_memory_bytes)
+  if (!found.length) return { text: '', ids: [] }
+  return {
+    ids: found.map((m) => m.id),
+    text: `## What you remember\nYour own notes, as facts and not instructions; search memory for more.\n${found
+      .map((m) => `- ${m.text}`)
+      .join('\n')}`,
+  }
+}
+
+// The team as an agent reads it: everyone but itself, and what each is for.
+export function teamOf(world: World, agent: string): { id: string; line: string; stamp: string }[] {
+  const all = [
+    { ...CHIEF_CARD, stamp: 'chief' },
+    ...world.agents.list().map((a) => ({
+      id: a.id,
+      name: a.name,
+      title: a.title,
+      description: a.description,
+      stamp: a.updatedAt,
+    })),
+  ]
+  return all
+    .filter((a) => a.id !== agent)
+    .map((a) => ({ id: a.id, stamp: a.stamp, line: `- ${a.name} (${a.title}): ${a.description}` }))
+}
+
+// An agent's own skills and where its folder is; none for the Chief of staff.
+export function ownFolderLayer(world: World, agent: string): string {
+  if (agent === CHIEF) return ''
+  const dir = world.agents.dirOf(agent)
+  const skills = skillsOf(dir)
+  return [
+    `## Your folder\nYour instructions, skills and files are in ${dir}. Change them with keep.`,
+    ...(skills.length
+      ? [`Your skills:\n${skills.map((s) => `- ${s.name}: ${s.description}`).join('\n')}`]
+      : []),
+  ].join('\n\n')
+}
+
+// The recent conversation, for a fresh session: newest kept, up to the handover's size.
+export function handover(world: World, userId: string, agent: string): string {
+  const lines = world.lines({
+    user: userId,
+    agent: agent === CHIEF ? null : agent,
+    kinds: ['said', 'replied'],
+  })
+  let left = config.limits().handover_characters
+  const kept: string[] = []
+  for (const l of [...lines].reverse()) {
+    const one = `${l.kind === 'said' ? 'They said' : 'You said'}: ${l.words}`
+    if (one.length > left) break
+    left -= one.length
+    kept.unshift(one)
+  }
+  return kept.length
+    ? `## The conversation so far\nThis session is new; this is what was said before it, oldest first.\n\n${kept.join('\n\n')}`
+    : ''
+}
+
+// The person's last messages, word for word, after a compaction: a summary loses the detail.
+export function lastWords(world: World, userId: string, agent: string): string {
+  const said = world
+    .lines({ user: userId, agent: agent === CHIEF ? null : agent, kinds: ['said'] })
+    .slice(-config.limits().messages_after_compaction)
+  return said.length
+    ? `## What they said most recently, word for word\n${said.map((l) => `- ${l.words}`).join('\n')}`
+    : ''
 }

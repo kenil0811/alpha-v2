@@ -76,6 +76,7 @@ describe('a table on its first touch', () => {
       current: { user: world.owner(), turn: null, said: null, message: null },
       fromSubagent: false,
       touched: new Set(),
+      afterTurn: [],
     }
     const brief = firstTouch(world, here, [t])
     expect(brief).toContain('Meals (view meals), 0 rows: One meal the person ate.')
@@ -98,6 +99,7 @@ describe('a table on its first touch', () => {
       current: { user: world.owner(), turn: null, said: null, message: null },
       fromSubagent: false,
       touched: new Set(),
+      afterTurn: [],
     }
     const tools = worldTools(world, here)
     const query = tools.find((x) => x.name === 'query') as ToolEntry
@@ -107,7 +109,7 @@ describe('a table on its first touch', () => {
     expect((first.content[1] as { text: string }).text).toContain('two eggs')
     const second = await query.handler({ sql: 'SELECT food FROM meals' })
     expect(second.content).toHaveLength(1)
-    // the ten in hand, the rest found; guide hands out the grammars
+    // the small ones in hand, the rest found; guide hands out the grammars
     const inHand = tools.filter((x) => x.alwaysLoad).map((x) => x.name)
     expect(inHand.sort()).toEqual(
       [
@@ -115,6 +117,7 @@ describe('a table on its first touch', () => {
         'change',
         'file',
         'guide',
+        'memory',
         'query',
         'remember',
         'rule',

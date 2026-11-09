@@ -26,6 +26,7 @@ export interface CardInput {
   turn?: string | null
   module?: string | null
   run?: string | null
+  agent?: string | null // the conversation it waits in; Alpha's own take it from the actor
   actor: Actor
 }
 
@@ -49,6 +50,7 @@ export interface Card {
   module: string | null
   run: string | null // the run that opened it, and through it the task it serves
   turn: string | null
+  agent: string | null
   createdAt: string
 }
 
@@ -72,6 +74,7 @@ interface CardRow {
   module_id: string | null
   run_id: string | null
   turn_id: string | null
+  agent_id: string | null
   created_at: string
 }
 
@@ -96,6 +99,7 @@ function toCard(r: CardRow): Card {
     module: r.module_id,
     run: r.run_id,
     turn: r.turn_id,
+    agent: r.agent_id,
     createdAt: r.created_at,
   }
 }
@@ -142,8 +146,8 @@ export class Cards {
       run(
         this.db,
         `INSERT INTO cards (id, kind, state, user_id, words, detail, rests_on, cannot_undo, options,
-           gate, call_key, call, module_id, run_id, turn_id, created_at)
-         VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           gate, call_key, call, module_id, run_id, turn_id, agent_id, created_at)
+         VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
         input.kind,
         input.user ?? null,
@@ -158,6 +162,7 @@ export class Cards {
         input.module ?? null,
         input.run ?? null,
         input.turn ?? null,
+        input.agent ?? (input.actor.kind === 'alpha' ? (input.actor.id ?? null) : null),
         now(),
       )
       append(this.db, {

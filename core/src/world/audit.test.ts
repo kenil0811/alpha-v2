@@ -58,6 +58,7 @@ describe('the chain', () => {
       current: { user, turn: '1', said: null, message: 'add Ann' },
       fromSubagent: false,
       touched: new Set<string>(),
+      afterTurn: [],
     }
     const gate = new Gatekeeper(world, here, user)
     await gate.before(

@@ -19,6 +19,7 @@ import { Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
 import type { BaseCtx, Ctx } from './ctx.ts'
 import { registerActivity } from './routes/activity.ts'
+import { registerAgents } from './routes/agents.ts'
 import { registerCards } from './routes/cards.ts'
 import { registerConnectors } from './routes/connectors.ts'
 import { registerFiles } from './routes/files.ts'
@@ -184,6 +185,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerConnectors(ctx)
   registerReadNow(ctx)
   registerSignIn(ctx)
+  registerAgents(ctx)
   registerKits(ctx)
   registerModules(ctx)
   registerSettings(ctx)

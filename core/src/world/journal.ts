@@ -21,6 +21,7 @@ export interface LineInput {
   module?: string | null
   run?: string | null
   card?: string | null
+  agent?: string | null // whose conversation it is in; Alpha's own lines take it from the actor
 }
 
 export interface Line {
@@ -36,6 +37,7 @@ export interface Line {
   module: string | null
   run: string | null
   card: string | null
+  agent: string | null
 }
 
 interface LineRow {
@@ -52,6 +54,7 @@ interface LineRow {
   module_id: string | null
   run_id: string | null
   card_id: string | null
+  agent_id: string | null
 }
 
 function toLine(r: LineRow): Line {
@@ -68,6 +71,7 @@ function toLine(r: LineRow): Line {
     module: r.module_id,
     run: r.run_id,
     card: r.card_id,
+    agent: r.agent_id,
   }
 }
 
@@ -105,13 +109,14 @@ export function append(db: Db, line: LineInput): Line {
     module_id: line.module ?? null,
     run_id: line.run ?? null,
     card_id: line.card ?? null,
+    agent_id: line.agent ?? (line.actor.kind === 'alpha' ? (line.actor.id ?? null) : null),
   }
   // chained to the line before (step 2, part 3)
   const hash = hashOf(lastHash(db), row)
   const res = run(
     db,
     `INSERT INTO journal (id, at, actor_kind, actor_id, source, kind, words, data, user_id, turn_id,
-       module_id, run_id, card_id, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       module_id, run_id, card_id, agent_id, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.id,
     row.at,
     row.actor_kind,
@@ -125,6 +130,7 @@ export function append(db: Db, line: LineInput): Line {
     row.module_id,
     row.run_id,
     row.card_id,
+    row.agent_id,
     hash,
   )
   return read(db, Number(res.lastInsertRowid)) as Line
@@ -141,6 +147,7 @@ export function lines(
     user?: string
     turn?: string
     run?: string
+    agent?: string | null // whose conversation: null is the Chief of staff's
     kinds?: string[]
     after?: number
     before?: number
@@ -160,6 +167,13 @@ export function lines(
   if (where.run !== undefined) {
     conds.push('run_id = ?')
     params.push(where.run)
+  }
+  if (where.agent !== undefined) {
+    if (where.agent === null) conds.push('agent_id IS NULL')
+    else {
+      conds.push('agent_id = ?')
+      params.push(where.agent)
+    }
   }
   if (where.kinds?.length) {
     conds.push(`kind IN (${where.kinds.map(() => '?').join(', ')})`)

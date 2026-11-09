@@ -88,3 +88,18 @@ explore_turns: 80
 # the session cannot read (its own default is 25,000 tokens). High, so no look is cut: the model
 # narrows a look when it wants less. Never shown, never a setting.
 explore_look_tokens: 200000
+
+# An agent's memory is one short fact: a longer note is a skill. A wall for the model, never met by
+# the person (OpenBot's figure, 9 Nov).
+memory_characters: 500
+
+# The essential memories always loaded into a session, newest first; the rest are searched.
+essential_memory_bytes: 8192
+
+# How much of the recent conversation a fresh session starts with, so an edit does not make an
+# agent forget; it can search the rest.
+handover_characters: 32000
+
+# How many of the person's last messages go back word for word after a compaction, since a summary
+# loses most of the detail.
+messages_after_compaction: 3
