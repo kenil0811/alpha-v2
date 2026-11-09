@@ -1,5 +1,5 @@
 /*
-  The window's look, direction A "Ledger" (Kenil, 20 Oct 2026): the proposal is in the project's
+  The window's look, direction A "Ledger" (Kenil, 20 Oct 2026), its colours after Claude Code (Kenil, 9 Nov): the proposal is in the project's
   design/window-proposal.md, the mock is the "Alpha v2 Window" artifact.
 
   The fonts are bundled (Fontsource); the window never fetches one. Kit pages get these same
@@ -33,32 +33,32 @@
 
 :root {
   /* the rail */
-  --rail: #f2f4f7;
-  --rail-ink: #16202b;
-  --rail-ink-2: #4b5664;
-  --rail-ink-3: #6b7582;
-  --rail-hover: #e6e9ee;
+  --rail: #f5f4ef;
+  --rail-ink: #141413;
+  --rail-ink-2: #5e5d59;
+  --rail-ink-3: #6f6e68;
+  --rail-hover: #ebe9e1;
   --rail-sel: #ffffff;
-  --rail-line: #e0e4e9;
+  --rail-line: #e4e2d9;
 
   /* surfaces, back to front */
-  --canvas: #fcfcfd;
+  --canvas: #faf9f5;
   --surface: #ffffff;
-  --sunk: #f2f4f7;
-  --hover: #eceff3;
+  --sunk: #f0eee6;
+  --hover: #ebe9e1;
 
   /* ink and lines; neutrals lean toward the accent */
-  --ink: #16202b;
-  --ink-2: #4b5664;
-  --ink-3: #67717e;
-  --line: #e0e4e9;
-  --hair: #edf0f3;
+  --ink: #141413;
+  --ink-2: #5e5d59;
+  --ink-3: #6f6e68;
+  --line: #dedcd1;
+  --hair: #e8e6dc;
 
   /* the one accent */
-  --accent: #35618b;
+  --accent: #b5542f;
   --accent-ink: #ffffff;
-  --accent-soft: #e7eef6;
-  --accent-line: #bdd0e3;
+  --accent-soft: #f6e9e2;
+  --accent-line: #e6c4b4;
   /* a choice's own colour by its place in its field (Batch E, 66.9), eight and round again */
   --opt-1: #2f5f8a;
   --opt-1-soft: #e5eef7;
@@ -77,8 +77,8 @@
   --opt-8: #66553f;
   --opt-8-soft: #eee9e2;
   /* the side panel's firmer edge and the soft shadow it casts on the page (Batch E, 66.15) */
-  --edge: #c7ced6;
-  --elev-side: -10px 0 24px -12px rgb(22 32 43 / 0.3);
+  --edge: #cfccc0;
+  --elev-side: -10px 0 24px -12px rgb(20 20 19 / 0.3);
 
   /* states only: done or fits, waits on you or unsure, failed */
   --good: #3b7550;
@@ -105,35 +105,35 @@
   --face-busy: #5b9bd5;
   --face-needs: #f0a92e;
 
-  --elev-pop: 0 1px 2px rgb(22 32 43 / 0.06), 0 8px 22px rgb(22 32 43 / 0.09);
-  --scrim: rgb(22 32 43 / 0.28);
-  --elev-btn: 0 1px 2px rgb(22 32 43 / 0.1);
+  --elev-pop: 0 1px 2px rgb(20 20 19 / 0.06), 0 8px 22px rgb(20 20 19 / 0.09);
+  --scrim: rgb(20 20 19 / 0.28);
+  --elev-btn: 0 1px 2px rgb(20 20 19 / 0.1);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --rail: #0f1419;
-    --rail-ink: #e6ebf0;
-    --rail-ink-2: #b2bcc7;
-    --rail-ink-3: #83909d;
-    --rail-hover: #1a2129;
-    --rail-sel: #1f2730;
-    --rail-line: #232b34;
-    --canvas: #13181e;
-    --surface: #171d24;
-    --sunk: #1c232b;
-    --hover: #212932;
-    --ink: #e6ebf0;
-    --ink-2: #b2bcc7;
-    --ink-3: #8a95a1;
-    --line: #29313b;
-    --hair: #1f262e;
-    --accent: #86aed4;
-    --accent-ink: #0d1217;
-    --accent-soft: #1c2c3c;
-    --accent-line: #36526d;
+    --rail: #1f1e1d;
+    --rail-ink: #faf9f5;
+    --rail-ink-2: #c2c0b6;
+    --rail-ink-3: #9c9a92;
+    --rail-hover: #2b2a28;
+    --rail-sel: #30302e;
+    --rail-line: #33322f;
+    --canvas: #262624;
+    --surface: #30302e;
+    --sunk: #1f1e1d;
+    --hover: #3a3936;
+    --ink: #faf9f5;
+    --ink-2: #c2c0b6;
+    --ink-3: #9c9a92;
+    --line: #45443f;
+    --hair: #383732;
+    --accent: #d97757;
+    --accent-ink: #141413;
+    --accent-soft: #3d2c24;
+    --accent-line: #7a4d3a;
     --opt-1: #8db4dc;
     --opt-1-soft: #1b2b3b;
     --opt-2: #e0b373;
@@ -150,7 +150,7 @@
     --opt-7-soft: #3a201e;
     --opt-8: #cbb89c;
     --opt-8-soft: #2e2820;
-    --edge: #3b4550;
+    --edge: #4a4943;
     --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
     --good: #8cc29c;
     --good-soft: #182a1f;
@@ -166,26 +166,26 @@
 }
 
 :root[data-theme="dark"] {
-  --rail: #0f1419;
-  --rail-ink: #e6ebf0;
-  --rail-ink-2: #b2bcc7;
-  --rail-ink-3: #83909d;
-  --rail-hover: #1a2129;
-  --rail-sel: #1f2730;
-  --rail-line: #232b34;
-  --canvas: #13181e;
-  --surface: #171d24;
-  --sunk: #1c232b;
-  --hover: #212932;
-  --ink: #e6ebf0;
-  --ink-2: #b2bcc7;
-  --ink-3: #8a95a1;
-  --line: #29313b;
-  --hair: #1f262e;
-  --accent: #86aed4;
-  --accent-ink: #0d1217;
-  --accent-soft: #1c2c3c;
-  --accent-line: #36526d;
+  --rail: #1f1e1d;
+  --rail-ink: #faf9f5;
+  --rail-ink-2: #c2c0b6;
+  --rail-ink-3: #9c9a92;
+  --rail-hover: #2b2a28;
+  --rail-sel: #30302e;
+  --rail-line: #33322f;
+  --canvas: #262624;
+  --surface: #30302e;
+  --sunk: #1f1e1d;
+  --hover: #3a3936;
+  --ink: #faf9f5;
+  --ink-2: #c2c0b6;
+  --ink-3: #9c9a92;
+  --line: #45443f;
+  --hair: #383732;
+  --accent: #d97757;
+  --accent-ink: #141413;
+  --accent-soft: #3d2c24;
+  --accent-line: #7a4d3a;
   --opt-1: #8db4dc;
   --opt-1-soft: #1b2b3b;
   --opt-2: #e0b373;
@@ -202,7 +202,7 @@
   --opt-7-soft: #3a201e;
   --opt-8: #cbb89c;
   --opt-8-soft: #2e2820;
-  --edge: #3b4550;
+  --edge: #4a4943;
   --elev-side: -10px 0 24px -12px rgb(0 0 0 / 0.75);
   --good: #8cc29c;
   --good-soft: #182a1f;
