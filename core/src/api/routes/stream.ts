@@ -79,15 +79,11 @@ export function registerStream(ctx: Ctx): void {
       )
     return {
       lines,
-      cards: world.cards
+      cards: world.cards.waiting(user.id).map(cardOut),
+      asked: world.cards
         .waiting(user.id)
-        // in its own conversation, and in that of whoever asked it
-        .filter(
-          (c) =>
-            (c.agent ?? CHIEF) === agent ||
-            (c.turn?.startsWith('a') && world.asks.get(c.turn.slice(1))?.from === agent),
-        )
-        .map(cardOut),
+        .filter((c) => c.turn?.startsWith('a') && world.asks.get(c.turn.slice(1))?.from === agent)
+        .map((c) => c.id),
       busy: engine.busy(user, agent),
       running: (engine.hands?.runner.runs(50) ?? [])
         .filter((r) => r.state === 'running')

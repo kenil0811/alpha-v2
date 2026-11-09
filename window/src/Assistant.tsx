@@ -20,7 +20,7 @@ export function Assistant({
 }: {
   folded: boolean
   onFold: (folded: boolean) => void
-  title: string // Alpha, or the module it is asked about
+  title: ReactNode // the agent it shows, with its picker
   mood: Mood
   width: number | null
   onWidth: (w: number | null) => void

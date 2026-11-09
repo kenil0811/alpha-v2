@@ -28,7 +28,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred, a lens on the left while one is on; no way back in the bar, and the name is not edited there | 25 Oct, 1 Nov, 7 Nov | test |
+| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; no way back in the bar, and the name is not edited there | 25 Oct, 1 Nov, 7 Nov | test |
 | H2 | A screen with parts switches them with one pill switch in the bar, every label in full, scrolling sideways; never cut short or folded to icons; a page opened beside keeps a row of tabs under its head | 26 Oct, 2 Nov | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
@@ -91,7 +91,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | A1 | The assistant's header: fold, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's on the surface on the left, a grey line under each | 26 Oct | — |
-| A3 | The composer's +: files, a folder. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
+| A3 | The composer's +: files, a folder; @ picks teammates, and the picks travel with the message. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
 | A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
 | A6 | A finished reply longer than four lines (`reply_fold_lines`) folds with More, above its first table when that comes sooner; one that opens with a table shows whole | 25 Oct | — |
@@ -101,7 +101,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| I1 | Intelligence: Modules, Schedules, Connections, How to work. Modules lists every module and opens its Setup; installing one is below the list, the owner's alone. Schedules is one table, a row opening its page | 26 Oct, 7 Nov, 9 Nov | — |
+| I1 | Intelligence: Agents, Modules, Schedules, Connections, How to work. Agents lists each agent with the Chief of staff first, a row opening its page: what it is for, its instructions, what it remembers (edited in place), its skills, Open conversation and Delete. Modules lists every module and opens its Setup; installing one is below the list, the owner's alone. Schedules is one table, a row opening its page | 26 Oct, 7 Nov, 9 Nov | — |
 | I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity, People where people sign in, one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this. Settings › Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by schedule and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov | test |

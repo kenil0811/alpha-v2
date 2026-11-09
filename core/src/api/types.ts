@@ -225,7 +225,8 @@ export interface FilingView {
 
 export interface Stream {
   lines: StreamLine[]
-  cards: CardView[]
+  cards: CardView[] // every card waiting for the person
+  asked: string[] // those raised by agents this conversation asked
   busy: boolean
   running: { id: string; name: string; module: string | null }[] // schedules' runs going now
   reading: { connection: string; title: string; account: string }[] // connections being read now
@@ -577,10 +578,10 @@ export interface UndoView {
 }
 
 export type LiveEvent =
-  | { type: 'lines' }
-  | { type: 'live'; turn: string; text: string; doing: string | null }
-  | { type: 'busy'; turn: string }
-  | { type: 'idle' }
+  | { type: 'lines'; agent?: string }
+  | { type: 'live'; turn: string; text: string; doing: string | null; agent?: string }
+  | { type: 'busy'; turn: string; agent?: string }
+  | { type: 'idle'; agent?: string }
 
 // A task as a list shows it: its state, due, priority, owner and where it sits.
 export interface TaskLineView {

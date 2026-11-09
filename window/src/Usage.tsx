@@ -71,6 +71,7 @@ export function UsageSection() {
               </p>
             )}
             <UsageTable title="By module" rows={u.byModule} />
+            {u.byAgent.length > 0 && <UsageTable title="By agent" rows={u.byAgent} />}
             {u.bySchedule.length > 0 && <UsageTable title="By schedule" rows={u.bySchedule} />}
             <UsageTable
               title="By model"

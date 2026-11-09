@@ -19,7 +19,7 @@ export function SidePanel({
   head,
   keep,
 }: {
-  title: string
+  title: ReactNode
   onClose: () => void
   children: ReactNode
   width?: number | null // the person's width; none is the usual 320px

@@ -22,6 +22,13 @@ export interface Answered {
   done: string | null // when the yes went ahead
 }
 
+export interface AgentChange {
+  words: string
+  agent: string | null
+  commit: string | null
+  path: string | null
+}
+
 export type Item =
   | { kind: 'said'; id: number; words: string; at: string }
   | {
@@ -34,9 +41,26 @@ export type Item =
       answered: Record<string, Answered>
       at: string
       module: Module
+      asks: string[] // who it asked, as said
+      notes: string[] // what it noted to remember
+      changes: AgentChange[] // changes to an agent, each one that can be undone
     }
   // a failure said in the chat: a limit reached, an error or a refusal outside a turn
   | { kind: 'note'; id: number; words: string; at: string }
+  // a teammate's request, in the conversation of the agent asked
+  | { kind: 'asked'; id: number; words: string; at: string }
+  // a teammate's answer, under its name, in the asker's conversation
+  | {
+      kind: 'answered'
+      id: number
+      name: string
+      words: string
+      status: string
+      evidence: string | null
+      unblock: string | null
+      spent: number | null
+      at: string
+    }
   // a card a schedule's run opened, outside any turn
   | { kind: 'card'; id: string; at: string; module: Module; answered: Answered | null }
 
@@ -74,6 +98,9 @@ export function group(lines: StreamLine[]): Item[] {
         answered: {},
         at,
         module: null,
+        asks: [],
+        notes: [],
+        changes: [],
       }
       turns.set(turn, a)
       items.push(a)
@@ -95,6 +122,24 @@ export function group(lines: StreamLine[]): Item[] {
     }
     if (l.kind === 'limit') {
       items.push({ kind: 'note', id: l.id, words: l.words, at: l.at })
+      continue
+    }
+    if (l.kind === 'asked') {
+      items.push({ kind: 'asked', id: l.id, words: l.words, at: l.at })
+      continue
+    }
+    if (l.kind === 'answered') {
+      items.push({
+        kind: 'answered',
+        id: l.id,
+        name: String(l.data.name ?? 'A teammate'),
+        words: l.words,
+        status: String(l.data.status ?? ''),
+        evidence: (l.data.evidence as string | null) ?? null,
+        unblock: (l.data.unblock as string | null) ?? null,
+        spent: (l.data.spent as number | null) ?? null,
+        at: l.at,
+      })
       continue
     }
     if (l.kind === 'card_closed') {
@@ -133,6 +178,17 @@ export function group(lines: StreamLine[]): Item[] {
     } else if (RESULTS.has(l.kind)) {
       if (open) open.results.push(l.words)
       else a.steps.push({ id: l.id, words: l.words, ok: true, results: [] })
+    } else if (l.kind === 'asking') {
+      a.asks.push(l.words)
+    } else if (l.kind === 'noted') {
+      a.notes.push(l.words)
+    } else if (l.kind === 'agent_made' || l.kind === 'agent_changed') {
+      a.changes.push({
+        words: l.words,
+        agent: (l.data.changed as string | undefined) ?? null,
+        commit: (l.data.commit as string | undefined) ?? null,
+        path: (l.data.path as string | undefined) ?? null,
+      })
     } else if (l.kind === 'card_opened' && l.card) {
       a.cards.push(l.card)
     } else if (l.kind === 'replied') {
@@ -151,9 +207,4 @@ export function group(lines: StreamLine[]): Item[] {
     if (i.kind === 'card') i.answered = closed.get(i.id) ?? null
   }
   return items
-}
-
-// The module an item belongs to, for a lens.
-export function moduleOfItem(i: Item): Module {
-  return i.kind === 'alpha' || i.kind === 'card' ? i.module : null
 }

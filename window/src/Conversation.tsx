@@ -1,29 +1,26 @@
 // The conversation (design §14; its own place since Kenil's 20 Oct call that Home holds only the
-// important things): the person's sentences and Alpha's replies in order, each with its topic
-// chip as a lens; one live message per turn becoming the outcome; cards inline; the composer at the
-// foot. Only the conversation is here: what happened otherwise is on Activity (clean base, 7 Nov).
-// A module's Conversation tab and Ask (⌘J) show it through a lens.
-import type { CardView, LiveEvent, Stream } from '@alpha/core/api'
-import { ArrowUp, Check, ChevronRight, FolderUp, ImageUp, Plus } from 'lucide-react'
-import {
-  type DragEvent,
-  type KeyboardEvent,
-  type RefObject,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+// important things): the person's sentences and one agent's replies in order, one live message per
+// turn becoming the outcome; cards inline; the composer at the foot. One conversation per person
+// and agent (clean base step 7), the Chief of staff first. What happened otherwise is on Activity.
+import type { AgentView, CardView, LiveEvent, Stream } from '@alpha/core/api'
+import { Bot, Check, ChevronRight } from 'lucide-react'
+import { type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { takeAsk } from './ask.ts'
 import { CardBox } from './CardBox.tsx'
-import { type Answered, group, type Item, type Module, moduleOfItem, type Step } from './stream.ts'
-import { Button, IconButton } from './ui/button.tsx'
+import { Composer } from './Composer.tsx'
+import {
+  type AgentChange,
+  type Answered,
+  group,
+  type Item,
+  type Module,
+  type Step,
+} from './stream.ts'
+import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { dropped } from './ui/drop-zone.tsx'
 import { Fold } from './ui/fold.tsx'
-import { Topic } from './ui/pill.tsx'
-import { MenuItem, Popover } from './ui/popover.tsx'
 import { Words } from './ui/words.tsx'
 
 export interface Live {
@@ -47,36 +44,21 @@ export function Conversation({
   stream,
   live,
   busyTurn,
-  lens,
-  onLens,
   from = null,
+  agent = null,
+  agents = [],
   compact = false,
 }: {
   stream: Stream | null
   live: Live
   busyTurn: string | null
-  lens: Module
-  onLens: (m: Module) => void
-  from?: Module // asked from a module's screen or its Ask panel
+  from?: Module // asked from a module's screen
+  agent?: AgentView | null // whose conversation this is
+  agents?: AgentView[] // the team, for @
   compact?: boolean // in the Ask panel: narrow
 }) {
-  const all = useMemo(() => group(stream?.lines ?? []), [stream])
+  const items = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
-  // through a lens, a sentence stays when the turn it began does
-  const items = useMemo(() => {
-    if (!lens) return all
-    const ids = new Set(lens.ids ?? [lens.id])
-    const kept = new Set(
-      all
-        .filter((i) => i.kind === 'alpha' && i.module && ids.has(i.module.id))
-        .map((i) => i.kind === 'alpha' && i.turn),
-    )
-    return all.filter((i) => {
-      if (i.kind === 'said') return kept.has(String(i.id))
-      const m = moduleOfItem(i)
-      return !!m && ids.has(m.id)
-    })
-  }, [all, lens])
   const end = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -138,8 +120,8 @@ export function Conversation({
           >
             {items.length === 0 && (
               <p className="pt-24 text-center text-ink-3">
-                {lens
-                  ? `Nothing about ${lens.name} yet.`
+                {agent && !agent.chief
+                  ? agent.description
                   : 'Say what you want kept, tracked or done.'}
               </p>
             )}
@@ -155,12 +137,18 @@ export function Conversation({
                     live={item.kind === 'alpha' ? live[item.turn] : undefined}
                     working={item.kind === 'alpha' && busyTurn === item.turn}
                     cards={cards}
-                    onLens={onLens}
                     onChangeCard={changeCard}
+                    name={agent?.name ?? 'Chief of staff'}
+                    agentId={agent?.id ?? 'chief'}
                   />
                 </div>
               )
             })}
+            {stream?.asked
+              .filter((id) => cards.has(id))
+              .map((id) => (
+                <CardBox key={id} id={id} card={cards.get(id) as CardView} onChange={changeCard} />
+              ))}
             <div ref={end} />
           </div>
         </div>
@@ -186,6 +174,8 @@ export function Conversation({
             onProblem={setProblem}
             from={from}
             compact={compact}
+            agent={agent}
+            agents={agents}
           />
         </div>
       </div>
@@ -212,14 +202,11 @@ function DayLine({ day }: { day: string }) {
 }
 
 // Alpha's name over a card a run opened: its mark, the module and when.
-function Meta({ module, at, onLens }: { module: Module; at: string; onLens: (m: Module) => void }) {
+function Meta({ module, at, name }: { module: Module; at: string; name: string }) {
   return (
     <div className="flex items-center gap-2 text-ink-3 text-sm">
-      <span className="grid size-5 shrink-0 place-items-center rounded-sm bg-ink font-semibold font-serif text-canvas text-sm leading-none">
-        A
-      </span>
-      <span className="font-semibold text-ink text-md">Alpha</span>
-      {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
+      <span className="font-semibold text-ink text-md">{name}</span>
+      {module && <span>{module.name}</span>}
       <span>{clock(at)}</span>
     </div>
   )
@@ -257,14 +244,16 @@ function Entry({
   live,
   working,
   cards,
-  onLens,
+  name,
+  agentId,
   onChangeCard,
 }: {
   item: Item
   live: Live[string] | undefined
   working: boolean
   cards: Map<string, CardView>
-  onLens: (m: Module) => void
+  name: string
+  agentId: string
   onChangeCard: (c: CardView) => void
 }) {
   if (item.kind === 'said')
@@ -274,12 +263,20 @@ function Entry({
       </div>
     )
   if (item.kind === 'note') return <div className="text-center text-sm text-warn">{item.words}</div>
+  if (item.kind === 'asked')
+    return (
+      <div className="flex items-start gap-2 text-ink-2 text-md">
+        <Bot className="mt-0.5 size-4 shrink-0 text-ink-3" />
+        <span className="min-w-0">{item.words}</span>
+      </div>
+    )
+  if (item.kind === 'answered') return <Answer item={item} />
   if (item.kind === 'card') {
     const card = cards.get(item.id)
     if (!card && !(item.answered && answerOf(item.answered.words))) return null
     return (
       <div className="flex flex-col gap-2.25" id={`card-${item.id}`}>
-        <Meta module={item.module} at={item.at} onLens={onLens} />
+        <Meta module={item.module} at={item.at} name={name} />
         {card ? (
           <CardBox id={item.id} card={card} onChange={onChangeCard} />
         ) : item.answered ? (
@@ -289,9 +286,24 @@ function Entry({
     )
   }
   const text = item.reply ?? item.error ?? live?.text ?? ''
-  if (!text && !working && !item.cards.length && !item.steps.length) return null
+  if (
+    !text &&
+    !working &&
+    !item.cards.length &&
+    !item.steps.length &&
+    !item.asks.length &&
+    !item.notes.length &&
+    !item.changes.length
+  )
+    return null
   return (
     <div className="flex flex-col gap-2.25">
+      {item.asks.map((w) => (
+        <div key={w} className="flex items-center gap-1.5 text-ink-3 text-sm">
+          <Bot className="size-3.5 shrink-0" />
+          {w}
+        </div>
+      ))}
       {text && (
         <div
           className={cn(
@@ -305,6 +317,15 @@ function Entry({
           </Fold>
         </div>
       )}
+      {item.notes.map((w) => (
+        <div key={w} className="flex items-center gap-1.5 text-ink-3 text-sm">
+          <Check className="size-3.5 shrink-0" />
+          {w}
+        </div>
+      ))}
+      {item.changes.map((c) => (
+        <Change key={`${c.commit}${c.words}`} change={c} />
+      ))}
       {item.cards.map((id) => {
         const card = cards.get(id)
         const answered = item.answered[id]
@@ -324,7 +345,8 @@ function Entry({
         at={item.at}
         steps={item.steps.length}
         doing={working ? (live?.doing ?? 'Working on it…') : null}
-        onLens={onLens}
+        name={name}
+        agentId={agentId}
       />
     </div>
   )
@@ -336,32 +358,98 @@ function Ran({
   at,
   steps,
   doing,
-  onLens,
+  name,
+  agentId,
 }: {
   module: Module
   at: string
   steps: number
   doing: string | null
-  onLens: (m: Module) => void
+  name: string
+  agentId: string
 }) {
   return (
     <div className="flex items-center gap-2 text-ink-3 text-sm">
       {doing && (
         <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />
       )}
-      <span className="font-medium text-ink-2">Alpha</span>
-      {module && <Topic onClick={() => onLens(module)}>{module.name}</Topic>}
+      <span className="font-medium text-ink-2">{name}</span>
+      {module && <span>{module.name}</span>}
       <span>{clock(at)}</span>
       <span className="min-w-0 truncate">
         {doing ?? (steps ? `Ran ${steps} step${steps === 1 ? '' : 's'}` : 'Answered')}
       </span>
       {doing && (
         <span className="ml-auto shrink-0">
-          <Button size="sm" variant="ghost" onClick={() => api.post('/api/stop')}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => api.post('/api/stop', { agent: agentId })}
+          >
             Stop
           </Button>
         </span>
       )}
+    </div>
+  )
+}
+
+// A teammate's answer, under its name, with what it cost and what would unblock it.
+function Answer({ item }: { item: Extract<Item, { kind: 'answered' }> }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 text-ink-3 text-sm">
+        <Bot className="size-3.5 shrink-0" />
+        <span className="font-medium text-ink-2">{item.name}</span>
+        {item.status === 'blocked' && <span className="text-warn">Blocked</span>}
+        {item.status === 'failed' && <span className="text-bad">Failed</span>}
+        <span>{clock(item.at)}</span>
+        {item.spent !== null && item.spent > 0 && <span>${item.spent.toFixed(2)}</span>}
+      </div>
+      <div className="max-w-full self-start rounded-2xl rounded-bl-sm border border-hair bg-surface px-4 py-3">
+        <Fold id={`answered${item.id}`} whole={false}>
+          <Words text={item.words} wideTables />
+        </Fold>
+      </div>
+      {item.unblock && (
+        <div className="text-sm text-warn">What would unblock it: {item.unblock}</div>
+      )}
+      {item.evidence && <div className="text-ink-3 text-sm">{item.evidence}</div>}
+    </div>
+  )
+}
+
+// A change to an agent, in the conversation where it happened, with Undo.
+function Change({ change }: { change: AgentChange }) {
+  const [undone, setUndone] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const can = change.agent && change.commit && change.path
+  return (
+    <div className="flex items-center gap-2 text-ink-3 text-sm">
+      <Check className="size-3.5 shrink-0" />
+      <span>{change.words}</span>
+      {can && !undone && (
+        <button
+          type="button"
+          className="text-accent hover:underline"
+          onClick={() =>
+            api
+              .post(`/api/agents/${change.agent}/undo`, {
+                commit: change.commit,
+                path: change.path,
+              })
+              .then(
+                () => setUndone(true),
+                (e: unknown) =>
+                  setProblem(e instanceof Problem ? e.message : 'That was not undone.'),
+              )
+          }
+        >
+          Undo
+        </button>
+      )}
+      {undone && <span>Undone.</span>}
+      {problem && <span className="text-bad">{problem}</span>}
     </div>
   )
 }
@@ -390,129 +478,6 @@ function Work({ steps }: { steps: Step[] }) {
         ))}
       </ol>
     </details>
-  )
-}
-
-function Composer({
-  words,
-  setWords,
-  area,
-  onProblem,
-  from,
-  compact,
-}: {
-  words: string
-  setWords: (w: string) => void
-  area: RefObject<HTMLTextAreaElement | null>
-  onProblem: (p: string) => void
-  from: Module
-  compact: boolean
-}) {
-  const file = useRef<HTMLInputElement>(null)
-  const folder = useRef<HTMLInputElement>(null)
-  const plus = useRef<HTMLButtonElement>(null)
-  // the + menu; its keys are the shared menu's (ui/popover.tsx)
-  const [open, setOpen] = useState(false)
-  const close = () => setOpen(false)
-  const add = async (files: FileList | null) => {
-    for (const f of Array.from(files ?? []))
-      await api.upload(f).catch(() => onProblem(`${f.name} did not go in.`))
-  }
-  const send = async () => {
-    const w = words.trim()
-    if (!w) return
-    setWords('')
-    try {
-      await api.post('/api/say', { words: w, ...(from ? { from: from.id } : {}) })
-    } catch (err) {
-      setWords(w)
-      onProblem(err instanceof Problem ? err.message : 'That did not reach Alpha.')
-    }
-  }
-  const key = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault()
-      void send()
-    }
-  }
-  return (
-    <div className="relative flex flex-col gap-1 rounded-3xl border border-line bg-surface py-2.5 pr-2.5 pl-4 shadow-pop focus-within:border-accent-line focus-within:ring-3 focus-within:ring-accent-soft">
-      <textarea
-        ref={area}
-        rows={1}
-        value={words}
-        onChange={(e) => setWords(e.target.value)}
-        onKeyDown={key}
-        placeholder={from ? `Ask about ${from.name}` : 'Message Alpha'}
-        aria-label={from ? `Ask about ${from.name}` : 'Message Alpha'}
-        className="max-h-30 min-h-5.5 w-full resize-none bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
-      />
-      <div className="flex items-center gap-1">
-        <IconButton
-          ref={plus}
-          label="Add files and more"
-          className="rounded-full"
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-        >
-          <Plus className="size-4" />
-        </IconButton>
-        <Popover anchor={plus} open={open} onClose={close}>
-          <MenuItem
-            onClick={() => {
-              close()
-              file.current?.click()
-            }}
-          >
-            <ImageUp className="size-3.5 text-ink-3" />
-            Add files or images
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              close()
-              folder.current?.click()
-            }}
-          >
-            <FolderUp className="size-3.5 text-ink-3" />
-            Add a folder
-          </MenuItem>
-        </Popover>
-        <input
-          ref={file}
-          type="file"
-          multiple
-          hidden
-          onChange={async (e) => {
-            await add(e.target.files)
-            e.target.value = ''
-          }}
-        />
-        <input
-          ref={folder}
-          type="file"
-          hidden
-          {...{ webkitdirectory: '' }}
-          onChange={async (e) => {
-            await add(e.target.files)
-            e.target.value = ''
-          }}
-        />
-        <span className="ml-auto text-ink-3 text-xs">
-          {compact ? '' : 'Return to send · Shift-Return for a new line'}
-        </span>
-        <button
-          type="button"
-          aria-label="Send"
-          data-tip="Send"
-          onClick={send}
-          disabled={!words.trim()}
-          className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-accent-ink transition-opacity disabled:opacity-35"
-        >
-          <ArrowUp className="size-4" />
-        </button>
-      </div>
-    </div>
   )
 }
 

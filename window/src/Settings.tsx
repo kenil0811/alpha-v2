@@ -26,6 +26,7 @@ import {
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { AccountsSection, Foot } from './Accounts.tsx'
 import { Activity } from './Activity.tsx'
+import { AgentsSection } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { startAsk } from './ask.ts'
 import { HowToWork } from './HowToWork.tsx'
@@ -78,8 +79,9 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'Your modules, their schedules, the accounts Alpha reads and how you asked it to work.',
+    about: 'Your agents, modules, schedules and connections, and how to work.',
     tabs: [
+      ['agents', 'Agents'],
       ['modules', 'Modules'],
       ['schedules', 'Schedules'],
       ['connections', 'Connections'],
@@ -144,6 +146,7 @@ export function Settings({
   const orphans = view.connections.filter((k) => !k.loaded)
   const body: Record<string, ReactNode> = {
     work: <HowToWork version={version} />,
+    agents: <AgentsSection version={version} />,
     schedules: <Schedules version={version} />,
     connections: (
       <>

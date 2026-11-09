@@ -50,6 +50,9 @@ describe('the stream', () => {
       ],
       cards: ['c_1'],
       answered: {},
+      asks: [],
+      notes: [],
+      changes: [],
       at,
       module: null,
     })

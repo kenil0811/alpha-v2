@@ -394,8 +394,8 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       saw: `${docs.length}: ${docs.map((d) => `${d.title} (${d.chunks})`).join('; ')}`,
     }
   }
-  const about = agentCheck(check, world, user.id)
-  if (about) return about
+  if ('agents' in check || 'memory' in check || 'instructions' in check || 'asks' in check)
+    return agentCheck(check, world, user.id) as NonNullable<ReturnType<typeof agentCheck>>
   if ('rows_in' in check) {
     const t = world.shape.table(check.rows_in.table)
     const n = t ? world.records.count(t.id) : -1

@@ -18,7 +18,6 @@ import {
   Plus,
   SlidersHorizontal,
   Sparkles,
-  X,
 } from 'lucide-react'
 import { createContext, type ReactNode, useContext, useRef, useState } from 'react'
 import { api } from './api.ts'
@@ -647,38 +646,13 @@ export { BarMiddle, InBar }
 
 // The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
 // on the left when one is on. Find is ⌘K, from anywhere.
-export function Bar({
-  name,
-  lens,
-  onClearLens,
-  middle,
-}: {
-  name: string
-  lens: { id: string; name: string } | null
-  onClearLens: () => void
-  middle: (at: HTMLElement | null) => void
-}) {
+export function Bar({ name, middle }: { name: string; middle: (at: HTMLElement | null) => void }) {
   return (
     <div
       data-tauri-drag-region
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
-      <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {lens && (
-          <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent-soft pr-0.75 pl-2.25 font-medium text-accent text-sm">
-            Only {lens.name}
-            <button
-              type="button"
-              aria-label={`Show all, not only ${lens.name}`}
-              data-tip="Show all"
-              onClick={onClearLens}
-              className="grid size-5 place-items-center rounded-full hover:bg-accent-line/40"
-            >
-              <X className="size-3.25" />
-            </button>
-          </span>
-        )}
-      </div>
+      <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region></div>
       <div className="flex min-w-0 justify-center">
         <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
         <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">

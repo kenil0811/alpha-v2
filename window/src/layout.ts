@@ -11,6 +11,7 @@ export const NO_LAYOUT: Layout = {
   panel: null,
   assistant: 'open',
   pageSize: null,
+  agent: null,
 }
 
 export const LayoutContext = createContext<{

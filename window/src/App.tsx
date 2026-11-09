@@ -1,6 +1,6 @@
 // The window (design §14): the rail, a bar over each screen, the screen (Home, Settings or a
 // module: its pages, tables and Setup) and the assistant on the right of every
-// screen but the whole conversation's own, through the module's lens on a module's screen. ⌘J
+// screen but the whole conversation's own, knowing which module's screen it is on. ⌘J
 // folds it and opens it again (Vikas, 25 Oct).
 import type {
   Layout,
@@ -11,6 +11,7 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AgentPage, AgentPicker, AgentRail, CHIEF, useAgents } from './Agents.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
 import { CardPage } from './CardPage.tsx'
@@ -58,8 +59,6 @@ export function App() {
   const [problem, setProblem] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [finding, setFinding] = useState(false)
-  // a topic chip's lens: the conversation keeps to one module until it is cleared
-  const [lens, setLens] = useState<Module>(null)
   // how the person left the window, kept by Alpha per person: the rail, the assistant, tables
   const [layout, setLayout] = useState<Layout>(NO_LAYOUT)
   const changeLayout = useCallback((change: Partial<Layout>) => {
@@ -101,6 +100,14 @@ export function App() {
     [placed?.id, placed?.name, modules, placed],
   )
   const askable = place.at !== 'conversation'
+  // the agent the assistant shows, kept per person; the Chief of staff when it has gone
+  const agents = useAgents(version)
+  const asked = layout.agent ?? CHIEF
+  const chosen = agents.some((a) => a.id === asked) ? asked : CHIEF
+  const agentHere = agents.find((a) => a.id === chosen) ?? null
+  const pickAgent = useCallback((id: string) => changeLayout({ agent: id }), [changeLayout])
+  const chosenRef = useRef(chosen)
+  chosenRef.current = chosen
   const askableRef = useRef(askable)
   askableRef.current = askable
   useEffect(() => {
@@ -159,7 +166,9 @@ export function App() {
   const refresh = useCallback(async () => {
     try {
       const [s, m] = await Promise.all([
-        api.get<Stream>('/api/stream'),
+        api.get<Stream>(
+          `/api/stream${chosenRef.current === CHIEF ? '' : `?agent=${chosenRef.current}`}`,
+        ),
         api.get<ModuleSummary[]>('/api/modules'),
       ])
       setStream(s)
@@ -206,15 +215,25 @@ export function App() {
           void refresh()
           setVersion((v) => v + 1)
         }
-        if (e.type === 'busy') setBusyTurn(e.turn)
+        // what is under way shows only in that agent's own conversation
+        const here = e.type === 'lines' || (e.agent ?? CHIEF) === chosenRef.current
+        if (e.type === 'busy' && here) setBusyTurn(e.turn)
         if (e.type === 'idle') {
-          setBusyTurn(null)
+          if (here) setBusyTurn(null)
           void refresh()
         }
-        if (e.type === 'live') setLive((l) => applyLive(l, e))
+        if (e.type === 'live' && here) setLive((l) => applyLive(l, e))
       }),
     [refresh],
   )
+
+  // another agent chosen: its conversation, with nothing under way carried over
+  useEffect(() => {
+    if (!chosen) return
+    setBusyTurn(null)
+    setLive({})
+    void refresh()
+  }, [chosen, refresh])
 
   // the screen's name, for the bar
   const screenName = (): string => {
@@ -224,6 +243,7 @@ export function App() {
       case 'card':
         return 'Waits for you'
       case 'item':
+      case 'agent':
         return itemName || '…'
       case 'tasks':
         return place.id ? taskName || '…' : 'Tasks'
@@ -280,12 +300,7 @@ export function App() {
           online={!problem}
         />
         <main className="flex min-w-0 flex-1 flex-col">
-          <Bar
-            name={screenName()}
-            lens={place.at === 'conversation' ? lens : null}
-            onClearLens={() => setLens(null)}
-            middle={setMiddle}
-          />
+          <Bar name={screenName()} middle={setMiddle} />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
               {problem}
@@ -297,13 +312,18 @@ export function App() {
                 {place.at === 'home' ? (
                   <Home stream={stream} name={name} owner={owner} onAsked={() => setAsking(true)} />
                 ) : place.at === 'conversation' ? (
-                  <Conversation
-                    stream={stream}
-                    live={live}
-                    busyTurn={busyTurn}
-                    lens={lens}
-                    onLens={setLens}
-                  />
+                  <div className="flex h-full min-h-0">
+                    <AgentRail agents={agents} chosen={chosen} onPick={pickAgent} />
+                    <div className="min-w-0 flex-1">
+                      <Conversation
+                        stream={stream}
+                        live={live}
+                        busyTurn={busyTurn}
+                        agent={agentHere}
+                        agents={agents}
+                      />
+                    </div>
+                  </div>
                 ) : place.at === 'parts' ? (
                   <Parts />
                 ) : place.at === 'plugin' ? (
@@ -312,6 +332,8 @@ export function App() {
                   <NewModule modules={modules} onAsked={() => setAsking(true)} />
                 ) : place.at === 'file' ? (
                   <FileView place={place.place} onName={setFileName} />
+                ) : place.at === 'agent' ? (
+                  <AgentPage id={place.id} version={version} onName={setItemName} />
                 ) : place.at === 'row' ? (
                   <RowPage key={place.id} id={place.id} version={version} onPlace={setRowPlace} />
                 ) : place.at === 'card' ? (
@@ -391,7 +413,7 @@ export function App() {
           <Assistant
             folded={!asking}
             onFold={(f) => setAsking(!f)}
-            title={moduleHere ? `Ask about ${moduleHere.name}` : 'Alpha'}
+            title={<AgentPicker agents={agents} chosen={chosen} onPick={pickAgent} />}
             mood={stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'}
             width={layout.panel}
             onWidth={(panel) => changeLayout({ panel })}
@@ -400,10 +422,10 @@ export function App() {
               stream={stream}
               live={live}
               busyTurn={busyTurn}
-              lens={moduleHere}
-              onLens={() => undefined}
               from={moduleHere}
               compact
+              agent={agentHere}
+              agents={agents}
             />
           </Assistant>
         )}

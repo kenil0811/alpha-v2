@@ -223,6 +223,7 @@ describe('the api over a world', () => {
       panel: null,
       assistant: 'open',
       pageSize: null,
+      agent: null,
     })
     // all of how the person left the window is kept here, none of it in the browser (26 Oct)
     await a.inject({
@@ -247,6 +248,7 @@ describe('the api over a world', () => {
       panel: 560,
       assistant: 'folded',
       pageSize: 100,
+      agent: null,
     })
     await a.close()
   })

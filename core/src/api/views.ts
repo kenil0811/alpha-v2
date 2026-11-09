@@ -455,5 +455,15 @@ export function shown(kind: string, data: Record<string, unknown>): Record<strin
   if (kind === 'called') return { call: data.call, ok: data.ok }
   if (kind === 'card_closed') return { state: data.state, answer: data.answer ?? null }
   if (kind === 'made' || kind === 'wrote' || kind === 'shaped') return { table: data.table ?? null }
+  if (kind === 'answered')
+    return {
+      name: data.name,
+      status: data.status,
+      evidence: data.evidence ?? null,
+      unblock: data.unblock ?? null,
+      spent: data.spent ?? null,
+    }
+  if (kind === 'agent_changed')
+    return { changed: data.changed, commit: data.commit, path: data.path }
   return {}
 }

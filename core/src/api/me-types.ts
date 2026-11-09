@@ -20,4 +20,5 @@ export interface Layout {
   panel: number | null // the assistant's width; none is 320px
   assistant: 'open' | 'folded'
   pageSize: number | null // a table's rows to a page; none is 50
+  agent: string | null // the agent the assistant shows; none is the Chief of staff
 }
