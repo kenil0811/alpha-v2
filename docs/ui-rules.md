@@ -36,7 +36,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| O1 | Home is the date, the greeting, one line to ask Alpha, what needs the person only while something waits (each card answered there, and a sign-in), today's tasks, and Getting Alpha ready until it is done. Nothing else | 20 Oct, 26 Oct, 9 Nov | — |
+| O1 | Home is the date, the greeting, one line to ask Alpha, what needs the person only while something waits (each card answered there, and a sign-in), today's tasks, and the three most recently completed tasks with Clear. Nothing else | 20 Oct, 26 Oct, 9 Nov, 10 Nov | — |
 | O2 | No modules on Home (they are in the rail); the conversation is the assistant beside it, never in Home's own space | 26 Oct | — |
 
 ## Module page

@@ -7,7 +7,6 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
 import { SCREENS } from './plugin/screens.ts'
-import { SetupList, unready, useSetup } from './SetupPanel.tsx'
 import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
@@ -34,15 +33,12 @@ function greeting(name: string): string {
 export function Home({
   stream,
   name,
-  owner,
   onAsked,
 }: {
   stream: Stream | null
   name: string
-  owner: boolean
   onAsked: () => void // the answer opens on the right
 }) {
-  const [setup, reloadSetup] = useSetup()
   const [tasks, setTasks] = useState<TasksView | null>(null)
   const [finished, setFinished] = useState<TasksView | null>(null)
   // a load that failed is said, with Try again, never shown as a quiet day (item 30, 25 Oct)
@@ -141,7 +137,18 @@ export function Home({
         )}
 
         {finished && finished.lines.length > 0 && (
-          <Group title="Finished by your agents">
+          <Group
+            title="Recently completed tasks"
+            action={
+              <button
+                type="button"
+                className="text-ink-3 text-xs underline underline-offset-3 hover:text-ink"
+                onClick={() => void api.post('/api/tasks/clear-completed').then(load)}
+              >
+                Clear
+              </button>
+            }
+          >
             <TaskList lines={finished.lines} onChange={load} />
           </Group>
         )}
@@ -163,15 +170,6 @@ export function Home({
           )}
           {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} onChange={load} />}
         </Group>
-
-        {owner && setup && unready(setup) && (
-          <Group
-            title="Getting Alpha ready"
-            sub="Alpha works meanwhile; these finish setting it up"
-          >
-            <SetupList view={setup} onChange={reloadSetup} />
-          </Group>
-        )}
       </div>
     </div>
   )

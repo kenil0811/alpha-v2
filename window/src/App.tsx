@@ -38,6 +38,7 @@ import { moduleSignals } from './signals.ts'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
+import { TaskWork } from './TaskThread.tsx'
 import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { inside } from './tree.ts'
@@ -49,7 +50,6 @@ export function App() {
   const [table, setTable] = useState<TableData | null>(null)
   const [busyTurn, setBusyTurn] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [owner, setOwner] = useState(true) // a member does not set Alpha up
   const [fileName, setFileName] = useState('')
   const [personName, setPersonName] = useState('')
   const [taskName, setTaskName] = useState('')
@@ -98,7 +98,7 @@ export function App() {
     () => placed && { id: placed.id, name: placed.name, ids: inside(modules, placed.id) },
     [placed?.id, placed?.name, modules, placed],
   )
-  const askable = place.at !== 'conversation'
+  const askable = place.at !== 'conversation' && place.at !== 'work'
   // the agent the assistant shows, kept per person; the Chief of staff when it has gone
   const agents = useAgents(version)
   const asked = layout.agent ?? CHIEF
@@ -191,7 +191,6 @@ export function App() {
     api.get<Me>('/api/me').then(
       (me) => {
         setName(me.user.name)
-        setOwner(me.user.role === 'owner')
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
         setLayout(me.layout)
@@ -242,6 +241,7 @@ export function App() {
         return 'Waits for you'
       case 'item':
       case 'agent':
+      case 'work':
         return itemName || '…'
       case 'tasks':
         return place.id ? taskName || '…' : 'Tasks'
@@ -298,7 +298,11 @@ export function App() {
           online={!problem}
         />
         <main className="flex min-w-0 flex-1 flex-col">
-          <Bar name={screenName()} middle={setMiddle} plain={place.at === 'conversation'} />
+          <Bar
+            name={screenName()}
+            middle={setMiddle}
+            plain={place.at === 'conversation' || place.at === 'work'}
+          />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
               {problem}
@@ -308,7 +312,7 @@ export function App() {
             <div className="flex min-h-0 flex-1">
               <div className="min-w-0 flex-1">
                 {place.at === 'home' ? (
-                  <Home stream={stream} name={name} owner={owner} onAsked={() => setAsking(true)} />
+                  <Home stream={stream} name={name} onAsked={() => setAsking(true)} />
                 ) : place.at === 'conversation' ? (
                   <div className="flex h-full min-h-0">
                     <AgentRail agents={agents} chosen={chosen} onPick={pickAgent} />
@@ -329,6 +333,8 @@ export function App() {
                   <NewModule modules={modules} onAsked={() => setAsking(true)} />
                 ) : place.at === 'file' ? (
                   <FileView place={place.place} onName={setFileName} />
+                ) : place.at === 'work' ? (
+                  <TaskWork key={place.id} id={place.id} version={version} onName={setItemName} />
                 ) : place.at === 'agent' ? (
                   <AgentPage id={place.id} version={version} onName={setItemName} />
                 ) : place.at === 'row' ? (

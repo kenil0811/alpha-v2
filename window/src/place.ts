@@ -11,6 +11,7 @@ export type Place =
   | { at: 'new' }
   | { at: 'item'; kind: 'schedule' | 'run' | 'rule'; id: string }
   | { at: 'agent'; id: string }
+  | { at: 'work'; id: string } // the work on a task, on a page of its own
   | { at: 'row'; id: string }
   | { at: 'card'; id: string } // a card on its own page (Batch B, pick 13)
   | {
@@ -81,6 +82,8 @@ export function placeOf(address: string): Place {
     return s[1] === 'settings'
       ? { at: 'settings', section: s[2] ?? null, open: null }
       : { at: 'intelligence', section: s[2] ?? null, open: null }
+  const work = /^#\/tasks\/([\w-]+)\/work$/.exec(hash)
+  if (work?.[1]) return { at: 'work', id: work[1] }
   const tk = /^#\/tasks(?:\/([\w-]+)|\?list=(\w+))?$/.exec(hash)
   if (tk)
     return {
