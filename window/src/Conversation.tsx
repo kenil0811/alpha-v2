@@ -531,7 +531,8 @@ function StepRow({ step }: { step: Step }) {
 // that opens to each of them.
 function Steps({ steps, active }: { steps: Step[]; active: boolean }) {
   if (active) return <div className="truncate text-ink-3">{steps.at(-1)?.words}</div>
-  const failed = steps.some((s) => s.ok === false)
+  // a step that failed on the way and was got past is in the list, not on the line (Kenil, 10 Nov)
+  const failed = steps.at(-1)?.ok === false
   return (
     <details className="group text-ink-3">
       <summary className="inline-flex max-w-full cursor-pointer select-none list-none items-center gap-1 hover:text-ink-2">

@@ -6,20 +6,16 @@
 import { useRef, useState } from 'react'
 import { cn } from './cn.ts'
 
-// A folded strip, the rail's and the assistant's alike (Batch E, 79.3, Kenil's look 2 Nov): 80px,
-// each place on it its icon with its name under it, so it reads without hovering; a long name
-// takes two lines.
-export const STRIP = 80
-export const stripItem = (current = false, rail = false) =>
+// The folded rail (Kenil, 10 Nov, as Claude Code's): a 52px strip of icons, each named when
+// hovered.
+export const STRIP = 52
+export const stripItem = (current = false) =>
   cn(
-    'relative flex w-full shrink-0 flex-col items-center gap-0.5 rounded-md px-0.5 py-1.5 text-xs transition-colors',
+    'relative grid size-9 shrink-0 place-items-center rounded-md transition-colors',
     current
       ? 'bg-accent-soft text-accent'
-      : rail
-        ? 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink'
-        : 'text-ink-3 hover:bg-hover hover:text-ink',
+      : 'text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink',
   )
-export const stripName = 'line-clamp-2 w-full break-words text-center leading-tight'
 
 // Every panel's narrowest open width, and how far past it a drag goes before the panel folds.
 export const SIDE_MIN = 200

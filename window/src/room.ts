@@ -4,7 +4,7 @@
 // gives way and the assistant stays (his call 3).
 import type { Layout } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
-import { STRIP } from './ui/edge.tsx' // a folded rail, or a folded assistant: its strip (80px, 79.3)
+import { STRIP } from './ui/edge.tsx' // a folded rail: its strip
 
 const RAIL = 216
 const PAGE = 600 // A5: the screen always keeps 600px
@@ -14,7 +14,8 @@ const ASSISTANT = 320
 // What the rail and the assistant take, beside the page's 600px.
 function taken(layout: Layout, asking: boolean): number {
   const rail = layout.railFolded ? STRIP : (layout.railWidth ?? RAIL)
-  const assistant = asking ? Math.max(ASSISTANT, layout.panel ?? ASSISTANT) : STRIP
+  // a closed assistant takes nothing: its face sits in the bar
+  const assistant = asking ? Math.max(ASSISTANT, layout.panel ?? ASSISTANT) : 0
   return rail + PAGE + assistant
 }
 

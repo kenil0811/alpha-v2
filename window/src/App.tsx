@@ -14,8 +14,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AgentPage, AgentPicker, AgentRail, CHIEF, useAgents } from './Agents.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
+import { Bar } from './Bar.tsx'
 import { CardPage } from './CardPage.tsx'
 import { Conversation } from './Conversation.tsx'
+import type { Mood } from './Face.tsx'
 import { FileView } from './FileView.tsx'
 import { Find } from './Find.tsx'
 import { Home } from './Home.tsx'
@@ -33,7 +35,7 @@ import { screenOf } from './plugin/screens.ts'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { besideWidth, roomBeside, useWindowWidth } from './room.ts'
 import { Settings } from './Settings.tsx'
-import { Bar, BarMiddle, network, Rail } from './Shell.tsx'
+import { BarMiddle, network, Rail } from './Shell.tsx'
 import { moduleSignals } from './signals.ts'
 import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
@@ -65,8 +67,8 @@ export function App() {
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
   const layoutHere = useMemo(() => ({ layout, change: changeLayout }), [layout, changeLayout])
-  // the assistant on the right: open unless the person folded it
-  const asking = layout.assistant !== 'folded'
+  // the assistant on the right: closed until the person opens it from Alpha's face (Kenil, 10 Nov)
+  const asking = layout.assistant === 'open'
   // room beside the page for a row, a task, a run or a person with the assistant open (Batch A)
   const windowWidth = useWindowWidth()
   const room = roomBeside(windowWidth, layout, asking)
@@ -76,7 +78,7 @@ export function App() {
   const setAsking = useCallback(
     (open: boolean | ((was: boolean) => boolean)) =>
       setLayout((l) => {
-        const next = typeof open === 'function' ? open(l.assistant !== 'folded') : open
+        const next = typeof open === 'function' ? open(l.assistant === 'open') : open
         const assistant = next ? 'open' : 'folded'
         if (assistant !== l.assistant) api.post('/api/layout', { assistant }).catch(() => undefined)
         return { ...l, assistant }
@@ -99,6 +101,11 @@ export function App() {
     [placed?.id, placed?.name, modules, placed],
   )
   const askable = place.at !== 'conversation' && place.at !== 'work'
+  // the agents' own page closes the assistant, so it never opens again by itself on leaving
+  useEffect(() => {
+    if (!askable) setAsking(false)
+  }, [askable, setAsking])
+  const mood: Mood = stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'
   // the agent the assistant shows, kept per person; the Chief of staff when it has gone
   const agents = useAgents(version)
   const asked = layout.agent ?? CHIEF
@@ -193,7 +200,8 @@ export function App() {
         setName(me.user.name)
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
-        setLayout(me.layout)
+        // the assistant starts closed, whatever it was when the window last closed
+        setLayout({ ...me.layout, assistant: 'folded' })
       },
       () => undefined,
     )
@@ -302,6 +310,7 @@ export function App() {
             name={screenName()}
             middle={setMiddle}
             plain={place.at === 'conversation' || place.at === 'work'}
+            ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
           />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
@@ -412,12 +421,11 @@ export function App() {
             }}
           />
         )}
-        {askable && (
+        {askable && asking && (
           <Assistant
-            folded={!asking}
-            onFold={(f) => setAsking(!f)}
+            onClose={() => setAsking(false)}
             title={<AgentPicker agents={agents} chosen={chosen} onPick={pickAgent} />}
-            mood={stream?.cards.length ? 'needs' : busyTurn || stream?.busy ? 'working' : 'quiet'}
+            mood={mood}
             width={layout.panel}
             onWidth={(panel) => changeLayout({ panel })}
           >

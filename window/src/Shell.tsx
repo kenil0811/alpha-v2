@@ -1,7 +1,7 @@
 // The shell (Vikas, 25 Oct; reverses the first design's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
 // the right, their headers on one line. The rail has the person's name at its top, Home with a badge
-// for what waits on the person, Conversation, Tasks, the modules by name with the modules inside
+// for what waits on the person, Agents, Tasks, the modules by name with the modules inside
 // them, New module last in the list, and Intelligence and Settings at its foot; no headings and no
 // status lines. It folds to a strip of icons. In Alpha's own Mac window its top row leaves room for
 // the window buttons.
@@ -13,8 +13,7 @@ import {
   House,
   ListChecks,
   MessageSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelLeft,
   Plus,
   SlidersHorizontal,
   Sparkles,
@@ -29,7 +28,7 @@ import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
-import { Edge, Opening, SIDE_MIN, STRIP, stripItem, stripName } from './ui/edge.tsx'
+import { Edge, Opening, SIDE_MIN, STRIP, stripItem } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 import { Renamable } from './ui/rename.tsx'
 
@@ -150,7 +149,7 @@ export function Rail({
           onClick={() => onLayout({ railFolded: true })}
           className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
         >
-          <PanelLeftClose className="size-4" />
+          <PanelLeft className="size-4" />
         </button>
       </div>
       <Nav
@@ -163,7 +162,7 @@ export function Rail({
       <Nav
         href="#/conversation"
         icon={<MessageSquare className="size-4" />}
-        label="Conversation"
+        label="Agents"
         current={place.at === 'conversation'}
       />
       <Nav
@@ -541,15 +540,14 @@ function Strip({
       aria-label={label}
       data-tip={label}
       aria-current={current ? 'page' : undefined}
-      className={stripItem(current, true)}
+      className={stripItem(current)}
     >
       {child}
-      <span className={stripName}>{label.split(',')[0]}</span>
       {extra}
     </a>
   )
   return (
-    <nav className="relative flex w-20 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
+    <nav className="relative flex w-13 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
       <Edge
         side="right"
         folded
@@ -574,10 +572,9 @@ function Strip({
         aria-label="Open the rail"
         data-tip={`Open the rail (${MOD}\\)`}
         onClick={onOpen}
-        className={cn(stripItem(false, true), 'mt-1 mb-2')}
+        className={cn(stripItem(), 'mt-1 mb-2')}
       >
-        <PanelLeftOpen className="size-4" />
-        <span className={stripName}>Open</span>
+        <PanelLeft className="size-4" />
       </button>
       {icon(
         '#/',
@@ -586,10 +583,16 @@ function Strip({
         <House className="size-4" />,
         waiting > 0 && (
           <span
-            className="absolute top-1 right-4 size-2 rounded-full bg-accent"
+            className="absolute top-1 right-1 size-2 rounded-full bg-accent"
             aria-hidden="true"
           />
         ),
+      )}
+      {icon(
+        '#/conversation',
+        'Agents',
+        place.at === 'conversation',
+        <MessageSquare className="size-4" />,
       )}
       {icon(
         '#/tasks',
@@ -612,10 +615,9 @@ function Strip({
           aria-label="New module"
           data-tip="New module"
           onClick={onNew}
-          className={stripItem(false, true)}
+          className={stripItem()}
         >
           <Plus className="size-4" />
-          <span className={stripName}>New</span>
         </button>
       </div>
       {icon(
@@ -643,37 +645,3 @@ export const network = (modules: ModuleSummary[]) => modules.find((m) => m.peopl
 
 // What a screen puts in the middle of the bar lives in ui/bar-slot.tsx, where a part reaches it.
 export { BarMiddle, InBar }
-
-// The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
-// on the left when one is on. Find is ⌘K, from anywhere.
-export function Bar({
-  name,
-  middle,
-  plain,
-}: {
-  name: string
-  middle: (at: HTMLElement | null) => void
-  plain?: boolean // the conversation's: a small sans title, as Claude Code's
-}) {
-  return (
-    <div
-      data-tauri-drag-region
-      className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
-    >
-      <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {plain && (
-          <h1 className="min-w-0 truncate font-medium font-sans text-chat text-ink">{name}</h1>
-        )}
-      </div>
-      <div className="flex min-w-0 justify-center">
-        <div ref={middle} className="peer flex min-w-0 justify-center empty:hidden" />
-        {!plain && (
-          <h1 className="hidden min-w-0 truncate font-serif text-ink text-xl peer-empty:block">
-            {name}
-          </h1>
-        )}
-      </div>
-      <div data-tauri-drag-region />
-    </div>
-  )
-}

@@ -14,7 +14,7 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
   const places = useMemo(
     () => [
       { label: 'Home', hint: '', href: '#/' },
-      { label: 'Conversation', hint: '', href: '#/conversation' },
+      { label: 'Agents', hint: '', href: '#/conversation' },
       { label: 'Tasks', hint: '', href: '#/tasks' },
       { label: 'New task', hint: 'Tasks', href: '#/tasks?list=open' },
       ...modules

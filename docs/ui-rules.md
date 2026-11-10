@@ -13,16 +13,16 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| S1 | The rail is module names only: Home, Conversation, Tasks, then each module, with modules inside one folded under it | 20 Oct, 26 Oct, 7 Nov | — |
+| S1 | The rail is module names only: Home, Agents, Tasks, then each module, with modules inside one folded under it | 20 Oct, 26 Oct, 7 Nov | — |
 | S2 | Intelligence and Settings sit at the rail's foot, each its own row | 25 Oct, 7 Nov | — |
 | S3 | The rail's head is the person's initial and name, no menu; how Alpha looks is in Settings › Appearance | 26 Oct, 7 Nov | — |
 | S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules. Rename edits the name in the rail (Enter keeps, Escape puts it back, a refusal under the box). Moving is on the menu: no drag, and no double-click on a module's name | 26 Oct, 1 Nov, 7 Nov | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
-| S6 | Both side panels drag by one edge and fold; the rail folds to an 80px strip, each icon with its name under it (⌘\\); every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
+| S6 | Both side panels drag by one edge and fold; the rail folds to a 52px strip of icons, each named when hovered, and one sidebar button folds and opens it (⌘\\); every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
 | S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
 | S8 | Heights use `dvh`, never `vh` (a phone's browser bars) | 2 Sep | skip |
 | S9 | Beside each module in the rail, one signal dot for what it holds, the strongest of: needs you now (pulsing), waits for your yes (filled), something to read (hollow), running (green); a folded module shows the strongest of the modules inside it too; its words on hover | 2 Nov | test (signals) |
-| S10 | The rail's rows are evenly spaced at 30px, the modules straight after Home, Conversation and Tasks with no gap above them | 2 Nov | — |
+| S10 | The rail's rows are evenly spaced at 30px, the modules straight after Home, Agents and Tasks with no gap above them | 2 Nov | — |
 
 ## Header bar and tabs
 
@@ -89,11 +89,11 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| A1 | The assistant's header: fold, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
+| A1 | The assistant's header: close, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's straight on the page with no box, as in Claude Code. Steps sit between the words where they happened, one quiet line that opens to each step; a table stays in the column | 26 Oct, 9 Nov | — |
 | A3 | The composer's +: files, a folder; @ picks teammates, and the picks travel with the message. The model the agent runs on shows beside Send; the owner changes it there or on the agent's page. While the agent works an empty box's Send is Stop. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
-| A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
+| A5 | The assistant is the conversation on the right of every screen but the agents' own, Home included; it starts closed, with Alpha's face at the right of the bar, and opens only when the person clicks the face (or ⌘J, ⌘⇧\\); it stays open between pages until closed, and the agents' own page closes it; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov, 10 Nov | — |
 | A6 | A reply shows whole and stays as it streamed, as in Claude Code: what the model wrote and the steps between, in order, nothing folded or replaced at the end | 9 Nov | test |
 | A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a script's report are on Activity; an agent's scheduled run reports on its task's page and Home. Nothing runs beside it | 7 Nov, 10 Nov | test (stream) |
 | A8 | What one agent asks another stays out of the asked agent's chat, which shows only a quiet Working for … while it runs. The asker's chat shows one line for each ask, with Stop while it waits and the answer and evidence folded on it, and then one reply. A message naming one agent goes straight to it and its answer is the reply; several go through the Chief of staff | 9 Nov | test |
