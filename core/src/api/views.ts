@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FastifyReply } from 'fastify'
 import { config } from '../config.ts'
+import { startOf } from '../engine/task-runs.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { readSchedule, type Schedule } from '../modules/schedules.ts'
 import { pagesOf } from '../pages/pages.ts'
@@ -123,6 +124,7 @@ export function makeViews(ctx: BaseCtx) {
         })
       : []
     const parent = t.parent ? world.tasks.get(t.parent) : undefined
+    const begins = startOf(t)
     // who can own it: the person or Alpha
     const owners = [
       { kind: 'person' as const, id: user.id, name: 'You' },
@@ -151,6 +153,9 @@ export function makeViews(ctx: BaseCtx) {
     return {
       ...lineOf(t),
       agent,
+      schedule: t.schedule ? { id: t.schedule, name: t.title } : null,
+      startsAt: t.startsAt,
+      beginsAt: begins === null ? null : new Date(begins).toISOString(),
       notes: t.notes,
       remindedAt: t.remindedAt,
       madeBy: t.madeBy.startsWith('person')

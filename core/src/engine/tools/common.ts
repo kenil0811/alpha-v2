@@ -41,6 +41,7 @@ export interface AgentBus {
   deliver(user: User, ask: AgentAsk): void // the receiver starts when it can
   stop(user: User, ask: AgentAsk): void // the asker called it off
   giveTask?(user: User, id: string, from: { root: string | null; hop: number }): void
+  quietTask?(task: string): void
 }
 
 // What reaches past the world's tables: the browser engine and the runner of module scripts.
@@ -154,6 +155,7 @@ export const TASKS = [
   'task add: a task with its title, on the place it concerns: on { module, table, row, field, page } (find the row first with query or search). Without on it sits on the module the person asked from, or nowhere yet. Then say in a line where you put it, so they can change it. touches: other rows ({ kind: row, ref: <row id> }), people ({ kind: person, ref: <id in view people> }) or files ({ kind: file, ref: <hash> }) it is about. An open task on the same place with most of the same words comes back as similar: offer to keep one.',
   "due: a day (2026-10-24) or a moment (2026-10-24T10:00:00, the person's time unless it says its zone); remind_at: when to remind them (a Mac notification and a line on Home); repeat: every day, every weekday, every Monday, every 2 weeks, monthly, on the 1st of each month (each occurrence its own task, the next made when one is done); priority: high, normal or low; owner: me (the person), alpha, or the name of a schedule that takes tasks (its file says tasks: true); parent: the task it sits under.",
   'change (and on, to move it), start, wait, done, drop, reopen: one task by its id.',
+  "starts: when an agent given it begins, a moment in the person's time; none is at once. A repeating task given to an agent starts each copy on its due day by itself.",
 ].join('\n')
 
 // The effect of a call, by tool and input: the gates read it.
@@ -166,6 +168,8 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   file: (i) => (i.action === 'read' ? 'read' : 'write'),
   ask: () => 'write',
   remember: () => 'write',
+  schedule: (i) => (i.action === 'list' ? 'read' : 'write'),
+  nothing_to_report: () => 'read',
   memory: (i) => (i.action === 'search' ? 'read' : 'write'),
   list_agents: () => 'read',
   ask_agent: () => 'write',

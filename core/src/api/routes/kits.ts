@@ -13,7 +13,7 @@ import {
 } from '../../modules/kits/index.ts'
 import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
-import { schedules, setScheduleState, whenWords } from '../../modules/schedules.ts'
+import { agentName, schedules, setScheduleState, whenWords } from '../../modules/schedules.ts'
 import { FOLDERS } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
@@ -42,24 +42,43 @@ export function registerKits(ctx: Ctx): void {
         [
           keptField('Schedule', 'text'),
           keptField('Module', 'text'),
+          keptField('Wakes', 'text'),
           keptField('State', 'choice', { On: 'good', Paused: 'warn' }),
           keptField('Runs', 'text'),
           keptField('Last ran', 'date'),
           keptField('Needs', 'text'),
         ],
-        working().flatMap((m) =>
-          m.schedules.map((a) => ({
-            id: a.id,
-            values: {
-              schedule: a.name,
-              module: m.name,
-              state: a.state === 'on' ? 'On' : 'Paused',
-              runs: a.running ? `${a.when}, running now` : a.when,
-              'last ran': a.lastRunAt,
-              needs: a.needs,
-            },
-          })),
-        ),
+        [
+          ...working().flatMap((m) =>
+            m.schedules.map((a) => ({
+              id: a.id,
+              values: {
+                schedule: a.name,
+                module: m.name,
+                wakes: a.wakes?.name ?? null,
+                state: a.state === 'on' ? 'On' : 'Paused',
+                runs: a.running ? `${a.when}, running now` : a.when,
+                'last ran': a.lastRunAt,
+                needs: a.needs,
+              },
+            })),
+          ),
+          // an agent's own have no module
+          ...schedules(world)
+            .filter((a) => a.module === null)
+            .map((a) => ({
+              id: a.id,
+              values: {
+                schedule: a.name,
+                module: null,
+                wakes: agentName(world, a.agent as string),
+                state: a.state === 'on' ? 'On' : 'Paused',
+                runs: whenWords(a.trigger),
+                'last ran': engine.hands?.runner.runsOf(a.id, 1)[0]?.startedAt ?? null,
+                needs: null,
+              },
+            })),
+        ],
         { editable: ['State'], why: WHY },
       ),
   )
@@ -103,6 +122,7 @@ export function registerKits(ctx: Ctx): void {
           when: whenWords(a.trigger),
           lastRunAt: a.lastRunAt,
           running: running.has(a.id),
+          wakes: a.agent ? { id: a.agent, name: agentName(world, a.agent) } : null,
         })),
       }
     })

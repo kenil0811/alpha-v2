@@ -31,7 +31,8 @@ import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
 import { ScheduleRunner } from '../modules/runs/index.ts'
-import { schedules, setScheduleState } from '../modules/schedules.ts'
+import { agentSchedules, schedules, setScheduleState } from '../modules/schedules.ts'
+import { CHIEF } from '../world/agents/index.ts'
 import { Refused } from '../world/kinds.ts'
 import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
@@ -85,6 +86,8 @@ const Journey = z.object({
       // the customer's own step done (step 2, part 4): a file of this name in the journey's own
       // folder ({tmp}, the account a made-up connector is connected to)
       customer_does: z.string().optional(),
+      // Run now on an agent's schedule, as the person presses it: its first, or the one named
+      run_now: z.object({ agent: z.string(), name: z.string().optional() }).optional(),
       // Try again on a connection waiting for the customer, by its connector
       try_again: z.string().optional(),
       // a table renamed as the person renames it, by double-clicking its name (Batch B)
@@ -425,6 +428,13 @@ export async function runOne(
       const took = await inWindow(page(), world, step)
       passed &&= took.ok
       what = took.what
+    } else if (step.run_now) {
+      const n = step.run_now
+      const agent = world.agents.byName(n.agent)?.id ?? CHIEF
+      const s = agentSchedules(world, agent).find((x) => !n.name || x.name === n.name)
+      if (!s) throw new Error(`Step ${i + 1}: ${n.agent} has no schedule ${n.name ?? ''}.`)
+      const out = await runner.runSchedule(s, { user: user.id, turn: null }, {}, { asked: true })
+      what = `Pressed Run now on ${s.name}: ${out.words}`
     } else if (step.due) {
       await runner.runDue(Date.now())
       const ran = runner.runs(5).filter((r) => r.startedAt >= new Date(t0).toISOString())

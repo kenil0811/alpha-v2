@@ -5,12 +5,13 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join, normalize } from 'node:path'
 import { parse } from 'yaml'
 import { config } from '../config.ts'
-import { type Agent, CHIEF } from '../world/agents/index.ts'
-import { newId } from '../world/db.ts'
+import { type Agent, CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
+import { newId, run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { commitAll, restoreFile } from './git.ts'
+import { agentSchedules, syncAgentSchedules } from './schedules.ts'
 
 export const INSTRUCTIONS = 'AGENT.md'
 const PLACES = ['skills/', 'files/']
@@ -172,13 +173,14 @@ export async function undoAgentChange(
   path: string,
   ctx: WriteCtx,
 ): Promise<string> {
-  const agent = world.agents.get(id)
+  const agent = id === CHIEF ? CHIEF_CARD : world.agents.get(id)
   if (!agent) throw new Refused('That agent is not there.')
   const dir = world.agents.dirOf(id)
   await restoreFile(dir, commit, path)
   const done = await commitAll(dir, `Undid a change to ${path}`)
   if (!done) throw new Refused('That change is already undone.')
   if (path === INSTRUCTIONS) world.agents.touch(id)
+  if (path.startsWith('schedules/')) syncAgentSchedules(world, id, ctx.user ?? null)
   const words = `Undid a change to ${agent.name}'s ${path === INSTRUCTIONS ? 'instructions' : path}.`
   world.line({
     actor: ctx.actor,
@@ -186,7 +188,7 @@ export async function undoAgentChange(
     words,
     data: { changed: id, undid: commit, path },
     user: ctx.user ?? null,
-    agent: id,
+    ...(id === CHIEF ? {} : { agent: id }),
   })
   return words
 }
@@ -195,6 +197,18 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   if (id === CHIEF) throw new Refused('The Chief of staff is always here.')
   const agent = world.agents.get(id)
   if (!agent) throw new Refused('That agent is not there.')
+  // what a module's schedule woke it for goes to the Chief of staff; its own go with it
+  run(
+    world.db,
+    'UPDATE schedules SET agent = ? WHERE agent = ? AND module_id IS NOT NULL',
+    CHIEF,
+    id,
+  )
+  for (const s of agentSchedules(world, id)) {
+    run(world.db, 'UPDATE runs SET schedule_id = NULL WHERE schedule_id = ?', s.id)
+    run(world.db, 'DELETE FROM schedules WHERE id = ?', s.id)
+    world.rules.removeScoped({ schedule: s.name }, { actor: ctx.actor })
+  }
   world.agents.remove(id)
   rmSync(world.agents.dirOf(id), { recursive: true, force: true })
   world.line({

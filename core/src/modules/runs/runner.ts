@@ -3,20 +3,20 @@
 // card. The runner's pieces are the files beside this one: the walls, what a script may reach,
 // the `alpha` it is handed, what is due.
 import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import type { BrowserEngine } from '@alpha/connector-sdk'
 import type { Trigger } from '@alpha/kit-sdk'
 import { config } from '../../config.ts'
 import { askModel } from '../../engine/ask.ts'
 import type { Ask } from '../../files/reading.ts'
 import { runScript, type ScriptRun } from '../../scripts/run.ts'
-import { all, run as exec, json, newId, now, one } from '../../world/db.ts'
+import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
+import { all, run as exec, json, newId, now, one, parse } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { Module } from '../../world/shape/index.ts'
 import type { World } from '../../world/world.ts'
 import type { Drafts } from '../drafts.ts'
 import { Reviews } from '../reviews.ts'
-import { type Schedule, type ScheduleFile, schedules } from '../schedules.ts'
+import { type Runs, type Schedule, type ScheduleFile, schedules } from '../schedules.ts'
 import * as apiOf from './api.ts'
 import * as dueOf from './due.ts'
 import * as reachOf from './reach.ts'
@@ -24,10 +24,12 @@ import {
   type Filed,
   type RunFor,
   type RunOutcome,
+  type RunPlace,
   type RunRow,
   type RunRowDb,
   toRun,
 } from './types.ts'
+import { wake } from './wake.ts'
 import * as wallsOf from './walls.ts'
 import { unmetNeeds, type Walls } from './walls.ts'
 
@@ -47,6 +49,7 @@ export class ScheduleRunner {
   failures = new Map<string, number>() // a schedule's runs that did not finish, in a row
   held = new Map<string, string>() // schedules waiting on a Try again card, by the card's id
   drafts: Drafts | null = null // a schedule's drafts, sent from the person's mail on their yes
+  give: ((by: string, task: string) => void) | null = null // a task handed to its agent
   readonly reviews: Reviews // rows a schedule puts to the person, on a card
 
   constructor(
@@ -72,12 +75,12 @@ export class ScheduleRunner {
 
   // The rest of the runner lives in the files beside this one, each a function of it.
 
-  reach(module: Module, url: string, runId: string, who: RunFor): void {
+  reach(module: RunPlace, url: string, runId: string, who: RunFor): void {
     reachOf.reach(this, module, url, runId, who)
   }
 
   wantsSignIn(
-    module: Module,
+    module: RunPlace,
     url: string,
     label: string,
     runId: string,
@@ -88,7 +91,7 @@ export class ScheduleRunner {
   }
 
   async browse<T>(
-    module: Module,
+    module: RunPlace,
     url: string,
     label: string,
     runId: string,
@@ -100,7 +103,7 @@ export class ScheduleRunner {
   }
 
   api(
-    module: Module,
+    module: RunPlace,
     label: string,
     runId: string,
     who: RunFor,
@@ -110,15 +113,15 @@ export class ScheduleRunner {
     return apiOf.api(this, module, label, runId, who, scheduleId, walls)
   }
 
-  fileOf(scheduleId: string, module: Module): ScheduleFile | null {
+  fileOf(scheduleId: string, module: RunPlace): ScheduleFile | null {
     return wallsOf.fileOf(this, scheduleId, module)
   }
 
-  wallsFor(module: Module, file: ScheduleFile): Walls {
+  wallsFor(module: RunPlace, file: ScheduleFile): Walls {
     return wallsOf.wallsFor(this, module, file)
   }
 
-  wallsForTry(module: Module): Walls {
+  wallsForTry(module: RunPlace): Walls {
     return wallsOf.wallsForTry(this, module)
   }
 
@@ -173,7 +176,7 @@ export class ScheduleRunner {
   }
   // One script of a module, run now: a schedule's, or a skill's when trying it out.
   async runScript(
-    module: Module,
+    module: RunPlace,
     script: string,
     input: unknown,
     label: string,
@@ -243,7 +246,7 @@ export class ScheduleRunner {
     try {
       out = await runScript({
         script: path,
-        moduleDir: module.dir,
+        moduleDir: module.box ?? module.dir,
         input,
         api: this.api(module, label, runId, who, scheduleId, walls),
         signal: stop.signal,
@@ -307,9 +310,13 @@ export class ScheduleRunner {
   // or on a follow-up (items 9 and 10 of the problems list, 24 Oct).
   // Why a schedule cannot run now, as a refusal: asked before a run starts (Run now says it at
   // once), and again by the run itself.
-  refuseRun(schedule: Schedule, options: { asked?: boolean } = {}): Module {
-    const module = this.world.shape.module(schedule.module)
+  refuseRun(schedule: Schedule, options: { asked?: boolean } = {}): RunPlace {
+    const module = this.placeOf(schedule)
     if (!module) throw new Refused('That schedule’s module is not there.')
+    if (this.world.tasks.openOfSchedule(schedule.id))
+      throw new Refused(
+        `${schedule.name} is still on its last run; it runs again when that one is finished.`,
+      )
     if (
       one(
         this.world.db,
@@ -334,13 +341,16 @@ export class ScheduleRunner {
     options: { asked?: boolean } = {},
   ): Promise<RunOutcome> {
     const module = this.refuseRun(schedule, options)
+    if (schedule.agent) return wake(this, schedule, module, who, given, options)
+    const runs = schedule.runs as Runs
     // what became of its drafts since its last run
-    const decided = this.drafts?.outcomes(schedule.name, module.id, schedule.lastRunAt) ?? []
+    const decided =
+      this.drafts?.outcomes(schedule.name, module.id as string, schedule.lastRunAt) ?? []
     return this.runScript(
       module,
-      schedule.runs.script,
+      runs.script,
       {
-        ...(schedule.runs.input ?? {}),
+        ...(runs.input ?? {}),
         ...given,
         ...(decided.length ? { decided } : {}),
         // when it last ran, so it can look at what is new since
@@ -350,6 +360,48 @@ export class ScheduleRunner {
       schedule.id,
       who,
     )
+  }
+
+  // Where a schedule's script runs from: its module, or its agent's folder.
+  placeOf(s: Schedule): RunPlace | null {
+    if (s.module) return this.world.shape.module(s.module) ?? null
+    if (!s.agent) return null
+    const name = s.agent === CHIEF ? CHIEF_CARD.name : this.world.agents.get(s.agent)?.name
+    if (!name) return null
+    const dir = this.world.agents.dirOf(s.agent)
+    return { id: null, name, dir, ...(s.runs ? { box: dirname(join(dir, s.runs.script)) } : {}) }
+  }
+
+  // A run with no script of its own, already over: its schedule woke the agent straight away.
+  openRun(s: Schedule, words: string): string {
+    const id = newId('n')
+    const at = now()
+    exec(
+      this.world.db,
+      "INSERT INTO runs (id, schedule_id, module_id, started_at, ended_at, state, words) VALUES (?, ?, ?, ?, ?, 'ok', ?)",
+      id,
+      s.id,
+      s.module,
+      at,
+      at,
+      words,
+    )
+    exec(this.world.db, 'UPDATE schedules SET last_run_at = ? WHERE id = ?', at, s.id)
+    return id
+  }
+
+  // What a finished run came to: its words and a little more in its row.
+  noteRun(id: string, words: string, data: Record<string, unknown>, state?: 'failed'): void {
+    const was = one<RunRowDb>(this.world.db, 'SELECT * FROM runs WHERE id = ?', id)
+    exec(
+      this.world.db,
+      'UPDATE runs SET words = ?, data = ?, state = coalesce(?, state) WHERE id = ?',
+      words,
+      json({ ...parse<Record<string, unknown>>(was?.data ?? '{}', {}), ...data }),
+      state ?? null,
+      id,
+    )
+    this.notify()
   }
 
   // A run stopped by the person: the one running here is told; a row left running by a core
@@ -403,6 +455,15 @@ export class ScheduleRunner {
       module: row.module,
     })
     this.notify()
+  }
+
+  runsOf(schedule: string, limit: number): RunRow[] {
+    return all<RunRowDb>(
+      this.world.db,
+      'SELECT * FROM runs WHERE schedule_id = ? ORDER BY started_at DESC LIMIT ?',
+      schedule,
+      limit,
+    ).map(toRun)
   }
 
   runs(limit = 50): RunRow[] {

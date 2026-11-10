@@ -15,10 +15,11 @@ export function registerTasks(ctx: Ctx): void {
     overdue: () => world.tasks.list({ open: true, dueBy: inDays(-1) }),
     waiting: () => world.tasks.list({ open: true }).filter((t) => t.state === 'waiting'),
     open: () => world.tasks.list({ open: true }),
+    // a schedule's finished runs live on the schedule, so an hourly job does not fill this
     done: () =>
       world.tasks
         .list()
-        .filter((t) => t.state === 'done' || t.state === 'dropped')
+        .filter((t) => !t.schedule && (t.state === 'done' || t.state === 'dropped'))
         .sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''))
         .slice(0, 200),
     // the last few finished, for Home, since the person last cleared them
@@ -194,6 +195,7 @@ export function registerTasks(ctx: Ctx): void {
     notes: z.string().nullable().optional(),
     due: z.string().nullable().optional(),
     remindAt: z.string().nullable().optional(),
+    startsAt: z.string().nullable().optional(),
     repeat: z.string().nullable().optional(),
     priority: z.enum(['high', 'normal', 'low']).optional(),
     owner: z

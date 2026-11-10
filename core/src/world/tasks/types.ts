@@ -68,6 +68,9 @@ export interface Task {
   refs: Ref[]
   madeBy: string
   run: string | null // the run it serves (schedules on tasks)
+  schedule: string | null // the schedule this task is one run of
+  opening: string | null // what such a run starts with, in place of the task's own words
+  startsAt: string | null // when an agent given it begins; none is at once
   createdAt: string
   updatedAt: string
   doneAt: string | null
@@ -86,6 +89,7 @@ export interface TaskInput {
   refs?: Ref[]
   placedBy?: string | null
   placedWhy?: string | null
+  startsAt?: string | null
 }
 
 export interface TaskRow {
@@ -115,6 +119,9 @@ export interface TaskRow {
   placed_why: string | null
   made_by: string
   run_id: string | null
+  schedule_id: string | null
+  opening: string | null
+  starts_at: string | null
   created_at: string
   updated_at: string
   done_at: string | null

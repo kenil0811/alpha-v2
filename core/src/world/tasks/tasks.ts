@@ -111,6 +111,9 @@ export class Tasks {
       ),
       madeBy: r.made_by,
       run: r.run_id,
+      schedule: r.schedule_id,
+      opening: r.opening,
+      startsAt: r.starts_at,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       doneAt: r.done_at,
@@ -263,6 +266,39 @@ export class Tasks {
       given.hop,
       id,
     )
+  }
+
+  // This task is one run of a schedule, and starts with these words.
+  markScheduled(id: string, schedule: string, opening: string): void {
+    run(
+      this.db,
+      'UPDATE tasks SET schedule_id = ?, opening = ? WHERE id = ?',
+      schedule,
+      opening,
+      id,
+    )
+  }
+
+  // A schedule's run still open: the next one waits behind it.
+  openOfSchedule(schedule: string): Task | undefined {
+    const r = one<TaskRow>(
+      this.db,
+      `SELECT * FROM tasks WHERE schedule_id = ? AND state IN (${OPEN.map(() => '?').join(', ')})
+       ORDER BY created_at DESC LIMIT 1`,
+      schedule,
+      ...OPEN,
+    )
+    return r ? this.toTask(r) : undefined
+  }
+
+  // A schedule's last run that reported.
+  lastOfSchedule(schedule: string): Task | undefined {
+    const r = one<TaskRow>(
+      this.db,
+      "SELECT * FROM tasks WHERE schedule_id = ? AND state = 'done' ORDER BY done_at DESC LIMIT 1",
+      schedule,
+    )
+    return r ? this.toTask(r) : undefined
   }
 
   // How many tasks one request has given out.

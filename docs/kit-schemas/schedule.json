@@ -20,7 +20,15 @@
                   "enum": [
                     "hour",
                     "day",
-                    "week"
+                    "weekday",
+                    "week",
+                    "sunday",
+                    "monday",
+                    "tuesday",
+                    "wednesday",
+                    "thursday",
+                    "friday",
+                    "saturday"
                   ]
                 },
                 "at": {
@@ -91,7 +99,15 @@
                     "enum": [
                       "hour",
                       "day",
-                      "week"
+                      "weekday",
+                      "week",
+                      "sunday",
+                      "monday",
+                      "tuesday",
+                      "wednesday",
+                      "thursday",
+                      "friday",
+                      "saturday"
                     ]
                   },
                   "at": {
@@ -169,6 +185,10 @@
       "required": [
         "script"
       ]
+    },
+    "wakes": {
+      "default": false,
+      "type": "boolean"
     },
     "touches": {
       "default": [],
@@ -262,7 +282,6 @@
     }
   },
   "required": [
-    "trigger",
-    "runs"
+    "trigger"
   ]
 }

@@ -8,6 +8,7 @@ import { businessCase } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
 import { agentCheck } from './agent-checks.ts'
+import { ScheduleChecks, scheduleCheck } from './schedule-checks.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
 
@@ -101,6 +102,7 @@ export const Check = z.union([
     refused: z.object({ connector: z.string(), host: z.string(), count: z.number() }),
   }),
   z.object({ schedules_on: z.number() }),
+  ...ScheduleChecks,
   z.object({ last_run: z.enum(['ok', 'failed', 'stopped']) }),
   z.object({ looked_up_from: z.object({ table: z.string(), url: z.string() }) }),
   z.object({ question: z.object({ words: z.string().optional(), options: z.string() }) }),
@@ -396,6 +398,8 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
   }
   if ('agents' in check || 'memory' in check || 'instructions' in check || 'asks' in check)
     return agentCheck(check, world, user.id) as NonNullable<ReturnType<typeof agentCheck>>
+  if ('schedule' in check || 'last_run_words' in check || 'task' in check)
+    return scheduleCheck(check, world)
   if ('rows_in' in check) {
     const t = world.shape.table(check.rows_in.table)
     const n = t ? world.records.count(t.id) : -1

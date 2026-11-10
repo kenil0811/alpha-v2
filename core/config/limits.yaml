@@ -109,3 +109,5 @@ asks_per_request: 8
 hops_in_a_chain: 4
 # Tasks one agent works on at the same time; the rest wait in To do (Kenil, 9 Nov: "yes for now").
 tasks_at_once: 4
+# when a repeating task given to an agent starts, if its due day has no time
+repeat_starts_at: "08:00"

@@ -30,7 +30,7 @@ export function placeOf(path: string): string {
 function check(module: Module, rel: string, text: string): string | null {
   if (/^schedules\/[^/]+\.md$/.test(rel)) {
     const a = parseSchedule(text, rel)
-    if (!existsSync(join(module.dir, a.runs.script)))
+    if (a.runs && !existsSync(join(module.dir, a.runs.script)))
       throw new Refused(`${a.name} runs ${a.runs.script}, which is not kept yet: keep it first.`)
     return `${a.name} is on, ${whenWords(a.trigger)}`
   }

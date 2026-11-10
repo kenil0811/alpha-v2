@@ -19,6 +19,7 @@ const Limits = z.object({
   asks_per_request: z.number().int().positive(),
   hops_in_a_chain: z.number().int().positive(),
   tasks_at_once: z.number().int().positive(),
+  repeat_starts_at: z.string().regex(/^\d{2}:\d{2}$/),
   essential_memory_bytes: z.number().int().positive(),
   handover_characters: z.number().int().positive(),
   messages_after_compaction: z.number().int().min(0),

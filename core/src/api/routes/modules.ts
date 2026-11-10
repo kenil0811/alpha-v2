@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { installedKits, unseenChanges } from '../../modules/kits/index.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
-import { schedules, whenWords } from '../../modules/schedules.ts'
+import { agentName, schedules, whenWords } from '../../modules/schedules.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
@@ -99,6 +99,7 @@ export function registerModules(ctx: Ctx): void {
         when: whenWords(a.trigger),
         lastRunAt: a.lastRunAt,
         running: running.has(a.id),
+        wakes: a.agent ? { id: a.agent, name: agentName(world, a.agent) } : null,
       })),
       sites: moduleNetwork(m).length,
       notes: existsSync(notes) ? readFileSync(notes, 'utf8') : '',
@@ -122,7 +123,7 @@ export function registerModules(ctx: Ctx): void {
                 grew = true
               }
           }
-          const its = everySchedule.filter((a) => within.has(a.module))
+          const its = everySchedule.filter((a) => a.module !== null && within.has(a.module))
           return {
             ...c,
             kit: installedKits(world).find((x) => x.module === c.id)?.kit ?? null,

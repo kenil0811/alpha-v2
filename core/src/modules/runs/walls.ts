@@ -4,10 +4,10 @@ import { join } from 'node:path'
 import { Manifest } from '@alpha/kit-sdk'
 import { parse } from 'yaml'
 import { one } from '../../world/db.ts'
-import type { Module } from '../../world/shape/index.ts'
 import type { World } from '../../world/world.ts'
 import { readSchedule, type Schedule, type ScheduleFile, schedules } from '../schedules.ts'
 import type { ScheduleRunner } from './runner.ts'
+import type { RunPlace } from './types.ts'
 
 // Who a run serves: the person, and the desk's turn when the desk started it, so a card it
 // opens shows in that turn; and the task it works on, when it was started on one.
@@ -16,9 +16,9 @@ import type { ScheduleRunner } from './runner.ts'
 // the calls with an effect it may make (effects; a file that says nothing is an older one,
 // allowed and said).
 export interface Walls {
-  kind: 'file' | 'try' // a schedule's file, or a try of a script from the chat (its module's walls)
+  kind: 'file' | 'try' | 'check' // a schedule's file, a try from the chat, or an agent's check
   touches: Set<string> // table names, lower case
-  reads: Set<string>
+  reads: Set<string> | null // none: any table
   effects: Set<string> | null
 }
 
@@ -44,7 +44,7 @@ export function unmetNeeds(world: World, file: ScheduleFile): string[] {
 export function fileOf(
   runner: ScheduleRunner,
   scheduleId: string,
-  module: Module,
+  module: RunPlace,
 ): ScheduleFile | null {
   const a = schedules(runner.world).find((x) => x.id === scheduleId)
   if (!a) return null
@@ -56,7 +56,10 @@ const lower = (names: string[]) => new Set(names.map((n) => n.toLowerCase()))
 
 // The module's own tables and those of the modules inside it, and its kit's uses; a run's walls
 // take a table by its name or its lasting key (api.ts).
-function reach(runner: ScheduleRunner, module: Module): { own: string[]; uses: string[] } {
+function reach(
+  runner: ScheduleRunner,
+  module: { id: string; dir: string },
+): { own: string[]; uses: string[] } {
   const own = runner.world.shape
     .within(module.id)
     .flatMap((id) => runner.world.shape.tables(id).map((t) => t.name))
@@ -67,17 +70,27 @@ function reach(runner: ScheduleRunner, module: Module): { own: string[]; uses: s
   return { own, uses: uses.flatMap((u) => u.tables) }
 }
 
+// An agent's check only looks: any table, and the sites on the agent's list. It writes nothing.
+const CHECK: Walls = {
+  kind: 'check',
+  touches: new Set(),
+  reads: null,
+  effects: new Set(['browser.open', 'browser.extract']),
+}
+
 // A try of a script from the chat has no schedule file, so its module is its wall (item 40 of the
 // problems list, 25 Oct): it writes the module's own tables and reads those and its kit's uses.
 // Its effects are not walled here: a try is how a reader is tried before it runs on its own, and
 // a site not on the module's list waits on the person's card as ever.
-export function wallsForTry(runner: ScheduleRunner, module: Module): Walls {
-  const { own, uses } = reach(runner, module)
+export function wallsForTry(runner: ScheduleRunner, module: RunPlace): Walls {
+  if (!module.id) return CHECK
+  const { own, uses } = reach(runner, { id: module.id, dir: module.dir })
   return { kind: 'try', touches: lower(own), reads: lower([...own, ...uses]), effects: null }
 }
 
-export function wallsFor(runner: ScheduleRunner, module: Module, file: ScheduleFile): Walls {
-  const { own, uses } = reach(runner, module)
+export function wallsFor(runner: ScheduleRunner, module: RunPlace, file: ScheduleFile): Walls {
+  if (!module.id) return CHECK
+  const { own, uses } = reach(runner, { id: module.id, dir: module.dir })
   return {
     kind: 'file',
     touches: lower(file.touches),
@@ -96,7 +109,7 @@ export function overRuns(
   const n = Number(
     one<{ n: number }>(
       runner.world.db,
-      'SELECT count(*) AS n FROM runs WHERE schedule_id = ? AND started_at >= ? AND (data IS NULL OR data NOT LIKE \'%"skipped":true%\')',
+      'SELECT count(*) AS n FROM runs WHERE schedule_id = ? AND started_at >= ? AND (data IS NULL OR (data NOT LIKE \'%"skipped":true%\' AND data NOT LIKE \'%"quiet":true%\'))',
       a.id,
       new Date(nowMs - 86_400_000).toISOString(),
     )?.n ?? 0,

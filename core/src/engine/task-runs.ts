@@ -2,7 +2,7 @@
 // so the work never waits behind the agent's chat. Up to a few run per agent; the rest wait in To do.
 // A task is Done when its thread ends well, and Waiting when it needs the person or could not finish.
 import { config } from '../config.ts'
-import { type Task, taskOfTurn } from '../world/tasks/index.ts'
+import { momentOf, type Task, taskOfTurn } from '../world/tasks/index.ts'
 import type { User, World } from '../world/world.ts'
 import { taskText } from './ask-words.ts'
 import type { Desk } from './desk.ts'
@@ -12,10 +12,20 @@ export const agentOf = (t: Task): string | null =>
 
 export type Outcome = 'ok' | 'stopped' | 'failed'
 
+// When an agent given this task begins: its start time, or for a repeat its day. None is at once.
+export function startOf(t: Task): number | null {
+  if (t.startsAt) return momentOf(t.startsAt)
+  if (!t.repeat || !t.due) return null
+  return t.due.includes('T')
+    ? momentOf(t.due)
+    : Date.parse(`${t.due}T${config.limits().repeat_starts_at}:00`)
+}
+
 export class TaskRuns {
   private world: World
   private lane: (user: User, agent: string, task: string) => Desk
   private close: (user: User, agent: string, task: string) => void
+  private silent = new Set<string>() // scheduled runs that found nothing to report
 
   constructor(
     world: World,
@@ -46,7 +56,8 @@ export class TaskRuns {
   private next(agent: string): void {
     const open = this.world.tasks.list({ open: true, owner: { kind: 'alpha', id: agent } })
     let free = config.limits().tasks_at_once - open.filter((t) => t.state === 'doing').length
-    for (const t of open.filter((x) => x.state === 'todo' && x.given).reverse()) {
+    const ready = (x: Task) => x.state === 'todo' && x.given && (startOf(x) ?? 0) <= Date.now()
+    for (const t of open.filter(ready).reverse()) {
       if (free-- <= 0) return
       this.start(t, agent)
     }
@@ -58,9 +69,24 @@ export class TaskRuns {
     this.world.tasks.setState(t.id, 'doing', this.as(agent, user.id))
     const place = this.world.tasks.placeWords(t.place, (_table, row) => row)
     this.lane(user, agent, t.id).takeWork(
-      'Started on this.',
-      taskText(t, place === 'nowhere yet' ? null : place, user.name),
+      t.schedule ? 'Came due.' : 'Started on this.',
+      t.opening ?? taskText(t, place === 'nowhere yet' ? null : place, user.name),
     )
+  }
+
+  // Called each minute: the tasks whose time has come.
+  due(): void {
+    const agents = new Set<string>()
+    for (const t of this.world.tasks.list({ state: 'todo' })) {
+      const agent = agentOf(t)
+      if (agent && t.given && startOf(t) !== null) agents.add(agent)
+    }
+    for (const a of agents) this.next(a)
+  }
+
+  // A scheduled run found nothing worth telling: it closes without a notice when its turn ends.
+  quiet(id: string): void {
+    this.silent.add(id)
   }
 
   // The person wrote on the task's page: its thread carries on, reopening it if it was finished.
@@ -105,8 +131,13 @@ export class TaskRuns {
       .some((a) => taskOfTurn(a.fromTurn) === id)
     if (asking) return
     const ended = outcome === 'ok' && !waiting
-    this.world.tasks.setState(id, ended ? 'done' : 'waiting', this.as(agent, user.id))
-    if (ended)
+    const quiet = this.silent.delete(id) && ended
+    this.world.tasks.setState(
+      id,
+      quiet ? 'dropped' : ended ? 'done' : 'waiting',
+      this.as(agent, user.id),
+    )
+    if (ended && !quiet)
       this.world.line({
         ...this.as(agent, user.id),
         kind: 'task_finished',
@@ -125,6 +156,11 @@ export class TaskRuns {
       if (!agent || !t.given) continue
       agents.add(agent)
       if (t.state !== 'doing') continue
+      // a scheduled run has told nobody anything yet, so it simply starts again
+      if (t.schedule) {
+        this.world.tasks.setState(t.id, 'todo', this.as(agent, t.given.by))
+        continue
+      }
       this.world.tasks.setState(t.id, 'waiting', this.as(agent, t.given.by))
       this.world.line({
         ...this.as(agent, t.given.by),

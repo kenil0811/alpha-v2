@@ -181,7 +181,7 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
     }
     const a = front.data
     const name = a.name ?? f.replace(/\.md$/, '')
-    if (!existsSync(join(dir, a.runs.script)))
+    if (a.runs && !existsSync(join(dir, a.runs.script)))
       problems.push(`${name} runs ${a.runs.script}, which is not in the kit.`)
     for (const t of a.touches)
       if (!own.has(t) && !usedTables.has(t))

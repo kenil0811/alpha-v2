@@ -135,6 +135,18 @@ export class Spend {
     return [...new Set(ats.map((r) => monthOf(new Date(r.at))))].sort().reverse()
   }
 
+  // What all of one task's thread spent.
+  ofTask(id: string): number | null {
+    const rows = all<{ usd: number | null }>(
+      this.db,
+      'SELECT usd FROM spend WHERE turn LIKE ?',
+      `task:${id}:%`,
+    )
+    return rows.length && rows.every((r) => r.usd !== null)
+      ? rows.reduce((s, r) => s + (r.usd ?? 0), 0)
+      : null
+  }
+
   // What one turn or one run spent, for its line in Activity.
   of(what: { turn: string } | { run: string }): number | null {
     const rows = all<{ usd: number | null }>(

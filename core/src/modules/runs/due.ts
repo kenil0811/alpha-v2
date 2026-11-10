@@ -3,7 +3,7 @@ import { type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { config } from '../../config.ts'
 import { all, run as exec, one } from '../../world/db.ts'
-import { type Schedule, schedules } from '../schedules.ts'
+import { gapOf, latestAt, type Schedule, schedules } from '../schedules.ts'
 import type { ScheduleRunner } from './runner.ts'
 import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome, type RunRowDb } from './types.ts'
 
@@ -19,14 +19,16 @@ export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promis
       continue
     // waiting on the person's Try again or Leave it
     if (runner.held.has(a.id)) continue
+    // a run still open holds the next one, and they become one when it closes
+    if (runner.world.tasks.openOfSchedule(a.id)) continue
     // where the journal stands as the schedule is judged: its place moves here only after a run
     // that ended well, so a failed run is handed the same things again (item 16, 25 Oct)
     const cursorTo = readsJournal(a) ? String(runner.world.lastLineId()) : null
     const given = runner.due(a, nowMs)
     if (!given) continue
-    const module = runner.world.shape.module(a.module)
-    const file = module ? runner.fileOf(a.id, module) : null
-    if (module && file && runner.overRuns(a, file, nowMs)) {
+    const place = runner.placeOf(a)
+    const file = place ? runner.fileOf(a.id, place) : null
+    if (place && file && runner.overRuns(a, file, nowMs)) {
       // said once a day, not at every tick
       const said = runner.budgetSaid.get(a.id) ?? 0
       if (nowMs - said >= 86_400_000) {
@@ -35,7 +37,7 @@ export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promis
           actor: { kind: 'schedule', id: a.name },
           kind: 'run_step',
           words: `${a.name} has run ${file.budget.runs} time${file.budget.runs === 1 ? '' : 's'} in a day, its budget; it runs again tomorrow.`,
-          module: module.id,
+          module: a.module,
         })
       }
       continue
@@ -165,12 +167,7 @@ export function isDueBy(
   const last = a.lastRunAt ? Date.parse(a.lastRunAt) : 0
   if ('every' in t) {
     if (t.every === 'hour') return nowMs - last >= 3_600_000
-    const days = t.every === 'week' ? 7 : 1
-    const at = new Date(nowMs)
-    const [h, m] = (t.at ?? '00:00').split(':').map(Number)
-    at.setHours(h ?? 0, m ?? 0, 0, 0)
-    if (at.getTime() > nowMs) at.setDate(at.getDate() - 1)
-    return last < at.getTime() && nowMs - last >= (days - 1) * 86_400_000 + 3_600_000
+    return last < latestAt(t, nowMs).getTime() && nowMs - last >= gapOf(t.every)
   }
   if ('cron' in t) {
     const next = new Cron(t.cron).nextRun(new Date(last || nowMs - 60_000))

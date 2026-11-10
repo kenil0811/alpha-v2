@@ -75,6 +75,7 @@ export class Desk {
   private handingOver = false
   private knownMemories = new Set<string>()
   private knownTeam = new Map<string, string>()
+  private reports = { after: 0 } // what its scheduled work last told it, in its own chat
   private heardUpTo = 0
 
   constructor(world: World, user: User, options: DeskOptions = {}) {
@@ -89,6 +90,7 @@ export class Desk {
     this.starts = options.starts ?? (() => [])
     this.agentId = options.agent ?? CHIEF
     this.lane = options.lane ?? null
+    if (this.lane) this.reports.after = Number.POSITIVE_INFINITY
     this.here = {
       current: { user, turn: null, said: null, message: null, agent: this.named },
       fromSubagent: false,
@@ -163,7 +165,7 @@ export class Desk {
   private news(): string[] {
     const heard = heardDirectly(this.world, this.user.id, this.named, this.heardUpTo)
     this.heardUpTo = heard.upTo
-    const known = { memories: this.knownMemories, team: this.knownTeam }
+    const known = { memories: this.knownMemories, team: this.knownTeam, reports: this.reports }
     return [...newsOf(this.world, this.agentId, this.user.id, known), ...heard.said]
   }
 

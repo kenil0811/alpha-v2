@@ -4,9 +4,19 @@
 import { parse } from 'yaml'
 import { z } from 'zod'
 
+export const WEEK_DAYS = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+] as const
+
 export const Trigger = z.union([
   z.object({
-    every: z.enum(['hour', 'day', 'week']),
+    every: z.enum(['hour', 'day', 'weekday', 'week', ...WEEK_DAYS]),
     at: z
       .string()
       .regex(/^\d{2}:\d{2}$/)
@@ -26,41 +36,46 @@ export type Runs = z.infer<typeof Runs>
 
 export const BUDGET = { minutes: 15, runs: 24 } as const
 
-export const ScheduleFront = z.object({
-  name: z.string().optional(),
-  description: z.string().optional(), // one line for Settings and the kit directory
-  trigger: z.union([Trigger, z.array(Trigger).min(1)]),
-  runs: Runs,
-  touches: z.array(z.string()).default([]), // the tables it may write: a wall
-  // the gated calls it may make (draft.email, browser.open); any other is refused before a
-  // card. A file that says nothing is an older one: allowed, and said in the run
-  effects: z.array(z.string()).optional(),
-  // what it depends on, checked at install and shown when missing
-  needs: z
-    .object({
-      connectors: z.array(z.string()).default([]),
-      tables: z.array(z.string()).default([]),
-    })
-    .default({ connectors: [], tables: [] }),
-  // its settings, each with a default, so Settings shows them as a form; a value may come from
-  // a setup row (its table, key and field)
-  input: z
-    .record(
-      z.string(),
-      z.object({
-        default: z.unknown().optional(),
-        about: z.string().optional(),
-        setup: z.object({ table: z.string(), key: z.string(), field: z.string() }).optional(),
-      }),
-    )
-    .optional(),
-  budget: z
-    .object({
-      minutes: z.number().positive().default(BUDGET.minutes),
-      runs: z.number().int().positive().default(BUDGET.runs),
-    })
-    .default({ minutes: BUDGET.minutes, runs: BUDGET.runs }),
-})
+export const ScheduleFront = z
+  .object({
+    name: z.string().optional(),
+    description: z.string().optional(), // one line for Settings and the kit directory
+    trigger: z.union([Trigger, z.array(Trigger).min(1)]),
+    runs: Runs.optional(), // its script; a schedule that wakes an agent may go without
+    wakes: z.boolean().default(false), // it hands what it found to an agent, as a task
+    touches: z.array(z.string()).default([]), // the tables it may write: a wall
+    // the gated calls it may make (draft.email, browser.open); any other is refused before a
+    // card. A file that says nothing is an older one: allowed, and said in the run
+    effects: z.array(z.string()).optional(),
+    // what it depends on, checked at install and shown when missing
+    needs: z
+      .object({
+        connectors: z.array(z.string()).default([]),
+        tables: z.array(z.string()).default([]),
+      })
+      .default({ connectors: [], tables: [] }),
+    // its settings, each with a default, so Settings shows them as a form; a value may come from
+    // a setup row (its table, key and field)
+    input: z
+      .record(
+        z.string(),
+        z.object({
+          default: z.unknown().optional(),
+          about: z.string().optional(),
+          setup: z.object({ table: z.string(), key: z.string(), field: z.string() }).optional(),
+        }),
+      )
+      .optional(),
+    budget: z
+      .object({
+        minutes: z.number().positive().default(BUDGET.minutes),
+        runs: z.number().int().positive().default(BUDGET.runs),
+      })
+      .default({ minutes: BUDGET.minutes, runs: BUDGET.runs }),
+  })
+  .refine((f) => f.runs || f.wakes, {
+    message: 'A schedule runs a script, wakes an agent, or both.',
+  })
 export type ScheduleFrontMatter = z.infer<typeof ScheduleFront>
 
 // A trigger, or a list of them, as a list.

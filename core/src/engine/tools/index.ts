@@ -9,6 +9,7 @@ import { agentTools } from './agents.ts'
 import { EFFECTS, type Hands, type Here, type Tooling } from './common.ts'
 import { deskTools } from './desk.ts'
 import { rowTools } from './rows.ts'
+import { scheduleTools } from './schedule.ts'
 import { shapeTools } from './shape.ts'
 import { taskTools } from './task.ts'
 
@@ -54,6 +55,7 @@ export function worldTools(
     remember,
     ...agentTools(t),
     ...taskTools(t),
+    ...scheduleTools(t),
     ...rest,
   ].filter((x): x is ToolEntry => !!x)
 }

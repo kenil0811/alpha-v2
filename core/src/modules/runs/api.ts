@@ -3,16 +3,16 @@ import { type Ask, inReadingOrder, type ReadSpec, readInto } from '../../files/r
 import { dayOf, dayOfWhen } from '../../world/day.ts'
 import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
-import { type Field, findField, type Module, type Table } from '../../world/shape/index.ts'
+import { type Field, findField, type Table } from '../../world/shape/index.ts'
 import { type JudgeSpec, judge } from '../judging.ts'
 import { nextRun, schedules } from '../schedules.ts'
 import type { ScheduleRunner } from './runner.ts'
-import type { RunFor } from './types.ts'
+import type { RunFor, RunPlace } from './types.ts'
 import type { Walls } from './walls.ts'
 
 export function api(
   runner: ScheduleRunner,
-  module: Module,
+  module: RunPlace,
   label: string,
   runId: string,
   who: RunFor,
@@ -32,11 +32,12 @@ export function api(
       return out
     }
   const ctx = { actor, run: runId }
+  const within = (): string[] => (module.id ? runner.world.shape.within(module.id) : [])
   // a kit's tables and fields as its code names them: by their lasting keys, the names the kit gave
   // them, whatever the person calls them now; its module's first, then any (rules M5)
   const tableOf = (name: unknown): Table => {
     const n = String(name)
-    const mine = new Set(runner.world.shape.within(module.id))
+    const mine = new Set(within())
     const all = runner.world.shape.tables()
     const t =
       all.find((x) => x.key === n && mine.has(x.module.id)) ??
@@ -60,13 +61,18 @@ export function api(
     throw new Refused(why)
   }
   const readable = (t: Table): Table => {
-    if (walls && !walled(t, walls.reads))
+    if (walls?.reads && !walled(t, walls.reads))
       refuse(
         `${label} may not read ${t.name}: it is neither ${module.name}'s own table nor one its kit uses.`,
       )
     return t
   }
+  // an agent's check only looks: it decides whether to wake the agent, and the agent does the work
+  const looking = (what: string): void => {
+    if (walls?.kind === 'check') refuse(`A check only looks, so it cannot ${what}.`)
+  }
   const writable = (t: Table): Table => {
+    looking(`write to ${t.name}`)
     if (walls && !walled(t, walls.touches))
       refuse(
         walls.kind === 'try'
@@ -74,8 +80,7 @@ export function api(
           : `${label} does not touch ${t.name}: its file says touches: [${[...walls.touches].join(', ') || 'nothing'}].`,
       )
     // a write stays inside the module whatever the file says (item 40, 25 Oct)
-    if (!runner.world.shape.within(module.id).includes(t.module.id))
-      refuse(`${t.name} is not one of ${module.name}'s tables.`)
+    if (!within().includes(t.module.id)) refuse(`${t.name} is not one of ${module.name}'s tables.`)
     return t
   }
   const affecting = (call: string): void => {
@@ -154,7 +159,7 @@ export function api(
     // a filed document put on a row of the module's own tables (the deal it is about)
     'documents.place': async (p: Record<string, unknown>) => {
       const t = writable(tableOf(p.table))
-      if (!runner.world.shape.within(module.id).includes(t.module.id))
+      if (!within().includes(t.module.id))
         throw new Refused(`${t.name} is not one of ${module.name}'s tables.`)
       const rec = runner.world.records.get(String(p.row))
       if (rec?.table.id !== t.id) throw new Refused(`${t.name} has no row ${String(p.row)}.`)
@@ -170,6 +175,7 @@ export function api(
     // the model reads a document into the values the script names, each with the place it
     // was read from; what is not found where it is cited comes back as not given
     'documents.extract': async (p: Record<string, unknown>) => {
+      looking('ask the model to read a document')
       const d = runner.world.files.document(String(p.file))
       if (!d) throw new Refused('That document is not filed, or not read yet.')
       const chunks = runner.world.files.chunks(d.id)
@@ -211,6 +217,7 @@ export function api(
     // the model sorts items into the groups the person named, each with why; nothing is kept
     // from it until the script lands rows the person then decides
     judge: async (p: Record<string, unknown>) => {
+      looking('ask the model to sort things')
       const out = await judge(p as unknown as JudgeSpec, spending(runner.judgeAsk))
       runner.tokens.set(runId, (runner.tokens.get(runId) ?? 0) + out.tokens)
       const sorted = out.judged.filter((j) => j.group).length
@@ -227,8 +234,9 @@ export function api(
     },
     // rows of the module's own tables put to the person on one card, with the choices given
     review: async (p: Record<string, unknown>) => {
+      looking('put rows to the person')
       const t = writable(tableOf(p.table))
-      if (!runner.world.shape.within(module.id).includes(t.module.id))
+      if (!within().includes(t.module.id))
         throw new Refused(`${t.name} is not one of ${module.name}'s tables.`)
       const card = runner.reviews.open(
         {
@@ -239,7 +247,7 @@ export function api(
           rows: Array.isArray(p.rows) ? p.rows.map(String) : [],
           note: p.note ? String(p.note) : null,
         },
-        { schedule: label, module: module.id, run: runId },
+        { schedule: label, module: module.id as string, run: runId },
       )
       runner.notify()
       return { card: card.id }
@@ -253,7 +261,7 @@ export function api(
       const out = await runner.drafts.propose(
         {
           schedule: label,
-          module: module.id,
+          module: module.id as string,
           kind: String(p.kind ?? 'email'),
           key: p.key ? String(p.key) : null,
           connector: p.connector ? String(p.connector) : null,
@@ -345,6 +353,7 @@ export function api(
     },
     // What is worth the person's attention: a line in their stream (Home).
     tell: async (p: Record<string, unknown>) => {
+      looking('tell the person anything')
       const words = String(p.words ?? '').trim()
       if (!words) throw new Refused('tell needs words.')
       const about = p.about as
@@ -453,7 +462,13 @@ export function api(
         .flatMap((a) => {
           const next = nextRun(a.trigger, a.lastRunAt, now)
           return next
-            ? [{ name: a.name, module: modules.get(a.module) ?? '', at: next.toISOString() }]
+            ? [
+                {
+                  name: a.name,
+                  module: a.module ? (modules.get(a.module) ?? '') : '',
+                  at: next.toISOString(),
+                },
+              ]
             : []
         })
         .sort((a, b) => a.at.localeCompare(b.at))

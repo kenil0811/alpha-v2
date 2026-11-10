@@ -5,6 +5,7 @@
 import type { RuleView, RunView, ScheduleView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'
+import { AgentSchedulePage } from './AgentSchedules.tsx'
 import { api } from './api.ts'
 import { Record } from './Record.tsx'
 import { dayWords } from './time.ts'
@@ -80,11 +81,14 @@ export function ItemPage({
   const run = kind === 'run' ? runs?.find((r) => r.id === id) : undefined
   const rule = kind === 'rule' ? rules?.find((r) => r.id === id) : undefined
   const name = schedule?.schedule.name ?? run?.name ?? (rule ? 'A rule' : undefined)
+  // a schedule not found among the modules is an agent's, and its own page names it
+  const agents = kind === 'schedule' && !!working && !schedule
   useEffect(() => {
-    onName(name ?? '')
-  }, [name, onName])
+    if (!agents) onName(name ?? '')
+  }, [name, onName, agents])
   const loaded = { schedule: working, run: runs, rule: rules }[kind]
   if (loaded === undefined) return <Loading />
+  if (agents) return <AgentSchedulePage id={id} version={version} onName={onName} />
   if (schedule)
     return (
       <SchedulePage

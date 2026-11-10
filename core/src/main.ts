@@ -269,6 +269,7 @@ const scheduler = new Scheduler(world, [
         platform.notify('Reminder', t.title)
       })
       if (said) engine.events.emit('event', { type: 'lines', user: user.id })
+      engine.tasks.due()
     },
   },
   // removed rows kept past keep_removed_days deleted for good (core step 1)

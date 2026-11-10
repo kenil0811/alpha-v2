@@ -5,7 +5,9 @@ import { ChevronRight } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, listen } from './api.ts'
 import { Conversation } from './Conversation.tsx'
+import { dayWords, toLocalInput } from './time.ts'
 import { Button } from './ui/button.tsx'
+import { Field } from './ui/field.tsx'
 
 const HOW: Record<string, string> = {
   todo: 'will start when a place comes free',
@@ -15,22 +17,53 @@ const HOW: Record<string, string> = {
   dropped: 'stopped when this was dropped',
 }
 
-export function TaskWorkLine({ task }: { task: TaskView }) {
-  if (!task.agent) return null
+// When an agent given this task begins; empty is as soon as it is given.
+function StartsAt({ task }: { task: TaskView }) {
   return (
-    <a
-      href={`#/tasks/${task.id}/work`}
-      className="flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-md hover:bg-hover"
-    >
-      {task.state === 'doing' && (
-        <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-ink-3" />
+    <div className="flex items-center gap-2 text-ink-3 text-sm">
+      Starts
+      <Field
+        type="datetime-local"
+        aria-label="Starts"
+        defaultValue={task.startsAt ? toLocalInput(task.startsAt) : ''}
+        onChange={(e) =>
+          void api.post(`/api/tasks/${task.id}`, { startsAt: e.target.value || null })
+        }
+      />
+      {!task.agent && 'once it is given to an agent'}
+    </div>
+  )
+}
+
+export function TaskWorkLine({ task }: { task: TaskView }) {
+  const waits = task.state === 'todo' && !task.schedule
+  if (!task.agent) return waits ? <StartsAt task={task} /> : null
+  const later =
+    task.state === 'todo' && task.beginsAt && Date.parse(task.beginsAt) > Date.now()
+      ? `will start ${dayWords(task.beginsAt)}`
+      : null
+  return (
+    <>
+      <a
+        href={`#/tasks/${task.id}/work`}
+        className="flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-md hover:bg-hover"
+      >
+        {task.state === 'doing' && (
+          <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-ink-3" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-ink">
+          {task.agent.name} {later ?? HOW[task.state]}
+        </span>
+        <span className="shrink-0 text-ink-3">Open the work</span>
+        <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
+      </a>
+      {task.schedule && (
+        <a href={`#/schedule/${task.schedule.id}`} className="text-ink-3 text-sm hover:text-ink">
+          From {task.schedule.name}
+        </a>
       )}
-      <span className="min-w-0 flex-1 truncate text-ink">
-        {task.agent.name} {HOW[task.state]}
-      </span>
-      <span className="shrink-0 text-ink-3">Open the work</span>
-      <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
-    </a>
+      {waits && <StartsAt task={task} />}
+    </>
   )
 }
 

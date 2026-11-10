@@ -36,3 +36,10 @@ export function dueWords(due: string): string {
     ? `${day}, ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}`
     : day
 }
+
+// A moment as a datetime field shows it, in the person's own time.
+export function toLocalInput(iso: string): string {
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}

@@ -11,6 +11,15 @@ export interface RunOutcome {
   result: unknown
 }
 
+// Where a script runs from: a module, or an agent's folder (no module), where its script keeps to
+// its own box.
+export interface RunPlace {
+  id: string | null
+  name: string
+  dir: string
+  box?: string
+}
+
 export interface RunFor {
   user: string | null
   turn: string | null
@@ -25,6 +34,8 @@ export interface RunRow {
   state: 'running' | 'ok' | 'failed' | 'stopped'
   words: string | null
   tokens: number | null // the model's, when the run asked it to read something
+  task: string | null // the task it woke an agent with
+  quiet: boolean // its check found nothing
 }
 
 export const CHANGE_KINDS = ['wrote', 'changed', 'landed', 'removed', 'reverted']
@@ -60,5 +71,7 @@ export function toRun(r: RunRowDb): RunRow {
     state: r.state,
     words: r.words,
     tokens: fromJson<{ tokens?: number | null }>(r.data, {}).tokens ?? null,
+    task: fromJson<{ task?: string | null }>(r.data, {}).task ?? null,
+    quiet: fromJson<{ quiet?: boolean }>(r.data, {}).quiet === true,
   }
 }

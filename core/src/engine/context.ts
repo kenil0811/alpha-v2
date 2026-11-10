@@ -9,6 +9,7 @@ import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Table } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import { summaryWords } from '../world/shape/summary.ts'
+import { whenSaid } from '../world/tasks/index.ts'
 import type { World } from '../world/world.ts'
 import type { Here } from './tools/common.ts'
 import { instructionsFile } from './tools/index.ts'
@@ -284,13 +285,50 @@ export function handover(world: World, userId: string, agent: string): string {
 }
 
 // What changed in its memory or team since the session began, said once on the next turn.
+// What its scheduled work reported since it last heard, the latest of each schedule, so it can
+// answer for it in its own chat though the report is not copied there.
+function reportsSince(
+  world: World,
+  agentId: string,
+  userId: string,
+  mark: { after: number },
+): string | null {
+  const lines = world.lines({
+    user: userId,
+    agent: agentId === CHIEF ? null : agentId,
+    kinds: ['task_finished'],
+    after: mark.after,
+  })
+  mark.after = lines.at(-1)?.id ?? mark.after
+  const latest = new Map<string, string>()
+  for (const l of lines) {
+    const t = world.tasks.get(String(l.data.task))
+    if (!t?.schedule) continue
+    const said = world
+      .lines({ user: userId, turnPrefix: `task:${t.id}:`, kinds: ['replied'], limit: 400 })
+      .at(-1)
+    if (said) latest.set(t.schedule, `- ${t.title} (${whenSaid(l.at)}): ${said.words}`)
+  }
+  return latest.size
+    ? `What your scheduled work reported:\n${[...latest.values()].join('\n')}`
+    : null
+}
+
 export function newsOf(
   world: World,
   agentId: string,
   userId: string,
-  known: { memories: Set<string>; team: Map<string, string> },
+  known: {
+    memories: Set<string>
+    team: Map<string, string>
+    reports: { after: number } // none to hear in a task's thread: after is infinite
+  },
 ): string[] {
   const out: string[] = []
+  if (Number.isFinite(known.reports.after)) {
+    const report = reportsSince(world, agentId, userId, known.reports)
+    if (report) out.push(report)
+  }
   const fresh = memoryLayer(world, agentId, userId)
   const added = world.memories
     .essentials(agentId, userId, config.limits().essential_memory_bytes)

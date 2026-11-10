@@ -120,6 +120,7 @@ describe('a table on its first touch', () => {
         'file',
         'guide',
         'memory',
+        'nothing_to_report',
         'query',
         'remember',
         'rule',
@@ -134,7 +135,7 @@ describe('a table on its first touch', () => {
         .filter((x) => !x.alwaysLoad)
         .map((x) => x.name)
         .sort(),
-    ).toEqual(['connect', 'keep', 'list_agents', 'look', 'run', 'stop_agent'])
+    ).toEqual(['connect', 'keep', 'list_agents', 'look', 'run', 'schedule', 'stop_agent'])
     const guide = tools.find((x) => x.name === 'guide') as ToolEntry
     const views = await guide.handler({ about: 'views' })
     expect((views.content[0] as { text: string }).text).toContain('view.kind: table, board')

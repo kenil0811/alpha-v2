@@ -2,7 +2,7 @@
 // they are never taken for the person's own.
 import type { AgentAsk } from '../world/agents/asks.ts'
 import type { Card } from '../world/cards.ts'
-import type { Task } from '../world/tasks/index.ts'
+import { type Task, whenSaid } from '../world/tasks/index.ts'
 
 // What a desk is told when a card it raised is answered, and the line that says it carries on.
 export const cardWords = (card: Card): string =>
@@ -59,6 +59,39 @@ export function answersText(asks: AgentAsk[], names: (id: string) => string): st
 }
 
 // What an agent is told when it is given a task: the task and where it sits, not the person's chat.
+// What a scheduled run starts with: what to do, what its check found, how late it is and what it
+// said last time.
+export function scheduledText(s: {
+  name: string
+  when: string
+  what: string
+  found: unknown
+  due: Date | null
+  nowMs: number
+  last: { at: string; words: string } | null
+  person: string
+}): string {
+  const found =
+    s.found === null || s.found === undefined
+      ? null
+      : typeof s.found === 'string'
+        ? s.found
+        : JSON.stringify(s.found, null, 1)
+  const said = (ms: number) => whenSaid(new Date(ms).toISOString())
+  return [
+    `This is your scheduled work, ${s.name}, which runs ${s.when}. Nobody is waiting in this thread: work on it now, on your own.`,
+    `What to do: ${s.what}`,
+    ...(found ? [`What its check found:\n${found}`] : []),
+    ...(s.due
+      ? [
+          `It came due at ${said(s.due.getTime())}, and it is now ${said(s.nowMs)}. If it is late, judge whether the work is still worth doing.`,
+        ]
+      : []),
+    ...(s.last ? [`Last time (${whenSaid(s.last.at)}) you reported:\n${s.last.words}`] : []),
+    `If there is nothing worth telling ${s.person} this time, call nothing_to_report and end your turn. Otherwise your last message is the report, so make it what they need to read.`,
+  ].join('\n\n')
+}
+
 export function taskText(t: Task, place: string | null, giver: string): string {
   return [
     `${giver} has given you a task. Work on it now, on your own, and finish it.`,

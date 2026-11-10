@@ -7,11 +7,13 @@ import { z } from 'zod'
 import { config } from '../../config.ts'
 import { skillsOf } from '../../engine/context.ts'
 import { instructionsOf, modelOf, removeAgent, undoAgentChange } from '../../modules/agents.ts'
+import { agentSchedules } from '../../modules/schedules.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import { STATE_WORDS } from '../../world/tasks/index.ts'
 import type { Ctx } from '../ctx.ts'
 import type { AgentDetail, AgentView, MemoryView } from '../types.ts'
+import { scheduleOut } from './schedules.ts'
 
 export function registerAgents(ctx: Ctx): void {
   const { app, world, engine, user } = ctx
@@ -26,8 +28,12 @@ export function registerAgents(ctx: Ctx): void {
   const tasksOf = (id: string) =>
     world.tasks
       .list({ owner: { kind: 'alpha', id } })
+      // a schedule's finished runs are on the schedule, not here
+      .filter((t) => !t.schedule || t.state === 'doing' || t.state === 'waiting')
       .slice(0, 20)
       .map((t) => ({ id: t.id, title: t.title, state: STATE_WORDS[t.state] }))
+  const schedulesOf = (id: string) =>
+    agentSchedules(world, id).map((s) => scheduleOut(world, engine.hands?.runner, s))
   const memoriesOf = (id: string): MemoryView[] =>
     world.memories.list(id, user.id).map((m) => ({
       id: m.id,
@@ -88,6 +94,7 @@ export function registerAgents(ctx: Ctx): void {
         files: [],
         memories: memoriesOf(id),
         tasks: tasksOf(id),
+        schedules: schedulesOf(id),
       }
     const a = world.agents.get(id)
     if (!a) throw new Refused('That agent is not there.')
@@ -105,6 +112,7 @@ export function registerAgents(ctx: Ctx): void {
       files: existsSync(filesDir) ? readdirSync(filesDir) : [],
       memories: memoriesOf(id),
       tasks: tasksOf(id),
+      schedules: schedulesOf(id),
     }
   })
 

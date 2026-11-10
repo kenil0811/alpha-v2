@@ -33,6 +33,11 @@ export class Engine {
       (user, agent, task) => this.desk(user, agent, task),
       (user, agent, task) => this.closeLane(user, agent, task),
     )
+    if (options.hands?.runner)
+      options.hands.runner.give = (by, task) => {
+        const user = world.user(by)
+        if (user) this.tasks.give(user, task)
+      }
   }
 
   private nameOf = (id: string): string =>
@@ -46,6 +51,7 @@ export class Engine {
     giveTask: (user: User, id: string, from: { root: string | null; hop: number }): void => {
       this.tasks.give(user, id, from)
     },
+    quietTask: (id: string): void => this.tasks.quiet(id),
     stop: (user: User, ask: AgentAsk): void => {
       this.desk(user, ask.to).stopAsk(ask.id)
       this.world.asks.settle(ask.id, 'stopped', null)

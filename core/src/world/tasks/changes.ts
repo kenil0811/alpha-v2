@@ -41,8 +41,8 @@ export function add(tasks: Tasks, input: TaskInput, ctx: WriteCtx, by = actorWor
       tasks.db,
       `INSERT INTO tasks (id, title, state, notes, due, remind_at, repeat, repeat_rule, priority,
          owner_kind, owner_id, parent_id, module_id, table_id, record_id, field_id, page,
-         placed_by, placed_why, made_by, run_id, created_at, updated_at)
-       VALUES (?, ?, 'todo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         placed_by, placed_why, made_by, run_id, created_at, updated_at, starts_at)
+       VALUES (?, ?, 'todo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       title,
       input.notes?.trim() || null,
@@ -65,6 +65,7 @@ export function add(tasks: Tasks, input: TaskInput, ctx: WriteCtx, by = actorWor
       ctx.run ?? null,
       t,
       t,
+      checkWhen('starts', input.startsAt),
     )
     for (const r of tasks.refsOf(input.refs))
       run(
@@ -115,6 +116,10 @@ export function change(
       const at = checkWhen('remind_at', patch.remindAt)
       set('remind_at', at, at ? `a reminder at ${whenSaid(at)}` : 'no reminder')
       sets.push('reminded_at = NULL')
+    }
+    if (patch.startsAt !== undefined) {
+      const at = checkWhen('starts', patch.startsAt)
+      set('starts_at', at, at ? `starts ${whenSaid(at)}` : 'starts as soon as it is given')
     }
     if (patch.repeat !== undefined) {
       const repeat = patch.repeat?.trim() || null
@@ -307,7 +312,9 @@ export function repeatNext(tasks: Tasks, id: string, ctx: WriteCtx): Task | null
     t.madeBy,
   )
   run(tasks.db, 'UPDATE tasks SET repeat_next = ? WHERE id = ?', next.id, id)
-  return next
+  // given to an agent, the next one is too: it starts by itself on its day
+  if (t.given) tasks.markGiven(next.id, { by: t.given.by, root: null, hop: 0 })
+  return tasks.must(next.id)
 }
 
 // Reminders that came due, said once each; repeats whose day passed, made once each.

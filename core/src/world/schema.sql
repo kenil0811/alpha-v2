@@ -444,20 +444,26 @@ CREATE TABLE kit_changes (
   seen_at TEXT
 );
 
--- A schedule as its file says, and whether it is on.
+-- A schedule as its file says, and whether it is on. The file sits in a module or in an agent's
+-- folder. agent is who it wakes, none for a module's script alone; made_by is who asked for an
+-- agent's own, and its reports and cards go to them.
 CREATE TABLE schedules (
   id TEXT PRIMARY KEY,
-  module_id TEXT NOT NULL REFERENCES modules (id),
+  module_id TEXT REFERENCES modules (id),
+  agent TEXT,
+  made_by TEXT,
   name TEXT NOT NULL,
   file TEXT NOT NULL,
   state TEXT NOT NULL CHECK (state IN ('on', 'paused')),
   trigger TEXT NOT NULL,
-  runs TEXT NOT NULL,
+  runs TEXT,
   cursor TEXT,
   last_run_at TEXT,
   description TEXT,
-  UNIQUE (module_id, name)
+  UNIQUE (module_id, name),
+  CHECK (module_id IS NOT NULL OR agent IS NOT NULL)
 );
+CREATE UNIQUE INDEX schedules_of_agent ON schedules (agent, name) WHERE module_id IS NULL;
 
 -- Each run of a schedule or a script.
 CREATE TABLE runs (
@@ -577,6 +583,9 @@ CREATE TABLE tasks (
   placed_why TEXT,
   made_by TEXT NOT NULL,
   run_id TEXT,
+  schedule_id TEXT,
+  opening TEXT,
+  starts_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   done_at TEXT

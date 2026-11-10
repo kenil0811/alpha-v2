@@ -1,0 +1,30 @@
+name: an-agent-on-a-schedule
+title: 'An agent keeps a schedule made in a sentence, reports on it, and can answer for it later'
+why: >
+  Agents on a schedule: a person asks an agent in chat and it keeps the schedule itself. A run is a
+  task in a fresh thread that ends Done with its report, and the agent's own chat knows what it
+  reported though the report is not copied there. A made-up firm's agent, on a fresh tenant.
+steps:
+  - say: >
+      Make an agent called Herald. Its job is short status lines. Its instructions: answer in one
+      short sentence.
+    checks:
+      - agents: 1
+      - errors: 0
+  - to: Herald
+    say: >
+      Every weekday at 8 in the morning, send me the word bluebird and nothing else. Keep that as a
+      schedule called Morning word.
+    checks:
+      - schedule: { agent: Herald, count: 1, check: false }
+      - errors: 0
+  - run_now: { agent: Herald }
+    checks:
+      - task: { title: Morning word, state: done, count: 1 }
+      - reply_matches: bluebird
+      - errors: 0
+  - to: Herald
+    say: What word did you send me from your schedule?
+    checks:
+      - reply_matches: bluebird
+      - errors: 0

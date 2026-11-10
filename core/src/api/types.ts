@@ -1,4 +1,5 @@
 // What the window may import from the core: the shapes of the api, never its code.
+import type { AgentView } from './agent-types.ts'
 import type { ReadByView } from './connector-types.ts'
 import type { FieldView } from './row-types.ts'
 
@@ -463,6 +464,7 @@ export interface ScheduleView {
   when: string
   lastRunAt: string | null
   running: boolean
+  wakes: { id: string; name: string } | null // the agent it hands what it found to
 }
 
 // A module that does work on its own: from a kit or made in the desk.
@@ -621,6 +623,9 @@ export interface TasksView {
 // A task's page.
 export interface TaskView extends TaskLineView {
   agent: AgentView | null // the agent that has it
+  schedule: { id: string; name: string } | null // the schedule this is one run of
+  startsAt: string | null // when the person said it starts
+  beginsAt: string | null // when its agent begins, a repeat's day counted
   notes: string | null
   remindedAt: string | null
   madeBy: string
@@ -641,29 +646,4 @@ export interface TaskView extends TaskLineView {
   owners: { kind: 'person' | 'alpha'; id: string | null; name: string }[]
 }
 
-// An agent as the window reads it (clean base step 7); the Chief of staff is first and has no row.
-export interface AgentView {
-  id: string
-  name: string
-  title: string
-  description: string
-  model: string // what it runs on now
-  chief: boolean
-}
-
-export interface MemoryView {
-  id: string
-  text: string
-  essential: boolean
-  yours: boolean // a person wrote or edited it: the agent cannot change it
-  firm: boolean // for everyone here, not only this person
-  at: string
-}
-
-export interface AgentDetail extends AgentView {
-  instructions: string
-  skills: { name: string; description: string }[]
-  files: string[]
-  memories: MemoryView[]
-  tasks: { id: string; title: string; state: string }[]
-}
+export type * from './agent-types.ts'

@@ -1,0 +1,36 @@
+name: a-check-wakes-an-agent
+title: 'A check that finds nothing wakes nobody, and one that finds something wakes the agent'
+why: >
+  Agents on a schedule: a script looks first and costs nothing, so the agent wakes only when there
+  is something to do, and is told what was found. The agent writes the check itself and Alpha tries
+  it when it is made. A made-up firm's table, on a fresh tenant.
+steps:
+  - say: In a module called Sales desk, make a table Leads with a Name. Add no rows yet.
+    checks:
+      - rows_in: { table: Leads, count: 0 }
+      - errors: 0
+  - say: Make an agent called Watcher. Its job is watching for new leads. Its instructions are to be brief.
+    checks:
+      - agents: 1
+      - errors: 0
+  - to: Watcher
+    say: >
+      Keep a schedule called Watch the leads, every hour. It must look first with a check that reads
+      the Leads table and wakes you only when the table has a row, with their names as what it found.
+      Each time you wake, tell me the names in one sentence.
+    checks:
+      - schedule: { agent: Watcher, count: 1, check: true }
+      - errors: 0
+  - run_now: { agent: Watcher }
+    checks:
+      - last_run_words: { agent: Watcher, matches: Nothing new }
+      - task: { title: Watch the leads, count: 0 }
+  - say: Add a lead called Oat Mill to Leads.
+    checks:
+      - rows_in: { table: Leads, count: 1 }
+      - errors: 0
+  - run_now: { agent: Watcher }
+    checks:
+      - task: { title: Watch the leads, state: done, count: 1 }
+      - reply_matches: Oat Mill
+      - errors: 0

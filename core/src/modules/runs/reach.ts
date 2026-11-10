@@ -5,19 +5,21 @@ import { parse, stringify } from 'yaml'
 import { decide, refusedBy } from '../../gates/gates.ts'
 import { one } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { Module } from '../../world/shape/index.ts'
 import type { ScheduleRunner } from './runner.ts'
-import type { RunFor } from './types.ts'
+import type { RunFor, RunPlace } from './types.ts'
 
-export function moduleNetwork(module: Module): string[] {
-  const file = join(module.dir, 'module.yaml')
+// A module's sites are in its module.yaml; an agent's, in a file its check cannot reach.
+const sitesFile = (place: RunPlace) => join(place.dir, place.id ? 'module.yaml' : 'sites.yaml')
+
+export function moduleNetwork(module: RunPlace): string[] {
+  const file = sitesFile(module)
   if (!existsSync(file)) return []
   const m = (parse(readFileSync(file, 'utf8')) ?? {}) as { network?: unknown }
   return Array.isArray(m.network) ? m.network.map(String) : []
 }
 
-export function allowHost(module: Module, host: string): void {
-  const file = join(module.dir, 'module.yaml')
+export function allowHost(module: RunPlace, host: string): void {
+  const file = sitesFile(module)
   const m = (existsSync(file) ? parse(readFileSync(file, 'utf8')) : {}) as Record<string, unknown>
   const list = Array.isArray(m.network) ? m.network.map(String) : []
   if (!list.includes(host)) writeFileSync(file, stringify({ ...m, network: [...list, host] }))
@@ -30,7 +32,7 @@ export const onList = (list: string[], host: string) =>
 // puts the site on the list for good.
 export function reach(
   runner: ScheduleRunner,
-  module: Module,
+  module: RunPlace,
   url: string,
   runId: string,
   who: RunFor,
@@ -106,7 +108,7 @@ export function reach(
 // of Alpha's browser where they sign in themselves; then the schedule runs again (api: sign-in).
 export function wantsSignIn(
   runner: ScheduleRunner,
-  module: Module,
+  module: RunPlace,
   url: string,
   label: string,
   runId: string,
@@ -131,7 +133,7 @@ export function wantsSignIn(
 
 export async function browse<T>(
   runner: ScheduleRunner,
-  module: Module,
+  module: RunPlace,
   url: string,
   label: string,
   runId: string,

@@ -1,0 +1,38 @@
+name: a-scheduled-run-has-nothing-to-say
+title: 'A scheduled run with nothing to tell stays silent, and one that needs a yes waits for it'
+why: >
+  Agents on a schedule: a run that finds nothing worth telling closes without a notice, and a run
+  that needs the person waits on a card in Needs you, then carries on. A made-up firm's agent, on a
+  fresh tenant.
+steps:
+  - say: Make an agent called Quiet. Its job is routine checks. Its instructions are to be brief.
+    checks:
+      - agents: 1
+      - errors: 0
+  - to: Quiet
+    say: >
+      Keep a schedule called Empty check, every day at 8 in the morning. Each time, see whether
+      Alpha has a table called Orders. If there is no such table, there is nothing worth telling me.
+    checks:
+      - schedule: { agent: Quiet, count: 1 }
+      - errors: 0
+  - run_now: { agent: Quiet, name: Empty check }
+    checks:
+      - task: { title: Empty check, state: dropped, count: 1 }
+      - errors: 0
+  - to: Quiet
+    say: >
+      Keep a second schedule called Pick a fruit, every day at 9 in the morning. Each time, ask me
+      on a card whether I want apples or pears, then tell me which I picked in one sentence.
+    checks:
+      - schedule: { agent: Quiet, count: 2 }
+      - errors: 0
+  - run_now: { agent: Quiet, name: Pick a fruit }
+    checks:
+      - task: { title: Pick a fruit, state: waiting }
+      - cards_waiting: 1
+  - answer: { choice: Pears }
+    checks:
+      - task: { title: Pick a fruit, state: done }
+      - reply_matches: pears
+      - errors: 0

@@ -10,7 +10,7 @@ import { api, Problem } from './api.ts'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
 import { TaskWorkLine } from './TaskThread.tsx'
-import { dueWords } from './time.ts'
+import { dueWords, toLocalInput } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { DateField, parseDay } from './ui/date-field.tsx'
@@ -671,10 +671,4 @@ function SubTask({ parent, onAdded }: { parent: string; onAdded: () => void }) {
       />
     </form>
   )
-}
-
-function toLocalInput(iso: string): string {
-  const d = new Date(iso)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }

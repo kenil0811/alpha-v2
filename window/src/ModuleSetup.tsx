@@ -2,15 +2,17 @@
 // not its pages or its tables. Where it comes from, what it is for, its schedules, its setup tables
 // and parts, the notes Alpha reads first, what is the person's against the module's own, and Pack it.
 // The core calls a module's package a kit; a person never reads that word.
-import type { Me, ModuleView, ScheduleView, YoursView } from '@alpha/core/api'
+import type { AgentView, Me, ModuleView, ScheduleView, YoursView } from '@alpha/core/api'
 import { CalendarClock, Trash2 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { originWords, when } from './Modules.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
+import { Select } from './ui/field.tsx'
 import { List, Row } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -67,6 +69,7 @@ export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => vo
 }
 
 function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
+  const agents = useAgents(0)
   return (
     <Part title="Schedules" sub={`What runs on its own in ${m.name}.`}>
       <div className="flex flex-col gap-2">
@@ -80,7 +83,7 @@ function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
         ) : (
           <List>
             {m.schedules.map((a) => (
-              <OneSchedule key={a.id} a={a} onChange={onChange} />
+              <OneSchedule key={a.id} a={a} agents={agents} onChange={onChange} />
             ))}
           </List>
         )}
@@ -89,7 +92,15 @@ function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   )
 }
 
-function OneSchedule({ a, onChange }: { a: ScheduleView; onChange: () => void }) {
+function OneSchedule({
+  a,
+  agents,
+  onChange,
+}: {
+  a: ScheduleView
+  agents: AgentView[]
+  onChange: () => void
+}) {
   const { busy, problem, act } = useAct(onChange)
   return (
     <Row
@@ -106,6 +117,22 @@ function OneSchedule({ a, onChange }: { a: ScheduleView; onChange: () => void })
         <>
           <Refusal words={problem} />
           {a.running && <Pill tone="accent">Running</Pill>}
+          {a.wakes && (
+            <Select
+              value={a.wakes.id}
+              aria-label={`Who ${a.name} wakes`}
+              disabled={busy}
+              onChange={(e) =>
+                act(() => api.post(`/api/schedules/${a.id}/agent`, { agent: e.target.value }))
+              }
+            >
+              {agents.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+          )}
           <Button
             size="sm"
             variant="ghost"

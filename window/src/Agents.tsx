@@ -4,6 +4,7 @@
 import type { AgentDetail, AgentView, MemoryView } from '@alpha/core/api'
 import { Bot, Check, MessageSquare, Plus, Trash2, X } from 'lucide-react'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
+import { AgentSchedules } from './AgentSchedules.tsx'
 import { api, wordsOf } from './api.ts'
 import { useLayout } from './layout.ts'
 import { Record } from './Record.tsx'
@@ -249,6 +250,7 @@ export function AgentPage({
         </section>
       )}
       <Memories id={a.id} memories={a.memories} onChange={load} />
+      <AgentSchedules agent={a.id} schedules={a.schedules} onChange={load} />
       {a.tasks.length > 0 && (
         <section className="flex flex-col gap-1.5">
           <h2 className="font-medium font-serif text-ink text-xl">Tasks</h2>
