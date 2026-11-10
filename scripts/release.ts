@@ -1,4 +1,4 @@
-// The release (packaging, piece 2): Alpha as one self-contained app, staged from a clean copy of
+// The release: Alpha as one self-contained app, staged from a clean copy of
 // the repository, carrying its own Node and uv (each checked against its published SHA-256), its
 // production packages (Claude Code comes inside the Agent SDK's package), the built window and
 // the helper built for macOS 14 and signed; then a smoke test that starts the core from the staged
@@ -30,8 +30,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { pack } from '../core/src/modules/packs.ts'
 
-// Every pack the release carries is signed with Kenil's key from this Mac's Keychain (step 2,
-// part 1, slice 3): a Mac without it cannot make a release.
+// Every pack the release carries is signed with Kenil's key from this Mac's Keychain: a Mac
+// without it cannot make a release.
 const signed = (file: string): string => {
   execFileSync(
     process.execPath,
@@ -302,9 +302,9 @@ if (client) {
   const kitsDir = join(appDir, 'Contents', 'Resources', 'kits')
   for (const k of kits) say(`Packed ${relative(appDir, signed(pack(join(repo, k), kitsDir)))}`)
 }
-// The hash of every file the app carries, written once install.sh and the kits are inside it (item 43 of the problems list, 25 Oct), then the app's one seal over all of
-// it: with the constant certificate when this Mac has it, else ad hoc (the helper inside keeps
-// its own signature).
+// The hash of every file the app carries, written once install.sh and the kits are inside it,
+// then the app's one seal over all of it: with the constant certificate when this Mac has it,
+// else ad hoc (the helper inside keeps its own signature).
 const manifest: string[] = []
 const walk = (dir: string) => {
   for (const e of readdirSync(dir).sort()) {

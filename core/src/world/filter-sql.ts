@@ -1,7 +1,7 @@
-// A view's filter rule as SQL (core step 3c). A summary's one condition is said in the same words
-// as a view's filter and means what the window's filter means: filter-cases.ts holds the cases
-// both answer, and both test against them. The dates relative to today (today, this week, the
-// next days) are a view's alone: a summary's condition does not move with the clock.
+// A view's filter rule as SQL. A summary's one condition is said in the same words as a view's
+// filter and means what the window's filter means: filter-cases.ts holds the cases both answer, and
+// both test against them. The dates relative to today (today, this week, the next days) are a
+// view's alone: a summary's condition does not move with the clock.
 import { lit } from './ddl.ts'
 import { Refused } from './kinds.ts'
 import type { Field } from './shape/types.ts'

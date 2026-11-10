@@ -1,4 +1,4 @@
-// A made-up plugin for the plugin seam's tests (onboarding 4a): it uses every part of its host.
+// A made-up plugin for the plugin seam's tests: it uses every part of its host.
 import { type Plugin, Refusal } from '@alpha/plugin-sdk'
 
 export const plugin: Plugin = {

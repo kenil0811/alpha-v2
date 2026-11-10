@@ -1,6 +1,6 @@
-// Side panels slide instead of jumping (Kenil, 10 Nov): the page beside them eases into its new
-// width over a fifth of a second. A panel is clipped only while it moves, so its edge and shadow
-// show once it is still, and a drag moves it at once.
+// Side panels slide instead of jumping: the page beside them eases into its new width over a fifth
+// of a second. A panel is clipped only while it moves, so its edge and shadow show once it is
+// still, and a drag moves it at once.
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from './cn.ts'
 

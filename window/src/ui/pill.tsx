@@ -36,10 +36,10 @@ export function Pill({
   )
 }
 
-// A choice in its own colour (Batch E, 66.9, Kenil's look 2 Nov): one of eight by its place in its
-// field's list, round again past eight, never random, so it wears one colour in every cell, chip,
-// dropdown and filter; one that is a state (a tone: Won, Lost, Proposed) keeps its tone's dot, so
-// states still read as states. Words that are no choice of the field go by their letters.
+// A choice in its own colour: one of eight by its place in its field's list, round again past
+// eight, never random, so it wears one colour in every cell, chip, dropdown and filter; one that is
+// a state (a tone: Won, Lost, Proposed) keeps its tone's dot, so states still read as states. Words
+// that are no choice of the field go by their letters.
 const OPTION = [
   'bg-opt-1-soft text-opt-1',
   'bg-opt-2-soft text-opt-2',
@@ -101,8 +101,8 @@ export function Topic({ className, ...props }: ButtonHTMLAttributes<HTMLButtonEl
   )
 }
 
-// A small label, 12px in sentence case (Batch E, 66.3, Kenil's look 2 Nov): a card's head, a
-// part's name in a row's panel. Nothing in Alpha is set in capitals.
+// A small label, 12px in sentence case: a card's head, a part's name in a row's panel. Nothing in
+// Alpha is set in capitals.
 export const LABEL = 'font-semibold text-ink-3 text-sm'
 
 export function Label({ children, className }: { children: ReactNode; className?: string }) {

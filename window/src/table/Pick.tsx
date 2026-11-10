@@ -1,4 +1,4 @@
-// Picking a related row or a person (Batch B, 14b, Kenil's yes 1 Nov): one of our dropdowns under
+// Picking a related row or a person: one of our dropdowns under
 // the cell, with a search past five (T10); a relation holding several ticks rows from a list, as
 // tags are (T15), kept when the list closes. No Add new…: a new related row is made on its own
 // table. The core checks that each pick is there; files, and many rows at once, stay with Alpha.

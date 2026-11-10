@@ -1,7 +1,6 @@
-// The window: the rail, a bar over each screen, the screen (Home, Settings or a
-// module: its pages, tables and Setup) and the assistant on the right of every
-// screen but the whole conversation's own, knowing which module's screen it is on. ⌘J
-// folds it and opens it again (Vikas, 25 Oct).
+// The window: the rail, a bar over each screen, the screen (Home, Settings or a module: its pages,
+// tables and Setup) and the assistant on the right of every screen but the whole conversation's
+// own, knowing which module's screen it is on. ⌘J folds it and opens it again.
 import type {
   Layout,
   LiveEvent,
@@ -69,12 +68,12 @@ export function App() {
     api.post('/api/layout', change).catch(() => undefined)
   }, [])
   const layoutHere = useMemo(() => ({ layout, change: changeLayout }), [layout, changeLayout])
-  // the assistant on the right: closed until the person opens it from Alpha's face (Kenil, 10 Nov)
+  // the assistant on the right: closed until the person opens it from Alpha's face
   const asking = layout.assistant === 'open'
-  // room beside the page for a row, a task, a run or a person with the assistant open (Batch A)
+  // room beside the page for a row, a task, a run or a person with the assistant open
   const windowWidth = useWindowWidth()
   const room = roomBeside(windowWidth, layout, asking)
-  // a task, a run, a person or a row open beside the page, from the address (Batch A, pick 2)
+  // a task, a run, a person or a row open beside the page, from the address
   const { base: besideBase, opened } = splitBeside(window.location.hash)
   useOpenBeside(room)
   const setAsking = useCallback(
@@ -104,7 +103,7 @@ export function App() {
   )
   const askable = place.at !== 'conversation' && place.at !== 'work'
   // the module on screen, known from the rail's list at once for a table, so its tabs never wait on
-  // the table's own load (Kenil, 10 Nov)
+  // the table's own load
   const moduleHereId =
     place.at === 'module'
       ? place.id
@@ -114,7 +113,7 @@ export function App() {
           null)
         : null
   // the table on screen: its own once here, else its frame from what the rail knows, so a move from
-  // one table to another keeps the frame and only changes what is in it (Kenil, 10 Nov)
+  // one table to another keeps the frame and only changes what is in it
   const tableHere: TableData | null = (() => {
     if (place.at !== 'table') return table
     if (table && table.id === place.id) return table
@@ -134,7 +133,6 @@ export function App() {
   const agentHere = agents.find((a) => a.id === chosen) ?? null
   const pickAgent = useCallback((id: string) => changeLayout({ agent: id }), [changeLayout])
   // New module opens the Module builder's conversation, the Chief of staff's once it has gone
-  // (Kenil, 10 Nov)
   const openBuilder = useCallback(() => {
     const go = (id: string) => {
       pickAgent(id)
@@ -145,17 +143,13 @@ export function App() {
       () => go(CHIEF),
     )
   }, [pickAgent])
-  // an old link to New module's page goes there too
-  useEffect(() => {
-    if (place.at === 'new') openBuilder()
-  }, [place.at, openBuilder])
   const chosenRef = useRef(chosen)
   chosenRef.current = chosen
   const askableRef = useRef(askable)
   askableRef.current = askable
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // ⌘J, and ⌘⇧\ beside the rail's ⌘\ (Batch D, 79.4), fold the assistant or open it
+      // ⌘J, and ⌘⇧\ beside the rail's ⌘\, fold the assistant or open it
       const shiftSlash = e.shiftKey && e.code === 'Backslash'
       if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'j' || shiftSlash)) {
         if (!askableRef.current) return
@@ -206,7 +200,7 @@ export function App() {
   const placeRef = useRef(place)
   placeRef.current = place
 
-  // a table newly opened: its shape first, drawn at once, its rows alongside (Kenil, 10 Nov)
+  // a table newly opened: its shape first, drawn at once, its rows alongside
   const [rowsComing, setRowsComing] = useState(false)
   const rowsFor = useRef<string | null>(null) // the table whose rows are here
   const loadTable = useCallback(async (id: string, opening = false) => {
@@ -250,7 +244,7 @@ export function App() {
       setProblem(wordsOf(err))
     }
     // the table open now, on its own: one that has gone (deleted, say) sends the person Home rather
-    // than standing as a warning over the next screen (Kenil, 10 Nov)
+    // than standing as a warning over the next screen
     const p = placeRef.current
     if (p.at === 'table') await loadTable(p.id)
   }, [])
@@ -313,7 +307,7 @@ export function App() {
     void refresh()
   }, [chosen, refresh])
 
-  // the page above this one, for the bar's ‹ (Kenil, 10 Nov); none on a page at the top
+  // the page above this one, for the bar's ‹; none on a page at the top
   const parentOf = (): { label: string; href: string } | null => {
     const HOME = { label: 'Home', href: '#/' }
     // above a module: the module it sits in, where that one opens, else Home
@@ -330,7 +324,7 @@ export function App() {
       case 'row':
         return rowPlace && { label: rowPlace.table.name, href: `#/table/${rowPlace.table.id}` }
       // a module's own tables and pages are the module: they go to the module it sits in, else Home
-      // (Kenil, 10 Nov: the module's address opened the same table again)
+      // (the module's address would open this same table again)
       case 'table':
         if (place.row) return table && { label: table.name, href: `#/table/${place.id}` }
         return aboveModule(moduleHereId)
@@ -351,7 +345,7 @@ export function App() {
         return place.kind === 'company'
           ? { label: 'Organizations', href: '#/people?companies' }
           : { label: 'People', href: '#/people' }
-      // every other page goes Home; Home alone has nothing above it (Kenil, 10 Nov)
+      // every other page goes Home; Home alone has nothing above it
       case 'home':
         return null
       default:
@@ -385,8 +379,6 @@ export function App() {
         return 'Parts'
       case 'plugin':
         return screenOf(place.name)?.title ?? ''
-      case 'new':
-        return 'New module'
       case 'file':
         return fileName || ''
       case 'table': {
@@ -458,7 +450,7 @@ export function App() {
                   <Parts />
                 ) : place.at === 'plugin' ? (
                   <PluginPage name={place.name} />
-                ) : place.at === 'new' ? null : place.at === 'file' ? (
+                ) : place.at === 'file' ? (
                   <FileView place={place.place} onName={setFileName} />
                 ) : place.at === 'work' ? (
                   <TaskWork key={place.id} id={place.id} version={version} onName={setItemName} />

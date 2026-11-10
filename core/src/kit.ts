@@ -1,6 +1,6 @@
 // Kits from the command line: `pnpm kit check <folder>` says what is wrong with a kit before
 // anything installs (the kit API's checker, kit-sdk); `pnpm kit test <folder> [--record]` runs
-// its cases against a fixture world and recorded answers, without the model (decision 9);
+// its cases against a fixture world and recorded answers, without the model;
 // `pnpm kit pack <folder> [out]` packs a kit's folder into one file (out defaults to the
 // current folder), ready to send or to drop in a Mac's kits/inbox.
 import { resolve } from 'node:path'

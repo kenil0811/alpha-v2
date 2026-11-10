@@ -41,8 +41,7 @@ export const INK: Record<string, string> = {
 }
 
 // The marks on a value Alpha is not sure of: ≈ estimated, ? assumed. Grey, never amber: unsure
-// is not wrong (item 57 of the problems list, 25 Oct); a table gives the word on hover, a panel
-// writes it out.
+// is not wrong; a table gives the word on hover, a panel writes it out.
 export const MARK: Partial<Record<SourceView['kind'], string>> = { estimated: '≈', assumed: '?' }
 
 // An empty value: a grey dash in a table, Unknown in a panel, for every kind of field.
@@ -63,20 +62,20 @@ export const CORRECTABLE = new Set([
   'phone',
 ])
 
-// What can be typed in this field: a summary is worked out from other rows, never typed (3c).
+// What can be typed in this field: a summary is worked out from other rows, never typed.
 export const canType = (f: FieldView) => CORRECTABLE.has(f.kind) && !f.summary
-// What is picked, one value at a time (Batch B, 14b): a related row, or a person.
+// What is picked, one value at a time: a related row, or a person.
 export const canPick = (f: FieldView) =>
   (f.kind === 'relation' && !!f.relatesTo && !f.summary) || f.kind === 'person'
 // What a double-click changes in the grid and in an opened row (T4).
 export const canEdit = (f: FieldView) => canType(f) || canPick(f)
-// Why a value can't be changed where it is, said at once on a double-click (Batch D, 66.14).
+// Why a value can't be changed where it is, said at once on a double-click.
 export function whyFixed(f: FieldView, kept: boolean): string {
   if (kept) return 'Kept on its own page: open the row to change it.'
   if (f.summary) return `Worked out: ${f.summary}. It changes when those rows do.`
   return 'Alpha keeps this from where it came from; it is not typed here.'
 }
-// A choice holding several (tags, core step 3c): a list, shown as chips.
+// A choice holding several (tags): a list, shown as chips.
 export const isTags = (f: FieldView) => f.kind === 'choice' && f.many
 
 export const when = (at: string) =>
@@ -182,7 +181,7 @@ export function typedOf(field: FieldView, value: unknown): string {
 }
 
 // A row's title: its first text field's words, or in a table with none its first value (a day's
-// date, say; Kenil, 10 Nov).
+// date, say).
 export function titleOf(fields: FieldView[], row: { values: Record<string, unknown> }): string {
   const f =
     fields.find((x) => x.kind === 'text') ??

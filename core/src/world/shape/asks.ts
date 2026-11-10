@@ -1,9 +1,8 @@
-// A kit someone else maintains (decision 3b; docs/rules.md, M4): a change to its shape, by any
-// door, is not made straight away. Each shape change asks first; the world (maintained.ts) opens
-// the card for the person (ask the maintainer, or do it now and they are told later) and refuses
-// in its words. Their "do it now anyway" makes it, as the change was asked (`redo`, ctx.anyway).
-// How a table shows (a tab, setup, a saved list, where a module sits) is the person's under any
-// mark, and asks nothing.
+// A kit someone else maintains (docs/rules.md, M4): a change to its shape, by any door, is not made
+// straight away. Each shape change asks first; the world (maintained.ts) opens the card for the
+// person (ask the maintainer, or do it now and they are told later) and refuses in its words. Their
+// "do it now anyway" makes it, as the change was asked (`redo`, ctx.anyway). How a table shows (a
+// tab, setup, a saved list, where a module sits) is the person's under any mark, and asks nothing.
 import { Refused } from '../kinds.ts'
 import { setBusinessCase } from './manifest.ts'
 import type { Shape } from './shape.ts'

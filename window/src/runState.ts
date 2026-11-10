@@ -1,5 +1,5 @@
 // A run's state in words and tone, one map every place reads: Activity's pill and its filter, an
-// schedule's runs on a task, the parts page (Batch A, pick 9: "Failed" everywhere, Kenil 1 Nov).
+// schedule's runs on a task, the parts page: "Failed" everywhere.
 import type { RunView } from '@alpha/core/api'
 import type { Tone } from './ui/pill.tsx'
 

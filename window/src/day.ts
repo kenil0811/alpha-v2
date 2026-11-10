@@ -1,5 +1,5 @@
-// The person's own day in the window (Batch A, pick 4): the browser's zone is theirs. A day
-// ("2026-10-31") is compared as a day, a moment as a moment, never as UTC strings side by side.
+// The person's own day in the window: the browser's zone is theirs. A day ("2026-10-31") is
+// compared as a day, a moment as a moment, never as UTC strings side by side.
 
 const pad = (n: number) => String(n).padStart(2, '0')
 

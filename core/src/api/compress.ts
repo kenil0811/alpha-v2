@@ -1,6 +1,6 @@
-// What the core sends the window, compressed when it is large (Kenil, 10 Nov: a table of 900 mails
-// took seconds over the internet). A table's words repeat from row to row, so it shrinks to a tenth
-// or less, and costs the core a few milliseconds.
+// What the core sends the window, compressed when it is large (a table of 900 mails took seconds
+// over the internet). A table's words repeat from row to row, so it shrinks to a tenth or less, and
+// costs the core a few milliseconds.
 import type { Readable } from 'node:stream'
 import {
   brotliCompressSync,

@@ -1,6 +1,6 @@
-//! Notifications from Alpha (Kenil's plan, step 2): reminders and cards that need the person, shown
-//! through macOS's own notification centre with Alpha's name and icon. A click opens the place the
-//! notice names (a task, or Needs you on Home). macOS asks the person once whether Alpha may.
+//! Notifications from Alpha: reminders and cards that need the person, shown through macOS's own
+//! notification centre with Alpha's name and icon. A click opens the place the notice names (a
+//! task, or Needs you on Home). macOS asks the person once whether Alpha may.
 
 use std::sync::OnceLock;
 

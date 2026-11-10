@@ -1,6 +1,5 @@
-// Intelligence › Modules (clean base step 5): every module, a row each, opening its Setup; and,
-// for the owner, installing one. The core calls a module's package a kit; a person never reads
-// that word.
+// Intelligence › Modules: every module, a row each, opening its Setup; and, for the owner,
+// installing one. The core calls a module's package a kit; a person never reads that word.
 import type { WorkingModuleView } from '@alpha/core/api'
 import { Package } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'

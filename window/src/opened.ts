@@ -1,9 +1,8 @@
-// What is open beside the page (Batch A, pick 2, Kenil's yes 1 Nov): a task, a run, a person or a
-// row, and since Batch D (79.6, 79.7) a schedule, a rule and the rows a figure counted, opened from
-// a link to it, kept in the address as beside=<kind>/<id> after the page's own, so a reload keeps
-// it. A link inside the panel replaces what it shows (clean base step 6). Its own page is one
-// click away (Open page). A link to a kind on that kind's own screen (a task on Tasks) opens there,
-// as before.
+// What is open beside the page: a task, a run, a person, a row, a schedule, a rule or the rows a
+// figure counted, opened from a link to it, kept in the address as beside=<kind>/<id> after the
+// page's own, so a reload keeps it. A link inside the panel replaces what it shows. Its own page is
+// one click away (Open page). A link to a kind on that kind's own screen (a task on Tasks) opens
+// there, as before.
 
 export type OpenedKind = 'task' | 'run' | 'person' | 'row' | 'schedule' | 'rule' | 'rows'
 export interface Opened {

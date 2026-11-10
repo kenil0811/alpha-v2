@@ -1,4 +1,4 @@
-// Settings › People (the clean base, step 4b): who may sign in to this Alpha, the owner's to change.
+// Settings › People: who may sign in to this Alpha, the owner's to change.
 // Adding someone or making a new link shows a one-time link to pass on; Alpha sends no mail.
 import type { Me } from '@alpha/core/api'
 import { Copy, UserRound } from 'lucide-react'

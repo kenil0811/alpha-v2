@@ -1,9 +1,8 @@
-// Packs signed by Kenil (step 2, part 1, slice 3, his yes 29 Oct): a kit's or a connector's pack
-// carries SIGNATURE beside its PACK.json, an Ed25519 signature over PACK.json's bytes, which list
-// every file and its hash, so one byte changed anywhere is caught. The public half of his key
-// ships in every release (config/signing-key.pub); the private half stays in his Keychain. A
-// pack that is not signed by it loads only with the developer switch on (developer: true in
-// alpha.yaml), off on a fresh install.
+// Packs signed by Kenil: a kit's or a connector's pack carries SIGNATURE beside its PACK.json, an
+// Ed25519 signature over PACK.json's bytes, which list every file and its hash, so one byte changed
+// anywhere is caught. The public half of his key ships in every release (config/signing-key.pub);
+// the private half stays in his Keychain. A pack that is not signed by it loads only with the
+// developer switch on (developer: true in alpha.yaml), off on a fresh install.
 import { execFileSync } from 'node:child_process'
 import { createPrivateKey, createPublicKey, sign as edSign, verify as edVerify } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'

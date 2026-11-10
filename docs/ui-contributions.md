@@ -210,7 +210,7 @@ The checks cannot see the look; you have to. Before any pull request:
 
 - Open every screen the change shows on. A change to a shared piece in `window/src/ui/` shows on
   many screens: ask your agent where it is used, and look at each one.
-- Light and dark (the workspace menu at the top of the rail, then Appearance).
+- Light and dark (Settings › Appearance).
 - A big window (1440 × 900) and a small one (1024 × 700), with the assistant open and folded, and
   the rail folded.
 - Under the pointer, with the keyboard (Tab, Enter, Escape), and from a right-click where there is
@@ -232,7 +232,7 @@ the window: it says why things are the way they are. You can change it.
 - If a test holds that rule (the "Held by" column, mostly `window/src/look.test.ts`), change the
   test to the new rule in the same pull request. That is the only reason to change a test in
   Lane 1. Never weaken or delete a test just to get the check green.
-- If your change makes something in `docs/design.md` out of date (its window section, §14,
+- If your change makes something in `docs/design.md` out of date (its section The window
   describes Home and the screens), say which part in the description. Kenil updates the design.
 
 Whatever the rules say on a given day, keep to these, because they keep the window one piece:

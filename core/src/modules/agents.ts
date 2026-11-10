@@ -1,6 +1,6 @@
-// Making and changing agents (clean base step 7): the row in the world, and the folder that holds
-// its instructions (AGENT.md), skills and files. The folder is a git repository, so every change
-// shows, and a change to its instructions or a skill can be undone.
+// Making and changing agents: the row in the world, and the folder that holds its instructions
+// (AGENT.md), skills and files. The folder is a git repository, so every change shows, and a change
+// to its instructions or a skill can be undone.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { parse } from 'yaml'
@@ -221,8 +221,8 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   })
 }
 
-// The Module builder (Kenil, 10 Nov): made once in a world, from core/config/module-builder.md, and
-// the person's to change or delete like any agent after that, so it never comes back on its own.
+// The Module builder: made once in a world, from core/config/module-builder.md, and the person's to
+// change or delete like any agent after that, so it never comes back on its own.
 export async function keepBuilder(world: World, user: string): Promise<string | null> {
   if (one(world.db, 'SELECT 1 FROM meta WHERE key = ?', BUILDER_MADE)) return null
   const b = config.builder()

@@ -1,4 +1,4 @@
-// A table a module says is added to only on the person's word (Kenil, 29 Oct: DealPilot's sources,
+// A table a module says is added to only on the person's word (a module's sources,
 // which Alpha twice added without reading their page first): Alpha's write to it is refused until
 // the person has answered that word on a card, and one answer lets one write in.
 import { mkdtempSync, rmSync } from 'node:fs'

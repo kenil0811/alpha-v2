@@ -29,7 +29,7 @@ export function atLeast(version: string, min: string): boolean {
 }
 
 // What a kit could say better, in plain sentences: never a refusal. A table or field with no
-// about leaves the model guessing what it means (the semantic layer, decision of 24 Oct).
+// about leaves the model guessing what it means (the semantic layer).
 export function kitNotes(dir: string): string[] {
   const file = join(dir, 'module.yaml')
   if (!existsSync(file)) return []
@@ -56,7 +56,7 @@ export function kitNotes(dir: string): string[] {
   return notes
 }
 
-// A summary field (core step 3c) names its table's rows and their fields as the kit has them:
+// A summary field names its table's rows and their fields as the kit has them:
 // the core checks the rest (the relation points here, a sum takes a number) when it installs.
 function summaryProblems(
   m: KitManifest,
@@ -132,7 +132,7 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
       problems.push(...summaryProblems(m, t.name, f))
       if (f.per && f.kind !== 'person')
         problems.push(`${t.name}'s ${f.name}: only a person field holds one row per person (per).`)
-      // a part belongs to one row of a table, never to a list or to itself (core step 3a)
+      // a part belongs to one row of a table, never to a list or to itself
       if (f.part_of && (f.kind !== 'relation' || f.many || f.relates_to === t.name))
         problems.push(
           `${t.name}'s ${f.name} can be part_of only as a relation to one row of another table.`,

@@ -1,7 +1,6 @@
-// A card on its own page (Batch B, pick 13, Kenil's yes 1 Nov): the card the stream shows, across
-// the page, a long letter whole. It is answered here as there, through the card's own routes, so
-// its gate and "Send it" once are as they are. Once answered it says how; a card that is not
-// there says so.
+// A card on its own page: the card the stream shows, across the page, a long letter whole. It is
+// answered here as there, through the card's own routes, so its gate and "Send it" once are as
+// they are. Once answered it says how; a card that is not there says so.
 import type { CardView } from '@alpha/core/api'
 import { useCallback, useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'

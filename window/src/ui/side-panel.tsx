@@ -7,7 +7,7 @@ import { Button, IconButton } from './button.tsx'
 import { cn } from './cn.ts'
 import { Edge, SIDE_MIN } from './edge.tsx'
 
-const NARROW = 320 // its usual width; it narrows to SIDE_MIN (Batch D, 79.1)
+const NARROW = 320 // its usual width; it narrows to SIDE_MIN
 
 export function SidePanel({
   title,
@@ -24,7 +24,7 @@ export function SidePanel({
   children: ReactNode
   width?: number | null // the person's width; none is the usual 320px
   onWidth?: (w: number | null) => void // the width they left it at
-  full?: string // where Open page goes: a large button across the panel's foot (Batch D, 79.10)
+  full?: string // where Open page goes: a large button across the panel's foot
   head?: ReactNode // a header of its own, in place of the title and its buttons
   keep?: number // the room it always leaves the rest of the window (the rail and the screen)
 }) {
@@ -50,7 +50,7 @@ export function SidePanel({
     <aside
       style={sizable ? { width: shown } : undefined}
       className={cn(
-        // a firmer edge and a soft shadow, so it reads as lying over the page (Batch E, 66.15)
+        // a firmer edge and a soft shadow, so it reads as lying over the page
         'relative z-(--z-raised) flex min-h-0 shrink-0 flex-col border-edge border-l bg-surface shadow-(--elev-side)',
         !sizable && 'w-80',
       )}

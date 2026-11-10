@@ -139,10 +139,9 @@ export function registerFiles(ctx: Ctx): void {
       .send(readFileSync(png))
   })
 
-  // A stored file came from outside (a mailed attachment, a drop), so it never runs as Alpha's
-  // own page (item 3 of the problems list, 24 Oct): the harmless kinds show inline, HTML and SVG
-  // show in a sandbox that runs nothing and sends nothing, everything else downloads, and no
-  // browser guesses a type.
+  // A stored file came from outside (a mailed attachment, a drop), so it never runs as Alpha's own
+  // page: the harmless kinds show inline, HTML and SVG show in a sandbox that runs nothing and
+  // sends nothing, everything else downloads, and no browser guesses a type.
   app.get('/api/files/:hash', async (req, reply) => {
     const { hash } = z.object({ hash: z.string() }).parse(req.params)
     const f = world.files.file(hash)

@@ -43,7 +43,7 @@ export class ScheduleRunner {
   judgeAsk: Ask
   tokens = new Map<string, number>() // a run's model tokens, while it runs
   budgetSaid = new Map<string, number>() // when a schedule's runs budget was last said
-  // the schedules' own lane (item 15): the minute tick starts the due runs and goes on; while they
+  // the schedules' own lane: the minute tick starts the due runs and goes on; while they
   // run, the next tick leaves them alone, so reminders and the backup keep the minute
   lane: Promise<void> | null = null
   failures = new Map<string, number>() // a schedule's runs that did not finish, in a row
@@ -188,7 +188,7 @@ export class ScheduleRunner {
       throw new Refused(`${module.name} has no script ${script}.`)
     const runId = newId('n')
     // a schedule's run keeps to its file: what it touches, reads and may do, within its budget; a
-    // try from the chat keeps to its module (item 40, 25 Oct)
+    // try from the chat keeps to its module
     const file = scheduleId ? this.fileOf(scheduleId, module) : null
     const walls = file ? this.wallsFor(module, file) : scheduleId ? null : this.wallsForTry(module)
     exec(
@@ -253,7 +253,7 @@ export class ScheduleRunner {
       })
     } catch (err) {
       // a throw before or around the script (the sandbox not starting, a folder gone) ends the
-      // run as failed, never leaves it running (item 14 of the problems list, 25 Oct)
+      // run as failed, never leaves it running
       out = {
         result: null,
         error: err instanceof Error ? err.message : String(err),
@@ -290,7 +290,7 @@ export class ScheduleRunner {
       json({ result: out.result, stderr: out.stderr.slice(-4000), tokens }),
       runId,
     )
-    // a run that did not finish leaves the schedule due, so it is tried again (item 16)
+    // a run that did not finish leaves the schedule due, so it is tried again
     if (scheduleId && state === 'ok')
       exec(this.world.db, 'UPDATE schedules SET last_run_at = ? WHERE id = ?', now(), scheduleId)
     this.world.line({
@@ -307,7 +307,7 @@ export class ScheduleRunner {
 
   // One run of a schedule at a time, whoever asks (two could send the same email twice); a paused
   // schedule runs only when the person asked for it now (Run now, the desk's run), never on its own
-  // or on a follow-up (items 9 and 10 of the problems list, 24 Oct).
+  // or on a follow-up.
   // Why a schedule cannot run now, as a refusal: asked before a run starts (Run now says it at
   // once), and again by the run itself.
   refuseRun(schedule: Schedule, options: { asked?: boolean } = {}): RunPlace {

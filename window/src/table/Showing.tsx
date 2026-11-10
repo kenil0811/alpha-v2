@@ -1,5 +1,5 @@
-// The showing line under a list's tabs (Batch A, pick 5): what hides rows, Clear filters for the
-// list's own filters and search, Show all for rows a page or a row sent the person to.
+// The showing line under a list's tabs: what hides rows, Clear filters for the list's own filters
+// and search, Show all for rows a page or a row sent the person to.
 import { showingWords } from './hiding.ts'
 
 export function Showing({

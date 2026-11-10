@@ -1,5 +1,5 @@
-// Read now on a table (Batch B, pick 15): the line under it says what reads into it and when, in
-// the person's own day; each connector named once.
+// Read now on a table: the line under it says what reads into it and when, in the person's own
+// day; each connector named once.
 import type { ReadByView } from '@alpha/core/api'
 import { describe, expect, it } from 'vitest'
 import { lastRead, readByWords, titles } from './ReadNow.tsx'

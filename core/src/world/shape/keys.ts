@@ -1,7 +1,7 @@
-// A kit's or connector's own tables and module (Batch B, call 6, Kenil's yes 1 Nov): found by the
-// lasting key they were made with, so a name the person changes splits nothing; else by name, one
-// with no key (the person's or Alpha's, taken as before keys). A lookup never writes: a kit or
-// connector that takes one found by name keys it with a claim.
+// A kit's or connector's own tables and module: found by the lasting key they were made with, so a
+// name the person changes splits nothing; else by name, one with no key (the person's or Alpha's,
+// taken as before keys). A lookup never writes: a kit or connector that takes one found by name
+// keys it with a claim.
 import { one, run } from '../db.ts'
 import type { Shape } from './shape.ts'
 import type { Module, Table } from './types.ts'

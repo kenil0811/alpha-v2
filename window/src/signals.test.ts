@@ -1,5 +1,4 @@
-// Each module's one signal for the rail's dot (Batch E, 66.18): the strongest of what waits and
-// runs in it.
+// Each module's one signal for the rail's dot: the strongest of what waits and runs in it.
 import type { Stream } from '@alpha/core/api'
 import { describe, expect, it } from 'vitest'
 import { moduleSignals } from './signals.ts'

@@ -1,4 +1,4 @@
-// A card on its own page (Batch B, pick 13): the card the stream shows, by its id; one not there,
+// A card on its own page: the card the stream shows, by its id; one not there,
 // or another person's, is not there. Answering stays the card's own route.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

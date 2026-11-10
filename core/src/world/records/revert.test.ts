@@ -1,5 +1,5 @@
-// Step 2, part 2 (Kenil's yes, 30 Oct): what a turn did outside Alpha. A counter-action is
-// offered, and run by whoever reverts; a final one is named as done for good.
+// What a turn did outside Alpha. A counter-action is offered, and run by whoever reverts; a final
+// one is named as done for good.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

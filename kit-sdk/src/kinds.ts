@@ -17,17 +17,17 @@ export const FIELD_KINDS = [
   'link',
   'email',
   'phone',
-  // a row's free notes (core step 3b): Markdown, a person or a row mentioned as a link
+  // a row's free notes: Markdown, a person or a row mentioned as a link
   // ([@Ann](person:p_1), [Acme](row:r_1)); one per table, shown on the row, not in grids
   'notes',
-  // worked out from the rows of another table that point at this one (core step 3c): their
+  // worked out from the rows of another table that point at this one: their
   // count, or a field's sum, least, most or latest, with one condition; never written
   'summary',
 ] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
 
 // What a summary field does with the rows that point at its row, and the ops its one condition
-// may take: a view's filter's, but none relative to today (core step 3c).
+// may take: a view's filter's, but none relative to today.
 export const SUMMARY_OPS = ['count', 'sum', 'min', 'max', 'latest'] as const
 export const CONDITION_OPS = [
   'is',

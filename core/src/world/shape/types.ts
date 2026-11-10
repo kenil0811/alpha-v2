@@ -28,14 +28,14 @@ export interface Field {
   tones: Record<string, Tone> // a choice's colour where it means a state (Fits, Does not fit)
   relatesTo: string | null
   many: boolean // a relation holding a list of rows: a junction table, not a column
-  tags: boolean // a choice holding several (core step 3c): a JSON list in its column
-  summary: SummarySpec | null // worked out from the rows that point here, never stored (3c)
-  // a person field whose table holds one row per person (core step 3d): a second is refused,
-  // and a merge of two people folds their rows into one
+  tags: boolean // a choice holding several: a JSON list in its column
+  summary: SummarySpec | null // worked out from the rows that point here, never stored
+  // a person field whose table holds one row per person: a second is refused, and a merge of two
+  // people folds their rows into one
   per: 'person' | null
-  sensitive: boolean // its values never reach a journal line: "(kept out)" there (step 2, part 3)
-  // a relation whose rows are part of the row they point at (core step 3a): shown on it, removed
-  // and brought back with it, never empty
+  sensitive: boolean // its values never reach a journal line: "(kept out)" there
+  // a relation whose rows are part of the row they point at: shown on it, removed and brought back
+  // with it, never empty
   partOf: boolean
   indexed: boolean // an index the kit asked for
   key: string | null // a kit field's stable name, matched on update; none for the person's own
@@ -43,9 +43,9 @@ export interface Field {
   aboutBy: AboutBy | null // whose sentence: the kit's, Alpha's (assumed), or the person's
 }
 
-// A summary field (core step 3c), by ids: the rows of `of` whose relation `through` points at
-// this row, counted, or one of their fields summed, the least, the most or the latest, where one
-// condition holds, in the words of a view's filter.
+// A summary field, by ids: the rows of `of` whose relation `through` points at this row, counted,
+// or one of their fields summed, the least, the most or the latest, where one condition holds, in
+// the words of a view's filter.
 export interface SummarySpec {
   of: string
   through: string
@@ -67,11 +67,11 @@ export interface Table {
   module: Module
   name: string
   slug: string
-  key: string | null // the name the kit or connector that made it gave it (call 6); none for others
+  key: string | null // the name the kit or connector that made it gave it; none for others
   mirror: string | null // the system that keeps its rows' record, for one a connection fills (D1)
   hidden: boolean // out of the sidebar
-  setup: boolean // what the module's schedules read: on the module's Setup, not a tab (step 3a)
-  tab: boolean // kept as a tab of its module wherever it sits, by the person or its kit (28 Oct)
+  setup: boolean // what the module's schedules read: on the module's Setup, not a tab
+  tab: boolean // kept as a tab of its module wherever it sits, by the person or its kit
   addedOn: string | null // Alpha adds a row only once the person has answered this on a card
   fields: Field[]
   documents: string[] | null // the kinds of document its rows take, as its kit names them
@@ -118,7 +118,7 @@ export interface FieldInput {
   summary?: SummaryInput // a summary's table, relation, what it takes and its condition
   per?: 'person' // on a person field: one row per person in its table
   indexed?: boolean // an index on it, for a field filtered on often
-  sensitive?: boolean // its values never reach a journal line (step 2, part 3)
+  sensitive?: boolean // its values never reach a journal line
   key?: string // a kit field's stable name
   about?: string // one sentence on what it means
   aboutBy?: AboutBy // whose sentence; alpha when the desk wrote it (shown as assumed)
@@ -216,7 +216,7 @@ export function findField(table: Table, nameOrSlug: string, byKey = false): Fiel
 }
 
 // A row as a person names it: its first text value, or in a table with none (a day's, say) its first
-// value of any kind, a date as a date (Kenil, 10 Nov).
+// value of any kind, a date as a date.
 export function rowName(t: Table, values: Record<string, unknown>): string {
   for (const f of t.fields)
     if (f.kind === 'text' && typeof values[f.slug] === 'string' && values[f.slug])

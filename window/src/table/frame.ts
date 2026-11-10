@@ -1,6 +1,5 @@
 // A table's frame before its shape is here: its toolbar and an empty grid in their places, so moving
-// from one table to another changes what is in the frame and never takes the frame away (Kenil,
-// 10 Nov).
+// from one table to another changes what is in the frame and never takes the frame away.
 import type { TableView } from '@alpha/core/api'
 
 export const frameOf = (

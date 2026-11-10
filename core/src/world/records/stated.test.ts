@@ -1,4 +1,4 @@
-// What counts as in the person's words (rules D5; Kenil's calls, 5 Nov).
+// What counts as in the person's words (rules D5).
 import { describe, expect, it } from 'vitest'
 import { dateIn, numbersIn } from './stated.ts'
 

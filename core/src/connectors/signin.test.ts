@@ -1,4 +1,4 @@
-// Signing in as the person (step 2, part 5), against a made-up sign-in service on this computer:
+// Signing in as the person, against a made-up sign-in service on this computer:
 // never a real tenant. Its pages answer as Microsoft's do: the sign-in page sends the person back
 // with a code, the token address trades it (checking PKCE), renews, and refuses as told.
 import { createHash } from 'node:crypto'

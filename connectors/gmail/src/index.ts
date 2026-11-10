@@ -1,4 +1,4 @@
-// Gmail by IMAP and SMTP with an app password (decision 10). Headers of the last 90
+// Gmail by IMAP and SMTP with an app password. Headers of the last 90
 // days land in the Mail table; a message's body is read when asked. A draft is saved in the
 // person's own Drafts (a write: it goes nowhere); a send leaves their world and waits on a card.
 import { randomUUID } from 'node:crypto'
@@ -55,8 +55,7 @@ export interface ImapLike {
 }
 
 // A connection dropped mid-call ends that call with the error, never the process: ImapFlow
-// emits 'error' outside any await, and an emitter with no listener throws it to the top (item 6
-// of the problems list, 24 Oct; Alpha restarted itself for it on 22 and 23 Oct).
+// emits 'error' outside any await, and an emitter with no listener throws it to the top.
 export async function withImapClient<T, C extends ImapLike>(
   client: C,
   fn: (client: C) => Promise<T>,
@@ -98,7 +97,7 @@ async function withImap<T>(c: Call, fn: (client: ImapFlow) => Promise<T>): Promi
       secure: true,
       auth: { user: c.host.account, pass: await secret(c) },
       logger: false,
-      // out of its sandbox only through the proxy (step 2, part 1, slice 2)
+      // out of its sandbox only through the proxy
       ...(proxy() ? { proxy: proxy() } : {}),
     }),
     fn,
@@ -179,7 +178,7 @@ async function sameDraftIn(
   return null
 }
 
-// A sent draft discarded, as Gmail's own Send leaves none (Kenil, 29 Oct: "lets do discard"). Over
+// A sent draft discarded, as Gmail's own Send leaves none. Over
 // IMAP Gmail keeps a message taken out of a folder (archived, or in Trash, by the account's
 // settings), so it is moved to Trash and deleted for good there, found by Gmail's own id for it:
 // the sent copy shares its Message-ID and is never touched. A draft Gmail filed as the sent email
@@ -215,15 +214,15 @@ export async function discardDraft(client: ImapFlow, id: string): Promise<void> 
   }
 }
 
-// One send, once (final plan, call A, 28 Oct). The email carries a Message-ID of Alpha's own, so
+// One send, once. The email carries a Message-ID of Alpha's own, so
 // when the connection drops before Gmail answers, Sent is looked in (now, and again a few seconds
 // later, as Gmail files a sent message a moment after it takes it): there, it went; not there, it
 // did not, and nothing is sent again. Gmail asking to slow down (421, 4.7.x) did nothing, so it is
 // a busy problem the runtime waits out; a refusal (5xx, the day's sending limit) is said as it is.
-// A send that names a draft (Kenil, 29 Oct) sends that draft as it is in Drafts, under its own
+// A send that names a draft sends that draft as it is in Drafts, under its own
 // Message-ID and dated now, then takes it out of Drafts; a draft that is not what the card showed,
 // or is gone, is refused and nothing goes. A send that names none, of an email a draft in Drafts
-// already is, sends that draft the same way (his run, 16:22: Alpha had the id and sent anew).
+// already is, sends that draft the same way, never a new email beside it.
 export interface SendHands {
   send: (mail: Record<string, unknown>) => Promise<unknown>
   inSent: (id: string) => Promise<boolean>
@@ -639,7 +638,7 @@ export const gmail: Connector = {
         )
         return { ...(saved as object), draft: id }
       },
-      // taken back by Revert: the draft deleted again (step 2, part 2)
+      // taken back by Revert: the draft deleted again
       undo: {
         kind: 'counter',
         said: 'Revert deletes the draft again.',

@@ -45,7 +45,7 @@ export async function runScript(options: {
       allowRead: [CODE, moduleDir],
       allowWrite: [moduleDir, realpathSync(tmpdir())],
       // a module's sites and shape are the core's to write, on a card's yes or a kit install:
-      // never a script's (item 12 of the problems list, 25 Oct)
+      // never a script's
       denyWrite: [join(moduleDir, 'module.yaml')],
     },
   })

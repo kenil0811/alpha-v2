@@ -188,8 +188,7 @@ export function parseSchedule(text: string, file: string): ScheduleFile {
 
 // The module's schedules as its files say: new ones start in `state`, known ones keep theirs, and
 // one whose file is gone goes. A schedule is known by its file first, then its name, so a rename
-// in the file keeps it whole: its state, last run and history (item 47, 25 Oct). Returns how
-// many there are.
+// in the file keeps it whole: its state, last run and history. Returns how many there are.
 export function syncSchedules(world: World, module: Module, state: 'on' | 'paused'): number {
   return syncFiles(world, { module, agent: null, by: null }, module.dir, state)
 }
@@ -280,7 +279,7 @@ function syncFiles(world: World, home: Home, root: string, state: 'on' | 'paused
       // its runs stay in the history, no longer tied to it
       run(world.db, 'UPDATE runs SET schedule_id = NULL WHERE schedule_id = ?', a.id)
       run(world.db, 'DELETE FROM schedules WHERE id = ?', a.id)
-      // its rules go with it (core step 2); the journal keeps them
+      // its rules go with it; the journal keeps them
       world.rules.removeScoped({ schedule: a.name }, { actor: { kind: 'system' } })
     }
   return kept.size

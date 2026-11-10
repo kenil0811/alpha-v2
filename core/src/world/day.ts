@@ -1,8 +1,8 @@
-// The person's own day (Batch A, pick 4, Kenil's yes 1 Nov): a day or a month as the person lives
-// it, never the UTC one. Late in the evening west of London, the UTC day is already tomorrow, so
-// Home's "due today", Usage's month, a backup's and an export's name would all be a day ahead.
-// Every place that needs today, this month, or a day's start asks here. The zone is the
-// machine's unless given, so a server's per-person zone is one setting later.
+// The person's own day: a day or a month as the person lives it, never the UTC one. Late in the
+// evening west of London, the UTC day is already tomorrow, so Home's "due today", Usage's month, a
+// backup's and an export's name would all be a day ahead. Every place that needs today, this month,
+// or a day's start asks here. The zone is the machine's unless given, so a server's per-person zone
+// is one setting later.
 
 type Parts = Record<'year' | 'month' | 'day' | 'hour' | 'minute' | 'second', string>
 

@@ -20,7 +20,7 @@ import { SidePanel } from './ui/side-panel.tsx'
 import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
 
-// a field's choices, as the parts page shows them (Batch E, 66.9)
+// a field's choices, as the parts page shows them
 const CHOICES = {
   choices: [
     'Clients',
@@ -139,7 +139,6 @@ export function Parts() {
               </Actions>
             </Card>
           </Section>
-          {/* the parts Batch D brought (66.27) */}
           <Section
             title="Choices"
             about="Each choice in its own colour by its place; a state keeps its tone."

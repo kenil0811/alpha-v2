@@ -1,4 +1,4 @@
-// A row's notes (core step 3b): Markdown, read as it is written, with a person or a row mentioned
+// A row's notes: Markdown, read as it is written, with a person or a row mentioned
 // as a link. Write opens a plain text box; typing @ and a few letters offers people and rows
 // to mention, from the same finder as ⌘K. It saves when you leave the box or press Done, so a
 // version is one edit, not a keystroke. No rich-text editor: Markdown is what is kept.

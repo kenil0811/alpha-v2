@@ -1,4 +1,4 @@
-// This Mac's setup in words (packaging, piece 3): Claude signed in, the reading browser and the
+// This Mac's setup in words: Claude signed in, the reading browser and the
 // document reader downloaded, Gmail, Calendar and Contacts connected, Chrome there for sites the
 // person signs in to. On Home while something essential is not ready; always in Settings.
 import type { SetupView } from '@alpha/core/api'

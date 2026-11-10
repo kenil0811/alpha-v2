@@ -116,7 +116,7 @@ else if (what === 'setup' && host && rest[0]) {
   console.log('Opened the owner’s link in your browser.')
 } else if (what === 'address' && host) {
   await tailscale(host, 'sudo tailscale up --hostname=alpha')
-  // public: the same address, open to anyone, each person still signing in (Kenil, 10 Nov)
+  // public: the same address, open to anyone, each person still signing in
   const open = rest[0] === 'public'
   if (open) await tailscale(host, 'sudo tailscale serve reset')
   await tailscale(host, `sudo tailscale ${open ? 'funnel' : 'serve'} --bg 4700`)

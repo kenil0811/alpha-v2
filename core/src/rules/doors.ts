@@ -263,7 +263,6 @@ export const DOORS: Door[] = [
     where: [
       'POST /api/data/restore',
       'POST /api/data/import',
-      'POST /api/data/remove',
       'POST /api/model',
       'POST /api/setup/signin',
       'POST /api/setup/settings',
@@ -361,7 +360,6 @@ export const NOT_DOORS: Record<string, string> = {
   'plugin people': 'reads',
   'plugin connectorTool': 'a connector’s tool, through the connector’s own gate',
   'plugin ask': 'one question to the model',
-  'plugin explore': 'a question the model works out with read-only tools',
   'plugin own.rows': 'reads',
   'plugin route': 'a route of its own, whose writes are its host’s calls',
   'plugin startBlock': 'words at the start of a conversation',

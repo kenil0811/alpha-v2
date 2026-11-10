@@ -1,9 +1,9 @@
-// Deleting a module (Kenil, 10 Nov), on an owner's word, in one of two ways. Keeping its data
-// deletes what runs or draws in it and the modules inside it (their schedules, scripts, skills and
-// pages) and leaves their tables and rows. All of it deletes the modules too: their tables and
-// rows, their folders, schedules and runs, and what Alpha kept about them. Either way, cards
-// waiting on them are withdrawn, tasks and documents about them stay without a place, and the
-// journal keeps every line, with one more saying what went.
+// Deleting a module, on an owner's word, in one of two ways. Keeping its data deletes what runs or
+// draws in it and the modules inside it (their schedules, scripts, skills and pages) and leaves
+// their tables and rows. All of it deletes the modules too: their tables and rows, their folders,
+// schedules and runs, and what Alpha kept about them. Either way, cards waiting on them are
+// withdrawn, tasks and documents about them stay without a place, and the journal keeps every line,
+// with one more saying what went.
 import { existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { all, run, tx } from '../world/db.ts'

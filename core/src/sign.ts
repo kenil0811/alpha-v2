@@ -1,7 +1,7 @@
-// Kenil's signing key and his signature on packs (step 2, part 1, slice 3): `pnpm sign --new-key
-// [--offline <file>]` makes the key once, its private half in this Mac's Keychain (and, when
-// asked, one copy in a file to keep offline), its public half in config/signing-key.pub, which
-// every release carries; `pnpm sign <pack>` signs a kit or a connector pack with it.
+// Kenil's signing key and his signature on packs: `pnpm sign --new-key [--offline <file>]` makes
+// the key once, its private half in this Mac's Keychain (and, when asked, one copy in a file to
+// keep offline), its public half in config/signing-key.pub, which every release carries;
+// `pnpm sign <pack>` signs a kit or a connector pack with it.
 import { execFileSync } from 'node:child_process'
 import { generateKeyPairSync } from 'node:crypto'
 import { existsSync, writeFileSync } from 'node:fs'

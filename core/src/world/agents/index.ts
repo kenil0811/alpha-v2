@@ -1,7 +1,7 @@
-// The firm's agents (clean base step 7): a row each, and a folder beside the world holding its
-// instructions and skills (modules/agents.ts writes those). Every agent can do what the Chief of
-// staff can; they differ by instructions, memory, skills and model. `reach` is empty for now and
-// one place reads it (agentReach), so limits can come later as a small change.
+// The firm's agents: a row each, and a folder beside the world holding its instructions and skills
+// (modules/agents.ts writes those). Every agent can do what the Chief of staff can; they differ by
+// instructions, memory, skills and model. What one may reach is decided in one place (agentReach),
+// which grants every folder today, so limits can come later as a small change.
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { all, type Db, json, now, one, parse, run } from '../db.ts'
@@ -153,7 +153,8 @@ export class Agents {
   }
 }
 
-// What an agent may reach: everything, until a limit is wanted. The one place limits would go.
-export function agentReach(_agent: Agent | null): null {
-  return null
+// What an agent may reach: the folders it is granted, all of them until a limit is wanted. The one
+// place limits would go.
+export function agentReach(_agent: Agent | null, granted: string[]): string[] {
+  return granted
 }

@@ -10,7 +10,7 @@ export interface Me {
   layout: Layout
 }
 
-// How the person left the window (UI batch 2, 26 Oct: all of it here, none in the browser).
+// How the person left the window: all of it here, none in the browser.
 export interface Layout {
   railFolded: boolean
   folded: string[] // the modules folded in the rail

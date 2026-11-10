@@ -1,7 +1,6 @@
-// "Showing n of m rows" (Batch A, pick 5, Kenil's call 4): said whenever rows are hidden, a saved
-// list's own filters included, naming what hides them, with Clear filters. Clearing changes the
-// list, so the toolbar's Save and Cancel appear (T1) and Cancel brings the saved list back: no
-// state of its own.
+// "Showing n of m rows": said whenever rows are hidden, a saved list's own filters included,
+// naming what hides them, with Clear filters. Clearing changes the list, so the toolbar's Save and
+// Cancel appear (T1) and Cancel brings the saved list back: no state of its own.
 import type { FieldView, ViewConfig } from '@alpha/core/api'
 
 // What hides rows in a list: its filters' fields, by name, once each, then a search.

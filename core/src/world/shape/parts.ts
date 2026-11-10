@@ -1,7 +1,7 @@
-// Where a table sits in its module (core step 3a, Kenil's yes 27 Oct): a relation can be part of
-// the row it points at (a deal's Financials are part of the deal), and a table can be setup (what
-// the module's schedules read). A module's tabs are its main tables: neither part of another nor
-// setup. No roles, no order to keep, no cap: the place falls out of what the rows are.
+// Where a table sits in its module: a relation can be part of the row it points at (a deal's
+// Financials are part of the deal), and a table can be setup (what the module's schedules read). A
+// module's tabs are its main tables: neither part of another nor setup. No roles, no order to keep,
+// no cap: the place falls out of what the rows are.
 import { all, json, one, parse, run, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'
@@ -12,8 +12,8 @@ import type { Shape } from './shape.ts'
 import type { Table, WriteCtx } from './types.ts'
 import { findField } from './types.ts'
 
-// people: a one-row-per-person table of the module People lives in (step 4, Network): its rows
-// are People's columns and a person's page, so it is no tab of its own either
+// people: a one-row-per-person table of the module People lives in: its rows are People's columns
+// and a person's page, so it is no tab of its own either
 export type Place = 'main' | 'part' | 'setup' | 'people'
 
 export function placeOf(t: Table): Place {
@@ -56,9 +56,9 @@ export function setSetup(shape: Shape, tableId: string, setup: boolean, ctx: Wri
   })
 }
 
-// A table kept as a tab of its module, or not (28 Oct): a part or a setup table shown among the
-// tabs too, every row of it; where it sits and what goes with its rows don't change. A main table
-// is a tab already, and People's columns live on People.
+// A table kept as a tab of its module, or not: a part or a setup table shown among the tabs too,
+// every row of it; where it sits and what goes with its rows don't change. A main table is a tab
+// already, and People's columns live on People.
 export function setTab(shape: Shape, tableId: string, tab: boolean, ctx: WriteCtx): Table {
   return tx(shape.db, () => {
     const table = shape.table(tableId)

@@ -1,7 +1,7 @@
-// A summary field (core step 3c, Kenil's yes 27 Oct) as the shape keeps it: a parent row's count,
-// sum, least, most or latest of the rows of another table that point at it through a relation to
-// one row, with at most one condition. Checked here when it is made, by names, and kept by ids,
-// so a rename moves nothing. What it comes to is worked out when read (records/summary.ts).
+// A summary field as the shape keeps it: a parent row's count, sum, least, most or latest of the
+// rows of another table that point at it through a relation to one row, with at most one condition.
+// Checked here when it is made, by names, and kept by ids, so a rename moves nothing. What it comes
+// to is worked out when read (records/summary.ts).
 import { SUMMARY_OPS, type Summary } from '@alpha/kit-sdk'
 import type { z } from 'zod'
 import { checkRule, ruleWords } from '../filter-sql.ts'

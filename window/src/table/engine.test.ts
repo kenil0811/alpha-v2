@@ -189,8 +189,7 @@ describe('groups, totals and colours', () => {
   })
 })
 
-// The window's filter means what a summary's condition means in SQL: both answer these cases
-// (core step 3c).
+// The window's filter means what a summary's condition means in SQL: both answer these cases.
 describe('the same cases as a summary’s condition', () => {
   it.each(FILTER_CASES)('$kind $rule.op $rule.value$rule.values on $value is $match', (c) => {
     const f = field('v', c.kind, { many: !!c.tags })

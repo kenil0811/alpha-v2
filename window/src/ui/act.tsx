@@ -1,7 +1,6 @@
 // One act of the person on a control (a switch, Run now, Disconnect): the control is busy while
 // the core answers, a refusal is kept in words and shown beside the control, and the screen loads
-// again either way (item 29 of the problems list, 25 Oct). Before this, a refusal was dropped and
-// the click looked like it did nothing.
+// again either way. Before this, a refusal was dropped and the click looked like it did nothing.
 import { useCallback, useRef, useState } from 'react'
 import { wordsOf } from '../api.ts'
 

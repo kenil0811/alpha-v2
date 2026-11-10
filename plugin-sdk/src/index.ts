@@ -1,10 +1,3 @@
-// What a plugin is (onboarding 4a, Kenil's yes 2 Nov): a package in plugins/ the core loads at
-// start, given a host that is everything it may do in Alpha and nothing else. A plugin imports
-// only this SDK, never the core, so removing its folder removes it whole and Alpha runs as before.
-// The core's own seams (the connector SDK, the kit format) stay as they are: a plugin reaches them
-// through this host.
-import type { z } from 'zod'
-
 // A row of a table, its values by field name.
 export interface Row {
   id: string
@@ -36,22 +29,6 @@ export interface Someone {
   last: string | null
 }
 
-// A read-only tool of the plugin's, for the model in an exploring session: what it returns goes to
-// the model as it is, so the plugin filters what it should never see before returning it.
-export interface PluginTool {
-  name: string // letters, digits and underscores
-  description: string
-  input: z.ZodRawShape
-  run(input: Record<string, unknown>): Promise<unknown>
-}
-
-// What an exploring session came to: the answer, and every call the model made with what it got
-// (each call's id, t1, t2…, is what the answer cites).
-export interface Explored {
-  answer: unknown
-  calls: { id: string; tool: string; input: unknown; output: unknown }[]
-}
-
 export interface PluginHost {
   readonly name: string
   // where it keeps its own files (what it sent, to show again): inside Alpha's folder, its own
@@ -74,14 +51,6 @@ export interface PluginHost {
   // One question to the model, no tools, answered in this JSON schema, on the person's own route:
   // what it cost is kept with Alpha's usage.
   ask(system: string, prompt: string, schema: Record<string, unknown>): Promise<unknown>
-  // A question the model works out with the plugin's own read-only tools before answering in the
-  // schema, on the person's route, its cost kept with Alpha's usage: those tools and no others.
-  explore(
-    system: string,
-    prompt: string,
-    tools: PluginTool[],
-    schema: Record<string, unknown>,
-  ): Promise<Explored>
   // Its own module (the kit in its folder): rows Alpha proposes (assumed, with why), the person's
   // own changes (stated), and what a table holds.
   own: {

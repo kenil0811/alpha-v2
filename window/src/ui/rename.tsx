@@ -1,8 +1,7 @@
-// A name changed where it shows (Batch B, picks 7 and 14a, Kenil's yes 1 Nov): a table's in the
-// bar, a module's in the rail. A double-click edits it in place, Enter keeping the change and
-// Escape putting it back, as a short list's entry is (editStep, R8). A name the core refuses (one
-// another has, one naming a period) stays in the box with the core's words under it; leaving the
-// box then puts the name back.
+// A name changed where it shows: a table's in the bar, a module's in the rail. A double-click
+// edits it in place, Enter keeping the change and Escape putting it back, as a short list's entry
+// is (editStep, R8). A name the core refuses (one another has, one naming a period) stays in the
+// box with the core's words under it; leaving the box then puts the name back.
 import { type ReactNode, useState } from 'react'
 import { wordsOf } from '../api.ts'
 import { cn } from './cn.ts'
@@ -71,8 +70,7 @@ export function Renamable({
   )
 }
 
-// A page's own title, renamed where it shows by a double-click (Batch D, 66.21, Kenil's yes 2 Nov;
-// his call 2 of 7 Nov keeps it for row level): a row's page, a task's.
+// A page's own title, renamed where it shows by a double-click: a row's page, a task's.
 export function PageTitle({
   name,
   rename,

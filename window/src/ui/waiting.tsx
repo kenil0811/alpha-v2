@@ -1,5 +1,5 @@
 // While something loads: nothing at first, so a quick load never flashes words; a quiet line only
-// once it has taken a while (Kenil, 10 Nov).
+// once it has taken a while.
 import { useEffect, useState } from 'react'
 import { cn } from './cn.ts'
 

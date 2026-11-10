@@ -1,4 +1,4 @@
-// The one-row-per-person tables of the module People lives in (core step 3d), as People's grid and
+// The one-row-per-person tables of the module People lives in, as People's grid and
 // a person's page show them: their fields join People's own columns, and a value the person types
 // there is written to that person's row, made if there isn't one yet. Nothing is copied: the
 // columns are read from those tables each time.

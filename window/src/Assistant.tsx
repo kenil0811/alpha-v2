@@ -1,7 +1,7 @@
-// The assistant on the right of a screen, opened from Alpha's face at the right of the bar (Kenil,
-// 10 Nov): it starts closed and opens only when asked. Its header has the close control and Alpha's
-// face and name in the middle and the close control at its outer corner; its edge drags it wider,
-// and it slides open and shut. ⌘J opens and closes it.
+// The assistant on the right of a screen, opened from Alpha's face at the right of the bar: it
+// starts closed and opens only when asked. Its header has the close control and Alpha's face and
+// name in the middle and the close control at its outer corner; its edge drags it wider, and it
+// slides open and shut. ⌘J opens and closes it.
 import { PanelRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Face, type Mood } from './Face.tsx'
@@ -31,7 +31,7 @@ export function Assistant({
       width={width}
       onWidth={onWidth}
       // beside every screen, so it leaves the rail and at least 600px of screen
-      // (a width kept from the old Ask panel squeezed every screen to 200px; 26 Oct)
+      // (a width kept from the old Ask panel squeezed every screen to 200px)
       keep={216 + 600}
       head={
         <div className="flex h-12 shrink-0 items-center gap-0.5 border-hair border-b px-2">
@@ -43,7 +43,7 @@ export function Assistant({
             </span>
             <span className="truncate font-semibold text-ink text-md">{title}</span>
           </span>
-          {/* the sidebar button at the outer corner, as the rail's (Kenil, 10 Nov) */}
+          {/* the sidebar button at the outer corner, as the rail's */}
           <IconButton label={`Close the assistant (${MOD}J)`} onClick={onClose}>
             <PanelRight className="size-4" />
           </IconButton>

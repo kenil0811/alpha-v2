@@ -1,7 +1,6 @@
-// Names (Batch B, picks 7 and 14a, Kenil's yes 1 Nov). A table is never named for a period: the
-// builder's wall (core step 3e) sits in the core rename, so the person's double-click and Alpha's
-// tool meet the same one. A module is renamed by its name alone: its id, its lasting key and its
-// folder stay, so kits, connectors and links still find it.
+// Names. A table is never named for a period: the builder's wall sits in the core rename, so the
+// person's double-click and Alpha's tool meet the same one. A module is renamed by its name alone:
+// its id, its lasting key and its folder stay, so kits, connectors and links still find it.
 import { config } from '../../config.ts'
 import { one, run, tx } from '../db.ts'
 import { append } from '../journal.ts'

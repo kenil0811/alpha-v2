@@ -1,7 +1,7 @@
-//! Alpha installing itself on first open (Kenil's ask of 21 Oct: no Terminal). A released
-//! Alpha.app carries the core inside it; opened on a Mac where it is not installed, or where an
-//! older one is, it shows one window and runs its own install.sh, whose lines show there. Then it
-//! opens again from Applications. A development build (no payload inside) never does this.
+//! Alpha installing itself on first open, with no Terminal. A released Alpha.app carries the core
+//! inside it; opened on a Mac where it is not installed, or where an older one is, it shows one
+//! window and runs its own install.sh, whose lines show there. Then it opens again from
+//! Applications. A development build (no payload inside) never does this.
 
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;

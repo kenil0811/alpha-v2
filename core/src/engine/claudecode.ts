@@ -1,4 +1,4 @@
-// The ClaudeCode provider (decision 11): today's route, unchanged in behaviour. The Agent SDK
+// The ClaudeCode provider: today's route, unchanged in behaviour. The Agent SDK
 // with the unmodified Claude Code, on the person's subscription or the firm's key; its shell,
 // files, web and subagents stay with it, under the sandbox. The gates are its hooks, which call
 // the Gatekeeper; its tools are the registry's entries served in process.
@@ -12,7 +12,7 @@ import {
   query as sdkQuery,
 } from '@anthropic-ai/claude-agent-sdk'
 import { config } from '../config.ts'
-import { askOnce, exploreOnce } from './ask.ts'
+import { askOnce } from './ask.ts'
 import type {
   Capabilities,
   Provider,
@@ -21,7 +21,6 @@ import type {
   SessionEvent,
   SessionSpec,
 } from './provider.ts'
-import type { ToolEntry } from './registry.ts'
 import type { ModelRoute } from './route.ts'
 
 export type QueryFn = (params: { prompt: AsyncIterable<SDKUserMessage>; options: Options }) => Query
@@ -128,24 +127,6 @@ export class ClaudeCodeProvider implements Provider {
     )
   }
 
-  explore(
-    system: string,
-    prompt: string,
-    tools: ToolEntry[],
-    schema: Record<string, unknown>,
-    turns: number,
-  ) {
-    return exploreOnce(
-      this.askDir ?? process.cwd(),
-      this.modelRoute?.env() ?? {},
-      system,
-      prompt,
-      tools,
-      schema,
-      turns,
-    )
-  }
-
   options(spec: SessionSpec): Options {
     const { deskDir, modules, granted, registry, gate } = spec
     const home = process.env.HOME ?? ''
@@ -155,7 +136,7 @@ export class ClaudeCodeProvider implements Provider {
       PATH: process.env.PATH ?? '/usr/bin:/bin:/usr/sbin:/sbin',
       LANG: process.env.LANG ?? 'en_US.UTF-8',
       TMPDIR: process.env.TMPDIR ?? '/tmp',
-      // the person's own claude.ai connectors never join (spike 2)
+      // the person's own claude.ai connectors never join
       ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
       ENABLE_TOOL_SEARCH: 'true',
       CLAUDE_AGENT_SDK_CLIENT_APP: 'alpha/0.1.0',
@@ -204,7 +185,7 @@ export class ClaudeCodeProvider implements Provider {
       }
     }
     // On each message: the per-turn layer, and on a fresh session's first message the start
-    // layer too (SessionStart does not fire on a fresh session: spike 7).
+    // layer too (SessionStart does not fire on a fresh session).
     const onMessage: HookCallback = async (input) => {
       if (input.hook_event_name !== 'UserPromptSubmit') return {}
       const layers = [spec.context.takeFresh() ? spec.context.start() : '', spec.context.turn()]

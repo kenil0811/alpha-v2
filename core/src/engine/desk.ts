@@ -1,14 +1,14 @@
-// The desk: each user's one long-lived session, the only session that speaks to them.
-// It speaks to the model through a provider (decision 11): Claude Code through the Agent SDK on
-// the person's subscription or a key; the tools are the registry's, and every call goes through the gate adapter before it runs. Longer work runs as
-// the route's background subagents where it has them; their outcomes come back here and the desk
-// says them in its own words.
+// The desk: each user's one long-lived session, the only session that speaks to them. It speaks to
+// the model through a provider: Claude Code through the Agent SDK on the person's subscription or a
+// key; the tools are the registry's, and every call goes through the gate adapter before it runs.
+// Longer work runs as the route's background subagents where it has them; their outcomes come back
+// here and the desk says them in its own words.
 import { realpathSync } from 'node:fs'
 import { config } from '../config.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { instructionsOf } from '../modules/agents.ts'
 import { type AgentAsk, askOfTurn, OPEN } from '../world/agents/asks.ts'
-import { CHIEF } from '../world/agents/index.ts'
+import { agentReach, CHIEF } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
 import type { Actor } from '../world/journal.ts'
 import type { User, World } from '../world/world.ts'
@@ -173,7 +173,7 @@ export class Desk {
   registry(): Registry {
     return new Registry(
       // the nine small tools are in the model's hands from the start; connect, look, keep and
-      // run are found when a turn needs them (context by mode, 24 Oct)
+      // run are found when a turn needs them
       [
         ...worldTools(this.world, this.here, this.hands, this.connectors ?? undefined),
         ...(this.connectors?.entries() ?? []),
@@ -395,9 +395,11 @@ export class Desk {
     const session = this.provider().session({
       deskDir,
       modules,
-      granted: agent
-        ? [...this.granted, realpathSync(this.world.agents.dirOf(agent.id))]
-        : this.granted,
+      // what the agent may reach, read in the one place a limit would go
+      granted: agentReach(
+        agent ?? null,
+        agent ? [...this.granted, realpathSync(this.world.agents.dirOf(agent.id))] : this.granted,
+      ),
       userName: this.user.name,
       ...(resume ? { resume } : {}),
       model: this.world.agents.modelOf(this.named) ?? config.models().desk,
@@ -533,7 +535,7 @@ export class Desk {
     }
     if (e.type === 'result') {
       const stopped = this.stopping || e.stopped
-      // what the turn spent, under the module it was asked in (core plan step 5)
+      // what the turn spent, under the module it was asked in
       const spent = turnSpent(this.world, this.user.id, e.data)
       this.world.spend.add(
         { kind: 'turn', turn: running.turn, module: running.from?.id ?? null, agent: this.named },

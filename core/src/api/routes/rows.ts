@@ -1,8 +1,7 @@
-// A row on its own (core step 3b, Kenil's yes 27 Oct): the row's view, in the side panel and as a
-// page, reads it here with its table's fields, and what is around it: the rows that are part of
-// it (step 3a), the rows of other tables that link to it, and the notes that mention it. Nothing
-// here is stored: links are the relations the rows already hold, mentions are read from the
-// notes themselves, so there is nothing to keep in step.
+// A row on its own: the row's view, in the side panel and as a page, reads it here with its table's
+// fields, and what is around it: the rows that are part of it, the rows of other tables that link
+// to it, and the notes that mention it. Nothing here is stored: links are the relations the rows
+// already hold, mentions are read from the notes themselves, so there is nothing to keep in step.
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { all } from '../../world/db.ts'

@@ -1,7 +1,7 @@
 // Alpha's helper on the Mac: a small app ("Alpha") that reaches what Node cannot (the Keychain,
-// Calendar, Contacts). Calendar and Contacts are asked through the app itself, started by
-// `open`, so macOS asks the person on Alpha's behalf (week 2 spike 1); the Keychain is reached by
-// running its binary directly, so a secret goes in on stdin and never on a command line.
+// Calendar, Contacts). Calendar and Contacts are asked through the app itself, started by `open`,
+// so macOS asks the person on Alpha's behalf; the Keychain is reached by running its binary
+// directly, so a secret goes in on stdin and never on a command line.
 import { execFile, spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -44,7 +44,7 @@ export async function runHelper(
 }
 
 // `open -W` can lose a helper that already ended before it began waiting for it ("kevent() failed:
-// No such process", seen under load on 21 Oct): the helper's answer is written all the same, so it
+// No such process", seen under load): the helper's answer is written all the same, so it
 // is read; with none written, the helper is started once more.
 const ENDED_FIRST = /kevent\(\) failed: No such process/
 

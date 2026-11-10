@@ -113,8 +113,8 @@ export interface Snapshot {
   prov: Record<string, Provenance>
 }
 
-// How a row's provenance is kept (Kenil, 22 Oct: most rows carry one provenance on every
-// field): one row for every field not listed (field id '') and a row per field that differs.
+// How a row's provenance is kept (most rows carry one provenance on every field): one row for
+// every field not listed (field id '') and a row per field that differs.
 // A field's provenance is its own row, else the row's; only fields holding a value have one.
 export interface Stored {
   all: Provenance | null

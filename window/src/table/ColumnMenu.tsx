@@ -1,5 +1,5 @@
-// A column's menu, in the column itself (Kenil, 12 Oct, "like AG Grid"): sort, filter, group by
-// it, a total, colours, move it, hide it. And the rule editor a filter chip opens too.
+// A column's menu, in the column itself, as in AG Grid: sort, filter, group by it, a total,
+// colours, move it, hide it. And the rule editor a filter chip opens too.
 import type { FieldView, FilterOp, FilterRule, RowView, TotalOp, ViewConfig } from '@alpha/core/api'
 import {
   ArrowDown,
@@ -456,7 +456,7 @@ function ColourEditor({
 export type { TotalOp }
 
 // The person's own sentence on what a field means: theirs from then on, so a kit's update or
-// Alpha's guess never writes over it (the semantic layer, 24 Oct).
+// Alpha's guess never writes over it (the semantic layer).
 function AboutEditor({
   tableId,
   field,

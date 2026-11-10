@@ -10,7 +10,7 @@ import { syncSchedules } from '../schedules.ts'
 import { installedKits, readKit, sha } from './read.ts'
 import { currentRowHash, landSetup } from './shape.ts'
 
-// What of a kit is the person's now (decision 3): the files, setup rows, views and fields they
+// What of a kit is the person's now: the files, setup rows, views and fields they
 // changed, added or removed, and the fields the kit no longer uses with the rows still under them.
 export interface Yours {
   files: { path: string; state: 'changed' | 'removed' }[]
@@ -145,7 +145,7 @@ export async function takeBack(
   return `The view ${name} on ${t.name} is the kit's again.`
 }
 
-// A change of the person's to a maintained kit (decision 3b) the maintainer has not seen.
+// A change of the person's to a maintained kit the maintainer has not seen.
 export function recordChange(
   world: World,
   moduleId: string,

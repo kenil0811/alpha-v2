@@ -1,4 +1,4 @@
-// Renaming from the window (Batch B, picks 7 and 14a): a table's name in the bar and a module's in
+// Renaming from the window: a table's name in the bar and a module's in
 // the rail, each through the one core rename Alpha's tool uses, walled and journaled the same.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

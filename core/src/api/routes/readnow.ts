@@ -1,8 +1,8 @@
-// Read now (Batch B, pick 15, Kenil's yes 1 Nov): on a connection, and on a table, which reads
-// every connection that fills it and can be read now (Mail: Gmail and Outlook in one press). One
-// waiting on a sign-in or the customer's own step is not read, and says why (W3). Both go the same
-// way: a connection signed in as the person renews its token first, so a sign-in revoked since
-// shows at once; one with nothing to read is checked.
+// Read now: on a connection, and on a table, which reads every connection that fills it and can
+// be read now (Mail: Gmail and Outlook in one press). One waiting on a sign-in or the customer's
+// own step is not read, and says why (W3). Both go the same way: a connection signed in as the
+// person renews its token first, so a sign-in revoked since shows at once; one with nothing to
+// read is checked.
 import { z } from 'zod'
 import type { Connection } from '../../world/connections.ts'
 import { Refused } from '../../world/kinds.ts'

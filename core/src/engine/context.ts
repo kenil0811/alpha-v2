@@ -18,8 +18,8 @@ function readWhole(file: string): string {
   return existsSync(file) ? readFileSync(file, 'utf8').trim() : ''
 }
 
-// A module's skills, each by its SKILL.md's name and description (item 61 of the problems list,
-// 25 Oct): what its scripts do, known from the start without reading the folder.
+// A module's skills, each by its SKILL.md's name and description: what its scripts do, known from
+// the start without reading the folder.
 export function skillsOf(dir: string): { name: string; description: string }[] {
   const root = join(dir, 'skills')
   if (!existsSync(root)) return []
@@ -47,7 +47,7 @@ export function startLayer(
   userId: string,
   deskDir: string,
   connections: string | null,
-  extra: string[] = [], // what plugins add: the person's facts one keeps (onboarding 4a)
+  extra: string[] = [], // what plugins add: the person's facts one keeps
 ): string {
   const parts: string[] = ['# Alpha: where things stand']
   const everyone = readWhole(instructionsFile(world, null))
@@ -68,7 +68,7 @@ export function startLayer(
   if (!map.length) parts.push('None yet.')
   for (const m of map) {
     parts.push(`### ${m.module}${m.within ? ` (inside ${m.within})` : ''}`)
-    // what it is for, before anything in it (core step 3e)
+    // what it is for, before anything in it
     const mod = world.shape.module(m.module)
     const bc = mod ? businessCase(mod) : null
     parts.push(
@@ -121,7 +121,7 @@ export function startLayer(
 }
 
 // A table as the model needs it to read or write it: its fields with their kinds, choices,
-// relations and what each means (the semantic layer, 24 Oct), given once per session on the
+// relations and what each means (the semantic layer), given once per session on the
 // table's first touch, and again after compaction when the start layer is resent.
 export function tableBrief(world: World, t: Table): string {
   const rows = world.records.count(t.id)

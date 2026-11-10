@@ -1,4 +1,4 @@
-// Picking a related row or a person from the window (Batch B, 14b): the one-cell route takes a row
+// Picking a related row or a person from the window: the one-cell route takes a row
 // id for a relation and a person id for a person field, the world checks each is there, and the
 // journal names what was picked. Files, and many rows at once, stay with Alpha.
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -102,7 +102,7 @@ describe('a picked related row', () => {
     ).json() as TableView
     expect([view.names[dairy], view.names[mill]]).toEqual(['Dairy Farm', 'Mill & Co'])
     expect(view.fields.find((f) => f.name === 'Supplier')?.relatesTo).toBe(suppliers.id)
-    // its shape alone, for the window to draw while the rows come (Kenil, 10 Nov)
+    // its shape alone, for the window to draw while the rows come
     const shape = (
       await a.inject({ url: `/api/tables/${orders.id}?rows=none`, headers: ok })
     ).json() as TableView

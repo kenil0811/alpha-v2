@@ -1,5 +1,4 @@
-// The task tool's walls: only the run's own word makes a schedule's task done (Q93;
-// item 41 of the problems list, 25 Oct).
+// The task tool's walls: only the run's own word makes a schedule's task done.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

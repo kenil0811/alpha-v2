@@ -1,4 +1,4 @@
-// A journey's checks on agents (clean base step 7): how many, what one remembers, its instructions,
+// A journey's checks on agents: how many, what one remembers, its instructions,
 // and the asks between them. Read from the world, never from the model's prose.
 import { instructionsOf } from '../modules/agents.ts'
 import type { World } from '../world/world.ts'

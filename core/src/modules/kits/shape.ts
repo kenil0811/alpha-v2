@@ -10,8 +10,8 @@ import type { World } from '../../world/world.ts'
 import { rowHash } from './read.ts'
 
 // A table's fields of one sort: plain, relations, or summaries (which read the relations). The
-// tables they point at are the kit's own by key where it has them (call 6), so a table the person
-// renamed is still the one pointed at.
+// tables they point at are the kit's own by key where it has them, so a table the person renamed is
+// still the one pointed at.
 function fieldsOf(
   spec: KitManifest['tables'][number],
   sort: 'plain' | 'relation' | 'summary',
@@ -37,10 +37,11 @@ function fieldsOf(
     }))
 }
 
-// Tables first without their relations, then the relations, so a table can point at one made
-// after it, then the summaries, which read the relations (core step 3c). A kit's field is matched by its key (decision 3), so a rename the kit declares in
-// its history is a rename in place; what the person removed stays removed (tombstones); a field
-// the kit no longer uses is hidden, its rows kept. A newer version never removes data.
+// Tables first without their relations, then the relations, so a table can point at one made after
+// it, then the summaries, which read the relations. A kit's field is matched by its key, so a
+// rename the kit declares in its history is a rename in place; what the person removed stays
+// removed (tombstones); a field the kit no longer uses is hidden, its rows kept. A newer version
+// never removes data.
 export function shapeTables(
   world: World,
   module: Module,
@@ -121,12 +122,12 @@ export function shapeTables(
         })
         world.shape.setChoices(t.id, was.name, merged, ctx)
       }
-      // a choice's colours come with the kit's version of it, unless someone else set them since
-      // (item 42 of the problems list, 25 Oct): those are theirs, and stand
+      // a choice's colours come with the kit's version of it, unless someone else set them since:
+      // those are theirs, and stand
       if (was && f.tones && !world.shape.tonesSetByOthers(was.id))
         world.shape.setTones(t.id, was.name, f.tones, ctx)
     }
-    // a relation the kit now says is part of its row (core step 3a); one whose rows don't all have
+    // a relation the kit now says is part of its row; one whose rows don't all have
     // their row yet stays as it is, and says why
     for (const f of spec.fields) {
       if (f.kind !== 'relation' || !f.part_of) continue
@@ -144,7 +145,7 @@ export function shapeTables(
         })
       }
     }
-    // a person field the kit now says is one row per person (core step 3d): rows that share a
+    // a person field the kit now says is one row per person: rows that share a
     // person fold into one; a table some of whose rows name no one stays as it is, and says why
     for (const f of spec.fields) {
       if (f.kind !== 'person' || !f.per) continue

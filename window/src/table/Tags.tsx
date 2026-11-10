@@ -1,4 +1,4 @@
-// A choice holding several (tags, core step 3c): shown as chips, one per choice held, each with
+// A choice holding several (tags): shown as chips, one per choice held, each with
 // its colour where the choice has one; picked from a list of the field's choices, ticked or not.
 // The pick is kept as the typed words ("Rush, Late"), as every other editor keeps its value, and
 // read back with readValue.
@@ -48,7 +48,7 @@ export function TagPicker({
   const now = held(typed)
   const flip = (c: string, on: boolean) =>
     onTyped(field.choices.filter((x) => (x === c ? on : now.includes(x))).join(', '))
-  // the same search and Add new… as every dropdown (Batch D, 66.7, Kenil's yes 2 Nov)
+  // the same search and Add new… as every dropdown
   const [words, setWords] = useState('')
   const table = useTableName()
   const shown = field.choices.filter((c) => c.toLowerCase().includes(words.trim().toLowerCase()))

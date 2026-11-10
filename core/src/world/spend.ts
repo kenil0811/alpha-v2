@@ -1,5 +1,5 @@
-// What each use of the model spent (core plan step 5, Kenil's yes 28 Oct): a row per model per use,
-// with its tokens and its cost, and what it served (a desk turn, a schedule's run, a small ask).
+// What each use of the model spent: a row per model per use, with its tokens and its cost, and
+// what it served (a desk turn, a schedule's run, a small ask).
 // Claude Code says a cost itself, at API prices; a session says running totals, so a turn's own
 // share is the total now less the total before. Nothing is capped: this only says what was spent.
 import { monthOf, monthSpan } from './day.ts'
@@ -113,7 +113,7 @@ export class Spend {
   }
 
   // A month's rows (YYYY-MM), and the months there are, newest first.
-  // the person's month, not UTC's (Batch A, pick 4): from its first instant to the next's
+  // the person's month, not UTC's: from its first instant to the next's
   month(month: string): SpendRow[] {
     const [from, to] = monthSpan(month)
     return all<SpendRow>(

@@ -1,5 +1,5 @@
-// A panel beside the page, with the assistant open (Batch A, picks 2 and 3; Kenil's call 3: when
-// there is no room, the panel gives way and the assistant stays). A5's 600px for the page hold.
+// A panel beside the page, with the assistant open: when there is no room, the panel gives way and
+// the assistant stays. A5's 600px for the page hold.
 import { describe, expect, it } from 'vitest'
 import { NO_LAYOUT } from './layout.ts'
 import { besideWidth, roomBeside } from './room.ts'

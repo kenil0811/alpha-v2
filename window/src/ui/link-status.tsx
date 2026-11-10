@@ -1,6 +1,6 @@
-// Where a link goes, at the window's foot (Batch D, 66.24, Kenil's yes 2 Nov), as a browser's
-// status bar says it: while the pointer rests on a link to a place in Alpha, a small line names
-// it ("Settings › Usage"); an outside one shows its address with the outside mark. Mounted once.
+// Where a link goes, at the window's foot, as a browser's status bar says it: while the pointer
+// rests on a link to a place in Alpha, a small line names it ("Settings › Usage"); an outside one
+// shows its address with the outside mark. Mounted once.
 import { ArrowRight, ExternalLink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'

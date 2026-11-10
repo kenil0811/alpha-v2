@@ -23,7 +23,7 @@ export function token(): string {
 export class Problem extends Error {}
 
 // The window's words for a core that gave none: it is on this Mac, so "not answering" is the
-// whole story (item 30 of the problems list, 25 Oct).
+// whole story.
 export const NOT_ANSWERING = "Alpha isn't answering right now."
 
 // A failure in words a person reads: the core's own when it refused, else the line above (never

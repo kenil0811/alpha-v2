@@ -1,6 +1,6 @@
 // The card shell: a sunk head that names what it is (a gate, a question) and what it waits on,
 // then its body. Cards sit in the stream; the shell is the same for every kind. In a list a card
-// has a way to its own page (Batch B, pick 13), where it shows whole.
+// has a way to its own page, where it shows whole.
 import { ArrowUpRight } from 'lucide-react'
 import { createContext, type ReactNode, useContext } from 'react'
 import { Label } from './pill.tsx'
@@ -47,8 +47,8 @@ export function Card({
   )
 }
 
-// A card's row of buttons at its right, the main act (written first) at the right edge (Batch D,
-// 66.2, Kenil's yes 2 Nov): every card's buttons sit the same way.
+// A card's row of buttons at its right, the main act (written first) at the right edge: every
+// card's buttons sit the same way.
 export function Actions({ children }: { children: ReactNode }) {
   return <div className="flex flex-row-reverse flex-wrap items-center gap-2">{children}</div>
 }

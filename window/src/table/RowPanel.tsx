@@ -1,10 +1,9 @@
-// A row's view (core step 3b, Kenil's yes 27 Oct), drawn in the side panel and, with Open page, as
-// the row's own page: every field with its value and mark (a double-click changes it, as the
-// person's word; a right-click says where it came from, its history and the rest); its notes; the
-// rows that are part of it (a deal's yearly figures, step 3a) as small tables with New; its tasks;
-// and the documents on it (a deal's CIM), which a file dropped on the view joins at once. Its own
-// page also has the rows that link to it, the notes that mention it, and the pages and files its
-// values were read from (clean base step 6).
+// A row's view, drawn in the side panel and, with Open page, as the row's own page: every field
+// with its value and mark (a double-click changes it, as the person's word; a right-click says
+// where it came from, its history and the rest); its notes; the rows that are part of it (a deal's
+// yearly figures) as small tables with New; its tasks; and the documents on it (a deal's CIM),
+// which a file dropped on the view joins at once. Its own page also has the rows that link to it,
+// the notes that mention it, and the pages and files its values were read from.
 import type { FieldView, RowAround, RowFileView, RowView, TasksView } from '@alpha/core/api'
 import { ExternalLink, FileText, Plus, X } from 'lucide-react'
 import { type DragEvent, useEffect, useState } from 'react'
@@ -244,7 +243,7 @@ export function RowBody({
         </div>
         <div className="flex flex-col gap-2 p-4.5">
           <div className="font-semibold text-ink-3 text-sm">Documents</div>
-          {/* one drop zone for files (Batch D, 66.22): drop on it or click to choose */}
+          {/* one drop zone for files: drop on it or click to choose */}
           <DropZone onFiles={add}>
             {files.map((f) => (
               <div

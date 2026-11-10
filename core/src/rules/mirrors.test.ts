@@ -1,11 +1,11 @@
 // Who owns the data, mirrors of a system outside (docs/rules.md, D6 to D12): the made-up mailbox's
-// Messages, each rule tried through every door that can break it. D11 is written with step 8.
+// Messages, each rule tried through every door that can break it. D11 is written with Dell's contract.
 
 import { checkConnector } from '@alpha/connector-sdk'
 import type { SourceView } from '../api/types.ts'
 import { revert } from '../world/records/index.ts'
 import { asPerson } from './drive.ts'
-import { drive, refusal, rule } from './rule.ts'
+import { CONTRACT, drive, refusal, rule } from './rule.ts'
 import { ACCOUNT, MAILBOX, type RuleWorld } from './world.ts'
 
 const SOURCE = 'The Harbor deal' // what the mailbox read for m1
@@ -45,7 +45,7 @@ rule('D6', 'a mirror’s source field takes a correction kept in Alpha, never se
     },
   },
   later: {
-    'an action that leaves the world on a corrected value uses it, and its card says so': 8,
+    'an action that leaves the world on a corrected value uses it, and its card says so': CONTRACT,
   },
 })
 
@@ -159,8 +159,8 @@ rule(
 
 rule('D10', 'a change to a declared field is a request that leaves the world, never a write', {
   later: {
-    'a change to a declared field goes out on a card, as a step that leaves the world': 8,
-    'a request is refused when the record changed since the value it was based on': 8,
+    'a change to a declared field goes out on a card, as a step that leaves the world': CONTRACT,
+    'a request is refused when the record changed since the value it was based on': CONTRACT,
   },
 })
 
@@ -174,6 +174,6 @@ rule('D12', 'a mirror’s row says when it was last read, and is read fresh befo
     },
   },
   later: {
-    'an action that leaves the world on a mirror’s value reads that row fresh first': 8,
+    'an action that leaves the world on a mirror’s value reads that row fresh first': CONTRACT,
   },
 })

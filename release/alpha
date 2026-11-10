@@ -1,5 +1,5 @@
 #!/bin/sh
-# The alpha command (packaging, piece 3): Alpha's own controls on this Mac, from Terminal.
+# The alpha command: Alpha's own controls on this Mac, from Terminal.
 #   alpha status | open | start | stop | restart | logs | backup | restore <dir> | export | import <archive> | update <file>
 #         rollback | report | signin | uninstall [--remove-data]
 set -e
@@ -153,7 +153,7 @@ case "$1" in
     say "Alpha is uninstalled."
     ;;
   *)
-    say "alpha status | open | start | stop | restart | logs | backup | restore <dir> | update <file> | rollback | report | signin | uninstall [--remove-data]"
+    say "alpha status | open | start | stop | restart | logs | backup | restore <dir> | export | import <archive> | update <file> | rollback | report | signin | uninstall [--remove-data]"
     exit 1
     ;;
 esac

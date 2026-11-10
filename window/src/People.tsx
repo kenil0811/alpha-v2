@@ -1,8 +1,8 @@
-// People (Ledger): everyone Alpha knows, however many rows name them, each with
-// their company and plain numbers (how many messages and meetings lately, the last, who wrote
-// first), never a score; companies the same way. A page each: how to reach them, where they work
-// now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),
-// and the mail and meetings with them, newest first, each opening its row.
+// People: everyone Alpha knows, however many rows name them, each with their company and plain
+// numbers (how many messages and meetings lately, the last, who wrote first), never a score;
+// companies the same way. A page each: how to reach them, where they work now and before, where
+// Alpha knows them from, the ones merged into them (each can be unmerged), and the mail and
+// meetings with them, newest first, each opening its row.
 import type { KeptTable, ModuleSummary, PersonView, RowAround } from '@alpha/core/api'
 import { CalendarDays, ChevronRight, Mail, Pencil } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
@@ -134,7 +134,7 @@ function PersonPage({
   const [name, setName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [mine, setMine] = useState(false)
-  // the notes that mention them (core step 3b), under their id or one merged into them
+  // the notes that mention them, under their id or one merged into them
   const [mentions, setMentions] = useState<RowAround['mentions']>([])
   const load = useCallback(() => {
     api
@@ -184,7 +184,7 @@ function PersonPage({
     p.contact.last ? `last on ${date(p.contact.last)}` : '',
     p.contact.count ? (firstWords(p.contact.first) ?? '') : '',
   ].filter(Boolean)
-  // what is ahead and what is past, on the person's own day (Batch A, pick 4)
+  // what is ahead and what is past, on the person's own day
   const upcoming = p.history.filter((h) => !isPast(h.at))
   const past = p.history.filter((h) => isPast(h.at))
 
@@ -342,7 +342,7 @@ function PersonPage({
           </Section>
         )}
 
-        {/* their row in each one-row-per-person table of this module (core step 3d); a value
+        {/* their row in each one-row-per-person table of this module; a value
             typed for someone with no row yet makes it */}
         {p.per.map((t) => (
           <Section

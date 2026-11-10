@@ -1,6 +1,6 @@
-// One icon set for modules (Vikas, 25 Oct): the rail, the folded rail and Home's cards draw a
-// module's icon from here and nowhere else. A name that says what the module is picks its icon;
-// any other name gets one of the set, the same one every time.
+// One icon set for modules: the rail, the folded rail and Home's cards draw a module's icon from
+// here and nowhere else. A name that says what the module is picks its icon; any other name gets
+// one of the set, the same one every time.
 import {
   BookOpen,
   Boxes,

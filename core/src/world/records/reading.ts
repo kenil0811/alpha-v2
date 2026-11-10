@@ -55,8 +55,8 @@ export function get(records: Records, id: string): { table: Table; record: Recor
   return { table, record: { ...record, ...readOf(records, table.id, id)(id) } }
 }
 
-// A table's summaries for these rows (core step 3c), each with its computed provenance; they
-// are read out with the row, never kept in it, its versions or its words.
+// A table's summaries for these rows, each with its computed provenance; they are read out with the
+// row, never kept in it, its versions or its words.
 function summed(records: Records, table: Table, rows: Row[]) {
   const fields = table.fields.filter((f) => f.kind === 'summary')
   const sums = fields.length

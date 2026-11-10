@@ -1,6 +1,6 @@
-// What a plugin's screen may use (onboarding in Alpha, Kenil's yes 2 Nov): the window's own shared
-// pieces and a way to its own routes, nothing else, so a plugin's page looks and acts as the
-// window's own screens do and cannot drift from them. A plugin's screen imports only this.
+// What a plugin's screen may use: the window's own shared pieces and a way to its own routes,
+// nothing else, so a plugin's page looks and acts as the window's own screens do and cannot drift
+// from them. A plugin's screen imports only this.
 import type { ModuleSummary } from '@alpha/core/api'
 import type { ComponentType } from 'react'
 import { api } from '../api.ts'

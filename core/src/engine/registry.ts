@@ -1,6 +1,6 @@
-// The tool registry (decision 11): every tool the model can call, the world's and each
-// connector's, as one entry: its server, name, description, input shape, and the handler that
-// runs it. The Agent SDK's servers are built from the entries.
+// The tool registry: every tool the model can call, the world's and each connector's, as one entry:
+// its server, name, description, input shape, and the handler that runs it. The Agent SDK's servers
+// are built from the entries.
 import { createSdkMcpServer, tool as sdkTool } from '@anthropic-ai/claude-agent-sdk'
 import type { z } from 'zod'
 
@@ -71,7 +71,7 @@ export class Registry {
     return this.entries
   }
 
-  // A tool run by name, as Alpha's own loop runs one: the gate is before it, not here.
+  // A tool run by name: the gate is before it, not here.
   async call(name: string, input: Record<string, unknown>): Promise<ToolResult> {
     const e = this.byName.get(name)
     if (!e)

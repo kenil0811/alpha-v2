@@ -1,7 +1,7 @@
 // Where a connector's items land: its module and tables, made when it is first
 // connected, any field a newer version adds, and how their rows name people. Each is found by the
-// lasting key it was made with (Batch B, call 6), so one the person renamed keeps taking the rows;
-// a module or table found by its name is keyed from then on.
+// lasting key it was made with, so one the person renamed keeps taking the rows; a module or
+// table found by its name is keyed from then on.
 import type { Connector } from '@alpha/connector-sdk'
 import type { Table } from '../world/shape/index.ts'
 import { markMirror } from '../world/shape/keys.ts'
@@ -26,7 +26,7 @@ export function landIn(world: World, c: Connector): Table[] {
       if (x) world.shape.setKey(x.id, f.name)
     }
     const missing = found ? keyed.filter((f) => !found.fields.some((x) => same(x, f.name))) : []
-    // Alpha's working memory, out of the sidebar until the person shows it (Kenil, 19 Oct).
+    // Alpha's working memory, out of the sidebar until the person shows it.
     const t = !found
       ? world.shape.makeTable(
           module.id,

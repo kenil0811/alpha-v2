@@ -2,7 +2,7 @@
 // Host each connection gets, its syncs, and its tools served to the desk a few at a time through
 // tool search, one MCP server per connector. Every tool's effect goes to the gates before it
 // runs. The core names no connector: each describes itself in its manifest, and the service
-// answers for the set it was given (decision 10).
+// answers for the set it was given.
 import { createHash } from 'node:crypto'
 import {
   type BrowserEngine,
@@ -38,7 +38,7 @@ export interface ServiceOptions {
   fixtures?: string // a directory of recorded answers, one folder per connector: never a real account
   browser?: () => BrowserEngine // the human-pace browser, for a site the person signs in to
   known?: Connector[] // the loaded set (discover.ts); none when not given
-  signIn?: SignIn // signing in as the person (step 2, part 5)
+  signIn?: SignIn // signing in as the person
 }
 
 // The name a tool has for the model, and back.
@@ -149,8 +149,8 @@ export class ConnectorService {
       : undefined
   }
 
-  // The connections that fill a table (Batch B, pick 15): those whose loaded connector reads into
-  // it, found by its lasting key, so a renamed table still knows what fills it.
+  // The connections that fill a table: those whose loaded connector reads into it, found by its
+  // lasting key, so a renamed table still knows what fills it.
   filling(tableId: string): { conn: Connection; c: Connector }[] {
     return this.world.connections.list().flatMap((conn) => {
       const c = this.find(conn.connector)
@@ -164,7 +164,7 @@ export class ConnectorService {
     const actor = { kind: 'connector' as const, id: c.manifest.name }
     return {
       account: conn.account,
-      // signed in as the person: a short-lived token, renewed by the core (step 2, part 5)
+      // signed in as the person: a short-lived token, renewed by the core
       secret: async () => {
         if (c.manifest.auth !== 'oauth')
           return conn.secretRef ? this.options.secrets.get(conn.secretRef) : null
@@ -220,7 +220,7 @@ export class ConnectorService {
   }
 
   // A tool's call, by its effect: one that changes something is never tried again when its fate
-  // is unknown (call A); a read keeps its retries.
+  // is unknown; a read keeps its retries.
   call(c: Connector, conn: Connection, effect: Effect = 'read'): Call {
     const fixtures = this.fixtures(c)
     const options: CallOptions = {
@@ -228,7 +228,7 @@ export class ConnectorService {
       ...(fixtures ? { fixtures } : {}),
       ...(effect !== 'read' ? { once: true } : {}),
     }
-    // a connector in its own process paces and retries there, by the same options (step 2)
+    // a connector in its own process paces and retries there, by the same options
     return Object.assign(makeCall(c.manifest, this.host(c, conn), options), { options })
   }
 
@@ -445,7 +445,7 @@ export class ConnectorService {
   private fail(c: Connector, conn: Connection, err: unknown): void {
     const words = err instanceof Error ? err.message : String(err)
     const signIn = err instanceof Problem && err.kind === 'sign_in'
-    // a step only the customer can do (step 2, part 4): waited on, not retried
+    // a step only the customer can do: waited on, not retried
     const waiting = err instanceof Problem && err.kind === 'waiting'
     this.world.connections.setState(
       conn.id,
@@ -473,7 +473,7 @@ export class ConnectorService {
       : conns[0]
     if (!conn)
       throw new Refused(
-        `${c.manifest.title} is not connected: the person connects it in Settings › Connections.`,
+        `${c.manifest.title} is not connected: the person connects it in Intelligence › Connections.`,
       )
     if (!account && conns.length > 1)
       throw new Refused(
@@ -493,7 +493,7 @@ export class ConnectorService {
     const named = connector ?? this.mailer()
     if (!named)
       throw new Refused(
-        'Nothing connected sends mail: the person connects their mail in Settings › Connections.',
+        'Nothing connected sends mail: the person connects their mail in Intelligence › Connections.',
       )
     const c = this.connector(named)
     const spec = c.tools[name]
@@ -553,7 +553,7 @@ export class ConnectorService {
       .sort()
   }
 
-  // Every connector's tools as entries of the tool registry (decision 11): served.ts.
+  // Every connector's tools as entries of the tool registry: served.ts.
   entries(): ToolEntry[] {
     return entriesOf(this)
   }

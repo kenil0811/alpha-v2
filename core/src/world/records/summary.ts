@@ -1,8 +1,8 @@
-// What a summary field comes to (core step 3c, Kenil's yes 27 Oct). A summary has no column and
-// is never written: it is worked out when its table is read, one grouped query per summary per
-// read, so it is never stale and nothing keeps it in step. Its provenance is computed, with what
-// it is in words. Amounts in more than one currency are not added together: that summary is
-// left empty on that row. The model reads a summary as a column of the table's view.
+// What a summary field comes to. A summary has no column and is never written: it is worked out
+// when its table is read, one grouped query per summary per read, so it is never stale and nothing
+// keeps it in step. Its provenance is computed, with what it is in words. Amounts in more than one
+// currency are not added together: that summary is left empty on that row. The model reads a
+// summary as a column of the table's view.
 import { all, now } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { ruleSql } from '../filter-sql.ts'

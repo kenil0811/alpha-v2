@@ -18,9 +18,8 @@ function inside(path: string, base: string, roots: string[]): boolean {
 }
 
 // The walls on the route's file tools: reads in the desk's folder, the modules and the granted
-// folders; writes in the first two only; and a module's module.yaml never by hand, since its
-// sites and shape change through the shape tool and the person's cards (item 12 of the problems
-// list, 25 Oct).
+// folders; writes in the first two only; and a module's module.yaml never by hand, since its sites
+// and shape change through the shape tool and the person's cards.
 export function fileWall(
   tool: string,
   input: Record<string, unknown>,

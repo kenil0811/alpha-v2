@@ -27,7 +27,7 @@ describe('withImapClient', () => {
   })
 })
 
-// One send, once (final plan, call A, 28 Oct): an email Gmail took before the connection dropped
+// One send, once: an email Gmail took before the connection dropped
 // is found in Sent and said sent, never sent again; one it never took is said not sent; Gmail asking
 // to slow down is a busy problem the runtime waits out; a refusal is said as it is.
 describe('sendOnce', () => {
@@ -94,7 +94,7 @@ describe('sendOnce', () => {
     )
   })
 
-  // Kenil, 29 Oct: "send it" after a draft sends that draft, not a new email beside it.
+  // "send it" after a draft sends that draft, not a new email beside it.
   const saved = (over: Partial<Draft> = {}): Draft => ({
     to: ['sam@grandbb.example'],
     cc: [],
@@ -137,8 +137,8 @@ describe('sendOnce', () => {
     expect(g.removed).toEqual(['<d1@gmail.com>'])
   })
 
-  // Kenil's run, 29 Oct 16:22: Alpha had the draft's id and still sent a new email beside it, so
-  // Gmail itself sends the draft in Drafts that is this very email
+  // a send that names no draft, of an email that is a draft in Drafts, sends that draft, never a
+  // new email beside it
   it('sends the draft in Drafts that is the same email when the send names none', async () => {
     const g = drafts(saved())
     const same = { ...g.hands, sameDraft: async () => ({ ...saved(), id: '<d1@gmail.com>' }) }
@@ -171,8 +171,7 @@ describe('sendOnce', () => {
   })
 })
 
-// Kenil, 29 Oct: "why does it have to go to trash? ... lets do discard". Gmail keeps a message taken
-// out of a folder (archived, or in Trash), so a sent draft is moved to Trash and deleted for good
+// A draft is discarded, not left in Trash. Gmail keeps a message taken out of a folder (archived, or in Trash), so a sent draft is moved to Trash and deleted for good
 // there, found by Gmail's own id for it: the sent copy shares its Message-ID and is never touched.
 describe('discardDraft', () => {
   function gmailBox(labels: string[]) {

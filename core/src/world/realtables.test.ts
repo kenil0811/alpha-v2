@@ -1,5 +1,5 @@
-// Real tables (Kenil, 22 Oct): the shape changing under populated tables: fields added, renamed
-// and removed, list relations, pointers cleared.
+// Real tables: the shape changing under populated tables: fields added, renamed and removed, list
+// relations, pointers cleared.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

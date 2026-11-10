@@ -1,7 +1,7 @@
 // The model reads the world in SQL through a read-only view per table, on a read-only connection
-// whose authorizer lets it read those views and nothing else (a wall). Since the
-// tables are real (22 Oct) a table's view is thin: its id, when it was added, and its fields'
-// columns, without the row's own bookkeeping; a list relation shows as a junction view.
+// whose authorizer lets it read those views and nothing else (a wall). Since the tables are real, a
+// table's view is thin: its id, when it was added, and its fields' columns, without the row's own
+// bookkeeping; a list relation shows as a junction view.
 import { constants } from 'node:sqlite'
 import { all, type Db, one, openDb } from './db.ts'
 import { junctionName, lit, quote } from './ddl.ts'
@@ -38,7 +38,7 @@ export class ModelSql {
   private signature = ''
   private views = new Set<string>()
 
-  // the one-row-per-person tables of People's module, whose columns join the people view (3d)
+  // the one-row-per-person tables of People's module, whose columns join the people view
   private perTables: () => Table[]
 
   constructor(
@@ -172,7 +172,7 @@ export class ModelSql {
       this.db.exec(`DROP VIEW temp.${quote(v.name)}`)
     this.views.clear()
     for (const t of tables) {
-      // a summary (core step 3c) is a column worked out as it is read
+      // a summary is a column worked out as it is read
       const cols = [
         'id',
         'created_at AS added',
@@ -214,8 +214,8 @@ export class ModelSql {
       )
       this.views.add(name)
     }
-    // a row's notes (core step 3b) in a view of their own, kept out of the tables' views so a
-    // long text never swamps a read of the table: row, its table's view, the notes
+    // a row's notes in a view of their own, kept out of the tables' views so a long text never
+    // swamps a read of the table: row, its table's view, the notes
     const noted = tables.flatMap((t) =>
       t.fields
         .filter((f) => f.kind === 'notes')

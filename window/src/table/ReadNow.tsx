@@ -1,8 +1,7 @@
-// Read now on a table a connection fills (Batch B, pick 15, Kenil's yes 1 Nov): in its ⋮ menu, one
-// press reads every connection that fills it and can be read now (Mail: Gmail and Outlook); one
-// waiting on a sign-in or the customer stays greyed with its reason (W3). Under the table, a line
-// says what reads into it and when it last did. Each connection's own Read now stays in
-// Intelligence › Connections.
+// Read now on a table a connection fills: in its ⋮ menu, one press reads every connection that
+// fills it and can be read now (Mail: Gmail and Outlook); one waiting on a sign-in or the customer
+// stays greyed with its reason (W3). Under the table, a line says what reads into it and when it
+// last did. Each connection's own Read now stays in Intelligence › Connections.
 import type { ReadByView } from '@alpha/core/api'
 import { RefreshCw } from 'lucide-react'
 import { api } from '../api.ts'
@@ -18,8 +17,8 @@ export function titles(by: ReadByView[]): string {
     : (names[0] ?? '')
 }
 
-// When it was last read, in the words every Read now and Run now uses (Batch D, 66.25): "12 min
-// ago", the time today, else the day and time, in the person's own day (W7).
+// When it was last read, in the words every Read now and Run now uses: "12 min ago", the time
+// today, else the day and time, in the person's own day (W7).
 export function lastRead(by: ReadByView[], now: Date = new Date()): string | null {
   const at = by
     .map((r) => r.lastReadAt)

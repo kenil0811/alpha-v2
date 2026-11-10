@@ -1,5 +1,5 @@
 // Who may change a module (docs/rules.md, M1 to M5), each rule tried through every door that can
-// break it. M6 to M8 are written with step 8.
+// break it. M6 to M8 are written with Dell's contract.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { checkSigned, install } from '../modules/kits/index.ts'
@@ -7,7 +7,7 @@ import { api } from '../modules/runs/api.ts'
 import type { ScheduleRunner } from '../modules/runs/runner.ts'
 import type { Act } from './doors.ts'
 import type { Acts } from './drive.ts'
-import { drive, refusal, refusedWith, rule } from './rule.ts'
+import { CONTRACT, drive, refusal, refusedWith, rule } from './rule.ts'
 import { KITS, type RuleWorld } from './world.ts'
 
 const NEW_FIELD = 'Priority'
@@ -93,7 +93,7 @@ rule('M2', 'in a managed module nobody changes its shape, and each door says who
   holds: (w, refused, act) =>
     refusedWith(refused, /manag/i) && unchanged(w, act, 'Cases', 'Case desk', about),
   later: {
-    'in a managed mirror the kit decides whether its source fields take corrections (D6)': 8,
+    'in a managed mirror the kit decides whether its source fields take corrections (D6)': CONTRACT,
   },
 })
 
@@ -139,7 +139,7 @@ rule(
       unchanged(w, act, 'Parts', 'Supply', about) &&
       w.world.cards.waiting().some((c) => /Mira maintains Supply/.test(c.words)),
     cases: {
-      // a file the firm adds to the module, as a source's own reader, is theirs (Kenil, 5 Nov)
+      // a file the firm adds to the module, as a source's own reader, is theirs
       'a file the kit did not ship is the firm’s to keep, with no card': async (w) => {
         await drive(w, 'alpha: keep').keep('Supply', 'files/our-suppliers.md', 'Ours.')
         const m = w.world.shape.module('Supply')

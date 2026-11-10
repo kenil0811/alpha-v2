@@ -1,6 +1,6 @@
-// Home (Kenil, 6 Nov): the date, the greeting, the ask box, what needs the person while something
-// waits (cards answered right here), and today's tasks. The modules are in the rail; the
-// conversation has its own place in the rail and on the right of every screen.
+// Home: the date, the greeting, the ask box, what needs the person while something waits (cards
+// answered right here), and today's tasks. The modules are in the rail; the conversation has its
+// own place in the rail and on the right of every screen.
 import type { CardView, Stream, TasksView } from '@alpha/core/api'
 import { ArrowUp, KeyRound, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
@@ -41,7 +41,7 @@ export function Home({
 }) {
   const [tasks, setTasks] = useState<TasksView | null>(null)
   const [finished, setFinished] = useState<TasksView | null>(null)
-  // a load that failed is said, with Try again, never shown as a quiet day (item 30, 25 Oct)
+  // a load that failed is said, with Try again, never shown as a quiet day
   const [failed, setFailed] = useState(false)
   const [words, setWords] = useState('')
   const ask = useRef<HTMLInputElement>(null)
@@ -96,7 +96,7 @@ export function Home({
         {/* a plugin's row, while something of its waits for the person */}
         {SCREENS.map((s) => s.Waiting && <s.Waiting key={s.name} />)}
 
-        {/* only while something waits (Kenil's call 12, 7 Nov) */}
+        {/* only while something waits */}
         {cards.length + signIns.length > 0 && (
           <Group title="Needs you" count={cards.length + signIns.length}>
             {cards.map((c) => (

@@ -1,4 +1,4 @@
-// A table as a file the person keeps (step 10's Export): CSV, or an Excel workbook (SheetJS), of
+// A table as a file the person keeps (Export): CSV, or an Excel workbook (SheetJS), of
 // exactly the rows and columns they were looking at. Numbers stay numbers in Excel.
 import * as XLSX from 'xlsx'
 

@@ -1,4 +1,4 @@
-// Activity (core step 1): what the window lists, newest first, from the journal and the runs.
+// Activity: what the window lists, newest first, from the journal and the runs.
 
 import type { RunRow } from '../modules/runs/index.ts'
 import { schedules } from '../modules/schedules.ts'
@@ -12,7 +12,7 @@ export function activityView(
   byWords: (madeBy: string) => string,
 ): { activity: () => RunView[]; runOut: (r: RunRow) => RunView } {
   const { world, engine } = ctx
-  // Activity: schedules' runs and connections' reads, newest first, and (core step 1) Alpha's turns
+  // Activity: schedules' runs and connections' reads, newest first, and Alpha's turns
   // that changed rows, removals outside both, and the person's reverts, each with its Revert or
   // Bring back where it can be undone. A run that ended having changed nothing is quiet, so the
   // window can fold it.
@@ -68,7 +68,7 @@ export function activityView(
     steps: [],
     undo: null,
   })
-  // What Alpha did through a connector (Kenil, 29 Oct): each write or send of a turn that went, as a
+  // What Alpha did through a connector: each write or send of a turn that went, as a
   // step of the turn that asked for it; one that went on the person's yes, under that card's turn.
   function actionsOut(): Line[] {
     const calls = new Map<string, Line>()
@@ -115,7 +115,7 @@ export function activityView(
   }
   const activity = (): RunView[] => {
     const runs: RunView[] = (engine.hands?.runner.runs(100) ?? []).map(runOut)
-    // a connector's refused reach (step 2, part 1, slice 2) is a step of the read that made it,
+    // a connector's refused reach is a step of the read that made it,
     // or an entry of its own when no read did
     const refusals = world.lines({ kinds: ['reach_refused'], limit: 200 })
     const placed = new Set<number>()
@@ -162,7 +162,7 @@ export function activityView(
             }
           : {
               ...lineOut(l, 'revert', who, l.module),
-              // what it took back outside Alpha (step 2, part 2), each its own step
+              // what it took back outside Alpha, each its own step
               steps: tookBack
                 .filter((t) => JSON.stringify(t.data.target) === JSON.stringify(l.data.target))
                 .map((t) => ({ id: t.id, at: t.at, kind: t.kind, words: t.words })),

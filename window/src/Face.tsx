@@ -1,5 +1,4 @@
-// Alpha's face in the assistant's header: quiet, working, or something needs you. A stand-in until
-// Kenil picks Alpha's character.
+// Alpha's face: quiet, working, or something needs you. A stand-in until Alpha has a character.
 import { cn } from './ui/cn.ts'
 
 export type Mood = 'quiet' | 'working' | 'needs'

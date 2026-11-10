@@ -1,6 +1,6 @@
-// The signal dot (Batch E, 66.18, Kenil's look 2 Nov): one bullet for what a place holds. Pulsing,
-// it needs the person now; filled, it waits for their yes; hollow, it is there to read; green, it
-// is running as it should. Its words show on hover.
+// The signal dot: one bullet for what a place holds. Pulsing, it needs the person now; filled, it
+// waits for their yes; hollow, it is there to read; green, it is running as it should. Its words
+// show on hover.
 import { cn } from './cn.ts'
 
 export type Signal = 'now' | 'yes' | 'read' | 'running'

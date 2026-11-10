@@ -30,7 +30,7 @@ export function registerModules(ctx: Ctx): void {
     return { id: m.id, parent: m.parent }
   })
 
-  // Deleting a module (Kenil, 10 Nov), the owner's word alone (rules M7): what runs in it, its data
+  // Deleting a module, the owner's word alone (rules M7): what runs in it, its data
   // kept, or all of it
   app.post('/api/modules/:id/delete', async (req) => {
     if (user.role !== 'owner') throw new Refused('Only the owner can delete a module.')
@@ -47,8 +47,8 @@ export function registerModules(ctx: Ctx): void {
     return { words }
   })
 
-  // The person renames a module by double-clicking its name in the rail (Batch B, pick 14a): its
-  // name alone; its id, key and folder stay.
+  // The person renames a module by double-clicking its name in the rail: its name alone; its id,
+  // key and folder stay.
   app.post('/api/modules/:id/name', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { name } = z.object({ name: z.string().max(80) }).parse(req.body)
@@ -60,7 +60,7 @@ export function registerModules(ctx: Ctx): void {
     return { id: m.id, name: m.name }
   })
 
-  // the person's own business case for a module (core step 3e): theirs from then on
+  // the person's own business case for a module: theirs from then on
   app.post('/api/modules/:id/case', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const c = z

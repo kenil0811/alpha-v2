@@ -1,6 +1,6 @@
-// What an agent remembers (clean base step 7): short facts, each saying who said it and whether it
-// is the firm's or one person's. A few essential ones are always loaded; the rest are found by
-// search. What a person wrote or edited is theirs, and an agent cannot change it.
+// What an agent remembers: short facts, each saying who said it and whether it is the firm's or one
+// person's. A few essential ones are always loaded; the rest are found by search. What a person
+// wrote or edited is theirs, and an agent cannot change it.
 import { all, type Db, newId, now, one, run } from '../db.ts'
 import { Refused } from '../kinds.ts'
 

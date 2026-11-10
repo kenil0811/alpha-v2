@@ -1,5 +1,5 @@
 // docs/rules.md against its tests (R3), for `pnpm rules` and for R3's own test: every rule marked
-// test or skip has its rule(), every rule() names a rule of the list, and a rule left to step 8 or
+// test or skip has its rule(), every rule() names a rule of the list, and a rule left for later or
 // to review has none yet. What the routes, tools and plugin calls are, read from the code, so the
 // door list can be held to them.
 import { readdirSync, readFileSync } from 'node:fs'
@@ -19,7 +19,7 @@ export function marks(text = readFileSync(RULES_MD, 'utf8')): Map<string, string
   return out
 }
 const RULES_DIR = import.meta.dirname
-const HELD = /^(?:test|skip \(steps? \d+(?:, \d+)*\)|step 8|—)$/
+const HELD = /^(?:test|skip \([^()]+\)|with [^()]+|—)$/
 
 export interface RulesCheck {
   problems: string[]
@@ -41,13 +41,15 @@ export function checkRules(text = readFileSync(RULES_MD, 'utf8')): RulesCheck {
     }
   for (const [ruleId, mark] of held) {
     if (!HELD.test(mark))
-      problems.push(`${ruleId} is held by “${mark}”: say test, skip (step N), step 8 or —.`)
+      problems.push(
+        `${ruleId} is held by “${mark}”: say test, skip (what it waits on), with what, or —.`,
+      )
     const written = tested.has(ruleId)
     if ((mark === 'test' || mark.startsWith('skip')) && !written)
       problems.push(
         `${ruleId} says ${mark}, but no rule('${ruleId}', …) in core/src/rules/ tries it.`,
       )
-    if ((mark === 'step 8' || mark === '—') && written)
+    if ((mark.startsWith('with ') || mark === '—') && written)
       problems.push(
         `${ruleId} says ${mark}, but ${tested.get(ruleId)} tries it: mark it as its test finds it.`,
       )
@@ -56,16 +58,11 @@ export function checkRules(text = readFileSync(RULES_MD, 'utf8')): RulesCheck {
     if (!held.has(ruleId)) problems.push(`${f} tries ${ruleId}, which docs/rules.md does not have.`)
   const count = (p: (m: string) => boolean) => [...held.values()].filter(p).length
   const waiting = [...held.values()].filter((m) => m.startsWith('skip'))
-  const steps = [
-    ...new Set(waiting.flatMap((m) => [...m.matchAll(/\d+/g)].map((x) => Number(x[0])))),
-  ]
-    .filter((s) => s < 8)
-    .sort((a, b) => a - b)
-  const on =
-    steps.length > 1 ? `${steps.slice(0, -1).join(', ')} and ${steps.at(-1)}` : `${steps[0]}`
+  const on = [...new Set(waiting.map((m) => m.slice(6, -1)))].sort()
+  const later = [...held.values()].filter((m) => m.startsWith('with '))
   const summary = `rules: ${count((m) => m === 'test')} held; ${waiting.length} waiting${
-    steps.length ? ` on step${steps.length > 1 ? 's' : ''} ${on}` : ''
-  }; ${count((m) => m === 'step 8')} written with Dell's contract (step 8); ${count((m) => m === '—')} held by review`
+    on.length ? ` on ${on.join(' and ')}` : ''
+  }; ${later.length} written ${[...new Set(later)].join(', ') || 'later'}; ${count((m) => m === '—')} held by review`
   return { problems, summary }
 }
 

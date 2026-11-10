@@ -1,7 +1,7 @@
 // The cases a summary's condition (filter-sql.ts, in SQL) and the window's filter (its table
-// engine, in the browser) both answer, so the same words mean the same rows in both (core step
-// 3c). Each is a field, a rule, a value a row holds, and whether the rule takes that row. Both
-// test files read this one list.
+// engine, in the browser) both answer, so the same words mean the same rows in both. Each is a
+// field, a rule, a value a row holds, and whether the rule takes that row. Both test files read
+// this one list.
 export interface FilterCase {
   kind: string
   tags?: boolean

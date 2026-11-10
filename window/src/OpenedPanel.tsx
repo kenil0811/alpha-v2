@@ -1,9 +1,8 @@
-// A task, a run, a person or a row open beside the page (Batch A, pick 2, Kenil's yes 1 Nov), and
-// a schedule, a rule and the rows a figure counted (Batch D, 79.6, 79.7): its own page, narrow, in
-// the side panel, with Open page to the page itself at the panel's foot (79.10). A link to one of
-// them opens it here when the window has room beside the page (room.ts); a ⌘-click, Open page, or
-// no room goes to the page, as before. A link inside the panel replaces what it shows (clean base
-// step 6); what was clicked to open it stays in sight to its left (79.9).
+// A task, a run, a person or a row open beside the page, and a schedule, a rule and the rows a
+// figure counted: its own page, narrow, in the side panel, with Open page to the page itself at
+// the panel's foot. A link to one of them opens it here when the window has room beside the page
+// (room.ts); a ⌘-click, Open page, or no room goes to the page, as before. A link inside the
+// panel replaces what it shows; what was clicked to open it stays in sight to its left.
 import type { TableView as TableData } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
@@ -84,7 +83,7 @@ export function OpenedPanel({
 }
 
 // The rows a figure counted, beside the page: their table, only those rows, with the line that
-// says so and Show all (79.7).
+// says so and Show all.
 function RowsBeside({
   id,
   version,

@@ -31,7 +31,7 @@ export function registerKits(ctx: Ctx): void {
 
   // Kits and schedules: what each module does on its own.
   app.get('/api/working', async (): Promise<WorkingModuleView[]> => working())
-  // Every module's schedules as one table (UI batch 2, 26 Oct): each turned On or Paused in a cell
+  // Every module's schedules as one table: each turned On or Paused in a cell
   const WHY = 'A schedule is turned on or paused here; the rest is in its file.'
   app.get(
     '/api/kept/schedules',
@@ -191,7 +191,7 @@ export function registerKits(ctx: Ctx): void {
     return { file: made.file, words: made.words }
   })
 
-  // What of a kit is the person's now (decision 3), and the kit's version of one thing back.
+  // What of a kit is the person's now, and the kit's version of one thing back.
   app.get('/api/kits/:module/yours', async (req): Promise<YoursView> => {
     const { module } = z.object({ module: z.string() }).parse(req.params)
     return yours(world, module)
@@ -247,7 +247,7 @@ export function registerKits(ctx: Ctx): void {
     const a = schedules(world).find((x) => x.id === id)
     if (!runner || !a) throw new Refused('That schedule is not there.')
     // the person asked for it now: a paused schedule runs this once; a busy one says so at once,
-    // beside the button (item 29, 25 Oct), and the run goes on behind
+    // beside the button, and the run goes on behind
     runner.refuseRun(a, { asked: true })
     void runner
       .runSchedule(a, { user: user.id, turn: null }, {}, { asked: true })

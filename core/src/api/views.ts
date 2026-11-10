@@ -30,7 +30,7 @@ import type {
   TaskView,
 } from './types.ts'
 
-// A table as a module lists it: its rows, and where it sits (core step 3a).
+// A table as a module lists it: its rows, and where it sits.
 export function tableSummary(world: BaseCtx['world'], t: Table): TableSummary {
   const part = t.fields.find((f) => f.partOf)
   return {
@@ -54,7 +54,7 @@ export function makeViews(ctx: BaseCtx) {
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
     review: engine.hands?.runner?.reviews.view(c) ?? null,
   })
-  // Tasks (Kenil's plan, 21 Oct): the saved lists, a task's page, and the person's own word on
+  // Tasks: the saved lists, a task's page, and the person's own word on
   // them: added, changed, moved, done, removed.
   const today = () => {
     const d = new Date()

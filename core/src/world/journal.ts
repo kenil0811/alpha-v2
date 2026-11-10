@@ -76,8 +76,8 @@ function toLine(r: LineRow): Line {
 }
 
 // Append a line; call it inside the transaction of the write it records.
-// A secret the person signed in with never reaches a line (step 2, part 3): each is kept here
-// for the life of the core, and a line that would carry one is refused.
+// A secret the person signed in with never reaches a line: each is kept here for the life of the
+// core, and a line that would carry one is refused.
 const secrets = new Set<string>()
 export function keepOut(secret: string): void {
   if (secret.trim().length >= 4) secrets.add(secret)
@@ -116,7 +116,7 @@ export function append(db: Db, line: LineInput): Line {
           ? (line.actor.id ?? null)
           : null,
   }
-  // chained to the line before (step 2, part 3)
+  // chained to the line before
   const hash = hashOf(lastHash(db), row)
   const res = run(
     db,

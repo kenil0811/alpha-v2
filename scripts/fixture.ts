@@ -1,4 +1,4 @@
-// The numbers (Stage 1, step 1): a world with a generic 40-field table of 200,000 rows and a
+// The numbers: a world with a generic 40-field table of 200,000 rows and a
 // related table of 20,000, built through the same calls a kit uses, then the questions the
 // window, the model, a kit and a connection ask of it, each timed. The same script ran on the
 // JSON records of c988f49 and runs on the real tables, so every number has its twin.

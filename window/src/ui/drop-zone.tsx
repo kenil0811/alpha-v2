@@ -1,7 +1,6 @@
-// One place to add files (Batch D, 66.22, Kenil's yes 2 Nov): a dashed box to drop them on or
-// click to choose them, what is already there inside it. A row's files first; the other places
-// that take a drop (the conversation, the grid, a board, the window) share `dropped` below, not
-// the box.
+// One place to add files: a dashed box to drop them on or click to choose them, what is already
+// there inside it. A row's files first; the other places that take a drop (the conversation, the
+// grid, a board, the window) share `dropped` below, not the box.
 import { Upload } from 'lucide-react'
 import { Children, type DragEvent, type ReactNode, useRef, useState } from 'react'
 import { cn } from './cn.ts'

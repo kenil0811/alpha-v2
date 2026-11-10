@@ -1,4 +1,4 @@
-// Who may sign in (the clean base, step 4b): on an Alpha that asks, each person has an account, a
+// Who may sign in: on an Alpha that asks, each person has an account, a
 // password only they know, and a browser session. The owner adds people and hands each a one-time
 // link to set a password; nothing here sends mail. A password is kept only as its scrypt hash, a
 // link and a session only as the hash of what the browser holds. The model never reads any of it

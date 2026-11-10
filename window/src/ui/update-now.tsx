@@ -1,6 +1,6 @@
-// Read now and Run now, one part (Batch D, 66.25, Kenil's yes 2 Nov: keep those words): when it
-// last happened just before the button ("Updated 12 min ago"), the full date and time on hover,
-// busy while it runs. Times are the person's own day (W7).
+// Read now and Run now, one part, keeping those words: when it last happened just before the
+// button ("Updated 12 min ago"), the full date and time on hover, busy while it runs. Times are the
+// person's own day (W7).
 import { RefreshCw } from 'lucide-react'
 import { Button } from './button.tsx'
 import { cn } from './cn.ts'

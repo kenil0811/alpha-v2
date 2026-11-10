@@ -104,7 +104,7 @@ export interface MatchView {
 // A person's or company's page.
 export interface PersonView {
   id: string
-  // their rows in the one-row-per-person tables of People's module (core step 3d)
+  // their rows in the one-row-per-person tables of People's module
   per: { table: { id: string; name: string }; fields: FieldView[]; row: RowView | null }[]
   kind: 'person' | 'company'
   name: string
@@ -159,7 +159,7 @@ export interface DraftView {
   always: string | null // the standing permission's sentence, when offered
 }
 
-// What this Mac still needs, for the first open and Settings › This Mac.
+// What this Mac still needs, for the first open and Settings › Permissions, On this computer.
 export interface SetupView {
   claude: { signedIn: boolean; email: string | null; how: string | null; problem: string | null }
   route: 'subscription' | 'key'
@@ -176,7 +176,7 @@ export interface SetupView {
   }
 }
 
-// A rule as Governance and Settings › Permissions list it (core step 2), in code's own words.
+// A rule as Settings › Permissions lists it, in code's own words.
 export interface RuleView {
   id: string
   words: string
@@ -194,7 +194,7 @@ export interface RuleView {
   noticedFrom: { id: number; at: string; words: string }[] // the lines Alpha noticed it in
 }
 
-// A rule waiting on its Save card (Batch B, pick 18): Approve and Decline answer the card itself,
+// A rule waiting on its Save card: Approve and Decline answer the card itself,
 // by its yes and no as their words.
 export interface WaitingRuleView {
   card: string
@@ -255,7 +255,7 @@ export interface TableSummary {
   rows: number
   place: 'main' | 'part' | 'setup' | 'people' // a tab, on its row (`of`), setup, People's columns
   of: string | null
-  tab: boolean // a part or setup table kept as a tab too (28 Oct)
+  tab: boolean // a part or setup table kept as a tab too
 }
 
 export interface ModuleSummary {
@@ -346,11 +346,11 @@ export interface TableView {
   rows: RowView[]
   names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
-  readBy: ReadByView[] // the connections that fill it, read again from its ⋮ (Batch B, pick 15)
+  readBy: ReadByView[] // the connections that fill it, read again from its ⋮
 }
 
 // A list kept outside a module's tables (people, organizations, tasks, schedules, standing
-// permissions), served as a table to draw and edit in place (UI batch 2, 26 Oct).
+// permissions), served as a table to draw and edit in place.
 export interface KeptTable extends TableView {
   kept: { name: string; editable: string[]; why: string; counts?: Record<string, number> }
 }
@@ -507,7 +507,7 @@ export interface ModuleView {
   schedules: ScheduleView[]
   sites: number // how many sites its readers may read
   notes: string // NOTES.md, as written
-  // what it is for (core step 3e), and whose words: the kit's, Alpha's (assumed) or the person's
+  // what it is for, and whose words: the kit's, Alpha's (assumed) or the person's
   businessCase: {
     for: string
     keeps: string
@@ -566,7 +566,7 @@ export interface RunView {
   state: 'running' | 'ok' | 'failed' | 'stopped'
   words: string | null
   tokens: number | null // null: no model was used
-  usd: number | null // what its uses of the model cost (core plan step 5); null: none, or unknown
+  usd: number | null // what its uses of the model cost; null: none, or unknown
   quiet: boolean // it ended and changed nothing
   steps: { id: number; at: string; kind: string; words: string }[]
   // Revert, or Bring back a removal, where it wrote rows; `what` names it in the pop-up and line

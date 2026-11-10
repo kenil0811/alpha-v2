@@ -32,7 +32,7 @@ export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promis
     // a run still open holds the next one, and they become one when it closes
     if (runner.world.tasks.openOfSchedule(a.id)) continue
     // where the journal stands as the schedule is judged: its place moves here only after a run
-    // that ended well, so a failed run is handed the same things again (item 16, 25 Oct)
+    // that ended well, so a failed run is handed the same things again
     const cursorTo = readsJournal(a) ? String(runner.world.lastLineId()) : null
     const given = runner.due(a, nowMs)
     if (!given) continue
@@ -105,10 +105,10 @@ export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promis
 }
 
 // A schedule's run that opened a card (a sign-in, a site to reach, a removal) and ended on it goes
-// again at the next tick once the person has said yes, as a task's does (item 39 of the problems
-// list, 25 Oct): the yes is used while it still means what it meant, not at the schedule's next
-// trigger, which can be the next day. A card the desk's own turn opened is the desk's to carry
-// on; a draft's yes sends the draft itself and starts nothing.
+// again at the next tick once the person has said yes, as a task's does: the yes is used while it
+// still means what it meant, not at the schedule's next trigger, which can be the next day. A card
+// the desk's own turn opened is the desk's to carry on; a draft's yes sends the draft itself and
+// starts nothing.
 export function resumeRuns(runner: ScheduleRunner): void {
   for (const a of schedules(runner.world)) {
     if (runner.held.has(a.id)) continue

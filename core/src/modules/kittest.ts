@@ -1,4 +1,4 @@
-// `alpha kit test <dir>` (decision 9): a kit's skills run against a fixture world and recorded
+// `alpha kit test <dir>`: a kit's skills run against a fixture world and recorded
 // answers, without the model, and the rows they land are compared with what the kit's test
 // expects. A case is tests/<name>.yaml in the kit: which schedule or script, its input, the rows to
 // seed, the pages a browser call gets, the model's recorded answers, and what to expect. A

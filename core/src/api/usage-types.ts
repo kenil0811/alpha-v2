@@ -1,6 +1,6 @@
-// What Settings › Model shows of a month's spend (core plan step 5, Kenil's yes 28 Oct): its total,
-// then by module, by schedule and by model, largest first. Its own file, beside the window's contract
-// in types.ts, which is kept from growing.
+// What Settings › Model shows of a month's spend: its total, then by module, by schedule and by
+// model, largest first. Its own file, beside the window's contract in types.ts, which is kept
+// from growing.
 export interface UsageRow {
   name: string
   turns: number // desk turns

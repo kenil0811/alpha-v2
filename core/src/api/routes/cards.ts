@@ -21,7 +21,7 @@ export function registerCards(ctx: Ctx): void {
   const { app, world, engine, user, person, live, asPerson } = ctx
   const { cardOut } = ctx.views
 
-  // A card on its own page (Batch B, pick 13): the card the stream shows, answered there by the
+  // A card on its own page: the card the stream shows, answered there by the
   // routes below; one not there, or another person's, is not there.
   // A card raised for one person is theirs alone, by every way of acting on it (rule A6).
   app.addHook('preHandler', async (req, reply) => {
@@ -142,9 +142,9 @@ export function registerCards(ctx: Ctx): void {
         live()
         return cardOut(out)
       }
-      // a maintained kit's shape change (decision 3b): asked of the maintainer as a drafted
-      // email, or done now and counted as a change of the person's they have not seen. Asked by
-      // any door since rules step 2 (M4), as the change to make again; by Alpha's tool before it
+      // a maintained kit's shape change: asked of the maintainer as a drafted email, or done now
+      // and counted as a change of the person's they have not seen. Asked by any door (M4), as the
+      // change to make again, or on an older card by Alpha's tool
       if (c?.call?.tool === MAINTAINED_SHAPE && c.module) {
         const input = (c.call.input ?? {}) as Record<string, unknown>
         const r = 'method' in input ? (input as unknown as Redo) : null

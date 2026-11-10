@@ -1,8 +1,8 @@
 # Words the walls read for, each with its why. None of these is a setting the person meets.
 
 # A removal of the person's own entries goes without a card only when they asked for it in
-# words, and their words said removal: the model's quote of their message must hold one of these
-# (item 11 of the problems list, 25 Oct). Any other quote opens the card.
+# words, and their words said removal: the model's quote of their message must hold one of these.
+# Any other quote opens the card.
 removal:
   - remove
   - delete
@@ -17,9 +17,9 @@ removal:
   - discard
   - purge
 
-# A table named for a period splits one table into many (core step 3e, Vikas's item 6): the shape
-# tool refuses a table's name holding one of these words, or matching one of these patterns, as a
-# whole word, and says to keep one table with a date on each row instead.
+# A table named for a period splits one table into many: the shape tool refuses a table's name
+# holding one of these words, or matching one of these patterns, as a whole word, and says to keep
+# one table with a date on each row instead.
 periods:
   words: [january, february, march, april, may, june, july, august, september, october, november, december,
     jan, feb, mar, apr, jun, jul, aug, sep, sept, oct, nov, dec, q1, q2, q3, q4, h1, h2]

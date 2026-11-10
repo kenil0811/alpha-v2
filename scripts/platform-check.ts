@@ -1,5 +1,5 @@
-// A wall for developers (decision 12, step 4): the core asks what computer it is on in one place,
-// core/src/platform/. A Mac call anywhere else in core/src fails `pnpm check`.
+// A wall for developers: the core asks what computer it is on in one place, core/src/platform/.
+// A Mac call anywhere else in core/src fails `pnpm check`.
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 

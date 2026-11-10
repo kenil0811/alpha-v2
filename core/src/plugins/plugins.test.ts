@@ -1,4 +1,4 @@
-// The plugin seam (onboarding 4a): a made-up plugin (test-plugin/) loaded from a folder, given its
+// The plugin seam: a made-up plugin (test-plugin/) loaded from a folder, given its
 // host, its own module kept as Alpha's own are, its routes answered under /api/plugins/<name>/,
 // its block at the start of a conversation; one that does not load said and left out; with none,
 // nothing changes. Never the model: its one question is answered here.

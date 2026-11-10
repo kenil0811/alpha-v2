@@ -1,7 +1,7 @@
-// The builder's walls (core step 3e, Kenil's yes 27 Oct): a module's business case comes with its
-// first table, a table that is only a name is refused, so is one named for a period, each in words
-// that say what to make instead; the case is kept in module.yaml through every rewrite, the
-// person's stands over Alpha's and a kit's, and it is in every turn's start layer.
+// The builder's walls: a module's business case comes with its first table, a table that is only a
+// name is refused, so is one named for a period, each in words that say what to make instead; the
+// case is kept in module.yaml through every rewrite, the person's stands over Alpha's and a kit's,
+// and it is in every turn's start layer.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

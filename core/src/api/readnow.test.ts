@@ -1,4 +1,4 @@
-// Read now on a table (Batch B, pick 15): the connections that fill it, found by its lasting key,
+// Read now on a table: the connections that fill it, found by its lasting key,
 // each with when it was read and why it can't be read now; one press reads every one that can.
 // On recorded answers (two made-up Gmail accounts filling Mail), never a real account.
 import { createHash } from 'node:crypto'

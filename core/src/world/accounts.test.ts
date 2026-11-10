@@ -1,4 +1,4 @@
-// Who may sign in (the clean base, step 4b): passwords, links and sessions. Never a real account.
+// Who may sign in: passwords, links and sessions. Never a real account.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

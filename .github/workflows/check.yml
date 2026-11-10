@@ -24,6 +24,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap socat ripgrep
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          # newer Ubuntu also strips what bubblewrap starts of the capabilities the sandbox's filter
+          # needs, as release/server/setup.sh says
+          if [ -f /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo ln -sf /etc/apparmor.d/bwrap-userns-restrict /etc/apparmor.d/disable/bwrap-userns-restrict
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict 2>/dev/null || true
+          fi
       - name: What the reading browser needs on Linux (the browser tests fetch it themselves)
         run: pnpm --filter @alpha/connector-sdk exec playwright install-deps chromium
       - run: pnpm check

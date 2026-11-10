@@ -1,5 +1,5 @@
-// The semantic layer (Kenil, 24 Oct): one sentence on what a table, a field and a view mean,
-// whose it is, and that the person's stands over the kit's and Alpha's.
+// The semantic layer: one sentence on what a table, a field and a view mean, whose it is, and that
+// the person's stands over the kit's and Alpha's.
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

@@ -8,7 +8,7 @@ import { floatRoot } from './popover.tsx'
 
 const WAIT = 150
 
-// An element's tip shown now: a double-click on what can't change says why (Batch D, 66.14).
+// An element's tip shown now: a double-click on what can't change says why.
 export const tipNow = (el: Element) => el.dispatchEvent(new Event('alpha:tip', { bubbles: true }))
 
 export function Tooltips() {

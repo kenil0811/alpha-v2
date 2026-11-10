@@ -1,4 +1,4 @@
-// One row per person in People (core step 3d): the one-row-per-person tables of the module People
+// One row per person in People: the one-row-per-person tables of the module People
 // lives in join People's grid, a person's page and the model's people view; a value typed for
 // someone with no row yet makes their row.
 import { appendFileSync, mkdtempSync, rmSync } from 'node:fs'
@@ -101,7 +101,7 @@ it('joins People, a person’s page and the people view, and a typed value makes
     { name: 'Ann Lee', tier: 'Gold', tiers_name: null },
     { name: 'Bo Chu', tier: 'Gold', tiers_name: null },
   ])
-  // the table is People's columns, not a tab of its own (step 4), and the start layer says so
+  // the table is People's columns, not a tab of its own, and the start layer says so
   const mod = (await a.inject({ url: `/api/modules/${m.id}`, headers: ok })).json() as ModuleView
   expect(mod.tables.map((t) => [t.name, t.place])).toEqual([
     ['Cards', 'main'],

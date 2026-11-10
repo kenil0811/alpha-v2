@@ -1,6 +1,6 @@
--- The world's shape, version 1 of the clean base (Kenil, 7 Nov 2026). Until the first client is
--- installed, a change to the shape edits this file (Kenil, 9 Nov); numbered migrations start the
--- day one goes live. A table of a module's is not here: each is made by ddl.ts.
+-- The world's shape, version 1. Until the first client is installed, a change to the shape edits
+-- this file; numbered migrations start the day one goes live. A table of a module's is not here:
+-- each is made by ddl.ts.
 
 -- ---- The world's own record ----
 

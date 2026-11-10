@@ -1,8 +1,8 @@
-// The trash (core step 1, Kenil 26 Oct): a removed row leaves its table at once, so no
-// reader anywhere has to learn to skip it, and its whole state waits in `removed_rows` for
-// keep_removed_days: its values by field id, their provenance, its versions, its files, its kit
-// row, and the rows that pointed at it. Bring back puts it back with the same id; the daily work
-// deletes it for good after that. Removing its table deletes its trash with it.
+// The trash: a removed row leaves its table at once, so no reader anywhere has to learn to skip it,
+// and its whole state waits in `removed_rows` for keep_removed_days: its values by field id, their
+// provenance, its versions, its files, its kit row, and the rows that pointed at it. Bring back
+// puts it back with the same id; the daily work deletes it for good after that. Removing its table
+// deletes its trash with it.
 import { all, json, one, parse, run, tx } from '../db.ts'
 import { junctionName, lit, quote } from '../ddl.ts'
 import { append } from '../journal.ts'
@@ -138,8 +138,8 @@ export function takeOut(
   return { gone: ids.map((id) => ({ id, values: kept.get(id)?.vals ?? {} })), cleared, kept }
 }
 
-// Rows taken out with the rows that are part of them (core step 3a), the deepest parts first so
-// each keeps its pointer to its row: removed together, kept together, brought back together.
+// Rows taken out with the rows that are part of them, the deepest parts first so each keeps its
+// pointer to its row: removed together, kept together, brought back together.
 export function takeOutAll(
   records: Records,
   table: Table,

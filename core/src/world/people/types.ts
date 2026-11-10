@@ -18,7 +18,7 @@ export interface Said {
   rank: number
   keys: Keys
   // what a row says that names someone without being theirs alone: a role address, a phone
-  // another name holds; kept for the match card, never a key that merges (item 25, 25 Oct)
+  // another name holds; kept for the match card, never a key that merges
   soft?: { email?: string[]; phone?: string[] }
   company?: string | null
   title?: string | null
@@ -35,7 +35,7 @@ export interface Exchange {
 export const PERSONS_WORD = 'person'
 
 // The rules rows are read for people by; raised when they change, so every row is read again.
-// 2: companies by their main domain, named in words (21 Oct).
+// 2: companies by their main domain, named in words.
 export const PEOPLE_RULES = 2
 
 export interface Contact {
@@ -92,7 +92,6 @@ export interface Pair {
 // Why two may be one, as the card says it.
 export const SAME_NAME = 'the same name'
 export const SAME_PLACE = 'the same name and company'
-export const NAMES_BOTH = 'a row names both'
 export const SAME_ADDRESS = 'the same address'
 export const SAME_PHONE = 'the same phone'
 

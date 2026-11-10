@@ -1,5 +1,5 @@
 // Find (⌘K): every place in the window by its name, and rows whose words match; Return opens it.
-// Out of Shell.tsx so that file only shrinks (Batch A, the window file wall).
+// Out of Shell.tsx so that file only shrinks (the window file wall).
 import type { FoundRow, ModuleSummary } from '@alpha/core/api'
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'

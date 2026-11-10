@@ -116,7 +116,7 @@ const port = install.port
 const windowPort = port + 1
 const tenant = tenantDir(home, install.tenant)
 const world = await World.open(tenant)
-// the journal's chain, checked at every start (step 2, part 3): a break is said, never hidden
+// the journal's chain, checked at every start: a break is said, never hidden
 const chainCheck = verify(world.db, readManifests(world.paths.backups))
 if (!chainCheck.ok) {
   const words = `The journal's chain is broken at line ${chainCheck.at}: ${chainCheck.why}. A line was changed or removed outside Alpha.`
@@ -157,7 +157,7 @@ const connectors = new ConnectorService(world, {
   known: [...standard.connectors, ...added.connectors].filter(
     (c) => platform.name !== 'linux' || !['system', 'path', 'browser'].includes(c.manifest.auth),
   ),
-  // signing in as the person: the provider sends them back to this core (step 2, part 5)
+  // signing in as the person: the provider sends them back to this core
   signIn: new SignIn(world, {
     secrets,
     back: () => `${install.publicAddress ?? `http://localhost:${port}`}${BACK}`,
@@ -203,7 +203,7 @@ const browserEngine = () => {
 }
 // The runner ends the runs a crashed core left running as it is made, and tells the window; the
 // engine is made after it, so until then there is no window to tell (a start with orphans
-// crashed on this, 24 Oct).
+// crashed on this).
 let started: Engine | null = null
 const runner = new ScheduleRunner(world, browserEngine, {
   owner: user.id,
@@ -229,15 +229,13 @@ const drafts = new Drafts(
   },
 )
 runner.drafts = drafts
-// Alpha's plugins (onboarding 4a): each with its host; one that does not load is said and left out
+// Alpha's plugins: each with its host; one that does not load is said and left out
 const plugins = new Plugins({
   world,
   user,
   home,
   region: () => platform.region(),
   ask: (system, prompt, schema) => claudeCode.ask(system, prompt, schema),
-  explore: (system, prompt, tools, schema, turns) =>
-    claudeCode.explore(system, prompt, tools, schema, turns),
   connectors,
 })
 const pluginsFailed = await (async () => {
@@ -266,7 +264,7 @@ const scheduler = new Scheduler(
         if (await intake.due()) engine.events.emit('event', { type: 'lines', user: user.id })
       },
     },
-    // schedules in their own lane: the tick goes on while they run (item 15 of the problems list)
+    // schedules in their own lane: the tick goes on while they run
     { name: 'Starting what is scheduled', run: async (now) => runner.startDue(now) },
     // tasks' reminders as they come due (a Mac notification and a line on Home), and repeats made
     {
@@ -284,12 +282,12 @@ const scheduler = new Scheduler(
         engine.tasks.due()
       },
     },
-    // removed rows kept past keep_removed_days deleted for good (core step 1)
+    // removed rows kept past keep_removed_days deleted for good
     {
       name: 'Clearing old deleted rows',
       run: async () => void expire(world.records, config.limits().keep_removed_days),
     },
-    // read lines older than journal_fold_days folded into a checkpoint a day (step 2, part 3)
+    // read lines older than journal_fold_days folded into a checkpoint a day
     {
       name: 'Folding old journal lines',
       run: async () => {

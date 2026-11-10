@@ -1,6 +1,6 @@
 // The api the window talks to: HTTP and a websocket. Every request, HTTP or
 // websocket, checks its Host and its Origin, then who is asking: the per-install token on a Mac
-// install, or a person's session where this Alpha asks them to sign in (the clean base, step 4b).
+// install, or a person's session where this Alpha asks them to sign in.
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
@@ -73,7 +73,7 @@ export interface ServerOptions {
     restart: (words: string, apply: () => Promise<void>) => Promise<void>
   }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
-  plugins?: PluginRoute[] // what plugins answer, under /api/plugins/<name>/ (onboarding 4a)
+  plugins?: PluginRoute[] // what plugins answer, under /api/plugins/<name>/
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -115,8 +115,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   if (options.publicAddress) hosts.add(new URL(options.publicAddress).host)
 
   // The check goes by the route the request reached and by its decoded path, never by the raw
-  // address alone: Fastify decodes %61 to a before it picks the route, so /%61pi/me is /api/me
-  // (item 1 of the problems list, 24 Oct).
+  // address alone: Fastify decodes %61 to a before it picks the route, so /%61pi/me is /api/me.
   const pathOf = (req: { url: string; routeOptions?: { url?: string | undefined } }): string => {
     const raw = req.url.split('?')[0] ?? ''
     let decoded = raw
@@ -133,7 +132,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (!path.startsWith('/api') && !path.startsWith('/ws')) return
     if (path === '/api/health') return
     // the provider's page sends the person back here, without Alpha's token: its one-time state
-    // is the proof (step 2, part 5); Host is still checked
+    // is the proof; Host is still checked
     const back = path === BACK
     const host = req.headers.host ?? ''
     const origin = req.headers.origin

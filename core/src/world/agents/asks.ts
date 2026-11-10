@@ -1,5 +1,5 @@
-// One agent asking another (clean base step 7): each ask is a saved row delivered once. Alpha
-// counts the asks of one person's request and the hops of a chain, so a model cannot reset them.
+// One agent asking another: each ask is a saved row delivered once. Alpha counts the asks of one
+// person's request and the hops of a chain, so a model cannot reset them.
 import { createHash } from 'node:crypto'
 import { all, type Db, newId, now, one, parse, run } from '../db.ts'
 import { Refused } from '../kinds.ts'

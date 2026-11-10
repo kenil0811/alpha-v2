@@ -11,15 +11,18 @@ The archive `alpha-data-<date>.tar.gz` unpacks to one folder, `alpha-data/`:
 | `files/` | every file Alpha keeps, by the SHA-256 of its bytes |
 | `modules/` | the module folders: each kit's schedules, skills, pages and notes as installed and as changed |
 | `instructions/` | the standing instructions, one Markdown file for everyone and one per person |
-| `connectors/` | the connectors added from Settings, each its folder |
+| `connectors/` | the connectors added with `pnpm connector add`, each its folder |
 | `alpha.yaml` | what the installer knew about the install |
 
 Backups are the same `world.sqlite`, taken by SQLite's backup API (never a copy of the live
 file): one a day (the last 7 days and one a week for the 4 weeks before), one before every shape
-change, one on asking, and one before going back. "Keep a copy in a folder" puts the newest daily
-backup in a folder of yours each day (iCloud Drive, Dropbox, a disk); Time Machine on Alpha's
-data folder is fine too, since the live database is never copied, only its backups.
+change, one on asking, and one before going back. `backups_copy` in `alpha.yaml`, a folder of yours
+(iCloud Drive, Dropbox, a disk), gets the newest daily backup each day; the window has no control
+for it. Time Machine on Alpha's data folder is fine too, since the live database is never copied,
+only its backups.
 
-`alpha uninstall --remove-data` is yours alone: it takes the worlds, files, kits, added connectors, browser
-sign-ins, the install file and the token to the Trash, removes Alpha's secrets from the Keychain,
-and starts Alpha again as on its first open. The readers' downloads stay, since they are Alpha's.
+`alpha uninstall` stops Alpha, takes it out of login and Applications, removes its secrets from the
+Keychain and its logs, and resets what macOS let it read (Calendar, Contacts, notifications). The
+data folder stays in your Library. `alpha uninstall --remove-data` also moves the data folder to the
+Trash once you type remove: the worlds, files, kits, added connectors, browser sign-ins, the install
+file and the token.

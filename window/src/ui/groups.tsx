@@ -19,7 +19,7 @@ export function Group({
     <section className="flex flex-col gap-2.5">
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          {/* sentence case at 12px, as every small label (Batch E, 66.3) */}
+          {/* sentence case at 12px, as every small label */}
           <h2 className="font-semibold text-ink-2 text-sm">{title}</h2>
           {!!count && (
             <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-warn-soft px-1.5 font-semibold text-warn text-xs">

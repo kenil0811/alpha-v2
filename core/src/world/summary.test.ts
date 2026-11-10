@@ -1,6 +1,6 @@
-// Summaries and tags (core step 3c, Kenil's yes 27 Oct): a summary field is worked out from the
-// rows that point at its row when it is read, in the record store and in the model's view, with
-// one condition in a view filter's words; a choice can hold several, kept as a JSON list.
+// Summaries and tags: a summary field is worked out from the rows that point at its row when it
+// is read, in the record store and in the model's view, with one condition in a view filter's
+// words; a choice can hold several, kept as a JSON list.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

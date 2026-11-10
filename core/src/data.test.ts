@@ -3,7 +3,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   applyBring,
@@ -13,13 +12,11 @@ import {
   listBackups,
   markRestart,
   prepareBring,
-  removeData,
   restoreWorld,
   takeData,
   takeRestartNote,
 } from './data.ts'
 import { readInstall, writeInstall } from './install.ts'
-import { PlainPlatform } from './platform/plain.ts'
 import { World } from './world/world.ts'
 
 let home: string
@@ -132,19 +129,5 @@ describe('the person’s data', () => {
     writeFileSync(join(world.paths.backups, 'world-daily-2026-10-22.sqlite'), 'new')
     copyNewestBackup(world.paths.backups, folder)
     expect(readdirSync(folder).length).toBe(7)
-    // removal: secrets gone, the person's folders gone, the readers' downloads kept
-    const secrets = new MemorySecrets()
-    await secrets.set('gmail:me', 'pw')
-    await secrets.set('anthropic:api-key', 'sk')
-    mkdirSync(join(home, 'browsers'), { recursive: true })
-    mkdirSync(join(home, 'kits'), { recursive: true })
-    world.close()
-    const gone = await removeData(home, ['gmail:me'], secrets, new PlainPlatform())
-    expect(gone.sort()).toEqual(['alpha.yaml', 'kits', 'tenants'])
-    expect(await secrets.get('gmail:me')).toBeNull()
-    expect(await secrets.get('anthropic:api-key')).toBeNull()
-    expect(existsSync(join(home, 'browsers'))).toBe(true)
-    expect(existsSync(join(home, 'tenants'))).toBe(false)
-    world = await World.open(join(home, 'tenants', 't_test')) // for the afterEach
   })
 })

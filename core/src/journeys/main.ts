@@ -3,9 +3,8 @@
 //   node src/journeys/main.ts --all [--times [N]] [--from <folder of journeys>]   (pnpm journeys)
 // --times runs each N times, each on a fresh world (N from limits.yaml journey_times when not
 // given), and says how many passed; --all runs every journey in the folder, a few at once
-// (limits.yaml journeys_at_once, Kenil 29 Oct); either writes one summary beside the reports
-// (item 48 of the problems list, 25 Oct), in the journeys' order whatever order they end in.
-// Each says what it cost, and the summary what the round cost.
+// (limits.yaml journeys_at_once); either writes one summary beside the reports, in the journeys'
+// order whatever order they end in. Each says what it cost, and the summary what the round cost.
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { config } from '../config.ts'
@@ -57,7 +56,7 @@ async function main(): Promise<void> {
     const own = runs.get(name) ?? []
     const k = own.filter((r) => r.passed).length
     all &&= k === times
-    // a journey whose every check waits is not run (rules step 1), and says so
+    // a journey whose every check waits is not run, and says so
     const said = own.every((r) => r.report.startsWith('not run'))
       ? (own[0]?.report ?? 'not run')
       : times > 1

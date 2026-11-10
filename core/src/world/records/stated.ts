@@ -1,9 +1,9 @@
-// A number, an amount or a date Alpha calls stated is in the person's words (docs/rules.md, D5;
-// Kenil's calls, 5 Nov): looked for in the message its value rests on. Numbers as written (40,
-// 1,200, 12.5k, 1.2 million); dates as written (2026-11-05, 5 Nov, November 5, 5/11) or as the
-// person's day words (today, tomorrow, yesterday, a weekday, this week, next week), on the day they
-// wrote. One not found lands as assumed, Alpha's, so the person sees which to check. Text and
-// choices are the person's words as Alpha put them, and are not looked for.
+// A number, an amount or a date Alpha calls stated is in the person's words (docs/rules.md, D5):
+// looked for in the message its value rests on. Numbers as written (40, 1,200, 12.5k, 1.2 million);
+// dates as written (2026-11-05, 5 Nov, November 5, 5/11) or as the person's day words (today,
+// tomorrow, yesterday, a weekday, this week, next week), on the day they wrote. One not found lands
+// as assumed, Alpha's, so the person sees which to check. Text and choices are the person's words
+// as Alpha put them, and are not looked for.
 import { dayOf, dayPlus } from '../day.ts'
 import { one } from '../db.ts'
 import type { Provenance } from '../kinds.ts'

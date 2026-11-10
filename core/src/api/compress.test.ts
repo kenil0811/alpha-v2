@@ -1,4 +1,4 @@
-// What the core sends goes compressed when it is large and the window can read it so (Kenil, 10 Nov).
+// What the core sends goes compressed when it is large and the window can read it so.
 import { Readable } from 'node:stream'
 import { brotliDecompressSync, gunzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'

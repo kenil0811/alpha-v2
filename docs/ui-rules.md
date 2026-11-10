@@ -7,7 +7,7 @@ newer rule holds and Kenil brings the design up to date.
 
 **Held by** names the test in `window/src/look.test.ts` that fails when the rule breaks: **test**
 holds it today, **skip** is written and waits on its fix, **—** cannot be checked by code and is
-held by review. Dates are 2026.
+held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L15).
 
 ## Shell and rail
 
@@ -20,7 +20,7 @@ held by review. Dates are 2026.
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
 | S6 | Both side panels drag by one edge and fold; the rail folds to a 52px strip of icons, each named when hovered, and one sidebar button at its top-left corner, before the workspace tile, folds and opens it (⌘\\); both panels slide open and shut over a fifth of a second, the page easing into its width; every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
 | S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
-| S8 | Heights use `dvh`, never `vh` (a phone's browser bars) | 2 Sep | skip |
+| S8 | Heights use `dvh`, never `vh` (a phone's browser bars) | 26 Oct | skip |
 | S9 | Beside each module in the rail, one signal dot for what it holds, the strongest of: needs you now (pulsing), waits for your yes (filled), something to read (hollow), running (green); a folded module shows the strongest of the modules inside it too; its words on hover | 2 Nov | test (signals) |
 | S10 | The rail's rows are evenly spaced at 30px, the modules straight after Home, Agents and Tasks with no gap above them | 2 Nov | — |
 
@@ -45,7 +45,7 @@ held by review. Dates are 2026.
 |---|---|---|---|
 | M1 | A module's tabs: People and Organizations where its module.yaml says so, an Overview when modules sit inside it, its pages with the front one first, its main tables with their counts (a table part of a row, setup, or one row per person in People's module is not a tab), then the parts and setup tables kept as tabs, and Setup, always last. A module opens on its Overview, else its front page, else its first table, else Setup | 26 Oct, 27 Oct, 28 Oct, 9 Nov | — |
 | M2 | Nothing sits under a table or a page; where the module comes from, what it is for (its business case, Edit beside it, assumed while Alpha's), its schedules with Run now and on or paused, the module's other tables (setup, and parts with what they are part of, each with Keep as a tab, reading A tab while it is one; the same in the table's ⋯ menu), notes, what is the person's against the module's own, and Pack it are the Setup tab | 26 Oct, 27 Oct, 28 Oct, 9 Nov | — |
-| M4 | New module opens a page: a name, what it keeps track of, Build it asks Alpha | 26 Oct | — |
+| M4 | New module opens Agents on the Module builder's conversation, the Chief of staff's once the builder has gone | 26 Oct, 10 Nov | — |
 
 ## Table and toolbar
 

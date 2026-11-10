@@ -1,6 +1,6 @@
 // How the rows are shown, and what that view goes by (a board's choice, a calendar's date, a
-// chart's bars and what they add up). The standard views (Vikas, 25 Oct) are Table, Card,
-// Timeline and Calendar, with Board and Form; each is offered when the table has what it needs.
+// chart's bars and what they add up). The standard views are Table, Card, Timeline and Calendar,
+// with Board and Form; each is offered when the table has what it needs.
 // List and Chart are no longer offered, but a view saved as one still opens as it was.
 import type { FieldView, RowView, ViewConfig, ViewKind } from '@alpha/core/api'
 import {

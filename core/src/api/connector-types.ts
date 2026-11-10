@@ -1,5 +1,5 @@
 // The window's contract for Intelligence › Connections, beside types.ts, which re-exports it: the
-// connectors loaded, the person's connections and what each may reach (step 2, part 1, slice 2).
+// connectors loaded, the person's connections and what each may reach.
 
 // A connector as it describes itself (its manifest): the window draws every one the same way.
 export interface ConnectorView {
@@ -12,10 +12,10 @@ export interface ConnectorView {
   system?: { pane: string } // the System Settings pane that turns Alpha on after a no
   setup?: { sub: string } // its step on the first open, when it asks for one
   warning?: string // what the person reads before connecting it
-  signsInWith?: { provider: string; title: string } // oauth: whose sign-in (step 2, part 5)
+  signsInWith?: { provider: string; title: string } // oauth: whose sign-in
 }
 
-// An organisation's sign-in app for a provider (step 2, part 5): set once by its IT, from the
+// An organisation's sign-in app for a provider: set once by its IT, from the
 // setup sheet, before anyone signs in with it.
 export interface SignInAppView {
   provider: string
@@ -47,7 +47,7 @@ export interface ConnectionView {
   canAllow: boolean
 }
 
-// A connection that fills a table (Batch B, pick 15): Read now on the table reads every one that
+// A connection that fills a table: Read now on the table reads every one that
 // can be read now; one that can't says why, greyed (W3).
 export interface ReadByView {
   connection: string
@@ -60,7 +60,6 @@ export interface ReadByView {
 export interface ConnectorsView {
   connectors: ConnectorView[]
   connections: ConnectionView[]
-  // the packs that came with the release and are not loaded until added (LinkedIn)
   added: string[] // the connectors loaded from Alpha's own connectors/, by name
   failed: { folder: string; why: string }[] // folders that did not load at start
   signInApps: SignInAppView[] // for the providers the loaded connectors sign in with

@@ -1,4 +1,4 @@
-// Context by mode (Kenil, 24 Oct): the start layer names modules and tables with their counts;
+// Context by mode: the start layer names modules and tables with their counts;
 // a table's fields and meanings come with its first touch, once per session, again after the
 // start layer is resent; the heavy grammars are fetched with guide.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'

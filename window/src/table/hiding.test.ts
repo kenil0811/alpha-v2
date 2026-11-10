@@ -1,5 +1,5 @@
-// "Showing n of m rows" whenever rows are hidden, naming what hides them, with Clear filters
-// (Batch A, pick 5, Kenil's call 4: a saved list's own filters too).
+// "Showing n of m rows" whenever rows are hidden, a saved list's own filters too, naming what
+// hides them, with Clear filters.
 import type { FieldView, ViewConfig } from '@alpha/core/api'
 import { describe, expect, it } from 'vitest'
 import { BLANK, complete, differs } from './engine.ts'

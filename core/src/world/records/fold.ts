@@ -1,11 +1,11 @@
-// One row per person, and folding rows (core step 3d, Kenil's yes 27 Oct). A table whose person
-// field says `per: person` holds one row for each person: a second is refused, and a land finds
-// the person's row. A merge of two people, on one "folded" line: every person field naming the
-// merged-in person names the kept one; in each per-person table their rows fold into one, field
-// by field (your value over one Alpha found, the newer of two Alpha found, both notes, every tag,
-// and a card where two of yours differ); what pointed at the folded row points at the kept row;
-// the folded row goes to the trash. Unmerge reverts that line with step 1's undo. The fold is a
-// general row merge, so it can later merge two duplicate deals.
+// One row per person, and folding rows. A table whose person field says `per: person` holds one row
+// for each person: a second is refused, and a land finds the person's row. A merge of two people,
+// on one "folded" line: every person field naming the merged-in person names the kept one; in each
+// per-person table their rows fold into one, field by field (your value over one Alpha found, the
+// newer of two Alpha found, both notes, every tag, and a card where two of yours differ); what
+// pointed at the folded row points at the kept row; the folded row goes to the trash. Unmerge
+// reverts that line with the undo in revert.ts. The fold is a general row merge, so it can later
+// merge two duplicate deals.
 
 import { seal } from '../audit.ts'
 import type { Card } from '../cards.ts'

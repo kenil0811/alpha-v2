@@ -1,4 +1,4 @@
-// Intelligence › How to work: the standing instructions the person gave (Kenil's Q4, 7 Nov).
+// Intelligence › How to work: the standing instructions the person gave.
 import type { InstructionView } from '@alpha/core/api'
 import { BookmarkCheck } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -7,9 +7,9 @@ import { startAsk } from './ask.ts'
 import { Tile } from './ui/list.tsx'
 import { ShortList } from './ui/shortlist.tsx'
 
-// How to work: the standing instructions the person gave, on the one control for short lists
-// (Batch A, pick 6): Add asks Alpha, as it must understand them; a double-click changes the words;
-// ✕ forgets one on a yes.
+// How to work: the standing instructions the person gave, on the one control for short lists:
+// Add asks Alpha, as it must understand them; a double-click changes the words; ✕ forgets one on
+// a yes.
 export function HowToWork({ version }: { version: number }) {
   const [lines, setLines] = useState<InstructionView[] | null>(null)
   const load = useCallback(() => {

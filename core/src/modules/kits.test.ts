@@ -467,7 +467,7 @@ describe('Alpha’s own modules', () => {
   })
 })
 
-describe('the contracts a kit signs (step 2)', () => {
+describe('the contracts a kit signs', () => {
   function copyKit(change: (manifest: string) => string, extra?: Record<string, string>): string {
     const dir = join(home, 'kit')
     cpSync(KIT, dir, { recursive: true })
@@ -514,7 +514,7 @@ describe('the contracts a kit signs (step 2)', () => {
   })
 })
 
-describe('stable keys and tombstones (step 2, sub-step 4)', () => {
+describe('stable keys and tombstones', () => {
   function kitAt(version: string, manifest: (m: string) => string, setup?: string): string {
     const dir = join(home, `kit-${version}`)
     cpSync(KIT, dir, { recursive: true })
@@ -566,7 +566,7 @@ describe('stable keys and tombstones (step 2, sub-step 4)', () => {
     expect(world.shape.table('Suppliers')).toBeUndefined()
   })
 
-  it('finds a table the person renamed by its lasting key: no second one on update (call 6)', async () => {
+  it('finds a table the person renamed by its lasting key: no second one on update', async () => {
     const m = await install(
       world,
       kitAt('0.1.0', (x) => x),

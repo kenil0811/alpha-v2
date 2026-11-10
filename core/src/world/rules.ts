@@ -1,11 +1,11 @@
-// Rules (core step 2, Kenil's yes 27 Oct): one store of allows and denies, each
-// approved by the person or inferred by Alpha, scoped to all of Alpha, a module or a schedule, and
-// covering a call in parts code matches: what it does (read, change, remove, send, reach a site,
-// sign in), through which tool, to which addresses, which sites, which tables. Only the person
-// makes a rule approved (a wall). The gates check every call against the live rules before it
-// runs (gates.ts). Standing permissions are approved allow rules that cover exactly
-// one schedule's one kind of thing: one is granted only on a card that offered Always, and a card
-// offers Always only after three unchanged yeses in a row for exactly that.
+// Rules: one store of allows and denies, each approved by the person or inferred by Alpha,
+// scoped to all of Alpha, a module or a schedule, and covering a call in parts code matches:
+// what it does (read, change, remove, send, reach a site, sign in), through which tool, to
+// which addresses, which sites, which tables. Only the person makes a rule approved (a wall).
+// The gates check every call against the live rules before it runs (gates.ts). Standing
+// permissions are approved allow rules that cover exactly one schedule's one kind of thing: one
+// is granted only on a card that offered Always, and a card offers Always only after three
+// unchanged yeses in a row for exactly that.
 import type { Effect } from '@alpha/connector-sdk'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
@@ -68,8 +68,7 @@ export interface Covered {
 }
 
 // The card a rule waits on: the person's Save makes it (the engine's answer, the desk's ask). Its
-// answers by their meaning, never their place on the card, so no order turns a no into a Save
-// (Batch B, pick 18).
+// answers by their meaning, never their place on the card, so no order turns a no into a Save.
 export const SAVE_RULE = 'save_rule'
 export const SAVE_ANSWERS = { yes: 'Save', no: 'Not now' } as const
 
@@ -147,7 +146,7 @@ const within = (host: string, d: string) => host === d || host.endsWith(`.${d}`)
 
 // Whether a rule covers a call: every part it names matches.
 // A send's recipients: a deny covers it when any one of them is one it names (a mixed send to the
-// firm and outside is still outside), an allow only when every one is (Kenil's look, 27 Oct).
+// firm and outside is still outside), an allow only when every one is.
 export function covers(
   r: Pick<Rule, 'side' | 'module' | 'schedule' | 'covers'>,
   f: CallFacts,

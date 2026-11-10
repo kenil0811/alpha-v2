@@ -10,7 +10,7 @@ export function registerActivity(ctx: Ctx): void {
 
   app.get('/api/activity', async (): Promise<RunView[]> => activity())
 
-  // Revert or Bring back (core step 1): what it would do, then doing it, on the person's word in
+  // Revert or Bring back: what it would do, then doing it, on the person's word in
   // the one pop-up. The target is an Activity entry's, and so are the words naming it.
   const Target = z.union([
     z.object({ run: z.string() }),

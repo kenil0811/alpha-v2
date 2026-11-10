@@ -1,6 +1,6 @@
-// One row per person (core step 3d, Kenil's yes 27 Oct): a person field can say `per: person`, and
-// its table then holds at most one row for each person. The shape keeps the mark and its walls;
-// the record store refuses a second row and folds rows when two people merge (records/fold.ts).
+// One row per person: a person field can say `per: person`, and its table then holds at most one
+// row for each person. The shape keeps the mark and its walls; the record store refuses a second
+// row and folds rows when two people merge (records/fold.ts).
 import { json, one, parse, run, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
 import { append } from '../journal.ts'

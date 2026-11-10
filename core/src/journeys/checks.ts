@@ -21,17 +21,17 @@ export const Check = z.union([
   z.object({ errors: z.number() }),
   z.object({ documents: z.number() }),
   z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
-  // the firm's agents (clean base step 7): how many, what one remembers, what its instructions say
+  // the firm's agents: how many, what one remembers, what its instructions say
   z.object({ agents: z.number() }),
   z.object({ memory: z.object({ agent: z.string(), matches: z.string() }) }),
   z.object({ instructions: z.object({ agent: z.string(), matches: z.string() }) }),
   // asks between agents, by how they answered
   z.object({ asks: z.object({ count: z.number(), status: z.string().optional() }) }),
-  // where a table sits in its module (core step 3a): a main table, part of a row, or setup
+  // where a table sits in its module: a main table, part of a row, or setup
   z.object({
     place: z.object({ table: z.string(), is: z.enum(['main', 'part', 'setup', 'people']) }),
   }),
-  // what the model's use cost, kept (core plan step 5): under a module (Alpha's, asked on Home),
+  // what the model's use cost, kept: under a module (Alpha's, asked on Home),
   // a schedule or a model, more than nothing
   z.object({
     spent: z.object({
@@ -40,7 +40,7 @@ export const Check = z.union([
       model: z.string().optional(),
     }),
   }),
-  // a table kept as a tab of its module, wherever it sits (28 Oct)
+  // a table kept as a tab of its module, wherever it sits
   z.object({ tab: z.object({ table: z.string(), is: z.boolean() }) }),
   // what the model's own views say: how many rows a query gives, or words its rows hold
   z.object({
@@ -50,7 +50,7 @@ export const Check = z.union([
       matches: z.string().optional(),
     }),
   }),
-  // a summary field on a table (core step 3c), and what it comes to on a row named so
+  // a summary field on a table, and what it comes to on a row named so
   z.object({
     summary: z.object({
       table: z.string(),
@@ -58,12 +58,12 @@ export const Check = z.union([
       equals: z.number().optional(),
     }),
   }),
-  // the rows of a table that name someone, through any merge (core step 3d): each under their
+  // the rows of a table that name someone, through any merge: each under their
   // own id, and so many of them
   z.object({
     person_rows: z.object({ table: z.string(), person: z.string(), count: z.number().optional() }),
   }),
-  // the builder's walls (core step 3e): no table named so, none that is only a name, a field of a
+  // the builder's walls: no table named so, none that is only a name, a field of a
   // kind somewhere, a choice field holding these, and a module's business case (each module's)
   z.object({ no_table: z.string() }),
   z.object({ no_field: z.object({ table: z.string(), field: z.string() }) }),
@@ -86,7 +86,7 @@ export const Check = z.union([
       at_least: z.number().optional(), // a read the model may repeat as it looks around
     }),
   }),
-  // a connection's state, what it says, or who set it up (step 2, part 4)
+  // a connection's state, what it says, or who set it up
   z.object({
     connection: z.object({
       connector: z.string(),
@@ -95,9 +95,9 @@ export const Check = z.union([
       owner: z.string().optional(),
     }),
   }),
-  // what the newest revert said, in part (step 2, part 2: a take-back outside Alpha)
+  // what the newest revert said, in part (a take-back outside Alpha)
   z.object({ reverted: z.string() }),
-  // a connector's attempts the sandbox refused, listed under it (step 2, part 1, slice 2)
+  // a connector's attempts the sandbox refused, listed under it
   z.object({
     refused: z.object({ connector: z.string(), host: z.string(), count: z.number() }),
   }),
@@ -110,13 +110,13 @@ export const Check = z.union([
     field: z.object({
       table: z.string(),
       key: z.string().optional(), // the row's own key, as a connection or a reader landed it
-      row: z.string().optional(), // or its name, as the window shows it (rules step 1)
+      row: z.string().optional(), // or its name, as the window shows it
       field: z.string(),
       equals: z.string().optional(),
       count: z.number().optional(), // a relation's rows
     }),
   }),
-  // what is kept beside the person's value on a row (rules step 1, D3, D6): a machine's newer
+  // what is kept beside the person's value on a row (D3, D6): a machine's newer
   // value, or the source's, by the row's own key; any at all when no value is named
   z.object({
     beside: z.object({

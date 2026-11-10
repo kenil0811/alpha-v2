@@ -1,5 +1,5 @@
 // PDFs read by Docling, in its own Python environment made with uv the first time a
-// PDF comes (about 1.6 GB with its models: Kenil's yes, 19 Oct). Each table cell keeps its table,
+// PDF comes (about 1.6 GB with its models). Each table cell keeps its table,
 // row, column, page and box; other text its page and box.
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'

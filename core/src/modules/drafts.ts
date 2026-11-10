@@ -67,8 +67,8 @@ export class Drafts {
   private owner: User
   // the drafter runs again once its draft is decided, to hear what became of it
   private back: (schedule: string, module: string) => void
-  // the cards being sent right now: a second Send it on one of them is turned away (item 10 of
-  // the problems list, 24 Oct), and a send that fails leaves the card waiting as it was
+  // the cards being sent right now: a second Send it on one of them is turned away, and a send that
+  // fails leaves the card waiting as it was
   private sending = new Set<string>()
 
   constructor(
@@ -111,10 +111,10 @@ export class Drafts {
       throw new Refused('The row the draft is about is not there.')
     this.denied(d, d.message, { kind: 'schedule', id: d.schedule }, run)
     // under a standing permission, an address the person has sent this kind to before goes at
-    // once; a new recipient is a card of its own, saying so (Kenil, 24 Oct, item 7)
+    // once; a new recipient is a card of its own, saying so
     const p = this.world.rules.covering(this.covered(d))
     const fresh = !this.approved(d, d.message.to)
-    // the same thing to the same address, sent already (a run retried after its send, 28 Oct):
+    // the same thing to the same address, sent already (a run retried after its send):
     // never again on its own; it waits on a card saying when it went
     const went = this.wentOn(d, d.message.to)
     if (p && !fresh && !went) {
@@ -181,7 +181,7 @@ export class Drafts {
     if (always && (changed || !this.world.rules.offers(this.covered(d))))
       throw new Refused('Always is offered only for a draft sent as it is, after three like it.')
     const ctx = { actor: { kind: 'person' as const, id: who.id }, user: who.id }
-    // a deny holds even on the person's own Send (Kenil's call 2, 27 Oct)
+    // a deny holds even on the person's own Send
     this.denied(d, m, ctx.actor, null)
     if (this.sending.has(cardId)) throw new Refused('That draft is being sent right now.')
     this.sending.add(cardId)

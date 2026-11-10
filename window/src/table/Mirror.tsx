@@ -11,7 +11,7 @@ export const managedWhy = (managed: string | null) =>
   managed ? `Managed by ${managed}: its shape stays as it is` : undefined
 
 // A mirror's gone rows, one click away on the line over the table (rules D8); no sentence about
-// what a mirror is (Kenil, 10 Nov).
+// what a mirror is.
 export function MirrorGone({
   data,
   showingGone,

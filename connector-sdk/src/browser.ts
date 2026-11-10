@@ -1,7 +1,7 @@
 // The human-pace browser engine: pages read the way a person would see them, at a
 // person's pace, one profile per site. It stops at any login wall, CAPTCHA or rate-limit page and
 // says so; it never tries to get around one, and it reads only what a site's robots rules allow,
-// except a site read as the person (Kenil, 21 Oct): one they signed in to themselves, in its own
+// except a site read as the person: one they signed in to themselves, in its own
 // Chrome profile, through a connection they made, read as they would read it. Robots rules are
 // for crawlers; every check page still stops it.
 // Readers (skills) call it through the core, so pacing and health come from here and a reader

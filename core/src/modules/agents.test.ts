@@ -1,5 +1,5 @@
-// Agents as a row and a folder (clean base step 7): made and changed through keep, its memory,
-// and undoing a change to its instructions.
+// Agents as a row and a folder: made and changed through keep, its memory, and undoing a change to
+// its instructions.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

@@ -59,7 +59,7 @@ const Journey = z.object({
       named: z.array(z.string()).optional(), // the agents picked with @ in the message
 
       // the first waiting card answered; a schedule's draft can be sent with Always when offered; on
-      // its own page, through the window's routes (Batch B, pick 13)
+      // its own page, through the window's routes
       answer: z
         .object({
           choice: z.string(),
@@ -85,19 +85,19 @@ const Journey = z.object({
       // a made-up connector added from a folder, its {site}, {other} and {host} said as the site's
       // (by its name, by another, and its host), connected and read once
       connector: z.object({ from: z.string(), account: z.string() }).optional(),
-      // the customer's own step done (step 2, part 4): a file of this name in the journey's own
+      // the customer's own step done: a file of this name in the journey's own
       // folder ({tmp}, the account a made-up connector is connected to)
       customer_does: z.string().optional(),
       // Run now on an agent's schedule, as the person presses it: its first, or the one named
       run_now: z.object({ agent: z.string(), name: z.string().optional() }).optional(),
       // Try again on a connection waiting for the customer, by its connector
       try_again: z.string().optional(),
-      // a table renamed as the person renames it, by double-clicking its name (Batch B)
+      // a table renamed as the person renames it, by double-clicking its name
       rename: z.object({ table: z.string(), to: z.string() }).optional(),
       // Read now, as the person presses it on a connection, by its connector
       read_now: z.string().optional(),
-      // the rule waiting on its Save card approved from a module's Governance, by its name, through
-      // the window's routes (Batch B, pick 18)
+      // the rule waiting on its Save card approved in Permissions, by its name, through the
+      // window's routes
       approve_rule: z.string().optional(),
       // a kit installed from a folder, its schedules on when the journey says so (all, or those named)
       kit: z
@@ -113,17 +113,17 @@ const Journey = z.object({
       review: z.object({ choice: z.string(), words: z.string().optional() }).optional(),
       // Revert from Activity, as the person: the newest run or turn that wrote rows, or revert
       revert: z.enum(['last_run', 'last_turn', 'last_revert']).optional(),
-      // two people merged by the person, by their names (core step 3d), and one merged in let go
+      // two people merged by the person, by their names, and one merged in let go
       merge: z.object({ keep: z.string(), other: z.string() }).optional(),
       unmerge: z.string().optional(),
       // a value typed over a row's, a row removed, Reset on a value: in the window (window.ts)
       edit: Edit.optional(),
       remove: Remove.optional(),
       reset: Reset.optional(),
-      // a check that waits on a step of the production plan (docs/rules.md) passes while it
+      // a check that waits on what it names, as a rule of docs/rules.md does, passes while it
       // fails, and fails the day it holds, until its waits comes off
       checks: z
-        .array(z.intersection(Check, z.object({ waits: z.number().int().positive().optional() })))
+        .array(z.intersection(Check, z.object({ waits: z.string().min(1).optional() })))
         .default([]),
     }),
   ),
@@ -152,7 +152,7 @@ export async function runOne(
   args: string[],
   run: { at: number; of: number } = { at: 1, of: 1 },
 ): Promise<{ passed: boolean; report: string; seconds: number; usd: number | null }> {
-  // Alpha's prompt alone is the default since 24 Oct; --appended tries it on Claude Code's own
+  // Alpha's prompt alone is the default; --appended tries it on Claude Code's own
   const prompt = args.includes('--appended') ? 'appended' : 'alone'
   const { journeys, base } = placesOf(args)
   const journey = Journey.parse(parse(readFileSync(join(journeys, `${name}.yaml`), 'utf8')))
@@ -160,7 +160,7 @@ export async function runOne(
   const checks = journey.steps.flatMap((s) => s.checks)
   if (checks.length && checks.every((c) => c.waits)) {
     const on = [...new Set(checks.map((c) => c.waits))].sort().join(', ')
-    return { passed: true, report: `not run: every check waits (step ${on})`, seconds: 0, usd: 0 }
+    return { passed: true, report: `not run: every check waits on ${on}`, seconds: 0, usd: 0 }
   }
   const stamp = `${stampOf()}${run.of > 1 ? `-run${run.at}` : ''}`
   // Outside $TMPDIR, so the sandbox is as it is for the person.
@@ -242,9 +242,9 @@ export async function runOne(
     const t0 = Date.now()
     // a said sentence and an answered question start a desk turn; a schedule's draft answered does
     // not, nor an answer with no card to answer, which is waited on no longer (it waited out the
-    // step's ten minutes, 29 Oct)
+    // step's ten minutes)
     const first = step.answer ? world.cards.waiting(user.id)[0] : undefined
-    // a Save card approved from Governance is answered as on the card, so its turn goes on too;
+    // a Save card approved in Permissions is answered as on the card, so its turn goes on too;
     // a maintained kit's card is answered on its own (rules M4), with no turn after it
     const noTurn = [DRAFT, MAINTAINED_SHAPE]
     const turns =
@@ -406,7 +406,7 @@ export async function runOne(
       const r = waiting[0]
       if (!r) {
         passed = false
-        what = `**No rule was waiting in ${m.name}'s Governance.**`
+        what = `**No rule was waiting in Permissions for ${m.name}.**`
       } else {
         await page().inject({
           method: 'POST',
@@ -414,7 +414,7 @@ export async function runOne(
           headers: asWindow,
           payload: { answer: r.yes },
         })
-        what = `Approved “${r.words}” in ${m.name}'s Governance`
+        what = `Approved “${r.words}” in Permissions for ${m.name}`
       }
     } else if (step.read_now) {
       const ks = world.connections.list().filter((x) => x.connector === step.read_now)
@@ -523,7 +523,7 @@ export async function runOne(
     const steps = world
       .lines({ user: user.id, kinds: ['call'] })
       .filter((l) => l.turn === reply?.turn)
-    // what the world spent so far: Claude Code's own cost, the own loop's tokens priced
+    // what the world spent so far: Claude Code's own cost
     const tokens = spentIn(world).words
     report.push(`## ${i + 1}. ${what}`, '')
     if (step.say || step.answer) {
@@ -543,7 +543,7 @@ export async function runOne(
           : '**FAIL**'
         : o.ok
           ? '**FAIL** (holds now: take off waits)'
-          : `waits (step ${check.waits})`
+          : `waits on ${check.waits}`
       report.push(`- ${mark}: ${o.check} (saw ${o.saw})`)
     }
     report.push('')

@@ -10,8 +10,8 @@ import { summariesReading } from './summary.ts'
 import type { Field, Table, WriteCtx } from './types.ts'
 import { actorName, findField, spec } from './types.ts'
 
-// Removing a table removes its rows and their versions, and empties its trash (core step 1): a
-// table removed is removed outright. The journal keeps that they were here.
+// Removing a table removes its rows and their versions, and empties its trash: a table removed is
+// removed outright. The journal keeps that they were here.
 export function removeTable(shape: Shape, tableId: string, ctx: WriteCtx): void {
   asks(
     shape,
@@ -109,8 +109,8 @@ export function dropField(shape: Shape, table: Table, f: Field, ctx: WriteCtx): 
   tombstone(shape, table.module.id, 'field', f.key ?? f.name, ctx)
 }
 
-// The summaries that read a table or one of its fields go with it (core step 3c, clean
-// removal): a summary of rows no longer there means nothing. Back come their names.
+// The summaries that read a table or one of its fields go with it (clean removal): a summary of
+// rows no longer there means nothing. Back come their names.
 function dropSummaries(shape: Shape, tableId: string, fieldId: string | undefined, ctx: WriteCtx) {
   const gone = summariesReading(shape, tableId, fieldId).filter(
     (x) => fieldId || x.table.id !== tableId,
@@ -145,8 +145,8 @@ function dropFieldFromTrash(shape: Shape, tableId: string, fieldId: string): voi
   }
 }
 
-// A field a kit no longer uses (decision 4): hidden, its column and rows kept, so the person
-// can still remove its rows, or not.
+// A field a kit no longer uses: hidden, its column and rows kept, so the person can still remove
+// its rows, or not.
 export function hideField(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
   return tx(shape.db, () => {
     const table = shape.table(tableId)

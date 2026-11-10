@@ -1,5 +1,5 @@
-// A page's title changed where it shows (Batch B, picks 7 and 14a; row level since 7 Nov): a
-// double-click edits it, and it is plain words where nothing renames it.
+// A page's title changed where it shows: a double-click edits it, and it is plain words where
+// nothing renames it.
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { PageTitle, RENAME_TIP } from './rename.tsx'

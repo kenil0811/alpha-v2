@@ -1,4 +1,4 @@
-// Alpha's plugins (onboarding 4a, Kenil's yes 2 Nov): packages in plugins/ loaded at start, each
+// Alpha's plugins: packages in plugins/ loaded at start, each
 // given a host (plugin-sdk) that is all it may do in Alpha: read rows, call a connector's tool,
 // ask the model once, keep rows in its own module, answer its own routes, add a block to the start
 // of a conversation, write a journal line. The core names no plugin; with none, Alpha runs as it
@@ -14,10 +14,8 @@ import {
   Refusal,
   type Row,
 } from '@alpha/plugin-sdk'
-import { config } from '../config.ts'
 import { entryOf } from '../connectors/discover.ts'
 import type { ConnectorService } from '../connectors/service.ts'
-import type { ToolEntry } from '../engine/registry.ts'
 import { keepKit } from '../modules/defaults.ts'
 import { readKit } from '../modules/kits/index.ts'
 import { Refused } from '../world/kinds.ts'
@@ -76,14 +74,6 @@ export interface PluginDeps {
     schema: Record<string, unknown>,
   ) => Promise<{ answer: unknown; uses?: Use[] }>
   connectors: ConnectorService | null
-  // the person's route's exploring session; none where it cannot look around
-  explore?: (
-    system: string,
-    prompt: string,
-    tools: ToolEntry[],
-    schema: Record<string, unknown>,
-    turns: number,
-  ) => Promise<{ answer: unknown; uses?: Use[] }>
 }
 
 export interface PluginRoute {
@@ -229,40 +219,6 @@ export class Plugins {
         const { answer, uses } = await this.deps.ask(system, prompt, schema)
         world.spend.add({ kind: 'ask', module: ownModule()?.id ?? null }, uses ?? [])
         return answer
-      },
-      explore: async (system, prompt, tools, schema) => {
-        if (!this.deps.explore)
-          throw new Refused('The way Alpha reaches Claude here cannot look around yet.')
-        const calls: { id: string; tool: string; input: unknown; output: unknown }[] = []
-        let made = 0 // ids given as each call starts, so calls side by side never share one
-        const entries: ToolEntry[] = tools.map((t) => ({
-          server: name,
-          name: t.name,
-          description: t.description,
-          input: t.input,
-          alwaysLoad: true,
-          handler: async (input) => {
-            const id = `t${++made}`
-            try {
-              const output = await t.run(input)
-              calls.push({ id, tool: t.name, input, output })
-              return { content: [{ type: 'text', text: `[${id}] ${JSON.stringify(output)}` }] }
-            } catch (err) {
-              const words = err instanceof Error ? err.message : String(err)
-              calls.push({ id, tool: t.name, input, output: { problem: words } })
-              return { content: [{ type: 'text', text: `[${id}] ${words}` }], isError: true }
-            }
-          },
-        }))
-        const { answer, uses } = await this.deps.explore(
-          system,
-          prompt,
-          entries,
-          schema,
-          config.limits().explore_turns,
-        )
-        world.spend.add({ kind: 'ask', module: ownModule()?.id ?? null }, uses ?? [])
-        return { answer, calls }
       },
       own: {
         add: (table, rows) =>

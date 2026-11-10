@@ -1,7 +1,7 @@
 // Lists kept outside a module's tables (people, organizations, tasks, schedules, standing
-// permissions) served as tables, so the window draws and edits them like any other (UI batch 2,
-// Kenil's yes 26 Oct). Each list's own route file builds its rows and says which fields change in
-// a cell and what each change does in its store; nothing here writes.
+// permissions) served as tables, so the window draws and edits them like any other. Each list's own
+// route file builds its rows and says which fields change in a cell and what each change does in
+// its store; nothing here writes.
 import { Refused } from '../world/kinds.ts'
 import type { FieldView, KeptTable } from './types.ts'
 

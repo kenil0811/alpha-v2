@@ -1,7 +1,7 @@
-//! Alpha on the Mac (Kenil's plan of 21 Oct): Alpha's own window and a mark in
-//! the menu bar, over the core the login item runs, or the one a developer runs on the same port.
-//! The shell never starts a core of its own, so there is one Alpha. Closing the window leaves
-//! Alpha running; Quit closes the shell, and the core carries on with agents and reminders.
+//! Alpha on the Mac: Alpha's own window and a mark in the menu bar, over the core the login item
+//! runs, or the one a developer runs on the same port. The shell never starts a core of its own,
+//! so there is one Alpha. Closing the window leaves Alpha running; Quit closes the shell, and the
+//! core carries on with agents and reminders.
 
 use std::path::PathBuf;
 use std::sync::Mutex;

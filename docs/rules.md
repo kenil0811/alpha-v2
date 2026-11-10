@@ -9,10 +9,9 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 **Held by** says how the rule is held:
 
 - **test**: its test in `core/src/rules/` tries it through every door and passes.
-- **skip (step N)**: the test is written, and what does not hold yet waits on the step named
-  (steps of the plan in the production review, 3 Nov). A waiting door that starts to hold fails
-  until its mark is taken off, in the test and here.
-- **step 8**: written when step 8 starts, with Dell's contract.
+- **skip (what it waits on)**: the test is written, and what does not hold yet waits on what is
+  named. A waiting door that starts to hold fails until its mark is taken off, in the test and here.
+- **with Dell's contract**: written when the work for Dell's contract starts.
 - **—**: code cannot check it, so review holds it.
 
 `pnpm rules` checks this list against the tests. Dates are 2026.
@@ -37,13 +36,13 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | M1 | Every module is open or managed. Only a pack signed by Kenil's key makes one managed (`managed: true` in its module.yaml). A plugin's module is managed by Alpha itself, and a connector's module for its source fields (the firm's own fields beside them stay the firm's, D7) | 4 Nov, 5 Nov | test |
-| M2 | In a managed module nobody changes its tables, fields, choices, relations, schedules, skills, scripts, pages or business case: not a person, the model, a schedule or a plugin. Every door refuses in words that say who manages it; the window greys the control with that reason | 4 Nov | skip (step 8) |
+| M2 | In a managed module nobody changes its tables, fields, choices, relations, schedules, skills, scripts, pages or business case: not a person, the model, a schedule or a plugin. Every door refuses in words that say who manages it; the window greys the control with that reason | 4 Nov | skip (Dell's contract) |
 | M3 | Only a newer signed pack changes a managed module. Its files are checked against the signature at every start; a changed file does not load and says what changed | 4 Nov | test |
 | M4 | In an open module everything is the firm's to change. A kit's update follows the ownership rule, and a maintained kit's shape change, or a change to a file it shipped, goes on its card from every door, not only the model's tool; a file the firm adds to its module (a source's own reader) is the firm's | 4 Nov, 5 Nov | test |
 | M5 | Kit code finds tables and fields by their lasting key, never by a name a person can change, so a rename never breaks a schedule or a reader | 4 Nov | test |
-| M6 | Who may build is one firm setting: everyone, admins or nobody. Building is a new module, table, field, schedule or page, and installing or packing a kit | 4 Nov | step 8 |
-| M7 | The developer switch (`developer: true` in alpha.yaml, out of the window since 7 Nov), installing packs, restoring, bringing in or removing data, and the model's route are for admins only (the owner, until there are users) | 4 Nov, 7 Nov | step 8 |
-| M8 | A managed kit's update may rename, retype and remove, by a scripted migration signed with it; an open kit's update only adds | 4 Nov | step 8 |
+| M6 | Who may build is one firm setting: everyone, admins or nobody. Building is a new module, table, field, schedule or page, and installing or packing a kit | 4 Nov | with Dell's contract |
+| M7 | The developer switch (`developer: true` in alpha.yaml, out of the window since 7 Nov), installing packs, restoring, bringing in or removing data, and the model's route are for admins only (the owner, until there are users) | 4 Nov, 7 Nov | with Dell's contract |
+| M8 | A managed kit's update may rename, retype and remove, by a scripted migration signed with it; an open kit's update only adds | 4 Nov | with Dell's contract |
 
 ## Who owns the data: Alpha's own
 
@@ -59,23 +58,23 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| D6 | A mirror's source field takes a correction kept in Alpha, never sent back. The corrected value is what Alpha shows and uses, marked "Corrected in Alpha; Gmail says …"; each read keeps the source's value beside it, and Reset puts it back. A field the connector declares writable is the exception (D10). In a managed module the kit decides whether corrections are allowed. An action that leaves the world on a corrected value uses the correction, and its card says so | 4 Nov | skip (step 8) |
+| D6 | A mirror's source field takes a correction kept in Alpha, never sent back. The corrected value is what Alpha shows and uses, marked "Corrected in Alpha; Gmail says …"; each read keeps the source's value beside it, and Reset puts it back. A field the connector declares writable is the exception (D10). In a managed module the kit decides whether corrections are allowed. An action that leaves the world on a corrected value uses the correction, and its card says so | 4 Nov | skip (Dell's contract) |
 | D7 | Alpha's own fields may sit beside the source's on a mirror's row (tags, notes, a link to a deal) and follow the rules for Alpha's own data | 4 Nov | test |
 | D8 | A mirror's rows come and go only with the source: no remove, trash, Bring back or Revert of them in Alpha. A record deleted at the source is marked gone and kept, out of the default lists, so the notes, tasks and links on it stay findable | 4 Nov | test |
 | D9 | Each mirror's connector declares what may change at the source (add, change which fields, remove), each through one named action. What it does not declare is never sent; mail, calendar, contacts and LinkedIn declare nothing | 4 Nov | test |
-| D10 | A change to a declared field is a request, not a write. It goes through the declared action as a step that leaves the world (`outward`, never `write`), on a card unless an approved rule allows it. It carries the value it was based on, and is refused when the record changed since | 4 Nov | skip (step 8) |
-| D11 | The row shows the request as waiting until a read shows the system took it; only then is it the row's value. Not confirmed in time, it becomes a card. Each step is a journal line | 4 Nov | step 8 |
-| D12 | A mirror's row says when it was last read; an action that leaves the world on a mirror's value reads that row fresh first | 4 Nov | skip (step 8) |
+| D10 | A change to a declared field is a request, not a write. It goes through the declared action as a step that leaves the world (`outward`, never `write`), on a card unless an approved rule allows it. It carries the value it was based on, and is refused when the record changed since | 4 Nov | skip (Dell's contract) |
+| D11 | The row shows the request as waiting until a read shows the system took it; only then is it the row's value. Not confirmed in time, it becomes a card. Each step is a journal line | 4 Nov | with Dell's contract |
+| D12 | A mirror's row says when it was last read; an action that leaves the world on a mirror's value reads that row fresh first | 4 Nov | skip (Dell's contract) |
 
 ## Audit
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | A1 | One journal line per change, written in the change's own transaction by the world function that makes it; no door writes a line of its own beside it | 4 Nov | test |
-| A2 | Every line names a real actor: the signed-in person, a schedule with its run, a connector with its account, or Alpha's turn with the message it served | 4 Nov | step 8 |
+| A2 | Every line names a real actor: the signed-in person, a schedule with its run, a connector with its account, or Alpha's turn with the message it served | 4 Nov | with Dell's contract |
 | A3 | The chain's newest hash is written outside the world every day, in a manifest beside the daily backup, so a rewritten tail cannot verify | 4 Nov, 10 Nov | test |
 | A4 | A line that adds, changes or lands rows carries a digest of the values it wrote, so `pnpm journal verify` finds a value changed in the file | 4 Nov | test |
-| A5 | In a firm with users, reading a managed module's records is a journal line, folded after its days like the model's reads | 4 Nov | step 8 |
+| A5 | In a firm with users, reading a managed module's records is a journal line, folded after its days like the model's reads | 4 Nov | with Dell's contract |
 | A6 | Where Alpha asks people to sign in, every request but the sign-in pages carries a live session and acts as that person: their conversation and the cards raised in it are theirs alone, and only the owner sets the model, the data, who may sign in, and installs a pack | 9 Nov | test |
 
 ## Reliability

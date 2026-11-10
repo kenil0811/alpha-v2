@@ -1,7 +1,7 @@
 // The three gates, the only gates: anything that leaves the tenant's world; deleting
 // the person's own entries when they didn't ask for it; a sign-in. A gate makes a card and the
 // call does not run; the person's yes on that card lets the same call through once. Before them,
-// the person's rules (core step 2): an approved deny refuses any call it covers, with no card,
+// the person's rules: an approved deny refuses any call it covers, with no card,
 // quoting itself; an approved allow lets a gated call through; what Alpha noticed is followed on a
 // read or on rows that are not the person's own, and otherwise only said on the card.
 
@@ -70,7 +70,7 @@ export function gateOf(input: GateInput): GateName | null {
 
 // A removal the person asked for carries their words, and code finds them in their message:
 // the quote must be in what they typed this turn, and must say removal in one of the words
-// core/config/words.yaml lists (item 11 of the problems list, 25 Oct); anything else is a card.
+// core/config/words.yaml lists; anything else is a card.
 export function askedFor(words: string | null, message: string | null): boolean {
   if (!words || !message) return false
   const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, ' ').trim()
@@ -104,7 +104,7 @@ export function factsOf(input: GateInput): CallFacts {
 
 // The words the model reads when a rule refused its call.
 export const refusedBy = (r: Rule) =>
-  `Refused by the person's rule: “${r.words}” Do not try it another way. Tell them which rule stopped it, and that they can revoke it in Governance or Settings › Permissions.`
+  `Refused by the person's rule: “${r.words}” Do not try it another way. Tell them which rule stopped it, and that they can revoke it in Settings › Permissions.`
 
 export function decide(world: World, input: GateInput): Verdict {
   const facts = factsOf(input)
@@ -138,7 +138,7 @@ export function decide(world: World, input: GateInput): Verdict {
       return {
         pass: false,
         card: null,
-        reason: `Not done: Alpha noticed the person keeps to “${noticed.words}” Say so in a line; they can approve or dismiss it in Governance.`,
+        reason: `Not done: Alpha noticed the person keeps to “${noticed.words}” Say so in a line; they can approve or dismiss it in Settings › Permissions.`,
         rule: noticed,
       }
     }

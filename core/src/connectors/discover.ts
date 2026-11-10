@@ -1,4 +1,4 @@
-// Connectors found in their folders (decision 10): a connector is a folder with a package.json
+// Connectors found in their folders: a connector is a folder with a package.json
 // whose entry exports `connector` (or `connectors`, several from one helper), written against the
 // SDK. The core loads two sets at start: the standard set, the packages under the repository's
 // connectors/ that the release ships; and the added set, every folder under Alpha's own
@@ -63,7 +63,7 @@ export function entryOf(dir: string): string {
 }
 
 // The connectors one folder exports, checked; throws in plain words when it is not one. Its code
-// runs in its own process (step 2, part 1): the core holds what that process says of it.
+// runs in its own process: the core holds what that process says of it.
 export async function loadConnector(dir: string, taken: string[] = []): Promise<Connector[]> {
   return named(await startConnector(dir), taken)
 }
@@ -122,8 +122,8 @@ function vouched(folder: string, trust: Trust | undefined): void {
 }
 
 // Every folder directly under dir that is a connector, in name order. The added set is given its
-// trust (step 2, part 1, slice 3): a folder loads as Kenil signed it, or while the developer
-// switch is on; the standard set ships with the app and is given none.
+// trust: a folder loads as Kenil signed it, or while the developer switch is on; the standard set
+// ships with the app and is given none.
 export async function loadSet(dir: string, taken: string[] = [], trust?: Trust): Promise<Loaded> {
   const out: Loaded = { connectors: [], failed: [] }
   if (!existsSync(dir)) return out
@@ -301,7 +301,7 @@ export function unpack(
       if (sha(readFileSync(join(folder, f))) !== m.files[f])
         throw new Refused(`That pack's ${f} is not as it was packed.`)
     if (!/^[a-z][a-z0-9-]{0,39}$/.test(m.name)) throw new Refused('That pack names no connector.')
-    // signed by Kenil, or the developer switch is on (step 2, part 1, slice 3)
+    // signed by Kenil, or the developer switch is on
     mustBeSigned(stage, trust)
     const dir = join(connectorsDir, m.name)
     rmSync(dir, { recursive: true, force: true })

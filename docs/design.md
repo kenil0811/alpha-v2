@@ -228,8 +228,8 @@ through the window, use the kit's blocks for their look, and print to PDF.
 
 ## The window
 
-The rail has Home, Conversation, Tasks and the modules, with Intelligence and Settings at its foot.
-The assistant sits on the right of every other screen. Home is what needs the person, today's
+The rail has Home, Agents, Tasks and the modules, with Intelligence and Settings at its foot. The
+assistant starts closed and opens beside any screen from Alpha's face at the right of the bar. Home is what needs the person, today's
 tasks and what was recently completed. The chat looks and feels like Claude Code, in a blue accent.
 Tables are one grid with saved lists, and a row, task or schedule opens beside the page. Rules for
 all of it are in `docs/ui-rules.md`, held by `window/src/look.test.ts` where code can hold them. The

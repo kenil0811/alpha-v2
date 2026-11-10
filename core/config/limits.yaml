@@ -20,22 +20,20 @@ document_page_chunks: 200
 # judgement, never met by the person.
 journey_step_minutes: 10
 
-# Runs of a journey with --times and no number: enough to tell a flaky pass from a sure one
-# (item 48 of the problems list, 25 Oct). A journeys-runner judgement, never met by the person.
+# Runs of a journey with --times and no number: enough to tell a flaky pass from a sure one.
+# A journeys-runner judgement, never met by the person.
 journey_times: 3
 
-# Journeys run at once by pnpm journeys, each on its own fresh world (Kenil, 29 Oct: a round one at
-# a time took twenty minutes). A journeys-runner judgement, never met by the person.
+# Journeys run at once by pnpm journeys, each on its own fresh world (a round one at a time took
+# twenty minutes). A journeys-runner judgement, never met by the person.
 journeys_at_once: 3
 
-# Characters a question card's question may run to: one short line, read at a glance (Kenil, 30
-# Oct: a question holding a whole preview). What it rests on goes in the card's detail. A wall on
-# the model, never met by the person.
+# Characters a question card's question may run to: one short line, read at a glance, never a whole
+# preview. What it rests on goes in the card's detail. A wall on the model, never met by the person.
 question_characters: 140
 
 # Attempts after the first, for a connector call that reads and failed in passing (a dropped
-# connection). A send or a write is never tried again: whether it was done is unknown (call A,
-# 28 Oct).
+# connection). A send or a write is never tried again: whether it was done is unknown.
 connector_retries: 2
 
 # The most, in all, a connector call waits for a service that asked it to (429, "too many
@@ -49,12 +47,11 @@ health_fewer_rows_ratio: 0.5
 health_quiet_days: 7
 
 # Runs of a schedule that did not finish, one a tick, before a card on Home asks whether to try
-# again or leave it (item 16 of the problems list, 25 Oct).
+# again or leave it.
 run_retries: 2
 
-
 # Hours a one-time yes on a card stays good for: a yes answers the call in front of the person,
-# and the same call hours later is out of that context, so it is asked again (item 39, 25 Oct).
+# and the same call hours later is out of that context, so it is asked again.
 # An Always stays until it is revoked.
 yes_hours: 6
 
@@ -64,30 +61,22 @@ browser_pace_min_ms: 4000
 browser_pace_max_ms: 9000
 
 # Days a removed row is kept, out of sight, so Bring back or Revert can put it back whole; then the
-# daily work deletes it for good (core step 1, Kenil 26 Oct). A judgement, never a setting.
+# daily work deletes it for good. A judgement, never a setting.
 keep_removed_days: 30
 
 # Days after which journal lines that only said something was read (queries, searches, syncs
-# with nothing new, their done lines) fold into one checkpoint line a day that keeps the chain
-# (step 2, part 3, Kenil's call 5, 29 Oct). Writes, sends, cards, rules, reverts, removals and
-# refusals are kept for ever. A judgement, never a setting.
+# with nothing new, their done lines) fold into one checkpoint line a day that keeps the chain.
+# Writes, sends, cards, rules, reverts, removals and refusals are kept for ever. A judgement,
+# never a setting.
 journal_fold_days: 90
 
-# A row's parts its view shows, each part's twelve changed most lately with how many in all: a client's hundreds
-# of ledger lines would make its page long and slow (core plan step 4, Accounting). Open as a table
-# shows them all; the same number as a row's links show.
+# A row's parts its view shows, each part's twelve changed most lately with how many in all: a
+# client's hundreds of ledger lines would make its page long and slow. Open as a table shows them
+# all; the same number as a row's links show.
 parts_shown: 12
 
-# The turns a plugin's exploring session may take before it must answer (onboarding B, Kenil's
-# yes 2 Nov): generous, only so a session that never settles ends. Never shown, never a setting.
-explore_turns: 80
-# The most one look in an exploring session may return before Claude Code sets it aside in a file
-# the session cannot read (its own default is 25,000 tokens). High, so no look is cut: the model
-# narrows a look when it wants less. Never shown, never a setting.
-explore_look_tokens: 200000
-
 # An agent's memory is one short fact: a longer note is a skill. A wall for the model, never met by
-# the person (OpenBot's figure, 9 Nov).
+# the person (OpenBot's figure).
 memory_characters: 500
 
 # The essential memories always loaded into a session, newest first; the rest are searched.
@@ -107,7 +96,7 @@ asks_per_request: 8
 
 # How far one agent can pass work on to another before the chain stops.
 hops_in_a_chain: 4
-# Tasks one agent works on at the same time; the rest wait in To do (Kenil, 9 Nov: "yes for now").
+# Tasks one agent works on at the same time; the rest wait in To do.
 tasks_at_once: 4
 # when a repeating task given to an agent starts, if its due day has no time
 repeat_starts_at: "08:00"

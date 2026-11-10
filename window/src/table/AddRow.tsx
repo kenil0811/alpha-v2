@@ -28,7 +28,7 @@ export function AddRow({
   fixed?: Record<string, unknown>
   onClose: () => void
 }) {
-  // a summary is worked out from other rows, never typed (core step 3c)
+  // a summary is worked out from other rows, never typed
   const fields = all.filter((f) => f.kind !== 'notes' && !f.summary && !(f.name in fixed))
   const [values, setValues] = useState<Record<string, string>>({})
   const [problem, setProblem] = useState<string | null>(null)

@@ -1,6 +1,6 @@
 // Keeping a growing conversation in view: an eased scroll to the end while you are at the end, which
 // lets go the moment you scroll up and takes hold again when you come back down. While it first
-// draws it is put at its end at once, so it opens there with no scroll to watch (Kenil, 10 Nov).
+// draws it is put at its end at once, so it opens there with no scroll to watch.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 const dims = (el: HTMLElement) => `${el.scrollHeight}:${el.clientHeight}:${el.clientWidth}`
@@ -59,7 +59,7 @@ export function useFollow(conversation: string, loaded: boolean, opensAtEnd = tr
       frame.current = 0
     }
     // watched again once the conversation has loaded: before that its boxes are not there, and what
-    // drew after the first look went unfollowed, so it opened short of its end (Kenil, 10 Nov)
+    // drew after the first look went unfollowed, so it opened short of its end
   }, [follow, conversation, loaded])
 
   // a conversation opens at its end, with no scroll to watch

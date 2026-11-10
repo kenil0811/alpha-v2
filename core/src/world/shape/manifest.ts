@@ -67,8 +67,8 @@ export function manifestSays(m: Module, key: 'people' | 'core'): boolean {
   }
 }
 
-// A module's business case (core step 3e): who it is for, what it keeps track of, the decisions it
-// serves, and whose words they are. Kept in its module.yaml, beside what the file mirrors.
+// A module's business case: who it is for, what it keeps track of, the decisions it serves, and
+// whose words they are. Kept in its module.yaml, beside what the file mirrors.
 export interface BusinessCase {
   for: string
   keeps: string

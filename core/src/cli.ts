@@ -1,5 +1,4 @@
-// What the `alpha` command asks of the core's own code (packaging, piece 3), with the core stopped
-// or running: a backup of every world by SQLite's backup API, a restore from one (the core
+// What the `alpha` command asks of the core's own code, with the core stopped or running: a backup of every world by SQLite's backup API, a restore from one (the core
 // stopped), and a report to send Kenil with versions, health and shapes, never rows.
 //   node core/src/cli.ts backup <dir> | restore <dir> | report <file>
 import { execFileSync } from 'node:child_process'

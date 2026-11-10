@@ -1,6 +1,6 @@
 // A value changed in place, in the grid and in an opened row (T4): typed, a choice from Alpha's own
-// dropdown (Batch D, 66.5), tags from a tick list (T15), or a related row or a person picked (Batch
-// B, 14b; Pick.tsx). Out of Grid.tsx so that screen only shrinks (the window file wall).
+// dropdown, tags from a tick list (T15), or a related row or a person picked (Pick.tsx). Out of
+// Grid.tsx so that screen only shrinks (the window file wall).
 import type { FieldView } from '@alpha/core/api'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { askForNew } from '../ask.ts'

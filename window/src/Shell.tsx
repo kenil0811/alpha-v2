@@ -1,10 +1,9 @@
-// The shell (Vikas, 25 Oct; reverses the first design's rail
-// until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
-// the right, their headers on one line. The rail has the person's name at its top, Home with a badge
-// for what waits on the person, Agents, Tasks, the modules by name with the modules inside
-// them, New module last in the list, and Intelligence and Settings at its foot; no headings and no
-// status lines. It folds to a strip of icons. In Alpha's own Mac window its top row leaves room for
-// the window buttons.
+// The shell: the rail on the left, a 48px bar over every screen and the assistant on the right,
+// their headers on one line. The rail has the person's name at its top, Home with a badge for what
+// waits on the person, Agents, Tasks, the modules by name with the modules inside them, New module
+// last in the list, and Intelligence and Settings at its foot; no headings and no status lines. It
+// folds to a strip of icons. In Alpha's own Mac window its top row leaves room for the window
+// buttons.
 import type { Layout, ModuleSummary } from '@alpha/core/api'
 import {
   ChevronDown,
@@ -66,7 +65,7 @@ function Nav({
   )
 }
 
-// Each module's signal, for its dot in the rail (Batch E, 66.18).
+// Each module's signal, for its dot in the rail.
 const Signals = createContext<Record<string, Signal>>({})
 
 export function Rail({
@@ -84,7 +83,7 @@ export function Rail({
 }: {
   modules: ModuleSummary[]
   place: Place
-  signals?: Record<string, Signal> // each module's dot (Batch E, 66.18)
+  signals?: Record<string, Signal> // each module's dot
   here: string | null // the module whose screen or table is open
   name: string
   waiting: number
@@ -92,7 +91,7 @@ export function Rail({
   online: boolean
   layout: Layout
   onLayout: (change: Partial<Layout>) => void
-  onNew: () => void // New module: a blank module whose words Alpha builds it from
+  onNew: () => void // New module: a conversation with the Module builder
 }) {
   // the rail's width, dragged by its edge, kept by Alpha per person
   const width = layout.railWidth ?? 216
@@ -100,7 +99,7 @@ export function Rail({
   const hiding: Hiding = { hidden: layout.hidden, set: (ids) => onLayout({ hidden: ids }) }
   const empty = useContextMenu()
   const keepWidth = (w: number) => onLayout({ railWidth: w })
-  // open and folded alike sit in one slide, so a fold or an open eases (Kenil, 10 Nov)
+  // open and folded alike sit in one slide, so a fold or an open eases
   if (layout.railFolded)
     return (
       <SlideWidth width={STRIP}>
@@ -147,7 +146,7 @@ export function Rail({
             inMacApp() && 'pl-19',
           )}
         >
-          {/* the sidebar button first, at the corner, as Claude Code's (Kenil, 10 Nov) */}
+          {/* the sidebar button first, at the corner, as Claude Code's */}
           <button
             type="button"
             aria-label="Fold the rail"
@@ -179,7 +178,7 @@ export function Rail({
           current={place.at === 'tasks'}
           extra={tasksDue > 0 && <Badge n={tasksDue} />}
         />
-        {/* every row 30px, the modules straight after Tasks (Batch E, 79.16, Kenil's look 2 Nov) */}
+        {/* every row 30px, the modules straight after Tasks */}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
         <div
           className="min-h-0 flex-1 overflow-y-auto"
@@ -218,7 +217,7 @@ export function Rail({
             New module
           </button>
         </div>
-        {/* Intelligence and Settings at the foot, each its own place (Kenil's call 1, 7 Nov) */}
+        {/* Intelligence and Settings at the foot, each its own place */}
         <div className="flex flex-col pt-2">
           <Nav
             href="#/intelligence"
@@ -397,7 +396,7 @@ function ModuleItem({
 }
 
 // A module's menu: Open, Move to › every other module it may sit inside (never itself or one of its
-// own) or the top, Hide, Hidden modules ›, and Delete… (Kenil, 10 Nov).
+// own) or the top, Hide, Hidden modules ›, and Delete…
 function ModuleMenu({
   m,
   modules,
@@ -542,7 +541,7 @@ function Strip({
   hidden: string[]
   onNew: () => void
   onOpen: () => void
-  onOpenAt: (width: number) => void // dragged out from its edge to this width (79.2)
+  onOpenAt: (width: number) => void // dragged out from its edge to this width
 }) {
   const [opening, setOpening] = useState<number | null>(null)
   // a module inside another lights the one at the top that holds it
@@ -659,7 +658,7 @@ function Strip({
 }
 
 // the rail's narrowest and widest
-const RAIL = [SIDE_MIN, 360] as const // narrowest at the panels' 200px (Batch D, 79.1)
+const RAIL = [SIDE_MIN, 360] as const // narrowest at the panels' 200px
 
 // The module People and Organizations live in, as its module.yaml says (people: true); none, and
 // they show nowhere.

@@ -1,4 +1,4 @@
-// What every route file is given (decision 12, step 4): the app, the world, the engine, the person
+// What every route file is given: the app, the world, the engine, the person
 // and the options, with the helpers they share.
 import type { FastifyInstance } from 'fastify'
 import type { Engine } from '../engine/engine.ts'

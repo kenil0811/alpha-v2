@@ -1,6 +1,6 @@
-// What a connection may reach and what it was refused (step 2, part 1, slice 2), under it in
-// Intelligence › Connections: its connector runs in its own sandbox, reaching only these hosts.
-// A connector of sites the person chooses offers Allow beside a refusal (call 2).
+// What a connection may reach and what it was refused, under it in Intelligence › Connections:
+// its connector runs in its own sandbox, reaching only these hosts.
+// A connector of sites the person chooses offers Allow beside a refusal.
 import type { ConnectionView } from '@alpha/core/api'
 import { api } from './api.ts'
 

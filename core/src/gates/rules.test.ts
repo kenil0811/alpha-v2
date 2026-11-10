@@ -1,7 +1,6 @@
-// Rules (core step 2, Kenil's yes 27 Oct): an approved deny refuses on every path, quoting
-// itself; an approved allow lets through only what it covers; only the person approves; what
-// Alpha noticed is followed where little is at stake and only said where much is; standing
-// permissions move in.
+// Rules: an approved deny refuses on every path, quoting itself; an approved allow lets through
+// only what it covers; only the person approves; what Alpha noticed is followed where little is at
+// stake and only said where much is; standing permissions move in.
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

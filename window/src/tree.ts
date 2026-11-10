@@ -47,7 +47,7 @@ export function flat<M extends Placed>(modules: M[]): { module: M; depth: number
 
 // Where a module opens, as its own screen would send it: the Overview of the modules inside it, its
 // front page, People, its first table, else Setup. The rail links there straight, so opening a module
-// is one load, not a stop on the way (Kenil, 10 Nov).
+// is one load, not a stop on the way.
 export function landingOf(
   modules: { id: string; parent: string | null }[],
   m: {

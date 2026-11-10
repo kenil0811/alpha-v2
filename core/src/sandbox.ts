@@ -1,7 +1,7 @@
 // The one sandbox the core's children run under: Anthropic's sandbox runtime, its
 // proxy in the core's own process. Nothing is allowed for everyone: a child reaches only the hosts
-// listed for its own process under its id (a connector's, step 2, part 1, slice 2), so a script,
-// which is given no list, reaches nothing. What the proxy refuses is told to whoever listed the id.
+// listed for its own process under its id (a connector's), so a script, which is given no list,
+// reaches nothing. What the proxy refuses is told to whoever listed the id.
 import { randomBytes } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -15,8 +15,7 @@ let ready: Promise<void> | null = null
 const refusedTo = new Map<string, (host: string) => void>()
 const seen = new WeakSet<object>()
 
-// A start that fails is forgotten, so the next child tries again rather than failing for ever
-// (item 14 of the problems list, 25 Oct).
+// A start that fails is forgotten, so the next child tries again rather than failing for ever.
 export function sandbox(): Promise<void> {
   if (!ready) {
     const starting = SandboxManager.initialize({

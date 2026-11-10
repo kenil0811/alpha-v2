@@ -4,8 +4,8 @@
 // files to compare with, and installed or updated as installing from a folder does: within its
 // module's parent, schedules paused, the ownership rule on update. Packs dropped in kits/inbox are
 // installed when the core starts; Settings takes one from a file. A pack goes in only signed by
-// Kenil, or while the developer switch is on (step 2, part 1, slice 3); once in, its module is the
-// person's to change, by the ownership rule, so it is not checked again.
+// Kenil, or while the developer switch is on; once in, its module is the person's to change, by
+// the ownership rule, so it is not checked again.
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
@@ -100,14 +100,14 @@ export function unpack(
     const mf = join(stage, 'PACK.json')
     if (!existsSync(mf)) throw new Refused('That file is not a kit pack: it has no PACK.json.')
     const m = JSON.parse(readFileSync(mf, 'utf8')) as PackManifest
-    // the name and the version become a folder's path: a version is 1.2.3, nothing else (item 2
-    // of the problems list, 24 Oct), and a pack carries files only, never a link to elsewhere
+    // the name and the version become a folder's path: a version is 1.2.3, nothing else, and a
+    // pack carries files only, never a link to elsewhere
     if (typeof m.version !== 'string' || !/^\d+\.\d+\.\d+$/.test(m.version))
       throw new Refused('That kit pack’s version is not a version like 1.2.3.')
     if (typeof m.name !== 'string' || !/[a-z0-9]/i.test(m.name))
       throw new Refused('That kit pack has no name.')
-    // signed by Kenil, or the developer switch is on (step 2, part 1, slice 3); only the first
-    // lets a kit's `managed: true` count (rules M1)
+    // signed by Kenil, or the developer switch is on; only the first lets a kit's `managed: true`
+    // count (rules M1)
     mustBeSigned(stage, trust)
     const signed = signedIn(stage, trust.key === undefined ? trustedKey() : trust.key)
     const kit = join(stage, 'kit')
@@ -146,7 +146,7 @@ export async function installPack(
     m && one<{ version: string }>(world.db, 'SELECT version FROM kits WHERE module_id = ?', m.id)
   // the same kit again (every install refills the inbox): nothing to do
   if (m && fromKit && fromKit.version === version) return `${name} ${version} is already there.`
-  // an older pack never takes a kit back (item 42 of the problems list, 25 Oct)
+  // an older pack never takes a kit back
   if (m && fromKit && newer(fromKit.version, version))
     throw new Refused(
       `${name} ${fromKit.version} is already there, newer than ${version}; nothing changed.`,

@@ -131,7 +131,7 @@ describe('a Gmail connection on recorded answers', () => {
     ])
   })
 
-  it('lands mail in the table the person renamed, never a second Mail (call 6)', async () => {
+  it('lands mail in the table the person renamed, never a second Mail', async () => {
     const svc = new ConnectorService(world, { secrets, fixtures, known })
     record('gmail', 'check', {}, '[Gmail]/All Mail')
     const page = (cursor: string | null, last: number, id: string, subject: string) =>

@@ -1,10 +1,10 @@
-// Signing in as the person (step 2, part 5, Kenil's yes 30 Oct): the client's own sign-in app,
-// set once for the organisation; the person signing in on the provider's own page in their own
-// browser, sent back to the core's address on this computer with a one-time state and PKCE, so
-// only this core can use the answer; the long-lived token kept in the secret store (the Keychain)
-// and out of every journal line; a short-lived token renewed here and handed to the connector's
-// process, which never sees the long-lived one. Alpha acts as the person, so it reaches only what
-// they can (Kenil, 30 Oct). What the provider's errors mean is its own (signin.ts in the SDK).
+// Signing in as the person: the client's own sign-in app, set once for the organisation; the person
+// signing in on the provider's own page in their own browser, sent back to the core's address on
+// this computer with a one-time state and PKCE, so only this core can use the answer; the
+// long-lived token kept in the secret store (the Keychain) and out of every journal line; a
+// short-lived token renewed here and handed to the connector's process, which never sees the
+// long-lived one. Alpha acts as the person, so it reaches only what they can. What the provider's
+// errors mean is its own (signin.ts in the SDK).
 import { createHash, randomBytes } from 'node:crypto'
 import {
   type Connector,
@@ -145,8 +145,8 @@ export class SignIn {
     return [...(c.manifest.oauth?.scopes ?? []), ...p.always].join(' ')
   }
 
-  // The provider's own page for signing in to Alpha itself (the clean base, step 4b): it asks only
-  // who they are, and gives no token Alpha keeps.
+  // The provider's own page for signing in to Alpha itself: it asks only who they are, and gives no
+  // token Alpha keeps.
   startPerson(provider: string): string {
     const p = this.provider(provider)
     const app = this.app(p.name)

@@ -42,7 +42,7 @@ export interface Provenance {
     formula?: string
     note?: string
     at: string
-    kind?: 'looked_up' | 'computed' // computed when not said, as before 5 Nov
+    kind?: 'looked_up' | 'computed' // computed when not said
     source?: Source
   }
 }

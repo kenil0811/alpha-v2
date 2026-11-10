@@ -1,4 +1,4 @@
-// A connector's own process (step 2, part 1): it imports the connector's code, says what the
+// A connector's own process: it imports the connector's code, says what the
 // connectors in it are (their manifest, tables, tools with their inputs as JSON schemas, guide),
 // then answers the core's calls one line at a time. Its host is the core's, over the same pipe: a
 // secret, landing rows, keeping a file, the keys a table holds, the browser and Alpha's Mac helper
@@ -38,7 +38,7 @@ function describeTool(t: Tool) {
     effect: typeof t.effect === 'function' ? null : t.effect,
     preview: !!t.preview,
     words: !!t.words,
-    // what it is once done (step 2, part 2): final, or taken back; none for a read
+    // what it is once done: final, or taken back; none for a read
     undo:
       !t.undo || t.undo === 'final' ? (t.undo ?? null) : { kind: t.undo.kind, said: t.undo.said },
   }

@@ -1,14 +1,11 @@
 // The model asked one question with no tools, answered in a schema (the document reader's
-// judgement point, judging): through the Agent SDK with the route's own sign-in, as the desk. And
-// a question it works out with a plugin's few read-only tools first (exploreOnce, onboarding B):
-// those tools only, no shell, no files, no web, for a bounded number of turns.
+// judgement point, judging): through the Agent SDK with the route's own sign-in, as the desk.
 import { realpathSync } from 'node:fs'
 import { type Options, query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { config } from '../config.ts'
 import type { Ask } from '../files/reading.ts'
 import { Refused } from '../world/kinds.ts'
 import { type Use, usesOfModelUsage } from '../world/spend.ts'
-import { fullName, Registry, type ToolEntry } from './registry.ts'
 
 export function askModel(
   cwd: string,
@@ -26,35 +23,6 @@ export async function askOnce(
   schema: Record<string, unknown>,
 ): Promise<{ answer: unknown; tokens: number; uses: Use[] }> {
   return answerOf(prompt, optionsOf(cwd, env, system, schema))
-}
-
-export async function exploreOnce(
-  cwd: string,
-  env: Record<string, string>,
-  system: string,
-  prompt: string,
-  tools: ToolEntry[],
-  schema: Record<string, unknown>,
-  turns: number,
-): Promise<{ answer: unknown; tokens: number; uses: Use[] }> {
-  const allowed = new Set(tools.map((t) => fullName(t.server, t.name)))
-  const base = optionsOf(cwd, env, system, schema)
-  return answerOf(prompt, {
-    ...base,
-    env: {
-      ...base.env,
-      MAX_MCP_OUTPUT_TOKENS: String(config.limits().explore_look_tokens),
-    },
-    mcpServers: new Registry(tools, {
-      alwaysLoad: [...new Set(tools.map((t) => t.server))],
-    }).servers(),
-    allowedTools: [...allowed],
-    maxTurns: turns,
-    canUseTool: async (name, input) =>
-      allowed.has(name)
-        ? { behavior: 'allow', updatedInput: input }
-        : { behavior: 'deny', message: 'Only the tools given for this question.' },
-  })
 }
 
 function optionsOf(

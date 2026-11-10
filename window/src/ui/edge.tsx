@@ -1,13 +1,12 @@
 // The inner edge of a side panel, the same on the rail, the assistant and the panel beside the
 // page, to drag it wider or narrower. It shows only on hover or keyboard focus, and its tip says
-// what a drag does (Batch D, 79.5). Each panel narrows to 200px; dragged past that, it folds then
-// and there, before the pointer is let go (79.1). From a folded strip, a drag out shows a shadow
-// of the width it will open to and opens there (79.2). Arrow keys step it 24px.
+// what a drag does. Each panel narrows to 200px; dragged past that, it folds then and there,
+// before the pointer is let go. From a folded strip, a drag out shows a shadow of the width it
+// will open to and opens there. Arrow keys step it 24px.
 import { useRef, useState } from 'react'
 import { cn } from './cn.ts'
 
-// The folded rail (Kenil, 10 Nov, as Claude Code's): a 52px strip of icons, each named when
-// hovered.
+// The folded rail, as Claude Code's: a 52px strip of icons, each named when hovered.
 export const STRIP = 52
 export const stripItem = (current = false) =>
   cn(

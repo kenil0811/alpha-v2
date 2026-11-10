@@ -1,4 +1,4 @@
-// The firm's agents as the window reads them (clean base step 7). Making and changing one happens
+// The firm's agents as the window reads them. Making and changing one happens
 // in a conversation with the Chief of staff; here a person reads one, edits its memories, undoes a
 // change to its instructions, and deletes it.
 import { existsSync, readdirSync } from 'node:fs'
@@ -89,7 +89,7 @@ export function registerAgents(ctx: Ctx): void {
     return { model }
   })
 
-  // the Module builder New module opens (Kenil, 10 Nov); none once the person deleted it
+  // the Module builder New module opens; none once the person deleted it
   app.get('/api/agents/builder', async () => ({ id: builderId(world) }))
 
   app.get('/api/agents/:id', async (req): Promise<AgentDetail> => {

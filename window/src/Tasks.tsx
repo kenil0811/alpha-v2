@@ -1,4 +1,4 @@
-// Tasks (Kenil's plan, 21 Oct, Ledger): one list of all work, each task on the place it concerns.
+// Tasks: one list of all work, each task on the place it concerns.
 // Saved lists (Today, This week, Overdue, Waiting for you, Schedules, All open, Done) in four views:
 // a list, a tree by place, a board by state and a calendar by due date. New under the list. A
 // task's page: its state, due and reminder, repeat, priority, owner, place, notes, what it touches,
@@ -73,7 +73,7 @@ export function Tasks({
 // table, board, calendar and grouping, each opening on its own page.
 function TaskLists({ list, version }: { list: List; version: number }) {
   // the core serves a saved list's tasks as a table: changed in a cell, or by a card dragged
-  // across the board (UI batch 2, 26 Oct)
+  // across the board
   const [data, setData] = useState<KeptTable | null>(null)
   const load = useCallback(() => {
     api.get<KeptTable>(`/api/kept/tasks?list=${list}`).then(setData, () => setData(null))
@@ -96,7 +96,7 @@ function TaskLists({ list, version }: { list: List; version: number }) {
         }))}
       />
       <div className="min-h-0 flex-1">
-        {/* its frame from the first moment, its rows filling in (Kenil, 10 Nov) */}
+        {/* its frame from the first moment, its rows filling in */}
         <TableView
           key={list}
           data={data ?? TASKS_FRAME}
@@ -177,8 +177,8 @@ export function NewTask({
   )
 }
 
-// A task's state as a circle; a click opens its five states, so a click never closes it by
-// itself (Kenil, 21 Oct).
+// A task's state as a circle; a click opens its five states, so a click never closes it
+// by itself.
 function Tick({ t, onChange }: { t: TaskLineView; onChange: () => void }) {
   const anchor = useRef<HTMLButtonElement>(null)
   const [choosing, setChoosing] = useState(false)

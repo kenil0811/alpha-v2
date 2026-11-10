@@ -21,7 +21,7 @@ export async function install(
 ): Promise<Module> {
   checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
-  // the kit's module by its lasting key, so a renamed one is still this kit's (call 6)
+  // the kit's module by its lasting key, so a renamed one is still this kit's
   const known = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
   if (known) {
     const isKit = one(world.db, 'SELECT 1 FROM kits WHERE module_id = ?', known.id)
@@ -47,7 +47,7 @@ export async function install(
       )
     }
     copyFileSync(join(kitDir, 'module.yaml'), join(m.dir, 'module.yaml'))
-    // what it is for, as the kit says it (core step 3e)
+    // what it is for, as the kit says it
     if (manifest.business_case)
       setBusinessCase(world.shape, m, manifest.business_case, 'kit', kitCtx)
     placeModule(world, m, manifest.within, kitCtx)
@@ -208,7 +208,7 @@ export async function update(
     return out
   })
   updateSites(world, module, manifest.network, kitCtx, manifest.people === true)
-  // the kit's newer business case, unless the person wrote their own (core step 3e)
+  // the kit's newer business case, unless the person wrote their own
   if (manifest.business_case)
     setBusinessCase(world.shape, module, manifest.business_case, 'kit', kitCtx)
   world.shape.writeManifest(world.shape.module(module.id) as Module)
@@ -218,8 +218,8 @@ export async function update(
 
 // The sites a module's readers may read, on update: the kit's list as it is now, and every site
 // the person let a reader reach on a card (its journal line), so a site the kit drops goes and
-// one the person allowed stays (item 44 of the problems list, 25 Oct). module.yaml is not one of
-// a kit's files on update, so without this its list never changed.
+// one the person allowed stays. module.yaml is not one of a kit's files on update, so without
+// this its list never changed.
 function updateSites(
   world: World,
   module: Module,

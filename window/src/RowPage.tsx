@@ -1,6 +1,6 @@
-// A row's own page (core step 3b): the row's view, the same as in the side panel, in the record
-// layout, at #/row/<id>. The bar holds the way back to its module and table; the page names its
-// table, then the row, then the view. It comes again whenever the world changes.
+// A row's own page: the row's view, the same as in the side panel, in the record layout, at
+// #/row/<id>. The bar holds the way back to its module and table; the page names its table, then
+// the row, then the view. It comes again whenever the world changes.
 import type { FieldView, RowPageView } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'

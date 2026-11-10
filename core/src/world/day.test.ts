@@ -1,5 +1,5 @@
-// The person's own day (Batch A, pick 4): days and months in the person's zone, never UTC's. These
-// tests also run under TZ=America/Chicago (pnpm tz), where the UTC day is often tomorrow.
+// The person's own day: days and months in the person's zone, never UTC's. These tests also run
+// under TZ=America/Chicago (pnpm tz), where the UTC day is often tomorrow.
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'

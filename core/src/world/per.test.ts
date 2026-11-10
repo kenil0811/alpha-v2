@@ -1,6 +1,6 @@
-// One row per person and the fold of a merge (core step 3d, Kenil's yes 27 Oct): a per-person
-// table refuses a second row and lands on the person's row; merging two people folds their rows
-// by the rules, re-points every row naming the merged-in one, and unmerge puts it all back.
+// One row per person and the fold of a merge: a per-person table refuses a second row and lands on
+// the person's row; merging two people folds their rows by the rules, re-points every row naming
+// the merged-in one, and unmerge puts it all back.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

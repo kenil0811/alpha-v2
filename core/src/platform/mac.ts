@@ -76,7 +76,7 @@ export class MacPlatform implements Platform {
     return true
   }
 
-  // The Mac's own name for its user ("Kenil Shah"), else the account name.
+  // The Mac's own name for its user ("Sam Ortiz"), else the account name.
   personName(): string {
     try {
       const n = execFileSync('/usr/bin/id', ['-F'], { encoding: 'utf8' }).trim()

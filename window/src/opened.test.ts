@@ -1,4 +1,4 @@
-// Tasks, runs, people and rows open beside the page, kept in the address (Batch A, pick 2).
+// Tasks, runs, people and rows open beside the page, kept in the address.
 import { describe, expect, it } from 'vitest'
 import { linkBeside, pageOf, splitBeside, withBeside } from './opened.ts'
 import { placeOf } from './place.ts'
@@ -35,7 +35,7 @@ describe('what is open beside the page', () => {
     expect(pageOf({ kind: 'person', id: 'p_1' })).toBe('#/people/p_1')
   })
 
-  it('opens a schedule, a rule and the rows a figure counted too (Batch D, 79.6, 79.7)', () => {
+  it('opens a schedule, a rule and the rows a figure counted too', () => {
     expect(linkBeside('#/schedule/a_1', '#/')).toEqual({ kind: 'schedule', id: 'a_1' })
     expect(linkBeside('#/rule/u_1', '#/settings/permissions')).toEqual({ kind: 'rule', id: 'u_1' })
     const rows = linkBeside('#/table/t_9?only=r_1,r_2', '#/module/m_1')

@@ -1,9 +1,8 @@
-// A wall for developers (decision 12, step 4): no file in core/src over 600 lines, so a reader
-// finds what they came for in a screen or two. A file that grows past it is split into a folder
-// named for it with an index.ts (runs/, tools/, kits/, world/tasks/, records/, shape/, people/).
-// The window is held to the same wall (Batch A, call 10, Kenil's yes 1 Nov): a new file stays
-// under 600 lines, and the big screens it began with may only shrink, each new behaviour in a
-// small file of its own that they wire in.
+// A wall for developers: no file in core/src over 600 lines, so a reader finds what they came for
+// in a screen or two. A file that grows past it is split into a folder named for it with an
+// index.ts (runs/, tools/, kits/, world/tasks/, records/, shape/, people/).
+// The window is held to the same wall: a new file stays under 600 lines, and the big screens it
+// began with may only shrink, each new behaviour in a small file of its own that they wire in.
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
@@ -12,14 +11,12 @@ const LIMIT = 600
 // The files over the limit by design, each at most as long as it is here: over its own count
 // fails too.
 const LEFT: Record<string, number> = {
-  'core/src/api/types.ts': 660, // the window's contract, one file by design (Kenil, 24 Oct)
-  // the window's big screens as they stood after the clean base's delete (7 Nov): they may only
-  // shrink
-  'window/src/Settings.tsx': 1072,
-  'window/src/table/Grid.tsx': 1272,
-  'window/src/Shell.tsx': 692,
-  'window/src/TableView.tsx': 856,
-  'window/src/Tasks.tsx': 680,
+  'core/src/api/types.ts': 651, // the window's contract, one file by design
+  // the window's big screens it began with: they may only shrink
+  'window/src/table/Grid.tsx': 1209,
+  'window/src/Shell.tsx': 669,
+  'window/src/TableView.tsx': 704,
+  'window/src/Tasks.tsx': 676,
 }
 const long: string[] = []
 function walk(dir: string) {

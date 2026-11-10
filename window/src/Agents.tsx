@@ -1,6 +1,6 @@
-// The firm's agents (clean base step 7): Intelligence › Agents lists them with the Chief of staff
-// first, and an agent's page shows what it is, its memories and its skills. An agent is made and
-// changed in a conversation with the Chief of staff, so nothing here is a form to fill in.
+// The firm's agents: Intelligence › Agents lists them with the Chief of staff first, and an
+// agent's page shows what it is, its memories and its skills. An agent is made and changed in a
+// conversation with the Chief of staff, so nothing here is a form to fill in.
 import type { AgentDetail, AgentView, MemoryView } from '@alpha/core/api'
 import { Bot, Check, MessageSquare, Plus, Trash2, X } from 'lucide-react'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'

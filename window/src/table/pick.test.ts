@@ -1,4 +1,4 @@
-// Picking a related row or a person (Batch B, 14b): where the picks come from, the search past
+// Picking a related row or a person: where the picks come from, the search past
 // five, and what a pick sends; a file is never picked here.
 import type { FieldView } from '@alpha/core/api'
 import { describe, expect, it } from 'vitest'

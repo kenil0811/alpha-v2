@@ -1,6 +1,6 @@
-// A table kept as a tab (28 Oct, Kenil's yes): a part or a setup table shown among its module's
-// tabs too, by the person or its kit; where it sits and what goes with its rows don't change, and
-// a kit's update leaves the person's choice as they left it.
+// A table kept as a tab: a part or a setup table shown among its module's tabs too, by the
+// person or its kit; where it sits and what goes with its rows don't change, and a kit's update
+// leaves the person's choice as they left it.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

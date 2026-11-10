@@ -156,7 +156,7 @@ export class Shape {
     return out
   }
 
-  // key: the kit's or connector's name for it, so it finds it again after a rename (call 6)
+  // key: the kit's or connector's name for it, so it finds it again after a rename
   makeModule(name: string, ctx: WriteCtx, key?: string): Module {
     if (!name.trim()) throw new Refused('A module needs a name.')
     return tx(this.db, () => {
@@ -304,7 +304,7 @@ export class Shape {
       setup?: boolean
       about?: string
       aboutBy?: AboutBy
-      key?: string // the kit's or connector's name for it (call 6)
+      key?: string // the kit's or connector's name for it
     } = {},
   ): Table {
     if (!name.trim()) throw new Refused('A table needs a name.')

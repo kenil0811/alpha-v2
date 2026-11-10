@@ -1,7 +1,6 @@
-// A row's view and its notes (core step 3b, Kenil's yes 27 Oct): notes are a field kind, one per
-// table, kept like any value but out of the grid and the model's table views; a row is served on
-// its own with its parts, the rows that link to it and the notes that mention it; a person's page
-// finds the notes that mention them.
+// A row's view and its notes: notes are a field kind, one per table, kept like any value but out of
+// the grid and the model's table views; a row is served on its own with its parts, the rows that
+// link to it and the notes that mention it; a person's page finds the notes that mention them.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -147,7 +146,7 @@ describe('notes', () => {
 })
 
 describe('a row on its own', () => {
-  it('shows its newest parts with how many in all (core plan step 4)', async () => {
+  it('shows its newest parts with how many in all', async () => {
     const { acme } = firm()
     const invoices = world.shape.table('Invoices') as Table
     // the first invoice older by a moment, so the newest twelve never tie with it

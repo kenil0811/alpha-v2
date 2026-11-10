@@ -1,5 +1,4 @@
-// Make this a kit (Stage 2 step 1, 24 Oct): a module made in a conversation leaves as
-// a kit in one action. Its module.yaml already mirrors its shape (shape.writeManifest: tables,
+// Make this a kit: a module made in a conversation leaves as a kit in one action. Its module.yaml already mirrors its shape (shape.writeManifest: tables,
 // fields, choices, relations, keys, views, documents, people, where it sits, its network); the kit
 // adds a version, the kit API it was written for, a description from its notes and what it uses
 // of other kits and connectors. Its notes, schedules, skills and pages go with it; its rows never.

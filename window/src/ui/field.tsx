@@ -37,7 +37,7 @@ function optionsOf(children: ReactNode): Option[] {
   })
 }
 
-// A list longer than this gets the search line at its head (T10: past six, Batch D, 66.6).
+// A list longer than this gets the search line at its head (T10: past six).
 export const SEARCH_PAST = 6
 
 // The search line at the head of a long list (T10): typing narrows it.
@@ -60,9 +60,9 @@ export function SearchLine({ words, onWords }: { words: string; onWords: (w: str
 
 export type Adds = { what: string; send: (words: string) => Promise<unknown> }
 
-// Add new… at a list's foot, one part wherever a list can grow (Batch D, 66.8, Kenil's yes 2 Nov):
-// one line naming the new one, sent for Alpha to add. Not a <form>: it is drawn inside forms (Add a
-// row, a form view) that would take the submit too.
+// Add new… at a list's foot, one part wherever a list can grow: one line naming the new one, sent
+// for Alpha to add. Not a <form>: it is drawn inside forms (Add a row, a form view) that would take
+// the submit too.
 export function AddNew({ adds, onDone }: { adds: Adds; onDone: () => void }) {
   const [asking, setAsking] = useState(false)
   const [ask, setAsk] = useState('')
@@ -128,9 +128,9 @@ export function Select({
   of,
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & {
-  of?: Choices | undefined // a field's choices: each line in its own colour (Batch E, 66.9)
+  of?: Choices | undefined // a field's choices: each line in its own colour
   adds?: Adds | undefined // Add new… at the list's foot, where a list can grow
-  startOpen?: boolean | undefined // opened at once: a cell being changed (66.5)
+  startOpen?: boolean | undefined // opened at once: a cell being changed
   onDismiss?: (() => void) | undefined // closed with no pick: a click away, Escape
 }) {
   const options = optionsOf(children)

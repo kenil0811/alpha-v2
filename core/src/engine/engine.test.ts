@@ -1,5 +1,5 @@
-// The engine's answers to cards (item 41 of the problems list, 25 Oct): a draft goes only on
-// Send it, and the desk is told of a card only when its own turn opened it.
+// The engine's answers to cards: a draft goes only on Send it, and the desk is told of a card only
+// when its own turn opened it.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

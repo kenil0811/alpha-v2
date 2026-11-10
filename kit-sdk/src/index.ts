@@ -1,4 +1,4 @@
-// The kit API (Stage 1, step 2; decision 5): one schema of what a kit's script may call on the
+// The kit API: one schema of what a kit's script may call on the
 // `alpha` object, from which the host object a script receives, the model's guide to writing a
 // script and the reference page are all generated, so the three can never disagree. The
 // contract is wider than the calls: it names the field kinds, provenance kinds, trigger kinds,
@@ -339,7 +339,7 @@ export function reference(): string {
     `- Trigger kinds: ${TRIGGER_KINDS.join(', ')}.`,
     `- Card kinds: ${CARD_KINDS.join(', ')}.`,
     `- The sandbox runs Node ${NODE_MAJOR}.`,
-    '- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Activity and in Settings › Modules.',
+    '- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Activity and in Intelligence › Modules.',
     '',
   ].join('\n')
 }

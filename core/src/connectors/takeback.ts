@@ -1,7 +1,6 @@
-// Revert, with what it did outside Alpha taken back (step 2, part 2, Kenil's yes 30 Oct): the
-// rows first, in one transaction, as undo has done since core step 1; then each take-back the
-// revert offered, run through its connector and journaled as any call. One that fails is said in
-// its own line, and the rest go on. A preview runs nothing outside.
+// Revert, with what it did outside Alpha taken back: the rows first, in one transaction, as undo
+// does; then each take-back the revert offered, run through its connector and journaled as any
+// call. One that fails is said in its own line, and the rest go on. A preview runs nothing outside.
 
 import { Refused } from '../world/kinds.ts'
 import type { Undo, UndoTarget } from '../world/records/index.ts'
@@ -11,7 +10,7 @@ import type { World } from '../world/world.ts'
 import { isRemote } from './process.ts'
 import type { ConnectorService } from './service.ts'
 
-// What a done call's take-back would do, in words (step 2, part 2); none when it is final.
+// What a done call's take-back would do, in words; none when it is final.
 export async function undoOf(
   connectors: ConnectorService,
   name: string,

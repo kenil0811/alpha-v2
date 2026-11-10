@@ -1,6 +1,6 @@
-// Settings › Activity (Ledger; Kenil's 15, 6 Nov): what waits for the person, then every run of a schedule or a reader and every read of a
-// connection, newest first, in one list by day, with Alpha's turns that changed rows, removals
-// and reverts (core step 1). A run shows its time, name, module, state, one line of what
+// Settings › Activity: what waits for the person, then every run of a schedule or a reader and
+// every read of a connection, newest first, in one list by day, with Alpha's turns that changed
+// rows, removals and reverts. A run shows its time, name, module, state, one line of what
 // happened, how long it took and whether the model was used; it opens to its steps. Runs that
 // changed nothing fold into one line per name and day. A running one can be stopped; one that
 // wrote rows has Revert behind its ⋮, a removal Bring back, both said first in the one pop-up.
@@ -100,7 +100,7 @@ export function Activity({ version, cards }: { version: number; cards: CardView[
         )}
         <div className="flex items-center gap-3">
           <span className="flex-1" />
-          {/* cuts of one list, each with its count (Batch D, 66.16) */}
+          {/* cuts of one list, each with its count */}
           <Cuts label="Show">
             <Cut on={only === 'all'} count={runs?.length} onClick={() => setOnly('all')}>
               All
@@ -232,7 +232,7 @@ export function RunRow({
                   </span>
                 </>
               )}
-              {/* what its uses of the model cost (core plan step 5) */}
+              {/* what its uses of the model cost */}
               {r.usd !== null && <span>{usdWords(r.usd)}</span>}
             </>
           )}

@@ -125,7 +125,7 @@ export function setChoices(
 
 // The colours of a choice field's choices (a kit's: Fits in green). Only the state colours.
 // A choice field's colours, set by whoever sets them and journalled as theirs, so a kit's
-// update leaves colours someone else set alone (item 42 of the problems list, 25 Oct).
+// update leaves colours someone else set alone.
 export function setTones(
   shape: Shape,
   tableId: string,
@@ -186,9 +186,9 @@ export function tonesSetByOthers(shape: Shape, fieldId: string): boolean {
   return !!last && !(last.actor_kind === 'system' && (last.actor_id ?? '').startsWith('kit:'))
 }
 
-// One sentence on what a table or a field means (the semantic layer, Kenil, 24 Oct), and whose it
-// is: the person's stands, so a kit's update or Alpha's guess never writes over it; the kit's and
-// Alpha's give way to anyone. Says whether anything changed.
+// One sentence on what a table or a field means (the semantic layer), and whose it is: the person's
+// stands, so a kit's update or Alpha's guess never writes over it; the kit's and Alpha's give way
+// to anyone. Says whether anything changed.
 export function describe(
   shape: Shape,
   where: { table: string; field?: string },
@@ -349,7 +349,7 @@ export function setHidden(shape: Shape, tableId: string, hidden: boolean, ctx: W
 
 // A relation that held one row comes to hold a list (a kit's newer version says many): its
 // junction table is made, each row's one pointer becomes its first entry, the column goes. A
-// choice comes to hold several (tags, core step 3c): each row's one choice becomes a list of it.
+// choice comes to hold several (tags): each row's one choice becomes a list of it.
 export function setMany(shape: Shape, tableId: string, field: string, ctx: WriteCtx): Table {
   asks(
     shape,

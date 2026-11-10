@@ -1,7 +1,7 @@
-// One control for short lists (Batch A, pick 6, Kenil's yes 1 Nov): Add on the heading, ✕ on an
-// entry when it is hovered (asked first in our own pop-up, R3), and a double-click edits it in
-// place, Enter keeping the change and Escape putting it back, as a saved list is renamed. Where
-// Alpha must understand an entry, Add starts the conversation (M3); the list says how it adds.
+// One control for short lists: Add on the heading, ✕ on an entry when it is hovered (asked first
+// in our own pop-up, R3), and a double-click edits it in place, Enter keeping the change and Escape
+// putting it back, as a saved list is renamed. Where Alpha must understand an entry, Add starts the
+// conversation (M3); the list says how it adds.
 import { Plus, X } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Refusal, useAct } from './act.tsx'

@@ -136,7 +136,7 @@ export class World {
     this.records.watch = this.people
     this.people.records = this.records
     this.records.personOf = (said) => this.people.ref(said)
-    // one row per person, and the fold of a merge (core step 3d)
+    // one row per person, and the fold of a merge
     this.records.peopleRoot = (id) => this.people.root(id)
     this.records.personName = (id) => this.people.names([id])[id] ?? 'them'
     this.records.ask = (card) => this.cards.open(card)
@@ -192,7 +192,7 @@ export class World {
     return tx(this.db, () => append(this.db, input))
   }
 
-  // A secret the person signed in with: never in a line from now on (step 2, part 3).
+  // A secret the person signed in with: never in a line from now on.
   keepOut(secret: string): void {
     keepOut(secret)
   }

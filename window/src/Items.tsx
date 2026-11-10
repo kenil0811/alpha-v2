@@ -1,7 +1,7 @@
-// A page for each schedule, run and rule (item 50, 25 Oct; rules core step 2), so each can be linked
-// to, reviewed and shared: #/schedule/<id>, #/run/<id>, #/rule/<id>. Each is built from what the
-// core already serves (/api/working, /api/activity, /api/rules) and comes again when the world
-// changes, so a running run's steps arrive as they happen.
+// A page for each schedule, run and rule, so each can be linked to, reviewed and shared:
+// #/schedule/<id>, #/run/<id>, #/rule/<id>. Each is built from what the core already serves
+// (/api/working, /api/activity, /api/rules) and comes again when the world changes, so a running
+// run's steps arrive as they happen.
 import type { RuleView, RunView, ScheduleView, WorkingModuleView } from '@alpha/core/api'
 import { type ReactNode, useEffect, useState } from 'react'
 import { RunRow } from './Activity.tsx'

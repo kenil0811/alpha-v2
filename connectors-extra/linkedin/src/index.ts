@@ -1,4 +1,4 @@
-// LinkedIn, read as the person (Kenil, 21 Oct): they sign in themselves in Google Chrome, in a
+// LinkedIn, read as the person: they sign in themselves in Google Chrome, in a
 // profile of its own, and their connections are read from their own connections page the way they
 // would scroll it, at a person's pace, newest first. LinkedIn's robots rules ask crawlers not to
 // read it; this is the person reading their own page, by their choice, and any check page stops

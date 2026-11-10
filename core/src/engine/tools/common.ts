@@ -29,8 +29,8 @@ export interface TurnContext {
 export interface Here {
   current: TurnContext
   fromSubagent: boolean
-  // the tables whose fields and meanings the model has been given this session (context by
-  // mode, 24 Oct): a table is described on its first touch, again after compaction
+  // the tables whose fields and meanings the model has been given this session: a table is
+  // described on its first touch, again after compaction
   touched: Set<string>
   // what a turn keeps only if it finishes: a turn that fails saves nothing
   afterTurn: (() => void)[]
@@ -80,15 +80,15 @@ export const Provenance = z.object({
 export const Field = z.object({
   name: z.string(),
   kind: z.enum(FIELD_KINDS),
-  // one sentence on what the field means: a wall, so no field is made without one (Kenil, 24 Oct)
+  // one sentence on what the field means: a wall, so no field is made without one
   about: z.string().min(1),
   choices: z.array(z.string()).optional(),
   tones: z.record(z.string(), z.enum(TONES)).optional(),
   relates_to: z.string().optional(),
   many: z.boolean().optional(), // a relation holding a list of rows, a choice holding several
-  part_of: z.boolean().optional(), // a relation to one row whose rows are part of it (step 3a)
-  summary: Summary.optional(), // a summary's rows, what it does and its condition (step 3c)
-  per: z.enum(['person']).optional(), // a person field: its table holds one row per person (3d)
+  part_of: z.boolean().optional(), // a relation to one row whose rows are part of it
+  summary: Summary.optional(), // a summary's rows, what it does and its condition
+  per: z.enum(['person']).optional(), // a person field: its table holds one row per person
 })
 
 export type Result = ToolResult

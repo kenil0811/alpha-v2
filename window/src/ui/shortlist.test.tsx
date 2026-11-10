@@ -1,4 +1,4 @@
-// One control for short lists (Batch A, pick 6): Add on the heading, ✕ on an entry when hovered,
+// One control for short lists: Add on the heading, ✕ on an entry when hovered,
 // a double-click edits it in place; Enter keeps, Escape puts it back.
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'

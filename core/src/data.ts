@@ -1,8 +1,7 @@
-// The person's own data, from within Alpha (decision 12, step 4; the decisions doc's section 2):
-// what the world holds and weighs, a backup now, going back to one, taking the data as one
-// archive in the open format (docs/data.md), bringing it in on a fresh install, a copy of the
-// newest backup in a folder of theirs, and removing it all on their word. The `alpha` command
-// calls the same code with the core stopped.
+// The person's own data, from within Alpha: what the world holds and weighs, a backup now, going
+// back to one, taking the data as one archive in the open format (docs/data.md), bringing it in on
+// a fresh install, and a copy of the newest backup in a folder of theirs. The `alpha` command calls
+// the same code with the core stopped.
 import { execFileSync } from 'node:child_process'
 import {
   cpSync,
@@ -16,13 +15,10 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 import { backup, DatabaseSync } from 'node:sqlite'
-import type { SecretStore } from '@alpha/connector-sdk'
 import type { BackupView, DataPageView } from './api/types.ts'
-import { KEY_REF } from './engine/route.ts'
 import type { Install } from './install.ts'
-import type { Platform } from './platform/index.ts'
 import { exportLines } from './world/audit.ts'
 import { type Beside, mirror } from './world/backups.ts'
 import { dayOf } from './world/day.ts'
@@ -174,7 +170,7 @@ export async function takeData(world: World, home: string, dest = exportsDir()):
           })
     if (existsSync(join(home, 'alpha.yaml')))
       cpSync(join(home, 'alpha.yaml'), join(root, 'alpha.yaml'))
-    // the journal with its chain, which `pnpm journal verify` checks anywhere (step 2, part 3)
+    // the journal with its chain, which `pnpm journal verify` checks anywhere
     writeFileSync(join(root, 'journal.jsonl'), exportLines(world.db))
     writeFileSync(
       join(root, 'README.md'),
@@ -272,25 +268,4 @@ export function copyNewestBackup(
     .reverse()
   for (const n of copies.slice(7)) rmSync(join(folder, n), { force: true })
   return out
-}
-
-// The person's data removed for good, on their word: the secrets first, then everything theirs
-// discarded (the worlds, the files, the kits, the connectors they added, their browser sign-ins,
-// the install file and the token); the readers' downloads stay, since they are Alpha's. The world
-// is closed before this runs; the core starts again as on a first open.
-export async function removeData(
-  home: string,
-  secretRefs: string[],
-  secrets: SecretStore,
-  platform: Platform,
-): Promise<string[]> {
-  for (const ref of [...secretRefs, KEY_REF]) await secrets.delete(ref).catch(() => undefined)
-  const gone: string[] = []
-  for (const n of ['tenants', 'kits', 'connectors', 'browser-profiles', 'alpha.yaml', 'token']) {
-    const p = join(home, n)
-    if (!existsSync(p)) continue
-    platform.discard(p)
-    gone.push(basename(p))
-  }
-  return gone
 }

@@ -1,6 +1,6 @@
-// What a module is for (core step 3e): who it is for, what it keeps track of and the decisions it
-// serves, at the top of Setup. Alpha's words show as assumed until the person changes
-// them; Edit makes them theirs, and a kit's update never writes over theirs.
+// What a module is for: who it is for, what it keeps track of and the decisions it serves, at the
+// top of Setup. Alpha's words show as assumed until the person changes them; Edit makes them
+// theirs, and a kit's update never writes over theirs.
 import type { ModuleView } from '@alpha/core/api'
 import { Pencil } from 'lucide-react'
 import { type FormEvent, useState } from 'react'

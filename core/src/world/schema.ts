@@ -13,8 +13,8 @@ export async function migrate(db: Db, file: string, backups: string): Promise<nu
   const current = Number(
     one<{ user_version: number }>(db, 'PRAGMA user_version')?.user_version ?? 0,
   )
-  // a world of another shape is never opened: it would be misread. A world from before the clean
-  // base (7 Nov) opens only with the code on the branch reference/full-2026-11-06.
+  // a world of another shape is never opened: it would be misread. A world of the older shape
+  // opens only with the code on the branch reference/full-2026-11-06.
   if (current > MIGRATIONS.length)
     throw new Error(
       `This world's shape is version ${current}, and this Alpha knows up to ${MIGRATIONS.length}: it was made by a newer Alpha, or before the clean base.`,

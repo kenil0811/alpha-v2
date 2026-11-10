@@ -1,7 +1,7 @@
-// The conversation (its own place since Kenil's 20 Oct call that Home holds only the
-// important things): the person's sentences and one agent's replies in order, one live message per
-// turn becoming the outcome; cards inline; the composer at the foot. One conversation per person
-// and agent (clean base step 7), the Chief of staff first. What happened otherwise is on Activity.
+// The conversation (its own place, as Home holds only the important things): the person's
+// sentences and one agent's replies in order, one live message per turn becoming the outcome;
+// cards inline; the composer at the foot. One conversation per person and agent, the Chief of
+// staff first. What happened otherwise is on Activity.
 import type { AgentView, CardView, Stream } from '@alpha/core/api'
 import { ArrowDown, Check, ChevronRight } from 'lucide-react'
 import { type DragEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -65,7 +65,7 @@ export function Conversation({
   const [problem, setProblem] = useState<string | null>(null)
   const [words, setWords] = useState('')
   const composer = useRef<HTMLTextAreaElement>(null)
-  // words another screen started the assistant with (Governance's + Add)
+  // words another screen started the assistant with
   useEffect(() => {
     const take = () => {
       const w = takeAsk()
@@ -232,7 +232,7 @@ function Meta({ module, at, name }: { module: Module; at: string; name: string }
 }
 
 // A question's answer stays in the chat as one line, the card's words after it; a yes or a no on a
-// card leaves none, Activity has it (Kenil's call 3, 7 Nov). A closing line is "Chose Add: …" or
+// card leaves none, Activity has it. A closing line is "Chose Add: …" or
 // "Answered Soon: …".
 export function answerOf(words: string): string | null {
   const head = words.split(': ')[0] ?? ''
@@ -531,7 +531,7 @@ function StepRow({ step }: { step: Step }) {
 // that opens to each of them.
 function Steps({ steps, active }: { steps: Step[]; active: boolean }) {
   if (active) return <div className="truncate text-ink-3">{steps.at(-1)?.words}</div>
-  // a step that failed on the way and was got past is in the list, not on the line (Kenil, 10 Nov)
+  // a step that failed on the way and was got past is in the list, not on the line
   const failed = steps.at(-1)?.ok === false
   return (
     <details className="group text-ink-3">

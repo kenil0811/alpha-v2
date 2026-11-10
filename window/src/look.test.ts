@@ -25,7 +25,7 @@ const RULES: [string, RegExp][] = [
   ['a text size that is not one of the seven', /(?<![\w-])text-(?:[3-9]xl|xxs)(?![\w-])/g],
   ['an invented colour', /(?<![\w-])(?:bg|border|ring|fill|stroke|decoration|outline)-\[[^\]]*\]/g],
   ['a colour written out', /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g],
-  // one layering scale (Batch A, pick 8): past a box's own order (z-0 to z-3), a layer is named
+  // one layering scale: past a box's own order (z-0 to z-3), a layer is named
   [
     'a numbered layer: name it (z-(--z-raised), --z-panel, --z-overlay, --z-pop, --z-tip)',
     /(?<![\w-])-?z-(?:[4-9]|\d{2,}|\[[^\]]*\])(?![\w-])/g,
@@ -40,7 +40,7 @@ function files(dir: string): string[] {
   })
 }
 
-// The window's own screens and every plugin's (onboarding in Alpha, 2 Nov): one look for all.
+// The window's own screens and every plugin's: one look for all.
 const PLUGINS = join(SRC, '..', '..', 'plugins')
 function sources(dir: string): string[] {
   const screens = existsSync(PLUGINS)
@@ -69,8 +69,7 @@ describe('the window’s look', () => {
   })
 
   // Serif only for the hero heading, a page's or a record's title, a section's title and big
-  // numbers (Vikas, 25 Oct; section titles Kenil, 26 Oct): on an h1, an h2 at xl, at 2xl, on
-  // tabular figures, or a reply's own top heading.
+  // numbers: on an h1, an h2 at xl, at 2xl, on tabular figures, or a reply's own top heading.
   it('keeps serif to titles and big numbers', () => {
     const MARK = { 'Conversation.tsx': 'Alpha’s mark, one serif letter' }
     const found: string[] = []
@@ -163,12 +162,11 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
     expect(lines(/\b(?:MoreHorizontal|Ellipsis)\b/)).toEqual([])
   })
 
-  it('L2: nothing is set in capitals; a small label is 12px sentence case (Batch E, 66.3)', () => {
+  it('L2: nothing is set in capitals; a small label is 12px sentence case', () => {
     expect(lines(/(?<![\w-])uppercase(?![\w-])/)).toEqual([])
   })
 
   it('T11: no bare <select> anywhere, the cell editor included', () => {
-    // the cell editor, out of Grid.tsx since Batch B, keeps the native one
     expect(lines(/<select\b/)).toEqual([])
   })
 

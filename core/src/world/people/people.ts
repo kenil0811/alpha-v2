@@ -58,7 +58,7 @@ export class People {
     region?: CountryCode | null
   } | null = null
 
-  // the rows of a merge and an unmerge (core step 3d): the record store's fold, set by the world
+  // the rows of a merge and an unmerge: the record store's fold, set by the world
   onMerge: ((keep: string, other: string, names: [string, string], ctx: WriteCtx) => void) | null =
     null
   onUnmerge: ((id: string, ctx: WriteCtx) => string) | null = null

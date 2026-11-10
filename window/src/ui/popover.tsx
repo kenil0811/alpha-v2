@@ -17,9 +17,9 @@ import {
 import { createPortal } from 'react-dom'
 import { cn } from './cn.ts'
 
-// Where what floats is drawn (Batch D, 66.12, Kenil's yes 2 Nov): inside the open dialog it
-// belongs to, since the browser draws a modal dialog over everything in the page and a menu drawn
-// against the window would sit behind it; else against the window.
+// Where what floats is drawn: inside the open dialog it belongs to, since the browser draws a
+// modal dialog over everything in the page and a menu drawn against the window would sit behind
+// it; else against the window.
 export function floatRoot(from?: Element | null): Element {
   return (
     from?.closest('dialog[open]') ??

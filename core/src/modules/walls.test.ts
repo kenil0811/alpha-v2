@@ -1,4 +1,4 @@
-// The walls a schedule's file sets (Stage 1, step 2, sub-step 3): what it touches, what it may
+// The walls a schedule's file sets: what it touches, what it may
 // read, the effects it may have, what it needs, and its budget, each enforced where the call
 // lands and said in the run.
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'

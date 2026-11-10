@@ -1,7 +1,6 @@
-// Room for a panel beside the page (Batch A, picks 2 and 3, Kenil's yes 1 Nov): a row, a task, a
-// run or a person opens beside the page while the assistant is open, when the window holds the
-// rail, the page's 600px (A5), the panel's 320px and the assistant. Without that room the panel
-// gives way and the assistant stays (his call 3).
+// Room for a panel beside the page: a row, a task, a run or a person opens beside the page while
+// the assistant is open, when the window holds the rail, the page's 600px (A5), the panel's 320px
+// and the assistant. Without that room the panel gives way and the assistant stays.
 import type { Layout } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { STRIP } from './ui/edge.tsx' // a folded rail: its strip

@@ -39,12 +39,12 @@ export interface DeskOptions {
     settled(user: User, ask: AgentAsk, spent: number | null): void
     interim(user: User, ask: AgentAsk, words: string): void
   }
-  // blocks plugins add to the start of a conversation (onboarding 4a); none when there are none
+  // blocks plugins add to the start of a conversation; none when there are none
   starts?: () => string[]
-  // Alpha's words alone (measured 24 Oct: six journeys, three runs each way; alone passed 17 of
+  // Alpha's words alone (measured: six journeys, three runs each way; alone passed 17 of
   // 18 to appended's 18, 8% faster and 9% fewer input tokens, and one prompt serves both routes),
-  // or appended to the route's own prompt:
-  // measures one against the other.
+  // or appended to the route's own prompt: `pnpm journey <name> --appended` measures one against
+  // the other.
   prompt?: 'appended' | 'alone'
 }
 

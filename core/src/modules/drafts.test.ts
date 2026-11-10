@@ -162,7 +162,7 @@ describe('a schedule’s drafts', () => {
     expect(s.sent).toHaveLength(7)
   })
 
-  it('never sends the same thing twice on its own: a run retried after a send asks first (28 Oct)', async () => {
+  it('never sends the same thing twice on its own: a run retried after a send asks first', async () => {
     const s = setUp()
     for (const i of [0, 1, 2])
       await s.drafts.send((await s.drafts.propose(s.draft(i), null)).card as string, null, s.owner)

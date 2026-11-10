@@ -1,6 +1,6 @@
-// Undo (core step 1, Kenil 26 Oct): removed rows wait whole in the trash and come back with
-// their links, provenance, versions and kit row; Revert puts back what a run or a turn did to
-// rows, leaves what someone changed since, and can itself be reverted.
+// Undo: removed rows wait whole in the trash and come back with their links, provenance,
+// versions and kit row; Revert puts back what a run or a turn did to rows, leaves what someone
+// changed since, and can itself be reverted.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

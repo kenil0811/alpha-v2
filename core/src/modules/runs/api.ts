@@ -20,7 +20,7 @@ export function api(
   walls: Walls | null = null,
 ) {
   const actor = { kind: 'schedule' as const, id: label }
-  // what the run's asks spend is the run's, under its schedule and module (core plan step 5)
+  // what the run's asks spend is the run's, under its schedule and module
   const spending =
     (ask: Ask): Ask =>
     async (prompt, schema) => {
@@ -79,7 +79,7 @@ export function api(
           ? `${label} may write only ${module.name}'s own tables, not ${t.name}.`
           : `${label} does not touch ${t.name}: its file says touches: [${[...walls.touches].join(', ') || 'nothing'}].`,
       )
-    // a write stays inside the module whatever the file says (item 40, 25 Oct)
+    // a write stays inside the module whatever the file says
     if (!within().includes(t.module.id)) refuse(`${t.name} is not one of ${module.name}'s tables.`)
     return t
   }
@@ -426,7 +426,7 @@ export function api(
     'home.today': async () => {
       const w = runner.world
       const now = Date.now()
-      // today and each due on the person's own day (Batch A, pick 4)
+      // today and each due on the person's own day
       const day = dayOf(new Date(now))
       const open = w.tasks.list({ open: true })
       const due = open

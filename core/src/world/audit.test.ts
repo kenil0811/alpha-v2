@@ -1,6 +1,6 @@
-// The audit journal (step 2, part 3, Kenil's yes 30 Oct): every line chained to the one before by
-// hash, so a line changed with another tool is found; a secret and a sensitive value never reach
-// a line; read lines older than the fold's days fold into a checkpoint that keeps the chain.
+// The audit journal: every line chained to the one before by hash, so a line changed with another
+// tool is found; a secret and a sensitive value never reach a line; read lines older than the
+// fold's days fold into a checkpoint that keeps the chain.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

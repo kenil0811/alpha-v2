@@ -1,6 +1,6 @@
-// The journal from the command line (step 2, part 3): `pnpm journal verify <world.sqlite |
-// journal.jsonl>` walks the chain and says whether every line is as it was written, or at which
-// line it is not. A world file is opened read-only; an export is read as it is.
+// The journal from the command line: `pnpm journal verify <world.sqlite | journal.jsonl>` walks the
+// chain and says whether every line is as it was written, or at which line it is not. A world file
+// is opened read-only; an export is read as it is.
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'

@@ -1,4 +1,4 @@
-// Rules (core step 2): as Governance and Settings › Permissions list them, and the person's own
+// Rules: as Settings › Permissions lists them, and the person's own
 // acts on them: Revoke, and Approve or Dismiss on what Alpha noticed. A rule is made only on its
 // Save card (cards.ts, the engine's answer).
 import { z } from 'zod'
@@ -43,7 +43,7 @@ export function registerRules(ctx: Ctx): void {
     return world.rules.list(module).map(ruleOut)
   })
 
-  // Rules waiting on their Save card (Batch B, pick 18): a module's and those of all of Alpha, or
+  // Rules waiting on their Save card: a module's and those of all of Alpha, or
   // every one; each answered through its own card, Approve with its yes and Decline with its no.
   app.get('/api/rules/waiting', async (req): Promise<WaitingRuleView[]> => {
     const { module } = z.object({ module: z.string().optional() }).parse(req.query)
@@ -64,7 +64,7 @@ export function registerRules(ctx: Ctx): void {
     })
   })
 
-  // as a table under Settings › Permissions (UI batch 2): read here; a rule's page acts on it
+  // as a table under Settings › Permissions: read here; a rule's page acts on it
   app.get(
     '/api/kept/rules',
     async (): Promise<KeptTable> =>

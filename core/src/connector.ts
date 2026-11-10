@@ -2,7 +2,7 @@
 // connector folder before Alpha loads it (the SDK's check); `pnpm connector pack <folder> [out]`
 // packs it into one .alphaconnector file (out defaults to the current folder), ready to send;
 // `pnpm connector add <folder or pack>` adds one to the Alpha running on ALPHA_HOME, through the
-// core's own route (Kenil's call 5, 7 Nov: the window offers none). A folder needs developer: true
+// core's own route (the window offers none). A folder needs developer: true
 // in that Alpha's alpha.yaml; a pack needs Kenil's signature, or the same.
 import { readFileSync, statSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'

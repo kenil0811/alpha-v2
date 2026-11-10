@@ -1,7 +1,5 @@
-// A schedule's file as the kit API says it (decision 6): its front matter is
-// declared here and enforced by the core; the body stays the brief, prose for the model's
-// judgement. A trigger may be one, or a list.
-import { parse } from 'yaml'
+// A schedule's file as the kit API says it: its front matter is declared here and enforced by the
+// core; the body stays the brief, prose for the model's judgement. A trigger may be one, or a list.
 import { z } from 'zod'
 
 export const WEEK_DAYS = [
@@ -44,7 +42,7 @@ export const ScheduleFront = z
     runs: Runs.optional(), // its script; a schedule that wakes an agent may go without
     wakes: z.boolean().default(false), // it hands what it found to an agent, as a task
     // the tables it may write: a wall. A file that names none writes its own module's tables, as a
-    // try from the chat does (Kenil, 10 Nov)
+    // try from the chat does
     touches: z.array(z.string()).optional(),
     // the gated calls it may make (draft.email, browser.open); any other is refused before a
     // card. A file that says nothing is an older one: allowed, and said in the run
@@ -84,14 +82,4 @@ export type ScheduleFrontMatter = z.infer<typeof ScheduleFront>
 export function triggersOf(t: Trigger | Trigger[] | null | undefined): Trigger[] {
   if (!t) return []
   return Array.isArray(t) ? t : [t]
-}
-
-// The front matter and the brief of one schedule file.
-export function parseScheduleText(
-  text: string,
-  file: string,
-): { front: ScheduleFrontMatter; brief: string } {
-  const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text)
-  if (!m) throw new Error(`${file} has no front matter.`)
-  return { front: ScheduleFront.parse(parse(m[1] as string)), brief: (m[2] as string).trim() }
 }

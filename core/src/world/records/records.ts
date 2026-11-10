@@ -1,9 +1,9 @@
-// Records: rows of the person's tables, a version per change and provenance on every value
-//. Since 22 Oct (Kenil: real tables) a table's rows live in a SQLite table of their
-// own (ddl.ts), one typed column per field, a junction table per list relation; their
-// provenance sits in `provenance`, their earlier versions in `versions`, and `records` is the
-// registry that says which table a row is in. The store: rows added, changed, removed and landed;
-// reading them is in reading.ts, storing them in storing.ts, as functions of the store.
+// Records: rows of the person's tables, a version per change and provenance on every value. A
+// table's rows live in a SQLite table of their own (ddl.ts), one typed column per field, a junction
+// table per list relation; their provenance sits in `provenance`, their earlier versions in
+// `versions`, and `records` is the registry that says which table a row is in. The store: rows
+// added, changed, removed and landed; reading them is in reading.ts, storing them in storing.ts, as
+// functions of the store.
 
 import { seal } from '../audit.ts'
 import type { CardInput } from '../cards.ts'
@@ -64,7 +64,7 @@ import type {
 } from './types.ts'
 import { present, sortKeys } from './types.ts'
 
-// A part is never on its own (core step 3a): a new row gives the row it is part of, and a change
+// A part is never on its own: a new row gives the row it is part of, and a change
 // never clears it.
 function partOfGiven(table: Table, vals: Record<string, unknown>, fresh: boolean): void {
   for (const f of table.fields)
@@ -90,7 +90,7 @@ export class Records {
   watch: RowWatch | null = null
   // A person field holds one of the person's people: their id, an address or a name only one has.
   personOf: ((said: string) => string) | null = null
-  // One person through merges (core step 3d): the one they are now, their name; and a question
+  // One person through merges: the one they are now, their name; and a question
   // put to the person, where a fold finds two values of theirs
   peopleRoot: ((id: string) => string) | null = null
   personName: ((id: string) => string) | null = null
@@ -211,16 +211,16 @@ export class Records {
     })
   }
 
-  // A removed row leaves its table and waits in the trash, whole, for keep_removed_days (core
-  // step 1); the journal keeps its values, so Activity can say what was here. Rows pointing at a
-  // removed one let go of it in the same transaction, and the words say how many did.
+  // A removed row leaves its table and waits in the trash, whole, for keep_removed_days; the
+  // journal keeps its values, so Activity can say what was here. Rows pointing at a removed one let
+  // go of it in the same transaction, and the words say how many did.
   remove(tableId: string, ids: string[], ctx: WriteCtx): number {
     if (!ids.length) throw new Refused('There are no rows to remove.')
     return tx(this.db, () => {
       const table = this.mustTable(tableId)
       mirrorKeeps(table)
       const { gone, cleared, kept, parts } = takeOutAll(this, table, ids, ctx)
-      // the rows that were part of them went with them (core step 3a)
+      // the rows that were part of them went with them
       const with_ = parts.length
         ? `, with ${parts.map((p) => `${p.ids.length} row${p.ids.length === 1 ? '' : 's'} of ${p.table.name}`).join(' and ')}`
         : ''
@@ -281,7 +281,7 @@ export class Records {
             )
           : undefined
         const { vals, prov } = this.prepare(table, item.values, row, perField, null, at, true)
-        // in a table of one row per person, the person's row when the key finds none (step 3d)
+        // in a table of one row per person, the person's row when the key finds none
         const r = item.row
           ? this.readRow(table, item.row)
           : (one<Row>(this.db, `SELECT * FROM ${quote(table.slug)} WHERE item_key = ?`, item.key) ??

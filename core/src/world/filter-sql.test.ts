@@ -1,5 +1,5 @@
 // A summary's condition in SQL means what the same rule means in the window's filter: both answer
-// the cases in filter-cases.ts (core step 3c).
+// the cases in filter-cases.ts.
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
 import { FILTER_CASES } from './filter-cases.ts'

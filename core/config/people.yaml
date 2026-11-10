@@ -47,7 +47,7 @@ mail_services:
 
 # A role address (info@, office@) is a firm's, not one person's: two rows with different names
 # and the same role address are two people, put on the match card for the person to decide,
-# never merged by it (item 25 of the problems list, 25 Oct). The part before the @.
+# never merged by it. The part before the @.
 role_addresses:
   - info
   - office
@@ -77,7 +77,7 @@ role_addresses:
 second_levels: [co, com, ac, org, net, gov, edu, ltd, plc, nic, gen, firm, ind, ne, or, go, sch, mil]
 
 # A meeting makes its attendees people only up to this many people in all, the person included:
-# an all-hands invite or a webinar says nothing about who the person knows (Kenil's plan, 21 Oct).
+# an all-hands invite or a webinar says nothing about who the person knows.
 meeting_most_people: 20
 
 # Contact counts are over this many days, said with the number: "12 emails in 90 days".

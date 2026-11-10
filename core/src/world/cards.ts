@@ -243,7 +243,7 @@ export class Cards {
   }
 
   // The person's answer that lets one row into a table its module adds to only on that word
-  // (added_on, 29 Oct): a card they answered with it, within its hours, taken once.
+  // (added_on): a card they answered with it, within its hours, taken once.
   takeAnswer(user: string, word: string, hours: number): Card | undefined {
     return tx(this.db, () => {
       const r = one<CardRow>(
@@ -272,8 +272,8 @@ export class Cards {
 
   // The yes that lets one call through: found by the call itself, used once, and only within
   // its hours (limits.yaml yes_hours): a yes answers the call in front of the person, and the same
-  // call hours later is out of that context (item 39 of the problems list, 25 Oct). An older yes
-  // lapses, said in Activity, and the call asks again.
+  // call hours later is out of that context. An older yes lapses, said in Activity, and the call
+  // asks again.
   useYes(call: Call, hours: number): Card | undefined {
     return tx(this.db, () => {
       const edge = Date.now() - hours * 3_600_000

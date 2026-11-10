@@ -8,7 +8,6 @@ import {
   dataView,
   markRestart,
   prepareBring,
-  removeData,
   restoreWorld,
   takeData,
 } from '../../data.ts'
@@ -60,7 +59,7 @@ export function registerSettings(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // A standing instruction's words changed in place, where it stood (Batch A, pick 6).
+  // A standing instruction's words changed in place, where it stood.
   app.post('/api/instructions/change', async (req) => {
     const b = z
       .object({ for: z.enum(['me', 'everyone']), words: z.string(), to: z.string().trim().min(1) })
@@ -156,7 +155,7 @@ export function registerSettings(ctx: Ctx): void {
     options.setup?.setKeepAwake(on)
     return { ok: true }
   })
-  // The person's own data, from within Alpha (decision 12): what it holds, a backup now, going
+  // The person's own data, from within Alpha: what it holds, a backup now, going
   // back, taking it, bringing it in, a copy in a folder, removing it all on their word.
   const owner = () => {
     if (user.role !== 'owner') throw new Refused('Only the owner can do that.')
@@ -199,24 +198,6 @@ export function registerSettings(ctx: Ctx): void {
     })
     return { restarting: true }
   })
-  app.post('/api/data/remove', async (req) => {
-    const { name } = z.object({ name: z.string() }).parse(req.body)
-    if (name.trim() !== user.name.trim())
-      throw new Refused(`Type ${user.name} to remove everything; nothing was removed.`)
-    const d = data()
-    const refs = world.connections.list().flatMap((k) => (k.secretRef ? [k.secretRef] : []))
-    void d.restart('Removed all of the person’s data on their word.', async () => {
-      const gone = await removeData(
-        d.home,
-        refs,
-        d.secrets,
-        options.platform ?? new PlainPlatform(),
-      )
-      console.log(`Removed the person's data on their word: ${gone.join(', ')}.`)
-    })
-    return { restarting: true }
-  })
-
   // A server's subscription: the token `claude setup-token` makes.
   app.post('/api/model/token', async (req): Promise<ModelView> => {
     owner()

@@ -1,7 +1,6 @@
-// The gate adapter (decision 11): the one place a tool call is journaled and put to the gates,
-// whatever runs the loop. The Agent SDK's hooks call it, and so does Alpha's own loop. A world
-// tool's effect comes from its table (tools.ts); a connector tool's from its connector; the shell's
-// reach outside from the sandbox's ask. The verdict is the gates' (gates.ts): pass, or a card.
+// The gate adapter: the one place a tool call is journaled and put to the gates. The Agent SDK's
+// hooks call it. A world tool's effect comes from its table (tools.ts); a connector tool's from its
+// connector; the shell's reach outside from the sandbox's ask. The verdict is the gates' (gates.ts): pass, or a card.
 
 import type { CallSays } from '../connectors/process.ts'
 import type { ConnectorService } from '../connectors/service.ts'
@@ -64,7 +63,7 @@ export class Gatekeeper {
     call: CallContext,
   ): Promise<Decision> {
     const cur = this.here.current
-    // a connector's tool says what it is, from its own process when it runs in one (step 2)
+    // a connector's tool says what it is, from its own process when it runs in one
     const says = this.connectors?.isTool(toolName)
       ? await this.connectors.says(toolName, input)
       : undefined
@@ -172,7 +171,7 @@ export class Gatekeeper {
     const tool = this.connectors?.keyOf(toolName) ?? toolName
     const effect = says?.effect
     // a send to an address nothing has gone to from here is said on the card, as a schedule's
-    // draft says it (item 39 of the problems list, 25 Oct)
+    // draft says it
     const to = typeof input.to === 'string' ? input.to.trim() : ''
     const fresh =
       !!to &&
@@ -189,7 +188,7 @@ export class Gatekeeper {
       preview: `${preview?.words ?? words}${fresh ? ', a new recipient' : ''}?`,
       ...(preview?.detail ? { detail: preview.detail } : {}),
       ...(preview?.yes ? { yes: preview.yes } : {}),
-      // what Revert can do with it once done (step 2, part 2): the tool's own words, or none
+      // what Revert can do with it once done: the tool's own words, or none
       cannotUndo:
         says?.undo && says.undo.kind !== 'final'
           ? says.undo.said
@@ -233,9 +232,9 @@ export class Gatekeeper {
   }
 
   // After a call: the journal line saying how it went, and, for a connector's write or send,
-  // what it is once done (final, or taken back by Revert, with what the call returned: step 2,
-  // part 2). Returns the hosts whose reach waits on a card, so the route can tell the model why
-  // its command came back empty.
+  // what it is once done (final, or taken back by Revert, with what the call returned). Returns
+  // the hosts whose reach waits on a card, so the route can tell the model why its command came
+  // back empty.
   async after(call: {
     callId: string
     ok: boolean
@@ -295,8 +294,8 @@ function resultOf(r: unknown): unknown {
   }
 }
 
-// A write's or a change's values for a sensitive field, as the journal keeps them: "(kept out)"
-// (step 2, part 3). Every other input is kept as it is.
+// A write's or a change's values for a sensitive field, as the journal keeps them: "(kept out)".
+// Every other input is kept as it is.
 function keptOut(
   world: World,
   tool: string,

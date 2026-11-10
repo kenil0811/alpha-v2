@@ -1,7 +1,7 @@
-// A screen's own pages: a pill switch in the bar (Batch E, 66.17, Kenil's look 2 Nov), or, where
-// the screen has no bar of its own (a page opened beside), one row of tabs under it as before:
-// every label in full, a table's row count beside its name, the chosen tab underlined in the
-// accent; a row too long scrolls sideways, never folds a label to an icon or cuts it short.
+// A screen's own pages: a pill switch in the bar, or, where the screen has no bar of its own (a
+// page opened beside), one row of tabs under it as before: every label in full, a table's row
+// count beside its name, the chosen tab underlined in the accent; a row too long scrolls sideways,
+// never folds a label to an icon or cuts it short.
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useBarSlot } from './bar-slot.tsx'

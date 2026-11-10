@@ -46,7 +46,7 @@ export function AnySite() {
   )
 }
 
-// The rules (core step 2): every allow and deny across Alpha, yours and what Alpha noticed, each
+// The rules: every allow and deny across Alpha, yours and what Alpha noticed, each
 // with where it holds and how often it was used; a revoked one stays listed as history. A rule's
 // page revokes it, or approves or dismisses what Alpha noticed. Shown under Permissions.
 export function Standing({ version }: { version: number }) {

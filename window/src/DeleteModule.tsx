@@ -1,5 +1,5 @@
-// Deleting a module (Kenil, 10 Nov): keep its data, or delete all of it. Neither can be undone, so
-// the button names what happens, and the journal keeps a line saying what went.
+// Deleting a module: keep its data, or delete all of it. Neither can be undone, so the button
+// names what happens, and the journal keeps a line saying what went.
 import type { ModuleSummary } from '@alpha/core/api'
 import { useState } from 'react'
 import { api } from './api.ts'
@@ -51,7 +51,7 @@ export function DeleteModule({
               void act(async () => {
                 await api.post(`/api/modules/${module.id}/delete`, { keepData: keep })
                 onClose()
-                // Home after it goes: whatever was open may have gone with it (Kenil, 10 Nov)
+                // Home after it goes: whatever was open may have gone with it
                 window.location.hash = '#/'
               })
             }

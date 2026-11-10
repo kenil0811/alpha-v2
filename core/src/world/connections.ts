@@ -5,8 +5,8 @@ import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
 import { actorName, type WriteCtx } from './shape/index.ts'
 
-// waiting: a setup step only the customer can do (step 2, part 4); health says what, and syncs
-// are not retried until Try again
+// waiting: a setup step only the customer can do; health says what, and syncs are not retried
+// until Try again
 export type ConnectionState = 'connected' | 'needs_sign_in' | 'broken' | 'paused' | 'waiting'
 
 export interface Connection {
@@ -154,8 +154,8 @@ export class Connections {
     })
   }
 
-  // A host the person approved for this connection, from a refusal beside it (call 2: only a
-  // connector that reads sites they choose offers it).
+  // A host the person approved for this connection, from a refusal beside it (only a connector
+  // that reads sites they choose offers it).
   approve(id: string, host: string, ctx: WriteCtx): void {
     tx(this.db, () => {
       const c = this.get(id)

@@ -1,6 +1,6 @@
 // An agent and its schedules as the window reads them.
 
-// An agent as the window reads it (clean base step 7); the Chief of staff is first and has no row.
+// An agent as the window reads it; the Chief of staff is first and has no row.
 export interface AgentView {
   id: string
   name: string

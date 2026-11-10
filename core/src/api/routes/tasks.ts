@@ -33,7 +33,7 @@ export function registerTasks(ctx: Ctx): void {
         .slice(0, 3)
     },
   }
-  // Tasks as a table (UI batch 2, 26 Oct): a saved list's tasks, each changed in a cell or by
+  // Tasks as a table: a saved list's tasks, each changed in a cell or by
   // dragging it across the board, as the person's word on the task's own record
   const STATES = {
     todo: 'To do',
@@ -131,7 +131,7 @@ export function registerTasks(ctx: Ctx): void {
     }
   })
 
-  // What Alpha's Mac app shows as notifications (Kenil's plan, 21 Oct): reminders that came and
+  // What Alpha's Mac app shows as notifications: reminders that came and
   // cards that began waiting on the person since the app last asked, each with the place a click
   // opens. Asked first with no cursor, it gives only where to start, so nothing old comes back.
   app.get('/api/notices', async (req) => {

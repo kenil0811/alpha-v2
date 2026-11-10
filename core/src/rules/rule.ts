@@ -1,8 +1,8 @@
 // A rule of docs/rules.md as its test (R3): tried through every door that can do what it is about,
 // on a fresh rule world each, and in named cases where a door is not the point. What does not
-// hold yet waits on its step: its test passes only while the rule still fails there, so the day a
-// build makes it hold, the test fails until its mark comes off, here and in docs/rules.md. A case
-// whose way in is written in a later step is named now, as a todo.
+// hold yet names what it waits on: its test passes only while the rule still fails there, so the
+// day a build makes it hold, the test fails until its mark comes off, here and in docs/rules.md. A
+// case whose way in is written later is named now, as a todo.
 import { describe, expect, it } from 'vitest'
 import { Refused } from '../world/kinds.ts'
 import { marks } from './check.ts'
@@ -22,11 +22,14 @@ export interface Spec {
   holds?: (w: RuleWorld, refused: string | null, act: Act, d: Door) => boolean | Promise<boolean>
   // named cases, each saying whether the rule holds
   cases?: Record<string, (w: RuleWorld) => Promise<boolean>>
-  // what does not hold yet, by its case's name or its door's: the step it waits on
-  waits?: Record<string, number>
-  // cases whose way in is written in a later step, by the step
-  later?: Record<string, number>
+  // what does not hold yet, by its case's name or its door's: what it waits on, in words
+  waits?: Record<string, string>
+  // cases whose way in is written later, by what they wait on
+  later?: Record<string, string>
 }
+
+// What the rules not held yet wait on.
+export const CONTRACT = "Dell's contract"
 
 // A door's acts, each one it cannot do a broken test rather than a refusal.
 function actsOf(d: Door, w: RuleWorld): Acts {
@@ -43,11 +46,11 @@ function actsOf(d: Door, w: RuleWorld): Acts {
 function tryOne(
   ruleId: string,
   name: string,
-  step: number | undefined,
+  step: string | undefined,
   world: WorldOf | undefined,
   run: (w: RuleWorld) => Promise<boolean>,
 ): void {
-  it(`${ruleId} · ${name}${step ? ` (waits on step ${step})` : ''}`, async () => {
+  it(`${ruleId} · ${name}${step ? ` (waits on ${step})` : ''}`, async () => {
     const w = await RuleWorld.open(...(world ?? []))
     try {
       const held = await run(w)
@@ -88,17 +91,15 @@ export function rule(ruleId: string, words: string, spec: Spec): void {
       tryOne(ruleId, name, stepOf(name), spec.world, run)
     }
     for (const [name, step] of Object.entries(spec.later ?? {}))
-      it.todo(`${ruleId} · ${name} (written in step ${step})`)
+      it.todo(`${ruleId} · ${name} (written with ${step})`)
 
     it(`${ruleId} is marked in docs/rules.md as its tests find it`, () => {
       for (const k of Object.keys(spec.waits ?? {}))
         expect(names, `${k} waits, but ${ruleId} tries nothing by that name`).toContain(k)
-      const steps = [
+      const on = [
         ...new Set([...Object.values(spec.waits ?? {}), ...Object.values(spec.later ?? {})]),
-      ].sort((a, b) => a - b)
-      const want = steps.length
-        ? `skip (step${steps.length > 1 ? 's' : ''} ${steps.join(', ')})`
-        : 'test'
+      ].sort()
+      const want = on.length ? `skip (${on.join(', ')})` : 'test'
       expect(marks().get(ruleId)).toBe(want)
     })
   })

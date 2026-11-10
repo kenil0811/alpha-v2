@@ -1,4 +1,4 @@
-// Alpha's own modules (Kenil, 21 Oct: Network, for every client): kits shipped in core/kits,
+// Alpha's own modules: kits shipped in core/kits,
 // installed at start where they are missing and updated where a newer version ships, under the
 // ownership rule (what the person changed is kept). Being Alpha's own, their schedules start on.
 import { existsSync, readdirSync } from 'node:fs'

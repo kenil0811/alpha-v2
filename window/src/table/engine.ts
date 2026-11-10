@@ -1,6 +1,6 @@
-// A view applied to a table's rows (step 10, from v1's views/engine.ts, rewritten): search,
-// filters by kind, sorts in levels with empty values last, one level of groups, totals and
-// colours. Pure functions over the rows the window already holds.
+// A view applied to a table's rows: search, filters by kind, sorts in levels with empty values
+// last, one level of groups, totals and colours. Pure functions over the rows the window already
+// holds.
 import type { FieldView, FilterOp, FilterRule, RowView, TotalOp, ViewConfig } from '@alpha/core/api'
 import { money, show } from './values.ts'
 
@@ -36,7 +36,7 @@ export const differs = (a: ViewConfig, b: ViewConfig) =>
 
 export type Family = 'text' | 'number' | 'date' | 'choice' | 'tags' | 'other'
 
-// A field's family; a choice holding several (tags, core step 3c) is its own.
+// A field's family; a choice holding several (tags) is its own.
 export function family(kind: string, many = false): Family {
   if (kind === 'number' || kind === 'money') return 'number'
   if (kind === 'date') return 'date'
@@ -358,7 +358,7 @@ export function total(
   if (op === 'unique') return String(new Set(filled.map((v) => show(field, v, names))).size)
   const nums = filled.map((v) => numberOf(field, v)).filter((n): n is number => n !== null)
   if (!nums.length) return '—'
-  // the earliest or latest value as it is written (a day stays the person's day, Batch A pick 4)
+  // the earliest or latest value as it is written (a day stays the person's day)
   if (op === 'earliest' || op === 'latest') {
     const t = op === 'earliest' ? Math.min(...nums) : Math.max(...nums)
     return show(
@@ -415,7 +415,7 @@ export function toneOf(
 }
 
 // A choice cell's colour, when the view colours that column by its choices: its own cell, never
-// the row (Kenil, 10 Nov).
+// the row.
 export function tintOf(
   config: ViewConfig,
   fields: FieldView[],

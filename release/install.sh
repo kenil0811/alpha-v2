@@ -1,6 +1,5 @@
 #!/bin/sh
-# Installs Alpha on this Mac, or updates it (packaging, piece 3; Kenil's ask of 21 Oct: no
-# Terminal). Three ways in, the same steps:
+# Installs Alpha on this Mac, or updates it. Three ways in, the same steps:
 #   Alpha.app itself, on its first open (--from-app <bundle>): the window shows these lines
 #   sh /Volumes/Alpha/Alpha.app/Contents/Resources/app/install.sh   (from the disk image)
 #   sh install.sh                                                     (an unpacked Alpha folder)
@@ -59,7 +58,7 @@ if mount | grep -F "$vol on " | grep -Eiq 'virtiofs|smbfs|afpfs|nfs|webdav|fuse'
   fail "The Alpha folder is on a shared or network drive. Copy it to this Mac's Desktop first, then run install.sh from there."
 fi
 
-# macOS marks downloaded files; Alpha's own are not notarized yet (Step A), so the mark comes off
+# macOS marks downloaded files; Alpha's own are not notarized yet, so the mark comes off
 # them, and only them.
 xattr -dr com.apple.quarantine "$SRC" 2>/dev/null || true
 [ -n "$from_app" ] || xattr -dr com.apple.quarantine "$here" 2>/dev/null || true
@@ -231,5 +230,5 @@ open "$APP"
 if [ -n "$updating" ]; then
   say "Alpha is updated to $new and open. Your data and settings are as they were."
 else
-  say "Alpha is installed and open in its own window; its face sits in a corner of your screen, and its mark in the menu bar. macOS asks once whether Alpha may send notifications. You can close Terminal."
+  say "Alpha is installed and open in its own window, with its mark in the menu bar. macOS asks once whether Alpha may send notifications. You can close Terminal."
 fi

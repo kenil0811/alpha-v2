@@ -1,13 +1,13 @@
-// module.yaml and setup.yaml as the kit API says them (decisions 5 and 8): what a kit is, its
-// tables and fields, where it sits, what it uses of other kits, who keeps it, and how its shape
-// changed between versions. The core installs by this schema; `alpha kit check` reads it.
+// module.yaml and setup.yaml as the kit API says them: what a kit is, its tables and fields,
+// where it sits, what it uses of other kits, who keeps it, and how its shape changed between
+// versions. The core installs by this schema; `alpha kit check` reads it.
 import { z } from 'zod'
 import { CONDITION_OPS, FIELD_KINDS, SUMMARY_OPS } from './kinds.ts'
 
 export const TONES = ['good', 'warn', 'bad', 'accent'] as const
 export type Tone = (typeof TONES)[number]
 
-// A summary field (core step 3c): the rows of `of` that point at this row through `through` (the
+// A summary field: the rows of `of` that point at this row through `through` (the
 // one relation they have to this table when left out), counted, or their `field` summed, the
 // least, the most or the latest (by the date `by`, or when added), where one condition holds,
 // in the words of a view's filter. Worked out when read; never written.
@@ -37,11 +37,11 @@ const Field = z.object({
   relates_to: z.string().optional(),
   many: z.boolean().optional(), // a relation holding a list of rows, a choice holding several
   summary: Summary.optional(), // a summary field's: what it sums up
-  // a person field whose table holds one row per person (core step 3d): a second is refused, and
+  // a person field whose table holds one row per person: a second is refused, and
   // a merge of two people folds their rows into one
   per: z.enum(['person']).optional(),
   // a relation to one row whose rows are part of it: shown there, removed and brought back with
-  // it, never empty, and no tab of its own (core step 3a)
+  // it, never empty, and no tab of its own
   part_of: z.boolean().optional(),
   indexed: z.boolean().optional(), // an index on it, for a field filtered on often
   // its values never reach a journal line (an SSN, a bank account): "(kept out)" there
@@ -53,10 +53,10 @@ const Field = z.object({
 export const Manifest = z.object({
   name: z.string().min(1),
   version: z.string().min(1),
-  // the kit API it was written for (decision 5); core says which it serves
+  // the kit API it was written for; core says which it serves
   api: z.number().int().positive().optional(),
-  // the other kits, or the connectors, whose tables it reads, relates to or triggers on
-  // (decision 8): a kit by name and the version it needs at least, a connector by name
+  // the other kits, or the connectors, whose tables it reads, relates to or triggers on: a kit by
+  // name and the version it needs at least, a connector by name
   uses: z
     .array(
       z
@@ -71,14 +71,14 @@ export const Manifest = z.object({
         }),
     )
     .default([]),
-  // whose kit it is to keep (decision 3b); none means the person's own
+  // whose kit it is to keep; none means the person's own
   maintainer: z.object({ name: z.string().min(1), address: z.string().email() }).optional(),
   // changed only by a newer pack signed by Kenil's key (rules M1): counts only from a signed pack
   managed: z.boolean().optional(),
-  // Alpha's own kit (decision 13): installed and kept up to date by the core, never uninstalled;
+  // Alpha's own kit: installed and kept up to date by the core, never uninstalled;
   // its schedules can still be paused
   core: z.boolean().optional(),
-  // the module People and Organizations live in, as its tabs (UI batch 2, 26 Oct): Network's
+  // the module People and Organizations live in, as its tabs: Network's
   people: z.boolean().optional(),
   // what changed between versions, so an update renames in place and leaves a removal removed
   history: z
@@ -99,12 +99,12 @@ export const Manifest = z.object({
     })
     .optional(),
   description: z.string().optional(),
-  // what the module is for (core step 3e): who it is for, what it keeps track of, and the decisions
+  // what the module is for: who it is for, what it keeps track of, and the decisions
   // it serves; read by Alpha before anything in it, shown at the top of Schedules and notes
   business_case: z
     .object({ for: z.string().min(1), keeps: z.string().min(1), decides: z.string().min(1) })
     .optional(),
-  // the module it sits inside, by name; made empty when there is none (Kenil, 20 Oct)
+  // the module it sits inside, by name; made empty when there is none
   within: z.string().min(1).optional(),
   tables: z
     .array(
@@ -178,4 +178,3 @@ export const Setup = z.record(
 )
 
 export type KitManifest = z.infer<typeof Manifest>
-export type KitSetup = z.infer<typeof Setup>

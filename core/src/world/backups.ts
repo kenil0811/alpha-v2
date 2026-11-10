@@ -1,9 +1,8 @@
 // Backups of the world: once a day by SQLite's backup API, never a copy of the file;
 // the last 7 days kept, and one a week for the 4 weeks before. The backups taken before a
-// migration are kept apart and never pruned here. Beside the world, the backup mirrors the
-// modules and the files by hash, so a lost Mac keeps the whole business (item 17 of the
-// problems list, 25 Oct): a file is copied once, since its hash never changes, at every tick;
-// the modules are refreshed once a day, with the world.
+// migration are kept apart and never pruned here. Beside the world, the backup mirrors the modules
+// and the files by hash, so a lost Mac keeps the whole business: a file is copied once, since its
+// hash never changes, at every tick; the modules are refreshed once a day, with the world.
 import {
   cpSync,
   existsSync,
@@ -105,7 +104,7 @@ export async function backupDaily(
   beside: Beside | null = null,
 ): Promise<string | null> {
   mkdirSync(dir, { recursive: true })
-  const day = dayOf(today) // the person's own day (Batch A, pick 4)
+  const day = dayOf(today) // the person's own day
   const days = readdirSync(dir)
     .map((n) => DAILY.exec(n)?.[1])
     .filter((d): d is string => !!d)

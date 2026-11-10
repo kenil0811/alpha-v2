@@ -1,7 +1,7 @@
-// A question put to the person, one piece wherever Alpha asks (Kenil, 2 Nov: the window's pieces
-// are shared, never made again per screen): a card's question and onboarding's alike. What is
-// asked, its detail in words, what it rests on, then its choices or a box for the answer in the
-// person's own words.
+// A question put to the person, one piece wherever Alpha asks (the window's pieces are shared,
+// never made again per screen): a card's question and onboarding's alike. What is asked, its
+// detail in words, what it rests on, then its choices or a box for the answer in the person's own
+// words.
 import { type ReactNode, useState } from 'react'
 import { answerWords } from '../vocabulary.ts'
 import { Button } from './button.tsx'
@@ -52,7 +52,7 @@ export function Question({
         ))}
         {options.length === 0 && <Answer busy={busy} onAnswer={onAnswer} />}
       </Actions>
-      {/* the person's own words always do, besides the offered ones (Kenil, 10 Nov) */}
+      {/* the person's own words always do, besides the offered ones */}
       {options.length > 0 && (
         <Answer busy={busy} onAnswer={onAnswer} placeholder="Or answer in your own words" />
       )}

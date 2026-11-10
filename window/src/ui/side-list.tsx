@@ -1,5 +1,4 @@
-// The side list (Batch D, 66.23, Kenil's yes 2 Nov): a list on the left, the chosen one's page on
-// the right. Settings' sections first.
+// The side list: a list on the left, the chosen one's page on the right. Settings' sections first.
 import type { ReactNode } from 'react'
 import { cn } from './cn.ts'
 

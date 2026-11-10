@@ -1,12 +1,11 @@
 /*
-  The window's look, direction A "Ledger" (Kenil, 20 Oct 2026), its colours after Claude Code (Kenil, 9 Nov): the proposal is in the project's
-  design/window-proposal.md, the mock is the "Alpha v2 Window" artifact.
+  The window's look, its colours after Claude Code.
 
   The fonts are bundled (Fontsource); the window never fetches one. Kit pages get these same
   variables, and the fonts inlined, inside their frame.
 
   Theme: data-theme="light" or "dark" on <html> picks one; without it the Mac's setting decides
-  (prefers-color-scheme). Settings › Appearance sets it when that screen comes (step 7).
+  (prefers-color-scheme). Settings › Appearance sets it.
 */
 @import "tailwindcss";
 @import "@fontsource-variable/geist";
@@ -16,12 +15,11 @@
 @source "../../plugins/*/window";
 
 /*
-  One layering scale for what floats over the page (Batch A, pick 8, Kenil's yes 1 Nov), written
-  z-(--z-pop) and so on. Inside a box (a table's sticky header and first column, a timeline's
-  labels) a screen keeps its own order with z-0 to z-3; anything that floats over the page takes a
-  name: raised (a panel's drag edge), panel (a panel beside the page), overlay (what dims the page),
-  pop (menus, pickers, the pointing marks), tip (the one tooltip, over all of them). look.test
-  fails a numbered layer past 3.
+  One layering scale for what floats over the page, written z-(--z-pop) and so on. Inside a box (a
+  table's sticky header and first column, a timeline's labels) a screen keeps its own order with
+  z-0 to z-3; anything that floats over the page takes a name: raised (a panel's drag edge), panel
+  (a panel beside the page), overlay (what dims the page), pop (menus, pickers, the pointing
+  marks), tip (the one tooltip, over all of them). look.test fails a numbered layer past 3.
 */
 :root {
   --z-raised: 10;
@@ -59,7 +57,7 @@
   --accent-ink: #ffffff;
   --accent-soft: #ececec;
   --accent-line: #cfcfcf;
-  /* a choice's own colour by its place in its field (Batch E, 66.9), eight and round again */
+  /* a choice's own colour by its place in its field, eight and round again */
   --opt-1: #2f5f8a;
   --opt-1-soft: #e5eef7;
   --opt-2: #85540f;
@@ -76,7 +74,7 @@
   --opt-7-soft: #f8e4e2;
   --opt-8: #66553f;
   --opt-8-soft: #eee9e2;
-  /* the side panel's firmer edge and the soft shadow it casts on the page (Batch E, 66.15) */
+  /* the side panel's firmer edge and the soft shadow it casts on the page */
   --edge: #d0d0d0;
   --elev-side: -10px 0 24px -12px rgb(20 20 19 / 0.3);
 
@@ -220,7 +218,7 @@
   Tailwind reads the tokens through @theme inline, so classes follow the theme:
   bg-surface, bg-sunk, text-ink-2, border-line, bg-accent-soft, text-warn …
   Tailwind's own palette and sizes are switched off: bg-neutral-400 draws nothing, and text-sm is now 12px.
-  Arbitrary values like text-[15px] still compile: a test fails any of them, as alpha-brain's size test did.
+  Arbitrary values like text-[15px] still compile: a test fails any of them.
 */
 @theme inline {
   --color-*: initial;
@@ -321,8 +319,7 @@
   --shadow-btn: var(--elev-btn);
 }
 
-/* a table's frame shows its thumb always, so a table wider than its frame shows it goes on
-   (Kenil, 10 Nov) */
+/* a table's frame shows its thumb always, so a table wider than its frame shows it goes on */
 @utility scroll-shown {
   &::-webkit-scrollbar-thumb {
     background-color: color-mix(in srgb, var(--ink-3) 45%, transparent);
@@ -338,8 +335,8 @@
 }
 
 @layer base {
-  /* scrollbars are thin: a 4px thumb, shown only while the box is under the pointer (Kenil,
-     26 Oct: WebKit's own are thick) */
+  /* scrollbars are thin: a 4px thumb, shown only while the box is under the pointer (WebKit's
+     own are thick) */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;

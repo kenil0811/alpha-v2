@@ -1,5 +1,5 @@
-// A question card (Kenil, 30 Oct: "why does it look so ugly"): the question is one short line, and
-// what it rests on (a preview, the deals a source lists) goes in detail, shown under it.
+// A question card: the question is one short line, and what it rests on (a preview, the deals a
+// source lists) goes in detail, shown under it.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

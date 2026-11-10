@@ -16,7 +16,7 @@ export function registerTables(ctx: Ctx): void {
   const { app, world, engine, user, asPerson, live } = ctx
   const { sourceView, savedView, rowOut } = ctx.views
 
-  // In the sidebar or out of it (Settings › Connections).
+  // In the sidebar or out of it (Intelligence › Connections).
   // What a table, a field or a view means, in the person's own sentence (the semantic layer):
   // theirs from then on, so a kit's update or Alpha's guess never writes over it.
   app.post('/api/tables/:id/about', async (req) => {
@@ -48,7 +48,7 @@ export function registerTables(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // The person renames a table by double-clicking its name (Batch B, pick 7): the same core rename
+  // The person renames a table by double-clicking its name: the same core rename
   // Alpha's tool makes, walled and journaled the same.
   app.post('/api/tables/:id/name', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
@@ -70,7 +70,7 @@ export function registerTables(ctx: Ctx): void {
     return { id: t.id, hidden: t.hidden }
   })
 
-  // What a relation's picker offers (Batch B, 14b): every row of this table, by its name.
+  // What a relation's picker offers: every row of this table, by its name.
   app.get('/api/tables/:id/names', async (req): Promise<Pick[]> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const t = world.shape.table(id)
@@ -82,7 +82,7 @@ export function registerTables(ctx: Ctx): void {
   })
 
   // The person sets a value in the window (a board's column, a Home line's Pass, Correct it in the
-  // source panel, a picked row or person, Batch B): their own word, journaled, and the value's
+  // source panel, a picked row or person): their own word, journaled, and the value's
   // source. The world checks its kind, and that a picked row or person is there; files stay
   // with Alpha.
   app.post('/api/tables/:id/rows/:row', async (req) => {
@@ -190,7 +190,7 @@ export function registerTables(ctx: Ctx): void {
   })
 
   // What a removal of these rows takes with it, said in the pop-up before it happens: the rows
-  // that are part of them (core step 3a), and how long Bring back can return them (step 1).
+  // that are part of them, and how long Bring back can return them.
   app.post('/api/tables/:id/rows/goes', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { rows } = z.object({ rows: z.array(z.string()).min(1) }).parse(req.body)
@@ -206,7 +206,7 @@ export function registerTables(ctx: Ctx): void {
     }
   })
 
-  // The person keeps a part or a setup table as a tab of its module, or takes it away (28 Oct).
+  // The person keeps a part or a setup table as a tab of its module, or takes it away.
   app.post('/api/tables/:id/tab', async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { tab } = z.object({ tab: z.boolean() }).parse(req.body)
@@ -236,7 +236,7 @@ export function registerTables(ctx: Ctx): void {
         kind: z.enum(FIELD_KINDS),
         choices: z.array(z.string().trim().min(1)).optional(),
         relatesTo: z.string().optional(),
-        many: z.boolean().optional(), // a choice holding several: tags (core step 3c)
+        many: z.boolean().optional(), // a choice holding several: tags
       })
       .parse(req.body)
     world.shape.addFields(
@@ -287,7 +287,7 @@ export function registerTables(ctx: Ctx): void {
     const cell = (kind: string, v: unknown): Cell => {
       if (v === null || v === undefined) return null
       if (kind === 'person') return people[String(v)] ?? String(v)
-      // money, and a summary of money (core step 3c), by its amount
+      // money, and a summary of money, by its amount
       if (typeof v === 'object' && !Array.isArray(v)) return (v as { amount: number }).amount
       if (kind === 'number' || typeof v === 'number') return Number(v)
       if (kind === 'relation')
@@ -328,7 +328,6 @@ export function registerTables(ctx: Ctx): void {
   })
 
   // ?rows=none: its shape alone (fields, lists), so the window draws it while its rows come
-  // (Kenil, 10 Nov)
   app.get('/api/tables/:id', async (req, reply): Promise<TableView | undefined> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
     const { rows: none } = z.object({ rows: z.literal('none').optional() }).parse(req.query ?? {})

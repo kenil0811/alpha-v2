@@ -71,7 +71,7 @@ export function PageView({
   const [problem, setProblem] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const [asks, setAsks] = useState<string | null>(null)
-  // a figure's source, opened beside the page (item 59 of the problems list, 25 Oct): the page
+  // a figure's source, opened beside the page: the page
   // stays where it was, and closing the panel leaves the person on it
   const [source, setSource] = useState<{ table: TableData; row: string; field: string } | null>(
     null,
@@ -149,7 +149,7 @@ export function PageView({
         inputs.current = msg.values
       } else if (msg.alpha === 'say' && typeof msg.words === 'string' && msg.words.trim()) {
         // a page's button asks Alpha in the person's words: shown outside the frame and sent
-        // only when the person says so (item 5 of the problems list, 24 Oct)
+        // only when the person says so
         setAsks(msg.words.trim().slice(0, 500))
       }
     }

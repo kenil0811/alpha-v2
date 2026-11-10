@@ -1,4 +1,4 @@
-// Signing in as the person (step 2, part 5): the organisation's sign-in apps, set once by its IT
+// Signing in as the person: the organisation's sign-in apps, set once by its IT
 // from the setup sheet, and the page the provider sends the person back to. That page is the one
 // address under /api reached without Alpha's token, as the provider's page cannot carry it: the
 // one-time state it brings back is what proves the sign-in is this core's own.

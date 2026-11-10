@@ -1,4 +1,4 @@
-// The person's own day in the window (Batch A, pick 4). Also run under TZ=America/Chicago (pnpm tz).
+// The person's own day in the window. Also run under TZ=America/Chicago (pnpm tz).
 import { describe, expect, it } from 'vitest'
 import { dayOf, isPast } from './day.ts'
 

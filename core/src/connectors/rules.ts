@@ -1,7 +1,6 @@
-// What a connector's process may reach and read (step 2, part 1, slice 2): the hosts its
-// connectors name and those the person approved on their connections; the folders their
-// connections are, for a connector of folders. A host it was refused is a line where the person
-// sees it.
+// What a connector's process may reach and read: the hosts its connectors name and those the person
+// approved on their connections; the folders their connections are, for a connector of folders. A
+// host it was refused is a line where the person sees it.
 import { existsSync, realpathSync } from 'node:fs'
 import type { Connector } from '@alpha/connector-sdk'
 import type { World } from '../world/world.ts'

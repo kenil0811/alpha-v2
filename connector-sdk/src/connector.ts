@@ -17,7 +17,7 @@ export type AuthKind = 'secret' | 'oauth' | 'browser' | 'system' | 'path'
 // The pictures the window has for a connector's tile.
 export type Icon = 'mail' | 'calendar' | 'people' | 'network' | 'folder' | 'plug'
 
-// A connector describes itself; the core names no connector (decision 10). What the window
+// A connector describes itself; the core names no connector. What the window
 // shows for it (its tile, its first-open step, the System Settings pane after a no, a warning)
 // is all here.
 export interface Manifest {
@@ -44,7 +44,7 @@ export interface Manifest {
   // asks not to be read automatically).
   warning?: string
   // The hosts it reaches (host, or host:port): its process may reach these and the hosts the
-  // person approved on a connection, nothing else (step 2, part 1, slice 2). A library that dials
+  // person approved on a connection, nothing else. A library that dials
   // out itself is handed `proxy()`.
   reaches?: string[]
   // It reads sites the person chooses: a host it was refused can be allowed beside the refusal.
@@ -117,7 +117,7 @@ export interface Landed {
   same: number
 }
 
-// What the core gives a connection. A connector in its own process (step 2, 29 Oct) asks the core
+// What the core gives a connection. A connector in its own process asks the core
 // for what it lands, keeps, knows and browses, so those answer later: await each. Its cursor is
 // the one given with the call, and a journal line or a new cursor is said and not waited on.
 export interface Host {
@@ -154,7 +154,7 @@ export interface Call {
   call<T>(name: string, args: unknown, fn: () => Promise<T>): Promise<T>
 }
 
-// What a write or a send is, once done (step 2, part 2, Kenil's yes 30 Oct): final (an email
+// What a write or a send is, once done: final (an email
 // sent), or taken back by its counter-action (a saved draft deleted) or its exact undo. A tool
 // that says nothing is final. Revert in Activity runs the take-back, with `result`, what the
 // tool's run returned.

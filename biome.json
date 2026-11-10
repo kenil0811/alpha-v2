@@ -9,7 +9,6 @@
       "!**/.tsbuild-scripts",
       "!.data",
       "!docs",
-      "!BRIEF.md",
       "!mac/target",
       "!mac/gen"
     ]

@@ -31,4 +31,4 @@ A script is plain JavaScript run in a sandbox with no network, handed one object
 - Trigger kinds: every, cron, changes, filed.
 - Card kinds: permission, question, review, match, suggestion.
 - The sandbox runs Node 26.
-- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Activity and in Settings › Modules.
+- A call with an effect goes through a gate before it leaves the world; a call that is going away keeps working for two minor releases and is said once in Activity and in Intelligence › Modules.

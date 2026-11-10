@@ -1,9 +1,9 @@
-// Signing in as the person (step 2, part 5, Kenil's yes 30 Oct): the services a connector can sign
-// in to with the client's own sign-in app. A provider says where the person signs in and where
-// Alpha trades the answer for tokens, for the app the client's IT registered in their own tenant;
-// what IT approves once, every connector's permissions within it; the setup sheet IT follows; and
-// what its errors mean. No hosted service and no Alpha-wide app are in the path (Kenil, 25 Oct).
-// The core keeps the tokens; a connector only ever gets a short-lived one, from host.secret().
+// Signing in as the person: the services a connector can sign in to with the client's own sign-in
+// app. A provider says where the person signs in and where Alpha trades the answer for tokens, for
+// the app the client's IT registered in their own tenant; what IT approves once, every connector's
+// permissions within it; the setup sheet IT follows; and what its errors mean. No hosted service
+// and no Alpha-wide app are in the path. The core keeps the tokens; a connector only ever gets a
+// short-lived one, from host.secret().
 
 // The client's own sign-in app, as IT copies it from its page.
 export interface SignInApp {
@@ -92,8 +92,7 @@ export const microsoft: Provider = {
       example: '9f8e7d6c-1111-2222-3333-444455556666',
     },
   },
-  // read, drafts and send, approved once (Kenil, 30 Oct), though a connector asks only for what
-  // it uses
+  // read, drafts and send, approved once, though a connector asks only for what it uses
   scopes: ['User.Read', 'Mail.Read', 'Mail.ReadWrite', 'Mail.Send'],
   always: ['offline_access'],
   console: 'https://entra.microsoft.com',

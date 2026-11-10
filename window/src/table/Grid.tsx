@@ -397,7 +397,7 @@ export function Grid({
                 />
               )
             const r = item.row
-            // colour is the cell's alone, never the row's (Kenil, 10 Nov)
+            // colour is the cell's alone, never the row's
             const tint = tintOf(config, fields, r)
             const on = ticked.has(r.id)
             const bg = on ? 'bg-accent-soft' : 'bg-surface'
@@ -852,7 +852,7 @@ function Cell({
           'group flex w-full min-w-0 cursor-pointer items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
-          // a value that meets its colour's rule fills its cell (Kenil, 10 Nov)
+          // a value that meets its colour's rule fills its cell
           tone && !empty && TINT[tone],
           selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
           inRange && 'bg-accent-soft',
@@ -1126,7 +1126,7 @@ export function AddFieldForm({
     e.preventDefault()
     setProblem(null)
     try {
-      // tags are a choice that holds several (core step 3c)
+      // tags are a choice that holds several
       const tags = kind === 'tags'
       await api.post(`/api/tables/${tableId}/fields`, {
         name,

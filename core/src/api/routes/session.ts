@@ -1,4 +1,4 @@
-// Signing in to Alpha (the clean base, step 4b): the page's own routes, reached without a session,
+// Signing in to Alpha: the page's own routes, reached without a session,
 // and Settings › People for the owner. A session is an HttpOnly cookie; a link to set a password
 // is shown to the owner once, to pass on. Only an Alpha told to (sign_in in alpha.yaml) asks.
 import { z } from 'zod'

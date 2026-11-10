@@ -1,11 +1,10 @@
-// Real tables (Kenil, 22 Oct: "real tables, switch now"). A kit table is a SQLite
-// table named by its slug, STRICT, with a typed column per field named by the field's slug; a
-// money field takes an amount and a currency column; a list relation (many) is a junction table
-// `<table>__<field>` of (record_id, other_id, position). Provenance and versions sit in two
-// generic tables beside them, and `records` stays as the registry of which table a row is in.
-// Pointers between rows are kept whole by Alpha's own writes in the same transaction, not by
-// SQL foreign keys, so a shape change never fights a cascade. The DDL lives here, shared by the
-// shape store and by the migration that made the switch.
+// Real tables. A kit table is a SQLite table named by its slug, STRICT, with a typed column per
+// field named by the field's slug; a money field takes an amount and a currency column; a list
+// relation (many) is a junction table `<table>__<field>` of (record_id, other_id, position).
+// Provenance and versions sit in two generic tables beside them, and `records` stays as the
+// registry of which table a row is in. Pointers between rows are kept whole by Alpha's own writes
+// in the same transaction, not by SQL foreign keys, so a shape change never fights a cascade. The
+// DDL lives here, shared by the shape store and by the migration that made the switch.
 import type { FieldKind } from './kinds.ts'
 
 export const quote = (name: string) => `"${name.replace(/"/g, '""')}"`

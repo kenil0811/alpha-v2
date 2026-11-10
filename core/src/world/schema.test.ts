@@ -1,5 +1,5 @@
-// One schema (the clean base, step 3, Kenil's yes 9 Nov): a fresh world is schema.sql and nothing
-// else, at version 1; what the delete left behind is absent.
+// One schema: a fresh world is schema.sql and nothing else, at version 1; what the delete left
+// behind is absent.
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

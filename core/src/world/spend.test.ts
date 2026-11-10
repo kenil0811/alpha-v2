@@ -1,6 +1,5 @@
-// What each use of the model spent (core plan step 5, Kenil's yes 28 Oct): a desk turn's share of
-// its session's running total, nothing counted from
-// before it shipped, and Settings' month by module, schedule and model.
+// What each use of the model spent: a desk turn's share of its session's running total, nothing
+// counted from before it shipped, and Settings' month by module, schedule and model.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

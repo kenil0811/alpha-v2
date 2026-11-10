@@ -1,6 +1,6 @@
-// Part of and setup (core step 3a, Kenil's yes 27 Oct): a relation can be part of the row it
-// points at, so its rows show there, go and come back with it, and are never on their own; a
-// table can be setup; a module's tabs are the tables that are neither.
+// Part of and setup: a relation can be part of the row it points at, so its rows show there, go and
+// come back with it, and are never on their own; a table can be setup; a module's tabs are the
+// tables that are neither.
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

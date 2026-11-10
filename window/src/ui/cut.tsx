@@ -1,4 +1,4 @@
-// Cuts of one list (Batch D, 66.16, Kenil's yes 2 Nov): rounded buttons, each with its count, one
+// Cuts of one list: rounded buttons, each with its count, one
 // picked: Activity's All and Failed first.
 import type { ReactNode } from 'react'
 import { cn } from './cn.ts'

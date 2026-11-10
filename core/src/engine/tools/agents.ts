@@ -1,6 +1,6 @@
-// What an agent keeps of its own (clean base step 7): its memory. A memory is a short fact; how to
-// do something is a skill, kept with `keep`. Saved only when the turn finishes, so a turn that
-// fails saves nothing, and a line in the conversation says so.
+// What an agent keeps of its own: its memory. A memory is a short fact; how to do something is a
+// skill, kept with `keep`. Saved only when the turn finishes, so a turn that fails saves nothing,
+// and a line in the conversation says so.
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'

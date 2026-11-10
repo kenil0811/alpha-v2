@@ -1,5 +1,5 @@
 // A section of a page: its title in serif, an ⓘ with what it is, then its rows; no card around it,
-// so what it holds (a list, a table) is the only frame (Kenil, 26 Oct: no card inside a card).
+// so what it holds (a list, a table) is the only frame (no card inside a card).
 import type { ReactNode } from 'react'
 import { Info } from './info.tsx'
 
@@ -11,7 +11,7 @@ export function Section({
 }: {
   title: string
   about?: string
-  action?: ReactNode // on the heading's right: a short list's Add (Batch A, pick 6)
+  action?: ReactNode // on the heading's right: a short list's Add
   children: ReactNode
 }) {
   return (

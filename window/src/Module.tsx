@@ -1,10 +1,10 @@
-// A module's screen (Ledger): its name in the bar, then one row of tabs: People and
-// Organizations when people live in it (module.yaml's people: true), an Overview of the modules
-// inside it when it holds any (a plain list: each one's name, where it comes from and what goes on
-// in it right now; Kenil, 21 Oct), its pages with the front one first, its tables with
-// their counts, and Setup, always last: all the rest about the module (ModuleSetup.tsx). Nothing
-// sits under a table or a page (Kenil, 26 Oct). A module holding others opens on its Overview, else
-// on its front page, else its first table, else its Setup.
+// A module's screen: its name in the bar, then one row of tabs: People and Organizations when
+// people live in it (module.yaml's people: true), an Overview of the modules inside it when it
+// holds any (a plain list: each one's name, where it comes from and what goes on in it right
+// now), its pages with the front one first, its tables with their counts, and Setup, always
+// last: all the rest about the module (ModuleSetup.tsx). Nothing sits under a table or a page. A
+// module holding others opens on its Overview, else on its front page, else its first table,
+// else its Setup.
 import type {
   ModuleSummary,
   ModuleView,
@@ -53,7 +53,7 @@ export function ModuleScreen({
   }, [load, version])
 
   // until this module's own view is here (or while the last module's still is), what the rail knows
-  // of it draws its tabs, so they never blink as a table loads (Kenil, 10 Nov)
+  // of it draws its tabs, so they never blink as a table loads
   const view = m && m.id === moduleId ? m : null
   const facts = view ?? known
   // with no tab named, the Overview of the modules inside, else the front page, else the first
@@ -124,9 +124,8 @@ export function ModuleScreen({
 }
 
 // A module's own tabs after People and the Overview: its pages, the front one first, its main
-// tables with their counts (a table that is part of a row, or setup, is not a tab: core step 3a),
-// then the parts and setup tables kept as tabs (28 Oct), and Setup. People's screen shows them
-// too, none chosen.
+// tables with their counts (a table that is part of a row, or setup, is not a tab), then the
+// parts and setup tables kept as tabs, and Setup. People's screen shows them too, none chosen.
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,

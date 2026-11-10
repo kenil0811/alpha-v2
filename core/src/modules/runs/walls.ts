@@ -11,10 +11,9 @@ import type { RunPlace } from './types.ts'
 
 // Who a run serves: the person, and the desk's turn when the desk started it, so a card it
 // opens shows in that turn; and the task it works on, when it was started on one.
-// What a schedule's file lets its run do (decisions 6 and 8), enforced where each call lands: the
-// tables it may write (touches), the tables it may read (its module's and its kit's uses), and
-// the calls with an effect it may make (effects; a file that says nothing is an older one,
-// allowed and said).
+// What a schedule's file lets its run do, enforced where each call lands: the tables it may write
+// (touches), the tables it may read (its module's and its kit's uses), and the calls with an
+// effect it may make (effects; a file that says nothing is an older one, allowed and said).
 export interface Walls {
   kind: 'file' | 'try' | 'check' // a schedule's file, a try from the chat, or an agent's check
   touches: Set<string> // table names, lower case
@@ -78,8 +77,8 @@ const CHECK: Walls = {
   effects: new Set(['browser.open', 'browser.extract']),
 }
 
-// A try of a script from the chat has no schedule file, so its module is its wall (item 40 of the
-// problems list, 25 Oct): it writes the module's own tables and reads those and its kit's uses.
+// A try of a script from the chat has no schedule file, so its module is its wall: it writes the
+// module's own tables and reads those and its kit's uses.
 // Its effects are not walled here: a try is how a reader is tried before it runs on its own, and
 // a site not on the module's list waits on the person's card as ever.
 export function wallsForTry(runner: ScheduleRunner, module: RunPlace): Walls {
@@ -93,7 +92,7 @@ export function wallsFor(runner: ScheduleRunner, module: RunPlace, file: Schedul
   const { own, uses } = reach(runner, { id: module.id, dir: module.dir })
   return {
     kind: 'file',
-    // a file that names no tables writes its module's own, as a try does (Kenil, 10 Nov)
+    // a file that names no tables writes its module's own, as a try does
     touches: lower(file.touches ?? own),
     reads: lower([...own, ...uses]),
     effects: file.effects ? lower(file.effects) : null,

@@ -65,8 +65,8 @@ export async function keep(
   if (text === null) throw new Refused(`${rel} is not in ${module.name} yet: give its words.`)
   const schedule = check(module, rel, text)
   // nothing is kept in a managed module (rules M2); a file a kit someone else maintains shipped
-  // asks the person first (M4), and one the firm adds to its module, as a source's own reader, is
-  // theirs (Kenil, 5 Nov)
+  // asks the person first (M4), and one the firm adds to its module, as a source's own reader,
+  // is theirs
   refuseManaged(world, module.id, `keep ${rel}`, ctx)
   if (shipped(world, module, rel))
     asks(

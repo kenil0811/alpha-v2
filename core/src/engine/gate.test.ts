@@ -1,5 +1,5 @@
-// The gate adapter as Alpha's own loop will call it, with no Agent SDK in between: the same
-// journal lines and the same cards as the hooks give (decision 11).
+// The gate adapter called directly, with no Agent SDK in between: the same journal lines and the
+// same cards as the hooks give.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -68,7 +68,7 @@ describe('the gate adapter', () => {
     expect(send.allow).toBe(false)
     expect(send.reason).toMatch(/waits/i)
     const card = world.cards.waiting(user.id).find((c) => c.call?.tool === 'gmail_send')
-    // nothing has gone to this address from here: the card says so (item 39, 25 Oct)
+    // nothing has gone to this address from here: the card says so
     expect(card?.words).toBe('Send an email to priya@harbor.example: “The CIM”, a new recipient?')
     expect(card?.restsOn).toContain('Nothing has gone to this address from here before.')
     expect(card?.options[0]).toBe('Send it')
@@ -93,7 +93,7 @@ describe('the gate adapter', () => {
     expect(await gate.after({ callId: 'c5', ok: true })).toEqual([])
   })
 
-  it('refuses a send a rule forbids when the rule names Gmail or its send (28 Oct)', async () => {
+  it('refuses a send a rule forbids when the rule names Gmail or its send', async () => {
     const connectors = new ConnectorService(world, {
       secrets: new MemorySecrets(),
       known: (await loadSet(STANDARD_DIR)).connectors,

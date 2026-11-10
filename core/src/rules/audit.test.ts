@@ -1,5 +1,5 @@
 // The journal (docs/rules.md, A1 to A5): one line per change, and a chain that a rewritten tail or
-// a value changed in the file cannot pass. A2 and A5 are written with step 8.
+// a value changed in the file cannot pass. A2 and A5 are written with Dell's contract.
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

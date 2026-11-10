@@ -12,8 +12,8 @@ export function registerPeople(ctx: Ctx): void {
   const { app, world, live, asPerson, user } = ctx
   const { cardOut, sourceView } = ctx.views
 
-  // People and Organizations as tables (UI batch 2, 26 Oct): the name changes in a cell; the rest
-  // comes from where Alpha read them, so it changes there
+  // People and Organizations as tables: the name changes in a cell; the rest comes from where Alpha
+  // read them, so it changes there
   const WHY =
     'Only the name changes here; the rest comes from where Alpha read it, so change it there.'
   const keptPeople = (kind: 'person' | 'company'): KeptTable => {
@@ -29,7 +29,7 @@ export function registerPeople(ctx: Ctx): void {
         })),
         { editable: ['Name'], why: WHY },
       )
-    // after its own columns, the fields of the one-row-per-person tables (core step 3d)
+    // after its own columns, the fields of the one-row-per-person tables
     const cols = perColumns(world)
     const rows = perRows(world, [...new Set(cols.map((c) => c.table))])
     return keptTable(
@@ -68,7 +68,7 @@ export function registerPeople(ctx: Ctx): void {
     )
   }
   app.get('/api/kept/people', async () => keptPeople('person'))
-  // What a person field's picker offers (Batch B, 14b): each person by name, with where they work
+  // What a person field's picker offers: each person by name, with where they work
   app.get(
     '/api/people/names',
     async (): Promise<Pick[]> =>
@@ -119,7 +119,7 @@ export function registerPeople(ctx: Ctx): void {
       people: p.people,
       from: [...from.values()],
       contact: p.contact,
-      // their row in each one-row-per-person table of People's module, or none yet (core step 3d)
+      // their row in each one-row-per-person table of People's module, or none yet
       per: perOf(p.id),
       rows: world.people.rowsNaming(p.id).flatMap((r) => {
         const rec = world.records.get(r.record)

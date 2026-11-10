@@ -104,7 +104,7 @@ describe('the window', () => {
     expect(html).toContain('>2<')
     expect(html).toContain('Kenil&#x27;s workspace')
     expect(html).toContain('New module')
-    // Intelligence and Settings at the foot, each its own place (Kenil's call 1, 7 Nov)
+    // Intelligence and Settings at the foot, each its own place
     expect(html).toContain('href="#/intelligence"')
     expect(html).toContain('href="#/settings"')
     expect(html).not.toContain('Alpha is running')

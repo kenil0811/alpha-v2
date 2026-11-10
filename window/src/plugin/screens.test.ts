@@ -1,4 +1,4 @@
-// A plugin's screens in the window (onboarding in Alpha, 2 Nov): found when the window is built,
+// A plugin's screens in the window: found when the window is built,
 // each at its own place, with a row on Home.
 import { describe, expect, it } from 'vitest'
 import { placeOf } from '../place.ts'

@@ -1,8 +1,8 @@
-// The audit journal (step 2, part 3, Kenil's yes 30 Oct): every line's hash covers its content and
-// the hash of the line before, so a line changed with another tool breaks the chain at itself.
-// Read lines older than the fold's days fold into one checkpoint line a day, which keeps the
-// hash of the last line of each run it stands for, so the chain verifies across the gap. The
-// fold is the one thing that deletes journal lines, and it journals itself.
+// The audit journal: every line's hash covers its content and the hash of the line before, so a
+// line changed with another tool breaks the chain at itself. Read lines older than the fold's days
+// fold into one checkpoint line a day, which keeps the hash of the last line of each run it stands
+// for, so the chain verifies across the gap. The fold is the one thing that deletes journal lines,
+// and it journals itself.
 import { createHash } from 'node:crypto'
 import { all, type Db, one, run } from './db.ts'
 import { type Actor, append } from './journal.ts'

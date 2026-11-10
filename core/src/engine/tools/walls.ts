@@ -1,9 +1,9 @@
-// The builder's walls (core step 3e, Kenil's yes 27 Oct; Vikas's notes, item 6): structure is not
-// the model's judgement alone. In the shape tool, a module's first table waits for its business
-// case; a table that is only a name is a choice on the table that would point at it; a table named
-// for a period is one table with a date on each row (world/shape/naming.ts, where the core rename
-// meets it too, Batch B). Each refuses in words that say what to make instead, so the model builds
-// the better shape in the same turn. Kits are checked, not walled.
+// The builder's walls: structure is not the model's judgement alone. In the shape tool, a module's
+// first table waits for its business case; a table that is only a name is a choice on the table
+// that would point at it; a table named for a period is one table with a date on each row
+// (world/shape/naming.ts, where the core rename meets it too). Each refuses in words that say what
+// to make instead, so the model builds the better shape in the same turn. Kits are checked, not
+// walled.
 import { config } from '../../config.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { FieldInput, Module, Table } from '../../world/shape/index.ts'
@@ -33,9 +33,9 @@ export function notOnlyAName(table: string, fields: FieldInput[]) {
   )
 }
 
-// A table its module adds to only on the person's word (added_on, Kenil 29 Oct: DealPilot's
-// sources, added twice without their page read): Alpha's row waits for a card they answered with
-// it, and one answer lets one write in.
+// A table its module adds to only on the person's word (added_on: a module's sources, added twice
+// without their page read): Alpha's row waits for a card they answered with it, and one answer lets
+// one write in.
 export function addedOnAnswer(world: World, table: Table, user: string | null) {
   const word = table.addedOn
   if (!word) return

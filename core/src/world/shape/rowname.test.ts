@@ -1,5 +1,5 @@
 // A row's name, as a relation to it shows: its first words, or in a table with none (a day's) its
-// first value, a date as a date (Kenil, 10 Nov).
+// first value, a date as a date.
 import { describe, expect, it } from 'vitest'
 import { rowName, type Table } from './types.ts'
 

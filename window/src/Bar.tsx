@@ -4,7 +4,7 @@ import { Face, type Mood } from './Face.tsx'
 import { MOD } from './time.ts'
 
 // The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
-// on the left when one is on, with a ‹ to the page above (Kenil, 10 Nov); at its right, Alpha's
+// on the left when one is on, with a ‹ to the page above; at its right, Alpha's
 // face opens the assistant while it is closed.
 // Find is ⌘K, from anywhere.
 export function Bar({
@@ -36,7 +36,7 @@ export function Bar({
             <span className="truncate">{back.label}</span>
           </a>
         ) : (
-          // always in its place, greyed where there is no page above (Kenil, 10 Nov)
+          // always in its place, greyed where there is no page above
           <button
             type="button"
             disabled

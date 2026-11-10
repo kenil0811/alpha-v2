@@ -1,6 +1,6 @@
-// Signed packs (step 2, part 1, slice 3, Kenil's yes 29 Oct), on a throwaway key: a pack loads when
-// it is signed by the key Alpha trusts, or while the developer switch is on; one byte changed
-// anywhere is caught; an installed connector changed afterwards stops loading.
+// Signed packs, on a throwaway key: a pack loads when it is signed by the key Alpha trusts, or
+// while the developer switch is on; one byte changed anywhere is caught; an installed connector
+// changed afterwards stops loading.
 import { execFileSync } from 'node:child_process'
 import { generateKeyPairSync } from 'node:crypto'
 import {

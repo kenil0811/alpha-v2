@@ -275,7 +275,7 @@ export function notePair(people: People, a: string, b: string, why: string): voi
 }
 
 // What a row shares with someone else without being theirs to merge on: a phone another name
-// holds, a role address (item 25, 25 Oct). Each is a pair for the person, never a merge.
+// holds, a role address. Each is a pair for the person, never a merge.
 export function noteShared(
   people: People,
   s: Said,
@@ -405,7 +405,7 @@ export function apart(people: People, a: string, b: string, ctx: WriteCtx): void
 }
 
 // The person says a row is not this person: the row leaves with the keys it alone brought and
-// becomes someone of its own, kept apart from then on (item 25 of the problems list, 25 Oct).
+// becomes someone of its own, kept apart from then on.
 export function notThis(people: People, id: string, recordId: string, ctx: WriteCtx): PersonOut {
   return tx(people.db, () => {
     const p = people.mustRoot(id)

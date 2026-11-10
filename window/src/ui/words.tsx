@@ -30,7 +30,7 @@ function Code({ children }: { children?: ReactNode }) {
 // Made once: new functions here on every draw would rebuild each table and code block as it streams.
 const PARTS: Components = {
   // a place in Alpha opens in Alpha, beside the page where it can (opened.ts); anything
-  // else in a new tab (Batch D, 66.13, Kenil's yes 2 Nov)
+  // else in a new tab
   a: ({ href, children }) =>
     href?.startsWith('#/') ? (
       <a href={href}>{children}</a>

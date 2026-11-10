@@ -1,10 +1,10 @@
-// A connector folder's own process, as the core holds it (step 2, part 1, Kenil's yes 29 Oct): the
-// connectors it holds, built from what it says of them, each call sent down its pipe, and its
-// host's asks answered with the core's own host for that call. A process that ends is started
-// again on the next call; one the core leaves ends with its pipe. It runs in the sandbox (slice 2):
-// it reaches only the hosts its rules give, through the proxy; it reads its own code, Alpha's and
-// the folders its rules give, and writes only the temporary folder. The browser it asks for opens
-// only those hosts, and Alpha's Mac helper is run here, for it.
+// A connector folder's own process, as the core holds it: the connectors it holds, built from what
+// it says of them, each call sent down its pipe, and its host's asks answered with the core's own
+// host for that call. A process that ends is started again on the next call; one the core leaves
+// ends with its pipe. It runs in the sandbox: it reaches only the hosts its rules give, through the
+// proxy; it reads its own code, Alpha's and the folders its rules give, and writes only the
+// temporary folder. The browser it asks for opens only those hosts, and Alpha's Mac helper is run
+// here, for it.
 import { type ChildProcess, spawn } from 'node:child_process'
 import { existsSync, realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'

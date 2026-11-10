@@ -130,7 +130,7 @@ export function derive(
     }
   }
   if (sent) {
-    // only those the person writes to become people (Kenil, 21 Oct): a reply is a message sent
+    // only those the person writes to become people: a reply is a message sent
     const to = list(map.to)
     return {
       said: to.map(person),
@@ -374,7 +374,7 @@ export function resolve(
     )?.person_id,
   }))
   // a phone held by someone of another name is not this row's to merge on: the two go on the
-  // match card instead (item 25, 25 Oct); the phone stays with its first holder
+  // match card instead; the phone stays with its first holder
   const named = s.rank >= RANK.row && !keyLike(s.name)
   const otherNamed: string[] = []
   const merging = owners.filter((o) => {

@@ -1,7 +1,7 @@
-// The pieces of a computer the core needs and cannot reach the same way everywhere (decision 12,
-// step 4): secrets, a notification, keeping the machine awake, its settings, the person's name,
-// the region. One interface; a Mac implementation and a plain one; `process.platform` is read in
-// one file (index.ts). The server shape later is a linux.ts here, not a search through the core.
+// The pieces of a computer the core needs and cannot reach the same way everywhere: secrets, a
+// notification, keeping the machine awake, its settings, the person's name, the region. One
+// interface; a Mac implementation and a plain one; `process.platform` is read in one file
+// (index.ts). The server shape later is a linux.ts here, not a search through the core.
 import type { SecretStore } from '@alpha/connector-sdk'
 
 export interface Platform {

@@ -1,6 +1,6 @@
-// Sign-in apps (step 2, part 5, Kenil's yes 30 Oct): the organisation's own app for signing in
-// with a provider (Microsoft), set up once by its IT from the setup sheet shown here, before anyone
-// signs in with it; and a person's sign-in itself, on the provider's own page in their browser.
+// Sign-in apps: the organisation's own app for signing in with a provider (Microsoft), set up once
+// by its IT from the setup sheet shown here, before anyone signs in with it; and a person's sign-in
+// itself, on the provider's own page in their browser.
 import type { SignInAppView } from '@alpha/core/api'
 import { Check, Copy, KeyRound } from 'lucide-react'
 import { type FormEvent, useState } from 'react'

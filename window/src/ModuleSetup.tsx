@@ -1,6 +1,6 @@
-// A module's Setup, its last tab (clean base step 5): all there is to know about a module that is
-// not its pages or its tables. Where it comes from, what it is for, its schedules, its setup tables
-// and parts, the notes Alpha reads first, what is the person's against the module's own, and Pack it.
+// A module's Setup, its last tab: all there is to know about a module that is not its pages or
+// its tables. Where it comes from, what it is for, its schedules, its setup tables and parts, the
+// notes Alpha reads first, what is the person's against the module's own, and Pack it.
 // The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, Me, ModuleView, ScheduleView, YoursView } from '@alpha/core/api'
 import { CalendarClock, Trash2 } from 'lucide-react'
@@ -20,8 +20,8 @@ import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Words } from './ui/words.tsx'
 
-// A part of Setup: its title in serif, a grey line saying what it is, its content; no card around
-// it (Kenil, 26 Oct).
+// A part of Setup: its title in serif, a grey line saying what it is, its content; no card
+// around it.
 function Part({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
   return (
     <section className="flex flex-col">
@@ -242,7 +242,7 @@ function Tables({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   )
 }
 
-// What of an installed module is the person's now (decision 3): each with the module's own version
+// What of an installed module is the person's now: each with the module's own version
 // back, and the fields the module no longer uses, each with its values gone for good. It shows
 // only when there is something to show.
 function Yours({ moduleId, onChange }: { moduleId: string; onChange: () => void }) {

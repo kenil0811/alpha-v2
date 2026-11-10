@@ -1,4 +1,4 @@
-// This Mac's setup (packaging, piece 3): what a fresh install still needs, in words for the first
+// This Mac's setup: what a fresh install still needs, in words for the first
 // open and Settings. Claude's own sign-in on this Mac (asked of the bundled Claude Code, which
 // answers for the route this install uses), the person's connections, Google Chrome for sites they
 // sign in to, and the two downloads reading needs, started at install and here on asking: the
@@ -103,7 +103,7 @@ export class Setup {
   }
 
   // Whether Alpha keeps this Mac from sleeping while it is plugged in (the installed app asks
-  // for it in alpha.yaml; the person turns it off in Settings › This Mac, and the core writes
+  // for it in alpha.yaml; the person turns it off in Settings › Permissions, On this computer, and the core writes
   // that back): the computer's own way, through the platform, for as long as the core runs. The screen still turns
   // off; on battery or with the lid closed the Mac sleeps, and catches up on waking.
   get keepAwake(): boolean {

@@ -1,4 +1,4 @@
-// What the connectors serve the desk (decision 11): every loaded connector's tools as entries of
+// What the connectors serve the desk: every loaded connector's tools as entries of
 // the tool registry, each under its connector's server, and what the start layer says about the
 // connections. Out of service.ts so that file stays one reader's length.
 import { Problem } from '@alpha/connector-sdk'
@@ -8,9 +8,8 @@ import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
 import { type ConnectorService, mcpName } from './service.ts'
 
-// Every connector's tools as entries of the tool registry (decision 11), each under its
-// connector's server: the model sees mcp__<connector>__<tool>, and what Gmail can do is
-// Gmail's list.
+// Every connector's tools as entries of the tool registry, each under its connector's server: the
+// model sees mcp__<connector>__<tool>, and what Gmail can do is Gmail's list.
 export function entriesOf(service: ConnectorService): ToolEntry[] {
   return service.known().flatMap((c) =>
     Object.entries(c.tools).map(([t, spec]) =>
@@ -43,12 +42,12 @@ export function entriesOf(service: ConnectorService): ToolEntry[] {
 export function describeConnections(service: ConnectorService, world: World): string {
   const conns = world.connections.list()
   if (!conns.length)
-    return 'None yet. The person connects accounts and folders in Settings › Connections.'
+    return 'None yet. The person connects accounts and folders in Intelligence › Connections.'
   return conns
     .map((k) => {
       const c = service.find(k.connector)
       if (!c)
-        return `### ${k.connector}: ${k.account} (its connector is not loaded; the person adds it in Settings › Connections)`
+        return `### ${k.connector}: ${k.account} (its connector is not loaded; the person adds it in Intelligence › Connections)`
       const state =
         k.state === 'connected'
           ? 'connected'

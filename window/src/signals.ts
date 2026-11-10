@@ -1,6 +1,6 @@
-// What each module holds, as one signal for the rail's dot (Batch E, 66.18): its cards (a question
-// needs the person now; a yes waits on a permission, a draft, a file, a match, rows to decide or
-// tasks proposed; a suggestion is there to read) and its schedules running now.
+// What each module holds, as one signal for the rail's dot: its cards (a question needs the person
+// now; a yes waits on a permission, a draft, a file, a match, rows to decide or tasks proposed; a
+// suggestion is there to read) and its schedules running now.
 import type { Stream } from '@alpha/core/api'
 import { type Signal, strongest } from './ui/dot.tsx'
 

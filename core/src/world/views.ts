@@ -1,7 +1,7 @@
-// Saved views (step 10, Kenil 20 Oct): a table's named ways of looking at it, its
-// filters, sorts, group, columns, totals and colours, shared by everyone in the firm. Kept by
-// field id, so a renamed field keeps its views; given and shown by field name. Each change is
-// journaled; removing a table removes its views (shape.removeTable).
+// Saved views: a table's named ways of looking at it, its filters, sorts, group, columns, totals
+// and colours, shared by everyone in the firm. Kept by field id, so a renamed field keeps its
+// views; given and shown by field name. Each change is journaled; removing a table removes its
+// views (shape.removeTable).
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
@@ -38,7 +38,7 @@ export const FILTER_OPS = [
   'this_week',
   'next_days',
   'in',
-  'all_of', // a choice holding several (tags, core step 3c): has every one of these
+  'all_of', // a choice holding several (tags): has every one of these
   'none_of', // has none of these
   'empty',
   'not_empty',

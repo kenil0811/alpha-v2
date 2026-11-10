@@ -1,4 +1,4 @@
-// The words a person reads in Alpha, agreed with Vikas (rulebook §2; "module everywhere", 23 Oct).
+// The words a person reads in Alpha.
 // The code keeps its own names (a kit, a company); the window never shows them. look.test.ts fails
 // on any word on the left in what the window says.
 export const NEVER_SAY: [RegExp, string][] = [
@@ -11,7 +11,7 @@ export const NEVER_SAY: [RegExp, string][] = [
   [/\bnot now\b/i, 'Decline, or Cancel'],
   [/\bveto(?:es|ed)?\b/i, 'Decline'],
   [/\bcoming soon\b/i, 'the reason it can’t, on hover'],
-  [/\bdid(?:n['’]t| not) finish\b/i, 'Failed (a run, Batch A pick 9)'],
+  [/\bdid(?:n['’]t| not) finish\b/i, 'Failed, for a run'],
 ]
 
 // A card's plain answers, as the person reads them: a yes is Approve, a no is Decline.

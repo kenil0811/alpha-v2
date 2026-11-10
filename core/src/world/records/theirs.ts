@@ -1,8 +1,8 @@
 // The person's value beats every machine (docs/rules.md, D2). A value they typed, answered on a
 // card or stated on their words changes only by their hand: in the window, or from Alpha in a turn
-// where they spoke, stated on their message (Kenil's calls, 5 Nov). Alpha on its own, a subagent,
-// a schedule's script and a kit are refused, in words that say whose it is; a reader's and a
-// connection's landing leave it before this (records.land).
+// where they spoke, stated on their message. Alpha on its own, a subagent, a schedule's script and
+// a kit are refused, in words that say whose it is; a reader's and a connection's landing leave it
+// before this (records.land).
 import { isPersonsOwn, type Provenance, Refused } from '../kinds.ts'
 import type { Table } from '../shape/index.ts'
 import type { RecordCtx } from './types.ts'

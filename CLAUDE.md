@@ -22,9 +22,9 @@ below on proposing changes to Kenil and on the log.
 Imports go one way. Internal packages are not built: Node runs their TypeScript
 directly, so use erasable syntax only (no enums, no namespaces, no parameter properties).
 
-Node 26 (`.nvmrc`) and pnpm 11. Commands: `pnpm install`, `pnpm check` (typecheck, lint,
-test), `pnpm format`, `pnpm start` (builds the window; the core serves it; needs `ALPHA_HOME`),
-`pnpm dev:core` with `pnpm dev:window` (Vite on the next port), `pnpm journey <name>`
+Node 26 (`.nvmrc`) and pnpm 11. Commands: `pnpm install`, `pnpm check` (types, lint, tests,
+the time-zone tests, the walls and the rules), `pnpm format`, `pnpm start` (builds the window; the
+core serves it; needs `ALPHA_HOME`), `pnpm dev:core` with `pnpm dev:window` (Vite on the next port), `pnpm journey <name>`
 (`--appended`: Alpha's prompt on Claude Code's own, instead of alone; `--times N`; a client's
 with `--from ../<client>/journeys`), `pnpm journeys` (every one), `pnpm kit check|test|pack <dir>`,
 `pnpm connector check|pack|add <dir>`, `pnpm shots`. The core prints the address to open, with

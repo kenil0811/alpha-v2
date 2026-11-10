@@ -1,4 +1,4 @@
-// Signing in to Alpha (the clean base, step 4b), on an Alpha that asks: before anything else
+// Signing in to Alpha, on an Alpha that asks: before anything else
 // loads, the session is looked at; no session, the sign-in page or, from a one-time link, the page
 // that sets a password. A session that runs out comes back here.
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'

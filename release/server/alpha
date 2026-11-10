@@ -1,5 +1,5 @@
 #!/bin/sh
-# The alpha command on a server: alpha status | logs | backup | link | address <https address> | update <file> <signature> | rollback
+# The alpha command on a server: alpha status | logs | backup | export | link | address <https address> | update <file> <signature> | rollback
 set -eu
 export PATH=/opt/alpha/node/bin:/usr/local/bin:/usr/bin:/bin
 HOME_DIR=/home/alpha/data
@@ -25,6 +25,12 @@ case "${1:-status}" in
     ;;
   logs) journalctl -u alpha -n 200 -f ;;
   backup) backup && say "Backed up." ;;
+  export)
+    # the firm's data in one archive on this machine, to copy off it
+    curl -fsS -X POST -H 'x-alpha-cli: 1' -H "x-alpha-token: $(cat "$HOME_DIR/token")" \
+      -H 'content-type: application/json' -d '{}' "http://127.0.0.1:$PORT/api/data/export" |
+      sed -n 's/.*"file":"\([^"]*\)".*/The data is in \1/p'
+    ;;
   link)
     # until the owner has a password, each start writes a new one-time link to set it
     systemctl restart alpha
@@ -57,6 +63,8 @@ case "${1:-status}" in
     ln -sfn "$dir" /opt/alpha/current
     systemctl restart alpha
     if healthy; then
+      # the command itself comes with the release, so a new one (export) reaches a server set up before
+      install -m 755 "$dir/release/server/alpha" /usr/local/bin/alpha
       say "Alpha is on $version."
     else
       say "Alpha did not start on $version, so it is going back."
@@ -75,5 +83,5 @@ case "${1:-status}" in
     systemctl restart alpha
     healthy && say "Back on $previous."
     ;;
-  *) say "Say: alpha status | logs | backup | link | address <https address> | update <file> <signature> | rollback"; exit 1 ;;
+  *) say "Say: alpha status | logs | backup | export | link | address <https address> | update <file> <signature> | rollback"; exit 1 ;;
 esac

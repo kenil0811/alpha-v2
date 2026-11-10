@@ -1,5 +1,5 @@
 // Where the window is: its address read as a place (a screen, and what is open on it). Out of
-// App.tsx and Shell.tsx, so those only shrink (Batch A, the window file wall).
+// App.tsx and Shell.tsx, so those only shrink (the window file wall).
 import type { FilePlace } from './FileView.tsx'
 import { splitBeside } from './opened.ts'
 
@@ -7,13 +7,12 @@ export type Place =
   | { at: 'home' }
   | { at: 'conversation' }
   | { at: 'parts' }
-  | { at: 'plugin'; name: string } // a plugin's own page (onboarding in Alpha, 2 Nov)
-  | { at: 'new' }
+  | { at: 'plugin'; name: string } // a plugin's own page
   | { at: 'item'; kind: 'schedule' | 'run' | 'rule'; id: string }
   | { at: 'agent'; id: string }
   | { at: 'work'; id: string } // the work on a task, on a page of its own
   | { at: 'row'; id: string }
-  | { at: 'card'; id: string } // a card on its own page (Batch B, pick 13)
+  | { at: 'card'; id: string } // a card on its own page
   | {
       at: 'table'
       id: string
@@ -39,7 +38,7 @@ export type Place =
     }
 
 export function placeOf(address: string): Place {
-  // what is open beside the page is not the page (Batch A, pick 2)
+  // what is open beside the page is not the page
   const hash = splitBeside(address).base
   const m = /^#\/table\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?$/.exec(hash)
   if (m?.[1]) {
@@ -99,8 +98,7 @@ export function placeOf(address: string): Place {
   if (hash === '#/parts') return { at: 'parts' }
   const pl = /^#\/p\/([a-z][a-z0-9-]*)$/.exec(hash)
   if (pl?.[1]) return { at: 'plugin', name: pl[1] }
-  if (hash === '#/module/new') return { at: 'new' }
-  // a row's own page (core step 3b), a card's (Batch B, pick 13)
+  // a row's own page, a card's
   const rw = /^#\/(row|card)\/([\w-]+)$/.exec(hash)
   if (rw?.[2]) return { at: rw[1] === 'card' ? 'card' : 'row', id: rw[2] }
   const ag = /^#\/agent\/([\w-]+)$/.exec(hash)

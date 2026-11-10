@@ -1,5 +1,5 @@
-// The shape tool: tables, fields, views and a module's place, as the desk changes
-// them; on a kit someone else maintains, a shape change goes on a card first (decision 3b).
+// The shape tool: tables, fields, views and a module's place, as the desk changes them; on a kit
+// someone else maintains, a shape change goes on a card first.
 
 import { z } from 'zod'
 import { FIELD_KINDS, Refused } from '../../world/kinds.ts'
@@ -49,7 +49,7 @@ const SHAPE_INPUT = {
   part_of: z.boolean().optional(), // part_of: the relation field's rows are part of their row, or not
   tab: z.boolean().optional(), // keep_tab: a part or setup table shown as a tab too, or not
   per: z.boolean().optional(), // per: false takes a table's one row per person off
-  // a module's business case (core step 3e): who it is for, what it keeps, the decisions it serves
+  // a module's business case: who it is for, what it keeps, the decisions it serves
   business_case: z
     .object({ for: z.string().min(1), keeps: z.string().min(1), decides: z.string().min(1) })
     .optional(),
@@ -57,7 +57,7 @@ const SHAPE_INPUT = {
 export type ShapeAction = z.infer<z.ZodObject<typeof SHAPE_INPUT>>
 
 // A kit someone else maintains asks the person before its shape changes, by this tool or any
-// other door: the world's shape changes ask (decision 3b; rules M4, world/maintained.ts).
+// other door: the world's shape changes ask (rules M4, world/maintained.ts).
 export { MAINTAINED_SHAPE } from '../../world/maintained.ts'
 
 export function describeShape(a: ShapeAction): string {
@@ -127,14 +127,14 @@ export function applyShape(world: World, a: ShapeAction, c: WriteCtx): string {
         throw new Refused(`make_table needs about: one sentence on what a row of ${table} is.`)
       const moduleName = a.module?.trim() || table
       const existing = world.shape.module(moduleName)
-      // the builder's walls (core step 3e)
+      // the builder's walls
       notAPeriod(table)
       notOnlyAName(table, fields)
       caseFirst(existing, moduleName, a.business_case)
       const module = existing ?? world.shape.makeModule(moduleName, c)
       if (a.business_case && !businessCase(module))
         setBusinessCase(world.shape, module, a.business_case, 'alpha', c)
-      // a main table keeps notes on each row (core step 3b); a part or a setup table does not
+      // a main table keeps notes on each row; a part or a setup table does not
       const main = !a.setup && !fields.some((f) => f.partOf)
       if (main && !fields.some((f) => f.kind === 'notes' || f.name.toLowerCase() === 'notes'))
         fields.push({

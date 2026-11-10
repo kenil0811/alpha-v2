@@ -1,6 +1,5 @@
-// A connector runs in its own process (step 2, part 1, slice 1, Kenil's yes 29 Oct): the core holds
-// a stand-in built from what the process says of it, and every call goes over the pipe, the
-// connector's host answered by the core.
+// A connector runs in its own process: the core holds a stand-in built from what the process says
+// of it, and every call goes over the pipe, the connector's host answered by the core.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -70,8 +69,8 @@ it('runs a connector in its own process, its host answered by the core over the 
   svc.close()
 }, 30_000)
 
-// Step 2, part 1, slice 2: the browser a connector asks for opens only the hosts it may reach, and
-// a host the person approved joins them.
+// The browser a connector asks for opens only the hosts it may reach, and a host the person
+// approved joins them.
 it('opens in the browser only the hosts a connector may reach, and those the person approved', async () => {
   const root = join(home, 'connectors')
   const dir = join(root, 'browsing')
@@ -127,9 +126,9 @@ it('names a host by itself, by its port, or under a wildcard', () => {
   expect(named(list, 'a.example.org', '443')).toBe(true)
 })
 
-// Slice 2's wall, in every push's checks on macOS and Linux (slice 4, Kenil's yes 29 Oct): a
-// connector reaches a site by the host it names, is refused it by another name, and the refusal
-// is listed under it (the journey connector-reaches, without the runner).
+// The sandbox's wall, in every push's checks on macOS and Linux: a connector reaches a site by the
+// host it names, is refused it by another name, and the refusal is listed under it (the journey
+// connector-reaches, without the runner).
 it('reaches a site by the host it names and is refused it by another, listed', async () => {
   const site = createServer((_, res) => res.end('<p>Reached.</p>')).listen(0, '127.0.0.1')
   await new Promise((r) => site.once('listening', r))

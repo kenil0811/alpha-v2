@@ -42,8 +42,6 @@ const Limits = z.object({
   journeys_at_once: z.number().int().min(1),
   question_characters: z.number().int().min(1),
   parts_shown: z.number().int().min(1),
-  explore_turns: z.number().int().min(1),
-  explore_look_tokens: z.number().int().min(1),
 })
 
 const Words = z.object({
@@ -61,9 +59,6 @@ const People = z.object({
   contact_days: z.number().int().positive(),
   role_addresses: z.array(z.string().min(1)),
 })
-
-export type ModelsConfig = z.infer<typeof Models>
-export type LimitsConfig = z.infer<typeof Limits>
 
 const cache = new Map<string, { mtime: number; value: unknown }>()
 
@@ -107,7 +102,7 @@ export const config = {
   reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
   // how the model sorts a person's items into the groups they named
   judging: (dir?: string) => load('judging.md', (t) => t.trim(), dir),
-  // the Module builder, made once in each world (Kenil, 10 Nov): who it is in its front matter
+  // the Module builder, made once in each world: who it is in its front matter
   builder: (dir?: string) => load('module-builder.md', builderOf, dir),
 }
 

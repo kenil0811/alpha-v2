@@ -1,4 +1,4 @@
-// Rules waiting on their Save card (Batch B, pick 18): listed for a module's Governance (its own
+// Rules waiting on their Save card: listed for a module (its own
 // and those of all of Alpha) and for Settings › Permissions (every one); Approve and Decline are
 // the card's own answers, by their meaning, so a rule comes out exactly as saved on its card.
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -53,7 +53,7 @@ const saveCard = (spec: RuleSpec, options: string[] = [SAVE_ANSWERS.yes, SAVE_AN
   })
 
 describe('rules waiting on their Save card', () => {
-  it('are a module’s and those of all of Alpha in its Governance, and every one in Permissions', async () => {
+  it('are a module’s and those of all of Alpha for that module, and every one in Permissions', async () => {
     const bakery = world.shape.makeModule('Bakery', { actor: { kind: 'alpha' } })
     const shops = world.shape.makeModule('Shops', { actor: { kind: 'alpha' } })
     const here = saveCard(rule(bakery.id, 'bakery.example'))

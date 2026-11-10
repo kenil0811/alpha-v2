@@ -1,8 +1,8 @@
 // Outlook: the person's Microsoft 365 mail through Microsoft Graph, signed in as them with their
-// organisation's own sign-in app (step 2, part 5, Kenil's yes 30 Oct), so it reaches only their
-// own mailbox. It reads, and writes nothing (drafts and sends come with Dell's step): Inbox and
-// Sent Items land in the same Mail table as Gmail's, with the same fields, so what reads Mail
-// reads both. The first read goes back 90 days; each one after asks Graph only what changed.
+// organisation's own sign-in app, so it reaches only their own mailbox. It reads, and writes
+// nothing (drafts and sends are not built yet): Inbox and Sent Items land in the same Mail table as
+// Gmail's, with the same fields, so what reads Mail reads both. The first read goes back 90 days;
+// each one after asks Graph only what changed.
 import { readFileSync } from 'node:fs'
 import { type Call, type Connector, defineTool, type ItemFile, Problem } from '@alpha/connector-sdk'
 import { z } from 'zod'

@@ -1,5 +1,5 @@
-// A table (step 10 brings v1's views): its saved views as tabs, a toolbar saying what
-// the open view does (find, filters, sorts, group, columns), and the rows as a table or a board.
+// A table: its saved views as tabs, a toolbar saying what the open view does (find, filters,
+// sorts, group, columns), and the rows as a table or a board.
 // Every value opens to where it came from in the source panel on the right, which stays open
 // while the person clicks along a row. What the person changes and has not saved stays while they
 // open a row and come back, in this browser; a saved view is shared by everyone.
@@ -86,9 +86,9 @@ export function TableView({
   quiet?: boolean // no room beside the page with the assistant open: the row panel gives way
   loading?: boolean // its shape is here and its rows are on their way: no count yet
   // a list kept outside the module's tables (people, tasks, schedules…), served by the core as a
-  // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
-  // their own page, changed there; why is said when something would be typed or saved. New adds
-  // one in the page's own way, when it has one.
+  // table: changed in a cell where the core says it may be, opened on their own page, changed
+  // there; why is said when something would be typed or saved. New adds one in the page's own
+  // way, when it has one.
   kept?: {
     open: (row: string) => void
     onNew?: () => void
@@ -162,7 +162,7 @@ export function TableView({
       .then(setTaskCounts, () => setTaskCounts({}))
   }, [data, kept])
 
-  // a row's notes are on its view, not a column (core step 3b)
+  // a row's notes are on its view, not a column
   const fields = useMemo(() => data.fields.filter((f) => f.kind !== 'notes'), [data.fields])
   const shown = columns(fields, config)
   const base = useMemo(() => {
@@ -421,7 +421,7 @@ export function TableView({
               onClear={() => setConfig(cleared(config))}
             />
             {/* one line at one height whatever shows in it (a paste waiting, ticked rows, filters),
-                so the rows never move when something is picked (Kenil, 10 Nov) */}
+                so the rows never move when something is picked */}
             <div className="flex min-h-11.5 flex-wrap items-center gap-2 px-7 py-2">
               {pasting ? (
                 <PasteBar

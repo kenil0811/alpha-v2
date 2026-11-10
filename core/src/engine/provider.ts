@@ -1,16 +1,15 @@
-// The model as a provider (decision 11): one interface the desk, the document reader and judging
+// The model as a provider: one interface the desk, the document reader and judging
 // speak to, whatever reaches the model behind it. A provider says its route and what it can do,
 // and gives a desk session (words in, text and tool calls out as they stream, interrupt, resume)
 // and `ask` (one question answered in a schema). The gates are Alpha's code on every route: a
 // session runs each tool call through the Gatekeeper before the registry's handler.
 
-import type { Use } from '../world/spend.ts'
 import type { Gatekeeper } from './gate.ts'
-import type { Registry, ToolEntry } from './registry.ts'
+import type { Registry } from './registry.ts'
 
 export type Route = 'subscription' | 'key'
 
-// What a route can do; the prompt leaves out what it cannot (decision 11).
+// What a route can do; the prompt leaves out what it cannot.
 export interface Capabilities {
   shell: boolean // a sandboxed shell on this Mac
   files: boolean // files beyond the world: the desk folder and the modules
@@ -79,13 +78,4 @@ export interface Provider {
     prompt: string,
     schema: Record<string, unknown>,
   ): Promise<{ answer: unknown; tokens: number }>
-  // A question the model works out with a few read-only tools before it answers in the schema
-  // (a plugin's exploring session, onboarding B): those tools and no others, for at most `turns`.
-  explore?(
-    system: string,
-    prompt: string,
-    tools: ToolEntry[],
-    schema: Record<string, unknown>,
-    turns: number,
-  ): Promise<{ answer: unknown; tokens: number; uses?: Use[] }>
 }

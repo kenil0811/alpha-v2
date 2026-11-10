@@ -86,7 +86,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
             return ok(`The card is answered: ${done.state}.`)
           }
           if (!a.question?.trim()) throw new Refused('A question is needed.')
-          // a wall: the question is read at a glance; the rest is the card's detail (30 Oct)
+          // a wall: the question is read at a glance; the rest is the card's detail
           const most = config.limits().question_characters
           if (a.question.trim().length > most)
             throw new Refused(
@@ -133,7 +133,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
       [
         'What Alpha may or may not do from now on, when the person says so (“never email anyone outside the firm”, “never delete deals”, “Watson may send follow-ups”), as code will hold it; or one you noticed they keep to without saying it. Use this, never remember, for anything about sending, removing, reading, opening a site or signing in.',
         'side: deny or allow. does: what Alpha does that it covers (read, change, remove, send, reach a site, sign_in). Then only what narrows it: through (tools or connectors: gmail, gmail.send, change); for a send, to_inside (domains: the addresses at them, as in “anyone at example.com”), to_outside (domains: every address not at them, as in “anyone outside the firm”) or to (whole addresses); sites (hosts) for reach; tables (by name). module: it holds in that module only; schedule: that schedule only; neither: all of Alpha. words: the person’s own words asking for it.',
-        'It opens a card showing the rule in code’s own words, for the person to Save: only their Save makes it a rule. With noticed (the journal line ids it comes from) it is kept as noticed instead, never approved, for them to approve or dismiss in Governance.',
+        'It opens a card showing the rule in code’s own words, for the person to Save: only their Save makes it a rule. With noticed (the journal line ids it comes from) it is kept as noticed instead, never approved, for them to approve or dismiss in Settings › Permissions.',
         'Words that say none of these (be polite to brokers) are not a rule: say so, and offer to keep them in the module’s notes.',
       ].join('\n'),
       {
@@ -178,7 +178,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
           if (a.noticed?.length) {
             const r = world.rules.infer(spec, a.noticed, ctx())
             return ok(
-              `Kept as noticed: ${r.words} It shows in Governance for the person to approve or dismiss; it never acts alone on a send, a removal of theirs or a sign-in.`,
+              `Kept as noticed: ${r.words} It shows in Settings › Permissions for the person to approve or dismiss; it never acts alone on a send, a removal of theirs or a sign-in.`,
             )
           }
           const words = world.rules.describe(spec)
@@ -211,7 +211,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
           if (!connectors) throw new Refused('Connectors are not set up in this core.')
           const c = connectors.connector(connector)
           return ok(
-            `The sign-in for ${c.manifest.title} is open in the person's window, under Settings › Connections. They type their own details there.`,
+            `The sign-in for ${c.manifest.title} is open in the person's window, under Intelligence › Connections. They type their own details there.`,
           )
         }),
     ),

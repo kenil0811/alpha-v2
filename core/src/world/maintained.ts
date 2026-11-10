@@ -1,4 +1,4 @@
-// A kit someone else maintains (decision 3b; docs/rules.md, M4): its shape changes, by any door,
+// A kit someone else maintains (docs/rules.md, M4): its shape changes, by any door,
 // go on a card for the person first. Ask the maintainer to put it in the kit's next version, or do
 // it now and they are told later (api/routes/cards.ts answers it). The change is refused in the
 // card's words, so the door that asked says so. A kit's own install and update make its shape.

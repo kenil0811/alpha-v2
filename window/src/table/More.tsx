@@ -1,6 +1,6 @@
 // A table's ⋮ menu: the view's sort and group, its layout, Add column, Rename, Keep as a tab, Read
-// now on a table a connection fills (Batch B, pick 15), then downloads of exactly the rows and
-// columns shown. Out of TableView.tsx so that screen only shrinks (the window file wall).
+// now on a table a connection fills, then downloads of exactly the rows and columns shown. Out of
+// TableView.tsx so that screen only shrinks (the window file wall).
 import type { FieldView, ReadByView, ViewConfig } from '@alpha/core/api'
 import {
   ArrowDownUp,
@@ -52,8 +52,8 @@ export function More({
   onCopy: () => void
   tab?: boolean | null // a part or setup table: whether it is kept as a tab; null for the rest
   onTab?: (tab: boolean) => void
-  readBy?: ReadByView[] // the connections that fill it (Batch B, pick 15)
-  name?: string | null // its name, where Rename may change it (Kenil's call, 7 Nov: on the menu)
+  readBy?: ReadByView[] // the connections that fill it
+  name?: string | null // its name, where Rename on the menu may change it
   onRename?: (name: string) => void
 }) {
   const fixed = useShapeFixed()

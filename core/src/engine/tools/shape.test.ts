@@ -1,4 +1,4 @@
-// The shape tool's wall on meaning (Kenil, 24 Oct): no table or field without its sentence, and
+// The shape tool's wall on meaning: no table or field without its sentence, and
 // describe for the ones there are.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -69,7 +69,7 @@ describe('the shape tool and meaning', () => {
     )
     const t = world.shape.table('Meals')
     expect([t?.about, t?.aboutBy]).toEqual(['One meal the person ate.', 'alpha'])
-    // a main table gets its Notes from the builder (core step 3b)
+    // a main table gets its Notes from the builder
     expect(t?.fields.map((f) => [f.about, f.aboutBy])).toEqual([
       ['What was eaten.', 'alpha'],
       ['Which meal of the day.', 'alpha'],

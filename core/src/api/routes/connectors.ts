@@ -15,7 +15,7 @@ import { signInApps } from './signin.ts'
 export function registerConnectors(ctx: Ctx): void {
   const { app, world, engine, user, options, person, live, connectorOf, asPerson } = ctx
 
-  // the hosts each connector was refused, newest first, once each (step 2, part 1, slice 2)
+  // the hosts each connector was refused, newest first, once each
   const refusals = () => {
     const by = new Map<string, { host: string; at: string }[]>()
     for (const l of world.lines({ kinds: ['reach_refused'], limit: 500 }).reverse()) {
@@ -29,7 +29,7 @@ export function registerConnectors(ctx: Ctx): void {
   }
 
   const developer = () => options.data?.install().developer ?? false
-  // who set a connection up, in words (step 2, part 4)
+  // who set a connection up, in words
   const ownerWords = (madeBy: string) => {
     const [kind, id] = madeBy.split(/:(.*)/s)
     if (kind === 'person') return id === user.id ? 'You' : (world.user(id ?? '')?.name ?? 'Someone')
@@ -95,7 +95,7 @@ export function registerConnectors(ctx: Ctx): void {
   })
 
   // A host the person allows a connection to reach, from a refusal beside it: only for a connector
-  // that reads sites they choose (call 2 of step 2, part 1).
+  // that reads sites they choose.
   app.post('/api/connections/:id/allow', async (req) => {
     const { id } = req.params as { id: string }
     const { host } = z
@@ -110,7 +110,7 @@ export function registerConnectors(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // A connector added without a restart (decision 10): from a folder, from a pack sent as a
+  // A connector added without a restart: from a folder, from a pack sent as a
   // file, or one of the packs that came with the release; it lands in Alpha's own connectors/
   // and joins the loaded set, with a journal line. Removed again when nothing is connected
   // through it; its folder goes with it.
@@ -196,7 +196,7 @@ export function registerConnectors(ctx: Ctx): void {
         secret: z.string().optional(),
       })
       .parse(req.body)
-    // a secret the person signs in with never reaches a journal line (step 2, part 3)
+    // a secret the person signs in with never reaches a journal line
     if (b.secret) world.keepOut(b.secret)
     const known = connectorOf(b.connector)
     if (known.manifest.auth === 'oauth') {
@@ -220,7 +220,7 @@ export function registerConnectors(ctx: Ctx): void {
     const conn = world.connections.get(id)
     if (!conn) throw new Refused('That connection is not there.')
     const c = connectorOf(conn.connector)
-    // signed in as the person (step 2, part 5): the provider's own page, in their own browser;
+    // signed in as the person: the provider's own page, in their own browser;
     // the window opens it where the core could not
     if (c.manifest.auth === 'oauth') {
       if (!signIn) throw new Refused('Signing in is not set up in this core.')

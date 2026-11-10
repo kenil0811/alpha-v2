@@ -1,10 +1,10 @@
-// Undo (core step 1, Kenil 26 Oct): what a run, a turn or one line did to rows, put
-// back in one transaction, newest line first. Rows it added go to the trash, values it changed
-// return from the version its line replaced (only where they are still what it wrote), rows it
-// removed come back from the trash. One "reverted" line says what came back and what was left
-// alone; its own writes carry its id, so a revert can be reverted. What else it did (a table
-// made, a task, a question put to the person) stays, and the words say so. A preview runs the
-// same work and rolls it back, so what the pop-up says is what Revert does.
+// Undo: what a run, a turn or one line did to rows, put back in one transaction, newest line first.
+// Rows it added go to the trash, values it changed return from the version its line replaced (only
+// where they are still what it wrote), rows it removed come back from the trash. One "reverted"
+// line says what came back and what was left alone; its own writes carry its id, so a revert can be
+// reverted. What else it did (a table made, a task, a question put to the person) stays, and the
+// words say so. A preview runs the same work and rolls it back, so what the pop-up says is what
+// Revert does.
 
 import { seal } from '../audit.ts'
 import { now, one, parse, tx } from '../db.ts'
@@ -21,8 +21,8 @@ export interface Undo {
   can: boolean // something changes
   words: string // what it does: "In Deals, 2 rows go and 5 values return."
   left: string[] // what it leaves alone, a sentence each
-  // what it did outside Alpha that Revert takes back (step 2, part 2): each the line that said
-  // the call was done, and the take-back's words; whoever reverts runs them through the connector
+  // what it did outside Alpha that Revert takes back: each the line that said the call was done,
+  // and the take-back's words; whoever reverts runs them through the connector
   takeBacks: { line: number; words: string }[]
 }
 
@@ -40,8 +40,8 @@ const ELSE: Record<string, string> = {
   folded: 'people merged',
 }
 
-// What a run or a turn did outside Alpha (step 2, part 2): the lines that say a connector's
-// write or send was done, each with what it is once done.
+// What a run or a turn did outside Alpha: the lines that say a connector's write or send was done,
+// each with what it is once done.
 interface Done {
   kind: 'final' | 'undoable' | 'counter'
   did: string
@@ -101,7 +101,7 @@ export function revert(
   target: UndoTarget,
   ctx: WriteCtx,
   what: string, // "what Watson did at 07:43", for the line's words
-  // unfold: an unmerge reverting its merge's fold (core step 3d), which nothing else reverts
+  // unfold: an unmerge reverting its merge's fold, which nothing else reverts
   options: { preview?: boolean; unfold?: boolean } = {},
 ): Undo {
   const db = records.db
@@ -159,7 +159,7 @@ export function revert(
           leave(`added\t${table.name}`)
           continue
         }
-        // with the rows that are part of it (core step 3a), into the trash on the same line
+        // with the rows that are part of it, into the trash on the same line
         const out = takeOutAll(records, table, [id], ctx)
         const removal = from[id] !== undefined ? read(db, from[id]) : undefined
         for (const k of out.kept) {

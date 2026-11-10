@@ -1,4 +1,4 @@
-// Deleting a module (Kenil, 10 Nov): its data kept, or all of it, the modules inside it too, and
+// Deleting a module: its data kept, or all of it, the modules inside it too, and
 // the journal keeps saying what went.
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

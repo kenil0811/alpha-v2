@@ -1,7 +1,7 @@
-// A value beside the person's (docs/rules.md, D3, D6; step 4, Kenil's calls 5 Nov). The person's
-// value stands; what a page, a connection or a script has since is kept beside it, with where it
-// came from and when, so the cell is marked and Reset puts it back. A row the person removed
-// stays removed: its item key is remembered, and Bring back forgets it (D4).
+// A value beside the person's (docs/rules.md, D3, D6). The person's value stands; what a page, a
+// connection or a script has since is kept beside it, with where it came from and when, so the cell
+// is marked and Reset puts it back. A row the person removed stays removed: its item key is
+// remembered, and Bring back forgets it (D4).
 import { now, one, run } from '../db.ts'
 import { append } from '../journal.ts'
 import { isPersonsOwn, type Provenance, Refused } from '../kinds.ts'

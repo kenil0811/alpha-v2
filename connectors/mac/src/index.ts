@@ -12,7 +12,7 @@ import {
 import { z } from 'zod'
 
 // Alpha's helper, asked: by the core, which runs it so macOS keeps its permission with Alpha's own
-// app (step 2, part 1, slice 2); a connector in the core's own process runs it itself.
+// app; a connector in the core's own process runs it itself.
 function ask(c: Call, args: string[], options: HelperOptions): Promise<unknown> {
   if (c.host.helper) return c.host.helper(args, options)
   const app = process.env.ALPHA_HELPER_APP

@@ -1,5 +1,4 @@
-// Activity shows what Alpha did through a connector (Kenil, 29 Oct: "why is there nothing in
-// activity about draft getting created or sent"): a turn's writes and sends that went are its
+// Activity shows what Alpha did through a connector: a turn's writes and sends that went are its
 // steps, a send on a card's yes under the turn that asked for it.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -88,7 +87,7 @@ describe('Activity', () => {
         ['Saved a draft to priya@harbor.example'],
       ],
     ])
-    // the draft can be taken back (step 2, part 2), so its turn has Revert; the send is final
+    // the draft can be taken back, so its turn has Revert; the send is final
     expect(turns.map((t) => t.undo?.label ?? null)).toEqual([null, 'Revert'])
   })
 })

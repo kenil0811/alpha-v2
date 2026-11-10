@@ -1,6 +1,6 @@
-// A task given to an agent (clean base, after step 7): each task is its own thread with that agent,
-// so the work never waits behind the agent's chat. Up to a few run per agent; the rest wait in To do.
-// A task is Done when its thread ends well, and Waiting when it needs the person or could not finish.
+// A task given to an agent: each task is its own thread with that agent, so the work never waits
+// behind the agent's chat. Up to a few run per agent; the rest wait in To do. A task is Done when
+// its thread ends well, and Waiting when it needs the person or could not finish.
 import { config } from '../config.ts'
 import { momentOf, type Task, taskOfTurn } from '../world/tasks/index.ts'
 import type { User, World } from '../world/world.ts'
