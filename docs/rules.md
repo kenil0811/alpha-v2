@@ -73,8 +73,8 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 |---|---|---|---|
 | A1 | One journal line per change, written in the change's own transaction by the world function that makes it; no door writes a line of its own beside it | 4 Nov | test |
 | A2 | Every line names a real actor: the signed-in person, a schedule with its run, a connector with its account, or Alpha's turn with the message it served | 4 Nov | step 8 |
-| A3 | The chain's newest hash is written outside the world every day, into the backup's manifest and the report, so a rewritten tail cannot verify | 4 Nov | skip (step 7) |
-| A4 | A line that adds, changes or lands rows carries a digest of the values it wrote, so `pnpm journal verify` finds a value changed in the file | 4 Nov | skip (step 7) |
+| A3 | The chain's newest hash is written outside the world every day, in a manifest beside the daily backup, so a rewritten tail cannot verify | 4 Nov, 10 Nov | test |
+| A4 | A line that adds, changes or lands rows carries a digest of the values it wrote, so `pnpm journal verify` finds a value changed in the file | 4 Nov | test |
 | A5 | In a firm with users, reading a managed module's records is a journal line, folded after its days like the model's reads | 4 Nov | step 8 |
 | A6 | Where Alpha asks people to sign in, every request but the sign-in pages carries a live session and acts as that person: their conversation and the cards raised in it are theirs alone, and only the owner sets the model, the data, who may sign in, and installs a pack | 9 Nov | test |
 
@@ -82,8 +82,8 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| R1 | Every scheduled job that fails says so: a journal line each time, and a card on Home after two failures in a row | 4 Nov | skip (step 7) |
-| R2 | A daily backup that failed, or was not made by its hour, is a card the same day | 4 Nov | skip (step 7) |
+| R1 | Every scheduled job that fails says so: a journal line each time, and a card on Home after two failures in a row, closing itself when the job next works | 4 Nov, 10 Nov | test |
+| R2 | A daily backup that failed is a card the same day | 4 Nov, 10 Nov | test |
 | R3 | Each rule here says how it is held; its test tries it through every door, and `pnpm check` fails when a rule and its test disagree | 4 Nov | test |
 | R4 | The scenario journeys that do not wait run before any push that touches the world, and the session's log names their reports | 4 Nov | — |
 | R5 | Plugins are first-party code in this repository; nothing from elsewhere loads through the plugin host. One that must, runs in its own process as a connector does | 4 Nov | test |

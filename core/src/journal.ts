@@ -2,9 +2,10 @@
 // journal.jsonl>` walks the chain and says whether every line is as it was written, or at which
 // line it is not. A world file is opened read-only; an export is read as it is.
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { verify, verifyExport } from './world/audit.ts'
+import { readManifests } from './world/backups.ts'
 
 const [verb, file] = process.argv.slice(2)
 const at = (p: string) => resolve(process.env.INIT_CWD ?? process.cwd(), p)
@@ -18,7 +19,7 @@ const out = path.endsWith('.jsonl')
   : (() => {
       const db = new DatabaseSync(path, { readOnly: true })
       try {
-        return verify(db as never)
+        return verify(db as never, readManifests(join(dirname(path), 'backups')))
       } finally {
         db.close()
       }

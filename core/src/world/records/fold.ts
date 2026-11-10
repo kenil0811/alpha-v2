@@ -6,6 +6,8 @@
 // and a card where two of yours differ); what pointed at the folded row points at the kept row;
 // the folded row goes to the trash. Unmerge reverts that line with step 1's undo. The fold is a
 // general row merge, so it can later merge two duplicate deals.
+
+import { seal } from '../audit.ts'
 import type { Card } from '../cards.ts'
 import { all, now, run } from '../db.ts'
 import { junctionName, quote } from '../ddl.ts'
@@ -230,6 +232,7 @@ function journal(records: Records, w: Work, ctx: WriteCtx, words: string, data: 
         ? { table: w.folded[0]?.table.id }
         : {}),
       moved: w.moved,
+      ...seal(records.db, changed),
     },
     user: ctx.user ?? null,
     turn: ctx.turn ?? null,

@@ -5,10 +5,11 @@
 // registry that says which table a row is in. The store: rows added, changed, removed and landed;
 // reading them is in reading.ts, storing them in storing.ts, as functions of the store.
 
+import { seal } from '../audit.ts'
 import type { CardInput } from '../cards.ts'
 import { all, type Db, newId, now, one, tx } from '../db.ts'
 import { quote } from '../ddl.ts'
-import { append } from '../journal.ts'
+import { append, nextLine } from '../journal.ts'
 import { checkValue, type Provenance, type ProvenanceInput, Refused, type Said } from '../kinds.ts'
 import { actorName, findField, type Shape, type Table, type WriteCtx } from '../shape/index.ts'
 import { landBeside, markGone, mirrorKeeps, readNow, removedBefore, typedOver } from './beside.ts'
@@ -116,20 +117,7 @@ export class Records {
       const table = this.mustTable(tableId)
       const at = now()
       const ids = rows.map(() => newId('r'))
-      const line = append(this.db, {
-        actor: ctx.actor,
-        kind: 'wrote',
-        words:
-          ctx.byHand?.words ??
-          `Added ${rows.length === 1 ? `a row to ${table.name}: ${this.describe(table, rows[0]?.values ?? {})}` : `${rows.length} rows to ${table.name}`}.`,
-        data: { table: table.id, records: ids },
-        user: ctx.user ?? null,
-        turn: ctx.turn ?? null,
-        module: table.module.id,
-        run: ctx.run ?? null,
-        card: ctx.byHand?.card ?? null,
-      })
-      const said = saidIn(ctx, line.id)
+      const said = saidIn(ctx, nextLine(this.db))
       for (const [i, row] of rows.entries()) {
         const { vals, prov } = this.prepare(
           table,
@@ -145,6 +133,19 @@ export class Records {
         checkStated(this.db, table, vals, prov, ctx)
         this.insert(table, ids[i] as string, vals, prov, at, actorName(ctx.actor), null)
       }
+      append(this.db, {
+        actor: ctx.actor,
+        kind: 'wrote',
+        words:
+          ctx.byHand?.words ??
+          `Added ${rows.length === 1 ? `a row to ${table.name}: ${this.describe(table, rows[0]?.values ?? {})}` : `${rows.length} rows to ${table.name}`}.`,
+        data: { table: table.id, records: ids, ...seal(this.db, ids) },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+        card: ctx.byHand?.card ?? null,
+      })
       this.watch?.rows(table, ids, ctx)
       return ids
     })
@@ -156,24 +157,7 @@ export class Records {
       const table = this.mustTable(tableId)
       const at = now()
       const versions: [string, number, Snapshot][] = []
-      const line = append(this.db, {
-        actor: ctx.actor,
-        kind: 'changed',
-        words:
-          ctx.byHand?.words ??
-          `Changed ${changes.length === 1 ? 'a row' : `${changes.length} rows`} in ${table.name}.`,
-        data: {
-          table: table.id,
-          records: changes.map((c) => c.id),
-          values: changes.map((c) => c.values),
-        },
-        user: ctx.user ?? null,
-        turn: ctx.turn ?? null,
-        module: table.module.id,
-        run: ctx.run ?? null,
-        card: ctx.byHand?.card ?? null,
-      })
-      const said = saidIn(ctx, line.id)
+      const said = saidIn(ctx, nextLine(this.db))
       for (const c of changes) {
         const row = this.readRow(table, c.id)
         if (!row) throw new Refused(`${table.name} has no row ${c.id}.`)
@@ -197,6 +181,27 @@ export class Records {
         this.update(table, row.id, vals, prov, at)
         this.index(table, row.id, { ...was.vals, ...vals })
       }
+      const line = append(this.db, {
+        actor: ctx.actor,
+        kind: 'changed',
+        words:
+          ctx.byHand?.words ??
+          `Changed ${changes.length === 1 ? 'a row' : `${changes.length} rows`} in ${table.name}.`,
+        data: {
+          table: table.id,
+          records: changes.map((c) => c.id),
+          values: changes.map((c) => c.values),
+          ...seal(
+            this.db,
+            changes.map((c) => c.id),
+          ),
+        },
+        user: ctx.user ?? null,
+        turn: ctx.turn ?? null,
+        module: table.module.id,
+        run: ctx.run ?? null,
+        card: ctx.byHand?.card ?? null,
+      })
       tagVersions(this, versions, line.id)
       this.watch?.rows(
         table,
@@ -331,6 +336,7 @@ export class Records {
             connector: source.connector,
             account: source.account,
             ids,
+            ...seal(this.db, [...ids.added, ...ids.changed]),
           },
           user: ctx.user ?? null,
           run: ctx.run ?? null,

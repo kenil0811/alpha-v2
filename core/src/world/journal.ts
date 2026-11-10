@@ -141,6 +141,15 @@ export function append(db: Db, line: LineInput): Line {
   return read(db, Number(res.lastInsertRowid)) as Line
 }
 
+// The id the next line will take, for a change that writes its rows first and its line after,
+// so the line can carry what it left (rules A4) and the rows can name the line.
+export function nextLine(db: Db): number {
+  return (
+    (one<{ seq: number }>(db, "SELECT seq FROM sqlite_sequence WHERE name = 'journal'")?.seq ?? 0) +
+    1
+  )
+}
+
 export function read(db: Db, id: number): Line | undefined {
   const r = one<LineRow>(db, 'SELECT * FROM journal WHERE id = ?', id)
   return r ? toLine(r) : undefined

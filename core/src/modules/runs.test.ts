@@ -468,22 +468,22 @@ describe('a run that did not finish', () => {
     const at8 = new Date()
     at8.setDate(at8.getDate() - 1)
     at8.setHours(8, 0, 0, 0)
-    for (const minute of [0, 1, 2]) await runner.runDue(at8.getTime() + minute * 60_000)
-    expect(runner.runs().map((r) => r.state)).toEqual(['failed', 'failed', 'failed'])
+    for (const minute of [0, 1]) await runner.runDue(at8.getTime() + minute * 60_000)
+    expect(runner.runs().map((r) => r.state)).toEqual(['failed', 'failed'])
     const card = world.cards.waiting().find((c) => c.call?.tool === 'run_again')
-    expect(card?.words).toMatch(/^Counter did not finish 3 times: Counter did not finish: /)
+    expect(card?.words).toMatch(/^Counter did not finish 2 times: Counter did not finish: /)
     expect(card?.options).toEqual(['Try again', 'Leave it'])
     // held while the card waits
     await runner.runDue(at8.getTime() + 3 * 60_000)
-    expect(runner.runs()).toHaveLength(3)
+    expect(runner.runs()).toHaveLength(2)
     // Try again: one more run now
     const again = await runner.retry(counter?.id as string, { user: 'u_1', turn: null })
     expect(again.state).toBe('failed')
-    expect(runner.runs()).toHaveLength(4)
+    expect(runner.runs()).toHaveLength(3)
     // Leave it: the day's run counts as done, so nothing more today
     runner.leave(counter?.id as string, null)
     await runner.runDue(at8.getTime() + 4 * 60_000)
-    expect(runner.runs()).toHaveLength(4)
+    expect(runner.runs()).toHaveLength(3)
   }, 60_000)
 
   it('runs the due schedules in a lane of their own: the tick is back at once', async () => {

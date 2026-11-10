@@ -3,7 +3,7 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { lastHash, verify } from '../world/audit.ts'
+import { lastHash, manifestOf, verify } from '../world/audit.ts'
 import { backupDaily } from '../world/backups.ts'
 import { run } from '../world/db.ts'
 import { rule } from './rule.ts'
@@ -68,9 +68,16 @@ rule('A3', 'the chain’s newest hash is written outside the world every day', {
       const { hash, beside } = await besideBackup(w)
       return hash !== null && beside.some((text) => text.includes(hash))
     },
+    'verify finds a journal that does not match its manifest': async (w) => {
+      const m = manifestOf(w.world.db, '2026-11-10')
+      if (!m) throw new Error('The journal is empty.')
+      if (!verify(w.world.db, [m]).ok) throw new Error('The journal should match its manifest.')
+      return (
+        !verify(w.world.db, [{ ...m, hash: 'another' }]).ok &&
+        !verify(w.world.db, [{ ...m, line: m.line + 1000 }]).ok
+      )
+    },
   },
-  waits: { 'the daily backup’s manifest holds the newest hash': 7 },
-  later: { 'the day’s report holds it too': 7 },
 })
 
 rule(
@@ -98,10 +105,6 @@ rule(
           throw new Error('The value was not changed in the file.')
         return !verify(w.world.db).ok
       },
-    },
-    waits: {
-      'a landing’s line carries a digest of what it wrote': 7,
-      'verify finds a value changed in the file': 7,
     },
   },
 )

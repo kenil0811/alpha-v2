@@ -4,11 +4,21 @@
 // modules and the files by hash, so a lost Mac keeps the whole business (item 17 of the
 // problems list, 25 Oct): a file is copied once, since its hash never changes, at every tick;
 // the modules are refreshed once a day, with the world.
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { join, relative } from 'node:path'
 import { backup } from 'node:sqlite'
+import { type Manifest, manifestOf } from './audit.ts'
 import { dayOf, dayPlus, weekdayOf } from './day.ts'
-import type { Db } from './db.ts'
+import { type Db, json } from './db.ts'
 
 const DAILY = /^world-daily-(\d{4}-\d{2}-\d{2})\.sqlite$/
 
@@ -71,6 +81,21 @@ export function mirror(
   return { files }
 }
 
+// What the daily backups recorded of the chain, each kept beside its day (rules A3).
+export function readManifests(dir: string): Manifest[] {
+  // a folder that cannot be read is the daily backup's to report, never a reason not to start
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return []
+  return readdirSync(dir)
+    .filter((n) => /^world-daily-\d{4}-\d{2}-\d{2}\.json$/.test(n))
+    .flatMap((n) => {
+      try {
+        return [JSON.parse(readFileSync(join(dir, n), 'utf8')) as Manifest]
+      } catch {
+        return []
+      }
+    })
+}
+
 // Today's backup, when there is none yet, with the modules and files mirrored beside it; then
 // the old worlds pruned. Says the file it made.
 export async function backupDaily(
@@ -89,6 +114,9 @@ export async function backupDaily(
     made = join(dir, `world-daily-${day}.sqlite`)
     await backup(db, made)
     days.push(day)
+    // where the chain had got to, outside the world (rules A3); kept when the backup is pruned
+    const manifest = manifestOf(db, day)
+    if (manifest) writeFileSync(join(dir, `world-daily-${day}.json`), json(manifest))
   }
   // new files go beside the world at every tick; the modules once a day, with the world
   if (beside) mirror(beside, dir, { modules: made !== null })

@@ -83,7 +83,8 @@ sit beside them. `docs/rules.md` has the detail.
 
 **The journal.** Append-only lines saying who, what, when and for which turn, run or card. Each
 line's hash covers its content and the hash before it, and the chain is checked at every start
-and by `pnpm journal verify`. Old lines that only said something was read fold into one line a day.
+and by `pnpm journal verify`. A line that writes rows carries a short hash of each value, so a value
+changed in the file is found. Each daily backup leaves the newest hash beside it, outside the world. Old lines that only said something was read fold into one line a day.
 
 **Undo.** A removed row waits whole in `removed_rows` for 30 days and Bring back returns it. Each
 version keeps the line that replaced it, so Revert of a run, a turn or a line puts back what it
@@ -160,7 +161,8 @@ start later, and each copy of a repeat given to an agent starts on its own day.
 **A schedule** is a file, `schedules/<name>.md`, whose front matter says when, what it runs and
 what it may touch, and whose body is its brief. It sits in a module or in an agent's folder. When
 is an hour, a day, a weekday, a named day, a week, a pattern, a table changing, or a document filed.
-The scheduler ticks once a minute. One run of a schedule happens at a time, a missed run becomes
+The scheduler ticks once a minute, and a background job that fails says so: a journal line each
+time and a card on Home after two in a row, or at once for a backup. One run of a schedule happens at a time, a missed run becomes
 one run, and a schedule with 24 runs in a day stops until the next.
 
 **What a run does.** A module's script runs in the sandbox under the walls of its file. A schedule

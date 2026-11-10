@@ -5,6 +5,8 @@
 // alone; its own writes carry its id, so a revert can be reverted. What else it did (a table
 // made, a task, a question put to the person) stays, and the words say so. A preview runs the
 // same work and rolls it back, so what the pop-up says is what Revert does.
+
+import { seal } from '../audit.ts'
 import { now, one, parse, tx } from '../db.ts'
 import { append, type Line, lines, read } from '../journal.ts'
 import { type Provenance, Refused } from '../kinds.ts'
@@ -364,6 +366,7 @@ export function revert(
         back: returned,
         from: Object.fromEntries(returned.map((id) => [id, backFrom.get(id)?.id])),
         takeBacks: takeBacks.map((t) => t.line),
+        ...seal(db, [...changed, ...returned]),
       },
       user: ctx.user ?? null,
       turn: ctx.turn ?? null,

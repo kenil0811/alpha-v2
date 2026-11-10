@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { backupDaily, kept, mirror } from './backups.ts'
+import { backupDaily, kept, mirror, readManifests } from './backups.ts'
 import { World } from './world.ts'
 
 let home: string
@@ -20,6 +20,13 @@ afterEach(() => {
 })
 
 describe('daily backups', () => {
+  it('reads no manifests from a folder that is not one, so a start never stops on it', () => {
+    const path = join(home, 'in-the-way')
+    writeFileSync(path, 'a file')
+    expect(readManifests(path)).toEqual([])
+    expect(readManifests(join(home, 'nothing-here'))).toEqual([])
+  })
+
   it('keep the last 7 days, then one a week for 4 weeks', () => {
     const days: string[] = []
     for (let i = 0; i < 60; i++)

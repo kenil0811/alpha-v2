@@ -11,6 +11,7 @@ import { keep } from '../../modules/keep.ts'
 import { installedKits, recordChange } from '../../modules/kits/index.ts'
 import { RUN_AGAIN } from '../../modules/runs/index.ts'
 import { schedules } from '../../modules/schedules.ts'
+import { JOB_FAILED } from '../../scheduler/scheduler.ts'
 import { Refused } from '../../world/kinds.ts'
 import { type Redo, redo } from '../../world/shape/index.ts'
 import type { Ctx } from '../ctx.ts'
@@ -124,7 +125,13 @@ export function registerCards(ctx: Ctx): void {
     try {
       const c = world.cards.get(id)
       if (c?.call?.tool === DRAFT) return cardOut(await engine.answerDraft(user, id, answer))
-      // a schedule that did not finish three times: one more run now, or left as if it had run
+      // a background job that stopped working: said, and read; it closes by itself when it works
+      if (c?.call?.tool === JOB_FAILED) {
+        const out = world.cards.answer(id, answer, person)
+        live()
+        return cardOut(out)
+      }
+      // a schedule that did not finish: one more run now, or left as if it had run
       if (c?.call?.tool === RUN_AGAIN && engine.hands?.runner) {
         const runner = engine.hands.runner
         const input = c.call.input as { schedule: string; cursor: string | null }

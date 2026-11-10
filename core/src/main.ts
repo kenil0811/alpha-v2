@@ -10,7 +10,7 @@ import { config } from './config.ts'
 import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
 import { SignIn } from './connectors/signin.ts'
-import { copyNewestBackup, takeRestartNote } from './data.ts'
+import { takeRestartNote } from './data.ts'
 import { ClaudeCodeProvider } from './engine/claudecode.ts'
 import { Engine } from './engine/engine.ts'
 import { ModelRoute } from './engine/route.ts'
@@ -26,11 +26,12 @@ import { ScheduleRunner } from './modules/runs/index.ts'
 import { schedules } from './modules/schedules.ts'
 import { platformHere } from './platform/index.ts'
 import { loadPlugins, PLUGINS_DIR, Plugins } from './plugins/plugins.ts'
+import { backupJob } from './scheduler/jobs.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
 import type { Trust } from './signing.ts'
 import { fold, verify } from './world/audit.ts'
-import { backupDaily } from './world/backups.ts'
+import { readManifests } from './world/backups.ts'
 import { setHomeRegion } from './world/phones.ts'
 import { expire } from './world/records/index.ts'
 import { tenantDir, World } from './world/world.ts'
@@ -115,7 +116,7 @@ const windowPort = port + 1
 const tenant = tenantDir(home, install.tenant)
 const world = await World.open(tenant)
 // the journal's chain, checked at every start (step 2, part 3): a break is said, never hidden
-const chainCheck = verify(world.db)
+const chainCheck = verify(world.db, readManifests(world.paths.backups))
 if (!chainCheck.ok) {
   const words = `The journal's chain is broken at line ${chainCheck.at}: ${chainCheck.why}. A line was changed or removed outside Alpha.`
   console.error(words)
@@ -248,59 +249,54 @@ const engine = new Engine(world, {
 started = engine
 // when Alpha's Mac app last asked for notices
 const shell = { seen: 0 }
-const scheduler = new Scheduler(world, [
-  { run: (now) => connectors.syncDue(now) },
-  {
-    run: async () => {
-      if (await intake.due()) engine.events.emit('event', { type: 'lines', user: user.id })
+const scheduler = new Scheduler(
+  world,
+  [
+    { name: 'Reading your connections', run: (now) => connectors.syncDue(now) },
+    {
+      name: 'Filing what comes by mail',
+      run: async () => {
+        if (await intake.due()) engine.events.emit('event', { type: 'lines', user: user.id })
+      },
     },
-  },
-  // schedules in their own lane: the tick goes on while they run (item 15 of the problems list)
-  { run: async (now) => runner.startDue(now) },
-  // tasks' reminders as they come due (a Mac notification and a line on Home), and repeats made
-  {
-    run: async (now) => {
-      let said = false
-      world.tasks.tick(now, { actor: { kind: 'system' }, user: user.id }, (t) => {
-        said = true
-        // Alpha's Mac app shows it when it is running (it asked for notices lately); else the
-        // computer's own notifications do
-        if (Date.now() - shell.seen < 30_000) return
-        platform.notify('Reminder', t.title)
-      })
-      if (said) engine.events.emit('event', { type: 'lines', user: user.id })
-      engine.tasks.due()
-    },
-  },
-  // removed rows kept past keep_removed_days deleted for good (core step 1)
-  { run: async () => void expire(world.records, config.limits().keep_removed_days) },
-  // read lines older than journal_fold_days folded into a checkpoint a day (step 2, part 3)
-  {
-    run: async () => {
-      const done = fold(world.db, config.limits().journal_fold_days, { actor: { kind: 'system' } })
-      if (done.folded) console.log(`Folded ${done.folded} read lines of the journal.`)
-    },
-  },
-  // the world backed up once a day, the last 7 days and 4 weeks kept
-  {
-    run: async () => {
-      const made = await backupDaily(world.db, world.paths.backups, new Date(), {
-        files: world.paths.files,
-        modules: world.paths.modules,
-      })
-      if (made) console.log(`Backed up the world: ${made}`)
-      // and a copy of the newest to the person's folder, where they named one
-      const copyTo = readInstall(home).backupsCopy
-      if (copyTo) {
-        const copied = copyNewestBackup(world.paths.backups, copyTo, {
-          files: world.paths.files,
-          modules: world.paths.modules,
+    // schedules in their own lane: the tick goes on while they run (item 15 of the problems list)
+    { name: 'Starting what is scheduled', run: async (now) => runner.startDue(now) },
+    // tasks' reminders as they come due (a Mac notification and a line on Home), and repeats made
+    {
+      name: 'Reminders and repeating tasks',
+      run: async (now) => {
+        let said = false
+        world.tasks.tick(now, { actor: { kind: 'system' }, user: user.id }, (t) => {
+          said = true
+          // Alpha's Mac app shows it when it is running (it asked for notices lately); else the
+          // computer's own notifications do
+          if (Date.now() - shell.seen < 30_000) return
+          platform.notify('Reminder', t.title)
         })
-        if (copied) console.log(`Copied the newest backup to ${copied}`)
-      }
+        if (said) engine.events.emit('event', { type: 'lines', user: user.id })
+        engine.tasks.due()
+      },
     },
-  },
-])
+    // removed rows kept past keep_removed_days deleted for good (core step 1)
+    {
+      name: 'Clearing old deleted rows',
+      run: async () => void expire(world.records, config.limits().keep_removed_days),
+    },
+    // read lines older than journal_fold_days folded into a checkpoint a day (step 2, part 3)
+    {
+      name: 'Folding old journal lines',
+      run: async () => {
+        const done = fold(world.db, config.limits().journal_fold_days, {
+          actor: { kind: 'system' },
+        })
+        if (done.folded) console.log(`Folded ${done.folded} read lines of the journal.`)
+      },
+    },
+    // the world backed up once a day, the last 7 days and 4 weeks kept
+    backupJob(world, () => readInstall(home).backupsCopy),
+  ],
+  { owner: user.id, notify: () => engine.events.emit('event', { type: 'lines', user: user.id }) },
+)
 scheduler.start()
 engine.resumeAsks()
 engine.tasks.resume()

@@ -260,6 +260,10 @@ export function copyNewestBackup(
   const out = join(folder, `alpha-${newest.name}`)
   if (existsSync(out) && statSync(out).size === newest.size) return null
   cpSync(join(backupsDir, newest.name), out)
+  // and where the chain had got to, so the folder can check the journal it holds
+  const manifest = newest.name.replace(/\.sqlite$/, '.json')
+  if (existsSync(join(backupsDir, manifest)))
+    cpSync(join(backupsDir, manifest), join(folder, `alpha-${manifest}`))
   // the modules and the files go with it, so the folder is the whole business
   if (beside) mirror(beside, folder)
   const copies = readdirSync(folder)

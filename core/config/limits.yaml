@@ -50,7 +50,7 @@ health_quiet_days: 7
 
 # Runs of a schedule that did not finish, one a tick, before a card on Home asks whether to try
 # again or leave it (item 16 of the problems list, 25 Oct).
-run_retries: 3
+run_retries: 2
 
 
 # Hours a one-time yes on a card stays good for: a yes answers the call in front of the person,

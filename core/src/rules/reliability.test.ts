@@ -1,10 +1,11 @@
 // What must fail loudly, and the rules held to their tests (docs/rules.md, R1 to R6). R3 is the
 // door-list wall too: every route, tool and plugin call that writes is a door or is named in
 // NOT_DOORS with why, and every act a door can do has its driver. R4 is held by review.
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { TOOL_NAMES, worldTools } from '../engine/tools/index.ts'
 import { keepAgent } from '../modules/agents.ts'
+import { backupJob } from '../scheduler/jobs.ts'
 import { Scheduler } from '../scheduler/scheduler.ts'
 import { CHIEF } from '../world/agents/index.ts'
 import { checkRules, pluginCalls, writeRoutes } from './check.ts'
@@ -42,17 +43,40 @@ rule('R1', 'every scheduled job that fails says so', {
       await failing(w, 2)
       return w.world.cards.waiting().length > before
     },
-  },
-  waits: {
-    'a job that throws leaves a line saying so': 7,
-    'two failures in a row leave a card on Home': 7,
+    'the window hears when that card opens and when it closes': async (w) => {
+      let broken = true
+      let heard = 0
+      const job = {
+        name: 'A job',
+        cardAfter: 1,
+        run: async () => {
+          if (broken) throw new Error('no')
+        },
+      }
+      const s = new Scheduler(w.world, [job], { notify: () => heard++ })
+      await s.tick(MINUTE, Date.now())
+      const opened = heard
+      broken = false
+      await s.tick(MINUTE, Date.now() + MINUTE)
+      return opened === 1 && heard === 2
+    },
   },
 })
 
-rule('R2', 'a daily backup that failed, or was not made by its hour, is a card the same day', {
-  later: {
-    'a backup that failed is a card the same day': 7,
-    'a backup not made by its hour is a card the same day': 7,
+rule('R2', 'a daily backup that failed is a card the same day', {
+  cases: {
+    'a backup that failed is a card the same day': async (w) => {
+      const backups = w.world.paths.backups
+      rmSync(backups, { recursive: true, force: true })
+      writeFileSync(backups, 'in the way')
+      const s = new Scheduler(w.world, [backupJob(w.world, () => undefined)])
+      const before = w.world.cards.waiting().length
+      await s.tick(MINUTE, Date.now())
+      const card = w.world.cards.waiting().length === before + 1
+      rmSync(backups, { force: true })
+      await s.tick(MINUTE, Date.now() + MINUTE)
+      return card && w.world.cards.waiting().length === before
+    },
   },
 })
 

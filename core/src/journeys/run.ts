@@ -33,6 +33,7 @@ import { REVIEW } from '../modules/reviews.ts'
 import { ScheduleRunner } from '../modules/runs/index.ts'
 import { agentSchedules, schedules, setScheduleState } from '../modules/schedules.ts'
 import { CHIEF } from '../world/agents/index.ts'
+import { verify } from '../world/audit.ts'
 import { Refused } from '../world/kinds.ts'
 import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
@@ -557,6 +558,15 @@ export async function runOne(
     '',
   )
   const tables = world.shape.tables()
+  // whatever the journey did, the journal and the rows it wrote still agree (rules A4)
+  const chain = verify(world.db)
+  passed &&= chain.ok
+  report.push(
+    chain.ok
+      ? `The journal verifies, rows included: ${chain.lines} lines.`
+      : `**FAIL: the journal does not verify at line ${chain.at}: ${chain.why}.**`,
+    '',
+  )
   report.push('## The world after', '')
   for (const t of tables) {
     report.push(`${t.name}: ${t.fields.map((f) => `${f.name} (${f.kind})`).join(', ')}`, '')
