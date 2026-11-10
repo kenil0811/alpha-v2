@@ -152,7 +152,7 @@ export interface ScheduleFile {
   trigger: Trigger | Trigger[] | null
   runs: Runs | null
   wakes: boolean
-  touches: string[]
+  touches: string[] | null // null: it names none, so its module's own tables
   effects: string[] | null // null: the file says nothing, an older one
   needs: { connectors: string[]; tables: string[] }
   input: ScheduleFrontMatter['input'] | null
@@ -177,7 +177,7 @@ export function parseSchedule(text: string, file: string): ScheduleFile {
     trigger: front.data.trigger,
     runs: front.data.runs ?? null,
     wakes: front.data.wakes,
-    touches: front.data.touches,
+    touches: front.data.touches ?? null,
     effects: front.data.effects ?? null,
     needs: front.data.needs,
     input: front.data.input ?? null,

@@ -24,6 +24,7 @@ export interface Install {
   developer: boolean // folders and packs not signed by Kenil load (the switch for him, no window)
   signIn: boolean // each person signs in (a hosted Alpha); off, the per-install token
   sessionDays: number // how long a sign-in lasts
+  publicAddress: string | null // a server's own address, https and no path; none: this computer only
   backupsCopy: string | null // a folder of the person's where a copy of the newest backup goes each day
 }
 
@@ -42,6 +43,7 @@ const Shape = z
     developer: z.boolean(),
     sign_in: z.boolean(),
     session_days: z.number().int().positive(),
+    public_address: z.string().url().nullable(),
   })
   .partial()
 
@@ -59,6 +61,7 @@ const DEFAULTS: Install = {
   developer: false,
   signIn: false,
   sessionDays: 30,
+  publicAddress: null,
 }
 
 function fromFile(home: string): Partial<Install> {
@@ -81,6 +84,7 @@ function fromFile(home: string): Partial<Install> {
     ...(f.developer !== undefined ? { developer: f.developer } : {}),
     ...(f.sign_in !== undefined ? { signIn: f.sign_in } : {}),
     ...(f.session_days !== undefined ? { sessionDays: f.session_days } : {}),
+    ...(f.public_address !== undefined ? { publicAddress: f.public_address } : {}),
   }
 }
 

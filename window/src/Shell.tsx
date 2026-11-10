@@ -24,6 +24,7 @@ import { api } from './api.ts'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { inIntelligence, type Place } from './place.ts'
+import { MOD } from './time.ts'
 import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
@@ -145,7 +146,7 @@ export function Rail({
         <button
           type="button"
           aria-label="Fold the rail"
-          data-tip={'Fold the rail (⌘\\)'}
+          data-tip={`Fold the rail (${MOD}\\)`}
           onClick={() => onLayout({ railFolded: true })}
           className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
         >
@@ -571,7 +572,7 @@ function Strip({
       <button
         type="button"
         aria-label="Open the rail"
-        data-tip={'Open the rail (⌘\\)'}
+        data-tip={`Open the rail (${MOD}\\)`}
         onClick={onOpen}
         className={cn(stripItem(false, true), 'mt-1 mb-2')}
       >

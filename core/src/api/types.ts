@@ -549,6 +549,7 @@ export interface ModelView {
   desk: string
   route: 'subscription' | 'key' // their own subscription; the firm's key through Claude Code
   hasKey: boolean // a key is kept in the Keychain
+  token: boolean | null // on a server: whether a subscription token is kept; elsewhere none
   providers: ProviderView[]
 }
 

@@ -11,6 +11,11 @@ beforeEach(() => {
 afterEach(() => rmSync(home, { recursive: true, force: true }))
 
 describe('the install file', () => {
+  it('knows a server’s own address', () => {
+    writeFileSync(join(home, FILE), 'public_address: "https://alpha.example.ts.net"\n')
+    expect(readInstall(home, {}).publicAddress).toBe('https://alpha.example.ts.net')
+  })
+
   it('has its defaults with no file, and the file’s say when there is one', () => {
     expect(readInstall(home, {})).toMatchObject({ owner: null, port: 4700, keepAwake: false })
     writeFileSync(

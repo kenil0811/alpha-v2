@@ -11,6 +11,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Refused } from './world/kinds.ts'
 
+// A Mac's tar otherwise adds a ._ file beside every file with extended attributes.
+export const PLAIN_TAR = { env: { ...process.env, COPYFILE_DISABLE: '1' } }
 export const SIGNATURE = 'SIGNATURE'
 export const KEY_FILE = join(import.meta.dirname, '..', 'config', 'signing-key.pub')
 
@@ -67,7 +69,7 @@ export function signPack(file: string, privatePem: string): string {
     if (!existsSync(mf)) throw new Refused('That file is not a pack: it has no PACK.json.')
     writeFileSync(join(stage, SIGNATURE), `${signManifest(readFileSync(mf), privatePem)}\n`)
     const entries = readdirSync(stage).sort()
-    execFileSync('tar', ['-czf', file, '-C', stage, ...entries])
+    execFileSync('tar', ['-czf', file, '-C', stage, ...entries], PLAIN_TAR)
     return file
   } finally {
     rmSync(stage, { recursive: true, force: true })

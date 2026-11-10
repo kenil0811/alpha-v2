@@ -4,7 +4,7 @@
 // per install in Settings and kept in the world. Claude Code never updates itself: the app ships the one it was
 // tested with.
 import { join } from 'node:path'
-import type { SecretStore } from '@alpha/connector-sdk'
+import { MemorySecrets, type SecretStore } from '@alpha/connector-sdk'
 import { one, run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
@@ -12,11 +12,24 @@ import type { World } from '../world/world.ts'
 export type RouteName = 'subscription' | 'key'
 
 export const KEY_REF = 'anthropic:api-key'
+export const TOKEN_REF = 'anthropic:oauth-token'
+
+// A run handed its token in the environment, as the journeys are on a server; otherwise no route.
+export async function tokenRoute(world: World, home: string): Promise<{ route?: ModelRoute }> {
+  const token = process.env.CLAUDE_CODE_OAUTH_TOKEN
+  if (!token) return {}
+  const secrets = new MemorySecrets()
+  await secrets.set(TOKEN_REF, token)
+  const route = new ModelRoute(world, secrets, home)
+  await route.load()
+  return { route }
+}
 
 export class ModelRoute {
   private world: World
   private secrets: SecretStore
   private key: string | null = null
+  private token: string | null = null // a subscription's, from `claude setup-token`, on a server
   private home: string
 
   constructor(world: World, secrets: SecretStore, home: string) {
@@ -38,9 +51,30 @@ export class ModelRoute {
     return !!this.key
   }
 
+  get hasToken(): boolean {
+    return !!this.token
+  }
+
+  // A server has no browser for Claude's sign-in, so a subscription comes as a token.
+  async setToken(token: string, by: string): Promise<void> {
+    const given = token.trim()
+    if (!/^sk-ant-[\w-]{20,}$/.test(given))
+      throw new Refused('That is not a Claude token: it starts with sk-ant-.')
+    await this.secrets.set(TOKEN_REF, given)
+    this.token = given
+    this.world.line({
+      actor: { kind: 'person', id: by },
+      kind: 'shaped',
+      words: 'Alpha now reaches Claude with a subscription token.',
+      data: { route: 'subscription' },
+      user: by,
+    })
+  }
+
   // The key read from the Keychain once at start, so a session's start never waits on it.
   async load(): Promise<void> {
     this.key = await this.secrets.get(KEY_REF).catch(() => null)
+    this.token = await this.secrets.get(TOKEN_REF).catch(() => null)
   }
 
   async set(name: RouteName, key: string | null, by: string): Promise<void> {
@@ -80,6 +114,7 @@ export class ModelRoute {
         ANTHROPIC_API_KEY: this.key,
         CLAUDE_CONFIG_DIR: join(this.home, 'claude'),
       }
+    if (this.token) return { ...always, CLAUDE_CODE_OAUTH_TOKEN: this.token }
     return always
   }
 }

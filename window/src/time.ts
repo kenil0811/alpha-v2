@@ -37,6 +37,10 @@ export function dueWords(due: string): string {
     : day
 }
 
+// The key a shortcut names: Command on a Mac, Control everywhere else.
+export const MOD =
+  typeof navigator !== 'undefined' && /Mac/.test(navigator.platform) ? '⌘' : 'Ctrl+'
+
 // A moment as a datetime field shows it, in the person's own time.
 export function toLocalInput(iso: string): string {
   const d = new Date(iso)

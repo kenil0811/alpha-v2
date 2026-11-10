@@ -20,7 +20,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
-import { mustBeSigned, signedIn, type Trust, trustedKey } from '../signing.ts'
+import { mustBeSigned, PLAIN_TAR, signedIn, type Trust, trustedKey } from '../signing.ts'
 import { one } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
@@ -65,7 +65,7 @@ export function pack(kitDir: string, outDir: string): string {
     mkdirSync(outDir, { recursive: true })
     const slug = manifest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
     const out = join(outDir, `${slug}-${manifest.version}${PACK_SUFFIX}`)
-    execFileSync('tar', ['-czf', out, '-C', stage, 'PACK.json', 'kit'])
+    execFileSync('tar', ['-czf', out, '-C', stage, 'PACK.json', 'kit'], PLAIN_TAR)
     return out
   } finally {
     rmSync(stage, { recursive: true, force: true })
@@ -88,7 +88,9 @@ export function unpack(
   kitsDir: string,
   trust: Trust,
 ): { name: string; version: string; dir: string; signed: boolean } {
-  const stage = mkdtempSync(join(tmpdir(), 'alpha-unpack-'))
+  // unpacked beside where it goes: a server's temporary folder is a disk of its own
+  mkdirSync(kitsDir, { recursive: true })
+  const stage = mkdtempSync(join(kitsDir, '.unpack-'))
   try {
     try {
       execFileSync('tar', ['-xzf', file, '-C', stage], { stdio: 'pipe' })

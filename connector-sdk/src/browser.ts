@@ -13,6 +13,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserContext, chromium, type Page } from 'playwright'
 import { Problem } from './connector.ts'
+import { LiveBrowser } from './live.ts'
 
 export interface Pace {
   minMs: number // the least time between two pages of one site
@@ -165,6 +166,7 @@ export function chromePath(): string | null {
   return [join('/Applications', app), join(homedir(), 'Applications', app)].find(existsSync) ?? null
 }
 const SIGNED_IN = '.signed-in-with-chrome'
+const SIGNED_IN_LIVE = '.signed-in-live' // in a live picture of this browser, on a server
 
 // What a site's robots rules say about a path, for every reader (User-agent *), as RFC 9309 reads
 // them: a group is one or more User-agent lines and the rules after them; a rule matches from the
@@ -318,7 +320,32 @@ export class BrowserEngine {
 
   // Whether the person signed in to this site themselves, in its own Chrome profile.
   signedIn(url: string): boolean {
-    return existsSync(join(this.profileOf(hostOf(url)), SIGNED_IN))
+    const dir = this.profileOf(hostOf(url))
+    return existsSync(join(dir, SIGNED_IN)) || existsSync(join(dir, SIGNED_IN_LIVE))
+  }
+
+  // Whether this page still stops at a sign-in, looked at in the site's own profile.
+  private async walled(context: BrowserContext, url: string): Promise<boolean> {
+    const page = await context.newPage()
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded' })
+      await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined)
+      const text = await page.locator('body').innerText()
+      const passwords = await page.locator('input[type="password"]:visible').count()
+      return passwords > 0 && text.length < 4000
+    } finally {
+      await page.close()
+    }
+  }
+
+  // The site on the browser here, for a person to sign in to through a live picture of it.
+  async openLive(url: string): Promise<LiveBrowser> {
+    const context = await this.context(hostOf(url))
+    return new LiveBrowser(context, url, () => this.walled(context, url))
+  }
+
+  markSignedIn(url: string): void {
+    writeFileSync(join(this.profileOf(hostOf(url)), SIGNED_IN_LIVE), '')
   }
 
   private async load(
@@ -330,7 +357,7 @@ export class BrowserEngine {
       throw new Problem(`${host} is not one of the sites this browser may read.`)
     // read as the person only on a site they signed in to themselves
     if (options.asPerson && !this.signedIn(url))
-      throw new Problem(`${host} needs you to sign in first, in Google Chrome.`, 'sign_in')
+      throw new Problem(`${host} needs you to sign in first.`, 'sign_in')
     const context = await this.context(host)
     const page = await context.newPage()
     if (!options.asPerson) await this.allowed(page, url)

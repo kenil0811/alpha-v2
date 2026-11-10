@@ -19,6 +19,16 @@ export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promis
       continue
     // waiting on the person's Try again or Leave it
     if (runner.held.has(a.id)) continue
+    // a run of it waits on the person's card (a sign-in, a site to allow): it goes again on their
+    // yes, not at every tick before it
+    if (
+      one(
+        runner.world.db,
+        "SELECT 1 FROM cards c JOIN runs r ON r.id = c.run_id WHERE r.schedule_id = ? AND c.kind = 'permission' AND c.state = 'waiting'",
+        a.id,
+      )
+    )
+      continue
     // a run still open holds the next one, and they become one when it closes
     if (runner.world.tasks.openOfSchedule(a.id)) continue
     // where the journal stands as the schedule is judged: its place moves here only after a run
@@ -62,6 +72,17 @@ export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promis
       )
       continue
     }
+    // a run that stopped at the person's card (a sign-in, a site to reach) is waiting on them, not
+    // failing: it goes again on their yes
+    if (
+      out.id &&
+      one(
+        runner.world.db,
+        "SELECT 1 FROM cards WHERE run_id = ? AND kind = 'permission' AND state = 'waiting'",
+        out.id,
+      )
+    )
+      continue
     const failed = (runner.failures.get(a.id) ?? 0) + 1
     runner.failures.set(a.id, failed)
     const limit = config.limits().run_retries

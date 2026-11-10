@@ -93,7 +93,8 @@ export function wallsFor(runner: ScheduleRunner, module: RunPlace, file: Schedul
   const { own, uses } = reach(runner, { id: module.id, dir: module.dir })
   return {
     kind: 'file',
-    touches: lower(file.touches),
+    // a file that names no tables writes its module's own, as a try does (Kenil, 10 Nov)
+    touches: lower(file.touches ?? own),
     reads: lower([...own, ...uses]),
     effects: file.effects ? lower(file.effects) : null,
   }

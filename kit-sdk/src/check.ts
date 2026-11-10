@@ -183,7 +183,7 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
     const name = a.name ?? f.replace(/\.md$/, '')
     if (a.runs && !existsSync(join(dir, a.runs.script)))
       problems.push(`${name} runs ${a.runs.script}, which is not in the kit.`)
-    for (const t of a.touches)
+    for (const t of a.touches ?? [])
       if (!own.has(t) && !usedTables.has(t))
         problems.push(
           `${name} touches ${t}, which is neither the kit's own table nor one named in uses.`,

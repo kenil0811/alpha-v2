@@ -4,6 +4,7 @@ import { Bot, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Preview } from './CardBox.tsx'
 import { RUN_STATE } from './runState.ts'
+import { MOD } from './time.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
 import { Cut, Cuts } from './ui/cut.tsx'
@@ -72,7 +73,7 @@ export function Parts() {
               <Pill tone="faint">No model</Pill>
               <Topic>Deals</Topic>
               <Label>Leaves your world</Label>
-              <Kbd>⌘K</Kbd>
+              <Kbd>{MOD}K</Kbd>
             </div>
           </Section>
           <Section title="Controls">

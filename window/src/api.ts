@@ -3,7 +3,7 @@ import type { LiveEvent } from '@alpha/core/api'
 
 const KEY = 'alpha-token'
 
-function token(): string {
+export function token(): string {
   const fromUrl = new URLSearchParams(window.location.search).get('t')
   if (fromUrl) {
     try {

@@ -89,6 +89,7 @@ export function reach(
     turn: who.turn,
     module: module.id,
     schedule,
+    run: runId,
   })
   if (!verdict.pass)
     throw new Refused(

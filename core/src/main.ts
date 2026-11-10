@@ -152,9 +152,15 @@ const added = await loadSet(
 const connectors = new ConnectorService(world, {
   secrets,
   browser: () => browserEngine(),
-  known: [...standard.connectors, ...added.connectors],
+  // on a server, nothing that reads this computer's own apps or folders: there are none to read
+  known: [...standard.connectors, ...added.connectors].filter(
+    (c) => platform.name !== 'linux' || !['system', 'path', 'browser'].includes(c.manifest.auth),
+  ),
   // signing in as the person: the provider sends them back to this core (step 2, part 5)
-  signIn: new SignIn(world, { secrets, back: () => `http://localhost:${port}${BACK}` }),
+  signIn: new SignIn(world, {
+    secrets,
+    back: () => `${install.publicAddress ?? `http://localhost:${port}`}${BACK}`,
+  }),
 })
 for (const f of [...standard.failed, ...added.failed]) {
   const words = `The connector in ${f.folder} did not load: ${f.why}`
@@ -324,6 +330,7 @@ const app = buildServer({
   user,
   token,
   ...(install.signIn ? { signIn: { days: install.sessionDays } } : {}),
+  publicAddress: install.publicAddress,
   setup,
   ports: [port, windowPort],
   browsers: join(home, 'browsers'),
@@ -386,7 +393,7 @@ try {
   process.exit(1)
 }
 console.log(`Alpha's core is listening on 127.0.0.1:${port}, data in ${home}`)
-const opensAt = `http://127.0.0.1:${served ? port : windowPort}/`
+const opensAt = `${install.publicAddress ?? `http://127.0.0.1:${served ? port : windowPort}`}/`
 if (install.signIn) {
   // until the owner has a password, each start prints a new one-time link to set it
   const link = world.accounts.ownerLink(user)

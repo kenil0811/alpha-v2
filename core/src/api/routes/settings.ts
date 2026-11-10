@@ -116,6 +116,7 @@ export function registerSettings(ctx: Ctx): void {
       desk: config.models().desk,
       route,
       hasKey: engine.route?.hasKey ?? false,
+      token: options.platform?.name === 'linux' ? (engine.route?.hasToken ?? false) : null,
       providers: all.map((p) => ({
         route: p.route,
         title: p.title,
@@ -214,6 +215,17 @@ export function registerSettings(ctx: Ctx): void {
       console.log(`Removed the person's data on their word: ${gone.join(', ')}.`)
     })
     return { restarting: true }
+  })
+
+  // A server's subscription: the token `claude setup-token` makes.
+  app.post('/api/model/token', async (req): Promise<ModelView> => {
+    owner()
+    const { token } = z.object({ token: z.string().max(400) }).parse(req.body)
+    if (!engine.route) throw new Refused('The route is not set up in this core.')
+    await engine.route.setToken(token, user.id)
+    engine.rerouted()
+    live()
+    return modelView()
   })
 
   // The route, the person's choice: their own subscription, or an API key kept in the Keychain.

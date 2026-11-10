@@ -8,6 +8,7 @@ import { useContext, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { DraftCard } from './DraftCard.tsx'
 import { FilingCard } from './FilingCard.tsx'
+import { LiveSignIn } from './LiveSignIn.tsx'
 import { MatchCard } from './MatchCard.tsx'
 import { ReviewCard } from './ReviewCard.tsx'
 import { Button } from './ui/button.tsx'
@@ -99,6 +100,7 @@ function CardBody({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [opened, setOpened] = useState(false)
+  const [live, setLive] = useState(false)
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
@@ -109,8 +111,10 @@ function CardBody({
       // A site's sign-in opens the site in the person's own Google Chrome; the card is answered when
       // they quit it. A connection's opens the form where they sign in themselves.
       if (card.site && a === card.options[0]) {
-        await api.post(`/api/cards/${id}/sign-in`)
-        setOpened(true)
+        const r = await api.post<{ live?: boolean }>(`/api/cards/${id}/sign-in`)
+        if (r.live) setLive(true)
+        else setOpened(true)
+        setBusy(false)
         return
       }
       await api.post(`/api/cards/${id}`, { answer: a })
@@ -173,6 +177,9 @@ function CardBody({
         )}
         {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}
       </Actions>
+      {live && card.site && (
+        <LiveSignIn card={id} site={card.site} onClose={() => setLive(false)} />
+      )}
       {opened && (
         <div className="text-ink-2 text-sm">
           {card.site} is open in Google Chrome on this computer. Sign in there, then quit that

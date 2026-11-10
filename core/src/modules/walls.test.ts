@@ -57,6 +57,17 @@ describe('the walls of a schedule', () => {
     expect(world.lines({ kinds: ['run_step'] }).some((l) => /^Refused: /.test(l.words))).toBe(true)
   }, 60_000)
 
+  it('writes its module’s own tables when its file names none', async () => {
+    const { schedule, runner } = await kitWith(
+      'trigger: { every: day }',
+      "export default async (alpha) => alpha.rows.land('Suppliers', [{ key: 's', values: { Name: 'X' } }])",
+    )
+    const out = await runner.runSchedule(schedule, undefined, {}, { asked: true })
+    expect(out.state).toBe('ok')
+    const rows = world.records.list(world.shape.table('Suppliers')?.id as string)
+    expect(rows.some((r) => r.values.name === 'X')).toBe(true)
+  }, 60_000)
+
   it('refuses a read of a table that is neither its module’s nor one its kit uses', async () => {
     const other = world.shape.makeModule('Elsewhere', { actor: { kind: 'alpha' } })
     world.shape.makeTable(other.id, 'Secrets', [{ name: 'Name', kind: 'text' }], {

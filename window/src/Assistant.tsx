@@ -5,6 +5,7 @@
 import { PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Face, type Mood } from './Face.tsx'
+import { MOD } from './time.ts'
 import { IconButton } from './ui/button.tsx'
 import { Edge, Opening, STRIP, stripItem, stripName } from './ui/edge.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
@@ -51,8 +52,8 @@ export function Assistant({
         <div className="flex h-12 w-full shrink-0 items-center justify-center border-hair border-b">
           <button
             type="button"
-            aria-label="Open the assistant (⌘J)"
-            data-tip="Open the assistant (⌘J)"
+            aria-label={`Open the assistant (${MOD}J)`}
+            data-tip={`Open the assistant (${MOD}J)`}
             onClick={(e) => {
               e.stopPropagation()
               onFold(false)
@@ -65,8 +66,8 @@ export function Assistant({
         {/* each place named under its icon (Batch E, 79.3) */}
         <button
           type="button"
-          aria-label="Open the assistant (⌘J)"
-          data-tip="Open the assistant (⌘J)"
+          aria-label={`Open the assistant (${MOD}J)`}
+          data-tip={`Open the assistant (${MOD}J)`}
           onClick={(e) => {
             e.stopPropagation()
             onFold(false)
@@ -89,7 +90,7 @@ export function Assistant({
       keep={216 + 600}
       head={
         <div className="flex h-12 shrink-0 items-center gap-0.5 border-hair border-b px-2">
-          <IconButton label="Fold the assistant (⌘J)" onClick={() => onFold(true)}>
+          <IconButton label={`Fold the assistant (${MOD}J)`} onClick={() => onFold(true)}>
             <PanelRightClose className="size-4" />
           </IconButton>
           <span className="flex min-w-0 flex-1 items-center justify-center gap-2">

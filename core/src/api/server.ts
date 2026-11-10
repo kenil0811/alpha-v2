@@ -18,6 +18,7 @@ import type { Setup } from '../setup.ts'
 import { Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
 import type { BaseCtx, Ctx } from './ctx.ts'
+import { liveSignIn } from './live.ts'
 import { registerActivity } from './routes/activity.ts'
 import { registerAgents } from './routes/agents.ts'
 import { registerCards } from './routes/cards.ts'
@@ -54,6 +55,7 @@ export interface ServerOptions {
   token?: string
   ports?: number[] // the core's and the dev window's
   signIn?: { days: number } // each person signs in, for this long; none: the per-install token
+  publicAddress?: string | null // a server's own address, as people reach it
   windowDir?: string // the built window, served at / when it is there
   browsers?: string // where the core's own browser is kept, for printing pages
   setup?: Setup // what this Mac still needs: Claude's sign-in, connections, the readers' downloads
@@ -109,6 +111,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     return engine.connectors.connector(name)
   }
   const hosts = new Set((options.ports ?? []).flatMap((p) => [`127.0.0.1:${p}`, `localhost:${p}`]))
+  if (options.publicAddress) hosts.add(new URL(options.publicAddress).host)
 
   // The check goes by the route the request reached and by its decoded path, never by the raw
   // address alone: Fastify decodes %61 to a before it picks the route, so /%61pi/me is /api/me
@@ -207,6 +210,10 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
 
   void app.register(websocket)
   void app.register(async (scope) => {
+    scope.get('/ws/live/:card', { websocket: true }, (socket, req) => {
+      const { card } = req.params as { card: string }
+      liveSignIn(socket, card, world, engine, who.get(req) ?? owner)
+    })
     scope.get('/ws', { websocket: true }, (socket, req) => {
       const id = (who.get(req) ?? owner).id
       // a change to the world reaches every window; a person's streaming reply only theirs

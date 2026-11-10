@@ -228,7 +228,8 @@ export function registerCards(ctx: Ctx): void {
       throw new Refused('That sign-in is not waiting.')
     const hands = engine.hands
     if (!hands) throw new Refused('Alpha has no browser here.')
-    if (!chromePath()) throw new Refused('Signing in to a site needs Google Chrome on this Mac.')
+    // a server has no screen: the window shows a live picture of its browser instead
+    if (!chromePath()) return { live: true }
     const url = input.url
     void (async () => {
       await hands.browser().signIn(url)

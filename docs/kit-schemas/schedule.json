@@ -191,7 +191,6 @@
       "type": "boolean"
     },
     "touches": {
-      "default": [],
       "type": "array",
       "items": {
         "type": "string"

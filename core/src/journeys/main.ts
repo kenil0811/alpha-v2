@@ -94,3 +94,5 @@ async function main(): Promise<void> {
 }
 
 await main()
+// on a server the sandbox's network bridges would keep the process open
+process.exit()

@@ -29,7 +29,7 @@ export function registerSession(ctx: Ctx): void {
 
   const cookie = (req: { protocol: string }, value: string, maxAge: number) =>
     `${COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${
-      req.protocol === 'https' ? '; Secure' : ''
+      req.protocol === 'https' || options.publicAddress ? '; Secure' : ''
     }`
   const keep = (req: { protocol: string }, token: string) => cookie(req, token, days * 86_400)
   const owner = () => {
@@ -38,7 +38,8 @@ export function registerSession(ctx: Ctx): void {
   const linkFor = (
     req: { protocol: string; headers: { host?: string | undefined } },
     token: string,
-  ) => `${req.protocol}://${req.headers.host}/?link=${encodeURIComponent(token)}`
+  ) =>
+    `${options.publicAddress ?? `${req.protocol}://${req.headers.host}`}/?link=${encodeURIComponent(token)}`
 
   // what the window needs before it shows anything
   app.get('/api/session', async (req) => {

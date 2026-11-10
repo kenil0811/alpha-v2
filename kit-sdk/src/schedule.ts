@@ -43,7 +43,9 @@ export const ScheduleFront = z
     trigger: z.union([Trigger, z.array(Trigger).min(1)]),
     runs: Runs.optional(), // its script; a schedule that wakes an agent may go without
     wakes: z.boolean().default(false), // it hands what it found to an agent, as a task
-    touches: z.array(z.string()).default([]), // the tables it may write: a wall
+    // the tables it may write: a wall. A file that names none writes its own module's tables, as a
+    // try from the chat does (Kenil, 10 Nov)
+    touches: z.array(z.string()).optional(),
     // the gated calls it may make (draft.email, browser.open); any other is refused before a
     // card. A file that says nothing is an older one: allowed, and said in the run
     effects: z.array(z.string()).optional(),

@@ -35,6 +35,7 @@ import { AnySite, Embedded, Standing } from './Rules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
+import { TokenForm } from './TokenForm.tsx'
 import { applyTheme, savedTheme, type Theme } from './theme.ts'
 import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -473,7 +474,7 @@ function ModelSection() {
                 }
                 actions={
                   <>
-                    {subscription && setup && !setup.claude.signedIn && (
+                    {subscription && setup && !setup.claude.signedIn && model.token === null && (
                       <Button size="sm" variant="primary" disabled={waiting} onClick={signIn}>
                         {waiting ? 'Waiting for the browser…' : 'Sign in'}
                       </Button>
@@ -486,6 +487,9 @@ function ModelSection() {
                   </>
                 }
               >
+                {subscription && model.token !== null && (
+                  <TokenForm has={model.token} onSaved={setModel} />
+                )}
                 {p.needsKey && (
                   <KeyForm
                     busy={busy}

@@ -26,6 +26,7 @@ import { linkShared, loadConnector, loadSet, STANDARD_DIR } from '../connectors/
 import { ConnectorService } from '../connectors/service.ts'
 import { revertAll } from '../connectors/takeback.ts'
 import { Engine } from '../engine/engine.ts'
+import { tokenRoute } from '../engine/route.ts'
 import { stillReading } from '../files/documents.ts'
 import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { install } from '../modules/kits/index.ts'
@@ -198,6 +199,7 @@ export async function runOne(
     prompt,
     connectors,
     hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
+    ...(await tokenRoute(world, home)),
   })
   let site: Site | null = null
   // the journey's own folder, for a made-up connector's account ({tmp})

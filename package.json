@@ -26,6 +26,7 @@
     "connector": "node core/src/connector.ts",
     "sign": "node core/src/sign.ts",
     "journal": "node core/src/journal.ts",
+    "server": "node scripts/server.ts",
     "platform-check": "node scripts/platform-check.ts",
     "long-files": "node scripts/long-files.ts",
     "rules": "node scripts/rules-check.ts",

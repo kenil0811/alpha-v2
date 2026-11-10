@@ -71,7 +71,7 @@ function usesOf(world: World, module: Module, dir: string): Record<string, unkno
   if (existsSync(schedulesDir))
     for (const f of readdirSync(schedulesDir).filter((x) => x.endsWith('.md'))) {
       const a = parseSchedule(readFileSync(join(schedulesDir, f), 'utf8'), `schedules/${f}`)
-      for (const t of [...a.touches, ...a.needs.tables]) reach(t, a.name)
+      for (const t of [...(a.touches ?? []), ...a.needs.tables]) reach(t, a.name)
     }
   const kits = installedKits(world)
   return [...reached].map(([id, tables]) => {

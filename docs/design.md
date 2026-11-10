@@ -240,9 +240,15 @@ person signs in with a name and password or Microsoft for 30 days, and every req
 person. Their conversations and cards are theirs. Two roles exist: only the owner sets the model
 and the data, says who may sign in, and installs a pack.
 
-Clients are hosted, and nothing is installed on a client's computer. The server shape, not built
-yet, is one Linux image per firm, outbound only, with signed updates, off-site encrypted backups
-and a heartbeat. The Mac's installer is a self-installing disk image and the `alpha` command.
+Clients are hosted, and nothing is installed on a client's computer. A server is one Linux virtual
+machine per firm, not a container, because Anthropic's sandbox in a container needs a much weaker
+mode. `pnpm server` sets one up from the Mac and sends it a signed release when pressed, and a
+release that does not start goes back by itself. Secrets are one encrypted file whose key is sealed
+to the machine. Tailscale gives it a private https address, reached only from devices signed in to
+the owner's Tailscale. A site's sign-in is a live picture of the server's browser in the window, so
+Alpha never holds the password, and Claude comes as a subscription token from `claude setup-token`.
+Before the first client: the firm's own API key, a public address, off-site backups and a
+heartbeat. The Mac's installer is a self-installing disk image and the `alpha` command.
 
 ## Proving it
 

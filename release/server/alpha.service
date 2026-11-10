@@ -1,0 +1,23 @@
+# One firm's Alpha, as a service. Its secrets' key is opened by systemd with a key tied to this
+# machine, and handed to the service alone.
+[Unit]
+Description=Alpha
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=alpha
+Group=alpha
+Environment=HOME=/home/alpha
+Environment=ALPHA_HOME=/home/alpha/data
+Environment=ALPHA_LOGIN_ITEM=1
+Environment=PATH=/opt/alpha/node/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=/opt/alpha/current/core
+ExecStart=/opt/alpha/node/bin/node src/main.ts
+LoadCredentialEncrypted=alpha-secrets:/etc/alpha/secrets.cred
+Restart=always
+RestartSec=3
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target

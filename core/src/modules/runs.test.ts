@@ -209,6 +209,41 @@ describe('a site that wants a sign-in', () => {
   })
 })
 
+describe('a run waiting on the person’s card', () => {
+  it('a site to allow or to sign in to: waiting, so it never counts as failing', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const wants = {
+      open: async () => ({}),
+      extract: async () => {
+        throw Object.assign(
+          new Error('example.com wants you to sign in before it shows this page.'),
+          {
+            kind: 'sign_in',
+          },
+        )
+      },
+    } as unknown as BrowserEngine
+    writeFileSync(
+      join(m.dir, 'schedules/reader.md'),
+      '---\nname: Reader\ntrigger: { every: day, at: "07:00" }\nruns: { script: skills/read/run.js }\ntouches: [Suppliers]\n---\nReads.\n',
+    )
+    syncSchedules(world, m, 'on')
+    const a = schedules(world, m.id).find((x) => x.name === 'Reader') as Schedule
+    const runner = new ScheduleRunner(world, () => wants, { owner: 'u_1' })
+    await runner.runDue()
+    const ended = () => runner.runs(20).some((r) => r.schedule === a.id && r.state !== 'running')
+    for (let i = 0; i < 100 && !ended(); i++) await new Promise((r) => setTimeout(r, 100))
+    await new Promise((r) => setTimeout(r, 200))
+    expect(world.cards.waiting('u_1').map((c) => c.kind)).toContain('permission')
+    expect(runner.failures.get(a.id)).toBeUndefined()
+    // and it does not run again while the card waits
+    await runner.runDue()
+    await runner.runDue()
+    await new Promise((r) => setTimeout(r, 300))
+    expect(runner.runs(20).filter((r) => r.schedule === a.id)).toHaveLength(1)
+  }, 60_000)
+})
+
 describe('a script’s rows', () => {
   it('reads rows with their values by field name, and lands a url only as a web link', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)

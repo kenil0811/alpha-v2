@@ -1,0 +1,79 @@
+#!/bin/sh
+# The alpha command on a server: alpha status | logs | backup | link | address <https address> | update <file> <signature> | rollback
+set -eu
+export PATH=/opt/alpha/node/bin:/usr/local/bin:/usr/bin:/bin
+HOME_DIR=/home/alpha/data
+PORT=4700
+say() { printf '%s\n' "$*"; }
+healthy() {
+  i=0
+  while [ "$i" -lt 90 ]; do
+    curl -fsS -o /dev/null "http://127.0.0.1:$PORT/api/health" && return 0
+    i=$((i + 1))
+    sleep 1
+  done
+  return 1
+}
+backup() {
+  curl -fsS -o /dev/null -X POST -H 'x-alpha-cli: 1' -H "x-alpha-token: $(cat "$HOME_DIR/token")" \
+    -H 'content-type: application/json' -d '{}' "http://127.0.0.1:$PORT/api/data/backup"
+}
+case "${1:-status}" in
+  status)
+    systemctl is-active alpha || true
+    readlink /opt/alpha/current || true
+    ;;
+  logs) journalctl -u alpha -n 200 -f ;;
+  backup) backup && say "Backed up." ;;
+  link)
+    # until the owner has a password, each start writes a new one-time link to set it
+    systemctl restart alpha
+    healthy
+    sleep 2
+    journalctl -u alpha -n 40 --no-pager -o cat | grep -o 'https://[^ ]*?link=[^ ]*' | tail -1
+    ;;
+  address)
+    sed -i '/^public_address:/d' "$HOME_DIR/alpha.yaml"
+    printf 'public_address: "%s"\n' "$2" >>"$HOME_DIR/alpha.yaml"
+    systemctl restart alpha
+    healthy && say "Alpha is at $2."
+    ;;
+  update)
+    file=$2
+    sig=$3
+    node /opt/alpha/verify.mjs "$file" "$sig" /opt/alpha/signing-key.pub
+    systemctl is-active -q alpha && { backup || say "No backup was made before updating."; }
+    version=$(basename "$file" .tar.gz | sed 's/^alpha-server-//')
+    dir="/opt/alpha/releases/$version"
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    tar --no-same-owner -xzf "$file" -C "$dir"
+    (cd "$dir" && pnpm install --prod --frozen-lockfile)
+    (cd "$dir/connector-sdk" && pnpm exec playwright install-deps chromium) >/dev/null
+    # the code is root's, and the service can read it but not change it
+    chown -R root:root "$dir"
+    chmod -R a+rX,go-w "$dir"
+    previous=$(readlink /opt/alpha/current || true)
+    ln -sfn "$dir" /opt/alpha/current
+    systemctl restart alpha
+    if healthy; then
+      say "Alpha is on $version."
+    else
+      say "Alpha did not start on $version, so it is going back."
+      [ -n "$previous" ] && ln -sfn "$previous" /opt/alpha/current
+      # so a later rollback never lands on it
+      [ "$previous" != "$dir" ] && rm -rf "$dir"
+      systemctl restart alpha
+      healthy && say "Back on $previous."
+      exit 1
+    fi
+    ;;
+  rollback)
+    current=$(readlink /opt/alpha/current)
+    previous=$(ls -1dt /opt/alpha/releases/* | grep -v "^$current$" | head -1)
+    ln -sfn "$previous" /opt/alpha/current
+    systemctl restart alpha
+    healthy && say "Back on $previous."
+    ;;
+  *) say "Say: alpha status | logs | backup | link | address <https address> | update <file> <signature> | rollback"; exit 1 ;;
+esac

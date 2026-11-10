@@ -30,6 +30,7 @@ export interface GateInput {
   user?: string | null
   turn?: string | null
   module?: string | null
+  run?: string | null // the schedule's run that met it, which goes again on the yes
   table?: string | null // the table it writes, removes from or reads, by id
   schedule?: string | null // the schedule making the call, by name
   named?: string | null // what a rule calls the tool, where its gate key differs (gmail.send)
@@ -170,6 +171,7 @@ export function decide(world: World, input: GateInput): Verdict {
     user: input.user ?? null,
     turn: input.turn ?? null,
     module: input.module ?? null,
+    run: input.run ?? null,
   })
   return { pass: false, card, reason: WAITS }
 }

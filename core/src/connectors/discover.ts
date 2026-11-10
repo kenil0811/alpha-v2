@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { type Connector, checkConnector } from '@alpha/connector-sdk'
-import { mustBeSigned, SIGNATURE, type Trust, UNSIGNED } from '../signing.ts'
+import { mustBeSigned, PLAIN_TAR, SIGNATURE, type Trust, UNSIGNED } from '../signing.ts'
 import { Refused } from '../world/kinds.ts'
 import { ConnectorProcess, type Described, isRemote, remoteConnectors } from './process.ts'
 
@@ -249,7 +249,7 @@ export async function pack(dir: string, outDir: string): Promise<string> {
     writeFileSync(join(stage, 'PACK.json'), `${JSON.stringify(m, null, 2)}\n`)
     mkdirSync(outDir, { recursive: true })
     const out = join(outDir, `${m.name}-${version}${PACK_SUFFIX}`)
-    execFileSync('tar', ['-czf', out, '-C', stage, 'PACK.json', 'connector'])
+    execFileSync('tar', ['-czf', out, '-C', stage, 'PACK.json', 'connector'], PLAIN_TAR)
     return out
   } finally {
     rmSync(stage, { recursive: true, force: true })
@@ -279,7 +279,9 @@ export function unpack(
   connectorsDir: string,
   trust: Trust,
 ): { name: string; dir: string } {
-  const stage = mkdtempSync(join(tmpdir(), 'alpha-cunpack-'))
+  // unpacked beside where it goes: a server's temporary folder is a disk of its own
+  mkdirSync(connectorsDir, { recursive: true })
+  const stage = mkdtempSync(join(connectorsDir, '.unpack-'))
   try {
     try {
       execFileSync('tar', ['-xzf', file, '-C', stage], { stdio: 'pipe' })
@@ -303,7 +305,6 @@ export function unpack(
     mustBeSigned(stage, trust)
     const dir = join(connectorsDir, m.name)
     rmSync(dir, { recursive: true, force: true })
-    mkdirSync(connectorsDir, { recursive: true })
     renameSync(folder, dir)
     // what it came with, kept beside it: each start checks it is still as it was signed
     mkdirSync(join(dir, KEPT))
