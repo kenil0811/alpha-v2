@@ -17,6 +17,7 @@ import type { PluginRoute } from '../plugins/plugins.ts'
 import type { Setup } from '../setup.ts'
 import { Refused } from '../world/kinds.ts'
 import type { User } from '../world/world.ts'
+import { compressed, compressedStream } from './compress.ts'
 import type { BaseCtx, Ctx } from './ctx.ts'
 import { liveSignIn } from './live.ts'
 import { registerActivity } from './routes/activity.ts'
@@ -153,6 +154,19 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
       return deny(reply, 'Open Alpha from the address the core printed.')
   })
   // after the body is read, so the route and all that it starts run as this person
+  // large answers go compressed when the window can read them so (compress.ts)
+  app.addHook('onSend', async (req, reply, payload) => {
+    if (reply.getHeader('content-encoding')) return payload
+    const accepts = String(req.headers['accept-encoding'] ?? '')
+    const type = String(reply.getHeader('content-type') ?? '')
+    const out = compressed(payload, accepts, type) ?? compressedStream(payload, accepts, type)
+    if (!out) return payload
+    reply.header('content-encoding', out.encoding)
+    reply.header('vary', 'accept-encoding')
+    reply.removeHeader('content-length')
+    return out.body
+  })
+
   app.addHook('preHandler', (req, _reply, done) => {
     const person = who.get(req)
     if (person) asking.run(person, done)
