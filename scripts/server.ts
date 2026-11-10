@@ -3,7 +3,8 @@
 //   package                                            a signed release of what is here now
 //   update <address>                                   send that release; the server takes it now
 //   link <address>                                     open the owner's one-time link in the browser
-//   address <address>                                  bring up Tailscale: an https address on the owner's own devices only
+//   address <address> [public]                         bring up Tailscale: an https address on the owner's own
+//                                                      devices only, or with public, open to the internet (Funnel)
 // <address> is what ssh reaches the machine by. Nothing here prints a secret or a one-time link.
 import { execFileSync, spawn } from 'node:child_process'
 import { createPrivateKey, sign } from 'node:crypto'
@@ -115,7 +116,10 @@ else if (what === 'setup' && host && rest[0]) {
   console.log('Opened the owner’s link in your browser.')
 } else if (what === 'address' && host) {
   await tailscale(host, 'sudo tailscale up --hostname=alpha')
-  await tailscale(host, 'sudo tailscale serve --bg 4700')
+  // public: the same address, open to anyone, each person still signing in (Kenil, 10 Nov)
+  const open = rest[0] === 'public'
+  if (open) await tailscale(host, 'sudo tailscale serve reset')
+  await tailscale(host, `sudo tailscale ${open ? 'funnel' : 'serve'} --bg 4700`)
   const status = JSON.parse(out('ssh', [...SSH, host, 'tailscale status --json'])) as {
     Self: { DNSName: string }
   }
