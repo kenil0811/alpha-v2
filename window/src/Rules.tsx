@@ -1,6 +1,6 @@
 // Settings › Permissions, the rules: the one switch at the top, and every rule below it.
-import type { KeptTable } from '@alpha/core/api'
-import { useCallback, useEffect, useState } from 'react'
+import type { KeptTable, RowView } from '@alpha/core/api'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { startAsk } from './ask.ts'
 import { TableView } from './TableView.tsx'
@@ -75,14 +75,19 @@ export function Embedded({
   data,
   open,
   onNew,
+  rowAction,
 }: {
   data: KeptTable
   open: (id: string) => void
   onNew?: () => void
+  rowAction?: (row: RowView) => ReactNode
 }) {
   return (
     <div className="-mx-7 h-[min(520px,70vh)]">
-      <TableView data={data} kept={onNew ? { open, onNew } : { open }} />
+      <TableView
+        data={data}
+        kept={{ open, ...(onNew ? { onNew } : {}), ...(rowAction ? { rowAction } : {}) }}
+      />
     </div>
   )
 }

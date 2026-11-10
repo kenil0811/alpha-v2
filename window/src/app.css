@@ -321,6 +321,14 @@
   --shadow-btn: var(--elev-btn);
 }
 
+/* a table's frame shows its thumb always, so a table wider than its frame shows it goes on
+   (Kenil, 10 Nov) */
+@utility scroll-shown {
+  &::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--ink-3) 45%, transparent);
+  }
+}
+
 /* a scroll box whose scrollbar never shows (a row of tabs scrolls sideways under the fingers) */
 @utility scroll-quiet {
   scrollbar-width: none;

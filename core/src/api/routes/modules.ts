@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { installedKits, unseenChanges } from '../../modules/kits/index.ts'
+import { deleteModule } from '../../modules/remove.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
 import { agentName, schedules, whenWords } from '../../modules/schedules.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
@@ -27,6 +28,23 @@ export function registerModules(ctx: Ctx): void {
     })
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { id: m.id, parent: m.parent }
+  })
+
+  // Deleting a module (Kenil, 10 Nov), the owner's word alone (rules M7): what runs in it, its data
+  // kept, or all of it
+  app.post('/api/modules/:id/delete', async (req) => {
+    if (user.role !== 'owner') throw new Refused('Only the owner can delete a module.')
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { keepData } = z.object({ keepData: z.boolean() }).parse(req.body)
+    const words = await deleteModule(
+      world,
+      id,
+      keepData,
+      { actor: { kind: 'person', id: user.id }, user: user.id },
+      options.platform ? (dir) => options.platform?.discard(dir) : undefined,
+    )
+    engine.events.emit('event', { type: 'lines', user: user.id })
+    return { words }
   })
 
   // The person renames a module by double-clicking its name in the rail (Batch B, pick 14a): its

@@ -150,6 +150,8 @@ describe('a row on its own', () => {
   it('shows its newest parts with how many in all (core plan step 4)', async () => {
     const { acme } = firm()
     const invoices = world.shape.table('Invoices') as Table
+    // the first invoice older by a moment, so the newest twelve never tie with it
+    await new Promise((r) => setTimeout(r, 5))
     world.records.add(
       invoices.id,
       Array.from({ length: 20 }, (_, i) => ({

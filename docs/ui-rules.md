@@ -16,9 +16,9 @@ held by review. Dates are 2026.
 | S1 | The rail is module names only: Home, Agents, Tasks, then each module, with modules inside one folded under it | 20 Oct, 26 Oct, 7 Nov | — |
 | S2 | Intelligence and Settings sit at the rail's foot, each its own row | 25 Oct, 7 Nov | — |
 | S3 | The rail's head is the person's initial and name, no menu; how Alpha looks is in Settings › Appearance | 26 Oct, 7 Nov | — |
-| S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules. Rename edits the name in the rail (Enter keeps, Escape puts it back, a refusal under the box). Moving is on the menu: no drag, and no double-click on a module's name | 26 Oct, 1 Nov, 7 Nov | — |
+| S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Hide, Hidden modules, and Delete…, which asks whether to keep its data (what runs in it goes, its tables and rows stay) or delete everything, neither undone. Rename edits the name in the rail (Enter keeps, Escape puts it back, a refusal under the box). Moving is on the menu: no drag, and no double-click on a module's name | 26 Oct, 1 Nov, 7 Nov | — |
 | S5 | How the person left the window (the rail's width, folds and hidden modules, the assistant, rows to a page) is kept per person by the core, never in the browser | 26 Oct | — |
-| S6 | Both side panels drag by one edge and fold; the rail folds to a 52px strip of icons, each named when hovered, and one sidebar button folds and opens it (⌘\\); every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
+| S6 | Both side panels drag by one edge and fold; the rail folds to a 52px strip of icons, each named when hovered, and one sidebar button at its top-left corner, before the workspace tile, folds and opens it (⌘\\); both panels slide open and shut over a fifth of a second, the page easing into its width; every panel narrows to 200px, folds then and there when dragged 48px past it, and a folded strip drags back open, a shadow showing the width it will open to; the edge's tip says what a drag does | 25 Oct, 2 Nov | — |
 | S7 | Menus sit against the window, never clipped by a scrolling box; what floats over the page takes a name on one layering scale (raised, panel, overlay, pop, tip), a box keeps its own order with z-0 to z-3 | 25 Oct, 1 Nov | test (layers) |
 | S8 | Heights use `dvh`, never `vh` (a phone's browser bars) | 2 Sep | skip |
 | S9 | Beside each module in the rail, one signal dot for what it holds, the strongest of: needs you now (pulsing), waits for your yes (filled), something to read (hollow), running (green); a folded module shows the strongest of the modules inside it too; its words on hover | 2 Nov | test (signals) |
@@ -28,7 +28,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; no way back in the bar, and the name is not edited there | 25 Oct, 1 Nov, 7 Nov | test |
+| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; at its left a ‹ to the page above, on a page that has one (a task to Tasks, a row to its table, a table to its module); the name is not edited there | 25 Oct, 1 Nov, 7 Nov, 10 Nov | test |
 | H2 | A screen with parts switches them with one pill switch in the bar, every label in full, scrolling sideways; never cut short or folded to icons; a page opened beside keeps a row of tabs under its head | 26 Oct, 2 Nov | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
@@ -70,6 +70,7 @@ held by review. Dates are 2026.
 | T17 | Every choice wears one colour by its place in its field's list (eight, round again), in cells, board cards, chips, dropdowns and filters; a choice that is a state keeps its tone's dot | 2 Nov | — |
 | T18 | A cell whose value has another beside it (a page's or a connection's newer read, a script's figure) shows a hollow dot at its top right, its words on hover; its source panel says whose and when, and Reset says what it goes back to. The source panel opens from the right-click menu (a cell's in the table, a value's in the panel) or a link that names the value, never from a click on a row | 5 Nov, 9 Nov | — |
 | T19 | A table's name changes from its ⋮ menu (Rename), greyed with its reason on a managed module; never by a double-click | 7 Nov | — |
+| T20 | Colour is a cell's alone, never its row's: a value that meets its column's rule fills its cell in that colour (amber, red, green or blue), and a choice column coloured by its choices fills each cell with its choice's | 10 Nov | — |
 
 ## Pages, records and deleting
 
@@ -89,7 +90,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| A1 | The assistant's header: close, face and name; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
+| A1 | The assistant's header: face and name in the middle, the sidebar button that closes it at its outer corner; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's straight on the page with no box, as in Claude Code. Steps sit between the words where they happened, one quiet line that opens to each step; a table stays in the column | 26 Oct, 9 Nov | — |
 | A3 | The composer's +: files, a folder; @ picks teammates, and the picks travel with the message. The model the agent runs on shows beside Send; the owner changes it there or on the agent's page. While the agent works an empty box's Send is Stop. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
@@ -97,6 +98,7 @@ held by review. Dates are 2026.
 | A6 | A reply shows whole and stays as it streamed, as in Claude Code: what the model wrote and the steps between, in order, nothing folded or replaced at the end | 9 Nov | test |
 | A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a script's report are on Activity; an agent's scheduled run reports on its task's page and Home. Nothing runs beside it | 7 Nov, 10 Nov | test (stream) |
 | A8 | What one agent asks another stays out of the asked agent's chat, which shows only a quiet Working for … while it runs. The asker's chat shows one line for each ask, with Stop while it waits and the answer and evidence folded on it, and then one reply. A message naming one agent goes straight to it and its answer is the reply; several go through the Chief of staff | 9 Nov | test |
+| A9 | A question card takes an answer in the person's own words besides the answers it offers | 10 Nov | — |
 
 ## Intelligence and Settings
 
@@ -129,7 +131,7 @@ held by review. Dates are 2026.
 | L1 | Colours and sizes are the tokens in `app.css`, nothing written out | 20 Oct | test |
 | L2 | Seven text sizes, a 14px body, 12px sentence-case labels; nothing in capitals | 26 Oct, 2 Nov | test (seven sizes) |
 | L3 | Serif for page, record and section titles and big numbers only | 26 Oct | test |
-| L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a row of tabs shows none | 26 Oct | — |
+| L4 | Scrollbars thin, a 4px thumb shown while the box is under the pointer; a table's frame shows its thumb always, so a table wider than its frame shows it goes on; a row of tabs shows none | 26 Oct, 10 Nov | — |
 | L5 | One avatar for people and organizations | 25 Oct | — |
 | L6 | Every button changes colour under the pointer, into the accent's tint (the primary darkens); a soft kind is a way onward that is not the screen's main act (Open page) | 2 Nov | — |
 | L7 | A card's buttons sit at its right, its main act at the right edge, the same on every card | 2 Nov | — |
@@ -141,6 +143,7 @@ held by review. Dates are 2026.
 | L13 | A row's and a task's title on its page is renamed by a double-click; a module's and a table's name from its menu (S4, T19) | 2 Nov, 7 Nov | — |
 | L14 | A task, a run, a person, a row, a schedule, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel replaces what it shows, with no Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov, 9 Nov | test (opened) |
 | L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
+| L17 | Nothing on a screen moves when something is picked or appears: what appears takes a place kept for it, as the one line over a table holds a paste waiting, ticked rows or filters at one height | 10 Nov | — |
 
 ## Proposed, waiting on Kenil or the core
 

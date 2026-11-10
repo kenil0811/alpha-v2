@@ -1,12 +1,12 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { NO_LAYOUT } from './layout.ts'
-import { buildWords, NewModule } from './NewModule.tsx'
 import { placeOf } from './place.ts'
 import { Rail } from './Shell.tsx'
 import { ancestors, flat, inside } from './tree.ts'
 import { More } from './ui/more.tsx'
 import { MenuItem } from './ui/popover.tsx'
+import { Question } from './ui/question.tsx'
 
 describe('delete', () => {
   it('sits behind ⋮, hidden until the row is hovered, and is not on the screen until ⋮ opens', () => {
@@ -154,16 +154,20 @@ describe('the window', () => {
     expect(inside(modules, 'm_1')).toEqual(['m_1', 'm_2'])
     expect(ancestors(modules, 'm_2').map((m) => m.name)).toEqual(['Shops'])
   })
+})
 
-  it('opens New module blank: a name, what to keep, Build it waiting on the words, an empty table', () => {
-    const html = renderToString(<NewModule modules={modules} onAsked={() => undefined} />)
-    expect(html).toContain('placeholder="What should it keep track of?"')
-    expect(html).toMatch(/<button type="submit"[^>]*disabled=""[^>]*>Build it/)
-    expect(html).toContain('Cancel')
-    expect(html.match(/<td/g)).toHaveLength(3)
-    expect(buildWords(' Orders ', 'what each shop orders')).toBe(
-      'Make a module called Orders: what each shop orders',
+describe('a question card', () => {
+  it('takes an answer in your own words besides the ones it offers (A9)', () => {
+    const html = renderToString(
+      <Question
+        words="Do you have daily targets?"
+        options={["Yes, I'll give them", 'No targets for now']}
+        busy={false}
+        problem={null}
+        onAnswer={() => undefined}
+      />,
     )
-    expect(buildWords('', 'invoices')).toBe('Make a module: invoices')
+    expect(html).toContain('No targets for now')
+    expect(html).toContain('placeholder="Or answer in your own words"')
   })
 })

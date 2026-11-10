@@ -189,9 +189,9 @@ export function PasteBar({
   const cells = [...plan.set, ...plan.add].reduce((n, r) => n + Object.keys(r.values).length, 0)
   const ready = cells > 0 && plan.problems.length === 0
   return (
-    <div className="mx-7 mb-2 flex flex-wrap items-center gap-2 rounded-md border border-accent-line bg-accent-soft px-3 py-2 text-md">
-      <ClipboardPaste className="size-4 text-accent" />
-      <span className="min-w-0 flex-1 text-ink">
+    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-accent-soft py-0.5 pr-1 pl-3 text-md">
+      <ClipboardPaste className="size-4 shrink-0 text-accent" />
+      <span className="min-w-0 flex-1 truncate text-ink">
         {plan.problems.length > 0
           ? `This paste can’t go in: ${plan.problems.slice(0, 2).join(' ')}${plan.problems.length > 2 ? ` And ${plan.problems.length - 2} more.` : ''}`
           : `${plan.fill ? 'Fill' : 'Paste'} ${cells} value${cells === 1 ? '' : 's'} into ${plan.set.length} row${plan.set.length === 1 ? '' : 's'}${plan.add.length ? `, and add ${plan.add.length} new row${plan.add.length === 1 ? '' : 's'}` : ''}? Each value will be yours.`}

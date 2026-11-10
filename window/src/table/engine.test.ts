@@ -170,6 +170,19 @@ describe('groups, totals and colours', () => {
     expect(rows.map((r) => tintOf(config, fields, r))).toEqual([null, 'bad', null, null])
   })
 
+  it('tints a row by the strongest colour of a choice holding several', () => {
+    const check = field('check', 'choice', {
+      many: true,
+      choices: ['On target', 'Low protein', 'Over calories'],
+      tones: { 'On target': 'good', 'Low protein': 'warn', 'Over calories': 'bad' },
+    })
+    const config = { ...BLANK, colours: { tint: 'check', when: [] } }
+    const day = (v: string[]) => ({ id: 'r', values: { check: v } }) as unknown as RowView
+    expect(tintOf(config, [check], day(['Low protein']))).toBe('warn')
+    expect(tintOf(config, [check], day(['Low protein', 'Over calories']))).toBe('bad')
+    expect(tintOf(config, [check], day([]))).toBeNull()
+  })
+
   it('shows columns in the view’s order, less the hidden', () => {
     const config = { ...BLANK, order: ['stage'], hidden: ['listed'] }
     expect(columns(fields, config).map((f) => f.id)).toEqual(['stage', 'name', 'price'])

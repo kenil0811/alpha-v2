@@ -52,6 +52,10 @@ export function Question({
         ))}
         {options.length === 0 && <Answer busy={busy} onAnswer={onAnswer} />}
       </Actions>
+      {/* the person's own words always do, besides the offered ones (Kenil, 10 Nov) */}
+      {options.length > 0 && (
+        <Answer busy={busy} onAnswer={onAnswer} placeholder="Or answer in your own words" />
+      )}
       {problem && <div className="text-bad text-sm">{problem}</div>}
     </Card>
   )

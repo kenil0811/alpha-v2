@@ -215,11 +215,24 @@ export function findField(table: Table, nameOrSlug: string, byKey = false): Fiel
   return f
 }
 
-// A row as a person names it: its first text value.
+// A row as a person names it: its first text value, or in a table with none (a day's, say) its first
+// value of any kind, a date as a date (Kenil, 10 Nov).
 export function rowName(t: Table, values: Record<string, unknown>): string {
   for (const f of t.fields)
     if (f.kind === 'text' && typeof values[f.slug] === 'string' && values[f.slug])
       return String(values[f.slug])
+  for (const f of t.fields) {
+    const v = values[f.slug]
+    if (f.kind === 'notes' || v === null || v === undefined || v === '') continue
+    if (f.kind === 'date' && typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v))
+      return new Date(`${v.slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
+    if (typeof v === 'string' || typeof v === 'number') return String(v)
+  }
   return 'a row'
 }
 

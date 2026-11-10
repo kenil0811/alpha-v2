@@ -198,13 +198,14 @@ export const DOORS: Door[] = [
     can: ['addField', 'renameTable', 'describe'],
   },
   {
-    name: 'window: a module’s name, business case, place',
+    name: 'window: a module’s name, business case, place, and deleting it',
     by: 'person',
     changes: 'module',
     where: [
       'POST /api/modules/:id/name',
       'POST /api/modules/:id/case',
       'POST /api/modules/:id/place',
+      'POST /api/modules/:id/delete',
     ],
     can: [],
   },

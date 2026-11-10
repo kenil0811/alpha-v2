@@ -6,7 +6,7 @@ import { dirname, join, normalize } from 'node:path'
 import { parse } from 'yaml'
 import { config } from '../config.ts'
 import { type Agent, CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
-import { newId, run } from '../world/db.ts'
+import { newId, one, run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
@@ -14,6 +14,7 @@ import { commitAll, restoreFile } from './git.ts'
 import { agentSchedules, syncAgentSchedules } from './schedules.ts'
 
 export const INSTRUCTIONS = 'AGENT.md'
+const BUILDER_MADE = 'builder_made'
 const PLACES = ['skills/', 'files/']
 
 export interface AgentDefinition {
@@ -218,4 +219,33 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
     data: { removed: id },
     user: ctx.user ?? null,
   })
+}
+
+// The Module builder (Kenil, 10 Nov): made once in a world, from core/config/module-builder.md, and
+// the person's to change or delete like any agent after that, so it never comes back on its own.
+export async function keepBuilder(world: World, user: string): Promise<string | null> {
+  if (one(world.db, 'SELECT 1 FROM meta WHERE key = ?', BUILDER_MADE)) return null
+  const b = config.builder()
+  if (!world.agents.byName(b.name))
+    await keepAgent(
+      world,
+      b.name,
+      { title: b.title, description: b.description, instructions: b.instructions },
+      { actor: { kind: 'system' }, user },
+      null,
+    )
+  // its id, so New module finds it whatever it is renamed to
+  const id = world.agents.byName(b.name)?.id ?? ''
+  run(world.db, 'INSERT INTO meta (key, value) VALUES (?, ?)', BUILDER_MADE, id)
+  return `${b.name} is one of your agents.`
+}
+
+// The Module builder's id while it is there; none once the person deleted it.
+export function builderId(world: World): string | null {
+  const id = one<{ value: string }>(
+    world.db,
+    'SELECT value FROM meta WHERE key = ?',
+    BUILDER_MADE,
+  )?.value
+  return id && world.agents.get(id) ? id : null
 }

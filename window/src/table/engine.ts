@@ -414,7 +414,8 @@ export function toneOf(
   return met ? w.tone : null
 }
 
-// A row's tint, by the choice the view tints rows by.
+// A choice cell's colour, when the view colours that column by its choices: its own cell, never
+// the row (Kenil, 10 Nov).
 export function tintOf(
   config: ViewConfig,
   fields: FieldView[],
@@ -422,8 +423,12 @@ export function tintOf(
 ): 'good' | 'warn' | 'bad' | 'accent' | null {
   const f = fields.find((x) => x.id === config.colours.tint)
   if (!f) return null
-  return f.tones[String(row.values[f.slug] ?? '')] ?? null
+  // a choice holding several takes the strongest of their colours
+  const v = row.values[f.slug]
+  const tones = (Array.isArray(v) ? v : [v]).flatMap((x) => f.tones[String(x ?? '')] ?? [])
+  return STRONGEST.find((t) => tones.includes(t)) ?? null
 }
+const STRONGEST = ['bad', 'warn', 'accent', 'good'] as const
 
 // A column's width when the view does not say: by its kind, the name column wider.
 export function widthOf(field: FieldView, config: ViewConfig, first: boolean): number {

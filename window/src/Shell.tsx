@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { createContext, type ReactNode, useContext, useRef, useState } from 'react'
 import { api } from './api.ts'
+import { DeleteModule } from './DeleteModule.tsx'
 import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { inIntelligence, type Place } from './place.ts'
@@ -31,6 +32,7 @@ import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN, STRIP, stripItem } from './ui/edge.tsx'
 import { MenuItem, MenuLine, Popover, SubMenu, useContextMenu } from './ui/popover.tsx'
 import { Renamable } from './ui/rename.tsx'
+import { SlideWidth } from './ui/slide.tsx'
 
 function Nav({
   href,
@@ -98,20 +100,23 @@ export function Rail({
   const hiding: Hiding = { hidden: layout.hidden, set: (ids) => onLayout({ hidden: ids }) }
   const empty = useContextMenu()
   const keepWidth = (w: number) => onLayout({ railWidth: w })
+  // open and folded alike sit in one slide, so a fold or an open eases (Kenil, 10 Nov)
   if (layout.railFolded)
     return (
-      <Strip
-        modules={modules}
-        place={place}
-        here={here}
-        name={name}
-        waiting={waiting}
-        tasksDue={tasksDue}
-        hidden={hiding.hidden}
-        onNew={onNew}
-        onOpen={() => onLayout({ railFolded: false })}
-        onOpenAt={(w) => onLayout({ railFolded: false, railWidth: w })}
-      />
+      <SlideWidth width={STRIP}>
+        <Strip
+          modules={modules}
+          place={place}
+          here={here}
+          name={name}
+          waiting={waiting}
+          tasksDue={tasksDue}
+          hidden={hiding.hidden}
+          onNew={onNew}
+          onOpen={() => onLayout({ railFolded: false })}
+          onOpenAt={(w) => onLayout({ railFolded: false, railWidth: w })}
+        />
+      </SlideWidth>
     )
   const fold = (id: string) =>
     onLayout({
@@ -120,113 +125,116 @@ export function Rail({
         : [...layout.folded, id],
     })
   return (
-    <nav
-      style={{ width: dragged ?? width }}
-      className="relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
-    >
-      <Edge
-        side="right"
-        width={dragged ?? width}
-        max={RAIL[1]}
-        onDrag={setDragged}
-        onDone={keepWidth}
-        onFold={() => onLayout({ railFolded: true })}
-      />
-      {/* the rail's head sits on the window's header line; in Alpha's own window it moves the
+    <SlideWidth width={dragged ?? width} still={dragged !== null}>
+      <nav
+        style={{ width: dragged ?? width }}
+        className="relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
+      >
+        <Edge
+          side="right"
+          width={dragged ?? width}
+          max={RAIL[1]}
+          onDrag={setDragged}
+          onDone={keepWidth}
+          onFold={() => onLayout({ railFolded: true })}
+        />
+        {/* the rail's head sits on the window's header line; in Alpha's own window it moves the
           window and leaves room for its buttons */}
-      <div
-        data-tauri-drag-region
-        className={cn(
-          '-mx-2.5 mb-2 flex h-12 shrink-0 items-center gap-1 border-hair border-b pr-2 pl-2.5',
-          inMacApp() && 'pl-19',
-        )}
-      >
-        <Workspace name={name} />
-        <button
-          type="button"
-          aria-label="Fold the rail"
-          data-tip={`Fold the rail (${MOD}\\)`}
-          onClick={() => onLayout({ railFolded: true })}
-          className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+        <div
+          data-tauri-drag-region
+          className={cn(
+            '-mx-2.5 mb-2 flex h-12 shrink-0 items-center gap-1 border-hair border-b pr-2 pl-2.5',
+            inMacApp() && 'pl-19',
+          )}
         >
-          <PanelLeft className="size-4" />
-        </button>
-      </div>
-      <Nav
-        href="#/"
-        icon={<House className="size-4" />}
-        label="Home"
-        current={place.at === 'home'}
-        extra={waiting > 0 && <Badge n={waiting} />}
-      />
-      <Nav
-        href="#/conversation"
-        icon={<MessageSquare className="size-4" />}
-        label="Agents"
-        current={place.at === 'conversation'}
-      />
-      <Nav
-        href="#/tasks"
-        icon={<ListChecks className="size-4" />}
-        label="Tasks"
-        current={place.at === 'tasks'}
-        extra={tasksDue > 0 && <Badge n={tasksDue} />}
-      />
-      {/* every row 30px, the modules straight after Tasks (Batch E, 79.16, Kenil's look 2 Nov) */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
-      <div
-        className="min-h-0 flex-1 overflow-y-auto"
-        onContextMenu={(e) => {
-          if (e.target === e.currentTarget && modules.some((m) => hiding.hidden.includes(m.id)))
-            empty.on.onContextMenu(e)
-        }}
-      >
-        {modules.length === 0 && online && (
-          <div className="px-2 py-1 text-rail-ink-3 text-sm">
-            Modules appear here as you ask for them.
-          </div>
-        )}
-        <Popover point={empty.point} open={empty.open} onClose={empty.close}>
-          <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
-        </Popover>
-        <Signals.Provider value={signals}>
-          {shownTops(modules, hiding.hidden).map((m) => (
-            <ModuleItem
-              key={m.id}
-              m={m}
-              modules={modules}
-              here={here}
-              folded={layout.folded}
-              onFold={fold}
-              hiding={hiding}
-            />
-          ))}
-        </Signals.Provider>
-        <button
-          type="button"
-          onClick={onNew}
-          className="flex h-7.5 w-full items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink"
-        >
-          <Plus className="size-4 shrink-0" />
-          New module
-        </button>
-      </div>
-      {/* Intelligence and Settings at the foot, each its own place (Kenil's call 1, 7 Nov) */}
-      <div className="flex flex-col pt-2">
+          {/* the sidebar button first, at the corner, as Claude Code's (Kenil, 10 Nov) */}
+          <button
+            type="button"
+            aria-label="Fold the rail"
+            data-tip={`Fold the rail (${MOD}\\)`}
+            onClick={() => onLayout({ railFolded: true })}
+            className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
+          >
+            <PanelLeft className="size-4" />
+          </button>
+          <Workspace name={name} />
+        </div>
         <Nav
-          href="#/intelligence"
-          icon={<Sparkles className="size-4" />}
-          label="Intelligence"
-          current={inIntelligence(place)}
+          href="#/"
+          icon={<House className="size-4" />}
+          label="Home"
+          current={place.at === 'home'}
+          extra={waiting > 0 && <Badge n={waiting} />}
         />
         <Nav
-          href="#/settings"
-          icon={<SlidersHorizontal className="size-4" />}
-          label="Settings"
-          current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
+          href="#/conversation"
+          icon={<MessageSquare className="size-4" />}
+          label="Agents"
+          current={place.at === 'conversation'}
         />
-      </div>
-    </nav>
+        <Nav
+          href="#/tasks"
+          icon={<ListChecks className="size-4" />}
+          label="Tasks"
+          current={place.at === 'tasks'}
+          extra={tasksDue > 0 && <Badge n={tasksDue} />}
+        />
+        {/* every row 30px, the modules straight after Tasks (Batch E, 79.16, Kenil's look 2 Nov) */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          onContextMenu={(e) => {
+            if (e.target === e.currentTarget && modules.some((m) => hiding.hidden.includes(m.id)))
+              empty.on.onContextMenu(e)
+          }}
+        >
+          {modules.length === 0 && online && (
+            <div className="px-2 py-1 text-rail-ink-3 text-sm">
+              Modules appear here as you ask for them.
+            </div>
+          )}
+          <Popover point={empty.point} open={empty.open} onClose={empty.close}>
+            <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
+          </Popover>
+          <Signals.Provider value={signals}>
+            {shownTops(modules, hiding.hidden).map((m) => (
+              <ModuleItem
+                key={m.id}
+                m={m}
+                modules={modules}
+                here={here}
+                folded={layout.folded}
+                onFold={fold}
+                hiding={hiding}
+              />
+            ))}
+          </Signals.Provider>
+          <button
+            type="button"
+            onClick={onNew}
+            className="flex h-7.5 w-full items-center gap-2.25 rounded-md px-2 text-md text-rail-ink-3 transition-colors hover:bg-rail-hover hover:text-rail-ink"
+          >
+            <Plus className="size-4 shrink-0" />
+            New module
+          </button>
+        </div>
+        {/* Intelligence and Settings at the foot, each its own place (Kenil's call 1, 7 Nov) */}
+        <div className="flex flex-col pt-2">
+          <Nav
+            href="#/intelligence"
+            icon={<Sparkles className="size-4" />}
+            label="Intelligence"
+            current={inIntelligence(place)}
+          />
+          <Nav
+            href="#/settings"
+            icon={<SlidersHorizontal className="size-4" />}
+            label="Settings"
+            current={place.at === 'settings' || (place.at === 'item' && place.kind === 'rule')}
+          />
+        </div>
+      </nav>
+    </SlideWidth>
   )
 }
 
@@ -389,7 +397,7 @@ function ModuleItem({
 }
 
 // A module's menu: Open, Move to › every other module it may sit inside (never itself or one of its
-// own) or the top, Hide, and Hidden modules ›.
+// own) or the top, Hide, Hidden modules ›, and Delete… (Kenil, 10 Nov).
 function ModuleMenu({
   m,
   modules,
@@ -406,6 +414,7 @@ function ModuleMenu({
   onRename: (() => void) | undefined // its name edited in place in the rail
 }) {
   const [open, setOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const anchor = useRef<HTMLButtonElement>(null)
   const own = new Set(inside(modules, m.id))
@@ -494,8 +503,19 @@ function ModuleMenu({
             <HiddenMenu modules={modules} hiding={hiding} onDone={close} />
           </>
         )}
+        <MenuLine />
+        <MenuItem
+          danger
+          onClick={() => {
+            close()
+            setDeleting(true)
+          }}
+        >
+          Delete…
+        </MenuItem>
         {problem && <p className="max-w-60 px-2.5 py-1.5 text-bad text-sm">{problem}</p>}
       </Popover>
+      <DeleteModule module={m} open={deleting} onClose={() => setDeleting(false)} />
     </>
   )
 }
@@ -565,17 +585,19 @@ function Strip({
           inMacApp() && 'h-20 items-end pb-1.5',
         )}
       >
+        <button
+          type="button"
+          aria-label="Open the rail"
+          data-tip={`Open the rail (${MOD}\\)`}
+          onClick={onOpen}
+          className={stripItem()}
+        >
+          <PanelLeft className="size-4" />
+        </button>
+      </div>
+      <div className="mt-1 mb-2">
         <Workspace name={name} tileOnly />
       </div>
-      <button
-        type="button"
-        aria-label="Open the rail"
-        data-tip={`Open the rail (${MOD}\\)`}
-        onClick={onOpen}
-        className={cn(stripItem(), 'mt-1 mb-2')}
-      >
-        <PanelLeft className="size-4" />
-      </button>
       {icon(
         '#/',
         waiting ? `Home, ${waiting} waiting for you` : 'Home',

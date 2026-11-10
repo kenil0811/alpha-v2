@@ -107,4 +107,15 @@ export const config = {
   reading: (dir?: string) => load('reading.md', (t) => t.trim(), dir),
   // how the model sorts a person's items into the groups they named
   judging: (dir?: string) => load('judging.md', (t) => t.trim(), dir),
+  // the Module builder, made once in each world (Kenil, 10 Nov): who it is in its front matter
+  builder: (dir?: string) => load('module-builder.md', builderOf, dir),
+}
+
+const Builder = z.object({ name: z.string(), title: z.string(), description: z.string() })
+
+function builderOf(text: string): z.infer<typeof Builder> & { instructions: string } {
+  const m = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(text)
+  const front = Builder.safeParse(m ? parse(m[1] as string) : null)
+  if (!m || !front.success) throw new Error('core/config/module-builder.md is not right.')
+  return { ...front.data, instructions: (m[2] as string).trim() }
 }

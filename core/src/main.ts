@@ -18,6 +18,7 @@ import { Intake } from './files/intake.ts'
 import type { Ask } from './files/reading.ts'
 import { readInstall, writeInstall } from './install.ts'
 import { logToFile } from './log.ts'
+import { keepBuilder } from './modules/agents.ts'
 import { keepDefaults } from './modules/defaults.ts'
 import { Drafts } from './modules/drafts.ts'
 import { checkSigned } from './modules/kits/index.ts'
@@ -373,6 +374,8 @@ try {
         console.log(said)
       kitsNow.now = "Alpha's own modules"
       for (const said of await keepDefaults(world, ctx)) console.log(said)
+      const builder = await keepBuilder(world, user.id)
+      if (builder) console.log(builder)
       for (const said of await plugins.keepKits(ctx)) console.log(said)
       // a signed kit's files as they were signed (rules M3)
       for (const said of checkSigned(world, user.id)) console.log(said)

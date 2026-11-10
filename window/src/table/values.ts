@@ -181,9 +181,14 @@ export function typedOf(field: FieldView, value: unknown): string {
   return String(value)
 }
 
-// A row's title: its first text field's words.
+// A row's title: its first text field's words, or in a table with none its first value (a day's
+// date, say; Kenil, 10 Nov).
 export function titleOf(fields: FieldView[], row: { values: Record<string, unknown> }): string {
-  const f = fields.find((x) => x.kind === 'text')
+  const f =
+    fields.find((x) => x.kind === 'text') ??
+    fields.find(
+      (x) => x.kind !== 'notes' && row.values[x.slug] != null && row.values[x.slug] !== '',
+    )
   return (f && show(f, row.values[f.slug])) || 'Untitled'
 }
 

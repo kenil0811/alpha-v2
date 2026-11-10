@@ -6,7 +6,13 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { skillsOf } from '../../engine/context.ts'
-import { instructionsOf, modelOf, removeAgent, undoAgentChange } from '../../modules/agents.ts'
+import {
+  builderId,
+  instructionsOf,
+  modelOf,
+  removeAgent,
+  undoAgentChange,
+} from '../../modules/agents.ts'
 import { agentSchedules } from '../../modules/schedules.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -82,6 +88,9 @@ export function registerAgents(ctx: Ctx): void {
     live()
     return { model }
   })
+
+  // the Module builder New module opens (Kenil, 10 Nov); none once the person deleted it
+  app.get('/api/agents/builder', async () => ({ id: builderId(world) }))
 
   app.get('/api/agents/:id', async (req): Promise<AgentDetail> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)

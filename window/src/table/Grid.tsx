@@ -23,6 +23,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
+  type ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -86,6 +87,7 @@ export interface PastePlan {
 
 const TICK = 36 // the ticks' column
 const ADD = 44 // the + column
+const ACTION = 84 // a kept list's own button on each row (Run now)
 
 export function Grid({
   tableId,
@@ -108,6 +110,7 @@ export function Grid({
   counted,
   readOnly = false,
   onDuplicate,
+  rowAction,
   onRemove,
   layout,
 }: {
@@ -131,6 +134,7 @@ export function Grid({
   counted?: RowView[] // what the footer totals: every row the view holds, not only this page
   readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
   onDuplicate?: ((row: RowView) => Promise<boolean>) | undefined
+  rowAction?: ((row: RowView) => ReactNode) | undefined // a kept list's own button on each row
   onRemove?: ((rows: RowView[]) => Promise<boolean>) | undefined
   layout: LayoutNow // frozen and wrapped columns, kept with the list
 }) {
@@ -216,7 +220,8 @@ export function Grid({
   // the columns frozen at the left stay in place as the table scrolls across
   const lefts = widths.map((_, i) => TICK + widths.slice(0, i).reduce((a, b) => a + b, 0))
   const stick = (i: number) => (i < layout.frozen ? lefts[i] : undefined)
-  const width = TICK + widths.reduce((a, b) => a + b, 0) + ADD
+  const trail = rowAction ? ADD + ACTION : ADD
+  const width = TICK + widths.reduce((a, b) => a + b, 0) + trail
   const vitems = virtual.getVirtualItems()
   const top = vitems[0]?.start ?? 0
   const bottom = virtual.getTotalSize() - (vitems.at(-1)?.end ?? 0)
@@ -314,7 +319,7 @@ export function Grid({
       ref={box}
       onPaste={paste}
       onKeyDown={keys}
-      className="mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface"
+      className="scroll-shown mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface"
     >
       <table className="table-fixed border-separate border-spacing-0 text-md" style={{ width }}>
         <colgroup>
@@ -322,7 +327,7 @@ export function Grid({
           {shown.map((f, i) => (
             <col key={f.id} style={{ width: widths[i] }} />
           ))}
-          <col style={{ width: ADD }} />
+          <col style={{ width: trail }} />
         </colgroup>
         <thead>
           <tr>
@@ -351,7 +356,12 @@ export function Grid({
                 onConfig={onConfig}
               />
             ))}
-            <th className="sticky top-0 z-2 h-9 border-line border-b bg-surface p-0">
+            <th
+              className={cn(
+                'sticky top-0 z-2 h-9 border-line border-b bg-surface p-0',
+                rowAction && 'right-0 z-3',
+              )}
+            >
               <AddField tableId={tableId} />
             </th>
           </tr>
@@ -385,9 +395,10 @@ export function Grid({
                 />
               )
             const r = item.row
+            // colour is the cell's alone, never the row's (Kenil, 10 Nov)
             const tint = tintOf(config, fields, r)
             const on = ticked.has(r.id)
-            const bg = on ? 'bg-accent-soft' : tint ? TINT[tint] : 'bg-surface'
+            const bg = on ? 'bg-accent-soft' : 'bg-surface'
             return (
               <tr
                 key={r.id}
@@ -452,7 +463,10 @@ export function Grid({
                           first={i === 0}
                           wrap={layout.wrap.includes(f.id)}
                           tasks={i === 0 ? (tasks[r.id] ?? 0) : 0}
-                          tone={toneOf(config, f, r.values[f.slug])}
+                          tone={
+                            toneOf(config, f, r.values[f.slug]) ??
+                            (f.id === config.colours.tint ? tint : null)
+                          }
                           selected={cell?.row === r.id && cell.field === f.slug}
                           inRange={inRange(r.id, f.slug)}
                           onPick={() => pick(here)}
@@ -463,19 +477,25 @@ export function Grid({
                     </td>
                   )
                 })}
-                <td className={cn('border-hair border-b p-0', bg)}>
-                  <button
-                    type="button"
-                    aria-label="Actions for this row"
-                    data-tip="Open, duplicate, copy a link, delete…"
-                    onClick={(e) => {
-                      const b = e.currentTarget.getBoundingClientRect()
-                      setMenu({ row: r, field: null, x: b.left, y: b.bottom })
-                    }}
-                    className="mx-auto grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
-                  >
-                    <EllipsisVertical className="size-3.5" />
-                  </button>
+                {/* a kept list's own button stays in sight at the right as the table scrolls */}
+                <td
+                  className={cn('border-hair border-b p-0', bg, rowAction && 'sticky right-0 z-1')}
+                >
+                  <div className="flex items-center justify-end gap-1 pr-2">
+                    {rowAction?.(r)}
+                    <button
+                      type="button"
+                      aria-label="Actions for this row"
+                      data-tip="Open, duplicate, copy a link, delete…"
+                      onClick={(e) => {
+                        const b = e.currentTarget.getBoundingClientRect()
+                        setMenu({ row: r, field: null, x: b.left, y: b.bottom })
+                      }}
+                      className="mx-auto grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
+                    >
+                      <EllipsisVertical className="size-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             )
@@ -509,7 +529,12 @@ export function Grid({
                 onConfig={onConfig}
               />
             ))}
-            <td className="sticky bottom-0 z-2 h-8.5 border-line border-t bg-canvas p-0" />
+            <td
+              className={cn(
+                'sticky bottom-0 z-2 h-8.5 border-line border-t bg-canvas p-0',
+                rowAction && 'right-0 z-3',
+              )}
+            />
           </tr>
         </tfoot>
       </table>
@@ -824,6 +849,8 @@ function Cell({
           'group flex w-full min-w-0 cursor-pointer items-center gap-0.75 px-2.5 text-left tabular-nums',
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
+          // a value that meets its colour's rule fills its cell (Kenil, 10 Nov)
+          tone && !empty && TINT[tone],
           selected && 'bg-accent-soft ring-2 ring-accent ring-inset',
           inRange && 'bg-accent-soft',
         )}

@@ -373,8 +373,8 @@ export function RuleEditor({
   )
 }
 
-// Colours for a column: rows tinted by a choice's colours, or a value coloured when it meets one
-// condition.
+// Colours for a column: a choice's cells filled with its colours, or a value's cell filled when it
+// meets one condition.
 function ColourEditor({
   field,
   config,
@@ -400,7 +400,7 @@ function ColourEditor({
             onSave(setTint(config, config.colours.tint === field.id ? null : field.id))
           }
         >
-          Tint rows by its colours
+          Fill its cells with their colours
         </MenuItem>
       </div>
     )

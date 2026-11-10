@@ -14,7 +14,7 @@ import type {
   ViewConfig,
 } from '@alpha/core/api'
 import { Plus, Search } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
 import { AddRow } from './table/AddRow.tsx'
@@ -87,7 +87,11 @@ export function TableView({
   // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved. New adds
   // one in the page's own way, when it has one.
-  kept?: { open: (row: string) => void; onNew?: () => void } | null
+  kept?: {
+    open: (row: string) => void
+    onNew?: () => void
+    rowAction?: (row: RowView) => ReactNode // its own button on each row (Run now)
+  } | null
 }) {
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
@@ -415,8 +419,25 @@ export function TableView({
               onClear={() => setConfig(cleared(config))}
             />
             <MirrorLine data={data} showingGone={showingGone} onGone={setShowingGone} />
-            <div className="flex flex-wrap items-center gap-2 px-7 py-2">
-              {tickedRows.length > 0 ? (
+            {/* one line at one height whatever shows in it (a paste waiting, ticked rows, filters),
+                so the rows never move when something is picked (Kenil, 10 Nov) */}
+            <div className="flex min-h-11.5 flex-wrap items-center gap-2 px-7 py-2">
+              {pasting ? (
+                <PasteBar
+                  plan={pasting}
+                  onNo={() => setPasting(null)}
+                  onYes={async () => {
+                    const plan = pasting
+                    setPasting(null)
+                    await write(() =>
+                      api.post(`/api/tables/${data.id}/rows/many`, {
+                        set: plan.set,
+                        add: plan.add,
+                      }),
+                    )
+                  }}
+                />
+              ) : tickedRows.length > 0 ? (
                 <TickedBar
                   tableId={data.id}
                   rows={tickedRows}
@@ -504,22 +525,6 @@ export function TableView({
               />
             ) : (
               <>
-                {pasting && (
-                  <PasteBar
-                    plan={pasting}
-                    onNo={() => setPasting(null)}
-                    onYes={async () => {
-                      const plan = pasting
-                      setPasting(null)
-                      await write(() =>
-                        api.post(`/api/tables/${data.id}/rows/many`, {
-                          set: plan.set,
-                          add: plan.add,
-                        }),
-                      )
-                    }}
-                  />
-                )}
                 <Grid
                   tableId={data.id}
                   rows={paged}
@@ -543,6 +548,7 @@ export function TableView({
                   onTick={setTicked}
                   onEdit={edit}
                   onOpen={openRowPanel}
+                  rowAction={kept?.rowAction}
                   onDuplicate={
                     kept
                       ? undefined

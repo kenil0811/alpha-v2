@@ -25,7 +25,6 @@ import { ItemPage } from './Items.tsx'
 import { LayoutContext, NO_LAYOUT } from './layout.ts'
 import { applyLive, clearLive } from './live.ts'
 import { ModuleScreen } from './Module.tsx'
-import { NewModule } from './NewModule.tsx'
 import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
 import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
@@ -44,6 +43,7 @@ import { TaskWork } from './TaskThread.tsx'
 import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { inside } from './tree.ts'
+import { SlideIn } from './ui/slide.tsx'
 
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
@@ -112,6 +112,22 @@ export function App() {
   const chosen = agents.some((a) => a.id === asked) ? asked : CHIEF
   const agentHere = agents.find((a) => a.id === chosen) ?? null
   const pickAgent = useCallback((id: string) => changeLayout({ agent: id }), [changeLayout])
+  // New module opens the Module builder's conversation, the Chief of staff's once it has gone
+  // (Kenil, 10 Nov)
+  const openBuilder = useCallback(() => {
+    const go = (id: string) => {
+      pickAgent(id)
+      window.location.hash = '#/conversation'
+    }
+    api.get<{ id: string | null }>('/api/agents/builder').then(
+      (b) => go(b.id ?? CHIEF),
+      () => go(CHIEF),
+    )
+  }, [pickAgent])
+  // an old link to New module's page goes there too
+  useEffect(() => {
+    if (place.at === 'new') openBuilder()
+  }, [place.at, openBuilder])
   const chosenRef = useRef(chosen)
   chosenRef.current = chosen
   const askableRef = useRef(askable)
@@ -240,6 +256,45 @@ export function App() {
     void refresh()
   }, [chosen, refresh])
 
+  // the page above this one, for the bar's ‹ (Kenil, 10 Nov); none on a page at the top
+  const parentOf = (): { label: string; href: string } | null => {
+    switch (place.at) {
+      case 'tasks':
+        return place.id ? { label: 'Tasks', href: '#/tasks' } : null
+      case 'work':
+        return { label: itemName || 'The task', href: `#/tasks/${place.id}` }
+      case 'row':
+        return rowPlace && { label: rowPlace.table.name, href: `#/table/${rowPlace.table.id}` }
+      case 'table':
+        if (place.row) return table && { label: table.name, href: `#/table/${place.id}` }
+        return table?.module
+          ? { label: table.module.name, href: `#/module/${table.module.id}` }
+          : null
+      case 'module': {
+        const up = modules.find((m) => m.id === place.id)?.parent
+        const p = up ? modules.find((m) => m.id === up) : null
+        return p ? { label: p.name, href: `#/module/${p.id}` } : null
+      }
+      case 'item':
+        return place.kind === 'schedule'
+          ? { label: 'Schedules', href: '#/intelligence/schedules' }
+          : place.kind === 'run'
+            ? { label: 'Activity', href: '#/settings/activity' }
+            : { label: 'Permissions', href: '#/settings/permissions' }
+      case 'agent':
+        return { label: 'Agents', href: '#/conversation' }
+      case 'card':
+        return { label: 'Home', href: '#/' }
+      case 'people':
+        if (!place.id) return null
+        return place.kind === 'company'
+          ? { label: 'Organizations', href: '#/people?companies' }
+          : { label: 'People', href: '#/people' }
+      default:
+        return null
+    }
+  }
+
   // the screen's name, for the bar
   const screenName = (): string => {
     switch (place.at) {
@@ -300,7 +355,7 @@ export function App() {
           waiting={stream?.cards.length ?? 0}
           signals={moduleSignals(stream)}
           onNew={() => {
-            window.location.hash = '#/module/new'
+            openBuilder()
           }}
           tasksDue={(stream?.tasks.today ?? 0) + (stream?.tasks.overdue ?? 0)}
           online={!problem}
@@ -311,6 +366,7 @@ export function App() {
             middle={setMiddle}
             plain={place.at === 'conversation' || place.at === 'work'}
             ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
+            back={parentOf()}
           />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">
@@ -338,9 +394,7 @@ export function App() {
                   <Parts />
                 ) : place.at === 'plugin' ? (
                   <PluginPage name={place.name} />
-                ) : place.at === 'new' ? (
-                  <NewModule modules={modules} onAsked={() => setAsking(true)} />
-                ) : place.at === 'file' ? (
+                ) : place.at === 'new' ? null : place.at === 'file' ? (
                   <FileView place={place.place} onName={setFileName} />
                 ) : place.at === 'work' ? (
                   <TaskWork key={place.id} id={place.id} version={version} onName={setItemName} />
@@ -421,23 +475,25 @@ export function App() {
             }}
           />
         )}
-        {askable && asking && (
-          <Assistant
-            onClose={() => setAsking(false)}
-            title={<AgentPicker agents={agents} chosen={chosen} onPick={pickAgent} />}
-            mood={mood}
-            width={layout.panel}
-            onWidth={(panel) => changeLayout({ panel })}
-          >
-            <Conversation
-              stream={stream}
-              busyTurn={busyTurn}
-              from={moduleHere}
-              compact
-              agent={agentHere}
-              agents={agents}
-            />
-          </Assistant>
+        {askable && (
+          <SlideIn open={asking}>
+            <Assistant
+              onClose={() => setAsking(false)}
+              title={<AgentPicker agents={agents} chosen={chosen} onPick={pickAgent} />}
+              mood={mood}
+              width={layout.panel}
+              onWidth={(panel) => changeLayout({ panel })}
+            >
+              <Conversation
+                stream={stream}
+                busyTurn={busyTurn}
+                from={moduleHere}
+                compact
+                agent={agentHere}
+                agents={agents}
+              />
+            </Assistant>
+          </SlideIn>
         )}
         {finding && <Find modules={modules} onClose={() => setFinding(false)} />}
       </div>

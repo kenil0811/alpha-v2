@@ -7,10 +7,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CHIEF } from '../world/agents/index.ts'
 import { World } from '../world/world.ts'
 import {
+  builderId,
   INSTRUCTIONS,
   instructionsOf,
   keepAgent,
   keepAgentFile,
+  keepBuilder,
   removeAgent,
   undoAgentChange,
 } from './agents.ts'
@@ -165,5 +167,18 @@ describe('an agent’s memory', () => {
     world.memories.edit(e.id, { text: 'A person changed this' })
     expect(world.memories.get(e.id)?.origin).toBe('person')
     expect(world.memories.forget(m.id, 'person').id).toBe(m.id)
+  })
+})
+
+describe('the Module builder', () => {
+  it('is made once in a world, from its words in config, and stays deleted once deleted', async () => {
+    const owner = world.owner('Kenil')
+    expect(await keepBuilder(world, owner.id)).toBe('Module builder is one of your agents.')
+    const id = builderId(world) as string
+    expect(world.agents.get(id)?.title).toBe('Builds new modules')
+    expect(instructionsOf(world, id)).toMatch(/business case/)
+    removeAgent(world, id, ctx)
+    expect(await keepBuilder(world, owner.id)).toBeNull()
+    expect(builderId(world)).toBeNull()
   })
 })

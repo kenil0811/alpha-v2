@@ -139,8 +139,10 @@ An agent is a row and a folder (`agents/<id>/`) holding its instructions, skills
 schedules. Every agent can do what the Chief of staff can; they differ by instructions, memory,
 skills and model. `reach` is empty on every agent today, and one function reads it, so limits can
 come later as a small change. The Chief of staff is always there, has no row, knows every agent,
-and makes and changes agents without a card. A change to an agent's files is a commit, so it can
-be undone from its line in the chat.
+and makes and changes agents without a card. The Module builder is made once in each world from
+`core/config/module-builder.md`; New module opens its conversation, and the person changes or
+deletes it like any agent. A change to an agent's files is a commit, so it can be undone from its
+line in the chat.
 
 **Working together.** An agent asks another with a brief, and gets one answer in a fixed shape.
 One request stops at 8 asks or tasks given, or 4 hops in a chain, then waits for Continue. Alpha
@@ -268,4 +270,4 @@ looked at in the app, and committed after review. Prompts, models and judgements
 `core/config/`, never as constants in code. Nothing is built for a client who has not asked.
 
 **Deliberately absent:** a second provider or Alpha's own loop; cards to make an agent; built-in
-characters; numeric limits on an agent's looking; anything installed on a client's computer.
+characters beyond the Chief of staff and the Module builder (Kenil, 10 Nov); numeric limits on an agent's looking; anything installed on a client's computer.

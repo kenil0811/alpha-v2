@@ -1027,8 +1027,30 @@ function Schedules({ version }: { version: number }) {
           open={(id) => {
             window.location.hash = `#/schedule/${id}`
           }}
+          rowAction={(r) => <RunNow id={r.id} />}
         />
       )}
     </Section>
+  )
+}
+
+// A schedule run from the list (Kenil, 10 Nov); one already running says so beside it.
+function RunNow({ id }: { id: string }) {
+  const { busy, problem, act } = useAct()
+  return (
+    <span data-tip={problem ?? undefined} className="flex items-center">
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        className={problem ? 'text-warn' : undefined}
+        onClick={(e) => {
+          e.stopPropagation()
+          void act(() => api.post(`/api/schedules/${id}/run`))
+        }}
+      >
+        Run now
+      </Button>
+    </span>
   )
 }
