@@ -23,6 +23,7 @@ import { PageTitle } from './ui/rename.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Tabs } from './ui/tabs.tsx'
+import { Waiting } from './ui/waiting.tsx'
 
 type List = 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done'
 
@@ -105,7 +106,7 @@ function TaskLists({ list, version }: { list: List; version: number }) {
             }}
           />
         ) : (
-          <p className="p-7 text-ink-3">Loading…</p>
+          <Waiting className="p-7" />
         )}
       </div>
       <Dialog open={adding} title="New task" onClose={() => setAdding(false)}>

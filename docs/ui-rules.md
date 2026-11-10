@@ -144,6 +144,7 @@ held by review. Dates are 2026.
 | L14 | A task, a run, a person, a row, a schedule, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel replaces what it shows, with no Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov, 9 Nov | test (opened) |
 | L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
 | L17 | Nothing on a screen moves when something is picked or appears: what appears takes a place kept for it, as the one line over a table holds a paste waiting, ticked rows or filters at one height | 10 Nov | — |
+| L18 | Loading is quiet: nothing at first and a soft Loading… only once it has taken a while; never a word that something is not there while it is on its way; a module's tabs and the bar's name stay put while what is under them loads, and a module opens straight on where it lands | 10 Nov | — |
 
 ## Proposed, waiting on Kenil or the core
 

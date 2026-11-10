@@ -13,6 +13,7 @@ import { Field, Select } from './ui/field.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
+import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
 
 const EVERY: [string, string][] = [
@@ -231,7 +232,7 @@ export function AgentSchedulePage({
   const [changing, setChanging] = useState(false)
   const [asking, setAsking] = useState(false)
   const { busy, problem, act } = useAct()
-  if (s === undefined) return <p className="p-6 text-ink-3">Loading…</p>
+  if (s === undefined) return <Waiting />
   if (s === null) return <p className="p-6 text-ink-2">This schedule is not there any more.</p>
   return (
     <Record kind={`Schedule of ${s.agent.name}`}>

@@ -9,6 +9,7 @@ import { TableName } from './table/context.ts'
 import { RowBody } from './table/RowPanel.tsx'
 import { Refusal } from './ui/act.tsx'
 import { PageTitle } from './ui/rename.tsx'
+import { Waiting } from './ui/waiting.tsx'
 
 export interface RowPlace {
   module: { id: string; name: string }
@@ -34,7 +35,7 @@ export function RowPage({
   useEffect(() => {
     onPlace(view ? { module: view.table.module, table: view.table, title: view.title } : null)
   }, [view, onPlace])
-  if (view === undefined) return <p className="p-6 text-ink-3">Loading…</p>
+  if (view === undefined) return <Waiting />
   if (view === null) return <p className="p-6 text-ink-2">This row is not there any more.</p>
   // its name is its first text field that holds one (as the core names a row), else the first
   const texts = view.fields.filter((f) => f.kind === 'text' && !f.summary)

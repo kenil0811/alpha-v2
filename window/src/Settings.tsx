@@ -53,6 +53,7 @@ import { SideItem, SideList } from './ui/side-list.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Tabs } from './ui/tabs.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
+import { Waiting } from './ui/waiting.tsx'
 import { WaitingRules } from './WaitingRules.tsx'
 
 const STATE: Record<ConnectionView['state'], [string, Tone]> = {
@@ -136,7 +137,7 @@ export function Settings({
   const hidden = new Set(member ? ['model', 'data', 'people'] : me?.signIn ? [] : ['people'])
   const tabs = (p.tabs as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
   const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
-  if (!view) return <p className="p-6 text-ink-3">{problem ?? 'Loading…'}</p>
+  if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />
   // a connector that names a place on this Mac (a folder) is a list under Folders; every other
   // is a tile under Connections
   const accounts = view.connectors.filter((c) => c.auth !== 'path')
@@ -347,7 +348,7 @@ function DataSection() {
   if (!view)
     return (
       <Section title="Data" about="Your backups.">
-        <p className="text-ink-2 text-md">{problem ?? 'Loading…'}</p>
+        {problem ? <p className="text-ink-2 text-md">{problem}</p> : <Waiting className="p-0" />}
       </Section>
     )
   return (

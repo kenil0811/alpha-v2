@@ -44,3 +44,23 @@ export function flat<M extends Placed>(modules: M[]): { module: M; depth: number
   for (const m of tops(modules)) walk(m, 0)
   return out
 }
+
+// Where a module opens, as its own screen would send it: the Overview of the modules inside it, its
+// front page, People, its first table, else Setup. The rail links there straight, so opening a module
+// is one load, not a stop on the way (Kenil, 10 Nov).
+export function landingOf(
+  modules: { id: string; parent: string | null }[],
+  m: {
+    id: string
+    people: boolean
+    pages: { name: string; front: boolean }[]
+    tables: { id: string; place: string }[]
+  },
+): string {
+  if (modules.some((x) => x.parent === m.id)) return `#/module/${m.id}/overview`
+  const front = m.pages.find((p) => p.front)
+  if (front) return `#/module/${m.id}/page/${front.name}`
+  const first = m.tables.find((t) => t.place === 'main')
+  if (first) return m.people ? '#/people' : `#/table/${first.id}`
+  return `#/module/${m.id}/setup`
+}

@@ -92,7 +92,10 @@ export class MacPlatform implements Platform {
     const trash = join(homedir(), '.Trash')
     mkdirSync(trash, { recursive: true })
     const when = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '.')
-    renameSync(path, join(trash, `Alpha ${basename(path)} ${when}`))
+    // the same folder sent twice in a minute gets a number, never a clash
+    let to = join(trash, `Alpha ${basename(path)} ${when}`)
+    for (let n = 2; existsSync(to); n++) to = join(trash, `Alpha ${basename(path)} ${when} (${n})`)
+    renameSync(path, to)
   }
 
   // The Mac's region (en_SG → SG), else none.

@@ -94,8 +94,10 @@ describe('the window', () => {
         onLayout={() => undefined}
       />,
     )
-    expect(html).toContain('href="#/module/m_1"')
-    expect(html).toContain('href="#/module/m_2"')
+    // each module opens straight where it lands: one with modules inside on its Overview, one with
+    // a table on that table (L18)
+    expect(html).toContain('href="#/module/m_1/overview"')
+    expect(html).toContain('href="#/table/t_1"')
     expect(html).toContain('Fold Shops')
     expect(html).not.toContain('Orders')
     expect(html).not.toContain('Meals')

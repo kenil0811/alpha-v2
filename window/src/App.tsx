@@ -44,6 +44,7 @@ import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
 import { inside } from './tree.ts'
 import { SlideIn } from './ui/slide.tsx'
+import { Waiting } from './ui/waiting.tsx'
 
 export function App() {
   const [place, setPlace] = useState<Place>(() => placeOf(window.location.hash))
@@ -101,6 +102,16 @@ export function App() {
     [placed?.id, placed?.name, modules, placed],
   )
   const askable = place.at !== 'conversation' && place.at !== 'work'
+  // the module on screen, known from the rail's list at once for a table, so its tabs never wait on
+  // the table's own load (Kenil, 10 Nov)
+  const moduleHereId =
+    place.at === 'module'
+      ? place.id
+      : place.at === 'table'
+        ? (modules.find((x) => x.tables.some((t) => t.id === place.id))?.id ??
+          table?.module.id ??
+          null)
+        : null
   // the agents' own page closes the assistant, so it never opens again by itself on leaving
   useEffect(() => {
     if (!askable) setAsking(false)
@@ -185,6 +196,18 @@ export function App() {
   const placeRef = useRef(place)
   placeRef.current = place
 
+  const loadTable = useCallback(async (id: string) => {
+    try {
+      const t = await api.get<TableData>(`/api/tables/${id}`)
+      if (placeRef.current.at === 'table' && placeRef.current.id === id) setTable(t)
+    } catch {
+      if (placeRef.current.at === 'table' && placeRef.current.id === id) {
+        setTable(null)
+        window.location.hash = '#/'
+      }
+    }
+  }, [])
+
   const refresh = useCallback(async () => {
     try {
       const [s, m] = await Promise.all([
@@ -196,12 +219,14 @@ export function App() {
       setStream(s)
       setModules(m)
       if (!s.busy) setBusyTurn(null)
-      const p = placeRef.current
-      if (p.at === 'table') setTable(await api.get<TableData>(`/api/tables/${p.id}`))
       setProblem(null)
     } catch (err) {
       setProblem(wordsOf(err))
     }
+    // the table open now, on its own: one that has gone (deleted, say) sends the person Home rather
+    // than standing as a warning over the next screen (Kenil, 10 Nov)
+    const p = placeRef.current
+    if (p.at === 'table') await loadTable(p.id)
   }, [])
 
   useEffect(() => {
@@ -224,8 +249,7 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    if (place.at === 'table')
-      api.get<TableData>(`/api/tables/${place.id}`).then(setTable, () => setTable(null))
+    if (place.at === 'table') void loadTable(place.id)
     else setTable(null)
   }, [place])
 
@@ -299,17 +323,17 @@ export function App() {
   const screenName = (): string => {
     switch (place.at) {
       case 'row':
-        return rowPlace?.title ?? '…'
+        return rowPlace?.title ?? ''
       case 'card':
         return 'Waits for you'
       case 'item':
       case 'agent':
       case 'work':
-        return itemName || '…'
+        return itemName || ''
       case 'tasks':
-        return place.id ? taskName || '…' : 'Tasks'
+        return place.id ? taskName || '' : 'Tasks'
       case 'people':
-        if (place.id) return personName || '…'
+        if (place.id) return personName || ''
         return place.kind === 'company' ? 'Organizations' : 'People'
       case 'conversation':
         return agents.find((a) => a.id === chosen)?.name ?? 'Chief of staff'
@@ -320,23 +344,23 @@ export function App() {
       case 'parts':
         return 'Parts'
       case 'plugin':
-        return screenOf(place.name)?.title ?? '…'
+        return screenOf(place.name)?.title ?? ''
       case 'new':
         return 'New module'
       case 'file':
-        return fileName || '…'
+        return fileName || ''
       case 'table': {
-        if (!table) return '…'
+        if (!table) return ''
         if (!place.row) return table.name
         const r = table.rows.find((x) => x.id === place.row)
-        return r ? titleOf(table.fields, r) : '…'
+        return r ? titleOf(table.fields, r) : ''
       }
       case 'module': {
         if (place.tab === 'setup') return 'Setup'
         if (place.tab === 'overview' || (!place.page && modules.some((x) => x.parent === place.id)))
           return 'Overview'
         const pages = modules.find((x) => x.id === place.id)?.pages
-        return pages?.find((p) => (place.page ? p.name === place.page : p.front))?.title ?? '…'
+        return pages?.find((p) => (place.page ? p.name === place.page : p.front))?.title ?? ''
       }
       default:
         return 'Home'
@@ -430,9 +454,11 @@ export function App() {
                     version={version}
                     cards={stream?.cards ?? []}
                   />
-                ) : place.at === 'module' || table ? (
+                ) : moduleHereId ? (
                   <ModuleScreen
-                    moduleId={place.at === 'module' ? place.id : (table?.module.id ?? '')}
+                    moduleId={moduleHereId}
+                    known={modules.find((x) => x.id === moduleHereId) ?? null}
+                    inside={modules.filter((x) => x.parent === moduleHereId).length}
                     tab={
                       place.at === 'table'
                         ? { kind: 'table', id: place.id }
@@ -459,7 +485,8 @@ export function App() {
                     )}
                   />
                 ) : (
-                  <p className="p-6 text-ink-3">That table is not there.</p>
+                  // a table on its way: nothing to read yet, and never a word that it is not there
+                  <Waiting />
                 )}
               </div>
             </div>

@@ -25,7 +25,7 @@ import { inMacApp } from './macApp.ts'
 import { ModuleIcon } from './moduleIcon.tsx'
 import { inIntelligence, type Place } from './place.ts'
 import { MOD } from './time.ts'
-import { ancestors, childrenOf, flat, inside, tops } from './tree.ts'
+import { ancestors, childrenOf, flat, inside, landingOf, tops } from './tree.ts'
 import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
@@ -335,7 +335,7 @@ function ModuleItem({
           {(start) => (
             <>
               <Nav
-                href={`#/module/${m.id}`}
+                href={landingOf(modules, m)}
                 icon={<ModuleIcon name={m.name} className="size-4" />}
                 label={m.name}
                 current={here === m.id}
@@ -453,7 +453,7 @@ function ModuleMenu({
       <Popover anchor={anchor} point={point} open={open || !!point} onClose={close}>
         <MenuItem
           onClick={() => {
-            window.location.hash = `#/module/${m.id}`
+            window.location.hash = landingOf(modules, m)
             close()
           }}
         >
@@ -626,7 +626,7 @@ function Strip({
       <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {shownTops(modules, hidden).map((m) =>
           icon(
-            `#/module/${m.id}`,
+            landingOf(modules, m),
             m.name,
             top === m.id,
             <ModuleIcon name={m.name} className="size-4" />,

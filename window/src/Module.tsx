@@ -5,7 +5,12 @@
 // their counts, and Setup, always last: all the rest about the module (ModuleSetup.tsx). Nothing
 // sits under a table or a page (Kenil, 26 Oct). A module holding others opens on its Overview, else
 // on its front page, else its first table, else its Setup.
-import type { ModuleView, TableView as TableData, TableSummary } from '@alpha/core/api'
+import type {
+  ModuleSummary,
+  ModuleView,
+  TableView as TableData,
+  TableSummary,
+} from '@alpha/core/api'
 import { Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
@@ -14,6 +19,7 @@ import { PageView } from './PageView.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { type Tab, Tabs } from './ui/tabs.tsx'
+import { Waiting } from './ui/waiting.tsx'
 
 export type ModuleTab =
   | { kind: 'overview' }
@@ -23,12 +29,16 @@ export type ModuleTab =
 
 export function ModuleScreen({
   moduleId,
+  known,
+  inside,
   tab,
   version,
   table,
   renderTable,
 }: {
   moduleId: string
+  known: ModuleSummary | null // what the rail already knows of it, until its own view is here
+  inside: number // how many modules sit inside it
   tab: ModuleTab | null
   version: number
   table: TableData | null
@@ -42,12 +52,16 @@ export function ModuleScreen({
     if (version >= 0) load()
   }, [load, version])
 
+  // until this module's own view is here (or while the last module's still is), what the rail knows
+  // of it draws its tabs, so they never blink as a table loads (Kenil, 10 Nov)
+  const view = m && m.id === moduleId ? m : null
+  const facts = view ?? known
   // with no tab named, the Overview of the modules inside, else the front page, else the first
   // table, else Setup
-  const front = m?.pages.find((p) => p.front)
-  const holds = (m?.modules.length ?? 0) > 0
+  const front = facts?.pages.find((p) => p.front)
+  const holds = view ? view.modules.length > 0 : inside > 0
   // its main tables are its tabs; a part shows on its row, a setup table on Setup
-  const first = m?.tables.find((t) => t.place === 'main')
+  const first = facts?.tables.find((t) => t.place === 'main')
   const current: ModuleTab =
     tab ??
     (holds
@@ -66,9 +80,9 @@ export function ModuleScreen({
   }, [firstTable, m?.people])
   const page = current.kind === 'page' ? m?.pages.find((p) => p.name === current.name) : undefined
 
-  const tabs: Tab[] = m
+  const tabs: Tab[] = facts
     ? [
-        ...(m.people ? peopleTabs(null) : []),
+        ...(facts.people ? peopleTabs(null) : []),
         ...(holds
           ? [
               {
@@ -79,28 +93,30 @@ export function ModuleScreen({
               },
             ]
           : []),
-        ...moduleTabs(m, current),
+        ...moduleTabs(facts, current),
       ]
     : []
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Tabs label={m?.name ?? 'Module'} tabs={tabs} />
+      <Tabs label={facts?.name ?? 'Module'} tabs={tabs} />
       <div className="min-h-0 flex-1">
         {current.kind === 'overview' ? (
           m && <Overview m={m} />
         ) : current.kind === 'page' ? (
           m && page ? (
             <PageView key={page.name} m={m} page={page} version={version} />
+          ) : m ? (
+            <p className="p-7 text-ink-3">That page is not there.</p>
           ) : (
-            <p className="p-7 text-ink-3">{m ? 'That page is not there.' : 'Loading…'}</p>
+            <Waiting className="p-7" />
           )
         ) : current.kind === 'setup' ? (
           m && <ModuleSetup m={m} onChange={load} />
         ) : table && table.id === current.id ? (
           renderTable(table, m?.tables.find((x) => x.id === table.id) ?? null)
         ) : (
-          <p className="p-7 text-ink-3">Loading…</p>
+          <Waiting className="p-7" />
         )}
       </div>
     </div>

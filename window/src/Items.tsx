@@ -16,6 +16,7 @@ import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
 import { UpdateNow } from './ui/update-now.tsx'
+import { Waiting } from './ui/waiting.tsx'
 
 export type ItemKind = 'schedule' | 'run' | 'rule'
 
@@ -109,7 +110,7 @@ export function ItemPage({
   return <Gone what={{ schedule: 'This schedule', run: 'This run', rule: 'This rule' }[kind]} />
 }
 
-const Loading = () => <p className="p-6 text-ink-3">Loading…</p>
+const Loading = () => <Waiting />
 const Gone = ({ what }: { what: string }) => (
   <p className="p-6 text-ink-2">{what} is not there any more.</p>
 )

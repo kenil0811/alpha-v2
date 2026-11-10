@@ -16,6 +16,7 @@ import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Empty, Section } from './ui/section.tsx'
+import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
 
 export const CHIEF = 'chief'
@@ -214,7 +215,7 @@ export function AgentPage({
   const { change } = useLayout()
   const [asking, setAsking] = useState(false)
   const { busy, problem, act } = useAct(load)
-  if (a === undefined) return <p className="p-6 text-ink-3">Loading…</p>
+  if (a === undefined) return <Waiting />
   if (a === null) return <p className="p-6 text-ink-2">This agent is not there any more.</p>
   return (
     <Record kind={a.chief ? 'Runs the team' : `Agent · ${a.title}`}>

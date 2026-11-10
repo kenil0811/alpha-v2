@@ -51,7 +51,8 @@ export function DeleteModule({
               void act(async () => {
                 await api.post(`/api/modules/${module.id}/delete`, { keepData: keep })
                 onClose()
-                if (!keep && window.location.hash.includes(module.id)) window.location.hash = '#/'
+                // Home after it goes: whatever was open may have gone with it (Kenil, 10 Nov)
+                window.location.hash = '#/'
               })
             }
           >
