@@ -1,4 +1,4 @@
-// People and companies (design §4): one each, however many rows name them. The store: the
+// People and companies: one each, however many rows name them. The store: the
 // person's own addresses, a table's map of its rows to people, the rebuild, the rules, and the
 // small readers under everything (a person's row, root, parts, keys). Landing rows is in
 // landing.ts, likely pairs and the person's word in matching.ts, reading in reading.ts, as

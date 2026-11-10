@@ -1,4 +1,4 @@
-// The shape tool (design §4): tables, fields, views and a module's place, as the desk changes
+// The shape tool: tables, fields, views and a module's place, as the desk changes
 // them; on a kit someone else maintains, a shape change goes on a card first (decision 3b).
 
 import { z } from 'zod'

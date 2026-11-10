@@ -134,7 +134,7 @@ export async function guardAsync(fn: () => Promise<Result>): Promise<Result> {
   }
 }
 
-// What a page is (design §13), for the model that draws one.
+// What a page is, for the model that draws one.
 export const PAGE = [
   'A page (pages/<name>.html): a <title>, <meta name="alpha-front"> when the module should open on it, <meta name="alpha-print" content="landscape"> when it is wide, then a <script> that calls alpha.page(async () => [ ...blocks ]).',
   'Inside it: await alpha.rows(table) gives the module’s rows as { id, values by field name, kinds }; await alpha.history(table, field) gives each row’s values of that field, oldest first, as { row, changes: [{ value, at }] }; alpha.input(name, { options }) offers a chooser and returns its value; alpha.open({ table, rows: [ids] }) or alpha.open({ table, row }) opens rows in the window; alpha.fmt(value, unit) writes a number, date or money as the window does.',

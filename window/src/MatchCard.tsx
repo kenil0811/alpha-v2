@@ -1,4 +1,4 @@
-// People or companies that may be one (design §4): found by their names, never merged by code.
+// People or companies that may be one: found by their names, never merged by code.
 // One card per batch, each pair side by side with why Alpha thinks so, Merge or Keep apart; the
 // pairs with the same name at the same company can be merged at once. A pair decided never comes
 // back, and a merge can be undone from the person's page.

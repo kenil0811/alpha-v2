@@ -1,4 +1,4 @@
-// Backups of the world (design §4): once a day by SQLite's backup API, never a copy of the file;
+// Backups of the world: once a day by SQLite's backup API, never a copy of the file;
 // the last 7 days kept, and one a week for the 4 weeks before. The backups taken before a
 // migration are kept apart and never pruned here. Beside the world, the backup mirrors the
 // modules and the files by hash, so a lost Mac keeps the whole business (item 17 of the

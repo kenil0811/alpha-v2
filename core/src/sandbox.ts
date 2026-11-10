@@ -1,4 +1,4 @@
-// The one sandbox the core's children run under (design §2, §5): Anthropic's sandbox runtime, its
+// The one sandbox the core's children run under: Anthropic's sandbox runtime, its
 // proxy in the core's own process. Nothing is allowed for everyone: a child reaches only the hosts
 // listed for its own process under its id (a connector's, step 2, part 1, slice 2), so a script,
 // which is given no list, reaches nothing. What the proxy refuses is told to whoever listed the id.

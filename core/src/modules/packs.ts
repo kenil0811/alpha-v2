@@ -1,4 +1,4 @@
-// Kit packs (design §10): a kit's folder as one file, with each file's hash, so a kit can travel
+// Kit packs: a kit's folder as one file, with each file's hash, so a kit can travel
 // to a Mac with no repository on it. Packed with `pnpm kit pack <folder>`; on the Mac, a pack is
 // kept unpacked in Alpha's folder (kits/<name>/<version>), so later updates have the kit's own
 // files to compare with, and installed or updated as installing from a folder does: within its

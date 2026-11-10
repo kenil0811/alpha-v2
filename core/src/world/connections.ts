@@ -1,4 +1,4 @@
-// Connections: one account of one connector each (design §4). A connection points at its secret
+// Connections: one account of one connector each. A connection points at its secret
 // in the secret store and never holds it.
 import { all, type Db, newId, now, one, run, tx } from './db.ts'
 import { append } from './journal.ts'

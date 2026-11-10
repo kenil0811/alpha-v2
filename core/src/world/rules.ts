@@ -1,9 +1,9 @@
-// Rules (design §7, core step 2, Kenil's yes 27 Oct): one store of allows and denies, each
+// Rules (core step 2, Kenil's yes 27 Oct): one store of allows and denies, each
 // approved by the person or inferred by Alpha, scoped to all of Alpha, a module or a schedule, and
 // covering a call in parts code matches: what it does (read, change, remove, send, reach a site,
 // sign in), through which tool, to which addresses, which sites, which tables. Only the person
 // makes a rule approved (a wall). The gates check every call against the live rules before it
-// runs (gates.ts). Standing permissions (design §12) are approved allow rules that cover exactly
+// runs (gates.ts). Standing permissions are approved allow rules that cover exactly
 // one schedule's one kind of thing: one is granted only on a card that offered Always, and a card
 // offers Always only after three unchanged yeses in a row for exactly that.
 import type { Effect } from '@alpha/connector-sdk'

@@ -1,5 +1,5 @@
 // Who is at the window and how they left it: the person's own, kept by Alpha per person (design
-// §14), never in the browser. Re-exported by types.ts, the window's one import.
+//), never in the browser. Re-exported by types.ts, the window's one import.
 
 export interface Me {
   user: { id: string; name: string; role: 'owner' | 'member' }

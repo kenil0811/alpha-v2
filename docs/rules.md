@@ -20,8 +20,8 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 ## Terms
 
 - **Open module**: the firm's to change, within its build setting.
-- **Managed module**: changed only by a newer pack signed by Kenil's key. Alpha's own kit and a
-  plugin's module are managed by Alpha, and a connector's module for its source fields.
+- **Managed module**: changed only by a newer pack signed by Kenil's key. A plugin's module is
+  managed by Alpha, and a connector's module for its source fields.
 - **Alpha's own table**: Alpha's row is the firm's working record.
 - **Mirror**: a table of a system that keeps the record. Its connector names that system.
 - **Source field**: a field on a mirror that the connector fills. **Own field**: any other
@@ -36,7 +36,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| M1 | Every module is open or managed. Only a pack signed by Kenil's key makes one managed (`managed: true` in its module.yaml). Alpha's own kit and a plugin's module are managed by Alpha itself, and a connector's module for its source fields (the firm's own fields beside them stay the firm's, D7) | 4 Nov, 5 Nov | test |
+| M1 | Every module is open or managed. Only a pack signed by Kenil's key makes one managed (`managed: true` in its module.yaml). A plugin's module is managed by Alpha itself, and a connector's module for its source fields (the firm's own fields beside them stay the firm's, D7) | 4 Nov, 5 Nov | test |
 | M2 | In a managed module nobody changes its tables, fields, choices, relations, schedules, skills, scripts, pages or business case: not a person, the model, a schedule or a plugin. Every door refuses in words that say who manages it; the window greys the control with that reason | 4 Nov | skip (step 8) |
 | M3 | Only a newer signed pack changes a managed module. Its files are checked against the signature at every start; a changed file does not load and says what changed | 4 Nov | test |
 | M4 | In an open module everything is the firm's to change. A kit's update follows the ownership rule, and a maintained kit's shape change, or a change to a file it shipped, goes on its card from every door, not only the model's tool; a file the firm adds to its module (a source's own reader) is the firm's | 4 Nov, 5 Nov | test |
@@ -88,3 +88,4 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | R4 | The scenario journeys that do not wait run before any push that touches the world, and the session's log names their reports | 4 Nov | — |
 | R5 | Plugins are first-party code in this repository; nothing from elsewhere loads through the plugin host. One that must, runs in its own process as a connector does | 4 Nov | test |
 | R6 | One request of a person makes at most 8 asks or tasks given between agents and 4 hops in a chain, then waits for Continue; Alpha counts them, not the model, and the same ask is not made twice in one chain | 9 Nov | test |
+| R7 | An agent's check only looks: it reads and cannot write, draft, send or use the model. A scheduled run cannot make or change a schedule | 10 Nov | test |

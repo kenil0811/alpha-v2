@@ -1,4 +1,4 @@
-// A card that waits for the person (design §7): a question, a gate's yes, a file from the mail,
+// A card that waits for the person: a question, a gate's yes, a file from the mail,
 // a draft, two who may be the same, rows to decide. The same card wherever it
 // shows: the stream, Home, and its own page (#/card/<id>, Batch B, pick 13), where a long
 // letter shows whole. Out of Conversation.tsx so that screen only shrinks (the window file wall).

@@ -1,5 +1,5 @@
 // A kit's or a skill's script, run in a child process under Anthropic's sandbox runtime (design
-// §5, §9): no network at all (it is given no list of hosts), writes only in its module's folder, reads only there and in Alpha's
+//): no network at all (it is given no list of hosts), writes only in its module's folder, reads only there and in Alpha's
 // own code. Everything it needs from outside it asks the core for, through `alpha`.
 
 import { spawn } from 'node:child_process'

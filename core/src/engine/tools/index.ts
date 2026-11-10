@@ -1,4 +1,4 @@
-// The world tools (design §5), as entries of the tool registry (decision 11): the Agent SDK
+// The world tools, as entries of the tool registry (decision 11): the Agent SDK
 // serves them in process. Each declares its effect,
 // which the gate adapter maps to the gates; each writes through the world, which journals and
 // checks provenance. Grouped by what they touch, in the files here.

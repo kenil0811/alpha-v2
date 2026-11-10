@@ -1,4 +1,4 @@
-// Reading a file into pieces with their places (design §8): sheets cell by cell (SheetJS), text
+// Reading a file into pieces with their places: sheets cell by cell (SheetJS), text
 // line by line. What it cannot read yet is kept as it is.
 import { extname } from 'node:path'
 import * as XLSX from 'xlsx'

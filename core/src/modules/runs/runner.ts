@@ -1,4 +1,4 @@
-// The schedule runner (design §11): a schedule's script run in its sandbox, serving its module. A run is
+// The schedule runner: a schedule's script run in its sandbox, serving its module. A run is
 // a row; its steps are journal lines carrying its id; it reaches the person's stream only as a
 // card. The runner's pieces are the files beside this one: the walls, what a script may reach,
 // the `alpha` it is handed, what is due.

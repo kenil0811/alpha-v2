@@ -267,7 +267,7 @@ export interface ModuleSummary {
   tables: TableSummary[]
 }
 
-// A module's page (design §13): the file's name, its title, and whether the module opens on it.
+// A module's page: the file's name, its title, and whether the module opens on it.
 export interface PageSummary {
   name: string
   title: string

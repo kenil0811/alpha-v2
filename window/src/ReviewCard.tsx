@@ -1,4 +1,4 @@
-// Rows a schedule puts to the person (design §12, D7): one card with each row, why it is there and
+// Rows a schedule puts to the person (D7): one card with each row, why it is there and
 // the few choices it offers; a choice is theirs on that row, and one button takes the first choice
 // for every row not yet decided. The card closes when each row has one.
 import type { CardView, ReviewView } from '@alpha/core/api'

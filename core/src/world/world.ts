@@ -1,4 +1,4 @@
-// One tenant's world: the SQLite file and what lives beside it (design §3, §4). Every write is a
+// One tenant's world: the SQLite file and what lives beside it. Every write is a
 // function of the world that writes its journal line in the same transaction.
 
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'

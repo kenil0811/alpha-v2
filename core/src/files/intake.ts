@@ -1,4 +1,4 @@
-// Files that come in by mail (design §12): what a schedule pulls in from outside is filed on the
+// Files that come in by mail: what a schedule pulls in from outside is filed on the
 // person's yes. For each new email with attachments, the model proposes where each file belongs
 // (a row of a table whose rows take documents, and its kind), and a card asks once per file,
 // with the email, what the file is, how sure and why. File it puts it on that row and reads it,

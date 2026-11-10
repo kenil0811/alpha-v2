@@ -1,4 +1,4 @@
-// Saved views (design §4, §14; step 10, Kenil 20 Oct): a table's named ways of looking at it, its
+// Saved views (step 10, Kenil 20 Oct): a table's named ways of looking at it, its
 // filters, sorts, group, columns, totals and colours, shared by everyone in the firm. Kept by
 // field id, so a renamed field keeps its views; given and shown by field name. Each change is
 // journaled; removing a table removes its views (shape.removeTable).

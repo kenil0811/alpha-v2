@@ -80,7 +80,7 @@ export interface Table {
   aboutBy: AboutBy | null
 }
 
-// How a table's rows name people (design §4), by its fields' names: each row is a person (a
+// How a table's rows name people, by its fields' names: each row is a person (a
 // contact card, a LinkedIn connection), or an exchange with people (a message, a meeting), whose
 // fields hold addresses as a message writes them: Name <address>, another@address.
 export type PeopleMap =

@@ -1,4 +1,4 @@
-// The journal: append-only lines, each with an actor, a kind and plain words (design §4).
+// The journal: append-only lines, each with an actor, a kind and plain words.
 import { hashOf, lastHash } from './audit.ts'
 import { all, type Db, json, now, one, parse, run } from './db.ts'
 import { Refused } from './kinds.ts'

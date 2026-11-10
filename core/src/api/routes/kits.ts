@@ -29,7 +29,7 @@ export function registerKits(ctx: Ctx): void {
   }
   const { needsOf } = ctx.views
 
-  // Kits and schedules (design §10, §11): what each module does on its own.
+  // Kits and schedules: what each module does on its own.
   app.get('/api/working', async (): Promise<WorkingModuleView[]> => working())
   // Every module's schedules as one table (UI batch 2, 26 Oct): each turned On or Paused in a cell
   const WHY = 'A schedule is turned on or paused here; the rest is in its file.'
@@ -180,7 +180,7 @@ export function registerKits(ctx: Ctx): void {
     return report
   })
 
-  // A module made in a conversation leaves as a kit (design §10): packed onto the Desktop, its
+  // A module made in a conversation leaves as a kit: packed onto the Desktop, its
   // rows never; a module from a kit is packed as it is now.
   app.post('/api/kits/:module/make', async (req) => {
     const { module } = z.object({ module: z.string() }).parse(req.params)

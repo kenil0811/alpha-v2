@@ -1,7 +1,7 @@
-// A module's screen (design §14, Ledger): its name in the bar, then one row of tabs: People and
+// A module's screen (Ledger): its name in the bar, then one row of tabs: People and
 // Organizations when people live in it (module.yaml's people: true), an Overview of the modules
 // inside it when it holds any (a plain list: each one's name, where it comes from and what goes on
-// in it right now; Kenil, 21 Oct), its pages (design §13) with the front one first, its tables with
+// in it right now; Kenil, 21 Oct), its pages with the front one first, its tables with
 // their counts, and Setup, always last: all the rest about the module (ModuleSetup.tsx). Nothing
 // sits under a table or a page (Kenil, 26 Oct). A module holding others opens on its Overview, else
 // on its front page, else its first table, else its Setup.

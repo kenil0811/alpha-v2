@@ -1,4 +1,4 @@
-// Files by hash beside the world, and documents with chunks and positions (design §4).
+// Files by hash beside the world, and documents with chunks and positions.
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'

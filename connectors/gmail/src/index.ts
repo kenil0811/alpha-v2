@@ -1,4 +1,4 @@
-// Gmail by IMAP and SMTP with an app password (design §8, decision 10). Headers of the last 90
+// Gmail by IMAP and SMTP with an app password (decision 10). Headers of the last 90
 // days land in the Mail table; a message's body is read when asked. A draft is saved in the
 // person's own Drafts (a write: it goes nowhere); a send leaves their world and waits on a card.
 import { randomUUID } from 'node:crypto'

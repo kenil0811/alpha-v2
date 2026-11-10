@@ -1,4 +1,4 @@
-// Connectors in the core (design §8): the loaded connectors, their connections in the world, the
+// Connectors in the core: the loaded connectors, their connections in the world, the
 // Host each connection gets, its syncs, and its tools served to the desk a few at a time through
 // tool search, one MCP server per connector. Every tool's effect goes to the gates before it
 // runs. The core names no connector: each describes itself in its manifest, and the service
@@ -254,7 +254,7 @@ export class ConnectorService {
     for (const c of this.set) if (isRemote(c)) c.remote.process.close()
   }
 
-  // The person's own act in Alpha's form: the sign-in gate is answered by doing it (design §7).
+  // The person's own act in Alpha's form: the sign-in gate is answered by doing it.
   async connect(
     name: string,
     account: string,
@@ -569,7 +569,7 @@ export class ConnectorService {
   }
 }
 
-// The same bytes are the same file (design §4).
+// The same bytes are the same file.
 function hashOf(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex')
 }

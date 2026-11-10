@@ -2,8 +2,8 @@
 
 Every rule the window keeps, one line each. Read this before any change to `window/`. A rule
 lands here, with its date, in the same change that brings it in, whether Kenil's or a UI
-contribution's (`docs/ui-contributions.md`). Where this list and `docs/design.md` §14 disagree,
-the newer rule holds and Kenil brings the design up to date.
+contribution's (`docs/ui-contributions.md`). Where this list and `docs/design.md` disagree, the
+newer rule holds and Kenil brings the design up to date.
 
 **Held by** names the test in `window/src/look.test.ts` that fails when the rule breaks: **test**
 holds it today, **skip** is written and waits on its fix, **—** cannot be checked by code and is
@@ -95,7 +95,7 @@ held by review. Dates are 2026.
 | A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
 | A5 | The assistant is the conversation on the right of every screen but the conversation's own, Home included; open unless the person folds it (⌘J, ⌘⇧\\ or its fold) to an 80px strip with the face, then Open, named under its icon; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov | — |
 | A6 | A reply shows whole and stays as it streamed, as in Claude Code: what the model wrote and the steps between, in order, nothing folded or replaced at the end | 9 Nov | test |
-| A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a run's report are on Activity. Nothing runs beside it | 7 Nov | test (stream) |
+| A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a script's report are on Activity; an agent's scheduled run reports on its task's page and Home. Nothing runs beside it | 7 Nov, 10 Nov | test (stream) |
 | A8 | What one agent asks another stays out of the asked agent's chat, which shows only a quiet Working for … while it runs. The asker's chat shows one line for each ask, with Stop while it waits and the answer and evidence folded on it, and then one reply. A message naming one agent goes straight to it and its answer is the reply; several go through the Chief of staff | 9 Nov | test |
 
 ## Intelligence and Settings
@@ -106,7 +106,7 @@ held by review. Dates are 2026.
 | I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity, People where people sign in, one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this. Settings › Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by schedule and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov | test |
-| I5 | Settings › Activity lists what waits for the person above every run, and is the only place a run's report is read | 9 Nov | — |
+| I5 | Settings › Activity lists what waits for the person above every run, and is where a script's report is read; an agent's scheduled run is read on its task's page | 9 Nov, 10 Nov | — |
 | I6 | Settings › Data: the last ten backups, Go back on any, Back up now; taking data out, bringing it in and deleting it are the `alpha` command's | 9 Nov | — |
 | I7 | Where Alpha asks people to sign in, Settings has People for the owner (who may sign in, a one-time link to pass on, Delete) and the foot says who is signed in with Sign out; a member sees no Model, Data or People, and no setup on Home | 9 Nov | — |
 
@@ -145,8 +145,7 @@ held by review. Dates are 2026.
 ## Proposed, waiting on Kenil or the core
 
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
-- A module's files listed under it, renaming a module and choosing its icon (needs the core).
-- What each run costs, shown under Settings › Model (needs the core).
+- A module's files listed under it, and choosing its icon (needs the core).
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
 - Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.

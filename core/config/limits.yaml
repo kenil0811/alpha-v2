@@ -7,7 +7,7 @@ query_page_rows: 500
 # Hits a search returns: the best twenty are what a reader looks at.
 search_hits: 20
 
-# Lines in the matches hint on each message (design §6: three).
+# Lines in the matches hint on each message (three).
 hint_lines: 3
 
 # Lines of what changed elsewhere since the last turn here, newest first.
@@ -59,7 +59,7 @@ run_retries: 3
 yes_hours: 6
 
 # The browser reads a site at a person's pace: a random wait in this range between two pages of
-# one site (design §8, the human-pace engine).
+# one site (the human-pace engine).
 browser_pace_min_ms: 4000
 browser_pace_max_ms: 9000
 

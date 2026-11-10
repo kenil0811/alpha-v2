@@ -1,4 +1,4 @@
-// Schedules (design §11): a schedule is a file `schedules/<name>.md` in its module, with front matter
+// Schedules: a schedule is a file `schedules/<name>.md` in its module, with front matter
 // (its trigger, what it runs, what it may touch) and its brief. The world keeps each schedule's state
 // (on or paused) and its trigger as read; the file stays the truth.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'

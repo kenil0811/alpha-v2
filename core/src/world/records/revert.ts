@@ -1,4 +1,4 @@
-// Undo (design §4, core step 1, Kenil 26 Oct): what a run, a turn or one line did to rows, put
+// Undo (core step 1, Kenil 26 Oct): what a run, a turn or one line did to rows, put
 // back in one transaction, newest line first. Rows it added go to the trash, values it changed
 // return from the version its line replaced (only where they are still what it wrote), rows it
 // removed come back from the trash. One "reverted" line says what came back and what was left

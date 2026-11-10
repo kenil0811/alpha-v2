@@ -1,4 +1,4 @@
-// The api the window talks to (design §2, §14): HTTP and a websocket. Every request, HTTP or
+// The api the window talks to: HTTP and a websocket. Every request, HTTP or
 // websocket, checks its Host and its Origin, then who is asking: the per-install token on a Mac
 // install, or a person's session where this Alpha asks them to sign in (the clean base, step 4b).
 import { AsyncLocalStorage } from 'node:async_hooks'

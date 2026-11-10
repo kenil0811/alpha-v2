@@ -1,4 +1,4 @@
-// The context layers (design §6). The system prompt is in config; this builds the start layer
+// The context layers. The system prompt is in config; this builds the start layer
 // (at session start and after compaction) and the per-turn layer (on each message). Everything
 // else the model fetches.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'

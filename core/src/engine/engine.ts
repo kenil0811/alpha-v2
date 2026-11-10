@@ -411,7 +411,7 @@ export class Engine {
     return card
   }
 
-  // What the person drops is filed at once (design §12).
+  // What the person drops is filed at once.
   drop(user: User, bytes: Uint8Array, name: string, mime: string) {
     const out = takeIn(this.world, bytes, name, mime, {
       actor: { kind: 'person', id: user.id },

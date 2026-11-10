@@ -1,4 +1,4 @@
-// The core: one process, listening on loopback (design §2, §3).
+// The core: one process, listening on loopback.
 import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'

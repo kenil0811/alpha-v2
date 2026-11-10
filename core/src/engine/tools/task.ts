@@ -1,4 +1,4 @@
-// The task tool: find, add, change, remove (design §12).
+// The task tool: find, add, change, remove.
 
 import { z } from 'zod'
 import { config } from '../../config.ts'

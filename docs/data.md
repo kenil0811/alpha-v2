@@ -1,7 +1,7 @@
 # Your data, in the open
 
 Alpha keeps a person's world in formats other tools open: SQLite and plain files. This is what
-Settings › Data's "Take my data" gives you, and what "Bring data in" reads on a fresh install.
+`alpha export` gives you, and what `alpha import` reads on a fresh install.
 
 The archive `alpha-data-<date>.tar.gz` unpacks to one folder, `alpha-data/`:
 
@@ -20,6 +20,6 @@ change, one on asking, and one before going back. "Keep a copy in a folder" puts
 backup in a folder of yours each day (iCloud Drive, Dropbox, a disk); Time Machine on Alpha's
 data folder is fine too, since the live database is never copied, only its backups.
 
-"Remove my data" is yours alone: it takes the worlds, files, kits, added connectors, browser
+`alpha uninstall --remove-data` is yours alone: it takes the worlds, files, kits, added connectors, browser
 sign-ins, the install file and the token to the Trash, removes Alpha's secrets from the Keychain,
 and starts Alpha again as on its first open. The readers' downloads stay, since they are Alpha's.

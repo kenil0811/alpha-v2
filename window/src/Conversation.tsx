@@ -1,4 +1,4 @@
-// The conversation (design §14; its own place since Kenil's 20 Oct call that Home holds only the
+// The conversation (its own place since Kenil's 20 Oct call that Home holds only the
 // important things): the person's sentences and one agent's replies in order, one live message per
 // turn becoming the outcome; cards inline; the composer at the foot. One conversation per person
 // and agent (clean base step 7), the Chief of staff first. What happened otherwise is on Activity.

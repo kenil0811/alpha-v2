@@ -1,4 +1,4 @@
-// Keeping a file in a module (design §5, `keep`): a skill, a schedule, a page or the module's notes.
+// Keeping a file in a module (`keep`): a skill, a schedule, a page or the module's notes.
 // Each keep is a commit in the module's folder, so its versions can be read back; a schedule kept
 // from the desk starts on, since the person asked for it.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'

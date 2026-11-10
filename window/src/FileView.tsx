@@ -1,4 +1,4 @@
-// A document at the place a value was read from (design §4): a sheet with that cell marked, a
+// A document at the place a value was read from: a sheet with that cell marked, a
 // PDF's page with that piece's box marked, or a text with that line marked. The file itself is a
 // download away.
 import type { FileView as FileData } from '@alpha/core/api'

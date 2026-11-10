@@ -1,4 +1,4 @@
-// Settings (design §14): connections, folders, and modules with their schedules. Connecting is the
+// Settings: connections, folders, and modules with their schedules. Connecting is the
 // person's own act here: what they type goes to the Keychain, never to the model.
 import type {
   CardView,
@@ -409,7 +409,7 @@ function DataSection() {
   )
 }
 
-// The route (design §5): the person's own Claude subscription, signed in with Claude's own sign-in
+// The route: the person's own Claude subscription, signed in with Claude's own sign-in
 // on this Mac, or the firm's API key, kept in the Keychain. The choice is this install's. Each way
 // says its state and acts on its own row.
 function ModelSection() {

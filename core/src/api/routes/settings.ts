@@ -22,7 +22,7 @@ import type { DataPageView, InstructionView, ModelView, SetupView } from '../typ
 export function registerSettings(ctx: Ctx): void {
   const { app, world, engine, user, options, live } = ctx
 
-  // What Alpha remembers, each line removable by the person (the instructions files, design §6).
+  // What Alpha remembers, each line removable by the person (the instructions files, design).
   const instructionLines = (who: 'me' | 'everyone') => {
     const file = instructionsFile(world, who === 'me' ? user.id : null)
     return existsSync(file)

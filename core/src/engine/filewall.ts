@@ -1,4 +1,4 @@
-// The walls on the route's file tools (design §7): what a turn may read and write.
+// The walls on the route's file tools: what a turn may read and write.
 import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Decision } from './provider.ts'

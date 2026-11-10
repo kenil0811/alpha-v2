@@ -1,4 +1,4 @@
-// The journeys runner's command (design §16), each journey on a fresh tenant with the real model:
+// The journeys runner's command, each journey on a fresh tenant with the real model:
 //   node src/journeys/main.ts <name> [--times [N]] [--appended] [--keep] [--from <folder of journeys>]
 //   node src/journeys/main.ts --all [--times [N]] [--from <folder of journeys>]   (pnpm journeys)
 // --times runs each N times, each on a fresh world (N from limits.yaml journey_times when not

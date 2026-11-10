@@ -1,5 +1,5 @@
 // Records: rows of the person's tables, a version per change and provenance on every value
-// (design §4). Since 22 Oct (Kenil: real tables) a table's rows live in a SQLite table of their
+//. Since 22 Oct (Kenil: real tables) a table's rows live in a SQLite table of their
 // own (ddl.ts), one typed column per field, a junction table per list relation; their
 // provenance sits in `provenance`, their earlier versions in `versions`, and `records` is the
 // registry that says which table a row is in. The store: rows added, changed, removed and landed;
@@ -379,7 +379,7 @@ export class Records {
     }))
   }
 
-  // What a script works a value out as, kept beside the person's own (design §12: an overridden
+  // What a script works a value out as, kept beside the person's own (an overridden
   // value keeps the computed one, with Reset). Only beside a value the person stated; it changes
   // neither the value nor its version.
   keepBeside(

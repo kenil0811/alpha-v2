@@ -1,7 +1,7 @@
 name: a-reader-for-a-list
 title: 'A list on a site becomes a reader that runs every day: one card for the site, then every page read'
 why: >
-  Listing readers, generically (design §9, §11): Alpha looks at a list the way a person sees
+  Listing readers, generically: Alpha looks at a list the way a person sees
   it, keeps a reader and its schedule in a module, and tries it. The site waits on one card; after
   the yes the reader reads both pages into a table, each row keeping its page as its source. The
   site is a made-up one served on this Mac, never a real one.

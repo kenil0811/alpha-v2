@@ -1,5 +1,5 @@
 // The model reads the world in SQL through a read-only view per table, on a read-only connection
-// whose authorizer lets it read those views and nothing else (design §4, §7: a wall). Since the
+// whose authorizer lets it read those views and nothing else (a wall). Since the
 // tables are real (22 Oct) a table's view is thin: its id, when it was added, and its fields'
 // columns, without the row's own bookkeeping; a list relation shows as a junction view.
 import { constants } from 'node:sqlite'
@@ -278,7 +278,7 @@ function perColumns(tables: Table[]): { name: string; sql: string }[] {
   })
 }
 
-// People and companies as the model reads them (design §4): each as one, through merges.
+// People and companies as the model reads them: each as one, through merges.
 const PEOPLE_VIEWS = [
   {
     view: 'tasks',

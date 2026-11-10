@@ -1,4 +1,4 @@
-// Where a connector's items land (design §4): its module and tables, made when it is first
+// Where a connector's items land: its module and tables, made when it is first
 // connected, any field a newer version adds, and how their rows name people. Each is found by the
 // lasting key it was made with (Batch B, call 6), so one the person renamed keeps taking the rows;
 // a module or table found by its name is keyed from then on.

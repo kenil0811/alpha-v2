@@ -1,4 +1,4 @@
-// Every connector action declares its effect; the core's gates read it (design §7).
+// Every connector action declares its effect; the core's gates read it.
 
 export const EFFECTS = ['read', 'write', 'remove', 'outward', 'sign_in'] as const
 

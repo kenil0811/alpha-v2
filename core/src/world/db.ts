@@ -1,4 +1,4 @@
-// The one module that touches Node's SQLite (design §3: it is still a release candidate, so the
+// The one module that touches Node's SQLite (it is still a release candidate, so the
 // world wraps it here and better-sqlite3 stays the fallback).
 import { randomBytes } from 'node:crypto'
 import { DatabaseSync, type StatementSync } from 'node:sqlite'

@@ -1,4 +1,4 @@
-// Runs one kit or skill script inside its sandbox (design §9). The script imports nothing of
+// Runs one kit or skill script inside its sandbox. The script imports nothing of
 // Alpha's: it is handed `alpha`, whose every call goes to the core over this process's pipes, so
 // the network, the world and the gates stay with the core. The script's own output goes to
 // stderr; stdout carries only the calls and the result.

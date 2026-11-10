@@ -1,4 +1,4 @@
-// A page's runtime inside its frame (design §13): `alpha`, the page's one way out of the frame.
+// A page's runtime inside its frame: `alpha`, the page's one way out of the frame.
 // A page asks for its module's rows and their history, offers choosers (a month, a client), asks
 // the window to open rows, and draws Alpha's blocks with `alpha.page`. In the window, questions go
 // to the window by message; printed, to the core that prints it. Nothing here can write.

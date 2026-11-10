@@ -1,9 +1,8 @@
 # Working in alpha-v2
 
 Alpha v2 gives small businesses AI over their manual flows and legacy systems. It is a full
-redesign of Alpha, started 19 October 2026. **`docs/design.md` is the reference**, agreed with
-Kenil on 19 October 2026; `BRIEF.md` is the brief it was written from, kept as history. Read
-the design first, then the newest entries in `docs/log/`.
+redesign of Alpha, started 19 October 2026. **`docs/design.md` is the reference**. Read the design
+first, then the newest entries in `docs/log/`.
 
 **Working for a UI contributor rather than Kenil?** Follow `docs/ui-contributions.md`: it decides
 whether a change goes to `main` or to the `ui-lab` branch, and for that work it replaces the rules
@@ -20,7 +19,7 @@ below on proposing changes to Kenil and on the log.
 - `mac/`: the Tauri Mac shell; `release/` and `scripts/`: the installer, the release and the walls
 - `journeys/`: journeys as YAML; their reports go in `docs/journeys/`
 
-Imports go one way (design §3). Internal packages are not built: Node runs their TypeScript
+Imports go one way. Internal packages are not built: Node runs their TypeScript
 directly, so use erasable syntax only (no enums, no namespaces, no parameter properties).
 
 Node 26 (`.nvmrc`) and pnpm 11. Commands: `pnpm install`, `pnpm check` (typecheck, lint,

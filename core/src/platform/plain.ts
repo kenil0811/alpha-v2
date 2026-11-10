@@ -1,6 +1,6 @@
 // The plain platform: a computer the core knows nothing special about. It runs the core for the
 // tests and the journeys runner, and says in words where the Mac does something it cannot. It
-// is not a server port: that comes with the server shape (design §15).
+// is not a server port: that comes with the server shape.
 import { rmSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { NoSecrets, type SecretStore } from '@alpha/connector-sdk'

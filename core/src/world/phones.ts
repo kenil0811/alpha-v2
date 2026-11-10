@@ -1,4 +1,4 @@
-// Phone numbers in one form (design §4): every phone is kept as E.164 (+447700900123), so
+// Phone numbers in one form: every phone is kept as E.164 (+447700900123), so
 // 07700 900123 and +44 7700 900123 are one key and one person. A number written without its
 // country is read in the country most of the kept numbers that carry a code are in, and failing
 // that the Mac's own region: v1 found the Mac's region said Singapore while its clock said the

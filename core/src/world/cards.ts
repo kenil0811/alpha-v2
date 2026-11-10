@@ -1,4 +1,4 @@
-// Cards: every question, permission and review as a durable row with one state (design §4, §7).
+// Cards: every question, permission and review as a durable row with one state.
 // A permission card holds the exact call it is for; a yes lets that call through once.
 import { createHash } from 'node:crypto'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
@@ -193,7 +193,7 @@ export class Cards {
     ).map(toCard)
   }
 
-  // A person's answer. Only a person answers a card: a schedule never can (design §7, a wall).
+  // A person's answer. Only a person answers a card: a schedule never can (a wall).
   // `said` keeps the answer in fuller words than its option (Added 1 of 2).
   answer(id: string, answer: string, by: Actor, said?: string): Card {
     if (by.kind !== 'person') throw new Refused('Only the person can answer a card.')

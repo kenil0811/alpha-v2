@@ -1,4 +1,4 @@
-// The scheduler (design §11): one tick a minute. What fell due while the Mac slept is journaled,
+// The scheduler: one tick a minute. What fell due while the Mac slept is journaled,
 // and one catch-up runs on waking.
 import type { World } from '../world/world.ts'
 

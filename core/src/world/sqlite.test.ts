@@ -1,4 +1,4 @@
-// What the world needs from Node's own SQLite (design §3, §4), checked on every machine the
+// What the world needs from Node's own SQLite, checked on every machine the
 // tests run on: WAL, full-text search kept by triggers, an append-only journal, a backup that
 // keeps the search index, a read-only connection, and an authorizer that closes a table.
 import { mkdtempSync, rmSync } from 'node:fs'

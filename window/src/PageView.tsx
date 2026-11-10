@@ -1,4 +1,4 @@
-// A module's page (design §13): its file in a sandboxed frame that can reach nothing but this
+// A module's page: its file in a sandboxed frame that can reach nothing but this
 // window. The window answers the page's questions from the core (its module's rows, read-only),
 // sends it the window's look, sizes the frame to it, opens what the page asks to open, and prints
 // it to a PDF with the page's choices.

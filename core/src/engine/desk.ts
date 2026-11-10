@@ -1,4 +1,4 @@
-// The desk: each user's one long-lived session, the only session that speaks to them (design §5).
+// The desk: each user's one long-lived session, the only session that speaks to them.
 // It speaks to the model through a provider (decision 11): Claude Code through the Agent SDK on
 // the person's subscription or a key; the tools are the registry's, and every call goes through the gate adapter before it runs. Longer work runs as
 // the route's background subagents where it has them; their outcomes come back here and the desk

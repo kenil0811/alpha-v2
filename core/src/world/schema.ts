@@ -1,4 +1,4 @@
-// The world's schema as numbered migrations (design §3, §4). `PRAGMA user_version` says how many
+// The world's schema as numbered migrations. `PRAGMA user_version` says how many
 // have run; a world that already holds data is backed up before the next one runs.
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'

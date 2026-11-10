@@ -1,4 +1,4 @@
-// A schedule's draft on its card (design §7, §12): the whole email, which the person can change
+// A schedule's draft on its card: the whole email, which the person can change
 // before Send it; Not now asks why, from a few reasons the schedule sees on its next run. After three
 // unchanged sends of its kind the card offers Always, confirmed in a second step here.
 import type { CardView, DraftView } from '@alpha/core/api'

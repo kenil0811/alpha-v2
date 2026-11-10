@@ -1,4 +1,4 @@
-// A table (design §14; step 10 brings v1's views): its saved views as tabs, a toolbar saying what
+// A table (step 10 brings v1's views): its saved views as tabs, a toolbar saying what
 // the open view does (find, filters, sorts, group, columns), and the rows as a table or a board.
 // Every value opens to where it came from in the source panel on the right, which stays open
 // while the person clicks along a row. What the person changes and has not saved stays while they

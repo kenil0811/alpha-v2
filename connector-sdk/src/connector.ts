@@ -1,4 +1,4 @@
-// What a connector is (design §8): a manifest, the tables its items land in, tools whose effects
+// What a connector is: a manifest, the tables its items land in, tools whose effects
 // the core's gates read, a check that the account works, and a sync that lands what is new.
 // A connector imports only this SDK; the core gives it a Host.
 import type { z } from 'zod'

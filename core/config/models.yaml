@@ -1,4 +1,4 @@
-# The model for every desk turn and run, and the small one for eyes or a yes-or-no (design §5).
+# The model for every desk turn and run, and the small one for eyes or a yes-or-no.
 desk: claude-opus-5-5
 eyes: claude-haiku-5-5
 # The models an agent can be set to; none chosen is the desk's.

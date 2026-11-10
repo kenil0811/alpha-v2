@@ -1,12 +1,12 @@
 # UI contributions
 
-This guide is for anyone contributing to Alpha's UI and UX, and for the AI schedules working for
+This guide is for anyone contributing to Alpha's UI and UX, and for the AI agents working for
 them. It says which changes you can make and merge yourself, which go to the lab branch for
 Kenil, and how to do each.
 
-**Schedules:** read all of it before you change anything. Where it differs from `CLAUDE.md`, this
+**Agents:** read all of it before you change anything. Where it differs from `CLAUDE.md`, this
 guide wins for UI contributions. The short version to follow is at the end, under "For your
-AI schedule".
+AI agent".
 
 ## The idea in one minute
 
@@ -72,7 +72,7 @@ for that judgement, not walls.
 
 ## Set up once
 
-The first time, on a Mac, ask your schedule to:
+The first time, on a Mac, ask your agent to:
 
 ```bash
 git clone https://github.com/kenil0811/alpha-v2.git
@@ -209,7 +209,7 @@ conflicts are resolved the same way.
 The checks cannot see the look; you have to. Before any pull request:
 
 - Open every screen the change shows on. A change to a shared piece in `window/src/ui/` shows on
-  many screens: ask your schedule where it is used, and look at each one.
+  many screens: ask your agent where it is used, and look at each one.
 - Light and dark (the workspace menu at the top of the rail, then Appearance).
 - A big window (1440 × 900) and a small one (1024 × 700), with the assistant open and folded, and
   the rail folded.
@@ -253,7 +253,7 @@ Whatever the rules say on a given day, keep to these, because they keep the wind
 - Run a lab build on your everyday Alpha's data.
 - Edit or copy from `alpha-brain` (the old Alpha).
 
-## For your AI schedule
+## For your AI agent
 
 Claude Code reads `CLAUDE.md`, which points here. Paste this at the start of a session anyway:
 

@@ -1,4 +1,4 @@
-// How this install reaches Claude (design §5): the person's own subscription, signed in through
+// How this install reaches Claude: the person's own subscription, signed in through
 // Claude Code's own sign-in on this Mac (Alpha never sees that token and leaves ~/.claude where it
 // is); or the firm's API key handed to Claude Code, with its files in Alpha's own folder. Chosen
 // per install in Settings and kept in the world. Claude Code never updates itself: the app ships the one it was

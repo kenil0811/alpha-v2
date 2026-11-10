@@ -1,7 +1,7 @@
 name: remove-the-eggs
 title: 'a removal the person asked for in removal words goes without a card; any other removal asks'
 why: >
-  The deletes-own gate (design §7) opens no card when the person asked for the removal in their
+  The deletes-own gate opens no card when the person asked for the removal in their
   own words. Code finds the model's quote in what they typed this turn, and the quote must say
   removal (core/config/words.yaml), so three letters of a message never count as an ask (item 11
   of the problems list, 25 Oct).

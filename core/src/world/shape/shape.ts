@@ -1,4 +1,4 @@
-// Modules, tables and fields (design §4, §10). A module is also a directory: module.yaml mirrors
+// Modules, tables and fields. A module is also a directory: module.yaml mirrors
 // its tables from the world on every change, and NOTES.md is the module's notes. The shape:
 // modules and where they sit, tables and their fields made; changing fields is in fields.ts,
 // removing in removal.ts, the folder's manifest and the check in manifest.ts, as functions of it.

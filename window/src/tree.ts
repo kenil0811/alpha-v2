@@ -1,4 +1,4 @@
-// Modules inside modules (design §10): the tree the rail, Home, the bar and the lens read from the
+// Modules inside modules: the tree the rail, Home, the bar and the lens read from the
 // flat list the core gives, each module naming the one it sits inside.
 import type { ModuleSummary } from '@alpha/core/api'
 

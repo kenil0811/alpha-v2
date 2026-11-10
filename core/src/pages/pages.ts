@@ -1,4 +1,4 @@
-// Pages (design §13): files in a module's pages/ folder, drawn in a sandboxed frame with Alpha's
+// Pages: files in a module's pages/ folder, drawn in a sandboxed frame with Alpha's
 // blocks (frame/kit.js) and look (frame/kit.css). A page reads its own module's tables, never
 // writes, and reaches nothing outside its frame but the window. The core prints the same page,
 // with the same data, to a PDF, or to a picture for a look.

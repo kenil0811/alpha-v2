@@ -1,4 +1,4 @@
-// Reading a kit's folder (design §10): module.yaml and setup.yaml by the kit API's own schema
+// Reading a kit's folder: module.yaml and setup.yaml by the kit API's own schema
 // (kit-sdk), the files it carries, the hashes the ownership rule judges by, and the kits
 // installed in a world with whether each is Alpha's own.
 import { createHash } from 'node:crypto'

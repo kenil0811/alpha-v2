@@ -1,4 +1,4 @@
-// A schedule's drafts (design §7, §12): a kit's script drafts an email, which waits on a card with
+// A schedule's drafts: a kit's script drafts an email, which waits on a card with
 // the whole of it. The person can change it, send it from their own mail, or say Not now with a
 // reason, and the schedule is told what became of each draft on its next run. After three unchanged
 // sends of one schedule's one kind of message the card offers Always: a standing permission that
@@ -44,7 +44,7 @@ export interface Outcome {
   at: string
 }
 
-// The words a Not now picks from (design §12: a few reasons, put in front of the drafter).
+// The words a Not now picks from (a few reasons, put in front of the drafter).
 export const REASONS = [
   'Wrong recipient',
   'Not needed',

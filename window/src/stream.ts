@@ -1,4 +1,4 @@
-// The stream as messages: the journal's lines grouped by turn (design §14). The person's sentence,
+// The stream as messages: the journal's lines grouped by turn. The person's sentence,
 // then Alpha's one message for the turn: its reply, its steps for "Show the work", its cards and,
 // once answered, each card's one line. A turn's module is the first one its steps touched, so a
 // topic chip can name it and a lens can keep to it.

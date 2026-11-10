@@ -1,4 +1,4 @@
-// A file that came by mail, waiting to be filed (design §12): the email it came in, a look at
+// A file that came by mail, waiting to be filed: the email it came in, a look at
 // its first page, what Alpha read it as, how sure and why there. The person files it where Alpha
 // proposed, or picks another row or kind first; a second file of that kind on the row can replace
 // the first. Decline takes a reason, and the file goes.

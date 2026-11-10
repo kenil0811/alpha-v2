@@ -1,4 +1,4 @@
-// Reading a document into named values: the model at a marked judgement point (design §11). A
+// Reading a document into named values: the model at a marked judgement point. A
 // kit's script names what it wants from a document (single values, and lists of rows such as a
 // staff census); the model reads the document's pieces and answers each value with the pieces it
 // read it from. A wall in code keeps a value only when it is found in the pieces it cites, so

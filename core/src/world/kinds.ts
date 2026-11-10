@@ -1,4 +1,4 @@
-// Field kinds, values and provenance (design §4). Every value written carries its provenance:
+// Field kinds, values and provenance. Every value written carries its provenance:
 // kind, source and time. A value without them is refused here, where the write happens.
 
 // The kinds are part of the kit API (kit-sdk): a kit cannot add one, and a change is an API change.
@@ -96,7 +96,7 @@ export function provenanceFor(input: ProvenanceInput, said: Said | null, at: str
   return { kind: input.kind, source, ...(input.basis ? { basis: input.basis } : {}), at }
 }
 
-// Whether a provenance makes a value the person's own entry (design §7, gate 2).
+// Whether a provenance makes a value the person's own entry (gate 2).
 export function isPersonsOwn(p: Provenance): boolean {
   return (
     p.source.message !== undefined || p.source.card !== undefined || p.source.user !== undefined

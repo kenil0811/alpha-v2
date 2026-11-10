@@ -1,4 +1,4 @@
-// The shell (Vikas, 25 Oct; reverses design §14's rail
+// The shell (Vikas, 25 Oct; reverses the first design's rail
 // until Kenil says yes): the rail on the left, a 48px bar over every screen and the assistant on
 // the right, their headers on one line. The rail has the person's name at its top, Home with a badge
 // for what waits on the person, Conversation, Tasks, the modules by name with the modules inside

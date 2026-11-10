@@ -4,7 +4,7 @@ One package per connector, each built on `@alpha/connector-sdk` and importing no
 Alpha's: `connectors/<name>/` with a `package.json` whose entry exports `connector` (or
 `connectors`, several from one helper), its manifest, tools (each declaring its effect, a preview
 for the card and its words for Activity), sync, `GUIDE.md`, fixtures and tests. The shape is in
-`docs/design.md` §8.
+`docs/design.md`.
 
 The core names no connector. At start it loads every package in this folder (the standard set
 the release ships), then every folder under Alpha's own `connectors/` beside the kits (the added

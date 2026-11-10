@@ -1,4 +1,4 @@
-// Runs (design §11): a run's outcome, who it is for, its row, a proposed task, a filing.
+// Runs: a run's outcome, who it is for, its row, a proposed task, a filing.
 import { parse as fromJson } from '../../world/db.ts'
 
 // The card that asks whether a schedule that did not finish three times runs again or is left.

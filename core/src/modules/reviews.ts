@@ -1,4 +1,4 @@
-// Rows a schedule puts to the person (design §12, D7: batch cards): one card in Needs you with the
+// Rows a schedule puts to the person (D7: batch cards): one card in Needs you with the
 // rows it is about, each with the few choices it offers (In or Left out; Draft a note or Not now)
 // and one button for all. A choice is the person's word on that row's field, journaled as when
 // they set it in the window, so a later run never writes over it; the card is answered when every

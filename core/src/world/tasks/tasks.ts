@@ -1,4 +1,4 @@
-// The task store (design §4): places resolved from words, tasks read by what they are (open or
+// The task store: places resolved from words, tasks read by what they are (open or
 // all, on a place, an owner, a day), what may be the same task, and the counts. Changes are in
 // changes.ts as functions of the store.
 import { all, type Db, one, run } from '../db.ts'
@@ -205,7 +205,7 @@ export class Tasks {
     })
   }
 
-  // Whether these tasks are the person's own entries (removing them asks, design §7).
+  // Whether these tasks are the person's own entries (removing them asks, design).
   personsOwn(ids: string[]): boolean {
     return ids.some((id) => (this.get(id)?.madeBy ?? '').startsWith('person'))
   }

@@ -1,4 +1,4 @@
-// The core's log (design §15): what it prints, also written to a file when ALPHA_LOG_DIR says
+// The core's log: what it prints, also written to a file when ALPHA_LOG_DIR says
 // where (the installed app's login item says ~/Library/Logs/Alpha), rotated at 10 MB with 5 kept.
 import { appendFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'

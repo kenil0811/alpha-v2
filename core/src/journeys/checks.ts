@@ -1,4 +1,4 @@
-// A journey's checks (design §16): each reads the world after a step, never the model's prose,
+// A journey's checks: each reads the world after a step, never the model's prose,
 // and says what it saw. The runner (run.ts) judges every step's checks here.
 import { join } from 'node:path'
 import { z } from 'zod'

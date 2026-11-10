@@ -1,4 +1,4 @@
-// The window (design §14): the rail, a bar over each screen, the screen (Home, Settings or a
+// The window: the rail, a bar over each screen, the screen (Home, Settings or a
 // module: its pages, tables and Setup) and the assistant on the right of every
 // screen but the whole conversation's own, knowing which module's screen it is on. ⌘J
 // folds it and opens it again (Vikas, 25 Oct).

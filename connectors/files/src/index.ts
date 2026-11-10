@@ -1,4 +1,4 @@
-// The files connector (design §8): files read with their places, and watched folders. A folder
+// The files connector: files read with their places, and watched folders. A folder
 // the person grants is looked at every minute; what is new or changed in it is kept and read,
 // as if they had dropped it in.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'

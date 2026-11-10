@@ -1,4 +1,4 @@
-// The trash (design §4, core step 1, Kenil 26 Oct): a removed row leaves its table at once, so no
+// The trash (core step 1, Kenil 26 Oct): a removed row leaves its table at once, so no
 // reader anywhere has to learn to skip it, and its whole state waits in `removed_rows` for
 // keep_removed_days: its values by field id, their provenance, its versions, its files, its kit
 // row, and the rows that pointed at it. Bring back puts it back with the same id; the daily work

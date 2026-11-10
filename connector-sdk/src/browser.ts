@@ -1,4 +1,4 @@
-// The human-pace browser engine (design §8): pages read the way a person would see them, at a
+// The human-pace browser engine: pages read the way a person would see them, at a
 // person's pace, one profile per site. It stops at any login wall, CAPTCHA or rate-limit page and
 // says so; it never tries to get around one, and it reads only what a site's robots rules allow,
 // except a site read as the person (Kenil, 21 Oct): one they signed in to themselves, in its own

@@ -1,4 +1,4 @@
-// The journeys runner (design §16): a journey is a YAML file of steps and checks on the world,
+// The journeys runner: a journey is a YAML file of steps and checks on the world,
 // run on a fresh tenant of its own with the real model. Checks read the world, not the model's
 // prose. The report goes in docs/journeys/.
 // One run of one journey is here (runOne); main.ts runs them: one, N times, or a whole folder.

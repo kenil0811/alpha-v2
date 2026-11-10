@@ -1,4 +1,4 @@
-// A module's folder is a git repository (design §10): every install, update and kept change is a
+// A module's folder is a git repository: every install, update and kept change is a
 // commit, so a skill's or a schedule's versions can be read back. isomorphic-git, so a Mac needs
 // no git of its own.
 import fs from 'node:fs'

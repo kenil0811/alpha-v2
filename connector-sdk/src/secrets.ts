@@ -1,4 +1,4 @@
-// The secret store (design §8): secrets live in the Mac's Keychain, through Alpha's helper, and
+// The secret store: secrets live in the Mac's Keychain, through Alpha's helper, and
 // never in the world. A connection holds only the reference.
 import { Problem } from './connector.ts'
 import { runHelper } from './helper.ts'

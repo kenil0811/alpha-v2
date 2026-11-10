@@ -1,4 +1,4 @@
-// Alpha's page kit (design §13): the blocks a page is drawn with, in Alpha's look. Line weights,
+// Alpha's page kit: the blocks a page is drawn with, in Alpha's look. Line weights,
 // gaps, type and colours are decided here, from the window's own variables, never by a page.
 //
 //   alpha.page(async () => [ ...blocks ])

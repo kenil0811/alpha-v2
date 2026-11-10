@@ -1,4 +1,4 @@
-// What every connection's calls go through (design §8): pacing per account, retries, a journal
+// What every connection's calls go through: pacing per account, retries, a journal
 // line per call, fixture record and replay, and the health judgement after a sync. A call that
 // changes something (a send, a write) is never tried again when it failed in passing: whether it
 // was done is unknown, and doing it twice is worse than saying so (final plan, call A, 28 Oct). A

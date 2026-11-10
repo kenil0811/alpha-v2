@@ -1,4 +1,4 @@
-// People (design §4, §14, Ledger): everyone Alpha knows, however many rows name them, each with
+// People (Ledger): everyone Alpha knows, however many rows name them, each with
 // their company and plain numbers (how many messages and meetings lately, the last, who wrote
 // first), never a score; companies the same way. A page each: how to reach them, where they work
 // now and before, where Alpha knows them from, the ones merged into them (each can be unmerged),

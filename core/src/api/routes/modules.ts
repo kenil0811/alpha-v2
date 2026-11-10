@@ -136,7 +136,7 @@ export function registerModules(ctx: Ctx): void {
     }
   })
 
-  // A module's page (design §13): the document its frame shows, the answers to what it asks (its
+  // A module's page: the document its frame shows, the answers to what it asks (its
   // module's rows, read-only), and the page printed to a PDF with the choices the window had.
   const pageModule = (id: string) => {
     const m = world.shape.module(id)

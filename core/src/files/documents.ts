@@ -13,7 +13,7 @@ import type { World } from '../world/world.ts'
 // PDFs being read now, by file: a second drop of the same bytes waits for the first.
 const reading = new Map<string, Promise<void>>()
 
-// What the person drops is filed at once (design §12): the file, and its document when readable.
+// What the person drops is filed at once: the file, and its document when readable.
 // A PDF is read in the background by Docling (a minute or two the first time, while its
 // environment is made); the journal says when it starts and when it is read.
 export function takeIn(world: World, bytes: Uint8Array, name: string, mime: string, ctx: WriteCtx) {

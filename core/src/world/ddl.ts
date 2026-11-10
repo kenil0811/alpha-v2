@@ -1,4 +1,4 @@
-// Real tables (design §4; Kenil, 22 Oct: "real tables, switch now"). A kit table is a SQLite
+// Real tables (Kenil, 22 Oct: "real tables, switch now"). A kit table is a SQLite
 // table named by its slug, STRICT, with a typed column per field named by the field's slug; a
 // money field takes an amount and a currency column; a list relation (many) is a junction table
 // `<table>__<field>` of (record_id, other_id, position). Provenance and versions sit in two

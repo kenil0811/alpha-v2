@@ -1,4 +1,4 @@
-// The Mac's own Calendar and Contacts, read-only, through Alpha's helper (design §8). macOS asks
+// The Mac's own Calendar and Contacts, read-only, through Alpha's helper. macOS asks
 // the person the first time; nothing is ever written back.
 import { readFileSync } from 'node:fs'
 import {
