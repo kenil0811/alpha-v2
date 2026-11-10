@@ -10,8 +10,9 @@ export const useShapeFixed = () => useContext(ShapeFixed)
 export const managedWhy = (managed: string | null) =>
   managed ? `Managed by ${managed}: its shape stays as it is` : undefined
 
-// The line under a mirror's tabs: whose it is, and its gone rows one click away.
-export function MirrorLine({
+// A mirror's gone rows, one click away on the line over the table (rules D8); no sentence about
+// what a mirror is (Kenil, 10 Nov).
+export function MirrorGone({
   data,
   showingGone,
   onGone,
@@ -22,23 +23,17 @@ export function MirrorLine({
 }) {
   if (!data.mirror) return null
   const gone = data.rows.filter((r) => r.gone).length
+  if (!gone && !showingGone) return null
   return (
-    <div className="flex items-center gap-3 border-line border-b px-7 py-2 text-ink-3 text-sm">
-      <span className="flex-1">
-        {showingGone
-          ? `Showing what is gone from ${data.mirror}: kept here, with what you added to it.`
-          : `A mirror of ${data.mirror}: its rows come and go with it. Fields you add are yours.`}
-      </span>
-      {(gone > 0 || showingGone) && (
-        <button
-          type="button"
-          onClick={() => onGone(!showingGone)}
-          className="font-medium text-accent hover:underline"
-        >
-          {showingGone ? 'Back to the rest' : `${gone} gone from ${data.mirror}`}
-        </button>
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={() => onGone(!showingGone)}
+      className="text-accent text-sm hover:underline"
+    >
+      {showingGone
+        ? `Showing what is gone from ${data.mirror}: back to the rest`
+        : `${gone} gone from ${data.mirror}`}
+    </button>
   )
 }
 

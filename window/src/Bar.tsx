@@ -26,7 +26,7 @@ export function Bar({
       className="@container grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-hair border-b bg-canvas pr-3.5 pl-6"
     >
       <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
-        {back && (
+        {back ? (
           <a
             href={back.href}
             data-tip={`Back to ${back.label}`}
@@ -35,6 +35,16 @@ export function Bar({
             <ChevronLeft className="size-4 shrink-0" />
             <span className="truncate">{back.label}</span>
           </a>
+        ) : (
+          // always in its place, greyed where there is no page above (Kenil, 10 Nov)
+          <button
+            type="button"
+            disabled
+            aria-label="Back: nothing above this page"
+            className="-ml-2 flex shrink-0 items-center rounded-md p-1 text-ink-3 opacity-40"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
         )}
         {plain && (
           <h1 className="min-w-0 truncate font-medium font-sans text-chat text-ink">{name}</h1>

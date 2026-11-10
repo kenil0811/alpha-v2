@@ -35,7 +35,7 @@ import { cleared, hiding } from './table/hiding.ts'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
-import { MirrorLine, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
+import { MirrorGone, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
@@ -74,6 +74,7 @@ export function TableView({
   summary = null,
   field: openField = null,
   quiet = false,
+  loading = false,
   kept = null,
 }: {
   data: TableData
@@ -83,6 +84,7 @@ export function TableView({
   summary?: TableSummary | null // where it sits in its module, and whether it is kept as a tab
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // no room beside the page with the assistant open: the row panel gives way
+  loading?: boolean // its shape is here and its rows are on their way: no count yet
   // a list kept outside the module's tables (people, tasks, schedules…), served by the core as a
   // table (UI batch 2, 26 Oct): changed in a cell where the core says it may be, opened on
   // their own page, changed there; why is said when something would be typed or saved. New adds
@@ -418,7 +420,6 @@ export function TableView({
               allHref={`#/table/${data.id}`}
               onClear={() => setConfig(cleared(config))}
             />
-            <MirrorLine data={data} showingGone={showingGone} onGone={setShowingGone} />
             {/* one line at one height whatever shows in it (a paste waiting, ticked rows, filters),
                 so the rows never move when something is picked (Kenil, 10 Nov) */}
             <div className="flex min-h-11.5 flex-wrap items-center gap-2 px-7 py-2">
@@ -474,10 +475,15 @@ export function TableView({
                 />
               )}
               <span className="text-ink-3 text-sm">
-                {rows.length === data.rows.length
-                  ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-                  : `${rows.length} of ${data.rows.length}`}
+                {loading
+                  ? ''
+                  : rows.length === data.rows.length
+                    ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
+                    : `${rows.length} of ${data.rows.length}`}
               </span>
+              {!loading && (
+                <MirrorGone data={data} showingGone={showingGone} onGone={setShowingGone} />
+              )}
             </div>
             {config.kind === 'board' && boardBy ? (
               <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
@@ -548,6 +554,7 @@ export function TableView({
                   onTick={setTicked}
                   onEdit={edit}
                   onOpen={openRowPanel}
+                  loading={loading}
                   rowAction={kept?.rowAction}
                   onDuplicate={
                     kept

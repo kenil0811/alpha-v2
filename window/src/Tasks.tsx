@@ -10,6 +10,7 @@ import { api, Problem } from './api.ts'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
 import { TaskWorkLine } from './TaskThread.tsx'
+import { frameOf } from './table/frame.ts'
 import { dueWords, toLocalInput } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -23,7 +24,8 @@ import { PageTitle } from './ui/rename.tsx'
 import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { Tabs } from './ui/tabs.tsx'
-import { Waiting } from './ui/waiting.tsx'
+
+const TASKS_FRAME = frameOf('tasks', 'Tasks', { id: 'tasks', name: 'Tasks' })
 
 type List = 'today' | 'week' | 'overdue' | 'waiting' | 'open' | 'done'
 
@@ -94,20 +96,18 @@ function TaskLists({ list, version }: { list: List; version: number }) {
         }))}
       />
       <div className="min-h-0 flex-1">
-        {data ? (
-          <TableView
-            key={list}
-            data={data}
-            kept={{
-              open: (id) => {
-                window.location.hash = `#/tasks/${id}`
-              },
-              onNew: () => setAdding(true),
-            }}
-          />
-        ) : (
-          <Waiting className="p-7" />
-        )}
+        {/* its frame from the first moment, its rows filling in (Kenil, 10 Nov) */}
+        <TableView
+          key={list}
+          data={data ?? TASKS_FRAME}
+          loading={!data}
+          kept={{
+            open: (id) => {
+              window.location.hash = `#/tasks/${id}`
+            },
+            onNew: () => setAdding(true),
+          }}
+        />
       </div>
       <Dialog open={adding} title="New task" onClose={() => setAdding(false)}>
         <NewTask

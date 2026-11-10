@@ -40,9 +40,10 @@ import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
 import { TaskWork } from './TaskThread.tsx'
+import { frameOf } from './table/frame.ts'
 import { titleOf } from './table/values.ts'
 import { applyTheme } from './theme.ts'
-import { inside } from './tree.ts'
+import { inside, landingOf } from './tree.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
 
@@ -112,6 +113,15 @@ export function App() {
           table?.module.id ??
           null)
         : null
+  // the table on screen: its own once here, else its frame from what the rail knows, so a move from
+  // one table to another keeps the frame and only changes what is in it (Kenil, 10 Nov)
+  const tableHere: TableData | null = (() => {
+    if (place.at !== 'table') return table
+    if (table && table.id === place.id) return table
+    const m = modules.find((x) => x.id === moduleHereId)
+    const t = m?.tables.find((x) => x.id === place.id)
+    return m && t ? frameOf(t.id, t.name, { id: m.id, name: m.name }) : null
+  })()
   // the agents' own page closes the assistant, so it never opens again by itself on leaving
   useEffect(() => {
     if (!askable) setAsking(false)
@@ -196,15 +206,31 @@ export function App() {
   const placeRef = useRef(place)
   placeRef.current = place
 
-  const loadTable = useCallback(async (id: string) => {
+  // a table newly opened: its shape first, drawn at once, its rows alongside (Kenil, 10 Nov)
+  const [rowsComing, setRowsComing] = useState(false)
+  const rowsFor = useRef<string | null>(null) // the table whose rows are here
+  const loadTable = useCallback(async (id: string, opening = false) => {
+    const here = () => placeRef.current.at === 'table' && placeRef.current.id === id
+    if (opening)
+      api.get<TableData>(`/api/tables/${id}?rows=none`).then(
+        (shape) => {
+          if (!here() || rowsFor.current === id) return
+          setTable(shape)
+          setRowsComing(true)
+        },
+        () => undefined,
+      )
     try {
       const t = await api.get<TableData>(`/api/tables/${id}`)
-      if (placeRef.current.at === 'table' && placeRef.current.id === id) setTable(t)
+      if (!here()) return
+      rowsFor.current = id
+      setTable(t)
+      setRowsComing(false)
     } catch {
-      if (placeRef.current.at === 'table' && placeRef.current.id === id) {
-        setTable(null)
-        window.location.hash = '#/'
-      }
+      if (!here()) return
+      setTable(null)
+      setRowsComing(false)
+      window.location.hash = '#/'
     }
   }, [])
 
@@ -249,8 +275,15 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    if (place.at === 'table') void loadTable(place.id)
-    else setTable(null)
+    if (place.at !== 'table') {
+      rowsFor.current = null
+      setTable(null)
+      return
+    }
+    // another table: drawn from its shape while its rows come; the same one is only brought up to date
+    const opening = rowsFor.current !== place.id
+    if (opening) rowsFor.current = null
+    void loadTable(place.id, opening)
   }, [place])
 
   useEffect(
@@ -282,23 +315,27 @@ export function App() {
 
   // the page above this one, for the bar's ‹ (Kenil, 10 Nov); none on a page at the top
   const parentOf = (): { label: string; href: string } | null => {
+    const HOME = { label: 'Home', href: '#/' }
+    // above a module: the module it sits in, where that one opens, else Home
+    const aboveModule = (id: string | null): { label: string; href: string } => {
+      const up = id ? modules.find((m) => m.id === id)?.parent : null
+      const p = up ? modules.find((m) => m.id === up) : null
+      return p ? { label: p.name, href: landingOf(modules, p) } : { label: 'Home', href: '#/' }
+    }
     switch (place.at) {
       case 'tasks':
-        return place.id ? { label: 'Tasks', href: '#/tasks' } : null
+        return place.id ? { label: 'Tasks', href: '#/tasks' } : HOME
       case 'work':
         return { label: itemName || 'The task', href: `#/tasks/${place.id}` }
       case 'row':
         return rowPlace && { label: rowPlace.table.name, href: `#/table/${rowPlace.table.id}` }
+      // a module's own tables and pages are the module: they go to the module it sits in, else Home
+      // (Kenil, 10 Nov: the module's address opened the same table again)
       case 'table':
         if (place.row) return table && { label: table.name, href: `#/table/${place.id}` }
-        return table?.module
-          ? { label: table.module.name, href: `#/module/${table.module.id}` }
-          : null
-      case 'module': {
-        const up = modules.find((m) => m.id === place.id)?.parent
-        const p = up ? modules.find((m) => m.id === up) : null
-        return p ? { label: p.name, href: `#/module/${p.id}` } : null
-      }
+        return aboveModule(moduleHereId)
+      case 'module':
+        return aboveModule(place.id)
       case 'item':
         return place.kind === 'schedule'
           ? { label: 'Schedules', href: '#/intelligence/schedules' }
@@ -310,12 +347,15 @@ export function App() {
       case 'card':
         return { label: 'Home', href: '#/' }
       case 'people':
-        if (!place.id) return null
+        if (!place.id) return HOME
         return place.kind === 'company'
           ? { label: 'Organizations', href: '#/people?companies' }
           : { label: 'People', href: '#/people' }
-      default:
+      // every other page goes Home; Home alone has nothing above it (Kenil, 10 Nov)
+      case 'home':
         return null
+      default:
+        return HOME
     }
   }
 
@@ -469,11 +509,12 @@ export function App() {
                             : null
                     }
                     version={version}
-                    table={table}
+                    table={tableHere}
                     renderTable={(t, summary) => (
                       <TableView
                         key={t.id}
                         data={t}
+                        loading={rowsComing || (place.at === 'table' && table?.id !== place.id)}
                         summary={summary}
                         row={place.at === 'table' ? place.row : null}
                         only={place.at === 'table' ? place.only : null}

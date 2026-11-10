@@ -28,7 +28,7 @@ held by review. Dates are 2026.
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; at its left a ‹ to the page above, on a page that has one (a task to Tasks, a row to its table, a table to its module); the name is not edited there | 25 Oct, 1 Nov, 7 Nov, 10 Nov | test |
+| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; at its left a ‹ to the page above (a task to Tasks, a row to its table, a module's table or page to the module it sits in, every other page to Home), greyed in its place on Home alone; the name is not edited there | 25 Oct, 1 Nov, 7 Nov, 10 Nov | test |
 | H2 | A screen with parts switches them with one pill switch in the bar, every label in full, scrolling sideways; never cut short or folded to icons; a page opened beside keeps a row of tabs under its head | 26 Oct, 2 Nov | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 

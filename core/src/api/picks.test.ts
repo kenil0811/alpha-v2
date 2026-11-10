@@ -102,6 +102,13 @@ describe('a picked related row', () => {
     ).json() as TableView
     expect([view.names[dairy], view.names[mill]]).toEqual(['Dairy Farm', 'Mill & Co'])
     expect(view.fields.find((f) => f.name === 'Supplier')?.relatesTo).toBe(suppliers.id)
+    // its shape alone, for the window to draw while the rows come (Kenil, 10 Nov)
+    const shape = (
+      await a.inject({ url: `/api/tables/${orders.id}?rows=none`, headers: ok })
+    ).json() as TableView
+    expect(shape.fields.map((f) => f.name)).toEqual(view.fields.map((f) => f.name))
+    expect(shape.rows).toEqual([])
+    expect(view.rows.length).toBeGreaterThan(0)
     await a.close()
   })
 

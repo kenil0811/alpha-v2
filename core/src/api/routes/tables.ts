@@ -327,10 +327,29 @@ export function registerTables(ctx: Ctx): void {
       .map((h) => ({ value: h.value, source: h.provenance ? sourceView(h.provenance) : null }))
   })
 
+  // ?rows=none: its shape alone (fields, lists), so the window draws it while its rows come
+  // (Kenil, 10 Nov)
   app.get('/api/tables/:id', async (req, reply): Promise<TableView | undefined> => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { rows: none } = z.object({ rows: z.literal('none').optional() }).parse(req.query ?? {})
     const t = world.shape.table(id)
     if (!t) return reply.code(404).send({ problem: 'That table is not there.' })
+    if (none)
+      return {
+        id: t.id,
+        name: t.name,
+        about: t.about,
+        aboutBy: t.aboutBy,
+        module: { id: t.module.id, name: t.module.name },
+        mirror: t.mirror,
+        managed: managedBy(world, t.module.id),
+        documents: t.documents,
+        fields: t.fields.map(fieldViews(world.shape)),
+        views: world.views.list(t.id).map(savedView),
+        readBy: readByOf(ctx, t.id),
+        rows: [],
+        names: {},
+      }
     return {
       id: t.id,
       name: t.name,

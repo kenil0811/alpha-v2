@@ -111,6 +111,7 @@ export function Grid({
   readOnly = false,
   onDuplicate,
   rowAction,
+  loading = false,
   onRemove,
   layout,
 }: {
@@ -135,6 +136,7 @@ export function Grid({
   readOnly?: boolean // rows kept elsewhere (people, tasks): shown and opened, not typed into
   onDuplicate?: ((row: RowView) => Promise<boolean>) | undefined
   rowAction?: ((row: RowView) => ReactNode) | undefined // a kept list's own button on each row
+  loading?: boolean // rows on their way: the frame is drawn, the foot says no count yet
   onRemove?: ((rows: RowView[]) => Promise<boolean>) | undefined
   layout: LayoutNow // frozen and wrapped columns, kept with the list
 }) {
@@ -524,6 +526,7 @@ export function Grid({
                 left={stick(i)}
                 edge={i === layout.frozen - 1}
                 rows={counted ?? rows}
+                loading={loading}
                 config={config}
                 names={names}
                 onConfig={onConfig}
@@ -970,6 +973,7 @@ function Foot({
   left,
   edge,
   rows,
+  loading,
   config,
   names,
   onConfig,
@@ -979,6 +983,7 @@ function Foot({
   left: number | undefined
   edge: boolean
   rows: RowView[]
+  loading: boolean
   config: ViewConfig
   names: Record<string, string>
   onConfig: (c: ViewConfig) => void
@@ -1013,7 +1018,7 @@ function Foot({
           </>
         ) : first ? (
           <span className="text-ink-3">
-            {rows.length} row{rows.length === 1 ? '' : 's'}
+            {loading ? '' : `${rows.length} row${rows.length === 1 ? '' : 's'}`}
           </span>
         ) : (
           <span className="invisible text-ink-3 group-hover/foot:visible">Total</span>
