@@ -7,6 +7,7 @@ import { join, relative } from 'node:path'
 import { checkKit, type KitManifest, Manifest, Setup } from '@alpha/kit-sdk'
 import { parse } from 'yaml'
 import { z } from 'zod'
+import { config } from '../../config.ts'
 import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { World } from '../../world/world.ts'
@@ -49,13 +50,15 @@ export function readKit(dir: string): {
   const setup = existsSync(setupFile)
     ? Setup.parse(parse(readFileSync(setupFile, 'utf8')) ?? {})
     : {}
-  return { manifest: parsed.data, setup, files: walk(dir) }
+  // the agents it carries go to their own folders, not the module's
+  return { manifest: parsed.data, setup, files: walk(dir).filter((f) => !f.startsWith('agents/')) }
 }
 
 // What the checker finds wrong, as one refusal.
 export function checked(dir: string, world: World): void {
   const problems = checkKit(dir, {
     kits: installedKits(world).map((k) => ({ name: k.kit, version: k.version })),
+    models: config.models().agents,
   })
   if (problems.length) throw new Refused(`The kit is not right: ${problems.join(' ')}`)
 }

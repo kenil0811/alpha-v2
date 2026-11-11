@@ -159,20 +159,26 @@ export function AgentSchedules({
   agent,
   schedules,
   onChange,
+  from = null,
 }: {
   agent: string
   schedules: AgentScheduleView[]
   onChange: () => void
+  from?: string | null // a shipped agent's source: its schedules change only with it
 }) {
   const [adding, setAdding] = useState(false)
   return (
     <section className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <h2 className="font-medium font-serif text-ink text-xl">Schedules</h2>
-        <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
-          <Plus className="size-3.5" />
-          Add
-        </Button>
+        {from ? (
+          <span className="text-ink-3 text-sm">Change with {from}</span>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
+            <Plus className="size-3.5" />
+            Add
+          </Button>
+        )}
       </div>
       {adding && (
         <ScheduleForm

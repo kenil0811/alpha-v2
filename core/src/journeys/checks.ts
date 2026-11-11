@@ -7,7 +7,7 @@ import { printPage } from '../pages/pages.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
-import { agentCheck } from './agent-checks.ts'
+import { AgentChecks, agentCheck } from './agent-checks.ts'
 import { ScheduleChecks, scheduleCheck } from './schedule-checks.ts'
 import { SiteRequests, WebCalls } from './web-checks.ts'
 
@@ -24,10 +24,7 @@ export const Check = z.union([
   z.object({ errors: z.number() }),
   z.object({ documents: z.number() }),
   z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
-  // the firm's agents: how many, what one remembers, what its instructions say
-  z.object({ agents: z.number() }),
-  z.object({ memory: z.object({ agent: z.string(), matches: z.string() }) }),
-  z.object({ instructions: z.object({ agent: z.string(), matches: z.string() }) }),
+  ...AgentChecks, // the firm's agents (agent-checks.ts)
   // asks between agents, by how they answered
   z.object({ asks: z.object({ count: z.number(), status: z.string().optional() }) }),
   // where a table sits in its module: a main table, part of a row, or setup
@@ -399,8 +396,8 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       saw: `${docs.length}: ${docs.map((d) => `${d.title} (${d.chunks})`).join('; ')}`,
     }
   }
-  if ('agents' in check || 'memory' in check || 'instructions' in check || 'asks' in check)
-    return agentCheck(check, world, user.id) as NonNullable<ReturnType<typeof agentCheck>>
+  const agent = agentCheck(check, world, user.id)
+  if (agent) return agent
   if ('schedule' in check || 'last_run_words' in check || 'task' in check)
     return scheduleCheck(check, world)
   if ('rows_in' in check) {
@@ -591,7 +588,8 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       saw: told.map((l) => l.words).join(' | ') || 'nothing told',
     }
   }
-  if ('site_requests' in check || 'web_calls' in check) throw new Error('Judged in web-checks.ts.')
+  // what is left is errors; site_requests and web_calls are judged in web-checks.ts
+  if (!('errors' in check)) throw new Error(`${Object.keys(check)[0]} is judged elsewhere.`)
   const n = world.lines({ kinds: ['error'] }).length
   return { check: `errors: ${check.errors}`, ok: n === check.errors, saw: String(n) }
 }

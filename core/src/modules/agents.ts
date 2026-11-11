@@ -12,9 +12,9 @@ import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { commitAll, restoreFile } from './git.ts'
 import { agentSchedules, syncAgentSchedules } from './schedules.ts'
+import { ALPHA, BUILDER_KEY, markGone, refuseShipped } from './shipped.ts'
 
 export const INSTRUCTIONS = 'AGENT.md'
-const BUILDER_MADE = 'builder_made'
 const PLACES = ['skills/', 'files/']
 
 export interface AgentDefinition {
@@ -46,8 +46,10 @@ function nameOf(name: string): string {
   return n
 }
 
-// Who may change an agent: itself, or the Chief of staff. Only the Chief of staff makes one.
-function mayChange(by: string | null, target: Agent | undefined): void {
+// Who may change an agent: itself, or the Chief of staff. Only the Chief of staff makes one. One
+// that shipped changes only with its source, whoever asks (docs/rules.md G1).
+function mayChange(world: World, by: string | null, target: Agent | undefined): void {
+  refuseShipped(world, target)
   if (!by) return
   if (!target) throw new Refused('Only the Chief of staff makes a new agent.')
   if (by !== target.id) throw new Refused('Only the Chief of staff changes another agent.')
@@ -62,7 +64,7 @@ export async function keepAgent(
   by: string | null, // the agent asking; none is the Chief of staff or a person
 ): Promise<string> {
   const known = world.agents.byName(name)
-  mayChange(by, known)
+  mayChange(world, by, known)
   const model = modelOf(def.model)
   if (!known) {
     const title = def.title?.trim()
@@ -129,7 +131,10 @@ export async function keepAgentFile(
 ): Promise<string> {
   const agent = name.trim() ? world.agents.byName(name) : undefined
   if (!agent) throw new Refused(`There is no agent called ${name}.`)
-  mayChange(by, agent)
+  // a shipped agent keeps files of its own under files/; the rest is its source's
+  if (!/^files\//.test(normalize(path.trim()).replace(/^\.\//, ''))) mayChange(world, by, agent)
+  else if (by && by !== agent.id)
+    throw new Refused('Only the Chief of staff changes another agent.')
   const rel = normalize(path.trim()).replace(/^\.\//, '')
   if (
     rel.startsWith('/') ||
@@ -176,6 +181,7 @@ export async function undoAgentChange(
 ): Promise<string> {
   const agent = id === CHIEF ? CHIEF_CARD : world.agents.get(id)
   if (!agent) throw new Refused('That agent is not there.')
+  if (id !== CHIEF) refuseShipped(world, world.agents.get(id))
   const dir = world.agents.dirOf(id)
   await restoreFile(dir, commit, path)
   const done = await commitAll(dir, `Undid a change to ${path}`)
@@ -210,6 +216,8 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
     run(world.db, 'DELETE FROM schedules WHERE id = ?', s.id)
     world.rules.removeScoped({ schedule: s.name }, { actor: ctx.actor })
   }
+  // one that shipped stays deleted: its source does not bring it back
+  markGone(world, agent)
   world.agents.remove(id)
   rmSync(world.agents.dirOf(id), { recursive: true, force: true })
   world.line({
@@ -221,31 +229,7 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   })
 }
 
-// The Module builder: made once in a world, from core/config/module-builder.md, and the person's to
-// change or delete like any agent after that, so it never comes back on its own.
-export async function keepBuilder(world: World, user: string): Promise<string | null> {
-  if (one(world.db, 'SELECT 1 FROM meta WHERE key = ?', BUILDER_MADE)) return null
-  const b = config.builder()
-  if (!world.agents.byName(b.name))
-    await keepAgent(
-      world,
-      b.name,
-      { title: b.title, description: b.description, instructions: b.instructions },
-      { actor: { kind: 'system' }, user },
-      null,
-    )
-  // its id, so New module finds it whatever it is renamed to
-  const id = world.agents.byName(b.name)?.id ?? ''
-  run(world.db, 'INSERT INTO meta (key, value) VALUES (?, ?)', BUILDER_MADE, id)
-  return `${b.name} is one of your agents.`
-}
-
-// The Module builder's id while it is there; none once the person deleted it.
+// The Module builder's id while it is there: Alpha's own, by its key; none once the firm deleted it.
 export function builderId(world: World): string | null {
-  const id = one<{ value: string }>(
-    world.db,
-    'SELECT value FROM meta WHERE key = ?',
-    BUILDER_MADE,
-  )?.value
-  return id && world.agents.get(id) ? id : null
+  return world.agents.shipped(ALPHA, BUILDER_KEY)?.id ?? null
 }

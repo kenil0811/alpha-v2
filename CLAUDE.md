@@ -11,7 +11,8 @@ below on proposing changes to Kenil and on the log.
 ## The repository
 
 - `core/`: the service (world, engine, gates, scheduler, api, journeys runner); `core/kits/`
-  holds Alpha's own modules (none in the clean base), `core/config/` its prompts, models and limits
+  holds Alpha's own modules (none in the clean base), `core/agents/` its own agents (the Module
+  builder), `core/config/` its prompts, models and limits
 - `window/`: the web app the core serves
 - `kit-sdk/`: the kit contract; `docs/kit-api.md` is generated from it (`pnpm kit-api`), never
   edited by hand

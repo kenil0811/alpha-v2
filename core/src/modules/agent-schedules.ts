@@ -21,6 +21,7 @@ import {
   syncAgentSchedules,
   whenWords,
 } from './schedules.ts'
+import { refuseShipped } from './shipped.ts'
 
 export interface ScheduleDef {
   name?: string | undefined
@@ -128,6 +129,7 @@ export async function makeSchedule(
   def: ScheduleDef,
   ctx: WriteCtx,
 ): Promise<{ name: string; when: string; next: string | null; check?: unknown }> {
+  refuseShipped(world, world.agents.get(agent))
   const name = def.name?.trim()
   const what = def.what?.trim()
   if (!name || !def.when || !what)
@@ -171,6 +173,7 @@ export async function changeSchedule(
   ctx: WriteCtx,
 ): Promise<{ name: string; when: string; check?: unknown }> {
   const agent = s.agent as string
+  refuseShipped(world, world.agents.get(agent))
   const dir = world.agents.dirOf(agent)
   const was = readSchedule(join(dir, s.file))
   if (def.when) refuseWhen(world, def.when)
@@ -197,6 +200,7 @@ export async function changeSchedule(
 
 export async function removeSchedule(world: World, s: Schedule, ctx: WriteCtx): Promise<void> {
   const agent = s.agent as string
+  refuseShipped(world, world.agents.get(agent))
   const dir = world.agents.dirOf(agent)
   rmSync(join(dir, s.file), { force: true })
   const slug = s.file.replace(/^schedules\/|\.md$/g, '')

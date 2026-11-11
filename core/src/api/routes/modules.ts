@@ -35,13 +35,16 @@ export function registerModules(ctx: Ctx): void {
   app.post('/api/modules/:id/delete', async (req) => {
     if (user.role !== 'owner') throw new Refused('Only the owner can delete a module.')
     const { id } = z.object({ id: z.string() }).parse(req.params)
-    const { keepData } = z.object({ keepData: z.boolean() }).parse(req.body)
+    const { keepData, keepAgents } = z
+      .object({ keepData: z.boolean(), keepAgents: z.boolean().default(true) })
+      .parse(req.body)
     const words = await deleteModule(
       world,
       id,
       keepData,
       { actor: { kind: 'person', id: user.id }, user: user.id },
       options.platform ? (dir) => options.platform?.discard(dir) : undefined,
+      keepAgents,
     )
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { words }

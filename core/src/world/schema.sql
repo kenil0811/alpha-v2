@@ -332,9 +332,14 @@ CREATE TABLE agents (
   model TEXT,
   reach TEXT,
   made_by TEXT,
+  -- where it shipped from: 'alpha' for Alpha's own, a kit's module id; none when made here
+  source TEXT,
+  -- its lasting name in its source, so an update finds it whatever it is called here
+  key TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE UNIQUE INDEX agents_shipped ON agents (source, key) WHERE key IS NOT NULL;
 
 -- What an agent remembers: short facts, the firm's (no person) or one person's.
 CREATE TABLE agent_memories (

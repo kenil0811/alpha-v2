@@ -15,6 +15,7 @@ import {
 } from '../../modules/agents.ts'
 import { moduleNetwork, removeHost } from '../../modules/runs/reach.ts'
 import { agentSchedules } from '../../modules/schedules.ts'
+import { fromView } from '../../modules/shipped.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import { STATE_WORDS } from '../../world/tasks/index.ts'
@@ -28,7 +29,12 @@ export function registerAgents(ctx: Ctx): void {
   const live = () => engine.events.emit('event', { type: 'lines', user: user.id })
 
   const running = (id: string) => world.agents.modelOf(id) ?? config.models().desk
-  const chief = (): AgentView => ({ ...CHIEF_CARD, model: running(CHIEF), chief: true })
+  const chief = (): AgentView => ({
+    ...CHIEF_CARD,
+    model: running(CHIEF),
+    chief: true,
+    from: fromView(world, 'chief'),
+  })
   const known = (id: string) => {
     if (id !== CHIEF && !world.agents.get(id)) throw new Refused('That agent is not there.')
   }
@@ -69,6 +75,7 @@ export function registerAgents(ctx: Ctx): void {
         description: a.description,
         model: running(a.id),
         chief: false,
+        from: fromView(world, a),
       })),
     ],
   )
@@ -125,6 +132,7 @@ export function registerAgents(ctx: Ctx): void {
       description: a.description,
       model: running(a.id),
       chief: false,
+      from: fromView(world, a),
       instructions: instructionsOf(world, id),
       skills: skillsOf(dir),
       files: existsSync(filesDir) ? readdirSync(filesDir) : [],

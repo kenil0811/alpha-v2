@@ -15,6 +15,7 @@ import {
   TRIGGER_KINDS,
 } from './kinds.ts'
 
+export * from './agent.ts'
 export * from './check.ts'
 export * from './kinds.ts'
 export * from './manifest.ts'

@@ -66,6 +66,13 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | D11 | The row shows the request as waiting until a read shows the system took it; only then is it the row's value. Not confirmed in time, it becomes a card. Each step is a journal line | 4 Nov | with Dell's contract |
 | D12 | A mirror's row says when it was last read; an action that leaves the world on a mirror's value reads that row fresh first | 4 Nov | skip (Dell's contract) |
 
+## Who may change an agent
+
+| # | Rule | Date | Held by |
+|---|---|---|---|
+| G1 | An agent that shipped, Alpha's own or a kit's, changes only with its source. No one changes its instructions, title, description, skills or schedules in place: not the model, another agent, itself or a person. Each refuses in words that name the source | 11 Nov | test |
+| G2 | An update never touches an agent's memories, conversations, the files it kept itself or the model the person picked, and a shipped agent the firm deleted stays deleted | 11 Nov | test |
+
 ## What leaves
 
 | # | Rule | Date | Held by |

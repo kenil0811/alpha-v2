@@ -1,0 +1,24 @@
+name: a-kit-update-keeps-memory
+title: A kit's update changes its agent's instructions and keeps what the firm told it to remember
+why: >
+  docs/rules.md G2. The made-up kit Sourcing updates from 0.1.0 to 0.2.0 with new instructions for
+  its agent. The agent answers from the new ones, and its memory, the firm's, is still there.
+steps:
+  - kit: { from: journeys/fixtures/kits/sourcing }
+    checks:
+      - agents: 1
+  - to: Sourcer
+    say: Remember that we never contact firms under 2 million in revenue.
+    checks:
+      - memory: { agent: Sourcer, matches: '2 million' }
+  - kit: { from: journeys/fixtures/kits/sourcing-2, update: true }
+    checks:
+      - instructions: { agent: Sourcer, matches: 'Texas' }
+      - memory: { agent: Sourcer, matches: '2 million' }
+      - agent_from: { agent: Sourcer, from: 'Sourcing 0\.2\.0' }
+      - errors: 0
+  - to: Sourcer
+    say: Where do you look for firms?
+    checks:
+      - reply_matches: 'Texas'
+      - errors: 0

@@ -17,6 +17,8 @@ export interface Agent {
   model: string | null // one of the config's; none is the desk's
   reach: unknown | null
   madeBy: string | null
+  source: string | null // where it shipped from: 'alpha', a kit's module id; none when made here
+  key: string | null // its lasting name in its source
   createdAt: string
   updatedAt: string
 }
@@ -29,6 +31,8 @@ interface AgentRow {
   model: string | null
   reach: string | null
   made_by: string | null
+  source: string | null
+  key: string | null
   created_at: string
   updated_at: string
 }
@@ -41,6 +45,8 @@ const toAgent = (r: AgentRow): Agent => ({
   model: r.model,
   reach: r.reach ? parse(r.reach, null) : null,
   madeBy: r.made_by,
+  source: r.source,
+  key: r.key,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 })
@@ -105,22 +111,48 @@ export class Agents {
     return d
   }
 
-  add(a: Pick<Agent, 'id' | 'name' | 'title' | 'description' | 'model' | 'madeBy'>): Agent {
+  add(
+    a: Pick<Agent, 'id' | 'name' | 'title' | 'description' | 'model' | 'madeBy'> &
+      Partial<Pick<Agent, 'source' | 'key'>>,
+  ): Agent {
     const at = now()
     run(
       this.db,
-      `INSERT INTO agents (id, name, title, description, model, reach, made_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+      `INSERT INTO agents (id, name, title, description, model, reach, made_by, source, key, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
       a.id,
       a.name,
       a.title,
       a.description,
       a.model,
       a.madeBy,
+      a.source ?? null,
+      a.key ?? null,
       at,
       at,
     )
     return this.get(a.id) as Agent
+  }
+
+  // A shipped agent by its source and lasting key.
+  shipped(source: string, key: string): Agent | undefined {
+    const r = one<AgentRow>(
+      this.db,
+      'SELECT * FROM agents WHERE source = ? AND key = ?',
+      source,
+      key,
+    )
+    return r ? toAgent(r) : undefined
+  }
+
+  // Its source let go (a kit removed, its agents kept): it is made here from now on.
+  madeHere(id: string): void {
+    run(
+      this.db,
+      'UPDATE agents SET source = NULL, key = NULL, updated_at = ? WHERE id = ?',
+      now(),
+      id,
+    )
   }
 
   change(id: string, to: Partial<Pick<Agent, 'name' | 'title' | 'description' | 'model'>>): void {

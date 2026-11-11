@@ -2,6 +2,7 @@
 // names what happens, and the journal keeps a line saying what went.
 import type { ModuleSummary } from '@alpha/core/api'
 import { useState } from 'react'
+import { useAgents } from './Agents.tsx'
 import { api } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -33,6 +34,9 @@ export function DeleteModule({
   onClose: () => void
 }) {
   const [keep, setKeep] = useState(true)
+  const [keepAgents, setKeepAgents] = useState(true)
+  // the agents its kit brought: kept by default, as made here from then on
+  const brought = useAgents(open ? 0 : -1).filter((a) => a.from.module === module.id)
   const { busy, problem, act } = useAct()
   return (
     <Dialog
@@ -49,7 +53,7 @@ export function DeleteModule({
             disabled={busy}
             onClick={() =>
               void act(async () => {
-                await api.post(`/api/modules/${module.id}/delete`, { keepData: keep })
+                await api.post(`/api/modules/${module.id}/delete`, { keepData: keep, keepAgents })
                 onClose()
                 // Home after it goes: whatever was open may have gone with it
                 window.location.hash = '#/'
@@ -83,6 +87,25 @@ export function DeleteModule({
             </span>
           </label>
         ))}
+        {brought.length > 0 && (
+          <label className="flex cursor-pointer gap-2.5 rounded-md border border-line p-3 hover:bg-hover">
+            <input
+              type="checkbox"
+              checked={keepAgents}
+              onChange={(e) => setKeepAgents(e.target.checked)}
+              className="mt-1 accent-(--accent)"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="font-medium text-ink">
+                Keep its agents: {brought.map((a) => a.name).join(', ')}
+              </span>
+              <span className="text-ink-3 text-sm">
+                With their memories and conversations, made here from now on, so you can change
+                them. Unticked, they are deleted with it.
+              </span>
+            </span>
+          </label>
+        )}
         <p className="text-ink-3 text-sm">This can't be undone.</p>
         <Refusal words={problem} />
       </div>

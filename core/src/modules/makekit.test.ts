@@ -98,7 +98,7 @@ describe('Make this a kit', () => {
     expect(manifest).toMatchObject({
       name: 'Rentals',
       version: '0.1.0',
-      api: 2,
+      api: 3,
       description: 'Homes and apartments for rent, gathered from listings pages.',
       network: [],
     })

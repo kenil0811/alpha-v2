@@ -139,10 +139,17 @@ An agent is a row and a folder (`agents/<id>/`) holding its instructions, skills
 schedules. Every agent can do what the Chief of staff can; they differ by instructions, memory,
 skills and model. `reach` is empty on every agent today, and one function reads it, so limits can
 come later as a small change. The Chief of staff is always there, has no row, knows every agent,
-and makes and changes agents without a card. The Module builder is made once in each world from
-`core/config/module-builder.md`; New module opens its conversation, and the person changes or
-deletes it like any agent. A change to an agent's files is a commit, so it can be undone from its
-line in the chat.
+and makes and changes agents without a card. A change to an agent's files is a commit, so it can be
+undone from its line in the chat.
+
+**Where an agent comes from.** Made here, in a conversation; or shipped, in one format (`AGENT.md`
+with its name, title, description and model on top and its instructions below, beside `skills/`,
+`files/` and `schedules/`). Alpha's own ship in `core/agents/` and are kept at every start; the
+Module builder is one, and New module opens its conversation. A client's ship in their kit's
+`agents/` (kit API 3). A shipped agent has a lasting key, changes only with its source, and an
+update keeps its memories, conversations, its own files and the model picked (`docs/rules.md` G1,
+G2); the firm adds to it through memories and How to work. One deleted stays deleted. Removing a
+kit keeps its agents, made here from then on, or deletes them.
 
 **Working together.** An agent asks another with a brief, and gets one answer in a fixed shape.
 One request stops at 8 asks or tasks given, or 4 hops in a chain, then waits for Continue. Alpha
@@ -222,7 +229,8 @@ the person's computer, built when a module first needs it.
 
 A module is a folder kept as a git repository: `module.yaml` with its business case, tables, views
 and sites, then `NOTES.md`, `pages/`, `skills/`, `schedules/` and `files/`. A module may sit inside
-another. A kit is a module with no person's rows, and the kit API is version 2 (`docs/kit-api.md`).
+another. A kit is a module with no person's rows, and the kit API is version 3, which adds the
+agents a kit carries; version 2 kits still install (`docs/kit-api.md`).
 Scripts are plain JavaScript in the sandbox, importing nothing of Alpha's and handed one `alpha`
 object. They are deterministic, and the model is reached only through named calls.
 

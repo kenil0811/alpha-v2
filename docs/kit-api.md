@@ -1,6 +1,6 @@
 # The kit API
 
-Version 2. Generated from `kit-sdk/src/index.ts` by `pnpm kit-api`; never edited by hand. A kit says which version it was written for with `api: 2` in module.yaml; this core serves 2.
+Version 3. Generated from `kit-sdk/src/index.ts` by `pnpm kit-api`; never edited by hand. A kit says which version it was written for with `api: 3` in module.yaml; this core serves 2, 3.
 
 A script is plain JavaScript run in a sandbox with no network, handed one object, `alpha`, whose every call goes to the core. `alpha.input` holds what the run was given.
 

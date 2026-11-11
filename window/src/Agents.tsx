@@ -21,44 +21,81 @@ import { Words } from './ui/words.tsx'
 
 export const CHIEF = 'chief'
 
+// The agents in the order every list shows them: the Chief of staff, then Alpha's own, then each
+// kit's by its name, then those made here.
 export function useAgents(version: number): AgentView[] {
   const [agents, setAgents] = useState<AgentView[]>([])
   useEffect(() => {
-    if (version >= 0) api.get<AgentView[]>('/api/agents').then(setAgents, () => undefined)
+    if (version >= 0)
+      api.get<AgentView[]>('/api/agents').then(
+        (all) => setAgents(inOrder(all)),
+        () => undefined,
+      )
   }, [version])
   return agents
+}
+
+const GROUP = { alpha: 0, kit: 1, here: 2 } as const
+function inOrder(all: AgentView[]): AgentView[] {
+  const rank = (a: AgentView) => (a.chief ? -1 : GROUP[a.from.kind])
+  return [...all].sort(
+    (a, b) => rank(a) - rank(b) || (a.from.name ?? '').localeCompare(b.from.name ?? ''),
+  )
+}
+
+// Each group under a heading: From Alpha, From a kit by its name, Made here.
+function groupsOf(agents: AgentView[]): { title: string | null; agents: AgentView[] }[] {
+  const out: { title: string | null; agents: AgentView[] }[] = []
+  for (const a of agents) {
+    const title = a.chief ? null : a.from.kind === 'here' ? 'Made here' : `From ${a.from.name}`
+    const last = out.at(-1)
+    if (last && last.title === title) last.agents.push(a)
+    else out.push({ title, agents: [a] })
+  }
+  return out
 }
 
 export function AgentsSection({ version }: { version: number }) {
   const agents = useAgents(version)
   return (
     <Section title="Agents" about="Each one has its own job, memory and conversation.">
-      <List>
-        {agents.map((a) => (
-          <Row
-            key={a.id}
-            className="relative hover:bg-canvas"
-            lead={
-              <Tile>
-                <Bot className="size-4" />
-              </Tile>
-            }
-            title={
-              <a href={`#/agent/${a.id}`} className="after:absolute after:inset-0">
-                {a.name}
-              </a>
-            }
-            sub={`${a.title} · ${a.description}`}
-            actions={<span className="text-ink-3 text-sm">{MODEL_NAMES[a.model] ?? a.model}</span>}
-          />
-        ))}
-      </List>
+      {groupsOf(agents).map((g) => (
+        <div key={g.title ?? 'chief'} className="flex flex-col gap-1.5">
+          {g.title && <p className="text-ink-3 text-sm">{g.title}</p>}
+          <AgentList agents={g.agents} />
+        </div>
+      ))}
       {agents.length <= 1 && (
         <Empty>
           Ask the Chief of staff to make an agent: say what it should do and when to use it.
         </Empty>
       )}
     </Section>
+  )
+}
+
+function AgentList({ agents }: { agents: AgentView[] }) {
+  return (
+    <List>
+      {agents.map((a) => (
+        <Row
+          key={a.id}
+          className="relative hover:bg-canvas"
+          lead={
+            <Tile>
+              <Bot className="size-4" />
+            </Tile>
+          }
+          title={
+            <a href={`#/agent/${a.id}`} className="after:absolute after:inset-0">
+              {a.name}
+            </a>
+          }
+          sub={`${a.title} · ${a.description}`}
+          actions={<span className="text-ink-3 text-sm">{MODEL_NAMES[a.model] ?? a.model}</span>}
+        />
+      ))}
+    </List>
   )
 }
 
@@ -135,7 +172,12 @@ export function AgentRail({
               : 'flex flex-col rounded-md px-2.5 py-1.75 text-left hover:bg-hover'
           }
         >
-          <span className="truncate font-medium text-ink text-md">{a.name}</span>
+          <span className="truncate font-medium text-ink text-md">
+            {a.name}
+            {!a.chief && a.from.kind !== 'here' && (
+              <span className="font-normal text-ink-3 text-sm"> · {a.from.name}</span>
+            )}
+          </span>
           <span className="truncate text-ink-3 text-sm">{a.title}</span>
         </button>
       ))}
@@ -220,6 +262,9 @@ export function AgentPage({
   return (
     <Record kind={a.chief ? 'Runs the team' : `Agent · ${a.title}`}>
       <h1 className="font-serif text-2xl text-ink">{a.name}</h1>
+      {!a.chief && a.from.kind !== 'here' && (
+        <p className="text-ink-3 text-sm">From {a.from.label}</p>
+      )}
       <p className="text-ink-2 text-md">{a.description}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -244,14 +289,23 @@ export function AgentPage({
       {!a.chief && (
         <section className="flex flex-col gap-1.5">
           <h2 className="font-medium font-serif text-ink text-xl">Instructions</h2>
-          <p className="text-ink-3 text-sm">Ask the Chief of staff or this agent to change them.</p>
+          <p className="text-ink-3 text-sm">
+            {a.from.kind === 'here'
+              ? 'Ask the Chief of staff or this agent to change them.'
+              : `Changes with ${a.from.name}. Add to it through its memory or How to work.`}
+          </p>
           <div className="text-md">
             <Words text={a.instructions || 'None yet.'} />
           </div>
         </section>
       )}
       <Memories id={a.id} memories={a.memories} onChange={load} />
-      <AgentSchedules agent={a.id} schedules={a.schedules} onChange={load} />
+      <AgentSchedules
+        agent={a.id}
+        schedules={a.schedules}
+        onChange={load}
+        from={a.chief || a.from.kind === 'here' ? null : a.from.name}
+      />
       <Sites id={a.id} sites={a.sites} onChange={load} />
       {a.tasks.length > 0 && (
         <section className="flex flex-col gap-1.5">
@@ -267,6 +321,9 @@ export function AgentPage({
       {a.skills.length > 0 && (
         <section className="flex flex-col gap-1.5">
           <h2 className="font-medium font-serif text-ink text-xl">Skills</h2>
+          {!a.chief && a.from.kind !== 'here' && (
+            <p className="text-ink-3 text-sm">Change with {a.from.name}.</p>
+          )}
           <ul className="flex flex-col">
             {a.skills.map((s) => (
               <li key={s.name} className="border-hair border-t py-1.5 text-md first:border-t-0">

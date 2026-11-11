@@ -1,8 +1,9 @@
 // The kinds and versions that are part of the kit API's contract: a kit cannot add one, and a
 // change to any is an API change.
 
-export const API_VERSION = 2
-export const API_VERSIONS_SERVED = [2] as const
+export const API_VERSION = 3
+// 3 adds the agents a kit carries, in agents/; a kit of 2 still installs
+export const API_VERSIONS_SERVED = [2, 3] as const
 export const NODE_MAJOR = 26
 
 export const FIELD_KINDS = [

@@ -52,6 +52,7 @@ export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => vo
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
         <Schedules m={m} onChange={onChange} />
+        <KitAgents m={m} />
         <Tables m={m} onChange={onChange} />
         <Part
           title="Notes"
@@ -65,6 +66,30 @@ export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => vo
         <PackIt m={m} folder={!!m.kit && !!me?.developer && me.user.role === 'owner'} />
       </div>
     </div>
+  )
+}
+
+// The agents its kit brought, each opening its page; they change with the kit.
+function KitAgents({ m }: { m: ModuleView }) {
+  const agents = useAgents(0).filter((a) => a.from.module === m.id)
+  if (!agents.length) return null
+  return (
+    <Part title="Agents" sub={`The agents ${m.name} brings. They change with it.`}>
+      <List>
+        {agents.map((a) => (
+          <Row
+            key={a.id}
+            className="relative hover:bg-canvas"
+            title={
+              <a href={`#/agent/${a.id}`} className="after:absolute after:inset-0">
+                {a.name}
+              </a>
+            }
+            sub={a.title}
+          />
+        ))}
+      </List>
+    </Part>
   )
 }
 

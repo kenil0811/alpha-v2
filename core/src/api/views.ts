@@ -5,6 +5,7 @@ import { config } from '../config.ts'
 import { startOf } from '../engine/task-runs.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { readSchedule, type Schedule } from '../modules/schedules.ts'
+import { fromView } from '../modules/shipped.ts'
 import { pagesOf } from '../pages/pages.ts'
 import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
@@ -139,7 +140,12 @@ export function makeViews(ctx: BaseCtx) {
     const agent = !agentId
       ? null
       : agentId === CHIEF
-        ? { ...CHIEF_CARD, model: world.agents.modelOf(CHIEF) ?? config.models().desk, chief: true }
+        ? {
+            ...CHIEF_CARD,
+            model: world.agents.modelOf(CHIEF) ?? config.models().desk,
+            chief: true,
+            from: fromView(world, 'chief'),
+          }
         : had
           ? {
               id: had.id,
@@ -148,6 +154,7 @@ export function makeViews(ctx: BaseCtx) {
               description: had.description,
               model: had.model ?? config.models().desk,
               chief: false,
+              from: fromView(world, had),
             }
           : null
     return {

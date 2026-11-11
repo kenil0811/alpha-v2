@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
+import { agentProblems } from './agent.ts'
 import { CALLS } from './index.ts'
 import { API_VERSIONS_SERVED } from './kinds.ts'
 import { type KitManifest, Manifest, Setup } from './manifest.ts'
@@ -14,6 +15,8 @@ export interface CheckOptions {
   // the kits a `uses` may name, with their versions, when known (the installed ones, or the
   // bundle's); none given means `uses` is not checked against them
   kits?: { name: string; version: string }[]
+  // the models an agent may run on, when known (the core's); none given means not checked
+  models?: string[]
 }
 
 // "1.2.3" against "1.2": at least that.
@@ -107,6 +110,11 @@ export function checkKit(dir: string, options: CheckOptions = {}): string[] {
     problems.push(
       `module.yaml says api: ${m.api}; this Alpha serves ${API_VERSIONS_SERVED.join(', ')}.`,
     )
+  // the agents it carries, from api 3
+  if (existsSync(join(dir, 'agents'))) {
+    if ((m.api ?? 0) < 3) problems.push('The kit carries agents/, which needs api: 3.')
+    problems.push(...agentProblems(join(dir, 'agents'), options.models))
+  }
   const own = new Set(m.tables.map((t) => t.name))
   const usedTables = new Set(m.uses.flatMap((u) => u.tables))
   const keys = new Set<string>()

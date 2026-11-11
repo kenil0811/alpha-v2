@@ -1,0 +1,27 @@
+name: a-kit-brings-its-agents
+title: A kit brings its agent, labelled with the kit; its instructions change only with the kit, and its memory is the firm's
+why: >
+  docs/rules.md G1. A made-up kit (journeys/fixtures/kits/sourcing) carries an agent, Sourcer. It
+  comes in with the kit, answers from the kit's instructions, and is refused a change to them from
+  here, in words naming the kit; what the firm tells it to remember is kept.
+steps:
+  - kit: { from: journeys/fixtures/kits/sourcing }
+    checks:
+      - agents: 1
+      - agent_from: { agent: Sourcer, from: Sourcing }
+      - errors: 0
+  - to: Sourcer
+    say: What do you do?
+    checks:
+      - reply_matches: 'restoration'
+      - errors: 0
+  - say: Change Sourcer's instructions so it also looks in Ohio.
+    checks:
+      - instructions: { agent: Sourcer, matches: '^(?![\s\S]*Ohio)[\s\S]*Midwest' }
+      - reply_matches: 'Sourcing'
+      - errors: 0
+  - to: Sourcer
+    say: Remember that we never contact firms under 2 million in revenue.
+    checks:
+      - memory: { agent: Sourcer, matches: '2 million' }
+      - errors: 0

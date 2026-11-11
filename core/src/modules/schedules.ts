@@ -194,8 +194,14 @@ export function syncSchedules(world: World, module: Module, state: 'on' | 'pause
 }
 
 // An agent's own schedules, from its folder. A new one waits for its first time to come round.
-export function syncAgentSchedules(world: World, agent: string, by: string | null): number {
-  return syncFiles(world, { module: null, agent, by }, world.agents.dirOf(agent), 'on')
+// An agent's schedule files: one new starts on, unless it came with a client's kit (paused)
+export function syncAgentSchedules(
+  world: World,
+  agent: string,
+  by: string | null,
+  state: 'on' | 'paused' = 'on',
+): number {
+  return syncFiles(world, { module: null, agent, by }, world.agents.dirOf(agent), state)
 }
 
 type Home =

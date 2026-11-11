@@ -12,10 +12,10 @@ import {
   instructionsOf,
   keepAgent,
   keepAgentFile,
-  keepBuilder,
   removeAgent,
   undoAgentChange,
 } from './agents.ts'
+import { keepAlphaAgents } from './shipped.ts'
 
 let home: string
 let world: World
@@ -171,14 +171,16 @@ describe('an agent’s memory', () => {
 })
 
 describe('the Module builder', () => {
-  it('is made once in a world, from its words in config, and stays deleted once deleted', async () => {
+  it('is Alpha’s own, kept from core/agents/ at every start, and stays deleted once deleted', async () => {
     const owner = world.owner('Kenil')
-    expect(await keepBuilder(world, owner.id)).toBe('Module builder is one of your agents.')
+    const c = { actor: { kind: 'system' as const }, user: owner.id }
+    expect(await keepAlphaAgents(world, c)).toEqual(['Module builder came with Alpha.'])
     const id = builderId(world) as string
     expect(world.agents.get(id)?.title).toBe('Builds new modules')
     expect(instructionsOf(world, id)).toMatch(/business case/)
+    expect(await keepAlphaAgents(world, c)).toEqual([])
     removeAgent(world, id, ctx)
-    expect(await keepBuilder(world, owner.id)).toBeNull()
+    expect(await keepAlphaAgents(world, c)).toEqual([])
     expect(builderId(world)).toBeNull()
   })
 })

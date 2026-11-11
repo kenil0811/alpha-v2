@@ -1,0 +1,15 @@
+# A made-up kit that carries an agent, for the journeys a-kit-brings-its-agents and
+# a-kit-update-keeps-memory (docs/rules.md G1, G2): never a client's.
+name: Sourcing
+version: 0.2.0
+api: 3
+business_case:
+  for: A buyer of small businesses.
+  keeps: The firms that may be for sale.
+  decides: Which firms to look at next.
+tables:
+  - name: Leads
+    about: One firm that may be for sale.
+    fields:
+      - { name: Name, kind: text, about: The firm's name. }
+      - { name: Region, kind: text, about: Where the firm is. }

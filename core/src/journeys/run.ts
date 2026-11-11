@@ -29,7 +29,6 @@ import { Engine } from '../engine/engine.ts'
 import { tokenRoute } from '../engine/route.ts'
 import { stillReading } from '../files/documents.ts'
 import { DRAFT, Drafts } from '../modules/drafts.ts'
-import { install } from '../modules/kits/index.ts'
 import { REVIEW } from '../modules/reviews.ts'
 import { ScheduleRunner } from '../modules/runs/index.ts'
 import { agentSchedules, schedules, setScheduleState } from '../modules/schedules.ts'
@@ -42,7 +41,7 @@ import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
 import { fillSite, fixturesFor } from './fixtures.ts'
 import { idleOf } from './idle.ts'
-import { installSigned } from './signed.ts'
+import { kitStep } from './kit-step.ts'
 import { type Site, serve } from './site.ts'
 import { spentIn } from './spent.ts'
 import { webCheck } from './web-checks.ts'
@@ -111,6 +110,7 @@ const Journey = z.object({
           from: z.string(),
           schedules: z.union([z.enum(['on', 'paused']), z.array(z.string())]).default('paused'),
           signed: z.boolean().optional(), // from a pack signed with a key the journey makes (M1)
+          update: z.boolean().optional(), // a newer version of a kit already installed
         })
         .optional(),
       // the scheduler's tick: schedules whose time or change has come run now
@@ -439,20 +439,7 @@ export async function runOne(
     } else if (step.kit) {
       // a kit the core refuses fails the journey, and the journeys after it still run
       try {
-        const person = { actor: { kind: 'person' as const, id: user.id }, user: user.id }
-        const from = resolve(base, step.kit.from)
-        const m = step.kit.signed
-          ? await installSigned(world, from, home, person)
-          : await install(world, from, person)
-        const on = step.kit.schedules
-        for (const a of schedules(world, m.id))
-          setScheduleState(
-            world,
-            a.id,
-            Array.isArray(on) ? (on.includes(a.name) ? 'on' : 'paused') : on,
-            user.id,
-          )
-        what = `Installed the kit ${step.kit.from}, ${Array.isArray(on) ? `${on.join(', ')} on` : `its schedules ${on}`}`
+        what = await kitStep(world, step.kit, resolve(base, step.kit.from), home, user.id)
       } catch (err) {
         if (!(err instanceof Refused)) throw err
         passed = false

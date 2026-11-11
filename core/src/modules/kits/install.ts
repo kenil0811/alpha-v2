@@ -8,6 +8,7 @@ import { setBusinessCase } from '../../world/shape/manifest.ts'
 import type { World } from '../../world/world.ts'
 import { commitAll } from '../git.ts'
 import { syncSchedules } from '../schedules.ts'
+import { keepShippedAgents, refuseClashes } from '../shipped.ts'
 import { checked, readKit, sha } from './read.ts'
 import { currentRowHash, landSetup, placeModule, shapeTables, shapeViews } from './shape.ts'
 
@@ -21,6 +22,8 @@ export async function install(
 ): Promise<Module> {
   checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
+  const agents = join(kitDir, 'agents')
+  refuseClashes(world, agents, null, manifest.name)
   // the kit's module by its lasting key, so a renamed one is still this kit's
   const known = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
   if (known) {
@@ -80,6 +83,13 @@ export async function install(
   })
   world.shape.writeManifest(world.shape.module(module.id) as Module)
   await commitAll(module.dir, `Installed ${kitName}`)
+  // its agents, by their keys: Alpha's own kit's start on, a client kit's schedules start paused
+  await keepShippedAgents(
+    world,
+    agents,
+    { id: module.id, label: kitName, on: !!manifest.core },
+    ctx,
+  )
   return module
 }
 
@@ -116,6 +126,8 @@ export async function update(
     )
   if (kit.kit !== manifest.name)
     throw new Refused(`That folder holds the kit ${manifest.name}, not ${kit.kit}.`)
+  const agents = join(kitDir, 'agents')
+  refuseClashes(world, agents, module.id, manifest.name)
   // What is in the folder now, committed first, so the update itself is one change in history.
   await commitAll(module.dir, 'Before the kit update')
   const kitName = `${manifest.name} ${manifest.version}`
@@ -213,6 +225,14 @@ export async function update(
     setBusinessCase(world.shape, module, manifest.business_case, 'kit', kitCtx)
   world.shape.writeManifest(world.shape.module(module.id) as Module)
   await commitAll(module.dir, `Updated ${kitName}`)
+  // its agents follow the kit; what is the firm's (memories, conversations, its own files, the
+  // model picked) stays (docs/rules.md G2)
+  await keepShippedAgents(
+    world,
+    agents,
+    { id: module.id, label: kitName, on: !!manifest.core },
+    ctx,
+  )
   return report
 }
 

@@ -10,6 +10,7 @@ import { all, run, tx } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
+import { removeAgent } from './agents.ts'
 import { commitAll } from './git.ts'
 import { schedules } from './schedules.ts'
 
@@ -22,6 +23,7 @@ export async function deleteModule(
   keepData: boolean,
   ctx: WriteCtx,
   discard: (dir: string) => void = (dir) => rmSync(dir, { recursive: true, force: true }),
+  keepAgents = true, // the agents its kit brought: kept and made here from now on, or deleted
 ): Promise<string> {
   const top = world.shape.module(id)
   if (!top) throw new Refused('That module is not there.')
@@ -79,6 +81,11 @@ export async function deleteModule(
       run(world.db, 'DELETE FROM modules WHERE id = ?', m)
     }
   })
+  // the agents its kit brought: kept, as made here, or deleted with it
+  const brought = world.agents.list().filter((a) => a.source && ids.includes(a.source))
+  for (const a of brought)
+    if (keepAgents) world.agents.madeHere(a.id)
+    else removeAgent(world, a.id, ctx)
   // the folders, once the world no longer names them
   for (const m of mods) {
     if (keepData) {
@@ -88,9 +95,14 @@ export async function deleteModule(
     } else if (existsSync(m.dir)) discard(m.dir)
   }
   const inside = mods.length - 1
-  const words = keepData
-    ? `Deleted what runs in ${top.name}${inside ? ` and the ${inside} module${inside === 1 ? '' : 's'} inside it` : ''}: its schedules, scripts and pages. Its tables and rows are kept.`
-    : `Deleted the module ${top.name}${inside ? ` and the ${inside} module${inside === 1 ? '' : 's'} inside it` : ''}, with ${tablesGone} table${tablesGone === 1 ? '' : 's'} and ${rowsGone} row${rowsGone === 1 ? '' : 's'}.`
+  const agents = brought.length
+    ? ` ${brought.map((a) => a.name).join(', ')} ${keepAgents ? (brought.length === 1 ? 'is kept, made here from now on' : 'are kept, made here from now on') : brought.length === 1 ? 'is deleted with it' : 'are deleted with it'}.`
+    : ''
+  const words =
+    (keepData
+      ? `Deleted what runs in ${top.name}${inside ? ` and the ${inside} module${inside === 1 ? '' : 's'} inside it` : ''}: its schedules, scripts and pages. Its tables and rows are kept.`
+      : `Deleted the module ${top.name}${inside ? ` and the ${inside} module${inside === 1 ? '' : 's'} inside it` : ''}, with ${tablesGone} table${tablesGone === 1 ? '' : 's'} and ${rowsGone} row${rowsGone === 1 ? '' : 's'}.`) +
+    agents
   world.line({
     actor: ctx.actor,
     kind: 'removed',

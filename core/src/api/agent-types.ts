@@ -8,6 +8,14 @@ export interface AgentView {
   description: string
   model: string // what it runs on now
   chief: boolean
+  // where it came from: Alpha's own, a kit's (its module), or made here; a shipped one changes
+  // only with its source
+  from: {
+    kind: 'alpha' | 'kit' | 'here'
+    label: string
+    name: string | null
+    module: string | null
+  }
 }
 
 export interface MemoryView {
