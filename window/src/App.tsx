@@ -336,8 +336,9 @@ export function App() {
           : place.kind === 'run'
             ? { label: 'Activity', href: '#/settings/activity' }
             : { label: 'Permissions', href: '#/settings/permissions' }
+      // an agent's page is one of Intelligence › Agents
       case 'agent':
-        return { label: 'Agents', href: '#/conversation' }
+        return { label: 'Agents', href: '#/intelligence/agents' }
       case 'card':
         return { label: 'Home', href: '#/' }
       case 'people':

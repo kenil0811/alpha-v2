@@ -40,3 +40,6 @@ with why, then what was done instead; the shipped agent's refusal says the same.
 the reply's first sentence says what was not done, and passed 2 of 2 ("I couldn't change Sourcer's
 instructions."). Its memory step now tells Sourcer a plain fact: told a rule, Sourcer had rightly
 kept it in How to work instead of its memory.
+
+On his "ok looks good": Back on an agent's page now goes to Intelligence › Agents, where the page is
+opened from, not to the Agents conversation.
