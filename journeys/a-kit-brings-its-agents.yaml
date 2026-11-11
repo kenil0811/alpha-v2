@@ -19,9 +19,11 @@ steps:
     checks:
       - instructions: { agent: Sourcer, matches: '^(?![\s\S]*Ohio)[\s\S]*Midwest' }
       - reply_matches: 'Sourcing'
+      # the reply leads with what was not done, then what was done instead
+      - reply_matches: '^[^.!?]*\b(couldn[’'']t|could not|can[’'']t|cannot|didn[’'']t|did not|not|won[’'']t)\b'
       - errors: 0
   - to: Sourcer
-    say: Remember that we never contact firms under 2 million in revenue.
+    say: Remember that the broker for the Harbor deal is Priya Shah.
     checks:
-      - memory: { agent: Sourcer, matches: '2 million' }
+      - memory: { agent: Sourcer, matches: 'Priya' }
       - errors: 0

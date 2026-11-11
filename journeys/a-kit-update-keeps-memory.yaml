@@ -8,13 +8,13 @@ steps:
     checks:
       - agents: 1
   - to: Sourcer
-    say: Remember that we never contact firms under 2 million in revenue.
+    say: Remember that the broker for the Harbor deal is Priya Shah.
     checks:
-      - memory: { agent: Sourcer, matches: '2 million' }
+      - memory: { agent: Sourcer, matches: 'Priya' }
   - kit: { from: journeys/fixtures/kits/sourcing-2, update: true }
     checks:
       - instructions: { agent: Sourcer, matches: 'Texas' }
-      - memory: { agent: Sourcer, matches: '2 million' }
+      - memory: { agent: Sourcer, matches: 'Priya' }
       - agent_from: { agent: Sourcer, from: 'Sourcing 0\.2\.0' }
       - errors: 0
   - to: Sourcer

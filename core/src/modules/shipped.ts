@@ -68,7 +68,7 @@ export function fromView(world: World, a: Pick<Agent, 'source'> | undefined | 'c
 export function shippedRefusal(world: World, agent: Agent | undefined): string | null {
   const from = fromOf(world, agent)
   if (!agent || from.kind === 'here') return null
-  return `${agent.name} comes with ${from.name}, so its instructions, skills and schedules change only with ${from.name}'s updates, which would undo a change made here. Add to it through its memories or How to work, or make an agent of your own from it.`
+  return `${agent.name} comes with ${from.name}, so its instructions, skills and schedules change only with ${from.name}'s updates, which would undo a change made here. Add to it through its memories or How to work, or make an agent of your own from it. Tell the person first that ${agent.name}'s own instructions were not changed, and why, then what you did instead.`
 }
 
 export function refuseShipped(world: World, agent: Agent | undefined): void {

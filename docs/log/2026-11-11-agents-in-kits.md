@@ -32,3 +32,11 @@ an-agent-remembers, an-agent-on-a-schedule and one-named-agent-answers pass too.
 
 In WebKit on an empty Alpha with the made-up kit installed: the groups, the agent's page (no Add
 on a shipped agent's schedules), the Setup tab's Agents and the Delete dialog's "Keep its agents".
+
+On his look, "the responses should be clear and intuitive": the Chief of staff had said "I've added
+it" before saying it could not change Sourcer's instructions. Alpha's prompt (`core/config/system.md`)
+now says to lead with the answer, and when something asked was not done as asked, to say so first
+with why, then what was done instead; the shipped agent's refusal says the same. The journey checks
+the reply's first sentence says what was not done, and passed 2 of 2 ("I couldn't change Sourcer's
+instructions."). Its memory step now tells Sourcer a plain fact: told a rule, Sourcer had rightly
+kept it in How to work instead of its memory.
