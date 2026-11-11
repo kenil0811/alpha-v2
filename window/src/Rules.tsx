@@ -8,18 +8,18 @@ import { useAct } from './ui/act.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Switch } from './ui/switch.tsx'
 
-// A rule that agents and their scripts may reach any site, by a switch: off on a fresh install.
-export function AnySite() {
+// Whether agents and their scripts ask before a new site, by a switch: off on a fresh install.
+export function AskSites() {
   const [on, setOn] = useState<boolean | null>(null)
   const { busy, problem, act } = useAct()
   useEffect(() => {
-    api.get<{ on: boolean }>('/api/rules/any-site').then(
+    api.get<{ on: boolean }>('/api/rules/ask-before-sites').then(
       (r) => setOn(r.on),
       () => setOn(null),
     )
   }, [])
   if (on === null) return null
-  const name = 'Agents and scripts can reach any website'
+  const name = 'Ask before agents and scripts open a new website'
   return (
     <List>
       <Row
@@ -27,7 +27,7 @@ export function AnySite() {
         title={name}
         sub={
           problem ??
-          'Off, an agent opens a link it was shown or a site on its list with no card, and asks before a link it wrote itself to another site, since what is in an address reaches that site. On, nothing on the web asks.'
+          'Off, agents and their scripts open any website. On, an agent opens a link it was shown or a site on its list with no card, and asks before a link it wrote itself to another site, since what is in an address reaches that site.'
         }
         actions={
           <Switch
@@ -36,7 +36,9 @@ export function AnySite() {
             label={name}
             onChange={(v) =>
               act(async () => {
-                setOn((await api.post<{ on: boolean }>('/api/rules/any-site', { on: v })).on)
+                setOn(
+                  (await api.post<{ on: boolean }>('/api/rules/ask-before-sites', { on: v })).on,
+                )
               })
             }
           />

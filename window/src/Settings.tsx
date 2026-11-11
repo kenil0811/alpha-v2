@@ -10,7 +10,7 @@ import { api, Problem, wordsOf } from './api.ts'
 import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { Modules, when } from './Modules.tsx'
-import { AnySite, Standing } from './Rules.tsx'
+import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
@@ -184,7 +184,7 @@ function Permissions({ version, owner }: { version: number; owner: boolean }) {
         title="Rules"
         about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule holds once you save it on its card."
       >
-        {owner && <AnySite />}
+        {owner && <AskSites />}
         <WaitingRules version={version} />
         <Standing version={version} />
       </Section>

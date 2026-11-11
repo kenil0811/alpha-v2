@@ -100,6 +100,8 @@ const Journey = z.object({
       rename: z.object({ table: z.string(), to: z.string() }).optional(),
       // Read now, as the person presses it on a connection, by its connector
       read_now: z.string().optional(),
+      // Ask before agents and scripts open a new website, in Permissions, through the window's route
+      ask_before_sites: z.boolean().optional(),
       // the rule waiting on its Save card approved in Permissions, by its name, through the
       // window's routes
       approve_rule: z.string().optional(),
@@ -419,7 +421,7 @@ export async function runOne(
       else site = await serve(dir, state)
       fillSite(answers, site.url)
       what = `Served the made-up site ${step.site.from}${state ? ` in its ${state} state` : ''} at ${site.url}`
-    } else if (step.edit || step.remove || step.reset) {
+    } else if (step.edit || step.remove || step.reset || step.ask_before_sites !== undefined) {
       const took = await inWindow(page(), world, step)
       passed &&= took.ok
       what = took.what

@@ -7,7 +7,7 @@ import type { CallSays } from '../connectors/process.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { undoOf } from '../connectors/takeback.ts'
 import { decide, gateOf } from '../gates/gates.ts'
-import { allowHost, moduleNetwork, onList } from '../modules/runs/reach.ts'
+import { allowHost, asksBeforeSites, moduleNetwork, onList } from '../modules/runs/reach.ts'
 import type { RunPlace } from '../modules/runs/types.ts'
 import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Actor } from '../world/journal.ts'
@@ -137,9 +137,9 @@ export class Gatekeeper {
     return { id: null, name, dir: this.world.agents.dirOf(id) }
   }
 
-  // A site on the agent's list, or one the person named in this session, unless a rule denies it.
-  private listed(place: RunPlace, host: string): string | null {
-    const denied = this.world.rules.judge({
+  // A deny rule on the site: it closes the site whatever else would open it.
+  private denied(host: string): boolean {
+    return !!this.world.rules.judge({
       effect: 'outward',
       tool: 'network',
       to: [],
@@ -149,7 +149,11 @@ export class Gatekeeper {
       schedule: null,
       own: false,
     }).deny
-    if (denied) return null
+  }
+
+  // A site on the agent's list, or one the person named in this session, unless a rule denies it.
+  private listed(place: RunPlace, host: string): string | null {
+    if (this.denied(host)) return null
     if (onList(moduleNetwork(place), host)) return `on ${place.name}'s list`
     return this.links.named(host) ? 'a site you named' : null
   }
@@ -165,16 +169,21 @@ export class Gatekeeper {
     })
   }
 
-  // A web address the agent opens (WebFetch, look): one shown in its conversation, or on a site
-  // listed or named, goes with no card; any other is a link it wrote itself, which goes to the
-  // gates as the shell's reach does (docs/rules.md L1).
+  // A web address the agent opens (WebFetch, look) goes with no card, unless a deny rule closes
+  // its site. Where the firm asks before new sites, only one shown in its conversation, or on a
+  // site listed or named, goes with no card; any other is a link it wrote itself, which goes to
+  // the gates as the shell's reach does (docs/rules.md L1).
   private opens(url: string, callId: string): Decision {
     const host = hostOf(url)
     if (!host) return { allow: false, reason: `${url} is not a web address.` }
     const place = this.place()
-    const how = this.links.shown(url) ? 'shown in what it read' : this.listed(place, host)
+    const how = this.denied(host)
+      ? null
+      : this.links.shown(url)
+        ? 'shown in what it read'
+        : this.listed(place, host)
     this.web.set(callId, { url, how })
-    if (how) return { allow: true }
+    if (how || (!this.denied(host) && !asksBeforeSites(this.world))) return { allow: true }
     const cur = this.here.current
     const verdict = decide(this.world, {
       call: { tool: 'network', input: { host, agent: cur.agent ?? CHIEF } },
@@ -299,12 +308,15 @@ export class Gatekeeper {
     return this.decision(verdict)
   }
 
-  // The shell's reach to a host outside, asked by the sandbox: a site on the agent's list or named
-  // goes; any other is outward, so a card, and a yes puts it on the list.
+  // The shell's reach to a host outside, asked by the sandbox: any site unless a deny rule closes
+  // it. Where the firm asks before new sites, a site on the agent's list or named goes; any other
+  // is outward, so a card, and a yes puts it on the list.
   network(host: string): Decision {
     const cur = this.here.current
     const place = this.place()
-    if (this.listed(place, host.toLowerCase())) return { allow: true }
+    const site = host.toLowerCase()
+    if (this.listed(place, site) || (!this.denied(site) && !asksBeforeSites(this.world)))
+      return { allow: true }
     const verdict = decide(this.world, {
       call: { tool: 'network', input: { host, agent: cur.agent ?? CHIEF } },
       effect: 'outward',

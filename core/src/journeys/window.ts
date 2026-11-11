@@ -1,6 +1,7 @@
-// A journey's steps the person takes in the window (rules step 1), through the window's own routes
-// as the window calls them: a value typed over a row's, a row removed, Reset on a value. A row is
-// named by its name as the window shows it, or by its own key as a reader landed it.
+// A journey's steps the person takes in the window, through the window's own routes as the window
+// calls them: a value typed over a row's, a row removed, Reset on a value, and asking before new
+// websites turned on or off in Permissions. A row is named by its name as the window shows it, or
+// by its own key as a reader landed it.
 import { z } from 'zod'
 import type { buildServer } from '../api/server.ts'
 import type { World } from '../world/world.ts'
@@ -14,6 +15,7 @@ export interface WindowStep {
   edit?: z.infer<typeof Edit> | undefined
   remove?: z.infer<typeof Remove> | undefined
   reset?: z.infer<typeof Reset> | undefined
+  ask_before_sites?: boolean | undefined
 }
 
 const HEADERS = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
@@ -25,6 +27,13 @@ export async function inWindow(
   world: World,
   step: WindowStep,
 ): Promise<{ ok: boolean; what: string }> {
+  if (step.ask_before_sites !== undefined) {
+    const on = step.ask_before_sites
+    const url = '/api/rules/ask-before-sites'
+    const r = await app.inject({ method: 'POST', url, headers: HEADERS, payload: { on } })
+    const what = `Turned ${on ? 'on' : 'off'} asking before agents and scripts open a new website`
+    return { ok: r.statusCode === 200, what }
+  }
   const s = step.edit ?? step.remove ?? step.reset
   if (!s) throw new Error('A step in the window edits, removes or resets.')
   const t = world.shape.table(s.table)

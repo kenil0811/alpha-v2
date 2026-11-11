@@ -70,7 +70,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| L1 | An agent opens a web address with no card only when the address was shown in its conversation (the person's message, or a page, a search or a connector's read, never something it wrote itself) or its site is on the agent's list or named by the person. Any other address goes to the leaves-your-world gate, through every way out: WebFetch, look, the shell and a script. A yes puts the site on the agent's list for good; a deny rule closes a site even on the list | 11 Nov | test |
+| L1 | Agents and their scripts open any website with no card, through every way out (WebFetch, look, the shell, a script), and a deny rule closes a site. Where the owner turns on asking before new sites, an address opens with no card only when it was shown in the conversation (the person's message, or a page, a search or a connector's read, never something the agent wrote itself) or its site is on the agent's list or named by the person; any other goes to the leaves-your-world gate, and a yes puts the site on the agent's list for good | 11 Nov | test |
 
 ## Audit
 

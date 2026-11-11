@@ -7,6 +7,7 @@ import { MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
+import { setAskBeforeSites } from '../modules/runs/reach.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 import { Gatekeeper } from './gate.ts'
@@ -85,6 +86,9 @@ describe('the gate adapter', () => {
       'Send an email to priya@harbor.example',
       'Send an email to priya@harbor.example',
     ])
+    // the shell reaches any site, unless the owner asks before new ones
+    expect(gate.network('open.example.com').allow).toBe(true)
+    setAskBeforeSites(world, true, { actor: { kind: 'person', id: user.id } })
     expect(gate.network('api.example.com').allow).toBe(false)
     // the hosts whose reach waits come back once, after the call, for the model's own eyes
     expect(await gate.after({ callId: 'c4', ok: false, error: 'refused' })).toEqual([

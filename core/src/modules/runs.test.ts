@@ -23,6 +23,7 @@ import { run as exec } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { install } from './kits/index.ts'
 import { ScheduleRunner } from './runs/index.ts'
+import { setAskBeforeSites } from './runs/reach.ts'
 import { type Schedule, schedules, setScheduleState, syncSchedules } from './schedules.ts'
 
 let home: string
@@ -124,9 +125,10 @@ describe('a run', () => {
     expect(runner.runs().filter((r) => r.state === 'ok')).toHaveLength(1)
   }, 60_000)
 
-  it('reads only sites on its module’s list; a new one waits on the person’s yes, then stays allowed', async () => {
+  it('asking before new sites, reads only sites on its module’s list; a new one waits on the person’s yes, then stays allowed', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new ScheduleRunner(world, () => engine, { owner: 'u_1' })
+    setAskBeforeSites(world, true, { actor: { kind: 'person', id: 'u_1' } })
     const first = await runner.runScript(
       m,
       'skills/read/run.js',

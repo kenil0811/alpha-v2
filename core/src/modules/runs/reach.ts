@@ -1,13 +1,41 @@
-// What a script may reach: the sites on its module's list, a new one on the person's yes (gate 1),
-// the browser. An agent's list serves its web tools and its shell too (docs/rules.md L1).
+// What a script may reach: any site, unless the firm asks before new sites; then the sites on its
+// module's list, a new one on the person's yes (gate 1). An agent's list serves its web tools and
+// its shell too (docs/rules.md L1).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import { decide, refusedBy } from '../../gates/gates.ts'
-import { one } from '../../world/db.ts'
+import { one, run } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
+import type { WriteCtx } from '../../world/shape/types.ts'
+import type { World } from '../../world/world.ts'
 import type { ScheduleRunner } from './runner.ts'
 import type { RunFor, RunPlace } from './types.ts'
+
+// Whether the firm asks before an agent or a script opens a site it was not shown and has not
+// listed: off unless the owner turns it on in Settings › Permissions, since a card for every new
+// site is too much asking. Off, every site opens, and a deny rule still closes one.
+const ASK = 'ask_before_sites'
+export const asksBeforeSites = (world: World) =>
+  one<{ value: string }>(world.db, 'SELECT value FROM meta WHERE key = ?', ASK)?.value === '1'
+
+export function setAskBeforeSites(world: World, on: boolean, ctx: WriteCtx): void {
+  if (asksBeforeSites(world) === on) return
+  run(
+    world.db,
+    'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+    ASK,
+    on ? '1' : '0',
+  )
+  world.line({
+    ...ctx,
+    kind: 'shaped',
+    words: on
+      ? 'Agents and their scripts now ask before opening a new site.'
+      : 'Agents and their scripts now open any site without asking.',
+    data: { ask_before_sites: on },
+  })
+}
 
 // A module's sites are in its module.yaml; an agent's, in a file its check cannot reach.
 const sitesFile = (place: RunPlace) => join(place.dir, place.id ? 'module.yaml' : 'sites.yaml')
@@ -85,7 +113,7 @@ export function reach(
     )
     throw new Refused(refusedBy(denied))
   }
-  if (onList(moduleNetwork(module), host)) return
+  if (onList(moduleNetwork(module), host) || !asksBeforeSites(runner.world)) return
   const verdict = decide(runner.world, {
     call: { tool: 'network', input: { module: module.id, host } },
     effect: 'outward',

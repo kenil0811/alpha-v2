@@ -330,7 +330,8 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/modules/:id/pages/:name/ask': 'a question about a page, answered in a conversation',
   'POST /api/modules/:id/pages/:name/pdf': 'a page printed',
   'POST /api/rules/:id/*': 'a rule’s yes or no, which the gates hold',
-  'POST /api/rules/any-site': 'the owner’s switch for one rule, which the gates hold',
+  'POST /api/rules/ask-before-sites':
+    'the owner’s choice whether new sites ask, which the gates hold',
   'POST /api/schedules/when': 'says how a time reads, and does nothing',
   'POST /api/model/token': 'how a server reaches Claude, which is no row or module',
   'tool nothing_to_report': 'a scheduled run saying it found nothing',

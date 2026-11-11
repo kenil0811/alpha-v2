@@ -190,10 +190,12 @@ by Alpha, covering a call in parts code can match. An approved deny refuses with
 approved allow lets a gated call through. Only the person approves a rule. Always on a card is an
 approved allow for exactly one kind of thing, offered after three unchanged yeses.
 
-**The web check** (`docs/rules.md` L1): an agent opens a link it was shown, or a site on its list
+**The web** (`docs/rules.md` L1): agents and their scripts open any site with no card, and a deny
+rule closes one. "Ask before agents and scripts open a new website" in Permissions, off on a fresh
+install, turns on the web check: an agent opens a link it was shown, or a site on its list
 (`sites.yaml` in its folder, shared with its scripts and shell) or named by the person, with no
-card. A link it wrote itself to any other site leaves the world, so it is a card, and a yes puts
-the site on its list. "Agents and scripts can reach any website" in Permissions turns that off.
+card, and a link it wrote itself to any other site is a card, since what is in an address reaches
+that site. A yes puts the site on its list.
 
 **Walls** include the sandbox's paths and network, read-only SQL, the journal refusing change,
 secrets never in the world, the builder's walls in `engine/tools/walls.ts`, and what a schedule's
