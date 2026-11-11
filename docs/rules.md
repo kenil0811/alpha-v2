@@ -66,6 +66,12 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | D11 | The row shows the request as waiting until a read shows the system took it; only then is it the row's value. Not confirmed in time, it becomes a card. Each step is a journal line | 4 Nov | with Dell's contract |
 | D12 | A mirror's row says when it was last read; an action that leaves the world on a mirror's value reads that row fresh first | 4 Nov | skip (Dell's contract) |
 
+## What leaves
+
+| # | Rule | Date | Held by |
+|---|---|---|---|
+| L1 | An agent opens a web address with no card only when the address was shown in its conversation (the person's message, or a page, a search or a connector's read, never something it wrote itself) or its site is on the agent's list or named by the person. Any other address goes to the leaves-your-world gate, through every way out: WebFetch, look, the shell and a script. A yes puts the site on the agent's list for good; a deny rule closes a site even on the list | 11 Nov | test |
+
 ## Audit
 
 | # | Rule | Date | Held by |

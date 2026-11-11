@@ -99,8 +99,8 @@ export function registerRules(ctx: Ctx): void {
       ),
   )
 
-  // The one standing choice at the top of Permissions: a rule like any other, that scripts may
-  // reach any site, so it is listed, used and revoked as every rule is.
+  // The one standing choice at the top of Permissions: a rule like any other, that agents and
+  // their scripts may reach any site, so it is listed, used and revoked as every rule is.
   const anySite = () =>
     world.rules.list().find((r) => {
       const { does, ...narrower } = r.covers

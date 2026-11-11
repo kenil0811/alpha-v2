@@ -14,7 +14,7 @@ export function marks(text = readFileSync(RULES_MD, 'utf8')): Map<string, string
   for (const line of text.split('\n')) {
     const cells = line.split('|').map((c) => c.trim())
     const ruleId = cells[1] ?? ''
-    if (/^[MDAR]\d+$/.test(ruleId)) out.set(ruleId, cells.at(-2) ?? '')
+    if (/^[MDARL]\d+$/.test(ruleId)) out.set(ruleId, cells.at(-2) ?? '')
   }
   return out
 }
@@ -32,7 +32,7 @@ export function checkRules(text = readFileSync(RULES_MD, 'utf8')): RulesCheck {
   const tested = new Map<string, string>()
   for (const f of readdirSync(RULES_DIR).filter((n) => n.endsWith('.test.ts')))
     for (const m of readFileSync(join(RULES_DIR, f), 'utf8').matchAll(
-      /\brule\(\s*'([MDAR]\d+)'/g,
+      /\brule\(\s*'([MDARL]\d+)'/g,
     )) {
       const ruleId = m[1] as string
       if (tested.has(ruleId))

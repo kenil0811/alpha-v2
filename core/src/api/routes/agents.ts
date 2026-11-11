@@ -13,6 +13,7 @@ import {
   removeAgent,
   undoAgentChange,
 } from '../../modules/agents.ts'
+import { moduleNetwork, removeHost } from '../../modules/runs/reach.ts'
 import { agentSchedules } from '../../modules/schedules.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -40,6 +41,13 @@ export function registerAgents(ctx: Ctx): void {
       .map((t) => ({ id: t.id, title: t.title, state: STATE_WORDS[t.state] }))
   const schedulesOf = (id: string) =>
     agentSchedules(world, id).map((s) => scheduleOut(world, engine.hands?.runner, s))
+  // an agent's folder as its scripts' place, where its list of sites is kept
+  const placeOf = (id: string) => ({
+    id: null,
+    name: id === CHIEF ? CHIEF_CARD.name : (world.agents.get(id)?.name ?? id),
+    dir: world.agents.dirOf(id),
+  })
+  const sitesOf = (id: string) => moduleNetwork(placeOf(id))
   const memoriesOf = (id: string): MemoryView[] =>
     world.memories.list(id, user.id).map((m) => ({
       id: m.id,
@@ -104,6 +112,7 @@ export function registerAgents(ctx: Ctx): void {
         memories: memoriesOf(id),
         tasks: tasksOf(id),
         schedules: schedulesOf(id),
+        sites: sitesOf(id),
       }
     const a = world.agents.get(id)
     if (!a) throw new Refused('That agent is not there.')
@@ -122,7 +131,25 @@ export function registerAgents(ctx: Ctx): void {
       memories: memoriesOf(id),
       tasks: tasksOf(id),
       schedules: schedulesOf(id),
+      sites: sitesOf(id),
     }
+  })
+
+  // A site taken off an agent's list: a link it writes to that site asks again.
+  app.post('/api/agents/:id/sites/remove', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { host } = z.object({ host: z.string().min(1) }).parse(req.body)
+    known(id)
+    removeHost(placeOf(id), host)
+    world.line({
+      actor: { kind: 'person', id: user.id },
+      kind: 'shaped',
+      words: `${placeOf(id).name} may no longer open ${host} without asking.`,
+      data: { agent: id, host },
+      user: user.id,
+    })
+    live()
+    return { ok: true }
   })
 
   // A memory a person writes is theirs: the agent reads it and cannot change it.

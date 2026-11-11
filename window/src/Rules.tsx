@@ -8,7 +8,7 @@ import { useAct } from './ui/act.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Switch } from './ui/switch.tsx'
 
-// A rule that scripts may reach any site, by a switch: off on a fresh install.
+// A rule that agents and their scripts may reach any site, by a switch: off on a fresh install.
 export function AnySite() {
   const [on, setOn] = useState<boolean | null>(null)
   const { busy, problem, act } = useAct()
@@ -19,7 +19,7 @@ export function AnySite() {
     )
   }, [])
   if (on === null) return null
-  const name = 'Scripts can reach any website'
+  const name = 'Agents and scripts can reach any website'
   return (
     <List>
       <Row
@@ -27,7 +27,7 @@ export function AnySite() {
         title={name}
         sub={
           problem ??
-          'Reading the web never asks. A script can send as well as read, so with this on, what a script sends to a site leaves Alpha without a card.'
+          'Off, an agent opens a link it was shown or a site on its list with no card, and asks before a link it wrote itself to another site, since what is in an address reaches that site. On, nothing on the web asks.'
         }
         actions={
           <Switch

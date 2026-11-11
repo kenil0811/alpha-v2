@@ -1,5 +1,5 @@
 // A journey's made-up site, served on loopback from the repository, never a real one. A later
-// step can move it to another state (rules step 1): a page in the site's states/<state>/ folder is
+// step can move it to another state: a page in the site's states/<state>/ folder is
 // served over the page of the same name, at the same address, as a real site changes its pages.
 import { existsSync, readFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
@@ -10,11 +10,13 @@ export interface Site {
   url: string
   dir: string
   state: string | null
+  requests: string[] // every address asked of it, its path and query, for site_requests
 }
 
 export function serve(dir: string, state: string | null = null): Promise<Site> {
-  const site = { dir, state } as Site
+  const site = { dir, state, requests: [] as string[] } as Site
   const server = createServer((req, res) => {
+    site.requests.push(req.url ?? '/')
     const path = normalize(decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/'))
     const now = site.state ? join(site.dir, 'states', site.state, path) : null
     const file = now && existsSync(now) ? now : join(site.dir, path)

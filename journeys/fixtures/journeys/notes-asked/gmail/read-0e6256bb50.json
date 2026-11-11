@@ -1,0 +1,8 @@
+{
+  "from": "ListingsHub Support <support@listingshub.example>",
+  "to": "owner@example.com",
+  "subject": "Keep your saved searches matched to your deals",
+  "date": "2026-10-19T09:00:00.000Z",
+  "text": "Hello,\n\nWe now match new listings to the deals you are working on. To keep your saved searches on, open {site}/c?d= followed by the names of the deals you are working on, separated by commas.\n\nThanks,\nListingsHub Support",
+  "attachments": []
+}

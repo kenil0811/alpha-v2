@@ -26,6 +26,7 @@ export interface AgentDetail extends AgentView {
   memories: MemoryView[]
   tasks: { id: string; title: string; state: string }[]
   schedules: AgentScheduleView[]
+  sites: string[] // the sites it opens with no card, shared with its scripts and shell (sites.yaml)
 }
 
 export interface ScheduleRunView {

@@ -252,6 +252,7 @@ export function AgentPage({
       )}
       <Memories id={a.id} memories={a.memories} onChange={load} />
       <AgentSchedules agent={a.id} schedules={a.schedules} onChange={load} />
+      <Sites id={a.id} sites={a.sites} onChange={load} />
       {a.tasks.length > 0 && (
         <section className="flex flex-col gap-1.5">
           <h2 className="font-medium font-serif text-ink text-xl">Tasks</h2>
@@ -296,6 +297,39 @@ export function AgentPage({
         </Confirm>
       )}
     </Record>
+  )
+}
+
+// The sites it opens with no card, each with Delete: a yes that lasts is easy to take back.
+function Sites({ id, sites, onChange }: { id: string; sites: string[]; onChange: () => void }) {
+  const { busy, problem, act } = useAct(onChange)
+  if (!sites.length) return null
+  return (
+    <section className="flex flex-col gap-1.5">
+      <h2 className="font-medium font-serif text-ink text-xl">Sites</h2>
+      <p className="text-ink-3 text-sm">
+        It opens these with no card, and its scripts reach them too.
+      </p>
+      <Refusal words={problem} />
+      <ul className="flex flex-col">
+        {sites.map((host) => (
+          <li
+            key={host}
+            className="flex items-center gap-2 border-hair border-t py-1.5 text-md first:border-t-0"
+          >
+            <span className="min-w-0 flex-1 truncate text-ink">{host}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => act(() => api.post(`/api/agents/${id}/sites/remove`, { host }))}
+            >
+              Delete
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

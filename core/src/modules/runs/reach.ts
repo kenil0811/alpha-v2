@@ -1,4 +1,5 @@
-// What a script may reach: the sites on its module's list, a new one on the person's yes (gate 1), the browser.
+// What a script may reach: the sites on its module's list, a new one on the person's yes (gate 1),
+// the browser. An agent's list serves its web tools and its shell too (docs/rules.md L1).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse, stringify } from 'yaml'
@@ -23,6 +24,15 @@ export function allowHost(module: RunPlace, host: string): void {
   const m = (existsSync(file) ? parse(readFileSync(file, 'utf8')) : {}) as Record<string, unknown>
   const list = Array.isArray(m.network) ? m.network.map(String) : []
   if (!list.includes(host)) writeFileSync(file, stringify({ ...m, network: [...list, host] }))
+}
+
+// A site taken off the list: a link to it written by the agent asks again.
+export function removeHost(module: RunPlace, host: string): void {
+  const file = sitesFile(module)
+  if (!existsSync(file)) return
+  const m = (parse(readFileSync(file, 'utf8')) ?? {}) as Record<string, unknown>
+  const list = Array.isArray(m.network) ? m.network.map(String) : []
+  writeFileSync(file, stringify({ ...m, network: list.filter((h) => h !== host) }))
 }
 
 export const onList = (list: string[], host: string) =>

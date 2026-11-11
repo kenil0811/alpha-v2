@@ -40,9 +40,12 @@ import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { Check, judge } from './checks.ts'
+import { fillSite, fixturesFor } from './fixtures.ts'
+import { idleOf } from './idle.ts'
 import { installSigned } from './signed.ts'
 import { type Site, serve } from './site.ts'
 import { spentIn } from './spent.ts'
+import { webCheck } from './web-checks.ts'
 import { Edit, inWindow, Remove, Reset } from './window.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
@@ -51,6 +54,7 @@ const Journey = z.object({
   name: z.string(),
   title: z.string(),
   why: z.string(),
+  fixtures: z.string().optional(), // its own recorded answers, in journeys/fixtures/journeys/<name>
   steps: z.array(
     z.object({
       say: z.string().optional(),
@@ -166,11 +170,13 @@ export async function runOne(
   // Outside $TMPDIR, so the sandbox is as it is for the person.
   const home = join(homedir(), '.alpha-journeys', `${stamp}-${name}-${prompt}`)
   rmSync(home, { recursive: true, force: true })
+  // the recorded answers, in the repository's own folder, which a connector's sandbox can read
+  const answers = join(ROOT, '.data', 'journey-answers', `${stamp}-${name}-${prompt}`)
   const world = await World.open(join(home, 'tenants', 't_journey'))
   const user = world.owner('Kenil')
   const connectors = new ConnectorService(world, {
     secrets: new MemorySecrets(),
-    fixtures: join(ROOT, 'journeys', 'fixtures'),
+    fixtures: fixturesFor(join(ROOT, 'journeys', 'fixtures'), journey.fixtures, answers),
     known: (await loadSet(STANDARD_DIR)).connectors,
   })
   // The browser Alpha reads with, kept with the repository's test data so it is set up once.
@@ -204,22 +210,7 @@ export async function runOne(
   let site: Site | null = null
   // the journey's own folder, for a made-up connector's account ({tmp})
   const tmp = mkdtempSync(join(tmpdir(), 'alpha-journey-tmp-'))
-  const limit = config.limits().journey_step_minutes * 60_000
-  const idle = () =>
-    new Promise<boolean>((resolve) => {
-      const timer = setTimeout(() => {
-        engine.events.off('event', on)
-        resolve(false)
-      }, limit)
-      const on = (e: { type: string; user: string }) => {
-        if (e.type === 'idle' && e.user === user.id) {
-          clearTimeout(timer)
-          engine.events.off('event', on)
-          resolve(true)
-        }
-      }
-      engine.events.on('event', on)
-    })
+  const idle = idleOf(engine, user.id, config.limits().journey_step_minutes * 60_000)
 
   const report: string[] = [
     `# Journey ${journey.name}: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`,
@@ -426,6 +417,7 @@ export async function runOne(
       const state = step.site.state ?? null
       if (site?.dir === dir) site.state = state
       else site = await serve(dir, state)
+      fillSite(answers, site.url)
       what = `Served the made-up site ${step.site.from}${state ? ` in its ${state} state` : ''} at ${site.url}`
     } else if (step.edit || step.remove || step.reset) {
       const took = await inWindow(page(), world, step)
@@ -535,7 +527,7 @@ export async function runOne(
       report.push(`Spent so far: ${tokens}.`, '')
     } else report.push(`Took ${((Date.now() - t0) / 1000).toFixed(1)} s.`, '')
     for (const check of step.checks) {
-      const o = await judge(world, user, check)
+      const o = webCheck(check, site, world) ?? (await judge(world, user, check))
       passed &&= check.waits ? !o.ok : o.ok
       const mark = !check.waits
         ? o.ok
@@ -588,6 +580,7 @@ export async function runOne(
   await browser.close()
   site?.server.close()
   world.close()
+  rmSync(answers, { recursive: true, force: true })
   if (!args.includes('--keep')) rmSync(home, { recursive: true, force: true })
   console.log(`${passed ? 'passed' : 'FAILED'}: ${out}`)
   return {

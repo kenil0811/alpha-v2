@@ -129,6 +129,7 @@ export class ClaudeCodeProvider implements Provider {
 
   options(spec: SessionSpec): Options {
     const { deskDir, modules, granted, registry, gate } = spec
+    if (!spec.resume) gate.freshSession()
     const home = process.env.HOME ?? ''
     const env: Record<string, string> = {
       HOME: home,
@@ -188,6 +189,7 @@ export class ClaudeCodeProvider implements Provider {
     // layer too (SessionStart does not fire on a fresh session).
     const onMessage: HookCallback = async (input) => {
       if (input.hook_event_name !== 'UserPromptSubmit') return {}
+      gate.turnStarts()
       const layers = [spec.context.takeFresh() ? spec.context.start() : '', spec.context.turn()]
       return {
         hookSpecificOutput: {

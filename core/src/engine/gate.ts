@@ -1,13 +1,18 @@
 // The gate adapter: the one place a tool call is journaled and put to the gates. The Agent SDK's
 // hooks call it. A world tool's effect comes from its table (tools.ts); a connector tool's from its
-// connector; the shell's reach outside from the sandbox's ask. The verdict is the gates' (gates.ts): pass, or a card.
+// connector; a web address opened, and the shell's reach outside, from the web check (L1). The
+// verdict is the gates' (gates.ts): pass, or a card.
 
 import type { CallSays } from '../connectors/process.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { undoOf } from '../connectors/takeback.ts'
 import { decide, gateOf } from '../gates/gates.ts'
+import { allowHost, moduleNetwork, onList } from '../modules/runs/reach.ts'
+import type { RunPlace } from '../modules/runs/types.ts'
+import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Actor } from '../world/journal.ts'
 import type { User, World } from '../world/world.ts'
+import { hostOf, ShownLinks } from './links.ts'
 import type { Decision } from './provider.ts'
 import { EFFECTS, type Here, SERVER } from './tools/index.ts'
 import { stepWords } from './words.ts'
@@ -30,6 +35,11 @@ export class Gatekeeper {
   private connectors: ConnectorService | null
   private emit: NonNullable<GateOptions['emit']>
   private networkWaits: string[] = []
+  // what the agent was shown this session; each web call's address and how it went; the calls
+  // whose results came in from outside (a page, a search, a connector's read)
+  readonly links = new ShownLinks()
+  private web = new Map<string, { url: string; how: string | null }>()
+  private outside = new Map<string, string | undefined>()
   private onYes = new Map<string, string>()
   // each connector call under way, for the line that says it was done (what it is, once done)
   private calls = new Map<string, { tool: string; input: Record<string, unknown>; words: string }>()
@@ -86,6 +96,11 @@ export class Gatekeeper {
       turn: cur.turn,
     })
     this.emit({ type: 'doing', words })
+    this.links.wrote(JSON.stringify(input))
+    const url = typeof input.url === 'string' ? input.url : undefined
+    if (toolName === 'WebSearch' || toolName === 'WebFetch' || (name === 'look' && url))
+      this.outside.set(call.callId, url)
+    else if (this.connectors?.isTool(toolName)) this.outside.set(call.callId, undefined)
     if (this.connectors?.isTool(toolName)) {
       this.calls.set(call.callId, { tool: toolName, input, words })
       return this.connector(
@@ -98,8 +113,86 @@ export class Gatekeeper {
         call.callId,
       )
     }
+    if (toolName === 'WebFetch') return this.opens(String(input.url ?? ''), call.callId)
     if (!toolName.startsWith(`mcp__${SERVER}__`)) return { allow: true }
+    if (name === 'look' && typeof input.url === 'string') return this.opens(input.url, call.callId)
     return this.worldTool(name, input, words, call)
+  }
+
+  // A fresh session: nothing is shown in it yet.
+  freshSession(): void {
+    this.links.clear()
+  }
+
+  // A turn starts: the person's own message names its links and sites; another agent's does not.
+  turnStarts(): void {
+    const cur = this.here.current
+    if (cur.said && cur.message) this.links.said(cur.message)
+  }
+
+  // The agent whose turn this is, as its scripts' place: its folder holds its list of sites.
+  private place(): RunPlace {
+    const id = this.here.current.agent ?? CHIEF
+    const name = id === CHIEF ? CHIEF_CARD.name : (this.world.agents.get(id)?.name ?? id)
+    return { id: null, name, dir: this.world.agents.dirOf(id) }
+  }
+
+  // A site on the agent's list, or one the person named in this session, unless a rule denies it.
+  private listed(place: RunPlace, host: string): string | null {
+    const denied = this.world.rules.judge({
+      effect: 'outward',
+      tool: 'network',
+      to: [],
+      site: host,
+      table: null,
+      module: null,
+      schedule: null,
+      own: false,
+    }).deny
+    if (denied) return null
+    if (onList(moduleNetwork(place), host)) return `on ${place.name}'s list`
+    return this.links.named(host) ? 'a site you named' : null
+  }
+
+  // A yes on a card puts the site on the agent's list for good, shared with its scripts and shell.
+  private keepSite(place: RunPlace, host: string): void {
+    allowHost(place, host)
+    this.world.line({
+      actor: { kind: 'system' },
+      kind: 'shaped',
+      words: `${place.name} may now open ${host}.`,
+      data: { agent: this.here.current.agent ?? CHIEF, host },
+    })
+  }
+
+  // A web address the agent opens (WebFetch, look): one shown in its conversation, or on a site
+  // listed or named, goes with no card; any other is a link it wrote itself, which goes to the
+  // gates as the shell's reach does (docs/rules.md L1).
+  private opens(url: string, callId: string): Decision {
+    const host = hostOf(url)
+    if (!host) return { allow: false, reason: `${url} is not a web address.` }
+    const place = this.place()
+    const how = this.links.shown(url) ? 'shown in what it read' : this.listed(place, host)
+    this.web.set(callId, { url, how })
+    if (how) return { allow: true }
+    const cur = this.here.current
+    const verdict = decide(this.world, {
+      call: { tool: 'network', input: { host, agent: cur.agent ?? CHIEF } },
+      effect: 'outward',
+      preview: `Let ${place.name} open ${host}?`,
+      detail: url,
+      yes: 'Let it',
+      restsOn: [`a link ${place.name} wrote itself; it was not in anything it read`],
+      cannotUndo: 'What is in a web address reaches that site.',
+      actor: this.actor(),
+      user: this.user.id,
+      turn: cur.turn,
+    })
+    if (verdict.pass) {
+      this.web.set(callId, { url, how: verdict.card ? 'on your yes' : 'by your rule' })
+      if (verdict.card) this.keepSite(place, host)
+    }
+    return this.decision(verdict)
   }
 
   private worldTool(
@@ -206,11 +299,14 @@ export class Gatekeeper {
     return this.decision(verdict)
   }
 
-  // A script's reach to a host outside, asked by the sandbox: outward, so a card.
+  // The shell's reach to a host outside, asked by the sandbox: a site on the agent's list or named
+  // goes; any other is outward, so a card, and a yes puts it on the list.
   network(host: string): Decision {
     const cur = this.here.current
+    const place = this.place()
+    if (this.listed(place, host.toLowerCase())) return { allow: true }
     const verdict = decide(this.world, {
-      call: { tool: 'network', input: { host } },
+      call: { tool: 'network', input: { host, agent: cur.agent ?? CHIEF } },
       effect: 'outward',
       preview: `${stepWords('network', { host })}?`,
       yes: 'Let it',
@@ -222,6 +318,7 @@ export class Gatekeeper {
     })
     this.emit({ type: 'lines' })
     if (!verdict.pass) this.networkWaits.push(host)
+    else if (verdict.card) this.keepSite(place, host.toLowerCase())
     return this.decision(verdict, false)
   }
 
@@ -244,6 +341,12 @@ export class Gatekeeper {
   }): Promise<string[]> {
     const made = this.calls.get(call.callId)
     this.calls.delete(call.callId)
+    const web = this.web.get(call.callId)
+    this.web.delete(call.callId)
+    // what came in from outside: every address in it counts as shown, short ones by its page
+    if (call.ok && this.outside.has(call.callId) && call.result !== undefined)
+      this.links.add(textOf(call.result), this.outside.get(call.callId))
+    this.outside.delete(call.callId)
     const result = resultOf(call.result)
     const undo =
       made && call.ok && this.connectors
@@ -259,6 +362,7 @@ export class Gatekeeper {
         ...(call.ms !== undefined ? { ms: call.ms } : {}),
         ...(call.ok ? {} : { error: call.error ?? '' }),
         ...(this.onYes.has(call.callId) ? { card: this.onYes.get(call.callId) } : {}),
+        ...(web?.how ? { how: web.how } : {}),
         ...(undo && made
           ? { undo: { kind: undo.kind, did: made.words, words: undo.words ?? null, result } }
           : {}),
@@ -270,6 +374,14 @@ export class Gatekeeper {
     this.emit({ type: 'lines' })
     return this.networkWaits.splice(0)
   }
+}
+
+// Every piece of text in what a call returned, one per line, however the route shaped it.
+function textOf(r: unknown): string {
+  if (typeof r === 'string') return r
+  if (Array.isArray(r)) return r.map(textOf).join('\n')
+  if (r && typeof r === 'object') return Object.values(r).map(textOf).join('\n')
+  return ''
 }
 
 // What a tool's call returned, from its result as the route hands it: the connector's own

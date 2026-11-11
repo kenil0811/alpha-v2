@@ -1,0 +1,17 @@
+name: research-without-cards
+title: Research across a site's pages opens each page with no card
+why: >
+  docs/rules.md L1. A site the person names, and every link shown on its pages, opens with no card,
+  so research works as it did before the web check.
+steps:
+  - site: { from: journeys/fixtures/sites/plans }
+  # the journey's site is on this Mac, which WebFetch and the shell cannot reach, so the person
+  # asks for the pages as a person sees them (look)
+  - say: >
+      Look through the plans on {site}/index.html the way you look at web pages, not with a script,
+      and tell me which suits a firm of four people.
+    checks:
+      - site_requests: { path: /plans/team.html, count: 1, at_least: true }
+      - permission_cards: 0
+      - reply_matches: 'Team'
+      - errors: 0

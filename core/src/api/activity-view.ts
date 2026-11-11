@@ -70,10 +70,17 @@ export function activityView(
   })
   // What Alpha did through a connector: each write or send of a turn that went, as a
   // step of the turn that asked for it; one that went on the person's yes, under that card's turn.
+  // Each web page opened too, saying how it went (shown, on the list, named, on a yes: rules L1).
   function actionsOut(): Line[] {
     const calls = new Map<string, Line>()
     for (const l of world.lines({ kinds: ['call'], limit: 2000 }))
-      if (!l.run && (l.data.effect === 'write' || l.data.effect === 'outward'))
+      if (
+        !l.run &&
+        (l.data.effect === 'write' ||
+          l.data.effect === 'outward' ||
+          ((l.data.tool === 'WebFetch' || l.data.tool === 'look') &&
+            typeof (l.data.input as { url?: unknown } | undefined)?.url === 'string'))
+      )
         calls.set(String(l.data.call), l)
     return world.lines({ kinds: ['called'], limit: 2000 }).flatMap((done) => {
       const c = done.data.ok === true ? calls.get(String(done.data.call)) : undefined
@@ -85,7 +92,11 @@ export function activityView(
           id: done.id,
           at: done.at,
           turn: card?.turn ?? c.turn,
-          words: card ? `${c.words}, on your yes` : c.words,
+          words: card
+            ? `${c.words}, on your yes`
+            : typeof done.data.how === 'string'
+              ? `${c.words}, ${done.data.how}`
+              : c.words,
         },
       ]
     })
