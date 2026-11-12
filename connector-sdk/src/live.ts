@@ -15,6 +15,18 @@ export type LiveInput =
   | { kind: 'keyup'; key: string }
   | { kind: 'paste'; text: string }
 
+// A page that is a sign-in: a password box, or a box for the account's name or address on a page
+// whose title or address says it signs in.
+export async function atSignIn(page: Page): Promise<boolean> {
+  const passwords = await page.locator('input[type="password"]:visible').count()
+  if (passwords > 0) return true
+  const account = await page
+    .locator('input[type="email"]:visible, input[autocomplete="username"]:visible')
+    .count()
+  return account > 0 && SIGN_IN.test(`${await page.title()} ${page.url()}`)
+}
+const SIGN_IN = /sign[ -]?in|log[ -]?in|ServiceLogin|identifier/i
+
 export const LIVE_SIZE = { width: 1280, height: 800 }
 
 // How the picture is sent: jpeg, good enough to read a form, small enough to feel immediate.
@@ -99,18 +111,14 @@ export class LiveBrowser {
     }, ms)
   }
 
-  // Still at a password box, nothing has happened yet. Otherwise a quiet look at the page that
+  // Still at a sign-in (a password box, or the account's name asked first), nothing has happened yet. Otherwise a quiet look at the page that
   // asked for the sign-in, which opens without one once they are in.
   private async check(): Promise<void> {
     const page = this.page
     if (this.finished || this.checking || !page) return
     this.checking = true
     try {
-      const atPassword = await page
-        .locator('input[type="password"]:visible')
-        .count()
-        .catch(() => 1)
-      if (atPassword > 0) return
+      if (await atSignIn(page).catch(() => true)) return
       if (await this.walled().catch(() => true)) return
       this.finish()
     } finally {

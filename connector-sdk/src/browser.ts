@@ -13,7 +13,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserContext, chromium, type Page } from 'playwright'
 import { Problem } from './connector.ts'
-import { LIVE_SIZE, LiveBrowser } from './live.ts'
+import { atSignIn, LIVE_SIZE, LiveBrowser } from './live.ts'
 
 export interface Pace {
   minMs: number // the least time between two pages of one site
@@ -346,15 +346,16 @@ export class BrowserEngine {
     return existsSync(join(dir, SIGNED_IN)) || existsSync(join(dir, SIGNED_IN_LIVE))
   }
 
-  // Whether this page still stops at a sign-in, looked at in the site's own profile.
+  // Whether this page still stops at a sign-in, looked at in the site's own profile: a password
+  // box, or the account's name asked first on a page that says it signs in (Google asks the
+  // address on one page and the password on the next).
   private async walled(context: BrowserContext, url: string): Promise<boolean> {
     const page = await context.newPage()
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded' })
       await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined)
       const text = await page.locator('body').innerText()
-      const passwords = await page.locator('input[type="password"]:visible').count()
-      return passwords > 0 && text.length < 4000
+      return (await atSignIn(page)) && text.length < 4000
     } finally {
       await page.close()
     }
