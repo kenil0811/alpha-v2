@@ -309,6 +309,8 @@ export class BrowserEngine {
         c = await chromium.launchPersistentContext(dir, {
           headless: true,
           executablePath: browserPath(this.browsers),
+          // the language of this machine, not one a site guesses from where the server is
+          locale: Intl.DateTimeFormat().resolvedOptions().locale,
         })
       }
       this.contexts.set(key, c)

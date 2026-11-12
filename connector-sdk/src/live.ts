@@ -44,6 +44,7 @@ export class LiveBrowser {
   private inDone: (() => void) | null = null
   private pages: Page[] = []
   private timer: ReturnType<typeof setTimeout> | null = null
+  private sawSignIn = false // a sign-in was on screen in this picture
   private poll: ReturnType<typeof setInterval> | null = null
   private checking = false
   private finished = false
@@ -111,14 +112,20 @@ export class LiveBrowser {
     }, ms)
   }
 
-  // Still at a sign-in (a password box, or the account's name asked first), nothing has happened yet. Otherwise a quiet look at the page that
-  // asked for the sign-in, which opens without one once they are in.
+  // Still at a sign-in (a password box, or the account's name asked first), nothing has happened
+  // yet. Once a sign-in has been seen and is gone, a quiet look at the page that asked for it, which
+  // opens without one once they are in. A site's home page with no sign-in on it never closes this:
+  // the person goes to its sign-in, or presses that they are in.
   private async check(): Promise<void> {
     const page = this.page
     if (this.finished || this.checking || !page) return
     this.checking = true
     try {
-      if (await atSignIn(page).catch(() => true)) return
+      if (await atSignIn(page).catch(() => true)) {
+        this.sawSignIn = true
+        return
+      }
+      if (!this.sawSignIn) return
       if (await this.walled().catch(() => true)) return
       this.finish()
     } finally {
