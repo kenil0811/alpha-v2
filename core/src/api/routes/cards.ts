@@ -240,4 +240,24 @@ export function registerCards(ctx: Ctx): void {
     })().catch(() => undefined)
     return { opened: true }
   })
+
+  // Signing in to a site the person names, before any work meets its sign-in: the same Sign in
+  // card, for them (Connections' Sites; the acting browser's spike signs in to Google this way).
+  app.post('/api/sites/sign-in', async (req) => {
+    const { url } = z.object({ url: z.url() }).parse(req.body)
+    const host = new URL(url).host.toLowerCase()
+    const card = world.cards.open({
+      kind: 'permission',
+      gate: 'sign_in',
+      words: `Sign in to ${host}`,
+      detail: `You asked to sign in to ${host}. Sign in opens it in Alpha's browser, where you type your login yourself; Alpha never sees it, and reads and works on ${host} as you from then on.`,
+      restsOn: [`your asking to sign in to ${host}`],
+      options: ['Sign in', 'Not now'],
+      call: { tool: 'site_sign_in', input: { host, url, schedule: null } },
+      actor: { kind: 'person', id: user.id },
+      user: user.id,
+    })
+    live()
+    return { card: card.id }
+  })
 }
