@@ -2,7 +2,7 @@
 // work's own in their profile for the site, and come back as numbered elements from the page's
 // accessibility tree. Reading, moving around and clicking a link, a menu, a row or a button that
 // sends nothing go without asking; each step keeps a small picture in the record.
-import { element, press, see } from '@alpha/connector-sdk'
+import { press, said, see } from '@alpha/connector-sdk'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -12,9 +12,9 @@ import { guardAsync, ok, type Tooling, tool } from './common.ts'
 const ACTIONS = ['open', 'find', 'click', 'scroll', 'back', 'wait', 'picture', 'close'] as const
 
 // A button or menu item whose words send something to other people or cannot be taken back.
-export function asks(said: string): boolean {
-  const first = said.split('\n')[0] ?? ''
-  if (!/^- (?:button|menuitem)\b/.test(first)) return false
+export function asks(what: string): boolean {
+  const first = (what.split('\n')[0] ?? '').replace(/^- /, '')
+  if (!/^(?:button|menuitem)\b/.test(first)) return false
   const words = first.replace(/\bsign (?:in|up|out)\b/gi, '')
   const list = config.words().browse_asks.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   return new RegExp(`\\b(?:${list.join('|')})\\b`, 'i').test(words)
@@ -26,7 +26,7 @@ export function browseTools(t: Tooling): ToolEntry[] {
   return [
     tool(
       'browse',
-      'Use a website as the person, in a browser that keeps their sign-ins. Actions: open (url), find (words: the elements whose names hold them, on a big page), click (n: an element’s number as shown, such as 12 or f1e3; twice: true for a row that opens on a double click, as in a file list; a file that opens in a new tab is followed there), scroll (direction up or down), back, wait (words to wait for), picture (the page as drawn, for a page drawn on a canvas or to check a result), close. Every step returns the page as numbered elements; numbers hold until the page changes. Use look to read a page once; browse to work through a site. Typing into a site is not here yet.',
+      'Use a website as the person, in a browser that keeps their sign-ins. Actions: open (url), find (words: the elements whose names hold them, on a big page), click (n: an element’s number as shown, such as 12 or f1e3; twice: true for a row that opens on a double click, as in a file list; a file that opens in a new tab is followed there), scroll (direction up or down), back, wait (words to wait for), picture (the page as drawn, for a page drawn on a canvas or to check a result), close. Every step returns the page as numbered elements: use the numbers from the newest view. Use look to read a page once; browse to work through a site. Typing into a site is not here yet.',
       {
         action: z.enum(ACTIONS),
         url: z.string().optional(),
@@ -58,13 +58,18 @@ export function browseTools(t: Tooling): ToolEntry[] {
           let host = new URL(page.url()).host
           if (action === 'click') {
             if (!n) throw new Refused('click needs an element’s number.')
-            const el = element(page, n)
-            const said = await el.ariaSnapshot({ timeout: 5_000 }).catch(() => '')
-            if (/^- (?:textbox|searchbox|combobox)\b/.test(said))
-              throw new Refused('That is a box to type in: typing into a site comes with acting.')
-            if (asks(said))
+            // what the element is, from the view the agent saw: never a fresh snapshot, which
+            // would number the page again and lose the element
+            const what = said(page, n)
+            if (!what)
               throw new Refused(
-                `${said.replace(/^- /, '').split('\n')[0]} sends something or cannot be taken back: that waits for acting, with the person's yes.`,
+                `The page as last seen has no element ${n}: look at it again (find, or wait).`,
+              )
+            if (/^(?:textbox|searchbox|combobox)\b/.test(what))
+              throw new Refused('That is a box to type in: typing into a site comes with acting.')
+            if (asks(what))
+              throw new Refused(
+                `${what} sends something or cannot be taken back: that waits for acting, with the person's yes.`,
               )
             const opened = await press(page, n, twice ?? false, limits.browse_step_ms)
             if (opened) {

@@ -5,7 +5,7 @@ import { createServer, type Server } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { compact, element, press, see } from './browse.ts'
+import { compact, element, press, said, see } from './browse.ts'
 import { BrowserEngine, ensureBrowser } from './browser.ts'
 
 const BROWSERS = join(import.meta.dirname, '..', '..', '.data', 'browsers')
@@ -65,7 +65,10 @@ describe('browsing a site', () => {
       // find by words, then the number it gave
       const found = await see(page, 250, 'team')
       const n = Number(/\[(\d+)\] link "Team"/.exec(found.elements)?.[1])
-      await element(page, n).click()
+      // what it is comes from that view: a fresh snapshot would number the page again
+      expect(said(page, n)).toBe('link "Team"')
+      expect(said(page, 9999)).toBe('')
+      await element(page, n).click({ timeout: 5_000 })
       await page.waitForURL(/\/plans\/team$/)
       expect((await see(await me.tab('work-1'), 250)).elements).toMatch(/\$49 a month/)
       // another piece of work has a tab of its own

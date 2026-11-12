@@ -10,6 +10,7 @@ describe('the browse steps that ask', () => {
     expect(asks('- button "Post"')).toBe(true)
     expect(asks('- menuitem "Delete forever"')).toBe(true)
     expect(asks('- button "Place order"')).toBe(true)
+    expect(asks('button "Share with people"')).toBe(true)
   })
 
   it('not a link, a sign-in, or a word inside another', () => {

@@ -1,7 +1,7 @@
 // What an agent sees of a page it browses: the page as numbered elements from its accessibility
 // tree, the tree a screen reader reads (role, name, value and state, inside the list, form or
 // dialog each sits in), and a small picture of it. The numbers are the snapshot's own references,
-// so a click finds the element the agent saw; they hold until the page changes. An element inside
+// so a click finds the element the agent saw; each view numbers the page afresh. An element inside
 // a frame keeps its frame in its number (f1e3).
 import type { Page } from 'playwright'
 
@@ -32,8 +32,13 @@ export function compact(snapshot: string): string[] {
     .filter((l) => l.trim())
 }
 
+// Each page's last view, to say what a numbered element is without another snapshot: a snapshot of
+// any part of a page numbers it afresh, and the agent's numbers would stop working.
+const lastSeen = new WeakMap<Page, string[]>()
+
 export async function see(page: Page, limit: number, words?: string): Promise<Seen> {
   const lines = compact(await page.ariaSnapshot({ mode: 'ai' }))
+  lastSeen.set(page, lines)
   const want = words?.trim().toLowerCase()
   const picked = want ? lines.filter((l) => l.toLowerCase().includes(want)) : lines
   const shown = picked.slice(0, Math.max(1, limit))
@@ -58,6 +63,13 @@ export async function see(page: Page, limit: number, words?: string): Promise<Se
 export type Ref = number | string
 export const element = (page: Page, n: Ref) =>
   page.getByRef(/^\d+$/.test(String(n)) ? `e${n}` : String(n))
+
+// What the page's last view said an element is, such as `button "Share"`: '' when it showed none.
+export function said(page: Page, n: Ref): string {
+  const tag = `[${n}] `
+  const line = lastSeen.get(page)?.find((l) => l.trimStart().startsWith(tag))
+  return line ? line.trimStart().slice(tag.length).replace(/:$/, '') : ''
+}
 
 // Clicks the element the agent named, once or twice (a row that opens on a double click). A new
 // tab the click opened (a file opened from a list) comes back, for the work to go on in.
