@@ -5,10 +5,13 @@ export {
   type Extracted,
   type ExtractSpec,
   ensureBrowser,
+  FIRM,
   type Pace,
+  PUBLIC,
   renderPage,
   robotsAllow,
   type Snapshot,
+  siteOf,
 } from './browser.ts'
 export { checkConnector, isConnector, NAME, RESERVED_NAMES } from './check.ts'
 export {

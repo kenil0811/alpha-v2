@@ -1,5 +1,6 @@
 // The person's data from within Alpha: a backup, going back, the archive out and in, the daily
 // copy, removal; on the plain platform, in a scratch home.
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -89,8 +90,12 @@ describe('the person’s data', () => {
     // a removed row waits in the trash, and the archive leaves it behind
     world.records.remove(t.id, [toast as string], ctx())
     writeFileSync(join(world.paths.instructions, 'everyone.md'), 'Be brief.\n')
+    // a profile is a live sign-in: it stays out of the archive
+    mkdirSync(join(home, 'browser-profiles', 'u_1', 'google.com'), { recursive: true })
+    writeFileSync(join(home, 'browser-profiles', 'u_1', 'google.com', 'Cookies'), 'a session')
     const out = join(home, 'out')
     const file = await takeData(world, home, out)
+    expect(execFileSync('tar', ['-tzf', file]).toString()).not.toMatch(/browser-profiles|Cookies/)
     expect(file).toMatch(/alpha-data-\d{4}-\d{2}-\d{2}\.tar\.gz$/)
     expect(() => prepareBring(world, file)).toThrow(/already holds rows/)
     // a fresh install

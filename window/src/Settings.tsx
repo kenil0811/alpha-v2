@@ -100,7 +100,7 @@ export function Settings({
     work: <HowToWork version={version} />,
     agents: <AgentsSection version={version} />,
     schedules: <Schedules version={version} />,
-    connections: <Connections view={view} open={open} onChange={load} />,
+    connections: <Connections view={view} open={open} version={version} onChange={load} />,
     modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
     permissions: <Permissions version={version} owner={!member} />,
     model: <ModelSection />,

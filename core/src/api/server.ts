@@ -36,6 +36,7 @@ import { registerSchedules } from './routes/schedules.ts'
 import { COOKIE, cookieIn, registerSession, SESSION_PATHS } from './routes/session.ts'
 import { registerSettings } from './routes/settings.ts'
 import { BACK, registerSignIn } from './routes/signin.ts'
+import { registerSites } from './routes/sites.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerTables } from './routes/tables.ts'
 import { registerTasks } from './routes/tasks.ts'
@@ -194,6 +195,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerStream(ctx)
   registerCards(ctx)
   registerRules(ctx)
+  registerSites(ctx)
   registerPeople(ctx)
   registerTasks(ctx)
   registerTables(ctx)

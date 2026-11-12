@@ -31,6 +31,9 @@ let world: World
 const ctx = { actor: { kind: 'person' as const, id: 'u_1' }, user: 'u_1' }
 const opened: string[] = []
 const engine = {
+  as() {
+    return this
+  },
   open: async () => ({}),
   extract: async (url: string) => {
     opened.push(url)
@@ -177,6 +180,9 @@ describe('a site that wants a sign-in', () => {
   it('fails the run and puts a Sign in card in front of the person, once per schedule', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const wants = {
+      as() {
+        return this
+      },
       open: async () => ({}),
       extract: async () => {
         throw Object.assign(
@@ -215,6 +221,9 @@ describe('a run waiting on the person’s card', () => {
   it('a site to allow or to sign in to: waiting, so it never counts as failing', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const wants = {
+      as() {
+        return this
+      },
       open: async () => ({}),
       extract: async () => {
         throw Object.assign(

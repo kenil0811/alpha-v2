@@ -1,5 +1,6 @@
 // Connections: one account of one connector each. A connection points at its secret
 // in the secret store and never holds it.
+import { FIRM } from '@alpha/connector-sdk'
 import { all, type Db, newId, now, one, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
@@ -23,6 +24,10 @@ export interface Connection {
   hosts: string[] // what the person approved beyond its connector's own hosts
   madeBy: string // who set it up (person:<id>, system): its owner
 }
+
+// Whose sign-ins a connection reads with: the person who set it up, or the firm's.
+export const ownerOf = (c: Pick<Connection, 'madeBy'>): string =>
+  c.madeBy.startsWith('person:') ? c.madeBy.slice('person:'.length) : FIRM
 
 interface ConnectionRow {
   id: string

@@ -35,6 +35,7 @@ catalog:
   isomorphic-git: 1.44.3
   libphonenumber-js: 1.13.15
   limiter: 4.1.0
+  tldts: 7.4.19
   lucide-react: 1.59.0
   mailparser: 3.9.46
   nodemailer: 10.1.7
@@ -51,3 +52,7 @@ catalog:
   xlsx: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
   yaml: 2.9.1
   zod: 4.6.7
+
+# the public suffix list library and its core, at one version weeks old
+overrides:
+  tldts-core: 7.4.19

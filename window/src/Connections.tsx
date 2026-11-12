@@ -7,6 +7,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Reach } from './Reach.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
+import { Sites } from './Sites.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
@@ -40,10 +41,12 @@ const ICONS: Record<ConnectorView['icon'], ReactNode> = {
 export function Connections({
   view,
   open,
+  version,
   onChange,
 }: {
   view: ConnectorsView
   open: string | null
+  version: number
   onChange: () => void
 }) {
   // a connector that names a place on this Mac (a folder) is a list under Folders; every other
@@ -90,6 +93,7 @@ export function Connections({
         ))}
       </Section>
       <SignInApps apps={view.signInApps} onChange={onChange} />
+      <Sites version={version} />
       <Section
         title="Folders"
         about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."

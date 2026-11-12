@@ -24,7 +24,7 @@ import { config } from '../config.ts'
 import { Registry, type ToolEntry } from '../engine/registry.ts'
 import { takeIn } from '../files/documents.ts'
 import type { FileSource } from '../files/intake.ts'
-import type { Connection } from '../world/connections.ts'
+import { type Connection, ownerOf } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
 import { landIn, tableOf } from './places.ts'
@@ -198,7 +198,10 @@ export class ConnectorService {
           { actor },
         )
       },
-      ...(this.options.browser ? { browser: this.options.browser } : {}),
+      // the browser as the connection's owner: their profile for its site
+      ...(this.options.browser
+        ? { browser: () => (this.options.browser as () => BrowserEngine)().as(ownerOf(conn)) }
+        : {}),
       keys: (tableName) => {
         const t = tableOf(this.world, c, tableName)
         return t ? this.world.records.keys(t.id) : []

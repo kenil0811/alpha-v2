@@ -7,11 +7,12 @@
 // Readers (skills) call it through the core, so pacing and health come from here and a reader
 // writes only its extraction.
 import { execFile, execFileSync, spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserContext, chromium, type Page } from 'playwright'
+import { getDomain } from 'tldts'
 import { Problem } from './connector.ts'
 import { atSignIn, LiveBrowser } from './live.ts'
 
@@ -54,6 +55,18 @@ export interface Extracted {
 
 const FRICTION =
   /captcha|verify (that )?you are (a )?human|are you a robot|unusual traffic|access denied|request blocked|too many requests|cf-chl|attention required/i
+
+// A site: an address's registrable name (google.com for drive.google.com and docs.google.com, by the
+// public suffix list), or the host itself where there is none (an address on this machine).
+export function siteOf(host: string): string {
+  const name = host.split(':')[0] as string
+  return getDomain(name, { allowPrivateDomains: true }) ?? host
+}
+
+// Whose profiles a browser opens: a person's (their id), the firm's, or nobody's for reading the
+// open web.
+export const PUBLIC = 'public'
+export const FIRM = 'firm'
 
 function hostOf(url: string): string {
   try {
@@ -218,6 +231,7 @@ function chromeRunning(): boolean {
 }
 
 export class BrowserEngine {
+  private who = PUBLIC // whose profiles this view opens (as)
   private profiles: string
   private pace: Pace
   private contexts = new Map<string, BrowserContext>()
@@ -240,11 +254,24 @@ export class BrowserEngine {
     this.pace = options.pace
     this.sleep = options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
     this.only = options.only ?? null
+    // the one-folder-per-address profiles of before: each person signs in again
+    if (existsSync(this.profiles))
+      for (const d of readdirSync(this.profiles))
+        if (d.includes('.')) rmSync(join(this.profiles, d), { recursive: true, force: true })
   }
 
-  // One profile per site: what the person signs in to stays with that site.
+  // The same browser as one person, or the firm: only their profiles, one per site. Pages, pace and
+  // robots rules stay shared, so a site sees one reader at a person's pace.
+  as(who: string): BrowserEngine {
+    const view = Object.create(this) as BrowserEngine
+    view.who = who.replace(/[^a-z0-9_-]/gi, '_') || PUBLIC
+    return view
+  }
+
+  // One profile per person and site: what a person signs in to stays theirs, for that site.
   private async context(host: string): Promise<BrowserContext> {
-    let c = this.contexts.get(host)
+    const key = `${this.who}/${siteOf(host)}`
+    let c = this.contexts.get(key)
     if (!c) {
       const dir = this.profileOf(host)
       mkdirSync(dir, { recursive: true })
@@ -284,13 +311,41 @@ export class BrowserEngine {
           executablePath: browserPath(this.browsers),
         })
       }
-      this.contexts.set(host, c)
+      this.contexts.set(key, c)
     }
     return c
   }
 
   private profileOf(host: string): string {
-    return join(this.profiles, host.replace(/[^a-z0-9.-]/gi, '_'))
+    return join(this.profiles, this.who, siteOf(host).replace(/[^a-z0-9.-]/gi, '_'))
+  }
+
+  // The sites this person signed in to, newest first, with when.
+  sites(): { site: string; at: string }[] {
+    const dir = join(this.profiles, this.who)
+    if (!existsSync(dir)) return []
+    return readdirSync(dir)
+      .flatMap((site) => {
+        const mark = [SIGNED_IN, SIGNED_IN_LIVE]
+          .map((m) => join(dir, site, m))
+          .find((f) => existsSync(f))
+        return mark ? [{ site, at: statSync(mark).mtime.toISOString() }] : []
+      })
+      .sort((a, b) => b.at.localeCompare(a.at))
+  }
+
+  // Signed out of a site: its profile goes, with the site's cookies, and the next read asks again.
+  async signOut(site: string): Promise<void> {
+    const key = `${this.who}/${site}`
+    await this.contexts
+      .get(key)
+      ?.close()
+      .catch(() => undefined)
+    this.contexts.delete(key)
+    rmSync(join(this.profiles, this.who, site.replace(/[^a-z0-9.-]/gi, '_')), {
+      recursive: true,
+      force: true,
+    })
   }
 
   private async waitTurn(host: string): Promise<void> {
@@ -346,7 +401,9 @@ export class BrowserEngine {
   }
 
   markSignedIn(url: string): void {
-    writeFileSync(join(this.profileOf(hostOf(url)), SIGNED_IN_LIVE), '')
+    const dir = this.profileOf(hostOf(url))
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, SIGNED_IN_LIVE), '')
   }
 
   private async load(
@@ -710,8 +767,9 @@ export class BrowserEngine {
     const host = hostOf(url)
     const chrome = chromePath()
     if (!chrome) throw new Problem('Signing in to a site needs Google Chrome on this Mac.')
-    await this.contexts.get(host)?.close()
-    this.contexts.delete(host)
+    const key = `${this.who}/${siteOf(host)}`
+    await this.contexts.get(key)?.close()
+    this.contexts.delete(key)
     const dir = this.profileOf(host)
     // the reading browser's profile is not one Chrome can keep, and it holds no sign-in
     if (existsSync(dir) && !existsSync(join(dir, SIGNED_IN)))

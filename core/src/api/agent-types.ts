@@ -59,3 +59,9 @@ export interface AgentScheduleView {
   agent: { id: string; name: string }
   runs: ScheduleRunView[] // newest first
 }
+
+// A site the person signed in to, in Alpha's browser
+export interface SiteView {
+  site: string // its registrable name: google.com
+  at: string // when they signed in
+}

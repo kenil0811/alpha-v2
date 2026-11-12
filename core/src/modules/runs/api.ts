@@ -1,4 +1,4 @@
-import type { ExtractSpec } from '@alpha/connector-sdk'
+import { type ExtractSpec, FIRM } from '@alpha/connector-sdk'
 import { type Ask, inReadingOrder, type ReadSpec, readInto } from '../../files/reading.ts'
 import { dayOf, dayOfWhen } from '../../world/day.ts'
 import { all } from '../../world/db.ts'
@@ -9,6 +9,9 @@ import { nextRun, schedules } from '../schedules.ts'
 import type { ScheduleRunner } from './runner.ts'
 import type { RunFor, RunPlace } from './types.ts'
 import type { Walls } from './walls.ts'
+
+// Whose sign-ins a run reads with: the person it runs for, else the module's owner, else the firm's.
+const readerFor = (runner: ScheduleRunner, who: RunFor) => who.user ?? runner.owner ?? FIRM
 
 export function api(
   runner: ScheduleRunner,
@@ -341,14 +344,17 @@ export function api(
       affecting('browser.open')
       runner.reach(module, String(p.url), runId, who)
       return runner.browse(module, String(p.url), label, runId, scheduleId, who, () =>
-        runner.engine().open(String(p.url)),
+        runner.engine().as(readerFor(runner, who)).open(String(p.url)),
       )
     },
     'browser.extract': async (p: Record<string, unknown>) => {
       affecting('browser.extract')
       runner.reach(module, String(p.url), runId, who)
       return runner.browse(module, String(p.url), label, runId, scheduleId, who, () =>
-        runner.engine().extract(String(p.url), p.spec as ExtractSpec),
+        runner
+          .engine()
+          .as(readerFor(runner, who))
+          .extract(String(p.url), p.spec as ExtractSpec),
       )
     },
     // What is worth the person's attention: a line in their stream (Home).

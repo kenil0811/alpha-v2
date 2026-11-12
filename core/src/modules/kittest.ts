@@ -118,6 +118,9 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
       return p
     }
     const engine = {
+      as() {
+        return this
+      },
       open: async (url: string) => page(url),
       extract: async (url: string) => page(url),
     } as unknown as BrowserEngine

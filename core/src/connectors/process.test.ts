@@ -96,7 +96,13 @@ it('opens in the browser only the hosts a connector may reach, and those the per
   const svc = new ConnectorService(world, {
     secrets: new MemorySecrets(),
     known: (await loadSet(root)).connectors,
-    browser: () => ({ signedIn: async (url: string) => opened.push(url) > 0 }) as never,
+    browser: () =>
+      ({
+        as() {
+          return this
+        },
+        signedIn: async (url: string) => opened.push(url) > 0,
+      }) as never,
   })
   const user = world.owner('Kenil')
   const conn = await svc.connect('browsing', '/tmp', null, user.id)

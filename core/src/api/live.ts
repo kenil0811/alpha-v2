@@ -51,13 +51,15 @@ export function liveSignIn(
     return
   }
   const url = input.url
+  // the browser as the person the card is for: their profile for this site
+  const browser = hands.browser().as(card.user ?? user.id)
   let live: LiveBrowser | null = null
   let gone = false
   let finished = false
   const finish = () => {
     if (finished) return
     finished = true
-    hands.browser().markSignedIn(url)
+    browser.markSignedIn(url)
     world.cards.answer(id, 'Sign in', { kind: 'person', id: user.id })
     say({ done: true })
     socket.close()
@@ -82,7 +84,7 @@ export function liveSignIn(
   })
   void (async () => {
     try {
-      live = await hands.browser().openLive(url)
+      live = await browser.openLive(url)
       say({ size: LIVE_SIZE })
       await live.start((frame) => say({ frame }), finish)
       if (gone) await live.close()

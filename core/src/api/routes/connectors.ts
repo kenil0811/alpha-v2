@@ -7,6 +7,7 @@ import { addFolder, loadConnector, removeFolder, unpack } from '../../connectors
 import { tableOf } from '../../connectors/places.ts'
 import { PlainPlatform } from '../../platform/index.ts'
 import { FOLDERS } from '../../signing.ts'
+import { ownerOf } from '../../world/connections.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ConnectorsView } from '../types.ts'
@@ -234,7 +235,7 @@ export function registerConnectors(ctx: Ctx): void {
     if (!hands) throw new Refused('Alpha has no browser here.')
     if (!chromePath()) throw new Refused('Signing in to a site needs Google Chrome on this Mac.')
     void (async () => {
-      await hands.browser().signIn(url)
+      await hands.browser().as(ownerOf(conn)).signIn(url)
       await engine.sync(user, id).catch(() => undefined)
       live()
     })().catch(() => undefined)
