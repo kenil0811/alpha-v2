@@ -217,10 +217,10 @@ function chromeRunning(): boolean {
   }
 }
 
-// How the browser runs: Alpha's own headless shell, unless a developer tries another while testing
-// which a site accepts (the acting browser's spike, its call B4): Google Chrome on a screen of its
-// own, or the same without the marks that say a program drives it.
-export type BrowserSetup = 'shell' | 'chrome' | 'quiet'
+// How the browser runs: Alpha's own headless shell, unless a developer tries Google Chrome on a
+// screen of its own while testing which a site accepts (the acting browser's spike). The browser
+// never hides that a program drives it.
+export type BrowserSetup = 'shell' | 'chrome'
 
 export class BrowserEngine {
   private profiles: string
@@ -292,18 +292,11 @@ export class BrowserEngine {
           executablePath: browserPath(this.browsers),
         })
       } else {
-        // Google Chrome on a screen of its own (a virtual one on a server), and for quiet without
-        // the marks that say a program drives it
+        // Google Chrome on a screen of its own (a virtual one on a server)
         c = await chromium.launchPersistentContext(dir, {
           channel: 'chrome',
           headless: false,
           viewport: LIVE_SIZE,
-          ...(this.setup === 'quiet'
-            ? {
-                args: ['--disable-blink-features=AutomationControlled'],
-                ignoreDefaultArgs: ['--enable-automation'],
-              }
-            : {}),
         })
       }
       this.contexts.set(host, c)

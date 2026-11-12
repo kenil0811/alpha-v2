@@ -195,8 +195,7 @@ const browserEngine = () => {
     const limits = config.limits()
     // another browser setup only behind the developer switch, while testing (ALPHA_BROWSER_SETUP)
     const tried = process.env.ALPHA_BROWSER_SETUP
-    const setup =
-      readInstall(home).developer && (tried === 'chrome' || tried === 'quiet') ? tried : 'shell'
+    const setup = readInstall(home).developer && tried === 'chrome' ? tried : 'shell'
     browser = new BrowserEngine({
       browsers: join(home, 'browsers'),
       profiles: join(home, 'browser-profiles'),
