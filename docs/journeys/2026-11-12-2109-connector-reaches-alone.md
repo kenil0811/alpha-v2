@@ -1,12 +1,12 @@
-# Journey connector-reaches: 2026-11-11 00:53
+# Journey connector-reaches: 2026-11-12 21:09
 
 A connector reaches only the hosts it names; anything else is refused and listed
 
 Fresh tenant, model claude-opus-5-5, on Claude Code, Alpha's prompt alone.
-**Passed** in 0 s, $0.00.
+**Passed** in 1 s, $0.00.
 
 
-## 1. Served the made-up site journeys/fixtures/sites/reach at http://127.0.0.1:50249
+## 1. Served the made-up site journeys/fixtures/sites/reach at http://127.0.0.1:53440
 
 Took 0.0 s.
 

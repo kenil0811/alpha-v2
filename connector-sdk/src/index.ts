@@ -1,3 +1,4 @@
+export { compact, element, type Seen, see } from './browse.ts'
 export {
   BrowserEngine,
   browserPath,

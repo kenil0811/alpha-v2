@@ -60,6 +60,11 @@ yes_hours: 6
 browser_pace_min_ms: 4000
 browser_pace_max_ms: 9000
 
+# The browse tool: a person's moment after a click or a scroll inside a page, and how many of a
+# page's elements a step shows the agent before "scroll, or find by words".
+browse_step_ms: 900
+browse_elements: 250
+
 # Days a removed row is kept, out of sight, so Bring back or Revert can put it back whole; then the
 # daily work deletes it for good. A judgement, never a setting.
 keep_removed_days: 30

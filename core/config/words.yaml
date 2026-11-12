@@ -17,6 +17,27 @@ removal:
   - discard
   - purge
 
+# A browse step whose button or menu item says one of these, as whole words, sends something to other
+# people, or cannot be taken back ("sign" leaves out sign in, up and out). It asks: the first as acting, once per agent, site and work; the rest every time.
+# The list grows from journeys: a miss becomes a journey, then a word here.
+browse_asks:
+  - share
+  - publish
+  - post
+  - send
+  - submit
+  - pay
+  - buy
+  - place order
+  - order now
+  - checkout
+  - transfer
+  - sign
+  - delete forever
+  - delete permanently
+  - empty trash
+  - empty bin
+
 # A table named for a period splits one table into many: the shape tool refuses a table's name
 # holding one of these words, or matching one of these patterns, as a whole word, and says to keep
 # one table with a date on each row instead.

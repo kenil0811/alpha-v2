@@ -5,6 +5,7 @@ import type { ConnectorService } from '../../connectors/service.ts'
 import type { World } from '../../world/world.ts'
 import type { ToolEntry } from '../registry.ts'
 import { agentTools } from './agents.ts'
+import { browseTools } from './browse.ts'
 import { EFFECTS, type Hands, type Here, type Tooling } from './common.ts'
 import { deskTools } from './desk.ts'
 import { rowTools } from './rows.ts'
@@ -56,6 +57,7 @@ export function worldTools(
     ...taskTools(t),
     ...scheduleTools(t),
     ...rest,
+    ...browseTools(t),
   ].filter((x): x is ToolEntry => !!x)
 }
 

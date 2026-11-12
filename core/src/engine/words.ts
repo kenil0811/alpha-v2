@@ -118,6 +118,27 @@ export function stepWords(tool: string, input: Input): string {
               : basename(s(input.path))
       return `Kept ${what} in ${s(input.module)}`
     }
+    case 'browse': {
+      const url = s(input.url)
+      switch (input.action) {
+        case 'open':
+          return `Opened ${URL.canParse(url) ? new URL(url).host : 'a page'}`
+        case 'find':
+          return `Looked on the page for “${short(s(input.words), 60)}”`
+        case 'click':
+          return 'Clicked on the page'
+        case 'scroll':
+          return 'Scrolled the page'
+        case 'back':
+          return 'Went back a page'
+        case 'wait':
+          return 'Waited for the page'
+        case 'close':
+          return 'Closed the page'
+        default:
+          return 'Looked at the page'
+      }
+    }
     case 'list_agents':
       return 'Looked at the team'
     case 'ask_agent':

@@ -53,6 +53,14 @@ export class Files {
     return join(this.dir, hash.slice(0, 2), hash)
   }
 
+  // A browse step's picture, by its hash: its step's own line names it, so it has no row or line.
+  keepPicture(bytes: Uint8Array): string {
+    const hash = this.hashOf(bytes)
+    mkdirSync(join(this.dir, hash.slice(0, 2)), { recursive: true })
+    if (!existsSync(this.path(hash))) writeFileSync(this.path(hash), bytes)
+    return hash
+  }
+
   // A file kept by its hash: the same bytes twice are one file.
   take(
     bytes: Uint8Array,

@@ -523,6 +523,20 @@ function StepRow({ step }: { step: Step }) {
           {r}
         </span>
       ))}
+      {step.picture && (
+        <a
+          href={api.tokened(`/api/pictures/${step.picture}`)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1.5 w-fit"
+        >
+          <img
+            src={api.tokened(`/api/pictures/${step.picture}`)}
+            alt="The page after this step"
+            className="h-28 w-auto rounded-sm border border-line"
+          />
+        </a>
+      )}
     </div>
   )
 }

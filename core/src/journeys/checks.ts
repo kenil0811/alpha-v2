@@ -9,7 +9,7 @@ import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
 import { AgentChecks, agentCheck } from './agent-checks.ts'
 import { ScheduleChecks, scheduleCheck } from './schedule-checks.ts'
-import { SiteRequests, WebCalls } from './web-checks.ts'
+import { SiteRequests, StepPictures, WebCalls } from './web-checks.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
 
@@ -18,8 +18,9 @@ export const Check = z.union([
   z.object({ rows: z.number() }),
   z.object({ stated: z.object({ matches: z.string(), from: z.string() }) }),
   z.object({ permission_cards: z.number() }),
-  z.object({ site_requests: SiteRequests }), // these two judged in web-checks.ts
+  z.object({ site_requests: SiteRequests }), // these three judged in web-checks.ts
   z.object({ web_calls: WebCalls }),
+  z.object({ step_pictures: StepPictures }),
   z.object({ cards_waiting: z.number() }),
   z.object({ errors: z.number() }),
   z.object({ documents: z.number() }),
@@ -588,7 +589,7 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       saw: told.map((l) => l.words).join(' | ') || 'nothing told',
     }
   }
-  // what is left is errors; site_requests and web_calls are judged in web-checks.ts
+  // what is left is errors; site_requests, web_calls and step_pictures are judged in web-checks.ts
   if (!('errors' in check)) throw new Error(`${Object.keys(check)[0]} is judged elsewhere.`)
   const n = world.lines({ kinds: ['error'] }).length
   return { check: `errors: ${check.errors}`, ok: n === check.errors, saw: String(n) }

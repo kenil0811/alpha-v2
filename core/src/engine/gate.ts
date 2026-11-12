@@ -40,6 +40,7 @@ export class Gatekeeper {
   readonly links = new ShownLinks()
   private web = new Map<string, { url: string; how: string | null }>()
   private outside = new Map<string, string | undefined>()
+  private browsing = new Set<string>() // browse steps under way, whose line keeps the step's picture
   private onYes = new Map<string, string>()
   // each connector call under way, for the line that says it was done (what it is, once done)
   private calls = new Map<string, { tool: string; input: Record<string, unknown>; words: string }>()
@@ -98,8 +99,14 @@ export class Gatekeeper {
     this.emit({ type: 'doing', words })
     this.links.wrote(JSON.stringify(input))
     const url = typeof input.url === 'string' ? input.url : undefined
-    if (toolName === 'WebSearch' || toolName === 'WebFetch' || (name === 'look' && url))
+    if (
+      toolName === 'WebSearch' ||
+      toolName === 'WebFetch' ||
+      (name === 'look' && url) ||
+      name === 'browse'
+    )
       this.outside.set(call.callId, url)
+    if (name === 'browse') this.browsing.add(call.callId)
     else if (this.connectors?.isTool(toolName)) this.outside.set(call.callId, undefined)
     if (this.connectors?.isTool(toolName)) {
       this.calls.set(call.callId, { tool: toolName, input, words })
@@ -116,6 +123,8 @@ export class Gatekeeper {
     if (toolName === 'WebFetch') return this.opens(String(input.url ?? ''), call.callId)
     if (!toolName.startsWith(`mcp__${SERVER}__`)) return { allow: true }
     if (name === 'look' && typeof input.url === 'string') return this.opens(input.url, call.callId)
+    if (name === 'browse' && input.action === 'open' && typeof input.url === 'string')
+      return this.opens(input.url, call.callId)
     return this.worldTool(name, input, words, call)
   }
 
@@ -359,6 +368,9 @@ export class Gatekeeper {
     if (call.ok && this.outside.has(call.callId) && call.result !== undefined)
       this.links.add(textOf(call.result), this.outside.get(call.callId))
     this.outside.delete(call.callId)
+    // a browse step's picture, kept by its hash: the record shows what the page was after it
+    const picture = this.browsing.delete(call.callId) ? this.here.picture : undefined
+    if (picture) delete this.here.picture
     const result = resultOf(call.result)
     const undo =
       made && call.ok && this.connectors
@@ -375,6 +387,7 @@ export class Gatekeeper {
         ...(call.ok ? {} : { error: call.error ?? '' }),
         ...(this.onYes.has(call.callId) ? { card: this.onYes.get(call.callId) } : {}),
         ...(web?.how ? { how: web.how } : {}),
+        ...(picture ? { picture } : {}),
         ...(undo && made
           ? { undo: { kind: undo.kind, did: made.words, words: undo.words ?? null, result } }
           : {}),

@@ -9,6 +9,7 @@ export interface Step {
   words: string
   ok: boolean | null // null while it runs
   results: string[] // what the step did in the world
+  picture?: string // a browse step's page, after it, by its hash
 }
 
 // ids: the modules a lens takes in, the module and those inside it (none: only the module)
@@ -176,6 +177,7 @@ export function group(lines: StreamLine[]): Item[] {
     } else if (l.kind === 'called') {
       const step = calls.get(String(l.data.call))
       if (step) step.ok = l.data.ok === true
+      if (step && typeof l.data.picture === 'string') step.picture = l.data.picture
       if (step === open) open = null
     } else if (RESULTS.has(l.kind)) {
       if (open) open.results.push(l.words)

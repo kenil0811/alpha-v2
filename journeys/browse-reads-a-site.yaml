@@ -1,0 +1,17 @@
+name: browse-reads-a-site
+title: An agent works through a site's pages in the browser, each step with its picture, and no card
+why: >
+  The acting browser, reading: the browse tool opens a page in the work's own tab, shows it as
+  numbered elements, and clicks through by number. Reading and clicking a link ask nothing, and each
+  step keeps a picture in the record. On a made-up site served on this Mac.
+steps:
+  - site: { from: journeys/fixtures/sites/plans }
+  - say: >
+      Open {site}/index.html in the browser, click through to the Team plan's own page, and tell me
+      what it costs a month.
+    checks:
+      - reply_matches: '49'
+      - site_requests: { path: /plans/team.html, count: 1, at_least: true }
+      - permission_cards: 0
+      - step_pictures: 2
+      - errors: 0

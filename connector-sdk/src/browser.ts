@@ -235,6 +235,7 @@ export class BrowserEngine {
   private profiles: string
   private pace: Pace
   private contexts = new Map<string, BrowserContext>()
+  private tabs = new Map<string, Page>() // each piece of work's own tab, by person and work
   private lastLoad = new Map<string, number>()
   private robots = new Map<string, string>()
   private sleep: (ms: number) => Promise<void>
@@ -320,6 +321,67 @@ export class BrowserEngine {
 
   private profileOf(host: string): string {
     return join(this.profiles, this.who, siteOf(host).replace(/[^a-z0-9.-]/gi, '_'))
+  }
+
+  // A piece of work's own tab in this person's profile for a site (the browse tool): opened at the
+  // address given, else the page it is on. A page loads at a person's pace, keeps a site's robots
+  // rules where nobody is signed in, waits out a check page that clears by itself, and stops at a
+  // sign-in the person has not made.
+  async tab(work: string, url?: string): Promise<Page> {
+    const key = `${this.who}/${work}`
+    let page = this.tabs.get(key)
+    if (!url) {
+      if (!page || page.isClosed())
+        throw new Problem('No page is open in this work: open one first.')
+      return page
+    }
+    const host = hostOf(url)
+    if (this.only && !this.only.includes(new URL(url).hostname))
+      throw new Problem(`${host} is not one of the sites this browser may read.`)
+    const on =
+      page && !page.isClosed() ? hostOf(page.url().startsWith('http') ? page.url() : url) : ''
+    if (!page || page.isClosed() || siteOf(on) !== siteOf(host)) {
+      await page?.close().catch(() => undefined)
+      page = await (await this.context(host)).newPage()
+      this.tabs.set(key, page)
+    }
+    const signed = this.signedIn(url)
+    if (!signed) await this.allowed(page, url)
+    await this.waitTurn(host)
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await this.settle(page, host)
+    if (!signed && (await atSignIn(page)))
+      throw new Problem(`${host} wants you to sign in before Alpha works on it as you.`, 'sign_in')
+    return page
+  }
+
+  // A page after a step: loaded, and past a check page that clears by itself in a real browser,
+  // tried again twice; one that does not clear needs a person.
+  async settle(page: Page, host: string): Promise<void> {
+    for (let tries = 0; ; tries++) {
+      await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined)
+      const text = await page
+        .locator('body')
+        .innerText()
+        .catch(() => '')
+      if (!FRICTION.test(`${await page.title().catch(() => '')} ${text.slice(0, 3000)}`)) return
+      if (tries >= 2)
+        throw new Problem(
+          `${host} asks whether a person is there, and it did not clear by itself: it waits for you.`,
+          'blocked',
+        )
+      await this.sleep(8_000)
+      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined)
+    }
+  }
+
+  async closeTab(work: string): Promise<void> {
+    const key = `${this.who}/${work}`
+    await this.tabs
+      .get(key)
+      ?.close()
+      .catch(() => undefined)
+    this.tabs.delete(key)
   }
 
   // The sites this person signed in to, newest first, with when.

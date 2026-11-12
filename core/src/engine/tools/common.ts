@@ -35,6 +35,7 @@ export interface Here {
   // what a turn keeps only if it finishes: a turn that fails saves nothing
   afterTurn: (() => void)[]
   bus?: AgentBus | undefined // reaches the other agents' desks
+  picture?: string // the last browse step's picture, by its hash, for its step's line
 }
 
 export interface AgentBus {
@@ -178,6 +179,7 @@ export const EFFECTS: Record<string, (input: Record<string, unknown>) => Effect>
   task: (i) => (i.action === 'remove' ? 'remove' : i.action === 'find' ? 'read' : 'write'),
   connect: () => 'sign_in',
   look: () => 'read',
+  browse: () => 'read',
   keep: () => 'write',
   run: () => 'write',
   guide: () => 'read',

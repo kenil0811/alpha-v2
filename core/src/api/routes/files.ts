@@ -142,6 +142,17 @@ export function registerFiles(ctx: Ctx): void {
   // A stored file came from outside (a mailed attachment, a drop), so it never runs as Alpha's own
   // page: the harmless kinds show inline, HTML and SVG show in a sandbox that runs nothing and
   // sends nothing, everything else downloads, and no browser guesses a type.
+  // A browse step's picture, by its hash: no file row of its own
+  app.get('/api/pictures/:hash', async (req, reply) => {
+    const { hash } = z.object({ hash: z.string().regex(/^[0-9a-f]{64}$/) }).parse(req.params)
+    const p = world.files.path(hash)
+    if (!existsSync(p)) return reply.code(404).send({ problem: 'That picture is not there.' })
+    return reply
+      .type('image/jpeg')
+      .header('cache-control', 'private, max-age=86400')
+      .send(readFileSync(p))
+  })
+
   app.get('/api/files/:hash', async (req, reply) => {
     const { hash } = z.object({ hash: z.string() }).parse(req.params)
     const f = world.files.file(hash)

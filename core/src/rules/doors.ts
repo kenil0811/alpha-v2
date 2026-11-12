@@ -314,6 +314,8 @@ export const NOT_DOORS: Record<string, string> = {
   'tool memory': "an agent's memory, which is no row or module",
   'tool list_agents': 'reads the team',
   'tool ask_agent': 'asks another agent, whose own turn goes through these doors',
+  'tool browse':
+    'works a website as the person, in their own profile; it writes no row or module, and what it puts in a site asks first',
   'tool answer': 'answers the agent that asked',
   'tool stop_agent': 'calls off an ask',
   'POST /api/undo/preview': 'says what a revert would do, and does nothing',
