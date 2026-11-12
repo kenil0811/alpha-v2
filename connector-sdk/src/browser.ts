@@ -13,7 +13,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserContext, chromium, type Page } from 'playwright'
 import { Problem } from './connector.ts'
-import { atSignIn, LIVE_SIZE, LiveBrowser } from './live.ts'
+import { atSignIn, LiveBrowser } from './live.ts'
 
 export interface Pace {
   minMs: number // the least time between two pages of one site
@@ -217,11 +217,6 @@ function chromeRunning(): boolean {
   }
 }
 
-// How the browser runs: Alpha's own headless shell, unless a developer tries Google Chrome on a
-// screen of its own while testing which a site accepts (the acting browser's spike). The browser
-// never hides that a program drives it.
-export type BrowserSetup = 'shell' | 'chrome'
-
 export class BrowserEngine {
   private profiles: string
   private pace: Pace
@@ -232,7 +227,6 @@ export class BrowserEngine {
   private only: string[] | null
 
   private browsers: string
-  private setup: BrowserSetup
 
   constructor(options: {
     browsers: string
@@ -240,9 +234,7 @@ export class BrowserEngine {
     pace: Pace
     sleep?: (ms: number) => Promise<void>
     only?: string[] // the only hosts it may read (a journey's made-up sites on this Mac)
-    setup?: BrowserSetup
   }) {
-    this.setup = options.setup ?? 'shell'
     this.browsers = options.browsers
     this.profiles = options.profiles
     this.pace = options.pace
@@ -285,18 +277,11 @@ export class BrowserEngine {
             rmSync(join(dir, f), { force: true })
           c = await launch()
         }
-      } else if (this.setup === 'shell') {
+      } else {
         await ensureBrowser(this.browsers)
         c = await chromium.launchPersistentContext(dir, {
           headless: true,
           executablePath: browserPath(this.browsers),
-        })
-      } else {
-        // Google Chrome on a screen of its own (a virtual one on a server)
-        c = await chromium.launchPersistentContext(dir, {
-          channel: 'chrome',
-          headless: false,
-          viewport: LIVE_SIZE,
         })
       }
       this.contexts.set(host, c)
