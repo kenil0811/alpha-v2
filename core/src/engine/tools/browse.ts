@@ -2,7 +2,7 @@
 // work's own in their profile for the site, and come back as numbered elements from the page's
 // accessibility tree. Reading, moving around and clicking a link, a menu, a row or a button that
 // sends nothing go without asking; each step keeps a small picture in the record.
-import { element, see } from '@alpha/connector-sdk'
+import { element, press, see } from '@alpha/connector-sdk'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -26,15 +26,16 @@ export function browseTools(t: Tooling): ToolEntry[] {
   return [
     tool(
       'browse',
-      'Use a website as the person, in a browser that keeps their sign-ins. Actions: open (url), find (words: the elements whose names hold them, on a big page), click (n: an element’s number), scroll (direction up or down), back, wait (words to wait for), picture (the page as drawn, for a page drawn on a canvas or to check a result), close. Every step returns the page as numbered elements; numbers hold until the page changes. Use look to read a page once; browse to work through a site. Typing into a site is not here yet.',
+      'Use a website as the person, in a browser that keeps their sign-ins. Actions: open (url), find (words: the elements whose names hold them, on a big page), click (n: an element’s number as shown, such as 12 or f1e3; twice: true for a row that opens on a double click, as in a file list; a file that opens in a new tab is followed there), scroll (direction up or down), back, wait (words to wait for), picture (the page as drawn, for a page drawn on a canvas or to check a result), close. Every step returns the page as numbered elements; numbers hold until the page changes. Use look to read a page once; browse to work through a site. Typing into a site is not here yet.',
       {
         action: z.enum(ACTIONS),
         url: z.string().optional(),
-        n: z.number().int().positive().optional(),
+        n: z.union([z.number().int().positive(), z.string().regex(/^(?:f\d+e)?\d+$/)]).optional(),
+        twice: z.boolean().optional(),
         words: z.string().optional(),
         direction: z.enum(['up', 'down']).optional(),
       },
-      async ({ action, url, n, words, direction }) =>
+      async ({ action, url, n, twice, words, direction }) =>
         guardAsync(async () => {
           const cur = here.current
           // the person this work is for, and the work itself: one request, or the task it serves
@@ -53,8 +54,8 @@ export function browseTools(t: Tooling): ToolEntry[] {
               throw err
             })
           }
-          const page = await browser.tab(work)
-          const host = new URL(page.url()).host
+          let page = await browser.tab(work)
+          let host = new URL(page.url()).host
           if (action === 'click') {
             if (!n) throw new Refused('click needs an element’s number.')
             const el = element(page, n)
@@ -65,8 +66,11 @@ export function browseTools(t: Tooling): ToolEntry[] {
               throw new Refused(
                 `${said.replace(/^- /, '').split('\n')[0]} sends something or cannot be taken back: that waits for acting, with the person's yes.`,
               )
-            await el.click({ timeout: 10_000 })
-            await step()
+            const opened = await press(page, n, twice ?? false, limits.browse_step_ms)
+            if (opened) {
+              page = await browser.follow(work, opened)
+              host = new URL(page.url()).host
+            }
             await browser.settle(page, host)
           } else if (action === 'scroll') {
             await page.mouse.wheel(0, direction === 'up' ? -700 : 700)

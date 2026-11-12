@@ -375,6 +375,20 @@ export class BrowserEngine {
     }
   }
 
+  // A click that opened a new tab (a file opened from a list): the work goes on there, in one tab.
+  async follow(work: string, page: Page): Promise<Page> {
+    const key = `${this.who}/${work}`
+    const old = this.tabs.get(key)
+    this.tabs.set(key, page)
+    if (old && old !== page) await old.close().catch(() => undefined)
+    await page.waitForLoadState('domcontentloaded').catch(() => undefined)
+    if (this.only && !this.only.includes(new URL(page.url()).hostname)) {
+      await this.closeTab(work)
+      throw new Problem(`${hostOf(page.url())} is not one of the sites this browser may read.`)
+    }
+    return page
+  }
+
   async closeTab(work: string): Promise<void> {
     const key = `${this.who}/${work}`
     await this.tabs

@@ -1,4 +1,4 @@
-export { compact, element, type Seen, see } from './browse.ts'
+export { compact, element, press, type Ref, type Seen, see } from './browse.ts'
 export {
   BrowserEngine,
   browserPath,
