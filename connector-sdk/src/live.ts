@@ -15,17 +15,17 @@ export type LiveInput =
   | { kind: 'keyup'; key: string }
   | { kind: 'paste'; text: string }
 
-// A page that is a sign-in: a password box, or a box for the account's name or address on a page
-// whose title or address says it signs in.
+// A page that is a sign-in: a password box, an address that says it signs in (Google's form draws
+// its boxes after the page has loaded), or a box for the account's name on a page titled so.
 export async function atSignIn(page: Page): Promise<boolean> {
-  const passwords = await page.locator('input[type="password"]:visible').count()
-  if (passwords > 0) return true
+  if ((await page.locator('input[type="password"]:visible').count()) > 0) return true
+  if (SIGN_IN.test(new URL(page.url()).pathname)) return true
   const account = await page
     .locator('input[type="email"]:visible, input[autocomplete="username"]:visible')
     .count()
-  return account > 0 && SIGN_IN.test(`${await page.title()} ${page.url()}`)
+  return account > 0 && SIGN_IN.test(await page.title())
 }
-const SIGN_IN = /sign[ -]?in|log[ -]?in|ServiceLogin|identifier/i
+const SIGN_IN = /sign[ -_]?in|log[ -_]?in|ServiceLogin|identifier/i
 
 export const LIVE_SIZE = { width: 1280, height: 800 }
 
