@@ -69,3 +69,9 @@ left him signed out. The picture called him in when the page asked for (GitHub's
 anyone) opened without a sign-in, while GitHub was still at its step after the password. It now
 closes by itself only where the page asked for stops at a sign-in before they are in; elsewhere it
 says so and waits for "I am signed in".
+
+The picture lagged on the server. Measured there: on a moving page the browser made 2 to 3 MB of
+frames a second, about what the public address carried to his Mac in one burst, so frames queued
+and the picture fell behind. Now a frame goes as bytes, the next goes only once the window says it
+drew the last (the newest made meanwhile, the rest dropped), the pointer's moves go one a frame,
+and the jpeg quality is 60.
