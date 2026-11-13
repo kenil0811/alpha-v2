@@ -8,7 +8,7 @@ import { token } from './api.ts'
 const DOUBLE_MS = 500
 const DOUBLE_PX = 6
 
-type Told = { frame?: string; done?: boolean; problem?: string; held?: boolean; tells?: boolean }
+type Told = { done?: boolean; problem?: string; held?: boolean; tells?: boolean }
 
 export function LivePage({
   path,
@@ -70,35 +70,35 @@ export function LivePage({
       `${proto}://${window.location.host}${path}?t=${encodeURIComponent(token())}`,
     )
     socket.current = ws
+    ws.binaryType = 'arraybuffer'
     ws.onopen = () => {
       if (opening.current) ws.send(JSON.stringify(opening.current))
     }
-    let drawing = false
-    let next: string | null = null
-    const draw = (frame: string) => {
-      if (drawing) {
-        next = frame // only the newest is worth drawing
-        return
-      }
-      drawing = true
+    // A frame comes as its bytes. The core sends the next only once told this one is drawn, so
+    // the picture keeps up with the page however slow the line is.
+    const draw = (frame: ArrayBuffer) => {
+      const from = URL.createObjectURL(new Blob([frame], { type: 'image/jpeg' }))
       const img = new Image()
+      const drawn = () => {
+        URL.revokeObjectURL(from)
+        if (ws.readyState === 1) ws.send(JSON.stringify({ kind: 'drawn' }))
+      }
       img.onload = () => {
         const c = canvas.current
         c?.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height)
         setShown(true)
-        drawing = false
-        if (next) {
-          const f = next
-          next = null
-          draw(f)
-        }
+        drawn()
       }
-      img.src = `data:image/jpeg;base64,${frame}`
+      img.onerror = drawn
+      img.src = from
     }
     ws.onmessage = (e) => {
+      if (e.data instanceof ArrayBuffer) {
+        draw(e.data)
+        return
+      }
       const m = JSON.parse(String(e.data)) as Told & { size?: { width: number; height: number } }
       if (m.size) setSize(m.size)
-      if (m.frame) draw(m.frame)
       if (m.problem) setProblem(m.problem)
       told.current?.(m)
     }
@@ -153,6 +153,18 @@ export function LivePage({
     }
     return last.current.count
   }
+  // the pointer's moves, one a frame at most: the page needs where it is, not every step there
+  const moving = useRef<{ x: number; y: number } | null>(null)
+  const move = (e: { clientX: number; clientY: number }) => {
+    const idle = moving.current === null
+    moving.current = at(e)
+    if (!idle) return
+    requestAnimationFrame(() => {
+      const to = moving.current
+      moving.current = null
+      if (to) act({ kind: 'move', ...to })
+    })
+  }
   const sent = useRef(new Set<string>())
   const release = () => {
     for (const key of sent.current) act({ kind: 'keyup', key })
@@ -187,10 +199,11 @@ export function LivePage({
             window.getSelection()?.removeAllRanges()
             keys.current?.focus()
           }}
-          onPointerMove={(e) => act({ kind: 'move', ...at(e) })}
+          onPointerMove={move}
           onPointerDown={(e) => {
             keys.current?.focus()
             e.preventDefault()
+            moving.current = null // the press says where it is
             act({
               kind: 'down',
               ...at(e),

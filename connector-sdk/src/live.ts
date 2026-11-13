@@ -39,7 +39,13 @@ const SIGN_IN = /sign[ -_]?in|log[ -_]?in|ServiceLogin|identifier/i
 export const LIVE_SIZE = { width: 1280, height: 800 }
 
 // How the picture is sent: jpeg, good enough to read a form, small enough to feel immediate.
-const QUALITY = 70
+const QUALITY = 60
+// A frame nobody took in this long no longer holds the next one back: a window that stopped
+// answering does not freeze the picture for good.
+const FRAME_WAIT_MS = 2000
+
+// Takes a frame; where it answers with a promise, the next frame waits for it.
+export type Frames = (jpeg: Buffer) => void | Promise<void>
 const CHECK_AFTER_MS = 1200
 const CHECK_EVERY_MS = 4000
 
@@ -81,16 +87,45 @@ export async function letGo(page: Page, down: Set<string>): Promise<void> {
   down.clear()
 }
 
-// A page's live picture, sent frame by frame until stopped.
+// A page's live picture, sent frame by frame until stopped. While a frame is being taken, only the
+// newest one made since is kept, and the browser is told to go on only as frames are taken: a line
+// slower than the page changes shows the page as it is now, a little less often, never old frames
+// queued behind each other.
 export async function screencast(
   page: Page,
-  frames: (jpeg: string) => void,
+  frames: Frames,
   size: { width: number; height: number },
 ): Promise<CDPSession> {
   const cdp = await page.context().newCDPSession(page)
+  let busy = false
+  let newest: { data: string; ids: number[] } | null = null
+  const hand = (data: string, ids: number[]): void => {
+    let over = false
+    const done = () => {
+      if (over) return
+      over = true
+      clearTimeout(late)
+      for (const sessionId of ids)
+        void cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => undefined)
+      busy = false
+      const next = newest
+      newest = null
+      if (next) hand(next.data, next.ids)
+    }
+    busy = true
+    const late = setTimeout(done, FRAME_WAIT_MS)
+    let taken: void | Promise<void>
+    try {
+      taken = frames(Buffer.from(data, 'base64'))
+    } catch {
+      taken = undefined
+    }
+    if (taken) void taken.catch(() => undefined).then(done)
+    else done()
+  }
   cdp.on('Page.screencastFrame', (f: { data: string; sessionId: number }) => {
-    frames(f.data)
-    void cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => undefined)
+    if (busy) newest = { data: f.data, ids: [...(newest?.ids ?? []), f.sessionId] }
+    else hand(f.data, [f.sessionId])
   })
   await cdp.send('Page.startScreencast', {
     format: 'jpeg',
@@ -107,7 +142,7 @@ export async function screencast(
 export class LiveTab {
   private page: Page
   private cdp: CDPSession | null = null
-  private frames: ((jpeg: string) => void) | null = null
+  private frames: Frames | null = null
   private stopped = false
   private down = new Set<string>() // the keys the person holds on the page
 
@@ -124,7 +159,7 @@ export class LiveTab {
     return this.page.viewportSize() ?? LIVE_SIZE
   }
 
-  async start(frames: (jpeg: string) => void): Promise<void> {
+  async start(frames: Frames): Promise<void> {
     this.frames = frames
     await this.show(this.page)
   }
@@ -152,7 +187,7 @@ export class LiveBrowser {
   private walled: () => Promise<boolean>
   private page: Page | null = null
   private cdp: CDPSession | null = null
-  private frames: ((jpeg: string) => void) | null = null
+  private frames: Frames | null = null
   private inDone: (() => void) | null = null
   private pages: Page[] = []
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -173,7 +208,7 @@ export class LiveBrowser {
     this.walled = walled
   }
 
-  async start(frames: (jpeg: string) => void, done: () => void): Promise<void> {
+  async start(frames: Frames, done: () => void): Promise<void> {
     this.frames = frames
     this.inDone = done
     // a sign-in that opens its own window ("Sign in with…") is followed there and back

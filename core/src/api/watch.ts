@@ -10,6 +10,7 @@ import { handedBack } from '../engine/acting.ts'
 import type { Engine } from '../engine/engine.ts'
 import { CHIEF } from '../world/agents/index.ts'
 import type { User, World } from '../world/world.ts'
+import { framesTo } from './frames.ts'
 
 const Point = { x: z.number(), y: z.number() }
 const Sent = z.discriminatedUnion('kind', [
@@ -24,6 +25,7 @@ const Sent = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('wheel'), ...Point, dx: z.number(), dy: z.number() }),
   z.object({ kind: z.enum(['keydown', 'keyup']), key: z.string().max(40) }),
   z.object({ kind: z.literal('paste'), text: z.string().max(4000) }),
+  z.object({ kind: z.literal('drawn') }),
 ])
 
 export function watchTab(
@@ -55,6 +57,7 @@ export function watchTab(
     return
   }
   let took = false // taken over through this window
+  const frames = framesTo(socket)
   const back = () => {
     const site = hostOf(browser.openTabs().find((t) => t.work === tab)?.url)
     const had = took ? browser.release(tab) : null
@@ -87,6 +90,7 @@ export function watchTab(
       void live.letGo().catch(() => undefined)
       say({ held: true })
     } else if (sent.kind === 'back') back()
+    else if (sent.kind === 'drawn') frames.drawn()
     // what they do reaches the page only while they hold it
     else if (took) void live.input(sent as LiveInput).catch(() => undefined)
   })
@@ -98,7 +102,7 @@ export function watchTab(
   void (async () => {
     try {
       say({ size: live.size(), held: false })
-      await live.start((frame) => say({ frame }))
+      await live.start(frames.send)
     } catch (err) {
       refuse(err instanceof Error ? err.message : 'The page did not open.')
     }

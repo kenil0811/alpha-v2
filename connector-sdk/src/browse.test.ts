@@ -157,6 +157,41 @@ describe('browsing a site', () => {
     }
   }, 60_000)
 
+  it('makes the next frame of a live picture only once the last was taken', async () => {
+    const engine = new BrowserEngine({ browsers: BROWSERS, profiles, pace: { minMs: 0, maxMs: 0 } })
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    try {
+      const me = engine.as('u_ann')
+      const page = await me.tab('chief.t1', `${base}/plans`)
+      // a page that never stops changing
+      await page.evaluate(() => {
+        let n = 0
+        setInterval(() => {
+          n += 40
+          document.body.style.background = `hsl(${n % 360} 80% 60%)`
+        }, 30)
+      })
+      const live = me.watch('chief.t1')
+      let frames = 0
+      let take: (() => void) | null = null
+      await live.start(() => {
+        frames++
+        return new Promise<void>((ok) => {
+          take = ok
+        })
+      })
+      await expect.poll(() => frames, { timeout: 5_000 }).toBe(1)
+      // nobody took it: the page goes on changing and no frame queues behind it
+      await wait(700)
+      expect(frames).toBe(1)
+      ;(take as (() => void) | null)?.()
+      await expect.poll(() => frames, { timeout: 5_000 }).toBe(2)
+      await me.unwatch('chief.t1', live)
+    } finally {
+      await engine.close()
+    }
+  }, 60_000)
+
   it('never closes a page for idleness while the person watches it or has it, and counts from when they let go', async () => {
     const engine = new BrowserEngine({
       browsers: BROWSERS,
@@ -202,8 +237,10 @@ describe('browsing a site', () => {
       expect(engine.as('u_bob').openTabs()).toEqual([])
       expect(() => engine.as('u_bob').watch('chief.t1')).toThrow(/not open any more/)
       const live = me.watch('chief.t1')
-      const frames: string[] = []
-      await live.start((f) => frames.push(f))
+      const frames: Buffer[] = []
+      await live.start((f) => {
+        frames.push(f)
+      })
       await page.evaluate(() => {
         document.body.style.background = 'teal'
       })

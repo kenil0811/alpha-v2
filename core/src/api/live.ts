@@ -7,6 +7,7 @@ import { z } from 'zod'
 import type { Engine } from '../engine/engine.ts'
 import { schedules } from '../modules/schedules.ts'
 import type { User, World } from '../world/world.ts'
+import { framesTo } from './frames.ts'
 
 const Point = { x: z.number(), y: z.number() }
 const Sent = z.discriminatedUnion('kind', [
@@ -21,6 +22,7 @@ const Sent = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('wheel'), ...Point, dx: z.number(), dy: z.number() }),
   z.object({ kind: z.enum(['keydown', 'keyup']), key: z.string().max(40) }),
   z.object({ kind: z.literal('paste'), text: z.string().max(4000) }),
+  z.object({ kind: z.literal('drawn') }),
 ])
 
 export function liveSignIn(
@@ -58,6 +60,7 @@ export function liveSignIn(
   let live: LiveBrowser | null = null
   let gone = false
   let finished = false
+  const frames = framesTo(socket)
   const finish = () => {
     if (finished) return
     finished = true
@@ -78,6 +81,7 @@ export function liveSignIn(
       return
     }
     if (sent.kind === 'done') finish()
+    else if (sent.kind === 'drawn') frames.drawn()
     else void live?.input(sent as LiveInput).catch(() => undefined)
   })
   socket.on('close', () => {
@@ -88,7 +92,7 @@ export function liveSignIn(
     try {
       live = await browser.openLive(url)
       say({ size: LIVE_SIZE })
-      await live.start((frame) => say({ frame }), finish)
+      await live.start(frames.send, finish)
       say({ tells: live.tells === true })
       if (gone) await live.close()
     } catch (err) {
