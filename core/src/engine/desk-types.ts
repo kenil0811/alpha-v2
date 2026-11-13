@@ -60,10 +60,16 @@ export interface Turn {
   named?: string[] // the teammates the person picked with @
 }
 
-// A kept session is resumed only with the same tools (v1 crashed resuming one made on others).
-export function fingerprint(connectorTools: string[], agent = ''): string {
+// A kept session is resumed only with the same tools (v1 crashed resuming one made on others),
+// saying the same of themselves: a session that learned what a tool cannot do keeps believing it
+// after an update that lets it, so it starts again, handed what was said so far.
+export function fingerprint(connectorTools: string[], agent = '', say = ''): string {
   return createHash('sha256')
-    .update([...TOOL_NAMES, ...connectorTools, ...(agent ? [agent] : [])].join(','))
+    .update([...TOOL_NAMES, ...connectorTools, ...(agent ? [agent] : []), say].join(','))
     .digest('hex')
     .slice(0, 16)
 }
+
+// What Alpha's own tools say of themselves in this build, for the fingerprint.
+export const saidBy = (tools: { name: string; description: string }[]): string =>
+  tools.map((t) => `${t.name}:${t.description}`).join('\n')

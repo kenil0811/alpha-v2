@@ -3,6 +3,7 @@
 // and a line in the conversation says so.
 import { z } from 'zod'
 import { config } from '../../config.ts'
+import { askOfTurn } from '../../world/agents/asks.ts'
 import { CHIEF, CHIEF_CARD } from '../../world/agents/index.ts'
 import { Refused } from '../../world/kinds.ts'
 import { ftsQuery } from '../../world/world.ts'
@@ -159,6 +160,15 @@ export function agentTools(t: Tooling): ToolEntry[] {
         guard(() => {
           const id = here.current.ask
           if (!id) throw new Refused('Nobody is waiting on an answer from this turn.')
+          // a card this work raised is a wait, not a block: answering would close the work, and
+          // the person's yes would then start nothing
+          if (
+            a.status === 'blocked' &&
+            world.cards.waiting(here.current.user.id).some((c) => askOfTurn(c.turn) === id)
+          )
+            throw new Refused(
+              'This work is not blocked: it waits on the person’s card, and whoever asked is told it waits. Do not answer yet. End your turn now, in a line saying what waits; you carry on from here when they answer.',
+            )
           world.asks.settle(
             id,
             a.status === 'done' ? 'answered' : a.status === 'blocked' ? 'answered' : 'failed',

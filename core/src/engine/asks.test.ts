@@ -210,6 +210,37 @@ describe('agents asking each other', () => {
     expect(world.asks.waitingFor(user.id, CHIEF)).toEqual([])
   })
 
+  it('refuses a blocked answer while a card from the work waits: the work waits, and goes on after the yes', async () => {
+    let refused = ''
+    script = async (t, agent, d) => {
+      if (agent === CHIEF && t === 'find it') {
+        await ask(d(), ['Scout'], 'Find deals')
+        return 'I asked.'
+      }
+      if (agent === ids.Scout && t.startsWith('A request')) {
+        raiseCard((world.asks.inState('running')[0] as { id: string }).id)
+        refused = text(
+          await d()
+            .registry()
+            .call('mcp__alpha__answer', { status: 'blocked', result: 'It waits.' }),
+        )
+        return 'Typing waits for your yes.'
+      }
+      if (agent === ids.Scout && t.includes('said yes')) return 'Made the folder after the yes.'
+      return 'Done.'
+    }
+    engine.say(user, 'find it')
+    await settled()
+    expect(refused).toMatch(/not blocked: it waits on the person’s card/)
+    const open = world.asks.inState('running')
+    expect(open).toHaveLength(1)
+    engine.answer(user, world.cards.waiting(user.id)[0]?.id as string, 'Let it')
+    await settled()
+    expect(world.asks.get(open[0]?.id as string)?.answer?.result).toBe(
+      'Made the folder after the yes.',
+    )
+  })
+
   it('starts no follow-up on a yes that comes after the ask is answered', async () => {
     let cardId = ''
     script = async (t, agent, d) => {

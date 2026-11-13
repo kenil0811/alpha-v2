@@ -40,7 +40,7 @@ import {
   textSoFar,
   turnAfterLimit,
 } from './desk-turn.ts'
-import { type DeskEvent, type DeskOptions, fingerprint, type Turn } from './desk-types.ts'
+import { type DeskEvent, type DeskOptions, fingerprint, saidBy, type Turn } from './desk-types.ts'
 import { fileWall } from './filewall.ts'
 import { Gatekeeper } from './gate.ts'
 import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
@@ -137,6 +137,7 @@ export class Desk {
     return fingerprint(
       this.connectors?.toolNames() ?? [],
       a ? [a.name, a.title, a.description, a.updatedAt].join('|') : '',
+      saidBy(this.registry().all()),
     )
   }
 
