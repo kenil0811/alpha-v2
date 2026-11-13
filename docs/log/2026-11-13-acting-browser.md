@@ -28,4 +28,17 @@ at by Kenil before the next. Not pushed yet.
 On his Mac's Alpha, on the Google account made for testing: a folder made in Alpha test and a file
 moved into it on one card; a line added at the end of the doc Plan on one card for docs.google.com.
 
-Next: his look at step 3, then step 4 (drawn pages) and step 5 (watch and take over).
+His look at step 3 found, and the same day fixed: an agent working for another answered "blocked"
+at its card, so the yes started nothing (the answer tool now refuses that while the card waits); a
+session resumed after the update still believed it could not type (a session now starts afresh when
+its tools say something new); each click on Drive waited 16 seconds for a network that never goes
+idle (a step now waits for the page to stop changing); and a card showed before the words that
+explain it (ui-rules A10). Steps 1 to 3 pushed on his "looks good" (6c3ff3c).
+
+- **Step 4, drawn pages.** A click at a place in the picture (`x`, `y`), judged by what is at that
+  place as a click by number is; `read`, an address read as text as the person without opening it
+  as a page (a site's own text export); each step says the page's address. Journey
+  browse-works-a-drawn-page on a made-up document drawn on a canvas. On his doc Plan: its text
+  export read, and words typed at the end of its first line after a click there.
+
+Next: his look at step 4, then step 5 (watch and take over).

@@ -351,7 +351,9 @@ export class BrowserEngine {
     let page = this.tabs.get(key)
     if (!url) {
       if (!page || page.isClosed())
-        throw new Problem('No page is open in this work: open one first.')
+        throw new Problem(
+          'No page is open in this work: open one first (each request has a tab of its own).',
+        )
       return page
     }
     const host = hostOf(url)
