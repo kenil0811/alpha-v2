@@ -141,6 +141,8 @@ export function stepWords(tool: string, input: Input): string {
           return 'Went back a page'
         case 'wait':
           return 'Waited for the page'
+        case 'hand_over':
+          return 'Asked you onto the page'
         case 'close':
           return 'Closed the page'
         default:

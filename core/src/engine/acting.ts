@@ -282,7 +282,8 @@ export async function handOver(
 }
 
 // How long the person had a page, in words.
-const lasted = (ms: number) => (ms < 90_000 ? 'a minute' : `${Math.round(ms / 60_000)} minutes`)
+const lasted = (ms: number) =>
+  ms < 45_000 ? 'under a minute' : ms < 90_000 ? 'a minute' : `${Math.round(ms / 60_000)} minutes`
 
 // The person handed a page back: the record says only that they had it and for how long, never
 // what they did there. The card that asked them onto it is answered, so its work goes on; else, if
