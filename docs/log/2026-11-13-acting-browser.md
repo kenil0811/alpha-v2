@@ -41,4 +41,16 @@ explain it (ui-rules A10). Steps 1 to 3 pushed on his "looks good" (6c3ff3c).
   browse-works-a-drawn-page on a made-up document drawn on a canvas. On his doc Plan: its text
   export read, and words typed at the end of its first line after a click there.
 
-Next: his look at step 4, then step 5 (watch and take over).
+Step 4 pushed on his "looks good" (e51dacf).
+
+- **Step 5, watch and take over.** A work's tab as a live picture (`LiveTab`, `/ws/watch/:tab`,
+  `LivePage.tsx` shared with the sign-in picture), offered as Watch while an agent works. Take over
+  holds the page: what the person does reaches it and passes no gate, every step of the agent's on
+  it is refused and the agent waits, and Hand back lets it carry on, told to look at the page
+  first. The record keeps one line, that they had it and for how long. An agent asks the person
+  onto a page with `hand_over`, and the browse tool does so by itself at a check page that does
+  not clear; handing back answers that card. Only the person the work acts as can list, watch or
+  hold its tab (rule L3). Tried on his Mac's Alpha on Drive: watched, taken over, handed back, and
+  the agent carried on; and an agent's own ask onto the page.
+
+Next: his look at step 5. Then the Drive and Docs connector over Google's API, for the server.

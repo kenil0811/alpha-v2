@@ -281,6 +281,7 @@ describe('a page the person has taken over', () => {
     expect(
       handedBack(world, 'chief.t1', 'drive.example.com', { ms: 20_000, waited: false }, user).text,
     ).toBeNull()
+    expect(world.lines({ kinds: ['took_over'] }).at(-1)?.words).toMatch(/for under a minute\.$/)
   })
 
   it('an agent asks the person onto a page it cannot pass, once, and handing back finds that card', async () => {
