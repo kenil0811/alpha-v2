@@ -157,6 +157,41 @@ describe('browsing a site', () => {
     }
   }, 60_000)
 
+  it('never closes a page for idleness while the person watches it or has it, and counts from when they let go', async () => {
+    const engine = new BrowserEngine({
+      browsers: BROWSERS,
+      profiles,
+      pace: { minMs: 0, maxMs: 0 },
+      tabIdleMs: 150,
+    })
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    try {
+      const me = engine.as('u_ann')
+      const open = () => me.openTabs().map((t) => t.work)
+      // watched: other work comes and goes long after its last step, and it stays
+      await me.tab('chief.t1', `${base}/plans`)
+      const live = me.watch('chief.t1')
+      await wait(250)
+      await me.tab('chief.t2', `${base}/plans/basic`)
+      expect(open()).toContain('chief.t1')
+      // in hand, and no longer watched: it stays
+      me.hold('chief.t1')
+      await me.unwatch('chief.t1', live)
+      await wait(250)
+      await me.tab('chief.t2')
+      expect(open()).toContain('chief.t1')
+      // handed back: its time starts again, then it closes like any other
+      me.release('chief.t1')
+      await me.tab('chief.t2')
+      expect(open()).toContain('chief.t1')
+      await wait(250)
+      await me.tab('chief.t2')
+      expect(open()).toEqual(['chief.t2'])
+    } finally {
+      await engine.close()
+    }
+  }, 60_000)
+
   it('shows a work’s tab live to the person it works as, and to nobody else; a held page is theirs until handed back', async () => {
     const engine = new BrowserEngine({ browsers: BROWSERS, profiles, pace: { minMs: 0, maxMs: 0 } })
     try {

@@ -59,5 +59,7 @@ Step 4 pushed on his "looks good" (e51dacf).
   Then two more: a right click in the Mac app selected the whole picture (nothing in it is the
   window's to select now), and a page closed while the agent was idle could not be opened again
   (the conversation offers it for as long as the tab is open).
+  And a page the person watches or has in hand is never closed for idleness: its thirty minutes
+  start again when they let go.
 
-Next: his look at step 5. Then the Drive and Docs connector over Google's API, for the server.
+Step 5 accepted by him on 13 Nov. Next: the Drive and Docs connector over Google's API, for the server.

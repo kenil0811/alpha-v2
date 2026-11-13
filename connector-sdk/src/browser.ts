@@ -339,10 +339,11 @@ export class BrowserEngine {
   // sign-in the person has not made.
   async tab(work: string, url?: string): Promise<Page> {
     const key = `${this.who}/${work}`
-    // work that ended left its tab: one nobody worked in for a while closes
+    // work that ended left its tab: one nobody worked in for a while closes. Never one the person
+    // is watching or has in hand: their time on it counts, and it starts again when they let go.
     const now = Date.now()
     for (const [k, at] of this.used)
-      if (k !== key && now - at > this.tabIdleMs) {
+      if (k !== key && now - at > this.tabIdleMs && !this.inUse(k)) {
         this.used.delete(k)
         void this.tabs
           .get(k)
@@ -508,8 +509,15 @@ export class BrowserEngine {
   }
 
   async unwatch(work: string, live: LiveTab): Promise<void> {
-    this.watchers.get(`${this.who}/${work}`)?.delete(live)
+    const key = `${this.who}/${work}`
+    this.watchers.get(key)?.delete(live)
+    if (this.used.has(key)) this.used.set(key, Date.now())
     await live.close()
+  }
+
+  // Watched or in the person's hands: a page in use, whoever worked in it last.
+  private inUse(key: string): boolean {
+    return this.held.has(key) || (this.watchers.get(key)?.size ?? 0) > 0
   }
 
   // The person takes a work's page: the agent's steps on it wait until they hand it back.
@@ -530,6 +538,7 @@ export class BrowserEngine {
     const key = `${this.who}/${work}`
     const h = this.held.get(key)
     this.held.delete(key)
+    if (h && this.used.has(key)) this.used.set(key, Date.now())
     return h ? { ms: Date.now() - h.since, waited: h.waited } : null
   }
 
