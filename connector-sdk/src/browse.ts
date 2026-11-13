@@ -71,6 +71,103 @@ export function said(page: Page, n: Ref): string {
   return line ? line.trimStart().slice(tag.length).replace(/:$/, '') : ''
 }
 
+// The dialog an element sits in, by its name in the page's last view: '' when it is in none.
+export function dialogOf(page: Page, n: Ref): string {
+  const lines = lastSeen.get(page) ?? []
+  const tag = `[${n}] `
+  const at = lines.findIndex((l) => l.trimStart().startsWith(tag))
+  if (at < 0) return ''
+  let depth = (lines[at] ?? '').search(/\S/)
+  for (let i = at - 1; i >= 0 && depth > 0; i--) {
+    const l = lines[i] ?? ''
+    const d = l.search(/\S/)
+    if (d >= depth) continue
+    depth = d
+    const m = /^(?:\[[^\]]+\] )?(?:dialog|alertdialog)(?: "([^"]*)")?/.exec(l.trimStart())
+    if (m) return m[1] ?? ''
+  }
+  return ''
+}
+
+// What has the keys now: whether it takes text or sits in a form, its own words, and its dialog's.
+export async function focused(
+  page: Page,
+): Promise<{ editable: boolean; words: string; dialog: string }> {
+  return page
+    .evaluate(() => {
+      let a: Element | null = document.activeElement
+      while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement
+      const h = a as HTMLElement | null
+      const box = h?.closest('[role=dialog],[role=alertdialog],dialog')
+      return {
+        editable:
+          !!h &&
+          (h.isContentEditable ||
+            /^(INPUT|TEXTAREA|SELECT)$/.test(h.tagName) ||
+            !!h.closest('form') ||
+            h.tagName === 'IFRAME'),
+        words:
+          h && /^(BUTTON|A)$/.test(h.tagName)
+            ? (h.innerText || h.getAttribute('aria-label') || '').slice(0, 80)
+            : '',
+        dialog: box
+          ? (
+              box.getAttribute('aria-label') ||
+              box.querySelector('h1,h2,h3')?.textContent ||
+              ''
+            ).slice(0, 120)
+          : '',
+      }
+    })
+    .catch(() => ({ editable: true, words: '', dialog: '' }))
+}
+
+// The page as it is now with one element outlined, for the card that asks about a step on it.
+export async function outlined(page: Page, n?: Ref): Promise<Buffer> {
+  const box =
+    n === undefined
+      ? null
+      : await element(page, n)
+          .boundingBox({ timeout: 2_000 })
+          .catch(() => null)
+  if (box)
+    await page
+      .evaluate((b) => {
+        const d = document.createElement('div')
+        d.id = 'alpha-outline'
+        d.style.cssText = `position:fixed;left:${b.x - 4}px;top:${b.y - 4}px;width:${b.width + 8}px;height:${b.height + 8}px;border:3px solid #e11d48;border-radius:6px;z-index:2147483647;pointer-events:none;box-sizing:border-box`
+        document.documentElement.appendChild(d)
+      }, box)
+      .catch(() => undefined)
+  try {
+    return await page.screenshot({ type: 'jpeg', quality: 45, scale: 'css' })
+  } finally {
+    if (box)
+      await page
+        .evaluate(() => document.getElementById('alpha-outline')?.remove())
+        .catch(() => undefined)
+  }
+}
+
+// Types into the element the agent named, in place of what it held, or where the keys are now (a
+// page drawn on a canvas takes its text there); then Enter, when asked.
+export async function typeInto(
+  page: Page,
+  text: string,
+  n: Ref | undefined,
+  enter: boolean,
+): Promise<void> {
+  if (n === undefined) await page.keyboard.type(text, { delay: 12 })
+  else {
+    const el = element(page, n)
+    await el.fill(text, { timeout: 10_000 }).catch(async () => {
+      await el.click({ timeout: 10_000 })
+      await page.keyboard.type(text, { delay: 12 })
+    })
+  }
+  if (enter) await page.keyboard.press('Enter')
+}
+
 // Clicks the element the agent named, once or twice (a row that opens on a double click). A new
 // tab the click opened (a file opened from a list) comes back, for the work to go on in.
 export async function press(

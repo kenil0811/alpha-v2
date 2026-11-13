@@ -121,7 +121,9 @@ export function registerCards(ctx: Ctx): void {
 
   app.post('/api/cards/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string() }).parse(req.params)
-    const { answer } = z.object({ answer: z.string().min(1) }).parse(req.body)
+    const { answer, always } = z
+      .object({ answer: z.string().min(1), always: z.boolean().optional() })
+      .parse(req.body)
     try {
       const c = world.cards.get(id)
       if (c?.call?.tool === DRAFT) return cardOut(await engine.answerDraft(user, id, answer))
@@ -202,7 +204,7 @@ export function registerCards(ctx: Ctx): void {
         live()
         return cardOut(out)
       }
-      return cardOut(engine.answer(user, id, answer))
+      return cardOut(engine.answer(user, id, answer, always ?? false))
     } catch (err) {
       if (err instanceof Refused) return reply.code(409).send({ problem: err.message })
       throw err

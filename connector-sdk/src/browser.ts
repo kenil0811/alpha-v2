@@ -236,6 +236,8 @@ export class BrowserEngine {
   private pace: Pace
   private contexts = new Map<string, BrowserContext>()
   private tabs = new Map<string, Page>() // each piece of work's own tab, by person and work
+  private used = new Map<string, number>() // when each was last worked in: an idle one closes
+  private tabIdleMs: number
   private lastLoad = new Map<string, number>()
   private robots = new Map<string, string>()
   private sleep: (ms: number) => Promise<void>
@@ -249,7 +251,9 @@ export class BrowserEngine {
     pace: Pace
     sleep?: (ms: number) => Promise<void>
     only?: string[] // the only hosts it may read (a journey's made-up sites on this Mac)
+    tabIdleMs?: number // a work's tab nobody worked in for this long closes
   }) {
+    this.tabIdleMs = options.tabIdleMs ?? 30 * 60_000
     this.browsers = options.browsers
     this.profiles = options.profiles
     this.pace = options.pace
@@ -329,6 +333,18 @@ export class BrowserEngine {
   // sign-in the person has not made.
   async tab(work: string, url?: string): Promise<Page> {
     const key = `${this.who}/${work}`
+    // work that ended left its tab: one nobody worked in for a while closes
+    const now = Date.now()
+    for (const [k, at] of this.used)
+      if (k !== key && now - at > this.tabIdleMs) {
+        this.used.delete(k)
+        void this.tabs
+          .get(k)
+          ?.close()
+          .catch(() => undefined)
+        this.tabs.delete(k)
+      }
+    this.used.set(key, now)
     let page = this.tabs.get(key)
     if (!url) {
       if (!page || page.isClosed())
@@ -396,6 +412,7 @@ export class BrowserEngine {
       ?.close()
       .catch(() => undefined)
     this.tabs.delete(key)
+    this.used.delete(key)
   }
 
   // The sites this person signed in to, newest first, with when.

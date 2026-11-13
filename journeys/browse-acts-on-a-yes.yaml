@@ -1,0 +1,24 @@
+name: browse-acts-on-a-yes
+title: An agent types into a site only on the person's yes, asked once for the work, with the page's picture on the card
+why: >
+  The acting browser, acting (rule L2): opening the page and pressing New folder ask nothing; the
+  first step that puts the agent's words into the site opens one card, and nothing reaches the site
+  until the yes. The yes holds for the rest of that request, so the folder is made with no second
+  card. On a made-up site served on this Mac.
+steps:
+  - site: { from: journeys/fixtures/sites/files }
+  - say: >
+      Open {site}/index.html in the browser and make a new folder there called From Alpha.
+    checks:
+      - card: { gate: leaves_world, words: 'act on 127\.0\.0\.1:\d+ as you', detail: 'From Alpha' }
+      - cards_waiting: 1
+      - site_requests: { path: /created.html, count: 0 }
+      - errors: 0
+  - answer: { choice: Let it act }
+    checks:
+      - site_requests: { path: /created.html, count: 1 }
+      - cards_waiting: 0
+      - permission_cards: 1
+      - step_pictures: 3
+      - reply_matches: 'From Alpha'
+      - errors: 0

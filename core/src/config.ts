@@ -35,6 +35,7 @@ const Limits = z.object({
   browser_pace_max_ms: z.number().int().min(0),
   browse_step_ms: z.number().int().min(0),
   browse_elements: z.number().int().min(1),
+  browse_tab_idle_minutes: z.number().int().min(1),
   run_retries: z.number().int().min(1),
   connector_busy_wait_seconds: z.number().int().min(0),
   yes_hours: z.number().positive(),
@@ -48,7 +49,8 @@ const Limits = z.object({
 
 const Words = z.object({
   removal: z.array(z.string().min(1)).min(1),
-  browse_asks: z.array(z.string().min(1)).min(1),
+  browse_acts: z.array(z.string().min(1)).min(1),
+  browse_each_time: z.array(z.string().min(1)).min(1),
   periods: z.object({
     words: z.array(z.string().min(1)).min(1),
     patterns: z.array(z.string().min(1)),

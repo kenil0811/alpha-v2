@@ -1,4 +1,16 @@
-export { compact, element, press, type Ref, type Seen, said, see } from './browse.ts'
+export {
+  compact,
+  dialogOf,
+  element,
+  focused,
+  outlined,
+  press,
+  type Ref,
+  type Seen,
+  said,
+  see,
+  typeInto,
+} from './browse.ts'
 export {
   BrowserEngine,
   browserPath,

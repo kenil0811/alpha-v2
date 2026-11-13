@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><title>Harbor files</title></head>
+<body>
+<h1>Harbor files</h1>
+<p>Folders and files kept for the firm.</p>
+<table>
+  <tr><th>Name</th><th>Kind</th></tr>
+  <tr><td>notes</td><td>File</td></tr>
+  <tr><td>Plan</td><td>File</td></tr>
+</table>
+<button type="button" id="new">New folder</button>
+<a href="/trash.html">Trash</a>
+<dialog id="box" aria-label="New folder">
+  <form action="/created.html" method="get">
+    <label>Folder name <input name="name"></label>
+    <button type="submit">Create</button>
+  </form>
+</dialog>
+<script>document.getElementById('new').onclick = () => document.getElementById('box').showModal()</script>
+</body></html>

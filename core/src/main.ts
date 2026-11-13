@@ -197,6 +197,7 @@ const browserEngine = () => {
       browsers: join(home, 'browsers'),
       profiles: join(home, 'browser-profiles'),
       pace: { minMs: limits.browser_pace_min_ms, maxMs: limits.browser_pace_max_ms },
+      tabIdleMs: limits.browse_tab_idle_minutes * 60_000,
     })
   }
   return browser

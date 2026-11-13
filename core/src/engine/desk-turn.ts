@@ -1,8 +1,11 @@
 // A running turn's own bookkeeping (split from desk.ts for its wall): the text and steps in the
 // order they came, and how a teammate's ask it served is settled.
 import { type AgentAsk, askOfTurn, OPEN } from '../world/agents/asks.ts'
+import type { Card } from '../world/cards.ts'
 import type { User, World } from '../world/world.ts'
+import { ACT, PRESS } from './acting.ts'
 import type { DeskEvent, DeskOptions, Turn, TurnPart } from './desk-types.ts'
+import { ASK_MORE } from './tools/agents.ts'
 
 export type Running = Turn & { reply: string; doing: string | null; parts: TurnPart[] }
 
@@ -97,4 +100,19 @@ export function settleAsk(
   if (now.state !== 'running') bus?.settled(user, now, spent)
   // named by the person and still waiting on a card: what it has so far goes to them now
   else if (now.brief.direct && e.text) bus?.interim(user, now, e.text)
+}
+
+// The request the turn after a card's answer serves: the one that asked for more asks, the
+// teammate's ask the card was raised under, or, for a yes to act in the browser, the piece of work
+// it was for, so that work's tab and its yes are found again.
+export function servesOf(
+  card: Card,
+  ask: AgentAsk | undefined,
+): { root?: string; ask?: string | null } {
+  const input = (card.call?.input ?? {}) as { root?: string; ask?: string | null; work?: string }
+  if (card.call?.tool === ASK_MORE && input.root)
+    return { root: input.root, ask: input.ask ?? null }
+  if (ask) return { root: ask.root, ask: ask.id }
+  const acting = card.call?.tool === ACT || card.call?.tool === PRESS
+  return acting && input.work && !input.work.startsWith('task:') ? { root: input.work } : {}
 }

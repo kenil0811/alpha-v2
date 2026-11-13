@@ -127,6 +127,12 @@ export function stepWords(tool: string, input: Input): string {
           return `Looked on the page for “${short(s(input.words), 60)}”`
         case 'click':
           return 'Clicked on the page'
+        case 'type':
+          return `Typed “${short(s(input.text), 60)}”`
+        case 'key':
+          return `Pressed ${s(input.keys)}`
+        case 'choose':
+          return `Chose “${short(s(input.option), 60)}”`
         case 'scroll':
           return 'Scrolled the page'
         case 'back':

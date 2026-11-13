@@ -315,6 +315,71 @@ export class Cards {
     })
   }
 
+  // A card found by parts of its call, not the whole of it: the browser's acting cards are for an
+  // agent, a site and a piece of work, whatever the step that first asked.
+  private byParts(tool: string, parts: Record<string, string>, where: string): CardRow[] {
+    return all<CardRow>(
+      this.db,
+      `SELECT * FROM cards WHERE json_extract(call, '$.tool') = ? AND ${where} ORDER BY decided_at DESC, created_at DESC`,
+      tool,
+    ).filter((r) => {
+      const input = parse<{ input?: Record<string, unknown> }>(r.call, {}).input ?? {}
+      return Object.entries(parts).every(([k, v]) => input[k] === v)
+    })
+  }
+
+  waitingFor(tool: string, parts: Record<string, string>): Card | undefined {
+    const r = this.byParts(tool, parts, "state = 'waiting'")[0]
+    return r ? toCard(r) : undefined
+  }
+
+  // The yes that holds for what its parts name, within its hours (limits.yaml yes_hours): every
+  // call it covers goes while it holds, or with `once` only the first. An older yes lapses, said
+  // in Activity, and the next call asks again.
+  yesFor(
+    tool: string,
+    parts: Record<string, string>,
+    hours: number,
+    once: boolean,
+  ): Card | undefined {
+    return tx(this.db, () => {
+      const edge = Date.now() - hours * 3_600_000
+      const live = `state = 'yes' AND lapsed_at IS NULL${once ? ' AND used_at IS NULL' : ''}`
+      let r: CardRow | undefined
+      for (const c of this.byParts(tool, parts, live)) {
+        if (c.decided_at && Date.parse(c.decided_at) >= edge) {
+          r ??= c
+          continue
+        }
+        run(this.db, 'UPDATE cards SET lapsed_at = ? WHERE id = ?', now(), c.id)
+        append(this.db, {
+          actor: { kind: 'system' },
+          kind: 'card_lapsed',
+          words: `Your yes on “${c.words}” lapsed after ${hours} hours; Alpha asks again.`,
+          data: { card: c.id },
+          user: c.user_id,
+          turn: c.turn_id,
+          module: c.module_id,
+          card: c.id,
+        })
+      }
+      if (!r) return undefined
+      if (r.used_at) return toCard(r)
+      run(this.db, 'UPDATE cards SET used_at = ? WHERE id = ?', now(), r.id)
+      append(this.db, {
+        actor: { kind: 'system' },
+        kind: 'card_used',
+        words: `Went ahead: ${r.words}`,
+        data: { card: r.id },
+        user: r.user_id,
+        turn: r.turn_id,
+        module: r.module_id,
+        card: r.id,
+      })
+      return toCard({ ...r, used_at: now() })
+    })
+  }
+
   private close(
     id: string,
     state: CardState,

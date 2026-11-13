@@ -279,7 +279,7 @@ export async function runOne(
           await (step.answer.always
             ? drafts.send(card.id, null, user, true)
             : engine.answerDraft(user, card.id, step.answer.choice))
-        else engine.answer(user, card.id, step.answer.choice)
+        else engine.answer(user, card.id, step.answer.choice, step.answer.always ?? false)
       }
     } else if (step.review) {
       const review = step.review

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FastifyReply } from 'fastify'
 import { config } from '../config.ts'
+import { actingView } from '../engine/acting.ts'
 import { startOf } from '../engine/task-runs.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { readSchedule, type Schedule } from '../modules/schedules.ts'
@@ -54,6 +55,7 @@ export function makeViews(ctx: BaseCtx) {
     draft: engine.hands?.drafts?.view(c) ?? null,
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
     review: engine.hands?.runner?.reviews.view(c) ?? null,
+    acting: actingView(world, c),
   })
   // Tasks: the saved lists, a task's page, and the person's own word on
   // them: added, changed, moved, done, removed.

@@ -18,20 +18,25 @@ removal:
   - purge
 
 # A browse step whose button or menu item says one of these, as whole words, sends something to other
-# people, or cannot be taken back ("sign" leaves out sign in, up and out). It asks: the first as acting, once per agent, site and work; the rest every time.
-# The list grows from journeys: a miss becomes a journey, then a word here.
-browse_asks:
+# people: it is acting, asked once per agent, site and piece of work, as typing is.
+# The lists grow from journeys: a miss becomes a journey, then a word here.
+browse_acts:
   - share
   - publish
   - post
-  - send
   - submit
+  - invite
+
+# A browse step whose button, menu item or dialog says one of these, as whole words, cannot be taken
+# back: it asks every time, even under a yes or an Always ("sign" leaves out sign in, up and out).
+browse_each_time:
   - pay
   - buy
   - place order
   - order now
   - checkout
   - transfer
+  - send
   - sign
   - delete forever
   - delete permanently

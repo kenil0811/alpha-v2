@@ -3,6 +3,7 @@
 // key; the tools are the registry's, and every call goes through the gate adapter before it runs.
 // Longer work runs as the route's background subagents where it has them; their outcomes come back
 // here and the desk says them in its own words.
+
 import { realpathSync } from 'node:fs'
 import { config } from '../config.ts'
 import type { ConnectorService } from '../connectors/service.ts'
@@ -33,6 +34,7 @@ import {
   limitLine,
   liveOf,
   type Running,
+  servesOf,
   settleAsk,
   startTurn,
   textSoFar,
@@ -44,7 +46,6 @@ import { Gatekeeper } from './gate.ts'
 import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
 import { Registry } from './registry.ts'
 import { costOf, turnSpent } from './spent.ts'
-import { ASK_MORE } from './tools/agents.ts'
 import { type Hands, type Here, worldTools } from './tools/index.ts'
 
 export type { DeskEvent, DeskOptions, QueryFn } from './desk-types.ts'
@@ -110,6 +111,7 @@ export class Desk {
     this.provider = typeof given === 'function' ? given : () => (given ?? own) as Provider
     this.gate = new Gatekeeper(world, this.here, user, {
       connectors: this.connectors,
+      hands: this.hands,
       emit: (e) => {
         if (e.type === 'lines') this.emit({ type: 'lines' })
         else if (e.type === 'step') this.keepText()
@@ -248,16 +250,12 @@ export class Desk {
       agent: this.named,
       ...(turn ? { turn } : {}),
     })
-    const more =
-      card.call?.tool === ASK_MORE
-        ? (card.call.input as { root: string; ask: string | null })
-        : null
     this.queue.push({
       turn: turn ?? `n${line.id}`,
       text: cardWords(card),
       said: null,
       message: null,
-      ...(more ? { root: more.root, ask: more.ask } : ask ? { root: ask.root, ask: ask.id } : {}),
+      ...servesOf(card, ask),
     })
     this.emit({ type: 'lines' })
     this.pump()

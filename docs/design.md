@@ -123,6 +123,7 @@ under way.
 | `ask`, `remember`, `memory`, `rule` | A question card; standing instructions; an agent's short facts; a rule for the person's yes |
 | `list_agents`, `ask_agent`, `answer`, `stop_agent` | Agents working with each other |
 | `connect`, `look`, `keep`, `run`, `guide` | Open a sign-in, see a page, keep a file in a module, run a script, fetch a grammar |
+| `browse` | Work through a website as the person, in a browser that keeps their sign-ins: open, find, click, type, keys, choose, scroll, back, wait, picture. A page comes back as numbered elements; each step keeps a picture. Reading and clicking ask nothing; putting something into a site asks once for the agent, the site and the work, and what cannot be taken back asks each time (rules L2, L3) |
 
 Each connector adds a server of its own tools. Each tool declares its effect, and `engine/gate.ts`
 is the one place a call is journaled and put to the gates, whatever route it came by.
@@ -214,7 +215,12 @@ A connector is a package written against the SDK, in its own sandboxed process, 
 of the core's. Its manifest names how it signs in and the hosts it reaches, and each tool names
 its effect, its card and its words. The SDK gives every connector pacing, retries for reads only,
 cursors, a journal line per call, provenance on what it lands, and the human-pace browser. It
-stops at any check page and never disguises itself.
+never disguises itself; at a check page it waits and tries again, and one that does not clear by
+itself waits for the person.
+
+The same browser is an agent's hands on a site that has no connector (`browse`): profiles are one
+person's, one per site, signed in by the person in Connections › Sites; a piece of work has a tab
+of its own; and what an agent puts into a site waits for the person's yes (rules L2, L3).
 
 A connection is connected, needs sign-in, not working, paused, or waiting for the customer. Signing
 in is as the person, so Alpha reaches only what they can. Each action says whether it can be

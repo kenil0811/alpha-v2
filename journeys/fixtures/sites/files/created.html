@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><title>Harbor files: folder created</title></head>
+<body>
+<h1>Folder created</h1>
+<p id="said"></p>
+<a href="/index.html">Back to files</a>
+<script>
+  const name = new URLSearchParams(location.search).get('name') || ''
+  document.getElementById('said').textContent = `The folder “${name}” is in Harbor files now.`
+</script>
+</body></html>

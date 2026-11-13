@@ -78,6 +78,8 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | # | Rule | Date | Held by |
 |---|---|---|---|
 | L1 | Agents and their scripts open any website with no card, through every way out (WebFetch, look, the shell, a script), and a deny rule closes a site. Where the owner turns on asking before new sites, an address opens with no card only when it was shown in the conversation (the person's message, or a page, a search or a connector's read, never something the agent wrote itself) or its site is on the agent's list or named by the person; any other goes to the leaves-your-world gate, and a yes puts the site on the agent's list for good | 11 Nov | test |
+| L2 | A browse step that puts something into a site asks first: typing, choosing, a key that types, Enter where text goes or in a form, and a button that sends to other people (Share, Publish, Post). It asks once for the agent, the site and the piece of work (the task, or the person's one request), and the yes holds for that work within its hours; three such yeses in a row offer Always, which is one agent's on one site and the person's own. A step whose button or dialog cannot be taken back (pay, buy, order, transfer, send, sign, delete for good) asks every time, under a yes and under Always. Reading, moving around and every other click ask nothing; a deny rule on the site refuses with no card. Code decides which a step is before it runs, from the action and the element; the words are `core/config/words.yaml` | 13 Nov | test |
+| L3 | A browse step opens only the profiles of the person its work is for, or the firm's: one person's sign-in to a site is never another's | 13 Nov | test |
 
 ## Audit
 

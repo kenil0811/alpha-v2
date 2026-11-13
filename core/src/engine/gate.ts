@@ -12,9 +12,10 @@ import type { RunPlace } from '../modules/runs/types.ts'
 import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Actor } from '../world/journal.ts'
 import type { User, World } from '../world/world.ts'
+import { judgeStep } from './acting.ts'
 import { hostOf, ShownLinks } from './links.ts'
 import type { Decision } from './provider.ts'
-import { EFFECTS, type Here, SERVER } from './tools/index.ts'
+import { EFFECTS, type Hands, type Here, SERVER } from './tools/index.ts'
 import { stepWords } from './words.ts'
 
 export interface CallContext {
@@ -24,6 +25,7 @@ export interface CallContext {
 
 export interface GateOptions {
   connectors?: ConnectorService | null
+  hands?: Hands | undefined // the browser, whose acting steps are judged here (acting.ts)
   // a journal line landed, or the reply's live words changed
   emit?: (e: { type: 'lines' } | { type: 'step' } | { type: 'doing'; words: string }) => void
 }
@@ -33,6 +35,7 @@ export class Gatekeeper {
   private here: Here
   private user: User
   private connectors: ConnectorService | null
+  private hands: Hands | null
   private emit: NonNullable<GateOptions['emit']>
   private networkWaits: string[] = []
   // what the agent was shown this session; each web call's address and how it went; the calls
@@ -50,6 +53,7 @@ export class Gatekeeper {
     this.here = here
     this.user = user
     this.connectors = options.connectors ?? null
+    this.hands = options.hands ?? null
     this.emit = options.emit ?? (() => {})
   }
 
@@ -125,6 +129,22 @@ export class Gatekeeper {
     if (name === 'look' && typeof input.url === 'string') return this.opens(input.url, call.callId)
     if (name === 'browse' && input.action === 'open' && typeof input.url === 'string')
       return this.opens(input.url, call.callId)
+    // a browse step that puts something into a site, or cannot be taken back: the person's yes
+    if (name === 'browse' && this.hands) {
+      const d = await judgeStep(
+        this.world,
+        this.hands.browser(),
+        cur,
+        this.user,
+        this.actor(),
+        input,
+      )
+      if (!d.allow) {
+        this.emit({ type: 'lines' })
+        return d
+      }
+      if (d.card) this.onYes.set(call.callId, d.card.id)
+    }
     return this.worldTool(name, input, words, call)
   }
 

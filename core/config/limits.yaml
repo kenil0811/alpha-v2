@@ -64,6 +64,8 @@ browser_pace_max_ms: 9000
 # page's elements a step shows the agent before "scroll, or find by words".
 browse_step_ms: 900
 browse_elements: 250
+# A piece of work's browser tab that nobody worked in for this long closes; the work opens its page again.
+browse_tab_idle_minutes: 30
 
 # Days a removed row is kept, out of sight, so Bring back or Revert can put it back whole; then the
 # daily work deletes it for good. A judgement, never a setting.

@@ -101,11 +101,12 @@ function CardBody({
   const [problem, setProblem] = useState<string | null>(null)
   const [opened, setOpened] = useState(false)
   const [live, setLive] = useState(false)
+  const [always, setAlways] = useState(false)
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
   if (card.review) return <ReviewCard card={card} review={card.review} />
-  const answer = async (a: string) => {
+  const answer = async (a: string, andAlways = false) => {
     setBusy(true)
     try {
       // A site's sign-in opens the site in the person's own Google Chrome; the card is answered when
@@ -117,7 +118,7 @@ function CardBody({
         setBusy(false)
         return
       }
-      await api.post(`/api/cards/${id}`, { answer: a })
+      await api.post(`/api/cards/${id}`, andAlways ? { answer: a, always: true } : { answer: a })
       if (card.gate === 'sign_in' && a === card.options[0])
         window.location.hash = `#/intelligence/connections${card.connector ? `?connect=${card.connector}` : ''}`
     } catch (err) {
@@ -155,10 +156,47 @@ function CardBody({
       waits="Waits for you"
     >
       <div className="font-medium text-ink text-lg">{card.words}</div>
+      {/* a step in the browser: the page as it is, the element it is about outlined */}
+      {card.acting?.picture && (
+        <a
+          href={api.tokened(`/api/pictures/${card.acting.picture}`)}
+          target="_blank"
+          rel="noreferrer"
+          className="w-fit"
+        >
+          <img
+            src={api.tokened(`/api/pictures/${card.acting.picture}`)}
+            alt="The page the step is on"
+            className="max-h-72 w-auto rounded-md border border-line"
+          />
+        </a>
+      )}
       {/* a gate's detail is what would go, as it would go */}
       {card.detail && <Preview detail={card.detail} />}
       {restsOn}
       {cannotUndo}
+      {always && card.acting?.always && (
+        <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
+          <div className="text-ink text-md">{card.acting.always}?</div>
+          <div className="text-ink-3 text-sm">
+            This step goes now, and the next ones without a card, each in the record with its
+            picture. A step that cannot be taken back still asks. Revoke it any time in Settings ›
+            Permissions.
+          </div>
+          <Actions>
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() => answer(card.options[0] ?? 'Yes', true)}
+            >
+              {optionWords(card.options[0] ?? 'Yes')}, and always
+            </Button>
+            <Button variant="ghost" onClick={() => setAlways(false)}>
+              Back
+            </Button>
+          </Actions>
+        </div>
+      )}
       <Actions>
         {card.options.map((o, i) => (
           <Button
@@ -173,6 +211,11 @@ function CardBody({
         {card.kind === 'permission' && (
           <Button variant="ghost" disabled={busy} onClick={() => onChange(card)}>
             Change something
+          </Button>
+        )}
+        {card.acting?.always && !always && (
+          <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
+            Always…
           </Button>
         )}
         {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}

@@ -1,4 +1,5 @@
 // The engine as the api and the journeys runner see it: one desk per user over one world.
+
 import { EventEmitter } from 'node:events'
 import { config } from '../config.ts'
 import { takeIn } from '../files/documents.ts'
@@ -10,6 +11,7 @@ import { Refused } from '../world/kinds.ts'
 import { type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../world/rules.ts'
 import { taskOfTurn } from '../world/tasks/index.ts'
 import type { User, World } from '../world/world.ts'
+import { answered } from './acting.ts'
 import { recentFor } from './context.ts'
 import { Desk, type DeskEvent, type DeskOptions } from './desk.ts'
 import { TaskRuns } from './task-runs.ts'
@@ -367,7 +369,7 @@ export class Engine {
     return out
   }
 
-  answer(user: User, cardId: string, answer: string): Card {
+  answer(user: User, cardId: string, answer: string, always = false): Card {
     // a file from the mail: a yes files it where it was proposed, a no lets it go
     const intake = this.options.hands?.intake
     const waiting = this.world.cards.get(cardId)
@@ -397,6 +399,8 @@ export class Engine {
         config.limits().asks_per_request,
       )
     const card = this.world.cards.answer(cardId, answer, { kind: 'person', id: user.id })
+    // a yes or a no to acting in the browser counts toward Always for that agent on that site
+    answered(this.world, card, always, user)
     this.events.emit('event', { type: 'lines', user: user.id } satisfies EngineEvent)
     // the desk carries on only with a card its own turn opened, or a run it started; a schedule's
     // card from a scheduled run is the run's to go on with

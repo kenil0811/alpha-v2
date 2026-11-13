@@ -527,7 +527,7 @@ export class Rules {
           module: c.module,
           schedule: c.schedule,
           covers: {
-            does: [c.action === 'send_email' ? 'send' : 'change'],
+            does: [c.action === 'send_email' || c.action === 'act_on_site' ? 'send' : 'change'],
             always: { action: c.action, place: c.place },
           },
           said: null,
