@@ -114,8 +114,15 @@ export function LivePage({
       e.preventDefault()
       act({ kind: 'wheel', ...at(e), dx: e.deltaX, dy: e.deltaY })
     }
+    // a right click in the Mac app selects what is under it, and the picture is one thing: the
+    // whole of it turned blue. Nothing in the picture is this window's to select.
+    const select = (e: Event) => e.preventDefault()
     c.addEventListener('wheel', wheel, { passive: false })
-    return () => c.removeEventListener('wheel', wheel)
+    c.addEventListener('selectstart', select)
+    return () => {
+      c.removeEventListener('wheel', wheel)
+      c.removeEventListener('selectstart', select)
+    }
   })
 
   const button = (b: number) => (b === 2 ? 'right' : b === 1 ? 'middle' : 'left')
@@ -174,8 +181,12 @@ export function LivePage({
           width={size.width}
           height={size.height}
           aria-label={label}
-          className="block h-auto w-full bg-surface"
-          onContextMenu={(e) => e.preventDefault()}
+          className="block h-auto w-full select-none bg-surface"
+          onContextMenu={(e) => {
+            e.preventDefault()
+            window.getSelection()?.removeAllRanges()
+            keys.current?.focus()
+          }}
           onPointerMove={(e) => act({ kind: 'move', ...at(e) })}
           onPointerDown={(e) => {
             keys.current?.focus()

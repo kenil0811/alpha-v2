@@ -159,10 +159,10 @@ export function Conversation({
               .map((id) => (
                 <CardBox key={id} id={id} card={cards.get(id) as CardView} onChange={changeCard} />
               ))}
-            {stream?.watch && (busyTurn !== null || watching) && (
+            {stream?.watch && (
               <div>
                 <Button size="sm" variant="ghost" onClick={() => setWatching(true)}>
-                  Watch it work on {stream.watch.site}
+                  {busyTurn !== null ? 'Watch it work on' : 'Open its page on'} {stream.watch.site}
                 </Button>
                 {watching && (
                   <WatchPage
