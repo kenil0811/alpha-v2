@@ -422,6 +422,39 @@ export class BrowserEngine {
     }
   }
 
+  // An address read as the person without opening it as a page: a site's own text export or data
+  // link (a Doc as plain text). Text comes back, to the limit given; a file of another kind is
+  // named, not kept. It keeps the site's pace, and its robots rules where nobody is signed in.
+  async read(url: string, limit: number): Promise<{ type: string; text: string; more: number }> {
+    const host = hostOf(url)
+    if (this.only && !this.only.includes(new URL(url).hostname))
+      throw new Problem(`${host} is not one of the sites this browser may read.`)
+    const context = await this.context(host)
+    const signed = this.signedIn(url)
+    if (!signed) {
+      const page = await context.newPage()
+      try {
+        await this.allowed(page, url)
+      } finally {
+        await page.close().catch(() => undefined)
+      }
+    }
+    await this.waitTurn(host)
+    const res = await context.request.get(url, { timeout: 30_000 })
+    const type = (res.headers()['content-type'] ?? '').split(';')[0]?.trim() ?? ''
+    if (!res.ok()) throw new Problem(`${host} answered ${res.status()} for that address.`)
+    if (!signed && /\/(?:signin|login|ServiceLogin)/i.test(res.url()))
+      throw new Problem(`${host} wants you to sign in before Alpha works on it as you.`, 'sign_in')
+    if (!/^text\/|json|xml|csv/.test(type)) {
+      const size = Number(res.headers()['content-length'] ?? 0)
+      throw new Problem(
+        `That address gives a file (${type || 'of no stated kind'}${size ? `, ${Math.round(size / 1024)} KB` : ''}), not text: files from a site are not kept yet.`,
+      )
+    }
+    const text = await res.text()
+    return { type, text: text.slice(0, limit), more: Math.max(0, text.length - limit) }
+  }
+
   // A click that opened a new tab (a file opened from a list): the work goes on there, in one tab.
   async follow(work: string, page: Page): Promise<Page> {
     const key = `${this.who}/${work}`

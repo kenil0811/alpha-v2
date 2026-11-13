@@ -122,14 +122,21 @@ export async function focused(
     .catch(() => ({ editable: true, words: '', dialog: '' }))
 }
 
-// The page as it is now with one element outlined, for the card that asks about a step on it.
-export async function outlined(page: Page, n?: Ref): Promise<Buffer> {
-  const box =
+// The page as it is now with one element outlined, or one place ringed, for the card that asks
+// about a step on it.
+export async function outlined(
+  page: Page,
+  n?: Ref,
+  point?: { x: number; y: number },
+): Promise<Buffer> {
+  const found =
     n === undefined
       ? null
       : await element(page, n)
           .boundingBox({ timeout: 2_000 })
           .catch(() => null)
+  // a place the step is about, where no element names it: a ring around it
+  const box = found ?? (point ? { x: point.x - 14, y: point.y - 14, width: 28, height: 28 } : null)
   if (box)
     await page
       .evaluate((b) => {
@@ -168,24 +175,94 @@ export async function typeInto(
   if (enter) await page.keyboard.press('Enter')
 }
 
-// Clicks the element the agent named, once or twice (a row that opens on a double click). A new
-// tab the click opened (a file opened from a list) comes back, for the work to go on in.
-export async function press(
+// A click, and the new tab it opened (a file opened from a list), for the work to go on in.
+async function clicking(
   page: Page,
-  n: Ref,
-  twice: boolean,
   wait: number,
+  click: () => Promise<void>,
 ): Promise<Page | null> {
   const opened: Page[] = []
   const onPage = (p: Page) => opened.push(p)
   page.context().on('page', onPage)
   try {
-    const el = element(page, n)
-    if (twice) await el.dblclick({ timeout: 10_000 })
-    else await el.click({ timeout: 10_000 })
+    await click()
     await new Promise((r) => setTimeout(r, wait))
   } finally {
     page.context().off('page', onPage)
   }
   return opened[0] ?? null
+}
+
+// Clicks the element the agent named, once or twice (a row that opens on a double click).
+export function press(page: Page, n: Ref, twice: boolean, wait: number): Promise<Page | null> {
+  const el = element(page, n)
+  return clicking(page, wait, () =>
+    twice ? el.dblclick({ timeout: 10_000 }) : el.click({ timeout: 10_000 }),
+  )
+}
+
+// Clicks a place on the page as drawn, by its position in the picture: where a page drawn on a
+// canvas has no element to name.
+export function pressAt(
+  page: Page,
+  at: { x: number; y: number },
+  twice: boolean,
+  wait: number,
+): Promise<Page | null> {
+  return clicking(page, wait, () =>
+    twice ? page.mouse.dblclick(at.x, at.y) : page.mouse.click(at.x, at.y),
+  )
+}
+
+// What is at a place on the page, said as a view says an element (button "Share"), and the dialog
+// it sits in: so a click by position is judged as a click by number is.
+export async function whatAt(
+  page: Page,
+  at: { x: number; y: number },
+): Promise<{ what: string; dialog: string }> {
+  return page
+    .evaluate(({ x, y }) => {
+      const hit = document.elementFromPoint(x, y) as HTMLElement | null
+      const el =
+        (hit?.closest(
+          'button,[role=button],[role=menuitem],a[href],input,textarea,select,[contenteditable=true]',
+        ) as HTMLElement | null) ?? hit
+      if (!el) return { what: '', dialog: '' }
+      const tag = el.tagName
+      const type = (el.getAttribute('type') ?? '').toLowerCase()
+      const given = el.getAttribute('role')
+      const role =
+        given === 'menuitem'
+          ? 'menuitem'
+          : tag === 'BUTTON' ||
+              given === 'button' ||
+              (tag === 'INPUT' && /^(submit|button)$/.test(type))
+            ? 'button'
+            : tag === 'A'
+              ? 'link'
+              : /^(INPUT|TEXTAREA|SELECT)$/.test(tag) || el.isContentEditable
+                ? 'textbox'
+                : tag === 'CANVAS'
+                  ? 'canvas'
+                  : 'generic'
+      const name = (
+        el.getAttribute('aria-label') ||
+        (el as HTMLInputElement).value ||
+        el.innerText ||
+        ''
+      )
+        .trim()
+        .replace(/\s+/g, ' ')
+        .slice(0, 80)
+      const box = el.closest('[role=dialog],[role=alertdialog],dialog')
+      return {
+        what: `${role} "${name}"`,
+        dialog: box
+          ? (box.getAttribute('aria-label') || box.querySelector('h1,h2,h3')?.textContent || '')
+              .trim()
+              .slice(0, 120)
+          : '',
+      }
+    }, at)
+    .catch(() => ({ what: '', dialog: '' }))
 }

@@ -5,7 +5,7 @@ import { createServer, type Server } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { compact, element, press, said, see } from './browse.ts'
+import { compact, element, press, pressAt, said, see, whatAt } from './browse.ts'
 import { BrowserEngine, ensureBrowser } from './browser.ts'
 
 const BROWSERS = join(import.meta.dirname, '..', '..', '.data', 'browsers')
@@ -18,6 +18,15 @@ const PAGES: Record<string, string> = {
     '<html><head><title>Team</title></head><body><h1>Team</h1><p>$49 a month</p></body></html>',
   '/plans/basic': '<html><head><title>Basic</title></head><body><h1>Basic</h1></body></html>',
   // an app page that keeps a line open to its server, as Drive does: its network never goes idle
+  // a page drawn on a canvas, with one real button beside it
+  '/draw': `<html><head><title>Draw</title></head><body style="margin:0">
+    <canvas id="c" width="1000" height="500" style="display:block"></canvas>
+    <dialog open aria-label="Delete forever?" style="position:fixed;left:20px;top:520px;margin:0">
+      <button type="button">OK</button></dialog>
+    <script>document.getElementById('c').onclick = (e) => { document.title = 'at ' + e.clientX + ',' + e.clientY }</script>
+    </body></html>`,
+  '/plan.txt': 'Boxes arrive on 3 June.',
+  '/plan.pdf': '%PDF-1.7',
   '/app': `<html><head><title>App</title></head><body><h1>Files</h1>
     <script>fetch('/open-line')</script></body></html>`,
 }
@@ -30,7 +39,12 @@ beforeAll(async () => {
   server = createServer((req, res) => {
     if (req.url === '/open-line') return // never answered
     const body = PAGES[req.url ?? '']
-    res.writeHead(body ? 200 : 404, { 'content-type': 'text/html' }).end(body ?? 'Not found')
+    const type = req.url?.endsWith('.txt')
+      ? 'text/plain; charset=utf-8'
+      : req.url?.endsWith('.pdf')
+        ? 'application/pdf'
+        : 'text/html'
+    res.writeHead(body ? 200 : 404, { 'content-type': type }).end(body ?? 'Not found')
   })
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
   const a = server.address()
@@ -102,6 +116,42 @@ describe('browsing a site', () => {
       const page = await engine.as('u_ann').tab('work-3', `${base}/app`)
       expect(Date.now() - started).toBeLessThan(5_000)
       expect((await see(page, 250)).elements).toMatch(/heading "Files"/)
+    } finally {
+      await engine.close()
+    }
+  }, 60_000)
+
+  it('clicks a place on a page drawn on a canvas, and says what is at a place', async () => {
+    const engine = new BrowserEngine({ browsers: BROWSERS, profiles, pace: { minMs: 0, maxMs: 0 } })
+    try {
+      const page = await engine.as('u_ann').tab('work-4', `${base}/draw`)
+      expect((await see(page, 250)).drawn).toBe(true)
+      expect(await whatAt(page, { x: 200, y: 100 })).toEqual({ what: 'canvas ""', dialog: '' })
+      await pressAt(page, { x: 200, y: 100 }, false, 100)
+      expect(await page.title()).toBe('at 200,100')
+      // a button at a place is judged as a button, with the dialog it is in
+      const box = await page.getByRole('button', { name: 'OK' }).boundingBox()
+      const there = await whatAt(page, { x: (box?.x ?? 0) + 5, y: (box?.y ?? 0) + 5 })
+      expect(there).toEqual({ what: 'button "OK"', dialog: 'Delete forever?' })
+    } finally {
+      await engine.close()
+    }
+  }, 60_000)
+
+  it('reads an address that gives text as the person, and names a file it does not keep', async () => {
+    const engine = new BrowserEngine({ browsers: BROWSERS, profiles, pace: { minMs: 0, maxMs: 0 } })
+    try {
+      const me = engine.as('u_ann')
+      expect(await me.read(`${base}/plan.txt`, 1000)).toEqual({
+        type: 'text/plain',
+        text: 'Boxes arrive on 3 June.',
+        more: 0,
+      })
+      expect((await me.read(`${base}/plan.txt`, 5)).more).toBe(18)
+      await expect(me.read(`${base}/plan.pdf`, 1000)).rejects.toThrow(
+        /gives a file \(application\/pdf/,
+      )
+      await expect(me.read(`${base}/nothing.txt`, 1000)).rejects.toThrow(/answered 404/)
     } finally {
       await engine.close()
     }

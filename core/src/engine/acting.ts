@@ -12,6 +12,7 @@ import {
   outlined,
   type Ref,
   said,
+  whatAt,
 } from '@alpha/connector-sdk'
 import { config } from '../config.ts'
 import { refusedBy, WAITS } from '../gates/gates.ts'
@@ -27,10 +28,11 @@ export const ACT = 'browse.act' // the card for acting on a site, for a piece of
 export const PRESS = 'browse.press' // the card for one step that cannot be taken back
 export const ACT_ON_SITE = 'act_on_site' // what Always covers: an agent, a site, a person
 
+type Point = { x: number; y: number }
 export type Step =
   | { kind: 'free' }
-  | { kind: 'act'; host: string; words: string; n?: Ref }
-  | { kind: 'each'; host: string; words: string; button: string; n?: Ref }
+  | { kind: 'act'; host: string; words: string; n?: Ref; at?: Point }
+  | { kind: 'each'; host: string; words: string; button: string; n?: Ref; at?: Point }
 
 // The piece of work a turn serves: its task, or the person's one request in a conversation. A tab
 // and a yes are that work's, and each agent on it has a tab of its own.
@@ -119,8 +121,16 @@ export async function stepOf(
       words: `Choose “${short(String(input.option ?? ''))}” in ${what || 'a list'}`,
       ...at,
     }
-  if (action === 'click')
-    return n === undefined || !what ? { kind: 'free' } : clickStep(host, what, dialogOf(page, n), n)
+  if (action === 'click') {
+    if (n !== undefined)
+      return what ? clickStep(host, what, dialogOf(page, n), n) : { kind: 'free' }
+    // a click by its position in the picture: judged by what is at that place
+    if (typeof input.x !== 'number' || typeof input.y !== 'number') return { kind: 'free' }
+    const point = { x: input.x, y: input.y }
+    const there = await whatAt(page, point)
+    const step = clickStep(host, there.what, there.dialog)
+    return step.kind === 'free' ? step : { ...step, at: point }
+  }
   return keyStep(host, String(input.keys ?? ''), await focused(page))
 }
 
@@ -191,7 +201,7 @@ export async function judgeStep(
   if (yes) return { allow: true, card: yes }
   if (world.cards.waitingFor(tool, parts)) return { allow: false, reason: WAITS }
   const page = await browser.as(user.id).tab(tab)
-  const picture = world.files.keepPicture(await outlined(page, step.n))
+  const picture = world.files.keepPicture(await outlined(page, step.n, step.at))
   const task = taskOfTurn(cur.turn)
   const title = task ? world.tasks.get(task)?.title : null
   world.cards.open({

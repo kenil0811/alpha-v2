@@ -123,7 +123,7 @@ under way.
 | `ask`, `remember`, `memory`, `rule` | A question card; standing instructions; an agent's short facts; a rule for the person's yes |
 | `list_agents`, `ask_agent`, `answer`, `stop_agent` | Agents working with each other |
 | `connect`, `look`, `keep`, `run`, `guide` | Open a sign-in, see a page, keep a file in a module, run a script, fetch a grammar |
-| `browse` | Work through a website as the person, in a browser that keeps their sign-ins: open, find, click, type, keys, choose, scroll, back, wait, picture. A page comes back as numbered elements; each step keeps a picture. Reading and clicking ask nothing; putting something into a site asks once for the agent, the site and the work, and what cannot be taken back asks each time (rules L2, L3) |
+| `browse` | Work through a website as the person, in a browser that keeps their sign-ins: open, read, find, click, type, keys, choose, scroll, back, wait, picture. A page comes back as numbered elements; each step keeps a picture. A page drawn on a canvas is read from the site's own text export or its picture, and clicked at a place in the picture. Reading and clicking ask nothing; putting something into a site asks once for the agent, the site and the work, and what cannot be taken back asks each time (rules L2, L3) |
 
 Each connector adds a server of its own tools. Each tool declares its effect, and `engine/gate.ts`
 is the one place a call is journaled and put to the gates, whatever route it came by.

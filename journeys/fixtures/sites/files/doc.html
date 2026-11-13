@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><title>Harbor files: Plan</title></head>
+<body>
+<h1>Plan</h1>
+<p>Click in the page to place the cursor at its end, then type. <a href="/plan.txt">Download as plain text</a></p>
+<canvas id="page" width="900" height="420" style="border: 1px solid #999"></canvas>
+<script>
+  // A document drawn on a canvas, as a Doc is: its words are pixels, not elements.
+  const lines = ['Plan for the Harbor move.', 'Boxes arrive on 3 June.', 'Call the movers the week before.']
+  const canvas = document.getElementById('page')
+  const ctx = canvas.getContext('2d')
+  let focused = false
+  let typed = ''
+  let timer = null
+  const draw = () => {
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = '#111'
+    ctx.font = '20px sans-serif'
+    const all = [...lines, `${typed}${focused ? '|' : ''}`]
+    all.forEach((l, i) => {
+      ctx.fillText(l, 40, 60 + i * 36)
+    })
+  }
+  const save = () => typed && fetch(`/saved.html?line=${encodeURIComponent(typed)}`)
+  canvas.addEventListener('click', () => {
+    focused = true
+    draw()
+  })
+  document.addEventListener('keydown', (e) => {
+    if (!focused) return
+    if (e.key.length === 1) typed += e.key
+    else if (e.key === 'Backspace') typed = typed.slice(0, -1)
+    else return
+    draw()
+    clearTimeout(timer)
+    timer = setTimeout(save, 500)
+  })
+  draw()
+</script>
+</body></html>

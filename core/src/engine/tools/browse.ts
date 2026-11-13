@@ -4,7 +4,7 @@
 // sends nothing go without asking; typing, choosing and what cannot be taken back wait for the
 // person's yes, which the gate asks before the step runs (../acting.ts). Each step keeps a small
 // picture in the record.
-import { element, press, said, see, typeInto } from '@alpha/connector-sdk'
+import { element, press, pressAt, said, see, typeInto } from '@alpha/connector-sdk'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { Refused } from '../../world/kinds.ts'
@@ -14,6 +14,7 @@ import { guardAsync, ok, type Tooling, tool } from './common.ts'
 
 const ACTIONS = [
   'open',
+  'read',
   'find',
   'click',
   'type',
@@ -32,12 +33,14 @@ export function browseTools(t: Tooling): ToolEntry[] {
   return [
     tool(
       'browse',
-      'Use a website as the person, in a browser that keeps their sign-ins. Actions: open (url), find (words: the elements whose names hold them, on a big page), click (n: an element’s number as shown, such as 12 or f1e3; twice: true for a row that opens on a double click, as in a file list; a file that opens in a new tab is followed there), type (text; n: the box to fill in place of what it holds, or no n to type where the cursor is, as on a page drawn on a canvas; enter: true to press Enter after), key (keys: one key or chord as the browser names it, such as Enter, Escape, ArrowDown, ControlOrMeta+a; a document’s end is Meta+ArrowDown where the browser runs on a Mac and Control+End elsewhere, so check where the cursor went before typing), choose (n: a list; option: its label), scroll (direction up or down), back, wait (words to wait for), picture (the page as drawn, for a page drawn on a canvas or to check a result), close. Every step returns the page as numbered elements: use the numbers from the newest view. Use look to read a page once; browse to work through a site. Typing, choosing and a button that sends to other people ask the person once for this work; a step that cannot be taken back asks each time. When a step waits on their card, stop and say so.',
+      'Use a website as the person, in a browser that keeps their sign-ins. Actions: open (url), read (url: an address that gives text and not a page, such as a site’s own text export of a document, read as the person without leaving the page), find (words: the elements whose names hold them, on a big page), click (n: an element’s number as shown, such as 12 or f1e3; twice: true for a row that opens on a double click, as in a file list; a file that opens in a new tab is followed there; or x and y in place of n: a place in the picture, in its pixels, where a page drawn on a canvas has no element to name), type (text; n: the box to fill in place of what it holds, or no n to type where the cursor is, as on a page drawn on a canvas; enter: true to press Enter after), key (keys: one key or chord as the browser names it, such as Enter, Escape, ArrowDown, ControlOrMeta+a; a document’s end is Meta+ArrowDown where the browser runs on a Mac and Control+End elsewhere, so check where the cursor went before typing), choose (n: a list; option: its label), scroll (direction up or down), back, wait (words to wait for), picture (the page as drawn, for a page drawn on a canvas or to check a result), close. Every step returns the page as numbered elements: use the numbers from the newest view. Use look to read a page once; browse to work through a site. Typing, choosing and a button that sends to other people ask the person once for this work; a step that cannot be taken back asks each time. When a step waits on their card, stop and say so.',
       {
         action: z.enum(ACTIONS),
         url: z.string().optional(),
         n: z.union([z.number().int().positive(), z.string().regex(/^(?:f\d+e)?\d+$/)]).optional(),
         twice: z.boolean().optional(),
+        x: z.number().min(0).optional(),
+        y: z.number().min(0).optional(),
         words: z.string().optional(),
         text: z.string().optional(),
         enter: z.boolean().optional(),
@@ -45,7 +48,7 @@ export function browseTools(t: Tooling): ToolEntry[] {
         option: z.string().optional(),
         direction: z.enum(['up', 'down']).optional(),
       },
-      async ({ action, url, n, twice, words, text, enter, keys, option, direction }) =>
+      async ({ action, url, n, twice, x, y, words, text, enter, keys, option, direction }) =>
         guardAsync(async () => {
           const cur = here.current
           // the person this work is for, and the work itself: one request, or the task it serves
@@ -57,6 +60,18 @@ export function browseTools(t: Tooling): ToolEntry[] {
             await browser.closeTab(work)
             return ok('Closed.')
           }
+          if (action === 'read') {
+            if (!url) throw new Refused('read needs the address.')
+            const got = await browser
+              .read(url, limits.browse_read_chars)
+              .catch((err: { kind?: string }) => {
+                if (err.kind === 'sign_in') signInCard(url, cur.user.id, cur.turn)
+                throw err
+              })
+            return ok(
+              `${new URL(url).host} · ${got.type}\n${got.text}${got.more ? `\n… ${got.more} more characters` : ''}`,
+            )
+          }
           if (action === 'open') {
             if (!url) throw new Refused('open needs the address.')
             await browser.tab(work, url).catch((err: { kind?: string; message?: string }) => {
@@ -67,15 +82,22 @@ export function browseTools(t: Tooling): ToolEntry[] {
           let page = await browser.tab(work)
           let host = new URL(page.url()).host
           if (action === 'click') {
-            if (!n) throw new Refused('click needs an element’s number.')
-            // what the element is, from the view the agent saw: never a fresh snapshot, which
-            // would number the page again and lose the element
-            const what = said(page, n)
-            if (!what)
+            const point = x !== undefined && y !== undefined ? { x, y } : null
+            if (n === undefined && !point)
+              throw new Refused('click needs an element’s number, or x and y in the picture.')
+            if (n !== undefined && !said(page, n))
               throw new Refused(
                 `The page as last seen has no element ${n}: look at it again (find, or wait).`,
               )
-            const opened = await press(page, n, twice ?? false, limits.browse_step_ms)
+            const opened =
+              n !== undefined
+                ? await press(page, n, twice ?? false, limits.browse_step_ms)
+                : await pressAt(
+                    page,
+                    point as { x: number; y: number },
+                    twice ?? false,
+                    limits.browse_step_ms,
+                  )
             if (opened) {
               page = await browser.follow(work, opened)
               host = new URL(page.url()).host
@@ -124,13 +146,16 @@ export function browseTools(t: Tooling): ToolEntry[] {
           if (action === 'picture')
             return {
               content: [
-                { type: 'text', text: `${host} · ${seen.title}` },
+                {
+                  type: 'text',
+                  text: `${host} · ${seen.title} (a place in it is x, y in its pixels)`,
+                },
                 { type: 'image', data: seen.picture.toString('base64'), mimeType: 'image/jpeg' },
               ],
             }
           return ok(
             [
-              `${host} · ${seen.title}${seen.drawn ? ' (drawn on a canvas: use picture, positions and keys)' : ''}`,
+              `${host} · ${seen.title}${seen.drawn ? ' (drawn on a canvas: its words may not be here. read the site’s text export of it if it has one; else picture, a click by x and y, and keys)' : ''}`,
               seen.elements || '(nothing here yet: wait, or scroll)',
               seen.more ? `… ${seen.more} more: scroll, or find by words` : '',
             ]

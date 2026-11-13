@@ -127,7 +127,8 @@ export class Gatekeeper {
     if (toolName === 'WebFetch') return this.opens(String(input.url ?? ''), call.callId)
     if (!toolName.startsWith(`mcp__${SERVER}__`)) return { allow: true }
     if (name === 'look' && typeof input.url === 'string') return this.opens(input.url, call.callId)
-    if (name === 'browse' && input.action === 'open' && typeof input.url === 'string')
+    const goes = input.action === 'open' || input.action === 'read'
+    if (name === 'browse' && goes && typeof input.url === 'string')
       return this.opens(input.url, call.callId)
     // a browse step that puts something into a site, or cannot be taken back: the person's yes
     if (name === 'browse' && this.hands) {

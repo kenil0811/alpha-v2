@@ -123,6 +123,8 @@ export function stepWords(tool: string, input: Input): string {
       switch (input.action) {
         case 'open':
           return `Opened ${URL.canParse(url) ? new URL(url).host : 'a page'}`
+        case 'read':
+          return `Read ${URL.canParse(url) ? new URL(url).host : 'an address'}`
         case 'find':
           return `Looked on the page for “${short(s(input.words), 60)}”`
         case 'click':

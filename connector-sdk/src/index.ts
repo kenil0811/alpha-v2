@@ -5,11 +5,13 @@ export {
   focused,
   outlined,
   press,
+  pressAt,
   type Ref,
   type Seen,
   said,
   see,
   typeInto,
+  whatAt,
 } from './browse.ts'
 export {
   BrowserEngine,

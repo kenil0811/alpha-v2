@@ -85,6 +85,22 @@ describe('what a browse step is', () => {
   })
 })
 
+describe('a click at a place in the picture', () => {
+  const at = (what: string, dialog = '') => {
+    focus = { editable: false, words: '', dialog, what } as never
+    return judgeStep(world, browser, turn('t1'), user, actor, { action: 'click', x: 200, y: 100 })
+  }
+  it('is free on a canvas or a link, and asks each time on a button that cannot be taken back', async () => {
+    expect((await at('canvas ""')).allow).toBe(true)
+    expect((await at('link "Share"')).allow).toBe(true)
+    expect(waiting()).toHaveLength(0)
+    expect((await at('button "OK"', 'Delete forever?')).allow).toBe(false)
+    expect(waiting()[0]?.words).toBe(
+      'Let Chief of staff press OK in “Delete forever?” on drive.example.com?',
+    )
+  })
+})
+
 describe('acting asks once for an agent, a site and a piece of work', () => {
   it('the first typing opens one card with the step and the page’s picture, and waits', async () => {
     const d = await type(turn('t1'))
