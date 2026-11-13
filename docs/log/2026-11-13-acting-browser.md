@@ -56,5 +56,8 @@ Step 4 pushed on his "looks good" (e51dacf).
   the window stayed held on the page (a press now says which keys are really held, and all are
   let go when the page changes hands), and two quick presses never made a double click, so a
   Drive folder was selected and never opened (each press now carries its count).
+  Then two more: a right click in the Mac app selected the whole picture (nothing in it is the
+  window's to select now), and a page closed while the agent was idle could not be opened again
+  (the conversation offers it for as long as the tab is open).
 
 Next: his look at step 5. Then the Drive and Docs connector over Google's API, for the server.
