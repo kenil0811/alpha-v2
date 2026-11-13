@@ -4,7 +4,8 @@
 // without one, and says so.
 import type { BrowserContext, CDPSession, Page } from 'playwright'
 
-type Point = { x: number; y: number; button?: 'left' | 'right' | 'middle' }
+// `held`: the modifier keys really down in the person's window at that moment
+type Point = { x: number; y: number; button?: 'left' | 'right' | 'middle'; held?: string[] }
 
 export type LiveInput =
   | ({ kind: 'move' } & Point)
@@ -34,8 +35,21 @@ const QUALITY = 70
 const CHECK_AFTER_MS = 1200
 const CHECK_EVERY_MS = 4000
 
-// What the person did on the live picture, done on the page.
-export async function inputTo(page: Page, e: LiveInput): Promise<void> {
+const MODIFIERS = ['Control', 'Shift', 'Alt', 'Meta']
+
+// What the person did on the live picture, done on the page. `down` keeps the keys sent down and
+// not yet up: a key whose release never arrived (the window lost the keys mid-press, as a
+// screenshot's shortcut does) would stay held on the page, and a held Control makes every click a
+// right click. So a press of the mouse lets go of any modifier the person is not really holding.
+export async function inputTo(page: Page, e: LiveInput, down = new Set<string>()): Promise<void> {
+  if (e.kind === 'keydown') down.add(e.key)
+  if (e.kind === 'keyup') down.delete(e.key)
+  if (e.kind === 'down' && e.held)
+    for (const k of MODIFIERS)
+      if (down.has(k) && !e.held.includes(k)) {
+        down.delete(k)
+        await page.keyboard.up(k).catch(() => undefined)
+      }
   if (e.kind === 'keydown' || e.kind === 'keyup') {
     const press = e.kind === 'keydown' ? page.keyboard.down : page.keyboard.up
     // a key the keyboard does not name (an accented letter) is typed as itself
@@ -50,6 +64,12 @@ export async function inputTo(page: Page, e: LiveInput): Promise<void> {
     await page.mouse.move(e.x, e.y)
     if (e.kind !== 'move') await page.mouse[e.kind]({ button: e.button ?? 'left' })
   }
+}
+
+// Every key the person's window sent down is let go: nothing stays held on the page after them.
+export async function letGo(page: Page, down: Set<string>): Promise<void> {
+  for (const k of new Set([...down, ...MODIFIERS])) await page.keyboard.up(k).catch(() => undefined)
+  down.clear()
 }
 
 // A page's live picture, sent frame by frame until stopped.
@@ -80,9 +100,15 @@ export class LiveTab {
   private cdp: CDPSession | null = null
   private frames: ((jpeg: string) => void) | null = null
   private stopped = false
+  private down = new Set<string>() // the keys the person holds on the page
 
   constructor(page: Page) {
     this.page = page
+  }
+
+  // The page changes hands: no key of the person's stays held on it for the agent's next click.
+  async letGo(): Promise<void> {
+    if (!this.page.isClosed()) await letGo(this.page, this.down)
   }
 
   size(): { width: number; height: number } {
@@ -102,7 +128,7 @@ export class LiveTab {
   }
 
   async input(e: LiveInput): Promise<void> {
-    if (!this.stopped && !this.page.isClosed()) await inputTo(this.page, e)
+    if (!this.stopped && !this.page.isClosed()) await inputTo(this.page, e, this.down)
   }
 
   async close(): Promise<void> {
@@ -125,6 +151,7 @@ export class LiveBrowser {
   private poll: ReturnType<typeof setInterval> | null = null
   private checking = false
   private finished = false
+  private down = new Set<string>() // the keys the person holds on the page
 
   constructor(context: BrowserContext, url: string, walled: () => Promise<boolean>) {
     this.context = context
@@ -208,7 +235,7 @@ export class LiveBrowser {
   async input(e: LiveInput): Promise<void> {
     const page = this.page
     if (!page || this.finished) return
-    await inputTo(page, e)
+    await inputTo(page, e, this.down)
     this.soon(CHECK_AFTER_MS)
   }
 

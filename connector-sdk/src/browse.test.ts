@@ -180,7 +180,10 @@ describe('browsing a site', () => {
       expect(engine.as('u_bob').holding('chief.t1')).toBe(false)
       const team = await page.getByRole('link', { name: 'Team', exact: true }).boundingBox()
       const at = { x: (team?.x ?? 0) + 4, y: (team?.y ?? 0) + 4 }
-      await live.input({ kind: 'down', ...at })
+      // a Control whose release never came would make this a right click: the press says what
+      // is really held, and the page lets go of the rest
+      await live.input({ kind: 'keydown', key: 'Control' })
+      await live.input({ kind: 'down', ...at, held: [] })
       await live.input({ kind: 'up', ...at })
       await page.waitForURL(/\/plans\/team$/)
       expect(me.release('chief.t1')).toMatchObject({ waited: true })

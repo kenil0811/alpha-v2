@@ -115,6 +115,20 @@ export function LivePage({
   })
 
   const button = (b: number) => (b === 2 ? 'right' : b === 1 ? 'middle' : 'left')
+  // the modifier keys really down now: the page lets go of any other, so a key whose release
+  // never reached this window (a screenshot's shortcut takes the keys) is not left held there
+  const held = (e: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }) =>
+    [
+      e.ctrlKey ? 'Control' : '',
+      e.shiftKey ? 'Shift' : '',
+      e.altKey ? 'Alt' : '',
+      e.metaKey ? 'Meta' : '',
+    ].filter(Boolean)
+  const sent = useRef(new Set<string>())
+  const release = () => {
+    for (const key of sent.current) act({ kind: 'keyup', key })
+    sent.current.clear()
+  }
   return (
     <dialog
       ref={box}
@@ -144,7 +158,7 @@ export function LivePage({
           onPointerDown={(e) => {
             keys.current?.focus()
             e.preventDefault()
-            act({ kind: 'down', ...at(e), button: button(e.button) })
+            act({ kind: 'down', ...at(e), button: button(e.button), held: held(e) })
           }}
           onPointerUp={(e) => act({ kind: 'up', ...at(e), button: button(e.button) })}
         />
@@ -156,6 +170,7 @@ export function LivePage({
           className="absolute top-0 left-0 size-px opacity-0"
           value=""
           onChange={() => undefined}
+          onBlur={release}
           onPaste={(e) => {
             e.preventDefault()
             act({ kind: 'paste', text: e.clipboardData.getData('text') })
@@ -165,10 +180,14 @@ export function LivePage({
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') return
             if (e.key === 'Escape' && !reach.current) return // closes the picture
             e.preventDefault()
-            if (e.key !== 'Meta') act({ kind: 'keydown', key: e.key })
+            if (e.key === 'Meta') return
+            sent.current.add(e.key)
+            act({ kind: 'keydown', key: e.key })
           }}
           onKeyUp={(e) => {
-            if (e.key !== 'Meta') act({ kind: 'keyup', key: e.key })
+            if (e.key === 'Meta') return
+            sent.current.delete(e.key)
+            act({ kind: 'keyup', key: e.key })
           }}
         />
       </div>

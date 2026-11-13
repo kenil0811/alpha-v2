@@ -18,6 +18,7 @@ const Sent = z.discriminatedUnion('kind', [
     kind: z.enum(['move', 'down', 'up']),
     ...Point,
     button: z.enum(['left', 'right', 'middle']).optional(),
+    held: z.array(z.string().max(12)).max(4).optional(),
   }),
   z.object({ kind: z.literal('wheel'), ...Point, dx: z.number(), dy: z.number() }),
   z.object({ kind: z.enum(['keydown', 'keyup']), key: z.string().max(40) }),
@@ -57,6 +58,7 @@ export function watchTab(
     const site = hostOf(browser.openTabs().find((t) => t.work === tab)?.url)
     const had = took ? browser.release(tab) : null
     took = false
+    void live.letGo().catch(() => undefined)
     say({ held: false })
     if (!had) return
     const next = handedBack(world, tab, site, had, user)
@@ -81,6 +83,7 @@ export function watchTab(
     if (sent.kind === 'take') {
       browser.hold(tab)
       took = true
+      void live.letGo().catch(() => undefined)
       say({ held: true })
     } else if (sent.kind === 'back') back()
     // what they do reaches the page only while they hold it
