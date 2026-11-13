@@ -63,3 +63,9 @@ Step 4 pushed on his "looks good" (e51dacf).
   start again when they let go.
 
 Step 5 accepted by him on 13 Nov. Next: the Drive and Docs connector over Google's API, for the server.
+
+Later the same day, on the server: his sign-in to github.com closed by itself after the password and
+left him signed out. The picture called him in when the page asked for (GitHub's home, open to
+anyone) opened without a sign-in, while GitHub was still at its step after the password. It now
+closes by itself only where the page asked for stops at a sign-in before they are in; elsewhere it
+says so and waits for "I am signed in".

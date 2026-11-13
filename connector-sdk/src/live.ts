@@ -161,6 +161,11 @@ export class LiveBrowser {
   private checking = false
   private finished = false
   private down = new Set<string>() // the keys the person holds on the page
+  // Whether the page asked for stops at a sign-in before they are in: only then does its opening
+  // say they are. A page open to anyone (a site's home) says nothing: its sign-in can go on to a
+  // code or a device check with no password box, and closing there would call them in when they
+  // are not. On such a site the person says so themselves.
+  tells: boolean | null = null
 
   constructor(context: BrowserContext, url: string, walled: () => Promise<boolean>) {
     this.context = context
@@ -177,6 +182,7 @@ export class LiveBrowser {
     await page.setViewportSize(LIVE_SIZE)
     await this.show(page)
     await page.goto(this.url, { waitUntil: 'domcontentloaded' }).catch(() => undefined)
+    this.tells = await this.walled().catch(() => false)
     this.poll = setInterval(() => this.soon(0), CHECK_EVERY_MS)
   }
 
@@ -216,8 +222,8 @@ export class LiveBrowser {
 
   // Still at a sign-in (a password box, or the account's name asked first), nothing has happened
   // yet. Once a sign-in has been seen and is gone, a quiet look at the page that asked for it, which
-  // opens without one once they are in. A site's home page with no sign-in on it never closes this:
-  // the person goes to its sign-in, or presses that they are in.
+  // opens without one once they are in. A page that was open to anyone from the start never closes
+  // this: the person goes to the site's sign-in, and presses that they are in.
   private async check(): Promise<void> {
     const page = this.page
     if (this.finished || this.checking || !page) return
@@ -227,7 +233,7 @@ export class LiveBrowser {
         this.sawSignIn = true
         return
       }
-      if (!this.sawSignIn) return
+      if (!this.sawSignIn || !this.tells) return
       if (await this.walled().catch(() => true)) return
       this.finish()
     } finally {

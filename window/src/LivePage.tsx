@@ -8,7 +8,7 @@ import { token } from './api.ts'
 const DOUBLE_MS = 500
 const DOUBLE_PX = 6
 
-type Told = { frame?: string; done?: boolean; problem?: string; held?: boolean }
+type Told = { frame?: string; done?: boolean; problem?: string; held?: boolean; tells?: boolean }
 
 export function LivePage({
   path,

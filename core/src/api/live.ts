@@ -89,6 +89,7 @@ export function liveSignIn(
       live = await browser.openLive(url)
       say({ size: LIVE_SIZE })
       await live.start((frame) => say({ frame }), finish)
+      say({ tells: live.tells === true })
       if (gone) await live.close()
     } catch (err) {
       refuse(err instanceof Error ? err.message : 'The site did not open.')
