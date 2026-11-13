@@ -4,6 +4,10 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { token } from './api.ts'
 
+// Two presses this close in time and place are a double click, as on a Mac.
+const DOUBLE_MS = 500
+const DOUBLE_PX = 6
+
 type Told = { frame?: string; done?: boolean; problem?: string; held?: boolean }
 
 export function LivePage({
@@ -124,6 +128,24 @@ export function LivePage({
       e.altKey ? 'Alt' : '',
       e.metaKey ? 'Meta' : '',
     ].filter(Boolean)
+  // which press this is of quick presses in one place: the page needs to be told, or two clicks
+  // on a folder select it twice and never open it
+  const last = useRef({ at: 0, x: 0, y: 0, button: '', count: 0 })
+  const press = (e: { clientX: number; clientY: number; button: number }) => {
+    const l = last.current
+    const again =
+      button(e.button) === l.button &&
+      performance.now() - l.at < DOUBLE_MS &&
+      Math.hypot(e.clientX - l.x, e.clientY - l.y) < DOUBLE_PX
+    last.current = {
+      at: performance.now(),
+      x: e.clientX,
+      y: e.clientY,
+      button: button(e.button),
+      count: again && l.count < 3 ? l.count + 1 : 1,
+    }
+    return last.current.count
+  }
   const sent = useRef(new Set<string>())
   const release = () => {
     for (const key of sent.current) act({ kind: 'keyup', key })
@@ -158,9 +180,17 @@ export function LivePage({
           onPointerDown={(e) => {
             keys.current?.focus()
             e.preventDefault()
-            act({ kind: 'down', ...at(e), button: button(e.button), held: held(e) })
+            act({
+              kind: 'down',
+              ...at(e),
+              button: button(e.button),
+              held: held(e),
+              count: press(e),
+            })
           }}
-          onPointerUp={(e) => act({ kind: 'up', ...at(e), button: button(e.button) })}
+          onPointerUp={(e) =>
+            act({ kind: 'up', ...at(e), button: button(e.button), count: last.current.count })
+          }
         />
         <textarea
           ref={keys}

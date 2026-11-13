@@ -16,6 +16,7 @@ const Sent = z.discriminatedUnion('kind', [
     ...Point,
     button: z.enum(['left', 'right', 'middle']).optional(),
     held: z.array(z.string().max(12)).max(4).optional(),
+    count: z.number().int().min(1).max(3).optional(),
   }),
   z.object({ kind: z.literal('wheel'), ...Point, dx: z.number(), dy: z.number() }),
   z.object({ kind: z.enum(['keydown', 'keyup']), key: z.string().max(40) }),

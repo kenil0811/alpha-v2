@@ -4,8 +4,16 @@
 // without one, and says so.
 import type { BrowserContext, CDPSession, Page } from 'playwright'
 
-// `held`: the modifier keys really down in the person's window at that moment
-type Point = { x: number; y: number; button?: 'left' | 'right' | 'middle'; held?: string[] }
+// `held`: the modifier keys really down in the person's window at that moment. `count`: which
+// press this is of quick presses in one place: the second makes a double click, as a folder's
+// opening needs, where two single clicks only select it twice.
+type Point = {
+  x: number
+  y: number
+  button?: 'left' | 'right' | 'middle'
+  held?: string[]
+  count?: number
+}
 
 export type LiveInput =
   | ({ kind: 'move' } & Point)
@@ -62,7 +70,8 @@ export async function inputTo(page: Page, e: LiveInput, down = new Set<string>()
     await page.mouse.wheel(e.dx, e.dy)
   } else {
     await page.mouse.move(e.x, e.y)
-    if (e.kind !== 'move') await page.mouse[e.kind]({ button: e.button ?? 'left' })
+    if (e.kind !== 'move')
+      await page.mouse[e.kind]({ button: e.button ?? 'left', clickCount: e.count ?? 1 })
   }
 }
 

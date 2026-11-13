@@ -178,6 +178,19 @@ describe('browsing a site', () => {
       me.hold('chief.t1')
       expect(me.holding('chief.t1', true)).toBe(true)
       expect(engine.as('u_bob').holding('chief.t1')).toBe(false)
+      // two quick presses in one place are a double click on the page, as a folder's opening needs
+      await page.evaluate(() => {
+        document.querySelector('h1')?.addEventListener('dblclick', () => {
+          document.title = 'Opened'
+        })
+      })
+      const head = await page.getByRole('heading').boundingBox()
+      const on = { x: (head?.x ?? 0) + 4, y: (head?.y ?? 0) + 4 }
+      for (const count of [1, 2]) {
+        await live.input({ kind: 'down', ...on, count })
+        await live.input({ kind: 'up', ...on, count })
+      }
+      expect(await page.title()).toBe('Opened')
       const team = await page.getByRole('link', { name: 'Team', exact: true }).boundingBox()
       const at = { x: (team?.x ?? 0) + 4, y: (team?.y ?? 0) + 4 }
       // a Control whose release never came would make this a right click: the press says what
