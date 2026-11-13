@@ -52,5 +52,9 @@ Step 4 pushed on his "looks good" (e51dacf).
   not clear; handing back answers that card. Only the person the work acts as can list, watch or
   hold its tab (rule L3). Tried on his Mac's Alpha on Drive: watched, taken over, handed back, and
   the agent carried on; and an agent's own ask onto the page.
+  His look found two faults in the picture's input, both fixed: a key whose release never reached
+  the window stayed held on the page (a press now says which keys are really held, and all are
+  let go when the page changes hands), and two quick presses never made a double click, so a
+  Drive folder was selected and never opened (each press now carries its count).
 
 Next: his look at step 5. Then the Drive and Docs connector over Google's API, for the server.
