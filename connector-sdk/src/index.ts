@@ -51,7 +51,7 @@ export {
 } from './connector.ts'
 export { EFFECTS, type Effect, isEffect } from './effects.ts'
 export { type HelperOptions, helperBinary, runHelper } from './helper.ts'
-export { LIVE_SIZE, LiveBrowser, type LiveInput } from './live.ts'
+export { LIVE_SIZE, LiveBrowser, type LiveInput, LiveTab } from './live.ts'
 export { proxy } from './proxy.ts'
 export {
   type CallOptions,

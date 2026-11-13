@@ -34,6 +34,83 @@ const QUALITY = 70
 const CHECK_AFTER_MS = 1200
 const CHECK_EVERY_MS = 4000
 
+// What the person did on the live picture, done on the page.
+export async function inputTo(page: Page, e: LiveInput): Promise<void> {
+  if (e.kind === 'keydown' || e.kind === 'keyup') {
+    const press = e.kind === 'keydown' ? page.keyboard.down : page.keyboard.up
+    // a key the keyboard does not name (an accented letter) is typed as itself
+    await press.call(page.keyboard, e.key).catch(async () => {
+      if (e.kind === 'keydown' && e.key.length === 1) await page.keyboard.insertText(e.key)
+    })
+  } else if (e.kind === 'paste') await page.keyboard.insertText(e.text)
+  else if (e.kind === 'wheel') {
+    await page.mouse.move(e.x, e.y)
+    await page.mouse.wheel(e.dx, e.dy)
+  } else {
+    await page.mouse.move(e.x, e.y)
+    if (e.kind !== 'move') await page.mouse[e.kind]({ button: e.button ?? 'left' })
+  }
+}
+
+// A page's live picture, sent frame by frame until stopped.
+export async function screencast(
+  page: Page,
+  frames: (jpeg: string) => void,
+  size: { width: number; height: number },
+): Promise<CDPSession> {
+  const cdp = await page.context().newCDPSession(page)
+  cdp.on('Page.screencastFrame', (f: { data: string; sessionId: number }) => {
+    frames(f.data)
+    void cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => undefined)
+  })
+  await cdp.send('Page.startScreencast', {
+    format: 'jpeg',
+    quality: QUALITY,
+    maxWidth: size.width,
+    maxHeight: size.height,
+  })
+  return cdp
+}
+
+// A piece of work's tab, watched: the page an agent works on, as a live picture in the person's
+// window. Watching sends nothing to the page; what the person does reaches it only while they hold
+// it (the engine's hold), and follows the work when a click moves it to another tab.
+export class LiveTab {
+  private page: Page
+  private cdp: CDPSession | null = null
+  private frames: ((jpeg: string) => void) | null = null
+  private stopped = false
+
+  constructor(page: Page) {
+    this.page = page
+  }
+
+  size(): { width: number; height: number } {
+    return this.page.viewportSize() ?? LIVE_SIZE
+  }
+
+  async start(frames: (jpeg: string) => void): Promise<void> {
+    this.frames = frames
+    await this.show(this.page)
+  }
+
+  async show(page: Page): Promise<void> {
+    if (this.stopped || !this.frames) return
+    await this.cdp?.detach().catch(() => undefined)
+    this.page = page
+    this.cdp = await screencast(page, this.frames, this.size())
+  }
+
+  async input(e: LiveInput): Promise<void> {
+    if (!this.stopped && !this.page.isClosed()) await inputTo(this.page, e)
+  }
+
+  async close(): Promise<void> {
+    this.stopped = true
+    await this.cdp?.detach().catch(() => undefined)
+  }
+}
+
 export class LiveBrowser {
   private context: BrowserContext
   private url: string
@@ -90,18 +167,7 @@ export class LiveBrowser {
       const back = this.pages.at(-1)
       if (this.page === page && back && !this.finished) void this.show(back).catch(() => undefined)
     })
-    const cdp = await this.context.newCDPSession(page)
-    this.cdp = cdp
-    cdp.on('Page.screencastFrame', (f: { data: string; sessionId: number }) => {
-      this.frames?.(f.data)
-      void cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => undefined)
-    })
-    await cdp.send('Page.startScreencast', {
-      format: 'jpeg',
-      quality: QUALITY,
-      maxWidth: LIVE_SIZE.width,
-      maxHeight: LIVE_SIZE.height,
-    })
+    this.cdp = await screencast(page, (f) => this.frames?.(f), LIVE_SIZE)
   }
 
   private soon(ms: number): void {
@@ -142,20 +208,7 @@ export class LiveBrowser {
   async input(e: LiveInput): Promise<void> {
     const page = this.page
     if (!page || this.finished) return
-    if (e.kind === 'keydown' || e.kind === 'keyup') {
-      const press = e.kind === 'keydown' ? page.keyboard.down : page.keyboard.up
-      // a key the keyboard does not name (an accented letter) is typed as itself
-      await press.call(page.keyboard, e.key).catch(async () => {
-        if (e.kind === 'keydown' && e.key.length === 1) await page.keyboard.insertText(e.key)
-      })
-    } else if (e.kind === 'paste') await page.keyboard.insertText(e.text)
-    else if (e.kind === 'wheel') {
-      await page.mouse.move(e.x, e.y)
-      await page.mouse.wheel(e.dx, e.dy)
-    } else {
-      await page.mouse.move(e.x, e.y)
-      if (e.kind !== 'move') await page.mouse[e.kind]({ button: e.button ?? 'left' })
-    }
+    await inputTo(page, e)
     this.soon(CHECK_AFTER_MS)
   }
 

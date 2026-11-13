@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import { type BrowserContext, chromium, type Page } from 'playwright'
 import { getDomain } from 'tldts'
 import { Problem } from './connector.ts'
-import { atSignIn, LiveBrowser } from './live.ts'
+import { atSignIn, LiveBrowser, LiveTab } from './live.ts'
 
 export interface Pace {
   minMs: number // the least time between two pages of one site
@@ -237,6 +237,9 @@ export class BrowserEngine {
   private contexts = new Map<string, BrowserContext>()
   private tabs = new Map<string, Page>() // each piece of work's own tab, by person and work
   private used = new Map<string, number>() // when each was last worked in: an idle one closes
+  private watchers = new Map<string, Set<LiveTab>>() // the live pictures of a work's tab
+  // the tabs the person has taken over: since when, and whether the agent's step waited on it
+  private held = new Map<string, { since: number; waited: boolean }>()
   private tabIdleMs: number
   private settleMs: number
   private lastLoad = new Map<string, number>()
@@ -462,6 +465,8 @@ export class BrowserEngine {
     const key = `${this.who}/${work}`
     const old = this.tabs.get(key)
     this.tabs.set(key, page)
+    // whoever watches the work goes with it
+    for (const w of this.watchers.get(key) ?? []) await w.show(page).catch(() => undefined)
     if (old && old !== page) await old.close().catch(() => undefined)
     await page.waitForLoadState('domcontentloaded').catch(() => undefined)
     if (this.only && !this.only.includes(new URL(page.url()).hostname)) {
@@ -479,6 +484,53 @@ export class BrowserEngine {
       .catch(() => undefined)
     this.tabs.delete(key)
     this.used.delete(key)
+    this.held.delete(key)
+  }
+
+  // This person's open work tabs, the one worked in last first: what there is to watch.
+  openTabs(): { work: string; url: string; held: boolean }[] {
+    const mine = `${this.who}/`
+    return [...this.tabs.entries()]
+      .filter(([k, p]) => k.startsWith(mine) && !p.isClosed())
+      .sort(([a], [b]) => (this.used.get(b) ?? 0) - (this.used.get(a) ?? 0))
+      .map(([k, p]) => ({ work: k.slice(mine.length), url: p.url(), held: this.held.has(k) }))
+  }
+
+  // A work's tab as a live picture, for the person it works as. Watching sends the page nothing.
+  watch(work: string): LiveTab {
+    const key = `${this.who}/${work}`
+    const page = this.tabs.get(key)
+    if (!page || page.isClosed()) throw new Problem('That page is not open any more.')
+    const live = new LiveTab(page)
+    const set = this.watchers.get(key) ?? new Set<LiveTab>()
+    this.watchers.set(key, set.add(live))
+    return live
+  }
+
+  async unwatch(work: string, live: LiveTab): Promise<void> {
+    this.watchers.get(`${this.who}/${work}`)?.delete(live)
+    await live.close()
+  }
+
+  // The person takes a work's page: the agent's steps on it wait until they hand it back.
+  hold(work: string): void {
+    const key = `${this.who}/${work}`
+    if (!this.held.has(key)) this.held.set(key, { since: Date.now(), waited: false })
+  }
+
+  // Whether the person has the page; an agent's step that asks is one that waited on it.
+  holding(work: string, waits = false): boolean {
+    const h = this.held.get(`${this.who}/${work}`)
+    if (h && waits) h.waited = true
+    return !!h
+  }
+
+  // Handed back: how long they had it, and whether the agent waited on it meanwhile.
+  release(work: string): { ms: number; waited: boolean } | null {
+    const key = `${this.who}/${work}`
+    const h = this.held.get(key)
+    this.held.delete(key)
+    return h ? { ms: Date.now() - h.since, waited: h.waited } : null
   }
 
   // The sites this person signed in to, newest first, with when.

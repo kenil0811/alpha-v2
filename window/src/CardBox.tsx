@@ -16,6 +16,7 @@ import { Actions, Card, CardPlace } from './ui/card.tsx'
 import { cn } from './ui/cn.ts'
 import { Answer, Question } from './ui/question.tsx'
 import { answerWords } from './vocabulary.ts'
+import { WatchPage } from './WatchPage.tsx'
 
 // What a card would send, as it will go: a message's head (From, To, Subject…) laid out, then its
 // body. Anything without such a head is shown as written.
@@ -102,11 +103,15 @@ function CardBody({
   const [opened, setOpened] = useState(false)
   const [live, setLive] = useState(false)
   const [always, setAlways] = useState(false)
+  const [watching, setWatching] = useState(false)
   if (card.filing) return <FilingCard card={card} filing={card.filing} />
   if (card.draft) return <DraftCard card={card} draft={card.draft} />
   if (card.match) return <MatchCard card={card} match={card.match} />
   if (card.review) return <ReviewCard card={card} review={card.review} />
   const answer = async (a: string, andAlways = false) => {
+    // a card that asks you onto an agent's page: its yes opens the page, and handing the page
+    // back answers the card
+    if (card.acting?.watch && a === card.options[0]) return setWatching(true)
     setBusy(true)
     try {
       // A site's sign-in opens the site in the person's own Google Chrome; the card is answered when
@@ -220,6 +225,15 @@ function CardBody({
         )}
         {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}
       </Actions>
+      {watching && card.acting?.watch && (
+        <WatchPage
+          tab={card.acting.watch}
+          site={card.words.split(' on ').at(-1) ?? ''}
+          name={card.words.split(' needs you ')[0] ?? 'The agent'}
+          take
+          onClose={() => setWatching(false)}
+        />
+      )}
       {live && card.site && (
         <LiveSignIn card={id} site={card.site} onClose={() => setLive(false)} />
       )}

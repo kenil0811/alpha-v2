@@ -156,4 +156,38 @@ describe('browsing a site', () => {
       await engine.close()
     }
   }, 60_000)
+
+  it('shows a work’s tab live to the person it works as, and to nobody else; a held page is theirs until handed back', async () => {
+    const engine = new BrowserEngine({ browsers: BROWSERS, profiles, pace: { minMs: 0, maxMs: 0 } })
+    try {
+      const me = engine.as('u_ann')
+      const page = await me.tab('chief.t1', `${base}/plans`)
+      expect(me.openTabs().map((t) => [t.work, t.held])).toEqual([['chief.t1', false]])
+      // another person has no such tab: not to list, not to watch
+      expect(engine.as('u_bob').openTabs()).toEqual([])
+      expect(() => engine.as('u_bob').watch('chief.t1')).toThrow(/not open any more/)
+      const live = me.watch('chief.t1')
+      const frames: string[] = []
+      await live.start((f) => frames.push(f))
+      await page.evaluate(() => {
+        document.body.style.background = 'teal'
+      })
+      await expect.poll(() => frames.length, { timeout: 5_000 }).toBeGreaterThan(0)
+      // taken over: what they click reaches the page; then handed back
+      expect(me.holding('chief.t1')).toBe(false)
+      me.hold('chief.t1')
+      expect(me.holding('chief.t1', true)).toBe(true)
+      expect(engine.as('u_bob').holding('chief.t1')).toBe(false)
+      const team = await page.getByRole('link', { name: 'Team', exact: true }).boundingBox()
+      const at = { x: (team?.x ?? 0) + 4, y: (team?.y ?? 0) + 4 }
+      await live.input({ kind: 'down', ...at })
+      await live.input({ kind: 'up', ...at })
+      await page.waitForURL(/\/plans\/team$/)
+      expect(me.release('chief.t1')).toMatchObject({ waited: true })
+      expect(me.release('chief.t1')).toBeNull()
+      await me.unwatch('chief.t1', live)
+    } finally {
+      await engine.close()
+    }
+  }, 60_000)
 })

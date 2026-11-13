@@ -3,7 +3,7 @@
 import { type AgentAsk, askOfTurn, OPEN } from '../world/agents/asks.ts'
 import type { Card } from '../world/cards.ts'
 import type { User, World } from '../world/world.ts'
-import { ACT, PRESS } from './acting.ts'
+import { ACT, HAND, PRESS } from './acting.ts'
 import type { DeskEvent, DeskOptions, Turn, TurnPart } from './desk-types.ts'
 import { ASK_MORE } from './tools/agents.ts'
 
@@ -113,6 +113,6 @@ export function servesOf(
   if (card.call?.tool === ASK_MORE && input.root)
     return { root: input.root, ask: input.ask ?? null }
   if (ask) return { root: ask.root, ask: ask.id }
-  const acting = card.call?.tool === ACT || card.call?.tool === PRESS
+  const acting = [ACT, PRESS, HAND].includes(card.call?.tool ?? '')
   return acting && input.work && !input.work.startsWith('task:') ? { root: input.work } : {}
 }

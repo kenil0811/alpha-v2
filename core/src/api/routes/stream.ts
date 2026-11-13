@@ -45,6 +45,16 @@ export function registerStream(ctx: Ctx): void {
   const { app, world, engine, user, options } = ctx
   const { cardOut, moduleOf, aboutRows, shown } = ctx.views
 
+  // the page this agent works on as this person, to watch: its tab worked in last
+  const watchOf = (agent: string): Stream['watch'] => {
+    const tab = engine.hands
+      ?.browser()
+      .as(user.id)
+      .openTabs()
+      .find((t) => t.work.startsWith(`${agent}.`))
+    return tab ? { tab: tab.work, site: URL.canParse(tab.url) ? new URL(tab.url).host : '' } : null
+  }
+
   app.get('/api/stream', async (req): Promise<Stream> => {
     const q = z
       .object({
@@ -111,6 +121,7 @@ export function registerStream(ctx: Ctx): void {
               .at(-1)?.words ?? null,
         })),
       serving: engine.serving(user, agent),
+      watch: watchOf(agent),
       busy: engine.busy(user, agent, q.task),
       running: (engine.hands?.runner.runs(50) ?? [])
         .filter((r) => r.state === 'running')

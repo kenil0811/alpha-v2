@@ -26,6 +26,7 @@ import { cn } from './ui/cn.ts'
 import { CopyButton } from './ui/copy.tsx'
 import { dropped } from './ui/drop-zone.tsx'
 import { StreamedWords, Words } from './ui/words.tsx'
+import { WatchPage } from './WatchPage.tsx'
 
 const clock = (at: string) =>
   new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -62,6 +63,7 @@ export function Conversation({
   const items = useMemo(() => group(stream?.lines ?? []), [stream])
   const cards = useMemo(() => new Map((stream?.cards ?? []).map((c) => [c.id, c])), [stream])
   const [dragging, setDragging] = useState(false)
+  const [watching, setWatching] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [words, setWords] = useState('')
   const composer = useRef<HTMLTextAreaElement>(null)
@@ -157,6 +159,21 @@ export function Conversation({
               .map((id) => (
                 <CardBox key={id} id={id} card={cards.get(id) as CardView} onChange={changeCard} />
               ))}
+            {stream?.watch && (busyTurn !== null || watching) && (
+              <div>
+                <Button size="sm" variant="ghost" onClick={() => setWatching(true)}>
+                  Watch it work on {stream.watch.site}
+                </Button>
+                {watching && (
+                  <WatchPage
+                    tab={stream.watch.tab}
+                    site={stream.watch.site}
+                    name={agent?.name ?? 'Chief of staff'}
+                    onClose={() => setWatching(false)}
+                  />
+                )}
+              </div>
+            )}
             {stream?.serving && (
               <div className="flex items-center gap-1.5 text-ink-3 text-sm">
                 <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent-line border-t-accent" />

@@ -8,7 +8,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Actor } from '../world/journal.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
-import { ACT, actingView, answered, clickStep, judgeStep, keyStep, PRESS } from './acting.ts'
+import {
+  ACT,
+  actingView,
+  answered,
+  clickStep,
+  HAND,
+  handedBack,
+  handOver,
+  judgeStep,
+  keyStep,
+  PRESS,
+} from './acting.ts'
 import type { TurnContext } from './tools/common.ts'
 
 let home: string
@@ -21,7 +32,12 @@ const page = {
   screenshot: async () => Buffer.from([0xff, 0xd8, 0x01]),
   evaluate: async () => focus,
 }
-const browser = { as: () => browser, tab: async () => page } as unknown as BrowserEngine
+let held = false // the person has taken the page over
+const browser = {
+  as: () => browser,
+  tab: async () => page,
+  holding: () => held,
+} as unknown as BrowserEngine
 const actor: Actor = { kind: 'alpha' }
 const turn = (id: string, agent: string | null = null): TurnContext => ({
   user,
@@ -41,6 +57,7 @@ beforeEach(async () => {
   world = await World.open(join(home, 'tenants', 't_test'))
   user = world.owner('Kenil')
   focus = { editable: true, words: '', dialog: '' }
+  held = false
 })
 
 afterEach(() => {
@@ -226,5 +243,68 @@ describe('Always, after three yeses for an agent on a site', () => {
     }
     await type(turn('t5'))
     expect(actingView(world, waiting()[0] as never)?.always).toBeNull()
+  })
+})
+
+describe('a page the person has taken over', () => {
+  it('takes no step of the agent’s, not even a click or a look, until it is handed back', async () => {
+    held = true
+    for (const input of [
+      { action: 'click', n: 4 },
+      { action: 'find', words: 'x' },
+      { action: 'type', text: 'a' },
+    ]) {
+      const d = await judgeStep(world, browser, turn('t1'), user, actor, input)
+      expect(d.allow === false && d.reason).toMatch(/has taken over this page/)
+    }
+    expect(waiting()).toHaveLength(0)
+    held = false
+    expect(
+      (await judgeStep(world, browser, turn('t1'), user, actor, { action: 'find' })).allow,
+    ).toBe(true)
+  })
+
+  it('the record says they had it and for how long, never what they did', () => {
+    const next = handedBack(
+      world,
+      'chief.t1',
+      'drive.example.com',
+      { ms: 130_000, waited: true },
+      user,
+    )
+    expect(world.lines({ kinds: ['took_over'] }).map((l) => l.words)).toEqual([
+      'You took over drive.example.com from Chief of staff for 2 minutes.',
+    ])
+    expect(next).toMatchObject({ card: null, agent: 'chief', work: 't1' })
+    expect(next.text).toMatch(/handed it back.*not recorded.*Look at the page as it is now/)
+    // an agent that was not waiting on the page is told nothing
+    expect(
+      handedBack(world, 'chief.t1', 'drive.example.com', { ms: 20_000, waited: false }, user).text,
+    ).toBeNull()
+  })
+
+  it('an agent asks the person onto a page it cannot pass, once, and handing back finds that card', async () => {
+    const card = await handOver(
+      world,
+      browser,
+      turn('t1'),
+      user,
+      actor,
+      'The site sent a code to your phone.',
+    )
+    expect(card.words).toBe('Chief of staff needs you on drive.example.com')
+    expect(card.detail).toMatch(/^The site sent a code to your phone\. Open the page/)
+    expect(card.options[0]).toBe('Open the page')
+    expect(actingView(world, card)?.watch).toBe('chief.t1')
+    expect((await handOver(world, browser, turn('t1'), user, actor, 'Again.')).id).toBe(card.id)
+    const next = handedBack(
+      world,
+      'chief.t1',
+      'drive.example.com',
+      { ms: 60_000, waited: false },
+      user,
+    )
+    expect(next.card?.id).toBe(card.id)
+    expect(next.card?.call?.tool).toBe(HAND)
   })
 })

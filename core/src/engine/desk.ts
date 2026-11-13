@@ -263,8 +263,8 @@ export class Desk {
   }
 
   // Work given to this task's thread: a turn of its own, with nothing said for it.
-  takeWork(words: string, text: string): void {
-    const turn = this.laneTurn() as string
+  takeWork(words: string, text: string, root?: string): void {
+    const turn = this.laneTurn() ?? `n${this.world.lastLineId() + 1}`
     this.world.line({
       actor: { kind: 'system' },
       kind: 'noticed',
@@ -273,7 +273,7 @@ export class Desk {
       agent: this.named,
       turn,
     })
-    this.queue.push({ turn, text, said: null, message: null })
+    this.queue.push({ turn, text, said: null, message: null, ...(root ? { root } : {}) })
     this.emit({ type: 'lines' })
     this.pump()
   }

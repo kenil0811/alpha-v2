@@ -203,6 +203,7 @@ export interface Stream {
   asked: string[] // those raised by agents this conversation asked
   waiting: { id: string; doing: string | null }[] // this conversation's asks not answered yet
   serving: string | null // the teammate this agent is working for just now
+  watch: { tab: string; site: string } | null // the page this agent works on as you, to watch
   busy: boolean
   running: { id: string; name: string; module: string | null }[] // schedules' runs going now
   reading: { connection: string; title: string; account: string }[] // connections being read now

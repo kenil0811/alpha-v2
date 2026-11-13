@@ -29,6 +29,7 @@ export interface CardView {
 export interface ActingView {
   picture: string | null
   always: string | null
+  watch: string | null // the work's tab to open, on a card that asks the person onto a page
 }
 
 // Rows a schedule puts to the person on one card: each with why, and the choices it offers.

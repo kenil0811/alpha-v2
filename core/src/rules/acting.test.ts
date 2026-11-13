@@ -28,6 +28,7 @@ function gateOf(w: RuleWorld, focus = { editable: true, words: '', dialog: '' })
       return browser
     },
     tab: async () => page,
+    holding: () => false,
   }
   const hands = { browser: () => browser } as unknown as Hands
   const gate = new Gatekeeper(w.world, w.here, w.user, { hands })

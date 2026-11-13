@@ -220,7 +220,9 @@ itself waits for the person.
 
 The same browser is an agent's hands on a site that has no connector (`browse`): profiles are one
 person's, one per site, signed in by the person in Connections › Sites; a piece of work has a tab
-of its own; and what an agent puts into a site waits for the person's yes (rules L2, L3).
+of its own; and what an agent puts into a site waits for the person's yes (rules L2, L3). The
+person can watch the page an agent works on as a live picture, take it over and hand it back; an
+agent that meets what only the person can do asks them onto the page on a card.
 
 A connection is connected, needs sign-in, not working, paused, or waiting for the customer. Signing
 in is as the person, so Alpha reaches only what they can. Each action says whether it can be

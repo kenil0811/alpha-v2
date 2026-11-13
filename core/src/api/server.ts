@@ -43,6 +43,7 @@ import { registerTasks } from './routes/tasks.ts'
 import { registerUsage } from './routes/usage.ts'
 import type { Health } from './types.ts'
 import { deny, makeViews } from './views.ts'
+import { watchTab } from './watch.ts'
 
 // The version this core ships as, which a release writes into the app's VERSION file
 // (scripts/release.ts); a core run from a repository has none.
@@ -228,6 +229,10 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     scope.get('/ws/live/:card', { websocket: true }, (socket, req) => {
       const { card } = req.params as { card: string }
       liveSignIn(socket, card, world, engine, who.get(req) ?? owner)
+    })
+    scope.get('/ws/watch/:tab', { websocket: true }, (socket, req) => {
+      const { tab } = req.params as { tab: string }
+      watchTab(socket, tab, world, engine, who.get(req) ?? owner)
     })
     scope.get('/ws', { websocket: true }, (socket, req) => {
       const id = (who.get(req) ?? owner).id
