@@ -17,6 +17,9 @@ const PAGES: Record<string, string> = {
   '/plans/team':
     '<html><head><title>Team</title></head><body><h1>Team</h1><p>$49 a month</p></body></html>',
   '/plans/basic': '<html><head><title>Basic</title></head><body><h1>Basic</h1></body></html>',
+  // an app page that keeps a line open to its server, as Drive does: its network never goes idle
+  '/app': `<html><head><title>App</title></head><body><h1>Files</h1>
+    <script>fetch('/open-line')</script></body></html>`,
 }
 let server: Server
 let base: string
@@ -25,6 +28,7 @@ let profiles: string
 beforeAll(async () => {
   await ensureBrowser(BROWSERS)
   server = createServer((req, res) => {
+    if (req.url === '/open-line') return // never answered
     const body = PAGES[req.url ?? '']
     res.writeHead(body ? 200 : 404, { 'content-type': 'text/html' }).end(body ?? 'Not found')
   })
@@ -35,6 +39,7 @@ beforeAll(async () => {
 }, 120_000)
 
 afterAll(async () => {
+  server.closeAllConnections()
   await new Promise((r) => server.close(r))
   rmSync(profiles, { recursive: true, force: true })
 })
@@ -85,6 +90,18 @@ describe('browsing a site', () => {
       expect((await see(await me.tab('work-1'), 250)).elements).toMatch(/\$49 a month/)
       await me.closeTab('work-1')
       await expect(me.tab('work-1')).rejects.toThrow(/open one first/)
+    } finally {
+      await engine.close()
+    }
+  }, 60_000)
+
+  it('does not wait on a page whose network never goes idle: it is shown once it stops changing', async () => {
+    const engine = new BrowserEngine({ browsers: BROWSERS, profiles, pace: { minMs: 0, maxMs: 0 } })
+    try {
+      const started = Date.now()
+      const page = await engine.as('u_ann').tab('work-3', `${base}/app`)
+      expect(Date.now() - started).toBeLessThan(5_000)
+      expect((await see(page, 250)).elements).toMatch(/heading "Files"/)
     } finally {
       await engine.close()
     }

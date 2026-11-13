@@ -66,6 +66,9 @@ browse_step_ms: 900
 browse_elements: 250
 # A piece of work's browser tab that nobody worked in for this long closes; the work opens its page again.
 browse_tab_idle_minutes: 30
+# The longest a browse step waits for its page to come to rest (its network idle, or its elements
+# no longer changing) before the agent is shown the page as it is.
+browse_settle_ms: 8000
 
 # Days a removed row is kept, out of sight, so Bring back or Revert can put it back whole; then the
 # daily work deletes it for good. A judgement, never a setting.

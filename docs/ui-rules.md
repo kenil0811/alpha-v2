@@ -99,6 +99,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a script's report are on Activity; an agent's scheduled run reports on its task's page and Home. Nothing runs beside it | 7 Nov, 10 Nov | test (stream) |
 | A8 | What one agent asks another stays out of the asked agent's chat, which shows only a quiet Working for … while it runs. The asker's chat shows one line for each ask, with Stop while it waits and the answer and evidence folded on it, and then one reply. A message naming one agent goes straight to it and its answer is the reply; several go through the Chief of staff | 9 Nov | test |
 | A9 | A question card takes an answer in the person's own words besides the answers it offers | 10 Nov | — |
+| A10 | A card a turn raised shows under that turn's message, once the message is in: never first, with the words that explain it arriving above it after | 13 Nov | — |
 
 ## Intelligence and Settings
 

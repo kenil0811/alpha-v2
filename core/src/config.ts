@@ -36,6 +36,7 @@ const Limits = z.object({
   browse_step_ms: z.number().int().min(0),
   browse_elements: z.number().int().min(1),
   browse_tab_idle_minutes: z.number().int().min(1),
+  browse_settle_ms: z.number().int().min(500),
   run_retries: z.number().int().min(1),
   connector_busy_wait_seconds: z.number().int().min(0),
   yes_hours: z.number().positive(),

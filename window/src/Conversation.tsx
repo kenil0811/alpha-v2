@@ -348,7 +348,10 @@ const Entry = memo(function Entry({
         return (
           <div key={id} id={`card-${id}`}>
             {card ? (
-              <CardBox id={id} card={card} onChange={onChangeCard} />
+              // a card shows under the words that explain it: once its turn's message is in
+              working ? null : (
+                <CardBox id={id} card={card} onChange={onChangeCard} />
+              )
             ) : answered ? (
               <AnsweredLine answered={answered} />
             ) : null}

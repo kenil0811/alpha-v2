@@ -238,6 +238,7 @@ export class BrowserEngine {
   private tabs = new Map<string, Page>() // each piece of work's own tab, by person and work
   private used = new Map<string, number>() // when each was last worked in: an idle one closes
   private tabIdleMs: number
+  private settleMs: number
   private lastLoad = new Map<string, number>()
   private robots = new Map<string, string>()
   private sleep: (ms: number) => Promise<void>
@@ -252,7 +253,9 @@ export class BrowserEngine {
     sleep?: (ms: number) => Promise<void>
     only?: string[] // the only hosts it may read (a journey's made-up sites on this Mac)
     tabIdleMs?: number // a work's tab nobody worked in for this long closes
+    settleMs?: number // the longest a step waits for its page to come to rest
   }) {
+    this.settleMs = options.settleMs ?? 8_000
     this.tabIdleMs = options.tabIdleMs ?? 30 * 60_000
     this.browsers = options.browsers
     this.profiles = options.profiles
@@ -371,11 +374,39 @@ export class BrowserEngine {
     return page
   }
 
+  // A page that has come to rest: its network went idle, or its elements counted a few times a
+  // moment apart came out the same. An app that keeps a line open to its server (Drive) never goes
+  // idle, so idle alone is not waited for; a page still changing is given up on after settleMs.
+  private async quiet(page: Page): Promise<void> {
+    const cap = this.settleMs
+    await page.waitForLoadState('domcontentloaded', { timeout: cap }).catch(() => undefined)
+    let done = false
+    const idle = page
+      .waitForLoadState('networkidle', { timeout: cap })
+      .then(() => true)
+      .catch(() => false)
+    const still = (async () => {
+      const count = () => page.evaluate(() => document.querySelectorAll('*').length).catch(() => -1)
+      const until = Date.now() + cap
+      let last = await count()
+      for (let same = 0; !done && Date.now() < until; ) {
+        await new Promise((r) => setTimeout(r, 300))
+        const now = await count()
+        same = now === last && now > 0 ? same + 1 : 0
+        last = now
+        if (same >= 3) return true
+      }
+      return false
+    })()
+    await Promise.race([idle.then((ok) => ok || still), still])
+    done = true
+  }
+
   // A page after a step: loaded, and past a check page that clears by itself in a real browser,
   // tried again twice; one that does not clear needs a person.
   async settle(page: Page, host: string): Promise<void> {
     for (let tries = 0; ; tries++) {
-      await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined)
+      await this.quiet(page)
       const text = await page
         .locator('body')
         .innerText()
