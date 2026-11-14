@@ -1,7 +1,9 @@
 // `alpha kit test <dir>`: a kit's skills run against a fixture world and recorded
 // answers, without the model, and the rows they land are compared with what the kit's test
 // expects. A case is tests/<name>.yaml in the kit: which schedule or script, its input, the rows to
-// seed, the pages a browser call gets, the model's recorded answers, and what to expect. A
+// seed, the pages a browser call gets, the model's recorded answers, and what to expect. `then`
+// runs it again in the same world, each time with the pages a site shows by then and what to
+// expect of that run (a reader's second read: a new listing, a changed one, one gone). A
 // refusal by a wall fails the case. `--record` runs the model for real and writes its answers
 // into the case, to replay from then on.
 import { createHash } from 'node:crypto'
@@ -20,6 +22,15 @@ import { install } from './kits/index.ts'
 import { ScheduleRunner } from './runs/index.ts'
 import { schedules } from './schedules.ts'
 
+const Expect = z
+  .object({
+    state: z.enum(['ok', 'failed', 'stopped']).default('ok'),
+    words: z.string().optional(), // a regular expression over the run's words
+    result: z.unknown().optional(),
+    rows: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).default({}),
+  })
+  .default({ state: 'ok', rows: {} })
+
 const Case = z.object({
   schedule: z.string().optional(),
   script: z.string().optional(),
@@ -31,14 +42,19 @@ const Case = z.object({
   answers: z
     .array(z.object({ key: z.string(), about: z.string(), answer: z.unknown() }))
     .default([]),
-  expect: z
-    .object({
-      state: z.enum(['ok', 'failed', 'stopped']).default('ok'),
-      words: z.string().optional(), // a regular expression over the run's words
-      result: z.unknown().optional(),
-      rows: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).default({}),
-    })
-    .default({ state: 'ok', rows: {} }),
+  expect: Expect,
+  // the runs after the first, in the same world: each with its own pages, and its input when it
+  // differs
+  // biome-ignore lint/suspicious/noThenProperty: the word a kit's author writes for a later run
+  then: z
+    .array(
+      z.object({
+        input: z.record(z.string(), z.unknown()).optional(),
+        pages: z.record(z.string(), z.unknown()).default({}),
+        expect: Expect,
+      }),
+    )
+    .default([]),
 })
 export type KitTestCase = z.infer<typeof Case>
 
@@ -90,7 +106,10 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
     const ctx = { actor: { kind: 'alpha' as const } }
     const module = await install(world, dir, ctx)
     // the pages recorded are sites the kit may read in the test
-    const hosts = Object.keys(c.pages).map((u) => new URL(u).host)
+    let pages = c.pages
+    const hosts = [c.pages, ...c.then.map((t) => t.pages)].flatMap((p) =>
+      Object.keys(p).map((u) => new URL(u).host),
+    )
     if (hosts.length) {
       const manifest = join(module.dir, 'module.yaml')
       const m = (parse(readFileSync(manifest, 'utf8')) ?? {}) as Record<string, unknown>
@@ -108,8 +127,8 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
       )
     }
     const page = (url: string) => {
-      if (!(url in c.pages)) throw new Refused(`The case has no page recorded for ${url}.`)
-      const p = c.pages[url] as { fail?: unknown; kind?: unknown } | null
+      if (!(url in pages)) throw new Refused(`The case has no page recorded for ${url}.`)
+      const p = pages[url] as { fail?: unknown; kind?: unknown } | null
       if (p && typeof p.fail === 'string')
         throw new Problem(
           p.fail,
@@ -137,36 +156,44 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
       return out
     }
     const runner = new ScheduleRunner(world, () => engine, { owner: null, ask, judge: ask })
-    const out = c.schedule
-      ? await (async () => {
-          const a = schedules(world, module.id).find((x) => x.name === c.schedule)
-          if (!a) throw new Refused(`The kit has no schedule called ${c.schedule}.`)
-          // a kit's test is its author asking: a paused schedule runs for it
-          return runner.runSchedule(a, undefined, c.input, { asked: true })
-        })()
-      : await runner.runScript(module, c.script as string, c.input, 'the test', null)
-    const refused = world
-      .lines({ kinds: ['run_step'] })
-      .filter((l) => l.words.startsWith('Refused: '))
-      .map((l) => l.words)
-    if (refused.length) throw new Refused(refused.join(' '))
-    if (out.state !== c.expect.state)
-      throw new Refused(`The run ended ${out.state}, not ${c.expect.state}: ${out.words}`)
-    if (c.expect.words && !new RegExp(c.expect.words).test(out.words))
-      throw new Refused(`The run said "${out.words}", not /${c.expect.words}/.`)
-    if (c.expect.result !== undefined && !matches(out.result, c.expect.result))
-      throw new Refused(
-        `The run returned ${JSON.stringify(out.result)}, not ${JSON.stringify(c.expect.result)}.`,
-      )
-    for (const [tableName, rows] of Object.entries(c.expect.rows)) {
-      const t = world.shape.table(tableName)
-      if (!t) throw new Refused(`The case expects rows in ${tableName}, which is not there.`)
-      const landed = world.records.list(t.id).map((r) => byName(t, r.values))
-      for (const want of rows)
-        if (!landed.some((have) => matches(have, want)))
-          throw new Refused(
-            `No row in ${t.name} has ${JSON.stringify(want)}; the table holds ${JSON.stringify(landed)}.`,
-          )
+    // One run and what it is expected to leave; `nth` names a later run in what a failure says.
+    const run = async (input: Record<string, unknown>, expect: KitTestCase['expect'], nth = '') => {
+      const out = c.schedule
+        ? await (async () => {
+            const a = schedules(world, module.id).find((x) => x.name === c.schedule)
+            if (!a) throw new Refused(`The kit has no schedule called ${c.schedule}.`)
+            // a kit's test is its author asking: a paused schedule runs for it
+            return runner.runSchedule(a, undefined, input, { asked: true })
+          })()
+        : await runner.runScript(module, c.script as string, input, 'the test', null)
+      const refused = world
+        .lines({ kinds: ['run_step'] })
+        .filter((l) => l.words.startsWith('Refused: '))
+        .map((l) => l.words)
+      if (refused.length) throw new Refused(refused.join(' '))
+      if (out.state !== expect.state)
+        throw new Refused(`${nth}The run ended ${out.state}, not ${expect.state}: ${out.words}`)
+      if (expect.words && !new RegExp(expect.words).test(out.words))
+        throw new Refused(`${nth}The run said "${out.words}", not /${expect.words}/.`)
+      if (expect.result !== undefined && !matches(out.result, expect.result))
+        throw new Refused(
+          `${nth}The run returned ${JSON.stringify(out.result)}, not ${JSON.stringify(expect.result)}.`,
+        )
+      for (const [tableName, rows] of Object.entries(expect.rows)) {
+        const t = world.shape.table(tableName)
+        if (!t) throw new Refused(`The case expects rows in ${tableName}, which is not there.`)
+        const landed = world.records.list(t.id).map((r) => byName(t, r.values))
+        for (const want of rows)
+          if (!landed.some((have) => matches(have, want)))
+            throw new Refused(
+              `${nth}No row in ${t.name} has ${JSON.stringify(want)}; the table holds ${JSON.stringify(landed)}.`,
+            )
+      }
+    }
+    await run(c.input, c.expect)
+    for (const [n, later] of c.then.entries()) {
+      pages = later.pages
+      await run(later.input ?? c.input, later.expect, `Run ${n + 2}: `)
     }
     if (learned.length) {
       const raw = (parse(readFileSync(file, 'utf8')) ?? {}) as Record<string, unknown>

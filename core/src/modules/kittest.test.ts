@@ -15,7 +15,21 @@ afterEach(() => rmSync(home, { recursive: true, force: true }))
 describe('alpha kit test', () => {
   it('runs the kit’s cases against a fixture world and recorded pages, without the model', async () => {
     const report = await kitTest(KIT)
-    expect(report).toEqual({ passed: ['count', 'read'], failed: [] })
+    expect(report).toEqual({ passed: ['count', 'read-again', 'read'], failed: [] })
+  }, 90_000)
+
+  it('says which run of a case fell short when a later one does', async () => {
+    const dir = join(home, 'kit')
+    cpSync(KIT, dir, { recursive: true })
+    const page = (items: string) =>
+      `  https://supplies.example/list: { url: https://supplies.example/list, pages: 1, items: [${items}] }\n`
+    writeFileSync(
+      join(dir, 'tests', 'read-again.yaml'),
+      `script: skills/read/run.js\npages:\n${page('{ _id: S1, name: Oat Mill }')}then:\n  - pages:\n    ${page('{ _id: S1, name: Oat Mill }')}    expect:\n      words: '1 new'\n`,
+    )
+    const report = await kitTest(dir, { only: 'read-again' })
+    expect(report.passed).toEqual([])
+    expect(report.failed[0]?.why).toMatch(/^Run 2: The run said .*0 new/)
   }, 90_000)
 
   it('fails a case whose rows do not land, saying what the table holds', async () => {

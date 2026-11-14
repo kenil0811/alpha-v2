@@ -1,0 +1,24 @@
+# The reader's second read, in the same world: the site shows one supplier more by then.
+script: skills/read/run.js
+pages:
+  https://supplies.example/list:
+    url: https://supplies.example/list
+    pages: 1
+    items:
+      - { _id: S1, name: Oat Mill, _url: https://supplies.example/list/S1 }
+expect:
+  words: '1 seen, 1 new'
+then:
+  - pages:
+      https://supplies.example/list:
+        url: https://supplies.example/list
+        pages: 1
+        items:
+          - { _id: S1, name: Oat Mill, _url: https://supplies.example/list/S1 }
+          - { _id: S2, name: Rye Barn, _url: https://supplies.example/list/S2 }
+    expect:
+      words: '2 seen, 1 new'
+      rows:
+        Suppliers:
+          - { Name: Oat Mill }
+          - { Name: Rye Barn }
