@@ -269,6 +269,37 @@ describe('updating a kit', () => {
     expect(readFileSync(join(m.dir, 'NOTES.md'), 'utf8')).toContain('Newer notes')
   })
 
+  it('updates when the person typed a setup value back to the kit’s own, and theirs stands', async () => {
+    await install(world, KIT, ctx)
+    const suppliers = world.shape.table('Suppliers')?.id as string
+    const mill = world.records.list(suppliers).find((r) => r.values.name === 'Mill & Co')
+      ?.id as string
+    // the kit assumed this address; the person typed another, then the kit's own again
+    for (const email of ['orders@mill.example', 'mill@example.com'])
+      world.records.change(
+        suppliers,
+        [
+          {
+            id: mill,
+            values: { Email: email },
+            provenance: { kind: 'stated', source: { message: 1 } },
+          },
+        ],
+        ctx,
+      )
+    const next = join(home, 'kit-0.2.0')
+    cpSync(KIT, next, { recursive: true })
+    writeFileSync(
+      join(next, 'module.yaml'),
+      readFileSync(join(KIT, 'module.yaml'), 'utf8').replace('version: 0.1.0', 'version: 0.2.0'),
+    )
+    await update(world, 'Bakery', next, ctx)
+    const after = world.records.list(suppliers).find((r) => r.id === mill)
+    expect(after?.values.email).toBe('mill@example.com')
+    expect(after?.provenance.email?.kind).toBe('stated')
+    expect(installedKits(world)[0]?.version).toBe('0.2.0')
+  })
+
   it('brings its views, and on update replaces only the ones nobody changed', async () => {
     const withViews = (dir: string, version: string, big: number) =>
       writeFileSync(

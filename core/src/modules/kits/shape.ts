@@ -1,7 +1,7 @@
 import type { KitManifest, Setup } from '@alpha/kit-sdk'
 import type { z } from 'zod'
 import { run } from '../../world/db.ts'
-import { Refused } from '../../world/kinds.ts'
+import { isPersonsOwn, Refused } from '../../world/kinds.ts'
 import { setPer } from '../../world/records/fold.ts'
 import type { FieldInput, Module, PeopleMap, Table, WriteCtx } from '../../world/shape/index.ts'
 import { placeOf } from '../../world/shape/parts.ts'
@@ -280,7 +280,16 @@ export function landSetup(
         ctx,
       )
       const r = world.records.byKey(t.id, key)
-      const assumed = Object.entries(row.assumed ?? {}).filter(([f]) => f in row.values)
+      // a value the person made their own stands, and is not marked the kit's assumption again:
+      // one typed back to the kit's own leaves the row as the kit has it, so it is landed here
+      const was = r ? (world.records.get(r)?.record.provenance ?? {}) : {}
+      const theirs = (name: string) => {
+        const p = was[t.fields.find((x) => x.name === name)?.slug ?? '']
+        return p?.kind === 'stated' && isPersonsOwn(p)
+      }
+      const assumed = Object.entries(row.assumed ?? {}).filter(
+        ([f]) => f in row.values && !theirs(f),
+      )
       if (r && assumed.length) {
         world.records.change(
           t.id,
