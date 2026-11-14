@@ -431,6 +431,47 @@ describe('triggers', () => {
     expect(data.data).toContain('"say":"hi"')
   }, 60_000)
 
+  it('run a kit’s schedule on a change in a table of another kit it uses, and let it read that table', async () => {
+    await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    // a second kit that follows the first one's Orders into a table of its own
+    const dir = join(home, 'cafe')
+    mkdirSync(join(dir, 'schedules'), { recursive: true })
+    mkdirSync(join(dir, 'skills', 'follow'), { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      'name: Cafe\nversion: 0.1.0\napi: 3\nuses:\n  - { kit: Bakery, tables: [Orders] }\ntables:\n  - name: Counts\n    fields:\n      - { name: Name, kind: text }\n      - { name: Orders seen, kind: number }\n',
+    )
+    writeFileSync(
+      join(dir, 'schedules', 'follow.md'),
+      '---\nname: Follow\ntrigger: { changes: Orders }\nruns: { script: skills/follow/run.js }\ntouches: [Counts]\nneeds: { tables: [Orders] }\n---\nFollows the bakery’s orders.\n',
+    )
+    writeFileSync(
+      join(dir, 'skills', 'follow', 'run.js'),
+      "export default async (alpha) => {\n  const orders = await alpha.rows.list('Orders')\n  await alpha.rows.land('Counts', [{ key: 'orders', values: { Name: 'Orders', 'Orders seen': orders.length } }])\n  return { words: orders.length + ' seen' }\n}\n",
+    )
+    const cafe = await install(world, dir, ctx)
+    // a kit's schedules start paused: the person turns this one on
+    for (const a of schedules(world, cafe.id)) setScheduleState(world, a.id, 'on', 'u_1')
+    const runner = new ScheduleRunner(world, () => engine)
+    await runner.runDue() // what is there at install counts as a change, once
+    const before = runner.runs().length
+    world.records.land(
+      world.shape.table('Orders')?.id as string,
+      [{ key: 'o1', values: { Item: 'Flour', Quantity: 3 } }],
+      { connector: 'test' },
+      ctx,
+    )
+    await runner.runDue()
+    const out = runner.runs()
+    expect(out).toHaveLength(before + 1)
+    expect(out[0]?.words).toBe('Follow: 1 seen')
+    const counts = world.shape.table('Counts')?.id as string
+    expect(world.records.list(counts).map((r) => Object.values(r.values))).toEqual([['Orders', 1]])
+    // its own write does not wake it again
+    await runner.runDue()
+    expect(runner.runs()).toHaveLength(before + 1)
+  }, 60_000)
+
   it('run a schedule when a document is filed', async () => {
     const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     const runner = new ScheduleRunner(world, () => engine)
