@@ -11,7 +11,6 @@ import type {
   SavedView,
   TableView as TableData,
   TableSummary,
-  ViewConfig,
 } from '@alpha/core/api'
 import { Plus, Search } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
@@ -49,22 +48,9 @@ import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
+import { useWorkingList } from './table/working.ts'
 import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
-
-interface Working {
-  view: string | null
-  config: ViewConfig
-}
-
-function stored(key: string): Working | null {
-  try {
-    const s = sessionStorage.getItem(key)
-    return s ? (JSON.parse(s) as Working) : null
-  } catch {
-    return null
-  }
-}
 
 export function TableView({
   data,
@@ -102,23 +88,8 @@ export function TableView({
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
   useEffect(() => setViews(data.views), [data.views])
-  const [viewId, setViewId] = useState<string | null>(() => {
-    const was = stored(key)
-    if (was && (was.view === null || data.views.some((v) => v.id === was.view))) return was.view
-    return data.views.find((v) => v.isDefault)?.id ?? null
-  })
+  const { viewId, setViewId, config, setConfig } = useWorkingList(key, data.views, views, loading)
   const saved = complete(views.find((v) => v.id === viewId)?.config ?? BLANK)
-  const [config, setConfig] = useState<ViewConfig>(() => {
-    const was = stored(key)
-    return was && was.view === viewId ? complete(was.config) : saved
-  })
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(key, JSON.stringify({ view: viewId, config }))
-    } catch {
-      // a private window keeps nothing; the view still works
-    }
-  }, [key, viewId, config])
   const dirty = differs(config, saved)
   const [problem, setProblem] = useState<string | null>(null)
   // a link that names a value opens where it came from; one that names a row opens the row

@@ -15,7 +15,7 @@ const LEFT: Record<string, number> = {
   // the window's big screens it began with: they may only shrink
   'window/src/table/Grid.tsx': 1209,
   'window/src/Shell.tsx': 669,
-  'window/src/TableView.tsx': 704,
+  'window/src/TableView.tsx': 675,
   'window/src/Tasks.tsx': 676,
 }
 const long: string[] = []
