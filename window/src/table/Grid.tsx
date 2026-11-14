@@ -165,21 +165,21 @@ export function Grid({
       setMenu({ row, field, x: r.left + 8, y: r.bottom })
     },
   })
-  // A click anywhere on a row opens it a moment later, so a double-click can change the value
-  // instead (the panel would push the table and move the cell under the second click). With a
-  // panel already open, a click shows the other row at once.
+  // A click on a row's first cell opens the row a moment later, so a double-click can change the
+  // value instead (the panel would push the table and move the cell under the second click). With
+  // a panel already open, it shows the other row at once. A click on any other cell only picks it.
   const soon = useRef<number | undefined>(undefined)
   // ⇧↓ and ⇧↑ stretch the picked cell over the next rows down, for ⌘D and a paste
   const [range, setRange] = useState<{ row: string; field: string; n: number } | null>(null)
   const at = useRef<{ row: string; field: string } | null>(null) // the cell last clicked, at once
   const [cell, setCell] = useState<{ row: string; field: string } | null>(null)
-  const pick = (p: { row: string; field: string }) => {
+  const pick = (p: { row: string; field: string }, opens: boolean) => {
     at.current = p
     setCell(p)
     setRange(null)
     window.clearTimeout(soon.current)
-    if (panelRow) onOpen(p.row)
-    else soon.current = window.setTimeout(() => onOpen(p.row), 250)
+    if (opens && panelRow) onOpen(p.row)
+    else if (opens) soon.current = window.setTimeout(() => onOpen(p.row), 250)
   }
   // the panel closed: no cell stays marked for it
   useEffect(() => {
@@ -471,7 +471,7 @@ export function Grid({
                           }
                           selected={cell?.row === r.id && cell.field === f.slug}
                           inRange={inRange(r.id, f.slug)}
-                          onPick={() => pick(here)}
+                          onPick={() => pick(here, i === 0)}
                           onEdit={!readOnly && canEdit(f) ? () => startEditing(here) : undefined}
                           fixed={!readOnly && canEdit(f) ? undefined : whyFixed(f, readOnly)}
                         />
@@ -845,11 +845,11 @@ function Cell({
           e.currentTarget.focus({ preventScroll: true })
           onPick()
         }}
-        onDoubleClick={(e) => (onEdit ? onEdit() : tipNow(e.currentTarget))}
+        onDoubleClick={(e) => (onEdit ? onEdit() : fixed && tipNow(e.currentTarget, fixed))}
         onKeyDown={key}
-        data-tip={onEdit ? 'Double-click, Enter or F2 to change it' : fixed}
         className={cn(
-          'group flex w-full min-w-0 cursor-pointer items-center gap-0.75 px-2.5 text-left tabular-nums',
+          'group flex w-full min-w-0 items-center gap-0.75 px-2.5 text-left tabular-nums',
+          first ? 'cursor-pointer' : 'cursor-default', // only the first cell opens its row
           wrap ? 'min-h-9.5 py-2' : 'h-9.5',
           NUMERIC.has(f.kind) && 'justify-end',
           // a value that meets its colour's rule fills its cell
@@ -870,7 +870,7 @@ function Cell({
           <span
             className={cn(
               wrap ? 'break-words' : 'truncate',
-              first && 'font-medium',
+              first && 'font-medium group-hover:underline',
               // an italic glyph leans past its box; the room keeps it whole
               mark && 'pr-0.5 text-ink-2 italic',
               tone && INK[tone],

@@ -252,9 +252,10 @@ export class Views {
   }
 
   list(tableId: string): View[] {
+    // in the order they were made: two saved in the same millisecond keep it too
     return all<ViewRow>(
       this.db,
-      'SELECT * FROM views WHERE table_id = ? ORDER BY created_at',
+      'SELECT * FROM views WHERE table_id = ? ORDER BY created_at, rowid',
       tableId,
     ).map(out)
   }

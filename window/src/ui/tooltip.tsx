@@ -8,17 +8,21 @@ import { floatRoot } from './popover.tsx'
 
 const WAIT = 150
 
-// An element's tip shown now: a double-click on what can't change says why.
-export const tipNow = (el: Element) => el.dispatchEvent(new Event('alpha:tip', { bubbles: true }))
+// Words said under an element now, though it has no tip of its own to hover: a double-click on
+// what can't change says why. They go when the pointer leaves it.
+export const tipNow = (el: Element, words: string) =>
+  el.dispatchEvent(new CustomEvent('alpha:tip', { bubbles: true, detail: words }))
 
 export function Tooltips() {
   const [on, setOn] = useState<HTMLElement | null>(null)
+  const [said, setSaid] = useState<string | null>(null) // words asked for, not the element's own
   const [at, setAt] = useState<{ top: number; left: number } | null>(null)
   const label = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined
     let showing = false // once one shows, the next comes at once
+    let asked: HTMLElement | null = null // what words were said under, by tipNow
     const tipped = (t: EventTarget | null) =>
       (t as Element | null)?.closest?.<HTMLElement>('[data-tip]:not([data-tip=""])') ?? null
     const show = (el: HTMLElement | null, wait: number) => {
@@ -35,8 +39,13 @@ export function Tooltips() {
         showing ? 0 : wait,
       )
     }
-    const hide = () => show(null, 0)
+    const hide = () => {
+      asked = null
+      setSaid(null)
+      show(null, 0)
+    }
     const over = (e: PointerEvent) => {
+      if (asked && !asked.contains(e.target as Node)) hide()
       const el = tipped(e.target)
       if (el !== tipped(e.relatedTarget)) show(el, WAIT)
     }
@@ -46,7 +55,12 @@ export function Tooltips() {
       if (el && (e.target as Element).matches(':focus-visible')) show(el, 0)
     }
     const key = (e: KeyboardEvent) => e.key === 'Escape' && hide()
-    const now = (e: Event) => show(tipped(e.target), 0)
+    const now = (e: Event) => {
+      asked = e.target as HTMLElement
+      setSaid((e as CustomEvent<string>).detail)
+      showing = true
+      show(asked, 0)
+    }
     document.addEventListener('alpha:tip', now)
     window.addEventListener('hashchange', hide) // a new place: the tip of the last one goes
     document.addEventListener('pointerover', over)
@@ -82,7 +96,7 @@ export function Tooltips() {
     setAt((was) => (was && was.top === top && was.left === left ? was : { top, left }))
   })
 
-  const text = on?.isConnected ? on.dataset.tip : undefined
+  const text = on?.isConnected ? (said ?? on.dataset.tip) : undefined
   if (!text) return null
   return createPortal(
     <div

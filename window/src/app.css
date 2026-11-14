@@ -319,10 +319,22 @@
   --shadow-btn: var(--elev-btn);
 }
 
-/* a table's frame shows its thumb always, so a table wider than its frame shows it goes on */
+/* a table's frame shows its thumb always, so a table wider than its frame shows it goes on; its
+   bars are wider than the rest (a 6px thumb in 12px), and the thumb fills its bar under the
+   pointer, so it is easy to take hold of */
 @utility scroll-shown {
+  &::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
   &::-webkit-scrollbar-thumb {
+    border-width: 3px;
     background-color: color-mix(in srgb, var(--ink-3) 45%, transparent);
+  }
+  &::-webkit-scrollbar-thumb:hover,
+  &::-webkit-scrollbar-thumb:active {
+    border-width: 1px;
+    background-color: color-mix(in srgb, var(--ink-3) 70%, transparent);
   }
 }
 
