@@ -43,3 +43,7 @@ Kenil then found the board had no way to add a row: New was drawn only in the pa
 table. It is one small part now (`table/NewButton.tsx`), under the table and under the board
 (T3). Seen in WebKit: from the rail, the board, New, a name, Add it, and the card on the board.
 
+He did not find it under the board (it was below the columns, at the bottom left), and asked for
+it at the top right. On a board New now sits at the right of the toolbar, beside the ⋮, where a
+table has Columns; a table's New stays in the row under it (T3).
+

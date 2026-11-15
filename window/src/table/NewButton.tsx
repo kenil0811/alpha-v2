@@ -1,5 +1,5 @@
 // New: adds a row in the page's own panel, or says on hover why one can't be added here. Under
-// a table and under a board alike.
+// a table, and at the right of the toolbar above a board.
 import { Plus } from 'lucide-react'
 import { Button } from '../ui/button.tsx'
 

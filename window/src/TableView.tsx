@@ -294,7 +294,9 @@ export function TableView({
               }
               right={
                 <>
-                  {config.kind !== 'board' && (
+                  {config.kind === 'board' ? (
+                    <NewButton onNew={onNew} />
+                  ) : (
                     <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
                   )}
                   <More
@@ -454,13 +456,7 @@ export function TableView({
               )}
             </div>
             {config.kind === 'board' && boardBy ? (
-              <Board
-                data={{ ...data, rows }}
-                by={boardBy}
-                rowsAt={rowsAt}
-                onOpen={openRowPanel}
-                onNew={onNew}
-              />
+              <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />
             ) : config.kind === 'form' ? (
               <FormView
                 table={data.name}
