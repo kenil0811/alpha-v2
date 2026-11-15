@@ -12,7 +12,7 @@ import type {
   TableView as TableData,
   TableSummary,
 } from '@alpha/core/api'
-import { Plus, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { useLayout } from './layout.ts'
@@ -35,6 +35,7 @@ import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { MirrorGone, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
+import { NewButton } from './table/NewButton.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { Showing } from './table/Showing.tsx'
@@ -48,7 +49,6 @@ import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { useWorkingList } from './table/working.ts'
-import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
 
 export function TableView({
@@ -454,7 +454,13 @@ export function TableView({
               )}
             </div>
             {config.kind === 'board' && boardBy ? (
-              <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />
+              <Board
+                data={{ ...data, rows }}
+                by={boardBy}
+                rowsAt={rowsAt}
+                onOpen={openRowPanel}
+                onNew={onNew}
+              />
             ) : config.kind === 'form' ? (
               <FormView
                 table={data.name}
@@ -554,19 +560,7 @@ export function TableView({
                   onPaste={setPasting}
                 />
                 <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
-                  <span
-                    data-tip={typeof onNew === 'string' ? onNew : undefined}
-                    className="mr-auto"
-                  >
-                    <Button
-                      size="sm"
-                      disabled={typeof onNew === 'string'}
-                      onClick={typeof onNew === 'string' ? undefined : onNew}
-                    >
-                      <Plus className="size-3.5" />
-                      New
-                    </Button>
-                  </span>
+                  <NewButton onNew={onNew} className="mr-auto" />
                   {readByWords(data.readBy) && (
                     <span className="mr-3">{readByWords(data.readBy)}</span>
                   )}

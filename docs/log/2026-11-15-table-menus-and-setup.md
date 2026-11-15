@@ -39,3 +39,7 @@ picked, but nothing on it opened the row, so its notes and documents were out of
 board. A card's name now opens the row in the side panel, as a row's first cell does in the
 table (T4). The board draws its own frame, so the table view lost two lines.
 
+Kenil then found the board had no way to add a row: New was drawn only in the page row under a
+table. It is one small part now (`table/NewButton.tsx`), under the table and under the board
+(T3). Seen in WebKit: from the rail, the board, New, a name, Add it, and the card on the board.
+
