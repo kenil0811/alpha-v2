@@ -1,0 +1,30 @@
+name: a-kits-agent-adds-a-field
+title: "A kit's own agent adds a field to its kit's table, on the maintainer's card"
+why: >
+  A client's kit ships an agent, and the firm asks it to keep something its tables do not hold
+  yet. A made-up kit Mira maintains (journeys/fixtures/kits/sourcing-kept) carries the agent
+  Sourcer. Asked for a new field on its kit's Leads, the agent's change waits on the card that asks
+  the maintainer or does it now (docs/rules.md M4); on the person's "do it now" the field is
+  there, and the agent fills it on the next lead.
+steps:
+  - kit: { from: journeys/fixtures/kits/sourcing-kept }
+    checks:
+      - agents: 1
+      - agent_from: { agent: Sourcer, from: Sourcing }
+      - errors: 0
+  - to: Sourcer
+    say: Add a number field called Staff to Leads, for how many people work at the firm.
+    checks:
+      - card: { words: 'Mira maintains Sourcing' }
+      - no_field: { table: Leads, field: Staff }
+      - errors: 0
+  # the card's own answer, as the window gives it
+  - answer: { choice: 'Do it now anyway', on_page: true }
+    checks:
+      - errors: 0
+  - to: Sourcer
+    say: Add a lead called Oat Mill, in Ohio, with 4 staff.
+    checks:
+      - rows_in: { table: Leads, count: 1 }
+      - query: { sql: 'select name from leads where staff = 4', count: 1, matches: Oat Mill }
+      - errors: 0

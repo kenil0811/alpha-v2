@@ -5,12 +5,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { parse } from 'yaml'
 import { Refused } from '../world/kinds.ts'
-import { refuseManaged } from '../world/maintained.ts'
+import { maintainerOf, refuseManaged } from '../world/maintained.ts'
 import { asks } from '../world/shape/asks.ts'
 import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { commitAll } from './git.ts'
-import { installedKits } from './kits/index.ts'
+import { installedKits, recordChange } from './kits/index.ts'
 import { parseSchedule, syncSchedules, whenWords } from './schedules.ts'
 
 const PLACES = ['skills/', 'schedules/', 'pages/', 'files/']
@@ -43,6 +43,11 @@ function check(module: Module, rel: string, text: string): string | null {
   return null
 }
 
+// A file a script reads, not one that runs or that Alpha is told: a source's reader, a list, a
+// mapping. Kept under skills/ or files/.
+const isData = (rel: string) =>
+  /^(skills|files)\//.test(rel) && /\.(json|ya?ml|csv|tsv|txt)$/i.test(rel)
+
 // Whether the module's kit shipped this file; when its folder is not on this Mac, taken as shipped.
 function shipped(world: World, module: Module, rel: string): boolean {
   const kit = installedKits(world).find((k) => k.module === module.id)
@@ -66,15 +71,22 @@ export async function keep(
   const schedule = check(module, rel, text)
   // nothing is kept in a managed module (rules M2); a file a kit someone else maintains shipped
   // asks the person first (M4), and one the firm adds to its module, as a source's own reader,
-  // is theirs
+  // is theirs. A fix the person asked for needs no second yes: a data file the kit shipped,
+  // changed in the turn they asked in, is kept at once and counted as a change of theirs the
+  // maintainer has not seen. What runs (a script, a schedule), what Alpha is told (a skill's
+  // words, the notes) and a page still ask
   refuseManaged(world, module.id, `keep ${rel}`, ctx)
-  if (shipped(world, module, rel))
-    asks(
-      world.shape,
-      { module: module.id },
-      () => ({ words: `keep ${rel}`, method: 'keep', args: [module.id, rel, text] }),
-      ctx,
-    )
+  if (shipped(world, module, rel)) {
+    if (!ctx.said || !isData(rel))
+      asks(
+        world.shape,
+        { module: module.id },
+        () => ({ words: `keep ${rel}`, method: 'keep', args: [module.id, rel, text] }),
+        ctx,
+      )
+    else if (maintainerOf(world, module.id))
+      recordChange(world, module.id, `Keep ${rel}`, undefined, ctx.user ?? ctx.said.user)
+  }
   if (content !== undefined) {
     mkdirSync(dirname(full), { recursive: true })
     writeFileSync(full, content)

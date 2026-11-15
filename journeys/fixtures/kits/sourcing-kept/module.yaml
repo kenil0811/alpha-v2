@@ -1,0 +1,16 @@
+# A made-up kit someone else maintains that carries an agent, for the journey
+# a-kits-agent-adds-a-field (docs/rules.md M4): never a client's.
+name: Sourcing
+version: 0.1.0
+api: 3
+maintainer: { name: Mira, address: mira@example.com }
+business_case:
+  for: A buyer of small businesses.
+  keeps: The firms that may be for sale.
+  decides: Which firms to look at next.
+tables:
+  - name: Leads
+    about: One firm that may be for sale.
+    fields:
+      - { name: Name, kind: text, about: The firm's name. }
+      - { name: Region, kind: text, about: Where the firm is. }

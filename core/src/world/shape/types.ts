@@ -2,7 +2,7 @@ import { TONES } from '@alpha/kit-sdk'
 import type { ColumnSpec } from '../ddl.ts'
 import type { Rule } from '../filter-sql.ts'
 import type { Actor } from '../journal.ts'
-import { type FieldKind, Refused } from '../kinds.ts'
+import { type FieldKind, Refused, type Said } from '../kinds.ts'
 import { MODEL_VIEWS } from '../modelsql.ts'
 import type { SummaryInput } from './summary.ts'
 
@@ -130,6 +130,7 @@ export interface WriteCtx {
   turn?: string | null
   run?: string | null
   anyway?: boolean // the person's "do it now" on a maintained kit's card (rules M4, asks.ts)
+  said?: Said | null // the person's message the turn began with, when it began with one
 }
 
 // Names the model and SQL can both use: lower case, words joined by underscores.

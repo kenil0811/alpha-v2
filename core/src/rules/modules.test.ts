@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { checkSigned, install } from '../modules/kits/index.ts'
 import { api } from '../modules/runs/api.ts'
 import type { ScheduleRunner } from '../modules/runs/runner.ts'
+import { all } from '../world/db.ts'
 import type { Act } from './doors.ts'
 import type { Acts } from './drive.ts'
 import { CONTRACT, drive, refusal, refusedWith, rule } from './rule.ts'
@@ -147,6 +148,48 @@ rule(
           !!m &&
           existsSync(join(m.dir, 'files', 'our-suppliers.md')) &&
           !w.world.cards.waiting().some((c) => /Mira maintains Supply/.test(c.words))
+        )
+      },
+      // a fix the person asked for needs no second yes, while it is a file a script reads
+      'a data file the kit shipped, changed in the turn the person asked in, is kept with no card and counted for the maintainer':
+        async (w) => {
+          const reader = 'skills/parts/suppliers.json'
+          const fixed = '{ "list": "table.prices tbody tr" }'
+          // nobody asked: it waits on the card
+          const unasked = await refusal(() => drive(w, 'alpha: keep').keep('Supply', reader, fixed))
+          const m = w.world.shape.module('Supply')
+          if (!m || unasked === null) return false
+          const was = readFileSync(join(m.dir, reader), 'utf8')
+          const cards = () =>
+            w.world.cards.waiting().filter((c) => /Mira maintains Supply/.test(c.words)).length
+          const waiting = cards()
+          w.say('The suppliers list stopped reading. Fix it.')
+          await drive(w, 'alpha: keep').keep('Supply', reader, fixed)
+          const counted = all<{ words: string }>(
+            w.world.db,
+            'SELECT words FROM kit_changes WHERE module_id = ?',
+            m.id,
+          )
+          return (
+            was !== fixed &&
+            readFileSync(join(m.dir, reader), 'utf8') === fixed &&
+            waiting === 1 &&
+            cards() === waiting &&
+            counted.some((c) => c.words === `Keep ${reader}`)
+          )
+        },
+      'a script the kit shipped still waits on its card, asked or not': async (w) => {
+        w.say('The price lists stopped reading. Fix the script.')
+        const refused = await refusal(() =>
+          drive(w, 'alpha: keep').keep(
+            'Supply',
+            'skills/parts/run.js',
+            'export default async () => ({ words: "Changed." })',
+          ),
+        )
+        return (
+          refused !== null &&
+          w.world.cards.waiting().some((c) => /Mira maintains Supply/.test(c.words))
         )
       },
     },
