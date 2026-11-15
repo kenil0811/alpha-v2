@@ -52,3 +52,11 @@ Columns and the ⋮, on every layout but the form, which adds by itself; so a li
 calendar, a timeline and a chart have New as well, where before only the table did. The row
 under a table keeps what reads it and its pages, at the right as before (T3).
 
+
+Kenil found a board card could be dragged only one stage over from CIM review. A drop works on any
+column, but only on one in sight: the board scrolls sideways and a dragged card did not scroll it,
+so the stages past the window's edge could not be reached. A card held near the board's left or
+right edge now scrolls it, faster the nearer the edge, and goes on while it is held still, until it
+leaves the edge or the board, the drag ends, or the board can go no further (T23). Seen in WebKit at
+900 and 1000 wide: a made-up deal dragged from Closed to Interested, to Passed, to NDA signed and
+back to Closed, held still and moving.

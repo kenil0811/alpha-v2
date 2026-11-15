@@ -1,5 +1,5 @@
 import type { FieldView, RowView, TableView as TableData } from '@alpha/core/api'
-import { useState } from 'react'
+import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
 import { askForNew } from '../ask.ts'
 import { Refusal, useAct } from '../ui/act.tsx'
@@ -9,9 +9,16 @@ import { Choice } from '../ui/pill.tsx'
 import { show } from './values.ts'
 
 // The board: a column per choice, each row a card with its name and a few of its values, moved
-// by setting its choice (the person's own word): dragged onto another column, or picked below it.
+// by setting its choice (the person's own word): dragged onto any other column, or picked below
+// it. A card dragged near the board's left or right edge scrolls it, so a column out of sight
+// takes it too.
 // A card's name opens the row, as a row's first cell does in the table. New sits in the toolbar
 // above it, as for every layout (TableView).
+// how near the board's edge a dragged card scrolls it, in pixels
+const EDGE = 96
+// how far a frame scrolls the board with a card held at its very edge
+const SCROLL_PX = 16
+
 export function Board({
   data,
   by,
@@ -35,9 +42,50 @@ export function Board({
   const move = (row: string, value: string) =>
     act(() => api.post(`${rowsAt}/${row}`, { field: by.name, value }), row)
   const columns = [...by.choices, '']
+  const strip = useRef<HTMLDivElement>(null)
+  // the scroll under a card held near an edge: its speed (-1 to 1) and the frame that moves it. A
+  // card held still is not heard from again, so the scroll goes on by itself until the card leaves
+  // the edge or the board, the drag ends, or the board can go no further.
+  const scroll = useRef({ speed: 0, frame: 0 })
+  const stop = () => {
+    scroll.current.speed = 0
+    cancelAnimationFrame(scroll.current.frame)
+    scroll.current.frame = 0
+  }
+  useEffect(() => stop, [])
+  const edge = (e: DragEvent<HTMLDivElement>) => {
+    const el = strip.current
+    if (!el || !e.dataTransfer.types.includes('text/x-alpha-row')) return
+    const box = el.getBoundingClientRect()
+    const s = scroll.current
+    s.speed =
+      e.clientX > box.right - EDGE
+        ? Math.min(1, (e.clientX - (box.right - EDGE)) / EDGE)
+        : e.clientX < box.left + EDGE
+          ? -Math.min(1, (box.left + EDGE - e.clientX) / EDGE)
+          : 0
+    if (!s.speed || s.frame) return
+    const step = () => {
+      const at = strip.current
+      if (!s.speed || !at) return stop()
+      const was = at.scrollLeft
+      at.scrollLeft += s.speed * SCROLL_PX
+      if (at.scrollLeft === was) return stop()
+      s.frame = requestAnimationFrame(step)
+    }
+    s.frame = requestAnimationFrame(step)
+  }
   return (
     <div className="min-h-0 flex-1 overflow-auto px-7 pb-3">
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: a dragged card near an edge scrolls the board; each card's own picker moves it by keyboard */}
+      <div
+        ref={strip}
+        onDragOver={edge}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) stop()
+        }}
+        className="flex gap-3 overflow-x-auto pb-2"
+      >
         {columns.map((choice) => {
           const rows = data.rows.filter((r) => (r.values[by.slug] ?? '') === choice)
           if (choice === '' && rows.length === 0) return null
@@ -55,6 +103,7 @@ export function Board({
               }}
               onDrop={(e) => {
                 setOver(null)
+                stop()
                 const [row, from] = e.dataTransfer.getData('text/x-alpha-row').split('\n')
                 if (row && from !== choice) move(row, choice)
               }}
@@ -81,7 +130,10 @@ export function Board({
                     e.dataTransfer.setData('text/x-alpha-row', `${r.id}\n${choice}`)
                     e.dataTransfer.effectAllowed = 'move'
                   }}
-                  onDragEnd={() => setOver(null)}
+                  onDragEnd={() => {
+                    setOver(null)
+                    stop()
+                  }}
                   title={`Drag to another ${by.name.toLowerCase()}`}
                   className="flex cursor-grab flex-col gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-base active:cursor-grabbing"
                 >

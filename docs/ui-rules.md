@@ -73,6 +73,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | T20 | Colour is a cell's alone, never its row's: a value that meets its column's rule fills its cell in that colour (amber, red, green or blue), and a choice column coloured by its choices fills each cell with its choice's | 10 Nov | — |
 | T21 | A column's menu holds acts only: sort, filter, group, total, colour, move, hide, freeze, wrap, insert, and at its foot Add column description (Edit column description once the person wrote one). What the column means is on its header's tip, never a paragraph in the menu | 15 Nov | — |
 | T22 | A column of related rows or people filters by the names it shows: is any of and is none of, ticked from the names in that column with their counts, contains and doesn't contain, empty or not; it groups by those names, several together when a row names several | 15 Nov | test |
+| T23 | A board's card is dragged onto any column, its stage set at once; held near the board's left or right edge it scrolls the board, faster the nearer the edge, so a column out of sight takes it too; its picker moves it by keyboard | 15 Nov | — |
 
 ## Pages, records and deleting
 
