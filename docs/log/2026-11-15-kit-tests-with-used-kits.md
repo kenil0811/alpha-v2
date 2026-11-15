@@ -17,3 +17,10 @@ and `people` were carried into it, so a kit that came to use another's tables ke
 version stayed the one first installed. On Kenil's yes, an update now carries the kit's `version`
 and `uses` into the installed module.yaml (`takeUses` in `modules/kits/install.ts`), `uses`
 removed when the kit drops it; a test in `modules/kits.test.ts` holds both.
+
+The look then found the window could not open a related row from an opened row: the CRM deal's
+Listing showed the listing's name as plain words inside the field's button. In an opened row a
+related row's name is now a link to it (`#/row/<id>`), which opens it beside the page; a field
+holding such links is a focusable group, not a button, keeping its double-click, right-click, F2
+and the menu key (T4). Seen in WebKit: the deal's Listing opened the listing beside the board, and
+the listing's own page names the deal under Linked here.

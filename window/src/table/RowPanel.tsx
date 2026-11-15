@@ -6,7 +6,7 @@
 // the notes that mention it, and the pages and files its values were read from.
 import type { FieldView, RowAround, RowFileView, RowView, TasksView } from '@alpha/core/api'
 import { ExternalLink, FileText, Plus, X } from 'lucide-react'
-import { type DragEvent, useEffect, useState } from 'react'
+import { type DragEvent, type KeyboardEvent, type MouseEvent, useEffect, useState } from 'react'
 import { api, Problem } from '../api.ts'
 import { fileHref } from '../FileView.tsx'
 import { NewTask, TaskList } from '../Tasks.tsx'
@@ -423,32 +423,41 @@ export function FieldList({
                   />
                 </div>
               )
-            return (
-              <button
-                key={f.id}
-                type="button"
-                title={
-                  editable
-                    ? 'Double-click to change it; right-click for where it came from'
-                    : 'Right-click for where it came from'
-                }
-                onDoubleClick={() => editable && setEditing(f.slug)}
-                onContextMenu={(e) => {
+            // a related row's name is a link that opens it beside the page (T4)
+            const related =
+              f.kind === 'relation'
+                ? (Array.isArray(row.values[f.slug])
+                    ? (row.values[f.slug] as unknown[])
+                    : [row.values[f.slug]]
+                  )
+                    .filter((id) => id != null && id !== '')
+                    .map(String)
+                : []
+            const props = {
+              title: editable
+                ? 'Double-click to change it; right-click for where it came from'
+                : 'Right-click for where it came from',
+              onDoubleClick: () => editable && setEditing(f.slug),
+              onContextMenu: (e: MouseEvent<HTMLElement>) => {
+                e.preventDefault()
+                setMenu({ field: f, x: e.clientX, y: e.clientY })
+              },
+              onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+                if (e.target !== e.currentTarget) return
+                if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
                   e.preventDefault()
-                  setMenu({ field: f, x: e.clientX, y: e.clientY })
-                }}
-                onKeyDown={(e) => {
-                  if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
-                    e.preventDefault()
-                    const r = e.currentTarget.getBoundingClientRect()
-                    setMenu({ field: f, x: r.left + 8, y: r.bottom })
-                  } else if (editable && (e.key === 'Enter' || e.key === 'F2')) {
-                    e.preventDefault()
-                    setEditing(f.slug)
-                  }
-                }}
-                className="flex cursor-default flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover"
-              >
+                  const r = e.currentTarget.getBoundingClientRect()
+                  setMenu({ field: f, x: r.left + 8, y: r.bottom })
+                } else if (editable && (e.key === 'Enter' || e.key === 'F2')) {
+                  e.preventDefault()
+                  setEditing(f.slug)
+                }
+              },
+              className:
+                'flex cursor-default flex-col gap-0.5 border-hair border-b px-4.5 py-2.5 text-left hover:bg-hover',
+            }
+            const inner = (
+              <>
                 <dt
                   className="flex items-center gap-2 text-ink-3 text-sm"
                   title={f.about ?? f.summary ?? undefined}
@@ -463,7 +472,16 @@ export function FieldList({
                     source && MARK[source.kind] && 'italic',
                   )}
                 >
-                  {isTags(f) && text ? (
+                  {related.length > 0 ? (
+                    related.map((id, i) => (
+                      <span key={id}>
+                        {i > 0 && ', '}
+                        <a href={`#/row/${id}`} className="text-ink hover:underline">
+                          {names[id] ?? '…'}
+                        </a>
+                      </span>
+                    ))
+                  ) : isTags(f) && text ? (
                     <TagChips field={f} value={row.values[f.slug]} />
                   ) : (
                     text || EMPTY_WORDS
@@ -474,6 +492,17 @@ export function FieldList({
                     </span>
                   )}
                 </dd>
+              </>
+            )
+            // a field holding links cannot be a button: a link inside a button is never clicked
+            return related.length > 0 ? (
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: reached by Tab like every field, for F2 and the menu key
+              <div key={f.id} tabIndex={0} {...props}>
+                {inner}
+              </div>
+            ) : (
+              <button key={f.id} type="button" {...props}>
+                {inner}
               </button>
             )
           })}
