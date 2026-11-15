@@ -3,14 +3,18 @@
 // expects. A case is tests/<name>.yaml in the kit: which schedule or script, its input, the rows to
 // seed, the pages a browser call gets, the model's recorded answers, and what to expect. `then`
 // runs it again in the same world, each time with the pages a site shows by then and what to
-// expect of that run (a reader's second read: a new listing, a changed one, one gone). A
-// refusal by a wall fails the case. `--record` runs the model for real and writes its answers
-// into the case, to replay from then on.
+// expect of that run (a reader's second read: a new listing, a changed one, one gone), and with
+// what the person did in between: values typed over rows (`change`) and rows removed (`remove`).
+// A kit that uses another's tables is tested with it: the kits it uses are installed first, each
+// from the folder beside it, so a case can seed their tables too. A refusal by a wall fails the
+// case. `--record` runs the model for real and writes its answers into the case, to replay from
+// then on.
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { type BrowserEngine, Problem } from '@alpha/connector-sdk'
+import { Manifest } from '@alpha/kit-sdk'
 import { parse, stringify } from 'yaml'
 import { z } from 'zod'
 import { askModel } from '../engine/ask.ts'
@@ -30,6 +34,8 @@ const Expect = z
     rows: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).default({}),
   })
   .default({ state: 'ok', rows: {} })
+
+const Rows = z.record(z.string(), z.array(z.record(z.string(), z.unknown())))
 
 const Case = z.object({
   schedule: z.string().optional(),
@@ -51,6 +57,20 @@ const Case = z.object({
       z.object({
         input: z.record(z.string(), z.unknown()).optional(),
         pages: z.record(z.string(), z.unknown()).default({}),
+        // what the person did before this run, by table: values typed over a row, and rows
+        // removed; a row is found by the values given for it
+        change: z
+          .record(
+            z.string(),
+            z.array(
+              z.object({
+                row: z.record(z.string(), z.unknown()),
+                set: z.record(z.string(), z.unknown()),
+              }),
+            ),
+          )
+          .default({}),
+        remove: Rows.default({}),
         expect: Expect,
       }),
     )
@@ -104,6 +124,7 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
   const learned: KitTestCase['answers'] = []
   try {
     const ctx = { actor: { kind: 'alpha' as const } }
+    for (const used of usedKits(dir)) await install(world, used, ctx)
     const module = await install(world, dir, ctx)
     // the pages recorded are sites the kit may read in the test
     let pages = c.pages
@@ -193,6 +214,7 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
     await run(c.input, c.expect)
     for (const [n, later] of c.then.entries()) {
       pages = later.pages
+      byHand(world, later, `Run ${n + 2}: `)
       await run(later.input ?? c.input, later.expect, `Run ${n + 2}: `)
     }
     if (learned.length) {
@@ -204,6 +226,57 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
     world.close()
     rmSync(home, { recursive: true, force: true })
   }
+}
+
+// The kits a kit uses, each from the folder beside it whose module.yaml names it, and the ones
+// those use, first. One that is not beside it is left for the install to say.
+function usedKits(dir: string, seen = new Set<string>()): string[] {
+  const read = (d: string) => {
+    const file = join(d, 'module.yaml')
+    return existsSync(file) ? Manifest.safeParse(parse(readFileSync(file, 'utf8'))).data : undefined
+  }
+  const beside = resolve(dir, '..')
+  const named = new Map<string, string>()
+  for (const f of readdirSync(beside)) {
+    const name = read(join(beside, f))?.name
+    if (name) named.set(name, join(beside, f))
+  }
+  const out: string[] = []
+  for (const u of read(dir)?.uses ?? []) {
+    const at = u.kit ? named.get(u.kit) : undefined
+    if (!at || seen.has(at) || at === resolve(dir)) continue
+    seen.add(at)
+    out.push(...usedKits(at, seen), at)
+  }
+  return out
+}
+
+// What the person did before a later run: values typed over rows, as the window writes them (a
+// stated value, kept over what a script gives), and rows removed.
+function byHand(world: World, later: KitTestCase['then'][number], nth: string): void {
+  const ctx = { actor: { kind: 'person' as const, id: 'the test' } }
+  const find = (tableName: string, want: Record<string, unknown>) => {
+    const t = world.shape.table(tableName)
+    if (!t) throw new Refused(`${nth}The case changes rows in ${tableName}, which is not there.`)
+    const row = world.records.list(t.id).find((r) => matches(byName(t, r.values), want))
+    if (!row) throw new Refused(`${nth}No row in ${t.name} has ${JSON.stringify(want)} to change.`)
+    return { t, row }
+  }
+  for (const [tableName, changes] of Object.entries(later.change))
+    for (const c of changes) {
+      const { t, row } = find(tableName, c.row)
+      // the person's own word, as the window's route says it (rules A1)
+      const words = `Set ${Object.keys(c.set).join(', ')} on ${world.rowName(t, row.values)}`
+      world.records.change(t.id, [{ id: row.id, values: c.set, provenance: { kind: 'stated' } }], {
+        ...ctx,
+        byHand: { words },
+      })
+    }
+  for (const [tableName, rows] of Object.entries(later.remove))
+    for (const want of rows) {
+      const { t, row } = find(tableName, want)
+      world.records.remove(t.id, [row.id], ctx)
+    }
 }
 
 function byName(t: Table, values: Record<string, unknown>): Record<string, unknown> {

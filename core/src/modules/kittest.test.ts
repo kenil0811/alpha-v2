@@ -1,5 +1,5 @@
 // The offline runner over the test kit's own cases, and a case that fails for the right reason.
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -42,5 +42,64 @@ describe('alpha kit test', () => {
     const report = await kitTest(dir, { only: 'read' })
     expect(report.passed).toEqual([])
     expect(report.failed[0]?.why).toMatch(/No row in Suppliers has .*Sugar Co.*holds .*Oat Mill/)
+  }, 90_000)
+
+  // A made-up kit that reads the test kit's Suppliers into a table of its own, one row a supplier.
+  const cafe = (cases: Record<string, string>): string => {
+    cpSync(KIT, join(home, 'bakery'), { recursive: true })
+    const dir = join(home, 'cafe')
+    mkdirSync(join(dir, 'skills', 'copy'), { recursive: true })
+    mkdirSync(join(dir, 'tests'), { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      'name: Cafe\nversion: 0.1.0\napi: 3\nuses:\n  - { kit: Bakery, tables: [Suppliers] }\ntables:\n  - name: Menu\n    fields:\n      - { name: Name, kind: text }\n      - { name: Email, kind: email }\n',
+    )
+    writeFileSync(
+      join(dir, 'skills', 'copy', 'run.js'),
+      "export default async (alpha) => {\n  const all = await alpha.rows.list('Suppliers')\n  const landed = await alpha.rows.land('Menu', all.map((s) => ({ key: s.id, values: s.values })))\n  return { words: `${landed.added} added, ${landed.changed} changed` }\n}\n",
+    )
+    for (const [name, text] of Object.entries(cases))
+      writeFileSync(join(dir, 'tests', `${name}.yaml`), text)
+    return dir
+  }
+
+  it('tests a kit with the kits it uses, from the folders beside it, and seeds their tables', async () => {
+    const dir = cafe({
+      copy: 'script: skills/copy/run.js\nrows:\n  Suppliers:\n    - { Name: Oat Mill }\nexpect:\n  words: 3 added\n  rows:\n    Menu:\n      - { Name: Oat Mill }\n',
+    })
+    expect(await kitTest(dir)).toEqual({ passed: ['copy'], failed: [] })
+  }, 90_000)
+
+  it('does what the person did between two runs: a value typed over a row, a row removed', async () => {
+    const dir = cafe({
+      // a name typed on the kit's own row stays when its source's changes; a removed row stays removed
+      typed: [
+        'script: skills/copy/run.js',
+        'rows:',
+        '  Suppliers:',
+        '    - { Name: Oat Mill, Email: oats@example.com }',
+        '    - { Name: Rye Mill }',
+        // the Bakery's setup holds two suppliers of its own
+        'expect: { words: 4 added }',
+        'then:',
+        '  - change:',
+        '      Menu: [{ row: { Name: Oat Mill }, set: { Name: Oats } }]',
+        '      Suppliers: [{ row: { Name: Oat Mill }, set: { Email: mill@example.com } }]',
+        '    remove:',
+        '      Menu: [{ Name: Rye Mill }]',
+        '    expect:',
+        "      words: '0 added'",
+        '      rows:',
+        '        Menu: [{ Name: Oats, Email: mill@example.com }]',
+        // a removed row stays removed: the run brings no Rye Mill back
+        "      result: { words: '0 added, 1 changed' }",
+        '',
+      ].join('\n'),
+      missing:
+        'script: skills/copy/run.js\nthen:\n  - change:\n      Menu: [{ row: { Name: Nobody }, set: { Name: Somebody } }]\n',
+    })
+    const report = await kitTest(dir)
+    expect(report.passed).toEqual(['typed'])
+    expect(report.failed[0]?.why).toMatch(/^Run 2: No row in Menu has .*Nobody.* to change/)
   }, 90_000)
 })
