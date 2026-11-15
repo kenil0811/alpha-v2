@@ -40,6 +40,14 @@ connector_retries: 2
 # requests"), before it says so and stops. A runtime judgement, never met by the person.
 connector_busy_wait_seconds: 300
 
+# How long the run tool waits for what it started before it leaves it running by itself and says
+# so: a whole schedule the person asked for now (a morning's read takes half an hour) is not
+# waited for beyond a moment; a script tried with an input (a reader's preview) is, since the turn
+# needs what it returns. A runtime judgement, never met by the person.
+run_wait_seconds:
+  schedule: 5
+  script: 90
+
 # A sync that holds less than this share of last time's rows is suspect: said, not hidden.
 health_fewer_rows_ratio: 0.5
 

@@ -40,6 +40,7 @@ const Limits = z.object({
   browse_read_chars: z.number().int().min(1000),
   run_retries: z.number().int().min(1),
   connector_busy_wait_seconds: z.number().int().min(0),
+  run_wait_seconds: z.object({ schedule: z.number().min(0), script: z.number().min(0) }),
   yes_hours: z.number().positive(),
   keep_removed_days: z.number().int().min(1),
   journal_fold_days: z.number().int().min(1),

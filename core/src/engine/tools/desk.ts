@@ -28,6 +28,7 @@ import {
   tool,
   VIEWS,
 } from './common.ts'
+import { within } from './waiting.ts'
 
 export function deskTools(t: Tooling): ToolEntry[] {
   const { world, here, hands, connectors, ctx } = t
@@ -311,7 +312,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
     ),
     tool(
       'run',
-      'Run a module’s schedule, or one of its scripts with an input, now: to try a reader before it runs on its own. Its steps go to Activity and its outcome comes back here. A site not on the module’s list waits on the person’s yes on a card.',
+      'Run a module’s schedule, or one of its scripts with an input, now: to try a reader before it runs on its own. Its steps go to Activity and its outcome comes back here when it ends within a short while; a longer run (a whole morning’s read) goes on by itself and this says it is still running, so say so to the person instead of waiting. A site not on the module’s list waits on the person’s yes on a card.',
       {
         module: z.string(),
         schedule: z.string().optional(),
@@ -324,15 +325,21 @@ export function deskTools(t: Tooling): ToolEntry[] {
           const module = world.shape.module(a.module)
           if (!module) throw new Refused(`There is no module called ${a.module}.`)
           const who = { user: here.current.user.id, turn: here.current.turn }
-          let out: Awaited<ReturnType<ScheduleRunner['runScript']>>
+          // waited for a short while only: a long run goes on by itself and the turn is told so
+          const wait = config.limits().run_wait_seconds
+          let run: ReturnType<ScheduleRunner['runScript']>
+          let what: string
+          let seconds: number
           if (a.schedule) {
             const schedule = schedules(world, module.id).find(
               (x) => x.name.toLowerCase() === a.schedule?.toLowerCase(),
             )
             if (!schedule) throw new Refused(`${module.name} has no schedule called ${a.schedule}.`)
-            out = await hands.runner.runSchedule(schedule, who, {}, { asked: true })
+            run = hands.runner.runSchedule(schedule, who, {}, { asked: true })
+            what = schedule.name
+            seconds = wait.schedule
           } else if (a.script) {
-            out = await hands.runner.runScript(
+            run = hands.runner.runScript(
               module,
               a.script,
               a.input ?? {},
@@ -340,7 +347,16 @@ export function deskTools(t: Tooling): ToolEntry[] {
               null,
               who,
             )
+            what = a.script
+            seconds = wait.script
           } else throw new Refused('Give the schedule or the script to run.')
+          const ended = await within(run, seconds)
+          if (!ended.done)
+            return ok({
+              state: 'running',
+              words: `${what} is still running and goes on by itself; this turn does not wait for it. Its steps are on Activity. Tell the person it is running, and do not run it again. When they ask how it went, read the newest run_ended line in the journal.`,
+            })
+          const out = ended.out
           const result = JSON.stringify(out.result ?? null)
           return ok({
             state: out.state,

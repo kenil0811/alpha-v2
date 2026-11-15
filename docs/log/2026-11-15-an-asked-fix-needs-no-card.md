@@ -21,3 +21,14 @@ client's kit raised: a kit's own agent can add a field to its kit's table.
 Found: a journey's `answer` step answers a maintained-shape card only with `on_page: true` (the
 card's own route makes the change); and its `field` check compares text, so a number is checked
 with `query`.
+
+## Later the same day: a long run does not hold the turn
+
+Kenil asked a kit's agent to run its module's read; the read takes half an hour, and the agent
+sat on "Working on it…" until it ended, because the run tool waited for the whole run. Now the
+tool waits a short while (config/limits.yaml, `run_wait_seconds`: a moment for a whole schedule,
+longer for a script tried with an input, whose outcome the turn needs) and then leaves the run
+going by itself, telling the turn it is still running and where its outcome will be
+(`engine/tools/waiting.ts`). Two tests: the wait alone, and the tool with a quick script and a
+schedule slower than the wait, which still ends ok with nobody waiting.
+
