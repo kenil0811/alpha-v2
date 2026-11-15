@@ -33,3 +33,13 @@ Tests: Intuit's sign-in against a made-up Intuit (`core/src/connectors/signin.te
 connector on made-up Intuit answers (`connectors/quickbooks/src/index.test.ts`), migration 2 on a
 world made before it. Not proven yet: a real Intuit test company, which waits for Kenil's keys in
 Sign-in apps and his sign-in on Intuit's page; the report shapes are Intuit's documented ones.
+
+Kenil's first sign-in, with his test keys and the sandbox company of the app's developer account,
+came back to "Not connected yet: sign in with Intuit and pick the company". The company was kept
+on the connection, but a connector runs in its own process and a call carried only its account
+over the pipe, so the connector never saw it. A call now carries the place too
+(`connectors/process.ts`, `child.ts`), with a test that a sync in the process sees it. After a
+restart, Read now read the test company: 580 rows; the balance sheet balances in all 7 months it
+has, and all 51 monthly results equal the sum of their ledger lines. The full test run timed out
+in seven process-spawning tests while Spotlight and another app held the Mac at a load of 40;
+each of those files passes on its own.
