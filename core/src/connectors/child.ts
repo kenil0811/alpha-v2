@@ -72,7 +72,7 @@ function ask(req: number, method: string, params: unknown): Promise<unknown> {
 const tell = (req: number, method: string, params: unknown) =>
   send({ t: 'tell', id: req, method, params })
 
-function hostFor(req: number, account: string, cursor: string | null): Host {
+function hostFor(req: number, account: string, place: string | null, cursor: string | null): Host {
   let now = cursor
   // the human-pace browser stays with the core: each of its methods is asked of it
   const browser = new Proxy(
@@ -86,6 +86,7 @@ function hostFor(req: number, account: string, cursor: string | null): Host {
   )
   return {
     account,
+    place,
     secret: () => ask(req, 'secret', null) as Promise<string | null>,
     cursor: () => now,
     setCursor: (c) => {
@@ -113,6 +114,7 @@ interface Request {
   result?: unknown
   item?: string
   account?: string
+  place?: string | null
   cursor?: string | null
   options?: CallOptions
 }
@@ -161,7 +163,7 @@ async function main() {
     }
     const call: Call = makeCall(
       c.manifest,
-      hostFor(r.id, r.account ?? '', r.cursor ?? null),
+      hostFor(r.id, r.account ?? '', r.place ?? null, r.cursor ?? null),
       r.options as CallOptions,
     )
     if (r.op === 'check') return c.check?.(call) ?? null

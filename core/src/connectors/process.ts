@@ -373,10 +373,12 @@ function shapeOf(schema: Record<string, unknown>): z.ZodRawShape {
   return t instanceof z.ZodObject ? (t.shape as z.ZodRawShape) : {}
 }
 
-// What a call carries to the process: its account, its cursor and how it is paced and retried.
+// What a call carries to the process: its account, where its sign-in went (a QuickBooks company),
+// its cursor and how it is paced and retried.
 function callFields(call: Call): Record<string, unknown> {
   return {
     account: call.host.account,
+    place: call.host.place ?? null,
     cursor: call.host.cursor(),
     options: (call as Call & { options?: CallOptions }).options,
   }

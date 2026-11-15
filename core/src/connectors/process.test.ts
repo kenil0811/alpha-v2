@@ -40,6 +40,7 @@ function pidConnector(dir: string) {
   tools: {},
   check: async (c) => { c.host.journal('pid ' + process.pid, { pid: process.pid }) },
   sync: async (c) => {
+    c.host.journal('place ' + c.host.place, { place: c.host.place })
     c.host.land('Pids', [{ key: String(process.pid), values: { Pid: process.pid } }])
     return { rows: 1, sawNew: true }
   },
@@ -66,6 +67,14 @@ it('runs a connector in its own process, its host answered by the core over the 
   expect(pid).not.toBe(process.pid)
   const pids = world.shape.table('Pids')
   expect(pids && world.records.list(pids.id).map((r) => r.values.pid)).toEqual([pid])
+  // where the connection's sign-in went (a QuickBooks company) reaches the process too
+  world.connections.setPlace(conn.id, '9341455130166501')
+  await svc.sync(conn.id)
+  const placed = world
+    .lines({ kinds: ['connector_call'] })
+    .filter((l) => l.words.startsWith('place '))
+    .map((l) => l.data.place)
+  expect(placed).toEqual([null, '9341455130166501'])
   svc.close()
 }, 30_000)
 
