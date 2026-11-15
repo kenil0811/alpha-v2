@@ -1,6 +1,7 @@
-// Sign-in apps: the organisation's own app for signing in with a provider (Microsoft), set up once
-// by its IT from the setup sheet shown here, before anyone signs in with it; and a person's sign-in
-// itself, on the provider's own page in their browser.
+// Sign-in apps: the organisation's own app for signing in with a provider (Microsoft, Intuit), set
+// up once by its IT from the setup sheet shown here, before anyone signs in with it; and a person's
+// sign-in itself, on the provider's own page in their browser. An app's secret (Intuit's) is typed
+// once and kept by Alpha: the field shows it is kept, never what it is.
 import type { SignInAppView } from '@alpha/core/api'
 import { Check, Copy, KeyRound } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
@@ -41,12 +42,27 @@ function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => voi
   const [open, setOpen] = useState(false)
   const [id, setId] = useState(a.set?.app ?? '')
   const [directory, setDirectory] = useState(a.set?.directory ?? '')
+  const [secret, setSecret] = useState('')
   const { busy, problem, act } = useAct(onChange)
   const save = async (e: FormEvent) => {
     e.preventDefault()
-    const ok = await act(() => api.post(`/api/sign-in-apps/${a.provider}`, { app: id, directory }))
-    if (ok) setOpen(false)
+    const ok = await act(() =>
+      api.post(`/api/sign-in-apps/${a.provider}`, {
+        app: id,
+        ...(a.fields.directory ? { directory } : {}),
+        ...(a.fields.secret && secret ? { secret } : {}),
+      }),
+    )
+    if (ok) {
+      setSecret('')
+      setOpen(false)
+    }
   }
+  // a secret is needed the first time; after that, an empty field keeps the one kept
+  const ready =
+    !!id.trim() &&
+    (!a.fields.directory || !!directory.trim()) &&
+    (!a.fields.secret || !!a.set?.secret || !!secret.trim())
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 has-[form]:col-span-full">
       <div className="flex items-center gap-3">
@@ -99,25 +115,36 @@ function AppTile({ app: a, onChange }: { app: SignInAppView; onChange: () => voi
                 spellCheck={false}
               />
             </label>
-            <label className="flex flex-col gap-1 text-md" htmlFor={`${a.provider}-directory`}>
-              <span className="text-ink-2">{a.fields.directory.label}</span>
-              <Field
-                id={`${a.provider}-directory`}
-                value={directory}
-                placeholder={a.fields.directory.example}
-                onChange={(e) => setDirectory(e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
+            {a.fields.directory && (
+              <label className="flex flex-col gap-1 text-md" htmlFor={`${a.provider}-directory`}>
+                <span className="text-ink-2">{a.fields.directory.label}</span>
+                <Field
+                  id={`${a.provider}-directory`}
+                  value={directory}
+                  placeholder={a.fields.directory.example}
+                  onChange={(e) => setDirectory(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+            )}
+            {a.fields.secret && (
+              <label className="flex flex-col gap-1 text-md" htmlFor={`${a.provider}-secret`}>
+                <span className="text-ink-2">{a.fields.secret.label}</span>
+                <Field
+                  id={`${a.provider}-secret`}
+                  type="password"
+                  value={secret}
+                  placeholder={a.set?.secret ? 'Kept. Type a new one to replace it' : ''}
+                  onChange={(e) => setSecret(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="submit"
-              size="sm"
-              variant="primary"
-              disabled={busy || !id.trim() || !directory.trim()}
-            >
+            <Button type="submit" size="sm" variant="primary" disabled={busy || !ready}>
               {busy ? 'Saving…' : 'Save'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>

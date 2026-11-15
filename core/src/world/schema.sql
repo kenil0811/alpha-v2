@@ -625,5 +625,6 @@ CREATE TABLE connections (
   made_by TEXT NOT NULL,
   created_at TEXT NOT NULL,
   hosts TEXT NOT NULL DEFAULT '[]',
+  place TEXT, -- where its sign-in went, as the provider names it (a QuickBooks company)
   UNIQUE (connector, account)
 );

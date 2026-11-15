@@ -7,4 +7,16 @@ import type { Db } from './db.ts'
 
 export const SCHEMA = readFileSync(join(import.meta.dirname, 'schema.sql'), 'utf8')
 
-export const MIGRATIONS: (string | ((db: Db) => void))[] = [SCHEMA]
+export const MIGRATIONS: (string | ((db: Db) => void))[] = [
+  SCHEMA,
+  // 2, 15 Nov 2026: where a connection's sign-in went, as its provider names it (a QuickBooks
+  // company); a world made from schema.sql has it already
+  (db) => {
+    const has = (
+      db.prepare("SELECT name FROM pragma_table_info('connections')").all() as {
+        name: string
+      }[]
+    ).some((c) => c.name === 'place')
+    if (!has) db.exec('ALTER TABLE connections ADD COLUMN place TEXT')
+  },
+]

@@ -122,6 +122,9 @@ export interface Landed {
 // the one given with the call, and a journal line or a new cursor is said and not waited on.
 export interface Host {
   account: string
+  // where the person signed in to, as the sign-in's provider named it (Intuit: the QuickBooks
+  // company picked); none until they have
+  place?: string | null
   // the secret the person typed; for a connector that signs in as the person (oauth), a
   // short-lived token the core renews, never the one it keeps
   secret(): Promise<string | null>

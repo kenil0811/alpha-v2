@@ -18,6 +18,7 @@ import {
   takeRestartNote,
 } from './data.ts'
 import { readInstall, writeInstall } from './install.ts'
+import { MIGRATIONS } from './world/migrations.ts'
 import { World } from './world/world.ts'
 
 let home: string
@@ -49,7 +50,7 @@ describe('the person’s data', () => {
     )
     const v = dataView(world, readInstall(home, {}))
     expect(v.world.rows).toBe(1)
-    expect(v.world.version).toBe(1)
+    expect(v.world.version).toBe(MIGRATIONS.length)
     expect(v.world.size).toBeGreaterThan(0)
     const b = await backupNow(world, { user: world.owner().id })
     expect(b.kind).toBe('now')

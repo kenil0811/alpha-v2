@@ -23,6 +23,7 @@ export interface Connection {
   lastNewAt: string | null
   hosts: string[] // what the person approved beyond its connector's own hosts
   madeBy: string // who set it up (person:<id>, system): its owner
+  place: string | null // where its sign-in went, as its provider names it (a QuickBooks company)
 }
 
 // Whose sign-ins a connection reads with: the person who set it up, or the firm's.
@@ -42,6 +43,7 @@ interface ConnectionRow {
   last_new_at: string | null
   hosts: string
   made_by: string
+  place: string | null
 }
 
 function toConnection(r: ConnectionRow): Connection {
@@ -58,6 +60,7 @@ function toConnection(r: ConnectionRow): Connection {
     lastNewAt: r.last_new_at,
     hosts: JSON.parse(r.hosts || '[]') as string[],
     madeBy: r.made_by,
+    place: r.place ?? null,
   }
 }
 
@@ -183,6 +186,11 @@ export class Connections {
 
   setCursor(id: string, cursor: string | null): void {
     run(this.db, 'UPDATE connections SET cursor = ? WHERE id = ?', cursor, id)
+  }
+
+  // Where its sign-in went, once the provider named it: set at the first sign-in, the same after.
+  setPlace(id: string, place: string): void {
+    run(this.db, 'UPDATE connections SET place = ? WHERE id = ?', place, id)
   }
 
   // After a sync: what it brought and how the connection looks now. A health judgement is only

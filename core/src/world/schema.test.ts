@@ -1,8 +1,10 @@
-// One schema: a fresh world is schema.sql and nothing else, at version 1; what the delete left
-// behind is absent.
+// One schema: a fresh world is schema.sql and nothing else, at the newest version; a world made
+// before a migration takes it; what the delete left behind is absent.
+
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MIGRATIONS, SCHEMA } from './migrations.ts'
 import { World } from './world.ts'
@@ -35,12 +37,36 @@ const columns = (t: string) =>
   (world.db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name)
 
 describe('the world’s shape', () => {
-  it('is one version, and a fresh world is exactly schema.sql', () => {
-    expect(MIGRATIONS).toHaveLength(1)
-    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 })
+  it('is schema.sql and its migrations, and a fresh world is exactly schema.sql', () => {
+    expect(MIGRATIONS).toHaveLength(2)
+    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 2 })
     expect(made('table')).toEqual(named('TABLE'))
     expect(made('index')).toEqual(named('INDEX'))
     expect(made('trigger')).toEqual(named('TRIGGER'))
+  })
+
+  it('gives a world made before migration 2 where its connections signed in to', async () => {
+    const file = join(home, 'old.sqlite')
+    const old = new DatabaseSync(file)
+    old.exec(SCHEMA.replace(/\n\s*place TEXT,[^\n]*/, ''))
+    old.exec('PRAGMA user_version = 1')
+    old.exec(
+      "INSERT INTO connections (id, connector, account, state, made_by, created_at) VALUES ('c1', 'outlook', 'a@b.example', 'connected', 'system', 'now')",
+    )
+    old.close()
+    const again = new DatabaseSync(file)
+    expect(
+      (again.prepare('PRAGMA table_info(connections)').all() as { name: string }[]).map(
+        (c) => c.name,
+      ),
+    ).not.toContain('place')
+    const { migrate } = await import('./schema.ts')
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(2)
+    expect(again.prepare("SELECT account, place FROM connections WHERE id = 'c1'").get()).toEqual({
+      account: 'a@b.example',
+      place: null,
+    })
+    again.close()
   })
 
   it('holds nothing the clean base took away', () => {

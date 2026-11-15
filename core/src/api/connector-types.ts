@@ -20,8 +20,12 @@ export interface ConnectorView {
 export interface SignInAppView {
   provider: string
   title: string // Microsoft
-  set: { app: string; directory: string } | null
-  fields: { app: { label: string; example: string }; directory: { label: string; example: string } }
+  set: { app: string; directory?: string; secret?: boolean } | null // a secret kept is never said
+  fields: {
+    app: { label: string; example: string }
+    directory?: { label: string; example: string } // Microsoft's organisation
+    secret?: { label: string; example: string } // Intuit's Client Secret
+  }
   sheet: { words: string; copy?: string[] }[]
   console: string // where IT manages the app
 }

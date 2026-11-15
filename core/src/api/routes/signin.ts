@@ -28,9 +28,14 @@ export function signInApps(ctx: BaseCtx): SignInAppView[] {
       set: signIn.app(p.name),
       fields: {
         app: { label: p.fields.app.label, example: p.fields.app.example },
-        directory: { label: p.fields.directory.label, example: p.fields.directory.example },
+        ...(p.fields.directory
+          ? { directory: { label: p.fields.directory.label, example: p.fields.directory.example } }
+          : {}),
+        ...(p.fields.secret
+          ? { secret: { label: p.fields.secret.label, example: p.fields.secret.example } }
+          : {}),
       },
-      sheet: p.sheet(signIn.registered(), 'your organisation'),
+      sheet: p.sheet(signIn.registered(p), 'your organisation'),
       console: p.console,
     }))
 }
@@ -55,10 +60,12 @@ export function registerSignIn(ctx: BaseCtx): void {
 
   app.post('/api/sign-in-apps/:provider', async (req) => {
     const { provider } = z.object({ provider: z.string() }).parse(req.params)
-    const b = z.object({ app: z.string(), directory: z.string() }).parse(req.body)
+    const b = z
+      .object({ app: z.string(), directory: z.string().optional(), secret: z.string().optional() })
+      .parse(req.body)
     const signIn = engine.connectors?.signIn
     if (!signIn) throw new Refused('Signing in is not set up in this core.')
-    const set = signIn.setApp(provider, b, asPerson)
+    const set = await signIn.setApp(provider, b, asPerson)
     live()
     return { set }
   })

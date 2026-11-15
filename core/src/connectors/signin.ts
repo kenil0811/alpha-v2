@@ -24,6 +24,8 @@ import type { World } from '../world/world.ts'
 
 const b64url = (b: Buffer) => b.toString('base64url')
 const KEY = (provider: string) => `sign_in_app:${provider}`
+// an app's secret, in the secret store (the Keychain, or the server's sealed file)
+const SECRET = (provider: string) => `sign-in-app-secret:${provider}`
 // a sign-in started and not finished is forgotten after this; a short-lived token is renewed this
 // long before it runs out
 const PENDING_MS = 15 * 60_000
@@ -85,11 +87,11 @@ export class SignIn {
     return this.provider(c.manifest.oauth.provider)
   }
 
-  // The address IT registers: the core's, without its port (a provider matches any port on this
-  // computer's own address).
-  registered(): string {
+  // The address IT registers: the core's, without its port where the provider matches any port on
+  // this computer's own address (Microsoft), else exactly (Intuit).
+  registered(provider?: Provider): string {
     const u = new URL(this.options.back())
-    u.port = ''
+    if (!provider?.exactAddress) u.port = ''
     return u.toString()
   }
 
@@ -103,13 +105,34 @@ export class SignIn {
     return v ? (JSON.parse(v.value) as SignInApp) : null
   }
 
-  setApp(provider: string, given: SignInApp, ctx: { actor: Actor; user?: string }): SignInApp {
+  // The app as IT copies it: its id, its organisation where the provider has one, and its secret
+  // where it has one, kept in the secret store and never said again (a new one replaces it; none
+  // keeps the one kept).
+  async setApp(
+    provider: string,
+    given: { app: string; directory?: string | undefined; secret?: string | undefined },
+    ctx: { actor: Actor; user?: string },
+  ): Promise<SignInApp> {
     const p = this.provider(provider)
-    const app = { app: given.app.trim(), directory: given.directory.trim() }
+    const typed = { app: given.app.trim(), directory: (given.directory ?? '').trim() }
     for (const k of ['app', 'directory'] as const) {
       const f = p.fields[k]
-      if (!f.pattern.test(app[k]))
+      if (f && !f.pattern.test(typed[k]))
         throw new Refused(`That is not a ${f.label}: it looks like ${f.example}.`)
+    }
+    const secret = (given.secret ?? '').trim()
+    if (secret) keepOut(secret)
+    if (p.fields.secret) {
+      if (secret && !p.fields.secret.pattern.test(secret))
+        throw new Refused(`That is not a ${p.fields.secret.label}.`)
+      if (!secret && !(await this.options.secrets.get(SECRET(p.name))))
+        throw new Refused(`${p.title}'s sign-in app needs its ${p.fields.secret.label}.`)
+      if (secret) await this.options.secrets.set(SECRET(p.name), secret)
+    }
+    const app: SignInApp = {
+      app: typed.app,
+      ...(p.fields.directory ? { directory: typed.directory } : {}),
+      ...(p.fields.secret ? { secret: true } : {}),
     }
     tx(this.world.db, () => {
       run(
@@ -121,8 +144,8 @@ export class SignIn {
       append(this.world.db, {
         actor: ctx.actor,
         kind: 'sign_in_app',
-        words: `Set ${p.title}'s sign-in app for this organisation (Application ID ${app.app}).`,
-        data: { provider, app: app.app, directory: app.directory },
+        words: `Set ${p.title}'s sign-in app for this organisation (${p.fields.app.label} ${app.app}${secret ? `, its ${p.fields.secret?.label} kept` : ''}).`,
+        data: { provider, app: app.app, ...(app.directory ? { directory: app.directory } : {}) },
         user: ctx.user ?? null,
       })
     })
@@ -162,17 +185,7 @@ export class SignIn {
       until: this.now() + PENDING_MS,
     })
     const u = new URL(p.authorize(app))
-    for (const [k, v] of Object.entries({
-      client_id: app.app,
-      response_type: 'code',
-      response_mode: 'query',
-      redirect_uri: this.options.back(),
-      scope: WHO,
-      state,
-      code_challenge: b64url(createHash('sha256').update(verifier).digest()),
-      code_challenge_method: 'S256',
-      ...p.ask,
-    }))
+    for (const [k, v] of Object.entries(this.asked(p, WHO, state, verifier)))
       u.searchParams.set(k, v)
     return u.toString()
   }
@@ -191,13 +204,7 @@ export class SignIn {
     const p = this.provider(pend.provider)
     const app = this.app(p.name)
     if (!app || !q.code) throw new Refused(q.error_description ?? 'The sign-in did not finish.')
-    const t = await this.trade(p, app, {
-      grant_type: 'authorization_code',
-      code: q.code,
-      redirect_uri: this.options.back(),
-      code_verifier: pend.verifier,
-      scope: pend.scopes,
-    })
+    const t = await this.trade(p, app, this.codeForm(p, q.code, pend))
     // straight from the provider's token address over TLS, so its signature needs no second check
     const claims = JSON.parse(
       Buffer.from((t.id_token ?? '').split('.')[1] ?? '', 'base64url').toString() || '{}',
@@ -225,19 +232,30 @@ export class SignIn {
     })
     const u = new URL(p.authorize(app))
     for (const [k, v] of Object.entries({
-      client_id: app.app,
-      response_type: 'code',
-      response_mode: 'query',
-      redirect_uri: this.options.back(),
-      scope: scopes,
-      state,
-      code_challenge: b64url(createHash('sha256').update(verifier).digest()),
-      code_challenge_method: 'S256',
-      login_hint: conn.account,
-      ...p.ask,
+      ...this.asked(p, scopes, state, verifier),
+      ...(p.hint ? { [p.hint]: conn.account } : {}),
     }))
       u.searchParams.set(k, v)
     return u.toString()
+  }
+
+  // What every sign-in page is asked: this app, a code back to this core, the permissions, the
+  // one-time state, PKCE where the provider proves the sign-in with it, and the provider's own.
+  private asked(p: Provider, scope: string, state: string, verifier: string) {
+    return {
+      client_id: (this.app(p.name) as SignInApp).app,
+      response_type: 'code',
+      redirect_uri: this.options.back(),
+      scope,
+      state,
+      ...(p.pkce
+        ? {
+            code_challenge: b64url(createHash('sha256').update(verifier).digest()),
+            code_challenge_method: 'S256',
+          }
+        : {}),
+      ...p.ask,
+    }
   }
 
   // The person back from the provider's page: its answer traded for tokens, kept. Which
@@ -265,18 +283,32 @@ export class SignIn {
           codes: codesIn(description),
         })
       }
-      const t = await this.trade(p, app, {
-        grant_type: 'authorization_code',
-        code: q.code,
-        redirect_uri: this.options.back(),
-        code_verifier: pend.verifier,
-        scope: pend.scopes,
-      })
+      // where the person signed in to (the company picked), the connection's own from then on
+      const place = p.place ? (q[p.place.param] ?? '').trim() : ''
+      if (p.place && !place)
+        throw new Problem(`${p.title} did not say which ${p.place.what} was picked: sign in again.`)
+      if (p.place && conn.place && conn.place !== place)
+        throw new Problem(
+          `That is another ${p.place.what} than this connection's: sign in again and pick ${conn.account}'s, or add a new connection for that one.`,
+          'sign_in',
+        )
+      const t = await this.trade(p, app, this.codeForm(p, q.code, pend))
+      if (p.place && !conn.place) this.world.connections.setPlace(conn.id, place)
       await this.keep(conn, t)
       return { connection: conn.id, problem: null }
     } catch (err) {
       if (err instanceof Problem) return { connection: conn.id, problem: err }
       throw err
+    }
+  }
+
+  // The answer's code traded: with the PKCE verifier where the provider proves it so.
+  private codeForm(p: Provider, code: string, pend: Pending): Record<string, string> {
+    return {
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: this.options.back(),
+      ...(p.pkce ? { code_verifier: pend.verifier, scope: pend.scopes } : {}),
     }
   }
 
@@ -305,7 +337,7 @@ export class SignIn {
     const t = await this.trade(p, app, {
       grant_type: 'refresh_token',
       refresh_token: kept,
-      scope: this.scopes(c, p),
+      ...(p.secretIn ? {} : { scope: this.scopes(c, p) }),
     })
     await this.keep(conn, t)
     return this.access.get(conn.id)?.token as string
@@ -335,12 +367,29 @@ export class SignIn {
   }
 
   private async trade(p: Provider, app: SignInApp, form: Record<string, string>): Promise<Tokens> {
+    // an app with a secret proves itself with it on every token call; the secret never leaves here
+    // but to the provider
+    let basic: string | null = null
+    if (p.secretIn === 'basic') {
+      const secret = await this.options.secrets.get(SECRET(p.name))
+      if (!secret)
+        throw new Problem(
+          `${p.title}'s sign-in app has no ${p.fields.secret?.label ?? 'secret'} kept: set it again in Sign-in apps.`,
+        )
+      keepOut(secret)
+      basic = Buffer.from(`${app.app}:${secret}`).toString('base64')
+      keepOut(basic)
+    }
     let res: Response
     try {
       res = await fetch(p.token(app), {
         method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ client_id: app.app, ...form }).toString(),
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          accept: 'application/json',
+          ...(basic ? { authorization: `Basic ${basic}` } : {}),
+        },
+        body: new URLSearchParams(basic ? form : { client_id: app.app, ...form }).toString(),
         signal: AbortSignal.timeout(30_000),
       })
     } catch (err) {

@@ -65,6 +65,7 @@ export {
   codesIn,
   type Explained,
   firstSentence,
+  intuit,
   microsoft,
   PROVIDERS,
   type Provider,

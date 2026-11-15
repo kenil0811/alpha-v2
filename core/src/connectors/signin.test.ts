@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   type Connector,
+  intuit,
   MemorySecrets,
   microsoft,
   Problem,
@@ -32,6 +33,7 @@ const svc = {
   refusal: null as null | { error: string; error_codes: number[]; error_description: string },
   issued: [] as string[],
   who: 'priya@bridge.example.com',
+  realm: '9341455130166501', // the company Intuit's page says was picked
 }
 
 beforeEach(async () => {
@@ -50,6 +52,7 @@ beforeEach(async () => {
       const back = new URL(u.searchParams.get('redirect_uri') ?? '')
       back.searchParams.set('code', 'the-code')
       back.searchParams.set('state', u.searchParams.get('state') ?? '')
+      if (u.pathname.startsWith('/intuit/')) back.searchParams.set('realmId', svc.realm)
       res.writeHead(302, { location: back.toString() }).end()
       return
     }
@@ -62,6 +65,23 @@ beforeEach(async () => {
       const answer = (status: number, json: unknown) =>
         res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(json))
       if (svc.refusal) return answer(400, svc.refusal)
+      // Intuit's: the app proves itself with its secret, as basic credentials, and no PKCE
+      if (u.pathname.startsWith('/intuit/')) {
+        const good = `Basic ${Buffer.from(`${INTUIT_APP.app}:${INTUIT_SECRET}`).toString('base64')}`
+        if (req.headers.authorization !== good || f.get('client_id') || f.get('code_verifier'))
+          return answer(401, { error: 'invalid_client' })
+        if (f.get('grant_type') === 'authorization_code' && f.get('code') !== 'the-code')
+          return answer(400, { error: 'invalid_grant' })
+        svc.refreshes += f.get('grant_type') === 'refresh_token' ? 1 : 0
+        const n = svc.refreshes + 1
+        svc.issued.push(`access-${n}`, `refresh-${n}`)
+        return answer(200, {
+          access_token: `access-${n}`,
+          refresh_token: `refresh-${n}`,
+          expires_in: 3600,
+          x_refresh_token_expires_in: 8_640_000,
+        })
+      }
       if (f.get('grant_type') === 'authorization_code') {
         const sent = createHash('sha256')
           .update(f.get('code_verifier') ?? '')
@@ -107,6 +127,15 @@ const madeUp = (): Provider => ({
   token: (a) => `${base}/${a.directory}/token`,
 })
 
+// Intuit, at the made-up service's address
+const madeUpIntuit = (): Provider => ({
+  ...intuit,
+  authorize: () => `${base}/intuit/authorize`,
+  token: () => `${base}/intuit/token`,
+})
+const INTUIT_APP = { app: 'ABcdEFgh1234567890ijklMNOP' }
+const INTUIT_SECRET = 'S3cretS3cretS3cretS3cretS3cret12'
+
 let checked: (string | null)[] = []
 const mail: Connector = {
   manifest: {
@@ -126,18 +155,40 @@ const mail: Connector = {
   },
 }
 
+// a made-up QuickBooks: a client company's books, through the firm's own Intuit app
+let places: (string | null | undefined)[] = []
+const books: Connector = {
+  manifest: {
+    name: 'books',
+    title: 'Books',
+    auth: 'oauth',
+    oauth: { provider: 'intuit', scopes: ['com.intuit.quickbooks.accounting'] },
+    account: { label: 'Client' },
+    pace: { perMinute: 60 },
+  },
+  guide: 'Books.',
+  module: 'Books',
+  tables: [],
+  tools: {},
+  check: async (c) => {
+    checked.push(await c.host.secret())
+    places.push(c.host.place)
+  },
+}
+
 const APP = { app: '1a2b3c4d-1111-2222-3333-444455556666', directory: 'bridge.example.com' }
 const kenil = () => ({ actor: { kind: 'person' as const, id: world.owner('Kenil').id } })
 
 function setUp() {
   checked = []
+  places = []
   const signIn = new SignIn(world, {
     secrets,
     back: () => 'http://localhost:4700/api/sign-in/back',
-    providers: { microsoft: madeUp() },
+    providers: { microsoft: madeUp(), intuit: madeUpIntuit() },
     now: () => clock,
   })
-  const service = new ConnectorService(world, { secrets, known: [mail], signIn })
+  const service = new ConnectorService(world, { secrets, known: [mail, books], signIn })
   return { signIn, service }
 }
 
@@ -152,7 +203,7 @@ async function signInAs(signIn: SignIn, url: string) {
 describe('the organisation’s sign-in app', () => {
   it('signs a person in to Alpha by who the provider says they are, keeping no token', async () => {
     const { signIn } = setUp()
-    signIn.setApp('microsoft', APP, kenil())
+    await signIn.setApp('microsoft', APP, kenil())
     const url = new URL(signIn.startPerson('microsoft'))
     expect(url.searchParams.get('scope')).toBe('openid email profile')
     const state = url.searchParams.get('state') ?? ''
@@ -166,12 +217,12 @@ describe('the organisation’s sign-in app', () => {
     expect(JSON.stringify(world.lines({}))).not.toContain('access-1')
   })
 
-  it('is set once, checked for what its ids look like, and journaled', () => {
+  it('is set once, checked for what its ids look like, and journaled', async () => {
     const { signIn } = setUp()
-    expect(() =>
+    await expect(
       signIn.setApp('microsoft', { app: 'not-an-id', directory: APP.directory }, kenil()),
-    ).toThrow(/Application \(client\) ID/)
-    signIn.setApp('microsoft', APP, kenil())
+    ).rejects.toThrow(/Application \(client\) ID/)
+    await signIn.setApp('microsoft', APP, kenil())
     expect(signIn.app('microsoft')).toEqual(APP)
     expect(world.lines({ kinds: ['sign_in_app'] })[0]?.words).toMatch(/Microsoft's sign-in app/)
     expect(signIn.registered()).toBe('http://localhost/api/sign-in/back')
@@ -187,7 +238,7 @@ describe('the organisation’s sign-in app', () => {
 describe('signing in as the person', () => {
   it('waits for the sign-in, then connects with a short-lived token the connector gets', async () => {
     const { signIn, service } = setUp()
-    signIn.setApp('microsoft', APP, kenil())
+    await signIn.setApp('microsoft', APP, kenil())
     const conn = await service.connect('work-mail', 'test@bridge.example.com', null, 'u')
     expect(conn.state).toBe('needs_sign_in')
     expect(checked).toEqual([]) // nothing to check with yet
@@ -212,7 +263,7 @@ describe('signing in as the person', () => {
 
   it('renews the short-lived token before it runs out, and keeps the new long-lived one', async () => {
     const { signIn, service } = setUp()
-    signIn.setApp('microsoft', APP, kenil())
+    await signIn.setApp('microsoft', APP, kenil())
     const conn = await service.connect('work-mail', 'test@bridge.example.com', null, 'u')
     await signInAs(signIn, signIn.start(conn, mail))
     await service.checkNow(conn.id)
@@ -230,7 +281,7 @@ describe('signing in as the person', () => {
 
   it('asks the person to sign in again when the provider no longer takes the sign-in', async () => {
     const { signIn, service } = setUp()
-    signIn.setApp('microsoft', APP, kenil())
+    await signIn.setApp('microsoft', APP, kenil())
     const conn = await service.connect('work-mail', 'test@bridge.example.com', null, 'u')
     await signInAs(signIn, signIn.start(conn, mail))
     await service.checkNow(conn.id)
@@ -250,7 +301,7 @@ describe('signing in as the person', () => {
 
   it('waits for the customer when IT has to approve the app first', async () => {
     const { signIn, service } = setUp()
-    signIn.setApp('microsoft', APP, kenil())
+    await signIn.setApp('microsoft', APP, kenil())
     const conn = await service.connect('work-mail', 'test@bridge.example.com', null, 'u')
     svc.refusal = {
       error: 'invalid_grant',
@@ -269,7 +320,7 @@ describe('signing in as the person', () => {
 
   it('says no in the person’s words when they decline on the provider’s page', async () => {
     const { signIn, service } = setUp()
-    signIn.setApp('microsoft', APP, kenil())
+    await signIn.setApp('microsoft', APP, kenil())
     const conn = await service.connect('work-mail', 'test@bridge.example.com', null, 'u')
     const url = new URL(signIn.start(conn, mail))
     const out = await signIn.back({
@@ -283,7 +334,7 @@ describe('signing in as the person', () => {
 
   it('refuses an answer it did not ask for, and one used twice', async () => {
     const { signIn, service } = setUp()
-    signIn.setApp('microsoft', APP, kenil())
+    await signIn.setApp('microsoft', APP, kenil())
     const conn = await service.connect('work-mail', 'test@bridge.example.com', null, 'u')
     await expect(signIn.back({ state: 'made-up', code: 'the-code' })).rejects.toThrow(
       /not one Alpha started/,
@@ -313,5 +364,65 @@ describe('a connector that signs in as the person', () => {
       manifest: { ...mail.manifest, name: 'other', oauth: { provider: 'acme', scopes: ['x'] } },
     }
     expect(() => service.add(unknown)).toThrow(/names one of microsoft/)
+  })
+})
+
+describe('signing in with an app that has a secret (Intuit)', () => {
+  it('keeps the app’s secret in the secret store, never in the world, and keeps it when not typed again', async () => {
+    const { signIn } = setUp()
+    await expect(signIn.setApp('intuit', INTUIT_APP, kenil())).rejects.toThrow(
+      /needs its Client Secret/,
+    )
+    await signIn.setApp('intuit', { ...INTUIT_APP, secret: INTUIT_SECRET }, kenil())
+    expect(signIn.app('intuit')).toEqual({ app: INTUIT_APP.app, secret: true })
+    expect(await secrets.get('sign-in-app-secret:intuit')).toBe(INTUIT_SECRET)
+    await signIn.setApp('intuit', INTUIT_APP, kenil()) // a new Client ID, the secret kept
+    expect(await secrets.get('sign-in-app-secret:intuit')).toBe(INTUIT_SECRET)
+    const said = JSON.stringify([world.lines({}), world.db.prepare('SELECT * FROM meta').all()])
+    expect(said).not.toContain(INTUIT_SECRET)
+    expect(said).toContain('Client Secret kept')
+    // Intuit matches the address exactly, its port with it
+    expect(signIn.registered(madeUpIntuit())).toBe('http://localhost:4700/api/sign-in/back')
+  })
+
+  it('signs in with the secret and no PKCE, and keeps the company picked on the connection', async () => {
+    const { signIn, service } = setUp()
+    await signIn.setApp('intuit', { ...INTUIT_APP, secret: INTUIT_SECRET }, kenil())
+    const conn = await service.connect('books', 'Harbor CPA', null, 'u')
+    const url = new URL(signIn.start(conn, books))
+    expect(url.searchParams.get('client_id')).toBe(INTUIT_APP.app)
+    expect(url.searchParams.get('scope')).toBe('com.intuit.quickbooks.accounting')
+    expect(url.searchParams.get('code_challenge')).toBeNull()
+    expect(url.searchParams.get('login_hint')).toBeNull()
+    const out = await signInAs(signIn, url.toString())
+    expect(out.problem).toBeNull()
+    expect(world.connections.get(conn.id)?.place).toBe(svc.realm)
+    expect(await secrets.get(conn.secretRef as string)).toBe('refresh-1')
+    const now = await service.checkNow(conn.id)
+    expect(now.state).toBe('connected')
+    expect(places).toEqual([svc.realm])
+    expect(JSON.stringify(world.lines({}))).not.toContain('access-1')
+  })
+
+  it('refuses a second sign-in that picks another company, keeping the first', async () => {
+    const { signIn, service } = setUp()
+    await signIn.setApp('intuit', { ...INTUIT_APP, secret: INTUIT_SECRET }, kenil())
+    const conn = await service.connect('books', 'Harbor CPA', null, 'u')
+    await signInAs(signIn, signIn.start(conn, books))
+    svc.realm = '1111222233334444'
+    const again = await signInAs(signIn, signIn.start(conn, books))
+    expect(again.problem?.message).toMatch(/another company than this connection's.*Harbor CPA/)
+    expect(world.connections.get(conn.id)?.place).toBe('9341455130166501')
+    expect(await secrets.get(conn.secretRef as string)).toBe('refresh-1')
+    svc.realm = '9341455130166501'
+  })
+
+  it('says in words when Intuit does not take the app’s keys', async () => {
+    const { signIn, service } = setUp()
+    await signIn.setApp('intuit', { ...INTUIT_APP, secret: 'WrongWrongWrongWrongWrong12' }, kenil())
+    const conn = await service.connect('books', 'Harbor CPA', null, 'u')
+    const out = await signInAs(signIn, signIn.start(conn, books))
+    expect(out.problem?.message).toMatch(/Intuit does not take these keys/)
+    expect(world.connections.get(conn.id)?.place).toBeNull()
   })
 })

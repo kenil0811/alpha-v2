@@ -162,8 +162,13 @@ export class ConnectorService {
 
   host(c: Connector, conn: Connection): Host {
     const actor = { kind: 'connector' as const, id: c.manifest.name }
+    const world = this.world
     return {
       account: conn.account,
+      // read fresh: the sign-in that names it may come after this host was made
+      get place() {
+        return world.connections.get(conn.id)?.place ?? null
+      },
       // signed in as the person: a short-lived token, renewed by the core
       secret: async () => {
         if (c.manifest.auth !== 'oauth')
