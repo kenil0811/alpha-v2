@@ -75,8 +75,9 @@ export interface ReportRead {
   basis: string | null
   columns: Column[]
   // each data row (an account, a customer, a transaction line) with the group its section is in
-  // (Income, Expenses, Assets) and the account whose section holds it; totals are left out
-  rows: { cells: Found['cells']; group: string; under: Found['under'] }[]
+  // (Income, Expenses, Assets) and the account whose section holds it, and each section's total
+  // after its rows (total: true)
+  rows: { cells: Found['cells']; group: string; under: Found['under']; total: boolean }[]
 }
 
 export interface CompanyRead {
@@ -209,7 +210,7 @@ export const quickbooks: Connector = {
     }),
     report: defineTool({
       description:
-        'One of QuickBooks’ reports by its name (ProfitAndLoss, BalanceSheet, CustomerSales, GeneralLedger, AgedReceivables, AgedPayables, VendorExpenses, …), for dates as YYYY-MM-DD: start and end for a period, asOf for an aging. byMonth gives a column a month. basis is Cash or Accrual (the company’s own when left out). columns names a general ledger’s columns (tx_date,txn_type,doc_num,name,memo,split_acc,subt_nat_amount). Returns its columns, each month’s with its first and last day, and its data rows, each with the group its section is in and the account that holds it; totals are left out.',
+        'One of QuickBooks’ reports by its name (ProfitAndLoss, BalanceSheet, CustomerSales, GeneralLedger, AgedReceivables, AgedPayables, VendorExpenses, …), for dates as YYYY-MM-DD: start and end for a period, asOf for an aging. byMonth gives a column a month. basis is Cash or Accrual (the company’s own when left out). columns names a general ledger’s columns (tx_date,txn_type,doc_num,name,memo,split_acc,subt_nat_amount). Returns its columns, each month’s with its first and last day, and its rows, each with the group its section is in and the account that holds it; a section’s total (Total Income, Net Income) comes after its rows, marked total.',
       input: {
         name: z.string().regex(/^[A-Za-z]+$/, 'a report’s name, such as ProfitAndLoss'),
         start: day10.optional(),
@@ -244,6 +245,7 @@ export const quickbooks: Connector = {
               cells: f.cells,
               group: groupWords(f.group),
               under: f.under,
+              total: f.total,
             })),
           ),
         }

@@ -333,7 +333,7 @@ describe('reading a company’s books', () => {
     )
   })
 
-  it('reads a report by month into its columns and data rows, totals left out', async () => {
+  it('reads a report by month into its columns, data rows and totals', async () => {
     const r = await run<ReportRead>('report', {
       name: 'ProfitAndLoss',
       start: '2026-10-01',
@@ -348,10 +348,13 @@ describe('reading a company’s books', () => {
       ['Total', null],
     ])
     expect(
-      r.rows.map((x) => [x.cells[0]?.value, x.cells[0]?.id, x.group, x.cells[1]?.value]),
+      r.rows.map((x) => [x.cells[0]?.value, x.cells[0]?.id, x.group, x.cells[1]?.value, x.total]),
     ).toEqual([
-      ['Fees', '1', 'Income', '1,250.00'],
-      ['Rent', '7', 'Expenses', '900.00'],
+      ['Fees', '1', 'Income', '1,250.00', false],
+      ['Total Income', undefined, 'Income', undefined, true],
+      ['Rent', '7', 'Expenses', '900.00', false],
+      ['Total Expenses', undefined, 'Expenses', undefined, true],
+      ['Net Income', undefined, 'Net income', undefined, true],
     ])
     const url = asked.find((a) => a.url.pathname.endsWith('/ProfitAndLoss'))?.url
     expect(Object.fromEntries(url?.searchParams ?? [])).toEqual({
@@ -368,7 +371,7 @@ describe('reading a company’s books', () => {
       end: '2026-11-15',
       byMonth: true,
     })
-    expect(bs.rows.map((x) => [x.cells[0]?.value, x.group])).toEqual([
+    expect(bs.rows.filter((x) => !x.total).map((x) => [x.cells[0]?.value, x.group])).toEqual([
       ['Checking', 'Assets'],
       ['Credit card', 'Liabilities'],
     ])
@@ -389,7 +392,7 @@ describe('reading a company’s books', () => {
       ['2026-11-01', '2026-11-08'],
       ['2026-11-09', '2026-11-15'],
     ])
-    expect(r.rows).toHaveLength(2)
+    expect(r.rows.filter((x) => !x.total)).toHaveLength(2)
     expect(r.rows[0]?.under).toEqual({ value: 'Checking', id: '35' })
   })
 

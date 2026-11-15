@@ -1,8 +1,9 @@
 // QuickBooks' reports as rows. A report is a header, its columns (each with its title and, for a
 // month, its first and last day), and nested rows: a section (Income, an account with
 // sub-accounts) holds a header, its rows and a summary (its total); a data row is one account, one
-// customer, or one transaction line. Only data rows are kept: a total is the sum of its rows,
-// which the Accounting module works out, and checks against.
+// customer, or one transaction line. Each data row is kept, and each summary as a total after its
+// rows (Total Income, Net Operating Income, Net Income), so what reads it can use QuickBooks' own
+// totals and check its rows against them.
 
 export interface Cell {
   value?: string
@@ -61,6 +62,7 @@ export interface Found {
   cells: Cell[]
   group: string
   under: Cell | null
+  total: boolean // a section's summary, after its rows
 }
 
 export function dataRows(r: Report): Found[] {
@@ -68,15 +70,14 @@ export function dataRows(r: Report): Found[] {
   const walk = (rows: ReportRow[] | undefined, group: string, under: Cell | null) => {
     for (const row of rows ?? []) {
       if (row.ColData) {
-        out.push({ cells: row.ColData, group, under })
+        out.push({ cells: row.ColData, group, under, total: false })
         continue
       }
       const head = row.Header?.ColData?.[0]
-      walk(
-        row.Rows?.Row,
-        row.group && row.group in GROUPS ? row.group : group,
-        head?.id ? head : under,
-      )
+      const inner = row.group && row.group in GROUPS ? row.group : group
+      walk(row.Rows?.Row, inner, head?.id ? head : under)
+      if (row.Summary?.ColData)
+        out.push({ cells: row.Summary.ColData, group: inner, under, total: true })
     }
   }
   walk(r.Rows?.Row, '', null)
