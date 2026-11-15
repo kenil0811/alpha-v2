@@ -75,13 +75,45 @@ export function dataRows(r: Report): Found[] {
       }
       const head = row.Header?.ColData?.[0]
       const inner = row.group && row.group in GROUPS ? row.group : group
+      const at = out.length
       walk(row.Rows?.Row, inner, head?.id ? head : under)
-      if (row.Summary?.ColData)
-        out.push({ cells: row.Summary.ColData, group: inner, under, total: true })
+      if (!row.Summary?.ColData) continue
+      // an account with sub-accounts (a customer with jobs) shows its own amount only inside its
+      // total: what its total holds beyond its rows is its own, a row of its own before them
+      const own = head?.id ? ownOf(row) : null
+      if (own && head)
+        out.splice(at, 0, { cells: [head, ...own], group: inner, under, total: false })
+      out.push({ cells: row.Summary.ColData, group: inner, under, total: true })
     }
   }
   walk(r.Rows?.Row, '', null)
   return out
+}
+
+// A section's own amounts, column by column: its total less its rows' (a row's own, or a section
+// inside it's total). None when its rows are not accounts or customers (a ledger's lines), or
+// when nothing is left over.
+function ownOf(row: ReportRow): Cell[] | null {
+  const kids = row.Rows?.Row ?? []
+  if (!kids.every((k) => !k.ColData || k.ColData[0]?.id)) return null
+  const total = row.Summary?.ColData ?? []
+  const cells: Cell[] = []
+  let any = false
+  for (let i = 1; i < total.length; i++) {
+    const t = amount(total[i]?.value)
+    if (t === null) {
+      cells.push({ value: '' })
+      continue
+    }
+    const rows = kids.reduce(
+      (n, k) => n + (amount((k.ColData ?? k.Summary?.ColData)?.[i]?.value) ?? 0),
+      0,
+    )
+    const left = Math.round((t - rows) * 100) / 100
+    if (left !== 0) any = true
+    cells.push({ value: left.toFixed(2) })
+  }
+  return any ? cells : null
 }
 
 // "1,234.56", "-12.00", "(12.00)" as a number; empty and words are none.

@@ -436,4 +436,59 @@ describe('reading a company’s books', () => {
     expect(busy).toBeInstanceOf(Problem)
     expect((busy as Problem).kind).toBe('busy')
   })
+
+  it('gives a parent account its own amount, what its total holds beyond its sub-accounts', async () => {
+    answer = (url) =>
+      url.pathname.endsWith('/ProfitAndLoss')
+        ? {
+            json: {
+              Columns: { Column: months },
+              Rows: {
+                Row: [
+                  section('Income', 'Income', [
+                    {
+                      type: 'Section',
+                      Header: { ColData: [{ value: 'Landscaping', id: '45' }] },
+                      Rows: { Row: [data(['Labor', '46'], ['200.00'], ['100.00'], ['300.00'])] },
+                      // its own 60.00 in October is in its total only
+                      Summary: {
+                        ColData: [
+                          { value: 'Total Landscaping' },
+                          { value: '260.00' },
+                          { value: '100.00' },
+                          { value: '360.00' },
+                        ],
+                      },
+                    },
+                    data(['Fees', '1'], ['50.00'], [''], ['50.00']),
+                  ]),
+                ],
+              },
+            },
+          }
+        : books(url)
+    const r = await run<ReportRead>('report', {
+      name: 'ProfitAndLoss',
+      start: '2026-10-01',
+      end: '2026-11-15',
+      byMonth: true,
+    })
+    expect(
+      r.rows
+        .filter((x) => !x.total)
+        .map((x) => [x.cells[0]?.value, x.cells[0]?.id, x.cells[1]?.value, x.cells[2]?.value]),
+    ).toEqual([
+      ['Landscaping', '45', '60.00', '0.00'],
+      ['Labor', '46', '200.00', '100.00'],
+      ['Fees', '1', '50.00', ''],
+    ])
+    // a ledger's lines are no accounts: its sections get no row of their own
+    const gl = await run<ReportRead>('report', {
+      name: 'GeneralLedger',
+      start: '2026-10-01',
+      end: '2026-10-31',
+    })
+    expect(gl.rows.some((x) => !x.total && x.cells[0]?.value === 'Checking')).toBe(false)
+    expect(gl.rows.filter((x) => !x.total).length).toBeGreaterThan(0)
+  })
 })
