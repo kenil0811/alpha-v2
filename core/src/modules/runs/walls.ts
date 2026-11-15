@@ -19,6 +19,7 @@ export interface Walls {
   touches: Set<string> // table names, lower case
   reads: Set<string> | null // none: any table
   effects: Set<string> | null
+  connectors: Set<string> // the connectors whose reads it may use: its kit's uses, lower case
 }
 
 // A connector or a table a schedule needs that is not there (needs), in words.
@@ -53,21 +54,35 @@ export function fileOf(
 
 const lower = (names: string[]) => new Set(names.map((n) => n.toLowerCase()))
 
-// The module's own tables and those of the modules inside it, and its kit's uses; a run's walls
-// take a table by its name or its lasting key (api.ts).
+// The module's own tables and those of the modules inside it, and its kit's uses: the other kits'
+// tables, and the connectors whose reads it may use; a run's walls take a table by its name or its
+// lasting key (api.ts).
 function reach(
   runner: ScheduleRunner,
   module: { id: string; dir: string },
-): { own: string[]; uses: string[] } {
+): { own: string[]; uses: string[]; connectors: string[] } {
   const own = runner.world.shape
     .within(module.id)
     .flatMap((id) => runner.world.shape.tables(id).map((t) => t.name))
-  const manifest = join(module.dir, 'module.yaml')
-  const uses = existsSync(manifest)
+  const uses = usesOf(module.dir)
+  return {
+    own,
+    uses: uses.flatMap((u) => u.tables),
+    connectors: uses.flatMap((u) => (u.connector ? [u.connector] : [])),
+  }
+}
+
+// What a module's kit says it uses, from its module.yaml.
+function usesOf(dir: string) {
+  const manifest = join(dir, 'module.yaml')
+  return existsSync(manifest)
     ? (Manifest.safeParse(parse(readFileSync(manifest, 'utf8'))).data?.uses ?? [])
     : []
-  return { own, uses: uses.flatMap((u) => u.tables) }
 }
+
+// The connectors a module's kit names in its uses, lower case: whose reads its scripts may use.
+export const connectorsOf = (dir: string): Set<string> =>
+  lower(usesOf(dir).flatMap((u) => (u.connector ? [u.connector] : [])))
 
 // An agent's check only looks: any table, and the sites on the agent's list. It writes nothing.
 const CHECK: Walls = {
@@ -75,6 +90,7 @@ const CHECK: Walls = {
   touches: new Set(),
   reads: null,
   effects: new Set(['browser.open', 'browser.extract']),
+  connectors: new Set(),
 }
 
 // A try of a script from the chat has no schedule file, so its module is its wall: it writes the
@@ -83,19 +99,26 @@ const CHECK: Walls = {
 // a site not on the module's list waits on the person's card as ever.
 export function wallsForTry(runner: ScheduleRunner, module: RunPlace): Walls {
   if (!module.id) return CHECK
-  const { own, uses } = reach(runner, { id: module.id, dir: module.dir })
-  return { kind: 'try', touches: lower(own), reads: lower([...own, ...uses]), effects: null }
+  const { own, uses, connectors } = reach(runner, { id: module.id, dir: module.dir })
+  return {
+    kind: 'try',
+    touches: lower(own),
+    reads: lower([...own, ...uses]),
+    effects: null,
+    connectors: lower(connectors),
+  }
 }
 
 export function wallsFor(runner: ScheduleRunner, module: RunPlace, file: ScheduleFile): Walls {
   if (!module.id) return CHECK
-  const { own, uses } = reach(runner, { id: module.id, dir: module.dir })
+  const { own, uses, connectors } = reach(runner, { id: module.id, dir: module.dir })
   return {
     kind: 'file',
     // a file that names no tables writes its module's own, as a try does
     touches: lower(file.touches ?? own),
     reads: lower([...own, ...uses]),
     effects: file.effects ? lower(file.effects) : null,
+    connectors: lower(connectors),
   }
 }
 

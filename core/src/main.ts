@@ -231,6 +231,15 @@ const drafts = new Drafts(
   },
 )
 runner.drafts = drafts
+// a kit's script reads through the connections of a connector its kit names (reads only)
+runner.connections = {
+  list: (connector) =>
+    world.connections
+      .list()
+      .filter((k) => k.connector.toLowerCase() === connector.toLowerCase())
+      .map((k) => ({ id: k.id, account: k.account, state: k.state, lastReadAt: k.lastSyncAt })),
+  read: (id, read, input) => connectors.readThrough(id, read, input),
+}
 // Alpha's plugins: each with its host; one that does not load is said and left out
 const plugins = new Plugins({
   world,

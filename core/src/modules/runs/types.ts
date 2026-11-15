@@ -13,6 +13,18 @@ export interface RunOutcome {
 
 // Where a script runs from: a module, or an agent's folder (no module), where its script keeps to
 // its own box.
+// A connection's reads for a kit's script, the core's connector service behind them: the
+// connections of a connector, and one read (never a change) through one of them.
+export interface ConnectionReads {
+  list(connector: string): {
+    id: string
+    account: string
+    state: string
+    lastReadAt: string | null
+  }[]
+  read(connection: string, read: string, input: Record<string, unknown>): Promise<unknown>
+}
+
 export interface RunPlace {
   id: string | null
   name: string

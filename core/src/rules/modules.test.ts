@@ -236,6 +236,7 @@ function counter(w: RuleWorld) {
     touches: new Set(['orders']),
     reads: new Set(['orders', 'suppliers']),
     effects: null,
+    connectors: new Set<string>(),
   }
   return api(runner, bakery, 'Counter', 'run_m5', { user: w.user.id, turn: null }, null, walls)
 }

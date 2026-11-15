@@ -6,7 +6,9 @@
 // expect of that run (a reader's second read: a new listing, a changed one, one gone), and with
 // what the person did in between: values typed over rows (`change`) and rows removed (`remove`).
 // A kit that uses another's tables is tested with it: the kits it uses are installed first, each
-// from the folder beside it, so a case can seed their tables too. A refusal by a wall fails the
+// from the folder beside it, so a case can seed their tables too. A kit that reads through a
+// connector's connections is tested on recorded answers: `connections` names each connection
+// and what each read gives, and a read the case has no answer for fails it. A refusal by a wall fails the
 // case. `--record` runs the model for real and writes its answers into the case, to replay from
 // then on.
 import { createHash } from 'node:crypto'
@@ -37,6 +39,22 @@ const Expect = z
 
 const Rows = z.record(z.string(), z.array(z.record(z.string(), z.unknown())))
 
+// A connection a case makes, and what its reads give: each answer for a read by name, and the
+// input it was given, as far as `input` says (a report by its name, say)
+const Reads = z.array(
+  z.object({
+    read: z.string(),
+    input: z.record(z.string(), z.unknown()).optional(),
+    answer: z.unknown(),
+  }),
+)
+const Conn = z.object({
+  connector: z.string(),
+  account: z.string(),
+  state: z.enum(['connected', 'needs_sign_in', 'broken', 'paused', 'waiting']).optional(),
+  reads: Reads.default([]),
+})
+
 const Case = z.object({
   schedule: z.string().optional(),
   script: z.string().optional(),
@@ -45,6 +63,7 @@ const Case = z.object({
   // by url: what browser.extract or open gets; { fail, kind } makes the call fail as a site would
   // (a timeout, a 403's blocked), so a reader's way with a failure can be tried
   pages: z.record(z.string(), z.unknown()).default({}),
+  connections: z.array(Conn).default([]),
   answers: z
     .array(z.object({ key: z.string(), about: z.string(), answer: z.unknown() }))
     .default([]),
@@ -57,6 +76,8 @@ const Case = z.object({
       z.object({
         input: z.record(z.string(), z.unknown()).optional(),
         pages: z.record(z.string(), z.unknown()).default({}),
+        // what the connections' reads give by then, by account; none: as before
+        reads: z.record(z.string(), Reads).optional(),
         // what the person did before this run, by table: values typed over a row, and rows
         // removed; a row is found by the values given for it
         change: z
@@ -177,6 +198,31 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
       return out
     }
     const runner = new ScheduleRunner(world, () => engine, { owner: null, ask, judge: ask })
+    // the case's connections, each read answered from what it recorded
+    const reads = new Map<string, z.infer<typeof Reads>>()
+    for (const k of c.connections) {
+      const made = world.connections.add(k.connector, k.account, null, k.connector, ctx)
+      if (k.state && k.state !== 'connected')
+        world.connections.setState(made.id, k.state, 'the test', 'the test', ctx)
+      reads.set(made.id, k.reads)
+    }
+    runner.connections = {
+      list: (connector) =>
+        world.connections
+          .list()
+          .filter((k) => k.connector.toLowerCase() === connector.toLowerCase())
+          .map((k) => ({ id: k.id, account: k.account, state: k.state, lastReadAt: null })),
+      read: async (id, read, input) => {
+        const found = (reads.get(id) ?? []).find(
+          (r) => r.read === read && (!r.input || matches(input, r.input)),
+        )
+        if (!found)
+          throw new Refused(
+            `The case has no answer recorded for ${read} ${JSON.stringify(input)} through ${world.connections.get(id)?.account ?? id}.`,
+          )
+        return structuredClone(found.answer)
+      },
+    }
     // One run and what it is expected to leave; `nth` names a later run in what a failure says.
     const run = async (input: Record<string, unknown>, expect: KitTestCase['expect'], nth = '') => {
       const out = c.schedule
@@ -214,6 +260,11 @@ async function runCase(dir: string, file: string, record: boolean): Promise<void
     await run(c.input, c.expect)
     for (const [n, later] of c.then.entries()) {
       pages = later.pages
+      for (const [account, given] of Object.entries(later.reads ?? {})) {
+        const k = world.connections.list().find((x) => x.account === account)
+        if (!k) throw new Refused(`Run ${n + 2}: the case has no connection for ${account}.`)
+        reads.set(k.id, given)
+      }
       byHand(world, later, `Run ${n + 2}: `)
       await run(later.input ?? c.input, later.expect, `Run ${n + 2}: `)
     }

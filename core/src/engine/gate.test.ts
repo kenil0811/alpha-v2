@@ -155,6 +155,7 @@ describe('the tool registry', () => {
       'contacts',
       'gmail',
       'outlook',
+      'quickbooks',
     ])
     const out = await registry.call('mcp__alpha__query', { sql: 'SELECT 1 AS one' })
     expect(out.isError).toBeUndefined()

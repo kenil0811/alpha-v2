@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { gmail } from '@alpha/connector-gmail'
 import { type Connector, MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import type { Connection } from '../world/connections.ts'
 import { World } from '../world/world.ts'
 import { loadSet, STANDARD_DIR } from './discover.ts'
@@ -218,7 +219,13 @@ describe('a Gmail connection on recorded answers', () => {
       yes: 'Send it',
     })
     expect(svc.toolNames()).toContain('mcp__gmail__send')
-    expect(Object.keys(svc.servers()).sort()).toEqual(['calendar', 'contacts', 'gmail', 'outlook'])
+    expect(Object.keys(svc.servers()).sort()).toEqual([
+      'calendar',
+      'contacts',
+      'gmail',
+      'outlook',
+      'quickbooks',
+    ])
     expect(svc.connector('calendar').manifest.auth).toBe('system')
     expect(svc.connector('calendar').manifest.system?.pane).toBe('Calendars')
   })
@@ -304,5 +311,53 @@ describe('a watched folder', () => {
     await expect(svc.connect('folder', join(home, 'nowhere'), null, 'u_1')).rejects.toThrow(
       /There is no folder/,
     )
+  })
+})
+
+// A connector of reads and one change, in the core, for a module's script reading through it.
+const ledger: Connector = {
+  manifest: {
+    name: 'ledger',
+    title: 'Ledger',
+    auth: 'path',
+    account: { label: 'Client' },
+    pace: { perMinute: 600 },
+  },
+  guide: 'A made-up ledger.',
+  module: 'Ledger',
+  tables: [],
+  tools: {
+    report: {
+      description: 'A report by name.',
+      input: { name: z.string() },
+      effect: 'read',
+      run: async (c, input) => ({
+        name: (input as { name: string }).name,
+        account: c.host.account,
+      }),
+    },
+    post: {
+      description: 'Posts a journal entry.',
+      input: { amount: z.number() },
+      effect: 'outward',
+      run: async () => ({ posted: true }),
+    },
+  },
+}
+
+describe('a module’s script reading through a connection', () => {
+  it('runs a read with its input checked, and refuses anything that is not a read', async () => {
+    const service = new ConnectorService(world, { secrets, known: [ledger] })
+    const conn = await service.connect('ledger', 'Harbor CPA', null, world.owner('Kenil').id)
+    await expect(
+      service.readThrough(conn.id, 'report', { name: 'ProfitAndLoss' }),
+    ).resolves.toEqual({
+      name: 'ProfitAndLoss',
+      account: 'Harbor CPA',
+    })
+    await expect(service.readThrough(conn.id, 'report', { name: 7 })).rejects.toThrow(/was given/)
+    await expect(service.readThrough(conn.id, 'post', { amount: 10 })).rejects.toThrow(/not a read/)
+    await expect(service.readThrough(conn.id, 'erase', {})).rejects.toThrow(/no read called erase/)
+    service.close()
   })
 })

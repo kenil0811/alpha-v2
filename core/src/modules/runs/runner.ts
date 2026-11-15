@@ -21,6 +21,7 @@ import * as apiOf from './api.ts'
 import * as dueOf from './due.ts'
 import * as reachOf from './reach.ts'
 import {
+  type ConnectionReads,
   type Filed,
   type RunFor,
   type RunOutcome,
@@ -49,6 +50,7 @@ export class ScheduleRunner {
   failures = new Map<string, number>() // a schedule's runs that did not finish, in a row
   held = new Map<string, string>() // schedules waiting on a Try again card, by the card's id
   drafts: Drafts | null = null // a schedule's drafts, sent from the person's mail on their yes
+  connections: ConnectionReads | null = null // reads through a connection, for a kit that uses it
   give: ((by: string, task: string) => void) | null = null // a task handed to its agent
   readonly reviews: Reviews // rows a schedule puts to the person, on a card
 

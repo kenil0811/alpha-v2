@@ -169,6 +169,29 @@ export const CALLS: Call[] = [
     since: 1,
   },
   {
+    name: 'connections.list',
+    signature: 'alpha.connections.list(connector)',
+    params: ['connector'],
+    args: z.looseObject({ connector: z.string() }),
+    answer:
+      'each connection of that connector: id, account (as the firm calls it), state (connected, needs_sign_in, broken, paused, waiting) and when it was last read',
+    words:
+      'the connections of a connector the kit names in `uses` (QuickBooks: one a client company)',
+    effect: null,
+    since: 3,
+  },
+  {
+    name: 'connections.read',
+    signature: 'alpha.connections.read(connection, read, input)',
+    params: ['connection', 'read', 'input'],
+    args: z.looseObject({ connection: z.string(), read: z.string(), input: record.optional() }),
+    answer: 'what the connector’s read gives (QuickBooks: company, accounts, report, list)',
+    words:
+      'one of a connector’s reads through one of its connections, for a connector the kit names in `uses`: only a read, never a change; the schedule names it in effects',
+    effect: 'leaves_world',
+    since: 3,
+  },
+  {
     name: 'people.list',
     signature: 'alpha.people.list(kind)',
     params: ['kind'],

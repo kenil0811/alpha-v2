@@ -102,4 +102,43 @@ describe('alpha kit test', () => {
     expect(report.passed).toEqual(['typed'])
     expect(report.failed[0]?.why).toMatch(/^Run 2: No row in Menu has .*Nobody.* to change/)
   }, 90_000)
+
+  // A made-up kit reading a client's books through a connector it names: its connections, and a
+  // report through each, landed in its own table.
+  const books = (uses: string, cases: Record<string, string>): string => {
+    const dir = join(home, 'books')
+    mkdirSync(join(dir, 'skills', 'read'), { recursive: true })
+    mkdirSync(join(dir, 'tests'), { recursive: true })
+    writeFileSync(
+      join(dir, 'module.yaml'),
+      `name: Books\nversion: 0.1.0\napi: 3\n${uses}tables:\n  - name: Months\n    fields:\n      - { name: Client, kind: text }\n      - { name: Income, kind: number }\n`,
+    )
+    writeFileSync(
+      join(dir, 'skills', 'read', 'run.js'),
+      "export default async (alpha) => {\n  const items = []\n  for (const k of await alpha.connections.list('ledger')) {\n    const r = await alpha.connections.read(k.id, 'report', { name: 'ProfitAndLoss' })\n    items.push({ key: k.account, values: { Client: k.account, Income: r.income } })\n  }\n  const landed = await alpha.rows.land('Months', items)\n  return { words: `${landed.added} added` }\n}\n",
+    )
+    for (const [name, text] of Object.entries(cases))
+      writeFileSync(join(dir, 'tests', `${name}.yaml`), text)
+    return dir
+  }
+  const harbor = [
+    'connections:',
+    '  - connector: ledger',
+    '    account: Harbor CPA',
+    '    reads:',
+    '      - { read: report, input: { name: ProfitAndLoss }, answer: { income: 2050 } }',
+  ].join('\n')
+
+  it('reads through the connections of a connector the kit names, on recorded answers', async () => {
+    const dir = books('uses:\n  - { connector: ledger }\n', {
+      read: `script: skills/read/run.js\n${harbor}\nexpect:\n  words: 1 added\n  rows:\n    Months:\n      - { Client: Harbor CPA, Income: 2050 }\nthen:\n  - reads:\n      Harbor CPA:\n        - { read: report, answer: { income: 2100 } }\n    expect:\n      rows:\n        Months:\n          - { Client: Harbor CPA, Income: 2100 }\n`,
+    })
+    expect(await kitTest(dir)).toEqual({ passed: ['read'], failed: [] })
+  }, 90_000)
+
+  it('refuses a read through a connector the kit does not name', async () => {
+    const dir = books('', { read: `script: skills/read/run.js\n${harbor}\n` })
+    const report = await kitTest(dir)
+    expect(report.failed[0]?.why).toMatch(/may not read through ledger: its kit does not name it/)
+  }, 90_000)
 })

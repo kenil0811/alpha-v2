@@ -29,6 +29,7 @@ import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
 import { landIn, tableOf } from './places.ts'
 import { type CallSays, isRemote, undoSaid } from './process.ts'
+import { readThrough } from './reads.ts'
 import { rulesFor } from './rules.ts'
 import { describeConnections, entriesOf } from './served.ts'
 import type { SignIn } from './signin.ts'
@@ -488,6 +489,11 @@ export class ConnectorService {
         `${c.manifest.title} is connected for ${conns.map((k) => k.account).join(' and ')}: say which account.`,
       )
     return conn
+  }
+
+  // One of a connector's reads through one connection, for a module's script (reads.ts).
+  readThrough(id: string, read: string, input: Record<string, unknown>): Promise<unknown> {
+    return readThrough(this, this.world, id, read, input)
   }
 
   // A connector's tool run by the core itself, on the person's yes already given (a schedule's draft

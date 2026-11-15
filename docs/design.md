@@ -229,7 +229,7 @@ in is as the person, so Alpha reaches only what they can. Each action says wheth
 taken back, so Revert can cover what left Alpha. Packs from outside are signed with Kenil's key and
 checked at every start.
 
-Gmail, Outlook, QuickBooks (read only, through the firm's own Intuit app), files and the Mac's own apps ship; LinkedIn is added by hand. On a hosted Alpha,
+Gmail, Outlook, QuickBooks (reads only, through the firm's own Intuit app, kept by the module that reads through it), files and the Mac's own apps ship; LinkedIn is added by hand. On a hosted Alpha,
 connectors run on the server unless they physically cannot, and those run in a small Bridge app on
 the person's computer, built when a module first needs it.
 

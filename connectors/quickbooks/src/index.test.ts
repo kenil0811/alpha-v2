@@ -1,9 +1,9 @@
 // QuickBooks on made-up Intuit answers, shaped as Intuit's docs show them: never a real company.
-// What is asked (GET only), how reports become rows, a test company found at the sandbox
-// address, a report Intuit cuts short read in halves, and a row QuickBooks stops showing.
+// Its reads: what is asked (GET only), how a report becomes rows, a test company found at the
+// sandbox address, a report Intuit cuts short read in halves, and a list read by one select only.
 import { type Host, type Item, makeCall, Problem } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { goneKeys, quickbooks, readAll, span } from './index.ts'
+import { type CompanyRead, quickbooks, type ReportRead } from './index.ts'
 import { HOSTS } from './intuit.ts'
 
 const REALM = '9341455130166501'
@@ -296,107 +296,117 @@ beforeEach(() => {
   answer = (url) => (url.origin === HOSTS.production ? books(url) : { status: 404 })
 })
 
+const run = async <T>(tool: string, input: Record<string, unknown> = {}, h = host()): Promise<T> =>
+  (await quickbooks.tools[tool]?.run(call(h), input as never)) as T
+
 describe('reading a company’s books', () => {
-  it('reads two full years before this month, a month of the ledger at a time', () => {
-    const s = span(NOW)
-    expect(s.start).toBe('2024-11-01')
-    expect(s.end).toBe('2026-11-15')
-    expect(s.months).toHaveLength(25)
-    expect(s.months.at(-1)).toEqual(['2026-11-01', '2026-11-15'])
-    expect(s.months[0]).toEqual(['2024-11-01', '2024-11-30'])
+  it('keeps nothing of its own: no tables, no daily read, reads only', () => {
+    expect(quickbooks.tables).toEqual([])
+    expect(quickbooks.sync).toBeUndefined()
+    expect(Object.keys(quickbooks.tools)).toEqual(['company', 'accounts', 'report', 'list'])
+    for (const t of Object.values(quickbooks.tools)) expect(t.effect).toBe('read')
   })
 
-  it('makes every table’s rows from the company, its accounts and its reports, on its own basis', async () => {
-    const h = host()
-    const { rows } = await readAll(call(h), 'production', NOW)
-    expect(rows.Companies?.[0]).toEqual({
-      key: REALM,
-      values: expect.objectContaining({
-        Name: 'Harbor CPA LLC',
-        Basis: 'Cash',
-        'Test company': 'no',
-        'Last read': '2026-11-15',
-      }),
+  it('reads the company: its name, its year, its currency and its basis', async () => {
+    const co = await run<CompanyRead>('company')
+    expect(co).toEqual({
+      id: REALM,
+      name: 'Harbor CPA LLC',
+      legalName: 'Harbor CPA LLC',
+      fiscalYearStarts: 'January',
+      currency: 'USD',
+      basis: 'Cash',
+      test: false,
     })
-    expect(rows.Accounts?.map((a) => [a.values.Account, a.values.Active])).toEqual([
-      ['Fees', 'yes'],
-      ['Checking', 'yes'],
-      ['Rent', 'no'],
-    ])
-    // an account in a month: empty and zero amounts are no row
-    expect(
-      rows['Monthly results']?.map((r) => [
-        r.values.Account,
-        r.values.Month,
-        r.values.Group,
-        r.values.Amount,
-      ]),
-    ).toEqual([
-      ['Fees', '2026-10-01', 'Income', { amount: 1250, currency: 'USD' }],
-      ['Fees', '2026-11-01', 'Income', { amount: 800, currency: 'USD' }],
-      ['Rent', '2026-10-01', 'Expenses', { amount: 900, currency: 'USD' }],
-    ])
-    expect(
-      rows['Month-end balances']?.map((r) => [
-        r.values.Account,
-        r.values['As of'],
-        r.values.Group,
-        r.values.Balance,
-      ]),
-    ).toEqual([
-      ['Checking', '2026-10-31', 'Assets', { amount: 4000, currency: 'USD' }],
-      ['Checking', '2026-11-15', 'Assets', { amount: 5400.5, currency: 'USD' }],
-      ['Credit card', '2026-10-31', 'Liabilities', { amount: -120, currency: 'USD' }],
-    ])
-    expect(rows['Sales by customer']).toHaveLength(2)
-    // the opening balance is no transaction; each line names its account and the other side
-    const oct = rows.Transactions?.filter((t) => String(t.values.Date).startsWith('2026-10'))
-    expect(
-      oct?.map((t) => [t.values.Type, t.values.Account, t.values.Split, t.values.Amount]),
-    ).toEqual([
-      ['Deposit', 'Checking', 'Fees', { amount: 1250, currency: 'USD' }],
-      ['Expense', 'Checking', 'Rent', { amount: -900, currency: 'USD' }],
-    ])
-    expect(rows.Receivables?.[0]?.values).toMatchObject({
-      Customer: 'Lakeside Dental',
-      Current: { amount: 400 },
-      '1 to 30 days': { amount: 250 },
-      '31 to 60 days': { amount: 0 },
-      'Over 90 days': { amount: 75 },
-      Total: { amount: 725 },
-    })
-    expect(rows.Payables?.[0]?.values).toMatchObject({ Vendor: 'Landlord', Total: { amount: 900 } })
-    // the reports on the company's own basis, at minor version 75
-    const pl = asked.find((a) => a.url.pathname.endsWith('/ProfitAndLoss'))?.url
-    expect(pl?.searchParams.get('accounting_method')).toBe('Cash')
-    expect(pl?.searchParams.get('summarize_column_by')).toBe('Month')
-    expect(pl?.searchParams.get('minorversion')).toBe('75')
   })
 
-  it('asks for nothing but reads: every call is a GET', async () => {
-    await quickbooks.sync?.(call(host()))
-    expect(asked.length).toBeGreaterThan(30)
-    expect(new Set(asked.map((a) => a.method))).toEqual(new Set(['GET']))
-    expect(quickbooks.tools).toEqual({})
-  })
-
-  it('reads a ledger Intuit cuts short in two halves', async () => {
-    const { rows } = await readAll(call(host()), 'production', NOW)
-    const nov = asked.filter(
-      (a) =>
-        a.url.pathname.endsWith('/GeneralLedger') &&
-        (a.url.searchParams.get('start_date') ?? '') >= '2026-11-01',
+  it('reads the chart of accounts, inactive ones too', async () => {
+    const list = await run<{ name: string; active: boolean; balance: number }[]>('accounts')
+    expect(list.map((a) => [a.name, a.active, a.balance])).toEqual([
+      ['Fees', true, 0],
+      ['Checking', true, 5400.5],
+      ['Rent', false, 0],
+    ])
+    const q = asked.find((a) => a.url.pathname.endsWith('/query'))?.url.searchParams.get('query')
+    expect(q).toBe(
+      'select * from Account where Active in (true, false) startposition 1 maxresults 1000',
     )
+  })
+
+  it('reads a report by month into its columns and data rows, totals left out', async () => {
+    const r = await run<ReportRead>('report', {
+      name: 'ProfitAndLoss',
+      start: '2026-10-01',
+      end: '2026-11-15',
+      byMonth: true,
+      basis: 'Cash',
+    })
+    expect(r.columns.map((c) => [c.title, c.start ?? null])).toEqual([
+      ['', null],
+      ['Oct 2026', '2026-10-01'],
+      ['Nov 1-15, 2026', '2026-11-01'],
+      ['Total', null],
+    ])
     expect(
-      nov.map((a) => [a.url.searchParams.get('start_date'), a.url.searchParams.get('end_date')]),
+      r.rows.map((x) => [x.cells[0]?.value, x.cells[0]?.id, x.group, x.cells[1]?.value]),
+    ).toEqual([
+      ['Fees', '1', 'Income', '1,250.00'],
+      ['Rent', '7', 'Expenses', '900.00'],
+    ])
+    const url = asked.find((a) => a.url.pathname.endsWith('/ProfitAndLoss'))?.url
+    expect(Object.fromEntries(url?.searchParams ?? [])).toEqual({
+      start_date: '2026-10-01',
+      end_date: '2026-11-15',
+      summarize_column_by: 'Month',
+      accounting_method: 'Cash',
+      minorversion: '75',
+    })
+    // the balance sheet's groups are the innermost QuickBooks names
+    const bs = await run<ReportRead>('report', {
+      name: 'BalanceSheet',
+      start: '2026-10-01',
+      end: '2026-11-15',
+      byMonth: true,
+    })
+    expect(bs.rows.map((x) => [x.cells[0]?.value, x.group])).toEqual([
+      ['Checking', 'Assets'],
+      ['Credit card', 'Liabilities'],
+    ])
+  })
+
+  it('reads a ledger Intuit cuts short in two halves, each line with its account', async () => {
+    const r = await run<ReportRead>('report', {
+      name: 'GeneralLedger',
+      start: '2026-11-01',
+      end: '2026-11-15',
+      columns: 'tx_date,txn_type,doc_num,name,memo,split_acc,subt_nat_amount',
+    })
+    const asks = asked.filter((a) => a.url.pathname.endsWith('/GeneralLedger'))
+    expect(
+      asks.map((a) => [a.url.searchParams.get('start_date'), a.url.searchParams.get('end_date')]),
     ).toEqual([
       ['2026-11-01', '2026-11-15'],
       ['2026-11-01', '2026-11-08'],
       ['2026-11-09', '2026-11-15'],
     ])
-    expect(
-      rows.Transactions?.filter((t) => String(t.values.Date).startsWith('2026-11')),
-    ).toHaveLength(2)
+    expect(r.rows).toHaveLength(2)
+    expect(r.rows[0]?.under).toEqual({ value: 'Checking', id: '35' })
+  })
+
+  it('reads a list by one select only, every page', async () => {
+    await expect(run('list', { select: 'delete from Account' })).rejects.toThrow(/one select/)
+    await expect(
+      run('list', { select: 'select * from Vendor; select * from Bill' }),
+    ).rejects.toThrow(/one select/)
+    const list = await run<{ Name: string }[]>('list', { select: 'select * from Account' })
+    expect(list).toHaveLength(3)
+  })
+
+  it('asks for nothing but reads: every call is a GET', async () => {
+    await run('company')
+    await run('accounts')
+    await run('report', { name: 'AgedReceivables', asOf: '2026-11-15' })
+    expect(new Set(asked.map((a) => a.method))).toEqual(new Set(['GET']))
   })
 
   it('finds a test company at the sandbox address, and keeps where it is', async () => {
@@ -407,8 +417,8 @@ describe('reading a company’s books', () => {
     const h = host()
     await quickbooks.check?.(call(h))
     expect(JSON.parse(h.now ?? '{}')).toMatchObject({ where: 'sandbox' })
-    const { rows } = await readAll(call(h), 'sandbox', NOW)
-    expect(rows.Companies?.[0]?.values['Test company']).toBe('yes')
+    const co = await run<CompanyRead>('company', {}, h)
+    expect(co.test).toBe(true)
   })
 
   it('asks for a sign-in when neither address takes it, and waits when Intuit says too many', async () => {
@@ -422,39 +432,5 @@ describe('reading a company’s books', () => {
     const busy = await quickbooks.check?.(call(host())).catch((e: unknown) => e)
     expect(busy).toBeInstanceOf(Problem)
     expect((busy as Problem).kind).toBe('busy')
-  })
-
-  it('lands a changed amount in place, and marks gone what QuickBooks no longer shows, within what it read', async () => {
-    const h = host()
-    await quickbooks.sync?.(call(h))
-    const before = h.landed.get('Transactions')?.length ?? 0
-    fees = '1,300.00'
-    glLines = 1 // the October rent line is deleted in QuickBooks
-    cutOnce = false // and November's ledger is cut short again, read in the same halves
-    const again = await quickbooks.sync?.(call(h))
-    expect(again?.sawNew).toBe(false)
-    const fee = h.landed
-      .get('Monthly results')
-      ?.find((r) => r.values.Account === 'Fees' && r.values.Month === '2026-10-01')
-    expect(fee?.values.Amount).toEqual({ amount: 1300, currency: 'USD' })
-    expect(h.landed.get('Transactions')).toHaveLength(before - 1)
-    expect(h.goneSaid.get('Transactions')).toEqual([
-      expect.stringMatching(/^9341455130166501:2026-10:35:Expense:202:1$/),
-    ])
-  })
-
-  it('leaves gone only the company’s own rows of the months it read', () => {
-    const had = [
-      `${REALM}:2024-10:35:x`,
-      `${REALM}:2026-10:35:y`,
-      `${REALM}:2026-10:35:z`,
-      `1111:2026-10:35:y`,
-    ]
-    expect(goneKeys(REALM, had, new Set([`${REALM}:2026-10:35:y`]), ['2026-10'])).toEqual([
-      `${REALM}:2026-10:35:z`,
-    ])
-    expect(goneKeys(REALM, [`${REALM}:7`, `${REALM}:1`], new Set([`${REALM}:1`]), null)).toEqual([
-      `${REALM}:7`,
-    ])
   })
 })

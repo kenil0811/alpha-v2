@@ -8,7 +8,7 @@ import { type JudgeSpec, judge } from '../judging.ts'
 import { nextRun, schedules } from '../schedules.ts'
 import type { ScheduleRunner } from './runner.ts'
 import type { RunFor, RunPlace } from './types.ts'
-import type { Walls } from './walls.ts'
+import { connectorsOf, type Walls } from './walls.ts'
 
 // Whose sign-ins a run reads with: the person it runs for, else the module's owner, else the firm's.
 const readerFor = (runner: ScheduleRunner, who: RunFor) => who.user ?? runner.owner ?? FIRM
@@ -85,6 +85,13 @@ export function api(
     // a write stays inside the module whatever the file says
     if (!within().includes(t.module.id)) refuse(`${t.name} is not one of ${module.name}'s tables.`)
     return t
+  }
+  // a connector the run may read through: one its kit names in uses
+  const usable = (connector: string): string => {
+    const name = connector.toLowerCase()
+    if (!(walls?.connectors ?? connectorsOf(module.dir)).has(name))
+      refuse(`${label} may not read through ${connector}: its kit does not name it in uses.`)
+    return name
   }
   const affecting = (call: string): void => {
     if (walls?.effects && !walls.effects.has(call))
@@ -339,6 +346,25 @@ export function api(
         ctx,
       )
       return null
+    },
+    // the connections of a connector the kit names in its uses, and one read through one of them:
+    // never a change, which the connector service refuses whatever the kit asks
+    'connections.list': async (p: Record<string, unknown>) => {
+      const name = usable(String(p.connector ?? ''))
+      return runner.connections?.list(name) ?? []
+    },
+    'connections.read': async (p: Record<string, unknown>) => {
+      affecting('connections.read')
+      const reads = runner.connections
+      if (!reads) return refuse('No connection can be read where this runs.')
+      const conn = runner.world.connections.get(String(p.connection ?? ''))
+      if (!conn) return refuse(`There is no connection ${String(p.connection)}.`)
+      usable(conn.connector)
+      const input = (p.input && typeof p.input === 'object' ? p.input : {}) as Record<
+        string,
+        unknown
+      >
+      return reads.read(conn.id, String(p.read ?? ''), input)
     },
     'browser.open': async (p: Record<string, unknown>) => {
       affecting('browser.open')
