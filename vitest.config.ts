@@ -10,6 +10,7 @@ export default defineConfig({
       'connectors/files',
       'connectors/gmail',
       'connectors/outlook',
+      'connectors/quickbooks',
       'connectors/mac',
       'connectors-extra/linkedin',
     ],

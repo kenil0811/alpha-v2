@@ -40,6 +40,7 @@ describe('connectors found in their folders', () => {
       'calendar',
       'contacts',
       'outlook',
+      'quickbooks',
     ])
   })
 

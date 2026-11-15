@@ -29,6 +29,9 @@
       "path": "connectors/outlook"
     },
     {
+      "path": "connectors/quickbooks"
+    },
+    {
       "path": "connectors/files"
     },
     {
