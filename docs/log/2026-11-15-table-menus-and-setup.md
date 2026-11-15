@@ -31,3 +31,11 @@ column takes are one part for its menu and the footer.
 Seen in WebKit on the Mac's Alpha, dark: no line over a filtered list; the column menu with its
 icons and the description item last; Sources filtered by two names and by "account", and grouped;
 Setup's two parts and the details page with Back to Setup.
+
+## Later the same day: a card on a board opens its row
+
+Found on a client's board, the list its table opens on: a card could be dragged and its stage
+picked, but nothing on it opened the row, so its notes and documents were out of reach from the
+board. A card's name now opens the row in the side panel, as a row's first cell does in the
+table (T4). The board draws its own frame, so the table view lost two lines.
+

@@ -454,9 +454,7 @@ export function TableView({
               )}
             </div>
             {config.kind === 'board' && boardBy ? (
-              <div className="min-h-0 flex-1 overflow-auto px-7 pb-6">
-                <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} />
-              </div>
+              <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />
             ) : config.kind === 'form' ? (
               <FormView
                 table={data.name}
