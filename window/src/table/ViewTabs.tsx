@@ -5,7 +5,7 @@
 // the table's actions, ⋮ and the numbers' chevron (`right`). The list's own actions sit in the
 // dropdown and on a right-click of it: rename, duplicate, open the table on it, delete.
 import type { SavedView } from '@alpha/core/api'
-import { ChevronDown, Plus } from 'lucide-react'
+import { ChevronDown, CopyPlus, List, PencilLine, Plus, Star, Trash2 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { Confirm } from '../ui/dialog.tsx'
@@ -65,7 +65,8 @@ export function ViewTabs({
           setNaming('rename')
         }}
       >
-        Rename list…
+        <PencilLine className="size-3.5 text-ink-3" />
+        Rename list
       </MenuItem>
       <MenuItem
         onClick={() => {
@@ -73,6 +74,7 @@ export function ViewTabs({
           onSaveAs(view ? `${view.name} (copy)` : 'All (copy)')
         }}
       >
+        <CopyPlus className="size-3.5 text-ink-3" />
         Duplicate list
       </MenuItem>
       <MenuItem
@@ -89,6 +91,7 @@ export function ViewTabs({
           if (view) onDefault(view.id, !view.isDefault)
         }}
       >
+        <Star className="size-3.5 text-ink-3" />
         Open the table on this list
       </MenuItem>
       <MenuLine />
@@ -100,6 +103,7 @@ export function ViewTabs({
           setRemoving(true)
         }}
       >
+        <Trash2 className="size-3.5" />
         Delete list
       </MenuItem>
     </>
@@ -178,6 +182,7 @@ export function ViewTabs({
                 onPick(v?.id ?? null)
               }}
             >
+              <List className="size-3.5 text-ink-3" />
               {v?.name ?? 'All'}
             </MenuItem>
           ))}

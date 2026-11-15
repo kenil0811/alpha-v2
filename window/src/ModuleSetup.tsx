@@ -1,9 +1,10 @@
-// A module's Setup, its last tab: all there is to know about a module that is not its pages or
-// its tables. Where it comes from, what it is for, its schedules, its setup tables and parts, the
-// notes Alpha reads first, what is the person's against the module's own, and Pack it.
+// A module's Setup, its last tab: what runs on its own in it and every table it has, and no
+// more. The rest about a module is its details, a page of its own a link on Setup opens: where
+// it comes from, what it is for, the agents it brings, the notes Alpha reads first, what is the
+// person's against the module's own, and Pack it.
 // The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, Me, ModuleView, ScheduleView, YoursView } from '@alpha/core/api'
-import { CalendarClock, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronRight, Table2, Trash2 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
@@ -33,6 +34,25 @@ function Part({ title, sub, children }: { title: string; sub: string; children: 
 }
 
 export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => void }) {
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="flex max-w-page flex-col gap-7 px-7 py-6">
+        <Schedules m={m} onChange={onChange} />
+        <Tables m={m} onChange={onChange} />
+        <a
+          href={`#/module/${m.id}/details`}
+          className="flex items-center gap-1 self-start text-accent text-md hover:underline"
+        >
+          Module details
+          <ChevronRight className="size-3.5" />
+        </a>
+      </div>
+    </div>
+  )
+}
+
+// A module's details, a page of its own under Setup: all the rest there is to know about it.
+export function ModuleDetails({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   const [me, setMe] = useState<Me | null>(null)
   useEffect(() => {
     api.get<Me>('/api/me').then(setMe, () => undefined)
@@ -51,9 +71,7 @@ export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => vo
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         {about && <p className="text-ink-3 text-sm">{about}</p>}
         <ModuleCase m={m} onChange={onChange} />
-        <Schedules m={m} onChange={onChange} />
         <KitAgents m={m} />
-        <Tables m={m} onChange={onChange} />
         <Part
           title="Notes"
           sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
@@ -210,24 +228,23 @@ function AllSchedules({
   )
 }
 
-// The tables that are not tabs of their own: setup, and parts, each saying what it is.
+// Every table of the module: its own tabs first, then setup and parts, each saying what it is.
 function Tables({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   const { busy, on, act } = useAct(onChange)
-  const others = m.tables.filter((t) => t.place !== 'main')
-  if (!others.length) return null
+  const all = [
+    ...m.tables.filter((t) => t.place === 'main'),
+    ...m.tables.filter((t) => t.place !== 'main'),
+  ]
+  if (!all.length) return null
   return (
-    <Part
-      title="Tables"
-      sub={`Setup its schedules read${
-        others.some((t) => t.place === 'part') ? ', the tables whose rows are part of a row' : ''
-      }${others.some((t) => t.place === 'people') ? ", and what People's columns hold" : ''}.`}
-    >
+    <Part title="Tables" sub={`Every table of ${m.name}.`}>
       <ul className="flex flex-col">
-        {others.map((t) => (
+        {all.map((t) => (
           <li
             key={t.id}
-            className="flex gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+            className="flex items-center gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
           >
+            <Table2 className="size-4 shrink-0 text-ink-3" />
             <a
               href={`#/table/${t.id}`}
               className="min-w-0 flex-1 truncate text-ink hover:underline"
@@ -235,13 +252,15 @@ function Tables({ m, onChange }: { m: ModuleView; onChange: () => void }) {
               {t.name}
             </a>
             <span className="text-ink-3">
-              {t.place === 'setup'
-                ? 'Setup'
-                : t.place === 'people'
-                  ? "People's columns"
-                  : `Part of ${t.of ?? 'a row'}`}
+              {t.place === 'main'
+                ? 'A tab'
+                : t.place === 'setup'
+                  ? 'Setup'
+                  : t.place === 'people'
+                    ? "People's columns"
+                    : `Part of ${t.of ?? 'a row'}`}
             </span>
-            {t.place !== 'people' && (
+            {t.place !== 'people' && t.place !== 'main' && (
               <button
                 type="button"
                 disabled={busy && on === t.id}

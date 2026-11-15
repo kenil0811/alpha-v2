@@ -220,7 +220,7 @@ function CardBody({
         )}
         {card.acting?.always && !always && (
           <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
-            Always…
+            Always
           </Button>
         )}
         {card.options.length === 0 && <Answer busy={busy} onAnswer={(a) => void answer(a)} />}

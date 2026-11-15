@@ -222,6 +222,7 @@ export function AgentPicker({
               onPick(a.id)
             }}
           >
+            <Bot className="size-3.5 text-ink-3" />
             {a.name}
           </MenuItem>
         ))}

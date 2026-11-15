@@ -6,9 +6,13 @@ import {
   applyFilters,
   applySearch,
   BLANK,
+  canGroup,
   columns,
+  family,
   groupRows,
   matches,
+  OPS,
+  opWords,
   ruleWords,
   sortRows,
   tintOf,
@@ -78,6 +82,50 @@ describe('a filter', () => {
     expect(f({ field: 'stage', op: 'in', values: ['New', 'Looking'] })).toEqual(['a', 'c'])
     expect(f({ field: 'name', op: 'contains', value: 'FIRM' })).toEqual(['a'])
     expect(f({ field: 'stage', op: 'empty' })).toEqual(['d'])
+  })
+
+  it('takes a field of rows by the names it shows: any of, none of, and their words', () => {
+    const sources = field('sources', 'relation', { many: true })
+    const names = { s1: 'APS', s2: 'Kumo', s3: 'Fusion' }
+    const listed = [
+      row('a', { sources: ['s1'] }),
+      row('b', { sources: ['s1', 's2'] }),
+      row('c', { sources: ['s3'] }),
+      row('d', { sources: [] }),
+    ]
+    const by = (rule: Omit<FilterRule, 'field'>) =>
+      ids(
+        applyFilters(
+          listed,
+          [sources],
+          { match: 'all', rules: [{ field: 'sources', ...rule }] },
+          names,
+        ),
+      )
+    expect(family('relation', true)).toBe('rows')
+    expect(OPS.rows).toEqual(['in', 'none_of', 'contains', 'not_contains', 'empty', 'not_empty'])
+    expect(by({ op: 'in', values: ['Kumo', 'Fusion'] })).toEqual(['b', 'c'])
+    expect(by({ op: 'none_of', values: ['APS'] })).toEqual(['c', 'd'])
+    expect(by({ op: 'contains', value: 'kum' })).toEqual(['b'])
+    expect(by({ op: 'not_contains', value: 'aps' })).toEqual(['c', 'd'])
+    expect(by({ op: 'empty' })).toEqual(['d'])
+    expect(ruleWords({ field: 'sources', op: 'in', values: ['APS', 'Kumo'] }, sources)).toBe(
+      'Sources is APS or Kumo',
+    )
+    expect(ruleWords({ field: 'sources', op: 'none_of', values: ['APS'] }, sources)).toBe(
+      'Sources is none of APS',
+    )
+    expect(opWords('in', 'rows')).toBe('is any of')
+    expect(opWords('none_of', 'rows')).toBe('is none of')
+    // it groups by the names together; tags do not group
+    expect(canGroup(sources)).toBe(true)
+    expect(canGroup(field('tags', 'choice', { many: true }))).toBe(false)
+    expect(groupRows(listed, sources, names).map((g) => [g.label, ids(g.rows)])).toEqual([
+      ['APS', ['a']],
+      ['APS, Kumo', ['b']],
+      ['Fusion', ['c']],
+      ['No sources', ['d']],
+    ])
   })
 
   it('joins rules by all or any', () => {

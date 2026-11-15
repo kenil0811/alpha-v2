@@ -160,7 +160,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
           </Button>
           {draft.always && !changed && (
             <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
-              Always…
+              Always
             </Button>
           )}
         </Actions>

@@ -36,23 +36,13 @@ import { Confirm } from '../ui/dialog.tsx'
 import { Dot } from '../ui/dot.tsx'
 import { Field, Select } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
-import { MenuItem, MenuLine, Popover, useContextMenu } from '../ui/popover.tsx'
+import { Popover, useContextMenu } from '../ui/popover.tsx'
 import { tipNow } from '../ui/tooltip.tsx'
 import { CellHistory } from './CellHistory.tsx'
-import { ColumnMenu } from './ColumnMenu.tsx'
+import { ColumnMenu, TotalItems } from './ColumnMenu.tsx'
 import { EditCell } from './EditCell.tsx'
-import { cycleSort, setTotal, setWidth } from './edits.ts'
-import {
-  family,
-  type Group,
-  groupRows,
-  TOTAL_WORDS,
-  TOTALS,
-  tintOf,
-  toneOf,
-  total,
-  widthOf,
-} from './engine.ts'
+import { cycleSort, setWidth } from './edits.ts'
+import { type Group, groupRows, TOTAL_WORDS, tintOf, toneOf, total, widthOf } from './engine.ts'
 import { useGoes } from './goes.ts'
 import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
@@ -488,7 +478,7 @@ export function Grid({
                     <button
                       type="button"
                       aria-label="Actions for this row"
-                      data-tip="Open, duplicate, copy a link, delete…"
+                      data-tip="Open, duplicate, copy a link, delete"
                       onClick={(e) => {
                         const b = e.currentTarget.getBoundingClientRect()
                         setMenu({ row: r, field: null, x: b.left, y: b.bottom })
@@ -1030,30 +1020,14 @@ function Foot({
         onClose={() => setOpen(false)}
         align={numeric ? 'end' : 'start'}
       >
-        <div className="flex flex-col">
-          {TOTALS[family(f.kind)].map((o) => (
-            <MenuItem
-              key={o}
-              checked={op === o}
-              onClick={() => {
-                onConfig(setTotal(config, f.id, o))
-                setOpen(false)
-              }}
-            >
-              {TOTAL_WORDS[o]}
-            </MenuItem>
-          ))}
-          <MenuLine />
-          <MenuItem
-            checked={!op}
-            onClick={() => {
-              onConfig(setTotal(config, f.id, null))
-              setOpen(false)
-            }}
-          >
-            No total
-          </MenuItem>
-        </div>
+        <TotalItems
+          field={f}
+          config={config}
+          onPick={(c) => {
+            onConfig(c)
+            setOpen(false)
+          }}
+        />
       </Popover>
     </td>
   )

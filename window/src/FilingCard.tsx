@@ -251,7 +251,7 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
           </Button>
           {filing.always && !changed && (
             <Button variant="ghost" disabled={busy} onClick={() => setAlways(true)}>
-              Always…
+              Always
             </Button>
           )}
         </Actions>

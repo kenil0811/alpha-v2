@@ -4,25 +4,32 @@
 import type { FieldView, ReadByView, ViewConfig } from '@alpha/core/api'
 import {
   ArrowDownUp,
+  Ban,
   Columns3,
   Copy,
   Download,
   EllipsisVertical,
+  FileSpreadsheet,
+  FileText,
   Group,
+  PanelTop,
   PencilLine,
+  Pin,
   Plus,
+  RotateCcw,
+  WrapText,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { MenuItem, MenuLine, Popover, SubMenu } from '../ui/popover.tsx'
 import { setGroup } from './edits.ts'
-import { GROUPABLE } from './engine.ts'
+import { canGroup } from './engine.ts'
 import { AddFieldForm } from './Grid.tsx'
+import { KindIcon } from './KindIcon.tsx'
 import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
 import { ReadNowItems } from './ReadNow.tsx'
 import { SortEditor } from './SortEditor.tsx'
 import { NameForm } from './ViewTabs.tsx'
-import { isTags } from './values.ts'
 
 // The ⋮ menu: the view's sort and group, then downloads of exactly the rows and columns shown.
 export function More({
@@ -67,7 +74,7 @@ export function More({
     .map((s) => fields.find((f) => f.id === s.field)?.name)
     .filter(Boolean)
   const grouped = fields.find((f) => f.id === config.group)
-  const groupable = fields.filter((f) => GROUPABLE.has(f.kind) && !isTags(f))
+  const groupable = fields.filter(canGroup)
   return (
     <>
       <button
@@ -109,6 +116,7 @@ export function More({
           }
         >
           <MenuItem checked={!grouped} onClick={() => onConfig(setGroup(config, null))}>
+            <Ban className="size-3.5 text-ink-3" />
             No grouping
           </MenuItem>
           <MenuLine />
@@ -118,6 +126,7 @@ export function More({
               checked={f.id === config.group}
               onClick={() => onConfig(setGroup(config, f.id))}
             >
+              <KindIcon field={f} />
               {f.name}
             </MenuItem>
           ))}
@@ -138,6 +147,7 @@ export function More({
               reason={n > shown.length ? `There are only ${shown.length} columns.` : undefined}
               onClick={() => layout.setFrozen(n)}
             >
+              <Pin className="size-3.5 text-ink-3" />
               {n === 1 ? 'Freeze the first column' : `Freeze the first ${n} columns`}
             </MenuItem>
           ))}
@@ -146,6 +156,7 @@ export function More({
             checked={wrapped}
             onClick={() => layout.setWrap(wrapped ? [] : shown.map((f) => f.id))}
           >
+            <WrapText className="size-3.5 text-ink-3" />
             Wrap text in every column
           </MenuItem>
           <MenuItem
@@ -154,6 +165,7 @@ export function More({
             }
             onClick={() => onConfig({ ...config, widths: {} })}
           >
+            <RotateCcw className="size-3.5 text-ink-3" />
             Reset the column widths
           </MenuItem>
         </SubMenu>
@@ -189,6 +201,7 @@ export function More({
               onTab?.(!tab)
             }}
           >
+            <PanelTop className="size-3.5 text-ink-3" />
             Keep as a tab
           </MenuItem>
         )}
@@ -213,6 +226,7 @@ export function More({
               onExport('xlsx')
             }}
           >
+            <FileSpreadsheet className="size-3.5 text-ink-3" />
             Excel, as shown
           </MenuItem>
           <MenuItem
@@ -221,6 +235,7 @@ export function More({
               onExport('csv')
             }}
           >
+            <FileText className="size-3.5 text-ink-3" />
             CSV, as shown
           </MenuItem>
           <MenuLine />

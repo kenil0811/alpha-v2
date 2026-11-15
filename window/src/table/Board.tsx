@@ -99,7 +99,7 @@ export function Board({
                     send: (w) => askForNew('choice', `${by.name} in ${data.name}`, w),
                   }}
                 >
-                  {choice === '' && <option value="">Move to…</option>}
+                  {choice === '' && <option value="">Move to</option>}
                   {by.choices.map((c) => (
                     <option key={c} value={c}>
                       {c}

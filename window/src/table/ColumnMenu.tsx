@@ -1,17 +1,32 @@
 // A column's menu, in the column itself, as in AG Grid: sort, filter, group by it, a total,
-// colours, move it, hide it. And the rule editor a filter chip opens too.
+// colours, move it, hide it, and at its foot the sentence on what the column means. Every item
+// has its icon, and none ends in dots. And the rule editor a filter chip opens too.
 import type { FieldView, FilterOp, FilterRule, RowView, TotalOp, ViewConfig } from '@alpha/core/api'
 import {
   ArrowDown,
+  ArrowDownToLine,
+  ArrowDownUp,
   ArrowLeft,
   ArrowLeftToLine,
   ArrowRight,
   ArrowRightToLine,
   ArrowUp,
+  ArrowUpToLine,
+  Asterisk,
+  Ban,
+  Circle,
+  CircleDot,
+  Divide,
   EyeOff,
+  Hash,
+  ListFilter,
+  type LucideIcon,
   MessageSquareText,
+  PaintBucket,
+  Palette,
   Pin,
   Rows3,
+  Sigma,
   WrapText,
 } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
@@ -31,7 +46,17 @@ import {
   setTotal,
   setWhen,
 } from './edits.ts'
-import { family, GROUPABLE, needs, OP_WORDS, OPS, TOTAL_WORDS, TOTALS } from './engine.ts'
+import {
+  canGroup,
+  family,
+  namesOf,
+  needs,
+  OP_WORDS,
+  OPS,
+  opWords,
+  TOTAL_WORDS,
+  TOTALS,
+} from './engine.ts'
 import type { LayoutNow } from './layout.ts'
 import { useShapeFixed } from './Mirror.tsx'
 import { show } from './values.ts'
@@ -44,11 +69,55 @@ const TONE_WORDS: Record<Tone, string> = {
   accent: 'Blue',
 }
 
-// Whose sentence a field's about is, as the menu says it.
-const ABOUT_BY: Record<'kit' | 'alpha' | 'person', string> = {
-  kit: 'From the module',
-  alpha: 'Assumed by Alpha',
-  person: 'Yours',
+// Each total's icon.
+const TOTAL_ICONS: Record<TotalOp, LucideIcon> = {
+  sum: Sigma,
+  avg: Divide,
+  min: ArrowDownToLine,
+  max: ArrowUpToLine,
+  count: Hash,
+  empty: Circle,
+  filled: CircleDot,
+  unique: Asterisk,
+  earliest: ArrowDownToLine,
+  latest: ArrowUpToLine,
+}
+
+// The totals a column takes, each with its icon, and No total: in its menu and in the footer.
+export function TotalItems({
+  field,
+  config,
+  onPick,
+}: {
+  field: FieldView
+  config: ViewConfig
+  onPick: (c: ViewConfig) => void
+}) {
+  return (
+    <div className="flex flex-col">
+      {TOTALS[family(field.kind, field.many)].map((op) => {
+        const Icon = TOTAL_ICONS[op]
+        return (
+          <MenuItem
+            key={op}
+            checked={config.totals[field.id] === op}
+            onClick={() => onPick(setTotal(config, field.id, op))}
+          >
+            <Icon className="size-3.5 text-ink-3" />
+            {TOTAL_WORDS[op]}
+          </MenuItem>
+        )
+      })}
+      <MenuLine />
+      <MenuItem
+        checked={!config.totals[field.id]}
+        onClick={() => onPick(setTotal(config, field.id, null))}
+      >
+        <Ban className="size-3.5 text-ink-3" />
+        No total
+      </MenuItem>
+    </div>
+  )
 }
 
 export function ColumnMenu({
@@ -98,27 +167,7 @@ export function ColumnMenu({
         onRemove={rule ? () => apply(removeRule(config, field.id)) : undefined}
       />
     )
-  if (page === 'total')
-    return (
-      <div className="flex flex-col">
-        {TOTALS[fam].map((op) => (
-          <MenuItem
-            key={op}
-            checked={config.totals[field.id] === op}
-            onClick={() => apply(setTotal(config, field.id, op))}
-          >
-            {TOTAL_WORDS[op]}
-          </MenuItem>
-        ))}
-        <MenuLine />
-        <MenuItem
-          checked={!config.totals[field.id]}
-          onClick={() => apply(setTotal(config, field.id, null))}
-        >
-          No total
-        </MenuItem>
-      </div>
-    )
+  if (page === 'total') return <TotalItems field={field} config={config} onPick={apply} />
   if (page === 'colour') return <ColourEditor field={field} config={config} onSave={apply} />
   if (page === 'describe') return <AboutEditor tableId={tableId} field={field} onDone={onClose} />
 
@@ -128,20 +177,6 @@ export function ColumnMenu({
     fam === 'date'
   return (
     <div className="flex flex-col">
-      <div className="flex max-w-72 flex-col gap-0.5 whitespace-normal px-3 pt-1.5 pb-1">
-        <span className="text-ink text-sm">
-          {field.about ?? <span className="text-ink-3">No sentence on what it means yet.</span>}
-        </span>
-        <span className="text-ink-3 text-xs">{field.aboutBy ? ABOUT_BY[field.aboutBy] : ''}</span>
-        {field.summary && (
-          <span className="text-ink-2 text-xs">Worked out from other rows: {field.summary}</span>
-        )}
-      </div>
-      <MenuItem reason={fixed} onClick={() => setPage('describe')}>
-        <MessageSquareText className="size-3.5 text-ink-3" />
-        {field.about ? 'Describe it your way…' : 'Describe…'}
-      </MenuItem>
-      <MenuLine />
       <MenuItem checked={sorted === 'asc'} onClick={() => apply(setSort(config, field.id, 'asc'))}>
         <ArrowUp className="size-3.5 text-ink-3" />
         Sort {fam === 'number' ? 'smallest first' : fam === 'date' ? 'oldest first' : 'A to Z'}
@@ -155,14 +190,16 @@ export function ColumnMenu({
       </MenuItem>
       {sorted && (
         <MenuItem onClick={() => apply(setSort(config, field.id, null))}>
+          <ArrowDownUp className="size-3.5 text-ink-3" />
           Stop sorting by it
         </MenuItem>
       )}
       <MenuLine />
       <MenuItem checked={!!rule} onClick={() => setPage('filter')}>
-        Filter…
+        <ListFilter className="size-3.5 text-ink-3" />
+        Filter
       </MenuItem>
-      {GROUPABLE.has(field.kind) && !field.many && (
+      {canGroup(field) && (
         <MenuItem
           checked={config.group === field.id}
           onClick={() => apply(setGroup(config, config.group === field.id ? null : field.id))}
@@ -172,7 +209,8 @@ export function ColumnMenu({
         </MenuItem>
       )}
       <MenuItem checked={!!config.totals[field.id]} onClick={() => setPage('total')}>
-        Total…
+        <Sigma className="size-3.5 text-ink-3" />
+        Total
       </MenuItem>
       {canColour && (
         <MenuItem
@@ -182,7 +220,8 @@ export function ColumnMenu({
           }
           onClick={() => setPage('colour')}
         >
-          Colour…
+          <Palette className="size-3.5 text-ink-3" />
+          Colour
         </MenuItem>
       )}
       <MenuLine />
@@ -249,6 +288,12 @@ export function ColumnMenu({
         <ArrowRightToLine className="size-3.5 text-ink-3" />
         Insert column right
       </MenuItem>
+      <MenuLine />
+      {/* the sentence on what the column means: the person's own once they write one */}
+      <MenuItem reason={fixed} onClick={() => setPage('describe')}>
+        <MessageSquareText className="size-3.5 text-ink-3" />
+        {field.aboutBy === 'person' ? 'Edit column description' : 'Add column description'}
+      </MenuItem>
     </div>
   )
 }
@@ -279,14 +324,22 @@ export function RuleEditor({
   const read = (v: string) => (fam === 'number' || op === 'next_days' ? Number(v) : v)
   const kind = op === 'next_days' || fam === 'number' ? 'number' : fam === 'date' ? 'date' : 'text'
   const counts = new Map<string, number>()
-  // how many rows hold each choice; a tags field counts a row under each of its tags
+  // how many rows hold each choice; a tags field counts a row under each of its tags, and a field
+  // of rows under each row it names
   for (const r of rows) {
     const held = r.values[field.slug]
     for (const v of fam === 'tags' && Array.isArray(held)
       ? held.map(String)
-      : [show(field, held, names)])
+      : fam === 'rows'
+        ? namesOf(held, names)
+        : [show(field, held, names)])
       counts.set(v, (counts.get(v) ?? 0) + 1)
   }
+  // what a list picks from: a choice's choices, or the names a field of rows shows in this table
+  const options =
+    fam === 'rows'
+      ? [...counts.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+      : field.choices
   const ready =
     need === 0 ||
     (need === 'list'
@@ -309,7 +362,7 @@ export function RuleEditor({
       <Select value={op} onChange={(e) => setOp(e.target.value as FilterOp)} aria-label="How">
         {ops.map((o) => (
           <option key={o} value={o}>
-            {o === 'in' ? (fam === 'tags' ? 'has any of' : 'is any of') : OP_WORDS[o]}
+            {opWords(o, fam)}
           </option>
         ))}
       </Select>
@@ -338,10 +391,10 @@ export function RuleEditor({
       )}
       {need === 'list' && (
         <div className="flex max-h-60 flex-col overflow-y-auto">
-          {field.choices.map((c) => (
+          {options.map((c) => (
             <label
               key={c}
-              className="flex h-7.5 items-center gap-2 rounded-sm px-1.5 hover:bg-hover"
+              className="flex h-7.5 shrink-0 items-center gap-2 rounded-sm px-1.5 hover:bg-hover"
             >
               <input
                 type="checkbox"
@@ -352,7 +405,11 @@ export function RuleEditor({
                 }
               />
               <span className="flex min-w-0 flex-1">
-                <Choice of={field} value={c} />
+                {fam === 'rows' ? (
+                  <span className="truncate">{c}</span>
+                ) : (
+                  <Choice of={field} value={c} />
+                )}
               </span>
               <span className="text-ink-3 text-sm tabular-nums">{counts.get(c) ?? 0}</span>
             </label>
@@ -400,6 +457,7 @@ function ColourEditor({
             onSave(setTint(config, config.colours.tint === field.id ? null : field.id))
           }
         >
+          <PaintBucket className="size-3.5 text-ink-3" />
           Fill its cells with their colours
         </MenuItem>
       </div>

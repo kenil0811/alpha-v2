@@ -35,7 +35,7 @@ export function SourcePanel({
   onClose,
 }: {
   tableId: string
-  table: string // its name, for Add new…
+  table: string // its name, for Add new
   row: RowView
   field: FieldView
   rowName: string

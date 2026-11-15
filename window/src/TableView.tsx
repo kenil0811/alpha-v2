@@ -30,7 +30,6 @@ import {
   sortRows,
 } from './table/engine.ts'
 import { Grid, type PastePlan } from './table/Grid.tsx'
-import { cleared, hiding } from './table/hiding.ts'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
@@ -386,10 +385,8 @@ export function TableView({
             <Showing
               shown={rows.length}
               total={data.rows.length}
-              hiding={hiding(config, fields)}
               came={only ? 'page' : of ? 'row' : null}
               allHref={`#/table/${data.id}`}
-              onClear={() => setConfig(cleared(config))}
             />
             {/* one line at one height whatever shows in it (a paste waiting, ticked rows, filters),
                 so the rows never move when something is picked */}

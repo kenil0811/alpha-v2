@@ -34,14 +34,16 @@ export function complete(c: Partial<ViewConfig> | undefined): ViewConfig {
 export const differs = (a: ViewConfig, b: ViewConfig) =>
   JSON.stringify(complete(a)) !== JSON.stringify(complete(b))
 
-export type Family = 'text' | 'number' | 'date' | 'choice' | 'tags' | 'other'
+export type Family = 'text' | 'number' | 'date' | 'choice' | 'tags' | 'rows' | 'other'
 
-// A field's family; a choice holding several (tags) is its own.
+// A field's family; a choice holding several (tags) is its own, and so is a field that names
+// other rows or people (rows), filtered by the names it shows.
 export function family(kind: string, many = false): Family {
   if (kind === 'number' || kind === 'money') return 'number'
   if (kind === 'date') return 'date'
   if (kind === 'choice') return many ? 'tags' : 'choice'
   if (['text', 'link', 'email', 'phone'].includes(kind)) return 'text'
+  if (kind === 'relation' || kind === 'person') return 'rows'
   return 'other'
 }
 
@@ -51,7 +53,21 @@ export const OPS: Record<Family, FilterOp[]> = {
   date: ['before', 'after', 'between', 'today', 'this_week', 'next_days', 'empty', 'not_empty'],
   choice: ['in', 'empty', 'not_empty'],
   tags: ['in', 'all_of', 'none_of', 'empty', 'not_empty'],
+  rows: ['in', 'none_of', 'contains', 'not_contains', 'empty', 'not_empty'],
   other: ['empty', 'not_empty'],
+}
+
+// An op as a rule editor offers it for a family: a list of names reads "is any of".
+export function opWords(op: FilterOp, fam: Family): string {
+  if (op === 'in') return fam === 'tags' ? 'has any of' : 'is any of'
+  if (op === 'none_of' && fam === 'rows') return 'is none of'
+  return OP_WORDS[op]
+}
+
+// The names a field of rows or people shows for a value: one for each row it names.
+export function namesOf(value: unknown, names: Record<string, string>): string[] {
+  if (isEmpty(value)) return []
+  return (Array.isArray(value) ? value : [value]).map((id) => names[String(id)] ?? String(id))
 }
 
 export const OP_WORDS: Record<FilterOp, string> = {
@@ -130,6 +146,14 @@ export function matches(
     if (rule.op === 'none_of') return !want.some((v) => held.includes(v))
     return true
   }
+  // rows named by the names they show; contains and doesn't contain read the same words below
+  if (fam === 'rows' && (rule.op === 'in' || rule.op === 'none_of')) {
+    const held = namesOf(value, names)
+    const want = rule.values ?? []
+    return rule.op === 'in'
+      ? !want.length || held.some((n) => want.includes(n))
+      : !held.some((n) => want.includes(n))
+  }
   if (fam === 'number') {
     const n = numberOf(field, value)
     const a = Number(rule.value)
@@ -184,7 +208,8 @@ export function ruleWords(rule: FilterRule, field: FieldView): string {
   if (rule.op === 'in')
     return `${field.name} ${fam === 'tags' ? 'has any of' : 'is'} ${(rule.values ?? []).join(' or ') || 'anything'}`
   if (rule.op === 'all_of') return `${field.name} has all of ${(rule.values ?? []).join(' and ')}`
-  if (rule.op === 'none_of') return `${field.name} has none of ${(rule.values ?? []).join(' or ')}`
+  if (rule.op === 'none_of')
+    return `${field.name} ${fam === 'rows' ? 'is' : 'has'} none of ${(rule.values ?? []).join(' or ')}`
   if (needs(rule.op) === 0) return `${field.name} ${OP_WORDS[rule.op]}`
   if (rule.op === 'between') return `${field.name} between ${v(rule.value)} and ${v(rule.value2)}`
   if (rule.op === 'next_days') return `${field.name} in the next ${rule.value} days`
@@ -269,6 +294,9 @@ export function sortRows(
 }
 
 export const GROUPABLE = new Set(['choice', 'text', 'date', 'relation', 'person', 'email', 'link'])
+// What rows can be grouped by: a field of rows that holds several groups by the names together;
+// tags do not group.
+export const canGroup = (f: FieldView) => GROUPABLE.has(f.kind) && !(f.kind === 'choice' && f.many)
 
 export interface Group {
   key: string
@@ -326,6 +354,7 @@ export const TOTALS: Record<Family, TotalOp[]> = {
   text: ['count', 'empty', 'filled', 'unique'],
   choice: ['count', 'empty', 'filled', 'unique'],
   tags: ['count', 'empty', 'filled'],
+  rows: ['count', 'empty', 'filled', 'unique'],
   other: ['count', 'empty', 'filled'],
 }
 

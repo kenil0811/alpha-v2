@@ -71,7 +71,7 @@ export function AddNew({ adds, onDone }: { adds: Adds; onDone: () => void }) {
     return (
       <MenuItem onClick={() => setAsking(true)}>
         <Plus className="size-3.5 text-ink-3" />
-        Add new…
+        Add new
       </MenuItem>
     )
   const send = async () => {
@@ -129,7 +129,7 @@ export function Select({
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & {
   of?: Choices | undefined // a field's choices: each line in its own colour
-  adds?: Adds | undefined // Add new… at the list's foot, where a list can grow
+  adds?: Adds | undefined // Add new at the list's foot, where a list can grow
   startOpen?: boolean | undefined // opened at once: a cell being changed
   onDismiss?: (() => void) | undefined // closed with no pick: a click away, Escape
 }) {

@@ -2,13 +2,14 @@
 // Clear all when there are several, the sorts, the group; and Filter to add one, Columns to show,
 // hide and order them.
 import type { FieldView, FilterRule, RowView, ViewConfig } from '@alpha/core/api'
-import { ArrowDown, ArrowUp, Columns3, ListFilter, Rows3, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Columns3, ListFilter, RotateCcw, Rows3, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { cn } from '../ui/cn.ts'
 import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
 import { RuleEditor } from './ColumnMenu.tsx'
 import { hide, move, removeRule, setGroup, setRule } from './edits.ts'
 import { columns, ruleWords } from './engine.ts'
+import { KindIcon } from './KindIcon.tsx'
 
 const chip =
   'inline-flex h-7.5 max-w-80 items-center gap-1 rounded-md border border-accent-line bg-accent-soft pr-1 pl-2.5 text-accent text-md'
@@ -211,6 +212,7 @@ export function AddFilter({
                 checked={config.filters.rules.some((r) => r.field === f.id)}
                 onClick={() => setField(f)}
               >
+                <KindIcon field={f} />
                 {f.name}
               </MenuItem>
             ))}
@@ -324,6 +326,7 @@ export function ColumnsButton({
             <>
               <MenuLine />
               <MenuItem onClick={() => onConfig({ ...config, widths: {} })}>
+                <RotateCcw className="size-3.5 text-ink-3" />
                 Reset the column widths
               </MenuItem>
             </>

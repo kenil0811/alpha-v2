@@ -59,7 +59,7 @@ export function TickedBar({
     <div className="flex items-center gap-2 rounded-md bg-accent-soft py-0.5 pr-1 pl-3 text-accent text-md">
       <span className="font-medium">{n} selected</span>
       <Button ref={setAnchor} size="sm" variant="ghost" onClick={() => setSetting((o) => !o)}>
-        Set…
+        Set
       </Button>
       <span data-tip={fixed}>
         <Button size="sm" variant="ghost" disabled={!!fixed} onClick={() => setRemoving(true)}>

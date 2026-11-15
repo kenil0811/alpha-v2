@@ -2,7 +2,8 @@
 // people live in it (module.yaml's people: true), an Overview of the modules inside it when it
 // holds any (a plain list: each one's name, where it comes from and what goes on in it right
 // now), its pages with the front one first, its tables with their counts, and Setup, always
-// last: all the rest about the module (ModuleSetup.tsx). Nothing sits under a table or a page. A
+// last: its schedules and every table, with the rest about the module on a details page under
+// it (ModuleSetup.tsx). Nothing sits under a table or a page. A
 // module holding others opens on its Overview, else on its front page, else its first table,
 // else its Setup.
 import type {
@@ -14,7 +15,7 @@ import type {
 import { Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
-import { ModuleSetup } from './ModuleSetup.tsx'
+import { ModuleDetails, ModuleSetup } from './ModuleSetup.tsx'
 import { PageView } from './PageView.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -26,6 +27,7 @@ export type ModuleTab =
   | { kind: 'page'; name: string }
   | { kind: 'table'; id: string }
   | { kind: 'setup' }
+  | { kind: 'details' } // the rest about the module, a page under Setup
 
 export function ModuleScreen({
   moduleId,
@@ -113,6 +115,8 @@ export function ModuleScreen({
           )
         ) : current.kind === 'setup' ? (
           m && <ModuleSetup m={m} onChange={load} />
+        ) : current.kind === 'details' ? (
+          m && <ModuleDetails m={m} onChange={load} />
         ) : table && table.id === current.id ? (
           renderTable(table, m?.tables.find((x) => x.id === table.id) ?? null)
         ) : (
@@ -153,7 +157,7 @@ export const moduleTabs = (
     key: 'setup',
     href: `#/module/${m.id}/setup`,
     label: 'Setup',
-    sel: current?.kind === 'setup',
+    sel: current?.kind === 'setup' || current?.kind === 'details',
   },
 ]
 

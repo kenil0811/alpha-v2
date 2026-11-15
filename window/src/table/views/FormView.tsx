@@ -16,7 +16,7 @@ export function FormView({
   names,
   onSave,
 }: {
-  table: string // its name, for Add new…
+  table: string // its name, for Add new
   rows: RowView[]
   fields: FieldView[]
   names: Record<string, string>

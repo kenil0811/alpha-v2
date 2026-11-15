@@ -329,6 +329,8 @@ export function App() {
         if (place.row) return table && { label: table.name, href: `#/table/${place.id}` }
         return aboveModule(moduleHereId)
       case 'module':
+        // a module's details sit under its Setup
+        if (place.tab === 'details') return { label: 'Setup', href: `#/module/${place.id}/setup` }
         return aboveModule(place.id)
       case 'item':
         return place.kind === 'schedule'
@@ -390,6 +392,7 @@ export function App() {
       }
       case 'module': {
         if (place.tab === 'setup') return 'Setup'
+        if (place.tab === 'details') return 'Module details'
         if (place.tab === 'overview' || (!place.page && modules.some((x) => x.parent === place.id)))
           return 'Overview'
         const pages = modules.find((x) => x.id === place.id)?.pages
