@@ -2,7 +2,7 @@
 // go on a card for the person first. Ask the maintainer to put it in the kit's next version, or do
 // it now and they are told later (api/routes/cards.ts answers it). The change is refused in the
 // card's words, so the door that asked says so. A kit's own install and update make its shape.
-import { one } from './db.ts'
+import { newId, now, one, run } from './db.ts'
 import { Refused } from './kinds.ts'
 import { findField, type Redo, type WriteCtx } from './shape/index.ts'
 import type { World } from './world.ts'
@@ -75,6 +75,26 @@ function refuseSourceField(world: World, redo: Redo, ctx: WriteCtx): void {
     )
 }
 
+// A change of the person's to a maintained kit that its maintainer has not seen yet.
+export function countChange(
+  world: World,
+  moduleId: string,
+  words: string,
+  call: unknown,
+  by: string,
+): void {
+  run(
+    world.db,
+    'INSERT INTO kit_changes (id, module_id, words, call, at, by) VALUES (?, ?, ?, ?, ?, ?)',
+    newId('g'),
+    moduleId,
+    words,
+    call === undefined ? null : JSON.stringify(call),
+    now(),
+    by,
+  )
+}
+
 export function askMaintainer(world: World, moduleId: string, redo: Redo, ctx: WriteCtx): void {
   if (ctx.actor.kind === 'system') return
   refuseManaged(world, moduleId, redo.words, ctx)
@@ -83,6 +103,13 @@ export function askMaintainer(world: World, moduleId: string, redo: Redo, ctx: W
   const kit = maintainerOf(world, moduleId)
   const m = world.shape.module(moduleId)
   if (!kit || !m) return
+  // A change the person asked for to a list of choices (a new stage, a renamed one, a new order)
+  // needs no second yes: it is made in the turn they asked in, and counted as a change of theirs
+  // the maintainer has not seen. Every other change of shape still asks.
+  if (ctx.said && redo.method === 'setChoices') {
+    countChange(world, moduleId, redo.words, redo, ctx.user ?? ctx.said.user)
+    return
+  }
   const card = world.cards.open({
     kind: 'suggestion',
     words: `${kit.name} maintains ${m.name}: ${redo.words}. Ask them to put it in the kit's next version, or do it now and they are told later.`,

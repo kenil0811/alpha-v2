@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { all, newId, now, one, run, tx } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
+import { countChange } from '../../world/maintained.ts'
 import type { WriteCtx } from '../../world/shape/index.ts'
 import { hashOf, resolveConfig } from '../../world/views.ts'
 import type { World } from '../../world/world.ts'
@@ -146,24 +147,7 @@ export async function takeBack(
 }
 
 // A change of the person's to a maintained kit the maintainer has not seen.
-export function recordChange(
-  world: World,
-  moduleId: string,
-  words: string,
-  call: unknown,
-  by: string,
-): void {
-  run(
-    world.db,
-    'INSERT INTO kit_changes (id, module_id, words, call, at, by) VALUES (?, ?, ?, ?, ?, ?)',
-    newId('g'),
-    moduleId,
-    words,
-    call === undefined ? null : JSON.stringify(call),
-    now(),
-    by,
-  )
-}
+export const recordChange = countChange
 
 export function unseenChanges(world: World, moduleId: string): number {
   return Number(

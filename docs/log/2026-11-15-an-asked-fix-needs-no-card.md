@@ -32,3 +32,12 @@ going by itself, telling the turn it is still running and where its outcome will
 (`engine/tools/waiting.ts`). Two tests: the wait alone, and the tool with a quick script and a
 schedule slower than the wait, which still ends ok with nobody waiting.
 
+## And a list of choices the person asks to change
+
+Kenil, on a client's board whose stages are a choice field's choices: a change he asks for to
+that list (a new stage, a renamed one, a new order) should go in like a fix he asks for. Now a
+`setChoices` on a maintained module, in a turn that began with the person's own message, is made
+at once and counted as a change the maintainer has not seen (`world/maintained.ts`,
+`countChange`); every other change of shape, a new field included, still goes on the card. Two
+cases in the M4 rule test hold it; the made-up maintained kit gained a choice field for them.
+

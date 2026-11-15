@@ -8,3 +8,4 @@ tables:
     about: One part the firm buys.
     fields:
       - { name: Name, kind: text, about: What the part is called. }
+      - { name: Grade, kind: choice, choices: [A, B], about: How good the part is. }

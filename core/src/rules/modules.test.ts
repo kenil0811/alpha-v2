@@ -7,7 +7,7 @@ import { api } from '../modules/runs/api.ts'
 import type { ScheduleRunner } from '../modules/runs/runner.ts'
 import { all } from '../world/db.ts'
 import type { Act } from './doors.ts'
-import type { Acts } from './drive.ts'
+import { type Acts, alpha } from './drive.ts'
 import { CONTRACT, drive, refusal, refusedWith, rule } from './rule.ts'
 import { KITS, type RuleWorld } from './world.ts'
 
@@ -178,6 +178,36 @@ rule(
             counted.some((c) => c.words === `Keep ${reader}`)
           )
         },
+      'a list of choices changed in the turn the person asked in is changed with no card and counted for the maintainer':
+        async (w) => {
+          const grades = () => w.table('Parts').fields.find((f) => f.name === 'Grade')?.choices
+          const cards = () =>
+            w.world.cards.waiting().filter((c) => /Mira maintains Supply/.test(c.words)).length
+          const change = { action: 'set_choices', table: 'Parts', field: 'Grade' }
+          // nobody asked: it waits on the card, and the list stays
+          const unasked = await refusal(() =>
+            alpha(w, 'shape', { ...change, choices: ['A', 'B', 'C'] }),
+          )
+          if (unasked === null || cards() !== 1 || grades()?.join() !== 'A,B') return false
+          w.say('Add a grade C to the parts, after B.')
+          await alpha(w, 'shape', { ...change, choices: ['A', 'B', 'C'] })
+          const m = w.world.shape.module('Supply')
+          const counted = all<{ words: string }>(
+            w.world.db,
+            'SELECT words FROM kit_changes WHERE module_id = ?',
+            m?.id ?? '',
+          )
+          return (
+            grades()?.join() === 'A,B,C' &&
+            cards() === 1 &&
+            counted.some((c) => /offer A, B, C in Parts/.test(c.words))
+          )
+        },
+      'a new field still waits on its card in the turn the person asked in': async (w) => {
+        w.say('Add a field for the supplier to the parts.')
+        const refused = await refusal(() => drive(w, 'alpha: shape').addField('Parts', 'Supplier'))
+        return refused !== null && !w.table('Parts').fields.some((f) => f.name === 'Supplier')
+      },
       'a script the kit shipped still waits on its card, asked or not': async (w) => {
         w.say('The price lists stopped reading. Fix the script.')
         const refused = await refusal(() =>
