@@ -38,7 +38,7 @@ export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => vo
     <div className="h-full overflow-y-auto">
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         <Schedules m={m} onChange={onChange} />
-        <Tables m={m} onChange={onChange} />
+        <Tables m={m} />
         <a
           href={`#/module/${m.id}/details`}
           className="flex items-center gap-1 self-start text-accent text-md hover:underline"
@@ -228,9 +228,9 @@ function AllSchedules({
   )
 }
 
-// Every table of the module: its own tabs first, then setup and parts, each saying what it is.
-function Tables({ m, onChange }: { m: ModuleView; onChange: () => void }) {
-  const { busy, on, act } = useAct(onChange)
+// Every table of the module, its own tabs first: a name that opens it and how many rows it has.
+// Whether a setup table or a part is kept as a tab is on that table's own ⋮ menu.
+function Tables({ m }: { m: ModuleView }) {
   const all = [
     ...m.tables.filter((t) => t.place === 'main'),
     ...m.tables.filter((t) => t.place !== 'main'),
@@ -251,31 +251,6 @@ function Tables({ m, onChange }: { m: ModuleView; onChange: () => void }) {
             >
               {t.name}
             </a>
-            <span className="text-ink-3">
-              {t.place === 'main'
-                ? 'A tab'
-                : t.place === 'setup'
-                  ? 'Setup'
-                  : t.place === 'people'
-                    ? "People's columns"
-                    : `Part of ${t.of ?? 'a row'}`}
-            </span>
-            {t.place !== 'people' && t.place !== 'main' && (
-              <button
-                type="button"
-                disabled={busy && on === t.id}
-                onClick={() =>
-                  act(() => api.post(`/api/tables/${t.id}/tab`, { tab: !t.tab }), t.id)
-                }
-                className={
-                  t.tab
-                    ? 'text-accent hover:underline'
-                    : 'text-ink-3 hover:text-ink hover:underline'
-                }
-              >
-                {t.tab ? 'A tab' : 'Keep as a tab'}
-              </button>
-            )}
             <span className="w-14 text-right text-ink-3 tabular-nums">
               {t.rows.toLocaleString()}
             </span>

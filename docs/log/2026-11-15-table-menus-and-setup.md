@@ -22,7 +22,8 @@ Six asks from Kenil's look at a client's module.
 - **Setup is schedules, then every table**, the module's own tabs included, and a link, Module
   details. Where the module comes from, what it is for, the agents it brings, its notes, what is
   the person's and Pack it moved to that page, under Setup (`#/module/<id>/details`, ‹ goes back
-  to Setup) (M2).
+  to Setup) (M2). After his second look the table list lost its words too: each table is a name
+  that opens it and its count of rows; Keep as a tab stays on the table's own ⋮ menu.
 
 The rail's file lost its module menu to `ModuleMenu.tsx` and is under the wall; the totals a
 column takes are one part for its menu and the footer.
