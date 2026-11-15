@@ -1,5 +1,5 @@
 // The kit installer and the ownership rule, on a made-up kit (test-kit/): never a client's.
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -243,6 +243,36 @@ describe('updating a kit', () => {
     const mill = world.people.byKey('email', 'mill@example.com') as string
     expect(world.people.get(mill)?.name).toBe('Mill & Co')
     expect(readFileSync(join(m.dir, 'module.yaml'), 'utf8')).toContain('people:')
+  })
+
+  it('brings the kit’s version and the other kits’ tables it uses on update', async () => {
+    await install(world, KIT, ctx)
+    // a made-up kit that comes to read the Bakery's suppliers in its second version
+    const cafe = (version: string, uses: string) => {
+      const dir = join(home, `cafe-${version}`)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        `name: Cafe\nversion: ${version}\napi: 3\n${uses}tables:\n  - name: Menu\n    fields:\n      - { name: Name, kind: text }\n`,
+      )
+      return dir
+    }
+    const m = await install(world, cafe('0.1.0', ''), ctx)
+    const file = join(m.dir, 'module.yaml')
+    const read = () => parse(readFileSync(file, 'utf8')) as { version: string; uses?: unknown }
+    await update(
+      world,
+      'Cafe',
+      cafe('0.2.0', 'uses:\n  - { kit: Bakery, tables: [Suppliers] }\n'),
+      ctx,
+    )
+    expect(read()).toMatchObject({
+      version: '0.2.0',
+      uses: [{ kit: 'Bakery', tables: ['Suppliers'] }],
+    })
+    await update(world, 'Cafe', cafe('0.3.0', ''), ctx)
+    expect(read().version).toBe('0.3.0')
+    expect(read().uses).toBeUndefined()
   })
 
   it('leaves the folder as it was when an update fails, so a later one brings its files', async () => {

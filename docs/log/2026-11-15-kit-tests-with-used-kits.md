@@ -9,3 +9,11 @@ a row found by its values (stated, with the person's words, rules A1), and `remo
 That is how a test shows a typed value staying the person's and a removed row staying removed.
 Two runner tests hold both (`core/src/modules/kittest.test.ts`). Done without asking, to test the
 client's step; said to Kenil.
+
+Then, on the Mac, the CRM's update to the version that uses the other kit was refused at its first
+run: "may not read Deals: it is neither CRM's own table nor one its kit uses". A kit update never
+copies module.yaml (it is the module's own, rewritten from its shape), and only the kit's sites
+and `people` were carried into it, so a kit that came to use another's tables kept none, and its
+version stayed the one first installed. On Kenil's yes, an update now carries the kit's `version`
+and `uses` into the installed module.yaml (`takeUses` in `modules/kits/install.ts`), `uses`
+removed when the kit drops it; a test in `modules/kits.test.ts` holds both.

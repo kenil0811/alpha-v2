@@ -220,6 +220,7 @@ export async function update(
     return out
   })
   updateSites(world, module, manifest.network, kitCtx, manifest.people === true)
+  takeUses(module, manifest)
   // the kit's newer business case, unless the person wrote their own
   if (manifest.business_case)
     setBusinessCase(world.shape, module, manifest.business_case, 'kit', kitCtx)
@@ -234,6 +235,23 @@ export async function update(
     ctx,
   )
   return report
+}
+
+// The kit's version and the other kits' tables it uses, on update: module.yaml is not one of a
+// kit's files on update, so without this a kit that came to use another's tables was refused
+// reading them (a run's walls read its uses from module.yaml), and the version stayed the first.
+function takeUses(module: Module, manifest: { version: string; uses: unknown[] }): void {
+  const file = join(module.dir, 'module.yaml')
+  const m = (existsSync(file) ? parse(readFileSync(file, 'utf8')) : {}) as Record<string, unknown>
+  const { uses: _uses, ...rest } = m
+  writeFileSync(
+    file,
+    stringify({
+      ...rest,
+      version: manifest.version,
+      ...(manifest.uses.length ? { uses: manifest.uses } : {}),
+    }),
+  )
 }
 
 // The sites a module's readers may read, on update: the kit's list as it is now, and every site
