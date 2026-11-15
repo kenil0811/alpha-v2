@@ -294,11 +294,10 @@ export function TableView({
               }
               right={
                 <>
-                  {config.kind === 'board' ? (
-                    <NewButton onNew={onNew} />
-                  ) : (
+                  {config.kind !== 'board' && (
                     <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
                   )}
+                  {config.kind !== 'form' && <NewButton onNew={onNew} />}
                   <More
                     tableId={data.id}
                     fields={fields}
@@ -555,8 +554,7 @@ export function TableView({
                   layout={layout}
                   onPaste={setPasting}
                 />
-                <div className="-mt-4 flex items-center gap-1 px-7 pb-3 text-ink-3 text-sm">
-                  <NewButton onNew={onNew} className="mr-auto" />
+                <div className="-mt-4 flex items-center justify-end gap-1 px-7 pb-3 text-ink-3 text-sm">
                   {readByWords(data.readBy) && (
                     <span className="mr-3">{readByWords(data.readBy)}</span>
                   )}

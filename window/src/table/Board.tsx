@@ -10,8 +10,8 @@ import { show } from './values.ts'
 
 // The board: a column per choice, each row a card with its name and a few of its values, moved
 // by setting its choice (the person's own word): dragged onto another column, or picked below it.
-// A card's name opens the row, as a row's first cell does in the table. New for a board sits in
-// the toolbar above it (TableView).
+// A card's name opens the row, as a row's first cell does in the table. New sits in the toolbar
+// above it, as for every layout (TableView).
 export function Board({
   data,
   by,

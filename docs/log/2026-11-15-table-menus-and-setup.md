@@ -47,3 +47,8 @@ He did not find it under the board (it was below the columns, at the bottom left
 it at the top right. On a board New now sits at the right of the toolbar, beside the ⋮, where a
 table has Columns; a table's New stays in the row under it (T3).
 
+Asked whether a table's New should move too, he said yes. New is in the toolbar now, between
+Columns and the ⋮, on every layout but the form, which adds by itself; so a list, a gallery, a
+calendar, a timeline and a chart have New as well, where before only the table did. The row
+under a table keeps what reads it and its pages, at the right as before (T3).
+
