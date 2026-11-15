@@ -45,6 +45,13 @@ export function registerModules(ctx: Ctx): void {
       { actor: { kind: 'person', id: user.id }, user: user.id },
       options.platform ? (dir) => options.platform?.discard(dir) : undefined,
       keepAgents,
+      // a mirror its connector no longer fills goes with its module
+      (mirror, table) => {
+        const c = engine.connectors
+          ?.known()
+          .find((k) => k.manifest.title === mirror || k.manifest.name === mirror)
+        return !!c && !c.tables.some((t) => t.name === table)
+      },
     )
     engine.events.emit('event', { type: 'lines', user: user.id })
     return { words }

@@ -15,3 +15,9 @@ recommended. The step 6 branch was never pushed; this builds on it.
   its input checked, and a lapsed sign-in shows on the connection as a failed sync's does.
 - `pnpm kit test` makes a case's `connections`, each read answered from what the case recorded
   (and a later run's `reads`), so a kit's tests never reach the service.
+
+Removing the QuickBooks module on Kenil's Mac was refused: its tables are mirrors, which go only
+with their connection, and disconnecting would mean signing in to Intuit again. A mirror whose
+connector no longer declares it is now released: deleting its module takes it, as its connector's
+own removal (`modules/remove.ts`, the route naming which connectors still fill which tables),
+with a test that one still filled is refused.

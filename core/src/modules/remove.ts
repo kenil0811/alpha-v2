@@ -3,7 +3,8 @@
 // their tables and rows. All of it deletes the modules too: their tables and rows, their folders,
 // schedules and runs, and what Alpha kept about them. Either way, cards waiting on them are
 // withdrawn, tasks and documents about them stay without a place, and the journal keeps every line,
-// with one more saying what went.
+// with one more saying what went. A mirror goes only with its connection, except one its
+// connector no longer fills (released): that one goes with its module, as its connector's own.
 import { existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { all, run, tx } from '../world/db.ts'
@@ -24,6 +25,8 @@ export async function deleteModule(
   ctx: WriteCtx,
   discard: (dir: string) => void = (dir) => rmSync(dir, { recursive: true, force: true }),
   keepAgents = true, // the agents its kit brought: kept and made here from now on, or deleted
+  // a mirror whose connector no longer declares it, by the system it mirrors and its name
+  released: (mirror: string, table: string) => boolean = () => false,
 ): Promise<string> {
   const top = world.shape.module(id)
   if (!top) throw new Refused('That module is not there.')
@@ -62,7 +65,12 @@ export async function deleteModule(
       if (!free.length) throw new Refused(`${top.name}'s tables could not be taken apart.`)
       for (const t of free) {
         rowsGone += world.records.list(t.id).length
-        world.shape.removeTable(t.id, now)
+        world.shape.removeTable(
+          t.id,
+          t.mirror && released(t.mirror, t.key ?? t.name)
+            ? { ...now, actor: { kind: 'connector', id: t.mirror } }
+            : now,
+        )
         tablesGone++
       }
       left = left.filter((t) => !free.includes(t))

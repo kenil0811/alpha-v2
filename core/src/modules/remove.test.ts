@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { run } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { install } from './kits/index.ts'
 import { deleteModule } from './remove.ts'
@@ -66,4 +67,23 @@ describe('deleting a module', () => {
     expect(existsSync(m.dir)).toBe(false)
     expect(world.lines({ kinds: ['removed'] }).at(-1)?.words).toBe(words)
   }, 60_000)
+
+  it('takes a mirror its connector no longer fills, and refuses one it still fills', async () => {
+    const m = world.shape.makeModule('Books', ctx)
+    const t = world.shape.makeTable(m.id, 'Companies', [{ name: 'Name', kind: 'text' }], ctx)
+    run(world.db, 'UPDATE tables SET mirror = ? WHERE id = ?', 'Books', t.id)
+    await expect(deleteModule(world, m.id, false, ctx)).rejects.toThrow(/mirror of Books/)
+    expect(world.shape.table('Companies')).toBeTruthy()
+    const said = await deleteModule(
+      world,
+      m.id,
+      false,
+      ctx,
+      undefined,
+      true,
+      (mirror, table) => mirror === 'Books' && table === 'Companies',
+    )
+    expect(said).toMatch(/Books/)
+    expect(world.shape.table('Companies')).toBeUndefined()
+  })
 })
