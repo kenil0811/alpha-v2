@@ -24,6 +24,7 @@ import { World } from '../world/world.ts'
 import { bridges } from './hub.ts'
 
 const CHILD = join(import.meta.dirname, '..', 'connectors', 'child.ts')
+const MAC = join(import.meta.dirname, '..', '..', '..', 'connectors', 'mac', 'src', 'index.ts')
 const FOLDER = join(
   import.meta.dirname,
   '..',
@@ -65,7 +66,9 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'alpha-bridge-'))
   world = await World.open(join(home, 'tenants', 't_test'))
   owner = world.owner('Kenil')
-  const known = (await loadSet(STANDARD_DIR)).connectors.filter((c) => c.manifest.name === 'folder')
+  const known = (await loadSet(STANDARD_DIR)).connectors.filter((c) =>
+    ['folder', 'calendar', 'contacts'].includes(c.manifest.name),
+  )
   // a server's core: a folder runs only on a person's computer
   service = new ConnectorService(world, { secrets: new MemorySecrets(), known, server: true })
   engine = new Engine(world, { connectors: service })
@@ -207,6 +210,50 @@ describe('the Bridge as the app runs it', { timeout: 30_000 }, () => {
     await bridge?.signOut()
     await until(() => !!world.computers.get(config.computer)?.removedAt)
     expect(world.connections.on(config.computer).map((k) => k.state)).toEqual(['paused'])
+  })
+})
+
+describe('a Mac’s Calendar and Contacts', { timeout: 30_000 }, () => {
+  it('lends its Calendar through Alpha’s helper there, and its events land', async () => {
+    const made = await app.inject({
+      method: 'POST',
+      url: '/api/computers/link',
+      headers: asWindow(),
+    })
+    const keys = inMemory()
+    const paired = await pair(made.json().link as string, keys, 'Test Mac')
+    computers.push(paired.computer)
+    const asked: string[][] = []
+    const config: Config = { ...paired, lends: [{ connector: 'calendar', account: 'Test Mac' }] }
+    bridge = new Bridge({
+      config: () => config,
+      keys,
+      start: async () => ({ command: process.execPath, args: [CHILD, MAC], shell: false }),
+      // Alpha's helper, as the Mac answers it: never the real Calendar in a test
+      helper: async (args) => {
+        asked.push(args)
+        return {
+          events: [
+            {
+              id: 'e1',
+              title: 'Harbor call',
+              start: '2026-11-17T15:00:00Z',
+              end: '2026-11-17T15:30:00Z',
+              allDay: false,
+              location: '',
+              calendar: 'Work',
+              attendees: [{ name: 'Priya', email: 'priya@harbor.example' }],
+              organizer: { name: 'Kenil', email: 'kenil@example.com', me: true },
+            },
+          ],
+        }
+      },
+    })
+    bridge.run()
+    const events = () => world.shape.table('Events')
+    await until(() => !!events() && world.records.count(events()?.id ?? '') === 1)
+    expect(asked[0]?.[0]).toBe('calendar')
+    expect(world.connections.find('calendar', 'Test Mac')?.computer).toBe(paired.computer)
   })
 })
 

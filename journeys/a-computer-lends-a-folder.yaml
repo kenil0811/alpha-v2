@@ -5,6 +5,7 @@ why: >
   Your computers and lends a folder there; what is put in it is kept and read as if dropped in
   the window. While the computer is away its connection waits, with no failure and no card, and
   the first read once it is back takes everything new.
+fixtures: a-computer-lends-a-folder
 steps:
   - bridge: { lend: '{tmp}/Exports', put: { name: pl.csv, text: "Account,June\nRevenue,1200\n" } }
     checks:
@@ -29,4 +30,9 @@ steps:
   - bridge: { pause: false }
     checks:
       - documents: 3
+      - errors: 0
+  # step 3 (16 Nov): a Mac lends its Calendar; the helper's events land in the Events every source shares
+  - bridge: { calendar: true }
+    checks:
+      - rows_in: { table: Events, count: 1 }
       - errors: 0

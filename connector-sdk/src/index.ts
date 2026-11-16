@@ -62,10 +62,13 @@ export {
   makeCall,
 } from './runtime.ts'
 export { MacKeychain, MemorySecrets, NoSecrets, type SecretStore } from './secrets.ts'
+export { CONTACTS, EVENTS, who } from './shared-tables.ts'
 export {
   codesIn,
   type Explained,
   firstSentence,
+  GOOGLE_SCOPES,
+  google,
   intuit,
   microsoft,
   PROVIDERS,

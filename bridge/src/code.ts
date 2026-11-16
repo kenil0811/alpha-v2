@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, realpathSync, statSync } from 'node:fs'
 import { homedir, hostname, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { type HelperOptions, runHelper } from '@alpha/connector-sdk'
 import type { Start } from './children.ts'
 
 // Where the code it runs is: beside it in the zip, bundled; or in the repository.
@@ -12,8 +13,28 @@ const here = import.meta.dirname
 const packed = existsSync(join(here, 'child.mjs'))
 const root = join(here, '..', '..')
 const CHILD = packed ? join(here, 'child.mjs') : join(root, 'core', 'src', 'connectors', 'child.ts')
+const MAC = packed ? join(here, 'mac.mjs') : join(root, 'connectors', 'mac', 'src', 'index.ts')
 const ENTRIES: Record<string, string> = {
   folder: packed ? join(here, 'folder.mjs') : join(root, 'connectors', 'files', 'src', 'folder.ts'),
+  // the Mac's Calendar and Contacts, one connector folder for both
+  calendar: MAC,
+  contacts: MAC,
+}
+
+// What this Bridge lends besides folders: on a Mac, Calendar and Contacts, through Alpha's helper.
+export const LENDS_HERE = process.platform === 'darwin' ? ['calendar', 'contacts'] : []
+
+// Alpha's helper, carried beside the Bridge in the app (or built in the repository), run here for
+// Calendar and Contacts, so macOS asks this computer's person.
+const HELPER =
+  process.env.ALPHA_HELPER_APP ??
+  (packed
+    ? join(root, 'Alpha Helper.app')
+    : join(root, 'connector-sdk', 'helper', 'build', 'Alpha Helper.app'))
+export const helper = (args: string[], options: Record<string, unknown>): Promise<unknown> => {
+  if (process.platform !== 'darwin' || !existsSync(HELPER))
+    return Promise.reject(new Error("Alpha's helper is not on this computer."))
+  return runHelper(HELPER, args, options as HelperOptions)
 }
 
 // A connector's process: in Anthropic's sandbox on a Mac, reading only its code and the folders

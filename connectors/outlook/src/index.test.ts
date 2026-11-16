@@ -147,6 +147,9 @@ describe('reading the mail', () => {
             '@odata.deltaLink': `${url.origin}${url.pathname}?$deltatoken=sent2`,
           },
         }
+      // a sign-in made before Calendar and Contacts were asked for: mail is read all the same
+      if (url.pathname.endsWith('/calendarView') || url.pathname.endsWith('/me/contacts'))
+        return { status: 403, json: { error: { message: 'Access is denied.' } } }
       return { status: 404, json: { error: { message: `nothing at ${url.pathname}` } } }
     }
     const h = host()
@@ -299,5 +302,83 @@ describe('what Microsoft says back', () => {
         : { json: { mail: ME } }
     await outlook.check?.(call(host()))
     expect(tries).toBe(2)
+  })
+})
+
+describe('the calendar and contacts', () => {
+  it('reads the events 90 days back and 60 ahead, and the contacts, into the shared tables', async () => {
+    answers = (url) => {
+      if (url.pathname.includes('/mailFolders/') && url.pathname.endsWith('/delta'))
+        return {
+          json: { value: [], '@odata.deltaLink': `${url.origin}${url.pathname}?$deltatoken=x` },
+        }
+      if (url.pathname.includes('/mailFolders/')) return { json: { totalItemCount: 0 } }
+      if (url.pathname.endsWith('/calendarView'))
+        return {
+          json: {
+            value: [
+              {
+                id: 'ev1',
+                subject: 'Harbor call',
+                start: { dateTime: '2026-11-17T15:00:00.0000000' },
+                end: { dateTime: '2026-11-17T15:30:00.0000000' },
+                isAllDay: false,
+                location: { displayName: 'Teams' },
+                attendees: [{ emailAddress: { name: 'Priya', address: 'priya@harbor.example' } }],
+                organizer: { emailAddress: { name: 'Test', address: ME } },
+              },
+            ],
+          },
+        }
+      if (url.pathname.endsWith('/me/contacts'))
+        return {
+          json: {
+            value: [
+              {
+                id: 'ct1',
+                displayName: 'Priya Shah',
+                companyName: 'Harbor Mills',
+                jobTitle: 'Owner',
+                emailAddresses: [{ address: 'priya@harbor.example' }],
+                businessPhones: ['+1 555 0100'],
+                mobilePhone: null,
+              },
+            ],
+          },
+        }
+      return { status: 404, json: { error: { message: `nothing at ${url.pathname}` } } }
+    }
+    const h = host()
+    await outlook.sync?.(call(h))
+    const view = new URL(asked.find((a) => a.url.includes('/calendarView'))?.url ?? '')
+    const days =
+      (Date.parse(view.searchParams.get('endDateTime') ?? '') -
+        Date.parse(view.searchParams.get('startDateTime') ?? '')) /
+      86_400_000
+    expect(Math.round(days)).toBe(150)
+    const events = h.landed.find((l) => l.table === 'Events')?.items
+    expect(events).toEqual([
+      {
+        key: 'ev1',
+        values: {
+          Title: 'Harbor call',
+          Starts: '2026-11-17T15:00:00.000Z',
+          Ends: '2026-11-17T15:30:00.000Z',
+          'All day': 'no',
+          Location: 'Teams',
+          Calendar: 'Outlook',
+          Attendees: 'Priya <priya@harbor.example>',
+          Organizer: `Test <${ME}>`,
+          'Your address': ME,
+        },
+      },
+    ])
+    expect(h.landed.find((l) => l.table === 'Contacts')?.items[0]?.values).toMatchObject({
+      Name: 'Priya Shah',
+      Company: 'Harbor Mills',
+      Emails: 'priya@harbor.example',
+      Phones: '+1 555 0100',
+      Title: 'Owner',
+    })
   })
 })

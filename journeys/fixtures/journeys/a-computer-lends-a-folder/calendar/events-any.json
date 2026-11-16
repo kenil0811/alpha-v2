@@ -1,0 +1,13 @@
+[
+  {
+    "id": "j1",
+    "title": "Harbor call",
+    "start": "2026-11-17T15:00:00Z",
+    "end": "2026-11-17T15:30:00Z",
+    "allDay": false,
+    "location": "",
+    "calendar": "Work",
+    "attendees": [{ "name": "Priya", "email": "priya@harbor.example" }],
+    "organizer": { "name": "Kenil", "email": "kenil@example.com", "me": true }
+  }
+]

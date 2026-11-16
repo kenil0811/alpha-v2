@@ -37,6 +37,7 @@ describe('connectors found in their folders', () => {
     expect(connectors.map((c) => c.manifest.name)).toEqual([
       'folder',
       'gmail',
+      'google',
       'calendar',
       'contacts',
       'outlook',

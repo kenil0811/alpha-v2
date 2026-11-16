@@ -1,16 +1,17 @@
 // The alpha-bridge command, on a person's computer:
 //   alpha-bridge pair <link>      pair this computer with the Alpha whose link it is (Your computers)
 //   alpha-bridge lend <folder>    lend Alpha a folder here: what is put in it is read in Alpha
+//                                 (or calendar, contacts: a Mac's own, through Alpha's helper)
 //   alpha-bridge unlend <folder>  stop lending it
 //   alpha-bridge list             what this computer is paired with and what it lends
 //   alpha-bridge run              connect and stay connected; Alpha reads only while this runs
 // The key stays in this computer's Keychain or Credential Manager; the rest is in its own folder.
 import { unwatchFile, watchFile } from 'node:fs'
 import { Bridge, VERSION } from './bridge.ts'
-import { folderOf, start } from './code.ts'
-import { type Config, fileOf, homeOf, readConfig, writeConfig } from './config.ts'
+import { helper, start } from './code.ts'
+import { type Config, fileOf, homeOf, readConfig } from './config.ts'
 import { storeOf } from './keys.ts'
-import { pairHere, serve } from './serve.ts'
+import { lendHere, pairHere, serve } from './serve.ts'
 
 const say = (words: string) => console.log(words)
 const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -35,30 +36,22 @@ async function main(args: string[]): Promise<void> {
   // the app's own way in: told what to do, and saying what it does, in lines (serve.ts)
   if (what === 'serve') return serve(home, storeOf(), start)
   if (what === 'lend' || what === 'unlend') {
-    const c = paired(home)
-    const account = folderOf(arg)
-    const others = c.lends.filter((l) => !(l.connector === 'folder' && l.account === account))
-    writeConfig(home, {
-      ...c,
-      lends: what === 'lend' ? [...others, { connector: 'folder', account }] : others,
-    })
-    say(
-      what === 'lend'
-        ? `Lent ${account}. Alpha reads it while alpha-bridge run is going.`
-        : `Stopped lending ${account}.`,
-    )
+    paired(home)
+    say(lendHere(home, arg, what === 'lend'))
+    if (what === 'lend') say('Alpha reads it while alpha-bridge run is going.')
     return
   }
   if (what === 'list') {
     const c = paired(home)
     say(`Paired with ${new URL(c.alpha).host} as ${c.name}.`)
     say(c.lends.length ? 'Lends:' : 'Lends nothing yet.')
-    for (const l of c.lends) say(`  ${l.account}`)
+    for (const l of c.lends) say(`  ${l.connector === 'folder' ? l.account : l.connector}`)
     return
   }
   if (what === 'run') {
     paired(home)
     const bridge = new Bridge({
+      helper,
       config: () => paired(home),
       keys: storeOf(),
       start,

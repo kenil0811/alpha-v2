@@ -38,7 +38,7 @@ struct Seen {
     name: Option<String>,
     online: bool,
     paused: Option<String>, // paused: until when, in words (until 9:30 PM, until you resume)
-    lends: Vec<String>,
+    lends: Vec<(String, String)>, // what it lends: (connector, account)
     doing: Option<String>,
 }
 
@@ -148,7 +148,16 @@ fn heard(app: &AppHandle, m: Value) {
             seen.paused = m["paused"]["words"].as_str().map(String::from);
             seen.lends = m["lends"]
                 .as_array()
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| {
+                            Some((
+                                v["connector"].as_str()?.to_string(),
+                                v["account"].as_str()?.to_string(),
+                            ))
+                        })
+                        .collect()
+                })
                 .unwrap_or_default();
             let now_paired = seen.paired && !was_paired;
             drop(seen);
@@ -246,14 +255,27 @@ fn build_menu(app: &AppHandle, tray: &TrayIcon, seen: &Seen, status: &str) -> ta
         menu.append(&MenuItem::with_id(app, "pair", "Pair with the link I copied", true, None::<&str>)?)?;
     } else {
         let folders = Submenu::with_id(app, "folders", "Folders", true)?;
-        for (i, f) in seen.lends.iter().enumerate() {
+        let lent: Vec<&String> = seen
+            .lends
+            .iter()
+            .filter(|(c, _)| c == "folder")
+            .map(|(_, a)| a)
+            .collect();
+        for (i, f) in lent.iter().enumerate() {
             folders.append(&CheckMenuItem::with_id(app, format!("folder:{i}"), f, true, true, None::<&str>)?)?;
         }
-        if !seen.lends.is_empty() {
+        if !lent.is_empty() {
             folders.append(&PredefinedMenuItem::separator(app)?)?;
         }
         folders.append(&MenuItem::with_id(app, "add", "Add a folder…", true, None::<&str>)?)?;
         menu.append(&folders)?;
+        // a Mac's own Calendar and Contacts, each off until ticked; macOS asks the first time
+        if cfg!(target_os = "macos") {
+            for (id, title) in [("calendar", "Calendar"), ("contacts", "Contacts")] {
+                let on = seen.lends.iter().any(|(c, _)| c == id);
+                menu.append(&CheckMenuItem::with_id(app, id, title, true, on, None::<&str>)?)?;
+            }
+        }
         if seen.paused.is_some() {
             menu.append(&MenuItem::with_id(app, "resume", "Resume", true, None::<&str>)?)?;
         } else {
@@ -287,6 +309,11 @@ fn on_menu(app: &AppHandle, id: &str) {
             }
         }
         "add" => pick_folder(app),
+        "calendar" | "contacts" => {
+            let on = seen.lends.iter().any(|(c, _)| c == id);
+            let t = if on { "unlend" } else { "lend" };
+            tell(app, json!({ "t": t, "connector": id }));
+        }
         "pause-hour" => tell(app, json!({ "t": "pause", "minutes": 60 })),
         "pause" => tell(app, json!({ "t": "pause", "minutes": null })),
         "resume" => tell(app, json!({ "t": "resume" })),
@@ -328,7 +355,13 @@ fn on_menu(app: &AppHandle, id: &str) {
         other => {
             // a lent folder's tick: stop lending it
             if let Some(i) = other.strip_prefix("folder:").and_then(|i| i.parse::<usize>().ok()) {
-                if let Some(path) = seen.lends.get(i) {
+                let folders: Vec<&String> = seen
+                    .lends
+                    .iter()
+                    .filter(|(c, _)| c == "folder")
+                    .map(|(_, a)| a)
+                    .collect();
+                if let Some(path) = folders.get(i) {
                     tell(app, json!({ "t": "unlend", "path": path }));
                 }
             }

@@ -10,10 +10,19 @@ import type { World } from '../world/world.ts'
 export function landIn(world: World, c: Connector): Table[] {
   const actor = { kind: 'connector' as const, id: c.manifest.name }
   if (!c.tables.length) return []
-  const known = world.shape.ownModule(c.module)
-  if (known) world.shape.claimModule(known.id, c.module)
-  const module = known ?? world.shape.makeModule(c.module, { actor }, c.module)
+  // each table in its own module when it names one (a shared Events), else the connector's
+  const modules = new Map<string, ReturnType<typeof world.shape.makeModule>>()
+  const moduleOf = (name: string) => {
+    const had = modules.get(name)
+    if (had) return had
+    const known = world.shape.ownModule(name)
+    if (known) world.shape.claimModule(known.id, name)
+    const m = known ?? world.shape.makeModule(name, { actor }, name)
+    modules.set(name, m)
+    return m
+  }
   return c.tables.map((spec) => {
+    const module = moduleOf(spec.module ?? c.module)
     const found = world.shape.ownTable(module.id, spec.name)
     if (found) world.shape.claimTable(found, module.id, spec.name)
     // its fields keyed with the connector's names for them (rules M5), so one the person renamed
@@ -46,6 +55,7 @@ export function landIn(world: World, c: Connector): Table[] {
 
 // A table the connector fills, by the name it gives it: its lasting key in its module.
 export function tableOf(world: World, c: Connector, name: string): Table | undefined {
-  const module = world.shape.ownModule(c.module)
+  const spec = c.tables.find((t) => t.name === name)
+  const module = world.shape.ownModule(spec?.module ?? c.module)
   return module ? world.shape.ownTable(module.id, name) : undefined
 }

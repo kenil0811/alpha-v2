@@ -83,6 +83,7 @@ export interface ComputerView {
   lends: {
     connection: string
     connector: string
+    title: string // Folder, Calendar, Contacts
     account: string
     state: ConnectionView['state']
     health: string | null

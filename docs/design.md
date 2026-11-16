@@ -230,7 +230,7 @@ in is as the person, so Alpha reaches only what they can. Each action says wheth
 taken back, so Revert can cover what left Alpha. Packs from outside are signed with Kenil's key and
 checked at every start.
 
-Gmail, Outlook, QuickBooks (reads only, through the firm's own Intuit app, kept by the module that reads through it), files and the Mac's own apps ship; LinkedIn is added by hand. On a hosted Alpha,
+Gmail, Outlook (mail, calendar and contacts), Google (Calendar and Contacts, through the firm's own Google app), QuickBooks (reads only, through the firm's own Intuit app, kept by the module that reads through it), files and the Mac's own apps ship; LinkedIn is added by hand. Every calendar and address book lands in the one Events and the one Contacts table (`connector-sdk/src/shared-tables.ts`, a table naming its module), as Gmail and Outlook share Mail. On a hosted Alpha,
 connectors run on the server unless they physically cannot, and those run on the person's own
 computer through the Bridge. Each manifest says where it runs (`runs: server`, `computer` or
 `either`); a folder runs either, so on a Mac's own Alpha it runs there as before and on a server
@@ -266,6 +266,12 @@ refuses every call there and says Paused on the tile; Sign out removes the compu
 is kept on the computer (`did.txt`). It starts at sign-in and updates itself from the Alpha it is
 paired with, which hands out an update only under Kenil's signature, and the app takes it only
 under its updater key's (a second key in his Keychain).
+
+Step 3 (16 Nov) lends a Mac's own Calendar and Contacts the same way: two ticks in Alpha Bridge's
+menu, each off until ticked, with Alpha's helper carried inside the app and run there, so macOS asks
+that Mac's person (signed ad hoc, a changed helper asks again). They run either: on a Mac's own
+Alpha there, on a server only lent from a Mac. On Windows, or anywhere, the server reads them from
+the person's account instead: Outlook with two more read permissions, Google with its own app.
 
 ## Modules and kits
 

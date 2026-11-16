@@ -66,6 +66,7 @@ async function bundle(into: string): Promise<void> {
       bridge: join(ROOT, 'bridge', 'src', 'main.ts'),
       child: join(ROOT, 'core', 'src', 'connectors', 'child.ts'),
       folder: join(ROOT, 'connectors', 'files', 'src', 'folder.ts'),
+      mac: join(ROOT, 'connectors', 'mac', 'src', 'index.ts'),
     },
     platform: 'node',
     resolve: { alias: { '@alpha/connector-sdk': join(ROOT, 'bridge', 'pack', 'sdk.ts') } },
@@ -99,6 +100,8 @@ async function resources(platform: (typeof PLATFORMS)[number]['platform']): Prom
   mkdirSync(join(dir, 'node'), { recursive: true })
   await bundle(join(dir, 'app', 'src'))
   copyFileSync(join(ROOT, 'connectors', 'files', 'GUIDE.md'), join(dir, 'app', 'GUIDE.md'))
+  for (const g of ['GUIDE-calendar.md', 'GUIDE-contacts.md'])
+    copyFileSync(join(ROOT, 'connectors', 'mac', g), join(dir, 'app', g))
   const node = await nodeFor(p.node)
   const unpacked = join(OUT, 'work', `${p.platform}-node`)
   rmSync(unpacked, { recursive: true, force: true })
@@ -116,6 +119,8 @@ async function resources(platform: (typeof PLATFORMS)[number]['platform']): Prom
     copyFileSync(join(unpacked, top, 'bin', 'node'), join(dir, 'node', 'bin', 'node'))
     chmodSync(join(dir, 'node', 'bin', 'node'), 0o755)
     copyFileSync(join(unpacked, top, 'LICENSE'), join(dir, 'node', 'LICENSE'))
+    // Alpha's helper, for Calendar and Contacts, beside the Bridge in the app
+    run('sh', [join(ROOT, 'connector-sdk', 'helper', 'build.sh'), dir])
   }
   rmSync(unpacked, { recursive: true, force: true })
   return dir

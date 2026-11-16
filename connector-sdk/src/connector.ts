@@ -102,6 +102,9 @@ export type PeopleMap =
 
 export interface TableSpec {
   name: string
+  // the module it sits in, when not its connector's own: a shared table (Events, Contacts) that
+  // other connectors land in too
+  module?: string
   fields: { name: string; kind: FieldKind; choices?: string[] }[]
   people?: PeopleMap
   // What may change at the source (rules D9): these fields, each change sent only through this

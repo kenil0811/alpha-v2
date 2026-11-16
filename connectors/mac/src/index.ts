@@ -3,11 +3,14 @@
 import { readFileSync } from 'node:fs'
 import {
   type Call,
+  CONTACTS,
   type Connector,
   defineTool,
+  EVENTS,
   type HelperOptions,
   Problem,
   runHelper,
+  who,
 } from '@alpha/connector-sdk'
 import { z } from 'zod'
 
@@ -74,8 +77,6 @@ async function contacts(c: Call): Promise<Contact[]> {
   })
 }
 
-const who = (a: Partial<Attendee>) =>
-  a.name && a.email ? `${a.name} <${a.email}>` : a.name || a.email || ''
 const nameOf = (p: Contact) => [p.given, p.family].filter(Boolean).join(' ') || p.company
 // A LinkedIn profile among a card's links, the one profile link people keep in Contacts.
 const profileOf = (p: Contact) => (p.links ?? []).find((l) => /linkedin\.com\/in\//i.test(l)) ?? ''
@@ -97,34 +98,12 @@ export const calendar: Connector = {
     account: { label: 'This Mac' },
     pace: { perMinute: 30 },
     syncEveryMinutes: 30,
+    // on a Mac's own Alpha there; on a server, lent from a Mac through Alpha Bridge
+    runs: 'either',
   },
   guide: readFileSync(new URL('../GUIDE-calendar.md', import.meta.url), 'utf8'),
   module: 'Calendar',
-  tables: [
-    {
-      name: 'Events',
-      fields: [
-        { name: 'Title', kind: 'text' },
-        { name: 'Starts', kind: 'date' },
-        { name: 'Ends', kind: 'date' },
-        { name: 'All day', kind: 'choice', choices: ['yes', 'no'] },
-        { name: 'Location', kind: 'text' },
-        { name: 'Calendar', kind: 'text' },
-        { name: 'Attendees', kind: 'text' },
-        { name: 'Organizer', kind: 'text' },
-        { name: 'Your address', kind: 'text' },
-      ],
-      people: {
-        each: 'exchange',
-        channel: 'meeting',
-        at: 'Starts',
-        with: ['Attendees'],
-        by: 'Organizer',
-        you: 'Your address',
-        about: 'Title',
-      },
-    },
-  ],
+  tables: [EVENTS],
   tools: {
     events: defineTool({
       description:
@@ -180,34 +159,12 @@ export const contactsConnector: Connector = {
     setup: { sub: 'Through your Mac’s own Contacts; macOS asks you once' },
     account: { label: 'This Mac' },
     pace: { perMinute: 10 },
+    runs: 'either',
     syncEveryMinutes: 24 * 60,
   },
   guide: readFileSync(new URL('../GUIDE-contacts.md', import.meta.url), 'utf8'),
   module: 'Contacts',
-  tables: [
-    {
-      name: 'Contacts',
-      fields: [
-        { name: 'Name', kind: 'text' },
-        { name: 'Company', kind: 'text' },
-        { name: 'Emails', kind: 'text' },
-        { name: 'Phones', kind: 'text' },
-        { name: 'Title', kind: 'text' },
-        { name: 'Profile', kind: 'text' },
-        { name: 'Is you', kind: 'choice', choices: ['yes', 'no'] },
-      ],
-      people: {
-        each: 'person',
-        name: 'Name',
-        company: 'Company',
-        title: 'Title',
-        emails: 'Emails',
-        phones: 'Phones',
-        profile: 'Profile',
-        you: { field: 'Is you', is: 'yes' },
-      },
-    },
-  ],
+  tables: [CONTACTS],
   tools: {
     find: defineTool({
       description:

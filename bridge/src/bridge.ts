@@ -11,7 +11,7 @@ import { type Config, type Lend, lends } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.2.0'
+export const VERSION = '0.3.0'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =
@@ -72,6 +72,7 @@ export interface BridgeOptions {
   config: () => Config // read again whenever it is needed, so a lend made meanwhile counts
   keys: KeyStore
   start: Start // how a connector's process is started here
+  helper?: (args: string[], options: Record<string, unknown>) => Promise<unknown> // on a Mac
   said?: (words: string) => void
   pick?: (connector: string) => void // Alpha asked its person to lend one: the picker opens here
   moved?: () => void // connected, gone or paused: the app's icon follows
@@ -98,12 +99,21 @@ export class Bridge {
     this.children = new Children(options.start, {
       up: (m) => this.send(m),
       lent: (connector, account) => lends(this.options.config(), connector, account),
-      reads: (connector) =>
+      lends: (connector) =>
         this.options
           .config()
           .lends.filter((l) => l.connector === connector)
           .map((l) => l.account),
+      // a folder's process reads its folders; Calendar's and Contacts' reach them through the helper
+      reads: (connector) =>
+        connector === 'folder'
+          ? this.options
+              .config()
+              .lends.filter((l) => l.connector === connector)
+              .map((l) => l.account)
+          : [],
       said: (w) => this.said(w),
+      ...(options.helper ? { helper: options.helper } : {}),
     })
   }
 

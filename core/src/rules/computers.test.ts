@@ -139,6 +139,7 @@ rule('B2', 'what a computer lends is said on the computer', {
         {
           up: (m) => up.push(m),
           lent: (connector, account) => connector === 'folder' && account === FOLDER,
+          lends: () => [FOLDER],
           reads: () => [FOLDER],
           said: () => undefined,
         },

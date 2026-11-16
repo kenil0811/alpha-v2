@@ -17,8 +17,11 @@ export type Start = (
 export interface Pipe {
   up(m: Record<string, unknown>): void // to Alpha
   lent(connector: string, account: string): boolean // this computer lends it now
-  reads(connector: string): string[] // the folders it lends for this connector
+  lends(connector: string): string[] // what it lends of this connector (its accounts)
+  reads(connector: string): string[] // the folders its process may read (a folder's own)
   said(words: string): void // what the person running the Bridge sees
+  // Alpha's helper on a Mac (Calendar, Contacts), run here for the connector that asks
+  helper?: (args: string[], options: Record<string, unknown>) => Promise<unknown>
 }
 
 interface Running {
@@ -74,8 +77,9 @@ export class Children {
   }
 
   private async spawn(connector: string, quiet: boolean): Promise<Running> {
+    if (!this.pipe.lends(connector).length)
+      throw new Error(`This computer does not lend anything for ${connector}.`)
     const reads = this.pipe.reads(connector)
-    if (!reads.length) throw new Error(`This computer does not lend anything for ${connector}.`)
     const how = await this.start(connector, reads)
     const child = spawn(how.command, how.args, {
       shell: how.shell,
@@ -174,8 +178,20 @@ export class Children {
       return m.t === 'ready'
     }
     if (m.t === 'res') r.inflight.delete(m.id)
+    if (m.t === 'host' && m.method === 'helper' && this.pipe.helper) {
+      // Alpha's helper, run here: macOS asks its person, on this computer
+      const p = (m.params ?? {}) as { args?: string[]; options?: Record<string, unknown> }
+      const reply = (x: Record<string, unknown>) =>
+        r.child.stdin?.write(`${JSON.stringify({ t: 'hostReply', hid: m.hid, ...x })}\n`)
+      this.pipe.helper(p.args ?? [], p.options ?? {}).then(
+        (result) => reply({ result: result ?? null }),
+        (err: unknown) =>
+          reply({ error: { message: err instanceof Error ? err.message : String(err) } }),
+      )
+      return false
+    }
     if (m.t === 'host' && OWN(String(m.method))) {
-      // the computer's own asks: none is set up here yet
+      // the computer's own asks that are not set up here
       r.child.stdin?.write(
         `${JSON.stringify({
           t: 'hostReply',

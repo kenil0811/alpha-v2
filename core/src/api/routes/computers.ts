@@ -98,7 +98,7 @@ function sendFile(reply: FastifyReply, file: string, name: string) {
 }
 
 export function registerComputers(ctx: Ctx): void {
-  const { app, world, user, options, asPerson, live } = ctx
+  const { app, world, engine, user, options, asPerson, live } = ctx
   const address = (req: { protocol: string; headers: { host?: string | undefined } }) =>
     options.publicAddress ?? `${req.protocol}://${req.headers.host}`
   const downloads = () => {
@@ -132,6 +132,7 @@ export function registerComputers(ctx: Ctx): void {
         lends: world.connections.on(c.id).map((k) => ({
           connection: k.id,
           connector: k.connector,
+          title: engine.connectors?.find(k.connector)?.manifest.title ?? k.connector,
           account: k.account,
           state: k.state,
           health: k.health,

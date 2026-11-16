@@ -205,7 +205,11 @@ function ComputerLine({ computer: c, onChange }: { computer: ComputerView; onCha
           </span>
           {asked && <span>Pick the folder on {c.name}: its picker is open there.</span>}
           {lent.length > 0 ? (
-            lent.map((l) => <span key={l.connection}>Lends {l.account}</span>)
+            lent.map((l) => (
+              <span key={l.connection}>
+                Lends {l.connector === 'folder' ? l.account : `its ${l.title}`}
+              </span>
+            ))
           ) : (
             <span>Lends nothing yet</span>
           )}

@@ -38,6 +38,9 @@
       "path": "connectors/files"
     },
     {
+      "path": "connectors/google"
+    },
+    {
       "path": "kit-sdk"
     }
   ]

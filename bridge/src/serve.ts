@@ -1,10 +1,10 @@
 // The Bridge as the app runs it (`alpha-bridge serve`): the same Bridge, told what to do and saying
 // what it does in lines on its standard input and output, one JSON object a line. The app draws
 // its icon and menu from what it says; the person's folder picker and every yes stay in the app.
-//   app → Bridge: pair {link}, lend {path}, unlend {path}, pause {minutes|null}, resume, signout,
-//                 state
-//   Bridge → app: state {paired, alpha, name, online, paused, lends}, did {at, words}, pick
-//                 {connector}, problem {words}
+//   app → Bridge: pair {link}, lend and unlend {path, or connector: calendar|contacts}, pause
+//                 {minutes|null}, resume, signout, state
+//   Bridge → app: state {paired, alpha, name, online, paused, lends [{connector, account}]}, did
+//                 {at, words}, pick {connector}, problem {words}
 // What it did is kept on the computer too (did.json, the last 200), so its person can check what
 // Alpha asked without trusting the server.
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { Bridge, keyAccount, pair } from './bridge.ts'
 import type { Start } from './children.ts'
-import { computerName, folderOf } from './code.ts'
+import { computerName, folderOf, helper, LENDS_HERE } from './code.ts'
 import { type Config, fileOf, readConfig, writeConfig } from './config.ts'
 import type { KeyStore } from './keys.ts'
 
@@ -33,6 +33,19 @@ export async function pairHere(home: string, keys: KeyStore, link: string): Prom
   const kept = { ...c, lends: before?.alpha === c.alpha ? before.lends : [] }
   writeConfig(home, kept)
   return kept
+}
+
+// A lend or an unlend on this computer: a folder by its path, or Calendar or Contacts on a Mac (by
+// the name Alpha knows the computer by). What it says it did, in words.
+export function lendHere(home: string, what: string | undefined, on: boolean): string {
+  const c = readConfig(home)
+  if (!c) throw new Error('Pair this computer first.')
+  const kind = what && LENDS_HERE.includes(what) ? what : 'folder'
+  const account = kind === 'folder' ? folderOf(what) : c.name
+  const others = c.lends.filter((l) => !(l.connector === kind && l.account === account))
+  writeConfig(home, { ...c, lends: on ? [...others, { connector: kind, account }] : others })
+  const named = kind === 'folder' ? account : kind === 'calendar' ? 'Calendar' : 'Contacts'
+  return on ? `Lent ${named}.` : `Stopped lending ${named}.`
 }
 
 export function didOf(home: string): Did[] {
@@ -96,7 +109,7 @@ export async function serve(
               : 'until you resume',
           }
         : null,
-      lends: c?.lends.map((l) => l.account) ?? [],
+      lends: c?.lends ?? [],
     })
   }
   const begin = () => {
@@ -108,23 +121,26 @@ export async function serve(
       said: note,
       pick: (connector) => say({ t: 'pick', connector }),
       moved: state,
+      helper,
     })
     bridge.run()
   }
-  // a lend or an unlend here, then Alpha told
-  const lending = (path: unknown, on: boolean) => {
-    const c = readConfig(home)
-    if (!c) throw new Error('Pair this computer first.')
-    const account = folderOf(typeof path === 'string' ? path : undefined)
-    const others = c.lends.filter((l) => !(l.connector === 'folder' && l.account === account))
-    writeConfig(home, { ...c, lends: on ? [...others, { connector: 'folder', account }] : others })
-    note(on ? `Lent ${account}.` : `Stopped lending ${account}.`)
+  // a lend or an unlend here (a folder by its path, or Calendar or Contacts), then Alpha told
+  const lending = (m: { connector?: string; path?: string }, on: boolean) => {
+    const what = m.connector && m.connector !== 'folder' ? m.connector : m.path
+    note(lendHere(home, typeof what === 'string' ? what : undefined, on))
     bridge?.changed()
   }
   const lines = createInterface({ input: io.input })
   lines.on('line', (text) => {
     void (async () => {
-      let m: { t?: string; link?: string; path?: string; minutes?: number | null }
+      let m: {
+        t?: string
+        link?: string
+        path?: string
+        connector?: string
+        minutes?: number | null
+      }
       try {
         m = JSON.parse(text)
       } catch {
@@ -137,8 +153,8 @@ export async function serve(
           const c = await pairHere(home, keys, String(m.link ?? ''))
           note(`Paired with ${new URL(c.alpha).host} as ${c.name}.`)
           begin()
-        } else if (m.t === 'lend') lending(m.path, true)
-        else if (m.t === 'unlend') lending(m.path, false)
+        } else if (m.t === 'lend') lending(m, true)
+        else if (m.t === 'unlend') lending(m, false)
         else if (m.t === 'pause') bridge?.pauseFor(m.minutes ?? null)
         else if (m.t === 'resume') bridge?.resume()
         else if (m.t === 'signout') {

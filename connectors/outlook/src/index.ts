@@ -1,11 +1,21 @@
-// Outlook: the person's Microsoft 365 mail through Microsoft Graph, signed in as them with their
-// organisation's own sign-in app, so it reaches only their own mailbox. It reads, and writes
-// nothing (drafts and sends are not built yet): Inbox and Sent Items land in the same Mail table as
-// Gmail's, with the same fields, so what reads Mail reads both. The first read goes back 90 days;
+// Outlook: the person's Microsoft 365 mail, calendar and contacts through Microsoft Graph, signed in
+// as them with their organisation's own sign-in app, so it reaches only their own. It reads, and
+// writes nothing (drafts and sends are not built yet): Inbox and Sent Items land in the same Mail
+// table as Gmail's, with the same fields, so what reads Mail reads both; events and contacts in the
+// Events and Contacts every source shares (calendar.ts). The first read goes back 90 days;
 // each one after asks Graph only what changed.
 import { readFileSync } from 'node:fs'
-import { type Call, type Connector, defineTool, type ItemFile, Problem } from '@alpha/connector-sdk'
+import {
+  type Call,
+  CONTACTS,
+  type Connector,
+  defineTool,
+  EVENTS,
+  type ItemFile,
+  Problem,
+} from '@alpha/connector-sdk'
 import { z } from 'zod'
+import { contacts, events, type Get } from './calendar.ts'
 
 const GRAPH = 'https://graph.microsoft.com/v1.0'
 const DAY = 86_400_000
@@ -204,7 +214,10 @@ export const outlook: Connector = {
     name: 'outlook',
     title: 'Outlook',
     auth: 'oauth',
-    oauth: { provider: 'microsoft', scopes: ['User.Read', 'Mail.Read'] },
+    oauth: {
+      provider: 'microsoft',
+      scopes: ['User.Read', 'Mail.Read', 'Calendars.Read', 'Contacts.Read'],
+    },
     icon: 'mail',
     account: { label: 'Work address', placeholder: 'you@yourcompany.com' },
     pace: { perMinute: 60 },
@@ -245,6 +258,9 @@ export const outlook: Connector = {
         about: 'Subject',
       },
     },
+    // the calendar and address book every source shares
+    EVENTS,
+    CONTACTS,
   ],
   tools: {
     search: defineTool({
@@ -383,7 +399,25 @@ export const outlook: Connector = {
     // a message deleted at Outlook is kept here, marked gone (rules D8)
     if (out.gone.length) await c.host.gone?.('Mail', [...new Set(out.gone)], { by: 'Outlook ID' })
     c.host.setCursor(out.next)
-    return { rows: out.total, sawNew: landed.added > 0 }
+    // the calendar and contacts, when this sign-in may read them: one made before they were asked
+    // for still reads mail, and says what it needs
+    const get: Get = (path, prefer) => graph(c, path, prefer ? { prefer } : {})
+    let more = 0
+    try {
+      const read = await c.call('calendar', {}, async () => ({
+        events: await events(get, c.host.account),
+        contacts: await contacts(get),
+      }))
+      const e = await c.host.land('Events', read.events)
+      const p = await c.host.land('Contacts', read.contacts)
+      more = e.added + p.added
+    } catch (err) {
+      if (!(err instanceof Problem) || (err.kind !== 'blocked' && err.kind !== 'sign_in')) throw err
+      c.host.journal(
+        'Outlook’s calendar and contacts were not read: sign in to Microsoft again to let Alpha read them.',
+      )
+    }
+    return { rows: out.total, sawNew: landed.added + more > 0 }
   },
 }
 

@@ -360,9 +360,13 @@ function ConnectorTile({
         <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-base text-ink">{c.title}</div>
-          {connections.length === 0 && <div className="text-ink-3 text-sm">Not connected</div>}
+          {connections.length === 0 && (
+            <div className="text-ink-3 text-sm">
+              {c.onComputer ? 'Turn it on in Alpha Bridge on your Mac' : 'Not connected'}
+            </div>
+          )}
         </div>
-        {!open && (connections.length === 0 || !system) && (
+        {!open && !c.onComputer && (connections.length === 0 || !system) && (
           <Button
             size="sm"
             variant={connections.length ? 'ghost' : 'default'}

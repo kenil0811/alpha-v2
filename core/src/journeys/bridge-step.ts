@@ -16,6 +16,7 @@ import type { Engine } from '../engine/engine.ts'
 import type { User, World } from '../world/world.ts'
 
 const CHILD = join(import.meta.dirname, '..', 'connectors', 'child.ts')
+const MAC = join(import.meta.dirname, '..', '..', '..', 'connectors', 'mac', 'src', 'index.ts')
 const FOLDER = join(
   import.meta.dirname,
   '..',
@@ -33,6 +34,25 @@ export interface BridgeStep {
   away?: boolean | undefined // the Bridge stopped
   back?: boolean | undefined // the Bridge started again
   pause?: boolean | undefined // paused by its person there (true), or resumed (false)
+  calendar?: boolean | undefined // its Calendar lent, through a stand-in for Alpha's helper
+}
+
+// What the stand-in for Alpha's helper answers, where answers are not replayed: one event, never
+// the Mac's own Calendar. A journey replays the calendar's recorded answer before it is asked.
+const HELPER_EVENTS = {
+  events: [
+    {
+      id: 'j1',
+      title: 'Harbor call',
+      start: '2026-11-17T15:00:00Z',
+      end: '2026-11-17T15:30:00Z',
+      allDay: false,
+      location: '',
+      calendar: 'Work',
+      attendees: [{ name: 'Priya', email: 'priya@harbor.example' }],
+      organizer: { name: 'Kenil', email: 'kenil@example.com', me: true },
+    },
+  ],
 }
 
 interface StandIn {
@@ -83,7 +103,12 @@ async function standIn(
   const bridge = new Bridge({
     config: () => config,
     keys,
-    start: async () => ({ command: process.execPath, args: [CHILD, FOLDER], shell: false }),
+    start: async (connector) => ({
+      command: process.execPath,
+      args: [CHILD, connector === 'folder' ? FOLDER : MAC],
+      shell: false,
+    }),
+    helper: async () => HELPER_EVENTS,
   })
   return {
     bridge,
@@ -135,6 +160,15 @@ export async function bridgeStep(
     await until(() => !bridges.pausedOf(s.config.computer), 'The resume')
     said.push('resumed it')
   }
+  if (step.calendar) {
+    s.config.lends.push({ connector: 'calendar', account: s.config.name })
+    s.bridge.changed()
+    await until(
+      () => world.connections.find('calendar', s.config.name)?.state === 'connected',
+      'The calendar lent',
+    )
+    said.push('lent its Calendar')
+  }
   if (step.lend || step.back) {
     s.bridge.run()
     await until(() => bridges.online(s.config.computer), 'The computer connecting')
@@ -142,7 +176,10 @@ export async function bridgeStep(
   }
   if (step.lend)
     await until(() => world.connections.find('folder', folder)?.state === 'connected', 'The lend')
-  const k = world.connections.find('folder', folder)
+  const k = world.connections.find(
+    step.calendar ? 'calendar' : 'folder',
+    step.calendar ? s.config.name : folder,
+  )
   if (k) await connectors.sync(k.id)
   const words = `${said.join(', ')}, then read it`
   return words.charAt(0).toUpperCase() + words.slice(1)

@@ -111,7 +111,14 @@ export const microsoft: Provider = {
     },
   },
   // read, drafts and send, approved once, though a connector asks only for what it uses
-  scopes: ['User.Read', 'Mail.Read', 'Mail.ReadWrite', 'Mail.Send'],
+  scopes: [
+    'User.Read',
+    'Mail.Read',
+    'Mail.ReadWrite',
+    'Mail.Send',
+    'Calendars.Read',
+    'Contacts.Read',
+  ],
   always: ['offline_access'],
   console: 'https://entra.microsoft.com',
   sheet: (back, organisation) => [
@@ -136,8 +143,16 @@ export const microsoft: Provider = {
     },
     {
       words:
-        'Open "API permissions", choose "Add a permission", then "Microsoft Graph", then "Delegated permissions". Tick these five, then choose "Add permissions".',
-      copy: ['offline_access', 'User.Read', 'Mail.Read', 'Mail.ReadWrite', 'Mail.Send'],
+        'Open "API permissions", choose "Add a permission", then "Microsoft Graph", then "Delegated permissions". Tick these seven, then choose "Add permissions".',
+      copy: [
+        'offline_access',
+        'User.Read',
+        'Mail.Read',
+        'Mail.ReadWrite',
+        'Mail.Send',
+        'Calendars.Read',
+        'Contacts.Read',
+      ],
     },
     {
       words: `Choose "Grant admin consent for ${organisation}" and confirm. Without this, each person approves Alpha for themselves when they sign in, if your organisation allows that.`,
@@ -255,4 +270,85 @@ export const intuit: Provider = {
   },
 }
 
-export const PROVIDERS: Record<string, Provider> = { microsoft, intuit }
+// Google, for Calendar and Contacts: an app in the firm's (or, while testing, Kenil's) own Google
+// Cloud project, a web client with its Client ID and Client secret. Published unverified, Google
+// shows its warning and lets up to 100 people sign in; left in Testing, it ends each sign-in after
+// 7 days. Offline access and the consent screen every time, so Google gives the long-lived token.
+const GOOGLE_ID = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/
+const GOOGLE_SECRET = /^[A-Za-z0-9_-]{20,80}$/
+export const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/contacts.readonly',
+] as const
+
+export const google: Provider = {
+  name: 'google',
+  title: 'Google',
+  authorize: () => 'https://accounts.google.com/o/oauth2/v2/auth',
+  token: () => 'https://oauth2.googleapis.com/token',
+  ask: { access_type: 'offline', prompt: 'consent' },
+  hint: 'login_hint',
+  pkce: true,
+  secretIn: 'basic',
+  fields: {
+    app: {
+      label: 'Client ID',
+      pattern: GOOGLE_ID,
+      example: '1234567890-abc123.apps.googleusercontent.com',
+    },
+    secret: { label: 'Client secret', pattern: GOOGLE_SECRET, example: 'kept, never shown again' },
+  },
+  scopes: ['openid', 'email', ...GOOGLE_SCOPES],
+  always: [],
+  console: 'https://console.cloud.google.com',
+  sheet: (back) => [
+    {
+      words:
+        'Open the Google Cloud console with the Google account that will own the app. In the project picker at the top, choose New project, name it Alpha, and open it.',
+      copy: ['https://console.cloud.google.com'],
+    },
+    {
+      words:
+        'In APIs & Services › Library, find and enable the Google Calendar API, then the People API.',
+    },
+    {
+      words:
+        'In Google Auth Platform, under Branding, name the app Alpha and give your email. Under Audience choose External, then Publish app: it stays unverified, so Google warns each person once, and up to 100 people can sign in.',
+    },
+    {
+      words: 'Under Data Access, choose Add or remove scopes and add these two, then Save.',
+      copy: [...GOOGLE_SCOPES],
+    },
+    {
+      words:
+        'Under Clients, choose Create client, then Web application, named Alpha. Under Authorized redirect URIs, add this address exactly, then Create.',
+      copy: [back],
+    },
+    {
+      words: 'Copy the Client ID and the Client secret it shows into the fields below.',
+    },
+  ],
+  explain: (e) => {
+    const said = `${e.error} ${e.description}`.toLowerCase()
+    if (e.error === 'invalid_client' || e.error === 'unauthorized_client')
+      return {
+        kind: 'app',
+        words:
+          'Google does not take this app: check the Client ID and Client secret in Sign-in apps.',
+      }
+    if (said.includes('redirect_uri'))
+      return {
+        kind: 'app',
+        words:
+          'Alpha’s address is not among the app’s Authorized redirect URIs in Google Cloud: add it exactly as Sign-in apps shows it.',
+      }
+    if (e.error === 'access_denied')
+      return { kind: 'sign_in', words: 'You said no on Google’s page, so Alpha is not connected.' }
+    return {
+      kind: 'sign_in',
+      words: `Google asks you to sign in again: ${firstSentence(e.description) || e.error}`,
+    }
+  },
+}
+
+export const PROVIDERS: Record<string, Provider> = { microsoft, intuit, google }

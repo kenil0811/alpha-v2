@@ -10,6 +10,7 @@ export default defineConfig({
       'plugin-sdk',
       'connectors/files',
       'connectors/gmail',
+      'connectors/google',
       'connectors/outlook',
       'connectors/quickbooks',
       'connectors/mac',
