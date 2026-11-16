@@ -5,6 +5,7 @@
 import type { ModuleView, PageSummary, TableView as TableData } from '@alpha/core/api'
 import { Download } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useAgents } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { show } from './table/values.ts'
@@ -71,6 +72,7 @@ export function PageView({
   const [height, setHeight] = useState(480)
   const [problem, setProblem] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
+  const agents = useAgents(0)
   // a figure's source, opened beside the page: the page
   // stays where it was, and closing the panel leaves the person on it
   const [source, setSource] = useState<{ table: TableData; row: string; field: string } | null>(
@@ -115,6 +117,7 @@ export function PageView({
         target?: Target
         values?: Record<string, string>
         words?: string
+        agent?: string
       }
       if (msg.alpha === 'ask') {
         try {
@@ -150,7 +153,7 @@ export function PageView({
       } else if (msg.alpha === 'say' && typeof msg.words === 'string' && msg.words.trim()) {
         // a page's button asks Alpha in the person's words, at once: the press is the ask (Kenil,
         // 16 Nov); what Alpha then does goes through its own cards
-        void ask(msg.words.trim().slice(0, 500))
+        void ask(msg.words.trim().slice(0, 500), typeof msg.agent === 'string' ? msg.agent : null)
       }
     }
     window.addEventListener('message', onMessage)
@@ -178,9 +181,13 @@ export function PageView({
     }
   }
 
-  const ask = async (words: string) => {
+  // a button naming one of the module's agents asks it, straight; else the Chief of staff
+  const ask = async (words: string, agent: string | null) => {
+    const to = agent
+      ? agents.find((a) => a.from.module === m.id && a.name.toLowerCase() === agent.toLowerCase())
+      : undefined
     try {
-      await api.post('/api/say', { words, from: m.id })
+      await api.post('/api/say', { words, from: m.id, ...(to ? { named: [to.id] } : {}) })
     } catch (err) {
       setProblem(wordsOf(err))
     }

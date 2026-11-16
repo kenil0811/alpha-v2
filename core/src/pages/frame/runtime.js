@@ -122,7 +122,7 @@
     history: (table, field) => ask('history', { table, field }),
     input,
     open: (target) => post({ alpha: 'open', target }),
-    say: (words) => post({ alpha: 'say', words }),
+    say: (words, agent) => post({ alpha: 'say', words, ...(agent ? { agent } : {}) }),
     page: (fn) => {
       if (!maker) watch()
       maker = fn

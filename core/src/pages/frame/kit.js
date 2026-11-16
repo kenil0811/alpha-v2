@@ -15,7 +15,8 @@
 //   {list: {title?, items: [{text, tone?, open?}]}}
 //   {card: {title?, text}}
 //   {grid: {columns?, blocks}}
-//   {button: {label, says}}                      asks Alpha, as the person, from this page
+//   {button: {label, says, agent?}}              asks Alpha, as the person, from this page; agent
+//                                                names one of the module's agents, asked instead
 //   {pairs: {title?, note?, items: [{label, value, unit?, note?, tone?, change?, open?}]}}
 //   {bars: {title?, note?, items: [{label, value, unit?, note?, change?, open?}]}}
 //   {callout: {title?, text, note?}}              text may be a list of paragraphs
@@ -463,7 +464,7 @@
       text: String(b.label ?? b.says),
     })
     node.addEventListener('click', () => {
-      window.alpha.say(String(b.says ?? b.label))
+      window.alpha.say(String(b.says ?? b.label), b.agent ? String(b.agent) : undefined)
       node.disabled = true
       node.textContent = 'Asked Alpha'
     })

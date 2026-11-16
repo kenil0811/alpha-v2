@@ -20,3 +20,6 @@ prints on white.
 - Long words in the source panel read as text, not in the figure's large type.
 - Test: a document page printed as text holds its title, callout, pairs and bars, and not its
   chooser.
+- A page's button may name one of its module's agents (`{button: {label, says, agent}}`): the
+  window asks that agent straight, and its answer is the reply. The Accounting report's Key
+  insights button asks the kit's Accountant.
