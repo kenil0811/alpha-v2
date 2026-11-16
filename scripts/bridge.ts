@@ -133,7 +133,7 @@ function updaterKey(): string {
 // A file kept in .data/bridge under its lasting name, signed with Kenil's key.
 function keep(from: string, name: string, key: string): string {
   const to = join(OUT, name)
-  copyFileSync(from, to)
+  if (from !== to) copyFileSync(from, to)
   writeFileSync(`${to}.sig`, sign(null, readFileSync(to), createPrivateKey(key)).toString('base64'))
   console.log(`Made .data/bridge/${name}, signed.`)
   return to
