@@ -17,7 +17,7 @@ if [ -n "$NAME" ]; then
   HOME_DIR=/home/alpha-$NAME/data
   UNIT=alpha-$NAME
   CURRENT=/opt/alpha/current-$NAME
-  PORT=$(sed -n "s/^$NAME \([0-9]*\)$/\1/p" /etc/alpha/ports 2>/dev/null)
+  PORT=$(sed -n "s/^$NAME \([0-9]*\)$/\1/p" /etc/alpha/ports 2>/dev/null || true)
   [ -n "$PORT" ] || { echo "There is no Alpha called $NAME on this machine." >&2; exit 1; }
 else
   HOME_DIR=/home/alpha/data
