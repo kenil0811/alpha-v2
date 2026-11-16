@@ -253,8 +253,19 @@ acts only as its person (rules B1). A computer that is away answers a conversati
 is, and its connection's reads wait, saying "Waiting for" it on the tile, with no card; the first
 read once it is back takes everything new. Removed in Alpha, it is turned away at once and what it
 lent is paused, kept. On a Mac its connector runs in Anthropic's sandbox; on Windows, where there is
-none yet, the signature is the wall. The app around it (an icon, switches, a picker, updates) is
-step 2.
+none yet, the signature is the wall.
+
+Step 2 (16 Nov) wraps it in **Alpha Bridge**, a Tauri app in `bridge/app/` (an icon in the Mac's
+menu bar or Windows' tray, no terminal): a disk image for the Mac, signed ad hoc as the Mac app is
+until the Apple account, and a per-person setup program for Windows, unsigned while testing and
+made on GitHub's Windows machine (`pnpm bridge mac`, `pnpm bridge windows`). The app runs the same
+Bridge as its child and tells it what to do in lines (`alpha-bridge serve`). An `alpha-bridge:`
+link from Your computers pairs it (pasting the link is the fallback); Lend a folder, in Alpha or the
+menu, opens the computer's own picker, and only a pick lends. Pause, for an hour or until resumed,
+refuses every call there and says Paused on the tile; Sign out removes the computer. What it did
+is kept on the computer (`did.txt`). It starts at sign-in and updates itself from the Alpha it is
+paired with, which hands out an update only under Kenil's signature, and the app takes it only
+under its updater key's (a second key in his Keychain).
 
 ## Modules and kits
 

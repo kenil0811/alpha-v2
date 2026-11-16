@@ -10,7 +10,10 @@
       "!.data",
       "!docs",
       "!mac/target",
-      "!mac/gen"
+      "!mac/gen",
+      "!bridge/app/target",
+      "!bridge/app/gen",
+      "!bridge/app/resources"
     ]
   },
   "formatter": {

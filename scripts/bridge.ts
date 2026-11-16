@@ -177,8 +177,11 @@ async function mac(): Promise<void> {
 // The Windows setup program, made on GitHub's Windows machine from this branch (a Mac cannot make
 // it reliably), then signed here: Tauri's signature with the updater key, Kenil's beside it.
 async function windows(): Promise<void> {
-  // the build of this very commit, which a push of a bridge-* branch starts
-  const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim()
+  // the newest build of this branch: a push of a bridge-* branch that changes the Bridge starts one
+  const branch = execFileSync('git', ['branch', '--show-current'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  }).trim()
   const id = execFileSync(
     'gh',
     [
@@ -186,8 +189,8 @@ async function windows(): Promise<void> {
       'list',
       '--workflow',
       'bridge-windows.yml',
-      '--commit',
-      head,
+      '--branch',
+      branch,
       '--limit',
       '1',
       '--json',
@@ -197,7 +200,7 @@ async function windows(): Promise<void> {
     ],
     { cwd: ROOT, encoding: 'utf8' },
   ).trim()
-  if (!id) throw new Error('No Windows build of this commit: push its bridge-* branch first.')
+  if (!id) throw new Error(`No Windows build of ${branch}: push it as a bridge-* branch first.`)
   console.log('Waiting for the Windows build on GitHub…')
   run('gh', ['run', 'watch', id, '--exit-status'])
   const got = join(OUT, 'work', 'windows')

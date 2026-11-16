@@ -32,6 +32,7 @@ export interface BridgeStep {
   put?: { name: string; text: string } | undefined // a file put in the folder
   away?: boolean | undefined // the Bridge stopped
   back?: boolean | undefined // the Bridge started again
+  pause?: boolean | undefined // paused by its person there (true), or resumed (false)
 }
 
 interface StandIn {
@@ -123,6 +124,16 @@ export async function bridgeStep(
     s.bridge.stop()
     await until(() => !bridges.online(s.config.computer), 'The computer going away')
     said.push('stopped its Bridge')
+  }
+  if (step.pause === true) {
+    s.bridge.pauseFor(null)
+    await until(() => !!bridges.pausedOf(s.config.computer), 'The pause')
+    said.push('paused it there')
+  }
+  if (step.pause === false) {
+    s.bridge.resume()
+    await until(() => !bridges.pausedOf(s.config.computer), 'The resume')
+    said.push('resumed it')
   }
   if (step.lend || step.back) {
     s.bridge.run()

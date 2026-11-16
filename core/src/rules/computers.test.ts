@@ -2,9 +2,11 @@
 // person, and what a computer lends is said there, never in Alpha. Tried on the rule world with a
 // made-up desk connector that runs only on a person's computer and a computer paired with a test
 // key; nothing reaches a real computer.
+import { createPrivateKey, sign } from 'node:crypto'
 import { Children } from '@alpha/bridge/children'
 import { newKey } from '@alpha/bridge/keys'
 import { type Connector, MemorySecrets } from '@alpha/connector-sdk'
+import { Hub } from '../bridge/hub.ts'
 import { lend } from '../connectors/computers.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import { Gatekeeper } from '../engine/gate.ts'
@@ -91,6 +93,43 @@ rule('B2', 'what a computer lends is said on the computer', {
       const said = await refusal(() => service.connect('desk', '/etc', null, w.user.id))
       return /lend it from the Bridge/.test(said ?? '') && !w.world.connections.find('desk', '/etc')
     },
+    'Lend a folder in Alpha only asks the computer: nothing is lent until its person picks there':
+      async (w) => {
+        const key = newKey()
+        const pc = w.world.computers.pair(w.world.computers.link(w.user.id).code, {
+          publicKey: key.publicPem,
+          name: 'Kenil’s Mac',
+          platform: 'darwin',
+        })
+        const hub = new Hub()
+        hub.use(w.world, {
+          notify: () => undefined,
+          lend: async () => undefined,
+          unlend: () => undefined,
+          signedOut: () => undefined,
+        })
+        const sent: Record<string, unknown>[] = []
+        const door = hub.open({
+          send: (t) => sent.push(JSON.parse(t)),
+          close: () => undefined,
+        })
+        const challenge = String(sent[0]?.challenge)
+        const signature = sign(null, Buffer.from(challenge), createPrivateKey(key.privatePem))
+        door.heard(
+          JSON.stringify({
+            t: 'hello',
+            computer: pc.id,
+            signature: signature.toString('base64'),
+            version: 'test',
+          }),
+        )
+        const asked = hub.pick(pc.id, 'folder')
+        return (
+          asked &&
+          sent.some((m) => m.t === 'pick' && m.connector === 'folder') &&
+          w.world.connections.on(pc.id).length === 0
+        )
+      },
     'the Bridge refuses a call for what it does not lend, whatever Alpha sends': async () => {
       const up: Record<string, unknown>[] = []
       const children = new Children(

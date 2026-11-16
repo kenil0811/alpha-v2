@@ -121,6 +121,7 @@ const Journey = z.object({
           put: z.object({ name: z.string(), text: z.string() }).optional(),
           away: z.boolean().optional(),
           back: z.boolean().optional(),
+          pause: z.boolean().optional(), // paused by its person there, or resumed (false)
         })
         .optional(),
       // the scheduler's tick: schedules whose time or change has come run now

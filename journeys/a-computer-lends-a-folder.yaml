@@ -1,5 +1,5 @@
 name: a-computer-lends-a-folder
-title: A computer lends a folder through the Bridge; what is put there lands in Files, and it waits while the computer is away
+title: A computer lends a folder through the Bridge; what is put there lands in Files, and it waits while the computer is away or paused
 why: >
   Bridge step 1 (Kenil's yes, 16 Nov): a person's own computer pairs with a one-time link from
   Your computers and lends a folder there; what is put in it is kept and read as if dropped in
@@ -19,4 +19,14 @@ steps:
   - bridge: { back: true }
     checks:
       - documents: 2
+      - errors: 0
+  # step 2 (16 Nov): its person pauses it there; Alpha waits, saying so, and catches up on resume
+  - bridge: { pause: true, put: { name: budget.csv, text: "Line,Amount\nRent,400\n" } }
+    checks:
+      - documents: 2
+      - connection: { connector: folder, state: connected, health: 'Paused on' }
+      - errors: 0
+  - bridge: { pause: false }
+    checks:
+      - documents: 3
       - errors: 0
