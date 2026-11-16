@@ -69,8 +69,11 @@ export function SourcePanel({
         <div>
           <div
             className={cn(
-              'flex items-start gap-1 font-medium font-serif text-ink tabular-nums',
-              text.length > 18 ? 'text-xl' : 'text-2xl',
+              'flex items-start gap-1 text-ink tabular-nums',
+              // a figure large; words, a paragraph or more, read as text
+              text.length > 60
+                ? 'font-sans text-md leading-relaxed'
+                : cn('font-medium font-serif', text.length > 18 ? 'text-xl' : 'text-2xl'),
             )}
           >
             <span className={cn('min-w-0 break-words', !text && 'text-ink-3')}>

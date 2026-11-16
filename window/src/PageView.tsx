@@ -70,7 +70,6 @@ export function PageView({
   const [height, setHeight] = useState(480)
   const [problem, setProblem] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
-  const [asks, setAsks] = useState<string | null>(null)
   // a figure's source, opened beside the page: the page
   // stays where it was, and closing the panel leaves the person on it
   const [source, setSource] = useState<{ table: TableData; row: string; field: string } | null>(
@@ -148,9 +147,9 @@ export function PageView({
       } else if (msg.alpha === 'inputs' && msg.values) {
         inputs.current = msg.values
       } else if (msg.alpha === 'say' && typeof msg.words === 'string' && msg.words.trim()) {
-        // a page's button asks Alpha in the person's words: shown outside the frame and sent
-        // only when the person says so
-        setAsks(msg.words.trim().slice(0, 500))
+        // a page's button asks Alpha in the person's words, at once: the press is the ask (Kenil,
+        // 16 Nov); what Alpha then does goes through its own cards
+        void ask(msg.words.trim().slice(0, 500))
       }
     }
     window.addEventListener('message', onMessage)
@@ -178,10 +177,7 @@ export function PageView({
     }
   }
 
-  const ask = async () => {
-    const words = asks
-    setAsks(null)
-    if (!words) return
+  const ask = async (words: string) => {
     try {
       await api.post('/api/say', { words, from: m.id })
     } catch (err) {
@@ -197,19 +193,6 @@ export function PageView({
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
-        {asks && (
-          <div className="flex max-w-page items-center gap-3 border-hair border-b bg-surface px-7 py-2.5">
-            <span className="min-w-0 flex-1 truncate text-ink text-md">
-              This page asks Alpha: “{asks}”
-            </span>
-            <Button size="sm" variant="ghost" onClick={() => setAsks(null)}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={ask}>
-              Ask Alpha
-            </Button>
-          </div>
-        )}
         <div className="flex max-w-page items-center gap-3 px-7 pt-4">
           <span className="min-w-0 flex-1 truncate text-ink-3 text-sm">
             {problem ?? (html ? '' : 'Loading the page…')}
