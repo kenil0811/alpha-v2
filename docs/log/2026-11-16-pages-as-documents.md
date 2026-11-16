@@ -2,11 +2,13 @@
 
 Kenil found the Accounting report heavy beside Avilo's own v9 snapshot. His yes to step 8b (doc
 YCLmqEKWtVDxR94BCpHQ3G), five calls as recommended: the look lives in the page kit; on paper in a
-dark window too; Alpha's own blue; v9's order; referral partners over the last 90 days.
+dark window too; Alpha's own blue; v9's order; referral partners over the last 90 days. Seeing it,
+he took back paper and the narrow column: a document follows the window's theme and width, and
+prints on white.
 
-- `<meta name="alpha-look" content="document">`: one column on paper (the window's canvas around
-  it), small capital section labels with a rule between sections, soft tiles without borders,
-  tables and charts without boxes. Its choosers sit on the desk above the paper and never print.
+- `<meta name="alpha-look" content="document">`: small capital section labels with a rule between
+  sections, soft tiles without borders, tables and charts without boxes, the window's whole width.
+  Its choosers sit above it and never print; its Download PDF sits at the window's right edge.
 - `{heading, level: 1, aside, asideNote}` is a page's own title with words at its right.
 - A stat's `change` may be a list (on last month, on last year), and a change may be money.
 - A chart's `current` names the x whose bars stand out.

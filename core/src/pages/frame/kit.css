@@ -467,41 +467,15 @@ td.ak-tone-bad {
   margin: 8px 0 0;
 }
 
-/* The document look (<meta name="alpha-look" content="document">): one column on paper, in both
-   themes, the window's own canvas around it; small section labels, soft tiles, bare tables. */
+/* The document look (<meta name="alpha-look" content="document">): the window's own width and
+   theme (Kenil, 16 Nov), printed on white; small section labels, soft tiles, bare tables. */
 .ak-desk {
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 18px 0 0;
+  padding: 18px 28px 0;
 }
 .ak-doc .ak-sheet {
-  --surface: #ffffff;
-  --sunk: #f4f3ef;
-  --tile: #f4f3ef;
-  --hover: #ebe9e3;
-  --ink: #272c33;
-  --ink-2: #4b5159;
-  --ink-3: #8b929b;
-  --line: #e7e5df;
-  --hair: #efedea;
-  --accent: #2563eb;
-  --accent-soft: #c9d8fb;
-  --accent-line: #b6c8f5;
-  --good: #3b7550;
-  --good-soft: #e6f0e8;
-  --warn: #8f5d1b;
-  --warn-soft: #f7eedf;
-  --bad: #ad3d36;
-  --bad-soft: #f8e6e4;
-  color-scheme: light;
-  color: var(--ink);
-  background: #ffffff;
-  max-width: 780px;
-  margin: 14px auto 28px;
-  padding: 34px 42px 38px;
-  border-radius: 10px;
+  max-width: none;
+  padding: 14px 28px 28px;
   gap: 12px;
-  font-size: 13px;
 }
 .ak-doc .ak-sheet .ak-heading {
   border-top: 1px solid var(--line);

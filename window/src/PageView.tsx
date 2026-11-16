@@ -9,6 +9,7 @@ import { api, Problem, wordsOf } from './api.ts'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { show } from './table/values.ts'
 import { Button } from './ui/button.tsx'
+import { cn } from './ui/cn.ts'
 
 // the window's look, handed to the page as its variables
 const LOOK = [
@@ -185,6 +186,8 @@ export function PageView({
     }
   }
 
+  // a document uses the window's whole width, its Download PDF at the right edge
+  const wide = !!html && /<meta\s+name=["']alpha-look["']\s+content=["']document["']/i.test(html)
   const opened = source && {
     row: source.table.rows.find((r) => r.id === source.row),
     field: source.table.fields.find((f) => f.slug === source.field),
@@ -193,7 +196,7 @@ export function PageView({
   return (
     <div className="flex h-full min-h-0">
       <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className="flex max-w-page items-center gap-3 px-7 pt-4">
+        <div className={cn('flex items-center gap-3 px-7 pt-4', !wide && 'max-w-page')}>
           <span className="min-w-0 flex-1 truncate text-ink-3 text-sm">
             {problem ?? (html ? '' : 'Loading the page…')}
           </span>

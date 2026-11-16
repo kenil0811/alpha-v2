@@ -21,8 +21,8 @@
 //   {callout: {title?, text, note?}}              text may be a list of paragraphs
 //   (pairs, bars and callout are in doc.js)
 //
-// <meta name="alpha-look" content="document"> draws the page as a document: one column on paper,
-// in both themes, small section labels, soft tiles and bare tables; printed the same.
+// <meta name="alpha-look" content="document"> draws the page as a document, in the window's width
+// and theme: small section labels, soft tiles and bare tables; printed on white.
 //   a chart series may be {kind: 'bar'|'line', axis: 'right'} to mix bars and a line on two axes
 //
 // A value is a number, words, a date ('2026-10-20') or money ({amount, currency}); `tone` is
