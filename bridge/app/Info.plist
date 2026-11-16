@@ -5,5 +5,12 @@
   <!-- an icon in the menu bar only: no Dock icon, no window of its own -->
   <key>LSUIElement</key>
   <true/>
+  <!-- macOS asks for Calendar and Contacts in the app's name: Alpha's helper lives inside it -->
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Alpha Bridge lends Alpha your calendar, when you tick Calendar, so it knows your meetings and who was in them.</string>
+  <key>NSCalendarsUsageDescription</key>
+  <string>Alpha Bridge lends Alpha your calendar, when you tick Calendar, so it knows your meetings and who was in them.</string>
+  <key>NSContactsUsageDescription</key>
+  <string>Alpha Bridge lends Alpha your contacts, when you tick Contacts, so it knows the people you deal with.</string>
 </dict>
 </plist>

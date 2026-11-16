@@ -27,3 +27,7 @@ recommended.
   replaces the computer's old pairing and its folders follow, and a folder still on another of the
   same person's computers that is not connected follows the one lending it. The app says when Alpha
   turned it away and offers to pair again. Alpha Bridge 0.3.1.
+- Kenil's Calendar tick came back "not allowed" without macOS asking: the helper lives inside Alpha
+  Bridge, so macOS asks in Alpha Bridge's name, and the app had no words saying why it asks. Now
+  it does (Calendars and Contacts usage words in its Info.plist), and the helper's words name Alpha
+  Bridge. Alpha Bridge 0.3.2.

@@ -16,6 +16,7 @@ export interface HelperOptions {
   stdin?: string
   raw?: boolean // the answer is the bytes themselves (a secret), not JSON
   asApp?: boolean // through `open`, for what macOS asks the person about
+  asker?: string // the app macOS names as asking, the helper being inside it (Alpha, Alpha Bridge)
 }
 
 export async function runHelper(
@@ -23,7 +24,7 @@ export async function runHelper(
   args: string[],
   options: HelperOptions = {},
 ): Promise<unknown> {
-  if (options.asApp) return runAsApp(app, args)
+  if (options.asApp) return runAsApp(app, args, options.asker)
   const text = await new Promise<string>((resolve, reject) => {
     const child = spawn(helperBinary(app), args, { stdio: ['pipe', 'pipe', 'pipe'] })
     let out = ''
@@ -48,7 +49,7 @@ export async function runHelper(
 // is read; with none written, the helper is started once more.
 const ENDED_FIRST = /kevent\(\) failed: No such process/
 
-async function runAsApp(app: string, args: string[], again = 1): Promise<unknown> {
+async function runAsApp(app: string, args: string[], asker = 'Alpha', again = 1): Promise<unknown> {
   const dir = mkdtempSync(join(tmpdir(), 'alpha-helper-'))
   const out = join(dir, 'out.json')
   try {
@@ -61,16 +62,17 @@ async function runAsApp(app: string, args: string[], again = 1): Promise<unknown
     )
     const text = existsSync(out) ? readFileSync(out, 'utf8') : ''
     if (failed && !(ENDED_FIRST.test(failed.message) && text.trim())) {
-      if (ENDED_FIRST.test(failed.message) && again > 0) return runAsApp(app, args, again - 1)
+      if (ENDED_FIRST.test(failed.message) && again > 0)
+        return runAsApp(app, args, asker, again - 1)
       throw new Problem(`Alpha's helper did not start: ${failed.message}`)
     }
-    return parseAnswer(text)
+    return parseAnswer(text, asker)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
 }
 
-function parseAnswer(text: string): unknown {
+function parseAnswer(text: string, asker = 'Alpha'): unknown {
   let answer: { ok?: boolean; problem?: string }
   try {
     answer = JSON.parse(text)
@@ -86,8 +88,8 @@ function parseAnswer(text: string): unknown {
       const what = access[1] === 'calendar' ? 'Calendars' : 'Contacts'
       throw new Problem(
         access[2] === 'is off'
-          ? `${what} is off for Alpha in System Settings › Privacy & Security › ${what}. Turn it on there, then Read now.`
-          : `macOS asked whether Alpha may read your ${what.toLowerCase()}, and it was not allowed. Turn it on in System Settings › Privacy & Security › ${what}, then Read now.`,
+          ? `${what} is off for ${asker} in System Settings › Privacy & Security › ${what}. Turn it on there, then Read now.`
+          : `macOS asked whether ${asker} may read your ${what.toLowerCase()}, and it was not allowed. Turn it on in System Settings › Privacy & Security › ${what}, then Read now.`,
         'sign_in',
       )
     }

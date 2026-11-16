@@ -34,7 +34,8 @@ const HELPER =
 export const helper = (args: string[], options: Record<string, unknown>): Promise<unknown> => {
   if (process.platform !== 'darwin' || !existsSync(HELPER))
     return Promise.reject(new Error("Alpha's helper is not on this computer."))
-  return runHelper(HELPER, args, options as HelperOptions)
+  // the helper lives inside Alpha Bridge, so macOS names Alpha Bridge as asking
+  return runHelper(HELPER, args, { ...(options as HelperOptions), asker: 'Alpha Bridge' })
 }
 
 // A connector's process: in Anthropic's sandbox on a Mac, reading only its code and the folders
