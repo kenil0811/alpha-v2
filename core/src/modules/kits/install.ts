@@ -13,12 +13,13 @@ import { checked, readKit, sha } from './read.ts'
 import { currentRowHash, landSetup, placeModule, shapeTables, shapeViews } from './shape.ts'
 
 // signed: from a pack signed by Kenil's key, so its `managed: true` counts (rules M1); a folder's or
-// an unsigned pack's mark counts for nothing.
+// an unsigned pack's mark counts for nothing. adopt: Alpha's own kit takes a module of its name that
+// is no kit's (one a connector made for its rows: Calendar), its tables and rows kept.
 export async function install(
   world: World,
   kitDir: string,
   ctx: WriteCtx,
-  options: { signed?: boolean } = {},
+  options: { signed?: boolean; adopt?: boolean } = {},
 ): Promise<Module> {
   checked(kitDir, world)
   const { manifest, setup, files } = readKit(kitDir)
@@ -26,18 +27,17 @@ export async function install(
   refuseClashes(world, agents, null, manifest.name)
   // the kit's module by its lasting key, so a renamed one is still this kit's
   const known = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
-  if (known) {
-    const isKit = one(world.db, 'SELECT 1 FROM kits WHERE module_id = ?', known.id)
+  const isKit = !!known && !!one(world.db, 'SELECT 1 FROM kits WHERE module_id = ?', known.id)
+  if (known && (isKit || !options.adopt))
     throw new Refused(
       isKit
         ? `${manifest.name} is already installed: update it instead.`
         : `There is already a module called ${manifest.name}.`,
     )
-  }
   const kitName = `${manifest.name} ${manifest.version}`
   const kitCtx: WriteCtx = { ...ctx, actor: { kind: 'system', id: `kit:${manifest.name}` } }
   const module = tx(world.db, () => {
-    const m = world.shape.makeModule(manifest.name, kitCtx, manifest.name)
+    const m = known ?? world.shape.makeModule(manifest.name, kitCtx, manifest.name)
     for (const f of files) {
       mkdirSync(dirname(join(m.dir, f)), { recursive: true })
       copyFileSync(join(kitDir, f), join(m.dir, f))
@@ -55,6 +55,12 @@ export async function install(
       setBusinessCase(world.shape, m, manifest.business_case, 'kit', kitCtx)
     placeModule(world, m, manifest.within, kitCtx)
     shapeTables(world, m, manifest, kitCtx)
+    // adopted: a table its connector kept out of the sidebar is the kit's to show now
+    if (known)
+      for (const spec of manifest.tables) {
+        const t = world.shape.ownTable(m.id, spec.name)
+        if (t?.hidden) world.shape.setHidden(t.id, false, kitCtx)
+      }
     shapeViews(world, m, manifest, kitCtx)
     const rows = landSetup(world, m.id, setup, kitName, kitCtx, () => true)
     run(

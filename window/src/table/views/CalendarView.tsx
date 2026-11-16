@@ -1,83 +1,207 @@
-// The calendar: a month of days, each row on the day of the view's date; earlier and later
-// months a click away. A row opens whole; the rows with no date are counted under the month.
-import type { FieldView, RowView } from '@alpha/core/api'
+// The calendar: a month of days, a week or a day of hours, each row on the day and time of the
+// view's date, the earlier and later ones a click away. With the view's end date (until), a row in a
+// week or a day is as long as it lasts; a row that takes the whole day sits above the hours. A row
+// opens whole; the rows with no date are counted. With no rows yet, the table says where they come
+// from (its about).
+import type { RowView, TableView as TableData, ViewConfig } from '@alpha/core/api'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { cn } from '../../ui/cn.ts'
+import { Segmented } from '../../ui/segmented.tsx'
 import { numberOf } from '../engine.ts'
 import { DOT, titleOf } from '../values.ts'
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+const DAY = 86_400_000
+const HOUR = 48 // the height of an hour in a week or a day, in pixels
+type Span = 'month' | 'week' | 'day'
+
+// Monday of the week a day is in.
+const mondayOf = (d: Date) => {
+  const m = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  m.setDate(m.getDate() - ((m.getDay() + 6) % 7))
+  return m
+}
+const plusDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+
+interface Placed {
+  row: RowView
+  at: Date
+  end: Date | null
+  allDay: boolean
+}
 
 export function CalendarView({
   rows,
-  fields,
-  by,
+  data,
+  view,
   onOpen,
 }: {
   rows: RowView[]
-  fields: FieldView[]
-  by: FieldView
+  data: TableData
+  view: ViewConfig
   onOpen: (id: string) => void
 }) {
-  const dated = useMemo(
+  const fields = data.fields
+  const by = fields.find((f) => f.id === view.by && f.kind === 'date') ?? fields[0]
+  const until = fields.find((f) => f.id === view.until && f.kind === 'date')
+  // a choice named All day says a row takes the whole day
+  const whole = fields.find((f) => f.kind === 'choice' && f.name.toLowerCase() === 'all day')
+  const placed = useMemo(
     () =>
-      rows.flatMap((r) => {
-        const t = numberOf(by, r.values[by.slug])
-        return t === null ? [] : [{ row: r, at: new Date(t) }]
+      rows.flatMap((r): Placed[] => {
+        const t = by ? numberOf(by, r.values[by.slug]) : null
+        if (t === null) return []
+        const e = until ? numberOf(until, r.values[until.slug]) : null
+        const allDay = whole ? String(r.values[whole.slug] ?? '') === 'yes' : false
+        return [{ row: r, at: new Date(t), end: e === null ? null : new Date(e), allDay }]
       }),
-    [rows, by],
+    [rows, by, until, whole],
   )
-  // the month shown starts where the rows are: this month if any fall in it, else the latest
-  const [month, setMonth] = useState(() => {
+  const [span, setSpan] = useState<Span>('month')
+  // where it opens: today when any row falls this month, else the latest row's day
+  const [anchor, setAnchor] = useState(() => {
     const now = new Date()
-    const here = dated.some(
+    const here = placed.some(
       (d) => d.at.getFullYear() === now.getFullYear() && d.at.getMonth() === now.getMonth(),
     )
-    const latest = dated.reduce<Date | null>((a, d) => (!a || d.at > a ? d.at : a), null)
-    const m = here || !latest ? now : latest
-    return new Date(m.getFullYear(), m.getMonth(), 1)
+    const latest = placed.reduce<Date | null>((a, d) => (!a || d.at > a ? d.at : a), null)
+    return here || !latest ? now : latest
   })
-  const byDay = new Map<string, RowView[]>()
-  for (const d of dated) byDay.set(dayKey(d.at), [...(byDay.get(dayKey(d.at)) ?? []), d.row])
-  // weeks start on Monday
-  const first = new Date(month)
-  first.setDate(1 - ((month.getDay() + 6) % 7))
-  const days = Array.from({ length: 42 }, (_, i) => {
-    const d = new Date(first)
-    d.setDate(first.getDate() + i)
-    return d
-  })
-  const weeks = days[35]?.getMonth() === month.getMonth() ? 6 : 5
-  const today = dayKey(new Date())
+  if (!by) return null
   const colour = fields.find((f) => f.kind === 'choice' && Object.keys(f.tones).length)
-  const move = (by: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + by, 1))
+  const toneOf = (r: RowView) =>
+    colour ? colour.tones[String(r.values[colour.slug] ?? '')] : undefined
+  const move = (n: number) =>
+    setAnchor(
+      span === 'month'
+        ? new Date(anchor.getFullYear(), anchor.getMonth() + n, 1)
+        : plusDays(anchor, n * (span === 'week' ? 7 : 1)),
+    )
+  const title =
+    span === 'month'
+      ? anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+      : span === 'week'
+        ? `Week of ${mondayOf(anchor).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}`
+        : anchor.toLocaleDateString(undefined, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })
+  const words = { month: 'month', week: 'week', day: 'day' }[span]
   return (
     <div className="flex min-h-0 flex-1 flex-col px-7 pb-6">
-      <div className="mb-2 flex items-center gap-2">
-        <h2 className="font-medium font-serif text-ink text-xl">
-          {month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-        </h2>
-        <IconButton label="The month before" onClick={() => move(-1)}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+        <IconButton label={`The ${words} before`} onClick={() => move(-1)}>
           <ChevronLeft className="size-4" />
         </IconButton>
-        <IconButton label="The month after" onClick={() => move(1)}>
+        <IconButton label={`The ${words} after`} onClick={() => move(1)}>
           <ChevronRight className="size-4" />
         </IconButton>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}
-        >
-          This month
+        <Button size="sm" variant="ghost" onClick={() => setAnchor(new Date())}>
+          Today
         </Button>
         <span className="flex-1" />
-        <span className="text-ink-3 text-sm">
-          By {by.name}
-          {rows.length - dated.length > 0 && ` · ${rows.length - dated.length} with no date`}
-        </span>
+        {rows.length - placed.length > 0 && (
+          <span className="text-ink-3 text-sm">{rows.length - placed.length} with no date</span>
+        )}
+        <Segmented
+          label="Show a month, a week or a day"
+          value={span}
+          onChange={(v) => setSpan(v as Span)}
+          options={[
+            { value: 'month', label: 'Month' },
+            { value: 'week', label: 'Week' },
+            { value: 'day', label: 'Day' },
+          ]}
+        />
       </div>
+      {rows.length === 0 && data.about && <p className="mb-2 text-ink-3 text-md">{data.about}</p>}
+      {span === 'month' ? (
+        <Month
+          anchor={anchor}
+          placed={placed}
+          names={(r) => titleOf(fields, r)}
+          toneOf={toneOf}
+          onOpen={onOpen}
+          onDay={(d) => {
+            setAnchor(d)
+            setSpan('day')
+          }}
+        />
+      ) : (
+        <Hours
+          days={
+            span === 'week'
+              ? Array.from({ length: 7 }, (_, i) => plusDays(mondayOf(anchor), i))
+              : [anchor]
+          }
+          placed={placed}
+          names={(r) => titleOf(fields, r)}
+          toneOf={toneOf}
+          onOpen={onOpen}
+        />
+      )}
+    </div>
+  )
+}
+
+interface Draw {
+  placed: Placed[]
+  names: (r: RowView) => string
+  toneOf: (r: RowView) => string | undefined
+  onOpen: (id: string) => void
+}
+
+function Chip({
+  p,
+  names,
+  toneOf,
+  onOpen,
+  time,
+}: Omit<Draw, 'placed'> & { p: Placed; time?: boolean }) {
+  const tone = toneOf(p.row)
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(p.row.id)}
+      title={names(p.row)}
+      className="flex items-center gap-1.5 truncate rounded-sm bg-sunk px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
+    >
+      {tone && (
+        <span className={cn('size-1.5 shrink-0 rounded-full', DOT[tone as keyof typeof DOT])} />
+      )}
+      {time && !p.allDay && (
+        <span className="shrink-0 text-ink-3 tabular-nums">
+          {p.at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+        </span>
+      )}
+      <span className="truncate">{names(p.row)}</span>
+    </button>
+  )
+}
+
+function Month({
+  anchor,
+  placed,
+  names,
+  toneOf,
+  onOpen,
+  onDay,
+}: Draw & { anchor: Date; onDay: (d: Date) => void }) {
+  const month = new Date(anchor.getFullYear(), anchor.getMonth(), 1)
+  const byDay = new Map<string, Placed[]>()
+  for (const p of [...placed].sort((a, b) => +a.at - +b.at))
+    byDay.set(dayKey(p.at), [...(byDay.get(dayKey(p.at)) ?? []), p])
+  const first = mondayOf(month)
+  const days = Array.from({ length: 42 }, (_, i) => plusDays(first, i))
+  const weeks = days[35]?.getMonth() === month.getMonth() ? 6 : 5
+  const today = dayKey(new Date())
+  return (
+    <>
       <div className="grid grid-cols-7 border-line border-b text-ink-3 text-sm">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
           <div key={d} className="px-2 py-1.5 font-semibold">
@@ -100,36 +224,149 @@ export function CalendarView({
                 !inMonth && 'bg-canvas',
               )}
             >
-              <span
+              <button
+                type="button"
+                onClick={() => onDay(d)}
+                title="Show this day"
                 className={cn(
-                  'grid size-6 place-items-center rounded-full text-sm tabular-nums',
+                  'grid size-6 place-items-center rounded-full text-sm tabular-nums hover:bg-hover',
                   dayKey(d) === today
-                    ? 'bg-accent font-medium text-accent-ink'
+                    ? 'bg-accent font-medium text-accent-ink hover:bg-accent'
                     : inMonth
                       ? 'text-ink-2'
                       : 'text-ink-3',
                 )}
               >
                 {d.getDate()}
-              </span>
-              {here.slice(0, 3).map((r) => {
-                const tone = colour ? colour.tones[String(r.values[colour.slug] ?? '')] : undefined
+              </button>
+              {here.slice(0, 3).map((p) => (
+                <Chip key={p.row.id} p={p} names={names} toneOf={toneOf} onOpen={onOpen} time />
+              ))}
+              {here.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => onDay(d)}
+                  className="px-1.5 text-left text-ink-3 text-xs hover:text-ink"
+                >
+                  {here.length - 3} more
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+// A week or a day of hours: each timed row as long as it lasts (half an hour when it has no end),
+// beside the others it overlaps; whole-day rows above the hours.
+function Hours({ days, placed, names, toneOf, onOpen }: Draw & { days: Date[] }) {
+  const today = dayKey(new Date())
+  const on = (d: Date) => placed.filter((p) => dayKey(p.at) === dayKey(d))
+  const allDay = days.map((d) => on(d).filter((p) => p.allDay))
+  const hours = Array.from({ length: 24 }, (_, h) => h)
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
+      <div
+        className="grid overflow-y-hidden border-line border-b [scrollbar-gutter:stable]"
+        style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}
+      >
+        <div />
+        {days.map((d, i) => (
+          <div key={dayKey(d)} className="flex min-w-0 flex-col gap-1 border-hair border-l p-1.5">
+            <span
+              className={cn(
+                'text-sm',
+                dayKey(d) === today ? 'font-medium text-accent' : 'text-ink-2',
+              )}
+            >
+              {d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}
+            </span>
+            {allDay[i]?.map((p) => (
+              <Chip key={p.row.id} p={p} names={names} toneOf={toneOf} onOpen={onOpen} />
+            ))}
+          </div>
+        ))}
+      </div>
+      <div
+        className="grid min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+        style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}
+        ref={(el) => {
+          // opens on the working day: eight in the morning at the top
+          if (el && !el.dataset.placed) {
+            el.scrollTop = 8 * HOUR
+            el.dataset.placed = 'yes'
+          }
+        }}
+      >
+        <div className="relative" style={{ height: 24 * HOUR }}>
+          {hours.map((h) => (
+            <span
+              key={h}
+              className="absolute right-2 text-ink-3 text-xs tabular-nums"
+              style={{ top: h * HOUR - 6 }}
+            >
+              {h === 0
+                ? ''
+                : new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: 'numeric' })}
+            </span>
+          ))}
+        </div>
+        {days.map((d) => {
+          const timed = on(d)
+            .filter((p) => !p.allDay)
+            .sort((a, b) => +a.at - +b.at)
+          // overlapping rows share the width, each in its own lane
+          const lanes: number[] = []
+          const laid = timed.map((p) => {
+            const end = p.end && +p.end > +p.at ? +p.end : +p.at + DAY / 48
+            let lane = lanes.findIndex((free) => free <= +p.at)
+            if (lane < 0) lane = lanes.push(end) - 1
+            else lanes[lane] = end
+            return { p, end, lane }
+          })
+          const width = Math.max(1, lanes.length)
+          const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+          return (
+            <div
+              key={dayKey(d)}
+              className="relative border-hair border-l"
+              style={{ height: 24 * HOUR }}
+            >
+              {hours.map((h) => (
+                <div
+                  key={h}
+                  className="absolute inset-x-0 border-hair border-t"
+                  style={{ top: h * HOUR }}
+                />
+              ))}
+              {laid.map(({ p, end, lane }) => {
+                const top = ((+p.at - start) / 3_600_000) * HOUR
+                const height = Math.max(20, ((end - +p.at) / 3_600_000) * HOUR - 2)
                 return (
                   <button
-                    key={r.id}
+                    key={p.row.id}
                     type="button"
-                    onClick={() => onOpen(r.id)}
-                    title={titleOf(fields, r)}
-                    className="flex items-center gap-1.5 truncate rounded-sm bg-sunk px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
+                    onClick={() => onOpen(p.row.id)}
+                    title={names(p.row)}
+                    className="absolute overflow-hidden rounded-sm border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
+                    style={{
+                      top,
+                      height,
+                      left: `calc(${(lane / width) * 100}% + 2px)`,
+                      width: `calc(${100 / width}% - 4px)`,
+                    }}
                   >
-                    {tone && <span className={cn('size-1.5 shrink-0 rounded-full', DOT[tone])} />}
-                    <span className="truncate">{titleOf(fields, r)}</span>
+                    <span className="block truncate font-medium">{names(p.row)}</span>
+                    <span className="block truncate text-ink-3 text-xs tabular-nums">
+                      {p.at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                      {p.end &&
+                        ` – ${p.end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}
+                    </span>
                   </button>
                 )
               })}
-              {here.length > 3 && (
-                <span className="px-1.5 text-ink-3 text-xs">{here.length - 3} more</span>
-              )}
             </div>
           )
         })}

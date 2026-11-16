@@ -11,6 +11,7 @@ export const BLANK: ViewConfig = {
   sorts: [],
   group: null,
   by: null,
+  until: null,
   measure: null,
   hidden: [],
   order: [],

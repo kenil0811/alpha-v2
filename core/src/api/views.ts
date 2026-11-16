@@ -10,6 +10,7 @@ import { fromView } from '../modules/shipped.ts'
 import { pagesOf } from '../pages/pages.ts'
 import { CHIEF, CHIEF_CARD } from '../world/agents/index.ts'
 import type { Card } from '../world/cards.ts'
+import { all as allRows } from '../world/db.ts'
 import type { Provenance } from '../world/kinds.ts'
 import { besideFrom, type RecordOut, resetWords } from '../world/records/index.ts'
 import type { Module, Table } from '../world/shape/index.ts'
@@ -258,7 +259,15 @@ export function makeViews(ctx: BaseCtx) {
         p = all.find((x) => x.id === p?.parent)
       }
     }
-    return all.filter((m) => shown.has(m.id))
+    // Alpha's own (Calendar, People) first, under Home, Agents and Tasks; the rest as they came
+    const own = new Set(
+      allRows<{ module_id: string }>(
+        world.db,
+        "SELECT module_id FROM kits WHERE managed = 'Alpha'",
+      ).map((r) => r.module_id),
+    )
+    const first = (m: ModuleSummary) => (own.has(m.id) && !m.parent ? 0 : 1)
+    return all.filter((m) => shown.has(m.id)).sort((a, b) => first(a) - first(b))
   }
 
   const byWords = (madeBy: string): string => {

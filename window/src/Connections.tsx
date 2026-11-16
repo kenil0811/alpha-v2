@@ -2,7 +2,17 @@
 // folders. Connecting is the person's own act here: what they type goes to the Keychain, never to
 // the model.
 import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'
-import { CalendarDays, Folder, Mail, Network, Plug, Trash2, Unplug, UserRound } from 'lucide-react'
+import {
+  CalendarDays,
+  Folder,
+  Info,
+  Mail,
+  Network,
+  Plug,
+  Trash2,
+  Unplug,
+  UserRound,
+} from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Computers } from './Computers.tsx'
@@ -140,35 +150,42 @@ function ConnectionLine({
 }) {
   const { busy, problem, act } = useAct(onChange)
   const [leaving, setLeaving] = useState(false)
+  // who set it up, where it is kept and what it may reach: under Details, out of the way (his
+  // word, 16 Nov); a refused host and a problem always show, since they ask for something
+  const [details, setDetails] = useState(false)
   const [state, tone] = STATE[k.state]
   const about = (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span>Set up by {k.owner}</span>
       {k.computer && (
         <span>
           On {k.computer.name}
           {k.computer.online ? '' : ', offline now'}
         </span>
       )}
-      {k.tables.map((t) => (
-        <span key={t.id}>
-          Kept in{' '}
-          <a className="text-accent underline underline-offset-3" href={`#/table/${t.id}`}>
-            {t.name}
-          </a>
-          {' · '}
-          <button
-            type="button"
-            className="underline underline-offset-3"
-            disabled={busy}
-            onClick={() => act(() => api.post(`/api/tables/${t.id}/sidebar`, { shown: t.hidden }))}
-          >
-            {t.hidden ? 'Show in the sidebar' : 'Take out of the sidebar'}
-          </button>
-        </span>
-      ))}
       {k.health && <Pill tone="warn">{k.health}</Pill>}
-      <Reach connection={k} busy={busy} act={act} />
+      {!details && k.refused.length > 0 && <Reach connection={k} busy={busy} act={act} />}
+      {details && <span>Set up by {k.owner}</span>}
+      {details &&
+        k.tables.map((t) => (
+          <span key={t.id}>
+            Kept in{' '}
+            <a className="text-accent underline underline-offset-3" href={`#/table/${t.id}`}>
+              {t.name}
+            </a>
+            {' · '}
+            <button
+              type="button"
+              className="underline underline-offset-3"
+              disabled={busy}
+              onClick={() =>
+                act(() => api.post(`/api/tables/${t.id}/sidebar`, { shown: t.hidden }))
+              }
+            >
+              {t.hidden ? 'Show in the sidebar' : 'Take out of the sidebar'}
+            </button>
+          </span>
+        ))}
+      {details && <Reach connection={k} busy={busy} act={act} />}
     </span>
   )
   const buttons = (
@@ -227,16 +244,27 @@ function ConnectionLine({
       )}
       <More label="More" disabled={busy}>
         {(close) => (
-          <MenuItem
-            danger
-            onClick={() => {
-              close()
-              setLeaving(true)
-            }}
-          >
-            <Unplug className="size-3.5" />
-            Disconnect
-          </MenuItem>
+          <>
+            <MenuItem
+              onClick={() => {
+                close()
+                setDetails(!details)
+              }}
+            >
+              <Info className="size-3.5" />
+              {details ? 'Fewer details' : 'Details'}
+            </MenuItem>
+            <MenuItem
+              danger
+              onClick={() => {
+                close()
+                setLeaving(true)
+              }}
+            >
+              <Unplug className="size-3.5" />
+              Disconnect
+            </MenuItem>
+          </>
         )}
       </More>
       <Refusal words={problem} />

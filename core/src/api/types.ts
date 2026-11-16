@@ -400,6 +400,7 @@ export interface ViewConfig {
   sorts: { field: string; dir: 'asc' | 'desc' }[]
   group: string | null
   by: string | null
+  until: string | null // the date a calendar's item ends, for its week and day
   measure: string | null
   hidden: string[]
   order: string[]

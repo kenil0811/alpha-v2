@@ -59,8 +59,11 @@ async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<str
   const { manifest } = readKit(folder)
   const m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
   const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined
-  if (!m) {
-    const made = await install(world, folder, ctx)
+  // none yet, or one a connector made for its rows (Calendar), which Alpha's own kit adopts; a
+  // module of that name the person made themselves is theirs, and left alone
+  const connectors = !!m && world.shape.tables(m.id).every((t) => !!t.mirror)
+  if (!m || (!k && connectors)) {
+    const made = await install(world, folder, ctx, { adopt: true })
     for (const a of schedules(world, made.id)) {
       run(world.db, "UPDATE schedules SET state = 'on' WHERE id = ?", a.id)
       world.line({

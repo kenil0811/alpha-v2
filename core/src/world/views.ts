@@ -81,6 +81,7 @@ export const ViewConfig = z.object({
   sorts: z.array(z.object({ field: z.string(), dir: z.enum(['asc', 'desc']) })).default([]),
   group: z.string().nullable().default(null), // a table's groups, a board's columns
   by: z.string().nullable().default(null), // the date a calendar, timeline or chart is laid on
+  until: z.string().nullable().default(null), // the date a calendar's item ends, for its week and day
   measure: z.string().nullable().default(null), // what a chart adds up (a number); none counts rows
   hidden: z.array(z.string()).default([]),
   order: z.array(z.string()).default([]),
@@ -144,6 +145,7 @@ export function resolveConfig(table: Table, input: unknown): ViewConfig {
     sorts: c.sorts.map((s) => ({ ...s, field: id(s.field) })),
     group: opt(c.group),
     by: opt(c.by),
+    until: opt(c.until),
     measure: opt(c.measure),
     hidden: c.hidden.map(id),
     order: c.order.map(id),
@@ -208,6 +210,7 @@ export function namedConfig(table: Table, c: ViewConfig): ViewConfig {
       .map((s) => ({ ...s, field: name(s.field) as string })),
     group: c.group ? (name(c.group) ?? null) : null,
     by: c.by ? (name(c.by) ?? null) : null,
+    until: c.until ? (name(c.until) ?? null) : null,
     measure: c.measure ? (name(c.measure) ?? null) : null,
     hidden: c.hidden.filter(known).map((h) => name(h) as string),
     order: c.order.filter(known).map((o) => name(o) as string),

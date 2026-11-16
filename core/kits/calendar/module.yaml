@@ -1,0 +1,44 @@
+# Alpha's own Calendar: every calendar Alpha reads lands in its Events (a Mac's own through Alpha
+# Bridge, Outlook, Google), found by its lasting keys, so nothing is copied or kept twice.
+name: Calendar
+version: 0.1.0
+api: 3
+core: true
+description: >
+  The person's meetings and events, from every calendar connected, on a calendar by month, week or
+  day, each with who was in it.
+business_case:
+  for: Everyone at the firm
+  keeps: Every meeting from the calendars connected, and who was in it
+  decides: What is coming, and who to follow up with
+tables:
+  - name: Events
+    about: "Your meetings and events, read from your calendars and never written back. Connect one in Intelligence › Connections: your Mac's own through Alpha Bridge, Outlook, or Google."
+    fields:
+      - { name: Title, kind: text, about: "What the event is called." }
+      - { name: Starts, kind: date, about: "When it starts." }
+      - { name: Ends, kind: date, about: "When it ends." }
+      - { name: All day, kind: choice, choices: ["yes", "no"], about: "Whether it takes the whole day." }
+      - { name: Location, kind: text, about: "Where it is, or its call's link." }
+      - { name: Calendar, kind: text, about: "The calendar it is on." }
+      - { name: Attendees, kind: text, about: "Who was asked." }
+      - { name: Organizer, kind: text, about: "Who set it up." }
+      - { name: Your address, kind: text, about: "The address it reached you at." }
+    people:
+      each: exchange
+      channel: meeting
+      at: Starts
+      with: [Attendees]
+      by: Organizer
+      you: Your address
+      about: Title
+    views:
+      - name: Calendar
+        default: true
+        kind: calendar
+        by: Starts
+        until: Ends
+        about: "What is on, day by day?"
+      - name: All events
+        sorts: [{ field: Starts, dir: desc }]
+        about: "Every event, the newest first"

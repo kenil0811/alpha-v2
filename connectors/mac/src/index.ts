@@ -163,7 +163,7 @@ export const contactsConnector: Connector = {
     syncEveryMinutes: 24 * 60,
   },
   guide: readFileSync(new URL('../GUIDE-contacts.md', import.meta.url), 'utf8'),
-  module: 'Contacts',
+  module: 'People',
   tables: [CONTACTS],
   tools: {
     find: defineTool({
