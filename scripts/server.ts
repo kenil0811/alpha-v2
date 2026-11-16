@@ -5,6 +5,11 @@
 //   link <address>                                     open the owner's one-time link in the browser
 //   address <address> [public]                         bring up Tailscale: an https address on the owner's own
 //                                                      devices only, or with public, open to the internet (Funnel)
+//   address <address> domain <name>                    the Alpha at its own domain, with a certificate; the
+//                                                      domain points at the machine's fixed IP first
+// Each takes --as <name> for a named Alpha beside the first one (--as avilo): its own system user,
+// data, sealed secrets, service, port, release and address. On Tailscale a named Alpha is private,
+// at the machine's address and its own port.
 // <address> is what ssh reaches the machine by. Nothing here prints a secret or a one-time link.
 import { execFileSync, spawn } from 'node:child_process'
 import { createPrivateKey, sign } from 'node:crypto'
@@ -89,7 +94,60 @@ function packageIt(): void {
   console.log(`Made ${name}.`)
 }
 
-const [what, host, ...rest] = process.argv.slice(2)
+// the named Alpha a command is for (--as avilo), and the rest of what was said
+const given = process.argv.slice(2)
+const at = given.indexOf('--as')
+const named = at >= 0 ? (given[at + 1] ?? '') : ''
+if (at >= 0 && !/^[a-z0-9]+$/.test(named))
+  throw new Error('An Alpha’s name is small letters and digits.')
+if (at >= 0) given.splice(at, 2)
+const [what, host, ...rest] = given
+const as = named ? ` ${named}` : ''
+
+// The Alpha at its own domain: Caddy in front of it, with a certificate it keeps renewed, one file
+// a domain under /etc/caddy/alphas.
+async function domainFor(host: string, domain: string, port: string): Promise<void> {
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain))
+    throw new Error('Give the domain as a name: alpha.example.com.')
+  remote(
+    host,
+    [
+      'command -v caddy >/dev/null || {',
+      'sudo apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl;',
+      "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg;",
+      "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null;",
+      'sudo apt-get update -qq; sudo apt-get install -y -qq caddy; }',
+    ].join(' '),
+  )
+  remote(
+    host,
+    [
+      'sudo mkdir -p /etc/caddy/alphas',
+      `printf '%s {\\n\\treverse_proxy 127.0.0.1:%s\\n}\\n' ${domain} ${port} | sudo tee /etc/caddy/alphas/${domain}.caddy >/dev/null`,
+      "grep -q 'import /etc/caddy/alphas/\\*' /etc/caddy/Caddyfile 2>/dev/null || printf 'import /etc/caddy/alphas/*\\n' | sudo tee /etc/caddy/Caddyfile >/dev/null",
+      'sudo systemctl reload-or-restart caddy',
+    ].join(' && '),
+  )
+  // the certificate comes on the first request: until it answers, Alpha is not told its address
+  for (let i = 0; i < 30; i++) {
+    try {
+      execFileSync('curl', ['-fsS', '-o', '/dev/null', `https://${domain}/api/health`])
+      remote(host, `sudo alpha${as} address https://${domain}`)
+      return
+    } catch {
+      await new Promise((r) => setTimeout(r, 4000))
+    }
+  }
+  throw new Error(
+    `https://${domain} did not answer. Check that the domain points at the machine’s fixed IP and that its firewall lets in 80 and 443.`,
+  )
+}
+
+const portOf = (host: string) =>
+  named
+    ? out('ssh', [...SSH, host, `sed -n 's/^${named} \\([0-9]*\\)$/\\1/p' /etc/alpha/ports`])
+    : '4700'
+
 if (what === 'package') packageIt()
 else if (what === 'setup' && host && rest[0]) {
   const dir = mkdtempSync(join(tmpdir(), 'alpha-setup-'))
@@ -102,23 +160,37 @@ else if (what === 'setup' && host && rest[0]) {
   run('scp', ['-q', '-r', ...SSH, `${dir}/.`, `${host}:/tmp/alpha-setup`])
   remote(
     host,
-    `sudo sh /tmp/alpha-setup/setup.sh ${JSON.stringify(rest[0])} ${JSON.stringify(rest[1] ?? '')}`,
+    `sudo sh /tmp/alpha-setup/setup.sh ${JSON.stringify(rest[0])} ${JSON.stringify(rest[1] ?? '')} ${named}`,
   )
 } else if (what === 'update' && host) {
   const name = latest()
   const file = join(OUT, `${name}.tar.gz`)
   put(host, [file, `${file}.sig`], '/tmp/')
-  remote(host, `sudo alpha update /tmp/${name}.tar.gz /tmp/${name}.tar.gz.sig`)
+  remote(host, `sudo alpha${as} update /tmp/${name}.tar.gz /tmp/${name}.tar.gz.sig`)
 } else if (what === 'link' && host) {
-  const link = execFileSync('ssh', [...SSH, host, 'sudo alpha link'], { encoding: 'utf8' }).trim()
+  const link = execFileSync('ssh', [...SSH, host, `sudo alpha${as} link`], {
+    encoding: 'utf8',
+  }).trim()
   if (!link) throw new Error('The server gave no link: the owner may have a password already.')
   run('open', [link])
   console.log('Opened the owner’s link in your browser.')
+} else if (what === 'address' && host && rest[0] === 'domain') {
+  await domainFor(host, rest[1] ?? '', portOf(host))
+} else if (what === 'address' && host && named) {
+  // a named Alpha on Tailscale: private, at the machine's address and its own port
+  const port = portOf(host)
+  if (!port) throw new Error(`There is no Alpha called ${named} on that machine.`)
+  await tailscale(host, `sudo tailscale serve --bg --https=${port} http://127.0.0.1:${port}`)
+  const status = JSON.parse(out('ssh', [...SSH, host, 'tailscale status --json'])) as {
+    Self: { DNSName: string }
+  }
+  remote(host, `sudo alpha${as} address https://${status.Self.DNSName.replace(/\.$/, '')}:${port}`)
 } else if (what === 'address' && host) {
   await tailscale(host, 'sudo tailscale up --hostname=alpha')
   // public: the same address, open to anyone, each person still signing in
   const open = rest[0] === 'public'
-  if (open) await tailscale(host, 'sudo tailscale serve reset')
+  // only the first Alpha's 443 changes: a named Alpha's own port stays as it is
+  await tailscale(host, `sudo tailscale ${open ? 'serve' : 'funnel'} --https=443 off || true`)
   await tailscale(host, `sudo tailscale ${open ? 'funnel' : 'serve'} --bg 4700`)
   const status = JSON.parse(out('ssh', [...SSH, host, 'tailscale status --json'])) as {
     Self: { DNSName: string }

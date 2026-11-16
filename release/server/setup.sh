@@ -1,10 +1,15 @@
 #!/bin/sh
-# Makes a Linux machine into one firm's Alpha server. Run once as root, from a folder holding this
-# script, alpha, alpha.service, verify.mjs, signing-key.pub and .nvmrc. Safe to run again.
-#   setup.sh <the owner's name> <the https address people reach it at, or none yet>
+# Makes a Linux machine into an Alpha server, or adds a named Alpha beside the first one. Run as
+# root, from a folder holding this script, alpha, alpha.service, verify.mjs, signing-key.pub and
+# .nvmrc. Safe to run again.
+#   setup.sh <the owner's name> <the https address people reach it at, or none yet> [<name>]
+# A named Alpha (avilo) is its own system user (alpha-avilo), data, sealed secrets, service and
+# port, and shares nothing with the others but the machine, Node and the releases' code.
 set -eu
 OWNER=$1
 ADDRESS=${2:-}
+NAME=${3:-}
+case $NAME in *[!a-z0-9]*) echo "An Alpha's name is small letters and digits."; exit 1 ;; esac
 HERE=$(cd "$(dirname "$0")" && pwd)
 NODE=$(cat "$HERE/.nvmrc")
 case $(uname -m) in aarch64) ARCH=arm64 ;; x86_64) ARCH=x64 ;; *) echo "Not a machine Alpha runs on."; exit 1 ;; esac
@@ -45,25 +50,66 @@ fi
 export PATH=/opt/alpha/node/bin:$PATH
 npm install -g --silent "pnpm@$(sed -n 's/.*"packageManager": "pnpm@\([^"]*\)".*/\1/p' "$HERE/package.json")"
 
-id alpha >/dev/null 2>&1 || useradd --create-home --shell /usr/sbin/nologin alpha
-install -d -o alpha -g alpha /home/alpha/data
+if [ -n "$NAME" ]; then
+  USER_=alpha-$NAME
+  CRED=/etc/alpha/secrets-$NAME.cred
+  UNIT=alpha-$NAME
+  CURRENT=/opt/alpha/current-$NAME
+else
+  USER_=alpha
+  CRED=/etc/alpha/secrets.cred
+  UNIT=alpha
+  CURRENT=/opt/alpha/current
+fi
+HOME_BASE=/home/$USER_
+id "$USER_" >/dev/null 2>&1 || useradd --create-home --shell /usr/sbin/nologin "$USER_"
+# each Alpha's home is closed to every other user on the machine
+chmod 750 "$HOME_BASE"
+install -d -o "$USER_" -g "$USER_" -m 750 "$HOME_BASE/data"
 install -d -m 700 /etc/alpha
-[ -f /etc/alpha/secrets.cred ] ||
-  head -c 32 /dev/urandom | base64 -w0 | systemd-creds encrypt --name=alpha-secrets - /etc/alpha/secrets.cred
+[ -f "$CRED" ] ||
+  head -c 32 /dev/urandom | base64 -w0 | systemd-creds encrypt --name=alpha-secrets - "$CRED"
 
-if [ ! -f /home/alpha/data/alpha.yaml ]; then
+# a named Alpha's port: the next free one after the first Alpha's 4700, kept in /etc/alpha/ports
+PORT=4700
+if [ -n "$NAME" ]; then
+  touch /etc/alpha/ports
+  PORT=$(sed -n "s/^$NAME \([0-9]*\)$/\1/p" /etc/alpha/ports)
+  if [ -z "$PORT" ]; then
+    last=$(awk '{print $2}' /etc/alpha/ports | sort -n | tail -1)
+    PORT=$(( ${last:-4700} + 10 ))
+    printf '%s %s\n' "$NAME" "$PORT" >>/etc/alpha/ports
+  fi
+fi
+
+if [ ! -f "$HOME_BASE/data/alpha.yaml" ]; then
   {
     printf 'owner: "%s"\nsign_in: true\nprepare_readers: true\n' "$OWNER"
     [ -n "$ADDRESS" ] && printf 'public_address: "%s"\n' "$ADDRESS"
     true
-  } >/home/alpha/data/alpha.yaml
-  chown alpha:alpha /home/alpha/data/alpha.yaml
+  } >"$HOME_BASE/data/alpha.yaml"
+  chown "$USER_:$USER_" "$HOME_BASE/data/alpha.yaml"
 fi
 
 install -m 644 "$HERE/signing-key.pub" /opt/alpha/signing-key.pub
 install -m 644 "$HERE/verify.mjs" /opt/alpha/verify.mjs
 install -m 755 "$HERE/alpha" /usr/local/bin/alpha
-install -m 644 "$HERE/alpha.service" /etc/systemd/system/alpha.service
+# the service: the first Alpha's as it comes; a named one's with its own user, home, port, release
+# and secrets
+sed -e "s|^Description=Alpha$|Description=Alpha${NAME:+ ($NAME)}|" \
+  -e "s|^User=alpha$|User=$USER_|" -e "s|^Group=alpha$|Group=$USER_|" \
+  -e "s|^Environment=HOME=/home/alpha$|Environment=HOME=$HOME_BASE|" \
+  -e "s|^Environment=ALPHA_HOME=/home/alpha/data$|Environment=ALPHA_HOME=$HOME_BASE/data\nEnvironment=ALPHA_PORT=$PORT|" \
+  -e "s|^WorkingDirectory=/opt/alpha/current/core$|WorkingDirectory=$CURRENT/core|" \
+  -e "s|^LoadCredentialEncrypted=alpha-secrets:/etc/alpha/secrets.cred$|LoadCredentialEncrypted=alpha-secrets:$CRED|" \
+  "$HERE/alpha.service" >"/etc/systemd/system/$UNIT.service"
+chmod 644 "/etc/systemd/system/$UNIT.service"
 systemctl daemon-reload
-systemctl enable -q alpha
-echo "This machine is set up. Send it a release with: pnpm server update"
+systemctl enable -q "$UNIT"
+# a named Alpha starts on the release the first one runs, until it is sent its own
+if [ -n "$NAME" ] && [ ! -L "$CURRENT" ] && [ -L /opt/alpha/current ]; then
+  ln -sfn "$(readlink /opt/alpha/current)" "$CURRENT"
+  systemctl restart "$UNIT"
+fi
+echo "This machine is set up${NAME:+ for $NAME}. Send it a release with: pnpm server update"
+

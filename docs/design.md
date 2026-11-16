@@ -265,13 +265,17 @@ person signs in with a name and password or Microsoft for 30 days, and every req
 person. Their conversations and cards are theirs. Two roles exist: only the owner sets the model
 and the data, says who may sign in, and installs a pack.
 
-Clients are hosted, and nothing is installed on a client's computer. A server is one Linux virtual
-machine per firm, not a container, because Anthropic's sandbox in a container needs a much weaker
-mode. `pnpm server` sets one up from the Mac and sends it a signed release when pressed, and a
+Clients are hosted, and nothing is installed on a client's computer. A server is a Linux virtual
+machine, not a container, because Anthropic's sandbox in a container needs a much weaker mode. A
+firm gets its own machine; one machine may also hold a few Alphas side by side (the owner's own
+for testing beside a firm's, Kenil, 16 Nov), each its own system user, data, sealed secrets,
+service, port, release and address, sharing nothing but the machine, Node and the releases' code
+(`--as <name>` on `pnpm server`, `alpha <name> …` on the machine). `pnpm server` sets one up from the Mac and sends it a signed release when pressed, and a
 release that does not start goes back by itself. Secrets are one encrypted file whose key is sealed
 to the machine. Tailscale gives it an https address, private to devices signed in to the owner's
 Tailscale, or open to the internet through Funnel on the owner's word (`pnpm server address <ssh> public`),
-each person still signing in. A site's sign-in is a live picture of the server's browser in the window, so
+each person still signing in; or an Alpha has its own domain, with a certificate Caddy keeps
+renewed, once the domain points at the machine's fixed IP (`pnpm server address <ssh> domain <name>`). A site's sign-in is a live picture of the server's browser in the window, so
 Alpha never holds the password, and Claude comes as a subscription token from `claude setup-token`.
 Before the first client: the firm's own API key, off-site backups and a heartbeat. The Mac's installer is a self-installing disk image and the `alpha` command.
 
