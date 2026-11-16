@@ -21,3 +21,8 @@ disk and no heartbeat for now.
 - The new server (Stockholm, its own fixed IP) holds Kenil's Alpha and Avilo's (`as avilo`, port
   4710), both private on Tailscale until Avilo's domain. Nothing moves from the old server, on his
   word.
+- A named Alpha can go public through Funnel, on the owner's word (`pnpm server address <ssh> as
+  avilo public`): Funnel opens only 443, 8443 and 10000, so it is at the machine's address on
+  8443 while the first Alpha stays private on 443. Avilo's is at it for now, to share a link
+  without Tailscale; its own domain is the lasting address (Funnel's free plan is not for
+  business use).

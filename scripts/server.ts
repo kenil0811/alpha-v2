@@ -9,7 +9,7 @@
 //                                                      domain points at the machine's fixed IP first
 // Each takes as <name> for a named Alpha beside the first one (as avilo): its own system user,
 // data, sealed secrets, service, port, release and address. On Tailscale a named Alpha is private,
-// at the machine's address and its own port.
+// at the machine's address and its own port, or with public, open to the internet on 8443.
 // <address> is what ssh reaches the machine by. Nothing here prints a secret or a one-time link.
 import { execFileSync, spawn } from 'node:child_process'
 import { createPrivateKey, sign } from 'node:crypto'
@@ -178,14 +178,22 @@ else if (what === 'setup' && host && rest[0]) {
 } else if (what === 'address' && host && rest[0] === 'domain') {
   await domainFor(host, rest[1] ?? '', portOf(host))
 } else if (what === 'address' && host && named) {
-  // a named Alpha on Tailscale: private, at the machine's address and its own port
+  // a named Alpha on Tailscale: private, at the machine's address and its own port; or public, on
+  // the owner's word, through Funnel, which opens only 443, 8443 and 10000 (8443 here: the first
+  // Alpha keeps 443)
   const port = portOf(host)
   if (!port) throw new Error(`There is no Alpha called ${named} on that machine.`)
-  await tailscale(host, `sudo tailscale serve --bg --https=${port} http://127.0.0.1:${port}`)
+  const open = rest[0] === 'public'
+  const at = open ? '8443' : port
+  await tailscale(host, `sudo tailscale serve --https=${port} off || true`)
+  await tailscale(
+    host,
+    `sudo tailscale ${open ? 'funnel' : 'serve'} --bg --https=${at} http://127.0.0.1:${port}`,
+  )
   const status = JSON.parse(out('ssh', [...SSH, host, 'tailscale status --json'])) as {
     Self: { DNSName: string }
   }
-  remote(host, `sudo alpha${as} address https://${status.Self.DNSName.replace(/\.$/, '')}:${port}`)
+  remote(host, `sudo alpha${as} address https://${status.Self.DNSName.replace(/\.$/, '')}:${at}`)
 } else if (what === 'address' && host) {
   await tailscale(host, 'sudo tailscale up --hostname=alpha')
   // public: the same address, open to anyone, each person still signing in
