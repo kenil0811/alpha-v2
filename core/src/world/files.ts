@@ -136,6 +136,14 @@ export class Files {
     )
   }
 
+  // Every file kept, the newest first, with who or what brought it and when.
+  list(): (FileOut & { addedBy: string; addedAt: string })[] {
+    return all<FileOut & { addedBy: string; addedAt: string }>(
+      this.db,
+      'SELECT hash, name, size, mime, added_by AS addedBy, added_at AS addedAt FROM files ORDER BY added_at DESC',
+    )
+  }
+
   bytes(hash: string): Buffer {
     if (!this.file(hash)) throw new Refused('That file is not there.')
     return readFileSync(this.path(hash))

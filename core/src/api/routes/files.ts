@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { stillBeingRead } from '../../files/documents.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
-import type { FileView, RowFileView } from '../types.ts'
+import type { FileView, KeptFileView, RowFileView } from '../types.ts'
 
 // What a browser may show as itself: documents and pictures that carry no script.
 const INLINE = new Set([
@@ -24,6 +24,44 @@ const SANDBOXED = new Set(['text/html', 'image/svg+xml', 'application/xhtml+xml'
 export function registerFiles(ctx: Ctx): void {
   const { app, world, engine, user, person, live } = ctx
   const { byWords, columnOf } = ctx.views
+
+  // Every file kept: what brought it (a connector by its title), and whether it was read
+  app.get('/api/files', async (): Promise<KeptFileView[]> => {
+    const failed = new Map<string, string>()
+    // the newest word on each file that could not be read
+    for (const l of world.lines({ kinds: ['error'], limit: 1000 }).reverse())
+      if (typeof l.data.file === 'string' && !failed.has(l.data.file))
+        failed.set(l.data.file, l.words.replace(/^.*? could not be read: /, ''))
+    return world.files.list().map((f) => {
+      const [kind, id] = f.addedBy.split(/:(.*)/s)
+      const from =
+        kind === 'connector'
+          ? (engine.connectors?.find(id ?? '')?.manifest.title ?? id ?? 'A connection')
+          : byWords(f.addedBy)
+      const d = world.files.document(f.hash)
+      const read = d
+        ? ('read' as const)
+        : stillBeingRead(f.hash)
+          ? ('reading' as const)
+          : failed.has(f.hash)
+            ? ('failed' as const)
+            : ('kept' as const)
+      return {
+        hash: f.hash,
+        name: f.name,
+        size: f.size,
+        mime: f.mime,
+        from,
+        at: f.addedAt,
+        read,
+        words: d
+          ? `${d.chunks} ${d.kind === 'sheet' ? 'cell' : 'line'}${d.chunks === 1 ? '' : 's'}`
+          : read === 'failed'
+            ? (failed.get(f.hash) ?? null)
+            : null,
+      }
+    })
+  })
 
   app.post('/api/files', async (req) => {
     const name = decodeURIComponent(String(req.headers['x-file-name'] ?? 'file'))

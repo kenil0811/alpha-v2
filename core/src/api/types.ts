@@ -283,6 +283,18 @@ export interface FileView {
   lines?: { line: number; words: string }[]
 }
 
+// Intelligence › Files: every file Alpha has kept, the newest first.
+export interface KeptFileView {
+  hash: string
+  name: string
+  size: number
+  mime: string
+  from: string // what brought it, in words: You, Folder, Gmail, Alpha
+  at: string
+  read: 'read' | 'reading' | 'failed' | 'kept' // read with its places, being read, not, or kept as it is
+  words: string | null // how much was read (419 lines), or why it could not be
+}
+
 // A file on a row: a deal's CIM, a client's export.
 export interface RowFileView {
   hash: string

@@ -343,6 +343,9 @@ export function App() {
         return { label: 'Agents', href: '#/intelligence/agents' }
       case 'card':
         return { label: 'Home', href: '#/' }
+      // a kept file is one of Intelligence › Files
+      case 'file':
+        return { label: 'Files', href: '#/intelligence/files' }
       case 'people':
         if (!place.id) return HOME
         return place.kind === 'company'

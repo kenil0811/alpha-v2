@@ -9,6 +9,7 @@ import { AgentsSection } from './Agents.tsx'
 import { api, Problem, wordsOf } from './api.ts'
 import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
+import { KeptFiles } from './KeptFiles.tsx'
 import { Modules, when } from './Modules.tsx'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
@@ -38,12 +39,13 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'Your agents, modules, schedules and connections, and how to work.',
+    about: 'Your agents, modules, schedules, connections and files, and how to work.',
     tabs: [
       ['agents', 'Agents'],
       ['modules', 'Modules'],
       ['schedules', 'Schedules'],
       ['connections', 'Connections'],
+      ['files', 'Files'],
       ['work', 'How to work'],
     ],
   },
@@ -101,6 +103,7 @@ export function Settings({
     agents: <AgentsSection version={version} />,
     schedules: <Schedules version={version} />,
     connections: <Connections view={view} open={open} version={version} onChange={load} />,
+    files: <KeptFiles version={version} />,
     modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
     permissions: <Permissions version={version} owner={!member} />,
     model: <ModelSection />,

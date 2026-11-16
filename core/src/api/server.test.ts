@@ -233,6 +233,35 @@ describe('the api over a world', () => {
     await a.close()
   })
 
+  it('lists every kept file, the newest first, with what brought it and whether it was read', async () => {
+    const a = app()
+    const owner = world.owner('Kenil')
+    const person = { actor: { kind: 'person' as const, id: owner.id }, user: owner.id }
+    const csv = world.files.take(Buffer.from('a,b\n1,2\n'), 'pl.csv', 'text/csv', person).file
+    world.files.addDocument(csv.hash, 'pl.csv', 'sheet', [{ position: {}, words: '1' }], person)
+    const pdf = world.files.take(Buffer.from('%PDF-1.4'), 'deal.pdf', 'application/pdf', {
+      actor: { kind: 'connector', id: 'folder' },
+    }).file
+    world.line({
+      actor: { kind: 'system' },
+      kind: 'error',
+      words:
+        'deal.pdf could not be read: Reading PDFs needs uv, which is not on this computer yet.',
+      data: { file: pdf.hash },
+    })
+    const out = (await a.inject({ url: '/api/files', headers: ok })).json() as {
+      name: string
+      from: string
+      read: string
+      words: string | null
+    }[]
+    expect(out.map((f) => [f.name, f.from, f.read, f.words])).toEqual([
+      ['deal.pdf', 'folder', 'failed', 'Reading PDFs needs uv, which is not on this computer yet.'],
+      ['pl.csv', 'You', 'read', '1 cell'],
+    ])
+    await a.close()
+  })
+
   it('shows modules inside modules, places one as the person’s word, and keeps the layout', async () => {
     const alpha = { actor: { kind: 'alpha' as const } }
     const shops = world.shape.makeModule('Shops', alpha)

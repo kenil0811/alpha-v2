@@ -30,3 +30,8 @@ Funnel too, so Windows needs no Tailscale.
   of mail to `connectors/carried.ts`, the computer parts of the service to `connectors/computers.ts`.
 - Journey `a-computer-lends-a-folder`: a stand-in Bridge pairs, lends, a file lands; away, it
   waits; back, it catches up. Passed (report of 16 Nov 17:11).
+- Seeing it (his ask, evening): a server gets uv in its setup (0.12.17, checked against its sum),
+  so a PDF a computer lends is read there; Docling's environment takes about 6 GB of the server's
+  disk. Intelligence › Files (his pick over a list on each folder) lists every kept file, the newest
+  first, with what brought it, when, and whether it was read; a file opens as from a value's
+  source, and its ‹ goes back to Files.
