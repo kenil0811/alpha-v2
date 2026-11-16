@@ -3,18 +3,26 @@
 //
 //   alpha.page(async () => [ ...blocks ])
 //
-//   {heading: 'This week', note?}                 a section's title
+//   {heading: 'This week', note?, level?: 1, aside?, asideNote?}
+//            a section's title; level 1 is the page's own title, aside its words at the right
 //   {text: '…'} or '…'                             a paragraph
 //   {stats: [{label, value, unit?, of?, change?: {value, unit?, label?, better?: 'up'|'down'},
-//             tone?, note?, open?}]}
+//             tone?, note?, open?}]}   change may be a list: on last month, on last year
 //   {chart: {title?, kind: 'line'|'bar', rows, x, series: [{field, label?, unit?}],
-//            target?: {value, label?}, note?}}
+//            target?: {value, label?}, note?, current?}}   current: the x whose bars stand out
 //   {table: {title?, note?, columns: [{field, label?, unit?}], rows}}
 //            a cell may be {value, of?, tone?, open?, note?}
 //   {list: {title?, items: [{text, tone?, open?}]}}
 //   {card: {title?, text}}
 //   {grid: {columns?, blocks}}
 //   {button: {label, says}}                      asks Alpha, as the person, from this page
+//   {pairs: {title?, note?, items: [{label, value, unit?, note?, tone?, change?, open?}]}}
+//   {bars: {title?, note?, items: [{label, value, unit?, note?, change?, open?}]}}
+//   {callout: {title?, text, note?}}              text may be a list of paragraphs
+//   (pairs, bars and callout are in doc.js)
+//
+// <meta name="alpha-look" content="document"> draws the page as a document: one column on paper,
+// in both themes, small section labels, soft tiles and bare tables; printed the same.
 //   a chart series may be {kind: 'bar'|'line', axis: 'right'} to mix bars and a line on two axes
 //
 // A value is a number, words, a date ('2026-10-20') or money ({amount, currency}); `tone` is
@@ -119,10 +127,40 @@
 
   // ---- blocks ----
   function heading(h) {
-    return el('div', { class: 'ak-heading' }, [
-      el('h2', { text: String(h.heading) }),
+    const main = el('div', {}, [
+      el(h.level === 1 ? 'h1' : 'h2', { text: String(h.heading) }),
       h.note ? el('p', { class: 'ak-note', text: String(h.note) }) : null,
     ])
+    const aside =
+      h.aside != null
+        ? el('div', { class: 'ak-heading__aside' }, [
+            el('strong', { text: String(h.aside) }),
+            h.asideNote ? el('p', { class: 'ak-note', text: String(h.asideNote) }) : null,
+          ])
+        : null
+    return el('div', { class: `ak-heading${h.level === 1 ? ' ak-heading--title' : ''}` }, [
+      main,
+      aside,
+    ])
+  }
+
+  // a change, or a list of them (on last month, on last year), each with its own words
+  function changes(list) {
+    const all = (Array.isArray(list) ? list : list ? [list] : []).filter(
+      (c) => c && c.value != null,
+    )
+    return all.map((c) => {
+      // a change in money says it as money (+$318)
+      const n = isMoney(c.value) ? Number(c.value.amount) : Number(c.value)
+      const size = isMoney(c.value)
+        ? money({ ...c.value, amount: Math.abs(n) })
+        : fmt(Math.abs(n), c.unit)
+      const better = c.better === 'down' ? n < 0 : n > 0
+      return el('div', { class: `ak-change ${n === 0 ? '' : better ? 'ak-up' : 'ak-down'}` }, [
+        el('span', { text: `${n > 0 ? '+' : n < 0 ? '−' : ''}${size}` }),
+        c.label ? el('span', { class: 'ak-change__label', text: ` ${c.label}` }) : null,
+      ])
+    })
   }
 
   function stat(s) {
@@ -130,20 +168,10 @@
       el('span', { text: fmt(s.value, s.unit) }),
       s.of != null ? el('span', { class: 'ak-stat__of', text: ` / ${fmt(s.of, s.unit)}` }) : null,
     ])
-    let change = null
-    if (s.change && s.change.value != null) {
-      const c = s.change
-      const n = Number(c.value)
-      const better = c.better === 'down' ? n < 0 : n > 0
-      change = el('div', { class: `ak-change ${n === 0 ? '' : better ? 'ak-up' : 'ak-down'}` }, [
-        el('span', { text: `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmt(Math.abs(n), c.unit)}` }),
-        c.label ? el('span', { class: 'ak-change__label', text: ` ${c.label}` }) : null,
-      ])
-    }
     return el('div', { ...opener(s.open), class: s.open ? 'ak-stat ak-open' : 'ak-stat' }, [
       el('div', { class: 'ak-stat__label', text: String(s.label ?? '') }),
       value,
-      change,
+      ...changes(s.change),
       s.note ? el('div', { class: 'ak-note', text: String(s.note) }) : null,
     ])
   }
@@ -226,7 +254,12 @@
   }
 
   function card(c) {
-    return titled(c.title, null, el('p', { class: 'ak-text', text: String(c.text ?? '') }))
+    return titled(
+      c.title,
+      null,
+      el('p', { class: 'ak-text', text: String(c.text ?? '') }),
+      ' ak-card--box',
+    )
   }
 
   const nice = (max) => {
@@ -369,6 +402,7 @@
         const x = px(i) - (bw * bars.length) / 2 + bi * bw
         const y0 = py(0, ax)
         const y = py(v, ax)
+        const past = c.current != null && String(r[c.x]) !== String(c.current)
         g.append(
           svg(
             'rect',
@@ -378,7 +412,7 @@
               width: Math.max(1, bw - 1),
               height: Math.abs(y0 - y),
               rx: 1.5,
-              style: `fill: ${s.colour}`,
+              style: `fill: ${s.colour}${past ? '; fill-opacity: 0.32' : ''}`,
             },
             [svg('title', { text: `${r[c.x]}: ${ax.label(v)}` })],
           ),
@@ -467,6 +501,7 @@
     if (b.grid) return grid(b.grid, width)
     if (b.button) return button(b.button)
     if (b.text != null) return el('p', { class: 'ak-text', text: String(b.text) })
+    for (const [name, draw] of Object.entries(EXTRA)) if (b[name]) return draw(b[name], width)
     return el('p', {
       class: 'ak-empty',
       text: `A block the kit does not know: ${Object.keys(b).join(', ')}`,
@@ -498,21 +533,60 @@
     )
   }
 
-  let root = null
-  function draw(blocks, { inputs, choose, printing }) {
-    if (!root) {
-      root = el('main', { class: 'ak-page' })
-      document.body.append(root)
+  // A heading and the block after it stay together, on screen and on a printed page.
+  function kept(nodes, given) {
+    const out = []
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]
+      if (!node) continue
+      if (given[i]?.heading != null && nodes[i + 1] && given[i + 1]?.heading == null) {
+        out.push(el('div', { class: 'ak-keep' }, [node, nodes[i + 1]]))
+        i++
+      } else out.push(node)
     }
-    const width = root.clientWidth || document.documentElement.clientWidth - 56
-    root.replaceChildren(
-      ...[choosers(inputs, choose, printing), ...blocks.map((b) => block(b, width - 34))].filter(
-        Boolean,
-      ),
-    )
+    return out
   }
 
-  window.alphaKit = { draw, fmt, money }
+  const EXTRA = {} // blocks of their own files (doc.js): name → draw(spec, width)
+  const isDocument = () =>
+    document.querySelector('meta[name="alpha-look"]')?.getAttribute('content') === 'document'
+
+  let root = null
+  let desk = null
+  function draw(blocks, { inputs, choose, printing }) {
+    const doc = isDocument()
+    if (!root) {
+      document.body.classList.toggle('ak-doc', doc)
+      desk = doc ? el('div', { class: 'ak-desk' }) : null
+      root = el('main', { class: doc ? 'ak-page ak-sheet' : 'ak-page' })
+      document.body.append(...[desk, root].filter(Boolean))
+    }
+    const css = getComputedStyle(root)
+    const inner =
+      (root.clientWidth || document.documentElement.clientWidth - 56) -
+      (doc ? Number.parseFloat(css.paddingLeft) + Number.parseFloat(css.paddingRight) : 0)
+    const width = doc ? inner : inner - 34
+    const given = blocks.filter((b) => b != null)
+    const nodes = kept(
+      given.map((b) => block(b, width)),
+      given,
+    )
+    const chooser = choosers(inputs, choose, printing)
+    if (doc) {
+      // a document's choosers sit on the desk above it, never on the printed page
+      desk.replaceChildren(...(chooser && !printing ? [chooser] : []))
+      root.replaceChildren(...nodes)
+    } else root.replaceChildren(...[chooser, ...nodes].filter(Boolean))
+  }
+
+  window.alphaKit = {
+    draw,
+    fmt,
+    money,
+    // for doc.js's blocks
+    blocks: EXTRA,
+    parts: { el, opener, tone, changes, titled, isMoney },
+  }
   // a page formats its own words the same way: alpha.fmt(value, unit), alpha.money(value)
   if (window.alpha) Object.assign(window.alpha, { fmt, money })
 })()

@@ -97,6 +97,42 @@ describe('pages', () => {
     expect(() => pageAnswer(world, m, 'change', { table: 'Deals' })).toThrow(/cannot ask/)
   })
 
+  it('draws a document: its title, label and value rows, bars, a callout, its choosers off the paper', async () => {
+    writeFileSync(
+      join(m.dir, 'pages', 'snapshot.html'),
+      `<title>Snapshot</title><meta name="alpha-look" content="document"><script>
+alpha.page(async () => {
+  const month = alpha.input('Month', { options: ['October'] })
+  return [
+    { heading: 'Harbor CPA', level: 1, aside: month },
+    { heading: 'Key insights' },
+    { callout: { text: ['Revenue rose.', 'Cash fell.'], note: 'Drafted by Alpha' } },
+    { heading: 'At a glance' },
+    { pairs: { items: [{ label: 'Cash in the bank', value: { amount: 2001, currency: 'USD' }, change: { value: { amount: -2319, currency: 'USD' }, label: 'on Sep' } }] } },
+    { bars: { items: [{ label: 'Equipment Repairs', value: { amount: 755, currency: 'USD' }, note: '24.6% of costs' }] } },
+  ]
+})
+</script>`,
+    )
+    const text = (
+      await printPage(world, m, 'snapshot', { browsers: BROWSERS, as: 'text' })
+    ).toString()
+    for (const words of [
+      'Harbor CPA',
+      'October',
+      'Revenue rose.',
+      'Drafted by Alpha',
+      'Cash in the bank',
+      '$2,001',
+      '−$2,319 on Sep',
+      'Equipment Repairs',
+      '24.6% of costs',
+    ])
+      expect(text).toContain(words)
+    // printed, the month chooser is not on the paper
+    expect(text).not.toContain('Month')
+  }, 120_000)
+
   it('prints a page with its data to a PDF, and to a picture', async () => {
     const pdf = await printPage(world, m, 'funnel', {
       browsers: BROWSERS,

@@ -19,6 +19,7 @@
   --warn-soft: #f7eedf;
   --bad: #ad3d36;
   --bad-soft: #f8e6e4;
+  --tile: var(--sunk);
   color-scheme: light;
 }
 :root[data-theme="dark"] {
@@ -43,12 +44,38 @@ body {
   padding: 22px 28px 28px;
   max-width: 1200px;
 }
+.ak-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ak-heading h1,
 .ak-heading h2 {
   margin: 6px 0 0;
   font-family: "Source Serif 4 Variable", Georgia, serif;
   font-size: 20px;
   font-weight: 500;
   color: var(--ink);
+}
+.ak-heading h1 {
+  font-size: 24px;
+}
+.ak-heading__aside {
+  text-align: right;
+}
+.ak-heading__aside strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ak-heading__aside .ak-note {
+  margin-top: 2px;
+}
+.ak-keep {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }
 .ak-card {
   background: var(--surface);
@@ -292,8 +319,24 @@ td.ak-tone-bad {
     max-width: none;
   }
   .ak-card,
-  .ak-stat {
+  .ak-stat,
+  .ak-keep,
+  .ak-pairs,
+  .ak-bars,
+  .ak-callout {
     break-inside: avoid;
+  }
+  .ak-heading {
+    break-after: avoid;
+  }
+  .ak-desk {
+    display: none;
+  }
+  .ak-doc .ak-sheet {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    border-radius: 0;
   }
   .ak-scroll {
     overflow: visible;
@@ -319,4 +362,214 @@ td.ak-tone-bad {
 .ak-button:disabled {
   color: var(--ink-3);
   cursor: default;
+}
+
+/* Blocks a document reads best with (doc.js), in either look. */
+.ak-bare {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+}
+.ak-pairs {
+  background: var(--tile);
+  border-radius: 8px;
+  padding: 2px 14px;
+}
+.ak-pair {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ak-pair:last-child {
+  border-bottom: 0;
+}
+.ak-pair__label {
+  color: var(--ink);
+}
+.ak-pair__right {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px 8px;
+  text-align: right;
+}
+.ak-pair__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ak-pair__note,
+.ak-pair .ak-change {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.ak-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 12px;
+  background: var(--tile);
+  border-radius: 8px;
+  padding: 14px;
+}
+.ak-bar {
+  min-width: 0;
+}
+.ak-bar__label {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-2);
+  /* two lines for every label, so the bars share one floor */
+  height: 2.7em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ak-bar__track {
+  height: 72px;
+  display: flex;
+  align-items: flex-end;
+}
+.ak-bar__fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+.ak-bar__value {
+  margin-top: 6px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ak-bar__note {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.ak-bar .ak-change {
+  margin-top: 0;
+}
+.ak-callout {
+  background: var(--tile);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.ak-callout p {
+  margin: 0 0 6px;
+  color: var(--ink);
+  max-width: 76ch;
+}
+.ak-callout .ak-note {
+  margin: 8px 0 0;
+}
+
+/* The document look (<meta name="alpha-look" content="document">): one column on paper, in both
+   themes, the window's own canvas around it; small section labels, soft tiles, bare tables. */
+.ak-desk {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 18px 0 0;
+}
+.ak-doc .ak-sheet {
+  --surface: #ffffff;
+  --sunk: #f4f3ef;
+  --tile: #f4f3ef;
+  --hover: #ebe9e3;
+  --ink: #272c33;
+  --ink-2: #4b5159;
+  --ink-3: #8b929b;
+  --line: #e7e5df;
+  --hair: #efedea;
+  --accent: #2563eb;
+  --accent-soft: #c9d8fb;
+  --accent-line: #b6c8f5;
+  --good: #3b7550;
+  --good-soft: #e6f0e8;
+  --warn: #8f5d1b;
+  --warn-soft: #f7eedf;
+  --bad: #ad3d36;
+  --bad-soft: #f8e6e4;
+  color-scheme: light;
+  color: var(--ink);
+  background: #ffffff;
+  max-width: 780px;
+  margin: 14px auto 28px;
+  padding: 34px 42px 38px;
+  border-radius: 10px;
+  gap: 12px;
+  font-size: 13px;
+}
+.ak-doc .ak-sheet .ak-heading {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 6px;
+}
+.ak-doc .ak-sheet .ak-heading h2 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ak-doc .ak-sheet .ak-heading--title {
+  border-top: 0;
+  padding: 0 0 2px;
+  margin: 0;
+}
+.ak-doc .ak-sheet .ak-heading h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.ak-doc .ak-sheet .ak-card {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+}
+.ak-doc .ak-sheet .ak-card--box {
+  background: var(--tile);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.ak-doc .ak-sheet .ak-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+.ak-doc .ak-sheet .ak-stats {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.ak-doc .ak-sheet .ak-stat {
+  background: var(--tile);
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.ak-doc .ak-sheet .ak-stat__value {
+  font-size: 20px;
+}
+.ak-doc .ak-sheet .ak-change {
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+.ak-doc .ak-sheet .ak-text {
+  color: var(--ink);
+}
+.ak-doc .ak-sheet .ak-table {
+  font-size: 13px;
+}
+.ak-doc .ak-sheet .ak-table th {
+  padding: 6px 6px;
+}
+.ak-doc .ak-sheet .ak-table td {
+  padding: 7px 6px;
+  border-bottom-color: var(--line);
 }

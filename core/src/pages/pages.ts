@@ -91,6 +91,7 @@ export function pageDocument(
     given,
     `<script>${asset('runtime.js')}</script>`,
     `<script>${asset('kit.js')}</script>`,
+    `<script>${asset('doc.js')}</script>`,
     `</head><body>${inner}</body></html>`,
   ].join('')
 }
