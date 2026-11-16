@@ -5,7 +5,12 @@ import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 
-export const COOKIE = 'alpha_session'
+// The session cookie's name. Browsers keep cookies by host, not port, so a second Alpha on the
+// same machine's address (its own port) keeps its own, or signing in to one signs out of the other.
+export const cookieOf = (ports: number[] | undefined): string => {
+  const port = ports?.[0]
+  return port && port !== 4700 ? `alpha_session_${port}` : 'alpha_session'
+}
 export const SESSION_PATHS = new Set([
   '/api/session',
   '/api/session/link',
@@ -28,7 +33,7 @@ export function registerSession(ctx: Ctx): void {
   const microsoft = () => !!signsIn?.app('microsoft')
 
   const cookie = (req: { protocol: string }, value: string, maxAge: number) =>
-    `${COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${
+    `${cookieOf(options.ports)}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${
       req.protocol === 'https' || options.publicAddress ? '; Secure' : ''
     }`
   const keep = (req: { protocol: string }, token: string) => cookie(req, token, days * 86_400)
@@ -44,7 +49,7 @@ export function registerSession(ctx: Ctx): void {
   // what the window needs before it shows anything
   app.get('/api/session', async (req) => {
     if (!options.signIn) return { signIn: false, signedIn: true, microsoft: false }
-    const me = world.accounts.userOf(cookieIn(req.headers.cookie, COOKIE))
+    const me = world.accounts.userOf(cookieIn(req.headers.cookie, cookieOf(options.ports)))
     return { signIn: true, signedIn: !!me, microsoft: microsoft() }
   })
 
@@ -59,7 +64,7 @@ export function registerSession(ctx: Ctx): void {
   })
 
   app.post('/api/session/out', async (req, reply) => {
-    world.accounts.signOut(cookieIn(req.headers.cookie, COOKIE))
+    world.accounts.signOut(cookieIn(req.headers.cookie, cookieOf(options.ports)))
     reply.header('set-cookie', cookie(req, '', 0))
     return { ok: true }
   })

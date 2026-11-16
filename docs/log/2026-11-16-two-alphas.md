@@ -15,3 +15,9 @@ disk and no heartbeat for now.
   machine's address and its own port. Switching the first Alpha between private and public
   touches only its own 443.
 - The design now says a machine may hold a few Alphas side by side.
+- On one machine's address the two Alphas' sign-in cookies overwrote each other (browsers keep
+  cookies by host, not port): an Alpha on another port than 4700 names its own
+  (`alpha_session_4710`). Rule A6 gains the case.
+- The new server (Stockholm, its own fixed IP) holds Kenil's Alpha and Avilo's (`as avilo`, port
+  4710), both private on Tailscale until Avilo's domain. Nothing moves from the old server, on his
+  word.

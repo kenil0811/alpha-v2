@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { Refused } from '../../world/kinds.ts'
 import type { BaseCtx } from '../ctx.ts'
 import type { SignInAppView } from '../types.ts'
-import { COOKIE } from './session.ts'
+import { cookieOf } from './session.ts'
 
 export const BACK = '/api/sign-in/back'
 
@@ -92,7 +92,7 @@ export function registerSignIn(ctx: BaseCtx): void {
           )
         reply.header(
           'set-cookie',
-          `${COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${
+          `${cookieOf(options.ports)}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${
             options.signIn.days * 86_400
           }${req.protocol === 'https' ? '; Secure' : ''}`,
         )

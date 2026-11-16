@@ -55,6 +55,40 @@ rule('A6', 'every request carries a session, and a person’s own stays theirs',
       }
       return (await app.inject({ url: '/api/me', headers: BASE })).statusCode === 401
     },
+    'a second Alpha on the machine’s address keeps its own session': async (w) => {
+      // browsers keep cookies by host, not port: the Alpha on 4710 names its own
+      const app = buildServer({
+        engine: w.engine,
+        user: w.user,
+        token: 'rule-token',
+        ports: [4710],
+        signIn: { days: 30 },
+      })
+      await app.ready()
+      const headers = { host: '127.0.0.1:4710' }
+      const out = await app.inject({
+        method: 'POST',
+        url: '/api/session/link',
+        headers,
+        payload: {
+          token: w.world.accounts.ownerLink(w.user),
+          password: PASSWORD,
+          email: 'kenil@example.com',
+        },
+      })
+      const cookie = String(out.headers['set-cookie']).split(';')[0] as string
+      const value = cookie.split('=')[1]
+      const own = await app.inject({ url: '/api/me', headers: { ...headers, cookie } })
+      const other = await app.inject({
+        url: '/api/me',
+        headers: { ...headers, cookie: `alpha_session=${value}` },
+      })
+      return (
+        cookie.startsWith('alpha_session_4710=') &&
+        own.statusCode === 200 &&
+        other.statusCode === 401
+      )
+    },
     'the install’s token does not open the window': async (w) => {
       const { app } = await people(w)
       const headers = { ...BASE, 'x-alpha-token': 'rule-token' }

@@ -33,7 +33,7 @@ import { registerReadNow } from './routes/readnow.ts'
 import { registerRows } from './routes/rows.ts'
 import { registerRules } from './routes/rules.ts'
 import { registerSchedules } from './routes/schedules.ts'
-import { COOKIE, cookieIn, registerSession, SESSION_PATHS } from './routes/session.ts'
+import { cookieIn, cookieOf, registerSession, SESSION_PATHS } from './routes/session.ts'
 import { registerSettings } from './routes/settings.ts'
 import { BACK, registerSignIn } from './routes/signin.ts'
 import { registerSites } from './routes/sites.ts'
@@ -146,7 +146,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (options.signIn) {
       // the alpha command on this machine says so and holds the token: it acts as the owner
       if (req.headers['x-alpha-cli'] && token && given === token) return
-      const person = world.accounts.userOf(cookieIn(req.headers.cookie, COOKIE))
+      const person = world.accounts.userOf(cookieIn(req.headers.cookie, cookieOf(options.ports)))
       if (!person) return reply.code(401).send({ problem: 'Sign in to Alpha.' })
       who.set(req, person)
       return
