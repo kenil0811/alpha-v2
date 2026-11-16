@@ -48,6 +48,20 @@ if [ ! -x /opt/alpha/node/bin/node ] || [ "$(/opt/alpha/node/bin/node -v)" != "v
   tar -xJf "$tmp/$name" -C /opt/alpha/node --strip-components=1
   rm -rf "$tmp"
 fi
+# uv, with which a PDF's reader (Docling) makes its own environment in the Alpha's data the first
+# time a PDF comes; checked against its release's sum, as Node is
+UV=0.12.17
+case $ARCH in arm64) UV_ARCH=aarch64 ;; *) UV_ARCH=x86_64 ;; esac
+if [ ! -x /usr/local/bin/uv ] || [ "$(/usr/local/bin/uv --version | cut -d' ' -f2)" != "$UV" ]; then
+  tmp=$(mktemp -d)
+  name="uv-$UV_ARCH-unknown-linux-gnu.tar.gz"
+  curl -fsSL "https://github.com/astral-sh/uv/releases/download/$UV/$name" -o "$tmp/$name"
+  curl -fsSL "https://github.com/astral-sh/uv/releases/download/$UV/$name.sha256" -o "$tmp/sum"
+  (cd "$tmp" && sha256sum -c sum)
+  tar -xzf "$tmp/$name" -C "$tmp"
+  install -m 755 "$tmp/uv-$UV_ARCH-unknown-linux-gnu/uv" /usr/local/bin/uv
+  rm -rf "$tmp"
+fi
 export PATH=/opt/alpha/node/bin:$PATH
 npm install -g --silent "pnpm@$(sed -n 's/.*"packageManager": "pnpm@\([^"]*\)".*/\1/p' "$HERE/package.json")"
 

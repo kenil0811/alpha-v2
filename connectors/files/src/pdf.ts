@@ -37,7 +37,7 @@ function run(cmd: string, args: string[], timeoutMs: number, envs: string): Prom
   )
 }
 
-// uv: the one Alpha ships with, else the Mac's own.
+// uv: the one Alpha ships with, else the computer's own (a server's is set up with it).
 function uv(): string {
   for (const p of [
     process.env.ALPHA_UV,
@@ -46,7 +46,7 @@ function uv(): string {
     '/usr/local/bin/uv',
   ])
     if (p && existsSync(p)) return p
-  throw new Problem('Reading PDFs needs uv, which is not on this Mac yet.')
+  throw new Problem('Reading PDFs needs uv, which is not on this computer yet.')
 }
 
 let making: Promise<string> | null = null
