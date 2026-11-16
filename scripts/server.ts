@@ -219,7 +219,8 @@ else if (what === 'setup' && host && rest[0]) {
   }
   remote(host, `sudo alpha${as} address https://${status.Self.DNSName.replace(/\.$/, '')}:${at}`)
 } else if (what === 'address' && host) {
-  await tailscale(host, 'sudo tailscale up --hostname=alpha')
+  // up once; a machine already up keeps its name (and the addresses given out with it)
+  await tailscale(host, 'tailscale status >/dev/null 2>&1 || sudo tailscale up --hostname=alpha')
   // public: the same address, open to anyone, each person still signing in
   const open = rest[0] === 'public'
   // only the first Alpha's 443 changes: a named Alpha's own port stays as it is
