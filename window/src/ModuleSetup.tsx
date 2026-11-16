@@ -1,7 +1,7 @@
 // A module's Setup, its last tab: what runs on its own in it and every table it has, and no
 // more. The rest about a module is its details, a page of its own a link on Setup opens: where
 // it comes from, what it is for, the agents it brings, the notes Alpha reads first, what is the
-// person's against the module's own, and Pack it.
+// person's against the module's own, and on a developer's Alpha, Update from its folder.
 // The core calls a module's package a kit; a person never reads that word.
 import type { AgentView, Me, ModuleView, ScheduleView, YoursView } from '@alpha/core/api'
 import { CalendarClock, ChevronRight, Table2, Trash2 } from 'lucide-react'
@@ -81,7 +81,7 @@ export function ModuleDetails({ m, onChange }: { m: ModuleView; onChange: () => 
           </div>
         </Part>
         {m.kit && <Yours moduleId={m.id} onChange={onChange} />}
-        <PackIt m={m} folder={!!m.kit && !!me?.developer && me.user.role === 'owner'} />
+        {!!m.kit && !!me?.developer && me.user.role === 'owner' && <FromFolder m={m} />}
       </div>
     </div>
   )
@@ -373,24 +373,11 @@ function Yours({ moduleId, onChange }: { moduleId: string; onChange: () => void 
   )
 }
 
-// The module as a file to install on another Alpha: made from its shape when it came from none,
-// packed as it is now when it came from one; its rows never leave. A developer's Alpha can also
-// take a new version from the folder it came from.
-function PackIt({ m, folder }: { m: ModuleView; folder: boolean }) {
+// A developer's Alpha takes a new version of a module from the folder its kit came from. Packing a
+// module to install elsewhere is left out for now (Kenil, 16 Nov).
+function FromFolder({ m }: { m: ModuleView }) {
   const [busy, setBusy] = useState(false)
   const [said, setSaid] = useState<string | null>(null)
-  const pack = async () => {
-    setBusy(true)
-    setSaid(null)
-    try {
-      const r = await api.post<{ file: string; words: string }>(`/api/kits/${m.id}/make`, {})
-      setSaid(r.words)
-    } catch (err) {
-      setSaid(err instanceof Problem ? err.message : 'The module was not packed.')
-    } finally {
-      setBusy(false)
-    }
-  }
   const update = async () => {
     setBusy(true)
     setSaid(null)
@@ -411,20 +398,10 @@ function PackIt({ m, folder }: { m: ModuleView; folder: boolean }) {
     }
   }
   return (
-    <Part
-      title="Pack it"
-      sub="A file that installs this module on another Alpha; its rows stay here."
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" disabled={busy} onClick={pack}>
-          {m.kit ? 'Pack it as it is now' : 'Pack it to install elsewhere'}
-        </Button>
-        {folder && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={update}>
-            Update from its folder
-          </Button>
-        )}
-      </div>
+    <Part title="Its folder" sub="Take a new version of this module from the folder it came from.">
+      <Button size="sm" variant="ghost" disabled={busy} onClick={update}>
+        Update from its folder
+      </Button>
       {said && <p className="mt-2 text-ink-2 text-md">{said}</p>}
     </Part>
   )
