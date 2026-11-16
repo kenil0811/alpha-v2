@@ -6,6 +6,7 @@ export default defineConfig({
       'core',
       'window',
       'connector-sdk',
+      'bridge',
       'plugin-sdk',
       'connectors/files',
       'connectors/gmail',

@@ -1,11 +1,12 @@
 // One of a connector's reads through one connection, for a module's script whose kit names the
-// connector (the kit API's connections.read): only a read (the effect its tool says for this
+// connector (the kit API's connections.read), as the person the run is for: only a read (the effect its tool says for this
 // input); anything else is refused. A read that finds the sign-in gone says so on the connection,
 // as a failed sync does; one that works after a failure says the connection works again.
 import { Problem } from '@alpha/connector-sdk'
 import { z } from 'zod'
 import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
+import { onlyItsPerson } from './computers.ts'
 import { type ConnectorService, mcpName } from './service.ts'
 
 export async function readThrough(
@@ -14,9 +15,11 @@ export async function readThrough(
   id: string,
   read: string,
   input: Record<string, unknown>,
+  asker: string | null = null,
 ): Promise<unknown> {
   const conn = world.connections.get(id)
   if (!conn) throw new Refused('That connection is not there.')
+  onlyItsPerson(world, conn, asker)
   if (conn.state === 'paused') throw new Refused(`${conn.account}'s connection is paused.`)
   const c = service.connector(conn.connector)
   const spec = c.tools[read]

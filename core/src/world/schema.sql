@@ -626,5 +626,26 @@ CREATE TABLE connections (
   created_at TEXT NOT NULL,
   hosts TEXT NOT NULL DEFAULT '[]',
   place TEXT, -- where its sign-in went, as the provider names it (a QuickBooks company)
+  computer TEXT, -- the person's computer it runs on, through the Bridge; none: here
   UNIQUE (connector, account)
+);
+
+-- A person's paired computers (the Bridge): the public half of the key each made, and when it was
+-- last seen; a removed one is turned away. A pairing link is kept by its code's hash, used once.
+CREATE TABLE computers (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  public_key TEXT NOT NULL,
+  paired_at TEXT NOT NULL,
+  last_seen_at TEXT,
+  removed_at TEXT
+);
+CREATE TABLE computer_links (
+  code_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  made_at TEXT NOT NULL,
+  until TEXT NOT NULL,
+  used_at TEXT
 );

@@ -22,7 +22,14 @@ export interface ConnectionReads {
     state: string
     lastReadAt: string | null
   }[]
-  read(connection: string, read: string, input: Record<string, unknown>): Promise<unknown>
+  // asked as the person the run is for, or none (the firm's): a connection on a person's computer
+  // answers only its own person (docs/rules.md, B1)
+  read(
+    connection: string,
+    read: string,
+    input: Record<string, unknown>,
+    asker: string | null,
+  ): Promise<unknown>
 }
 
 export interface RunPlace {

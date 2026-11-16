@@ -105,6 +105,9 @@ catalogs:
     remark-gfm:
       specifier: 4.0.1
       version: 4.0.1
+    rolldown:
+      specifier: 1.2.14
+      version: 1.2.14
     tailwind-merge:
       specifier: 3.7.0
       version: 3.7.0
@@ -153,12 +156,31 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.5
+      rolldown:
+        specifier: 'catalog:'
+        version: 1.2.14
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1))
+
+  bridge:
+    dependencies:
+      '@anthropic-ai/sandbox-runtime':
+        specifier: 'catalog:'
+        version: 0.0.80
+    devDependencies:
+      '@alpha/connector-files':
+        specifier: workspace:*
+        version: link:../connectors/files
+      '@alpha/connector-sdk':
+        specifier: workspace:*
+        version: link:../connector-sdk
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.5
 
   connector-sdk:
     dependencies:
@@ -271,6 +293,9 @@ importers:
 
   core:
     dependencies:
+      '@alpha/bridge':
+        specifier: workspace:*
+        version: link:../bridge
       '@alpha/connector-files':
         specifier: workspace:*
         version: link:../connectors/files

@@ -24,6 +24,7 @@ export interface Connection {
   hosts: string[] // what the person approved beyond its connector's own hosts
   madeBy: string // who set it up (person:<id>, system): its owner
   place: string | null // where its sign-in went, as its provider names it (a QuickBooks company)
+  computer: string | null // the person's computer it runs on, through the Bridge; none: here
 }
 
 // Whose sign-ins a connection reads with: the person who set it up, or the firm's.
@@ -44,6 +45,7 @@ interface ConnectionRow {
   hosts: string
   made_by: string
   place: string | null
+  computer: string | null
 }
 
 function toConnection(r: ConnectionRow): Connection {
@@ -61,6 +63,7 @@ function toConnection(r: ConnectionRow): Connection {
     hosts: JSON.parse(r.hosts || '[]') as string[],
     madeBy: r.made_by,
     place: r.place ?? null,
+    computer: r.computer ?? null,
   }
 }
 
@@ -139,6 +142,20 @@ export class Connections {
       })
       return this.get(id) as Connection
     })
+  }
+
+  // The computer a connection runs on from now on (a folder a computer lends), or none: here.
+  runOn(id: string, computer: string | null): void {
+    run(this.db, 'UPDATE connections SET computer = ? WHERE id = ?', computer, id)
+  }
+
+  // The connections that run on a computer.
+  on(computer: string): Connection[] {
+    return all<ConnectionRow>(
+      this.db,
+      'SELECT * FROM connections WHERE computer = ? ORDER BY created_at',
+      computer,
+    ).map(toConnection)
   }
 
   setState(

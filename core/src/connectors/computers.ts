@@ -1,0 +1,85 @@
+// A person's computers as the connector service holds them (the Bridge): what a computer lends
+// becomes a connection that runs there and is theirs; a call or a read through it acts only as its
+// person (docs/rules.md, B1); one whose computer is away waits, said on its tile.
+import type { Connector } from '@alpha/connector-sdk'
+import type { Computer } from '../world/computers.ts'
+import type { Connection } from '../world/connections.ts'
+import { Refused } from '../world/kinds.ts'
+import type { World } from '../world/world.ts'
+import { landIn } from './places.ts'
+import type { ConnectorService } from './service.ts'
+
+// What a person's computer lends: a connection that runs there and is theirs, checked there and
+// read. The computer said it; Alpha never names a folder on a computer (docs/rules.md, B2).
+export async function lend(
+  service: ConnectorService,
+  world: World,
+  pc: Computer,
+  name: string,
+  account: string,
+): Promise<Connection> {
+  const c = service.find(name)
+  if (!c || (c.manifest.runs ?? 'server') === 'server')
+    throw new Refused(`${c?.manifest.title ?? name} does not run on a person's computer.`)
+  const known = world.connections.find(name, account)
+  if (known && known.computer !== pc.id)
+    throw new Refused(`This Alpha has ${account} from somewhere else already.`)
+  const conn = world.connections.add(name, account, null, c.manifest.title, {
+    actor: { kind: 'person', id: pc.user },
+    user: pc.user,
+  })
+  world.connections.runOn(conn.id, pc.id)
+  landIn(world, c)
+  return service.checkNow(conn.id)
+}
+
+// What a computer no longer lends, or what a removed computer lent: paused, kept for the record.
+export function unlend(world: World, pc: Computer, conn: Connection, words: string): void {
+  if (conn.computer !== pc.id || conn.state === 'paused') return
+  world.connections.setState(conn.id, 'paused', words, words, {
+    actor: { kind: 'person', id: pc.user },
+    user: pc.user,
+  })
+}
+
+// A connection whose computer is away: no failure and no card, only its tile saying it waits; one
+// paused meanwhile (its computer removed) stays paused.
+export function waits(world: World, c: Connector, was: Connection): void {
+  const conn = world.connections.get(was.id)
+  if (!conn || conn.state === 'paused') return
+  const name = (conn.computer && world.computers.get(conn.computer)?.name) || 'its computer'
+  world.connections.setState(
+    conn.id,
+    conn.state === 'broken' ? 'connected' : conn.state,
+    `Waiting for ${name}`,
+    `${c.manifest.title} for ${conn.account} waits for ${name}.`,
+    { actor: { kind: 'connector', id: c.manifest.name } },
+  )
+}
+
+// A connection on a person's computer answers only that person: never the firm (asker none) or
+// anyone else (docs/rules.md, B1).
+export function onlyItsPerson(world: World, conn: Connection, asker: string | null): void {
+  const pc = conn.computer ? world.computers.get(conn.computer) : undefined
+  if (pc && pc.user !== asker)
+    throw new Refused(`That connection runs on ${pc.name}, which acts only for its own person.`)
+}
+
+// The person's computer a connector tool's call would run on, by the connection it picks; none
+// when it runs here, or when no connection fits (the call itself says so).
+export function computerFor(
+  service: ConnectorService,
+  world: World,
+  toolName: string,
+  input: Record<string, unknown>,
+): Computer | null {
+  const t = service.toolOf(toolName)
+  if (!t) return null
+  try {
+    const account = typeof input.account === 'string' ? input.account : undefined
+    const conn = service.connectionFor(t.c, account)
+    return conn.computer ? (world.computers.get(conn.computer) ?? null) : null
+  } catch {
+    return null
+  }
+}

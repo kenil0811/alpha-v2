@@ -40,7 +40,13 @@ rule('A6', 'every request carries a session, and a person’s own stays theirs',
   cases: {
     'no session: every route that writes is turned away': async (w) => {
       const { app } = await people(w)
-      const open = new Set(['/api/session', '/api/session/link', '/api/sign-in/back'])
+      // the sign-in pages, and the Bridge pairing with its link's code
+      const open = new Set([
+        '/api/session',
+        '/api/session/link',
+        '/api/sign-in/back',
+        '/api/bridge/pair',
+      ])
       for (const r of writeRoutes()) {
         const [method, path] = r.split(' ') as [string, string]
         if (open.has(path)) continue

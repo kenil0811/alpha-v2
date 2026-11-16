@@ -290,6 +290,7 @@ export const DOORS: Door[] = [
       'POST /api/connections/:id/sign-in',
       'tool connect',
       'plugin connect',
+      'bridge lend',
     ],
     can: [],
   },
@@ -327,6 +328,10 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/accounts/:id/remove': 'the owner removing a person’s way in; their history stays',
   'POST /api/runs/:id/stop': 'stops a run under way; what it wrote stays',
   'POST /api/connections/:id/allow': 'a host a connection may reach, held by its gate',
+  'POST /api/computers/link': 'a pairing link for the person’s next computer',
+  'POST /api/bridge/pair':
+    'a computer paired with its link; what it lends goes through the connector’s door',
+  'DELETE /api/computers/:id': 'a person’s computer removed; what it lent stops, kept',
   'POST /api/layout': 'how the person left the window',
   'POST /api/appearance': 'how the window looks to the person',
   'POST /api/modules/:id/pages/:name/ask': 'a question about a page, answered in a conversation',

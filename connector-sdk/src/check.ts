@@ -22,6 +22,7 @@ const ManifestSchema = z.object({
   oauth: z.object({ provider: z.string(), scopes: z.array(z.string().min(1)).min(1) }).optional(),
   pace: z.object({ perMinute: z.number().positive(), perDay: z.number().positive().optional() }),
   syncEveryMinutes: z.number().positive().optional(),
+  runs: z.enum(['server', 'computer', 'either']).optional(),
   signIn: z.string().url().optional(),
   system: z.object({ pane: z.string().min(1) }).optional(),
   setup: z.object({ sub: z.string().min(1) }).optional(),

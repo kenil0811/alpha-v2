@@ -6,7 +6,10 @@ import { basename, join } from 'node:path'
 import { BrowserEngine } from '@alpha/connector-sdk'
 import { BACK } from './api/routes/signin.ts'
 import { buildServer } from './api/server.ts'
+import { bridges } from './bridge/hub.ts'
 import { config } from './config.ts'
+import { fetchFiles, fileSources } from './connectors/carried.ts'
+import { lend, unlend } from './connectors/computers.ts'
 import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
 import { SignIn } from './connectors/signin.ts'
@@ -153,15 +156,29 @@ const added = await loadSet(
 const connectors = new ConnectorService(world, {
   secrets,
   browser: () => browserEngine(),
-  // on a server, nothing that reads this computer's own apps or folders: there are none to read
+  // on a server, nothing that reads this computer's own apps or folders: there are none to read;
+  // one that runs on a person's computer is lent from there (the Bridge)
   known: [...standard.connectors, ...added.connectors].filter(
-    (c) => platform.name !== 'linux' || !['system', 'path', 'browser'].includes(c.manifest.auth),
+    (c) =>
+      platform.name !== 'linux' ||
+      (c.manifest.runs ?? 'server') !== 'server' ||
+      !['system', 'path', 'browser'].includes(c.manifest.auth),
   ),
+  server: platform.name === 'linux',
   // signing in as the person: the provider sends them back to this core
   signIn: new SignIn(world, {
     secrets,
     back: () => `${install.publicAddress ?? `http://localhost:${port}`}${BACK}`,
   }),
+})
+// A person's computers (the Bridge): what one lends becomes a connection that runs there.
+bridges.use(world, {
+  notify: () => started?.events.emit('event', { type: 'lines', user: user.id }),
+  lend: (pc, name, account) => lend(connectors, world, pc, name, account),
+  unlend: (pc, name, account) => {
+    const k = world.connections.find(name, account)
+    if (k) unlend(world, pc, k, `${pc.name} no longer lends it.`)
+  },
 })
 for (const f of [...standard.failed, ...added.failed]) {
   const words = `The connector in ${f.folder} did not load: ${f.why}`
@@ -216,7 +233,10 @@ const runner = new ScheduleRunner(world, browserEngine, {
 // Files that come by mail, proposed for filing on a card each.
 const intake = new Intake(
   world,
-  { sources: () => connectors.fileSources(), fetch: (c, item) => connectors.fetchFiles(c, item) },
+  {
+    sources: () => fileSources(connectors, world),
+    fetch: (c, item) => fetchFiles(connectors, world, c, item),
+  },
   ask,
   user,
 )
@@ -238,7 +258,7 @@ runner.connections = {
       .list()
       .filter((k) => k.connector.toLowerCase() === connector.toLowerCase())
       .map((k) => ({ id: k.id, account: k.account, state: k.state, lastReadAt: k.lastSyncAt })),
-  read: (id, read, input) => connectors.readThrough(id, read, input),
+  read: (id, read, input, asker) => connectors.readThrough(id, read, input, asker),
 }
 // Alpha's plugins: each with its host; one that does not load is said and left out
 const plugins = new Plugins({
@@ -367,6 +387,7 @@ const app = buildServer({
   },
   failedConnectors: [...standard.failed, ...added.failed],
   plugins: plugins.routes,
+  bridgeDir: join(home, 'bridge'),
   ...(served ? { windowDir } : {}),
 })
 try {

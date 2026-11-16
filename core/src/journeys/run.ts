@@ -38,6 +38,7 @@ import { Refused } from '../world/kinds.ts'
 import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
+import { bridgeStep } from './bridge-step.ts'
 import { Check, judge } from './checks.ts'
 import { fillSite, fixturesFor } from './fixtures.ts'
 import { idleOf } from './idle.ts'
@@ -111,6 +112,15 @@ const Journey = z.object({
           schedules: z.union([z.enum(['on', 'paused']), z.array(z.string())]).default('paused'),
           signed: z.boolean().optional(), // from a pack signed with a key the journey makes (M1)
           update: z.boolean().optional(), // a newer version of a kit already installed
+        })
+        .optional(),
+      // a person's computer through a stand-in Bridge: lends a folder, a file put in it, away, back
+      bridge: z
+        .object({
+          lend: z.string().optional(),
+          put: z.object({ name: z.string(), text: z.string() }).optional(),
+          away: z.boolean().optional(),
+          back: z.boolean().optional(),
         })
         .optional(),
       // the scheduler's tick: schedules whose time or change has come run now
@@ -210,6 +220,7 @@ export async function runOne(
     ...(await tokenRoute(world, home)),
   })
   let site: Site | null = null
+  const computer: Parameters<typeof bridgeStep>[1] = { standIn: null }
   // the journey's own folder, for a made-up connector's account ({tmp})
   const tmp = mkdtempSync(join(tmpdir(), 'alpha-journey-tmp-'))
   const idle = idleOf(engine, user.id, config.limits().journey_step_minutes * 60_000)
@@ -432,6 +443,8 @@ export async function runOne(
       if (!s) throw new Error(`Step ${i + 1}: ${n.agent} has no schedule ${n.name ?? ''}.`)
       const out = await runner.runSchedule(s, { user: user.id, turn: null }, {}, { asked: true })
       what = `Pressed Run now on ${s.name}: ${out.words}`
+    } else if (step.bridge) {
+      what = await bridgeStep(step.bridge, computer, world, engine, user, connectors, tmp)
     } else if (step.due) {
       await runner.runDue(Date.now())
       const ran = runner.runs(5).filter((r) => r.startedAt >= new Date(t0).toISOString())
@@ -565,6 +578,7 @@ export async function runOne(
   mkdirSync(join(base, 'docs', 'journeys'), { recursive: true })
   writeFileSync(out, `${report.join('\n').trim()}\n`)
   await served.app?.close()
+  await computer.standIn?.close()
   engine.close()
   await browser.close()
   site?.server.close()

@@ -364,7 +364,7 @@ export function api(
         string,
         unknown
       >
-      return reads.read(conn.id, String(p.read ?? ''), input)
+      return reads.read(conn.id, String(p.read ?? ''), input, who.user)
     },
     'browser.open': async (p: Record<string, unknown>) => {
       affecting('browser.open')

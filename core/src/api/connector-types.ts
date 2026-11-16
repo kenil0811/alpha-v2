@@ -13,6 +13,7 @@ export interface ConnectorView {
   setup?: { sub: string } // its step on the first open, when it asks for one
   warning?: string // what the person reads before connecting it
   signsInWith?: { provider: string; title: string } // oauth: whose sign-in
+  onComputer?: boolean // runs only on a person's own computer here: lent from the Bridge there
 }
 
 // An organisation's sign-in app for a provider: set once by its IT, from the
@@ -49,6 +50,7 @@ export interface ConnectionView {
   reaches: string[]
   refused: { host: string; at: string }[]
   canAllow: boolean
+  computer: { name: string; online: boolean } | null // the person's computer it runs on (the Bridge)
 }
 
 // A connection that fills a table: Read now on the table reads every one that
@@ -67,4 +69,33 @@ export interface ConnectorsView {
   added: string[] // the connectors loaded from Alpha's own connectors/, by name
   failed: { folder: string; why: string }[] // folders that did not load at start
   signInApps: SignInAppView[] // for the providers the loaded connectors sign in with
+}
+
+// A person's computer paired through the Bridge: whether it is connected now, and what it lends.
+export interface ComputerView {
+  id: string
+  name: string // as it calls itself (Kenil's MacBook Pro)
+  platform: string // darwin, win32
+  online: boolean
+  pairedAt: string
+  lastSeenAt: string | null
+  lends: {
+    connection: string
+    connector: string
+    account: string
+    state: ConnectionView['state']
+    health: string | null
+  }[]
+}
+
+// The Bridge's downloads this Alpha has, signed by Kenil.
+export interface BridgeDownload {
+  platform: string // darwin-arm64, win-x64
+  title: string // Mac with an Apple chip
+  url: string
+}
+
+export interface ComputersView {
+  computers: ComputerView[]
+  downloads: BridgeDownload[]
 }

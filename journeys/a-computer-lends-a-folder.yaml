@@ -1,0 +1,22 @@
+name: a-computer-lends-a-folder
+title: A computer lends a folder through the Bridge; what is put there lands in Files, and it waits while the computer is away
+why: >
+  Bridge step 1 (Kenil's yes, 16 Nov): a person's own computer pairs with a one-time link from
+  Your computers and lends a folder there; what is put in it is kept and read as if dropped in
+  the window. While the computer is away its connection waits, with no failure and no card, and
+  the first read once it is back takes everything new.
+steps:
+  - bridge: { lend: '{tmp}/Exports', put: { name: pl.csv, text: "Account,June\nRevenue,1200\n" } }
+    checks:
+      - documents: 1
+      - connection: { connector: folder, state: connected }
+      - errors: 0
+  - bridge: { away: true, put: { name: notes.txt, text: "Call the broker on Friday.\n" } }
+    checks:
+      - documents: 1
+      - connection: { connector: folder, state: connected, health: 'Waiting for' }
+      - errors: 0
+  - bridge: { back: true }
+    checks:
+      - documents: 2
+      - errors: 0

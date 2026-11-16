@@ -26,7 +26,8 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { type Connector, checkConnector } from '@alpha/connector-sdk'
+import { type Call, type Connector, checkConnector } from '@alpha/connector-sdk'
+import { bridges } from '../bridge/hub.ts'
 import { mustBeSigned, PLAIN_TAR, SIGNATURE, type Trust, UNSIGNED } from '../signing.ts'
 import { Refused } from '../world/kinds.ts'
 import { ConnectorProcess, type Described, isRemote, remoteConnectors } from './process.ts'
@@ -91,7 +92,12 @@ function named(s: Started, taken: string[]): Connector[] {
     s.proc.close()
     throw new Error(`a connector called ${twice.manifest.name} is loaded already`)
   }
-  return remoteConnectors(s.proc, s.described)
+  // a call for a connection on a person's computer goes to the process that computer runs
+  const proc = s.proc
+  return remoteConnectors(proc, s.described, (call, name) => {
+    const computer = (call as Call & { computer?: string | null }).computer
+    return computer ? bridges.processFor(computer, name, proc.entry) : proc
+  })
 }
 
 // Where an installed connector keeps the PACK.json and SIGNATURE it came with.

@@ -44,6 +44,7 @@ export {
   type Manifest,
   type PeopleMap,
   Problem,
+  type ProblemKind,
   type SyncResult,
   type TableSpec,
   type Tool,

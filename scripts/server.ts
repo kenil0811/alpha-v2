@@ -7,13 +7,22 @@
 //                                                      devices only, or with public, open to the internet (Funnel)
 //   address <address> domain <name>                    the Alpha at its own domain, with a certificate; the
 //                                                      domain points at the machine's fixed IP first
+//   bridge <address>                                   put the Bridge's signed zips (pnpm bridge pack) where
+//                                                      the Alpha hands them out, in Your computers
 // Each takes as <name> for a named Alpha beside the first one (as avilo): its own system user,
 // data, sealed secrets, service, port, release and address. On Tailscale a named Alpha is private,
 // at the machine's address and its own port, or with public, open to the internet on 8443.
 // <address> is what ssh reaches the machine by. Nothing here prints a secret or a one-time link.
 import { execFileSync, spawn } from 'node:child_process'
 import { createPrivateKey, sign } from 'node:crypto'
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -168,6 +177,21 @@ else if (what === 'setup' && host && rest[0]) {
   const file = join(OUT, `${name}.tar.gz`)
   put(host, [file, `${file}.sig`], '/tmp/')
   remote(host, `sudo alpha${as} update /tmp/${name}.tar.gz /tmp/${name}.tar.gz.sig`)
+} else if (what === 'bridge' && host) {
+  // the newest signed zip for each computer, into the Alpha's own bridge folder
+  const dir = join(ROOT, '.data', 'bridge')
+  const zips = readdirSync(dir).filter((f) => /^alpha-bridge-.*\.zip$/.test(f))
+  if (!zips.length) throw new Error('No Bridge here yet: pnpm bridge pack first.')
+  const files = zips.flatMap((z) => [join(dir, z), join(dir, `${z}.sig`)])
+  put(host, files, '/tmp/')
+  const user = named ? `alpha-${named}` : 'alpha'
+  const there = `/home/${user}/data/bridge`
+  const names = files.map((f) => `/tmp/${f.split('/').at(-1)}`).join(' ')
+  remote(
+    host,
+    `sudo install -d -o ${user} -g ${user} ${there} && sudo install -o ${user} -g ${user} -m 644 ${names} ${there}/ && rm -f ${names}`,
+  )
+  console.log(`The Bridge is in ${there}.`)
 } else if (what === 'link' && host) {
   const link = execFileSync('ssh', [...SSH, host, `sudo alpha${as} link`], {
     encoding: 'utf8',
@@ -207,7 +231,7 @@ else if (what === 'setup' && host && rest[0]) {
   remote(host, `sudo alpha address https://${status.Self.DNSName.replace(/\.$/, '')}`)
 } else {
   console.error(
-    'Say: pnpm server setup|package|update|link|address. The top of scripts/server.ts says how.',
+    'Say: pnpm server setup|package|update|bridge|link|address. The top of scripts/server.ts says how.',
   )
   process.exit(1)
 }

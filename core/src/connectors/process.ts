@@ -137,9 +137,12 @@ const problemOf = (e: { message: string; kind?: string; retryAfterMs?: number | 
 export class ConnectorProcess {
   readonly entry: string
   private child: ChildProcess | null = null
-  private ready: Promise<Described[]> | null = null
+  protected ready: Promise<Described[]> | null = null
   private next = 1
-  private pending = new Map<number, Answer>()
+  protected pending = new Map<number, Answer>()
+  // false for a process a computer runs (the Bridge): the computer answers its own asks (a
+  // secret, the browser, the Mac helper), never the core
+  protected here = true
   private rules: ProcessRules = OWN
   private described: Described[] = []
   private id = ''
@@ -168,7 +171,8 @@ export class ConnectorProcess {
     this.ready.then(
       (d) => {
         this.described = d
-        allow(this.id, this.hosts(), (host) => this.rules.refused(host, this.refusedBy()))
+        if (this.here)
+          allow(this.id, this.hosts(), (host) => this.rules.refused(host, this.refusedBy()))
         this.hold()
       },
       () => undefined,
@@ -180,7 +184,7 @@ export class ConnectorProcess {
     return this.last || this.described[0]?.manifest.name || ''
   }
 
-  private async spawn(): Promise<Described[]> {
+  protected async spawn(): Promise<Described[]> {
     await sandbox()
     const id = newId()
     this.id = id
@@ -245,7 +249,7 @@ export class ConnectorProcess {
       on ? h?.ref?.() : h?.unref?.()
   }
 
-  private read(line: string, ok: (d: Described[]) => void, fail: (e: Error) => void) {
+  protected read(line: string, ok: (d: Described[]) => void, fail: (e: Error) => void) {
     let m: Record<string, unknown>
     try {
       m = JSON.parse(line)
@@ -279,9 +283,14 @@ export class ConnectorProcess {
   // What the connector asked of its host, answered with the core's host for its call.
   private async answerHost(hid: number, method: string, params: unknown, host: Host | null) {
     const reply = (m: Record<string, unknown>) =>
-      this.child?.stdin?.write(`${JSON.stringify({ t: 'hostReply', hid, ...m })}\n`)
+      this.send(`${JSON.stringify({ t: 'hostReply', hid, ...m })}\n`)
     try {
       if (!host) throw new Error('No call is waiting on this.')
+      if (
+        !this.here &&
+        (method === 'secret' || method === 'helper' || method.startsWith('browser.'))
+      )
+        throw new Problem('That is for the computer to answer, not this Alpha.')
       const p = params as Record<string, unknown>
       let result: unknown
       if (method === 'secret') result = await host.secret()
@@ -347,15 +356,20 @@ export class ConnectorProcess {
     )
       this.close()
     await this.start()
-    allow(this.id, this.hosts(), (h) => this.rules.refused(h, this.refusedBy()))
+    if (this.here) allow(this.id, this.hosts(), (h) => this.rules.refused(h, this.refusedBy()))
     const name = String(fields.name ?? '')
     if (name) this.last = name
     const id = this.next++
     return new Promise((ok, fail) => {
       this.pending.set(id, { ok, fail, host, name })
       this.hold()
-      this.child?.stdin?.write(`${JSON.stringify({ t: 'req', id, op, ...fields })}\n`)
+      this.send(`${JSON.stringify({ t: 'req', id, op, ...fields })}\n`)
     })
+  }
+
+  // One line down to the process.
+  protected send(line: string): void {
+    this.child?.stdin?.write(line)
   }
 
   close(): void {
@@ -384,10 +398,12 @@ function callFields(call: Call): Record<string, unknown> {
   }
 }
 
-// The connectors one process holds, as the core holds them.
+// The connectors one process holds, as the core holds them. A call for a connection that runs on
+// a person's computer goes to the process the computer runs (via, the Bridge); every other to this.
 export function remoteConnectors(
   proc: ConnectorProcess,
   described: Described[],
+  via: (call: Call, name: string) => ConnectorProcess = () => proc,
 ): RemoteConnector[] {
   return described.map((d) => {
     const name = d.manifest.name
@@ -400,7 +416,11 @@ export function remoteConnectors(
           // the core asks the process when it depends on the input (`remote.says`)
           effect: spec.effect ?? 'outward',
           run: (call: Call, input: unknown) =>
-            proc.request('run', { name, tool: t, input, ...callFields(call) }, call.host),
+            via(call, name).request(
+              'run',
+              { name, tool: t, input, ...callFields(call) },
+              call.host,
+            ),
           // its take-back runs in the process; the words are asked of it (`service.undoOf`)
           ...(spec.undo && spec.undo !== 'final'
             ? {
@@ -409,7 +429,7 @@ export function remoteConnectors(
                   said: spec.undo.said,
                   words: () => '',
                   run: (call: Call, input: unknown, result: unknown) =>
-                    proc.request(
+                    via(call, name).request(
                       'undo',
                       { name, tool: t, input, result, ...callFields(call) },
                       call.host,
@@ -431,13 +451,21 @@ export function remoteConnectors(
       ...(d.check
         ? {
             check: async (call: Call) =>
-              void (await proc.request('check', { name, ...callFields(call) }, call.host)),
+              void (await via(call, name).request(
+                'check',
+                { name, ...callFields(call) },
+                call.host,
+              )),
           }
         : {}),
       ...(d.sync
         ? {
             sync: async (call: Call) =>
-              (await proc.request('sync', { name, ...callFields(call) }, call.host)) as never,
+              (await via(call, name).request(
+                'sync',
+                { name, ...callFields(call) },
+                call.host,
+              )) as never,
           }
         : {}),
       ...(d.files
@@ -447,7 +475,11 @@ export function remoteConnectors(
               field: d.files.field,
               fetch: async (call: Call, item: string) =>
                 (
-                  (await proc.request('files', { name, item, ...callFields(call) }, call.host)) as {
+                  (await via(call, name).request(
+                    'files',
+                    { name, item, ...callFields(call) },
+                    call.host,
+                  )) as {
                     name: string
                     mime: string
                     bytes: string

@@ -13,20 +13,20 @@ import {
   type Effect,
   type Fixtures,
   type Host,
-  type ItemFile,
   judgeHealth,
   makeCall,
   Problem,
   type SecretStore,
   type Tool,
 } from '@alpha/connector-sdk'
+import { bridges } from '../bridge/hub.ts'
 import { config } from '../config.ts'
 import { Registry, type ToolEntry } from '../engine/registry.ts'
 import { takeIn } from '../files/documents.ts'
-import type { FileSource } from '../files/intake.ts'
 import { type Connection, ownerOf } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
+import { waits } from './computers.ts'
 import { landIn, tableOf } from './places.ts'
 import { type CallSays, isRemote, undoSaid } from './process.ts'
 import { readThrough } from './reads.ts'
@@ -40,6 +40,9 @@ export interface ServiceOptions {
   browser?: () => BrowserEngine // the human-pace browser, for a site the person signs in to
   known?: Connector[] // the loaded set (discover.ts); none when not given
   signIn?: SignIn // signing in as the person
+  // this core is a server: a connector that runs on a person's computer (runs: computer or
+  // either) runs only there, through the Bridge, never on the server itself
+  server?: boolean
 }
 
 // The name a tool has for the model, and back.
@@ -238,7 +241,11 @@ export class ConnectorService {
       ...(effect !== 'read' ? { once: true } : {}),
     }
     // a connector in its own process paces and retries there, by the same options
-    return Object.assign(makeCall(c.manifest, this.host(c, conn), options), { options })
+    // the computer it runs on, when a person's computer runs it (the Bridge)
+    return Object.assign(makeCall(c.manifest, this.host(c, conn), options), {
+      options,
+      computer: conn.computer,
+    })
   }
 
   // What a call of a connector's tool is, by the tool's model-facing name, before the gates: its
@@ -263,6 +270,13 @@ export class ConnectorService {
     for (const c of this.set) if (isRemote(c)) c.remote.process.close()
   }
 
+  // Whether a connector runs only on a person's computer here: lent from the Bridge there, never
+  // connected in Alpha's own form.
+  onComputer(c: Connector): boolean {
+    const runs = c.manifest.runs ?? 'server'
+    return runs === 'computer' || (runs === 'either' && !!this.options.server)
+  }
+
   // The person's own act in Alpha's form: the sign-in gate is answered by doing it.
   async connect(
     name: string,
@@ -271,6 +285,10 @@ export class ConnectorService {
     user: string,
   ): Promise<Connection> {
     const c = this.connector(name)
+    if (this.onComputer(c))
+      throw new Refused(
+        `${c.manifest.title} runs on your own computer: lend it from the Bridge there (Connections › Your computers).`,
+      )
     if (c.manifest.auth === 'secret' && !secret?.trim())
       throw new Refused(`${c.manifest.title} needs its ${c.manifest.secret?.label ?? 'password'}.`)
     const ref = ['secret', 'oauth'].includes(c.manifest.auth)
@@ -317,9 +335,13 @@ export class ConnectorService {
     try {
       await c.check?.(this.call(c, conn))
     } catch (err) {
-      this.fail(c, conn, err)
+      if (err instanceof Problem && err.kind === 'away') waits(this.world, c, conn)
+      else this.fail(c, conn, err)
       return this.world.connections.get(id) as Connection
     }
+    // paused while it was checked (its computer removed): it stays paused
+    if (this.world.connections.get(id)?.state === 'paused')
+      return this.world.connections.get(id) as Connection
     if (conn.state !== 'connected')
       this.world.connections.setState(
         id,
@@ -382,6 +404,9 @@ export class ConnectorService {
     if (!conn || conn.state === 'paused') return
     const c = this.find(conn.connector)
     if (!c?.sync) return
+    // on a person's computer that is not connected now: it waits, said once on its tile, and the
+    // first read after the computer is back takes everything since (its cursor keeps the rest)
+    if (conn.computer && !bridges.online(conn.computer)) return waits(this.world, c, conn)
     // waiting for the customer: Try again checks once more, and reads only once that is done
     if (conn.state === 'waiting') {
       try {
@@ -427,6 +452,7 @@ export class ConnectorService {
         !result.sawNew,
       )
     } catch (err) {
+      if (err instanceof Problem && err.kind === 'away') return waits(this.world, c, conn)
       this.tried.set(id, Date.now())
       this.fail(c, conn, err)
       read(
@@ -491,9 +517,15 @@ export class ConnectorService {
     return conn
   }
 
-  // One of a connector's reads through one connection, for a module's script (reads.ts).
-  readThrough(id: string, read: string, input: Record<string, unknown>): Promise<unknown> {
-    return readThrough(this, this.world, id, read, input)
+  // One of a connector's reads through one connection, for a module's script (reads.ts), asked as
+  // the person the run is for, or the firm (none).
+  readThrough(
+    id: string,
+    read: string,
+    input: Record<string, unknown>,
+    asker: string | null = null,
+  ): Promise<unknown> {
+    return readThrough(this, this.world, id, read, input, asker)
   }
 
   // A connector's tool run by the core itself, on the person's yes already given (a schedule's draft
@@ -514,36 +546,6 @@ export class ConnectorService {
     if (!spec) throw new Refused(`${c.manifest.title} has no ${name}.`)
     const effect = (await this.says(mcpName(c.manifest.name, name), input))?.effect ?? 'outward'
     return spec.run(this.call(c, this.connectionFor(c), effect), input as never)
-  }
-
-  // The connections whose items carry files (an email's attachments), and an item's files.
-  fileSources(): FileSource[] {
-    return this.world.connections
-      .list()
-      .filter((k) => k.state === 'connected')
-      .flatMap((k) => {
-        const c = this.find(k.connector)
-        return c?.files
-          ? [
-              {
-                connection: k.id,
-                title: c.manifest.title,
-                table: tableOf(this.world, c, c.files.table)?.id ?? c.files.table,
-                field: c.files.field,
-                connector: k.connector,
-                account: k.account,
-              },
-            ]
-          : []
-      })
-  }
-
-  async fetchFiles(connection: string, item: string): Promise<ItemFile[]> {
-    const conn = this.world.connections.get(connection)
-    if (!conn) throw new Refused('That connection is not there.')
-    const c = this.connector(conn.connector)
-    if (!c.files) throw new Refused(`${c.manifest.title} carries no files.`)
-    return c.files.fetch(this.call(c, conn), item)
   }
 
   // The gate's key for a tool, by its model-facing name.

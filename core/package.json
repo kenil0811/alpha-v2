@@ -13,6 +13,7 @@
     "journey": "node src/journeys/main.ts"
   },
   "dependencies": {
+    "@alpha/bridge": "workspace:*",
     "@alpha/connector-files": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
     "@alpha/kit-sdk": "workspace:*",

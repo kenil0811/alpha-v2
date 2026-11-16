@@ -81,6 +81,13 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | L2 | A browse step that puts something into a site asks first: typing, choosing, a key that types, Enter where text goes or in a form, and a button that sends to other people (Share, Publish, Post). It asks once for the agent, the site and the piece of work (the task, or the person's one request), and the yes holds for that work within its hours; three such yeses in a row offer Always, which is one agent's on one site and the person's own. A step whose button or dialog cannot be taken back (pay, buy, order, transfer, send, sign, delete for good) asks every time, under a yes and under Always. Reading, moving around and every other click ask nothing; a deny rule on the site refuses with no card. Code decides which a step is before it runs, from the action and the element; the words are `core/config/words.yaml` | 13 Nov | test |
 | L3 | A browse step opens only the profiles of the person its work is for, or the firm's: one person's sign-in to a site is never another's. Only that person may watch the page their work is on or take it over; while they have it, no step of the agent's reaches it, and the record keeps that they had it and for how long, never what they did | 13 Nov | test |
 
+## A person's computer
+
+| # | Rule | Date | Held by |
+|---|---|---|---|
+| B1 | A computer acts only as its person. A connection on a person's computer (the Bridge) is theirs: their own turns (their conversation, the tasks they give) and the scripts run for them may use it; another person's turn and a script run for the firm or for someone else are refused, in words that name the computer | 16 Nov | test |
+| B2 | What a computer lends is said on the computer. A folder there is lent in the Bridge, never named in Alpha; the Bridge refuses any call for what it does not lend, whatever Alpha sends | 16 Nov | test |
+
 ## Audit
 
 | # | Rule | Date | Held by |
@@ -90,7 +97,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | A3 | The chain's newest hash is written outside the world every day, in a manifest beside the daily backup, so a rewritten tail cannot verify | 4 Nov, 10 Nov | test |
 | A4 | A line that adds, changes or lands rows carries a digest of the values it wrote, so `pnpm journal verify` finds a value changed in the file | 4 Nov | test |
 | A5 | In a firm with users, reading a managed module's records is a journal line, folded after its days like the model's reads | 4 Nov | with Dell's contract |
-| A6 | Where Alpha asks people to sign in, every request but the sign-in pages carries a live session and acts as that person: their conversation and the cards raised in it are theirs alone, and only the owner sets the model, the data, who may sign in, and installs a pack | 9 Nov | test |
+| A6 | Where Alpha asks people to sign in, every request but the sign-in pages and the Bridge's pairing and door (proved by the link's one-time code, then the computer's own key) carries a live session and acts as that person: their conversation and the cards raised in it are theirs alone, and only the owner sets the model, the data, who may sign in, and installs a pack | 9 Nov | test |
 
 ## Reliability
 

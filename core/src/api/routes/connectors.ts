@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Connector, chromePath } from '@alpha/connector-sdk'
 import { z } from 'zod'
+import { bridges } from '../../bridge/hub.ts'
 import { addFolder, loadConnector, removeFolder, unpack } from '../../connectors/discover.ts'
 import { tableOf } from '../../connectors/places.ts'
 import { PlainPlatform } from '../../platform/index.ts'
@@ -38,6 +39,11 @@ export function registerConnectors(ctx: Ctx): void {
   }
 
   const signIn = engine.connectors?.signIn
+  // the person's computer a connection runs on, by the name it calls itself
+  const computerOf = (id: string | null) => {
+    const pc = id ? world.computers.get(id) : undefined
+    return pc ? { name: pc.name, online: bridges.online(pc.id) } : null
+  }
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
     const refused = refusals()
     return {
@@ -51,6 +57,7 @@ export function registerConnectors(ctx: Ctx): void {
         ...(c.manifest.system ? { system: c.manifest.system } : {}),
         ...(c.manifest.setup ? { setup: c.manifest.setup } : {}),
         ...(c.manifest.warning ? { warning: c.manifest.warning } : {}),
+        ...(engine.connectors?.onComputer(c) ? { onComputer: true } : {}),
         ...(c.manifest.oauth && signIn
           ? {
               signsInWith: {
@@ -83,6 +90,7 @@ export function registerConnectors(ctx: Ctx): void {
           reaches: [...new Set([...(c?.manifest.reaches ?? []), ...k.hosts])],
           refused: refused.get(k.connector) ?? [],
           canAllow: !!c?.manifest.chosenSites,
+          computer: computerOf(k.computer),
         }
       }),
       added: options.connectorsDir

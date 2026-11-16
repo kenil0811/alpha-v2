@@ -34,6 +34,10 @@ export interface Manifest {
   pace: { perMinute: number; perDay?: number }
   // How often its sync runs, when it has one.
   syncEveryMinutes?: number
+  // Where it runs: where Alpha runs (server, the default); only on a person's own computer, through
+  // the Bridge (computer); or either (a folder: on a Mac's own Alpha there, on a server on a
+  // person's computer). On a server, one that runs on a computer is lent from that computer.
+  runs?: 'server' | 'computer' | 'either'
   // browser: where the person signs in themselves, in Google Chrome
   signIn?: string
   // system: the System Settings pane (Privacy & Security › <pane>) that turns Alpha on after a no
@@ -216,14 +220,14 @@ export function defineTool<S extends z.ZodRawShape>(t: Tool<S>): Tool<S> {
 // A failure the person can act on, in their words.
 // busy: the service asked to wait ("too many requests"), so nothing was done and the runtime waits
 // and tries again, for as long as it asked (retryAfterMs) when it said
+// away: the computer the connection runs on is not connected now (the Bridge); nothing was tried,
+// and it goes again when the computer is back
+export type ProblemKind = 'sign_in' | 'blocked' | 'gone' | 'busy' | 'waiting' | 'away' | 'other'
+
 export class Problem extends Error {
-  readonly kind: 'sign_in' | 'blocked' | 'gone' | 'busy' | 'waiting' | 'other'
+  readonly kind: ProblemKind
   readonly retryAfterMs: number | undefined
-  constructor(
-    words: string,
-    kind: 'sign_in' | 'blocked' | 'gone' | 'busy' | 'waiting' | 'other' = 'other',
-    options: { retryAfterMs?: number } = {},
-  ) {
+  constructor(words: string, kind: ProblemKind = 'other', options: { retryAfterMs?: number } = {}) {
     super(words)
     this.kind = kind
     this.retryAfterMs = options.retryAfterMs

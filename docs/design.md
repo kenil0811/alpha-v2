@@ -50,6 +50,7 @@ interface in `core/src/platform/`, and `pnpm check` refuses a Mac call anywhere 
 | `window/` | The web app the core serves |
 | `kit-sdk/` | The kit contract, from which `docs/kit-api.md` is generated |
 | `connector-sdk/`, `connectors/`, `connectors-extra/` | What connectors are built on, the set that ships, and those added by hand |
+| `bridge/` | The Bridge, run on a person's own computer to lend Alpha what they turn on there |
 | `plugin-sdk/`, `plugins/` | The seam for first-party plugins, empty today |
 | `mac/`, `release/`, `scripts/` | The Mac app, the installer and `alpha` command, the release and the walls |
 | `journeys/` | Journeys as YAML, their reports in `docs/journeys/` |
@@ -230,8 +231,30 @@ taken back, so Revert can cover what left Alpha. Packs from outside are signed w
 checked at every start.
 
 Gmail, Outlook, QuickBooks (reads only, through the firm's own Intuit app, kept by the module that reads through it), files and the Mac's own apps ship; LinkedIn is added by hand. On a hosted Alpha,
-connectors run on the server unless they physically cannot, and those run in a small Bridge app on
-the person's computer, built when a module first needs it.
+connectors run on the server unless they physically cannot, and those run on the person's own
+computer through the Bridge. Each manifest says where it runs (`runs: server`, `computer` or
+`either`); a folder runs either, so on a Mac's own Alpha it runs there as before and on a server
+only on a computer.
+
+**The Bridge** (step 1 of its design, 16 Nov) is a small program in `bridge/`, a zip per computer
+(a Mac with an Apple chip, Windows on x64) with Node inside, signed with Kenil's key; Alpha hands
+out only a zip whose signature holds (`pnpm bridge pack`, then `pnpm server bridge`). Connections ›
+Your computers makes a one-time pairing link, good for 15 minutes, and only where one person signs
+in until every row has an owner. `alpha-bridge pair <link>` makes the computer's own key there,
+its private half in the Keychain or Windows' Credential Manager, and Alpha keeps the public half
+against the person. The Bridge connects outward to the Alpha's own address over one websocket
+(`/ws/bridge`), proves itself by signing a fresh challenge at every connect, and nothing on the
+computer listens. It runs the same connector child the core runs, with the same lines carried over
+that connection: the world's asks (keep a file, land rows, the cursor, a journal line) go to the
+core, the computer's (a secret, the browser, the Mac helper) are answered there. What it lends is
+its own list (`alpha-bridge lend <folder>`), which Alpha learns at every connect and never adds to;
+it refuses any call for anything else, whatever Alpha sends (rules B2). A connection on a computer
+acts only as its person (rules B1). A computer that is away answers a conversation at once that it
+is, and its connection's reads wait, saying "Waiting for" it on the tile, with no card; the first
+read once it is back takes everything new. Removed in Alpha, it is turned away at once and what it
+lent is paused, kept. On a Mac its connector runs in Anthropic's sandbox; on Windows, where there is
+none yet, the signature is the wall. The app around it (an icon, switches, a picker, updates) is
+step 2.
 
 ## Modules and kits
 
@@ -265,7 +288,8 @@ person signs in with a name and password or Microsoft for 30 days, and every req
 person. Their conversations and cards are theirs. Two roles exist: only the owner sets the model
 and the data, says who may sign in, and installs a pack.
 
-Clients are hosted, and nothing is installed on a client's computer. A server is a Linux virtual
+Clients are hosted, and nothing must be installed on a client's computer: the Bridge is optional,
+per person. A server is a Linux virtual
 machine, not a container, because Anthropic's sandbox in a container needs a much weaker mode. A
 firm gets its own machine; one machine may also hold a few Alphas side by side (the owner's own
 for testing beside a firm's, Kenil, 16 Nov), each its own system user, data, sealed secrets,
@@ -297,4 +321,4 @@ looked at in the app, and committed after review. Prompts, models and judgements
 `core/config/`, never as constants in code. Nothing is built for a client who has not asked.
 
 **Deliberately absent:** a second provider or Alpha's own loop; cards to make an agent; built-in
-characters beyond the Chief of staff and the Module builder (Kenil, 10 Nov); numeric limits on an agent's looking; anything installed on a client's computer.
+characters beyond the Chief of staff and the Module builder (Kenil, 10 Nov); numeric limits on an agent's looking.

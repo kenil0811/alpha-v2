@@ -5,6 +5,7 @@ import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/
 import { CalendarDays, Folder, Mail, Network, Plug, Trash2, Unplug, UserRound } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
+import { Computers } from './Computers.tsx'
 import { Reach } from './Reach.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
 import { Sites } from './Sites.tsx'
@@ -105,10 +106,24 @@ export function Connections({
             ))}
           </List>
         )}
-        {places.map((c) => (
-          <FolderForm key={c.name} connector={c} onChange={onChange} startOpen={open === c.name} />
-        ))}
+        {places
+          .filter((c) => !c.onComputer)
+          .map((c) => (
+            <FolderForm
+              key={c.name}
+              connector={c}
+              onChange={onChange}
+              startOpen={open === c.name}
+            />
+          ))}
+        {places.some((c) => c.onComputer) && (
+          <p className="text-ink-3 text-md">
+            A folder is lent from your own computer, through the Bridge: add the computer under Your
+            computers.
+          </p>
+        )}
       </Section>
+      <Computers version={version} />
     </>
   )
 }
@@ -129,6 +144,12 @@ function ConnectionLine({
   const about = (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span>Set up by {k.owner}</span>
+      {k.computer && (
+        <span>
+          On {k.computer.name}
+          {k.computer.online ? '' : ', offline now'}
+        </span>
+      )}
       {k.tables.map((t) => (
         <span key={t.id}>
           Kept in{' '}

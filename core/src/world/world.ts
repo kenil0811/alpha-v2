@@ -1,7 +1,7 @@
 // One tenant's world: the SQLite file and what lives beside it. Every write is a
 // function of the world that writes its journal line in the same transaction.
 
-import { existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { join } from 'node:path'
 import { config } from '../config.ts'
@@ -10,6 +10,7 @@ import { AgentAsks } from './agents/asks.ts'
 import { Agents, CHIEF } from './agents/index.ts'
 import { Memories } from './agents/memory.ts'
 import { Cards } from './cards.ts'
+import { Computers } from './computers.ts'
 import { Connections } from './connections.ts'
 import { all, type Db, newId, now, one, openDb, run, tx } from './db.ts'
 import { type FileOut, Files } from './files.ts'
@@ -36,7 +37,10 @@ import { type Place, placeOf } from './shape/parts.ts'
 import { peopleTables } from './shape/per.ts'
 import { Spend } from './spend.ts'
 import { Tasks } from './tasks/index.ts'
+import { type TenantPaths, tenantPaths } from './tenant.ts'
 import { Views } from './views.ts'
+
+export { type TenantPaths, tenantDir, tenantPaths } from './tenant.ts'
 
 export interface User {
   id: string
@@ -69,32 +73,6 @@ export interface Hit {
   where: string
 }
 
-export interface TenantPaths {
-  dir: string
-  world: string
-  files: string
-  modules: string
-  desks: string
-  agents: string
-  instructions: string
-  backups: string
-  envs: string // per Mac, beside the tenants: Docling's environment
-}
-
-export function tenantPaths(dir: string): TenantPaths {
-  return {
-    dir,
-    world: join(dir, 'world.sqlite'),
-    files: join(dir, 'files'),
-    modules: join(dir, 'modules'),
-    desks: join(dir, 'desk'),
-    agents: join(dir, 'agents'),
-    instructions: join(dir, 'instructions'),
-    backups: join(dir, 'backups'),
-    envs: join(dir, '..', '..', 'envs'),
-  }
-}
-
 export class World {
   readonly shape: Shape
   readonly records: Records
@@ -102,6 +80,7 @@ export class World {
   readonly views: Views
   readonly files: Files
   readonly connections: Connections
+  readonly computers: Computers
   readonly rules: Rules
   readonly spend: Spend
   readonly agents: Agents
@@ -127,6 +106,7 @@ export class World {
     this.files = new Files(db, paths.files)
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
     this.connections = new Connections(db)
+    this.computers = new Computers(db)
     this.rules = new Rules(db, this.shape)
     this.spend = new Spend(db)
     this.agents = new Agents(db, paths.agents)
@@ -581,18 +561,4 @@ export function ftsQuery(words: string): string {
     .split(/[^\p{L}\p{N}]+/u)
     .filter((t) => t.length > 1)
   return [...new Set(tokens)].map((t) => `"${t}"`).join(' OR ')
-}
-
-// The tenant on this machine: single-tenant in features, a tenant id on every path.
-export function tenantDir(home: string, id: string | null = null): string {
-  const tenants = join(home, 'tenants')
-  mkdirSync(tenants, { recursive: true })
-  if (id) return join(tenants, id)
-  const found = readdirSync(tenants, { withFileTypes: true }).find(
-    (d) =>
-      d.isDirectory() &&
-      d.name.startsWith('t_') &&
-      existsSync(join(tenants, d.name, 'world.sqlite')),
-  )
-  return join(tenants, found ? found.name : newId('t'))
 }

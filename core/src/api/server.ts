@@ -10,6 +10,7 @@ import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify'
 import { z } from 'zod'
+import { bridges } from '../bridge/hub.ts'
 import type { Engine, EngineEvent } from '../engine/engine.ts'
 import type { Install } from '../install.ts'
 import type { Platform } from '../platform/index.ts'
@@ -23,6 +24,7 @@ import { liveSignIn } from './live.ts'
 import { registerActivity } from './routes/activity.ts'
 import { registerAgents } from './routes/agents.ts'
 import { registerCards } from './routes/cards.ts'
+import { PAIR, registerComputers } from './routes/computers.ts'
 import { registerConnectors } from './routes/connectors.ts'
 import { registerFiles } from './routes/files.ts'
 import { registerKits } from './routes/kits.ts'
@@ -47,6 +49,9 @@ import { watchTab } from './watch.ts'
 
 // The version this core ships as, which a release writes into the app's VERSION file
 // (scripts/release.ts); a core run from a repository has none.
+// Where a person's computer connects (the Bridge).
+const BRIDGE = '/ws/bridge'
+
 const versionFile = join(import.meta.dirname, '..', '..', '..', 'VERSION')
 export const VERSION = existsSync(versionFile)
   ? readFileSync(versionFile, 'utf8').trim()
@@ -76,6 +81,7 @@ export interface ServerOptions {
   }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
   plugins?: PluginRoute[] // what plugins answer, under /api/plugins/<name>/
+  bridgeDir?: string // where the Bridge's downloads are, signed (pnpm server bridge)
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -143,6 +149,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (origin && hosts.size && !hosts.has(origin.replace(/^https?:\/\//, '')))
       return deny(reply, 'This page is not Alpha’s.')
     if (back || SESSION_PATHS.has(path)) return
+    // the Bridge pairs with its link's code and connects with its own key: no session
+    if (path === PAIR || path === BRIDGE) return
     if (options.signIn) {
       // the alpha command on this machine says so and holds the token: it acts as the owner
       if (req.headers['x-alpha-cli'] && token && given === token) return
@@ -212,6 +220,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   registerSettings(ctx)
   registerUsage(ctx)
   registerActivity(ctx)
+  registerComputers(ctx)
   for (const r of options.plugins ?? [])
     app.route({
       method: r.method,
@@ -233,6 +242,17 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     scope.get('/ws/watch/:tab', { websocket: true }, (socket, req) => {
       const { tab } = req.params as { tab: string }
       watchTab(socket, tab, world, engine, who.get(req) ?? owner)
+    })
+    // a person's computer, its Bridge proving itself with its own key (bridge/hub.ts); a ping now
+    // and then keeps the way open through proxies that close a quiet connection
+    scope.get(BRIDGE, { websocket: true }, (socket) => {
+      const door = bridges.open(socket)
+      const ping = setInterval(() => socket.ping(), 25_000)
+      socket.on('message', (data: Buffer) => door.heard(String(data)))
+      socket.on('close', () => {
+        clearInterval(ping)
+        door.closed()
+      })
     })
     scope.get('/ws', { websocket: true }, (socket, req) => {
       const id = (who.get(req) ?? owner).id

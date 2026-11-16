@@ -3,6 +3,7 @@
 // connector; a web address opened, and the shell's reach outside, from the web check (L1). The
 // verdict is the gates' (gates.ts): pass, or a card.
 
+import { computerFor } from '../connectors/computers.ts'
 import type { CallSays } from '../connectors/process.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import { undoOf } from '../connectors/takeback.ts'
@@ -113,6 +114,13 @@ export class Gatekeeper {
     if (name === 'browse') this.browsing.add(call.callId)
     else if (this.connectors?.isTool(toolName)) this.outside.set(call.callId, undefined)
     if (this.connectors?.isTool(toolName)) {
+      // a connection on a person's computer acts only as that person (docs/rules.md, B1)
+      const pc = computerFor(this.connectors, this.world, toolName, input)
+      if (pc && pc.user !== this.user.id)
+        return {
+          allow: false,
+          reason: `That runs on ${pc.name}, which acts only for the person whose computer it is.`,
+        }
       this.calls.set(call.callId, { tool: toolName, input, words })
       return this.connector(
         toolName,
