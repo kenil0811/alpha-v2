@@ -47,6 +47,7 @@ export class ScheduleRunner {
   // the schedules' own lane: the minute tick starts the due runs and goes on; while they
   // run, the next tick leaves them alone, so reminders and the backup keep the minute
   lane: Promise<void> | null = null
+  private dueFailed: Error | null = null // the due runs that failed, said at the next start
   failures = new Map<string, number>() // a schedule's runs that did not finish, in a row
   held = new Map<string, string>() // schedules waiting on a Try again card, by the card's id
   drafts: Drafts | null = null // a schedule's drafts, sent from the person's mail on their yes
@@ -134,15 +135,22 @@ export class ScheduleRunner {
   async runDue(nowMs = Date.now()): Promise<void> {
     return dueOf.runDue(this, nowMs)
   }
-  // The due runs started in the schedules' own lane: back at once, the runs going on behind.
+  // The due runs started in the schedules' own lane: back at once, the runs going on behind. A
+  // lane that failed is thrown at the next start, so the scheduler says so (R1).
   startDue(nowMs = Date.now()): void {
     if (this.lane) return
-    this.lane = dueOf
-      .runDue(this, nowMs)
-      .catch(() => undefined)
+    const failed = this.dueFailed
+    this.dueFailed = null
+    this.lane = this.runDue(nowMs)
+      .catch((err) => this.failedDue(err))
       .finally(() => {
         this.lane = null
       })
+    if (failed) throw failed
+  }
+  // The due runs that failed (in the lane, or started by a change), kept for the next start.
+  failedDue(err: unknown): void {
+    this.dueFailed = err instanceof Error ? err : new Error(String(err))
   }
   // The person's Try again on the card: one more run now, the count reset.
   async retry(scheduleId: string, who: RunFor): Promise<RunOutcome> {

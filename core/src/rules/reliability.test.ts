@@ -3,8 +3,11 @@
 // NOT_DOORS with why, and every act a door can do has its driver. R4 is held by review.
 import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { BrowserEngine } from '@alpha/connector-sdk'
 import { TOOL_NAMES, worldTools } from '../engine/tools/index.ts'
 import { keepAgent } from '../modules/agents.ts'
+import { ScheduleRunner } from '../modules/runs/index.ts'
+import { syncSchedules } from '../modules/schedules.ts'
 import { backupJob } from '../scheduler/jobs.ts'
 import { Scheduler } from '../scheduler/scheduler.ts'
 import { CHIEF } from '../world/agents/index.ts'
@@ -30,6 +33,29 @@ async function failing(w: RuleWorld, times: number): Promise<number> {
   const start = Date.now()
   for (let i = 0; i < times; i++) await s.tick(MINUTE, start + i * MINUTE)
   return from
+}
+
+// Two of the Bakery's schedules due every hour, First and Second, each ending well.
+function twoHourly(w: RuleWorld): ScheduleRunner {
+  const m = w.world.shape.module('Bakery')
+  if (!m) throw new Error('The rule world has no Bakery.')
+  writeFileSync(join(m.dir, 'skills', 'well.js'), "export default async () => ({ words: 'done' })")
+  for (const name of ['First', 'Second'])
+    writeFileSync(
+      join(m.dir, 'schedules', `${name.toLowerCase()}.md`),
+      `---\nname: ${name}\ntrigger: { every: hour }\nruns: { script: skills/well.js }\n---\n${name}.\n`,
+    )
+  syncSchedules(w.world, m, 'on')
+  const runner = new ScheduleRunner(w.world, () => ({}) as unknown as BrowserEngine, {
+    owner: w.user.id,
+  })
+  // First's trigger cannot be read
+  const due = runner.due.bind(runner)
+  runner.due = (a, now) => {
+    if (a.name === 'First') throw new Error('its trigger could not be read')
+    return due(a, now)
+  }
+  return runner
 }
 
 rule('R1', 'every scheduled job that fails says so', {
@@ -59,6 +85,47 @@ rule('R1', 'every scheduled job that fails says so', {
       broken = false
       await s.tick(MINUTE, Date.now() + MINUTE)
       return opened === 1 && heard === 2
+    },
+    'a schedule that cannot start says so, and the others still run': async (w) => {
+      const runner = twoHourly(w)
+      const from = w.lastLine()
+      await runner.runDue()
+      return (
+        w
+          .linesAfter(from)
+          .some((l) => l.words === 'First could not start: its trigger could not be read') &&
+        runner.runs().some((r) => r.words === 'Second: done')
+      )
+    },
+    'a schedule that cannot start twice in a row is a card on Home': async (w) => {
+      const runner = twoHourly(w)
+      const before = w.world.cards.waiting().length
+      await runner.runDue()
+      await runner.runDue(Date.now() + 2 * 3_600_000)
+      return w.world.cards
+        .waiting()
+        .slice(before)
+        .some((c) => /^First could not start 2 times/.test(c.words))
+    },
+    'the schedules’ lane that fails says so at the next tick, and a card after two': async (w) => {
+      const runner = new ScheduleRunner(w.world, () => ({}) as unknown as BrowserEngine)
+      runner.runDue = async () => {
+        throw new Error('the schedules could not be read')
+      }
+      const s = new Scheduler(w.world, [
+        { name: 'Starting what is scheduled', run: async (now) => runner.startDue(now) },
+      ])
+      const from = w.lastLine()
+      const before = w.world.cards.waiting().length
+      const start = Date.now()
+      for (let i = 0; i < 3; i++) {
+        await s.tick(MINUTE, start + i * MINUTE)
+        await runner.lane
+      }
+      return (
+        w.linesAfter(from).some((l) => /the schedules could not be read/.test(l.words)) &&
+        w.world.cards.waiting().length === before + 1
+      )
     },
   },
 })

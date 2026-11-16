@@ -431,6 +431,26 @@ describe('triggers', () => {
     expect(data.data).toContain('"say":"hi"')
   }, 60_000)
 
+  it('run a schedule on a change past a module deletion’s line that counted its tables', async () => {
+    const m = await install(world, join(import.meta.dirname, 'test-kit'), ctx)
+    const runner = new ScheduleRunner(world, () => engine)
+    writeFileSync(join(m.dir, 'skills/echo.js'), 'export default async () => null')
+    writeFileSync(
+      join(m.dir, 'schedules/watcher.md'),
+      '---\nname: Watcher\ntrigger: { changes: [Orders, Suppliers] }\nruns: { script: skills/echo.js }\n---\nWatches.\n',
+    )
+    syncSchedules(world, m, 'on')
+    // a deletion's line as it was written before its counts had names of their own
+    world.line({
+      actor: ctx.actor,
+      kind: 'removed',
+      words: 'Deleted the module Old, with 8 tables and 580 rows.',
+      data: { module: 'm_old', name: 'Old', tables: 8, rows: 580 },
+    })
+    await runner.runDue()
+    expect(runner.runs().map((r) => r.words)).toEqual(['Watcher finished.'])
+  }, 60_000)
+
   it('run a kit’s schedule on a change in a table of another kit it uses, and let it read that table', async () => {
     await install(world, join(import.meta.dirname, 'test-kit'), ctx)
     // a second kit that follows the first one's Orders into a table of its own

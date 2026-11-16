@@ -322,7 +322,7 @@ engine.events.on('event', (e: { type: string }) => {
   if (e.type !== 'lines' || kick) return
   kick = setTimeout(() => {
     kick = null
-    void runner.runDue().catch(() => undefined)
+    void runner.runDue().catch((err) => runner.failedDue(err))
   }, 1500)
   kick.unref()
 })
