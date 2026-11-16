@@ -8,8 +8,8 @@
 set -eu
 OWNER=$1
 ADDRESS=${2:-}
-NAME=${3:-}
-case $NAME in *[!a-z0-9]*) echo "An Alpha's name is small letters and digits."; exit 1 ;; esac
+ALPHA=${3:-}
+case $ALPHA in *[!a-z0-9]*) echo "An Alpha's name is small letters and digits."; exit 1 ;; esac
 HERE=$(cd "$(dirname "$0")" && pwd)
 NODE=$(cat "$HERE/.nvmrc")
 case $(uname -m) in aarch64) ARCH=arm64 ;; x86_64) ARCH=x64 ;; *) echo "Not a machine Alpha runs on."; exit 1 ;; esac
@@ -19,7 +19,8 @@ apt-get update -qq
 apt-get install -y -qq bubblewrap socat ripgrep curl xz-utils ca-certificates
 # Tailscale is how people reach the machine; `pnpm server address` brings it up
 if ! command -v tailscale >/dev/null; then
-  . /etc/os-release
+  # os-release sets NAME and more: only its codename is read, in a subshell
+  VERSION_CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
   curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$VERSION_CODENAME.noarmor.gpg" \
     -o /usr/share/keyrings/tailscale-archive-keyring.gpg
   curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/$VERSION_CODENAME.tailscale-keyring.list" \
@@ -50,11 +51,11 @@ fi
 export PATH=/opt/alpha/node/bin:$PATH
 npm install -g --silent "pnpm@$(sed -n 's/.*"packageManager": "pnpm@\([^"]*\)".*/\1/p' "$HERE/package.json")"
 
-if [ -n "$NAME" ]; then
-  USER_=alpha-$NAME
-  CRED=/etc/alpha/secrets-$NAME.cred
-  UNIT=alpha-$NAME
-  CURRENT=/opt/alpha/current-$NAME
+if [ -n "$ALPHA" ]; then
+  USER_=alpha-$ALPHA
+  CRED=/etc/alpha/secrets-$ALPHA.cred
+  UNIT=alpha-$ALPHA
+  CURRENT=/opt/alpha/current-$ALPHA
 else
   USER_=alpha
   CRED=/etc/alpha/secrets.cred
@@ -69,16 +70,17 @@ install -d -o "$USER_" -g "$USER_" -m 750 "$HOME_BASE/data"
 install -d -m 700 /etc/alpha
 [ -f "$CRED" ] ||
   head -c 32 /dev/urandom | base64 -w0 | systemd-creds encrypt --name=alpha-secrets - "$CRED"
+chmod 600 "$CRED"
 
 # a named Alpha's port: the next free one after the first Alpha's 4700, kept in /etc/alpha/ports
 PORT=4700
-if [ -n "$NAME" ]; then
+if [ -n "$ALPHA" ]; then
   touch /etc/alpha/ports
-  PORT=$(sed -n "s/^$NAME \([0-9]*\)$/\1/p" /etc/alpha/ports)
+  PORT=$(sed -n "s/^$ALPHA \([0-9]*\)$/\1/p" /etc/alpha/ports)
   if [ -z "$PORT" ]; then
     last=$(awk '{print $2}' /etc/alpha/ports | sort -n | tail -1)
     PORT=$(( ${last:-4700} + 10 ))
-    printf '%s %s\n' "$NAME" "$PORT" >>/etc/alpha/ports
+    printf '%s %s\n' "$ALPHA" "$PORT" >>/etc/alpha/ports
   fi
 fi
 
@@ -96,7 +98,7 @@ install -m 644 "$HERE/verify.mjs" /opt/alpha/verify.mjs
 install -m 755 "$HERE/alpha" /usr/local/bin/alpha
 # the service: the first Alpha's as it comes; a named one's with its own user, home, port, release
 # and secrets
-sed -e "s|^Description=Alpha$|Description=Alpha${NAME:+ ($NAME)}|" \
+sed -e "s|^Description=Alpha$|Description=Alpha${ALPHA:+ ($ALPHA)}|" \
   -e "s|^User=alpha$|User=$USER_|" -e "s|^Group=alpha$|Group=$USER_|" \
   -e "s|^Environment=HOME=/home/alpha$|Environment=HOME=$HOME_BASE|" \
   -e "s|^Environment=ALPHA_HOME=/home/alpha/data$|Environment=ALPHA_HOME=$HOME_BASE/data\nEnvironment=ALPHA_PORT=$PORT|" \
@@ -107,9 +109,9 @@ chmod 644 "/etc/systemd/system/$UNIT.service"
 systemctl daemon-reload
 systemctl enable -q "$UNIT"
 # a named Alpha starts on the release the first one runs, until it is sent its own
-if [ -n "$NAME" ] && [ ! -L "$CURRENT" ] && [ -L /opt/alpha/current ]; then
+if [ -n "$ALPHA" ] && [ ! -L "$CURRENT" ] && [ -L /opt/alpha/current ]; then
   ln -sfn "$(readlink /opt/alpha/current)" "$CURRENT"
   systemctl restart "$UNIT"
 fi
-echo "This machine is set up${NAME:+ for $NAME}. Send it a release with: pnpm server update"
+echo "This machine is set up${ALPHA:+ for $ALPHA}. Send it a release with: pnpm server update"
 
