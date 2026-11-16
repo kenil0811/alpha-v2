@@ -4,7 +4,8 @@
 // the link's code and then the computer's own key being the proof. A computer acts only as its
 // person (docs/rules.md, B1).
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { extname, join } from 'node:path'
+import type { FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { bridges } from '../../bridge/hub.ts'
 import { unlend } from '../../connectors/computers.ts'
@@ -13,8 +14,11 @@ import { Refused } from '../../world/kinds.ts'
 import type { ComputersView } from '../connector-types.ts'
 import type { Ctx } from '../ctx.ts'
 
-// What the Bridge's pairing is reached at without a session.
+// What the Bridge reaches without a session: its pairing, with the link's code; its updates and
+// its own files, which carry Kenil's signature and Tauri's (the app checks the latter itself).
 export const PAIR = '/api/bridge/pair'
+export const UPDATE = '/api/bridge/update/:platform/:current'
+export const APP_FILE = '/api/bridge/app/:file'
 
 // The Bridge's downloads, by the computer they are for.
 const PLATFORMS = [
@@ -22,33 +26,97 @@ const PLATFORMS = [
   { platform: 'win-x64', title: 'Windows' },
 ] as const
 
-// The newest Bridge for a platform in this Alpha's bridge folder, when Kenil signed it: what Alpha
-// hands out is what he signed.
-function bridgeFor(dir: string | undefined, platform: string): string | null {
-  if (!dir || !existsSync(dir)) return null
-  const zips = readdirSync(dir)
-    .filter((f) => f.startsWith('alpha-bridge-') && f.endsWith(`-${platform}.zip`))
-    .map((f) => join(dir, f))
-    .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)
-  const key = trustedKey()
-  for (const zip of zips) {
-    const sig = `${zip}.sig`
-    if (!key || !existsSync(sig)) continue
-    if (verifyManifest(readFileSync(zip), readFileSync(sig, 'utf8').trim(), key)) return zip
+// A Bridge file in an Alpha's bridge folder: its version, the computer it is for, and what it is
+// (an installer, an update the app takes in, or step 1's zip).
+const NAME =
+  /^alpha-bridge-(\d+\.\d+\.\d+)-(darwin-arm64|win-x64)(\.dmg|-setup\.exe|\.app\.tar\.gz|\.zip)$/
+interface BridgeFile {
+  file: string
+  name: string
+  version: string
+  platform: string
+  kind: 'installer' | 'update' | 'zip'
+}
+const KINDS: Record<string, BridgeFile['kind']> = {
+  '.dmg': 'installer',
+  '-setup.exe': 'installer',
+  '.app.tar.gz': 'update',
+  '.zip': 'zip',
+}
+const newer = (a: string, b: string) => {
+  const [x, y] = [a, b].map((v) => v.split('.').map(Number))
+  for (let i = 0; i < 3; i++)
+    if ((x?.[i] ?? 0) !== (y?.[i] ?? 0)) return (x?.[i] ?? 0) > (y?.[i] ?? 0)
+  return false
+}
+
+// What Alpha hands out is what Kenil signed: each file's signature checked once, by its time.
+const held = new Map<string, { at: number; ok: boolean }>()
+function signedFiles(dir: string | undefined, key = trustedKey()): BridgeFile[] {
+  if (!dir || !existsSync(dir)) return []
+  if (!key) return []
+  return readdirSync(dir).flatMap((name) => {
+    const m = NAME.exec(name)
+    if (!m) return []
+    const file = join(dir, name)
+    const sig = `${file}.sig`
+    if (!existsSync(sig)) return []
+    const at = statSync(file).mtimeMs + statSync(sig).mtimeMs
+    let seen = held.get(file)
+    if (seen?.at !== at) {
+      seen = { at, ok: verifyManifest(readFileSync(file), readFileSync(sig, 'utf8').trim(), key) }
+      held.set(file, seen)
+    }
+    if (!seen.ok) return []
+    const [, version = '', platform = '', ext = ''] = m
+    return [{ file, name, version, platform, kind: KINDS[ext] ?? 'zip' }]
+  })
+}
+
+// The newest of one platform's files of the first kind it has: an installer before step 1's zip.
+function newest(files: BridgeFile[], platform: string, kinds: BridgeFile['kind'][]) {
+  for (const kind of kinds) {
+    const top = files
+      .filter((f) => f.platform === platform && f.kind === kind)
+      .reduce<BridgeFile | null>((a, f) => (!a || newer(f.version, a.version) ? f : a), null)
+    if (top) return top
   }
   return null
+}
+
+const TYPES: Record<string, string> = {
+  '.dmg': 'application/x-apple-diskimage',
+  '.exe': 'application/vnd.microsoft.portable-executable',
+  '.gz': 'application/gzip',
+  '.zip': 'application/zip',
+}
+function sendFile(reply: FastifyReply, file: string, name: string) {
+  reply.header('content-type', TYPES[extname(file)] ?? 'application/octet-stream')
+  reply.header('content-disposition', `attachment; filename="${name}"`)
+  reply.header('content-length', String(statSync(file).size))
+  return reply.send(createReadStream(file))
 }
 
 export function registerComputers(ctx: Ctx): void {
   const { app, world, user, options, asPerson, live } = ctx
   const address = (req: { protocol: string; headers: { host?: string | undefined } }) =>
     options.publicAddress ?? `${req.protocol}://${req.headers.host}`
-  const downloads = () =>
-    PLATFORMS.filter((p) => bridgeFor(options.bridgeDir, p.platform)).map((p) => ({
-      platform: p.platform,
-      title: p.title,
-      url: `/api/bridge/download/${p.platform}`,
-    }))
+  const downloads = () => {
+    const files = signedFiles(options.bridgeDir, options.bridgeKey ?? trustedKey())
+    return PLATFORMS.flatMap((p) => {
+      const f = newest(files, p.platform, ['installer', 'zip'])
+      return f
+        ? [
+            {
+              platform: p.platform,
+              title: p.title,
+              url: `/api/bridge/download/${p.platform}`,
+              kind: f.kind === 'installer' ? ('installer' as const) : ('zip' as const),
+            },
+          ]
+        : []
+    })
+  }
 
   app.get(
     '/api/computers',
@@ -58,6 +126,7 @@ export function registerComputers(ctx: Ctx): void {
         name: c.name,
         platform: c.platform,
         online: bridges.online(c.id),
+        paused: bridges.pausedOf(c.id),
         pairedAt: c.pairedAt,
         lastSeenAt: c.lastSeenAt,
         lends: world.connections.on(c.id).map((k) => ({
@@ -81,11 +150,21 @@ export function registerComputers(ctx: Ctx): void {
         'A computer pairs only with an Alpha one person signs in to, until each row has an owner.',
       )
     const { code, until } = world.computers.link(user.id)
-    return {
-      link: `${address(req)}/?pair=${encodeURIComponent(code)}`,
-      until,
-      downloads: downloads(),
-    }
+    const link = `${address(req)}/?pair=${encodeURIComponent(code)}`
+    // the same link for the app: the browser asks once whether to open Alpha Bridge
+    const open = `alpha-bridge://pair?link=${encodeURIComponent(link)}`
+    return { link, open, until, downloads: downloads() }
+  })
+
+  // Lend a folder, from Alpha's window: the computer's own picker opens there, and only what its
+  // person picks is lent (docs/rules.md, B2).
+  app.post('/api/computers/:id/pick', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const pc = world.computers.get(id)
+    if (!pc || pc.user !== user.id || pc.removedAt) throw new Refused('That computer is not yours.')
+    if (!bridges.pick(id, 'folder'))
+      throw new Refused(`${pc.name} is not connected now, so it cannot open its folder picker.`)
+    return { ok: true }
   })
 
   // Removed by its person: turned away now, and what it lent stops (kept for the record).
@@ -103,11 +182,39 @@ export function registerComputers(ctx: Ctx): void {
 
   app.get('/api/bridge/download/:platform', async (req, reply) => {
     const { platform } = z.object({ platform: z.string() }).parse(req.params)
-    const zip = bridgeFor(options.bridgeDir, platform)
-    if (!zip) throw new Refused('The Bridge for that computer is not on this Alpha yet.')
-    reply.header('content-type', 'application/zip')
-    reply.header('content-disposition', `attachment; filename="alpha-bridge-${platform}.zip"`)
-    return reply.send(createReadStream(zip))
+    const f = newest(signedFiles(options.bridgeDir, options.bridgeKey ?? trustedKey()), platform, [
+      'installer',
+      'zip',
+    ])
+    if (!f) throw new Refused('The Bridge for that computer is not on this Alpha yet.')
+    return sendFile(reply, f.file, f.name.replace(/-\d+\.\d+\.\d+-/, '-'))
+  })
+
+  // The app asks for its newest version: none (204), or where it is and Tauri's signature on it.
+  // On a Mac the update is the app itself, packed; on Windows the setup program.
+  app.get(UPDATE, async (req, reply) => {
+    const { platform, current } = z
+      .object({ platform: z.string(), current: z.string().max(20) })
+      .parse(req.params)
+    const files = signedFiles(options.bridgeDir, options.bridgeKey ?? trustedKey())
+    const f = newest(files, platform, platform.startsWith('win') ? ['installer'] : ['update'])
+    const sig = f ? `${f.file}.updater.sig` : ''
+    if (!f || !existsSync(sig) || !newer(f.version, current)) return reply.code(204).send()
+    return {
+      version: f.version,
+      pub_date: new Date(statSync(f.file).mtimeMs).toISOString(),
+      url: `${address(req)}/api/bridge/app/${f.name}`,
+      signature: readFileSync(sig, 'utf8').trim(),
+    }
+  })
+
+  app.get(APP_FILE, async (req, reply) => {
+    const { file } = z.object({ file: z.string() }).parse(req.params)
+    const f = signedFiles(options.bridgeDir, options.bridgeKey ?? trustedKey()).find(
+      (x) => x.name === file && x.kind !== 'zip',
+    )
+    if (!f) return reply.code(404).send({ problem: 'There is no such Bridge here.' })
+    return sendFile(reply, f.file, f.name)
   })
 
   // The Bridge's first word, with the link's code: its key's public half, kept against the person

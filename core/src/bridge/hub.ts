@@ -6,7 +6,7 @@
 import { randomBytes } from 'node:crypto'
 import type { Computer } from '../world/computers.ts'
 import type { World } from '../world/world.ts'
-import { awayWords, BridgedProcess, type Link } from './process.ts'
+import { awayWords, BridgedProcess, type Link, pausedWords } from './process.ts'
 
 // The words a computer and the core say to each other, one JSON object a message.
 export type FromComputer =
@@ -15,6 +15,9 @@ export type FromComputer =
   | { t: 'ended'; connector: string; why: string }
   | { t: 'lend'; connector: string; account: string }
   | { t: 'unlend'; connector: string; account: string }
+  | { t: 'paused'; until: string | null } // paused by its person, for an hour or until resumed
+  | { t: 'resumed' }
+  | { t: 'signout' } // its person signed out of it: removed, as from Your computers
 
 export interface Socket {
   send(text: string): void
@@ -25,6 +28,7 @@ interface Connected {
   computer: Computer
   socket: Socket
   processes: Map<string, BridgedProcess>
+  paused: { until: string | null } | null
 }
 
 // What the hub needs of the core: the window told of a computer coming or going, and what a
@@ -33,6 +37,7 @@ export interface Hands {
   notify(): void
   lend(pc: Computer, connector: string, account: string): Promise<unknown>
   unlend(pc: Computer, connector: string, account: string): void
+  signedOut(pc: Computer): void
 }
 
 const NONE: Hands = {
@@ -41,6 +46,7 @@ const NONE: Hands = {
     throw new Error('Nothing can be lent to this core.')
   },
   unlend: () => undefined,
+  signedOut: () => undefined,
 }
 
 export class Hub {
@@ -58,6 +64,22 @@ export class Hub {
     return this.connected.has(computer)
   }
 
+  // Paused by its person on the computer: until when (none: until resumed), or not paused.
+  pausedOf(computer: string): { until: string | null } | null {
+    const p = this.connected.get(computer)?.paused ?? null
+    if (p?.until && Date.parse(p.until) <= Date.now()) return null
+    return p
+  }
+
+  // Lend a folder, asked from Alpha's window: the computer opens its own picker, and lends only
+  // what its person picks there (docs/rules.md, B2). False when it is not connected.
+  pick(computer: string, connector: string): boolean {
+    const c = this.connected.get(computer)
+    if (!c) return false
+    c.socket.send(JSON.stringify({ t: 'pick', connector }))
+    return true
+  }
+
   // The process a computer runs for a connector: made once, started on its first call; a computer
   // away answers at once that it is.
   processFor(computer: string, connector: string, entry: string): BridgedProcess {
@@ -66,6 +88,7 @@ export class Hub {
     const link: Link = {
       name,
       online: () => this.connected.has(computer),
+      paused: () => !!this.pausedOf(computer),
       send: (m) => this.connected.get(computer)?.socket.send(JSON.stringify(m)),
     }
     if (!c) return new BridgedProcess(entry, connector, link)
@@ -100,7 +123,7 @@ export class Hub {
             for (const p of older.processes.values()) p.ended(awayWords(c.name))
             older.socket.close(4409, 'This computer connected again.')
           }
-          me = { computer: c, socket, processes: new Map() }
+          me = { computer: c, socket, processes: new Map(), paused: null }
           this.connected.set(c.id, me)
           this.world?.computers.seen(c.id)
           socket.send(JSON.stringify({ t: 'welcome', name: c.name, lent: this.lent(c.id) }))
@@ -149,7 +172,14 @@ export class Hub {
       say({ t: 'lent', lent: this.lent(me.computer.id) })
       this.hands.notify()
     }
-    if (m.t === 'lend')
+    if (m.t === 'paused' || m.t === 'resumed') {
+      me.paused = m.t === 'paused' ? { until: m.until } : null
+      if (me.paused) for (const p of me.processes.values()) p.ended(pausedWords(me.computer.name))
+      this.hands.notify()
+    } else if (m.t === 'signout') {
+      this.hands.signedOut(me.computer)
+      me.socket.close(4403, 'This computer signed out.')
+    } else if (m.t === 'lend')
       void this.hands
         .lend(me.computer, m.connector, m.account)
         .then(lent, (err) =>

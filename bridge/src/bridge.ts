@@ -11,10 +11,11 @@ import { type Config, type Lend, lends } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.1.0'
+export const VERSION = '0.2.0'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =
+  | { t: 'pick'; connector: string }
   | { t: 'challenge'; challenge: string }
   | { t: 'welcome'; name: string; lent: Lend[] }
   | { t: 'lent'; lent: Lend[] }
@@ -72,6 +73,8 @@ export interface BridgeOptions {
   keys: KeyStore
   start: Start // how a connector's process is started here
   said?: (words: string) => void
+  pick?: (connector: string) => void // Alpha asked its person to lend one: the picker opens here
+  moved?: () => void // connected, gone or paused: the app's icon follows
   WebSocket?: typeof globalThis.WebSocket
 }
 
@@ -85,7 +88,10 @@ export class Bridge {
   private stopped = false
   private pause = 1000
   private timer: ReturnType<typeof setTimeout> | null = null
+  private resumes: ReturnType<typeof setTimeout> | null = null
   online = false
+  // paused by its person here: until when (none: until resumed), or not
+  paused: { until: string | null } | null = null
 
   constructor(options: BridgeOptions) {
     this.options = options
@@ -120,6 +126,48 @@ export class Bridge {
     if (this.online) this.reconcile()
   }
 
+  // Paused by its person, for some minutes or until resumed: nothing runs here meanwhile, and
+  // Alpha's tile says so.
+  pauseFor(minutes: number | null): void {
+    if (this.resumes) clearTimeout(this.resumes)
+    const until = minutes ? new Date(Date.now() + minutes * 60_000).toISOString() : null
+    this.paused = { until }
+    this.children.stopAll()
+    if (minutes) this.resumes = setTimeout(() => this.resume(), minutes * 60_000)
+    this.send({ t: 'paused', until })
+    this.said(minutes ? `Paused for ${minutes} minutes.` : 'Paused until resumed.')
+    this.options.moved?.()
+  }
+
+  resume(): void {
+    if (this.resumes) clearTimeout(this.resumes)
+    this.resumes = null
+    if (!this.paused) return
+    this.paused = null
+    this.send({ t: 'resumed' })
+    this.said('Resumed.')
+    this.options.moved?.()
+  }
+
+  // Signed out by its person: Alpha removes the computer; the key and the list are forgotten by
+  // whoever runs this (serve.ts).
+  signOut(): Promise<void> {
+    return new Promise((done) => {
+      const s = this.socket
+      if (s?.readyState !== 1) {
+        this.stop()
+        done()
+        return
+      }
+      s.addEventListener('close', () => done())
+      this.send({ t: 'signout' })
+      setTimeout(() => {
+        this.stop()
+        done()
+      }, 3000)
+    })
+  }
+
   private said(words: string): void {
     this.options.said?.(words)
   }
@@ -143,6 +191,7 @@ export class Bridge {
       const was = this.online
       this.online = false
       this.children.stopAll()
+      this.options.moved?.()
       if (this.stopped) return
       if (e.code === 4403) {
         this.said(`${e.reason || 'Alpha turned this computer away.'} Pair it again to go on.`)
@@ -164,7 +213,9 @@ export class Bridge {
       return
     }
     const c = this.options.config()
-    if (m.t === 'challenge') this.hello(c, m.challenge)
+    // paused here: what Alpha asks to run is refused, whatever it is
+    if (this.paused && (m.t === 'start' || m.t === 'line')) this.refuse(m)
+    else if (m.t === 'challenge') this.hello(c, m.challenge)
     else if (m.t === 'welcome') {
       this.online = true
       this.pause = 1000
@@ -173,11 +224,39 @@ export class Bridge {
       this.said(`Connected to ${new URL(c.alpha).host} as ${m.name}.`)
       this.alphaLends = m.lent
       this.reconcile()
+      if (this.paused) this.send({ t: 'paused', until: this.paused.until })
+      this.options.moved?.()
     } else if (m.t === 'lent') this.alphaLends = m.lent
     else if (m.t === 'refused') this.said(`Alpha said: ${m.why}`)
     else if (m.t === 'start') void this.children.open(m.connector)
     else if (m.t === 'line') this.children.down(m.connector, m.line)
     else if (m.t === 'stop') this.children.stop(m.connector)
+    else if (m.t === 'pick') {
+      this.said('Alpha asked to lend a folder from this computer.')
+      this.options.pick?.(m.connector)
+    }
+  }
+
+  // A call while paused: refused here, as Alpha would be told by a computer that is away.
+  private refuse(m: { t: 'start' | 'line'; connector: string; line?: string }): void {
+    const why = 'This computer is paused by its person.'
+    if (m.t === 'start') {
+      this.send({ t: 'line', connector: m.connector, line: JSON.stringify({ t: 'failed', why }) })
+      return
+    }
+    let line: { t?: string; id?: unknown }
+    try {
+      line = JSON.parse(m.line ?? '')
+    } catch {
+      return
+    }
+    if (line.t === 'req')
+      this.send({
+        t: 'line',
+        connector: m.connector,
+        line: JSON.stringify({ t: 'res', id: line.id, error: { message: why, kind: 'away' } }),
+      })
+    else this.children.down(m.connector, m.line ?? '')
   }
 
   // Alpha's challenge, signed with this computer's own key.

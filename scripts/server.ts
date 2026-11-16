@@ -7,8 +7,8 @@
 //                                                      devices only, or with public, open to the internet (Funnel)
 //   address <address> domain <name>                    the Alpha at its own domain, with a certificate; the
 //                                                      domain points at the machine's fixed IP first
-//   bridge <address>                                   put the Bridge's signed zips (pnpm bridge pack) where
-//                                                      the Alpha hands them out, in Your computers
+//   bridge <address>                                   put Alpha Bridge's signed files (pnpm bridge mac,
+//                                                      windows) where the Alpha hands them out and updates from
 // Each takes as <name> for a named Alpha beside the first one (as avilo): its own system user,
 // data, sealed secrets, service, port, release and address. On Tailscale a named Alpha is private,
 // at the machine's address and its own port, or with public, open to the internet on 8443.
@@ -180,9 +180,11 @@ else if (what === 'setup' && host && rest[0]) {
 } else if (what === 'bridge' && host) {
   // the newest signed zip for each computer, into the Alpha's own bridge folder
   const dir = join(ROOT, '.data', 'bridge')
-  const zips = readdirSync(dir).filter((f) => /^alpha-bridge-.*\.zip$/.test(f))
-  if (!zips.length) throw new Error('No Bridge here yet: pnpm bridge pack first.')
-  const files = zips.flatMap((z) => [join(dir, z), join(dir, `${z}.sig`)])
+  // each file with its signatures: Kenil's (.sig) and, for an update, the updater key's
+  const files = readdirSync(dir)
+    .filter((f) => /^alpha-bridge-.*\.(zip|dmg|exe|gz)(\.sig|\.updater\.sig)?$/.test(f))
+    .map((f) => join(dir, f))
+  if (!files.length) throw new Error('No Bridge here yet: pnpm bridge mac first.')
   put(host, files, '/tmp/')
   const user = named ? `alpha-${named}` : 'alpha'
   const there = `/home/${user}/data/bridge`

@@ -6,7 +6,8 @@
     ".": "./src/bridge.ts",
     "./keys": "./src/keys.ts",
     "./config": "./src/config.ts",
-    "./children": "./src/children.ts"
+    "./children": "./src/children.ts",
+    "./serve": "./src/serve.ts"
   },
   "dependencies": {
     "@anthropic-ai/sandbox-runtime": "catalog:"

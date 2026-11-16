@@ -24,7 +24,7 @@ import { liveSignIn } from './live.ts'
 import { registerActivity } from './routes/activity.ts'
 import { registerAgents } from './routes/agents.ts'
 import { registerCards } from './routes/cards.ts'
-import { PAIR, registerComputers } from './routes/computers.ts'
+import { APP_FILE, PAIR, registerComputers, UPDATE } from './routes/computers.ts'
 import { registerConnectors } from './routes/connectors.ts'
 import { registerFiles } from './routes/files.ts'
 import { registerKits } from './routes/kits.ts'
@@ -82,6 +82,7 @@ export interface ServerOptions {
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
   plugins?: PluginRoute[] // what plugins answer, under /api/plugins/<name>/
   bridgeDir?: string // where the Bridge's downloads are, signed (pnpm server bridge)
+  bridgeKey?: string // the key they are checked against: Kenil's when not given (a test gives its own)
 }
 
 export function buildServer(options: ServerOptions = {}): FastifyInstance {
@@ -149,8 +150,9 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
     if (origin && hosts.size && !hosts.has(origin.replace(/^https?:\/\//, '')))
       return deny(reply, 'This page is not Alpha’s.')
     if (back || SESSION_PATHS.has(path)) return
-    // the Bridge pairs with its link's code and connects with its own key: no session
-    if (path === PAIR || path === BRIDGE) return
+    // the Bridge pairs with its link's code and connects with its own key, and its updates carry
+    // their signatures: no session
+    if (path === PAIR || path === BRIDGE || path === UPDATE || path === APP_FILE) return
     if (options.signIn) {
       // the alpha command on this machine says so and holds the token: it acts as the owner
       if (req.headers['x-alpha-cli'] && token && given === token) return

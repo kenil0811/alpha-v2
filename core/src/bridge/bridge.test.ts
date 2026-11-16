@@ -2,18 +2,20 @@
 // door, a Bridge paired with a link and connected over a real websocket, and the Bridge's own
 // connector process reading a scratch folder. Its key is held in memory: never a real Alpha, a
 // computer's own key store or the Keychain.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { PassThrough } from 'node:stream'
 import { Bridge, pair } from '@alpha/bridge'
 import type { Config } from '@alpha/bridge/config'
 import { inMemory, newKey } from '@alpha/bridge/keys'
+import { serve } from '@alpha/bridge/serve'
 import { MemorySecrets } from '@alpha/connector-sdk'
 import type { FastifyInstance } from 'fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildServer } from '../api/server.ts'
-import { lend, unlend } from '../connectors/computers.ts'
+import { handsFor } from '../connectors/computers.ts'
 import { loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import { Engine } from '../engine/engine.ts'
@@ -41,6 +43,7 @@ let engine: Engine
 let app: FastifyInstance
 let alpha: string
 let bridge: Bridge | null = null
+const computers: string[] = [] // the computers paired in a test
 
 const freePort = () =>
   new Promise<number>((ok) => {
@@ -66,14 +69,10 @@ beforeEach(async () => {
   // a server's core: a folder runs only on a person's computer
   service = new ConnectorService(world, { secrets: new MemorySecrets(), known, server: true })
   engine = new Engine(world, { connectors: service })
-  bridges.use(world, {
-    notify: () => undefined,
-    lend: (pc, name, account) => lend(service, world, pc, name, account),
-    unlend: (pc, name, account) => {
-      const k = world.connections.find(name, account)
-      if (k) unlend(world, pc, k, `${pc.name} no longer lends it.`)
-    },
-  })
+  bridges.use(
+    world,
+    handsFor(service, world, () => undefined),
+  )
   const port = await freePort()
   app = buildServer({ engine, user: owner, token: 'test-token', ports: [port] })
   await app.listen({ host: '127.0.0.1', port })
@@ -83,8 +82,9 @@ beforeEach(async () => {
 afterEach(async () => {
   bridge?.stop()
   bridge = null
-  // the door hears the Bridge go before the world closes
-  await until(() => world.computers.of(owner.id).every((c) => !bridges.online(c.id)))
+  // the door hears the Bridge go before the world closes, a removed computer's too
+  await until(() => computers.every((id) => !bridges.online(id)))
+  computers.length = 0
   await app.close()
   engine.close()
   world.close()
@@ -92,7 +92,7 @@ afterEach(async () => {
 })
 
 // A Bridge on this machine, its folder lent, its connector process run as the core runs its own.
-async function lendFolder(): Promise<{ dir: string; config: Config }> {
+async function lendFolder(picked: string[] = []): Promise<{ dir: string; config: Config }> {
   const made = await app.inject({
     method: 'POST',
     url: '/api/computers/link',
@@ -104,14 +104,18 @@ async function lendFolder(): Promise<{ dir: string; config: Config }> {
   mkdirSync(dir)
   writeFileSync(join(dir, 'pl.csv'), 'Account,June\nRevenue,1200\n')
   const config: Config = { ...paired, lends: [{ connector: 'folder', account: dir }] }
+  computers.push(config.computer)
   bridge = new Bridge({
     config: () => config,
     keys,
     start: async () => ({ command: process.execPath, args: [CHILD, FOLDER], shell: false }),
+    pick: (connector) => picked.push(connector),
   })
   bridge.run()
   return { dir, config }
 }
+
+const asWindow = () => ({ host: new URL(alpha).host, 'x-alpha-token': 'test-token' })
 
 describe('the Bridge', { timeout: 30_000 }, () => {
   it('pairs once with a link, lends its folder, and a file put there lands in Alpha', async () => {
@@ -154,6 +158,106 @@ describe('the Bridge', { timeout: 30_000 }, () => {
     expect(out.statusCode).toBe(200)
     await until(() => !bridges.online(config.computer))
     expect(world.connections.on(config.computer).map((k) => k.state)).toEqual(['paused'])
+  })
+})
+
+describe('the Bridge as the app runs it', { timeout: 30_000 }, () => {
+  it('pauses there: Alpha waits, saying so, and catches up when it resumes', async () => {
+    const { dir, config } = await lendFolder()
+    await until(() => world.files.documents().length === 1)
+    bridge?.pauseFor(null)
+    await until(() => !!bridges.pausedOf(config.computer))
+    writeFileSync(join(dir, 'notes.txt'), 'call the broker\n')
+    const conn = world.connections.find('folder', dir)
+    await service.sync(conn?.id ?? '')
+    expect(world.connections.get(conn?.id ?? '')?.health).toBe('Paused on Test Mac')
+    expect(world.files.documents()).toHaveLength(1)
+    bridge?.resume()
+    await until(() => !bridges.pausedOf(config.computer))
+    await service.sync(conn?.id ?? '')
+    expect(world.files.documents().map((d) => d.title)).toEqual(['pl.csv', 'notes.txt'])
+  })
+
+  it('opens its picker when Alpha asks, and lends nothing until its person picks', async () => {
+    const picked: string[] = []
+    const { config } = await lendFolder(picked)
+    await until(() => bridges.online(config.computer))
+    const out = await app.inject({
+      method: 'POST',
+      url: `/api/computers/${config.computer}/pick`,
+      headers: asWindow(),
+    })
+    expect(out.statusCode).toBe(200)
+    await until(() => picked.length === 1)
+    expect(picked).toEqual(['folder'])
+    expect(world.connections.on(config.computer)).toHaveLength(1)
+    bridge?.stop()
+    await until(() => !bridges.online(config.computer))
+    const away = await app.inject({
+      method: 'POST',
+      url: `/api/computers/${config.computer}/pick`,
+      headers: asWindow(),
+    })
+    expect(away.json().problem).toMatch(/not connected now/)
+  })
+
+  it('signs out there: Alpha removes the computer and stops what it lent', async () => {
+    const { config } = await lendFolder()
+    await until(() => world.connections.on(config.computer)[0]?.state === 'connected')
+    await bridge?.signOut()
+    await until(() => !!world.computers.get(config.computer)?.removedAt)
+    expect(world.connections.on(config.computer).map((k) => k.state)).toEqual(['paused'])
+  })
+})
+
+describe('the app’s lines', { timeout: 30_000 }, () => {
+  it('pairs, lends, pauses and signs out as the app tells it, saying each', async () => {
+    const said: Record<string, unknown>[] = []
+    const input = new PassThrough()
+    const keys = inMemory()
+    const here = join(home, 'bridge-home')
+    mkdirSync(here)
+    await serve(
+      here,
+      keys,
+      async () => ({ command: process.execPath, args: [CHILD, FOLDER], shell: false }),
+      {
+        input,
+        write: (line) => said.push(JSON.parse(line)),
+        closed: () => undefined,
+      },
+    )
+    const tell = (m: Record<string, unknown>) => input.write(`${JSON.stringify(m)}\n`)
+    const last = (t: string) => said.filter((m) => m.t === t).at(-1) ?? {}
+    expect(last('state').paired).toBe(false)
+    tell({ t: 'lend', path: home })
+    await until(() => !!last('problem').words)
+    const made = await app.inject({
+      method: 'POST',
+      url: '/api/computers/link',
+      headers: asWindow(),
+    })
+    tell({ t: 'pair', link: made.json().link })
+    await until(() => last('state').online === true)
+    const pc = world.computers.of(owner.id)[0]?.id ?? ''
+    computers.push(pc)
+    // a folder by its real path, as the Bridge lends it
+    mkdirSync(join(home, 'Exports'))
+    const dir = realpathSync(join(home, 'Exports'))
+    tell({ t: 'lend', path: dir })
+    await until(() => (last('state').lends as string[] | undefined)?.length === 1)
+    await until(() => world.connections.find('folder', dir)?.state === 'connected')
+    tell({ t: 'pause', minutes: 60 })
+    await until(() => !!(last('state').paused as { until?: string } | null)?.until)
+    await until(() => !!bridges.pausedOf(pc))
+    tell({ t: 'signout' })
+    await until(() => last('state').paired === false)
+    expect(keys.get(new URL(alpha).host)).toBeNull()
+    expect(world.computers.get(pc)?.removedAt).toBeTruthy()
+    expect(said.filter((m) => m.t === 'did').map((m) => m.words)).toContain(
+      'Signed out: this computer is no longer paired.',
+    )
+    input.end()
   })
 })
 

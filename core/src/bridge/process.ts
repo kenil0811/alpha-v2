@@ -11,11 +11,14 @@ import { ConnectorProcess, type Described } from '../connectors/process.ts'
 export interface Link {
   name: string // the computer's own name (Kenil's MacBook)
   online(): boolean
+  paused(): boolean // its person paused it there
   send(m: Record<string, unknown>): void
 }
 
 export const awayWords = (name: string) =>
   `${name} is not connected now, so this did not run there. It runs once the computer is back.`
+export const pausedWords = (name: string) =>
+  `${name} is paused by its person, so this did not run there. It runs once they resume it.`
 
 export class BridgedProcess extends ConnectorProcess {
   private link: Link
@@ -33,6 +36,7 @@ export class BridgedProcess extends ConnectorProcess {
   // starts does.
   protected override spawn(): Promise<Described[]> {
     if (!this.link.online()) return Promise.reject(new Problem(awayWords(this.link.name), 'away'))
+    if (this.link.paused()) return Promise.reject(new Problem(pausedWords(this.link.name), 'away'))
     return new Promise<Described[]>((ok, fail) => {
       this.starting = { ok, fail }
       this.link.send({ t: 'start', connector: this.connector })
@@ -68,6 +72,7 @@ export class BridgedProcess extends ConnectorProcess {
 
   protected override send(line: string): void {
     if (!this.link.online()) throw new Problem(awayWords(this.link.name), 'away')
+    if (this.link.paused()) throw new Problem(pausedWords(this.link.name), 'away')
     this.link.send({ t: 'line', connector: this.connector, line: line.replace(/\n$/, '') })
   }
 

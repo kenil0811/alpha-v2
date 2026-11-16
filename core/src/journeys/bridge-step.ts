@@ -10,7 +10,7 @@ import type { Config } from '@alpha/bridge/config'
 import { inMemory } from '@alpha/bridge/keys'
 import { buildServer } from '../api/server.ts'
 import { bridges } from '../bridge/hub.ts'
-import { lend, unlend } from '../connectors/computers.ts'
+import { handsFor } from '../connectors/computers.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import type { Engine } from '../engine/engine.ts'
 import type { User, World } from '../world/world.ts'
@@ -64,14 +64,10 @@ async function standIn(
   connectors: ConnectorService,
   folder: string,
 ): Promise<StandIn> {
-  bridges.use(world, {
-    notify: () => undefined,
-    lend: (pc, name, account) => lend(connectors, world, pc, name, account),
-    unlend: (pc, name, account) => {
-      const k = world.connections.find(name, account)
-      if (k) unlend(world, pc, k, `${pc.name} no longer lends it.`)
-    },
-  })
+  bridges.use(
+    world,
+    handsFor(connectors, world, () => undefined),
+  )
   const port = await freePort()
   const app = buildServer({ engine, user, token: 'journey', ports: [port] })
   await app.listen({ host: '127.0.0.1', port })

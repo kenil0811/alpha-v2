@@ -329,6 +329,8 @@ export const NOT_DOORS: Record<string, string> = {
   'POST /api/runs/:id/stop': 'stops a run under way; what it wrote stays',
   'POST /api/connections/:id/allow': 'a host a connection may reach, held by its gate',
   'POST /api/computers/link': 'a pairing link for the person’s next computer',
+  'POST /api/computers/:id/pick':
+    'asks a computer to open its own folder picker; what is picked there comes through the connector’s door',
   'POST /api/bridge/pair':
     'a computer paired with its link; what it lends goes through the connector’s door',
   'DELETE /api/computers/:id': 'a person’s computer removed; what it lent stops, kept',

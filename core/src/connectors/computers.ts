@@ -1,7 +1,8 @@
 // A person's computers as the connector service holds them (the Bridge): what a computer lends
 // becomes a connection that runs there and is theirs; a call or a read through it acts only as its
-// person (docs/rules.md, B1); one whose computer is away waits, said on its tile.
+// person (docs/rules.md, B1); one whose computer is away or paused waits, said on its tile.
 import type { Connector } from '@alpha/connector-sdk'
+import { bridges, type Hands } from '../bridge/hub.ts'
 import type { Computer } from '../world/computers.ts'
 import type { Connection } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
@@ -48,11 +49,15 @@ export function waits(world: World, c: Connector, was: Connection): void {
   const conn = world.connections.get(was.id)
   if (!conn || conn.state === 'paused') return
   const name = (conn.computer && world.computers.get(conn.computer)?.name) || 'its computer'
+  // paused there by its person, or not connected
+  const paused = !!conn.computer && !!bridges.pausedOf(conn.computer)
   world.connections.setState(
     conn.id,
     conn.state === 'broken' ? 'connected' : conn.state,
-    `Waiting for ${name}`,
-    `${c.manifest.title} for ${conn.account} waits for ${name}.`,
+    paused ? `Paused on ${name}` : `Waiting for ${name}`,
+    paused
+      ? `${c.manifest.title} for ${conn.account} is paused on ${name}.`
+      : `${c.manifest.title} for ${conn.account} waits for ${name}.`,
     { actor: { kind: 'connector', id: c.manifest.name } },
   )
 }
@@ -81,5 +86,26 @@ export function computerFor(
     return conn.computer ? (world.computers.get(conn.computer) ?? null) : null
   } catch {
     return null
+  }
+}
+
+// The hub's hands in a core: a computer's lend, unlend and sign out made through the world and
+// the connector service, and the window told.
+export function handsFor(service: ConnectorService, world: World, notify: () => void): Hands {
+  return {
+    notify,
+    lend: (pc, name, account) => lend(service, world, pc, name, account),
+    unlend: (pc, name, account) => {
+      const k = world.connections.find(name, account)
+      if (k) unlend(world, pc, k, `${pc.name} no longer lends it.`)
+    },
+    // signed out on the computer: removed, as from Your computers, and what it lent paused
+    signedOut: (pc) => {
+      if (world.computers.get(pc.id)?.removedAt) return
+      world.computers.remove(pc.id, { actor: { kind: 'person', id: pc.user }, user: pc.user })
+      for (const k of world.connections.on(pc.id))
+        unlend(world, pc, k, `${pc.name} signed out, so this is not read any more.`)
+      notify()
+    },
   }
 }

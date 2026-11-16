@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Alpha Bridge has no window of its own; its menu runs in the app itself.",
+  "windows": [],
+  "permissions": []
+}

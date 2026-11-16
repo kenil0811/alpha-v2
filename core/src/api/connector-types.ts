@@ -77,6 +77,7 @@ export interface ComputerView {
   name: string // as it calls itself (Kenil's MacBook Pro)
   platform: string // darwin, win32
   online: boolean
+  paused: { until: string | null } | null // by its person, for a while or until resumed
   pairedAt: string
   lastSeenAt: string | null
   lends: {
@@ -93,6 +94,7 @@ export interface BridgeDownload {
   platform: string // darwin-arm64, win-x64
   title: string // Mac with an Apple chip
   url: string
+  kind: 'installer' | 'zip' // the app, or step 1's zip run in a terminal
 }
 
 export interface ComputersView {

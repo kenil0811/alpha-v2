@@ -1,0 +1,38 @@
+# Alpha Bridge's Windows setup program, made on GitHub's Windows machine from a branch that changes
+# the Bridge (a Mac cannot make it reliably); `pnpm bridge windows` fetches it. Nothing is signed
+# here: the setup program comes back to the Mac, where Kenil's key and the updater key sign it.
+name: Alpha Bridge for Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: ['bridge-*']
+    paths: ['bridge/**', 'core/src/connectors/child.ts', 'connectors/files/src/**', 'scripts/bridge.ts']
+jobs:
+  setup:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Node for Windows and the bundled Bridge, in the app's resources
+        run: pnpm bridge resources win-x64
+      - uses: dtolnay/rust-toolchain@stable
+      - name: The setup program, for the person alone (no admin), at the Bridge's own version
+        working-directory: bridge/app
+        shell: bash
+        run: |
+          version=$(sed -n "s/^export const VERSION = '\(.*\)'$/\1/p" ../src/bridge.ts)
+          npx --yes @tauri-apps/cli@2.11.5 build --bundles nsis \
+            --config "{\"version\":\"$version\",\"bundle\":{\"createUpdaterArtifacts\":false}}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-bridge-setup
+          path: bridge/app/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error

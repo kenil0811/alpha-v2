@@ -406,7 +406,8 @@ export class ConnectorService {
     if (!c?.sync) return
     // on a person's computer that is not connected now: it waits, said once on its tile, and the
     // first read after the computer is back takes everything since (its cursor keeps the rest)
-    if (conn.computer && !bridges.online(conn.computer)) return waits(this.world, c, conn)
+    if (conn.computer && (!bridges.online(conn.computer) || bridges.pausedOf(conn.computer)))
+      return waits(this.world, c, conn)
     // waiting for the customer: Try again checks once more, and reads only once that is done
     if (conn.state === 'waiting') {
       try {

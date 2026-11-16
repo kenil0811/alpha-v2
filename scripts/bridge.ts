@@ -1,8 +1,10 @@
-// The Bridge for people's computers, from this Mac. Run with `pnpm bridge pack`: one zip for each
-// computer it runs on (a Mac with an Apple chip, Windows on x64), with Node inside so nothing else
-// is installed, signed with Kenil's key (the zip's .sig beside it). Alpha hands out only a zip
-// whose signature holds (core/src/api/routes/computers.ts). `pnpm server bridge` puts them on a
-// server. Node comes from nodejs.org, checked against its published sums.
+// Alpha Bridge for people's computers, from this Mac: `pnpm bridge mac` makes the Mac app (its disk
+// image, and the update the app takes in), `pnpm bridge windows` has GitHub's Windows machine make
+// the Windows setup program from this branch and signs it here. Each carries Node and the bundled
+// Bridge (`pnpm bridge resources <platform>`), so nothing else is installed; each is signed with
+// Kenil's key (its .sig), and an update with the app's updater key too (its .updater.sig). Alpha
+// hands out only what Kenil's signature holds (core/src/api/routes/computers.ts); `pnpm server
+// bridge` puts them on a server. Node comes from nodejs.org, checked against its published sums.
 import { execFileSync } from 'node:child_process'
 import { createHash, createPrivateKey, sign } from 'node:crypto'
 import {
@@ -10,7 +12,9 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -85,70 +89,142 @@ function signingKey(): string {
   return Buffer.from(b64, 'base64').toString('utf8')
 }
 
-const README = `Alpha Bridge ${VERSION}
-
-Lends your Alpha a folder on this computer. Run it from this folder:
-
-  alpha-bridge pair <link>      the link from Alpha: Intelligence, Connections, Your computers
-  alpha-bridge lend <folder>    lend a folder; what you put in it is read in Alpha
-  alpha-bridge run              leave it running; Alpha reads the folder only while it runs
-
-alpha-bridge list says what it lends; alpha-bridge unlend <folder> stops lending one.
-Its key stays in this computer's Keychain (Mac) or Credential Manager (Windows).
-`
-
-async function pack(): Promise<void> {
-  if (process.platform !== 'darwin') throw new Error('The Bridge is packed on a Mac.')
-  const work = join(OUT, 'work')
-  rmSync(work, { recursive: true, force: true })
-  const app = join(work, 'app')
-  await bundle(join(app, 'src'))
-  copyFileSync(join(ROOT, 'connectors', 'files', 'GUIDE.md'), join(app, 'GUIDE.md'))
-  const key = signingKey()
-  for (const p of PLATFORMS) {
-    const dir = join(work, p.platform, 'alpha-bridge')
-    mkdirSync(join(dir, 'node'), { recursive: true })
-    run('cp', ['-R', app, join(dir, 'app')])
-    const node = await nodeFor(p.node)
-    const unpacked = join(work, `${p.platform}-node`)
-    mkdirSync(unpacked, { recursive: true })
-    if (p.platform.startsWith('win')) {
-      const top = p.node.replace(/\.zip$/, '')
-      run('unzip', ['-q', node, `${top}/node.exe`, `${top}/LICENSE`, '-d', unpacked])
-      copyFileSync(join(unpacked, top, 'node.exe'), join(dir, 'node', 'node.exe'))
-      copyFileSync(join(unpacked, top, 'LICENSE'), join(dir, 'node', 'LICENSE'))
-      writeFileSync(
-        join(dir, 'alpha-bridge.cmd'),
-        '@echo off\r\n"%~dp0node\\node.exe" "%~dp0app\\src\\bridge.mjs" %*\r\n',
-      )
-      writeFileSync(join(dir, 'README.txt'), README.replace(/\n/g, '\r\n'))
-    } else {
-      const top = p.node.replace(/\.tar\.gz$/, '')
-      run('tar', ['-xzf', node, '-C', unpacked, `${top}/bin/node`, `${top}/LICENSE`])
-      mkdirSync(join(dir, 'node', 'bin'), { recursive: true })
-      copyFileSync(join(unpacked, top, 'bin', 'node'), join(dir, 'node', 'bin', 'node'))
-      chmodSync(join(dir, 'node', 'bin', 'node'), 0o755)
-      copyFileSync(join(unpacked, top, 'LICENSE'), join(dir, 'node', 'LICENSE'))
-      writeFileSync(
-        join(dir, 'alpha-bridge'),
-        '#!/bin/sh\nhere=$(cd "$(dirname "$0")" && pwd)\nexec "$here/node/bin/node" "$here/app/src/bridge.mjs" "$@"\n',
-      )
-      chmodSync(join(dir, 'alpha-bridge'), 0o755)
-      writeFileSync(join(dir, 'README.txt'), README)
-    }
-    const zip = join(OUT, `alpha-bridge-${VERSION}-${p.platform}.zip`)
-    rmSync(zip, { force: true })
-    run('zip', ['-qrX', zip, 'alpha-bridge'], join(work, p.platform))
-    const signature = sign(null, readFileSync(zip), createPrivateKey(key)).toString('base64')
-    writeFileSync(`${zip}.sig`, signature)
-    console.log(`Made ${zip.replace(`${ROOT}/`, '')}, signed.`)
+// The Bridge as the app carries it, in its resources: Node for that computer and the bundled
+// Bridge (bridge/app/resources/bridge, which the app's build packs in).
+async function resources(platform: (typeof PLATFORMS)[number]['platform']): Promise<string> {
+  const p = PLATFORMS.find((x) => x.platform === platform)
+  if (!p) throw new Error(`No Bridge is made for ${platform}.`)
+  const dir = join(ROOT, 'bridge', 'app', 'resources', 'bridge')
+  rmSync(dir, { recursive: true, force: true })
+  mkdirSync(join(dir, 'node'), { recursive: true })
+  await bundle(join(dir, 'app', 'src'))
+  copyFileSync(join(ROOT, 'connectors', 'files', 'GUIDE.md'), join(dir, 'app', 'GUIDE.md'))
+  const node = await nodeFor(p.node)
+  const unpacked = join(OUT, 'work', `${p.platform}-node`)
+  rmSync(unpacked, { recursive: true, force: true })
+  mkdirSync(unpacked, { recursive: true })
+  if (platform.startsWith('win')) {
+    const top = p.node.replace(/\.zip$/, '')
+    // tar reads a zip too, on a Mac and on Windows
+    run('tar', ['-xf', node, '-C', unpacked, `${top}/node.exe`, `${top}/LICENSE`])
+    copyFileSync(join(unpacked, top, 'node.exe'), join(dir, 'node', 'node.exe'))
+    copyFileSync(join(unpacked, top, 'LICENSE'), join(dir, 'node', 'LICENSE'))
+  } else {
+    const top = p.node.replace(/\.tar\.gz$/, '')
+    run('tar', ['-xzf', node, '-C', unpacked, `${top}/bin/node`, `${top}/LICENSE`])
+    mkdirSync(join(dir, 'node', 'bin'), { recursive: true })
+    copyFileSync(join(unpacked, top, 'bin', 'node'), join(dir, 'node', 'bin', 'node'))
+    chmodSync(join(dir, 'node', 'bin', 'node'), 0o755)
+    copyFileSync(join(unpacked, top, 'LICENSE'), join(dir, 'node', 'LICENSE'))
   }
-  rmSync(work, { recursive: true, force: true })
+  rmSync(unpacked, { recursive: true, force: true })
+  return dir
 }
 
-const [what] = process.argv.slice(2)
-if (what === 'pack') await pack()
+// The private half of the app's updater key, from the Keychain, for Tauri's signer.
+function updaterKey(): string {
+  return execFileSync(
+    'security',
+    ['find-generic-password', '-s', 'Alpha Bridge updater key', '-a', 'alpha', '-w'],
+    { encoding: 'utf8' },
+  ).trim()
+}
+
+// A file kept in .data/bridge under its lasting name, signed with Kenil's key.
+function keep(from: string, name: string, key: string): string {
+  const to = join(OUT, name)
+  copyFileSync(from, to)
+  writeFileSync(`${to}.sig`, sign(null, readFileSync(to), createPrivateKey(key)).toString('base64'))
+  console.log(`Made .data/bridge/${name}, signed.`)
+  return to
+}
+
+// The app on this Mac: its disk image, and the update the app takes in, with Tauri's signature.
+async function mac(): Promise<void> {
+  if (process.platform !== 'darwin') throw new Error('The Mac app is made on a Mac.')
+  await resources('darwin-arm64')
+  const app = join(ROOT, 'bridge', 'app')
+  execFileSync(
+    'cargo',
+    ['tauri', 'build', '--bundles', 'app,dmg', '--config', JSON.stringify({ version: VERSION })],
+    {
+      cwd: app,
+      stdio: 'inherit',
+      // CI: the disk image without Finder's window dressing, which needs Finder driven by script
+      env: {
+        ...process.env,
+        // the Mac's own xattr, before any other on the path (as `pnpm mac` does)
+        PATH: `/usr/bin:${process.env.PATH ?? ''}`,
+        CI: 'true',
+        TAURI_SIGNING_PRIVATE_KEY: updaterKey(),
+        TAURI_SIGNING_PRIVATE_KEY_PASSWORD: '',
+      },
+    },
+  )
+  const out = join(app, 'target', 'release', 'bundle')
+  const key = signingKey()
+  const dmg = readdirSync(join(out, 'dmg')).find((f) => f.endsWith('.dmg'))
+  if (!dmg) throw new Error('The build made no disk image.')
+  keep(join(out, 'dmg', dmg), `alpha-bridge-${VERSION}-darwin-arm64.dmg`, key)
+  const update = keep(
+    join(out, 'macos', 'Alpha Bridge.app.tar.gz'),
+    `alpha-bridge-${VERSION}-darwin-arm64.app.tar.gz`,
+    key,
+  )
+  copyFileSync(join(out, 'macos', 'Alpha Bridge.app.tar.gz.sig'), `${update}.updater.sig`)
+}
+
+// The Windows setup program, made on GitHub's Windows machine from this branch (a Mac cannot make
+// it reliably), then signed here: Tauri's signature with the updater key, Kenil's beside it.
+async function windows(): Promise<void> {
+  // the build of this very commit, which a push of a bridge-* branch starts
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim()
+  const id = execFileSync(
+    'gh',
+    [
+      'run',
+      'list',
+      '--workflow',
+      'bridge-windows.yml',
+      '--commit',
+      head,
+      '--limit',
+      '1',
+      '--json',
+      'databaseId',
+      '--jq',
+      '.[0].databaseId',
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  ).trim()
+  if (!id) throw new Error('No Windows build of this commit: push its bridge-* branch first.')
+  console.log('Waiting for the Windows build on GitHub…')
+  run('gh', ['run', 'watch', id, '--exit-status'])
+  const got = join(OUT, 'work', 'windows')
+  rmSync(got, { recursive: true, force: true })
+  run('gh', ['run', 'download', id, '--name', 'alpha-bridge-setup', '--dir', got])
+  const exe = readdirSync(got).find((f) => f.endsWith('-setup.exe'))
+  if (!exe) throw new Error('The Windows build made no setup program.')
+  const name = `alpha-bridge-${VERSION}-win-x64-setup.exe`
+  const to = join(OUT, name)
+  copyFileSync(join(got, exe), to)
+  // Tauri's signer writes <file>.sig, where Kenil's goes: its own is moved to .updater.sig first
+  execFileSync('cargo', ['tauri', 'signer', 'sign', '--password', '', to], {
+    cwd: join(ROOT, 'bridge', 'app'),
+    stdio: 'inherit',
+    env: { ...process.env, TAURI_SIGNING_PRIVATE_KEY: updaterKey() },
+  })
+  renameSync(`${to}.sig`, `${to}.updater.sig`)
+  keep(to, name, signingKey())
+  rmSync(got, { recursive: true, force: true })
+}
+
+const [what, arg] = process.argv.slice(2)
+if (what === 'mac') await mac()
+else if (what === 'windows') await windows()
+else if (what === 'resources' && (arg === 'darwin-arm64' || arg === 'win-x64'))
+  console.log(`The Bridge for ${arg} is in ${await resources(arg)}.`)
 else {
-  console.error('Say: pnpm bridge pack. The top of scripts/bridge.ts says what it does.')
+  console.error('Say: pnpm bridge mac|windows. The top of scripts/bridge.ts says what each does.')
   process.exit(1)
 }

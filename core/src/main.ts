@@ -9,7 +9,7 @@ import { buildServer } from './api/server.ts'
 import { bridges } from './bridge/hub.ts'
 import { config } from './config.ts'
 import { fetchFiles, fileSources } from './connectors/carried.ts'
-import { lend, unlend } from './connectors/computers.ts'
+import { handsFor } from './connectors/computers.ts'
 import { loadSet, STANDARD_DIR } from './connectors/discover.ts'
 import { ConnectorService } from './connectors/service.ts'
 import { SignIn } from './connectors/signin.ts'
@@ -172,14 +172,12 @@ const connectors = new ConnectorService(world, {
   }),
 })
 // A person's computers (the Bridge): what one lends becomes a connection that runs there.
-bridges.use(world, {
-  notify: () => started?.events.emit('event', { type: 'lines', user: user.id }),
-  lend: (pc, name, account) => lend(connectors, world, pc, name, account),
-  unlend: (pc, name, account) => {
-    const k = world.connections.find(name, account)
-    if (k) unlend(world, pc, k, `${pc.name} no longer lends it.`)
-  },
-})
+bridges.use(
+  world,
+  handsFor(connectors, world, () =>
+    started?.events.emit('event', { type: 'lines', user: user.id }),
+  ),
+)
 for (const f of [...standard.failed, ...added.failed]) {
   const words = `The connector in ${f.folder} did not load: ${f.why}`
   console.error(words)
