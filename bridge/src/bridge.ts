@@ -11,7 +11,7 @@ import { type Config, type Lend, lends } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.3.0'
+export const VERSION = '0.3.1'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =
@@ -47,13 +47,20 @@ export async function pair(
   link: string,
   keys: KeyStore,
   name: string = hostname(),
+  replaces?: string, // this computer's own pairing with the same Alpha before: it goes
 ): Promise<Config> {
   const { alpha, code } = linkOf(link)
   const key = newKey()
   const res = await fetch(`${alpha}/api/bridge/pair`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ code, publicKey: key.publicPem, name, platform: process.platform }),
+    body: JSON.stringify({
+      code,
+      publicKey: key.publicPem,
+      name,
+      platform: process.platform,
+      ...(replaces ? { replaces } : {}),
+    }),
   })
   const body = (await res.json().catch(() => ({}))) as {
     computer?: string
@@ -93,6 +100,8 @@ export class Bridge {
   online = false
   // paused by its person here: until when (none: until resumed), or not
   paused: { until: string | null } | null = null
+  // turned away by Alpha (removed, or not paired there): why, until it is paired again
+  turnedAway: string | null = null
 
   constructor(options: BridgeOptions) {
     this.options = options
@@ -204,8 +213,10 @@ export class Bridge {
       this.options.moved?.()
       if (this.stopped) return
       if (e.code === 4403) {
-        this.said(`${e.reason || 'Alpha turned this computer away.'} Pair it again to go on.`)
+        this.turnedAway = e.reason || 'Alpha turned this computer away.'
+        this.said(`${this.turnedAway} Pair it again to go on.`)
         this.stopped = true
+        this.options.moved?.()
         return
       }
       if (was) this.said(`Lost ${new URL(c.alpha).host}; trying again.`)
@@ -228,6 +239,7 @@ export class Bridge {
     else if (m.t === 'challenge') this.hello(c, m.challenge)
     else if (m.t === 'welcome') {
       this.online = true
+      this.turnedAway = null
       this.pause = 1000
       // a fresh start: what ran for the last connection stops
       this.children.stopAll()

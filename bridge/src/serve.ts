@@ -3,7 +3,8 @@
 // its icon and menu from what it says; the person's folder picker and every yes stay in the app.
 //   app → Bridge: pair {link}, lend and unlend {path, or connector: calendar|contacts}, pause
 //                 {minutes|null}, resume, signout, state
-//   Bridge → app: state {paired, alpha, name, online, paused, lends [{connector, account}]}, did
+//   Bridge → app: state {paired, alpha, name, online, turnedAway, paused, lends [{connector,
+//                 account}]}, did
 //                 {at, words}, pick {connector}, problem {words}
 // What it did is kept on the computer too (did.json, the last 200), so its person can check what
 // Alpha asked without trusting the server.
@@ -27,7 +28,15 @@ export interface Did {
 // another's, and what was lent kept when it is the same Alpha.
 export async function pairHere(home: string, keys: KeyStore, link: string): Promise<Config> {
   const before = readConfig(home)
-  const c = await pair(link, keys, computerName())
+  const hostOf = (u: string) => {
+    try {
+      return new URL(u.trim()).host
+    } catch {
+      return ''
+    }
+  }
+  const same = before && hostOf(before.alpha) === hostOf(link)
+  const c = await pair(link, keys, computerName(), same ? before.computer : undefined)
   if (before && keyAccount(before.alpha) !== keyAccount(c.alpha))
     keys.forget(keyAccount(before.alpha))
   const kept = { ...c, lends: before?.alpha === c.alpha ? before.lends : [] }
@@ -100,6 +109,7 @@ export async function serve(
       alpha: c?.alpha ?? null,
       name: c?.name ?? null,
       online: !!bridge?.online,
+      turnedAway: bridge?.turnedAway ?? null,
       paused: bridge?.paused
         ? {
             until: bridge.paused.until,

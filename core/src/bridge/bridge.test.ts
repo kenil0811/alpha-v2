@@ -204,6 +204,32 @@ describe('the Bridge as the app runs it', { timeout: 30_000 }, () => {
     expect(away.json().problem).toMatch(/not connected now/)
   })
 
+  it('pairs again: the old pairing goes, and what it lent follows the new one', async () => {
+    const { dir, config } = await lendFolder()
+    await until(() => world.connections.find('folder', dir)?.state === 'connected')
+    bridge?.stop()
+    await until(() => !bridges.online(config.computer))
+    const made = await app.inject({
+      method: 'POST',
+      url: '/api/computers/link',
+      headers: asWindow(),
+    })
+    const keys = inMemory()
+    const again = await pair(made.json().link as string, keys, 'Test Mac', config.computer)
+    computers.push(again.computer)
+    const next: Config = { ...again, lends: config.lends }
+    bridge = new Bridge({
+      config: () => next,
+      keys,
+      start: async () => ({ command: process.execPath, args: [CHILD, FOLDER], shell: false }),
+    })
+    bridge.run()
+    await until(() => bridges.online(again.computer))
+    expect(world.computers.get(config.computer)?.removedAt).toBeTruthy()
+    expect(world.connections.find('folder', dir)?.computer).toBe(again.computer)
+    expect(world.computers.of(owner.id).map((c) => c.id)).toEqual([again.computer])
+  })
+
   it('signs out there: Alpha removes the computer and stops what it lent', async () => {
     const { config } = await lendFolder()
     await until(() => world.connections.on(config.computer)[0]?.state === 'connected')

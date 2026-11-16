@@ -22,3 +22,8 @@ recommended.
   and in the journey (its recorded answer). Alpha Bridge 0.3.0.
 - Waits on Kenil: approving the two permissions in his test directory's Entra; making the Google
   app and typing its ID and secret into Sign-in apps. Then I check each once.
+- From Kenil's own test: pairing the same Mac again made a second computer, and his folders stayed
+  with the first ("from somewhere else already"); he then deleted the new one. Now pairing again
+  replaces the computer's old pairing and its folders follow, and a folder still on another of the
+  same person's computers that is not connected follows the one lending it. The app says when Alpha
+  turned it away and offers to pair again. Alpha Bridge 0.3.1.

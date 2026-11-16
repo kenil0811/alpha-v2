@@ -37,6 +37,7 @@ struct Seen {
     alpha: Option<String>,
     name: Option<String>,
     online: bool,
+    turned_away: Option<String>, // Alpha turned it away (removed): pair again
     paused: Option<String>, // paused: until when, in words (until 9:30 PM, until you resume)
     lends: Vec<(String, String)>, // what it lends: (connector, account)
     doing: Option<String>,
@@ -145,6 +146,7 @@ fn heard(app: &AppHandle, m: Value) {
             seen.alpha = m["alpha"].as_str().map(String::from);
             seen.name = m["name"].as_str().map(String::from);
             seen.online = m["online"].as_bool().unwrap_or(false);
+            seen.turned_away = m["turnedAway"].as_str().map(String::from);
             seen.paused = m["paused"]["words"].as_str().map(String::from);
             seen.lends = m["lends"]
                 .as_array()
@@ -209,6 +211,8 @@ fn redraw(app: &AppHandle) {
         let Some(tray) = app.tray_by_id("bridge") else { return };
         let status = if !seen.paired {
             "Not paired: open the link from Alpha".to_string()
+        } else if seen.turned_away.is_some() {
+            "Alpha turned this computer away: pair it again".to_string()
         } else if let Some(until) = &seen.paused {
             format!("Paused {until}")
         } else if seen.online {
@@ -251,9 +255,10 @@ fn build_menu(app: &AppHandle, tray: &TrayIcon, seen: &Seen, status: &str) -> ta
         menu.append(&MenuItem::with_id(app, "doing", doing, false, None::<&str>)?)?;
     }
     menu.append(&PredefinedMenuItem::separator(app)?)?;
-    if !seen.paired {
+    if !seen.paired || seen.turned_away.is_some() {
         menu.append(&MenuItem::with_id(app, "pair", "Pair with the link I copied", true, None::<&str>)?)?;
-    } else {
+    }
+    if seen.paired && seen.turned_away.is_none() {
         let folders = Submenu::with_id(app, "folders", "Folders", true)?;
         let lent: Vec<&String> = seen
             .lends

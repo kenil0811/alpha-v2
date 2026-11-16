@@ -227,6 +227,7 @@ export function registerComputers(ctx: Ctx): void {
         publicKey: z.string().max(2000),
         name: z.string().max(200),
         platform: z.string().max(40),
+        replaces: z.string().max(40).optional(), // this computer's own pairing before, if any
       })
       .parse(req.body)
     const pc = world.computers.pair(b.code, {
@@ -234,6 +235,15 @@ export function registerComputers(ctx: Ctx): void {
       name: b.name,
       platform: b.platform,
     })
+    // paired again: the old pairing of this computer, its person's own, goes, and what it lent
+    // follows the new one
+    const old = b.replaces ? world.computers.get(b.replaces) : undefined
+    if (old && old.id !== pc.id && old.user === pc.user) {
+      for (const k of world.connections.on(old.id)) world.connections.runOn(k.id, pc.id)
+      if (!old.removedAt)
+        world.computers.remove(old.id, { actor: { kind: 'person', id: pc.user }, user: pc.user })
+      bridges.drop(old.id)
+    }
     live()
     return { computer: pc.id, name: pc.name, alpha: address(req) }
   })

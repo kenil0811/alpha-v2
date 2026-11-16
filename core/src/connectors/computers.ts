@@ -23,8 +23,16 @@ export async function lend(
   if (!c || (c.manifest.runs ?? 'server') === 'server')
     throw new Refused(`${c?.manifest.title ?? name} does not run on a person's computer.`)
   const known = world.connections.find(name, account)
-  if (known && known.computer !== pc.id)
-    throw new Refused(`This Alpha has ${account} from somewhere else already.`)
+  if (known && known.computer !== pc.id) {
+    // the same person's computer that no longer lends it (paired again, or the old pairing of
+    // this one): it follows the computer lending it now; anyone else's, or one still connected
+    // and lending it, keeps it
+    const other = known.computer ? world.computers.get(known.computer) : undefined
+    const theirs = !!other && other.user === pc.user
+    if (!theirs || (other && !other.removedAt && bridges.online(other.id)))
+      throw new Refused(`This Alpha has ${account} from somewhere else already.`)
+    world.connections.runOn(known.id, pc.id)
+  }
   const conn = world.connections.add(name, account, null, c.manifest.title, {
     actor: { kind: 'person', id: pc.user },
     user: pc.user,
