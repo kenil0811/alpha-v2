@@ -115,8 +115,8 @@ function Install({
             </a>
           </span>
           <p className="mt-1">
-            Or paste this link into Alpha Bridge's window. It works once, for 15 minutes, and you
-            will not see it again.
+            Or copy this link and choose Pair with the link I copied in Alpha Bridge's menu. It
+            works once, for 15 minutes, and you will not see it again.
           </p>
           <LinkLine link={link} />
         </li>
