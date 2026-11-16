@@ -5,7 +5,7 @@ in the step 9 doc (091dca4b): today's world stays his, Avilo's starts empty; Avi
 domain, his private on Tailscale; Avilo's on Avilo's own Claude subscription; backups on the same
 disk and no heartbeat for now.
 
-- A named Alpha (`--as avilo` on `pnpm server`, `alpha avilo …` on the machine) is its own system
+- A named Alpha (`as avilo` on `pnpm server`, `alpha avilo …` on the machine) is its own system
   user (`alpha-avilo`), home closed to other users, sealed secrets file, service, port (the next
   free one after 4700, in `/etc/alpha/ports`), release link and address. The first Alpha stays as
   it was, and every command without a name means it.

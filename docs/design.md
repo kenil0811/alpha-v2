@@ -270,7 +270,7 @@ machine, not a container, because Anthropic's sandbox in a container needs a muc
 firm gets its own machine; one machine may also hold a few Alphas side by side (the owner's own
 for testing beside a firm's, Kenil, 16 Nov), each its own system user, data, sealed secrets,
 service, port, release and address, sharing nothing but the machine, Node and the releases' code
-(`--as <name>` on `pnpm server`, `alpha <name> …` on the machine). `pnpm server` sets one up from the Mac and sends it a signed release when pressed, and a
+(`as <name>` on `pnpm server`, `alpha <name> …` on the machine). `pnpm server` sets one up from the Mac and sends it a signed release when pressed, and a
 release that does not start goes back by itself. Secrets are one encrypted file whose key is sealed
 to the machine. Tailscale gives it an https address, private to devices signed in to the owner's
 Tailscale, or open to the internet through Funnel on the owner's word (`pnpm server address <ssh> public`),

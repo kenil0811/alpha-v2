@@ -7,7 +7,7 @@
 //                                                      devices only, or with public, open to the internet (Funnel)
 //   address <address> domain <name>                    the Alpha at its own domain, with a certificate; the
 //                                                      domain points at the machine's fixed IP first
-// Each takes --as <name> for a named Alpha beside the first one (--as avilo): its own system user,
+// Each takes as <name> for a named Alpha beside the first one (as avilo): its own system user,
 // data, sealed secrets, service, port, release and address. On Tailscale a named Alpha is private,
 // at the machine's address and its own port.
 // <address> is what ssh reaches the machine by. Nothing here prints a secret or a one-time link.
@@ -94,9 +94,10 @@ function packageIt(): void {
   console.log(`Made ${name}.`)
 }
 
-// the named Alpha a command is for (--as avilo), and the rest of what was said
+// the named Alpha a command is for (as avilo, anywhere after the command; pnpm keeps --flags for
+// itself), and the rest of what was said
 const given = process.argv.slice(2)
-const at = given.indexOf('--as')
+const at = given.indexOf('as')
 const named = at >= 0 ? (given[at + 1] ?? '') : ''
 if (at >= 0 && !/^[a-z0-9]+$/.test(named))
   throw new Error('An Alpha’s name is small letters and digits.')
@@ -145,7 +146,7 @@ async function domainFor(host: string, domain: string, port: string): Promise<vo
 
 const portOf = (host: string) =>
   named
-    ? out('ssh', [...SSH, host, `sed -n 's/^${named} \\([0-9]*\\)$/\\1/p' /etc/alpha/ports`])
+    ? out('ssh', [...SSH, host, `sudo sed -n 's/^${named} \\([0-9]*\\)$/\\1/p' /etc/alpha/ports`])
     : '4700'
 
 if (what === 'package') packageIt()
