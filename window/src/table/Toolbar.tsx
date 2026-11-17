@@ -103,8 +103,11 @@ export function Chips({
       {group && (
         <span className={chip}>
           <Rows3 className="size-3.25" />
-          Grouped by {group.name}
-          <Remove label="Stop grouping" onClick={() => onConfig(setGroup(config, null))} />
+          {config.kind === 'map' ? 'Coloured by' : 'Grouped by'} {group.name}
+          <Remove
+            label={config.kind === 'map' ? 'Stop colouring' : 'Stop grouping'}
+            onClick={() => onConfig(setGroup(config, null))}
+          />
         </span>
       )}
     </>

@@ -77,9 +77,14 @@ export function MapView({
   const [problem, setProblem] = useState<string | null>(null)
   const [scheme, setScheme] = useState(dark)
   const [ready, setReady] = useState(0) // a map made and loaded, counted, so the points go on it
+  // the points' colours are read again when the look changes
   const { features, missing, group } = useMemo(
     () => pointsOf(rows, fields, view),
-    [rows, fields, view],
+    [rows, fields, view, scheme],
+  )
+  const shown = useMemo(
+    () => group?.choices.filter((c) => rows.some((r) => r.values[group.slug] === c)) ?? [],
+    [group, rows],
   )
   const data = useMemo((): Spots => ({ type: 'FeatureCollection', features }), [features])
   const open = useRef(onOpen)
@@ -140,7 +145,12 @@ export function MapView({
             type: 'symbol',
             source: 'rows',
             filter: ['has', 'point_count'],
-            layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 },
+            layout: {
+              'text-field': ['get', 'point_count_abbreviated'],
+              'text-size': 12,
+              // a font the tiles' own host serves
+              'text-font': ['Noto Sans Bold'],
+            },
             paint: { 'text-color': colour('--canvas') },
           })
           made.addLayer({
@@ -221,9 +231,7 @@ export function MapView({
     <div className="flex min-h-0 flex-1 flex-col px-7 pb-4">
       <div ref={box} className="min-h-0 flex-1 overflow-hidden rounded-lg border border-line" />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-ink-3 text-sm">
-        {group?.choices.map((c) => (
-          <Choice key={c} of={group} value={c} />
-        ))}
+        {group && shown.map((c) => <Choice key={c} of={group} value={c} />)}
         {problem ? (
           <span className="text-bad">{problem}</span>
         ) : (
