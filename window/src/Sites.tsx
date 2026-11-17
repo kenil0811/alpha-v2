@@ -87,7 +87,7 @@ export function Sites({ version }: { version: number }) {
       {opened && (
         <p className="text-ink-3 text-sm">
           {opened.on
-            ? `${opened.site} opened in its own Chrome window on ${opened.on}: sign in there, then close that window.`
+            ? `${opened.site} opened in its own Chrome window on ${opened.on}: sign in there, then quit that Chrome (⌘Q on a Mac; on Windows, close its window).`
             : `${opened.site} opened in its own window of Google Chrome: sign in there, then quit that Chrome (⌘Q).`}
         </p>
       )}

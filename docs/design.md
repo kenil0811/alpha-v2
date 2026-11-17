@@ -277,8 +277,8 @@ Step 4 (17 Nov) puts the browser on the computer for the sites that refuse a ser
 Alpha a site listed in `core/config/sites.yaml` (Google, LinkedIn), or one whose sign-in on the
 server ended without the person in twice (moved for that person, said once), is signed in to on
 the person's own computer: Sign in opens it in a normal Chrome window of its own profile there
-(Alpha Bridge's folder, never their everyday Chrome), with nothing driving it, and closing that
-window lends the site. Chrome only (Kenil, 17 Nov). Agents' steps on it then run in that profile,
+(Alpha Bridge's folder, never their everyday Chrome), with nothing driving it, and quitting that
+Chrome lends the site. Chrome only (Kenil, 17 Nov). Agents' steps on it then run in that profile,
 out of sight: the Bridge starts Chrome with its DevTools on a pipe and carries it over its one
 connection, and the core hands it to Playwright through a websocket on its own loopback
 (`bridge/cdp.ts`), so the browse tool, connectors' browser calls, Watch and Take over work as on

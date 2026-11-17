@@ -241,7 +241,7 @@ function CardBody({
       {opened && (
         <div className="text-ink-2 text-sm">
           {typeof opened === 'string'
-            ? `${card.site} is open in its own Chrome window on ${opened}. Sign in there, then close that window; the reader runs again.`
+            ? `${card.site} is open in its own Chrome window on ${opened}. Sign in there, then quit that Chrome (⌘Q on a Mac; on Windows, close its window); the reader runs again.`
             : `${card.site} is open in Google Chrome on this computer. Sign in there, then quit that Chrome with ⌘Q; the reader runs again.`}
         </div>
       )}
