@@ -6,7 +6,7 @@ import { CalendarDays, Folder, Mail, Network, Plug, Trash2, UserRound } from 'lu
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Computers } from './Computers.tsx'
-import { ConnectionLine } from './ConnectionLine.tsx'
+import { ConnectionInTile, ConnectionLine, TileFoot, useConnection } from './ConnectionLine.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
 import { Sites } from './Sites.tsx'
 import { Button } from './ui/button.tsx'
@@ -52,7 +52,7 @@ export function Connections({
         title="Connections"
         about="Your accounts, read by Alpha; what you type stays in the Keychain."
       >
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] items-start gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
           {accounts.map((c) => (
             <ConnectorTile
               key={c.name}
@@ -117,7 +117,9 @@ export function Connections({
   )
 }
 
-// A connector as a tile: its accounts, each with its state and buttons, or Connect.
+// A connector as a tile, every one the same shape: its icon, name and account (or Not connected)
+// at the top with its state and ⋮ at the right, then any problem, then its one act at the foot,
+// Connect or Read now. Two or more accounts list under the top, each the same way.
 function ConnectorTile({
   connector: c,
   connections,
@@ -133,10 +135,209 @@ function ConnectorTile({
   appSet: boolean | null // signed in as the person: whether the organisation's sign-in app is set
   onChange: () => void
 }) {
+  const [open, setOpen] = useState(startOpen)
+  useEffect(() => setOpen(startOpen), [startOpen])
+  // another account: not for what the Mac or a computer holds once (its Calendar)
+  const canAdd = !c.onComputer && (connections.length === 0 || c.auth !== 'system')
+  const form = open ? (
+    <ConnectForm
+      connector={c}
+      appSet={appSet}
+      onDone={() => {
+        setOpen(false)
+        onChange()
+      }}
+      onCancel={() => setOpen(false)}
+    />
+  ) : null
+  const [solo] = connections
+  if (solo && connections.length === 1)
+    return (
+      <SoloTile
+        connector={c}
+        connection={solo}
+        form={form}
+        onAdd={canAdd ? () => setOpen(true) : undefined}
+        onChange={onChange}
+      />
+    )
+  return (
+    <TileFrame
+      connector={c}
+      wide={open}
+      sub={
+        connections.length > 1
+          ? `${connections.length} accounts`
+          : c.onComputer
+            ? 'Turn it on in Alpha Bridge on your computer'
+            : 'Not connected'
+      }
+      right={
+        added && connections.length === 0 ? (
+          <DeleteConnector connector={c} onChange={onChange} />
+        ) : null
+      }
+    >
+      {form}
+      {connections.map((k) => (
+        <ConnectionInTile key={k.id} connection={k} onChange={onChange} />
+      ))}
+      {!open && canAdd && (
+        <TileFoot>
+          <Button
+            size="sm"
+            variant={connections.length ? 'ghost' : 'default'}
+            onClick={() => setOpen(true)}
+          >
+            {connections.length ? 'Add another' : 'Connect'}
+          </Button>
+        </TileFoot>
+      )}
+    </TileFrame>
+  )
+}
+
+// The one shape every tile has: icon, name and a line under it, what sits at the right, then the
+// rest; a tile with its form open takes the whole width.
+function TileFrame({
+  connector: c,
+  sub,
+  right,
+  wide,
+  children,
+}: {
+  connector: ConnectorView
+  sub: string
+  right?: ReactNode
+  wide: boolean
+  children?: ReactNode
+}) {
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-4',
+        wide && 'col-span-full',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-base text-ink">{c.title}</div>
+          <div className="truncate text-ink-3 text-sm" title={sub}>
+            {sub}
+          </div>
+        </div>
+        {right}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// A connector with one account, the usual: the account under its name, its state and ⋮ at the
+// right, its problem, and Read now at the foot.
+function SoloTile({
+  connector: c,
+  connection: k,
+  form,
+  onAdd,
+  onChange,
+}: {
+  connector: ConnectorView
+  connection: ConnectionView
+  form: ReactNode
+  onAdd: (() => void) | undefined
+  onChange: () => void
+}) {
+  const p = useConnection(k, onChange, { menuShown: true, onAdd })
+  return (
+    <TileFrame
+      connector={c}
+      sub={k.account}
+      wide={!!form}
+      right={
+        <span className="flex shrink-0 items-center gap-1.5">
+          {p.pill}
+          {p.menu}
+        </span>
+      }
+    >
+      {p.body}
+      {form ?? <TileFoot where={p.where}>{p.act}</TileFoot>}
+      {p.confirm}
+    </TileFrame>
+  )
+}
+
+// A connector the person added themselves, with no account: Delete under its ⋮.
+function DeleteConnector({
+  connector: c,
+  onChange,
+}: {
+  connector: ConnectorView
+  onChange: () => void
+}) {
+  const [removing, setRemoving] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  return (
+    <>
+      <More label="More" disabled={busy} shown>
+        {(close) => (
+          <MenuItem
+            danger
+            onClick={() => {
+              close()
+              setRemoving(true)
+            }}
+          >
+            <Trash2 className="size-3.5" />
+            Delete
+          </MenuItem>
+        )}
+      </More>
+      <Confirm
+        open={removing}
+        title={`Delete ${c.title}?`}
+        yes="Delete it"
+        busy={busy}
+        onClose={() => setRemoving(false)}
+        onYes={async () => {
+          setBusy(true)
+          setProblem(null)
+          try {
+            await api.delete(`/api/connectors/${c.name}`)
+            setRemoving(false)
+          } catch (err) {
+            setProblem(wordsOf(err))
+          }
+          setBusy(false)
+          onChange()
+        }}
+      >
+        The connector you added goes, with its folder. It can’t be brought back.
+        {problem && <span className="mt-2 block text-bad">{problem}</span>}
+      </Confirm>
+    </>
+  )
+}
+
+// Connecting an account: its address (or what the Mac asks), a password where it takes one, or
+// the provider's own sign-in page.
+function ConnectForm({
+  connector: c,
+  appSet,
+  onDone,
+  onCancel,
+}: {
+  connector: ConnectorView
+  appSet: boolean | null
+  onDone: () => void
+  onCancel: () => void
+}) {
   const system = c.auth === 'system'
   const inBrowser = c.auth === 'browser'
   const asPerson = c.signsInWith ?? null
-  const [open, setOpen] = useState(startOpen)
   const [account, setAccount] = useState(
     system
       ? (c.account.placeholder ?? c.account.label)
@@ -147,8 +348,6 @@ function ConnectorTile({
   const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [removing, setRemoving] = useState(false)
-  useEffect(() => setOpen(startOpen), [startOpen])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -166,8 +365,7 @@ function ConnectorTile({
         await api.post(`/api/connections/${made.id}/sign-in`)
       if (asPerson && made.state === 'needs_sign_in') await signInWith(made.id)
       setSecret('')
-      setOpen(false)
-      onChange()
+      onDone()
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That did not connect.')
     } finally {
@@ -176,165 +374,94 @@ function ConnectorTile({
   }
 
   return (
-    <div
-      className={cn(
-        'group/row flex flex-col gap-3 rounded-lg border border-line bg-surface p-4',
-        open && 'col-span-full',
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      {system ? (
+        <p className="text-ink-2 text-md">
+          Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only reads
+          it.
+        </p>
+      ) : inBrowser ? (
+        <p className="text-ink-2 text-md">
+          {c.warning ??
+            `${c.title} opens in its own window of Google Chrome: sign in there yourself, then quit that Chrome. Alpha reads it as you would and never writes to it.`}
+        </p>
+      ) : (
+        <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-account`}>
+          <span className="text-ink-2">{c.account.label}</span>
+          <Field
+            id={`${c.name}-account`}
+            value={account}
+            placeholder={c.account.placeholder}
+            onChange={(e) => setAccount(e.target.value)}
+            autoComplete="username"
+          />
+        </label>
       )}
-    >
-      <div className="flex items-center gap-3">
-        <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-base text-ink">{c.title}</div>
-          {connections.length === 0 && (
-            <div className="text-ink-3 text-sm">
-              {c.onComputer ? 'Turn it on in Alpha Bridge on your Mac' : 'Not connected'}
-            </div>
+      {asPerson && (
+        <p className="text-ink-3 text-sm">
+          {appSet
+            ? `${asPerson.title}’s sign-in page opens in your browser. Sign in there as this address; Alpha never sees your password.`
+            : `Set up ${asPerson.title}’s sign-in app under Sign-in apps first, with your IT if you are not its admin.`}
+        </p>
+      )}
+      {c.secret && (
+        <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
+          <span className="text-ink-2">{c.secret.label}</span>
+          <Field
+            id={`${c.name}-secret`}
+            type="password"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            autoComplete="off"
+          />
+          <span className="text-ink-3 text-sm">
+            {c.secret.help}{' '}
+            {c.secret.url && (
+              <a
+                className="text-accent underline underline-offset-3"
+                href={c.secret.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Make one
+              </a>
+            )}
+          </span>
+        </label>
+      )}
+      {problem && (
+        <div className="flex flex-wrap items-center gap-2 text-bad text-md">
+          <span>{problem}</span>
+          {c.system && problem.includes('System Settings') && (
+            <Button
+              size="sm"
+              onClick={() => api.post('/api/setup/settings', { pane: c.system?.pane })}
+            >
+              Open System Settings
+            </Button>
           )}
         </div>
-        {!open && !c.onComputer && (connections.length === 0 || !system) && (
-          <Button
-            size="sm"
-            variant={connections.length ? 'ghost' : 'default'}
-            onClick={() => setOpen(true)}
-          >
-            {connections.length ? 'Add another' : 'Connect'}
-          </Button>
-        )}
-        {!open && added && connections.length === 0 && (
-          <More label="More" disabled={busy}>
-            {(close) => (
-              <MenuItem
-                danger
-                onClick={() => {
-                  close()
-                  setRemoving(true)
-                }}
-              >
-                <Trash2 className="size-3.5" />
-                Delete
-              </MenuItem>
-            )}
-          </More>
-        )}
-        <Confirm
-          open={removing}
-          title={`Delete ${c.title}?`}
-          yes="Delete it"
-          busy={busy}
-          onClose={() => setRemoving(false)}
-          onYes={async () => {
-            setBusy(true)
-            setProblem(null)
-            try {
-              await api.delete(`/api/connectors/${c.name}`)
-              setRemoving(false)
-            } catch (err) {
-              setProblem(wordsOf(err))
-            }
-            setBusy(false)
-            onChange()
-          }}
-        >
-          The connector you added goes, with its folder. It can’t be brought back.
-        </Confirm>
-      </div>
-      {open && (
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          {system ? (
-            <p className="text-ink-2 text-md">
-              Your Mac will ask whether Alpha may read your {c.title.toLowerCase()}. Alpha only
-              reads it.
-            </p>
-          ) : inBrowser ? (
-            <p className="text-ink-2 text-md">
-              {c.warning ??
-                `${c.title} opens in its own window of Google Chrome: sign in there yourself, then quit that Chrome. Alpha reads it as you would and never writes to it.`}
-            </p>
-          ) : (
-            <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-account`}>
-              <span className="text-ink-2">{c.account.label}</span>
-              <Field
-                id={`${c.name}-account`}
-                value={account}
-                placeholder={c.account.placeholder}
-                onChange={(e) => setAccount(e.target.value)}
-                autoComplete="username"
-              />
-            </label>
-          )}
-          {asPerson && (
-            <p className="text-ink-3 text-sm">
-              {appSet
-                ? `${asPerson.title}’s sign-in page opens in your browser. Sign in there as this address; Alpha never sees your password.`
-                : `Set up ${asPerson.title}’s sign-in app under Sign-in apps first, with your IT if you are not its admin.`}
-            </p>
-          )}
-          {c.secret && (
-            <label className="flex flex-col gap-1 text-md" htmlFor={`${c.name}-secret`}>
-              <span className="text-ink-2">{c.secret.label}</span>
-              <Field
-                id={`${c.name}-secret`}
-                type="password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                autoComplete="off"
-              />
-              <span className="text-ink-3 text-sm">
-                {c.secret.help}{' '}
-                {c.secret.url && (
-                  <a
-                    className="text-accent underline underline-offset-3"
-                    href={c.secret.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Make one
-                  </a>
-                )}
-              </span>
-            </label>
-          )}
-          {problem && (
-            <div className="flex flex-wrap items-center gap-2 text-bad text-md">
-              <span>{problem}</span>
-              {c.system && problem.includes('System Settings') && (
-                <Button
-                  size="sm"
-                  onClick={() => api.post('/api/setup/settings', { pane: c.system?.pane })}
-                >
-                  Open System Settings
-                </Button>
-              )}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              size="sm"
-              variant="primary"
-              disabled={
-                busy || !account.trim() || (!!c.secret && !secret.trim()) || appSet === false
-              }
-            >
-              {busy
-                ? 'Connecting…'
-                : inBrowser
-                  ? 'Sign in with Chrome'
-                  : asPerson
-                    ? `Sign in with ${asPerson.title}`
-                    : 'Connect'}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
       )}
-      {connections.map((k) => (
-        <ConnectionLine key={k.id} connection={k} onChange={onChange} inTile />
-      ))}
-    </div>
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          variant="primary"
+          disabled={busy || !account.trim() || (!!c.secret && !secret.trim()) || appSet === false}
+        >
+          {busy
+            ? 'Connecting…'
+            : inBrowser
+              ? 'Sign in with Chrome'
+              : asPerson
+                ? `Sign in with ${asPerson.title}`
+                : 'Connect'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   )
 }
 
