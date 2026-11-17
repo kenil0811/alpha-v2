@@ -30,21 +30,25 @@ export function UpdateNow({
   busy,
   onClick,
   disabled,
+  words = true,
 }: {
   label: string // Read now, Run now
   at: string | null | undefined
   busy: boolean
   onClick: () => void
   disabled?: boolean | undefined
+  words?: boolean // when it last happened; left out where a problem takes its place
 }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span
-        className="whitespace-nowrap text-ink-3 text-sm"
-        data-tip={at && !busy ? full(new Date(at)) : undefined}
-      >
-        {busy ? 'Updating…' : at ? `Updated ${updatedWords(at)}` : 'Not yet'}
-      </span>
+      {words && (
+        <span
+          className="whitespace-nowrap text-ink-3 text-sm"
+          data-tip={at && !busy ? full(new Date(at)) : undefined}
+        >
+          {busy ? 'Updating…' : at ? `Updated ${updatedWords(at)}` : 'Not yet'}
+        </span>
+      )}
       <Button size="sm" disabled={busy || disabled} aria-busy={busy} onClick={onClick}>
         <RefreshCw className={cn('size-3.5', busy && 'animate-spin')} />
         {label}

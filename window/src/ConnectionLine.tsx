@@ -32,7 +32,8 @@ export interface ConnectionParts {
   pill: ReactNode // its state
   menu: ReactNode // ⋮: Details, Add another, Disconnect
   where: string | null // the computer it runs on
-  body: ReactNode // its problem, refused hosts, details
+  problem: ReactNode // its problem in words, one line, or nothing
+  body: ReactNode // refused hosts, and its details when asked
   act: ReactNode // its one act: Read now, Sign in, Try again, Open System Settings
   confirm: ReactNode
 }
@@ -53,21 +54,24 @@ export function useConnection(
   // the computer it runs on, unless it is named for it (a Mac's Calendar)
   const where = k.computer && k.computer.name !== k.account ? `On ${k.computer.name}` : null
   const read = () => act(() => api.post(`/api/connections/${k.id}/sync`))
+  // a problem in its state's colour, one line, whole under Details and on hover; it takes the
+  // place of when it was last read, so a tile with a problem is no taller than one without; a
+  // computer away says so in its pill alone
+  const trouble =
+    k.health && !away ? (
+      <p
+        className={cn(
+          'min-w-0 text-sm',
+          WORDS[tone] ?? 'text-ink-2',
+          details ? 'break-words' : 'truncate',
+        )}
+        title={k.health}
+      >
+        {k.health}
+      </p>
+    ) : null
   const body = (
     <>
-      {k.health && (
-        // a problem in its state's colour, one line, whole under Details and on hover
-        <p
-          className={cn(
-            'text-sm',
-            WORDS[tone] ?? 'text-ink-2',
-            details ? 'break-words' : 'truncate',
-          )}
-          title={k.health}
-        >
-          {k.health}
-        </p>
-      )}
       {(details || k.refused.length > 0) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-3 text-sm">
           {details && <span>Set up by {k.owner}</span>}
@@ -99,7 +103,7 @@ export function useConnection(
   const main = k.settings ? (
     // the one switch macOS keeps outside Alpha: System Settings opened at its pane
     <>
-      <UpdateNow label="Read now" at={k.lastSyncAt} busy={busy} onClick={read} />
+      <UpdateNow label="Read now" at={k.lastSyncAt} busy={busy} onClick={read} words={!trouble} />
       <Button
         size="sm"
         variant="primary"
@@ -132,7 +136,7 @@ export function useConnection(
       Try again
     </Button>
   ) : (
-    <UpdateNow label="Read now" at={k.lastSyncAt} busy={busy} onClick={read} />
+    <UpdateNow label="Read now" at={k.lastSyncAt} busy={busy} onClick={read} words={!trouble} />
   )
   const menu = (
     <More label="More" disabled={busy} shown={options.menuShown ?? false}>
@@ -192,6 +196,7 @@ export function useConnection(
     pill: <Pill tone={tone}>{state}</Pill>,
     menu,
     where,
+    problem: trouble,
     body,
     act: (
       <>
@@ -203,13 +208,13 @@ export function useConnection(
   }
 }
 
-// A tile's foot: the computer at its left, the one act at its right, kept at the tile's bottom so
-// tiles side by side line up.
-export function TileFoot({ where, children }: { where?: string | null; children: ReactNode }) {
+// A tile's foot: a problem at its left, the one act at its right, kept at the tile's bottom so
+// tiles side by side line up and are the same height.
+export function TileFoot({ problem, children }: { problem?: ReactNode; children: ReactNode }) {
   return (
-    <div className="mt-auto flex min-h-8 flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
-      {where && <span className="mr-auto text-ink-3 text-sm">{where}</span>}
-      {children}
+    <div className="mt-auto flex min-h-8 items-center justify-end gap-3">
+      {problem && <div className="mr-auto min-w-0 flex-1">{problem}</div>}
+      <div className="flex shrink-0 items-center gap-2">{children}</div>
     </div>
   )
 }
@@ -226,12 +231,14 @@ export function ConnectionInTile({
   return (
     <div className="flex min-w-0 flex-col gap-1.5 border-hair border-t pt-3">
       <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate font-medium text-ink">{k.account}</span>
+        <span className="min-w-0 flex-1 truncate font-medium text-ink">
+          {p.where ? `${k.account} · ${p.where}` : k.account}
+        </span>
         {p.pill}
         {p.menu}
       </div>
       {p.body}
-      <TileFoot where={p.where}>{p.act}</TileFoot>
+      <TileFoot problem={p.problem}>{p.act}</TileFoot>
       {p.confirm}
     </div>
   )
@@ -257,6 +264,7 @@ export function ConnectionLine({
       sub={
         <span className="flex flex-col gap-1">
           {p.where && <span>{p.where}</span>}
+          {p.problem}
           {p.body}
         </span>
       }

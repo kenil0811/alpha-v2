@@ -115,5 +115,10 @@ export function handsFor(service: ConnectorService, world: World, notify: () => 
         unlend(world, pc, k, `${pc.name} signed out, so this is not read any more.`)
       notify()
     },
+    // back again: each of its connections still saying it waits is read now, so its words go
+    back: (pc) => {
+      for (const k of world.connections.on(pc.id))
+        if (k.state !== 'paused' && k.health) void service.sync(k.id).then(notify, notify)
+    },
   }
 }

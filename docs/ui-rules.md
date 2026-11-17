@@ -142,7 +142,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | L8 | Cuts of one list are rounded buttons, each with its count, one picked (Activity's All and Failed) | 2 Nov | — |
 | L9 | Where a link goes shows at the window's foot while the pointer rests on it: a place in Alpha by its name, an outside page by its address; a link to a place in Alpha opens in Alpha | 2 Nov | — |
 | L10 | Files are added in one drop zone, a dashed box to drop on or click, what is there inside it | 2 Nov | — |
-| L11 | Read now and Run now say when it last happened just before the button, the full time on hover | 2 Nov | — |
+| L11 | Read now and Run now say when it last happened just before the button, the full time on hover; a connection's problem, when it has one, takes that place, so a tile with a problem is no taller | 2 Nov, 17 Nov | — |
 | L12 | A double-click on what can't change says why, at once, and only then: it is not a tip on hover | 2 Nov, 14 Nov | — |
 | L13 | A row's and a task's title on its page is renamed by a double-click; a module's and a table's name from its menu (S4, T19) | 2 Nov, 7 Nov | — |
 | L14 | A task, a run, a person, a row, a schedule, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel replaces what it shows, with no Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov, 9 Nov | test (opened) |

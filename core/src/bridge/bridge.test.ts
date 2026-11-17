@@ -134,7 +134,7 @@ describe('the Bridge', { timeout: 30_000 }, () => {
     expect(world.files.documents().map((d) => d.title)).toEqual(['pl.csv', 'notes.txt'])
   })
 
-  it('waits for a computer that is away, and catches up when it is back', async () => {
+  it('waits for a computer that is away, and catches up as soon as it is back', async () => {
     const { dir } = await lendFolder()
     await until(() => world.files.documents().length === 1)
     bridge?.stop()
@@ -144,10 +144,11 @@ describe('the Bridge', { timeout: 30_000 }, () => {
     await service.sync(conn?.id ?? '')
     expect(world.connections.get(conn?.id ?? '')?.health).toBe('Waiting for Test Mac')
     expect(world.files.documents()).toHaveLength(1)
+    // read the moment it is back, with nobody asking: its waiting words go with it
     bridge?.run()
-    await until(() => bridges.online(conn?.computer ?? ''))
-    await service.sync(conn?.id ?? '')
+    await until(() => world.files.documents().length === 2)
     expect(world.files.documents().map((d) => d.title)).toEqual(['pl.csv', 'notes.txt'])
+    expect(world.connections.get(conn?.id ?? '')?.health).toBeNull()
   })
 
   it('turns a removed computer away at once', async () => {

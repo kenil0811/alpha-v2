@@ -253,7 +253,7 @@ function SoloTile({
   return (
     <TileFrame
       connector={c}
-      sub={k.account}
+      sub={p.where ? `${k.account} · ${p.where}` : k.account}
       wide={!!form}
       right={
         <span className="flex shrink-0 items-center gap-1.5">
@@ -263,7 +263,7 @@ function SoloTile({
       }
     >
       {p.body}
-      {form ?? <TileFoot where={p.where}>{p.act}</TileFoot>}
+      {form ?? <TileFoot problem={p.problem}>{p.act}</TileFoot>}
       {p.confirm}
     </TileFrame>
   )

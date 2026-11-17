@@ -38,6 +38,7 @@ export interface Hands {
   lend(pc: Computer, connector: string, account: string): Promise<unknown>
   unlend(pc: Computer, connector: string, account: string): void
   signedOut(pc: Computer): void
+  back(pc: Computer): void // connected again: what waited for it is read now
 }
 
 const NONE: Hands = {
@@ -47,6 +48,7 @@ const NONE: Hands = {
   },
   unlend: () => undefined,
   signedOut: () => undefined,
+  back: () => undefined,
 }
 
 export class Hub {
@@ -127,6 +129,7 @@ export class Hub {
           this.connected.set(c.id, me)
           this.world?.computers.seen(c.id)
           socket.send(JSON.stringify({ t: 'welcome', name: c.name, lent: this.lent(c.id) }))
+          this.hands.back(c)
           this.hands.notify()
           return
         }
