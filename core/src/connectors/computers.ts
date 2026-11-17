@@ -1,7 +1,7 @@
 // A person's computers as the connector service holds them (the Bridge): what a computer lends
 // becomes a connection that runs there and is theirs; a call or a read through it acts only as its
 // person (docs/rules.md, B1); one whose computer is away or paused waits, said on its tile.
-import type { Connector } from '@alpha/connector-sdk'
+import type { BrowserEngine, Connector } from '@alpha/connector-sdk'
 import { bridges, type Hands } from '../bridge/hub.ts'
 import type { Computer } from '../world/computers.ts'
 import type { Connection } from '../world/connections.ts'
@@ -99,14 +99,33 @@ export function computerFor(
 
 // The hub's hands in a core: a computer's lend, unlend and sign out made through the world and
 // the connector service, and the window told.
-export function handsFor(service: ConnectorService, world: World, notify: () => void): Hands {
+export function handsFor(
+  service: ConnectorService,
+  world: World,
+  notify: () => void,
+  browser?: () => BrowserEngine, // the core's browser: a site signed in to on a computer is its
+): Hands {
+  // a site signed in to on a computer, for its own person only (rules B1)
+  const site = (pc: Computer, account: string, on: boolean) => {
+    const mine = browser?.().as(pc.user)
+    if (!mine) throw new Refused('This Alpha has no browser to work on sites with.')
+    if (on) mine.markOnComputer(account, pc.id)
+    else void mine.offComputer(account, pc.id)
+    notify()
+  }
   return {
     notify,
-    lend: (pc, name, account) => lend(service, world, pc, name, account),
+    lend: async (pc, name, account) =>
+      name === 'browser' ? site(pc, account, true) : lend(service, world, pc, name, account),
     unlend: (pc, name, account) => {
+      if (name === 'browser') return site(pc, account, false)
       const k = world.connections.find(name, account)
       if (k) unlend(world, pc, k, `${pc.name} no longer lends it.`)
     },
+    sitesOn: (pc) =>
+      (browser?.().as(pc.user).sites() ?? [])
+        .filter((s) => s.computer === pc.id)
+        .map((s) => s.site),
     // signed out on the computer: removed, as from Your computers, and what it lent paused
     signedOut: (pc) => {
       if (world.computers.get(pc.id)?.removedAt) return

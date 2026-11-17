@@ -1,9 +1,10 @@
 // A site's sign-in on a server: the live picture of its browser, over one websocket. Frames go to
 // the person's window, what they click and type comes back, and when the page that asked opens
 // without a sign-in the card is answered and whatever met it carries on.
-import { LIVE_SIZE, type LiveBrowser, type LiveInput } from '@alpha/connector-sdk'
+import { LIVE_SIZE, type LiveBrowser, type LiveInput, siteOf } from '@alpha/connector-sdk'
 import type { WebSocket } from '@fastify/websocket'
 import { z } from 'zod'
+import { config } from '../config.ts'
 import type { Engine } from '../engine/engine.ts'
 import { schedules } from '../modules/schedules.ts'
 import type { User, World } from '../world/world.ts'
@@ -87,7 +88,23 @@ export function liveSignIn(
   socket.on('close', () => {
     gone = true
     void live?.close()
+    if (!finished) failedHere()
   })
+  // closed without the person in: once this has happened enough times for the site, it is signed
+  // in to on their own computer from now on, said once (the Bridge, step 4)
+  const failedHere = () => {
+    const site = siteOf(new URL(url).host)
+    if (browser.signInFailed(site) < config.sites().server_sign_in_tries) return
+    browser.moveToComputer(site)
+    world.line({
+      actor: { kind: 'system' },
+      kind: 'shaped',
+      words: `${site} did not let you sign in on Alpha's server: from now on you sign in to it on your own computer, through Alpha Bridge, and agents work on it there.`,
+      data: { site },
+      user: card.user ?? user.id,
+    })
+    engine.events.emit('event', { type: 'lines', user: user.id })
+  }
   void (async () => {
     try {
       live = await browser.openLive(url)

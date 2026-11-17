@@ -100,7 +100,8 @@ function CardBody({
 }) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [opened, setOpened] = useState(false)
+  // its window open: true in Chrome on this Mac, or the name of the person's computer it is on
+  const [opened, setOpened] = useState<string | boolean>(false)
   const [live, setLive] = useState(false)
   const [always, setAlways] = useState(false)
   const [watching, setWatching] = useState(false)
@@ -117,9 +118,9 @@ function CardBody({
       // A site's sign-in opens the site in the person's own Google Chrome; the card is answered when
       // they quit it. A connection's opens the form where they sign in themselves.
       if (card.site && a === card.options[0]) {
-        const r = await api.post<{ live?: boolean }>(`/api/cards/${id}/sign-in`)
+        const r = await api.post<{ live?: boolean; on?: string }>(`/api/cards/${id}/sign-in`)
         if (r.live) setLive(true)
-        else setOpened(true)
+        else setOpened(r.on ?? true)
         setBusy(false)
         return
       }
@@ -239,8 +240,9 @@ function CardBody({
       )}
       {opened && (
         <div className="text-ink-2 text-sm">
-          {card.site} is open in Google Chrome on this computer. Sign in there, then quit that
-          Chrome with ⌘Q; the reader runs again.
+          {typeof opened === 'string'
+            ? `${card.site} is open in its own Chrome window on ${opened}. Sign in there, then close that window; the reader runs again.`
+            : `${card.site} is open in Google Chrome on this computer. Sign in there, then quit that Chrome with ⌘Q; the reader runs again.`}
         </div>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}

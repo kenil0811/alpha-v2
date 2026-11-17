@@ -82,6 +82,8 @@ export interface ComputerView {
   lastSeenAt: string | null
   version: string | null // the Bridge it runs, while it is connected
   here: boolean // the computer Alpha itself runs on: its folders are added by path, not lent
+  browser: boolean // Alpha Bridge's Browser switch is on there (while it is connected)
+  sites: { site: string; at: string }[] // the sites its person signed in to there for Alpha
   lends: {
     connection: string
     connector: string

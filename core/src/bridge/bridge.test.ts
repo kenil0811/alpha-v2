@@ -3,6 +3,7 @@
 // connector process reading a scratch folder. Its key is held in memory: never a real Alpha, a
 // computer's own key store or the Keychain.
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer as httpServer } from 'node:http'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -11,7 +12,7 @@ import { Bridge, pair } from '@alpha/bridge'
 import type { Config } from '@alpha/bridge/config'
 import { inMemory, newKey } from '@alpha/bridge/keys'
 import { serve } from '@alpha/bridge/serve'
-import { MemorySecrets } from '@alpha/connector-sdk'
+import { BrowserEngine, browserPath, ensureBrowser, MemorySecrets } from '@alpha/connector-sdk'
 import type { FastifyInstance } from 'fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildServer } from '../api/server.ts'
@@ -22,6 +23,9 @@ import { Engine } from '../engine/engine.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 import { bridges } from './hub.ts'
+import { computerSites } from './sites.ts'
+
+const BROWSERS = join(import.meta.dirname, '..', '..', '..', '.data', 'browsers')
 
 const CHILD = join(import.meta.dirname, '..', 'connectors', 'child.ts')
 const MAC = join(import.meta.dirname, '..', '..', '..', 'connectors', 'mac', 'src', 'index.ts')
@@ -355,6 +359,92 @@ describe('the app’s lines', { timeout: 30_000 }, () => {
       'Signed out: this computer is no longer paired.',
     )
     input.end()
+  })
+})
+
+describe('a site signed in to on a computer', { timeout: 90_000 }, () => {
+  it('signs in in a window there; Alpha then works on it there, and says when it is off', async () => {
+    await ensureBrowser(BROWSERS)
+    // a made-up site on this machine, that greets whoever is signed in
+    const site = httpServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' })
+      res.end('<title>Harbor</title><h1>Signed in as Ann</h1>')
+    })
+    const port = await new Promise<number>((ok) =>
+      site.listen(0, '127.0.0.1', () => {
+        const a = site.address()
+        ok(typeof a === 'object' && a ? a.port : 0)
+      }),
+    )
+    const name = `127.0.0.1:${port}`
+    const url = `http://${name}/`
+    // the core's browser, reaching computers; the hub's hands with it
+    const browser = new BrowserEngine({
+      browsers: BROWSERS,
+      profiles: join(home, 'profiles'),
+      pace: { minMs: 0, maxMs: 0 },
+    })
+    browser.useComputers(computerSites(world))
+    bridges.use(
+      world,
+      handsFor(
+        service,
+        world,
+        () => undefined,
+        () => browser,
+      ),
+    )
+    const made = await app.inject({
+      method: 'POST',
+      url: '/api/computers/link',
+      headers: asWindow(),
+    })
+    const keys = inMemory()
+    const paired = await pair(made.json().link as string, keys, 'Test Mac')
+    const config: Config = { ...paired, browser: true }
+    computers.push(config.computer)
+    const windows: string[] = []
+    bridge = new Bridge({
+      config: () => config,
+      keys,
+      start: async () => ({ command: process.execPath, args: [CHILD, FOLDER], shell: false }),
+      home: join(home, 'bridge'),
+      // Playwright's own browser stands in for the computer's Chrome
+      chrome: () => browserPath(BROWSERS),
+      // the person signs in and closes the window
+      window: async (_chrome, dir, at) => {
+        mkdirSync(dir, { recursive: true })
+        windows.push(at)
+      },
+      lendSite: (s, on) => {
+        config.lends = config.lends.filter((l) => !(l.connector === 'browser' && l.account === s))
+        if (on) config.lends.push({ connector: 'browser', account: s })
+      },
+    })
+    bridge.run()
+    await until(() => bridges.online(config.computer) && bridges.browserOn(config.computer))
+    const ann = browser.as(owner.id)
+    await bridges.signInSite(config.computer, name, url)
+    expect(windows).toEqual([url])
+    await until(() => ann.computerOf(name) === config.computer)
+    expect(ann.sites().map((s) => [s.site, s.computer])).toEqual([[name, config.computer]])
+    // an agent's step: in that site's profile on the computer, read through the core's relay
+    const page = await ann.tab('w1', url)
+    expect(await page.title()).toBe('Harbor')
+    expect(await page.locator('h1').innerText()).toBe('Signed in as Ann')
+    // only its own person's: another's browser has no such sign-in (rules B1)
+    expect(browser.as('u_someone').signedIn(url)).toBe(false)
+    // and only what its person signed in to there: any other site is refused there (rules B2)
+    const refused = await new Promise<string | null>((ok) =>
+      bridges.pipe(config.computer, 'example.com', () => undefined, ok),
+    )
+    expect(refused).toBe('example.com is not signed in to on Test Mac.')
+    // the computer away: the step says so at once
+    bridge.stop()
+    await until(() => !bridges.online(config.computer))
+    await expect(ann.tab('w2', url)).rejects.toThrow(/Test Mac is off now/)
+    await browser.close()
+    site.close()
   })
 })
 

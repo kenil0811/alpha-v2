@@ -16,7 +16,8 @@ export function Sites({ version }: { version: number }) {
   const [sites, setSites] = useState<SiteView[]>([])
   const [address, setAddress] = useState('')
   const [live, setLive] = useState<{ card: string; site: string } | null>(null)
-  const [opened, setOpened] = useState<string | null>(null)
+  // a sign-in window open: in Chrome on this Mac, or on a computer of yours (the Bridge)
+  const [opened, setOpened] = useState<{ site: string; on: string | null } | null>(null)
   const load = useCallback(() => {
     api.get<SiteView[]>('/api/sites').then(setSites, () => setSites([]))
   }, [])
@@ -31,9 +32,9 @@ export function Sites({ version }: { version: number }) {
       const { card, site } = await api.post<{ card: string; site: string }>('/api/sites/sign-in', {
         url,
       })
-      const r = await api.post<{ live?: boolean }>(`/api/cards/${card}/sign-in`)
+      const r = await api.post<{ live?: boolean; on?: string }>(`/api/cards/${card}/sign-in`)
       if (r.live) setLive({ card, site })
-      else setOpened(site)
+      else setOpened({ site, on: r.on ?? null })
       setAddress('')
     })
   const submit = (e: FormEvent) => {
@@ -51,7 +52,7 @@ export function Sites({ version }: { version: number }) {
             <Row
               key={s.site}
               title={s.site}
-              sub={`Signed in ${when(s.at)}`}
+              sub={`Signed in ${when(s.at)}${s.on ? ` on ${s.on}` : ''}`}
               actions={
                 <>
                   <Button size="sm" disabled={busy} onClick={() => signIn(`https://${s.site}`)}>
@@ -85,8 +86,9 @@ export function Sites({ version }: { version: number }) {
       </form>
       {opened && (
         <p className="text-ink-3 text-sm">
-          {opened} opened in its own window of Google Chrome: sign in there, then quit that Chrome
-          (⌘Q).
+          {opened.on
+            ? `${opened.site} opened in its own Chrome window on ${opened.on}: sign in there, then close that window.`
+            : `${opened.site} opened in its own window of Google Chrome: sign in there, then quit that Chrome (⌘Q).`}
         </p>
       )}
       <Refusal words={problem} />

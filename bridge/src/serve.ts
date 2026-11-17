@@ -1,10 +1,10 @@
 // The Bridge as the app runs it (`alpha-bridge serve`): the same Bridge, told what to do and saying
 // what it does in lines on its standard input and output, one JSON object a line. The app draws
 // its icon and menu from what it says; the person's folder picker and every yes stay in the app.
-//   app → Bridge: pair {link}, lend and unlend {path, or connector: calendar|contacts}, pause
-//                 {minutes|null}, resume, signout, state
-//   Bridge → app: state {paired, alpha, name, online, turnedAway, paused, lends [{connector,
-//                 account}]}, did
+//   app → Bridge: pair {link}, lend and unlend {path, or connector: calendar|contacts}, browser
+//                 {on}, pause {minutes|null}, resume, signout, state
+//   Bridge → app: state {paired, alpha, name, online, turnedAway, paused, browser, chrome, lends
+//                 [{connector, account}]}, did
 //                 {at, words}, pick {connector}, problem {words}
 // What it did is kept on the computer too (did.json, the last 200), so its person can check what
 // Alpha asked without trusting the server.
@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { Bridge, keyAccount, pair } from './bridge.ts'
 import type { Start } from './children.ts'
+import { chromeHere, NO_CHROME } from './chrome.ts'
 import { computerName, folderOf, helper, LENDS_HERE } from './code.ts'
 import { type Config, fileOf, readConfig, writeConfig } from './config.ts'
 import type { KeyStore } from './keys.ts'
@@ -42,6 +43,28 @@ export async function pairHere(home: string, keys: KeyStore, link: string): Prom
   const kept = { ...c, lends: before?.alpha === c.alpha ? before.lends : [] }
   writeConfig(home, kept)
   return kept
+}
+
+// A site signed in to here for Alpha, or signed out of: kept in the list, as a folder is.
+export function siteHere(home: string, site: string, on: boolean): void {
+  const c = readConfig(home)
+  if (!c) return
+  const others = c.lends.filter((l) => !(l.connector === 'browser' && l.account === site))
+  writeConfig(home, {
+    ...c,
+    lends: on ? [...others, { connector: 'browser', account: site }] : others,
+  })
+}
+
+// The Browser switch: Alpha works on the sites signed in to here only while it is on.
+export function browserHere(home: string, on: boolean): string {
+  const c = readConfig(home)
+  if (!c) throw new Error('Pair this computer first.')
+  if (on && !chromeHere()) throw new Error(NO_CHROME)
+  writeConfig(home, { ...c, browser: on })
+  return on
+    ? 'Browser on: Alpha may sign in to sites here and work on them.'
+    : 'Browser off: Alpha no longer works on sites here.'
 }
 
 // A lend or an unlend on this computer: a folder by its path, or Calendar or Contacts on a Mac (by
@@ -120,6 +143,7 @@ export async function serve(
           }
         : null,
       lends: c?.lends ?? [],
+      browser: c?.browser === true,
     })
   }
   const begin = () => {
@@ -132,6 +156,11 @@ export async function serve(
       pick: (connector) => say({ t: 'pick', connector }),
       moved: state,
       helper,
+      home,
+      lendSite: (site, on) => {
+        siteHere(home, site, on)
+        state()
+      },
     })
     bridge.run()
   }
@@ -150,6 +179,7 @@ export async function serve(
         path?: string
         connector?: string
         minutes?: number | null
+        on?: boolean
       }
       try {
         m = JSON.parse(text)
@@ -165,7 +195,10 @@ export async function serve(
           begin()
         } else if (m.t === 'lend') lending(m, true)
         else if (m.t === 'unlend') lending(m, false)
-        else if (m.t === 'pause') bridge?.pauseFor(m.minutes ?? null)
+        else if (m.t === 'browser') {
+          note(browserHere(home, m.on === true))
+          bridge?.changed()
+        } else if (m.t === 'pause') bridge?.pauseFor(m.minutes ?? null)
         else if (m.t === 'resume') bridge?.resume()
         else if (m.t === 'signout') {
           const c = readConfig(home)

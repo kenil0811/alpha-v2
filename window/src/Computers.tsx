@@ -187,6 +187,7 @@ export function lendsWords(c: ComputerView): string {
   const parts = [
     ...(folders ? [`${folders} folder${folders === 1 ? '' : 's'}`] : []),
     ...lent.filter((l) => l.connector !== 'folder').map((l) => l.title),
+    ...(c.sites.length ? [`${c.sites.length} site${c.sites.length === 1 ? '' : 's'}`] : []),
   ]
   if (!parts.length) return c.here ? 'No folders added yet' : 'Lends nothing yet'
   const last = parts.pop()

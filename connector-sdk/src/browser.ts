@@ -7,7 +7,15 @@
 // Readers (skills) call it through the core, so pacing and health come from here and a reader
 // writes only its extraction.
 import { execFile, execFileSync, spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -180,6 +188,37 @@ export function chromePath(): string | null {
 }
 const SIGNED_IN = '.signed-in-with-chrome'
 const SIGNED_IN_LIVE = '.signed-in-live' // in a live picture of this browser, on a server
+// signed in to on the person's own computer, through the Bridge: the file holds that computer's
+// id and the site's own name, and the profile itself is there, never here
+const ON_COMPUTER = '.on-computer'
+const onComputerIn = (dir: string): { computer: string; site: string | null } | null => {
+  const f = join(dir, ON_COMPUTER)
+  if (!existsSync(f)) return null
+  const [computer, site] = readFileSync(f, 'utf8').trim().split('\n')
+  return computer ? { computer, site: site || null } : null
+}
+// beside a person's profiles: their sign-ins here that ended without them in, and the sites moved
+// to their computer because of it
+const MOVES = '.moves.json'
+
+// A site signed in to on a person's computer (the Bridge), as the core reaches it: whether the
+// computer is there, its name, a context in that site's profile there, and signing out there.
+export interface OnComputer {
+  away(computer: string, site: string): string | null // why it can't be reached now, in words
+  context(computer: string, site: string): Promise<BrowserContext>
+  signOut(computer: string, site: string): void
+}
+
+// Chrome on a person's computer, its DevTools carried to this address (the core's relay): the
+// profile's own context, and closing it ends that Chrome.
+export async function connectOver(endpoint: string, timeoutMs = 30_000): Promise<BrowserContext> {
+  const browser = await chromium.connectOverCDP(endpoint, { timeout: timeoutMs })
+  const context = browser.contexts()[0] ?? (await browser.newContext())
+  context.close = async () => {
+    await browser.close().catch(() => undefined)
+  }
+  return context
+}
 
 // What a site's robots rules say about a path, for every reader (User-agent *), as RFC 9309 reads
 // them: a group is one or more User-agent lines and the rules after them; a rule matches from the
@@ -248,6 +287,7 @@ export class BrowserEngine {
   private only: string[] | null
 
   private browsers: string
+  private computers: OnComputer | null = null
 
   constructor(options: {
     browsers: string
@@ -279,14 +319,35 @@ export class BrowserEngine {
     return view
   }
 
-  // One profile per person and site: what a person signs in to stays theirs, for that site.
+  // How the core reaches a person's computers, once it has the Bridge.
+  useComputers(computers: OnComputer): void {
+    this.computers = computers
+  }
+
+  // One profile per person and site: what a person signs in to stays theirs, for that site. One
+  // signed in to on their own computer is driven there, through the Bridge.
   private async context(host: string): Promise<BrowserContext> {
     const key = `${this.who}/${siteOf(host)}`
     let c = this.contexts.get(key)
     if (!c) {
       const dir = this.profileOf(host)
-      mkdirSync(dir, { recursive: true })
-      if (existsSync(join(dir, SIGNED_IN))) {
+      const pc = this.computerOf(host)
+      if (pc) {
+        const there = this.computers
+        const away = there
+          ? there.away(pc, siteOf(host))
+          : `${siteOf(host)} is signed in to on your computer, and this Alpha cannot reach it.`
+        if (away || !there) throw new Problem(away ?? '', 'away')
+        c = await there.context(pc, siteOf(host))
+      } else mkdirSync(dir, { recursive: true })
+      if (c) {
+        // the computer went: its pages went with it, and the next step opens them again
+        const there = c
+        there.on('close', () => {
+          if (this.contexts.get(key) === there) this.contexts.delete(key)
+          for (const [k, p] of this.tabs) if (p.context() === there) this.tabs.delete(k)
+        })
+      } else if (existsSync(join(dir, SIGNED_IN))) {
         if (!chromePath())
           throw new Problem(
             `${host} was signed in to in Google Chrome, which is not on this Mac any more.`,
@@ -331,6 +392,66 @@ export class BrowserEngine {
 
   private profileOf(host: string): string {
     return join(this.profiles, this.who, siteOf(host).replace(/[^a-z0-9.-]/gi, '_'))
+  }
+
+  // The computer of this person's a site is signed in to on, if it is one.
+  computerOf(host: string): string | null {
+    return onComputerIn(this.profileOf(host))?.computer ?? null
+  }
+
+  // A sign-in on this browser that ended without the person in: how many times now, for the site.
+  // Kept beside the person's profiles, with the sites moved to their computer.
+  private movesOf(): { tries: Record<string, number>; moved: string[] } {
+    const f = join(this.profiles, this.who, MOVES)
+    try {
+      return JSON.parse(readFileSync(f, 'utf8'))
+    } catch {
+      return { tries: {}, moved: [] }
+    }
+  }
+
+  private keepMoves(m: { tries: Record<string, number>; moved: string[] }): void {
+    mkdirSync(join(this.profiles, this.who), { recursive: true })
+    writeFileSync(join(this.profiles, this.who, MOVES), JSON.stringify(m))
+  }
+
+  signInFailed(site: string): number {
+    const m = this.movesOf()
+    m.tries[site] = (m.tries[site] ?? 0) + 1
+    this.keepMoves(m)
+    return m.tries[site]
+  }
+
+  // A site this person signs in to on their own computer from now on.
+  moveToComputer(site: string): void {
+    const m = this.movesOf()
+    if (!m.moved.includes(site)) m.moved.push(site)
+    delete m.tries[site]
+    this.keepMoves(m)
+  }
+
+  moved(site: string): boolean {
+    return this.movesOf().moved.includes(site)
+  }
+
+  // Signed in to on a computer of the person's (the Bridge said so): the site's profile is there.
+  markOnComputer(site: string, computer: string): void {
+    const dir = this.profileOf(site)
+    rmSync(dir, { recursive: true, force: true })
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, ON_COMPUTER), `${computer}\n${siteOf(site)}`)
+  }
+
+  // No longer signed in to there (signed out, or the computer stopped lending it).
+  async offComputer(site: string, computer: string): Promise<void> {
+    if (this.computerOf(site) !== computer) return
+    const key = `${this.who}/${siteOf(site)}`
+    await this.contexts
+      .get(key)
+      ?.close()
+      .catch(() => undefined)
+    this.contexts.delete(key)
+    rmSync(this.profileOf(site), { recursive: true, force: true })
   }
 
   // A piece of work's own tab in this person's profile for a site (the browse tool): opened at the
@@ -542,22 +663,35 @@ export class BrowserEngine {
     return h ? { ms: Date.now() - h.since, waited: h.waited } : null
   }
 
-  // The sites this person signed in to, newest first, with when.
-  sites(): { site: string; at: string }[] {
+  // The sites this person signed in to, newest first, with when, and the computer of theirs one
+  // was signed in to on.
+  sites(): { site: string; at: string; computer: string | null }[] {
     const dir = join(this.profiles, this.who)
     if (!existsSync(dir)) return []
     return readdirSync(dir)
       .flatMap((site) => {
-        const mark = [SIGNED_IN, SIGNED_IN_LIVE]
+        const mark = [SIGNED_IN, SIGNED_IN_LIVE, ON_COMPUTER]
           .map((m) => join(dir, site, m))
           .find((f) => existsSync(f))
-        return mark ? [{ site, at: statSync(mark).mtime.toISOString() }] : []
+        const there = onComputerIn(join(dir, site))
+        return mark
+          ? [
+              {
+                site: there?.site ?? site,
+                at: statSync(mark).mtime.toISOString(),
+                computer: there?.computer ?? null,
+              },
+            ]
+          : []
       })
       .sort((a, b) => b.at.localeCompare(a.at))
   }
 
-  // Signed out of a site: its profile goes, with the site's cookies, and the next read asks again.
+  // Signed out of a site: its profile goes, with the site's cookies, and the next read asks again;
+  // one on the person's computer is signed out of there.
   async signOut(site: string): Promise<void> {
+    const pc = this.computerOf(site)
+    if (pc) this.computers?.signOut(pc, site)
     const key = `${this.who}/${site}`
     await this.contexts
       .get(key)
@@ -598,7 +732,7 @@ export class BrowserEngine {
   // Whether the person signed in to this site themselves, in its own Chrome profile.
   signedIn(url: string): boolean {
     const dir = this.profileOf(hostOf(url))
-    return existsSync(join(dir, SIGNED_IN)) || existsSync(join(dir, SIGNED_IN_LIVE))
+    return [SIGNED_IN, SIGNED_IN_LIVE, ON_COMPUTER].some((m) => existsSync(join(dir, m)))
   }
 
   // Whether this page still stops at a sign-in, looked at in the site's own profile: a password

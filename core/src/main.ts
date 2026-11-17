@@ -7,6 +7,7 @@ import { BrowserEngine } from '@alpha/connector-sdk'
 import { BACK } from './api/routes/signin.ts'
 import { buildServer } from './api/server.ts'
 import { bridges } from './bridge/hub.ts'
+import { computerSites } from './bridge/sites.ts'
 import { config } from './config.ts'
 import { fetchFiles, fileSources } from './connectors/carried.ts'
 import { handsFor } from './connectors/computers.ts'
@@ -174,8 +175,11 @@ const connectors = new ConnectorService(world, {
 // A person's computers (the Bridge): what one lends becomes a connection that runs there.
 bridges.use(
   world,
-  handsFor(connectors, world, () =>
-    started?.events.emit('event', { type: 'lines', user: user.id }),
+  handsFor(
+    connectors,
+    world,
+    () => started?.events.emit('event', { type: 'lines', user: user.id }),
+    () => browserEngine(),
   ),
 )
 for (const f of [...standard.failed, ...added.failed]) {
@@ -215,6 +219,8 @@ const browserEngine = () => {
       tabIdleMs: limits.browse_tab_idle_minutes * 60_000,
       settleMs: limits.browse_settle_ms,
     })
+    // a site signed in to on a person's own computer is worked on there (the Bridge)
+    browser.useComputers(computerSites(world))
   }
   return browser
 }

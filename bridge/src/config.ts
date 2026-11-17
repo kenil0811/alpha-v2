@@ -6,7 +6,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 export interface Lend {
-  connector: string // folder
+  connector: string // folder, calendar, contacts, or browser (a site signed in to here)
   account: string // the folder's whole path on this computer
 }
 
@@ -14,7 +14,8 @@ export interface Config {
   alpha: string // the Alpha's address (https://…)
   computer: string // the id Alpha gave this computer
   name: string // the name Alpha knows it by
-  lends: Lend[]
+  lends: Lend[] // folders, Calendar, Contacts, and each site signed in to here (browser)
+  browser?: boolean // the Browser switch: off until its person turns it on
 }
 
 // The Bridge's own folder on this computer: ALPHA_BRIDGE_HOME when set (a test, the journeys).
@@ -44,6 +45,10 @@ export function writeConfig(home: string, c: Config): void {
   renameSync(`${file}.new`, file)
 }
 
+// What it lends now: its sites only while the Browser switch is on.
+export const lentNow = (c: Config | null): Lend[] =>
+  (c?.lends ?? []).filter((l) => l.connector !== 'browser' || c?.browser === true)
+
 // Whether this computer lends a connector's account now.
 export const lends = (c: Config | null, connector: string, account: string) =>
-  !!c?.lends.some((l) => l.connector === connector && l.account === account)
+  lentNow(c).some((l) => l.connector === connector && l.account === account)

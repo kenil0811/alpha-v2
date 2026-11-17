@@ -159,6 +159,8 @@ export function registerComputers(ctx: Ctx): void {
     lastSeenAt: null,
     version: null,
     here: true,
+    browser: false,
+    sites: [],
     lends: lendsOf(hereLends()),
   })
   const viewOf = (id: string): ComputerView | null => {
@@ -175,6 +177,10 @@ export function registerComputers(ctx: Ctx): void {
       lastSeenAt: c.lastSeenAt,
       version: bridges.versionOf(c.id),
       here: false,
+      browser: bridges.browserOn(c.id),
+      sites: (engine.hands?.browser().as(user.id).sites() ?? [])
+        .filter((s) => s.computer === c.id)
+        .map((s) => ({ site: s.site, at: s.at })),
       lends: lendsOf(world.connections.on(c.id)),
     }
   }

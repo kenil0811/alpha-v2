@@ -64,4 +64,5 @@ export interface AgentScheduleView {
 export interface SiteView {
   site: string // its registrable name: google.com
   at: string // when they signed in
+  on: string | null // the computer of theirs it was signed in to on (the Bridge), by its name
 }

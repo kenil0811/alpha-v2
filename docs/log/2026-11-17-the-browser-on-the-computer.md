@@ -1,0 +1,24 @@
+# 17 Nov 2026: Bridge step 4, the browser on the computer
+
+Kenil's calls on doc CE9YhfMqra7VsJHVWjAruc: Chrome only ("lets just keep chrome for now, no need
+for edge"); a step when the computer is off answers at once; Google, LinkedIn and a site whose
+server sign-in fails twice move to the computer; signing in starts from Alpha.
+
+- Tried first on his Mac: Chrome started with `--remote-debugging-pipe`, its messages relayed
+  through a local websocket, driven by Playwright's `connectOverCDP`, a page read and its
+  screencast frames received. So nothing on the computer listens, and the core's browser code,
+  Watch and Take over need no change.
+- Alpha Bridge 0.4.0: a Browser switch in its menu (and `alpha-bridge browser on|off`), off until
+  turned on and refused without Chrome. Asked by Alpha, it opens a site in a normal Chrome window
+  of the site's own profile in its folder; closing the window lends the site. It drives only a
+  site it lends, with the switch on and not paused, and a pipe ends when either does.
+- The core: `bridge/cdp.ts` (the loopback relay, one key per use), `bridge/sites.ts` (where a
+  person signs in to a site: here, or their computer, or words for what is missing), the browser's
+  `OnComputer` hook and markers (`.on-computer` with the computer and the site's own name; `.moves.json`
+  for sign-ins that failed on the server). The hub carries sign-ins, the switch and the pipe.
+  `core/config/sites.yaml` lists the sites and the tries.
+- The window: Sites says which computer a site was signed in to on; a card's and Sites' Sign in say
+  the window is open on that computer; a computer's page lists its sites with Sign out.
+- Test: a made-up site on this machine, Playwright's browser standing in for the computer's Chrome;
+  signed in there, read by the core through the relay, refused for another person (B1) and for a
+  site not lent (B2), and "Test Mac is off now" once the computer stops.

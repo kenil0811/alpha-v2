@@ -3,14 +3,14 @@
 // websocket and proves itself by signing a fresh challenge with its own key; nothing on the
 // computer listens. What it lends (a folder, first) is said by the computer and becomes a
 // connection that runs there; the core never names a folder for it (docs/rules.md, B2).
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import type { Computer } from '../world/computers.ts'
 import type { World } from '../world/world.ts'
 import { awayWords, BridgedProcess, type Link, pausedWords } from './process.ts'
 
 // The words a computer and the core say to each other, one JSON object a message.
 export type FromComputer =
-  | { t: 'hello'; computer: string; signature: string; version: string }
+  | { t: 'hello'; computer: string; signature: string; version: string; browser?: boolean }
   | { t: 'line'; connector: string; line: string }
   | { t: 'ended'; connector: string; why: string }
   | { t: 'lend'; connector: string; account: string }
@@ -18,6 +18,16 @@ export type FromComputer =
   | { t: 'paused'; until: string | null } // paused by its person, for an hour or until resumed
   | { t: 'resumed' }
   | { t: 'signout' } // its person signed out of it: removed, as from Your computers
+  | { t: 'browser'; on: boolean } // its Browser switch
+  | { t: 'site'; id: string; done: boolean; why?: string } // a sign-in window there, closed
+  | { t: 'cdp'; id: string; m: string } // a site's Chrome there, speaking
+  | { t: 'cdp-closed'; id: string; why: string | null }
+
+// A site's Chrome on a computer, as the core speaks to it (cdp.ts carries it to Playwright).
+export interface SitePipe {
+  send(message: string): void
+  close(): void
+}
 
 export interface Socket {
   send(text: string): void
@@ -30,6 +40,9 @@ interface Connected {
   socket: Socket
   processes: Map<string, BridgedProcess>
   paused: { until: string | null } | null
+  browser: boolean // its Browser switch is on
+  pipes: Map<string, { heard(m: string): void; closed(why: string | null): void }>
+  signIns: Map<string, { done(): void; failed(why: string): void }>
 }
 
 // What the hub needs of the core: the window told of a computer coming or going, and what a
@@ -40,6 +53,7 @@ export interface Hands {
   unlend(pc: Computer, connector: string, account: string): void
   signedOut(pc: Computer): void
   back(pc: Computer): void // connected again: what waited for it is read now
+  sitesOn(pc: Computer): string[] // the sites signed in to there for Alpha
 }
 
 const NONE: Hands = {
@@ -50,6 +64,7 @@ const NONE: Hands = {
   unlend: () => undefined,
   signedOut: () => undefined,
   back: () => undefined,
+  sitesOn: () => [],
 }
 
 export class Hub {
@@ -65,6 +80,59 @@ export class Hub {
 
   online(computer: string): boolean {
     return this.connected.has(computer)
+  }
+
+  // Whether its Browser switch is on, while it is connected.
+  browserOn(computer: string): boolean {
+    return this.connected.get(computer)?.browser === true
+  }
+
+  // Signing in to a site on a computer: its window opens there, and this ends when its person
+  // closes it (the site then lent), or says why it did not.
+  signInSite(computer: string, site: string, url: string): Promise<void> {
+    const c = this.connected.get(computer)
+    if (!c) return Promise.reject(new Error(awayWords(this.nameOf(computer))))
+    const id = `${randomUUID()}/${site}`
+    return new Promise((done, failed) => {
+      c.signIns.set(id, { done, failed: (why) => failed(new Error(why)) })
+      c.socket.send(JSON.stringify({ t: 'site-sign-in', id, site, url }))
+    })
+  }
+
+  // Signed out of a site there: its profile on the computer goes.
+  signOutSite(computer: string, site: string): void {
+    this.connected.get(computer)?.socket.send(JSON.stringify({ t: 'site-sign-out', site }))
+  }
+
+  // A signed-in site's Chrome on a computer, driven out of sight: what it says goes to heard, and
+  // closed says why it stopped. Null when the computer is not connected.
+  pipe(
+    computer: string,
+    site: string,
+    heard: (message: string) => void,
+    closed: (why: string | null) => void,
+  ): SitePipe | null {
+    const c = this.connected.get(computer)
+    if (!c) return null
+    const id = `${randomUUID()}/${site}`
+    c.pipes.set(id, { heard, closed })
+    c.socket.send(JSON.stringify({ t: 'cdp-open', id, site }))
+    return {
+      send: (m) => this.connected.get(computer)?.socket.send(JSON.stringify({ t: 'cdp', id, m })),
+      close: () => {
+        const now = this.connected.get(computer)
+        if (!now?.pipes.delete(id)) return
+        now.socket.send(JSON.stringify({ t: 'cdp-close', id }))
+      },
+    }
+  }
+
+  private nameOf(computer: string): string {
+    return (
+      this.connected.get(computer)?.computer.name ??
+      this.world?.computers.get(computer)?.name ??
+      'The computer'
+    )
   }
 
   // The Bridge a computer runs, while it is connected.
@@ -131,7 +199,16 @@ export class Hub {
             for (const p of older.processes.values()) p.ended(awayWords(c.name))
             older.socket.close(4409, 'This computer connected again.')
           }
-          me = { computer: c, version: m.version, socket, processes: new Map(), paused: null }
+          me = {
+            computer: c,
+            version: m.version,
+            socket,
+            processes: new Map(),
+            paused: null,
+            browser: m.browser === true,
+            pipes: new Map(),
+            signIns: new Map(),
+          }
           this.connected.set(c.id, me)
           this.world?.computers.seen(c.id)
           socket.send(JSON.stringify({ t: 'welcome', name: c.name, lent: this.lent(c.id) }))
@@ -145,6 +222,8 @@ export class Hub {
         if (!me || this.connected.get(me.computer.id) !== me) return
         this.connected.delete(me.computer.id)
         for (const p of me.processes.values()) p.ended(awayWords(me.computer.name))
+        for (const p of me.pipes.values()) p.closed(awayWords(me.computer.name))
+        for (const s of me.signIns.values()) s.failed(awayWords(me.computer.name))
         this.world?.computers.seen(me.computer.id)
         this.hands.notify()
       },
@@ -158,13 +237,21 @@ export class Hub {
 
   // What a computer lends now, as connections that run on it.
   lent(computer: string): { connector: string; account: string; connection: string }[] {
-    return (this.world?.connections.on(computer) ?? [])
-      .filter((k) => k.state !== 'paused')
-      .map((k) => ({
-        connector: k.connector,
-        account: k.account,
-        connection: k.id,
-      }))
+    const pc = this.world?.computers.get(computer)
+    return [
+      ...(this.world?.connections.on(computer) ?? [])
+        .filter((k) => k.state !== 'paused')
+        .map((k) => ({
+          connector: k.connector,
+          account: k.account,
+          connection: k.id,
+        })),
+      ...(pc ? this.hands.sitesOn(pc) : []).map((site) => ({
+        connector: 'browser',
+        account: site,
+        connection: '',
+      })),
+    ]
   }
 
   private from(me: Connected, m: FromComputer): void {
@@ -174,6 +261,28 @@ export class Hub {
     }
     if (m.t === 'ended') {
       me.processes.get(m.connector)?.ended(m.why, 'other')
+      return
+    }
+    if (m.t === 'cdp') {
+      me.pipes.get(m.id)?.heard(m.m)
+      return
+    }
+    if (m.t === 'cdp-closed') {
+      const p = me.pipes.get(m.id)
+      me.pipes.delete(m.id)
+      p?.closed(m.why)
+      return
+    }
+    if (m.t === 'site') {
+      const s = me.signIns.get(m.id)
+      me.signIns.delete(m.id)
+      if (m.done) s?.done()
+      else s?.failed(m.why ?? 'The sign-in did not finish.')
+      return
+    }
+    if (m.t === 'browser') {
+      me.browser = m.on
+      this.hands.notify()
       return
     }
     const say = (r: Record<string, unknown>) => me.socket.send(JSON.stringify(r))

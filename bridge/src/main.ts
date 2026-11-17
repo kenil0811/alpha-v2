@@ -4,6 +4,7 @@
 //                                 (or calendar, contacts: a Mac's own, through Alpha's helper)
 //   alpha-bridge unlend <folder>  stop lending it
 //   alpha-bridge list             what this computer is paired with and what it lends
+//   alpha-bridge browser on|off   let Alpha sign in to sites here and work on them (Chrome)
 //   alpha-bridge run              connect and stay connected; Alpha reads only while this runs
 // The key stays in this computer's Keychain or Credential Manager; the rest is in its own folder.
 import { unwatchFile, watchFile } from 'node:fs'
@@ -11,7 +12,7 @@ import { Bridge, VERSION } from './bridge.ts'
 import { helper, start } from './code.ts'
 import { type Config, fileOf, homeOf, readConfig } from './config.ts'
 import { storeOf } from './keys.ts'
-import { lendHere, pairHere, serve } from './serve.ts'
+import { browserHere, lendHere, pairHere, serve, siteHere } from './serve.ts'
 
 const say = (words: string) => console.log(words)
 const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -41,6 +42,11 @@ async function main(args: string[]): Promise<void> {
     if (what === 'lend') say('Alpha reads it while alpha-bridge run is going.')
     return
   }
+  if (what === 'browser') {
+    paired(home)
+    say(browserHere(home, arg === 'on'))
+    return
+  }
   if (what === 'list') {
     const c = paired(home)
     say(`Paired with ${new URL(c.alpha).host} as ${c.name}.`)
@@ -52,6 +58,8 @@ async function main(args: string[]): Promise<void> {
     paired(home)
     const bridge = new Bridge({
       helper,
+      home,
+      lendSite: (site, on) => siteHere(home, site, on),
       config: () => paired(home),
       keys: storeOf(),
       start,

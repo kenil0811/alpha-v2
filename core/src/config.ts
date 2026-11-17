@@ -68,6 +68,11 @@ const People = z.object({
   role_addresses: z.array(z.string().min(1)),
 })
 
+const Sites = z.object({
+  on_computer: z.array(z.string().min(1)),
+  server_sign_in_tries: z.number().int().min(1),
+})
+
 const cache = new Map<string, { mtime: number; value: unknown }>()
 
 function load<T>(name: string, read: (text: string) => T, dir = DIR): T {
@@ -94,6 +99,7 @@ export const config = {
   limits: (dir?: string) => load('limits.yaml', yamlOf(Limits, 'limits.yaml'), dir),
   people: (dir?: string) => load('people.yaml', yamlOf(People, 'people.yaml'), dir),
   words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
+  sites: (dir?: string) => load('sites.yaml', yamlOf(Sites, 'sites.yaml'), dir),
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
   // who an agent is: its name, title, description and instructions fill the blanks

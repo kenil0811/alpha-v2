@@ -273,6 +273,20 @@ shows a connection), Lend a folder, Delete, and its latest reads. Folders live o
 page, not on Connections; on a Mac's own Alpha that computer is This Mac, where a folder is added by
 its path. A computer that connects again is read at once, so "Waiting for" goes with it.
 
+Step 4 (17 Nov) puts the browser on the computer for the sites that refuse a server. On a hosted
+Alpha a site listed in `core/config/sites.yaml` (Google, LinkedIn), or one whose sign-in on the
+server ended without the person in twice (moved for that person, said once), is signed in to on
+the person's own computer: Sign in opens it in a normal Chrome window of its own profile there
+(Alpha Bridge's folder, never their everyday Chrome), with nothing driving it, and closing that
+window lends the site. Chrome only (Kenil, 17 Nov). Agents' steps on it then run in that profile,
+out of sight: the Bridge starts Chrome with its DevTools on a pipe and carries it over its one
+connection, and the core hands it to Playwright through a websocket on its own loopback
+(`bridge/cdp.ts`), so the browse tool, connectors' browser calls, Watch and Take over work as on
+the server, the gates deciding first. The Browser switch in Alpha Bridge's menu is off until its
+person turns it on. A computer that is off, paused, or with Browser off answers a step at once,
+in words. Sites shows where each was signed in, and a computer's page lists its sites with Sign
+out.
+
 Step 3 (16 Nov) lends a Mac's own Calendar and Contacts the same way: two ticks in Alpha Bridge's
 menu, each off until ticked, with Alpha's helper carried inside the app and run there, so macOS asks
 that Mac's person (signed ad hoc, a changed helper asks again). They run either: on a Mac's own

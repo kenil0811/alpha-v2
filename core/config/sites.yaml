@@ -1,0 +1,11 @@
+# Sites on a hosted Alpha. None of these is a setting the person meets.
+
+# Sites that refuse a server's browser: on a hosted Alpha a person signs in to these on their own
+# computer, through Alpha Bridge, and agents work on them there (the Bridge, step 4, 17 Nov).
+on_computer:
+  - google.com
+  - linkedin.com
+
+# A site whose sign-in on the server ends this many times without the person signed in moves to
+# their computer, as if it were listed above; Alpha says so once (Kenil, 17 Nov).
+server_sign_in_tries: 2

@@ -7,11 +7,20 @@
 import { createPrivateKey, sign } from 'node:crypto'
 import { hostname } from 'node:os'
 import { Children, type Start } from './children.ts'
-import { type Config, type Lend, lends } from './config.ts'
+import {
+  chromeHere,
+  forget,
+  NO_CHROME,
+  openPipe,
+  type Pipe,
+  profileOf,
+  signInWindow,
+} from './chrome.ts'
+import { type Config, type Lend, lends, lentNow } from './config.ts'
 import type { KeyStore } from './keys.ts'
 import { newKey } from './keys.ts'
 
-export const VERSION = '0.3.2'
+export const VERSION = '0.4.0'
 
 // What Alpha says to the Bridge, one JSON object a message.
 type FromAlpha =
@@ -23,6 +32,11 @@ type FromAlpha =
   | { t: 'start'; connector: string }
   | { t: 'line'; connector: string; line: string }
   | { t: 'stop'; connector: string }
+  | { t: 'site-sign-in'; id: string; site: string; url: string } // its window, here
+  | { t: 'site-sign-out'; site: string }
+  | { t: 'cdp-open'; id: string; site: string } // a signed-in site's profile, driven out of sight
+  | { t: 'cdp'; id: string; m: string }
+  | { t: 'cdp-close'; id: string }
 
 // The account a computer's key is kept under: the Alpha it is paired with.
 export const keyAccount = (alpha: string) => new URL(alpha).host
@@ -84,6 +98,24 @@ export interface BridgeOptions {
   pick?: (connector: string) => void // Alpha asked its person to lend one: the picker opens here
   moved?: () => void // connected, gone or paused: the app's icon follows
   WebSocket?: typeof globalThis.WebSocket
+  home?: string // the Bridge's own folder, where its sites' profiles are
+  chrome?: () => string | null // where Chrome is here (chrome.ts)
+  window?: (chrome: string, dir: string, url: string) => Promise<void> // a sign-in window
+  lendSite?: (site: string, on: boolean) => void // a site signed in to or out of here, kept
+}
+
+// A site's address that is the site's own (google.com, or drive.google.com for it), on the web.
+const isSites = (url: string, site: string) => {
+  try {
+    const u = new URL(url)
+    // an address on this machine is its own site, its port with it (a test, a journey)
+    return (
+      /^https?:$/.test(u.protocol) &&
+      (u.host === site || u.hostname === site || u.hostname.endsWith(`.${site}`))
+    )
+  } catch {
+    return false
+  }
 }
 
 // One run of the Bridge: connected while it can be, trying again with growing pauses when it
@@ -93,6 +125,7 @@ export class Bridge {
   private socket: WebSocket | null = null
   private children: Children
   private alphaLends: Lend[] = []
+  private pipes = new Map<string, Pipe>() // a site's profile driven for Alpha now, by its id
   private stopped = false
   private pause = 1000
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -135,14 +168,23 @@ export class Bridge {
     this.stopped = true
     if (this.timer) clearTimeout(this.timer)
     this.children.stopAll()
+    this.closePipes()
     this.socket?.close()
     this.socket = null
     this.online = false
   }
 
-  // Its own list changed (a lend or an unlend here): Alpha is told now.
+  // Its own list changed (a lend or an unlend here, the Browser switch): Alpha is told now.
   changed(): void {
-    if (this.online) this.reconcile()
+    if (!this.options.config().browser) this.closePipes()
+    if (!this.online) return
+    this.send({ t: 'browser', on: this.options.config().browser === true })
+    this.reconcile()
+  }
+
+  private closePipes(): void {
+    for (const p of this.pipes.values()) p.close()
+    this.pipes.clear()
   }
 
   // Paused by its person, for some minutes or until resumed: nothing runs here meanwhile, and
@@ -152,6 +194,7 @@ export class Bridge {
     const until = minutes ? new Date(Date.now() + minutes * 60_000).toISOString() : null
     this.paused = { until }
     this.children.stopAll()
+    this.closePipes()
     if (minutes) this.resumes = setTimeout(() => this.resume(), minutes * 60_000)
     this.send({ t: 'paused', until })
     this.said(minutes ? `Paused for ${minutes} minutes.` : 'Paused until resumed.')
@@ -210,6 +253,7 @@ export class Bridge {
       const was = this.online
       this.online = false
       this.children.stopAll()
+      this.closePipes()
       this.options.moved?.()
       if (this.stopped) return
       if (e.code === 4403) {
@@ -236,6 +280,10 @@ export class Bridge {
     const c = this.options.config()
     // paused here: what Alpha asks to run is refused, whatever it is
     if (this.paused && (m.t === 'start' || m.t === 'line')) this.refuse(m)
+    else if (this.paused && m.t === 'site-sign-in')
+      this.send({ t: 'site', id: m.id, done: false, why: 'This computer is paused by its person.' })
+    else if (this.paused && m.t === 'cdp-open')
+      this.send({ t: 'cdp-closed', id: m.id, why: 'This computer is paused by its person.' })
     else if (m.t === 'challenge') this.hello(c, m.challenge)
     else if (m.t === 'welcome') {
       this.online = true
@@ -243,6 +291,7 @@ export class Bridge {
       this.pause = 1000
       // a fresh start: what ran for the last connection stops
       this.children.stopAll()
+      this.closePipes()
       this.said(`Connected to ${new URL(c.alpha).host} as ${m.name}.`)
       this.alphaLends = m.lent
       this.reconcile()
@@ -253,7 +302,14 @@ export class Bridge {
     else if (m.t === 'start') void this.children.open(m.connector)
     else if (m.t === 'line') this.children.down(m.connector, m.line)
     else if (m.t === 'stop') this.children.stop(m.connector)
-    else if (m.t === 'pick') {
+    else if (m.t === 'site-sign-in') void this.signIn(m.id, m.site, m.url)
+    else if (m.t === 'site-sign-out') this.signOutOf(m.site)
+    else if (m.t === 'cdp-open') this.openSite(m.id, m.site)
+    else if (m.t === 'cdp') this.pipes.get(m.id)?.send(m.m)
+    else if (m.t === 'cdp-close') {
+      this.pipes.get(m.id)?.close()
+      this.pipes.delete(m.id)
+    } else if (m.t === 'pick') {
       this.said('Alpha asked to lend a folder from this computer.')
       this.options.pick?.(m.connector)
     }
@@ -290,12 +346,84 @@ export class Bridge {
       return
     }
     const signature = sign(null, Buffer.from(challenge), createPrivateKey(pem)).toString('base64')
-    this.send({ t: 'hello', computer: c.computer, signature, version: VERSION })
+    this.send({
+      t: 'hello',
+      computer: c.computer,
+      signature,
+      version: VERSION,
+      browser: c.browser === true,
+    })
+  }
+
+  // Signing in to a site for Alpha, asked from Alpha: its own window here, only with the Browser
+  // switch on and only at the site's own address; once its person closes it, the site is lent.
+  private async signIn(id: string, site: string, url: string): Promise<void> {
+    const no = (why: string) => this.send({ t: 'site', id, done: false, why })
+    const c = this.options.config()
+    if (!c.browser) return no(`Turn on Browser in Alpha Bridge on ${c.name} first.`)
+    if (!isSites(url, site)) return no(`${url} is not ${site}'s own address.`)
+    const chrome = (this.options.chrome ?? chromeHere)()
+    if (!chrome) return no(NO_CHROME)
+    const dir = profileOf(this.options.home ?? '.', site)
+    this.said(`Alpha asked to sign in to ${site}: its window is open here.`)
+    try {
+      await (this.options.window ?? signInWindow)(chrome, dir, url)
+    } catch (err) {
+      return no(err instanceof Error ? err.message : String(err))
+    }
+    this.options.lendSite?.(site, true)
+    this.said(`Signed in to ${site} for Alpha.`)
+    this.reconcile()
+    this.send({ t: 'site', id, done: true })
+  }
+
+  // Signed out of a site from Alpha: its profile here goes, and it is lent no more.
+  private signOutOf(site: string): void {
+    for (const [id, p] of this.pipes)
+      if (id.endsWith(`/${site}`)) {
+        p.close()
+        this.pipes.delete(id)
+      }
+    forget(profileOf(this.options.home ?? '.', site))
+    this.options.lendSite?.(site, false)
+    this.said(`Signed out of ${site}: Alpha no longer works on it here.`)
+    this.reconcile()
+  }
+
+  // A site signed in to here, driven for Alpha out of sight: only one its person lent, with the
+  // Browser switch on (docs/rules.md, B2).
+  private openSite(id: string, site: string): void {
+    const c = this.options.config()
+    const chrome = (this.options.chrome ?? chromeHere)()
+    const why = !c.browser
+      ? `Browser is off in Alpha Bridge on ${c.name}.`
+      : !lends(c, 'browser', site)
+        ? `${site} is not signed in to on ${c.name}.`
+        : !chrome
+          ? NO_CHROME
+          : null
+    if (why || !chrome) {
+      this.send({ t: 'cdp-closed', id, why })
+      return
+    }
+    this.pipes.get(id)?.close()
+    const pipe = openPipe(
+      chrome,
+      profileOf(this.options.home ?? '.', site),
+      (message) => this.send({ t: 'cdp', id, m: message }),
+      (why) => {
+        if (this.pipes.get(id) !== pipe) return
+        this.pipes.delete(id)
+        this.send({ t: 'cdp-closed', id, why })
+      },
+    )
+    this.pipes.set(id, pipe)
+    this.said(`Working on ${site} for Alpha.`)
   }
 
   // Alpha told what this computer lends, and what it no longer does.
   private reconcile(): void {
-    const mine = this.options.config().lends
+    const mine = lentNow(this.options.config())
     const key = (l: Lend) => `${l.connector}\n${l.account}`
     const theirs = new Set(this.alphaLends.map(key))
     const ours = new Set(mine.map(key))

@@ -1,5 +1,7 @@
-import { chromePath } from '@alpha/connector-sdk'
+import { chromePath, siteOf } from '@alpha/connector-sdk'
 import { z } from 'zod'
+import { bridges } from '../../bridge/hub.ts'
+import { signInPlace } from '../../bridge/sites.ts'
 import {
   applyShape,
   describeShape,
@@ -230,18 +232,41 @@ export function registerCards(ctx: Ctx): void {
       throw new Refused('That sign-in is not waiting.')
     const hands = engine.hands
     if (!hands) throw new Refused('Alpha has no browser here.')
-    // a server has no screen: the window shows a live picture of its browser instead
-    if (!chromePath()) return { live: true }
     const url = input.url
-    void (async () => {
-      await hands
-        .browser()
-        .as(card.user ?? user.id)
-        .signIn(url)
+    const who = card.user ?? user.id
+    const site = siteOf(new URL(url).host)
+    const done = async () => {
       world.cards.answer(id, 'Sign in', { kind: 'person', id: user.id })
       const schedule = schedules(world).find((a) => a.id === input.schedule)
       if (schedule) await hands.runner.runSchedule(schedule, { user: user.id, turn: null })
       engine.events.emit('event', { type: 'lines', user: user.id })
+    }
+    // a site that refuses a server: in its own window on the person's computer, where they close
+    // it once signed in (the Bridge then lends it); the card says what is missing otherwise
+    const place = signInPlace(world, hands.browser().as(who), who, site, !chromePath())
+    if ('refused' in place) throw new Refused(place.refused)
+    if ('computer' in place) {
+      const pc = place.computer
+      void bridges
+        .signInSite(pc.id, site, url)
+        .then(done)
+        .catch((err) => {
+          world.line({
+            actor: { kind: 'person', id: user.id },
+            kind: 'error',
+            words: `Signing in to ${site} on ${pc.name} did not finish: ${err instanceof Error ? err.message : String(err)}`,
+            data: { site },
+            user: user.id,
+          })
+          engine.events.emit('event', { type: 'lines', user: user.id })
+        })
+      return { opened: true, on: pc.name }
+    }
+    // a server has no screen: the window shows a live picture of its browser instead
+    if (!chromePath()) return { live: true }
+    void (async () => {
+      await hands.browser().as(who).signIn(url)
+      await done()
     })().catch(() => undefined)
     return { opened: true }
   })

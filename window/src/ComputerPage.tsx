@@ -2,7 +2,7 @@
 // (its folders, its Calendar and Contacts, each as Connections shows a connection), Lend a folder,
 // and its latest reads. This Mac, on the Mac app, holds the folders added by their path instead.
 import type { ComputerPageView, ConnectorsView, ConnectorView } from '@alpha/core/api'
-import { Trash2 } from 'lucide-react'
+import { Globe, Trash2 } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { computerState } from './Computers.tsx'
@@ -12,7 +12,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
-import { List, Row } from './ui/list.tsx'
+import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Empty, Section } from './ui/section.tsx'
 import { updatedWords } from './ui/update-now.tsx'
@@ -114,20 +114,46 @@ export function ComputerPage({
         about={
           c.here
             ? 'Folders Alpha reads on this computer: what you put in one is kept and read, as if you dropped it in. Alpha never writes to them.'
-            : `What ${c.name} lends Alpha through Alpha Bridge: folders, picked there, and its Calendar and Contacts, turned on in Alpha Bridge's menu there. Alpha reads them only while it is on and not paused, and never writes to them.`
+            : `What ${c.name} lends Alpha through Alpha Bridge: folders, picked there; its Calendar and Contacts, turned on in Alpha Bridge's menu there; and the sites you signed in to there with its Browser on, which agents work on out of sight. Alpha reaches them only while it is on and not paused.`
         }
       >
-        {view.lends.length > 0 ? (
+        {view.lends.length + c.sites.length > 0 ? (
           <List>
             {view.lends.map((k) => (
               <ConnectionLine key={k.id} connection={k} onChange={load} />
+            ))}
+            {c.sites.map((s) => (
+              <Row
+                key={s.site}
+                lead={
+                  <Tile>
+                    <Globe className="size-4" />
+                  </Tile>
+                }
+                title={s.site}
+                sub={
+                  c.browser || !c.online
+                    ? `Signed in ${updatedWords(s.at)}`
+                    : `Signed in ${updatedWords(s.at)} · Browser is off in Alpha Bridge there`
+                }
+                actions={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => act(() => api.post('/api/sites/sign-out', { site: s.site }))}
+                  >
+                    Sign out
+                  </Button>
+                }
+              />
             ))}
           </List>
         ) : (
           <Empty>
             {c.here
               ? 'No folders added yet.'
-              : `Nothing lent yet. Lend a folder here, or turn on Calendar or Contacts in Alpha Bridge's menu on ${c.name}.`}
+              : `Nothing lent yet. Lend a folder here, or turn on Calendar, Contacts or Browser in Alpha Bridge's menu on ${c.name}.`}
           </Empty>
         )}
         {places.map((p) => (

@@ -40,6 +40,7 @@ struct Seen {
     turned_away: Option<String>, // Alpha turned it away (removed): pair again
     paused: Option<String>, // paused: until when, in words (until 9:30 PM, until you resume)
     lends: Vec<(String, String)>, // what it lends: (connector, account)
+    browser: bool, // the Browser switch: Alpha signs in to sites here and works on them
     doing: Option<String>,
 }
 
@@ -148,6 +149,7 @@ fn heard(app: &AppHandle, m: Value) {
             seen.online = m["online"].as_bool().unwrap_or(false);
             seen.turned_away = m["turnedAway"].as_str().map(String::from);
             seen.paused = m["paused"]["words"].as_str().map(String::from);
+            seen.browser = m["browser"].as_bool().unwrap_or(false);
             seen.lends = m["lends"]
                 .as_array()
                 .map(|a| {
@@ -281,6 +283,8 @@ fn build_menu(app: &AppHandle, tray: &TrayIcon, seen: &Seen, status: &str) -> ta
                 menu.append(&CheckMenuItem::with_id(app, id, title, true, on, None::<&str>)?)?;
             }
         }
+        // Chrome here, for the sites its person signs in to for Alpha; off until ticked
+        menu.append(&CheckMenuItem::with_id(app, "browser", "Browser", true, seen.browser, None::<&str>)?)?;
         if seen.paused.is_some() {
             menu.append(&MenuItem::with_id(app, "resume", "Resume", true, None::<&str>)?)?;
         } else {
@@ -319,6 +323,7 @@ fn on_menu(app: &AppHandle, id: &str) {
             let t = if on { "unlend" } else { "lend" };
             tell(app, json!({ "t": t, "connector": id }));
         }
+        "browser" => tell(app, json!({ "t": "browser", "on": !seen.browser })),
         "pause-hour" => tell(app, json!({ "t": "pause", "minutes": 60 })),
         "pause" => tell(app, json!({ "t": "pause", "minutes": null })),
         "resume" => tell(app, json!({ "t": "resume" })),

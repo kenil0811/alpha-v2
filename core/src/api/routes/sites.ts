@@ -1,8 +1,9 @@
 // The sites a person signed in to, for Connections' Sites: each with when, Sign in again, and Sign
 // out, which deletes that profile. Signing in before any work meets a sign-in opens the same Sign
 // in card a script's run meets, for this person.
-import { siteOf } from '@alpha/connector-sdk'
+import { chromePath, siteOf } from '@alpha/connector-sdk'
 import { z } from 'zod'
+import { signInPlace } from '../../bridge/sites.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
 import type { SiteView } from '../types.ts'
@@ -15,7 +16,20 @@ export function registerSites(ctx: Ctx): void {
     return hands.browser().as(user.id)
   }
 
-  app.get('/api/sites', async (): Promise<SiteView[]> => (engine.hands ? mine().sites() : []))
+  // each with the computer of the person's it was signed in to on, by its name
+  app.get(
+    '/api/sites',
+    async (): Promise<SiteView[]> =>
+      engine.hands
+        ? mine()
+            .sites()
+            .map((s) => ({
+              site: s.site,
+              at: s.at,
+              on: s.computer ? (world.computers.get(s.computer)?.name ?? 'Your computer') : null,
+            }))
+        : [],
+  )
 
   app.post('/api/sites/sign-in', async (req) => {
     const { url } = z.object({ url: z.string().min(1) }).parse(req.body)
@@ -23,6 +37,9 @@ export function registerSites(ctx: Ctx): void {
     if (!URL.canParse(at)) throw new Refused(`${url} is not a site's address.`)
     const host = new URL(at).host.toLowerCase()
     const site = siteOf(host)
+    // a site signed in to on the person's computer says first what is missing there, if anything
+    const place = signInPlace(world, mine(), user.id, site, !chromePath())
+    if ('refused' in place) throw new Refused(place.refused)
     const card = world.cards.open({
       kind: 'permission',
       gate: 'sign_in',
