@@ -2,42 +2,21 @@
 // folders. Connecting is the person's own act here: what they type goes to the Keychain, never to
 // the model.
 import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'
-import {
-  CalendarDays,
-  Folder,
-  Info,
-  Mail,
-  Network,
-  Plug,
-  Trash2,
-  Unplug,
-  UserRound,
-} from 'lucide-react'
+import { CalendarDays, Folder, Mail, Network, Plug, Trash2, UserRound } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { api, Problem, wordsOf } from './api.ts'
 import { Computers } from './Computers.tsx'
-import { Reach } from './Reach.tsx'
+import { ConnectionLine } from './ConnectionLine.tsx'
 import { SignInApps, signInWith } from './SignInApps.tsx'
 import { Sites } from './Sites.tsx'
-import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
-import { List, Row, Tile } from './ui/list.tsx'
+import { List, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
-import { Pill, type Tone } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
-import { UpdateNow } from './ui/update-now.tsx'
-
-const STATE: Record<ConnectionView['state'], [string, Tone]> = {
-  connected: ['Connected', 'good'],
-  needs_sign_in: ['Needs you to sign in', 'warn'],
-  broken: ['Not working', 'bad'],
-  paused: ['Paused', 'neutral'],
-  waiting: ['Waiting for the customer', 'warn'],
-}
 
 // The pictures a connector can ask for (its manifest's icon).
 const ICONS: Record<ConnectorView['icon'], ReactNode> = {
@@ -73,7 +52,7 @@ export function Connections({
         title="Connections"
         about="Your accounts, read by Alpha; what you type stays in the Keychain."
       >
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] items-start gap-3">
           {accounts.map((c) => (
             <ConnectorTile
               key={c.name}
@@ -135,187 +114,6 @@ export function Connections({
       </Section>
       <Computers version={version} />
     </>
-  )
-}
-
-// A connection: a row in the folders' list, or a block in its connector's tile.
-function ConnectionLine({
-  connection: k,
-  onChange,
-  inTile,
-}: {
-  connection: ConnectionView
-  onChange: () => void
-  inTile?: boolean
-}) {
-  const { busy, problem, act } = useAct(onChange)
-  const [leaving, setLeaving] = useState(false)
-  // who set it up, where it is kept and what it may reach: under Details, out of the way (his
-  // word, 16 Nov); a refused host and a problem always show, since they ask for something
-  const [details, setDetails] = useState(false)
-  const [state, tone] = STATE[k.state]
-  const about = (
-    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      {k.computer && (
-        <span>
-          On {k.computer.name}
-          {k.computer.online ? '' : ', offline now'}
-        </span>
-      )}
-      {k.health && <Pill tone="warn">{k.health}</Pill>}
-      {!details && k.refused.length > 0 && <Reach connection={k} busy={busy} act={act} />}
-      {details && <span>Set up by {k.owner}</span>}
-      {details &&
-        k.tables.map((t) => (
-          <span key={t.id}>
-            Kept in{' '}
-            <a className="text-accent underline underline-offset-3" href={`#/table/${t.id}`}>
-              {t.name}
-            </a>
-            {' · '}
-            <button
-              type="button"
-              className="underline underline-offset-3"
-              disabled={busy}
-              onClick={() =>
-                act(() => api.post(`/api/tables/${t.id}/sidebar`, { shown: t.hidden }))
-              }
-            >
-              {t.hidden ? 'Show in the sidebar' : 'Take out of the sidebar'}
-            </button>
-          </span>
-        ))}
-      {details && <Reach connection={k} busy={busy} act={act} />}
-    </span>
-  )
-  const buttons = (
-    <>
-      {k.settings ? (
-        // the one switch macOS keeps outside Alpha: System Settings opened at its pane
-        <>
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={busy}
-            onClick={() => act(() => api.post('/api/setup/settings', { pane: k.settings }))}
-          >
-            Open System Settings
-          </Button>
-          <UpdateNow
-            label="Read now"
-            at={k.lastSyncAt}
-            busy={busy}
-            onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
-          />
-        </>
-      ) : k.state === 'needs_sign_in' ? (
-        <Button
-          size="sm"
-          variant="primary"
-          onClick={() => {
-            // a site read as the person opens in Chrome; a provider's sign-in opens its own page
-            // in the browser; a password goes in Alpha's own form
-            if (k.inBrowser) void act(() => api.post(`/api/connections/${k.id}/sign-in`))
-            else if (k.signsInWith) void act(() => signInWith(k.id))
-            else window.location.hash = `#/intelligence/connections?connect=${k.connector}`
-          }}
-        >
-          {k.inBrowser
-            ? 'Sign in with Chrome'
-            : k.signsInWith
-              ? `Sign in with ${k.signsInWith}`
-              : 'Sign in'}
-        </Button>
-      ) : k.state === 'waiting' ? (
-        <Button
-          size="sm"
-          disabled={busy}
-          onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
-        >
-          Try again
-        </Button>
-      ) : (
-        <UpdateNow
-          label="Read now"
-          at={k.lastSyncAt}
-          busy={busy}
-          onClick={() => act(() => api.post(`/api/connections/${k.id}/sync`))}
-        />
-      )}
-      <More label="More" disabled={busy}>
-        {(close) => (
-          <>
-            <MenuItem
-              onClick={() => {
-                close()
-                setDetails(!details)
-              }}
-            >
-              <Info className="size-3.5" />
-              {details ? 'Fewer details' : 'Details'}
-            </MenuItem>
-            <MenuItem
-              danger
-              onClick={() => {
-                close()
-                setLeaving(true)
-              }}
-            >
-              <Unplug className="size-3.5" />
-              Disconnect
-            </MenuItem>
-          </>
-        )}
-      </More>
-      <Refusal words={problem} />
-    </>
-  )
-  // Disconnect asks first, naming what goes (item 28, 25 Oct)
-  const confirm = (
-    <Confirm
-      open={leaving}
-      title={`Disconnect ${k.title}?`}
-      yes="Disconnect"
-      busy={busy}
-      onClose={() => setLeaving(false)}
-      onYes={() => {
-        setLeaving(false)
-        void act(() => api.delete(`/api/connections/${k.id}`))
-      }}
-    >
-      Alpha stops reading {k.account}. What it read stays, and connecting again starts from scratch.
-    </Confirm>
-  )
-  if (inTile)
-    return (
-      <div className="group/row flex flex-col gap-2 border-hair border-t pt-3">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate font-medium text-ink">{k.account}</span>
-          <Pill tone={tone}>{state}</Pill>
-        </div>
-        <div className="text-ink-3 text-sm">{about}</div>
-        <div className="flex flex-wrap gap-2">{buttons}</div>
-        {confirm}
-      </div>
-    )
-  return (
-    <Row
-      lead={
-        <Tile>
-          <Folder className="size-4" />
-        </Tile>
-      }
-      title={k.account}
-      sub={about}
-      actions={
-        <>
-          <Pill tone={tone}>{state}</Pill>
-          {buttons}
-        </>
-      }
-    >
-      {confirm}
-    </Row>
   )
 }
 
