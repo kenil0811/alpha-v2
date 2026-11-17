@@ -10,6 +10,7 @@ import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill, type Tone } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
+import { Segmented } from './ui/segmented.tsx'
 import { updatedWords } from './ui/update-now.tsx'
 
 const size = (n: number) =>
@@ -31,17 +32,37 @@ const READ: Record<KeptFileView['read'], [string, Tone]> = {
   kept: ['Saved as it is', 'neutral'],
 }
 
-export function KeptFiles({ version }: { version: number }) {
+// The modules the files belong to, each with how many, and how many belong to none.
+function byModule(files: KeptFileView[]) {
+  const counts = new Map<string, { id: string; name: string; count: number }>()
+  for (const f of files)
+    for (const m of f.modules) counts.set(m.id, { ...m, count: (counts.get(m.id)?.count ?? 0) + 1 })
+  return {
+    modules: [...counts.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    none: files.filter((f) => !f.modules.length).length,
+  }
+}
+
+export function KeptFiles({ version, module }: { version: number; module: string | null }) {
   const [files, setFiles] = useState<KeptFileView[] | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [find, setFind] = useState('')
+  const [of, setOf] = useState(module ?? 'all') // a module's files, those of none, or all
+  useEffect(() => setOf(module ?? 'all'), [module])
   // read again whenever the world changes (a folder bringing a file, a PDF read)
   useEffect(() => {
     api.get<KeptFileView[]>('/api/files').then(setFiles, (e) => setProblem(wordsOf(e)))
   }, [version])
   if (!files) return <Refusal words={problem} />
   const words = find.trim().toLowerCase()
-  const shown = words ? files.filter((f) => f.name.toLowerCase().includes(words)) : files
+  const by = byModule(files)
+  const picked = of === 'none' || by.modules.some((m) => m.id === of) ? of : 'all'
+  const shown = files.filter(
+    (f) =>
+      (picked === 'all' ||
+        (picked === 'none' ? !f.modules.length : f.modules.some((m) => m.id === picked))) &&
+      (!words || f.name.toLowerCase().includes(words)),
+  )
   return (
     <Section
       title="Files"
@@ -54,6 +75,20 @@ export function KeptFiles({ version }: { version: number }) {
           value={find}
           onChange={(e) => setFind(e.target.value)}
         />
+      )}
+      {by.modules.length > 0 && (
+        <div className="overflow-x-auto">
+          <Segmented
+            label="Module"
+            value={picked}
+            onChange={setOf}
+            options={[
+              { value: 'all', label: `All ${files.length}` },
+              ...by.modules.map((m) => ({ value: m.id, label: `${m.name} ${m.count}` })),
+              ...(by.none ? [{ value: 'none', label: `No module ${by.none}` }] : []),
+            ]}
+          />
+        </div>
       )}
       {shown.length > 0 ? (
         <List>
@@ -68,7 +103,9 @@ export function KeptFiles({ version }: { version: number }) {
                     {f.name}
                   </a>
                 }
-                sub={`From ${f.from} · ${updatedWords(f.at)} · ${size(f.size)}${
+                sub={`${
+                  f.modules.length ? `${f.modules.map((m) => m.name).join(', ')} · from` : 'From'
+                } ${f.from} · ${updatedWords(f.at)} · ${size(f.size)}${
                   f.read === 'failed' && f.words ? ` · ${f.words}` : ''
                 }`}
                 actions={
@@ -82,7 +119,11 @@ export function KeptFiles({ version }: { version: number }) {
         </List>
       ) : (
         <p className="text-ink-3 text-md">
-          {files.length ? 'No file has that in its name.' : 'No files yet.'}
+          {!files.length
+            ? 'No files yet.'
+            : words
+              ? 'No file has that in its name.'
+              : 'No files here.'}
         </p>
       )}
     </Section>

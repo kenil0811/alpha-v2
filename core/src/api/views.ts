@@ -4,6 +4,7 @@ import type { FastifyReply } from 'fastify'
 import { config } from '../config.ts'
 import { actingView } from '../engine/acting.ts'
 import { startOf } from '../engine/task-runs.ts'
+import { cardAgent } from '../modules/agent-marks.ts'
 import { unmetNeeds } from '../modules/runs/index.ts'
 import { readSchedule, type Schedule } from '../modules/schedules.ts'
 import { fromView } from '../modules/shipped.ts'
@@ -52,6 +53,7 @@ export function makeViews(ctx: BaseCtx) {
   // A card as the window shows it; a file from the mail with its place and the rows to pick.
   const cardOut = (c: Card): CardView => ({
     ...cardView(c),
+    agent: cardAgent(world, c),
     filing: engine.hands?.intake?.view(c) ?? null,
     draft: engine.hands?.drafts?.view(c) ?? null,
     match: c.kind === 'match' ? world.people.matchView(c.id) : null,
@@ -491,6 +493,7 @@ export function cardView(c: Card): CardView {
     answer: c.answer,
     restsOn: c.restsOn,
     module: c.module,
+    agent: c.agent,
   }
 }
 

@@ -8,6 +8,7 @@ export function registerMe(ctx: Ctx): void {
   const layoutOf = (): Layout => {
     const folded = world.preference(user.id, 'rail_folded_modules')
     const hidden = world.preference(user.id, 'rail_hidden_modules')
+    const pinned = world.preference(user.id, 'rail_pinned_modules')
     const panel = Number(world.preference(user.id, 'panel_width'))
     const n = (key: string) => {
       const v = Number(world.preference(user.id, key))
@@ -17,6 +18,7 @@ export function registerMe(ctx: Ctx): void {
       railFolded: world.preference(user.id, 'rail_folded') === 'yes',
       folded: folded ? (JSON.parse(folded) as string[]) : [],
       hidden: hidden ? (JSON.parse(hidden) as string[]) : [],
+      pinned: pinned ? (JSON.parse(pinned) as string[]) : [],
       railWidth: n('rail_width'),
       panel: Number.isFinite(panel) && panel > 0 ? panel : null,
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
@@ -27,12 +29,14 @@ export function registerMe(ctx: Ctx): void {
 
   app.get('/api/me', async (): Promise<Me> => {
     const theme = world.preference(user.id, 'theme')
+    const size = world.preference(user.id, 'text_size')
     return {
       user: { id: user.id, name: user.name, role: user.role },
       signIn: !!options.signIn,
       developer: options.data?.install().developer ?? false,
       tenant: world.tenant,
       theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
+      textSize: size === 'small' || size === 'large' ? size : 'medium',
       layout: layoutOf(),
     }
   })
@@ -44,6 +48,7 @@ export function registerMe(ctx: Ctx): void {
         railFolded: z.boolean().optional(),
         folded: z.array(z.string()).optional(),
         hidden: z.array(z.string()).optional(),
+        pinned: z.array(z.string()).optional(),
         panel: z.number().int().positive().nullable().optional(),
         railWidth: z.number().int().positive().nullable().optional(),
         assistant: z.enum(['open', 'folded']).optional(),
@@ -72,14 +77,27 @@ export function registerMe(ctx: Ctx): void {
         'rail_hidden_modules',
         given.hidden.length ? JSON.stringify(given.hidden) : null,
       )
+    if (given.pinned !== undefined)
+      world.setPreference(
+        user.id,
+        'rail_pinned_modules',
+        given.pinned.length ? JSON.stringify(given.pinned) : null,
+      )
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
     return layoutOf()
   })
 
+  // The person's look and text size, kept with them so they follow them to another window.
   app.post('/api/appearance', async (req) => {
-    const { theme } = z.object({ theme: z.enum(['mac', 'light', 'dark']) }).parse(req.body)
-    world.setPreference(user.id, 'theme', theme === 'mac' ? null : theme)
+    const { theme, textSize } = z
+      .object({
+        theme: z.enum(['mac', 'light', 'dark']).optional(),
+        textSize: z.enum(['small', 'medium', 'large']).optional(),
+      })
+      .parse(req.body)
+    if (theme) world.setPreference(user.id, 'theme', theme === 'mac' ? null : theme)
+    if (textSize) world.setPreference(user.id, 'text_size', textSize === 'medium' ? null : textSize)
     return { ok: true }
   })
 

@@ -187,8 +187,16 @@ const VERB: Record<Does, string> = {
   sign_in: 'sign in',
 }
 
-const or = (xs: string[]) =>
-  xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`
+// A rule's sentence in parts: what differs from rule to rule (tables, sites, addresses, the
+// connection, the module) bold, the verbs and joins plain.
+export type Part = { text: string; bold: boolean }
+const plain = (text: string): Part => ({ text, bold: false })
+const bold = (text: string): Part => ({ text, bold: true })
+
+// a, b or c, with each of them bold or plain
+const or = (xs: Part[][]): Part[] =>
+  xs.flatMap((x, i) => [...(i === 0 ? [] : [plain(i === xs.length - 1 ? ' or ' : ', ')]), ...x])
+const orBold = (xs: string[]) => or(xs.map((x) => [bold(x)]))
 
 export class Rules {
   private db: Db
@@ -201,32 +209,54 @@ export class Rules {
 
   // A rule in code's own words: what it holds, never what the model said it holds.
   describe(s: Pick<RuleSpec, 'side' | 'module' | 'schedule' | 'covers'>): string {
+    return this.parts(s)
+      .map((p) => p.text)
+      .join('')
+  }
+
+  // The sentence in parts, with today's names: a renamed table says its new name.
+  parts(s: Pick<RuleSpec, 'side' | 'module' | 'schedule' | 'covers'>): Part[] {
     const c = s.covers
     const tables = (c.tables ?? []).map((t) => this.shape.table(t)?.name ?? 'a table removed since')
-    const what = c.does.map((d) => {
+    const what = c.does.map((d): Part[] => {
       const verb = VERB[d]
       if ((d === 'read' || d === 'change' || d === 'remove') && tables.length)
-        return `${verb} rows in ${or(tables)}`
-      if (d === 'reach') return `${verb} ${c.sites?.length ? or(c.sites) : 'sites'}`
+        return [plain(`${verb} rows in `), ...orBold(tables)]
+      if (d === 'reach')
+        return c.sites?.length ? [plain(`${verb} `), ...orBold(c.sites)] : [plain(`${verb} sites`)]
       if (d === 'send') {
         const to = c.to?.addresses?.length
-          ? ` to ${or(c.to.addresses)}`
+          ? [plain(' to '), ...orBold(c.to.addresses)]
           : c.to?.outside?.length
-            ? ` to an address outside ${or(c.to.outside)}`
+            ? [plain(' to an address outside '), ...orBold(c.to.outside)]
             : c.to?.inside?.length
-              ? ` to addresses at ${or(c.to.inside)}`
-              : ' anything'
-        return `${verb}${to}`
+              ? [plain(' to addresses at '), ...orBold(c.to.inside)]
+              : [plain(' anything')]
+        return [plain(verb), ...to]
       }
-      return verb
+      return [plain(verb)]
     })
-    const through = c.through?.length ? ` through ${or(c.through)}` : ''
+    const through = c.through?.length ? [plain(' through '), ...orBold(c.through)] : []
     const module = s.module ? this.shape.module(s.module)?.name : null
-    const where = module ? ` in ${module}` : s.schedule ? '' : ', anywhere in Alpha'
-    const who = s.schedule ?? 'Alpha'
-    return s.side === 'deny'
-      ? `${who} must never ${or(what)}${through}${where}.`
-      : `${who} may ${or(what)}${through}${where} without asking.`
+    const where = module
+      ? [plain(' in '), bold(module)]
+      : s.schedule
+        ? []
+        : [plain(', anywhere in Alpha')]
+    const who = s.schedule ? bold(s.schedule) : plain('Alpha')
+    const joined = (xs: Part[]) =>
+      xs.reduce<Part[]>((out, p) => {
+        const last = out.at(-1)
+        if (last && last.bold === p.bold)
+          out[out.length - 1] = { ...last, text: last.text + p.text }
+        else out.push(p)
+        return out
+      }, [])
+    return joined(
+      s.side === 'deny'
+        ? [who, plain(' must never '), ...or(what), ...through, ...where, plain('.')]
+        : [who, plain(' may '), ...or(what), ...through, ...where, plain(' without asking.')],
+    )
   }
 
   // A rule as proposed, checked: something code can match, in tables and a module that are there.

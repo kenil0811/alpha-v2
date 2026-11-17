@@ -1,7 +1,7 @@
 // Home: the date, the greeting, the ask box, what needs the person while something waits (cards
 // answered right here), and today's tasks. The modules are in the rail; the conversation has its
 // own place in the rail and on the right of every screen.
-import type { CardView, Stream, TasksView } from '@alpha/core/api'
+import type { AgentView, CardView, Stream, TasksView } from '@alpha/core/api'
 import { ArrowUp, KeyRound, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
@@ -11,6 +11,7 @@ import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
 import { Group, Line, Quiet } from './ui/groups.tsx'
+import { Segmented } from './ui/segmented.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
 function NotLoaded({ onTry }: { onTry: () => void }) {
@@ -24,6 +25,15 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
   )
 }
 
+// The agents the waiting cards come from, each with how many, in the team's order; a card no
+// agent raised (a match, a kit's signature) and a sign-in show under All only.
+function byAgent(cards: CardView[], agents: AgentView[]) {
+  return agents.flatMap((a) => {
+    const count = cards.filter((c) => c.agent === a.id).length
+    return count ? [{ id: a.id, name: a.name, count }] : []
+  })
+}
+
 function greeting(name: string): string {
   const h = new Date().getHours()
   const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
@@ -33,10 +43,12 @@ function greeting(name: string): string {
 export function Home({
   stream,
   name,
+  agents,
   onAsked,
 }: {
   stream: Stream | null
   name: string
+  agents: AgentView[] // for Needs you's filter by agent
   onAsked: () => void // the answer opens on the right
 }) {
   const [tasks, setTasks] = useState<TasksView | null>(null)
@@ -62,8 +74,13 @@ export function Home({
     load()
   }, [load, last])
 
-  const cards = stream?.cards ?? []
-  const signIns = stream?.attention ?? []
+  const [from, setFrom] = useState('all') // Needs you's cards from one agent, or all
+  const all = stream?.cards ?? []
+  const by = byAgent(all, agents)
+  const one = by.length > 1 && by.some((a) => a.id === from) ? from : 'all'
+  const cards = one === 'all' ? all : all.filter((c) => c.agent === one)
+  const signIns = one === 'all' ? (stream?.attention ?? []) : []
+  const waiting = all.length + (stream?.attention ?? []).length
   const changeCard = (card: CardView) => {
     setWords(`About “${card.words.replace(/\?$/, '')}”: `)
     ask.current?.focus()
@@ -97,8 +114,21 @@ export function Home({
         {SCREENS.map((s) => s.Waiting && <s.Waiting key={s.name} />)}
 
         {/* only while something waits */}
-        {cards.length + signIns.length > 0 && (
-          <Group title="Needs you" count={cards.length + signIns.length}>
+        {waiting > 0 && (
+          <Group title="Needs you" count={waiting}>
+            {by.length > 1 && (
+              <div>
+                <Segmented
+                  label="From"
+                  value={one}
+                  onChange={setFrom}
+                  options={[
+                    { value: 'all', label: `All ${waiting}` },
+                    ...by.map((a) => ({ value: a.id, label: `${a.name} ${a.count}` })),
+                  ]}
+                />
+              </div>
+            )}
             {cards.map((c) => (
               <CardBox key={c.id} id={c.id} card={c} onChange={changeCard} />
             ))}

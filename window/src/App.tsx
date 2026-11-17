@@ -43,7 +43,7 @@ import { Tasks } from './Tasks.tsx'
 import { TaskWork } from './TaskThread.tsx'
 import { frameOf } from './table/frame.ts'
 import { titleOf } from './table/values.ts'
-import { applyTheme } from './theme.ts'
+import { applyTextSize, applyTheme } from './theme.ts'
 import { inside, landingOf } from './tree.ts'
 import { SlideIn } from './ui/slide.tsx'
 import { Waiting } from './ui/waiting.tsx'
@@ -263,6 +263,7 @@ export function App() {
         setName(me.user.name)
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
+        applyTextSize(me.textSize)
         // the assistant starts closed, whatever it was when the window last closed
         setLayout({ ...me.layout, assistant: 'folded' })
       },
@@ -446,7 +447,12 @@ export function App() {
             <div className="flex min-h-0 flex-1">
               <div className="min-w-0 flex-1">
                 {place.at === 'home' ? (
-                  <Home stream={stream} name={name} onAsked={() => setAsking(true)} />
+                  <Home
+                    stream={stream}
+                    name={name}
+                    agents={agents}
+                    onAsked={() => setAsking(true)}
+                  />
                 ) : place.at === 'conversation' ? (
                   <AgentsScreen
                     setup={place.setup}

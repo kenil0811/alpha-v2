@@ -16,7 +16,14 @@ import { Schedules } from './Schedules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
 import { InBar } from './Shell.tsx'
 import { TokenForm } from './TokenForm.tsx'
-import { applyTheme, savedTheme, type Theme } from './theme.ts'
+import {
+  applyTextSize,
+  applyTheme,
+  savedTextSize,
+  savedTheme,
+  type TextSize,
+  type Theme,
+} from './theme.ts'
 import { MODEL_NAMES, UsageSection } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
@@ -101,7 +108,7 @@ export function Settings({
     agents: <AgentsSection version={version} />,
     schedules: <Schedules version={version} />,
     connections: <Connections view={view} open={open} version={version} onChange={load} />,
-    files: <KeptFiles version={version} />,
+    files: <KeptFiles version={version} module={open} />,
     modules: <Modules version={version} owner={!member} developer={!!me?.developer} />,
     permissions: <Permissions version={version} owner={!member} />,
     model: <ModelSection />,
@@ -442,6 +449,7 @@ function KeyForm({
 
 function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => void }) {
   const [theme, setTheme] = useState<Theme>(savedTheme)
+  const [size, setSize] = useState<TextSize>(savedTextSize)
   const tables = view.connections.flatMap((k) => k.tables)
   const shown = tables.some((t) => !t.hidden)
   const { busy, problem, act } = useAct(onChange)
@@ -468,6 +476,25 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
                 { value: 'mac', label: 'Match system' },
                 { value: 'light', label: 'Light' },
                 { value: 'dark', label: 'Dark' },
+              ]}
+            />
+          }
+        />
+        <Row
+          title="Text size"
+          actions={
+            <Segmented
+              label="Text size"
+              value={size}
+              onChange={(t) => {
+                setSize(t)
+                applyTextSize(t)
+                void act(() => api.post('/api/appearance', { textSize: t }))
+              }}
+              options={[
+                { value: 'small', label: 'Small' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'large', label: 'Large' },
               ]}
             />
           }

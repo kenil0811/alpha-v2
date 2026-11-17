@@ -259,6 +259,29 @@ describe('the api over a world', () => {
       ['deal.pdf', 'folder', 'failed', 'Reading PDFs needs uv, which is not on this computer yet.'],
       ['pl.csv', 'You', 'read', '1 cell'],
     ])
+    // a file belongs to a module through the rows it sits on; one on no row to none
+    const alpha = { actor: { kind: 'alpha' as const } }
+    const m = world.shape.makeModule('Deal pilot', alpha)
+    const t = world.shape.makeTable(m.id, 'Deals', [{ name: 'Name', kind: 'text' }], alpha)
+    const [row] = world.records.add(
+      t.id,
+      [{ values: { Name: 'Bakery' }, provenance: { kind: 'assumed', basis: 'a test' } }],
+      alpha,
+    )
+    world.placeFile(pdf.hash, row as string, null, person)
+    const files = (await a.inject({ url: '/api/files', headers: ok })).json() as {
+      name: string
+      modules: { name: string }[]
+    }[]
+    expect(files.map((f) => [f.name, f.modules.map((x) => x.name)])).toEqual([
+      ['deal.pdf', ['Deal pilot']],
+      ['pl.csv', []],
+    ])
+    const onModule = await a.inject({ url: `/api/modules/${m.id}/files?limit=12`, headers: ok })
+    expect(onModule.json()).toMatchObject({
+      count: 1,
+      files: [{ name: 'deal.pdf', row: { id: row, name: 'Bakery', table: t.id } }],
+    })
     await a.close()
   })
 
@@ -308,6 +331,7 @@ describe('the api over a world', () => {
       railFolded: false,
       folded: [],
       hidden: [],
+      pinned: [],
       railWidth: null,
       panel: null,
       assistant: 'open',
@@ -323,6 +347,7 @@ describe('the api over a world', () => {
         railFolded: true,
         folded: [shops.id],
         hidden: [shops.id],
+        pinned: [bakery.id, shops.id],
         panel: 560,
         railWidth: 260,
         assistant: 'folded',
@@ -333,12 +358,24 @@ describe('the api over a world', () => {
       railFolded: true,
       folded: [shops.id],
       hidden: [shops.id],
+      pinned: [bakery.id, shops.id],
       railWidth: 260,
       panel: 560,
       assistant: 'folded',
       pageSize: 100,
       agent: null,
     })
+    // the text size is kept beside the look, each on its own
+    const appearance = (payload: object) =>
+      a.inject({ method: 'POST', url: '/api/appearance', headers: ok, payload })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json().textSize).toBe('medium')
+    await appearance({ textSize: 'large' })
+    await appearance({ theme: 'dark' })
+    expect((await a.inject({ url: '/api/me', headers: ok })).json()).toMatchObject({
+      theme: 'dark',
+      textSize: 'large',
+    })
+    expect((await appearance({ textSize: 'huge' })).statusCode).toBe(400)
     await a.close()
   })
 

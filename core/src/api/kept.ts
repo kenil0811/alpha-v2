@@ -26,7 +26,7 @@ export function keptTable(
   title: string,
   fields: FieldView[],
   rows: { id: string; values: Record<string, unknown> }[],
-  kept: { editable: string[]; why: string; counts?: Record<string, number> },
+  kept: Omit<KeptTable['kept'], 'name'>,
 ): KeptTable {
   return {
     id: `kept-${name}`,

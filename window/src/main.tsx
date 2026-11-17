@@ -3,11 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App.tsx'
 import './app.css'
 import { Gate } from './SignIn.tsx'
-import { applyTheme, savedTheme } from './theme.ts'
+import { applyTextSize, applyTheme, savedTextSize, savedTheme } from './theme.ts'
 import { LinkStatus } from './ui/link-status.tsx'
 import { Tooltips } from './ui/tooltip.tsx'
 
 applyTheme(savedTheme())
+applyTextSize(savedTextSize())
 
 const root = document.getElementById('root')
 if (root) {

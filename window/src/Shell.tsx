@@ -95,7 +95,13 @@ export function Rail({
   // the rail's width, dragged by its edge, kept by Alpha per person
   const width = layout.railWidth ?? 216
   const [dragged, setDragged] = useState<number | null>(null)
-  const hiding: Hiding = { hidden: layout.hidden, set: (ids) => onLayout({ hidden: ids }) }
+  // hiding a pinned module unpins it
+  const hiding: Hiding = {
+    hidden: layout.hidden,
+    set: (ids) => onLayout({ hidden: ids, pinned: layout.pinned.filter((p) => !ids.includes(p)) }),
+    pinned: layout.pinned,
+    pin: (ids) => onLayout({ pinned: ids }),
+  }
   const empty = useContextMenu()
   const keepWidth = (w: number) => onLayout({ railWidth: w })
   // open and folded alike sit in one slide, so a fold or an open eases
@@ -110,6 +116,7 @@ export function Rail({
           waiting={waiting}
           tasksDue={tasksDue}
           hidden={hiding.hidden}
+          pinned={hiding.pinned}
           onNew={onNew}
           onOpen={() => onLayout({ railFolded: false })}
           onOpenAt={(w) => onLayout({ railFolded: false, railWidth: w })}
@@ -196,7 +203,7 @@ export function Rail({
             <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
           </Popover>
           <Signals.Provider value={signals}>
-            {shownTops(modules, hiding.hidden).map((m) => (
+            {shownTops(modules, hiding.hidden, hiding.pinned).map((m) => (
               <ModuleItem
                 key={m.id}
                 m={m}
@@ -367,6 +374,7 @@ function Strip({
   waiting,
   tasksDue,
   hidden,
+  pinned,
   onNew,
   onOpen,
   onOpenAt,
@@ -378,6 +386,7 @@ function Strip({
   waiting: number
   tasksDue: number
   hidden: string[]
+  pinned: string[]
   onNew: () => void
   onOpen: () => void
   onOpenAt: (width: number) => void // dragged out from its edge to this width
@@ -465,7 +474,7 @@ function Strip({
       )}
       <div className="my-1.5 h-px w-6 shrink-0 bg-rail-line" />
       <div className="scroll-quiet flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
-        {shownTops(modules, hidden).map((m) =>
+        {shownTops(modules, hidden, pinned).map((m) =>
           icon(
             landingOf(modules, m),
             m.name,

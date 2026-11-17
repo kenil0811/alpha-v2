@@ -1,9 +1,13 @@
 // The list a table is being worked in, and how it differs from that list as saved: kept for the
 // session, so leaving the table and coming back finds it as it was.
 
-import type { SavedView, ViewConfig } from '@alpha/core/api'
+import type { SavedView, ViewConfig, ViewKind } from '@alpha/core/api'
 import { useEffect, useRef, useState } from 'react'
 import { BLANK, complete } from './engine.ts'
+
+// All, as a table opens with no list picked: a kept list may open in another layout (Permissions'
+// rules as sentences).
+export const blankFor = (kind?: ViewKind): ViewConfig => (kind ? { ...BLANK, kind } : BLANK)
 
 interface Working {
   view: string | null
@@ -29,6 +33,7 @@ export function useWorkingList(
   given: SavedView[],
   views: SavedView[],
   loading: boolean,
+  blank: ViewConfig = BLANK,
 ) {
   const [viewId, setViewId] = useState<string | null>(() => {
     const was = stored(key)
@@ -39,7 +44,7 @@ export function useWorkingList(
     const was = stored(key)
     return was && was.view === viewId
       ? complete(was.config)
-      : complete(views.find((v) => v.id === viewId)?.config ?? BLANK)
+      : complete(views.find((v) => v.id === viewId)?.config ?? blank)
   })
   const settled = useRef(stored(key) !== null)
   useEffect(() => {

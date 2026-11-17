@@ -20,15 +20,7 @@ import { AddRow } from './table/AddRow.tsx'
 import { Board } from './table/Board.tsx'
 import { TableName } from './table/context.ts'
 import { setRule } from './table/edits.ts'
-import {
-  applyFilters,
-  applySearch,
-  BLANK,
-  columns,
-  complete,
-  differs,
-  sortRows,
-} from './table/engine.ts'
+import { applyFilters, applySearch, columns, complete, differs, sortRows } from './table/engine.ts'
 import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
@@ -48,7 +40,7 @@ import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
-import { useWorkingList } from './table/working.ts'
+import { blankFor, useWorkingList } from './table/working.ts'
 import { Select } from './ui/field.tsx'
 
 export function TableView({
@@ -70,9 +62,8 @@ export function TableView({
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // no room beside the page with the assistant open: the row panel gives way
   loading?: boolean // its shape is here and its rows are on their way: no count yet
-  // a list kept outside the module's tables (people, tasks, schedules…), served as a table: changed
-  // in a cell where the core says it may be, else on its own page, which says why; no saved lists.
-  // New adds one in the page's own way, when it has one.
+  // a list kept outside the module's tables (people, tasks…): changed in a cell where the core says
+  // it may, else on its own page, which says why; no saved lists; New in the page's own way
   kept?: {
     open: (row: string) => void
     onNew?: () => void
@@ -86,8 +77,10 @@ export function TableView({
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
   useEffect(() => setViews(data.views), [data.views])
-  const { viewId, setViewId, config, setConfig } = useWorkingList(key, data.views, views, loading)
-  const saved = complete(views.find((v) => v.id === viewId)?.config ?? BLANK)
+  const blank = blankFor(own?.layout) // All, as the list opens: a kept list may say how
+  const working = useWorkingList(key, data.views, views, loading, blank)
+  const { viewId, setViewId, config, setConfig } = working
+  const saved = complete(views.find((v) => v.id === viewId)?.config ?? blank)
   const dirty = differs(config, saved)
   const [problem, setProblem] = useState<string | null>(null)
   // a link that names a value opens where it came from; one that names a row opens the row
@@ -182,7 +175,7 @@ export function TableView({
   }
   const pick = (id: string | null) => {
     setViewId(id)
-    setConfig(complete(views.find((v) => v.id === id)?.config ?? BLANK))
+    setConfig(complete(views.find((v) => v.id === id)?.config ?? blank))
     setProblem(null)
   }
   const replace = (v: SavedView) =>
@@ -379,7 +372,7 @@ export function TableView({
                   await api.delete(`/api/views/${viewId}`)
                   setViews((vs) => vs.filter((v) => v.id !== viewId))
                   setViewId(null)
-                  setConfig(BLANK)
+                  setConfig(blank)
                 })
               }
             />
@@ -474,6 +467,7 @@ export function TableView({
             ) : config.kind === 'list' ? (
               <ListView
                 rows={rows}
+                lines={own?.lines}
                 fields={shown}
                 group={fields.find((f) => f.id === config.group)}
                 names={data.names}

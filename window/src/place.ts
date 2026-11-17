@@ -77,6 +77,9 @@ export function placeOf(address: string): Place {
   }
   const c = /^#\/intelligence\/connections\?connect=([\w-]+)$/.exec(hash)
   if (c) return { at: 'intelligence', section: 'connections', open: c[1] ?? null }
+  // Files on one module's files, from its Setup
+  const fm = /^#\/intelligence\/files\?module=([\w-]+)$/.exec(hash)
+  if (fm) return { at: 'intelligence', section: 'files', open: fm[1] ?? null }
   const s = /^#\/(settings|intelligence)(?:\/(\w+))?$/.exec(hash)
   if (s)
     return s[1] === 'settings'

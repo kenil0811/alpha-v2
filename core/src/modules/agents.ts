@@ -10,6 +10,7 @@ import { newId, run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
+import { forgetMarks } from './agent-marks.ts'
 import { commitAll, restoreFile } from './git.ts'
 import { agentSchedules, syncAgentSchedules } from './schedules.ts'
 import { ALPHA, BUILDER_KEY, markGone, refuseShipped } from './shipped.ts'
@@ -218,6 +219,7 @@ export function removeAgent(world: World, id: string, ctx: WriteCtx): void {
   }
   // one that shipped stays deleted: its source does not bring it back
   markGone(world, agent)
+  forgetMarks(world, id)
   world.agents.remove(id)
   rmSync(world.agents.dirOf(id), { recursive: true, force: true })
   world.line({

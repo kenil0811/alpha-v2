@@ -11,6 +11,7 @@ import { CardBox } from './CardBox.tsx'
 import { Composer } from './Composer.tsx'
 import { useFollow } from './follow.ts'
 import { type LiveParts, useLiveTurn } from './live.ts'
+import { useChatSeen } from './seen.ts'
 import {
   type AgentChange,
   type Answered,
@@ -67,6 +68,7 @@ export function Conversation({
   const [problem, setProblem] = useState<string | null>(null)
   const [words, setWords] = useState('')
   const composer = useRef<HTMLTextAreaElement>(null)
+  useChatSeen(task ? null : (agent?.id ?? 'chief'), stream)
   // words another screen started the assistant with
   useEffect(() => {
     const take = () => {

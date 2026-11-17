@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { stillBeingRead } from '../../files/documents.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
-import type { FileView, KeptFileView, RowFileView } from '../types.ts'
+import type { FileView, KeptFileView, ModuleFileView, RowFileView } from '../types.ts'
 
 // What a browser may show as itself: documents and pictures that carry no script.
 const INLINE = new Set([
@@ -32,6 +32,11 @@ export function registerFiles(ctx: Ctx): void {
     for (const l of world.lines({ kinds: ['error'], limit: 1000 }).reverse())
       if (typeof l.data.file === 'string' && !failed.has(l.data.file))
         failed.set(l.data.file, l.words.replace(/^.*? could not be read: /, ''))
+    const modules = world.files.modules()
+    const named = (id: string) => {
+      const m = world.shape.module(id)
+      return m ? [{ id: m.id, name: m.name }] : []
+    }
     return world.files.list().map((f) => {
       const [kind, id] = f.addedBy.split(/:(.*)/s)
       const from =
@@ -59,8 +64,34 @@ export function registerFiles(ctx: Ctx): void {
           : read === 'failed'
             ? (failed.get(f.hash) ?? null)
             : null,
+        modules: (modules.get(f.hash) ?? []).flatMap(named),
       }
     })
+  })
+
+  // The files on a module's rows, the newest first, as many as its Setup shows, and how many in all.
+  app.get('/api/modules/:id/files', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const { limit } = z.object({ limit: z.coerce.number().int().positive() }).parse(req.query)
+    if (!world.shape.module(id)) throw new Refused('That module is not there.')
+    const { files, count } = world.files.onModule(id, limit)
+    return {
+      count,
+      files: files.flatMap((f): ModuleFileView[] => {
+        const rec = world.records.get(f.record)
+        if (!rec) return []
+        const row = { id: f.record, name: world.rowName(rec.table, rec.record.values) }
+        return [
+          {
+            hash: f.hash,
+            name: f.name,
+            mime: f.mime,
+            row: { ...row, table: rec.table.id },
+            at: f.at,
+          },
+        ]
+      }),
+    }
   })
 
   app.post('/api/files', async (req) => {

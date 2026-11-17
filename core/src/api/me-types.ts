@@ -7,6 +7,7 @@ export interface Me {
   developer: boolean // alpha.yaml says so: modules and connectors come from folders too
   tenant: string
   theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
+  textSize: 'small' | 'medium' | 'large' // Appearance: Medium is the window's own sizes
   layout: Layout
 }
 
@@ -15,6 +16,7 @@ export interface Layout {
   railFolded: boolean
   folded: string[] // the modules folded in the rail
   hidden: string[] // the modules hidden from the rail, with the ones inside them
+  pinned: string[] // the modules pinned to the top of the rail, in the order pinned
   railWidth: number | null // the rail dragged wider or narrower; none is 216px
   panel: number | null // the assistant's width; none is 320px
   assistant: 'open' | 'folded'

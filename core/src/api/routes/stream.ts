@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { agentOf } from '../../engine/task-runs.ts'
+import { failedAgents } from '../../modules/agent-marks.ts'
 import { schedules } from '../../modules/schedules.ts'
 import { askOfTurn } from '../../world/agents/asks.ts'
 import { CHIEF } from '../../world/agents/index.ts'
@@ -146,6 +147,7 @@ export function registerStream(ctx: Ctx): void {
           waiting: k.state === 'waiting' ? k.health : null,
         })),
       tasks: world.tasks.counts(),
+      failed: failedAgents(world, user.id),
       reading: engine.connectors?.reading() ?? [],
       settingUp: options.kits?.now ?? null,
       lastId: world.lastLineId(),

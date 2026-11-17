@@ -1,7 +1,7 @@
 // The firm's agents: Intelligence › Agents lists them with the Chief of staff first, and an
 // agent's page shows what it is, its memories and its skills. An agent is made and changed in a
 // conversation with the Chief of staff, so nothing here is a form to fill in.
-import type { AgentDetail, AgentView, MemoryView } from '@alpha/core/api'
+import type { AgentDetail, AgentView, MemoryView, Stream } from '@alpha/core/api'
 import { Bot, Check, MessageSquare, Plus, Trash2, X } from 'lucide-react'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { AgentSchedules } from './AgentSchedules.tsx'
@@ -15,6 +15,7 @@ import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
+import { Pill } from './ui/pill.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
 import { Section } from './ui/section.tsx'
 import { Waiting } from './ui/waiting.tsx'
@@ -149,10 +150,12 @@ export function AgentRail({
   agents,
   chosen,
   onPick,
+  stream,
 }: {
   agents: AgentView[]
   chosen: string
   onPick: (id: string) => void
+  stream: Stream | null // the cards from each agent that wait on the person, and which failed
 }) {
   return (
     <nav
@@ -171,17 +174,29 @@ export function AgentRail({
               : 'flex flex-col rounded-md px-2.5 py-1.75 text-left hover:bg-hover'
           }
         >
-          <span className="truncate font-medium text-ink text-md">
-            {a.name}
-            {!a.chief && a.from.kind !== 'here' && (
-              <span className="font-normal text-ink-3 text-sm"> · {a.from.name}</span>
-            )}
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="min-w-0 flex-1 truncate font-medium text-ink text-md">
+              {a.name}
+              {!a.chief && a.from.kind !== 'here' && (
+                <span className="font-normal text-ink-3 text-sm"> · {a.from.name}</span>
+              )}
+            </span>
+            <AgentMark id={a.id} stream={stream} />
           </span>
           <span className="truncate text-ink-3 text-sm">{a.title}</span>
         </button>
       ))}
     </nav>
   )
+}
+
+// An agent's one mark in the list (ui-rules A11): the cards from it waiting on the person, else
+// Failed when something of its failed since they last opened its chat; nothing otherwise.
+function AgentMark({ id, stream }: { id: string; stream: Stream | null }) {
+  const waiting = stream?.cards.filter((c) => c.agent === id).length ?? 0
+  if (waiting) return <Pill tone="warn">{waiting} waiting</Pill>
+  if (stream?.failed.includes(id)) return <Pill tone="bad">Failed</Pill>
+  return null
 }
 
 // The chosen agent's name in the head of the assistant, opening the list of agents.

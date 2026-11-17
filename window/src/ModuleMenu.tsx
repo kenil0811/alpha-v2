@@ -8,6 +8,8 @@ import {
   FolderInput,
   PanelRightOpen,
   PencilLine,
+  Pin,
+  PinOff,
   Trash2,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -19,11 +21,20 @@ import { cn } from './ui/cn.ts'
 import { MenuItem, MenuLine, Popover, SubMenu } from './ui/popover.tsx'
 
 // Modules hidden from the rail, with the modules inside them, kept per person by the core like the
-// rail's folds. A hidden one still opens by its link and by Find.
-export type Hiding = { hidden: string[]; set: (ids: string[]) => void }
+// rail's folds. A hidden one still opens by its link and by Find. Pinned ones sit first, in the
+// order pinned; only a module at the top level pins.
+export type Hiding = {
+  hidden: string[]
+  set: (ids: string[]) => void
+  pinned: string[]
+  pin: (ids: string[]) => void
+}
 
-export const shownTops = (modules: ModuleSummary[], hidden: string[]) =>
-  tops(modules).filter((m) => !hidden.includes(m.id))
+export const shownTops = (modules: ModuleSummary[], hidden: string[], pinned: string[] = []) => {
+  const shown = tops(modules).filter((m) => !hidden.includes(m.id))
+  const first = pinned.flatMap((id) => shown.filter((m) => m.id === id))
+  return [...first, ...shown.filter((m) => !pinned.includes(m.id))]
+}
 
 // Hidden modules ›: each one, to bring back; only when any are hidden.
 export function HiddenMenu({
@@ -63,7 +74,7 @@ export function HiddenMenu({
 }
 
 // A module's menu: Open, Move to › every other module it may sit inside (never itself or one of its
-// own) or the top, Hide, Hidden modules ›, and Delete
+// own) or the top, Pin to top or Unpin, Hide, Hidden modules ›, and Delete
 export function ModuleMenu({
   m,
   modules,
@@ -171,6 +182,28 @@ export function ModuleMenu({
             Top level
           </MenuItem>
         </SubMenu>
+        {hiding.pinned.includes(m.id) && !m.parent ? (
+          <MenuItem
+            onClick={() => {
+              hiding.pin(hiding.pinned.filter((x) => x !== m.id))
+              close()
+            }}
+          >
+            <PinOff className="size-3.5 text-ink-3" />
+            Unpin
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              hiding.pin([...hiding.pinned.filter((x) => x !== m.id), m.id])
+              close()
+            }}
+            reason={m.parent ? 'Pin the module it sits in' : undefined}
+          >
+            <Pin className="size-3.5 text-ink-3" />
+            Pin to top
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             hiding.set([...hiding.hidden, m.id])

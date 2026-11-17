@@ -67,6 +67,24 @@ describe('a rule', () => {
         covers: { does: ['remove'], tables: [deals.id] },
       }),
     ).toBe('Alpha must never delete rows in Deals in DealPilot.')
+    // in parts for Permissions' list: what differs from rule to rule in bold, today's names
+    world.shape.rename({ table: deals.id }, 'Listings', { actor: alpha })
+    expect(
+      world.rules.parts({
+        side: 'deny',
+        module: m.id,
+        schedule: null,
+        covers: { does: ['remove', 'send'], tables: [deals.id], to: { outside: ['avilo.com'] } },
+      }),
+    ).toEqual([
+      { text: 'Alpha must never delete rows in ', bold: false },
+      { text: 'Listings', bold: true },
+      { text: ' or send to an address outside ', bold: false },
+      { text: 'avilo.com', bold: true },
+      { text: ' in ', bold: false },
+      { text: 'DealPilot', bold: true },
+      { text: '.', bold: false },
+    ])
     expect(
       world.rules.describe({
         side: 'allow',

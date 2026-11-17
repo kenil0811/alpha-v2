@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { skillsOf } from '../../engine/context.ts'
+import { chatOpened } from '../../modules/agent-marks.ts'
 import {
   builderId,
   instructionsOf,
@@ -102,6 +103,15 @@ export function registerAgents(ctx: Ctx): void {
     engine.useModel(id, model)
     live()
     return { model }
+  })
+
+  // the person opened the agent's chat: what failed before no longer marks it in the list
+  app.post('/api/agents/:id/seen', async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    known(id)
+    chatOpened(world, user.id, id)
+    live()
+    return { ok: true }
   })
 
   // the Module builder New module opens; none once the person deleted it

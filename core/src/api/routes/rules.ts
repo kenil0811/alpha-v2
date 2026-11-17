@@ -7,7 +7,7 @@ import { Refused } from '../../world/kinds.ts'
 import { type Rule, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/rules.ts'
 import type { Ctx } from '../ctx.ts'
 import { keptField, keptTable } from '../kept.ts'
-import type { KeptTable, RuleView, WaitingRuleView } from '../types.ts'
+import type { KeptTable, RowLine, RuleView, WaitingRuleView } from '../types.ts'
 
 export function registerRules(ctx: Ctx): void {
   const { app, world, user, live, asPerson } = ctx
@@ -20,7 +20,7 @@ export function registerRules(ctx: Ctx): void {
 
   const ruleOut = (r: Rule): RuleView => ({
     id: r.id,
-    words: r.words,
+    words: world.rules.describe(r), // with today's names: a renamed table says its new name
     said: r.said,
     side: r.side,
     kind: r.kind,
@@ -65,40 +65,65 @@ export function registerRules(ctx: Ctx): void {
     })
   })
 
-  // as a table under Settings › Permissions: read here; a rule's page acts on it
-  app.get(
-    '/api/kept/rules',
-    async (): Promise<KeptTable> =>
-      keptTable(
-        'rules',
-        'Rules',
-        [
-          keptField('Rule', 'text'),
-          keptField('Kind', 'choice', { Allowed: 'good', Denied: 'bad', Noticed: 'warn' }),
-          keptField('Where', 'text'),
-          keptField('Made', 'date'),
-          keptField('Uses', 'number'),
-          keptField('Last used', 'date'),
-          keptField('State', 'choice', { Live: 'good', Revoked: 'bad' }),
-        ],
-        world.rules.list().map((r) => {
-          const v = ruleOut(r)
-          return {
-            id: r.id,
-            values: {
-              rule: v.words,
-              kind: v.kind === 'inferred' ? 'Noticed' : v.side === 'deny' ? 'Denied' : 'Allowed',
-              where: v.where,
-              made: v.madeAt,
-              uses: v.uses,
-              'last used': v.lastUsedAt,
-              state: v.revokedAt ? 'Revoked' : 'Live',
-            },
-          }
-        }),
-        { editable: [], why: 'Open a rule to revoke it; its page asks first.' },
-      ),
-  )
+  // A rule as one line of the list Permissions opens on: its sentence with today's names, what
+  // it does, when and by whom it was made, how often it was used, and where it holds.
+  const lineOf = (r: Rule, v: RuleView): RowLine => {
+    const by = v.madeBy === 'You' ? 'you' : v.madeBy
+    const kind = v.kind === 'inferred' ? 'Noticed' : v.side === 'deny' ? 'Denied' : 'Allowed'
+    return {
+      parts: world.rules.parts(r),
+      light: [
+        `${v.revokedAt ? 'Revoked' : kind} · made `,
+        { at: v.madeAt },
+        ` by ${by} · `,
+        ...(v.uses === 0
+          ? ['not used yet']
+          : [
+              `used ${v.uses === 1 ? 'once' : `${v.uses} times`}`,
+              ...(v.lastUsedAt ? [', last ', { at: v.lastUsedAt }] : []),
+            ]),
+      ],
+      chip: v.where,
+      dim: !!v.revokedAt,
+    }
+  }
+
+  // as a list of sentences under Settings › Permissions, or a table: read here; a rule's page
+  // acts on it
+  app.get('/api/kept/rules', async (): Promise<KeptTable> => {
+    const rules = world.rules.list().map((r) => ({ r, v: ruleOut(r) }))
+    return keptTable(
+      'rules',
+      'Rules',
+      [
+        keptField('Rule', 'text'),
+        keptField('Kind', 'choice', { Allowed: 'good', Denied: 'bad', Noticed: 'warn' }),
+        keptField('Where', 'text'),
+        keptField('Made', 'date'),
+        keptField('Uses', 'number'),
+        keptField('Last used', 'date'),
+        keptField('State', 'choice', { Live: 'good', Revoked: 'bad' }),
+      ],
+      rules.map(({ v }) => ({
+        id: v.id,
+        values: {
+          rule: v.words,
+          kind: v.kind === 'inferred' ? 'Noticed' : v.side === 'deny' ? 'Denied' : 'Allowed',
+          where: v.where,
+          made: v.madeAt,
+          uses: v.uses,
+          'last used': v.lastUsedAt,
+          state: v.revokedAt ? 'Revoked' : 'Live',
+        },
+      })),
+      {
+        editable: [],
+        why: 'Open a rule to revoke it; its page asks first.',
+        layout: 'list',
+        lines: Object.fromEntries(rules.map(({ r, v }) => [r.id, lineOf(r, v)])),
+      },
+    )
+  })
 
   // The one standing choice at the top of Permissions: whether agents and their scripts ask before
   // opening a site they were not shown and have not listed. Off on a fresh install.

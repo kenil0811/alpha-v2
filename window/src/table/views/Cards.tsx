@@ -1,7 +1,8 @@
 // The list and the gallery: a row as a line with its title and a few values, or as a card. Either
 // opens the row whole. The list keeps the view's groups.
-import type { FieldView, RowView } from '@alpha/core/api'
-import { Choice } from '../../ui/pill.tsx'
+import type { FieldView, RowLine, RowView } from '@alpha/core/api'
+import { cn } from '../../ui/cn.ts'
+import { Choice, Pill } from '../../ui/pill.tsx'
 import { type Group, groupRows } from '../engine.ts'
 import { TagChips } from '../Tags.tsx'
 import { show, summary, titleOf } from '../values.ts'
@@ -22,14 +23,49 @@ function Value({
   return <span className="tabular-nums">{text}</span>
 }
 
+// A kept list's row said as one sentence: what differs from row to row in bold, a light line with
+// its dates in the person's own day, and a chip for where it holds; greyed once it no longer holds.
+function Sentence({ line }: { line: RowLine }) {
+  let at = 0
+  const keyed = <T extends { text: string }>(xs: T[]) =>
+    xs.map((x) => {
+      at += x.text.length
+      return { ...x, key: at }
+    })
+  const day = (d: string) =>
+    new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  const light = keyed(line.light.map((x) => ({ text: typeof x === 'string' ? x : day(x.at) })))
+  return (
+    <>
+      <span className={cn('text-base', line.dim ? 'text-ink-3' : 'text-ink')}>
+        {keyed(line.parts).map((p) =>
+          p.bold ? (
+            <strong key={p.key} className="font-semibold">
+              {p.text}
+            </strong>
+          ) : (
+            <span key={p.key}>{p.text}</span>
+          ),
+        )}
+      </span>
+      <span className="flex flex-wrap items-center gap-2 text-ink-3 text-sm">
+        <span>{light.map((x) => x.text).join('')}</span>
+        {line.chip && <Pill>{line.chip}</Pill>}
+      </span>
+    </>
+  )
+}
+
 export function ListView({
   rows,
+  lines,
   fields,
   group,
   names,
   onOpen,
 }: {
   rows: RowView[]
+  lines?: Record<string, RowLine> | undefined // a kept list's rows, each said as one sentence
   fields: FieldView[]
   group: FieldView | undefined
   names: Record<string, string>
@@ -55,17 +91,23 @@ export function ListView({
                 onClick={() => onOpen(r.id)}
                 className="flex w-full flex-col gap-1 border-hair border-t px-4 py-2.5 text-left first:border-t-0 hover:bg-hover"
               >
-                <span className="truncate font-medium text-base text-ink">
-                  {titleOf(fields, r)}
-                </span>
-                <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
-                  {summary(fields, r, 5, group ? [group.id] : []).map((f) => (
-                    <span key={f.id} className="inline-flex items-center gap-1.5">
-                      <span className="text-ink-3">{f.name}</span>
-                      <Value field={f} row={r} names={names} />
+                {lines?.[r.id] ? (
+                  <Sentence line={lines[r.id] as RowLine} />
+                ) : (
+                  <>
+                    <span className="truncate font-medium text-base text-ink">
+                      {titleOf(fields, r)}
                     </span>
-                  ))}
-                </span>
+                    <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2 text-sm">
+                      {summary(fields, r, 5, group ? [group.id] : []).map((f) => (
+                        <span key={f.id} className="inline-flex items-center gap-1.5">
+                          <span className="text-ink-3">{f.name}</span>
+                          <Value field={f} row={r} names={names} />
+                        </span>
+                      ))}
+                    </span>
+                  </>
+                )}
               </button>
             ))}
           </div>

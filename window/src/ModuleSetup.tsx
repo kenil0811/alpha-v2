@@ -1,10 +1,17 @@
-// A module's Setup, its last tab: what runs on its own in it and every table it has, and no
-// more. The rest about a module is its details, a page of its own a link on Setup opens: where
+// A module's Setup, its last tab: what runs on its own in it, every table it has and the files on
+// its rows, and no more. The rest about a module is its details, a page of its own a link on Setup opens: where
 // it comes from, what it is for, the agents it brings, the notes Alpha reads first, what is the
 // person's against the module's own, and on a developer's Alpha, Update from its folder.
 // The core calls a module's package a kit; a person never reads that word.
-import type { AgentView, Me, ModuleView, ScheduleView, YoursView } from '@alpha/core/api'
-import { CalendarClock, ChevronRight, Table2, Trash2 } from 'lucide-react'
+import type {
+  AgentView,
+  Me,
+  ModuleFileView,
+  ModuleView,
+  ScheduleView,
+  YoursView,
+} from '@alpha/core/api'
+import { CalendarClock, ChevronRight, FileText, Table2, Trash2 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
@@ -20,6 +27,7 @@ import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
 import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
+import { updatedWords } from './ui/update-now.tsx'
 import { Words } from './ui/words.tsx'
 
 // A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, its
@@ -42,6 +50,7 @@ export function ModuleSetup({ m, onChange }: { m: ModuleView; onChange: () => vo
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
         <Schedules m={m} onChange={onChange} />
         <Tables m={m} />
+        <Files m={m} />
         <a
           href={`#/module/${m.id}/details`}
           className="flex items-center gap-1 self-start text-accent text-md hover:underline"
@@ -260,6 +269,56 @@ function Tables({ m }: { m: ModuleView }) {
           </li>
         ))}
       </ul>
+    </Part>
+  )
+}
+
+// The files on the module's rows, the newest first, each with its row and when it came there; the
+// rest in Intelligence › Files on this module. No part for a module with none.
+const FEW = 12
+
+function Files({ m }: { m: ModuleView }) {
+  const [got, setGot] = useState<{ files: ModuleFileView[]; count: number } | null>(null)
+  useEffect(() => {
+    api
+      .get<{ files: ModuleFileView[]; count: number }>(`/api/modules/${m.id}/files?limit=${FEW}`)
+      .then(setGot, () => setGot(null))
+  }, [m])
+  if (!got?.files.length) return null
+  return (
+    <Part title="Files">
+      <ul className="flex flex-col">
+        {got.files.map((f) => (
+          <li
+            key={`${f.hash}-${f.row.id}`}
+            className="flex items-center gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
+          >
+            <FileText className="size-4 shrink-0 text-ink-3" />
+            <a
+              href={`#/file/${f.hash}`}
+              className="min-w-0 flex-1 truncate text-ink hover:underline"
+            >
+              {f.name}
+            </a>
+            <a
+              href={`#/table/${f.row.table}/${f.row.id}`}
+              className="max-w-60 truncate text-ink-2 hover:underline"
+            >
+              {f.row.name}
+            </a>
+            <span className="w-28 shrink-0 text-right text-ink-3">{updatedWords(f.at)}</span>
+          </li>
+        ))}
+      </ul>
+      {got.count > got.files.length && (
+        <a
+          href={`#/intelligence/files?module=${m.id}`}
+          className="mt-2 flex items-center gap-1 self-start text-accent text-md hover:underline"
+        >
+          See all in Files
+          <ChevronRight className="size-3.5" />
+        </a>
+      )}
     </Part>
   )
 }

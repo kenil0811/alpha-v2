@@ -22,6 +22,12 @@ export type {
   ReadByView,
   SignInAppView,
 } from './connector-types.ts'
+export type {
+  FileView,
+  KeptFileView,
+  ModuleFileView,
+  RowFileView,
+} from './file-types.ts'
 export type { Layout, Me } from './me-types.ts'
 export type { FieldView, Pick, RowAround, RowPageView } from './row-types.ts'
 
@@ -222,6 +228,7 @@ export interface Stream {
     waiting: string | null
   }[]
   tasks: { open: number; overdue: number; today: number } // for the rail's badge
+  failed: string[] // agents that failed since the person last opened their chat (ui-rules A11)
   settingUp: string | null // what the core is still putting in after it started (the kits)
   lastId: number
 }
@@ -273,41 +280,6 @@ export interface SourceView {
   beside?: { value: unknown; words: string; reset: string; note?: string }
 }
 
-// A document as the window shows it at a value's place: a sheet's cells, a PDF's pages (drawn by /api/files/:hash/page/:n), or a text's lines.
-export interface FileView {
-  hash: string
-  name: string
-  mime: string
-  kind: 'sheet' | 'pdf' | 'text' | 'kept' | 'reading'
-  sheets?: { name: string; cells: { cell: string; row: number; col: number; words: string }[] }[]
-  pages?: number
-  lines?: { line: number; words: string }[]
-}
-
-// Intelligence › Files: every file Alpha has kept, the newest first.
-export interface KeptFileView {
-  hash: string
-  name: string
-  size: number
-  mime: string
-  from: string // what brought it, in words: You, Folder, Gmail, Alpha
-  at: string
-  read: 'read' | 'reading' | 'failed' | 'kept' // read with its places, being read, not, or kept as it is
-  words: string | null // how much was read (419 lines), or why it could not be
-}
-
-// A file on a row: a deal's CIM, a client's export.
-export interface RowFileView {
-  hash: string
-  name: string
-  size: number
-  mime: string
-  kind: string | null
-  by: string // who put it there, in words
-  at: string
-  read: 'read' | 'reading' | 'kept' // read with its places, being read, or kept as it is
-}
-
 // One value's history, newest first.
 export interface HistoryView {
   value: unknown
@@ -341,7 +313,23 @@ export interface TableView {
 // A list kept outside a module's tables (people, organizations, tasks, schedules, standing
 // permissions), served as a table to draw and edit in place.
 export interface KeptTable extends TableView {
-  kept: { name: string; editable: string[]; why: string; counts?: Record<string, number> }
+  kept: {
+    name: string
+    editable: string[]
+    why: string
+    counts?: Record<string, number>
+    layout?: ViewKind // how the list opens, when not as a table
+    lines?: Record<string, RowLine> // each row as one sentence, for the list layout
+  }
+}
+
+// A row of a kept list said as one sentence: the parts that differ from row to row in bold, a
+// light line under it, a chip for where it holds, greyed when it no longer holds.
+export interface RowLine {
+  parts: { text: string; bold: boolean }[]
+  light: (string | { at: string })[] // words, and dates the window says in the person's own day
+  chip: string | null
+  dim: boolean
 }
 
 // A saved view (world/views.ts), its fields by id.

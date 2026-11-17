@@ -29,6 +29,65 @@
   --z-tip: 60;
 }
 
+/*
+  The eight text sizes at Medium, the window's own; Settings › Appearance's Text size puts
+  data-text="small" or "large" on <html>, and every size moves together, spacing staying as it is.
+*/
+:root {
+  --fs-xs: 11px;
+  --lh-xs: 16px;
+  --fs-sm: 12px;
+  --lh-sm: 16px;
+  --fs-md: 13px;
+  --lh-md: 20px;
+  --fs-base: 14px;
+  --lh-base: 22px;
+  --fs-chat: 15px;
+  --lh-chat: 21px;
+  --fs-lg: 16px;
+  --lh-lg: 22px;
+  --fs-xl: 20px;
+  --lh-xl: 26px;
+  --fs-2xl: 26px;
+  --lh-2xl: 30px;
+}
+:root[data-text="small"] {
+  --fs-xs: 10px;
+  --lh-xs: 14px;
+  --fs-sm: 11px;
+  --lh-sm: 15px;
+  --fs-md: 12px;
+  --lh-md: 18px;
+  --fs-base: 13px;
+  --lh-base: 20px;
+  --fs-chat: 14px;
+  --lh-chat: 20px;
+  --fs-lg: 15px;
+  --lh-lg: 21px;
+  --fs-xl: 18px;
+  --lh-xl: 24px;
+  --fs-2xl: 24px;
+  --lh-2xl: 28px;
+}
+:root[data-text="large"] {
+  --fs-xs: 13px;
+  --lh-xs: 18px;
+  --fs-sm: 14px;
+  --lh-sm: 19px;
+  --fs-md: 15px;
+  --lh-md: 22px;
+  --fs-base: 16px;
+  --lh-base: 25px;
+  --fs-chat: 17px;
+  --lh-chat: 24px;
+  --fs-lg: 18px;
+  --lh-lg: 25px;
+  --fs-xl: 23px;
+  --lh-xl: 30px;
+  --fs-2xl: 30px;
+  --lh-2xl: 35px;
+}
+
 :root {
   /* the rail */
   --rail: #f4f4f4;
@@ -281,24 +340,25 @@
   --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* eight sizes and no others; text-sm is 12px here, not Tailwind's 14px */
+  /* eight sizes and no others, at the person's text size (below); text-sm is 12px at Medium,
+     not Tailwind's 14px */
   --text-*: initial;
-  --text-xs: 11px;
-  --text-xs--line-height: 16px;
-  --text-sm: 12px;
-  --text-sm--line-height: 16px;
-  --text-md: 13px;
-  --text-md--line-height: 20px;
-  --text-base: 14px;
-  --text-base--line-height: 22px;
-  --text-chat: 15px;
-  --text-chat--line-height: 21px;
-  --text-lg: 16px;
-  --text-lg--line-height: 22px;
-  --text-xl: 20px;
-  --text-xl--line-height: 26px;
-  --text-2xl: 26px;
-  --text-2xl--line-height: 30px;
+  --text-xs: var(--fs-xs);
+  --text-xs--line-height: var(--lh-xs);
+  --text-sm: var(--fs-sm);
+  --text-sm--line-height: var(--lh-sm);
+  --text-md: var(--fs-md);
+  --text-md--line-height: var(--lh-md);
+  --text-base: var(--fs-base);
+  --text-base--line-height: var(--lh-base);
+  --text-chat: var(--fs-chat);
+  --text-chat--line-height: var(--lh-chat);
+  --text-lg: var(--fs-lg);
+  --text-lg--line-height: var(--lh-lg);
+  --text-xl: var(--fs-xl);
+  --text-xl--line-height: var(--lh-xl);
+  --text-2xl: var(--fs-2xl);
+  --text-2xl--line-height: var(--lh-2xl);
 
   /* labels: 11px uppercase with this tracking; nothing else is uppercase */
   --tracking-label: 0.06em;
@@ -372,7 +432,7 @@
     background: var(--canvas);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: var(--fs-base);
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }

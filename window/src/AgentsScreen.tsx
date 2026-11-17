@@ -36,7 +36,7 @@ export function AgentsScreen({
           { key: 'setup', href: '#/conversation/setup', label: 'Setup', sel: setup },
         ]}
       />
-      <AgentRail agents={agents} chosen={chosen} onPick={onPick} />
+      <AgentRail agents={agents} chosen={chosen} onPick={onPick} stream={stream} />
       <div className="min-w-0 flex-1">
         {setup ? (
           <AgentPage key={chosen} id={chosen} version={version} onName={named} inAgents />

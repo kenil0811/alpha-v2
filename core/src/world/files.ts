@@ -144,6 +144,39 @@ export class Files {
     )
   }
 
+  // The modules each file belongs to, through the rows it sits on: a file on rows of two modules
+  // belongs to both, one on no row (a drop, mail not filed) to none. Nothing of it is stored.
+  modules(): Map<string, string[]> {
+    const out = new Map<string, string[]>()
+    for (const r of all<{ hash: string; module: string }>(
+      this.db,
+      `SELECT DISTINCT rf.file_hash AS hash, t.module_id AS module
+       FROM row_files rf JOIN records r ON r.id = rf.record_id JOIN tables t ON t.id = r.table_id`,
+    ))
+      out.set(r.hash, [...(out.get(r.hash) ?? []), r.module])
+    return out
+  }
+
+  // The files on a module's own rows, the newest placed first: each with the row it sits on.
+  onModule(
+    module: string,
+    limit: number,
+  ): { files: (FileOut & { record: string; at: string })[]; count: number } {
+    const from = `FROM row_files rf JOIN files f ON f.hash = rf.file_hash
+      JOIN records r ON r.id = rf.record_id JOIN tables t ON t.id = r.table_id
+      WHERE t.module_id = ? AND r.gone_at IS NULL`
+    return {
+      files: all<FileOut & { record: string; at: string }>(
+        this.db,
+        `SELECT f.hash, f.name, f.size, f.mime, rf.record_id AS record, rf.placed_at AS at ${from}
+         ORDER BY rf.placed_at DESC LIMIT ?`,
+        module,
+        limit,
+      ),
+      count: one<{ n: number }>(this.db, `SELECT COUNT(*) AS n ${from}`, module)?.n ?? 0,
+    }
+  }
+
   bytes(hash: string): Buffer {
     if (!this.file(hash)) throw new Refused('That file is not there.')
     return readFileSync(this.path(hash))
