@@ -1,5 +1,6 @@
 // What a saved list holds, in words, one line each and only the lines it has: its filters in their
-// chips' words, its search, sort, group, the columns it hides and its layout when not a table. The
+// chips' words, its search, sort, group, the columns it hides and its layout when not a table (a
+// map with what colours it). The
 // tip on a saved list says it, so a list is known before it is opened.
 import type { FieldView, ViewConfig } from '@alpha/core/api'
 import { ruleWords } from './engine.ts'
@@ -20,7 +21,9 @@ export function listWords(config: ViewConfig, fields: FieldView[]): string[] {
   const field = (id: string | null) => fields.find((f) => f.id === id)
   const lines: string[] = []
   const layout = LAYOUTS[config.kind]
-  if (layout) {
+  const colour = config.kind === 'map' ? field(config.group) : undefined
+  if (config.kind === 'map') lines.push(colour ? `Map, coloured by ${colour.name}` : 'Map')
+  else if (layout) {
     const by = field(config.by)
     lines.push(by ? `${layout} by ${by.name}` : layout)
   }
@@ -39,7 +42,7 @@ export function listWords(config: ViewConfig, fields: FieldView[]): string[] {
   })
   if (sorts.length) lines.push(`Sorted by ${sorts.join(', then ')}`)
   const group = field(config.group)
-  if (group) lines.push(`Grouped by ${group.name}`)
+  if (group && config.kind !== 'map') lines.push(`Grouped by ${group.name}`)
   const hidden = config.hidden.flatMap((id) => field(id)?.name ?? [])
   if (hidden.length) {
     const named = hidden.slice(0, NAMED).join(', ')

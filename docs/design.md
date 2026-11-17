@@ -317,7 +317,8 @@ tasks and what was recently completed, with what comes next today in its bar and
 Agents switches each agent between its chat and its Setup, the agent's own page, and marks the
 agents waiting on the person or failed since they last looked. A person's text size and pinned
 modules are theirs, kept by Alpha like the look. Rules read as sentences, and a file belongs to the
-modules whose rows it sits on. Tables are one
+modules whose rows it sits on. A table holding places can be a map, its tiles from OpenFreeMap,
+which learns the area in view and nothing of the rows. Tables are one
 grid with saved lists, shown as pills that say what each holds, and a row, task or schedule opens
 beside the page. Screens explain themselves through ⓘ, never sentences, in plain words. Rules for
 all of it are in `docs/ui-rules.md`, held by `window/src/look.test.ts` where code can hold them. The

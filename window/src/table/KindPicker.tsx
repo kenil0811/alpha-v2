@@ -1,8 +1,10 @@
 // How the rows are shown, and what that view goes by (a board's choice, a calendar's date, a
-// chart's bars and what they add up). The standard views are Table, Card, Timeline and Calendar,
-// with Board and Form; each is offered when the table has what it needs.
+// chart's bars and what they add up, a map's place and colour). The standard views are Table,
+// Card, Timeline and Calendar, with Board, Map and Form; each is offered when the table has what it
+// needs.
 // List and Chart are no longer offered, but a view saved as one still opens as it was.
 import type { FieldView, RowView, ViewConfig, ViewKind } from '@alpha/core/api'
+import { type Place, placesOf } from '@alpha/core/places'
 import {
   CalendarDays,
   ChartBarBig,
@@ -12,6 +14,7 @@ import {
   Kanban,
   LayoutGrid,
   List,
+  MapPinned,
   Table2,
 } from 'lucide-react'
 import { type ReactNode, useRef, useState } from 'react'
@@ -24,13 +27,14 @@ const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
   { kind: 'timeline', words: 'Timeline', icon: <ChartGantt className="size-3.5" /> },
   { kind: 'calendar', words: 'Calendar', icon: <CalendarDays className="size-3.5" /> },
   { kind: 'board', words: 'Board', icon: <Kanban className="size-3.5" /> },
+  { kind: 'map', words: 'Map', icon: <MapPinned className="size-3.5" /> },
   { kind: 'form', words: 'Form', icon: <ClipboardList className="size-3.5" /> },
   { kind: 'list', words: 'List', icon: <List className="size-3.5" /> },
   { kind: 'chart', words: 'Chart', icon: <ChartBarBig className="size-3.5" /> },
 ]
 
 // what the picker offers: all but the last two, kept only to name a view saved as one
-const OFFERED = KINDS.slice(0, 6)
+const OFFERED = KINDS.slice(0, 7)
 
 export function KindPicker({
   fields,
@@ -51,23 +55,29 @@ export function KindPicker({
   const dates = fields.filter((f) => f.kind === 'date')
   const numbers = fields.filter((f) => f.kind === 'number' || f.kind === 'money')
   const groupable = [...choices, ...fields.filter((f) => f.kind === 'text')]
+  // where the rows are, from the columns' names and their values (T24)
+  const places = placesOf(fields, (f) => rows.map((r) => r.values[f.slug]))
   const can = (k: ViewKind) =>
-    k === 'board'
-      ? choices.length > 0
-      : k === 'calendar' || k === 'timeline'
-        ? dates.length > 0
-        : k === 'chart'
-          ? choices.length > 0 || dates.length > 0
-          : true
+    k === 'map'
+      ? places.length > 0
+      : k === 'board'
+        ? choices.length > 0
+        : k === 'calendar' || k === 'timeline'
+          ? dates.length > 0
+          : k === 'chart'
+            ? choices.length > 0 || dates.length > 0
+            : true
   // why a view can't show this table, said on the greyed line
   const why = (k: ViewKind) =>
     can(k)
       ? undefined
-      : k === 'board'
-        ? 'A board needs a choice column. Ask Alpha to add one.'
-        : k === 'chart'
-          ? 'A chart needs a choice or a date column. Ask Alpha to add one.'
-          : `A ${k} needs a date column. Ask Alpha to add one.`
+      : k === 'map'
+        ? 'A map needs a latitude and a longitude, or a column of points. Ask Alpha to add them.'
+        : k === 'board'
+          ? 'A board needs a choice column. Ask Alpha to add one.'
+          : k === 'chart'
+            ? 'A chart needs a choice or a date column. Ask Alpha to add one.'
+            : `A ${k} needs a date column. Ask Alpha to add one.`
   const current = KINDS.find((k) => k.kind === config.kind) ?? KINDS[0]
   // switching to a view that needs a field gives it one, as the core would
   // a calendar or timeline starts on the date most rows have; a board's columns and a chart's bars
@@ -77,6 +87,10 @@ export function KindPicker({
     if ((kind === 'calendar' || kind === 'timeline') && !dates.some((f) => f.id === next.by)) {
       const filled = (f: FieldView) => rows.filter((r) => r.values[f.slug]).length
       next.by = [...dates].sort((a, b) => filled(b) - filled(a))[0]?.id ?? null
+    }
+    if (kind === 'map' && !places.some((p) => p.by === next.by && p.until === next.until)) {
+      next.by = places[0]?.by ?? null
+      next.until = places[0]?.until ?? null
     }
     onConfig(next)
   }
@@ -124,6 +138,34 @@ export function KindPicker({
         pick('The date it is laid on', config.by ?? '', dates, (id) =>
           onConfig({ ...config, by: id }),
         )}
+      {config.kind === 'map' && (
+        <>
+          {places.length > 1 && (
+            <Select
+              aria-label="Where the rows are"
+              value={places.findIndex((p) => p.by === config.by && p.until === config.until)}
+              onChange={(e) => {
+                const p = places[Number(e.target.value)] as Place
+                onConfig({ ...config, by: p.by, until: p.until })
+              }}
+              className="h-7.5 max-w-44 text-md"
+            >
+              {places.map((p, i) => (
+                <option key={`${p.by}-${p.until}`} value={i}>
+                  {placeWords(fields, p)}
+                </option>
+              ))}
+            </Select>
+          )}
+          {pick(
+            'Colour by',
+            config.group ?? '',
+            choices,
+            (id) => onConfig({ ...config, group: id || null }),
+            'No colour',
+          )}
+        </>
+      )}
       {config.kind === 'chart' && (
         <>
           <Select
@@ -183,4 +225,10 @@ export function KindPicker({
       </Popover>
     </span>
   )
+}
+
+// A map's place in words: "Site latitude and Site longitude", or the column of points.
+export function placeWords(fields: FieldView[], p: Place): string {
+  const name = (id: string | null) => fields.find((f) => f.id === id)?.name ?? ''
+  return p.until ? `${name(p.by)} and ${name(p.until)}` : name(p.by)
 }

@@ -5,7 +5,8 @@
   "exports": {
     "./api": "./src/api/types.ts",
     "./usage": "./src/api/usage-types.ts",
-    "./filter-cases": "./src/world/filter-cases.ts"
+    "./filter-cases": "./src/world/filter-cases.ts",
+    "./places": "./src/world/places.ts"
   },
   "scripts": {
     "start": "node src/main.ts",

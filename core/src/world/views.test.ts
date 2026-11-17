@@ -98,6 +98,40 @@ describe('a saved view', () => {
     expect(world.views.get(other.id)?.name).toBe('Latest')
   })
 
+  it('lays a map on a latitude and a longitude, or on the column of points it names (T24)', () => {
+    const m = world.shape.makeModule('Washes desk', { actor: alpha })
+    const washes = world.shape.makeTable(
+      m.id,
+      'Washes',
+      [
+        { name: 'Name', kind: 'text' },
+        { name: 'Site latitude', kind: 'number' },
+        { name: 'Site longitude', kind: 'number' },
+        { name: 'Point', kind: 'text' },
+        { name: 'Status', kind: 'choice', choices: ['Open', 'Planned'] },
+      ],
+      { actor: alpha },
+    )
+    const id = (name: string) => washes.fields.find((f) => f.name === name)?.id
+    const map = world.views.save(
+      { table: washes.id, name: 'Map', config: { kind: 'map', group: 'Status' } },
+      person,
+    )
+    expect([map.config.by, map.config.until, map.config.group]).toEqual([
+      id('Site latitude'),
+      id('Site longitude'),
+      id('Status'),
+    ])
+    const points = world.views.save(
+      { table: washes.id, name: 'Points', config: { kind: 'map', by: 'Point' } },
+      person,
+    )
+    expect([points.config.by, points.config.until]).toEqual([id('Point'), null])
+    expect(() =>
+      world.views.save({ table: deals().id, name: 'Map', config: { kind: 'map' } }, person),
+    ).toThrow(/no latitude and longitude, or column of points/)
+  })
+
   it('keeps the columns frozen at the left and the ones that wrap, by name in module.yaml', () => {
     const t = deals()
     const v = world.views.save(

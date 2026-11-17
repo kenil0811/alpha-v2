@@ -58,10 +58,15 @@ const STATE_DOT: Record<string, string> = {
 }
 export type Choices = { choices: string[]; tones: Record<string, string> }
 
-export function optionClass(of: Choices, value: string): string {
+// Which of the eight a choice wears, from 1: a map's points read it as --opt-N.
+export function optionOf(of: Choices, value: string): number {
   let i = of.choices.indexOf(value)
   if (i < 0) i = [...value].reduce((h, c) => (h * 31 + (c.codePointAt(0) ?? 0)) >>> 0, 7)
-  return OPTION[i % OPTION.length] as string
+  return (i % OPTION.length) + 1
+}
+
+export function optionClass(of: Choices, value: string): string {
+  return OPTION[optionOf(of, value) - 1] as string
 }
 
 export function Choice({

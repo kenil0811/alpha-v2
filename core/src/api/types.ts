@@ -343,6 +343,7 @@ export type ViewKind =
   | 'timeline'
   | 'chart'
   | 'form'
+  | 'map'
 export type FilterOp =
   | 'is'
   | 'is_not'

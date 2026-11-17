@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { all, type Db, json, newId, now, one, parse, run, tx } from './db.ts'
 import { append } from './journal.ts'
 import { Refused } from './kinds.ts'
+import { findPlace, placeHolds } from './places.ts'
 import { findField, type Shape, type Table, type WriteCtx } from './shape/index.ts'
 
 export const VIEW_KINDS = [
@@ -18,6 +19,7 @@ export const VIEW_KINDS = [
   'timeline',
   'chart',
   'form',
+  'map',
 ] as const
 
 export const FILTER_OPS = [
@@ -174,6 +176,16 @@ export function resolveConfig(table: Table, input: unknown): ViewConfig {
       if (!date) throw new Refused(`${table.name} has no date to lay a ${resolved.kind} on.`)
       resolved.by = date.id
     }
+  }
+  // a map lays its rows on a latitude and a longitude, or on a column of points (rules T24)
+  if (resolved.kind === 'map' && !placeHolds(table.fields, resolved.by, resolved.until)) {
+    const place = findPlace(table.fields)
+    if (!place)
+      throw new Refused(
+        `${table.name} has no latitude and longitude, or column of points, to map its rows on.`,
+      )
+    resolved.by = place.by
+    resolved.until = place.until
   }
   // a chart has its bars by a group, else by the months of a date; it adds up a number or counts
   if (resolved.kind === 'chart') {

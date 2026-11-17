@@ -55,5 +55,8 @@ describe('what a saved list holds', () => {
     expect(
       listWords({ ...BLANK, kind: 'board', by: 'stage', group: 'gone', hidden: ['gone'] }, fields),
     ).toEqual(['Board by Stage'])
+    expect(listWords({ ...BLANK, kind: 'map', group: 'stage' }, fields)).toEqual([
+      'Map, coloured by Stage',
+    ])
   })
 })
