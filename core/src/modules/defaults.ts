@@ -4,7 +4,7 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { run } from '../world/db.ts'
-import type { WriteCtx } from '../world/shape/index.ts'
+import type { Module, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
 import { install, installedKits, readKit, update } from './kits/index.ts'
 import { schedules } from './schedules.ts'
@@ -32,8 +32,13 @@ export async function keepDefaults(
   for (const name of readdirSync(dir).sort()) {
     const folder = join(dir, name)
     if (!existsSync(join(folder, 'module.yaml'))) continue
-    const out = await keepKit(world, folder, ctx)
-    if (out) said.push(out)
+    // one that does not go in says so, and the others still do
+    try {
+      const out = await keepKit(world, folder, ctx)
+      if (out) said.push(out)
+    } catch (err) {
+      said.push(`${name} did not go in: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
   return said
 }
@@ -55,9 +60,36 @@ export async function keepKit(
   return out
 }
 
+// The module a connector made for the rows an Alpha's own kit now keeps (Contacts, before People):
+// one no kit holds, whose tables are all mirrors and hold every table the kit names.
+function formerHome(world: World, tables: string[]): Module | undefined {
+  const kits = new Set(installedKits(world).map((k) => k.module))
+  return world.shape.modules().find((m) => {
+    if (kits.has(m.id)) return false
+    const there = world.shape.tables(m.id)
+    return (
+      there.length > 0 &&
+      there.every((t) => !!t.mirror) &&
+      tables.every((name) => there.some((t) => (t.key ?? t.name) === name))
+    )
+  })
+}
+
 async function keptKit(world: World, folder: string, ctx: WriteCtx): Promise<string | null> {
   const { manifest } = readKit(folder)
-  const m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
+  let m = world.shape.ownModule(manifest.name) ?? world.shape.module(manifest.name)
+  // Alpha's own kit takes the module its rows were kept in before, under its own name
+  if (!m && manifest.core) {
+    const home = formerHome(
+      world,
+      manifest.tables.map((t) => t.name),
+    )
+    if (home) {
+      world.shape.renameModule(home.id, manifest.name, ctx)
+      world.shape.rekeyModule(home.id, manifest.name)
+      m = world.shape.ownModule(manifest.name)
+    }
+  }
   const k = m ? installedKits(world).find((x) => x.module === m.id) : undefined
   // none yet, or one a connector made for its rows (Calendar), which Alpha's own kit adopts; a
   // module of that name the person made themselves is theirs, and left alone

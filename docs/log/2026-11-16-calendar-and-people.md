@@ -19,3 +19,7 @@ a default module opening on a calendar; contacts should make a People module. Hi
   when there is one, and Read now; Details in its ⋮ shows who set it up, where it is kept and what
   it may reach.
 - Looked at in Safari's engine on Kenil's Mac Alpha with four sample events, removed after.
+- On Kenil's server the People kit first failed: his contacts were already in a Contacts module a
+  connector made ("There is already a table called Contacts"), and the failure stopped the kits
+  after it. Now Alpha's own kit takes over such a module under its own name and key (Contacts
+  becomes People, its 747 rows kept), and one kit that does not go in no longer stops the others.

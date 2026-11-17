@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { calendar, contactsConnector } from '@alpha/connector-mac'
+import { CONTACTS } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { livesPeople } from '../api/views.ts'
 import { keepDefaults } from '../modules/defaults.ts'
@@ -65,5 +66,19 @@ describe('Calendar and People, Alpha’s own', () => {
     expect(world.views.list(events?.id ?? '').find((v) => v.isDefault)?.config.kind).toBe(
       'calendar',
     )
+  })
+
+  it('take the module a connector kept contacts in before, under People', async () => {
+    const before = landIn(world, {
+      ...contactsConnector,
+      module: 'Contacts',
+      tables: [{ ...CONTACTS, module: 'Contacts' }],
+    })
+    await keepDefaults(world, system)
+    const people = world.shape.ownModule('People')
+    expect(people?.name).toBe('People')
+    expect(world.shape.ownModule('Contacts')).toBeUndefined()
+    expect(world.shape.ownTable(people?.id ?? '', 'Contacts')?.id).toBe(before[0]?.id)
+    expect(people && livesPeople(people)).toBe(true)
   })
 })

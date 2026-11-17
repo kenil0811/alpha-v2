@@ -62,3 +62,8 @@ export function markMirror(shape: Shape, tableId: string, system: string): void 
 export function claimModule(shape: Shape, id: string, key: string): void {
   run(shape.db, 'UPDATE modules SET key = ? WHERE id = ? AND key IS NULL', key, id)
 }
+
+// A module taken over under a new lasting key (Alpha's own People, from a connector's Contacts).
+export function rekeyModule(shape: Shape, id: string, key: string): void {
+  run(shape.db, 'UPDATE modules SET key = ? WHERE id = ?', key, id)
+}

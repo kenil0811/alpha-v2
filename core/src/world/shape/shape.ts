@@ -21,7 +21,7 @@ import {
   setTones,
   tonesSetByOthers,
 } from './fields.ts'
-import { claimModule, claimTable, ownModule, ownTable } from './keys.ts'
+import { claimModule, claimTable, ownModule, ownTable, rekeyModule } from './keys.ts'
 import { check, slugTaken, writeManifest } from './manifest.ts'
 import { renameModule } from './naming.ts'
 import { partRows, partsOf, setPartOf, setSetup, setTab } from './parts.ts'
@@ -533,6 +533,9 @@ export class Shape {
   }
   claimModule(id: string, key: string): void {
     claimModule(this, id, key)
+  }
+  rekeyModule(id: string, key: string): void {
+    rekeyModule(this, id, key)
   }
   renameModule(moduleId: string, to: string, ctx: WriteCtx): Module {
     return renameModule(this, moduleId, to, ctx)
