@@ -9,9 +9,12 @@ import type { FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { bridges } from '../../bridge/hub.ts'
 import { unlend } from '../../connectors/computers.ts'
+import { PlainPlatform } from '../../platform/index.ts'
 import { trustedKey, verifyManifest } from '../../signing.ts'
+import type { Connection } from '../../world/connections.ts'
 import { Refused } from '../../world/kinds.ts'
-import type { ComputersView } from '../connector-types.ts'
+import { connectionViews } from '../connection-view.ts'
+import type { ComputerPageView, ComputersView, ComputerView } from '../connector-types.ts'
 import type { Ctx } from '../ctx.ts'
 
 // What the Bridge reaches without a session: its pairing, with the link's code; its updates and
@@ -118,29 +121,90 @@ export function registerComputers(ctx: Ctx): void {
     })
   }
 
+  // What Alpha's own computer reads, on the Mac app: folders added by path, its Calendar and
+  // Contacts. None on a server, where those run only on a person's computer.
+  const hereLends = (): Connection[] =>
+    world.connections.list().filter((k) => {
+      const c = engine.connectors?.find(k.connector)
+      return (
+        !k.computer &&
+        !!c &&
+        (c.manifest.auth === 'path' || c.manifest.auth === 'system') &&
+        !engine.connectors?.onComputer(c)
+      )
+    })
+  const placesHere = () =>
+    (engine.connectors?.known() ?? []).some(
+      (c) => c.manifest.auth === 'path' && !engine.connectors?.onComputer(c),
+    )
+  const lendsOf = (ks: Connection[]): ComputerView['lends'] =>
+    ks.map((k) => ({
+      connection: k.id,
+      connector: k.connector,
+      title: engine.connectors?.find(k.connector)?.manifest.title ?? k.connector,
+      account: k.account,
+      state: k.state,
+      health: k.health,
+    }))
+  const HERE = 'here'
+  // the computer Alpha itself runs on, by what the platform says it is
+  const mac = (options.platform ?? new PlainPlatform()).name === 'mac'
+  const here = (): ComputerView => ({
+    id: HERE,
+    name: mac ? 'This Mac' : 'This computer',
+    platform: mac ? 'darwin' : 'other',
+    online: true,
+    paused: null,
+    pairedAt: null,
+    lastSeenAt: null,
+    version: null,
+    here: true,
+    lends: lendsOf(hereLends()),
+  })
+  const viewOf = (id: string): ComputerView | null => {
+    if (id === HERE) return placesHere() ? here() : null
+    const c = world.computers.get(id)
+    if (!c || c.user !== user.id || c.removedAt) return null
+    return {
+      id: c.id,
+      name: c.name,
+      platform: c.platform,
+      online: bridges.online(c.id),
+      paused: bridges.pausedOf(c.id),
+      pairedAt: c.pairedAt,
+      lastSeenAt: c.lastSeenAt,
+      version: bridges.versionOf(c.id),
+      here: false,
+      lends: lendsOf(world.connections.on(c.id)),
+    }
+  }
+
   app.get(
     '/api/computers',
     async (): Promise<ComputersView> => ({
-      computers: world.computers.of(user.id).map((c) => ({
-        id: c.id,
-        name: c.name,
-        platform: c.platform,
-        online: bridges.online(c.id),
-        paused: bridges.pausedOf(c.id),
-        pairedAt: c.pairedAt,
-        lastSeenAt: c.lastSeenAt,
-        lends: world.connections.on(c.id).map((k) => ({
-          connection: k.id,
-          connector: k.connector,
-          title: engine.connectors?.find(k.connector)?.manifest.title ?? k.connector,
-          account: k.account,
-          state: k.state,
-          health: k.health,
-        })),
-      })),
+      computers: [
+        ...(placesHere() ? [here()] : []),
+        ...world.computers.of(user.id).flatMap((c) => viewOf(c.id) ?? []),
+      ],
       downloads: downloads(),
     }),
   )
+
+  // A computer's own page: what it lends, each as Connections shows it, and its latest reads.
+  app.get('/api/computers/:id', async (req): Promise<ComputerPageView> => {
+    const { id } = z.object({ id: z.string() }).parse(req.params)
+    const computer = viewOf(id)
+    if (!computer) throw new Refused('That computer is not yours.')
+    const ks = id === HERE ? hereLends() : world.connections.on(id)
+    const view = connectionViews(ctx)
+    const mine = new Set(ks.map((k) => k.id))
+    const did = world
+      .lines({ kinds: ['connection_read'], limit: 500 })
+      .filter((l) => mine.has(String(l.data.connection)))
+      .slice(0, 12)
+      .map((l) => ({ id: l.id, at: l.at, words: l.words, failed: l.data.state === 'failed' }))
+    return { computer, lends: ks.map(view), did }
+  })
 
   // A link for the person's next computer, shown once and good for fifteen minutes; only where one
   // person signs in, until every row has an owner (rows are the firm's today, so a second person

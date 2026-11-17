@@ -13,6 +13,7 @@ export interface Health {
 export type { ActingView, CardView, ReviewView } from './card-types.ts'
 export type {
   BridgeDownload,
+  ComputerPageView,
   ComputersView,
   ComputerView,
   ConnectionView,

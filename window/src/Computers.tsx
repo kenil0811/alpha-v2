@@ -3,16 +3,13 @@
 // this computer shows the Bridge's download for it and a one-time pairing link; the folder is lent
 // on the computer itself, never named here.
 import type { BridgeDownload, ComputersView, ComputerView } from '@alpha/core/api'
-import { Copy, Download, Laptop, Trash2 } from 'lucide-react'
+import { ChevronRight, Copy, Download, Laptop } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api, wordsOf } from './api.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
-import { Confirm } from './ui/dialog.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { More } from './ui/more.tsx'
-import { Pill } from './ui/pill.tsx'
-import { MenuItem } from './ui/popover.tsx'
+import { Pill, type Tone } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
 import { updatedWords } from './ui/update-now.tsx'
 
@@ -50,7 +47,7 @@ export function Computers({ version }: { version: number }) {
       {view.computers.length > 0 && (
         <List>
           {view.computers.map((c) => (
-            <ComputerLine key={c.id} computer={c} onChange={load} />
+            <ComputerLine key={c.id} computer={c} />
           ))}
         </List>
       )}
@@ -176,96 +173,50 @@ function Pairing({ link, downloads }: { link: string; downloads: BridgeDownload[
   )
 }
 
-function ComputerLine({ computer: c, onChange }: { computer: ComputerView; onChange: () => void }) {
-  const { busy, problem, act } = useAct(onChange)
-  const [leaving, setLeaving] = useState(false)
-  const [asked, setAsked] = useState(false)
+// How a computer stands, in a word and its tone: the pill on its row and its page.
+export function computerState(c: ComputerView): [string, Tone] {
+  if (c.here) return ['This computer', 'neutral']
+  if (!c.online) return ['Offline', 'neutral']
+  return c.paused ? ['Paused', 'warn'] : ['Online', 'good']
+}
+
+// What a computer lends, in a few words: "2 folders, Calendar and Contacts".
+export function lendsWords(c: ComputerView): string {
   const lent = c.lends.filter((l) => l.state !== 'paused')
-  const state = !c.online ? 'Offline' : c.paused ? 'Paused' : 'Online'
+  const folders = lent.filter((l) => l.connector === 'folder').length
+  const parts = [
+    ...(folders ? [`${folders} folder${folders === 1 ? '' : 's'}`] : []),
+    ...lent.filter((l) => l.connector !== 'folder').map((l) => l.title),
+  ]
+  if (!parts.length) return c.here ? 'No folders added yet' : 'Lends nothing yet'
+  const last = parts.pop()
+  return parts.length ? `${parts.join(', ')} and ${last}` : (last ?? '')
+}
+
+// A computer as one short row: its name, what it lends, how it stands; a click opens its page.
+function ComputerLine({ computer: c }: { computer: ComputerView }) {
+  const [state, tone] = computerState(c)
+  const seen = !c.online && c.lastSeenAt ? ` · Last seen ${updatedWords(c.lastSeenAt)}` : ''
   return (
     <Row
+      className="relative hover:bg-canvas"
       lead={
         <Tile>
           <Laptop className="size-4" />
         </Tile>
       }
-      title={c.name}
-      sub={
-        <span className="flex flex-col gap-0.5">
-          <span>
-            {!c.online
-              ? c.lastSeenAt
-                ? `Last seen ${updatedWords(c.lastSeenAt)}`
-                : 'Not connected yet'
-              : c.paused
-                ? c.paused.until
-                  ? `Paused there until ${new Date(c.paused.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-                  : 'Paused there until its person resumes it'
-                : 'Connected now'}
-          </span>
-          {asked && <span>Pick the folder on {c.name}: its picker is open there.</span>}
-          {lent.length > 0 ? (
-            lent.map((l) => (
-              <span key={l.connection}>
-                Lends {l.connector === 'folder' ? l.account : `its ${l.title}`}
-              </span>
-            ))
-          ) : (
-            <span>Lends nothing yet</span>
-          )}
-        </span>
+      title={
+        <a href={`#/computer/${c.id}`} className="after:absolute after:inset-0">
+          {c.name}
+        </a>
       }
+      sub={`${lendsWords(c)}${seen}`}
       actions={
         <>
-          <Pill tone={state === 'Online' ? 'good' : state === 'Paused' ? 'warn' : 'neutral'}>
-            {state}
-          </Pill>
-          {state === 'Online' && (
-            <Button
-              size="sm"
-              disabled={busy}
-              onClick={() =>
-                act(async () => {
-                  await api.post(`/api/computers/${c.id}/pick`)
-                  setAsked(true)
-                })
-              }
-            >
-              Lend a folder
-            </Button>
-          )}
-          <More label="More" disabled={busy}>
-            {(close) => (
-              <MenuItem
-                danger
-                onClick={() => {
-                  close()
-                  setLeaving(true)
-                }}
-              >
-                <Trash2 className="size-3.5" />
-                Delete
-              </MenuItem>
-            )}
-          </More>
-          <Refusal words={problem} />
+          {!c.here && <Pill tone={tone}>{state}</Pill>}
+          <ChevronRight className="size-4 text-ink-3" />
         </>
       }
-    >
-      <Confirm
-        open={leaving}
-        title={`Delete ${c.name}?`}
-        yes="Delete"
-        busy={busy}
-        onClose={() => setLeaving(false)}
-        onYes={() => {
-          setLeaving(false)
-          void act(() => api.delete(`/api/computers/${c.id}`))
-        }}
-      >
-        Alpha stops reading what it lends and turns its Bridge away. What was read stays; adding the
-        computer again needs a new link.
-      </Confirm>
-    </Row>
+    />
   )
 }

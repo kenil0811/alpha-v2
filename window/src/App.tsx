@@ -15,6 +15,7 @@ import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
 import { Bar } from './Bar.tsx'
 import { CardPage } from './CardPage.tsx'
+import { ComputerPage } from './ComputerPage.tsx'
 import { Conversation } from './Conversation.tsx'
 import type { Mood } from './Face.tsx'
 import { FileView } from './FileView.tsx'
@@ -341,6 +342,9 @@ export function App() {
       // an agent's page is one of Intelligence › Agents
       case 'agent':
         return { label: 'Agents', href: '#/intelligence/agents' }
+      // a computer's page is one of Connections › Your computers
+      case 'computer':
+        return { label: 'Connections', href: '#/intelligence/connections' }
       case 'card':
         return { label: 'Home', href: '#/' }
       // a kept file is one of Intelligence › Files
@@ -368,6 +372,7 @@ export function App() {
         return 'Waits for you'
       case 'item':
       case 'agent':
+      case 'computer':
       case 'work':
         return itemName || ''
       case 'tasks':
@@ -461,6 +466,13 @@ export function App() {
                   <FileView place={place.place} onName={setFileName} />
                 ) : place.at === 'work' ? (
                   <TaskWork key={place.id} id={place.id} version={version} onName={setItemName} />
+                ) : place.at === 'computer' ? (
+                  <ComputerPage
+                    key={place.id}
+                    id={place.id}
+                    version={version}
+                    onName={setItemName}
+                  />
                 ) : place.at === 'agent' ? (
                   <AgentPage id={place.id} version={version} onName={setItemName} />
                 ) : place.at === 'row' ? (

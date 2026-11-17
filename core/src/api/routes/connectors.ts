@@ -3,13 +3,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Connector, chromePath } from '@alpha/connector-sdk'
 import { z } from 'zod'
-import { bridges } from '../../bridge/hub.ts'
 import { addFolder, loadConnector, removeFolder, unpack } from '../../connectors/discover.ts'
-import { tableOf } from '../../connectors/places.ts'
 import { PlainPlatform } from '../../platform/index.ts'
 import { FOLDERS } from '../../signing.ts'
 import { ownerOf } from '../../world/connections.ts'
 import { Refused } from '../../world/kinds.ts'
+import { connectionViews } from '../connection-view.ts'
 import type { Ctx } from '../ctx.ts'
 import type { ConnectorsView } from '../types.ts'
 import { signInApps } from './signin.ts'
@@ -17,35 +16,10 @@ import { signInApps } from './signin.ts'
 export function registerConnectors(ctx: Ctx): void {
   const { app, world, engine, user, options, person, live, connectorOf, asPerson } = ctx
 
-  // the hosts each connector was refused, newest first, once each
-  const refusals = () => {
-    const by = new Map<string, { host: string; at: string }[]>()
-    for (const l of world.lines({ kinds: ['reach_refused'], limit: 500 }).reverse()) {
-      const name = String(l.data.connector)
-      const list = by.get(name) ?? []
-      if (!list.some((r) => r.host === l.data.host) && list.length < 5)
-        list.push({ host: String(l.data.host), at: l.at })
-      by.set(name, list)
-    }
-    return by
-  }
-
   const developer = () => options.data?.install().developer ?? false
-  // who set a connection up, in words
-  const ownerWords = (madeBy: string) => {
-    const [kind, id] = madeBy.split(/:(.*)/s)
-    if (kind === 'person') return id === user.id ? 'You' : (world.user(id ?? '')?.name ?? 'Someone')
-    return 'Alpha'
-  }
-
   const signIn = engine.connectors?.signIn
-  // the person's computer a connection runs on, by the name it calls itself
-  const computerOf = (id: string | null) => {
-    const pc = id ? world.computers.get(id) : undefined
-    return pc ? { name: pc.name, online: bridges.online(pc.id) } : null
-  }
   app.get('/api/connectors', async (): Promise<ConnectorsView> => {
-    const refused = refusals()
+    const view = connectionViews(ctx)
     return {
       connectors: (engine.connectors?.known() ?? []).map((c) => ({
         name: c.manifest.name,
@@ -67,32 +41,7 @@ export function registerConnectors(ctx: Ctx): void {
             }
           : {}),
       })),
-      connections: world.connections.list().map((k) => {
-        const c = engine.connectors?.find(k.connector)
-        return {
-          id: k.id,
-          connector: k.connector,
-          title: c?.manifest.title ?? k.connector,
-          account: k.account,
-          inBrowser: c?.manifest.auth === 'browser',
-          signsInWith:
-            c?.manifest.oauth && signIn ? signIn.provider(c.manifest.oauth.provider).title : null,
-          loaded: !!c,
-          state: k.state,
-          owner: ownerWords(k.madeBy),
-          health: c ? k.health : 'Its connector is not loaded, so this connection does not read.',
-          lastSyncAt: k.lastSyncAt,
-          settings: k.state === 'needs_sign_in' ? (c?.manifest.system?.pane ?? null) : null,
-          tables: (c?.tables ?? []).flatMap((spec) => {
-            const t = c && tableOf(world, c, spec.name)
-            return t ? [{ id: t.id, name: t.name, hidden: t.hidden }] : []
-          }),
-          reaches: [...new Set([...(c?.manifest.reaches ?? []), ...k.hosts])],
-          refused: refused.get(k.connector) ?? [],
-          canAllow: !!c?.manifest.chosenSites,
-          computer: computerOf(k.computer),
-        }
-      }),
+      connections: world.connections.list().map(view),
       added: options.connectorsDir
         ? (engine.connectors?.known() ?? [])
             .filter((c) => existsSync(join(options.connectorsDir ?? '', c.manifest.name)))

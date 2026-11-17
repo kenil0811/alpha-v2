@@ -2,7 +2,7 @@
 // Its account and state, the computer it runs on, a problem in words when it has one, Read now;
 // who set it up, where it is kept and what it may reach under Details in its ⋮.
 import type { ConnectionView } from '@alpha/core/api'
-import { Folder, Info, Plus, Unplug } from 'lucide-react'
+import { CalendarDays, Folder, Info, Plug, Plus, Unplug, UserRound } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { api } from './api.ts'
 import { Reach } from './Reach.tsx'
@@ -244,7 +244,16 @@ export function ConnectionInTile({
   )
 }
 
-// A folder lent or added: a row in the folders' list.
+// A computer's folder, Calendar or Contacts, as a row on its page; or a connection whose connector
+// is not loaded, under Connections. A folder goes by its own name, its path under it; the rest by
+// their names.
+const ROW_ICONS: Record<string, ReactNode> = {
+  folder: <Folder className="size-4" />,
+  calendar: <CalendarDays className="size-4" />,
+  contacts: <UserRound className="size-4" />,
+}
+const isPath = (account: string) => /^([/~]|[A-Za-z]:\\|\\\\)/.test(account)
+
 export function ConnectionLine({
   connection: k,
   onChange,
@@ -255,15 +264,17 @@ export function ConnectionLine({
   const p = useConnection(k, onChange)
   return (
     <Row
-      lead={
-        <Tile>
-          <Folder className="size-4" />
-        </Tile>
+      lead={<Tile>{ROW_ICONS[k.connector] ?? <Plug className="size-4" />}</Tile>}
+      title={
+        isPath(k.account) ? (k.account.split(/[\\/]/).filter(Boolean).at(-1) ?? k.account) : k.title
       }
-      title={k.account}
       sub={
         <span className="flex flex-col gap-1">
-          {p.where && <span>{p.where}</span>}
+          {isPath(k.account) && (
+            <span className="truncate" title={k.account}>
+              {k.account}
+            </span>
+          )}
           {p.problem}
           {p.body}
         </span>

@@ -26,6 +26,7 @@ export interface Socket {
 
 interface Connected {
   computer: Computer
+  version: string // the Bridge it runs, as it said in its hello
   socket: Socket
   processes: Map<string, BridgedProcess>
   paused: { until: string | null } | null
@@ -64,6 +65,11 @@ export class Hub {
 
   online(computer: string): boolean {
     return this.connected.has(computer)
+  }
+
+  // The Bridge a computer runs, while it is connected.
+  versionOf(computer: string): string | null {
+    return this.connected.get(computer)?.version ?? null
   }
 
   // Paused by its person on the computer: until when (none: until resumed), or not paused.
@@ -125,7 +131,7 @@ export class Hub {
             for (const p of older.processes.values()) p.ended(awayWords(c.name))
             older.socket.close(4409, 'This computer connected again.')
           }
-          me = { computer: c, socket, processes: new Map(), paused: null }
+          me = { computer: c, version: m.version, socket, processes: new Map(), paused: null }
           this.connected.set(c.id, me)
           this.world?.computers.seen(c.id)
           socket.send(JSON.stringify({ t: 'welcome', name: c.name, lent: this.lent(c.id) }))

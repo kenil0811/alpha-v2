@@ -30,6 +30,7 @@ export type Place =
   | { at: 'settings'; section: string | null; open: null }
   | { at: 'intelligence'; section: string | null; open: string | null }
   | { at: 'file'; place: FilePlace }
+  | { at: 'computer'; id: string }
   | { at: 'people'; kind: 'person' | 'company'; id: string | null }
   | {
       at: 'tasks'
@@ -101,6 +102,8 @@ export function placeOf(address: string): Place {
   // a row's own page, a card's
   const rw = /^#\/(row|card)\/([\w-]+)$/.exec(hash)
   if (rw?.[2]) return { at: rw[1] === 'card' ? 'card' : 'row', id: rw[2] }
+  const pc = /^#\/computer\/([\w-]+)$/.exec(hash)
+  if (pc?.[1]) return { at: 'computer', id: pc[1] }
   const ag = /^#\/agent\/([\w-]+)$/.exec(hash)
   if (ag?.[1]) return { at: 'agent', id: ag[1] }
   const it = /^#\/(schedule|run|rule)\/([\w-]+)$/.exec(hash)
@@ -118,4 +121,7 @@ export function placeOf(address: string): Place {
 
 // A schedule's own page sits under Intelligence on the rail.
 export const inIntelligence = (p: Place): boolean =>
-  p.at === 'intelligence' || p.at === 'agent' || (p.at === 'item' && p.kind === 'schedule')
+  p.at === 'intelligence' ||
+  p.at === 'agent' ||
+  p.at === 'computer' ||
+  (p.at === 'item' && p.kind === 'schedule')

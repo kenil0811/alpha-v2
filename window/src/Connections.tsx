@@ -39,11 +39,14 @@ export function Connections({
   version: number
   onChange: () => void
 }) {
-  // a connector that names a place on this Mac (a folder) is a list under Folders; every other
-  // is a tile under Connections
+  // a connector that names a place on a computer (a folder) is on that computer's page; every
+  // other is a tile under Connections
   const accounts = view.connectors.filter((c) => c.auth !== 'path')
-  const places = view.connectors.filter((c) => c.auth === 'path')
-  const folders = view.connections.filter((k) => places.some((c) => c.name === k.connector))
+  // asked to connect a folder (a module's setup): Alpha's own computer's page, where one is added
+  const here = view.connectors.some((c) => c.auth === 'path' && c.name === open && !c.onComputer)
+  useEffect(() => {
+    if (here) window.location.replace('#/computer/here')
+  }, [here])
   // a connection whose connector is not loaded (its pack not added yet): shown, waiting
   const orphans = view.connections.filter((k) => !k.loaded)
   return (
@@ -84,34 +87,6 @@ export function Connections({
       </Section>
       <SignInApps apps={view.signInApps} onChange={onChange} />
       <Sites version={version} />
-      <Section
-        title="Folders"
-        about="What you put in one is kept and read, as if you dropped it in. Alpha never writes to them."
-      >
-        {folders.length > 0 && (
-          <List>
-            {folders.map((k) => (
-              <ConnectionLine key={k.id} connection={k} onChange={onChange} />
-            ))}
-          </List>
-        )}
-        {places
-          .filter((c) => !c.onComputer)
-          .map((c) => (
-            <FolderForm
-              key={c.name}
-              connector={c}
-              onChange={onChange}
-              startOpen={open === c.name}
-            />
-          ))}
-        {places.some((c) => c.onComputer) && (
-          <p className="text-ink-3 text-md">
-            A folder is lent from your own computer, through the Bridge: add the computer under Your
-            computers.
-          </p>
-        )}
-      </Section>
       <Computers version={version} />
     </>
   )
@@ -461,51 +436,6 @@ function ConnectForm({
           Cancel
         </Button>
       </div>
-    </form>
-  )
-}
-
-function FolderForm({
-  connector: c,
-  onChange,
-  startOpen,
-}: {
-  connector: ConnectorView
-  onChange: () => void
-  startOpen: boolean
-}) {
-  const [path, setPath] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    setProblem(null)
-    try {
-      await api.post('/api/connections', { connector: c.name, account: path.trim() })
-      setPath('')
-      onChange()
-    } catch (err) {
-      setProblem(err instanceof Problem ? err.message : 'That folder was not added.')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <form onSubmit={submit} className="flex flex-col gap-2">
-      <div className="flex gap-2">
-        <Field
-          className="flex-1"
-          value={path}
-          autoFocus={startOpen}
-          placeholder={c.account.placeholder}
-          onChange={(e) => setPath(e.target.value)}
-        />
-        <Button type="submit" disabled={busy || !path.trim()}>
-          Add {c.title.toLowerCase()}
-        </Button>
-      </div>
-      {problem && <div className="text-bad text-md">{problem}</div>}
     </form>
   )
 }

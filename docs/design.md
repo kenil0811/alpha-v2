@@ -267,6 +267,12 @@ is kept on the computer (`did.txt`). It starts at sign-in and updates itself fro
 paired with, which hands out an update only under Kenil's signature, and the app takes it only
 under its updater key's (a second key in his Keychain).
 
+Each computer is one short row under Connections › Your computers, opening its own page
+(`#/computer/<id>`, 17 Nov): how it stands, the Bridge it runs, what it lends (each as Connections
+shows a connection), Lend a folder, Delete, and its latest reads. Folders live on their computer's
+page, not on Connections; on a Mac's own Alpha that computer is This Mac, where a folder is added by
+its path. A computer that connects again is read at once, so "Waiting for" goes with it.
+
 Step 3 (16 Nov) lends a Mac's own Calendar and Contacts the same way: two ticks in Alpha Bridge's
 menu, each off until ticked, with Alpha's helper carried inside the app and run there, so macOS asks
 that Mac's person (signed ad hoc, a changed helper asks again). They run either: on a Mac's own

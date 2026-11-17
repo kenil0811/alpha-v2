@@ -129,6 +129,8 @@ describe('the Bridge', { timeout: 30_000 }, () => {
     const conn = world.connections.find('folder', dir)
     expect(conn?.computer).toBe(config.computer)
     expect(conn?.state).toBe('connected')
+    // the first read done, so the next is a read of its own and not that one still going
+    await until(() => !!world.connections.get(conn?.id ?? '')?.lastSyncAt)
     writeFileSync(join(dir, 'notes.txt'), 'call the broker\n')
     await service.sync(conn?.id ?? '')
     expect(world.files.documents().map((d) => d.title)).toEqual(['pl.csv', 'notes.txt'])
@@ -149,6 +151,23 @@ describe('the Bridge', { timeout: 30_000 }, () => {
     await until(() => world.files.documents().length === 2)
     expect(world.files.documents().map((d) => d.title)).toEqual(['pl.csv', 'notes.txt'])
     expect(world.connections.get(conn?.id ?? '')?.health).toBeNull()
+  })
+
+  it('has a page of its own: how it stands, what it lends, what it did', async () => {
+    const { dir, config } = await lendFolder()
+    await until(() => world.files.documents().length === 1)
+    await until(() => world.lines({ kinds: ['connection_read'] }).length > 0)
+    const page = await app.inject({ url: `/api/computers/${config.computer}`, headers: asWindow() })
+    const v = page.json()
+    expect(v.computer).toMatchObject({ name: 'Test Mac', online: true, here: false })
+    expect(v.computer.version).toEqual(expect.any(String))
+    expect(v.lends.map((k: { account: string }) => k.account)).toEqual([dir])
+    expect(v.did[0].words).toMatch(/^Read /)
+    // a server's core has no computer of its own: no This Mac
+    const list = await app.inject({ url: '/api/computers', headers: asWindow() })
+    expect(list.json().computers.map((c: { name: string }) => c.name)).toEqual(['Test Mac'])
+    const none = await app.inject({ url: '/api/computers/here', headers: asWindow() })
+    expect(none.statusCode).toBeGreaterThanOrEqual(400)
   })
 
   it('turns a removed computer away at once', async () => {

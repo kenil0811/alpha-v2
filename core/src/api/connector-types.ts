@@ -78,8 +78,10 @@ export interface ComputerView {
   platform: string // darwin, win32
   online: boolean
   paused: { until: string | null } | null // by its person, for a while or until resumed
-  pairedAt: string
+  pairedAt: string | null // none: the computer Alpha itself runs on (This Mac)
   lastSeenAt: string | null
+  version: string | null // the Bridge it runs, while it is connected
+  here: boolean // the computer Alpha itself runs on: its folders are added by path, not lent
   lends: {
     connection: string
     connector: string
@@ -99,6 +101,13 @@ export interface BridgeDownload {
 }
 
 export interface ComputersView {
-  computers: ComputerView[]
+  computers: ComputerView[] // This Mac first, on the Mac app
   downloads: BridgeDownload[]
+}
+
+// A computer's own page: the computer, what it lends as connections, and its latest reads.
+export interface ComputerPageView {
+  computer: ComputerView
+  lends: ConnectionView[]
+  did: { id: number; at: string; words: string; failed: boolean }[] // newest first
 }
