@@ -70,14 +70,17 @@ export function DayBeside({
   onPage: (href: string) => void
 }) {
   const { day, now } = useDay(version)
+  // named once the day is in: the panel clears the name when it opens
   useEffect(() => {
-    onName(
-      `Today, ${new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}`,
-    )
-  }, [onName])
-  useEffect(() => {
-    if (day?.calendar) onPage(`#/table/${day.calendar}`)
-  }, [day?.calendar, onPage])
+    if (!day) return
+    const today = new Date().toLocaleDateString(undefined, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
+    onName(`Today, ${today}`)
+    if (day.calendar) onPage(`#/table/${day.calendar}`)
+  }, [day, onName, onPage])
   if (!day) return null
   const { allDay, anyTime } = thingsOf(day)
   const strip = stripOf(day, now)
