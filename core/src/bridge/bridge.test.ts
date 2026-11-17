@@ -147,10 +147,14 @@ describe('the Bridge', { timeout: 30_000 }, () => {
     expect(world.connections.get(conn?.id ?? '')?.health).toBe('Waiting for Test Mac')
     expect(world.files.documents()).toHaveLength(1)
     // read the moment it is back, with nobody asking: its waiting words go with it
+    // (the file lands while the read goes on; its words go when the read is done)
     bridge?.run()
-    await until(() => world.files.documents().length === 2)
+    await until(
+      () =>
+        world.files.documents().length === 2 &&
+        world.connections.get(conn?.id ?? '')?.health === null,
+    )
     expect(world.files.documents().map((d) => d.title)).toEqual(['pl.csv', 'notes.txt'])
-    expect(world.connections.get(conn?.id ?? '')?.health).toBeNull()
   })
 
   it('has a page of its own: how it stands, what it lends, what it did', async () => {
