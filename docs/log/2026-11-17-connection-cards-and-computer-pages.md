@@ -25,3 +25,7 @@ doc XFA9yyUZRd2VsiabECKEjU: all five calls as recommended.
   shared by the test's own read and missed its second file under load.
 - Looked at in Safari's engine on Kenil's Mac Alpha with made-up computers and problems put in the
   page's answers, nothing stored.
+- Outlook on Kenil's server: a mail with no sender's address stopped every read ("From address
+  takes an email address; got """). A connector's or a script's empty words are now no value in an
+  email, link, date, number, amount or file field; words stay words, and the person's or the
+  model's empty address is still refused.

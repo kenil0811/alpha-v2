@@ -191,6 +191,9 @@ export function update(
       run(records.db, 'DELETE FROM provenance WHERE record_id = ? AND field_id = ?', id, field)
 }
 
+// The kinds whose empty words are no value when code lands them; words stay words.
+const NONE_WHEN_EMPTY = new Set<string>(['email', 'link', 'date', 'number', 'money', 'file'])
+
 export function prepare(
   records: Records,
   table: Table,
@@ -205,8 +208,11 @@ export function prepare(
     throw new Refused('A row needs values.')
   const vals: Record<string, unknown> = {}
   const prov: Record<string, Provenance> = {}
-  for (const [name, value] of Object.entries(values)) {
+  for (const [name, given] of Object.entries(values)) {
     const f = findField(table, name, byKey)
+    // a connector's or a script's empty words where words can't be (a mail with no sender's
+    // address, an event with no link): no value, not a refusal that stops the whole read
+    const value = byKey && given === '' && NONE_WHEN_EMPTY.has(f.kind) ? null : given
     let v = f.tags
       ? checkTags(f.name, value, f.choices)
       : checkValue(f.kind, f.name, value, f.choices)

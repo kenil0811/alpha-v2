@@ -179,6 +179,35 @@ describe('the shape changing under rows', () => {
     expect(world.db.prepare('SELECT count(*) AS n FROM versions').get()).toEqual({ n: 0 })
   })
 
+  it('takes a connector’s empty words as no value where words can’t be, and keeps them as words', () => {
+    const m = world.shape.makeModule('Post', { actor: alpha })
+    const mail = world.shape.makeTable(
+      m.id,
+      'Mail',
+      [
+        { name: 'Subject', kind: 'text' },
+        { name: 'From address', kind: 'email' },
+        { name: 'Date', kind: 'date' },
+      ],
+      { actor: alpha },
+    )
+    // a mail with no sender's address (Outlook gives none for some): read, not refused
+    const item = [{ key: 'm1', values: { Subject: '', 'From address': '', Date: '' } }]
+    expect(world.records.land(mail.id, item, { connector: 'c' }, { actor: alpha })).toEqual({
+      added: 1,
+      changed: 0,
+      same: 0,
+    })
+    const row = world.records.get(world.records.byKey(mail.id, 'm1') as string)?.record
+    expect(row?.values).toEqual({ subject: '' })
+    // the person's or the model's empty address is still refused, in words
+    expect(() =>
+      world.records.add(mail.id, [{ values: { 'From address': '' }, provenance: looked }], {
+        actor: alpha,
+      }),
+    ).toThrow(/takes an email address/)
+  })
+
   it("keeps the model's own names for itself, and steps a renamed field aside too", () => {
     const { deals, m } = shop()
     const t = world.shape.makeTable(m.id, 'People at', [{ name: 'Name', kind: 'text' }], {
