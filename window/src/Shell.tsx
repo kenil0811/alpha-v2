@@ -125,6 +125,7 @@ export function Rail({
   return (
     <SlideWidth width={dragged ?? width} still={dragged !== null}>
       <nav
+        data-no-status
         style={{ width: dragged ?? width }}
         className="relative flex shrink-0 flex-col border-rail-line border-r bg-rail px-2.5 pb-2.5 text-rail-ink"
       >
@@ -148,8 +149,8 @@ export function Rail({
           {/* the sidebar button first, at the corner, as Claude Code's */}
           <button
             type="button"
-            aria-label="Fold the rail"
-            data-tip={`Fold the rail (${MOD}\\)`}
+            aria-label="Hide the sidebar"
+            data-tip={`Hide the sidebar (${MOD}\\)`}
             onClick={() => onLayout({ railFolded: true })}
             className="grid size-7 shrink-0 place-items-center rounded-md text-rail-ink-3 hover:bg-rail-hover hover:text-rail-ink"
           >
@@ -404,7 +405,10 @@ function Strip({
     </a>
   )
   return (
-    <nav className="relative flex w-13 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink">
+    <nav
+      data-no-status
+      className="relative flex w-13 shrink-0 flex-col items-center gap-1 overflow-hidden border-rail-line border-r bg-rail px-1 pb-2.5 text-rail-ink"
+    >
       <Edge
         side="right"
         folded
@@ -424,8 +428,8 @@ function Strip({
       >
         <button
           type="button"
-          aria-label="Open the rail"
-          data-tip={`Open the rail (${MOD}\\)`}
+          aria-label="Show the sidebar"
+          data-tip={`Show the sidebar (${MOD}\\)`}
           onClick={onOpen}
           className={stripItem()}
         >

@@ -1,4 +1,4 @@
-// A table's ⋮ menu: the view's sort and group, its layout, Add column, Rename, Keep as a tab, Read
+// A table's ⋮ menu: the view's sort and group, its layout, Add column, Rename, Show as a tab, Read
 // now on a table a connection fills, then downloads of exactly the rows and columns shown. Out of
 // TableView.tsx so that screen only shrinks (the window file wall).
 import type { FieldView, ReadByView, ViewConfig } from '@alpha/core/api'
@@ -170,9 +170,7 @@ export function More({
           </MenuItem>
         </SubMenu>
         <MenuItem
-          reason={
-            fixed ?? (adding ? undefined : 'This table is kept on its own page; add columns there.')
-          }
+          reason={fixed ?? (adding ? undefined : 'This table has its own page; add columns there.')}
           onClick={() => {
             setOpen(false)
             setAdd(true)
@@ -202,7 +200,7 @@ export function More({
             }}
           >
             <PanelTop className="size-3.5 text-ink-3" />
-            Keep as a tab
+            Show as a tab
           </MenuItem>
         )}
         {readBy.length > 0 && (

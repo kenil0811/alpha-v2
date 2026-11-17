@@ -6,6 +6,7 @@ import type { FieldView, Pick } from '@alpha/core/api'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { api } from '../api.ts'
 import { cn } from '../ui/cn.ts'
+import { cutTip } from '../ui/cut-tip.ts'
 import { SEARCH_PAST, SearchLine } from '../ui/field.tsx'
 import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
 
@@ -32,10 +33,11 @@ export function pickedValue(field: FieldView, was: string[], now: string[]): unk
   return field.many ? now : (now[0] ?? null)
 }
 
-// A hint kept to one short line (a LinkedIn headline can run to a paragraph), whole on hover.
+// A hint kept to one short line (a LinkedIn headline can run to a paragraph), whole on hover when
+// it is cut.
 function Hint({ words }: { words: string }) {
   return (
-    <span className="block max-w-48 truncate text-ink-3 text-sm" data-tip={words}>
+    <span className="block max-w-48 truncate text-ink-3 text-sm" {...cutTip(words)}>
       {words}
     </span>
   )

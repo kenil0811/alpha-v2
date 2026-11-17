@@ -1,15 +1,18 @@
-// A switch for something that is on or off (a schedule, connection tables in the rail).
+// A switch for something that is on or off (a schedule, connection tables in the rail). Its label
+// is read aloud; it shows as a tip too, unless the same name sits beside it (named).
 import { cn } from './cn.ts'
 
 export function Switch({
   checked,
   onChange,
   label,
+  named,
   disabled,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
   label: string
+  named?: boolean
   disabled?: boolean
 }) {
   return (
@@ -18,7 +21,7 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      data-tip={label}
+      data-tip={named ? undefined : label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(

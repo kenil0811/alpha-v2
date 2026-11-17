@@ -51,7 +51,7 @@ export function Edge({
     setOn(false)
     onDrag(null)
   }
-  const tip = folded ? 'Drag out to open' : 'Drag past the narrowest to fold'
+  const tip = folded ? 'Drag out to open' : 'Drag further to hide it'
   return (
     // biome-ignore lint/a11y/useSemanticElements: a vertical splitter has no element of its own
     <div

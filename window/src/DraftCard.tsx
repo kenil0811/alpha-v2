@@ -40,7 +40,7 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
     : null
 
   return (
-    <Card label="Leaves your world" waits="Waits for you">
+    <Card label="Goes outside Alpha" waits="Waits for you">
       <div className="font-medium text-ink text-lg">{card.words}</div>
       <div className="text-ink-3 text-sm">
         {draft.schedule}'s {draft.kind}
@@ -103,8 +103,8 @@ export function DraftCard({ card, draft }: { card: CardView; draft: DraftView })
         <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
           <div className="text-ink text-md">{draft.always}?</div>
           <div className="text-ink-3 text-sm">
-            This one goes now, and the next ones without a card, each shown on Home. Revoke it any
-            time in Settings › Permissions.
+            This one goes now, and the next ones without asking you, each shown on Home. Revoke it
+            any time in Settings › Permissions.
           </div>
           <Actions>
             <Button variant="primary" disabled={busy} onClick={() => act('send', { always: true })}>

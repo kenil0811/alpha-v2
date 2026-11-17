@@ -66,7 +66,7 @@ export function EditCell({
   if (isTags(field))
     return (
       <>
-        <span ref={anchor} className={cn(box, 'flex items-center')} title={problem ?? undefined}>
+        <span ref={anchor} className={cn(box, 'flex items-center')} data-tip={problem ?? undefined}>
           <TagChips field={field} value={typed.split(',').map((x) => x.trim())} />
         </span>
         <Popover anchor={anchor} open onClose={() => void save()}>
@@ -83,7 +83,7 @@ export function EditCell({
         startOpen
         value={typed}
         aria-label={field.name}
-        title={problem ?? undefined}
+        data-tip={problem ?? undefined}
         className={cn(box, 'rounded-none border-0')}
         onChange={(e) => {
           const read = readValue(field, e.target.value, value)
@@ -114,7 +114,7 @@ export function EditCell({
       ref={input}
       value={typed}
       aria-label={field.name}
-      title={problem ?? undefined}
+      data-tip={problem ?? undefined}
       type={field.kind === 'date' ? 'date' : 'text'}
       inputMode={NUMERIC.has(field.kind) ? 'decimal' : undefined}
       onChange={(e) => {

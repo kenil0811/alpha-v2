@@ -28,7 +28,7 @@ const READ: Record<KeptFileView['read'], [string, Tone]> = {
   read: ['Read', 'good'],
   reading: ['Being read', 'neutral'],
   failed: ['Not read', 'bad'],
-  kept: ['Kept as it is', 'neutral'],
+  kept: ['Saved as it is', 'neutral'],
 }
 
 export function KeptFiles({ version }: { version: number }) {

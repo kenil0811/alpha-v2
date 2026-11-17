@@ -164,7 +164,7 @@ export function Foot({ me }: { me: Me | null }) {
       {health && (
         <p>
           Alpha {health.version}
-          {health.build ? ` · build ${health.build}` : ''}
+          {health.build ? ` · Version ${health.build}` : ''}
         </p>
       )}
       {me?.signIn && (

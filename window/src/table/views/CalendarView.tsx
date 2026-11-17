@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button, IconButton } from '../../ui/button.tsx'
 import { cn } from '../../ui/cn.ts'
+import { cutTip } from '../../ui/cut-tip.ts'
 import { Segmented } from '../../ui/segmented.tsx'
 import { numberOf } from '../engine.ts'
 import { DOT, titleOf } from '../values.ts'
@@ -168,7 +169,7 @@ function Chip({
     <button
       type="button"
       onClick={() => onOpen(p.row.id)}
-      title={names(p.row)}
+      {...cutTip(names(p.row))}
       className="flex items-center gap-1.5 truncate rounded-sm bg-sunk px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
     >
       {tone && (
@@ -227,7 +228,7 @@ function Month({
               <button
                 type="button"
                 onClick={() => onDay(d)}
-                title="Show this day"
+                data-tip="Show this day"
                 className={cn(
                   'grid size-6 place-items-center rounded-full text-sm tabular-nums hover:bg-hover',
                   dayKey(d) === today
@@ -349,7 +350,7 @@ function Hours({ days, placed, names, toneOf, onOpen }: Draw & { days: Date[] })
                     key={p.row.id}
                     type="button"
                     onClick={() => onOpen(p.row.id)}
-                    title={names(p.row)}
+                    {...cutTip(names(p.row))}
                     className="absolute overflow-hidden rounded-sm border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-left text-ink text-sm hover:bg-hover"
                     style={{
                       top,

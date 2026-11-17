@@ -12,6 +12,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Empty, Section } from './ui/section.tsx'
@@ -65,7 +66,7 @@ export function ComputerPage({
   const c = view.computer
   const [state, tone] = computerState(c)
   const about = c.here
-    ? 'Alpha runs on this computer: a folder is added here by its path.'
+    ? ''
     : [
         c.online
           ? 'Connected now'
@@ -79,7 +80,10 @@ export function ComputerPage({
         .join(' · ')
   return (
     <Record kind="Your computer">
-      <h1 className="font-serif text-2xl text-ink">{c.name}</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="font-serif text-2xl text-ink">{c.name}</h1>
+        {c.here && <Info help="Alpha runs on this computer: a folder is added here by its path." />}
+      </div>
       <div className="-mt-3 flex flex-wrap items-center gap-2">
         {!c.here && <Pill tone={tone}>{state}</Pill>}
         <span className="text-ink-3 text-sm">{about}</span>
@@ -114,7 +118,7 @@ export function ComputerPage({
         about={
           c.here
             ? 'Folders Alpha reads on this computer: what you put in one is kept and read, as if you dropped it in. Alpha never writes to them.'
-            : `What ${c.name} lends Alpha through Alpha Bridge: folders, picked there; its Calendar and Contacts, turned on in Alpha Bridge's menu there; and the sites you signed in to there with its Browser on, which agents work on out of sight. Alpha reaches them only while it is on and not paused.`
+            : `What ${c.name} lends Alpha through Alpha Bridge: folders, picked there; its Calendar and Contacts, turned on in Alpha Bridge's menu there; and the sites you signed in to there with its Browser on, which agents work on out of sight. Alpha reaches them only while it is on and not paused. Lend a folder here, or turn on Calendar, Contacts or Browser in Alpha Bridge's menu on ${c.name}.`
         }
       >
         {view.lends.length + c.sites.length > 0 ? (
@@ -134,7 +138,7 @@ export function ComputerPage({
                 sub={
                   c.browser || !c.online
                     ? `Signed in ${updatedWords(s.at)}`
-                    : `Signed in ${updatedWords(s.at)} · Browser is off in Alpha Bridge there`
+                    : `Signed in ${updatedWords(s.at)} · Browser is turned off in Alpha Bridge on that computer`
                 }
                 actions={
                   <Button
@@ -150,11 +154,7 @@ export function ComputerPage({
             ))}
           </List>
         ) : (
-          <Empty>
-            {c.here
-              ? 'No folders added yet.'
-              : `Nothing lent yet. Lend a folder here, or turn on Calendar, Contacts or Browser in Alpha Bridge's menu on ${c.name}.`}
-          </Empty>
+          <Empty>{c.here ? 'No folders added yet.' : 'Nothing lent yet.'}</Empty>
         )}
         {places.map((p) => (
           <FolderForm key={p.name} connector={p} onChange={load} />

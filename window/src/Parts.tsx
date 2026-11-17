@@ -72,7 +72,7 @@ export function Parts() {
               <Pill tone="accent">You said</Pill>
               <Pill tone="faint">No model</Pill>
               <Topic>Deals</Topic>
-              <Label>Leaves your world</Label>
+              <Label>Goes outside Alpha</Label>
               <Kbd>{MOD}K</Kbd>
             </div>
           </Section>
@@ -122,7 +122,7 @@ export function Parts() {
             </List>
           </Section>
           <Section title="A card">
-            <Card label="Leaves your world" waits="Waits for you">
+            <Card label="Goes outside Alpha" waits="Waits for you">
               <div className="font-medium text-ink text-lg">Send the reply to the broker?</div>
               <Preview
                 detail={
@@ -130,7 +130,7 @@ export function Parts() {
                 }
               />
               <div className="text-ink-3 text-sm">
-                Rests on your message: “ask the broker for the CIM”
+                Based on your message: “ask the broker for the CIM”
               </div>
               <Actions>
                 <Button variant="primary">Send it</Button>

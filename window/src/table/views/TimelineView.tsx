@@ -69,7 +69,7 @@ export function TimelineView({
           <div
             className="pointer-events-none absolute top-9 bottom-0 z-0 w-px bg-accent"
             style={{ left: 260 + x(now) }}
-            title="Today"
+            data-tip="Today"
           />
         )}
         {dated.map(({ row, at }) => {
@@ -87,7 +87,6 @@ export function TimelineView({
                 <button
                   type="button"
                   onClick={() => onOpen(row.id)}
-                  title={new Date(at).toLocaleDateString()}
                   className="absolute top-1/2 flex -translate-y-1/2 items-center gap-1.5 whitespace-nowrap text-ink-2 text-sm"
                   style={{ left: x(at) - 5 }}
                 >

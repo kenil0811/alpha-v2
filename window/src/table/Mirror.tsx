@@ -8,7 +8,7 @@ import { when } from './values.ts'
 export const ShapeFixed = createContext<string | undefined>(undefined)
 export const useShapeFixed = () => useContext(ShapeFixed)
 export const managedWhy = (managed: string | null) =>
-  managed ? `Managed by ${managed}: its shape stays as it is` : undefined
+  managed ? `Comes with ${managed}: its columns change only with it` : undefined
 
 // A mirror's gone rows, one click away on the line over the table (rules D8); no sentence about
 // what a mirror is.

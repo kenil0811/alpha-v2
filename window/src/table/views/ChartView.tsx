@@ -64,7 +64,7 @@ export function ChartView({
               key={g.key || 'none'}
               type="button"
               onClick={() => onBar(axis, g.key)}
-              title={`Show these rows in the table`}
+              data-tip="Show these rows in the table"
               className="grid grid-cols-[160px_1fr_88px] items-center gap-3 rounded-sm px-1 py-0.5 text-left text-md hover:bg-hover"
             >
               <span className="truncate text-ink">{g.label}</span>

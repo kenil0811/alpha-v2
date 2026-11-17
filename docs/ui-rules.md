@@ -28,7 +28,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; at its left a ‹ to the page above (a task to Tasks, a row to its table, a module's table or page to the module it sits in, every other page to Home), greyed in its place on Home alone; the name is not edited there | 25 Oct, 1 Nov, 7 Nov, 10 Nov | test |
+| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; at its left a ‹ to the page above (a task to Tasks, a row to its table, a module's table or page to the module it sits in, every other page to Home), greyed in its place on Home alone; the name is not edited there. On Agents the centre holds Chat and Setup, and the agent's name is not in the bar | 25 Oct, 1 Nov, 7 Nov, 10 Nov, 17 Nov | test |
 | H2 | A screen with parts switches them with one pill switch in the bar, every label in full, scrolling sideways; never cut short or folded to icons; a page opened beside keeps a row of tabs under its head | 26 Oct, 2 Nov | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
@@ -51,7 +51,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| T1 | One toolbar line: saved list, view, Search, Filter on the left; Columns and ⋮ on the right; Save and Cancel only while the list differs from its saved self. A list's filters and search raise no line of their own: their chips and the count beside them say it, and Cancel brings the saved list back. Only rows a page or a row sent the person to are said under the tabs ("Showing 3 of 140 rows, the ones a page counted"), with Show all. On a table a connection fills, ⋮ has Read now, reading every connection that fills it in one press (one waiting on a sign-in or the customer greyed with its reason, W3), and the line under the table says what reads into it and when ("Read by Gmail and Outlook, 10:42") | 26 Oct, 1 Nov, 15 Nov | test (the line, read by) |
+| T1 | One toolbar line: the saved lists as pills (the one the table opens on first, the picked one filled, as many as fit, the rest and the picked list's own actions behind ▾, each pill's tip saying what the list holds: its filters, search, sort, group and hidden columns), view, Search, Filter on the left; Columns and ⋮ on the right; Cancel and Save only while the list differs from its saved self, Save ▾ Save as new list keeping a shared list as it was. A list's filters and search raise no line of their own: their chips and the count beside them say it, and Cancel brings the saved list back. Only rows a page or a row sent the person to are said under the tabs ("Showing 3 of 140 rows, the ones a page counted"), with Show all. On a table a connection fills, ⋮ has Read now, reading every connection that fills it in one press (one waiting on a sign-in or the customer greyed with its reason, W3), and the line under the table says what reads into it and when ("Read by Gmail and Outlook, 10:42") | 26 Oct, 1 Nov, 15 Nov, 17 Nov | test (the line, read by) |
 | T2 | No cards of counts above or below a table | 26 Oct | test |
 | T3 | New sits at the right of a table's toolbar, beside the ⋮, on every layout but the form (which adds by itself), and works while the assistant is open | 26 Oct, 15 Nov | — |
 | T4 | A click on a row's first cell opens the row in the side panel (a quarter of a second later when none is open, so a double-click can edit; at once when one is), its words underlined under the pointer; a click on any other cell only picks it, and no cell says how to change it on hover; on a board a card's name opens its row the same way; in an opened row a related row's name is a link that opens it beside the page; with Open page to its own page (#/row/…), beside the assistant too when the window holds the rail, the page's 600px, the panel's 320px and the assistant (else the panel gives way and the assistant stays); a link to a task, a run, a person or a row opens it beside the page the same way, kept in the address so a reload keeps it, the panel holding every field, notes, its parts as small tables with New, its tasks with Add a task, and files, and its own page those with Linked here and Read from; a double-click edits a value, in the grid and in an opened row. A part's small table: its first three fields, one line a row, names never ids, long words cut with the whole on the tip; its twelve changed most lately with how many in all, and Open as a table for the rest | 26 Oct, 27 Oct, 28 Oct, 1 Nov, 9 Nov, 14 Nov, 15 Nov | test (room, beside) |
@@ -88,6 +88,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | R7 | A value Alpha is not sure of has a small grey mark (≈ estimated, ? assumed), never amber: its word on hover in a table, written out in a panel; an empty value is a grey dash in a table and "Unknown" in a panel | 25 Oct | — |
 | R8 | A short list (How to work first, the others as they are touched): Add on its heading, ✕ on an entry when hovered, a double-click edits the entry in place (Enter keeps, Escape puts it back); where Alpha must understand an entry, Add starts the conversation | 1 Nov | test |
 | R9 | A card has its own page (#/card/<id>), opened from ↗ on its head wherever it shows (the stream, Home): the same card across the page, a long letter whole, answered there as on the card; once answered the page says with what | 1 Nov | test (route), journey |
+| R10 | A screen doesn't explain itself in sentences: what helps sits in the ⓘ beside its heading or row; what a switch does to safety moves there and never goes; a step to take now (sign in there, then quit Chrome) stays | 17 Nov | — |
 
 ## Assistant and chat
 
@@ -96,7 +97,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | A1 | The assistant's header: face and name in the middle, the sidebar button that closes it at its outer corner; no Expand, no Open whole conversation, no bell | 26 Oct, 9 Nov | test |
 | A2 | The person's words in a light bubble on the right; Alpha's straight on the page with no box, as in Claude Code. Steps sit between the words where they happened, one quiet line that opens to each step; a table stays in the column | 26 Oct, 9 Nov | — |
 | A3 | The composer's +: files, a folder; @ picks teammates, and the picks travel with the message. The model the agent runs on shows beside Send; the owner changes it there or on the agent's page. While the agent works an empty box's Send is Stop. The way to Claude is Settings' business | 26 Oct, 7 Nov, 9 Nov | — |
-| A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip, never the browser's title | 26 Oct | test |
+| A4 | Every icon button has a label, read aloud and shown on hover in our one tooltip; no browser `title` anywhere in the window. A tip says what the screen doesn't show (an icon's name, why something is greyed, what a list holds, words cut short), never the words beside it again | 26 Oct, 17 Nov | test |
 | A5 | The assistant is the conversation on the right of every screen but the agents' own, Home included; it starts closed, with Alpha's face at the right of the bar, and opens only when the person clicks the face (or ⌘J, ⌘⇧\\); it stays open between pages until closed, and the agents' own page closes it; it always leaves the rail and at least 600px of screen | 26 Oct, 2 Nov, 10 Nov | — |
 | A6 | A reply shows whole and stays as it streamed, as in Claude Code: what the model wrote and the steps between, in order, nothing folded or replaced at the end | 9 Nov | test |
 | A7 | The chat holds the conversation: the person's words, Alpha's message for each turn, the cards still waiting, a question's answer as one line, and failures in the warning colour. A yes or a no, rows changed, a file filed, a rule saved and a script's report are on Activity; an agent's scheduled run reports on its task's page and Home. Nothing runs beside it | 7 Nov, 10 Nov | test (stream) |
@@ -108,7 +109,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| I1 | Intelligence: Agents, Modules, Schedules, Connections, How to work. Agents lists each agent with the Chief of staff first, a row opening its page: what it is for, its instructions, what it remembers (edited in place), its schedules (added there, each with a page of its own and its runs), its skills, Open conversation and Delete. Modules lists every module and opens its Setup; installing one is below the list, the owner's alone. Schedules is one table saying who each one wakes, a row opening its page | 26 Oct, 7 Nov, 9 Nov, 10 Nov | — |
+| I1 | Intelligence: Agents, Modules, Schedules, Connections, How to work. Agents lists each agent with the Chief of staff first, a row opening its page: what it is for, its instructions, what it remembers (edited in place), its schedules (added there, each with a page of its own and its runs), its skills, Open conversation and Delete; the same page is Agents › Setup, for the agent chosen there. Modules lists every module and opens its Setup; installing one is below the list, the owner's alone. Schedules is one table saying who each one wakes, a row opening its page | 26 Oct, 7 Nov, 9 Nov, 10 Nov, 17 Nov | — |
 | I2 | Settings: Model, Usage, Data, Appearance, Permissions, Activity, People where people sign in, one at a time, the version at the foot | 26 Oct, 7 Nov, 9 Nov | — |
 | I3 | Settings › Model: each way on its row with its state, its key and Use this. Settings › Usage, a month at a time (months as a segmented control), its total "at API prices" on the subscription, then by module, by schedule and by model (models by name), largest first; a run's or a turn's cost on its Activity line | 26 Oct, 28 Oct | — |
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions; every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov | test |
@@ -125,7 +126,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | W3 | No line for what Alpha can't do yet; a line that can't act now stays greyed with its reason; never "Coming soon" | 26 Oct | test (words) |
 | W4 | Sentence case for labels, buttons and placeholders | 25 Oct | test |
 | W5 | Dates read "25 Oct" (the year only when it isn't this one), typed as words; never a dd/mm/yyyy picker | 26 Oct | — |
-| W6 | Plain words: no tool names, no ids; the window never names the apps it learned from | 25 Oct | — |
+| W6 | Plain words a newcomer follows the first time, nothing that assumes Alpha's history or how it is built: no tool names, no ids; the window never names the apps it learned from | 25 Oct, 17 Nov | — |
 | W7 | Today, this month and a day's name (Home's due today, Usage's month, a backup's and a download's name, a table's earliest and latest, what is ahead for a person) are the person's own day, never UTC's | 1 Nov | test |
 
 ## Look
@@ -140,7 +141,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | L6 | Every button changes colour under the pointer, into the accent's tint (the primary darkens); a soft kind is a way onward that is not the screen's main act (Open page) | 2 Nov | — |
 | L7 | A card's buttons sit at its right, its main act at the right edge, the same on every card | 2 Nov | — |
 | L8 | Cuts of one list are rounded buttons, each with its count, one picked (Activity's All and Failed) | 2 Nov | — |
-| L9 | Where a link goes shows at the window's foot while the pointer rests on it: a place in Alpha by its name, an outside page by its address; a link to a place in Alpha opens in Alpha | 2 Nov | — |
+| L9 | Where a link goes shows at the window's foot while the pointer rests on it: a place in Alpha by its name, an outside page by its address; a link to a place in Alpha opens in Alpha. Not on the rail's rows, where it would say the row's name again | 2 Nov, 17 Nov | — |
 | L10 | Files are added in one drop zone, a dashed box to drop on or click, what is there inside it | 2 Nov | — |
 | L11 | Read now and Run now say when it last happened just before the button, the full time on hover; a connection's problem, when it has one, takes that place, so a tile with a problem is no taller | 2 Nov, 17 Nov | — |
 | L12 | A double-click on what can't change says why, at once, and only then: it is not a tip on hover | 2 Nov, 14 Nov | — |
@@ -156,5 +157,4 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 - Undo of one change from a cell's History (the core reverts a line since 26 Oct; the cell's menu waits).
 - A module's files listed under it, and choosing its icon (needs the core).
 - A choice column's default for everyone, and flagging a cell as wrong (needs the core).
-- Fewer explanatory sentences on screens, redone on today's screens.
 - On a phone, a bottom tab bar with modules and chat as drawers.

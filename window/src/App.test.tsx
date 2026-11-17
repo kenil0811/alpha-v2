@@ -142,7 +142,7 @@ describe('the window', () => {
         onLayout={() => undefined}
       />,
     )
-    expect(strip).toContain('Open the rail')
+    expect(strip).toContain('Show the sidebar')
     expect(strip).toContain('aria-label="Shops"')
     expect(strip).not.toContain('aria-label="Bakery"')
   })

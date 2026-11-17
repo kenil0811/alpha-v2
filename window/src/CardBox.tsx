@@ -60,7 +60,7 @@ export function Preview({ detail }: { detail: string }) {
 
 // What each gate is called in a card's head.
 export const GATE: Record<string, string> = {
-  leaves_world: 'Leaves your world',
+  leaves_world: 'Goes outside Alpha',
   deletes_own: 'Deletes your entries',
   sign_in: 'Sign-in',
   filing: 'A file from your mail',
@@ -133,7 +133,7 @@ function CardBody({
     }
   }
   const restsOn = card.restsOn.length > 0 && (
-    <div className="text-ink-3 text-sm">Rests on {card.restsOn.join(' and ')}</div>
+    <div className="text-ink-3 text-sm">Based on {card.restsOn.join(' and ')}</div>
   )
   const cannotUndo = card.cannotUndo && (
     <div className="flex items-center gap-1.5 text-sm text-warn">
@@ -185,7 +185,7 @@ function CardBody({
         <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
           <div className="text-ink text-md">{card.acting.always}?</div>
           <div className="text-ink-3 text-sm">
-            This step goes now, and the next ones without a card, each in the record with its
+            This step goes now, and the next ones without asking you, each in the record with its
             picture. A step that cannot be taken back still asks. Revoke it any time in Settings ›
             Permissions.
           </div>
@@ -241,8 +241,8 @@ function CardBody({
       {opened && (
         <div className="text-ink-2 text-sm">
           {typeof opened === 'string'
-            ? `${card.site} is open in its own Chrome window on ${opened}. Sign in there, then quit that Chrome (⌘Q on a Mac; on Windows, close its window); the reader runs again.`
-            : `${card.site} is open in Google Chrome on this computer. Sign in there, then quit that Chrome with ⌘Q; the reader runs again.`}
+            ? `${card.site} is open in its own Chrome window on ${opened}. Sign in there, then quit that Chrome (⌘Q on a Mac; on Windows, close its window); Alpha then reads it again.`
+            : `${card.site} is open in Google Chrome on this computer. Sign in there, then quit that Chrome with ⌘Q; Alpha then reads it again.`}
         </div>
       )}
       {problem && <div className="text-bad text-sm">{problem}</div>}

@@ -15,6 +15,7 @@ import { FieldList } from './table/RowPanel.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 import { Section } from './ui/section.tsx'
 import { Tabs } from './ui/tabs.tsx'
 
@@ -91,13 +92,9 @@ function PeopleList({
         tabs={[...peopleTabs(kind), ...(net ? moduleTabs(net, null) : [])]}
       />
       {none && (
-        <p className="border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
-          No one yet. People come from your contacts, the people you write to and your small
-          meetings, once Contacts, Calendar or Gmail is connected in{' '}
-          <a className="text-accent hover:underline" href="#/intelligence/connections">
-            Intelligence
-          </a>
-          .
+        <p className="flex items-center gap-1.5 border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
+          No one yet.
+          <Info help="People come from your contacts, the people you write to and your small meetings, once Contacts, Calendar or Gmail is connected in Intelligence › Connections." />
         </p>
       )}
       <div className="min-h-0 flex-1">
@@ -422,7 +419,7 @@ function PersonPage({
                     <Button
                       size="sm"
                       variant="ghost"
-                      title="This row is someone else: it leaves with its own addresses"
+                      data-tip="This row is someone else: it leaves with its own addresses"
                       onClick={() => act(`${p.id}/not`, { record: r.record })}
                     >
                       Not this person

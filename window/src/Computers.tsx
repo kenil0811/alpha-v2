@@ -132,7 +132,7 @@ function Pairing({ link, downloads }: { link: string; downloads: BridgeDownload[
         <li>
           {downloads.length ? (
             <span className="inline-flex flex-wrap items-center gap-2">
-              Download the Bridge and unzip it:
+              Download Alpha Bridge and unzip it:
               {downloads.map((d) => (
                 <a
                   key={d.platform}
@@ -145,7 +145,7 @@ function Pairing({ link, downloads }: { link: string; downloads: BridgeDownload[
               ))}
             </span>
           ) : (
-            'The Bridge’s download is not on this Alpha yet.'
+            'Alpha Bridge’s download is not on this Alpha yet.'
           )}
         </li>
         <li>

@@ -13,9 +13,10 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button, IconButton } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { MenuItem, Popover } from './ui/popover.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { Words } from './ui/words.tsx'
 
@@ -47,7 +48,7 @@ function inOrder(all: AgentView[]): AgentView[] {
 function groupsOf(agents: AgentView[]): { title: string | null; agents: AgentView[] }[] {
   const out: { title: string | null; agents: AgentView[] }[] = []
   for (const a of agents) {
-    const title = a.chief ? null : a.from.kind === 'here' ? 'Made here' : `From ${a.from.name}`
+    const title = a.chief ? null : a.from.kind === 'here' ? 'Your own' : `From ${a.from.name}`
     const last = out.at(-1)
     if (last && last.title === title) last.agents.push(a)
     else out.push({ title, agents: [a] })
@@ -58,18 +59,16 @@ function groupsOf(agents: AgentView[]): { title: string | null; agents: AgentVie
 export function AgentsSection({ version }: { version: number }) {
   const agents = useAgents(version)
   return (
-    <Section title="Agents" about="Each one has its own job, memory and conversation.">
+    <Section
+      title="Agents"
+      about="Each one has its own job, memory and conversation. Ask the Chief of staff to make one: say what it should do and when to use it."
+    >
       {groupsOf(agents).map((g) => (
         <div key={g.title ?? 'chief'} className="flex flex-col gap-1.5">
           {g.title && <p className="text-ink-3 text-sm">{g.title}</p>}
           <AgentList agents={g.agents} />
         </div>
       ))}
-      {agents.length <= 1 && (
-        <Empty>
-          Ask the Chief of staff to make an agent: say what it should do and when to use it.
-        </Empty>
-      )}
     </Section>
   )
 }
@@ -235,10 +234,12 @@ export function AgentPage({
   id,
   version,
   onName,
+  inAgents = false,
 }: {
   id: string
   version: number
   onName: (name: string) => void
+  inAgents?: boolean // Agents › Setup: Chat is one click away, and a deleted agent stays there
 }) {
   const [a, setA] = useState<AgentDetail | null | undefined>(undefined)
   const gone = useRef(false) // deleted just now: nothing left to load
@@ -268,16 +269,18 @@ export function AgentPage({
       )}
       <p className="text-ink-2 text-md">{a.description}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          onClick={() => {
-            change({ agent: a.id })
-            window.location.hash = '#/conversation'
-          }}
-        >
-          <MessageSquare className="size-3.5" />
-          Open conversation
-        </Button>
+        {!inAgents && (
+          <Button
+            size="sm"
+            onClick={() => {
+              change({ agent: a.id })
+              window.location.hash = '#/conversation'
+            }}
+          >
+            <MessageSquare className="size-3.5" />
+            Open conversation
+          </Button>
+        )}
         <ModelPicker agent={a} />
         {!a.chief && (
           <Button size="sm" variant="ghost" onClick={() => setAsking(true)}>
@@ -289,12 +292,16 @@ export function AgentPage({
       </div>
       {!a.chief && (
         <section className="flex flex-col gap-1.5">
-          <h2 className="font-medium font-serif text-ink text-xl">Instructions</h2>
-          <p className="text-ink-3 text-sm">
-            {a.from.kind === 'here'
-              ? 'Ask the Chief of staff or this agent to change them.'
-              : `Changes with ${a.from.name}. Add to it through its memory or How to work.`}
-          </p>
+          <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
+            Instructions
+            <Info
+              help={
+                a.from.kind === 'here'
+                  ? 'Ask the Chief of staff or this agent to change them.'
+                  : `They change with ${a.from.name}. Add to them through its memory or How to work.`
+              }
+            />
+          </h2>
           <div className="text-md">
             <Words text={a.instructions || 'None yet.'} />
           </div>
@@ -321,10 +328,12 @@ export function AgentPage({
       )}
       {a.skills.length > 0 && (
         <section className="flex flex-col gap-1.5">
-          <h2 className="font-medium font-serif text-ink text-xl">Skills</h2>
-          {!a.chief && a.from.kind !== 'here' && (
-            <p className="text-ink-3 text-sm">Change with {a.from.name}.</p>
-          )}
+          <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
+            Skills
+            {!a.chief && a.from.kind !== 'here' && (
+              <Info help={`They change with ${a.from.name}.`} />
+            )}
+          </h2>
           <ul className="flex flex-col">
             {a.skills.map((s) => (
               <li key={s.name} className="border-hair border-t py-1.5 text-md first:border-t-0">
@@ -347,11 +356,12 @@ export function AgentPage({
             act(async () => {
               await api.post(`/api/agents/${a.id}/remove`)
               gone.current = true
-              window.location.hash = '#/intelligence/agents'
+              // on Agents the list goes back to the Chief of staff by itself
+              if (!inAgents) window.location.hash = '#/intelligence/agents'
             })
           }}
         >
-          Its memories and folder go with it. Its conversations stay in Activity.
+          Its memory and files go with it. Its conversations stay in Activity.
         </Confirm>
       )}
     </Record>
@@ -364,10 +374,10 @@ function Sites({ id, sites, onChange }: { id: string; sites: string[]; onChange:
   if (!sites.length) return null
   return (
     <section className="flex flex-col gap-1.5">
-      <h2 className="font-medium font-serif text-ink text-xl">Sites</h2>
-      <p className="text-ink-3 text-sm">
-        It opens these with no card, and its scripts reach them too.
-      </p>
+      <h2 className="flex items-center gap-1.5 font-medium font-serif text-ink text-xl">
+        Sites
+        <Info help="It opens these without asking you, and what it runs on a schedule reaches them too." />
+      </h2>
       <Refusal words={problem} />
       <ul className="flex flex-col">
         {sites.map((host) => (
@@ -483,11 +493,16 @@ function Memories({
             {m.firm && <span className="text-ink-3 text-sm">Everyone</span>}
             <button
               type="button"
+              aria-pressed={m.essential}
               onClick={() => void toggle(m)}
-              data-tip={m.essential ? 'Always loaded' : 'Found by search'}
+              data-tip={
+                m.essential
+                  ? 'Read at the start of every chat'
+                  : 'Found when it’s relevant; read it in every chat instead'
+              }
               className={m.essential ? 'text-accent text-sm' : 'text-ink-3 text-sm hover:text-ink'}
             >
-              {m.essential ? 'Essential' : 'Make essential'}
+              Always read
             </button>
             <IconButton
               label="Delete it"

@@ -71,7 +71,7 @@ export const canPick = (f: FieldView) =>
 export const canEdit = (f: FieldView) => canType(f) || canPick(f)
 // Why a value can't be changed where it is, said at once on a double-click.
 export function whyFixed(f: FieldView, kept: boolean): string {
-  if (kept) return 'Kept on its own page: open the row to change it.'
+  if (kept) return 'It has its own page: open the row to change it.'
   if (f.summary) return `Worked out: ${f.summary}. It changes when those rows do.`
   return 'Alpha keeps this from where it came from; it is not typed here.'
 }

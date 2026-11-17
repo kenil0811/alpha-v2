@@ -849,7 +849,7 @@ function Cell({
         )}
       >
         {empty ? (
-          <span className="text-ink-3" title={EMPTY_WORDS}>
+          <span className="text-ink-3" data-tip={EMPTY_WORDS}>
             {EMPTY_CELL}
           </span>
         ) : isTags(f) ? (
@@ -880,7 +880,7 @@ function Cell({
         )}
         {tasks > 0 && (
           <span
-            title={tasks === 1 ? '1 open task' : `${tasks} open tasks`}
+            data-tip={tasks === 1 ? '1 open task' : `${tasks} open tasks`}
             className="ml-auto flex shrink-0 items-center gap-0.5 pl-1.5 text-ink-3 text-xs"
           >
             <ListChecks className="size-3" />
@@ -995,7 +995,7 @@ function Foot({
         ref={anchor}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title={op ? `${TOTAL_WORDS[op]}: ${total(op, f, rows, names)}` : 'Choose a total'}
+        data-tip={op ? undefined : 'Choose a total'}
         className={cn(
           'group/foot flex h-8.5 w-full items-center gap-1.5 px-2.5 tabular-nums hover:bg-hover',
           numeric && 'justify-end',

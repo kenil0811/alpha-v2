@@ -456,7 +456,7 @@ function TaskPage({
               <span className="truncate text-ink-2">{t.place.words}</span>
               {t.place.path.length > 0 && (
                 <Button size="sm" variant="ghost" onClick={() => change({ on: null })}>
-                  Take off
+                  Clear
                 </Button>
               )}
             </span>
@@ -516,7 +516,7 @@ function TaskPage({
         )}
 
         {t.touches.length > 0 && (
-          <Section title="It touches">
+          <Section title="What it changes">
             <div className="flex flex-wrap gap-2">
               {t.touches.map((r) => (
                 <a

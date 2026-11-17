@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { api, Problem } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { Actions, Card } from './ui/card.tsx'
+import { Info } from './ui/info.tsx'
 
 const date = (at: string) =>
   new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
@@ -62,9 +63,9 @@ export function MatchCard({ card, match }: { card: CardView; match: MatchView })
   return (
     <Card label="Maybe the same" waits="Waits for you">
       <div className="font-medium text-ink text-lg">{card.words}</div>
-      <div className="text-ink-3 text-sm">
-        {open.length} {open.length === 1 ? 'pair' : 'pairs'} to decide. Alpha never merges on a
-        guess; a merge can be undone on the person's page.
+      <div className="flex items-center gap-1.5 text-ink-3 text-sm">
+        {open.length} {open.length === 1 ? 'pair' : 'pairs'} to decide
+        <Info help="Alpha never merges on a guess; a merge can be undone on the person's page." />
       </div>
       {match.samePlace > 1 && (
         <div>

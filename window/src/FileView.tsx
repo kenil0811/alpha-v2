@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from './api.ts'
 import { Button, IconButton } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { cutTip } from './ui/cut-tip.ts'
 
 export interface FilePlace {
   hash: string
@@ -153,7 +154,7 @@ function Sheet({ data, place }: { data: FileData; place: FilePlace }) {
                   <td
                     key={c}
                     ref={mine ? marked : undefined}
-                    title={at.get(`${r + 1}:${c + 1}`)}
+                    {...cutTip(at.get(`${r + 1}:${c + 1}`))}
                     className={cn(
                       'max-w-80 truncate border-hair border-r border-b px-2 py-1 text-ink',
                       mine && 'bg-accent-soft outline-2 outline-accent -outline-offset-2',

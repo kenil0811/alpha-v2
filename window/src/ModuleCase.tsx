@@ -8,6 +8,7 @@ import { api, wordsOf } from './api.ts'
 import { Refusal } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 
 const BY = { kit: 'From the module', alpha: 'Assumed by Alpha', person: 'Yours' } as const
 
@@ -48,10 +49,15 @@ export function ModuleCase({ m, onChange }: { m: ModuleView; onChange: () => voi
           </Button>
         )}
       </div>
-      <p className="mt-0.5 mb-2.5 text-ink-3 text-sm">
-        {c
-          ? `${BY[c.by]}. Alpha reads it before anything it does in ${m.name}.`
-          : `Not written yet. Alpha writes it before it adds a table to ${m.name}, or write it now.`}
+      <p className="mt-0.5 mb-2.5 flex items-center gap-1.5 text-ink-3 text-sm">
+        {c ? BY[c.by] : 'Not written yet.'}
+        <Info
+          help={
+            c
+              ? `Alpha reads it before anything it does in ${m.name}.`
+              : `Alpha writes it before it adds a table to ${m.name}, or write it now.`
+          }
+        />
       </p>
       {editing ? (
         <form onSubmit={save} className="flex flex-col gap-2.5">

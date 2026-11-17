@@ -5,7 +5,7 @@ import { splitBeside } from './opened.ts'
 
 export type Place =
   | { at: 'home' }
-  | { at: 'conversation' }
+  | { at: 'conversation'; setup: boolean } // Agents: the chosen agent's chat, or its Setup
   | { at: 'parts' }
   | { at: 'plugin'; name: string } // a plugin's own page
   | { at: 'item'; kind: 'schedule' | 'run' | 'rule'; id: string }
@@ -95,7 +95,8 @@ export function placeOf(address: string): Place {
     }
   const pp = /^#\/people(?:\/([\w-]+)|\?(companies))?$/.exec(hash)
   if (pp) return { at: 'people', kind: pp[2] ? 'company' : 'person', id: pp[1] ?? null }
-  if (hash === '#/conversation') return { at: 'conversation' }
+  if (hash === '#/conversation' || hash === '#/conversation/setup')
+    return { at: 'conversation', setup: hash.endsWith('/setup') }
   if (hash === '#/parts') return { at: 'parts' }
   const pl = /^#\/p\/([a-z][a-z0-9-]*)$/.exec(hash)
   if (pl?.[1]) return { at: 'plugin', name: pl[1] }

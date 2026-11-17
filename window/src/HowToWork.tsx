@@ -22,7 +22,7 @@ export function HowToWork({ version }: { version: number }) {
   return (
     <ShortList
       title="How to work"
-      about="How you asked things to be done from now on. Add asks Alpha; a double-click changes one."
+      about="How you asked things to be done from now on. Say “from now on…” to Alpha to add one. Add asks Alpha; a double-click changes one."
       items={lines}
       keyOf={(l) => `${l.for}${l.words}`}
       wordsOf={(l) => l.words}
@@ -44,7 +44,7 @@ export function HowToWork({ version }: { version: number }) {
           `Alpha stops doing it from now on: “${l.words}”. Saying it again brings it back.`,
         run: (l) => after(api.post('/api/instructions/remove', { for: l.for, words: l.words })),
       }}
-      empty="Nothing configured yet. Say “from now on…” to Alpha to add one."
+      empty="Nothing yet."
     />
   )
 }

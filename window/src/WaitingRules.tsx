@@ -9,6 +9,7 @@ import { api } from './api.ts'
 import { dayWords } from './time.ts'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
+import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
 
 export function WaitingRules({
@@ -35,6 +36,7 @@ export function WaitingRules({
       <h3 className="flex h-9 items-center gap-1.5 font-medium text-ink text-md">
         Waiting for you
         <span className="font-normal text-ink-3 tabular-nums">{rules.length}</span>
+        <Info help="Each rule here applies once you approve it." />
       </h3>
       <List>
         {rules.map((r) => (
@@ -48,7 +50,7 @@ export function WaitingRules({
               )
             }
             title={<span className="whitespace-normal font-normal">{r.words}</span>}
-            sub={`${r.where} · Alpha asked ${dayWords(r.askedAt)}; it holds once you approve it`}
+            sub={`${r.where} · Asked ${dayWords(r.askedAt)}`}
             actions={
               <>
                 {on === r.card && <Refusal words={problem} />}

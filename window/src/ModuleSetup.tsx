@@ -14,6 +14,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Select } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
 import { Pill } from './ui/pill.tsx'
@@ -21,13 +22,15 @@ import { MenuItem } from './ui/popover.tsx'
 import { Switch } from './ui/switch.tsx'
 import { Words } from './ui/words.tsx'
 
-// A part of Setup: its title in serif, a grey line saying what it is, its content; no card
-// around it.
-function Part({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
+// A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, its
+// content; no card around it.
+function Part({ title, about, children }: { title: string; about?: string; children: ReactNode }) {
   return (
     <section className="flex flex-col">
-      <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
-      <p className="mt-0.5 mb-2.5 text-ink-3 text-sm">{sub}</p>
+      <div className="mb-2.5 flex items-center gap-1.5">
+        <h2 className="font-medium font-serif text-ink text-xl">{title}</h2>
+        {about && <Info help={about} />}
+      </div>
       {children}
     </section>
   )
@@ -74,7 +77,7 @@ export function ModuleDetails({ m, onChange }: { m: ModuleView; onChange: () => 
         <KitAgents m={m} />
         <Part
           title="Notes"
-          sub={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
+          about={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
         >
           <div className="text-md">
             <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
@@ -92,7 +95,7 @@ function KitAgents({ m }: { m: ModuleView }) {
   const agents = useAgents(0).filter((a) => a.from.module === m.id)
   if (!agents.length) return null
   return (
-    <Part title="Agents" sub={`The agents ${m.name} brings. They change with it.`}>
+    <Part title="Agents" about={`The agents ${m.name} brings. They change with it.`}>
       <List>
         {agents.map((a) => (
           <Row
@@ -114,7 +117,7 @@ function KitAgents({ m }: { m: ModuleView }) {
 function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   const agents = useAgents(0)
   return (
-    <Part title="Schedules" sub={`What runs on its own in ${m.name}.`}>
+    <Part title="Schedules">
       <div className="flex flex-col gap-2">
         {m.schedules.length > 1 && (
           <div className="flex justify-end">
@@ -122,7 +125,7 @@ function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
           </div>
         )}
         {m.schedules.length === 0 ? (
-          <p className="text-ink-2 text-md">No schedules yet. Ask Alpha to keep one.</p>
+          <p className="text-ink-2 text-md">No schedules yet.</p>
         ) : (
           <List>
             {m.schedules.map((a) => (
@@ -237,7 +240,7 @@ function Tables({ m }: { m: ModuleView }) {
   ]
   if (!all.length) return null
   return (
-    <Part title="Tables" sub={`Every table of ${m.name}.`}>
+    <Part title="Tables">
       <ul className="flex flex-col">
         {all.map((t) => (
           <li
@@ -283,17 +286,17 @@ function Yours({ moduleId, onChange }: { moduleId: string; onChange: () => void 
   const items = [
     ...yours.files.map((f) => ({
       key: `file:${f.path}`,
-      words: `${f.path}, ${f.state === 'removed' ? 'deleted' : 'changed'} by you`,
+      words: `The file ${f.path.split('/').pop()}, ${f.state === 'removed' ? 'deleted' : 'changed'} by you`,
       back: () => back({ kind: 'file', path: f.path }),
     })),
     ...yours.rows.map((r) => ({
       key: `row:${r.id}`,
-      words: `${r.name} in ${r.table}, a setup row you changed`,
+      words: `${r.name} in ${r.table}, a setting you changed`,
       back: () => back({ kind: 'row', table: r.table, key: r.key }),
     })),
     ...yours.views.map((v) => ({
       key: `view:${v.id}`,
-      words: `The view ${v.name} on ${v.table}, yours`,
+      words: `The saved list ${v.name} on ${v.table}, yours`,
       back: () => back({ kind: 'view', table: v.table, name: v.name }),
     })),
     ...yours.fields.map((f) => ({
@@ -307,7 +310,7 @@ function Yours({ moduleId, onChange }: { moduleId: string; onChange: () => void 
   return (
     <Part
       title="What is yours"
-      sub="What you changed in this module; its updates leave these alone."
+      about="What you changed in this module; its updates leave these alone."
     >
       {problem && <Refusal words={problem} />}
       <List>
@@ -318,7 +321,7 @@ function Yours({ moduleId, onChange }: { moduleId: string; onChange: () => void 
             actions={
               it.back && (
                 <Button size="sm" variant="ghost" disabled={busy} onClick={it.back}>
-                  Take the module's version back
+                  Go back to the module's own
                 </Button>
               )
             }
@@ -398,7 +401,10 @@ function FromFolder({ m }: { m: ModuleView }) {
     }
   }
   return (
-    <Part title="Its folder" sub="Take a new version of this module from the folder it came from.">
+    <Part
+      title="Its folder"
+      about="Take a new version of this module from the folder it came from."
+    >
       <Button size="sm" variant="ghost" disabled={busy} onClick={update}>
         Update from its folder
       </Button>

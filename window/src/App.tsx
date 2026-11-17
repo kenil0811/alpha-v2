@@ -10,7 +10,8 @@ import type {
   TableView as TableData,
 } from '@alpha/core/api'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AgentPage, AgentPicker, AgentRail, CHIEF, useAgents } from './Agents.tsx'
+import { AgentPage, AgentPicker, CHIEF, useAgents } from './Agents.tsx'
+import { AgentsScreen } from './AgentsScreen.tsx'
 import { Assistant } from './Assistant.tsx'
 import { api, listen, wordsOf } from './api.ts'
 import { Bar } from './Bar.tsx'
@@ -381,7 +382,7 @@ export function App() {
         if (place.id) return personName || ''
         return place.kind === 'company' ? 'Organizations' : 'People'
       case 'conversation':
-        return agents.find((a) => a.id === chosen)?.name ?? 'Chief of staff'
+        return 'Agents'
       case 'settings':
         return 'Settings'
       case 'intelligence':
@@ -432,7 +433,7 @@ export function App() {
           <Bar
             name={screenName()}
             middle={setMiddle}
-            plain={place.at === 'conversation' || place.at === 'work'}
+            plain={place.at === 'work'}
             ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
             back={parentOf()}
           />
@@ -447,17 +448,16 @@ export function App() {
                 {place.at === 'home' ? (
                   <Home stream={stream} name={name} onAsked={() => setAsking(true)} />
                 ) : place.at === 'conversation' ? (
-                  <div className="flex h-full min-h-0">
-                    <AgentRail agents={agents} chosen={chosen} onPick={pickAgent} />
-                    <div className="min-w-0 flex-1">
-                      <Conversation
-                        stream={stream}
-                        busyTurn={busyTurn}
-                        agent={agentHere}
-                        agents={agents}
-                      />
-                    </div>
-                  </div>
+                  <AgentsScreen
+                    setup={place.setup}
+                    agents={agents}
+                    chosen={chosen}
+                    agent={agentHere}
+                    onPick={pickAgent}
+                    stream={stream}
+                    busyTurn={busyTurn}
+                    version={version}
+                  />
                 ) : place.at === 'parts' ? (
                   <Parts />
                 ) : place.at === 'plugin' ? (

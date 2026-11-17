@@ -10,6 +10,6 @@ export function showingWords(s: {
 }): string | null {
   if (!s.came) return null
   return `Showing ${s.shown} of ${s.total} rows, ${
-    s.came === 'page' ? 'the ones a page counted' : 'the ones part of the row you came from'
+    s.came === 'page' ? 'the ones a page counted' : 'the ones that belong to the row you came from'
   }.`
 }

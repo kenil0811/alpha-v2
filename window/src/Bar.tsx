@@ -29,7 +29,6 @@ export function Bar({
         {back ? (
           <a
             href={back.href}
-            data-tip={`Back to ${back.label}`}
             className="-ml-2 flex min-w-0 shrink items-center gap-0.5 rounded-md py-1 pr-2 pl-1 text-ink-3 text-md hover:bg-hover hover:text-ink"
           >
             <ChevronLeft className="size-4 shrink-0" />

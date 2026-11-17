@@ -66,7 +66,7 @@ export function TickedBar({
           Delete
         </Button>
       </span>
-      <Button size="sm" variant="ghost" title="Escape" onClick={onClear}>
+      <Button size="sm" variant="ghost" data-tip="Escape" onClick={onClear}>
         Cancel
       </Button>
       <Popover anchor={setAnchor} open={setting} onClose={() => setSetting(false)}>

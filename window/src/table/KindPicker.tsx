@@ -20,7 +20,7 @@ import { MenuItem, Popover } from '../ui/popover.tsx'
 
 const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
   { kind: 'table', words: 'Table', icon: <Table2 className="size-3.5" /> },
-  { kind: 'gallery', words: 'Card', icon: <LayoutGrid className="size-3.5" /> },
+  { kind: 'gallery', words: 'Gallery', icon: <LayoutGrid className="size-3.5" /> },
   { kind: 'timeline', words: 'Timeline', icon: <ChartGantt className="size-3.5" /> },
   { kind: 'calendar', words: 'Calendar', icon: <CalendarDays className="size-3.5" /> },
   { kind: 'board', words: 'Board', icon: <Kanban className="size-3.5" /> },

@@ -1,5 +1,5 @@
-// This Mac's setup in words: Claude signed in, the reading browser and the
-// document reader downloaded, Gmail, Calendar and Contacts connected, Chrome there for sites the
+// This Mac's setup in words: Claude signed in, the browser for reading websites and the
+// PDF reader downloaded, Gmail, Calendar and Contacts connected, Chrome there for sites the
 // person signs in to. On Home while something essential is not ready; always in Settings.
 import type { SetupView } from '@alpha/core/api'
 import { Check, ChevronRight, LoaderCircle } from 'lucide-react'
@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { Info } from './ui/info.tsx'
 import { Switch } from './ui/switch.tsx'
 
 const READY: Record<SetupView['readers']['browser'], string> = {
@@ -43,7 +44,8 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
     done: boolean
     busy?: boolean
     words: string
-    sub: string
+    about?: string | undefined // what it is, in an ⓘ beside its name
+    sub?: string
     act?: React.ReactNode
   }[] = [
     {
@@ -51,10 +53,14 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
       words: view.claude.signedIn
         ? `Claude: signed in${view.claude.email ? ` as ${view.claude.email}` : ''}`
         : 'Sign in to Claude',
+      about:
+        view.claude.signedIn && view.route !== 'key'
+          ? 'On your own Claude subscription; Alpha never sees your sign-in.'
+          : undefined,
       sub: view.claude.signedIn
         ? view.route === 'key'
-          ? 'Through the API key kept in the Keychain'
-          : 'On your own Claude subscription; Alpha never sees your sign-in'
+          ? "Through the API key saved in this Mac's Keychain"
+          : ''
         : (view.claude.problem ??
           'Sign in opens a page in your browser; sign in with your Claude account there.'),
       act: view.claude.signedIn ? null : <SignIn onChange={onChange} />,
@@ -62,14 +68,16 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
     {
       done: view.readers.browser === 'ready',
       busy: view.readers.browser === 'preparing',
-      words: `The reading browser: ${READY[view.readers.browser]}`,
-      sub: 'What Alpha reads websites with, about 200 MB',
+      words: `Browser for reading websites: ${READY[view.readers.browser]}`,
+      about: 'What Alpha reads websites with.',
+      sub: 'About 200 MB',
     },
     {
       done: view.readers.documents === 'ready',
       busy: view.readers.documents === 'preparing',
-      words: `The document reader: ${READY[view.readers.documents]}`,
-      sub: 'What reads PDFs with their pages and places, about 1.6 GB',
+      words: `PDF reader: ${READY[view.readers.documents]}`,
+      about: 'What reads PDFs with their pages and places.',
+      sub: 'About 1.6 GB',
     },
     // each connector that asks for a place here, as it describes itself
     ...view.steps.map((s) => ({
@@ -83,7 +91,8 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
     {
       done: view.chrome,
       words: view.chrome ? 'Google Chrome is on this computer' : 'Google Chrome',
-      sub: 'Only for sites you sign in to; Alpha opens them in Chrome for you to sign in yourself',
+      about:
+        'Only for sites you sign in to; Alpha opens them in Chrome for you to sign in yourself.',
     },
   ]
   const waiting =
@@ -107,8 +116,11 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
               {s.busy && <LoaderCircle className="size-3 animate-spin text-ink-3" />}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-medium text-ink">{s.words}</span>
-              <span className="block text-ink-3 text-sm">{s.sub}</span>
+              <span className="flex items-center gap-1.5 font-medium text-ink">
+                {s.words}
+                {s.about && <Info help={s.about} />}
+              </span>
+              {s.sub && <span className="block text-ink-3 text-sm">{s.sub}</span>}
             </span>
             {s.act && (
               <span className="flex items-center gap-1 text-accent text-sm">
@@ -122,14 +134,15 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
       {view.keepAwake !== null && (
         <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
           <span className="min-w-0 flex-1">
-            <span className="block font-medium text-ink">Keep this Mac awake while plugged in</span>
-            <span className="block text-ink-3 text-sm">
-              So schedules run on time; the screen still turns off, and on battery the Mac sleeps
+            <span className="flex items-center gap-1.5 font-medium text-ink">
+              Keep this Mac awake while plugged in
+              <Info help="So schedules run on time; the screen still turns off, and on battery the Mac sleeps." />
             </span>
           </span>
           <Switch
             checked={view.keepAwake}
             label="Keep this Mac awake while plugged in"
+            named
             onChange={(on) => api.post('/api/setup/awake', { on }).then(onChange, onChange)}
           />
         </div>
@@ -138,7 +151,7 @@ export function SetupList({ view, onChange }: { view: SetupView; onChange: () =>
       {waiting && (
         <div>
           <Button size="sm" onClick={prepare}>
-            Download what reading needs
+            Download the browser and PDF reader
           </Button>
         </div>
       )}

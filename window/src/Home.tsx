@@ -89,7 +89,7 @@ export function Home({
         {stream?.settingUp && (
           <p className="flex items-center gap-2 text-ink-2 text-md">
             <LoaderCircle className="size-3.5 animate-spin text-ink-3" />
-            Setting up {stream.settingUp}; Alpha works meanwhile, and they appear as they go in.
+            Setting up {stream.settingUp}
           </p>
         )}
 
@@ -106,7 +106,7 @@ export function Home({
               <Line
                 key={a.connector}
                 icon={<KeyRound className="size-3.5 text-warn" />}
-                head={a.waiting ? 'Waiting for the customer' : 'Sign-in'}
+                head={a.waiting ? 'Waiting on your side' : 'Sign-in'}
                 words={
                   a.waiting
                     ? `${a.title}: ${a.waiting}`
@@ -165,9 +165,7 @@ export function Home({
           }
         >
           {failed && <NotLoaded onTry={load} />}
-          {tasks && !failed && tasks.lines.length === 0 && (
-            <Quiet>Nothing due today. Say a task, or add one in Tasks.</Quiet>
-          )}
+          {tasks && !failed && tasks.lines.length === 0 && <Quiet>Nothing due today.</Quiet>}
           {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} onChange={load} />}
         </Group>
       </div>

@@ -10,6 +10,7 @@ import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
 import { Field, Select } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 import { List, Row } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Switch } from './ui/switch.tsx'
@@ -89,7 +90,10 @@ function ScheduleForm({
         className="min-h-20 rounded-md border border-line bg-surface px-2.5 py-1.5 text-ink text-md outline-none focus:border-accent-line"
       />
       {fixed ? (
-        <p className="text-ink-3 text-sm">Runs {was.when}. Ask the agent to change this.</p>
+        <p className="flex items-center gap-1.5 text-ink-3 text-sm">
+          Runs {was.when}
+          <Info help="Ask the agent to change this." />
+        </p>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <Select value={every} aria-label="How often" onChange={(e) => setEvery(e.target.value)}>
@@ -191,7 +195,7 @@ export function AgentSchedules({
         />
       )}
       {schedules.length === 0 && !adding ? (
-        <p className="text-ink-3 text-sm">Nothing runs by itself yet.</p>
+        <p className="text-ink-3 text-sm">No schedules yet.</p>
       ) : (
         schedules.length > 0 && (
           <List>
@@ -247,8 +251,8 @@ export function AgentSchedulePage({
         Runs {s.when}
         {s.next ? `, next ${dayWords(s.next)}` : ''}.{' '}
         {s.hasCheck
-          ? 'A small script looks first, and it wakes the agent only when it finds something.'
-          : 'It wakes the agent every time.'}
+          ? 'Checks first, and wakes the agent only when there is something.'
+          : 'Wakes the agent every time.'}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <Controls s={s} onChange={load} />
@@ -294,7 +298,7 @@ export function AgentSchedulePage({
                       href={`#/tasks/${r.task}/work`}
                       className="text-ink-3 text-sm hover:text-ink"
                     >
-                      Open the work
+                      See what it did
                     </a>
                   ) : undefined
                 }

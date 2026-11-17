@@ -19,21 +19,20 @@ export function AskSites() {
     )
   }, [])
   if (on === null) return null
-  const name = 'Ask before agents and scripts open a new website'
+  const name = 'Ask before agents open a new website'
   return (
     <List>
       <Row
         wrap
         title={name}
-        sub={
-          problem ??
-          'Off, agents and their scripts open any website. On, an agent opens a link it was shown or a site on its list with no card, and asks before a link it wrote itself to another site, since what is in an address reaches that site.'
-        }
+        about="Off, agents and what they run on a schedule open any website. On, an agent opens a link it was shown or a site on its list without asking you, and asks before a link it wrote itself to another site, since what is in an address reaches that site."
+        sub={problem}
         actions={
           <Switch
             checked={on}
             disabled={busy}
             label={name}
+            named
             onChange={(v) =>
               act(async () => {
                 setOn(

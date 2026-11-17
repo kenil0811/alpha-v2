@@ -9,7 +9,7 @@ describe('the showing line', () => {
       'Showing 3 of 140 rows, the ones a page counted.',
     )
     expect(showingWords({ shown: 5, total: 9, came: 'row' })).toBe(
-      'Showing 5 of 9 rows, the ones part of the row you came from.',
+      'Showing 5 of 9 rows, the ones that belong to the row you came from.',
     )
   })
 

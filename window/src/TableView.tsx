@@ -268,7 +268,7 @@ export function TableView({
                         }}
                         placeholder={`Search ${data.name}`}
                         aria-label={`Search ${data.name}`}
-                        title="Escape clears it"
+                        data-tip="Escape clears it"
                         className="min-w-0 flex-1 bg-transparent text-ink text-md outline-none placeholder:text-ink-3"
                       />
                     </label>
@@ -276,7 +276,6 @@ export function TableView({
                     <button
                       type="button"
                       onClick={() => setSearching(true)}
-                      data-tip={`Search ${data.name}`}
                       className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
                     >
                       <Search className="size-3.25 shrink-0" />
@@ -342,6 +341,7 @@ export function TableView({
                 </>
               }
               views={views}
+              fields={fields}
               current={viewId}
               dirty={dirty}
               problem={problem}

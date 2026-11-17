@@ -5,20 +5,21 @@
 import type { FieldView } from '@alpha/core/api'
 import { type KeyboardEvent, useState } from 'react'
 import { askForNew } from '../ask.ts'
+import { cutTip } from '../ui/cut-tip.ts'
 import { AddNew, SEARCH_PAST, SearchLine } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
 import { MenuLine } from '../ui/popover.tsx'
 import { useTableName } from './context.ts'
 
 // Chips in the room there is: the first two, the second cut with an ellipsis if it must be, and
-// how many more; the whole list is on the tip.
+// how many more; the whole list is on the tip when some are hidden or cut.
 export function TagChips({ field, value }: { field: FieldView; value: unknown }) {
   const held = Array.isArray(value) ? value.map(String).filter(Boolean) : []
   const more = held.length - 2
   return (
     <span
       className="inline-flex min-w-0 items-center gap-1 overflow-hidden"
-      data-tip={held.length > 1 ? held.join(', ') : undefined}
+      {...cutTip(held.join(', '), more > 0)}
     >
       {held.slice(0, 2).map((t, i) => (
         <Choice key={t} of={field} value={t} className={i ? 'min-w-0 shrink' : 'max-w-full'} />

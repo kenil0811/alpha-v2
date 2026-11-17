@@ -8,9 +8,10 @@ import { Conversation } from './Conversation.tsx'
 import { dayWords, toLocalInput } from './time.ts'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 
 const HOW: Record<string, string> = {
-  todo: 'will start when a place comes free',
+  todo: 'starts when its agent finishes one of its tasks',
   doing: 'is working on this',
   waiting: 'is waiting on you',
   done: 'finished this',
@@ -22,6 +23,7 @@ function StartsAt({ task }: { task: TaskView }) {
   return (
     <div className="flex items-center gap-2 text-ink-3 text-sm">
       Starts
+      {!task.agent && <Info help="It starts then, once it is given to an agent." />}
       <Field
         type="datetime-local"
         aria-label="Starts"
@@ -30,7 +32,6 @@ function StartsAt({ task }: { task: TaskView }) {
           void api.post(`/api/tasks/${task.id}`, { startsAt: e.target.value || null })
         }
       />
-      {!task.agent && 'once it is given to an agent'}
     </div>
   )
 }
@@ -54,7 +55,7 @@ export function TaskWorkLine({ task }: { task: TaskView }) {
         <span className="min-w-0 flex-1 truncate text-ink">
           {task.agent.name} {later ?? HOW[task.state]}
         </span>
-        <span className="shrink-0 text-ink-3">Open the work</span>
+        <span className="shrink-0 text-ink-3">See what it did</span>
         <ChevronRight className="size-3.5 shrink-0 text-ink-3" />
       </a>
       {task.schedule && (

@@ -13,6 +13,7 @@ import { NewTask, TaskList } from '../Tasks.tsx'
 import { dayWords } from '../time.ts'
 import { Button, IconButton } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
+import { cutTip } from '../ui/cut-tip.ts'
 import { DropZone, dropped } from '../ui/drop-zone.tsx'
 import { Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
@@ -207,7 +208,6 @@ export function RowBody({
                   key={p.url ?? p.file}
                   size="sm"
                   className="max-w-full"
-                  title={p.label}
                   onClick={() =>
                     p.url
                       ? window.open(p.url, '_blank', 'noreferrer')
@@ -219,7 +219,9 @@ export function RowBody({
                   ) : (
                     <FileText className="size-3.25" />
                   )}
-                  <span className="truncate">{p.label}</span>
+                  <span className="truncate" {...cutTip(p.label)}>
+                    {p.label}
+                  </span>
                 </Button>
               ))}
             </div>
@@ -255,7 +257,7 @@ export function RowBody({
                   <button
                     type="button"
                     className="min-w-0 flex-1 truncate text-left text-md text-ink hover:underline"
-                    title={f.name}
+                    {...cutTip(f.name)}
                     onClick={() => window.location.assign(fileHref({ file: f.hash }))}
                   >
                     {f.name}
@@ -296,7 +298,7 @@ export function RowBody({
                     {f.read === 'reading'
                       ? ' · being read'
                       : f.read === 'kept'
-                        ? ' · kept, not read'
+                        ? ' · saved, not read'
                         : ''}
                   </span>
                 </div>
@@ -355,7 +357,7 @@ function PartTable({ part }: { part: RowAround['parts'][number] }) {
                 <td
                   key={f.id}
                   className="truncate border-hair border-b py-1.5 pr-3"
-                  title={show(f, r.values[f.slug], part.names) || undefined}
+                  {...cutTip(show(f, r.values[f.slug], part.names))}
                 >
                   {i === 0 ? (
                     <a href={`#/row/${r.id}`} className="text-ink hover:underline">
@@ -434,9 +436,6 @@ export function FieldList({
                     .map(String)
                 : []
             const props = {
-              title: editable
-                ? 'Double-click to change it; right-click for where it came from'
-                : 'Right-click for where it came from',
               onDoubleClick: () => editable && setEditing(f.slug),
               onContextMenu: (e: MouseEvent<HTMLElement>) => {
                 e.preventDefault()
@@ -460,7 +459,7 @@ export function FieldList({
               <>
                 <dt
                   className="flex items-center gap-2 text-ink-3 text-sm"
-                  title={f.about ?? f.summary ?? undefined}
+                  data-tip={f.about ?? f.summary ?? undefined}
                 >
                   {f.name}
                   {source && <span className="text-xs">{KIND_WORDS[source.kind]}</span>}

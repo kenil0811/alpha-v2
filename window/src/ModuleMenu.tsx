@@ -176,7 +176,7 @@ export function ModuleMenu({
             hiding.set([...hiding.hidden, m.id])
             close()
           }}
-          reason={last ? 'The last module in the rail stays' : undefined}
+          reason={last ? 'The last module in the sidebar stays' : undefined}
         >
           <EyeOff className="size-3.5 text-ink-3" />
           Hide

@@ -54,7 +54,7 @@ export function Chips({
           {i > 0 && (
             <button
               type="button"
-              title="Rows must meet all the filters, or any one of them"
+              data-tip="Rows must meet all the filters, or any one of them"
               onClick={() =>
                 onConfig({
                   ...config,
@@ -135,7 +135,7 @@ function RuleChip({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="truncate"
-        title="Change this filter"
+        data-tip="Change this filter"
       >
         {ruleWords(rule, field)}
       </button>
@@ -264,7 +264,7 @@ export function ColumnsButton({
             </button>
             <button
               type="button"
-              title="Keeps the first column"
+              data-tip="Keeps the first column"
               disabled={shown.length <= 1}
               onClick={() =>
                 onConfig({

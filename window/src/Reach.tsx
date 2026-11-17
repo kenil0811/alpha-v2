@@ -29,8 +29,8 @@ export function Reach({
   return (
     <>
       <span>
-        In its own sandbox.{' '}
-        {hosts.length ? `Reaches ${andList(hosts)}` : 'Reaches nothing outside Alpha'}
+        Walled off.{' '}
+        {hosts.length ? `Reaches only ${andList(hosts)}` : 'Reaches nothing outside Alpha'}
       </span>
       {k.refused.map((r) => (
         <span key={r.host} className="text-warn">

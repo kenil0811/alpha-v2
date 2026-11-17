@@ -1,6 +1,6 @@
 // Where a link goes, at the window's foot, as a browser's status bar says it: while the pointer
 // rests on a link to a place in Alpha, a small line names it ("Settings › Usage"); an outside one
-// shows its address with the outside mark. Mounted once.
+// shows its address with the outside mark; never on the rail's rows. Mounted once.
 import { ArrowRight, ExternalLink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -34,8 +34,11 @@ export function whereTo(el: Element): { outside: boolean; text: string } | null 
 export function LinkStatus() {
   const [on, setOn] = useState<Element | null>(null)
   useEffect(() => {
-    const over = (e: PointerEvent) =>
-      setOn((e.target as Element | null)?.closest?.('a[href]') ?? null)
+    // not on the rail's rows, where it would only say the row's name again
+    const over = (e: PointerEvent) => {
+      const a = (e.target as Element | null)?.closest?.('a[href]') ?? null
+      setOn(a?.closest('[data-no-status]') ? null : a)
+    }
     const off = () => setOn(null)
     document.addEventListener('pointerover', over)
     document.addEventListener('pointerdown', off, true)

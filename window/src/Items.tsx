@@ -236,9 +236,9 @@ function RulePage({ rule: r }: { rule: RuleView }) {
     >
       <Facts
         lines={[
-          ['Holds', r.where],
+          ['Applies', r.where],
           [
-            noticed ? 'Noticed' : r.always ? 'Given with Always' : 'Made by',
+            noticed ? 'Noticed' : r.always ? 'Given when you pressed Always' : 'Made by',
             `${r.madeBy}, ${dayWords(r.madeAt)}`,
           ],
           ...(r.said ? ([['Asked in', `“${r.said}”`]] as [string, ReactNode][]) : []),
@@ -270,7 +270,7 @@ function RulePage({ rule: r }: { rule: RuleView }) {
         <List>
           <Row
             title="Make it your rule"
-            sub="Code holds it from then on, as if you had said it."
+            about="Alpha keeps to it from now on, as if you had said it."
             actions={
               <Button size="sm" onClick={() => act(() => api.post(`/api/rules/${r.id}/approve`))}>
                 Approve
@@ -279,7 +279,7 @@ function RulePage({ rule: r }: { rule: RuleView }) {
           />
           <Row
             title="Dismiss it"
-            sub="Alpha stops following it; it stays listed as history."
+            about="Alpha stops following it; it stays listed as history."
             actions={
               <Button size="sm" variant="ghost" onClick={() => setAsking(true)}>
                 Dismiss
@@ -292,7 +292,9 @@ function RulePage({ rule: r }: { rule: RuleView }) {
         <List>
           <Row
             title="Revoke it"
-            sub={r.side === 'deny' ? 'Alpha may do this again.' : 'Alpha asks you again each time.'}
+            about={
+              r.side === 'deny' ? 'Alpha may do this again.' : 'Alpha asks you again each time.'
+            }
             actions={
               <Button size="sm" variant="danger" onClick={() => setAsking(true)}>
                 Revoke

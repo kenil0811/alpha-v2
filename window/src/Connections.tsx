@@ -11,6 +11,7 @@ import { SignInApps, signInWith } from './SignInApps.tsx'
 import { Sites } from './Sites.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { cutTip } from './ui/cut-tip.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Tile } from './ui/list.tsx'
@@ -81,7 +82,7 @@ export function Connections({
         )}
         {view.failed.map((f) => (
           <div key={f.folder} className="text-bad text-md">
-            The connector in {f.folder} did not load: {f.why}
+            The connection added from {f.folder.split('/').pop()} didn't load: {f.why}
           </div>
         ))}
       </Section>
@@ -198,7 +199,7 @@ function TileFrame({
         <Tile>{ICONS[c.icon] ?? ICONS.plug}</Tile>
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-base text-ink">{c.title}</div>
-          <div className="truncate text-ink-3 text-sm" title={sub}>
+          <div className="truncate text-ink-3 text-sm" {...cutTip(sub)}>
             {sub}
           </div>
         </div>
@@ -290,7 +291,7 @@ function DeleteConnector({
           onChange()
         }}
       >
-        The connector you added goes, with its folder. It can’t be brought back.
+        The connection you added goes, with its files. It can’t be brought back.
         {problem && <span className="mt-2 block text-bad">{problem}</span>}
       </Confirm>
     </>

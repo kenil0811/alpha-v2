@@ -174,8 +174,8 @@ export function FilingCard({ card, filing }: { card: CardView; filing: FilingVie
         <div className="flex flex-col gap-2 rounded-md border border-accent-line bg-accent-soft/40 p-3">
           <div className="text-ink text-md">{filing.always}?</div>
           <div className="text-ink-3 text-sm">
-            This one is filed now, and the next ones without a card, each shown on Home. Revoke it
-            any time in Settings › Permissions.
+            This one is filed now, and the next ones without asking you, each shown on Home. Revoke
+            it any time in Settings › Permissions.
           </div>
           <Actions>
             <Button

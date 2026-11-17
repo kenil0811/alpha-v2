@@ -10,6 +10,7 @@ import { signInWith } from './SignInApps.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
+import { cutTip } from './ui/cut-tip.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Row, Tile } from './ui/list.tsx'
 import { More } from './ui/more.tsx'
@@ -22,7 +23,7 @@ const STATE: Record<ConnectionView['state'], [string, Tone]> = {
   needs_sign_in: ['Needs you to sign in', 'warn'],
   broken: ['Not working', 'bad'],
   paused: ['Paused', 'neutral'],
-  waiting: ['Waiting for the customer', 'warn'],
+  waiting: ['Waiting on your side', 'warn'],
 }
 
 const WORDS: Partial<Record<Tone, string>> = { bad: 'text-bad', warn: 'text-warn' }
@@ -65,7 +66,7 @@ export function useConnection(
           WORDS[tone] ?? 'text-ink-2',
           details ? 'break-words' : 'truncate',
         )}
-        title={k.health}
+        {...cutTip(k.health)}
       >
         {k.health}
       </p>
@@ -271,7 +272,7 @@ export function ConnectionLine({
       sub={
         <span className="flex flex-col gap-1">
           {isPath(k.account) && (
-            <span className="truncate" title={k.account}>
+            <span className="truncate" {...cutTip(k.account)}>
               {k.account}
             </span>
           )}

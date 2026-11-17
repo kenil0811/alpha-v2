@@ -169,6 +169,7 @@ export function MenuItem({
   danger,
   hint,
   star,
+  tip,
 }: {
   children: ReactNode
   onClick: () => void
@@ -178,6 +179,7 @@ export function MenuItem({
   danger?: boolean | undefined
   hint?: ReactNode // on the right: a count, a shortcut
   star?: { on: boolean; onClick: (() => void) | undefined } | undefined // no onClick: kept as it is
+  tip?: string | undefined // what the line holds, on hover (a saved list's filters, sort…)
 }) {
   const off = disabled || !!reason
   const line = (
@@ -186,7 +188,7 @@ export function MenuItem({
       role="menuitem"
       aria-disabled={off || undefined}
       disabled={off}
-      data-tip={reason}
+      data-tip={reason ?? tip}
       onClick={onClick}
       className={cn(
         'flex h-7.5 w-full items-center gap-2 whitespace-nowrap rounded-sm px-2.5 text-left outline-none hover:bg-hover focus-visible:bg-hover disabled:opacity-50 disabled:hover:bg-transparent',

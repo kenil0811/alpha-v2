@@ -116,9 +116,7 @@ export function Activity({ version, cards }: { version: number; cards: CardView[
         </div>
         {runs && shown.length === 0 && (
           <p className="mt-4 text-ink-2 text-md">
-            {only === 'failed'
-              ? 'Everything that ran finished.'
-              : 'Nothing has run on its own yet. Schedules, readers and connections show their runs here, and Alpha its changes to your tables.'}
+            {only === 'failed' ? 'Everything that ran finished.' : 'Nothing has run yet.'}
           </p>
         )}
         {days.map(([day, list]) => (
@@ -178,7 +176,7 @@ export function RunRow({
         {ran ? (
           <a
             href={`#/run/${r.id}`}
-            title="Open the run"
+            data-tip="Open the run"
             className="pt-0.5 font-mono text-ink-3 text-sm hover:text-ink hover:underline"
           >
             {time(r.startedAt)}
@@ -228,7 +226,7 @@ export function RunRow({
                 <>
                   <span>{took(r.ms)}</span>
                   <span>
-                    {r.tokens === null ? 'No model' : `${r.tokens.toLocaleString()} tokens`}
+                    {r.tokens === null ? 'No AI used' : `${r.tokens.toLocaleString()} tokens`}
                   </span>
                 </>
               )}

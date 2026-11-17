@@ -6,7 +6,8 @@ import { Button, IconButton } from '../ui/button.tsx'
 import { Select } from '../ui/field.tsx'
 import { family } from './engine.ts'
 
-const words = (f: FieldView | undefined, dir: 'asc' | 'desc') => {
+// a direction in words, by the column's kind: here and in a saved list's tip
+export const sortWords = (f: FieldView | undefined, dir: 'asc' | 'desc') => {
   const fam = f ? family(f.kind) : 'text'
   if (fam === 'number') return dir === 'asc' ? 'Smallest first' : 'Largest first'
   if (fam === 'date') return dir === 'asc' ? 'Oldest first' : 'Newest first'
@@ -65,8 +66,8 @@ export function SortEditor({
                 )
               }
             >
-              <option value="asc">{words(f, 'asc')}</option>
-              <option value="desc">{words(f, 'desc')}</option>
+              <option value="asc">{sortWords(f, 'asc')}</option>
+              <option value="desc">{sortWords(f, 'desc')}</option>
             </Select>
             <IconButton
               label={`Move ${f?.name} up`}

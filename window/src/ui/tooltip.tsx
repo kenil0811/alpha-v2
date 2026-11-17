@@ -1,7 +1,8 @@
 // The window's one tooltip: a short phrase under the thing it names, shortly after the pointer
 // rests on it or at once when the keyboard reaches it. Anything with a `data-tip` gets it (an
 // IconButton always does; a control that can't be used puts its reason there), so a screen never
-// draws its own. Mounted once; it sits above everything, against the window, so nothing clips it.
+// draws its own; a tip of several lines shows each on its own line. Mounted once; it sits above
+// everything, against the window, so nothing clips it.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { floatRoot } from './popover.tsx'
@@ -103,9 +104,14 @@ export function Tooltips() {
       ref={label}
       role="tooltip"
       style={{ top: at?.top ?? -9999, left: at?.left ?? -9999 }}
-      className="pointer-events-none fixed z-(--z-tip) max-w-80 truncate rounded-sm border border-line bg-surface px-2 py-1 text-ink text-sm shadow-pop"
+      className="pointer-events-none fixed z-(--z-tip) max-w-80 rounded-sm border border-line bg-surface px-2 py-1 text-ink text-sm shadow-pop"
     >
-      {text}
+      {/* each line its own, cut short where it is too long */}
+      {text.split('\n').map((line, i) => (
+        <div key={i} className="truncate">
+          {line}
+        </div>
+      ))}
     </div>,
     floatRoot(on),
   )

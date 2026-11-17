@@ -40,9 +40,7 @@ export function Modules({
   return (
     <Section title="Modules" about="Every module, where it comes from, and its Setup.">
       {problem && <div className="text-bad text-md">{problem}</div>}
-      {modules?.length === 0 && (
-        <Empty>No modules yet. Modules you install or make in a conversation show here.</Empty>
-      )}
+      {modules?.length === 0 && <Empty>No modules yet.</Empty>}
       {!!modules?.length && (
         <List>
           {modules.map((m) => (
@@ -81,11 +79,10 @@ export function originWords(
   } | null,
 ): string {
   if (!from) return 'Made in a conversation'
-  if (from.core)
-    return `Alpha's own, version ${from.version}: kept up to date by Alpha; its schedules can be paused`
+  if (from.core) return `Alpha's own, version ${from.version}`
   const by = from.maintainer ? `, maintained by ${from.maintainer.name}` : ''
   const unseen = from.changes
-    ? ` · ${from.changes} change${from.changes === 1 ? '' : 's'} of yours the maintainer has not seen`
+    ? ` · ${from.changes} ${from.changes === 1 ? 'change of yours' : 'of your changes'} its maker hasn't seen`
     : ''
   return `From ${from.name}, version ${from.version}${by}${unseen}`
 }

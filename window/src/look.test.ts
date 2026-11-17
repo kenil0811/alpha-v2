@@ -146,6 +146,39 @@ const lines = (re: RegExp, keep: (file: string) => boolean = () => true) =>
         ),
     )
 
+// The lines where an element the browser draws gets a title, its own tip: a lowercase tag (an
+// iframe's title is its name, read aloud, and stays) or one of our parts that hands its props to
+// one. A component's own title prop (Section, Row, Confirm…) is not one.
+const TO_DOM = /<([a-z][a-z0-9]*|Button|IconButton|Field|Topic)(?=[\s/>])/g
+function browserTips(source: string): number[] {
+  const text = source
+    .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
+  const found: number[] = []
+  for (const m of text.matchAll(TO_DOM)) {
+    if (m[1] === 'iframe') continue
+    // the tag's own attributes: what sits outside any {…}, up to the > that closes it
+    let own = ''
+    let depth = 0
+    let quote = ''
+    for (let i = m.index + m[0].length; i < text.length; i++) {
+      const c = text[i] ?? ''
+      if (quote) {
+        if (c === quote) quote = ''
+      } else if (depth === 0 && (c === '"' || c === "'")) quote = c
+      else if (c === '{') {
+        if (depth === 0 && /^\{\s*\.\.\.\s*\{\s*title\b/.test(text.slice(i, i + 40)))
+          own += ' title='
+        depth++
+      } else if (c === '}') depth--
+      else if (depth === 0 && c === '>') break
+      if (depth === 0) own += c
+    }
+    if (/\stitle=/.test(` ${own}`)) found.push(text.slice(0, m.index).split('\n').length)
+  }
+  return found
+}
+
 describe('the window’s rules (docs/ui-rules.md)', () => {
   it('R4: never the browser’s confirm, alert or prompt', () => {
     expect(lines(/(?<![\w.])(?:window\.)?(?:confirm|alert|prompt)\(/)).toEqual([])
@@ -156,6 +189,19 @@ describe('the window’s rules (docs/ui-rules.md)', () => {
     expect(html).toContain('aria-label="Close"')
     expect(html).toContain('data-tip="Close"')
     expect(html).not.toContain('title=')
+  })
+
+  it('A4: no browser tip anywhere: a title on an element is our tooltip’s data-tip', () => {
+    expect(browserTips('<span title="x">a</span>')).toEqual([1])
+    expect(browserTips('<Button size="sm"\n  title={why}>Go</Button>')).toEqual([1])
+    expect(browserTips('<div {...{ title: why }} />')).toEqual([1])
+    expect(browserTips('<Section title="x" /><iframe title="x" /><b data-tip="x" />')).toEqual([])
+    const found: string[] = []
+    for (const file of sources(SRC))
+      if (file.endsWith('.tsx'))
+        for (const at of browserTips(readFileSync(file, 'utf8')))
+          found.push(`${relative(SRC, file)}:${at}`)
+    expect(found).toEqual([])
   })
 
   it('T7: the overflow glyph is the vertical ⋮', () => {

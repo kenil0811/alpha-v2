@@ -14,7 +14,7 @@ const WAYS = [
     keep: true,
     label: 'Keep its data',
     words:
-      'Its schedules, scripts and pages are deleted, so nothing in it runs. Its tables and rows stay where they are.',
+      'Its schedules, pages and the code behind them are deleted, so nothing in it runs. Its tables and rows stay where they are.',
   },
   {
     keep: false,

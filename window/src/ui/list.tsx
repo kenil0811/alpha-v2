@@ -1,6 +1,7 @@
 // A list: rows in one bordered box, each with what it is, a line under it, and its actions.
 import type { ReactNode } from 'react'
 import { cn } from './cn.ts'
+import { Info } from './info.tsx'
 
 export function List({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -12,6 +13,7 @@ export function List({ children, className }: { children: ReactNode; className?:
 
 export function Row({
   title,
+  about,
   sub,
   lead,
   actions,
@@ -21,6 +23,7 @@ export function Row({
   className,
 }: {
   title: ReactNode
+  about?: string | undefined // what the row means, in an ⓘ beside its title
   sub?: ReactNode | undefined
   lead?: ReactNode | undefined // an icon tile or a time
   actions?: ReactNode | undefined
@@ -29,6 +32,7 @@ export function Row({
   wrap?: boolean | undefined // a title that is a sentence: shown whole, never cut
   className?: string | undefined
 }) {
+  const name = cn('font-medium text-base text-ink', wrap ? 'break-words' : 'truncate')
   return (
     <div
       className={cn(
@@ -40,9 +44,14 @@ export function Row({
       <div className={cn('flex items-center gap-3 px-4 py-3', indent && 'pl-14')}>
         {lead}
         <div className="min-w-0 flex-1">
-          <div className={cn('font-medium text-base text-ink', wrap ? 'break-words' : 'truncate')}>
-            {title}
-          </div>
+          {about ? (
+            <div className="flex items-center gap-1.5">
+              <div className={cn('min-w-0', name)}>{title}</div>
+              <Info help={about} />
+            </div>
+          ) : (
+            <div className={name}>{title}</div>
+          )}
           {sub && <div className="text-ink-3 text-sm">{sub}</div>}
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

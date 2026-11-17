@@ -39,7 +39,6 @@ const PAGES = {
   intelligence: {
     icon: <Sparkles className="size-4" />,
     title: 'Intelligence',
-    about: 'Your agents, modules, schedules, connections and files, and how to work.',
     tabs: [
       ['agents', 'Agents'],
       ['modules', 'Modules'],
@@ -52,7 +51,6 @@ const PAGES = {
   settings: {
     icon: <SlidersHorizontal className="size-4" />,
     title: 'Settings',
-    about: 'How Alpha runs: its model, what it costs, its data, and what it did.',
     tabs: [
       ['model', 'Model'],
       ['usage', 'Usage'],
@@ -113,7 +111,7 @@ export function Settings({
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
   }
-  // the bar holds Settings' icon tile, title and line; Intelligence has its tabs under the bar
+  // the bar holds Settings' icon tile and title; Intelligence has its tabs under the bar
   const head = (
     <InBar>
       <div className="flex min-w-0 items-center gap-2.5">
@@ -121,7 +119,6 @@ export function Settings({
           {p.icon}
         </span>
         <h1 className="font-serif text-ink text-xl">{p.title}</h1>
-        <p className="hidden truncate text-ink-3 text-sm @min-[900px]:block">{p.about}</p>
       </div>
     </InBar>
   )
@@ -179,13 +176,13 @@ function Permissions({ version, owner }: { version: number; owner: boolean }) {
           {view ? (
             <SetupList view={view} onChange={reload} />
           ) : (
-            <p className="text-ink-2 text-md">This core does not say.</p>
+            <p className="text-ink-2 text-md">Not known on this Alpha.</p>
           )}
         </Section>
       )}
       <Section
         title="Rules"
-        about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule holds once you save it on its card."
+        about="What Alpha may and may not do, yours and what it noticed. New starts the conversation; a rule applies once you save it on its card."
       >
         {owner && <AskSites />}
         <WaitingRules version={version} />
@@ -273,10 +270,10 @@ function DataSection() {
                 b.kind === 'daily'
                   ? 'The day’s backup'
                   : b.kind === 'now'
-                    ? 'Taken on asking'
+                    ? 'Taken when you asked'
                     : b.kind === 'before'
                       ? 'Taken before going back'
-                      : 'Taken before a shape change'
+                      : 'Taken before tables changed'
               }
               actions={
                 <Button
@@ -329,7 +326,7 @@ function ModelSection() {
         setModel(await api.post<ModelView>('/api/model', { route, ...(key ? { key } : {}) })),
       route,
     )
-  const kept = model?.hasKey ? 'Key kept in the Keychain' : 'No key yet'
+  const kept = model?.hasKey ? "Key saved in this Mac's Keychain" : 'No key yet'
   return (
     <Section
       title="Model"
@@ -432,7 +429,7 @@ function KeyForm({
         type="password"
         autoComplete="off"
         aria-label="API key"
-        placeholder="sk-ant-…"
+        placeholder="Paste the key"
         value={key}
         onChange={(e) => setKey(e.target.value)}
       />
@@ -458,7 +455,6 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
       <List>
         <Row
           title="Look"
-          sub="Match system follows this computer's light or dark setting."
           actions={
             <Segmented
               label="Look"
@@ -478,13 +474,14 @@ function Appearance({ view, onChange }: { view: ConnectorsView; onChange: () => 
         />
         {tables.length > 0 && (
           <Row
-            title="Connection tables in the sidebar"
-            sub="Mail, events and contacts that connections keep, shown with your own tables."
+            title="Show mail, events and contacts in the sidebar"
+            about="Mail, events and contacts that connections keep, shown with your own tables."
             actions={
               <Switch
                 checked={shown}
                 disabled={busy}
-                label="Connection tables in the sidebar"
+                label="Show mail, events and contacts in the sidebar"
+                named
                 onChange={showTables}
               />
             }

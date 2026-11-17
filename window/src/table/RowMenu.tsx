@@ -53,7 +53,7 @@ export function RowMenu({
     fn()
   }
   const text = f ? show(f, r.values[f.slug], names) : ''
-  const kept = elsewhere ? 'This row is kept on its own page; do that there.' : undefined
+  const kept = elsewhere ? 'This row has its own page; change it there.' : undefined
   const fixed = readOnly
     ? 'This row changes on its own page.'
     : f && !canType(f)

@@ -26,7 +26,7 @@ export function TokenForm({ has, onSaved }: { has: boolean; onSaved: (m: ModelVi
         type="password"
         autoComplete="off"
         aria-label="Claude token"
-        placeholder={has ? 'A token is kept. Paste a new one to replace it' : 'sk-ant-…'}
+        placeholder={has ? 'A token is saved. Paste a new one to replace it' : 'Paste the key'}
         value={token}
         onChange={(e) => setToken(e.target.value)}
       />

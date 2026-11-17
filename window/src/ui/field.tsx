@@ -121,13 +121,14 @@ export function Select({
   onChange,
   children,
   disabled,
-  title,
+  'data-tip': tip,
   adds,
   startOpen,
   onDismiss,
   of,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement> & {
+}: Omit<SelectHTMLAttributes<HTMLSelectElement>, 'title'> & {
+  'data-tip'?: string | undefined // our tip, never the browser's title: a refusal's words
   of?: Choices | undefined // a field's choices: each line in its own colour
   adds?: Adds | undefined // Add new at the list's foot, where a list can grow
   startOpen?: boolean | undefined // opened at once: a cell being changed
@@ -173,7 +174,7 @@ export function Select({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={rest['aria-label']}
-        title={title}
+        data-tip={tip}
         disabled={disabled}
         onClick={() => (open ? dismiss() : setOpen(true))}
         onKeyDown={keys}
