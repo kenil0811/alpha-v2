@@ -229,7 +229,10 @@ export function MapView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-7 pb-4">
-      <div ref={box} className="min-h-0 flex-1 overflow-hidden rounded-lg border border-line" />
+      <div
+        ref={box}
+        className="alpha-map min-h-0 flex-1 overflow-hidden rounded-lg border border-line"
+      />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-ink-3 text-sm">
         {group && shown.map((c) => <Choice key={c} of={group} value={c} />)}
         {problem ? (

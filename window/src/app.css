@@ -34,6 +34,7 @@
   data-text="small" or "large" on <html>, and every size moves together, spacing staying as it is.
 */
 :root {
+  --map-icon: none; /* a map's own buttons, inverted in the dark */
   --fs-xs: 11px;
   --lh-xs: 16px;
   --fs-sm: 12px;
@@ -219,6 +220,7 @@
     --scrim: rgb(0 0 0 / 0.5);
     --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
     color-scheme: dark;
+    --map-icon: invert(1) brightness(0.85);
   }
 }
 
@@ -271,6 +273,7 @@
   --scrim: rgb(0 0 0 / 0.5);
   --elev-btn: 0 1px 2px rgb(0 0 0 / 0.5);
   color-scheme: dark;
+  --map-icon: invert(1) brightness(0.85);
 }
 
 /*
@@ -482,4 +485,55 @@
   50% {
     opacity: 0.45;
   }
+}
+
+/*
+  A map's own parts (ui-rules T24) in the window's colours, light and dark: the name on a point,
+  the zoom buttons and the credit. MapLibre's sheet loads with the map; these win over it by the
+  map's own class.
+*/
+.alpha-map .maplibregl-popup-content {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elev-pop);
+  padding: 6px 10px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-md);
+}
+.alpha-map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--surface);
+}
+.alpha-map .maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--surface);
+}
+.alpha-map .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--surface);
+}
+.alpha-map .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--surface);
+}
+.alpha-map .maplibregl-ctrl-group {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.alpha-map .maplibregl-ctrl-group button + button {
+  border-top-color: var(--line);
+}
+.alpha-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: var(--map-icon);
+}
+.alpha-map .maplibregl-ctrl.maplibregl-ctrl-attrib,
+.alpha-map .maplibregl-ctrl-attrib.maplibregl-compact {
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: var(--ink-3);
+}
+.alpha-map .maplibregl-ctrl-attrib a {
+  color: var(--ink-2);
+}
+.alpha-map .maplibregl-ctrl-attrib-button {
+  filter: var(--map-icon);
 }
