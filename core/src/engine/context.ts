@@ -135,6 +135,13 @@ export function sitesLayer(
   return `## Sites\nSigned in by the person in Alpha's browser. browse reaches these as them, for what no connection reads:\n${sites.map((s) => `- ${s.site}${where(s.computer)}`).join('\n')}`
 }
 
+// The sites as a session was told them: a change starts the session again (desk-types.ts).
+export const sitesKey = (sites: { site: string; computer: string | null }[] | null): string =>
+  (sites ?? [])
+    .map((s) => `${s.site}@${s.computer ?? ''}`)
+    .sort()
+    .join(',')
+
 // A table as the model needs it to read or write it: its fields with their kinds, choices,
 // relations and what each means (the semantic layer), given once per session on the
 // table's first touch, and again after compaction when the start layer is resent.

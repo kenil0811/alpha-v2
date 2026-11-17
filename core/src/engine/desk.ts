@@ -23,6 +23,7 @@ import {
   newsOf,
   ownFolderLayer,
   pickedLine,
+  sitesKey,
   sitesLayer,
   startLayer,
   teamOf,
@@ -45,7 +46,7 @@ import {
 import { type DeskEvent, type DeskOptions, fingerprint, saidBy, type Turn } from './desk-types.ts'
 import { fileWall } from './filewall.ts'
 import { Gatekeeper } from './gate.ts'
-import type { Decision, Provider, Session, SessionEvent } from './provider.ts'
+import type { Provider, Session, SessionEvent } from './provider.ts'
 import { Registry } from './registry.ts'
 import { costOf, turnSpent } from './spent.ts'
 import { type Hands, type Here, worldTools } from './tools/index.ts'
@@ -75,6 +76,7 @@ export class Desk {
   private lane: string | null // a task's own thread with this agent
   private bus: DeskOptions['bus']
   private openedWith = ''
+  private openedSites = ''
   private handingOver = false
   private knownMemories = new Set<string>()
   private knownTeam = new Map<string, string>()
@@ -140,7 +142,13 @@ export class Desk {
       this.connectors?.toolNames() ?? [],
       a ? [a.name, a.title, a.description, a.updatedAt].join('|') : '',
       saidBy(this.registry().all()),
+      sitesKey(this.sites()),
     )
+  }
+
+  // The sites the person signed in to, where this Alpha has a browser.
+  private sites() {
+    return this.hands ? this.hands.browser().as(this.user.id).sites() : null
   }
 
   // What this session is told once: its memory, its team and its folder.
@@ -153,7 +161,7 @@ export class Desk {
       memory.text,
       team.length ? `## Your teammates\n${team.map((t) => t.line).join('\n')}` : '',
       ownFolderLayer(this.world, this.agentId),
-      sitesLayer(this.world, this.hands ? this.hands.browser().as(this.user.id).sites() : null),
+      sitesLayer(this.world, this.sites()),
     ].filter(Boolean)
   }
 
@@ -364,8 +372,9 @@ export class Desk {
     })
     if (!this.queue.length) return
     const next = this.queue.shift() as Turn
-    // an agent that was edited starts again from its new definition
-    if (this.session && this.named && this.openedWith !== this.fingerprint) this.close()
+    // an edited agent, or any chat once the person's sites changed, starts again with a recap
+    const moved = this.openedSites !== sitesKey(this.sites())
+    if (this.session && (this.named || moved) && this.openedWith !== this.fingerprint) this.close()
     if (!this.session) this.open()
     this.running = startTurn(next)
     this.here.current = {
@@ -392,6 +401,7 @@ export class Desk {
     this.fresh = !resume
     this.handingOver = !resume && !this.lane
     this.openedWith = this.fingerprint
+    this.openedSites = sitesKey(this.sites())
     const deskDir = realpathSync(this.world.deskDir(this.user.id, this.agentId))
     const modules = realpathSync(this.world.paths.modules)
     const session = this.provider().session({
@@ -447,22 +457,13 @@ export class Desk {
         },
         compacted: () => lastWords(this.world, this.user.id, this.agentId),
       },
-      files: (tool, input) => this.files(tool, input, deskDir, modules),
+      // the route's file tools: reads in the desk's folder, the modules and the granted folders;
+      // writes in the first two only
+      files: (tool, input) => fileWall(tool, input, deskDir, modules, this.granted),
       prompt: this.prompt,
     })
     this.session = session
     void this.read(session)
-  }
-
-  // The route's file tools reach here. Walls refuse: reads in the desk's folder, the modules and
-  // the granted folders; writes in the first two only.
-  private files(
-    tool: string,
-    input: Record<string, unknown>,
-    deskDir: string,
-    modules: string,
-  ): Decision {
-    return fileWall(tool, input, deskDir, modules, this.granted)
   }
 
   private async read(session: Session): Promise<void> {

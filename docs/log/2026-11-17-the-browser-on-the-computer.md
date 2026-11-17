@@ -37,3 +37,6 @@ starts with a Sites part: each site the person signed in to in Alpha's browser, 
 lives on when it is one, and that browse reaches them for what no connection reads; with none, that
 the person signs in from Intelligence › Connections › Sites. A sign-in later in a session already
 reaches it as the yes on its card.
+On his next yes, the sites are part of a session's fingerprint: once they change, a kept session is
+not resumed and a live one (the Chief of staff's too) closes before its next turn, so the chat
+starts again handed what was said, knowing the sites. With no sites the fingerprint is as before.

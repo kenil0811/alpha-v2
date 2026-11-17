@@ -11,6 +11,7 @@ import { ConnectorService } from '../connectors/service.ts'
 import type { User } from '../world/world.ts'
 import { World } from '../world/world.ts'
 import { Desk, type DeskEvent, fileWall, type QueryFn } from './desk.ts'
+import type { Hands } from './tools/common.ts'
 
 let home: string
 let world: World
@@ -259,6 +260,45 @@ describe('the desk', () => {
       refused: 'authentication_failed',
       fix: { at: '#/settings/model', words: 'Open Settings › Model' },
     })
+    desk.close()
+  })
+
+  it('starts the chat again, handed what was said, once the person’s sites change', async () => {
+    let sites: { site: string; at: string; computer: string | null }[] = []
+    const hands = {
+      browser: () => ({ as: () => ({ sites: () => sites }) }),
+      runner: {},
+    } as unknown as Hands
+    const { fn, seen } = scripted(async (text) => [result(`heard: ${text}`)])
+    let opened = 0
+    const waiters: (() => void)[] = []
+    const desk = new Desk(world, user, {
+      query: (p) => {
+        opened++
+        return fn(p)
+      },
+      hands,
+      emit: (e) => {
+        if (e.type === 'idle') waiters.shift()?.()
+      },
+    })
+    const say = async (words: string) => {
+      const done = new Promise<void>((r) => waiters.push(r))
+      desk.say(words)
+      await done
+    }
+    await say('hello')
+    expect(seen.contexts[0]).toContain('## Sites\nNone signed in yet.')
+    await say('again')
+    expect(opened).toBe(1)
+    sites = [{ site: 'google.com', at: '2026-11-17T15:38:00.000Z', computer: null }]
+    await say('open my Drive')
+    expect(opened).toBe(2)
+    const fresh = seen.contexts.at(-1) ?? ''
+    expect(fresh).toContain('- google.com')
+    expect(fresh).toContain('They said: again')
+    await say('and now?')
+    expect(opened).toBe(2)
     desk.close()
   })
 

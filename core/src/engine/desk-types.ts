@@ -62,10 +62,19 @@ export interface Turn {
 
 // A kept session is resumed only with the same tools (v1 crashed resuming one made on others),
 // saying the same of themselves: a session that learned what a tool cannot do keeps believing it
-// after an update that lets it, so it starts again, handed what was said so far.
-export function fingerprint(connectorTools: string[], agent = '', say = ''): string {
+// after an update that lets it, so it starts again, handed what was said so far. So does one that
+// was told the person's sites, once they change: it would believe it cannot reach a site.
+export function fingerprint(connectorTools: string[], agent = '', say = '', sites = ''): string {
   return createHash('sha256')
-    .update([...TOOL_NAMES, ...connectorTools, ...(agent ? [agent] : []), say].join(','))
+    .update(
+      [
+        ...TOOL_NAMES,
+        ...connectorTools,
+        ...(agent ? [agent] : []),
+        say,
+        ...(sites ? [sites] : []),
+      ].join(','),
+    )
     .digest('hex')
     .slice(0, 16)
 }
