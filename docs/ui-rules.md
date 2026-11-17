@@ -13,7 +13,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| S1 | The rail is module names only: Home, Agents, Tasks, then each module, with modules inside one folded under it; the modules the person pinned come first, in the order pinned | 20 Oct, 26 Oct, 7 Nov, 17 Nov | — |
+| S1 | The rail is module names only: Home, Agents, Tasks, then each module, with modules inside one folded under it; the modules the person pinned come first, in the order pinned, each with a pin beside its name | 20 Oct, 26 Oct, 7 Nov, 17 Nov | — |
 | S2 | Intelligence and Settings sit at the rail's foot, each its own row | 25 Oct, 7 Nov | — |
 | S3 | The rail's head is the person's initial and name, no menu; how Alpha looks is in Settings › Appearance | 26 Oct, 7 Nov | — |
 | S4 | A module's menu (⋮ or right-click): Open, Rename, Move to, Pin to top (Unpin once pinned, kept per person; greyed on a module inside another, whose parent is the one to pin), Hide (which unpins), Hidden modules, and Delete, which asks whether to keep its data (what runs in it goes, its tables and rows stay) or delete everything, neither undone. Rename edits the name in the rail (Enter keeps, Escape puts it back, a refusal under the box). Moving is on the menu: no drag, and no double-click on a module's name | 26 Oct, 1 Nov, 7 Nov, 15 Nov, 17 Nov | — |

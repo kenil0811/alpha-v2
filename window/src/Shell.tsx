@@ -12,6 +12,7 @@ import {
   ListChecks,
   MessageSquare,
   PanelLeft,
+  Pin,
   Plus,
   SlidersHorizontal,
   Sparkles,
@@ -310,6 +311,9 @@ function ModuleItem({
                 current={here === m.id}
                 extra={
                   <>
+                    {!m.parent && hiding.pinned.includes(m.id) && (
+                      <Pin aria-label="Pinned" className="size-3 shrink-0 text-rail-ink-3" />
+                    )}
                     {signal && <Dot s={signal} />}
                     <span className="w-11 shrink-0" />
                   </>
