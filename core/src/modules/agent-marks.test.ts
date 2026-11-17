@@ -80,11 +80,15 @@ describe('the agent a card waits from', () => {
   const card = (extra: { agent?: string; turn?: string; run?: string }) =>
     world.cards.open({ kind: 'question', words: 'Which one?', actor: { kind: 'system' }, ...extra })
 
-  it('is the chat it was raised in, the agent a run woke, or none', () => {
-    ran('r_1', 'running', '2000-01-01T08:00:00.000Z')
-    expect(cardAgent(world, card({ agent: 'a_scout' }))).toBe('a_scout')
-    expect(cardAgent(world, card({ turn: 't_1' }))).toBe(CHIEF)
-    expect(cardAgent(world, card({ run: 'r_1' }))).toBe(CHIEF)
-    expect(cardAgent(world, card({}))).toBeNull()
+  it('is the chat it shows in: its agent’s, or the Chief of staff’s for what no agent raised', () => {
+    expect(cardAgent(card({ agent: 'a_scout' }))).toBe('a_scout')
+    expect(cardAgent(card({ turn: 't_1' }))).toBe(CHIEF)
+    expect(cardAgent(card({}))).toBe(CHIEF)
+    const raised = world.cards.open({
+      kind: 'question',
+      words: 'Which deal?',
+      actor: { kind: 'alpha', id: 'a_scout' },
+    })
+    expect(cardAgent(raised)).toBe('a_scout')
   })
 })

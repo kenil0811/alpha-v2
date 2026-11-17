@@ -17,7 +17,7 @@ export interface CardView {
   answer: string | null
   restsOn: string[] // what the card rests on, in words
   module: string | null // the module it belongs to, for a lens
-  agent: string | null // the agent it waits on the person from; none for what Alpha raises on its own
+  agent: string // the agent whose chat it shows in; the Chief of staff for what no agent raised
   filing?: FilingView | null // a file from the mail: where it is proposed to go
   draft?: DraftView | null // a schedule's email for the person's yes
   match?: MatchView | null // people or companies that may be one, side by side

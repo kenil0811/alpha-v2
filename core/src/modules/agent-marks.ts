@@ -8,20 +8,10 @@ import type { World } from '../world/world.ts'
 
 const SEEN = (agent: string) => `agent_seen:${agent}`
 
-// The agent a card waits on the person from: the chat it was raised in, or the agent the schedule
-// whose run raised it wakes; none for what Alpha raises on its own (a match, a kit's signature).
-export function cardAgent(world: World, c: Card): string | null {
-  if (c.agent) return c.agent
-  if (c.run) {
-    const s = one<{ agent: string | null }>(
-      world.db,
-      'SELECT s.agent FROM runs r JOIN schedules s ON s.id = r.schedule_id WHERE r.id = ?',
-      c.run,
-    )
-    if (s?.agent) return s.agent
-  }
-  // the Chief of staff's turns name no agent
-  return c.turn ? CHIEF : null
+// The agent a card waits on the person from: the chat it shows in. A card no agent raised (a
+// schedule's, a match, a kit's signature) shows in the Chief of staff's, so it is the Chief's.
+export function cardAgent(c: Card): string {
+  return c.agent ?? CHIEF
 }
 
 // The person opened the agent's chat: what failed until now no longer marks it.

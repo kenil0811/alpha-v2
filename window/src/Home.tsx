@@ -25,8 +25,8 @@ function NotLoaded({ onTry }: { onTry: () => void }) {
   )
 }
 
-// The agents the waiting cards come from, each with how many, in the team's order; a card no
-// agent raised (a match, a kit's signature) and a sign-in show under All only.
+// The agents the waiting cards come from, each with how many, in the team's order; a sign-in,
+// which no agent raised, shows under All only.
 function byAgent(cards: CardView[], agents: AgentView[]) {
   return agents.flatMap((a) => {
     const count = cards.filter((c) => c.agent === a.id).length
