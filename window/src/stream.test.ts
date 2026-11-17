@@ -99,6 +99,7 @@ describe('the stream', () => {
       turn,
       reply: 'Logged two eggs.',
       error: null,
+      fix: null,
       steps: [
         {
           id: 2,
@@ -175,6 +176,21 @@ describe('the stream', () => {
       ['note', 'The model did not answer.'],
       ['note', 'Only the person can do that.'],
     ])
+  })
+
+  it('keeps where a turn’s failure is fixed, only as a place in the window', () => {
+    const turn = 't1'
+    const fix = { at: '#/settings/model', words: 'Open Settings › Model' }
+    const [ok] = group([
+      line('said', 'open my Drive', { actor: 'person', turn }),
+      line('error', 'Alpha can’t reach Claude yet.', { turn, data: { fix } }),
+    ]).filter((i) => i.kind === 'alpha')
+    expect(ok).toMatchObject({ error: 'Alpha can’t reach Claude yet.', fix })
+    const [away] = group([
+      line('said', 'again', { actor: 'person', turn: 't2' }),
+      line('error', 'No.', { turn: 't2', data: { fix: { at: 'https://x.test', words: 'Go' } } }),
+    ]).filter((i) => i.kind === 'alpha')
+    expect(away).toMatchObject({ error: 'No.', fix: null })
   })
 
   it('shows a card a schedule’s run opened as a card, with its module', () => {

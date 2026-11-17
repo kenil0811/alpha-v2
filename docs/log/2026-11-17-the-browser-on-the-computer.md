@@ -22,3 +22,11 @@ server sign-in fails twice move to the computer; signing in starts from Alpha.
 - Test: a made-up site on this machine, Playwright's browser standing in for the computer's Chrome;
   signed in there, read by the core through the relay, refused for another person (B1) and for a
   site not lent (B2), and "Test Mac is off now" once the computer stops.
+
+Later, from Kenil's first try (his server Alpha had no Claude token, and the Chief of staff replied
+Claude Code's own "Not logged in · Please run /login"): a turn Claude refuses for this install now
+fails in Alpha's words, read from the error Claude Code names on its message (signed out, a refused
+key or token, billing, an account on hold) and how the session was started. The owner gets a link,
+Open Settings › Model; a member is told the firm's owner fixes it there. A one-question ask says
+the same. Seen on the server first: the refusal comes as a "success" with `is_error`, no text
+streamed.

@@ -25,6 +25,24 @@ export async function tokenRoute(world: World, home: string): Promise<{ route?: 
   return { route }
 }
 
+// Why Claude would not answer, by the kind Claude Code names, said for the person: how this install
+// reaches Claude is read from what the session was started with. Null for a failure that is not
+// about reaching Claude (the usage window has its own words).
+const ACCOUNT: Record<string, string> = {
+  billing_error: 'Alpha can’t reach Claude: its account has no plan or credit left for this.',
+  account_on_hold: 'Alpha can’t reach Claude: its account is on hold.',
+  oauth_org_not_allowed: 'Alpha can’t reach Claude: the account’s organization does not allow it.',
+  verification_required: 'Alpha can’t reach Claude: the account needs verifying at claude.ai.',
+}
+
+export function refusedWords(kind: string, env: Record<string, string | undefined>): string | null {
+  if (kind !== 'authentication_failed') return ACCOUNT[kind] ?? null
+  if (env.ANTHROPIC_API_KEY) return 'Alpha can’t reach Claude: Claude refused the API key.'
+  if (env.CLAUDE_CODE_OAUTH_TOKEN)
+    return 'Alpha can’t reach Claude: Claude refused the subscription token.'
+  return 'Alpha can’t reach Claude yet: Claude isn’t signed in here.'
+}
+
 export class ModelRoute {
   private world: World
   private secrets: SecretStore

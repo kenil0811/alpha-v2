@@ -31,6 +31,7 @@ import {
   addBreak,
   addStep,
   addText,
+  failedOf,
   limitLine,
   liveOf,
   type Running,
@@ -542,15 +543,12 @@ export class Desk {
       )
       if (stopped || !e.ok) this.keepText()
       const shown = textSoFar(running)
+      const failed = failedOf(e, this.user)
       this.world.line({
         actor: this.actor,
         kind: e.ok || stopped ? 'replied' : 'error',
-        words: stopped
-          ? 'Stopped.'
-          : e.ok
-            ? shown || e.text || 'Done.'
-            : 'Something went wrong, and nothing more was done.',
-        data: { ...e.data, spent: costOf(spent) },
+        words: stopped ? 'Stopped.' : e.ok ? shown || e.text || 'Done.' : failed.words,
+        data: { ...e.data, ...(e.ok || stopped ? {} : failed.data), spent: costOf(spent) },
         user: this.user.id,
         turn: running.turn,
       })

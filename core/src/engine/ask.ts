@@ -6,6 +6,7 @@ import { config } from '../config.ts'
 import type { Ask } from '../files/reading.ts'
 import { Refused } from '../world/kinds.ts'
 import { type Use, usesOfModelUsage } from '../world/spend.ts'
+import { refusedWords } from './route.ts'
 
 export function askModel(
   cwd: string,
@@ -65,8 +66,12 @@ async function answerOf(
   let tokens = 0
   let uses: Use[] = []
   let failed: string | null = null
+  let refused: string | null = null // Claude refusing this install, as Claude Code names it
   for await (const m of query({ prompt, options }) as AsyncIterable<SDKMessage>) {
+    if (m.type === 'assistant' && m.error) refused = m.error
     if (m.type !== 'result') continue
+    const cannot = m.is_error && refused ? refusedWords(refused, options.env ?? {}) : null
+    if (cannot) throw new Refused(cannot)
     tokens =
       (m.usage.input_tokens ?? 0) +
       (m.usage.output_tokens ?? 0) +

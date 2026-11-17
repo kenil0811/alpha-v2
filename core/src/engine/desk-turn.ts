@@ -65,6 +65,22 @@ export function limitLine(
   }
 }
 
+// A turn that failed, said for the person: when Claude refused this install, why, and where that is
+// fixed (Settings › Model, which only the owner sees); otherwise that it went wrong.
+export function failedOf(
+  e: { text: string; data: Record<string, unknown> },
+  user: User,
+): { words: string; data: Record<string, unknown> } {
+  if (!e.data.refused || !e.text)
+    return { words: 'Something went wrong, and nothing more was done.', data: {} }
+  if (user.role !== 'owner')
+    return { words: `${e.text} The firm’s owner can fix it in Settings › Model.`, data: {} }
+  return {
+    words: e.text,
+    data: { fix: { at: '#/settings/model', words: 'Open Settings › Model' } },
+  }
+}
+
 export const turnAfterLimit = (turn: string): Turn => ({
   turn,
   text: 'The usage window is open again: carry on with what was asked.',

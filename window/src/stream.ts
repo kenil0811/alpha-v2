@@ -48,6 +48,7 @@ export type Item =
       turn: string
       reply: string | null
       error: string | null
+      fix: { at: string; words: string } | null // where the error is fixed, when Alpha knows
       steps: Step[]
       parts: Part[]
       cards: string[]
@@ -77,6 +78,14 @@ const RESULTS = new Set([
   'kept',
 ])
 
+// Where a failure is fixed, as the core said it: a place in the window and the link's words.
+const fixOf = (v: unknown): { at: string; words: string } | null => {
+  const f = v as { at?: unknown; words?: unknown } | null | undefined
+  return typeof f?.at === 'string' && f.at.startsWith('#/') && typeof f.words === 'string'
+    ? { at: f.at, words: f.words }
+    : null
+}
+
 export function group(lines: StreamLine[]): Item[] {
   const items: Item[] = []
   const turns = new Map<string, Extract<Item, { kind: 'alpha' }>>()
@@ -93,6 +102,7 @@ export function group(lines: StreamLine[]): Item[] {
         turn,
         reply: null,
         error: null,
+        fix: null,
         steps: [],
         parts: [],
         cards: [],
@@ -209,6 +219,7 @@ export function group(lines: StreamLine[]): Item[] {
       a.parts.push({ kind: 'text', text: l.words })
     } else if (l.kind === 'error') {
       a.error = l.words
+      a.fix = fixOf(l.data.fix)
     }
   }
   // each card's answer goes where the card was

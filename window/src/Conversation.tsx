@@ -349,7 +349,19 @@ const Entry = memo(function Entry({
           <Steps key={i} steps={part.steps} active={working && i === parts.length - 1} />
         ),
       )}
-      {item.error && <div className="text-bad">{item.error}</div>}
+      {item.error && (
+        <div className="text-bad">
+          {item.error}
+          {item.fix && (
+            <>
+              {' '}
+              <a className="text-accent underline underline-offset-3" href={item.fix.at}>
+                {item.fix.words}
+              </a>
+            </>
+          )}
+        </div>
+      )}
       {item.notes.map((w) => (
         <div key={w} className="flex items-center gap-1.5 text-ink-3 text-sm">
           <Check className="size-3.5 shrink-0" />

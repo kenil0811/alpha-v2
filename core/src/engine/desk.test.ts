@@ -239,6 +239,29 @@ describe('the desk', () => {
     desk.close()
   })
 
+  it('says when Claude is not signed in, and where the owner fixes it, never Claude Code’s words', async () => {
+    const { desk, idle } = deskWith(async () => [
+      msg({
+        type: 'assistant',
+        error: 'authentication_failed',
+        parent_tool_use_id: null,
+        message: { content: [{ type: 'text', text: 'Not logged in · Please run /login' }] },
+      }),
+      result('Not logged in · Please run /login', { is_error: true, terminal_reason: 'api_error' }),
+    ])
+    const done = idle()
+    desk.say('open my Google Drive')
+    await done
+    expect(world.lines({ kinds: ['replied'] })).toEqual([])
+    const [line] = world.lines({ kinds: ['error'] })
+    expect(line?.words).toBe('Alpha can’t reach Claude yet: Claude isn’t signed in here.')
+    expect(line?.data).toMatchObject({
+      refused: 'authentication_failed',
+      fix: { at: '#/settings/model', words: 'Open Settings › Model' },
+    })
+    desk.close()
+  })
+
   it('waits on a card showing the whole email before a send, and saves a draft at once', async () => {
     const connectors = new ConnectorService(world, {
       secrets: new MemorySecrets(),

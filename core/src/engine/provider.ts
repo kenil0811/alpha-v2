@@ -28,9 +28,10 @@ export type SessionEvent =
   | {
       type: 'result'
       ok: boolean
-      text: string
+      text: string // the reply; on a failure, why Claude refused this install, when it did
       stopped: boolean // interrupted, not finished
-      data: Record<string, unknown> // what the journal keeps: time, turns, cost, usage, errors
+      // what the journal keeps: time, turns, cost, usage, errors; refused: the kind Claude named
+      data: Record<string, unknown>
     }
 
 export interface Session {

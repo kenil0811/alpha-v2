@@ -21,7 +21,7 @@ import type {
   SessionEvent,
   SessionSpec,
 } from './provider.ts'
-import type { ModelRoute } from './route.ts'
+import { type ModelRoute, refusedWords } from './route.ts'
 
 export type QueryFn = (params: { prompt: AsyncIterable<SDKUserMessage>; options: Options }) => Query
 
@@ -100,7 +100,8 @@ export class ClaudeCodeProvider implements Provider {
 
   session(spec: SessionSpec): Session {
     const box = new Inbox()
-    const q = this.query({ prompt: box, options: this.options(spec) })
+    const options = this.options(spec)
+    const q = this.query({ prompt: box, options })
     return {
       send: (text) => box.push(text),
       interrupt: async () => {
@@ -113,7 +114,7 @@ export class ClaudeCodeProvider implements Provider {
         box.close()
         q.close()
       },
-      events: () => translate(q),
+      events: () => translate(q, options.env ?? {}),
     }
   }
 
@@ -265,8 +266,12 @@ export class ClaudeCodeProvider implements Provider {
 const promptOf = (spec: SessionSpec) =>
   [config.systemPrompt(spec.userName), spec.identity ?? ''].filter(Boolean).join('\n\n')
 
-// The SDK's messages as the desk hears them.
-async function* translate(q: Query): AsyncIterable<SessionEvent> {
+// The SDK's messages as the desk hears them; env is what the session was started with.
+async function* translate(
+  q: Query,
+  env: Record<string, string | undefined>,
+): AsyncIterable<SessionEvent> {
+  let refused: string | null = null // why Claude would not answer this turn, as Claude Code names it
   while (true) {
     const step = await q.next()
     if (step.done) return
@@ -289,6 +294,7 @@ async function* translate(q: Query): AsyncIterable<SessionEvent> {
       continue
     }
     if (m.type === 'assistant') {
+      if (m.error && !m.parent_tool_use_id) refused = m.error
       yield { type: 'assistant', sub: !!m.parent_tool_use_id }
       continue
     }
@@ -302,10 +308,14 @@ async function* translate(q: Query): AsyncIterable<SessionEvent> {
       continue
     }
     if (m.type === 'result') {
+      // Claude refusing this install ends as a success whose text is Claude Code's own words
+      const kind = m.is_error ? refused : null
+      const cannot = kind ? refusedWords(kind, env) : null
+      refused = null
       yield {
         type: 'result',
-        ok: m.subtype === 'success',
-        text: m.subtype === 'success' ? m.result.trim() : '',
+        ok: m.subtype === 'success' && !cannot,
+        text: cannot ?? (m.subtype === 'success' ? m.result.trim() : ''),
         stopped: m.terminal_reason === 'aborted_tools' || m.terminal_reason === 'aborted_streaming',
         data: {
           ms: m.duration_ms,
@@ -314,6 +324,7 @@ async function* translate(q: Query): AsyncIterable<SessionEvent> {
           usage: m.modelUsage,
           terminal: m.terminal_reason ?? null,
           ...(m.subtype !== 'success' ? { errors: m.errors } : {}),
+          ...(cannot ? { refused: kind, claude: 'result' in m ? m.result : null } : {}),
         },
       }
     }
