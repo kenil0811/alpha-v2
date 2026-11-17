@@ -1,11 +1,12 @@
 // The bar over every screen (split from Shell.tsx for its wall).
 import { ChevronLeft } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Face, type Mood } from './Face.tsx'
 import { MOD } from './time.ts'
 
 // The bar over each screen, at the shared 48px: the screen's switch or name centred, and the lens
-// on the left when one is on, with a ‹ to the page above; at its right, Alpha's
-// face opens the assistant while it is closed.
+// on the left when one is on, with a ‹ to the page above; at its right, on Home what comes next
+// today, and Alpha's face, which opens the assistant while it is closed.
 // Find is ⌘K, from anywhere.
 export function Bar({
   name,
@@ -13,12 +14,14 @@ export function Bar({
   plain,
   ask,
   back,
+  next,
 }: {
   name: string
   middle: (at: HTMLElement | null) => void
   plain?: boolean // the conversation's: a small sans title, as Claude Code's
   ask: { mood: Mood; open: () => void } | null
   back: { label: string; href: string } | null // the page above this one; none at the top
+  next?: ReactNode // on Home, what comes next today, before the face
 }) {
   return (
     <div
@@ -57,7 +60,8 @@ export function Bar({
           </h1>
         )}
       </div>
-      <div className="flex justify-end" data-tauri-drag-region>
+      <div className="flex min-w-0 items-center justify-end gap-2" data-tauri-drag-region>
+        {next}
         {ask && (
           <button
             type="button"

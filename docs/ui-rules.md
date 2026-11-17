@@ -28,7 +28,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; at its left a ‹ to the page above (a task to Tasks, a row to its table, a module's table or page to the module it sits in, every other page to Home), greyed in its place on Home alone; the name is not edited there. On Agents the centre holds Chat and Setup, and the agent's name is not in the bar | 25 Oct, 1 Nov, 7 Nov, 10 Nov, 17 Nov | test |
+| H1 | One 48px bar across the rail's top, the page and the assistant: the screen's name centred; at its left a ‹ to the page above (a task to Tasks, a row to its table, a module's table or page to the module it sits in, every other page to Home), greyed in its place on Home alone; the name is not edited there. On Agents the centre holds Chat and Setup, and the agent's name is not in the bar. On Home its right holds the Next chip before Alpha's face, the chip giving way first on a narrow window | 25 Oct, 1 Nov, 7 Nov, 10 Nov, 17 Nov | test |
 | H2 | A screen with parts switches them with one pill switch in the bar, every label in full, scrolling sideways; never cut short or folded to icons; a page opened beside keeps a row of tabs under its head | 26 Oct, 2 Nov | — |
 | H3 | No Find box in the bar; ⌘K finds anywhere | 26 Oct | test |
 
@@ -36,7 +36,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 
 | # | Rule | Date | Held by |
 |---|---|---|---|
-| O1 | Home is the date, the greeting, one line to ask Alpha, what needs the person only while something waits (each card answered there, and a sign-in; when the cards come from two or more agents, All and each agent with its count pick whose show, a sign-in and a card no agent raised under All only), today's tasks, and the three most recently completed tasks with Clear. Nothing else | 20 Oct, 26 Oct, 9 Nov, 10 Nov, 17 Nov | — |
+| O1 | Home is the date, the greeting, one line to ask Alpha, what needs the person only while something waits (each card answered there, and a sign-in; when the cards come from two or more agents, All and each agent with its count pick whose show, a sign-in and a card no agent raised under All only), today's tasks, and the three most recently completed tasks with Clear; in its bar, a Next chip says what comes next today (a meeting under way until it ends, else the soonest meeting or timed task ahead, else a task due any time today; none when nothing is left), the person's own meetings only, and opens the day beside. Nothing else | 20 Oct, 26 Oct, 9 Nov, 10 Nov, 17 Nov | — |
 | O2 | No modules on Home (they are in the rail); the conversation is the assistant beside it, never in Home's own space | 26 Oct | — |
 
 ## Module page
@@ -147,7 +147,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | L11 | Read now and Run now say when it last happened just before the button, the full time on hover; a connection's problem, when it has one, takes that place, so a tile with a problem is no taller | 2 Nov, 17 Nov | — |
 | L12 | A double-click on what can't change says why, at once, and only then: it is not a tip on hover | 2 Nov, 14 Nov | — |
 | L13 | A row's and a task's title on its page is renamed by a double-click; a module's and a table's name from its menu (S4, T19) | 2 Nov, 7 Nov | — |
-| L14 | A task, a run, a person, a row, a schedule, a rule and the rows a figure counted open beside the page from a link to them; a link inside the panel replaces what it shows, with no Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov, 9 Nov | test (opened) |
+| L14 | A task, a run, a person, a row, a schedule, a rule, the rows a figure counted and the day (Home's Next: all-day events, the meetings and timed tasks down one strip with the free time of a quarter of an hour or more between and a line for now, then what is due any time today; Open page is the Calendar) open beside the page from a link to them; a link inside the panel replaces what it shows, with no Back; what was clicked stays in sight to the panel's left; Open page is a large soft button across the panel's foot | 2 Nov, 9 Nov, 17 Nov | test (opened) |
 | L15 | Every item of a menu has an icon at its left, and a field's name its kind's icon; no label ends in dots, on a menu, a button or a picker (words that say something is under way, Loading…, keep theirs) | 15 Nov | — |
 | L16 | A side panel reads as lying over the page: a firmer edge and a soft shadow cast on it | 2 Nov | — |
 | L17 | Nothing on a screen moves when something is picked or appears: what appears takes a place kept for it, as the one line over a table holds a paste waiting, ticked rows or filters at one height | 10 Nov | — |

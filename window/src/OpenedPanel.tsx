@@ -1,5 +1,5 @@
-// A task, a run, a person or a row open beside the page, and a schedule, a rule and the rows a
-// figure counted: its own page, narrow, in the side panel, with Open page to the page itself at
+// A task, a run, a person or a row open beside the page, and a schedule, a rule, the rows a figure
+// counted and the day: its own page, narrow, in the side panel, with Open page to the page itself at
 // the panel's foot. A link to one of them opens it here when the window has room beside the page
 // (room.ts); a ⌘-click, Open page, or no room goes to the page, as before. A link inside the
 // panel replaces what it shows; what was clicked to open it stays in sight to its left.
@@ -13,6 +13,7 @@ import { RowPage } from './RowPage.tsx'
 import { BarMiddle } from './Shell.tsx'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
+import { DayBeside } from './Today.tsx'
 import { SidePanel } from './ui/side-panel.tsx'
 
 // A click on a link to one of these kinds opens it beside the page, in the address.
@@ -50,8 +51,12 @@ export function OpenedPanel({
   onClose: () => void
 }) {
   const [name, setName] = useState('')
+  const [full, setFull] = useState<string | null>(null) // a page of its own the panel learns
   const [width, setWidth] = useState<number | null>(start)
-  useEffect(() => setName(''), [opened.kind, opened.id])
+  useEffect(() => {
+    setName('')
+    setFull(null)
+  }, [opened.kind, opened.id])
   const page =
     opened.kind === 'row' ? (
       <RowPage id={opened.id} version={version} onPlace={(p) => setName(p?.title ?? '')} />
@@ -61,6 +66,8 @@ export function OpenedPanel({
       <ItemPage kind={opened.kind} id={opened.id} version={version} onName={setName} />
     ) : opened.kind === 'rows' ? (
       <RowsBeside id={opened.id} version={version} onName={setName} />
+    ) : opened.kind === 'day' ? (
+      <DayBeside version={version} onName={setName} onPage={setFull} />
     ) : (
       <People kind="person" id={opened.id} version={version} net={null} onName={setName} />
     )
@@ -68,7 +75,7 @@ export function OpenedPanel({
     <SidePanel
       title={name || '…'}
       onClose={onClose}
-      full={pageOf(opened)}
+      full={full ?? pageOf(opened)}
       width={width}
       onWidth={setWidth}
     >

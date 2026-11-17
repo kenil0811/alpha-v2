@@ -41,6 +41,7 @@ import type { Module } from './stream.ts'
 import { TableView } from './TableView.tsx'
 import { Tasks } from './Tasks.tsx'
 import { TaskWork } from './TaskThread.tsx'
+import { NextChip } from './Today.tsx'
 import { frameOf } from './table/frame.ts'
 import { titleOf } from './table/values.ts'
 import { applyTextSize, applyTheme } from './theme.ts'
@@ -437,6 +438,7 @@ export function App() {
             plain={place.at === 'work'}
             ask={askable && !asking ? { mood, open: () => setAsking(true) } : null}
             back={parentOf()}
+            next={place.at === 'home' && <NextChip version={version} room={room} />}
           />
           {problem && (
             <div className="border-line border-b bg-warn-soft px-6 py-2 text-md text-warn">

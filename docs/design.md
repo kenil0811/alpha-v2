@@ -313,7 +313,7 @@ through the window, use the kit's blocks for their look, and print to PDF.
 
 The rail has Home, Agents, Tasks and the modules, with Intelligence and Settings at its foot. The
 assistant starts closed and opens beside any screen from Alpha's face at the right of the bar. Home is what needs the person, today's
-tasks and what was recently completed. The chat looks and feels like Claude Code, in a blue accent.
+tasks and what was recently completed, with what comes next today in its bar and the day beside it. The chat looks and feels like Claude Code, in a blue accent.
 Agents switches each agent between its chat and its Setup, the agent's own page, and marks the
 agents waiting on the person or failed since they last looked. A person's text size and pinned
 modules are theirs, kept by Alpha like the look. Rules read as sentences, and a file belongs to the

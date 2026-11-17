@@ -1,16 +1,16 @@
-// What is open beside the page: a task, a run, a person, a row, a schedule, a rule or the rows a
-// figure counted, opened from a link to it, kept in the address as beside=<kind>/<id> after the
+// What is open beside the page: a task, a run, a person, a row, a schedule, a rule, the rows a
+// figure counted or the day (Home's Next), opened from a link to it, kept in the address as beside=<kind>/<id> after the
 // page's own, so a reload keeps it. A link inside the panel replaces what it shows. Its own page is
 // one click away (Open page). A link to a kind on that kind's own screen (a task on Tasks) opens
 // there, as before.
 
-export type OpenedKind = 'task' | 'run' | 'person' | 'row' | 'schedule' | 'rule' | 'rows'
+export type OpenedKind = 'task' | 'run' | 'person' | 'row' | 'schedule' | 'rule' | 'rows' | 'day'
 export interface Opened {
   kind: OpenedKind
   id: string // rows: <table>:<row>,<row>
 }
 
-const PAGE: Record<Exclude<OpenedKind, 'rows'>, string> = {
+const PAGE: Record<Exclude<OpenedKind, 'rows' | 'day'>, string> = {
   task: '#/tasks/',
   run: '#/run/',
   person: '#/people/',
@@ -30,9 +30,11 @@ const KIND: Record<string, OpenedKind> = {
   rule: 'rule',
 }
 const OWN: Partial<Record<OpenedKind, RegExp>> = { task: /^#\/tasks\b/, person: /^#\/people\b/ }
-const ONE = /^(task|run|person|row|schedule|rule|rows)\/([\w,:-]+)$/
+const ONE = /^(task|run|person|row|schedule|rule|rows|day)\/([\w,:-]+)$/
 
+// the day's own page is the Calendar, which the panel learns from the day itself
 export const pageOf = (o: Opened) => {
+  if (o.kind === 'day') return '#/'
   if (o.kind !== 'rows') return `${PAGE[o.kind]}${o.id}`
   const [table, rows] = o.id.split(':')
   return `#/table/${table}?only=${rows}`

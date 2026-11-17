@@ -26,6 +26,7 @@ import { registerAgents } from './routes/agents.ts'
 import { registerCards } from './routes/cards.ts'
 import { APP_FILE, PAIR, registerComputers, UPDATE } from './routes/computers.ts'
 import { registerConnectors } from './routes/connectors.ts'
+import { registerDay } from './routes/day.ts'
 import { registerFiles } from './routes/files.ts'
 import { registerKits } from './routes/kits.ts'
 import { registerMe } from './routes/me.ts'
@@ -203,6 +204,7 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
   const ctx: Ctx = { ...base, views: makeViews(base) }
   registerSession(ctx)
   registerMe(ctx)
+  registerDay(ctx)
   registerStream(ctx)
   registerCards(ctx)
   registerRules(ctx)

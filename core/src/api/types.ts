@@ -22,6 +22,7 @@ export type {
   ReadByView,
   SignInAppView,
 } from './connector-types.ts'
+export type { DayEventView, DayTaskView, DayView } from './day-types.ts'
 export type {
   FileView,
   KeptFileView,
