@@ -239,8 +239,8 @@ only on a computer.
 **The Bridge** (step 1 of its design, 16 Nov) is a small program in `bridge/`, a zip per computer
 (a Mac with an Apple chip, Windows on x64) with Node inside, signed with Kenil's key; Alpha hands
 out only a zip whose signature holds (`pnpm bridge pack`, then `pnpm server bridge`). Connections ›
-Your computers makes a one-time pairing link, good for 15 minutes, and only where one person signs
-in until every row has an owner. `alpha-bridge pair <link>` makes the computer's own key there,
+Your computers makes a one-time pairing link, good for 15 minutes, on any Alpha for now (Kenil,
+17 Nov): until every row has an owner, what a computer lends is read by everyone signed in. `alpha-bridge pair <link>` makes the computer's own key there,
 its private half in the Keychain or Windows' Credential Manager, and Alpha keeps the public half
 against the person. The Bridge connects outward to the Alpha's own address over one websocket
 (`/ws/bridge`), proves itself by signing a fresh challenge at every connect, and nothing on the

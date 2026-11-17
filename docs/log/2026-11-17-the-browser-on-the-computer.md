@@ -40,3 +40,8 @@ reaches it as the yes on its card.
 On his next yes, the sites are part of a session's fingerprint: once they change, a kept session is
 not resumed and a live one (the Chief of staff's too) closes before its next turn, so the chat
 starts again handed what was said, knowing the sites. With no sites the fingerprint is as before.
+
+For step 5 on Avilo's Alpha (two people sign in there), on Kenil's word ("lets not refuse for
+now"): pairing no longer needs an Alpha one person signs in to. Until every row has an owner, what
+a computer lends lands where everyone signed in can read it; rule B1 still keeps a computer acting
+only for its own person.

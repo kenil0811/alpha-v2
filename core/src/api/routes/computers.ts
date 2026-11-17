@@ -212,14 +212,10 @@ export function registerComputers(ctx: Ctx): void {
     return { computer, lends: ks.map(view), did }
   })
 
-  // A link for the person's next computer, shown once and good for fifteen minutes; only where one
-  // person signs in, until every row has an owner (rows are the firm's today, so a second person
-  // could read what the first one's computer lent)
+  // A link for the person's next computer, shown once and good for fifteen minutes. Any Alpha may
+  // pair one for now (Kenil, 17 Nov): rows are still the firm's, so what a computer lends lands where
+  // everyone signed in can read it, until every row has an owner.
   app.post('/api/computers/link', async (req) => {
-    if (world.users().length > 1)
-      throw new Refused(
-        'A computer pairs only with an Alpha one person signs in to, until each row has an owner.',
-      )
     const { code, until } = world.computers.link(user.id)
     const link = `${address(req)}/?pair=${encodeURIComponent(code)}`
     // the same link for the app: the browser asks once whether to open Alpha Bridge

@@ -449,7 +449,7 @@ describe('a site signed in to on a computer', { timeout: 90_000 }, () => {
 })
 
 describe('pairing', () => {
-  it('is only for an Alpha one person signs in to, for now', async () => {
+  it('is open to an Alpha more than one person signs in to, for now', async () => {
     world.accounts.add('Priya', 'priya@example.com', {
       actor: { kind: 'person', id: owner.id },
       user: owner.id,
@@ -459,8 +459,8 @@ describe('pairing', () => {
       url: '/api/computers/link',
       headers: { host: new URL(alpha).host, 'x-alpha-token': 'test-token' },
     })
-    expect(made.statusCode).toBe(409)
-    expect(made.json().problem).toMatch(/one person signs in/)
+    expect(made.statusCode).toBe(200)
+    expect(made.json().link).toMatch(/\?pair=/)
   })
 
   const key = newKey()
