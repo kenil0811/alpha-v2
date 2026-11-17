@@ -70,10 +70,9 @@ export function TableView({
   field?: string | null // with row: that value's panel, by the field's name
   quiet?: boolean // no room beside the page with the assistant open: the row panel gives way
   loading?: boolean // its shape is here and its rows are on their way: no count yet
-  // a list kept outside the module's tables (people, tasks, schedules…), served by the core as a
-  // table: changed in a cell where the core says it may be, opened on their own page, changed
-  // there; why is said when something would be typed or saved. New adds one in the page's own
-  // way, when it has one.
+  // a list kept outside the module's tables (people, tasks, schedules…), served as a table: changed
+  // in a cell where the core says it may be, else on its own page, which says why; no saved lists.
+  // New adds one in the page's own way, when it has one.
   kept?: {
     open: (row: string) => void
     onNew?: () => void
@@ -342,6 +341,7 @@ export function TableView({
               }
               views={views}
               fields={fields}
+              saving={!kept}
               current={viewId}
               dirty={dirty}
               problem={problem}

@@ -4,7 +4,8 @@
 // the list on screen differs from what was saved (Save ▾ Save as new list keeps a shared list as it
 // was), the view, search and filter (`tools`), and on the right the table's actions (`right`). A
 // list's own actions sit behind ▾ and on a right-click of its pill: rename, duplicate, open the
-// table on it, delete. Resting on a pill says what the list holds.
+// table on it, delete. Resting on a pill says what the list holds. A list Alpha keeps itself
+// (people, tasks) holds no saved lists, so it shows neither Save nor ▾, and Cancel alone.
 import type { FieldView, SavedView } from '@alpha/core/api'
 import { ChevronDown, CopyPlus, List, PencilLine, Plus, Star, Trash2 } from 'lucide-react'
 import {
@@ -30,6 +31,7 @@ export function ViewTabs({
   right,
   views,
   fields,
+  saving: keeps = true,
   current,
   dirty,
   problem,
@@ -45,6 +47,7 @@ export function ViewTabs({
   right: ReactNode // the table's own actions, ⋮ and the chevron, at the right end
   views: SavedView[]
   fields: FieldView[] // to say what each list holds
+  saving?: boolean // false on a list Alpha keeps itself (people, tasks…): it holds no saved lists
   current: string | null
   dirty: boolean
   problem: string | null
@@ -191,11 +194,15 @@ export function ViewTabs({
         data-tip={ghost ? undefined : tipOf(v)}
         onClick={() => onPick(v?.id ?? null)}
         onDoubleClick={() => mine && v && rename()}
-        onContextMenu={(e) => {
-          if (!mine) onPick(v?.id ?? null)
-          onList.on.onContextMenu(e)
-        }}
-        onKeyDown={mine ? onList.on.onKeyDown : undefined}
+        onContextMenu={
+          keeps
+            ? (e) => {
+                if (!mine) onPick(v?.id ?? null)
+                onList.on.onContextMenu(e)
+              }
+            : undefined
+        }
+        onKeyDown={mine && keeps ? onList.on.onKeyDown : undefined}
         className={cn(
           'flex h-7 max-w-44 shrink-0 items-center gap-1.5 rounded-full px-3 text-md',
           mine ? 'bg-accent-soft font-medium text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink',
@@ -222,25 +229,27 @@ export function ViewTabs({
         <legend className="sr-only">Saved lists</legend>
         {shown.map((v) => pill(v))}
       </fieldset>
-      <button
-        ref={moreAt}
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={more}
-        aria-label={rest.length ? `${rest.length} more saved lists` : 'Saved lists'}
-        data-tip={rest.length ? `${rest.length} more` : 'Saved lists'}
-        onClick={() => setMore((o) => !o)}
-        className="-ml-1 flex h-7 shrink-0 items-center gap-0.5 rounded-full px-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
-      >
-        {rest.length > 0 && <span className="tabular-nums">{rest.length}</span>}
-        <ChevronDown className="size-3.5" />
-      </button>
+      {keeps && (
+        <button
+          ref={moreAt}
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={more}
+          aria-label={rest.length ? `${rest.length} more saved lists` : 'Saved lists'}
+          data-tip={rest.length ? `${rest.length} more` : 'Saved lists'}
+          onClick={() => setMore((o) => !o)}
+          className="-ml-1 flex h-7 shrink-0 items-center gap-0.5 rounded-full px-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+        >
+          {rest.length > 0 && <span className="tabular-nums">{rest.length}</span>}
+          <ChevronDown className="size-3.5" />
+        </button>
+      )}
       {dirty && (
         <>
           <Button size="sm" variant="ghost" onClick={onReset} data-tip="Go back to what was saved">
             Cancel
           </Button>
-          {view ? (
+          {!keeps ? null : view ? (
             <span ref={saveAt} className="flex shrink-0">
               <Button
                 size="sm"
