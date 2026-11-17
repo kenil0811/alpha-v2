@@ -120,6 +120,21 @@ export function startLayer(
   return parts.join('\n\n')
 }
 
+// The sites the person signed in to in Alpha's browser, and where each is kept: browse reaches them
+// as the person, for what no connection reads. Told once a session; a sign-in after that comes as
+// the yes on its card. None when this Alpha has no browser.
+export function sitesLayer(
+  world: World,
+  sites: { site: string; computer: string | null }[] | null,
+): string {
+  if (!sites) return ''
+  if (!sites.length)
+    return '## Sites\nNone signed in yet. The person signs in to a site in Intelligence › Connections › Sites; then browse reaches it as them.'
+  const where = (id: string | null) =>
+    id ? ` (on their computer ${world.computers.get(id)?.name ?? ''}, while it is on)` : ''
+  return `## Sites\nSigned in by the person in Alpha's browser. browse reaches these as them, for what no connection reads:\n${sites.map((s) => `- ${s.site}${where(s.computer)}`).join('\n')}`
+}
+
 // A table as the model needs it to read or write it: its fields with their kinds, choices,
 // relations and what each means (the semantic layer), given once per session on the
 // table's first touch, and again after compaction when the start layer is resent.

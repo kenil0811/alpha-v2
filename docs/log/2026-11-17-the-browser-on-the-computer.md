@@ -30,3 +30,10 @@ key or token, billing, an account on hold) and how the session was started. The 
 Open Settings › Model; a member is told the firm's owner fixes it there. A one-question ask says
 the same. Seen on the server first: the refusal comes as a "success" with `is_error`, no text
 streamed.
+
+Then, with the token in, the Chief of staff answered that Drive had no connection and never tried
+the browser: nothing told it which sites the person is signed in to. On his yes, every session now
+starts with a Sites part: each site the person signed in to in Alpha's browser, the computer it
+lives on when it is one, and that browse reaches them for what no connection reads; with none, that
+the person signs in from Intelligence › Connections › Sites. A sign-in later in a session already
+reaches it as the yes on its card.

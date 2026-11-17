@@ -1,12 +1,13 @@
 // Context by mode: the start layer names modules and tables with their counts;
 // a table's fields and meanings come with its first touch, once per session, again after the
 // start layer is resent; the heavy grammars are fetched with guide.
+import { generateKeyPairSync } from 'node:crypto'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { World } from '../world/world.ts'
-import { firstTouch, startLayer } from './context.ts'
+import { firstTouch, sitesLayer, startLayer } from './context.ts'
 import type { ToolEntry } from './registry.ts'
 import type { Here } from './tools/common.ts'
 import { worldTools } from './tools/index.ts'
@@ -46,6 +47,26 @@ describe('the start layer', () => {
     expect(text).toContain('- Meals (view meals), 0 rows: One meal the person ate.')
     expect(text).not.toContain('Food (text)')
     expect(text).toContain('come with your first query, write or change of it')
+  })
+})
+
+describe('the sites part', () => {
+  it('names each site the person signed in to and the computer it lives on, or how to sign in', () => {
+    const owner = world.owner('Kenil')
+    const { code } = world.computers.link(owner.id)
+    const publicKey = generateKeyPairSync('ed25519')
+      .publicKey.export({ type: 'spki', format: 'pem' })
+      .toString()
+    const pc = world.computers.pair(code, { publicKey, name: 'Test Mac', platform: 'darwin' })
+    const said = sitesLayer(world, [
+      { site: 'google.com', computer: pc.id },
+      { site: 'github.com', computer: null },
+    ])
+    expect(said).toContain('browse reaches these as them, for what no connection reads')
+    expect(said).toContain('- google.com (on their computer Test Mac, while it is on)')
+    expect(said.endsWith('- github.com')).toBe(true)
+    expect(sitesLayer(world, [])).toMatch(/None signed in yet.*Connections › Sites/)
+    expect(sitesLayer(world, null)).toBe('')
   })
 })
 

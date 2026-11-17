@@ -23,6 +23,7 @@ import {
   newsOf,
   ownFolderLayer,
   pickedLine,
+  sitesLayer,
   startLayer,
   teamOf,
   turnLayer,
@@ -152,6 +153,7 @@ export class Desk {
       memory.text,
       team.length ? `## Your teammates\n${team.map((t) => t.line).join('\n')}` : '',
       ownFolderLayer(this.world, this.agentId),
+      sitesLayer(this.world, this.hands ? this.hands.browser().as(this.user.id).sites() : null),
     ].filter(Boolean)
   }
 
