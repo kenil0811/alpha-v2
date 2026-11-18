@@ -274,6 +274,10 @@ export class ConnectorProcess {
         const j = p as { words: string; data?: Record<string, unknown> }
         a.host.journal(j.words, j.data)
       }
+      if (m.method === 'leftOut') {
+        const l = p as { table: string; count: number }
+        a.host.leftOut?.(l.table, l.count)
+      }
       return
     }
     if (m.t === 'host')

@@ -11,6 +11,7 @@ import {
   type Connector,
   checkConnector,
   type Effect,
+  FIRM,
   type Fixtures,
   type Host,
   judgeHealth,
@@ -45,26 +46,9 @@ export interface ServiceOptions {
   server?: boolean
 }
 
-// The name a tool has for the model, and back.
-export function mcpName(connector: string, tool: string): string {
-  return `mcp__${connector}__${tool}`
-}
+import { gateKey, mcpName, splitMcpName } from './names.ts'
 
-export function splitMcpName(name: string): { connector: string; tool: string } | null {
-  const m = /^mcp__([^_].*?)__(.+)$/.exec(name)
-  return m?.[1] && m[2] ? { connector: m[1], tool: m[2] } : null
-}
-
-export interface Preview {
-  words: string
-  detail?: string
-  yes?: string // the card's yes in its own words (Send it)
-}
-
-// The gate's name for a tool: what a card and a standing permission are keyed by.
-export function gateKey(connector: string, tool: string): string {
-  return `${connector}_${tool}`
-}
+export { gateKey, mcpName, type Preview, splitMcpName } from './names.ts'
 
 // A tool's effect for this input: a tool may say it by what it is asked.
 const effectOf = (spec: Tool, input: Record<string, unknown>): Effect =>
@@ -228,8 +212,15 @@ export class ConnectorService {
           data: { ...(data ?? {}), connection: conn.id },
         })
       },
+      // counted for the read under way, and said on the connection when it ends (rules N1)
+      leftOut: (_table, count) => {
+        this.left.set(conn.id, (this.left.get(conn.id) ?? 0) + count)
+      },
     }
   }
+
+  // What each read under way left out as on the never-use list, by its connection.
+  private left = new Map<string, number>()
 
   // A tool's call, by its effect: one that changes something is never tried again when its fate
   // is unknown; a read keeps its retries.
@@ -239,6 +230,8 @@ export class ConnectorService {
       judgements: this.judgements(),
       ...(fixtures ? { fixtures } : {}),
       ...(effect !== 'read' ? { once: true } : {}),
+      // what this connection never keeps, left out as it reads, wherever it runs (rules N1)
+      never: this.world.never.listFor(ownerOf(conn) === FIRM ? null : ownerOf(conn)),
     }
     // a connector in its own process paces and retries there, by the same options
     // the computer it runs on, when a person's computer runs it (the Bridge)
@@ -426,9 +419,11 @@ export class ConnectorService {
         words,
         data: { connection: id, name: c.manifest.title, ms: Date.now() - started, state, quiet },
       })
+    this.left.set(id, 0)
     try {
       landIn(this.world, c)
       const result = await c.sync(this.call(c, conn))
+      const leftOut = this.left.get(id) ?? 0
       const health = judgeHealth(
         { rows: conn.lastRows, lastNewAt: conn.lastNewAt },
         result,
@@ -442,14 +437,20 @@ export class ConnectorService {
           `${c.manifest.title} for ${conn.account} works again.`,
           { actor: { kind: 'connector', id: c.manifest.name } },
         )
-      this.world.connections.synced(id, result.rows, result.sawNew, health, {
-        actor: { kind: 'connector', id: c.manifest.name },
-      })
+      this.world.connections.synced(
+        id,
+        result.rows,
+        result.sawNew,
+        health,
+        { actor: { kind: 'connector', id: c.manifest.name } },
+        leftOut,
+      )
+      const left = leftOut ? ` Left out ${leftOut} on the never-use list.` : ''
       read(
         'ok',
         result.sawNew
-          ? `Read ${conn.account}: something new.`
-          : `Read ${conn.account}: nothing new.`,
+          ? `Read ${conn.account}: something new.${left}`
+          : `Read ${conn.account}: nothing new.${left}`,
         !result.sawNew,
       )
     } catch (err) {

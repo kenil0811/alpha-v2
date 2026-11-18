@@ -236,6 +236,7 @@ describe('a Gmail connection on recorded answers', () => {
       id: 'k_1',
       account: 'kenil@example.com',
       secretRef: null,
+      madeBy: 'system',
     } as unknown as Connection
     let tries = 0
     const send = svc.call(gmail, conn, 'outward')

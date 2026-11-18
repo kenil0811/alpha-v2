@@ -25,6 +25,7 @@ export interface Connection {
   madeBy: string // who set it up (person:<id>, system): its owner
   place: string | null // where its sign-in went, as its provider names it (a QuickBooks company)
   computer: string | null // the person's computer it runs on, through the Bridge; none: here
+  leftOut: number | null // what its last read left out as on the never-use list (N1)
 }
 
 // Whose sign-ins a connection reads with: the person who set it up, or the firm's.
@@ -46,6 +47,7 @@ interface ConnectionRow {
   made_by: string
   place: string | null
   computer: string | null
+  left_out: number | null
 }
 
 function toConnection(r: ConnectionRow): Connection {
@@ -64,6 +66,7 @@ function toConnection(r: ConnectionRow): Connection {
     madeBy: r.made_by,
     place: r.place ?? null,
     computer: r.computer ?? null,
+    leftOut: r.left_out ?? null,
   }
 }
 
@@ -212,18 +215,26 @@ export class Connections {
 
   // After a sync: what it brought and how the connection looks now. A health judgement is only
   // journaled when it changes.
-  synced(id: string, rows: number, sawNew: boolean, health: string | null, ctx: WriteCtx): void {
+  synced(
+    id: string,
+    rows: number,
+    sawNew: boolean,
+    health: string | null,
+    ctx: WriteCtx,
+    leftOut = 0,
+  ): void {
     tx(this.db, () => {
       const c = this.get(id)
       if (!c) return
       const at = now()
       run(
         this.db,
-        'UPDATE connections SET last_sync_at = ?, last_rows = ?, last_new_at = coalesce(?, last_new_at), health = ? WHERE id = ?',
+        'UPDATE connections SET last_sync_at = ?, last_rows = ?, last_new_at = coalesce(?, last_new_at), health = ?, left_out = ? WHERE id = ?',
         at,
         rows,
         sawNew ? at : null,
         health,
+        leftOut,
         id,
       )
       if (health && health !== c.health)

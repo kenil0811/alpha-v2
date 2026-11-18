@@ -73,6 +73,21 @@ const Sites = z.object({
   server_sign_in_tries: z.number().int().min(1),
 })
 
+// The never-use list Alpha ships, by kind (rules N1).
+const Never = z.object({
+  kinds: z
+    .array(
+      z.object({
+        key: z.string().regex(/^[a-z]+$/),
+        title: z.string().min(1),
+        words: z.array(z.coerce.string().min(1)),
+        stems: z.array(z.string().min(1)),
+      }),
+    )
+    .min(1),
+})
+export type NeverKinds = z.infer<typeof Never>['kinds']
+
 const cache = new Map<string, { mtime: number; value: unknown }>()
 
 function load<T>(name: string, read: (text: string) => T, dir = DIR): T {
@@ -100,6 +115,7 @@ export const config = {
   people: (dir?: string) => load('people.yaml', yamlOf(People, 'people.yaml'), dir),
   words: (dir?: string) => load('words.yaml', yamlOf(Words, 'words.yaml'), dir),
   sites: (dir?: string) => load('sites.yaml', yamlOf(Sites, 'sites.yaml'), dir),
+  never: (dir?: string) => load('never.yaml', yamlOf(Never, 'never.yaml'), dir).kinds,
   systemPrompt: (person: string, dir?: string) =>
     load('system.md', (t) => t.trim(), dir).replaceAll('{person}', person),
   // who an agent is: its name, title, description and instructions fill the blanks

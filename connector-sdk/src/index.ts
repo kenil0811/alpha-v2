@@ -55,6 +55,7 @@ export {
 export { EFFECTS, type Effect, isEffect } from './effects.ts'
 export { type HelperOptions, helperBinary, runHelper } from './helper.ts'
 export { LIVE_SIZE, LiveBrowser, type LiveInput, LiveTab } from './live.ts'
+export { itemOnList, type NeverList, onList, withNever } from './never.ts'
 export { proxy } from './proxy.ts'
 export {
   type CallOptions,

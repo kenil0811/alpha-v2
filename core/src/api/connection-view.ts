@@ -54,6 +54,7 @@ export function connectionViews(ctx: BaseCtx): (k: Connection) => ConnectionView
       refused: refused.get(k.connector) ?? [],
       canAllow: !!c?.manifest.chosenSites,
       computer: computerOf(k.computer),
+      leftOut: k.leftOut ?? 0,
     }
   }
 }

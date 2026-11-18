@@ -101,6 +101,7 @@ function hostFor(req: number, account: string, place: string | null, cursor: str
     helper: (args, options) => ask(req, 'helper', { args, options: options ?? {} }),
     browser: () => browser as never,
     journal: (words, data) => tell(req, 'journal', { words, data }),
+    leftOut: (table, count) => tell(req, 'leftOut', { table, count }),
   }
 }
 

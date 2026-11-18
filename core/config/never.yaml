@@ -1,0 +1,39 @@
+# The never-use list Alpha ships (onboarding plan, 18 Nov, call 39; rules N1): what a connection
+# or a computer reads but Alpha never keeps. Each kind is one line in Settings › Permissions, with
+# its words for the person to read. A word matches a whole word of what is read ("loan" never
+# matches "loaned"), a phrase its words in a row, and a stem the inside of a word ("bank" matches
+# "bankofamerica"). Words that are also everyday work words (chase, hinge, court, statement) are
+# left off: a match leaves the whole mail, event or file out. The firm and each person add their
+# own in Settings; the owner may turn a kind off for everyone where it is the firm's own work.
+
+kinds:
+  - key: banking
+    title: Banking
+    words: [banking, paypal, venmo, zelle, wellsfargo, hsbc, barclays, revolut, capitalone,
+      citibank, americanexpress, amex, iban, bank statement, wire transfer, routing number,
+      sort code, account statement]
+    stems: [bank, mortgage]
+  - key: health
+    title: Health and medical
+    words: [doctor, clinic, therapy, therapist, patient, prescription, diagnosis, dentist, dental,
+      pharmacy, mychart, webmd, test results, lab results]
+    stems: [health, medical, hospital, pharma]
+  - key: credentials
+    title: Passwords and credentials
+    words: [passcode, credentials, otp, 2fa, mfa, two-factor, verification code, security code,
+      one-time code, sign-in code, login code, lastpass, 1password, bitwarden]
+    stems: [password]
+  - key: legal
+    title: Legal matters
+    words: [lawsuit, attorney, lawyer, solicitor, subpoena, litigation, divorce, custody,
+      court date, legal notice, cease and desist]
+    stems: []
+  - key: dating
+    title: Dating
+    words: [tinder, bumble, okcupid, grindr]
+    stems: [dating]
+  - key: money
+    title: Personal money
+    words: [payslip, paystub, salary, pension, 401k, tax return, credit card, credit score,
+      creditkarma, loan, loans, robinhood, coinbase, binance, crypto, bitcoin]
+    stems: []

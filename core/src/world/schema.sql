@@ -77,6 +77,18 @@ CREATE TABLE preferences (
   PRIMARY KEY (user_id, key)
 );
 
+-- The never-use list's own words (rules N1): the firm's, kept by the owner (scope 'everyone'), or
+-- one person's; and a kind of the shipped list the owner turned off for everyone, where it is the
+-- firm's own work (kind 'off', its key as the word).
+CREATE TABLE never_use (
+  scope TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('word', 'off')),
+  word TEXT NOT NULL,
+  added_by TEXT NOT NULL,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (scope, kind, word)
+);
+
 -- ---- Modules, tables and fields ----
 
 -- A module, its place in another, and who made it.
@@ -627,6 +639,7 @@ CREATE TABLE connections (
   hosts TEXT NOT NULL DEFAULT '[]',
   place TEXT, -- where its sign-in went, as the provider names it (a QuickBooks company)
   computer TEXT, -- the person's computer it runs on, through the Bridge; none: here
+  left_out INTEGER, -- what its last read left out as on the never-use list (N1), counted
   UNIQUE (connector, account)
 );
 

@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { RateLimiter } from 'limiter'
 import { type Call, type Host, type Manifest, Problem, type SyncResult } from './connector.ts'
+import { type NeverList, withNever } from './never.ts'
 
 export interface Judgements {
   retries: number // attempts after the first, for a read that failed in passing
@@ -27,6 +28,7 @@ export interface CallOptions {
   fixtures?: Fixtures
   sleep?: (ms: number) => Promise<void>
   once?: boolean // it changes something: never tried again when its fate is unknown
+  never?: NeverList // what this connection never keeps (rules N1): left out before it lands
 }
 
 export const TRANSIENT =
@@ -76,7 +78,8 @@ function fixtureFile(f: Fixtures, name: string, args: unknown): string {
   return join(f.dir, `${name}-${hash}.json`)
 }
 
-export function makeCall(manifest: Manifest, host: Host, options: CallOptions): Call {
+export function makeCall(manifest: Manifest, given: Host, options: CallOptions): Call {
+  const host = options.never ? withNever(given, options.never) : given
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)))
   return {
     host,

@@ -51,6 +51,7 @@ export interface ConnectionView {
   refused: { host: string; at: string }[]
   canAllow: boolean
   computer: { name: string; online: boolean } | null // the person's computer it runs on (the Bridge)
+  leftOut: number // what its last read left out as on the never-use list (rules N1)
 }
 
 // A connection that fills a table: Read now on the table reads every one that

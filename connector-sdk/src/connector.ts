@@ -156,6 +156,9 @@ export interface Host {
   // Alpha's Mac helper, run by the core so macOS keeps its permission with Alpha's own app.
   helper?: (args: string[], options?: HelperOptions) => Promise<unknown>
   journal(words: string, data?: Record<string, unknown>): void
+  // How many rows or files of a read were left out as on the never-use list (rules N1): counted,
+  // never which.
+  leftOut?: (table: string, count: number) => void
 }
 
 // A connection's calls go through the SDK: paced, retried, journaled, recorded or replayed.

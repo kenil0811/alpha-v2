@@ -88,6 +88,12 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | B1 | A computer acts only as its person. A connection on a person's computer (the Bridge) is theirs: their own turns (their conversation, the tasks they give) and the scripts run for them may use it; another person's turn and a script run for the firm or for someone else are refused, in words that name the computer | 16 Nov | test |
 | B2 | What a computer lends is said on the computer. A folder there is lent in the Bridge, never named in Alpha; a site is lent only once its person signed in to it there, in a window nothing drives, with the Browser switch on; the Bridge refuses any call for what it does not lend, whatever Alpha sends | 16 Nov, 17 Nov | test |
 
+## What is never kept
+
+| # | Rule | Date | Held by |
+|---|---|---|---|
+| N1 | The never-use list applies as things are read: a row or a file holding one of its words never lands, from any connection. A connection meets the kinds Alpha ships that the firm has on (`core/config/never.yaml`), the firm's own words, kept by the owner, and its own person's; the owner may turn a kind off for everyone. A connection on a person's computer leaves a match out in its own process there, before it leaves the computer, and the core leaves it out again as it lands. Each connection says how many its last read left out, never which, and the journal says a word was added or taken off, never the word | 18 Nov | test |
+
 ## Audit
 
 | # | Rule | Date | Held by |

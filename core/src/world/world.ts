@@ -27,6 +27,7 @@ import {
 import { Refused } from './kinds.ts'
 import { askMaintainer } from './maintained.ts'
 import { ModelSql } from './modelsql.ts'
+import { NeverUse } from './never.ts'
 import { People } from './people/index.ts'
 import { FOLD_PICK, foldPeople, pickFolded, unfoldPeople } from './records/fold.ts'
 import { Records } from './records/index.ts'
@@ -81,6 +82,7 @@ export class World {
   readonly files: Files
   readonly connections: Connections
   readonly computers: Computers
+  readonly never: NeverUse
   readonly rules: Rules
   readonly spend: Spend
   readonly agents: Agents
@@ -107,6 +109,7 @@ export class World {
     this.records = new Records(db, this.shape, (f) => this.files.findFile(f)?.hash)
     this.connections = new Connections(db)
     this.computers = new Computers(db)
+    this.never = new NeverUse(db)
     this.rules = new Rules(db, this.shape)
     this.spend = new Spend(db)
     this.agents = new Agents(db, paths.agents)

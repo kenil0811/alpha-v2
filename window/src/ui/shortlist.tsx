@@ -1,7 +1,8 @@
 // One control for short lists: Add on the heading, ✕ on an entry when it is hovered (asked first
 // in our own pop-up, R3), and a double-click edits it in place, Enter keeping the change and Escape
 // putting it back, as a saved list is renamed. Where Alpha must understand an entry, Add starts the
-// conversation (M3); the list says how it adds.
+// conversation (M3); where it need not (a word to leave out), Add opens a box at the list's top,
+// Enter adding what was typed. A list the person may only read has no Add and no ✕, and says why.
 import { Plus, X } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Refusal, useAct } from './act.tsx'
@@ -45,6 +46,7 @@ export function ShortList<T>({
   onEdit,
   remove,
   empty,
+  readOnly,
 }: {
   title: string
   about?: string
@@ -54,8 +56,10 @@ export function ShortList<T>({
   subOf?: (item: T) => ReactNode
   lead?: (item: T) => ReactNode
   addLabel: string // "Add an instruction": the button's name, read aloud and on hover
-  onAdd: () => void
+  // the conversation started, or what was typed in the box at the list's top
+  onAdd: (() => void) | { typed: (words: string) => Promise<unknown>; placeholder: string }
   onEdit?: (item: T, words: string) => Promise<unknown> // none: the entry is not edited in place
+  readOnly?: string | undefined // why the person may only read it: no Add, no ✕
   remove: {
     title: string
     yes: string
@@ -66,7 +70,14 @@ export function ShortList<T>({
 }) {
   const [edit, setEdit] = useState<Edit>(null)
   const [asking, setAsking] = useState<string | null>(null)
+  const [adding, setAdding] = useState<string | null>(null) // the box at the top, while open
   const { busy, on, problem, act } = useAct()
+  const typed = typeof onAdd === 'function' ? null : onAdd
+  const add = () => {
+    const words = adding?.trim()
+    setAdding(null)
+    if (words && typed) void act(() => typed.typed(words), 'add')
+  }
   const asked = items?.find((i) => keyOf(i) === asking)
   const step = (s: Step) => {
     const out = editStep(edit, s)
@@ -79,12 +90,34 @@ export function ShortList<T>({
       title={title}
       {...(about ? { about } : {})}
       action={
-        <IconButton label={addLabel} onClick={onAdd}>
-          <Plus className="size-4" />
-        </IconButton>
+        readOnly ? (
+          <span className="text-ink-3 text-sm">{readOnly}</span>
+        ) : (
+          <IconButton
+            label={addLabel}
+            onClick={() => (typed ? setAdding('') : (onAdd as () => void)())}
+          >
+            <Plus className="size-4" />
+          </IconButton>
+        )
       }
     >
-      {items?.length === 0 && <Empty>{empty}</Empty>}
+      {adding !== null && (
+        <Field
+          autoFocus
+          aria-label={addLabel}
+          placeholder={typed?.placeholder}
+          value={adding}
+          onChange={(e) => setAdding(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') add()
+            if (e.key === 'Escape') setAdding(null)
+          }}
+          onBlur={add}
+        />
+      )}
+      {on === 'add' && <Refusal words={problem} />}
+      {items?.length === 0 && adding === null && <Empty>{empty}</Empty>}
       {items && items.length > 0 && (
         <List>
           {items.map((item) => {
@@ -125,14 +158,16 @@ export function ShortList<T>({
                 actions={
                   <>
                     {on === key && <Refusal words={problem} />}
-                    <IconButton
-                      label={`Delete “${wordsOf(item)}”`}
-                      disabled={busy}
-                      className="opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
-                      onClick={() => setAsking(key)}
-                    >
-                      <X className="size-3.5" />
-                    </IconButton>
+                    {!readOnly && (
+                      <IconButton
+                        label={`Delete “${wordsOf(item)}”`}
+                        disabled={busy}
+                        className="opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
+                        onClick={() => setAsking(key)}
+                      >
+                        <X className="size-3.5" />
+                      </IconButton>
+                    )}
                   </>
                 }
               />

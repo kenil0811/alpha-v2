@@ -38,8 +38,8 @@ const columns = (t: string) =>
 
 describe('the world’s shape', () => {
   it('is schema.sql and its migrations, and a fresh world is exactly schema.sql', () => {
-    expect(MIGRATIONS).toHaveLength(3)
-    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 3 })
+    expect(MIGRATIONS).toHaveLength(4)
+    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 4 })
     expect(made('table')).toEqual(named('TABLE'))
     expect(made('index')).toEqual(named('INDEX'))
     expect(made('trigger')).toEqual(named('TRIGGER'))
@@ -61,7 +61,7 @@ describe('the world’s shape', () => {
       ),
     ).not.toContain('place')
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(3)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(4)
     expect(again.prepare("SELECT account, place FROM connections WHERE id = 'c1'").get()).toEqual({
       account: 'a@b.example',
       place: null,
@@ -85,12 +85,39 @@ describe('the world’s shape', () => {
     old.close()
     const again = new DatabaseSync(file)
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(3)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(4)
     expect(again.prepare("SELECT computer FROM connections WHERE id = 'c1'").get()).toEqual({
       computer: null,
     })
     expect(again.prepare('SELECT count(*) AS n FROM computers').get()).toEqual({ n: 0 })
     expect(again.prepare('SELECT count(*) AS n FROM computer_links').get()).toEqual({ n: 0 })
+    again.close()
+  })
+
+  it('gives a world made before migration 4 the never-use list and what a read left out', async () => {
+    const file = join(home, 'oldest.sqlite')
+    const old = new DatabaseSync(file)
+    old.exec(
+      SCHEMA.replace(/\n\s*left_out INTEGER,[^\n]*/, '').replace(
+        /\n-- The never-use list's own words[\s\S]*?\n\);\n/,
+        '\n',
+      ),
+    )
+    old.exec('PRAGMA user_version = 3')
+    old.exec(
+      "INSERT INTO connections (id, connector, account, state, made_by, created_at) VALUES ('c1', 'gmail', 'a@b.example', 'connected', 'system', 'now')",
+    )
+    expect(old.prepare("SELECT name FROM sqlite_master WHERE name = 'never_use'").get()).toBe(
+      undefined,
+    )
+    old.close()
+    const again = new DatabaseSync(file)
+    const { migrate } = await import('./schema.ts')
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(4)
+    expect(again.prepare("SELECT left_out FROM connections WHERE id = 'c1'").get()).toEqual({
+      left_out: null,
+    })
+    expect(again.prepare('SELECT count(*) AS n FROM never_use').get()).toEqual({ n: 0 })
     again.close()
   })
 

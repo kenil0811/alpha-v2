@@ -103,6 +103,7 @@ export const Check = z.union([
       state: z.string().optional(),
       health: z.string().optional(),
       owner: z.string().optional(),
+      left_out: z.number().optional(), // what its last read left out on the never-use list (N1)
     }),
   }),
   // what the newest revert said, in part (a take-back outside Alpha)
@@ -441,14 +442,23 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
   if ('connection' in check) {
     const c = check.connection
     const k = world.connections.list().find((x) => x.connector === c.connector)
-    const saw = k ? `${k.state} | ${k.health ?? ''} | ${k.madeBy}` : 'no connection'
+    const saw = k
+      ? `${k.state} | ${k.health ?? ''} | ${k.madeBy} | left out ${k.leftOut ?? 0}`
+      : 'no connection'
     const ok =
       !!k &&
       (c.state === undefined || k.state === c.state) &&
       (c.health === undefined || new RegExp(c.health, 'i').test(k.health ?? '')) &&
-      (c.owner === undefined || k.madeBy.startsWith(c.owner))
+      (c.owner === undefined || k.madeBy.startsWith(c.owner)) &&
+      (c.left_out === undefined || (k.leftOut ?? 0) === c.left_out)
+    const said = [
+      c.state && `is ${c.state}`,
+      c.health && `says /${c.health}/`,
+      c.owner && `was set up by ${c.owner}`,
+      c.left_out !== undefined && `left out ${c.left_out} on the never-use list`,
+    ]
     return {
-      check: `the ${c.connector} connection ${[c.state && `is ${c.state}`, c.health && `says /${c.health}/`, c.owner && `was set up by ${c.owner}`].filter(Boolean).join(', ')}`,
+      check: `the ${c.connector} connection ${said.filter(Boolean).join(', ')}`,
       ok,
       saw,
     }

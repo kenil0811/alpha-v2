@@ -28,6 +28,18 @@ CREATE TABLE IF NOT EXISTS computer_links (
 );
 `
 
+// The never-use list's own words, as schema.sql has them too.
+const NEVER_USE = `
+CREATE TABLE IF NOT EXISTS never_use (
+  scope TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('word', 'off')),
+  word TEXT NOT NULL,
+  added_by TEXT NOT NULL,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (scope, kind, word)
+);
+`
+
 export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   SCHEMA,
   // 2, 15 Nov 2026: where a connection's sign-in went, as its provider names it (a QuickBooks
@@ -48,5 +60,14 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     ).map((c) => c.name)
     if (!cols.includes('computer')) db.exec('ALTER TABLE connections ADD COLUMN computer TEXT')
     db.exec(COMPUTERS)
+  },
+  // 4, 18 Nov 2026: the never-use list's own words, and what a connection's last read left out
+  // (rules N1); a world made from schema.sql has them already
+  (db) => {
+    const cols = (
+      db.prepare("SELECT name FROM pragma_table_info('connections')").all() as { name: string }[]
+    ).map((c) => c.name)
+    if (!cols.includes('left_out')) db.exec('ALTER TABLE connections ADD COLUMN left_out INTEGER')
+    db.exec(NEVER_USE)
   },
 ]
