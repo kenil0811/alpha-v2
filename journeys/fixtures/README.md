@@ -8,3 +8,7 @@ made up.
 A journey that needs answers of its own names a folder under `journeys/` here with `fixtures:`;
 its files are laid over the shared ones for that journey alone, and `{site}` in them is said as the
 journey's made-up site once it is served.
+
+A computer's readers are answered the same way: `calendar/events-any.json`, `contacts/contacts-any.json`
+and `browsing/history-any.json`, the visits as the Bridge's browsing reader reads them from a
+browser's history (`{ browser, visits: [{ url, title, at }] }`), before it counts days per site.

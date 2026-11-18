@@ -1,0 +1,242 @@
+[
+  {
+    "id": "osb-e1",
+    "title": "Site visit: 14 Elm St",
+    "start": "2026-09-10T14:00:00Z",
+    "end": "2026-09-10T15:00:00Z",
+    "allDay": false,
+    "location": "14 Elm St",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Hannah Cole",
+        "email": "hannah.cole@example.com"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e2",
+    "title": "Site visit: 22 Maple Ave",
+    "start": "2026-09-24T14:00:00Z",
+    "end": "2026-09-24T15:00:00Z",
+    "allDay": false,
+    "location": "22 Maple Ave",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Omar Reyes",
+        "email": "omar.reyes@example.com"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e3",
+    "title": "Site visit: 5 Birch Ln",
+    "start": "2026-10-08T14:00:00Z",
+    "end": "2026-10-08T15:00:00Z",
+    "allDay": false,
+    "location": "5 Birch Ln",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Priya Natarajan",
+        "email": "priya.n@example.com"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e4",
+    "title": "Site visit: 9 Cedar Ct",
+    "start": "2026-10-22T14:00:00Z",
+    "end": "2026-10-22T15:00:00Z",
+    "allDay": false,
+    "location": "9 Cedar Ct",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Tom Becker",
+        "email": "tom.becker@example.com"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e5",
+    "title": "Site visit: 31 Oak St",
+    "start": "2026-11-05T14:00:00Z",
+    "end": "2026-11-05T15:00:00Z",
+    "allDay": false,
+    "location": "31 Oak St",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Grace Liu",
+        "email": "grace.liu@example.com"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e6",
+    "title": "Site visit: 7 Willow Rd",
+    "start": "2026-11-12T14:00:00Z",
+    "end": "2026-11-12T15:00:00Z",
+    "allDay": false,
+    "location": "7 Willow Rd",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Marcus Hill",
+        "email": "marcus.hill@example.com"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e7",
+    "title": "Invoices and chasing",
+    "start": "2026-09-25T15:00:00Z",
+    "end": "2026-09-25T16:00:00Z",
+    "allDay": false,
+    "location": "",
+    "calendar": "Work",
+    "attendees": [],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e8",
+    "title": "Invoices and chasing",
+    "start": "2026-10-09T15:00:00Z",
+    "end": "2026-10-09T16:00:00Z",
+    "allDay": false,
+    "location": "",
+    "calendar": "Work",
+    "attendees": [],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e9",
+    "title": "Invoices and chasing",
+    "start": "2026-10-23T15:00:00Z",
+    "end": "2026-10-23T16:00:00Z",
+    "allDay": false,
+    "location": "",
+    "calendar": "Work",
+    "attendees": [],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e10",
+    "title": "Invoices and chasing",
+    "start": "2026-11-06T15:00:00Z",
+    "end": "2026-11-06T16:00:00Z",
+    "allDay": false,
+    "location": "",
+    "calendar": "Work",
+    "attendees": [],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e11",
+    "title": "Ravi: wiring at 22 Maple Ave",
+    "start": "2026-10-06T13:00:00Z",
+    "end": "2026-10-06T17:00:00Z",
+    "allDay": false,
+    "location": "22 Maple Ave",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Ravi Menon",
+        "email": "ravi@brightspark.example"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e12",
+    "title": "Ravi: wiring at 5 Birch Ln",
+    "start": "2026-10-20T13:00:00Z",
+    "end": "2026-10-20T17:00:00Z",
+    "allDay": false,
+    "location": "5 Birch Ln",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Ravi Menon",
+        "email": "ravi@brightspark.example"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  },
+  {
+    "id": "osb-e13",
+    "title": "Ravi: wiring at 31 Oak St",
+    "start": "2026-11-17T13:00:00Z",
+    "end": "2026-11-17T17:00:00Z",
+    "allDay": false,
+    "location": "31 Oak St",
+    "calendar": "Work",
+    "attendees": [
+      {
+        "name": "Ravi Menon",
+        "email": "ravi@brightspark.example"
+      }
+    ],
+    "organizer": {
+      "name": "Sam Ortiz",
+      "email": "sam@oakstreetbuilders.example",
+      "me": true
+    }
+  }
+]

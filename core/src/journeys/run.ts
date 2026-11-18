@@ -18,13 +18,13 @@ import { homedir, tmpdir } from 'node:os'
 import { extname, join, resolve } from 'node:path'
 import { BrowserEngine, MemorySecrets } from '@alpha/connector-sdk'
 import { parse } from 'yaml'
-import { z } from 'zod'
 import { buildServer } from '../api/server.ts'
 import type { WaitingRuleView } from '../api/types.ts'
 import { config } from '../config.ts'
 import { linkShared, loadConnector, loadSet, STANDARD_DIR } from '../connectors/discover.ts'
 import { ConnectorService } from '../connectors/service.ts'
 import { revertAll } from '../connectors/takeback.ts'
+import { ClaudeCodeProvider } from '../engine/claudecode.ts'
 import { Engine } from '../engine/engine.ts'
 import { tokenRoute } from '../engine/route.ts'
 import { stillReading } from '../files/documents.ts'
@@ -39,113 +39,19 @@ import { MAINTAINED_SHAPE } from '../world/maintained.ts'
 import { undoable } from '../world/records/index.ts'
 import { World } from '../world/world.ts'
 import { bridgeStep } from './bridge-step.ts'
-import { Check, judge } from './checks.ts'
+import { judge } from './checks.ts'
 import { fillSite, fixturesFor } from './fixtures.ts'
 import { idleOf } from './idle.ts'
+import { interviewCheck } from './interview-checks.ts'
+import { Journey } from './journey.ts'
 import { kitStep } from './kit-step.ts'
+import { interview, press, switchOn, turnEnds } from './plugin-steps.ts'
 import { type Site, serve } from './site.ts'
 import { spentIn } from './spent.ts'
 import { webCheck } from './web-checks.ts'
-import { Edit, inWindow, Remove, Reset } from './window.ts'
+import { inWindow } from './window.ts'
 
 const ROOT = join(import.meta.dirname, '..', '..', '..')
-
-const Journey = z.object({
-  name: z.string(),
-  title: z.string(),
-  why: z.string(),
-  fixtures: z.string().optional(), // its own recorded answers, in journeys/fixtures/journeys/<name>
-  steps: z.array(
-    z.object({
-      say: z.string().optional(),
-      in: z.string().optional(), // say it in this module's Conversation
-      to: z.string().optional(), // say it to this agent, in its own conversation
-      named: z.array(z.string()).optional(), // the agents picked with @ in the message
-
-      // the first waiting card answered; a schedule's draft can be sent with Always when offered; on
-      // its own page, through the window's routes
-      answer: z
-        .object({
-          choice: z.string(),
-          always: z.boolean().optional(),
-          on_page: z.boolean().optional(),
-        })
-        .optional(),
-      // a folder of files given to Alpha, copied from the repository so the journey owns it
-      folder: z.object({ from: z.string(), only: z.string().optional() }).optional(),
-      // files dropped on a row in the window, as the person drops them (a client's exports)
-      drop: z
-        .object({
-          from: z.string(),
-          only: z.string().optional(),
-          on: z.object({ table: z.string(), row: z.string() }),
-        })
-        .optional(),
-      // an account connected on recorded answers (journeys/fixtures), never a real one
-      connect: z.object({ connector: z.string(), account: z.string() }).optional(),
-      // a made-up site served on this Mac from the repository; later steps say it as {site}. Named
-      // again with a state, it serves that state's pages at the same address (site.ts)
-      site: z.object({ from: z.string(), state: z.string().optional() }).optional(),
-      // a made-up connector added from a folder, its {site}, {other} and {host} said as the site's
-      // (by its name, by another, and its host), connected and read once
-      connector: z.object({ from: z.string(), account: z.string() }).optional(),
-      // the customer's own step done: a file of this name in the journey's own
-      // folder ({tmp}, the account a made-up connector is connected to)
-      customer_does: z.string().optional(),
-      // Run now on an agent's schedule, as the person presses it: its first, or the one named
-      run_now: z.object({ agent: z.string(), name: z.string().optional() }).optional(),
-      // Try again on a connection waiting for the customer, by its connector
-      try_again: z.string().optional(),
-      // a table renamed as the person renames it, by double-clicking its name
-      rename: z.object({ table: z.string(), to: z.string() }).optional(),
-      // Read now, as the person presses it on a connection, by its connector
-      read_now: z.string().optional(),
-      // Ask before agents and scripts open a new website, in Permissions, through the window's route
-      ask_before_sites: z.boolean().optional(),
-      // the rule waiting on its Save card approved in Permissions, by its name, through the
-      // window's routes
-      approve_rule: z.string().optional(),
-      // a kit installed from a folder, its schedules on when the journey says so (all, or those named)
-      kit: z
-        .object({
-          from: z.string(),
-          schedules: z.union([z.enum(['on', 'paused']), z.array(z.string())]).default('paused'),
-          signed: z.boolean().optional(), // from a pack signed with a key the journey makes (M1)
-          update: z.boolean().optional(), // a newer version of a kit already installed
-        })
-        .optional(),
-      // a person's computer through a stand-in Bridge: lends a folder, a file put in it, away, back
-      bridge: z
-        .object({
-          lend: z.string().optional(),
-          put: z.object({ name: z.string(), text: z.string() }).optional(),
-          away: z.boolean().optional(),
-          back: z.boolean().optional(),
-          pause: z.boolean().optional(), // paused by its person there, or resumed (false)
-          calendar: z.boolean().optional(), // its Calendar lent, through a stand-in helper
-        })
-        .optional(),
-      // the scheduler's tick: schedules whose time or change has come run now
-      due: z.boolean().optional(),
-      // every waiting card of a schedule's rows decided: each row not yet decided takes this choice
-      review: z.object({ choice: z.string(), words: z.string().optional() }).optional(),
-      // Revert from Activity, as the person: the newest run or turn that wrote rows, or revert
-      revert: z.enum(['last_run', 'last_turn', 'last_revert']).optional(),
-      // two people merged by the person, by their names, and one merged in let go
-      merge: z.object({ keep: z.string(), other: z.string() }).optional(),
-      unmerge: z.string().optional(),
-      // a value typed over a row's, a row removed, Reset on a value: in the window (window.ts)
-      edit: Edit.optional(),
-      remove: Remove.optional(),
-      reset: Reset.optional(),
-      // a check that waits on what it names, as a rule of docs/rules.md does, passes while it
-      // fails, and fails the day it holds, until its waits comes off
-      checks: z
-        .array(z.intersection(Check, z.object({ waits: z.string().min(1).optional() })))
-        .default([]),
-    }),
-  ),
-})
 
 // What a dropped file is, by its name, as the window's drop says it.
 const MIME: Record<string, string> = {
@@ -215,12 +121,27 @@ export async function runOne(
     },
   )
   runner.drafts = drafts
+  const routed = await tokenRoute(world, home)
+  // the plugins this Alpha has switched on, and only those (rules P1)
+  const asker = new ClaudeCodeProvider({ ...routed, askDir: world.paths.dir })
+  const on = await switchOn(journey.plugins ?? [], {
+    world,
+    user,
+    home,
+    region: () => null,
+    ask: async (system, prompt, schema) => ({
+      answer: (await asker.ask(system, prompt, schema)).answer,
+    }),
+    connectors,
+  })
   const engine = new Engine(world, {
     prompt,
     connectors,
     hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
-    ...(await tokenRoute(world, home)),
+    starts: () => on.plugins.startBlocks(),
+    ...routed,
   })
+  if (!on.problems.length) await on.plugins.keepKits({ actor: { kind: 'system' }, user: user.id })
   let site: Site | null = null
   const computer: Parameters<typeof bridgeStep>[1] = { standIn: null }
   // the journey's own folder, for a made-up connector's account ({tmp})
@@ -232,19 +153,28 @@ export async function runOne(
     '',
     journey.title,
     '',
-    `Fresh tenant, model ${config.models().desk}, on Claude Code, Alpha's prompt ${prompt === 'alone' ? 'alone' : 'appended to Claude Code’s'}.`,
+    `Fresh tenant, model ${config.models().desk}, on Claude Code, Alpha's prompt ${prompt === 'alone' ? 'alone' : 'appended to Claude Code’s'}${journey.plugins?.length ? `, with ${journey.plugins.join(', ')} switched on` : ''}.`,
     '',
+    ...on.problems.map((p) => `**${p}**\n`),
   ]
   // the window's own routes, in this process, for a step the person takes on a page
   const served: { app?: ReturnType<typeof buildServer> } = {}
   const page = () => {
-    served.app ??= buildServer({ engine, user, token: 'journey', ports: [4700] })
+    served.app ??= buildServer({
+      engine,
+      user,
+      token: 'journey',
+      ports: [4700],
+      plugins: on.plugins.routes,
+    })
     return served.app
   }
   const asWindow = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
-  let passed = true
+  // a plugin named that did not load fails the journey before its first step
+  let passed = !on.problems.length
   const started = Date.now()
-  for (const [i, step] of journey.steps.entries()) {
+  const limit = config.limits().journey_step_minutes * 60_000
+  for (const [i, step] of (passed ? journey.steps : []).entries()) {
     const t0 = Date.now()
     // a said sentence and an answered question start a desk turn; a schedule's draft answered does
     // not, nor an answer with no card to answer, which is waited on no longer (it waited out the
@@ -446,9 +376,32 @@ export async function runOne(
       const out = await runner.runSchedule(s, { user: user.id, turn: null }, {}, { asked: true })
       what = `Pressed Run now on ${s.name}: ${out.words}`
     } else if (step.bridge) {
-      what = await bridgeStep(step.bridge, computer, world, engine, user, connectors, tmp)
+      const out = await bridgeStep(step.bridge, computer, world, engine, user, connectors, tmp)
+      passed &&= out.ok
+      what = out.what
+    } else if (step.plugin) {
+      const out = await press(page(), step.plugin)
+      // a button may start a turn: Start opens a conversation
+      if (out.ok && step.plugin.post && !(await turnEnds({ engine, user, limit })))
+        out.what += ': **the turn did not finish.**'
+      passed &&= out.ok
+      what = out.what
+    } else if (step.interview) {
+      const at = site?.url ?? null
+      const out = await interview(step.interview, {
+        world,
+        user,
+        engine,
+        app: page,
+        limit,
+        site: at,
+      })
+      passed &&= out.ok
+      what = out.what
     } else if (step.due) {
-      await runner.runDue(Date.now())
+      // so many days on, as the scheduler's tick then: a monthly schedule comes due
+      const days = typeof step.due === 'object' ? step.due.days : 0
+      await runner.runDue(Date.now() + days * 86_400_000)
       const ran = runner.runs(5).filter((r) => r.startedAt >= new Date(t0).toISOString())
       what = `The scheduler's tick: ${ran.map((r) => r.words).join('; ') || 'nothing was due'}`
     } else if (step.kit) {
@@ -531,7 +484,10 @@ export async function runOne(
       report.push(`Spent so far: ${tokens}.`, '')
     } else report.push(`Took ${((Date.now() - t0) / 1000).toFixed(1)} s.`, '')
     for (const check of step.checks) {
-      const o = webCheck(check, site, world) ?? (await judge(world, user, check))
+      const o =
+        webCheck(check, site, world) ??
+        (await interviewCheck(check, { world, user, app: page, plugins: on.plugins })) ??
+        (await judge(world, user, check))
       passed &&= check.waits ? !o.ok : o.ok
       const mark = !check.waits
         ? o.ok

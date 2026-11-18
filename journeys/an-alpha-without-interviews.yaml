@@ -1,0 +1,13 @@
+name: an-alpha-without-interviews
+title: An Alpha that has not switched interviews on shows no trace of them
+why: >
+  Which Alphas have it (Kenil's plan, 18 Nov, calls 47 and 48): interviews come only to an Alpha
+  whose alpha.yaml names them (plugins: [interviews]). One that does not, here with no plugins
+  line at all, loads none of it: no Interviewer, no schedule or check, no Your work module, no
+  route, no Home row, nothing in its name in the journal (rules P1).
+steps:
+  - plugin: { name: interviews, get: home }
+    checks:
+      - plugin_route: { name: interviews, get: home, status: 404 }
+      - no_trace: interviews
+      - errors: 0

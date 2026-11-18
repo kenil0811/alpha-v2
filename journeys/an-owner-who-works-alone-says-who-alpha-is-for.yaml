@@ -1,0 +1,32 @@
+name: an-owner-who-works-alone-says-who-alpha-is-for
+title: Someone who works alone, with no site, says Alpha is just for them; their lines land in For you, and no mail provider is taken for their site
+why: >
+  Onboarding (Kenil's plan, 18 Nov, call 10): the who-it-is-for part for an owner who works alone.
+  A site is never guessed from a mail provider's domain; with none, the Interviewer asks; its
+  drafts leave out what does not apply, and kept lines land in How to work › For you, since there
+  is no one else here. A made-up freelance bookkeeper with a Gmail address.
+plugins: [interviews]
+steps:
+  - connect: { connector: gmail, account: jo.reyes@gmail.com }
+  - plugin: { name: interviews, post: start }
+    checks:
+      - errors: 0
+  - interview:
+      agent: Interviewer
+      answers:
+        - card: 'website|web site|your site'
+          choice: "No, I don't have a website."
+        - card: 'system|software|tool'
+          choice: 'Ledgerly for my clients’ books, and a spreadsheet for each client.'
+        - card: '\bwho\b|business|team|just you|on your own'
+          choice: 'Just me. I do the books for a handful of small shops in town, on my own.'
+      until: '^(Mail|Calendar|A folder|Browsing|AI work|What you have in Alpha)'
+  - plugin: { name: interviews, post: finish }
+    checks:
+      # a mail provider is never read as their site
+      - web_calls: { matches: 'gmail\.com', count: 0 }
+      # their lines, for them alone, each kept; nothing for everyone, and no firm or team made up
+      - how_to_work: { for: me, kept: true, at_least: 1, matches: 'book' }
+      - how_to_work: { for: everyone, count: 0 }
+      - nowhere: { matches: '\bfirm\b|your team', module: Your work }
+      - errors: 0

@@ -1,0 +1,37 @@
+name: an-owner-says-who-alpha-is-for
+title: The owner of a practice says who Alpha is for, in their own words; Alpha reads their site and keeps only what they keep
+why: >
+  Onboarding (Kenil's plan, 18 Nov, call 10): no fixed idea of a firm. The Interviewer first asks
+  who the work is for, in the owner's own words, and uses those words from then on. It guesses
+  the site from the email's domain and confirms it on a card, reads its public pages, asks what
+  it cannot find, and drafts lines that land in How to work › For everyone here only on the
+  owner's Keep. A made-up dental practice and its made-up site; the owner calls it "the practice".
+plugins: [interviews]
+steps:
+  - site: { from: journeys/fixtures/sites/lakeside-dental }
+  - connect: { connector: gmail, account: dana@lakesidedental.example }
+  - plugin: { name: interviews, post: start }
+    checks:
+      - errors: 0
+  - interview:
+      agent: Interviewer
+      answers:
+        - card: 'website|web site|your site'
+          choice: 'Yes, our site is {site}'
+        - card: 'system|software|tool|book'
+          choice: 'ToothTrack for bookings and patient records, and Ledgerly for the books.'
+        - card: '\bwho\b|business|team|just you|on your own'
+          choice: 'Lakeside Dental, our family practice: two dentists, three hygienists, and Maria at the front desk.'
+      # the who-it-is-for part only: the sources' first card waits, and the owner finishes there
+      until: '^(Mail|Calendar|A folder|Browsing|AI work|What you have in Alpha)'
+  - plugin: { name: interviews, post: finish }
+    checks:
+      # its site's pages were read
+      - site_requests: { path: /, count: 1, at_least: true }
+      - site_requests: { path: /team.html, count: 1, at_least: true }
+      # kept lines, in the owner's own word for it, and no fixed idea of a firm anywhere
+      - how_to_work: { for: everyone, kept: true, at_least: 2, matches: 'practice' }
+      - nowhere: { matches: '\bfirm\b', module: Your work }
+      # About you comes later in the interview: nothing for the owner alone yet
+      - how_to_work: { for: me, count: 0 }
+      - errors: 0

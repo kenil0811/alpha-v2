@@ -1,0 +1,160 @@
+{
+  "browser": "Chrome",
+  "visits": [
+    {
+      "url": "https://chatgpt.com/c/7b2c",
+      "title": "Kitchen remodel quote: line items and labour",
+      "at": "2026-09-08T21:10:00Z"
+    },
+    {
+      "url": "https://www.remodelideas.example/kitchens",
+      "title": "Kitchen ideas | Remodel Ideas",
+      "at": "2026-09-10T22:10:00Z"
+    },
+    {
+      "url": "https://www.timbermart.example/account/orders",
+      "title": "Order history | Timber Mart",
+      "at": "2026-09-15T13:10:00Z"
+    },
+    {
+      "url": "https://chatgpt.com/c/7b2c",
+      "title": "Kitchen remodel quote: line items and labour",
+      "at": "2026-09-22T21:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-09-25T15:10:00Z"
+    },
+    {
+      "url": "https://chatgpt.com/c/6f1a",
+      "title": "Polite reminder for an overdue invoice",
+      "at": "2026-09-25T16:10:00Z"
+    },
+    {
+      "url": "https://www.timbermart.example/account/orders",
+      "title": "Order history | Timber Mart",
+      "at": "2026-10-01T13:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-10-02T15:10:00Z"
+    },
+    {
+      "url": "https://chatgpt.com/c/6f1a",
+      "title": "Polite reminder for an overdue invoice",
+      "at": "2026-10-02T16:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/2b8e",
+      "title": "Plan next week for the electrician and the carpenters",
+      "at": "2026-10-02T19:10:00Z"
+    },
+    {
+      "url": "https://chatgpt.com/c/7b2c",
+      "title": "Kitchen remodel quote: line items and labour",
+      "at": "2026-10-06T21:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-10-09T15:10:00Z"
+    },
+    {
+      "url": "https://chatgpt.com/c/6f1a",
+      "title": "Polite reminder for an overdue invoice",
+      "at": "2026-10-09T16:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/2b8e",
+      "title": "Plan next week for the electrician and the carpenters",
+      "at": "2026-10-09T19:10:00Z"
+    },
+    {
+      "url": "https://www.timbermart.example/account/orders",
+      "title": "Order history | Timber Mart",
+      "at": "2026-10-13T13:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-10-16T15:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/1a9f",
+      "title": "Second reminder wording, invoice 30 days late",
+      "at": "2026-10-16T16:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/2b8e",
+      "title": "Plan next week for the electrician and the carpenters",
+      "at": "2026-10-16T19:10:00Z"
+    },
+    {
+      "url": "https://chatgpt.com/c/7b2c",
+      "title": "Kitchen remodel quote: line items and labour",
+      "at": "2026-10-20T21:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-10-23T15:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/1a9f",
+      "title": "Second reminder wording, invoice 30 days late",
+      "at": "2026-10-23T16:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/2b8e",
+      "title": "Plan next week for the electrician and the carpenters",
+      "at": "2026-10-23T19:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-10-30T15:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/1a9f",
+      "title": "Second reminder wording, invoice 30 days late",
+      "at": "2026-10-30T16:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/2b8e",
+      "title": "Plan next week for the electrician and the carpenters",
+      "at": "2026-10-30T19:10:00Z"
+    },
+    {
+      "url": "https://chatgpt.com/c/8d3e",
+      "title": "Make my quote email sound friendlier",
+      "at": "2026-11-03T21:10:00Z"
+    },
+    {
+      "url": "https://www.remodelideas.example/kitchens",
+      "title": "Kitchen ideas | Remodel Ideas",
+      "at": "2026-11-05T22:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-11-06T15:10:00Z"
+    },
+    {
+      "url": "https://claude.ai/chat/2b8e",
+      "title": "Plan next week for the electrician and the carpenters",
+      "at": "2026-11-06T19:10:00Z"
+    },
+    {
+      "url": "https://www.timbermart.example/account/orders",
+      "title": "Order history | Timber Mart",
+      "at": "2026-11-11T13:10:00Z"
+    },
+    {
+      "url": "https://app.ledgerly.example/invoices?status=overdue",
+      "title": "Invoices \u00b7 Overdue \u00b7 Ledgerly",
+      "at": "2026-11-13T15:10:00Z"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+name: a-quiet-month-wakes-no-one
+title: A month after the first interview, the Interviewer's check finds nothing new and wakes no one
+why: >
+  Regular interviews (Kenil's plan, 18 Nov, calls 35 to 37): a check on the Interviewer's
+  schedule, monthly from the person's first interview, only looks. It wakes the Interviewer, as
+  a short interview in Needs you, only when it finds something; a month with nothing new costs
+  nothing and leaves no task. A made-up bookkeeper who finishes their first interview at once.
+plugins: [interviews]
+steps:
+  - plugin: { name: interviews, post: start }
+  - plugin: { name: interviews, post: finish }
+    checks:
+      - schedule: { agent: Interviewer, count: 1, check: true }
+      - errors: 0
+  - due: { days: 31 }
+    checks:
+      - last_run_words: { agent: Interviewer, matches: 'Nothing new' }
+      - task: { title: A short interview, count: 0 }
+      - errors: 0

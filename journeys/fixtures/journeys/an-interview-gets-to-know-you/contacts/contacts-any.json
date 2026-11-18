@@ -1,0 +1,86 @@
+[
+  {
+    "id": "osb-c0",
+    "given": "Sam",
+    "family": "Ortiz",
+    "company": "Oak Street Builders",
+    "title": "Owner",
+    "me": true,
+    "emails": ["sam@oakstreetbuilders.example"],
+    "phones": ["+1 555 0100"]
+  },
+  {
+    "id": "osb-c1",
+    "given": "Lee",
+    "family": "Park",
+    "company": "Oak Street Builders",
+    "title": "Site lead",
+    "emails": ["lee@oakstreetbuilders.example"],
+    "phones": ["+1 555 0101"]
+  },
+  {
+    "id": "osb-c2",
+    "given": "Ravi",
+    "family": "Menon",
+    "company": "Bright Spark Electric",
+    "title": "Electrician",
+    "emails": ["ravi@brightspark.example"],
+    "phones": ["+1 555 0140"]
+  },
+  {
+    "id": "osb-c3",
+    "given": "",
+    "family": "",
+    "company": "Timber Mart",
+    "emails": ["orders@timbermart.example"],
+    "phones": ["+1 555 0177"]
+  },
+  {
+    "id": "osb-c10",
+    "given": "Hannah",
+    "family": "Cole",
+    "company": "",
+    "emails": ["hannah.cole@example.com"],
+    "phones": []
+  },
+  {
+    "id": "osb-c11",
+    "given": "Omar",
+    "family": "Reyes",
+    "company": "",
+    "emails": ["omar.reyes@example.com"],
+    "phones": []
+  },
+  {
+    "id": "osb-c12",
+    "given": "Priya",
+    "family": "Natarajan",
+    "company": "",
+    "emails": ["priya.n@example.com"],
+    "phones": []
+  },
+  {
+    "id": "osb-c13",
+    "given": "Tom",
+    "family": "Becker",
+    "company": "",
+    "emails": ["tom.becker@example.com"],
+    "phones": []
+  },
+  {
+    "id": "osb-c14",
+    "given": "Grace",
+    "family": "Liu",
+    "company": "",
+    "emails": ["grace.liu@example.com"],
+    "phones": []
+  },
+  {
+    "id": "osb-c15",
+    "given": "Marcus",
+    "family": "Hill",
+    "company": "",
+    "emails": ["marcus.hill@example.com"],
+    "phones": []
+  }
+]

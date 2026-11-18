@@ -8,6 +8,8 @@ import { businessCase } from '../world/shape/manifest.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { User, World } from '../world/world.ts'
 import { AgentChecks, agentCheck } from './agent-checks.ts'
+import { CellChecks, cellCheck } from './cell-checks.ts'
+import { InterviewChecks } from './interview-checks.ts'
 import { ScheduleChecks, scheduleCheck } from './schedule-checks.ts'
 import { SiteRequests, StepPictures, WebCalls } from './web-checks.ts'
 
@@ -24,8 +26,15 @@ export const Check = z.union([
   z.object({ cards_waiting: z.number() }),
   z.object({ errors: z.number() }),
   z.object({ documents: z.number() }),
-  z.object({ rows_in: z.object({ table: z.string(), count: z.number() }) }),
+  z.object({
+    rows_in: z.object({
+      table: z.string(),
+      count: z.number().optional(),
+      at_least: z.number().optional(),
+    }),
+  }),
   ...AgentChecks, // the firm's agents (agent-checks.ts)
+  ...InterviewChecks, // an interview, and plugins switched on or not (interview-checks.ts)
   // asks between agents, by how they answered
   z.object({ asks: z.object({ count: z.number(), status: z.string().optional() }) }),
   // where a table sits in its module: a main table, part of a row, or setup
@@ -104,49 +113,15 @@ export const Check = z.union([
   }),
   z.object({ schedules_on: z.number() }),
   ...ScheduleChecks,
+  ...CellChecks, // one row's value and what is kept beside it (cell-checks.ts)
   z.object({ last_run: z.enum(['ok', 'failed', 'stopped']) }),
   z.object({ looked_up_from: z.object({ table: z.string(), url: z.string() }) }),
   z.object({ question: z.object({ words: z.string().optional(), options: z.string() }) }),
-  z.object({
-    field: z.object({
-      table: z.string(),
-      key: z.string().optional(), // the row's own key, as a connection or a reader landed it
-      row: z.string().optional(), // or its name, as the window shows it
-      field: z.string(),
-      equals: z.string().optional(),
-      count: z.number().optional(), // a relation's rows
-    }),
-  }),
-  // what is kept beside the person's value on a row (D3, D6): a machine's newer
-  // value, or the source's, by the row's own key; any at all when no value is named
-  z.object({
-    beside: z.object({
-      table: z.string(),
-      key: z.string().optional(),
-      row: z.string().optional(),
-      field: z.string(),
-      equals: z.string().optional(),
-    }),
-  }),
   z.object({ told: z.object({ matches: z.string(), rows: z.number().optional() }) }),
   // a module's page, drawn with its data: its words match
   z.object({ page: z.object({ module: z.string(), name: z.string(), matches: z.string() }) }),
 ])
 export type Check = z.infer<typeof Check>
-
-// A row's value and where it came from, by the row's own key or its name as the window shows it.
-function cellOf(
-  world: World,
-  c: { table: string; key?: string | undefined; row?: string | undefined; field: string },
-) {
-  const t = world.shape.table(c.table)
-  if (!t) return undefined
-  const rows = world.records.list(t.id)
-  const id = c.key ? world.records.byKey(t.id, c.key) : undefined
-  const r = rows.find((x) => (id ? x.id === id : world.rowName(t, x.values) === c.row))
-  const slug = t.fields.find((x) => x.name === c.field)?.slug ?? ''
-  return r ? { value: r.values[slug], provenance: r.provenance[slug] } : undefined
-}
 
 export interface Outcome {
   check: string
@@ -404,9 +379,10 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
   if ('rows_in' in check) {
     const t = world.shape.table(check.rows_in.table)
     const n = t ? world.records.count(t.id) : -1
+    const { count, at_least } = check.rows_in
     return {
-      check: `rows in ${check.rows_in.table}: ${check.rows_in.count}`,
-      ok: n === check.rows_in.count,
+      check: `rows in ${check.rows_in.table}: ${at_least === undefined ? count : `at least ${at_least}`}`,
+      ok: (count === undefined || n === count) && (at_least === undefined || n >= at_least),
       saw: t ? String(n) : 'no such table',
     }
   }
@@ -546,21 +522,8 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
         .join(' | '),
     }
   }
-  if ('field' in check) {
-    const f = check.field
-    const value = cellOf(world, f)?.value
-    const ok =
-      f.equals !== undefined
-        ? value === f.equals
-        : f.count !== undefined
-          ? Array.isArray(value) && value.length === f.count
-          : value !== undefined
-    return {
-      check: `${f.field} of ${f.row ?? f.key} in ${f.table} ${f.equals !== undefined ? `is ${f.equals}` : `has ${f.count}`}`,
-      ok,
-      saw: JSON.stringify(value ?? null),
-    }
-  }
+  const cell = cellCheck(check, world)
+  if (cell) return cell
   if ('no_field' in check) {
     const t = world.shape.table(check.no_field.table)
     const names = t?.fields.map((f) => f.name) ?? []
@@ -568,15 +531,6 @@ export async function judge(world: World, user: User, check: Check): Promise<Out
       check: `${check.no_field.table} has no field ${check.no_field.field}`,
       ok: !names.includes(check.no_field.field),
       saw: names.join(', '),
-    }
-  }
-  if ('beside' in check) {
-    const b = check.beside
-    const kept = cellOf(world, b)?.provenance?.beside
-    return {
-      check: `beside ${b.field} of ${b.row ?? b.key} in ${b.table}: ${b.equals ?? 'a value'}`,
-      ok: b.equals !== undefined ? kept?.value === b.equals : kept !== undefined,
-      saw: JSON.stringify(kept?.value ?? null),
     }
   }
   if ('told' in check) {

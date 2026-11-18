@@ -1,7 +1,9 @@
 // A journey's stand-in Bridge (docs/design.md, the Bridge): a person's computer on this Mac,
 // paired with the journey's core through its own link and door, lending a folder of the journey's
 // own. Its key is held in memory; its connector process is the core's child, as the zip carries it.
-// The step puts a file in the folder, sends the computer away, or brings it back, then reads.
+// The step puts a file in the folder, sends the computer away, or brings it back, lends the
+// Mac's Calendar or Contacts or the browsing history, then reads. What its readers answer is
+// replayed from the journey's recorded answers, never this Mac's own.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { join } from 'node:path'
@@ -35,6 +37,8 @@ export interface BridgeStep {
   back?: boolean | undefined // the Bridge started again
   pause?: boolean | undefined // paused by its person there (true), or resumed (false)
   calendar?: boolean | undefined // its Calendar lent, through a stand-in for Alpha's helper
+  contacts?: boolean | undefined // its Contacts lent, the same way
+  browsing?: boolean | undefined // its browsing history lent, to the Bridge's browsing reader
 }
 
 // What the stand-in for Alpha's helper answers, where answers are not replayed: one event, never
@@ -121,7 +125,7 @@ async function standIn(
   }
 }
 
-// One step: what it did, in words.
+// One step: what it did, in words, and whether it could be done.
 export async function bridgeStep(
   step: BridgeStep,
   held: { standIn: StandIn | null },
@@ -130,7 +134,7 @@ export async function bridgeStep(
   user: User,
   connectors: ConnectorService,
   tmp: string,
-): Promise<string> {
+): Promise<{ ok: boolean; what: string }> {
   const said: string[] = []
   if (step.lend) {
     const folder = step.lend.replaceAll('{tmp}', tmp)
@@ -160,15 +164,6 @@ export async function bridgeStep(
     await until(() => !bridges.pausedOf(s.config.computer), 'The resume')
     said.push('resumed it')
   }
-  if (step.calendar) {
-    s.config.lends.push({ connector: 'calendar', account: s.config.name })
-    s.bridge.changed()
-    await until(
-      () => world.connections.find('calendar', s.config.name)?.state === 'connected',
-      'The calendar lent',
-    )
-    said.push('lent its Calendar')
-  }
   if (step.lend || step.back) {
     s.bridge.run()
     await until(() => bridges.online(s.config.computer), 'The computer connecting')
@@ -176,11 +171,30 @@ export async function bridgeStep(
   }
   if (step.lend)
     await until(() => world.connections.find('folder', folder)?.state === 'connected', 'The lend')
-  const k = world.connections.find(
-    step.calendar ? 'calendar' : 'folder',
-    step.calendar ? s.config.name : folder,
-  )
-  if (k) await connectors.sync(k.id)
+  // its readers lent once it is running; one the Bridge does not have yet cannot be lent, which
+  // is said, and the journey fails
+  if (step.browsing && !connectors.known().some((c) => c.manifest.name === 'browsing'))
+    return {
+      ok: false,
+      what: '**The stand-in computer cannot lend its browsing history: the Bridge has no browsing reader yet.**',
+    }
+  const lent = (['calendar', 'contacts', 'browsing'] as const).filter((r) => step[r])
+  for (const r of lent) {
+    s.config.lends.push({ connector: r, account: s.config.name })
+    s.bridge.changed()
+    await until(
+      () => world.connections.find(r, s.config.name)?.state === 'connected',
+      `The ${r} lent`,
+    )
+    said.push(
+      `lent its ${r === 'browsing' ? 'browsing history' : r.replace(/^./, (c) => c.toUpperCase())}`,
+    )
+  }
+  const read = [
+    ...(step.lend || !lent.length ? [world.connections.find('folder', folder)] : []),
+    ...lent.map((r) => world.connections.find(r, s.config.name)),
+  ]
+  for (const k of read) if (k) await connectors.sync(k.id)
   const words = `${said.join(', ')}, then read it`
-  return words.charAt(0).toUpperCase() + words.slice(1)
+  return { ok: true, what: words.charAt(0).toUpperCase() + words.slice(1) }
 }

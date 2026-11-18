@@ -1,0 +1,85 @@
+name: an-interview-gets-to-know-you
+title: The Interviewer gets to know the owner of a small firm from what they allow it to read, and ends with About you and a report of their work
+why: >
+  Onboarding (Kenil's plan, 18 Nov, calls 5 to 34): the Interviewer asks for each source on its
+  own card, reads what is allowed and never what is skipped, drafts About you and the report from
+  what it read, and asks only for the blanks. Nothing lands in How to work without the person's
+  Keep, a declined proposal never comes back, hours are computed in code or marked estimated
+  with their basis, and every report row cites what it rests on. A made-up renovation firm, on
+  recorded mail, events, contacts and browsing, and a made-up site.
+plugins: [interviews]
+fixtures: an-interview-gets-to-know-you
+steps:
+  - site: { from: journeys/fixtures/sites/oak-street }
+  - connect: { connector: gmail, account: sam@oakstreetbuilders.example }
+    checks:
+      - rows_in: { table: Mail, count: 31 }
+      # call 6: on first sign-in, Home asks to get to know them
+      - plugin_route: { name: interviews, get: home, matches: 'get to know you' }
+  # the person's computer: a folder lent (to be skipped), Calendar, Contacts and browsing
+  - bridge:
+      lend: '{tmp}/Office'
+      put: { name: Oak Street staff bonus plan.csv, text: "Name,Bonus\nLee,1200\n" }
+      calendar: true
+      contacts: true
+    checks:
+      - rows_in: { table: Events, count: 13 }
+      - errors: 0
+  - bridge: { browsing: true }
+    checks:
+      - errors: 0
+  - plugin: { name: interviews, post: start }
+    checks:
+      - errors: 0
+  - interview:
+      agent: Interviewer
+      answers:
+        # who it is for: the owner, whose For everyone here is still empty (call 10)
+        - card: 'website|web site|your site(?! visit)'
+          choice: 'Yes, our site is {site}'
+        - card: '\bwho\b|business|team|just you|on your own'
+          choice: 'Oak Street Builders, my renovation firm: me, Lee who runs the sites, and four carpenters.'
+        # the sources, one card each (call 8): the folder skipped, the rest allowed
+        - card: '^A folder'
+          choice: Skip
+        - card: '^(Mail|Calendar|Browsing|AI work|What you have in Alpha)'
+          choice: Allow
+        # About you (call 27): the first line dropped, the rest kept
+        - card: '^About you'
+          drop: 1
+        # the playback (call 31): the first proposal declined, the rest taken
+        - card: "We'd build"
+          choice: Not this
+          times: 1
+        - card: "We'd build"
+          choice: "Yes, that's it"
+        # the blanks only the person can fill
+        - card: 'quote'
+          choice: 'About 45 minutes each, at the kitchen table in the evening, from my notes of the site visit.'
+        - card: 'invoice|overdue|payment|chas'
+          choice: 'About 10 minutes each, every Friday afternoon. It is the job I like least.'
+        - card: 'electric|Ravi|subcontract|schedul|carpenter'
+          choice: 'About 20 minutes a week, texting each of them one by one.'
+    checks:
+      # what was allowed was read (calls 14, 17, 18)
+      - rows_in: { table: Sites, at_least: 3 }
+      - rows_in: { table: AI requests, at_least: 3 }
+      # the report (calls 29 to 32): every row cites what it rests on, each workflow closes
+      - rows_in: { table: Workflows, at_least: 2 }
+      - cited: { table: Workflows }
+      - cited: { table: Steps }
+      - cited: { table: Proposals }
+      - each_has: { table: Workflows, part: Proposals }
+      # hours from code, or estimated with what they rest on (call 26, rules I2)
+      - numbers: { table: Workflows, field: Hours a month }
+      # the folder was skipped: nothing rests on it, and no name only it held appears (call 28, I3)
+      - never_cited: { module: Your work, source: Files }
+      - nowhere: { matches: 'bonus plan', module: Your work }
+      # nothing in How to work without the person's Keep (calls 10, 27)
+      - how_to_work: { for: me, kept: true, at_least: 1 }
+      - how_to_work: { for: everyone, kept: true, at_least: 1 }
+      # a declined proposal never comes back (rules I4)
+      - asked_once: { matches: "We'd build", answered: 'Not this' }
+      # nothing went out, and nothing failed
+      - connector_calls: { words: 'Gmail: send', count: 0 }
+      - errors: 0
