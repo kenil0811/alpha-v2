@@ -2,7 +2,7 @@
 # person's work the Interviewer keeps, and the lines about them they kept. It carries the
 # Interviewer. Its rows stay when interviews are switched off, as an ordinary module's do.
 name: Your work
-version: 0.1.0
+version: 0.1.1
 api: 3
 business_case:
   for: Each person here, about their own work
