@@ -5,8 +5,8 @@ import { placeOf } from '../place.ts'
 import { SCREENS, screenOf, shownScreens, switchedOn } from './screens.ts'
 
 describe('a plugin’s screens', () => {
-  it('are found in the plugins’ folders, each at #/p/<name>; the base has none', () => {
-    expect(SCREENS).toEqual([])
+  it('are found in the plugins’ folders, each at #/p/<name>', () => {
+    expect(SCREENS.map((s) => s.name)).toEqual(['interviews'])
     expect(placeOf('#/p/onboarding')).toEqual({ at: 'plugin', name: 'onboarding' })
     expect(placeOf('#/p/Not-a-name')).not.toMatchObject({ at: 'plugin' })
     expect(screenOf('nowhere')).toBeNull()

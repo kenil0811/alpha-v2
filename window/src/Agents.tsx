@@ -7,6 +7,7 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { AgentSchedules } from './AgentSchedules.tsx'
 import { api, wordsOf } from './api.ts'
 import { useLayout } from './layout.ts'
+import { shownScreens } from './plugin/screens.ts'
 import { Record } from './Record.tsx'
 import { MODEL_NAMES } from './Usage.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
@@ -296,6 +297,9 @@ export function AgentPage({
             Open conversation
           </Button>
         )}
+        {/* a part of its own from the plugin whose kit carries this agent (ui-rules O3) */}
+        {a.from.kind === 'kit' &&
+          shownScreens().map((s) => s.agent?.name === a.name && <s.agent.Part key={s.name} />)}
         <ModelPicker agent={a} />
         {!a.chief && (
           <Button size="sm" variant="ghost" onClick={() => setAsking(true)}>

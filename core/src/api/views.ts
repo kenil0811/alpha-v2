@@ -481,6 +481,7 @@ export function cardView(c: Card): CardView {
     state: c.state,
     words: c.words,
     detail: c.detail,
+    help: c.help,
     gate: c.gate,
     connector: c.gate === 'sign_in' && typeof input.connector === 'string' ? input.connector : null,
     site:

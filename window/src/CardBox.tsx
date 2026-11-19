@@ -147,6 +147,7 @@ function CardBody({
       <Question
         words={card.words}
         detail={card.detail}
+        help={card.help}
         options={card.options}
         busy={busy}
         problem={problem}

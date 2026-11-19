@@ -1,5 +1,5 @@
 // What the Interviewer may read, one source to a card (the onboarding plan, calls 8 and 11 to 18):
-// each with the words its card opens with, what it reads (the card's detail), and its reader,
+// each with the words its card opens with, what it reads (the card's ⓘ), and its reader,
 // which says what it found (the counts and the top few) and every row, file or line it may cite.
 import type { PluginHost, Row } from '@alpha/plugin-sdk'
 
@@ -13,7 +13,7 @@ export interface Source {
   key: string
   name: string // the card's first words
   asks: string // the rest of the card's question
-  reads: string // what it reads, in the card's detail
+  reads: string // what it reads, in the card's ⓘ
   read(host: PluginHost, person: string, days: number): Found
 }
 

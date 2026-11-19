@@ -5,6 +5,7 @@
 // goes through the plugin host, and removing this folder removes it whole; what it made stays as
 // an ordinary module.
 import type { Plugin } from '@alpha/plugin-sdk'
+import { homeRoutes } from './home.ts'
 import { proposeTool } from './propose.ts'
 import { sourceTool } from './source.ts'
 
@@ -12,8 +13,9 @@ export const plugin: Plugin = {
   name: 'interviews',
   title: 'Interviews',
   kit: 'kit',
-  // its routes and its screens come with the steps that need them
+  // its Home row and page are in window/; their routes are here
   register(host) {
     host.tools('interviewer', [sourceTool(host), proposeTool(host)])
+    homeRoutes(host)
   },
 }

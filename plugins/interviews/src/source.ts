@@ -27,9 +27,15 @@ export const sourceTool = (host: PluginHost) =>
           throw new Refusal(
             `The card about ${waiting.values.Source} waits on their answer: one source at a time.`,
           )
+        // what was found is said before the next card (call 8)
+        const unread = mine.find((r) => r.values.State === 'Allowed' && !r.values.Found)
+        if (unread)
+          throw new Refusal(
+            `They allowed ${unread.values.Source}: read it and say what you found before the next source.`,
+          )
         const card = host.question(turn, {
           words: `${s.name}: ${s.asks}`,
-          detail: s.reads,
+          help: s.reads,
           options: ['Allow', 'Skip'],
         })
         host.own.add('Interview sources', [

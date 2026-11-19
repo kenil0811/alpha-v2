@@ -283,7 +283,8 @@ CREATE TABLE cards (
   created_at TEXT NOT NULL,
   detail TEXT,
   lapsed_at TEXT,
-  agent_id TEXT
+  agent_id TEXT,
+  help TEXT
 );
 CREATE INDEX cards_state ON cards (state, created_at);
 CREATE INDEX cards_call ON cards (call_key, state);

@@ -7,10 +7,13 @@
   },
   "dependencies": {
     "@alpha/plugin-sdk": "workspace:*",
+    "@alpha/window": "workspace:*",
+    "react": "catalog:",
     "yaml": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@types/react": "catalog:"
   }
 }

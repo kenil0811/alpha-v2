@@ -111,6 +111,7 @@ export class Reviews {
       choices: r.choices,
       rows,
       open: rows.filter((x) => !x.value).length,
+      ...(r.howToWork ? { edits: r.howToWork.line } : {}),
     }
   }
 

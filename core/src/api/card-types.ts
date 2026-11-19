@@ -9,6 +9,7 @@ export interface CardView {
   state: string
   words: string
   detail: string | null // the whole of it: the message as it will go
+  help?: string | null // what its ⓘ says (ui-rules R10)
   gate: string | null
   connector: string | null // for a connection's sign-in: which form to open
   site: string | null // for a site's sign-in: the site, opened in a window of Alpha's browser
@@ -40,4 +41,5 @@ export interface ReviewView {
   choices: string[] // the first is the usual yes
   rows: { id: string; name: string; note: string | null; value: string | null }[]
   open: number // rows not yet decided
+  edits?: string // a field the person may reword on a row before deciding it (a line for How to work)
 }

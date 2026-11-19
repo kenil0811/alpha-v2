@@ -93,7 +93,11 @@ export interface PluginHost {
   // A question put to the person on a card in its agent's chat, as the agent's ask tool puts one:
   // its options, and always the box for their own words; their answer comes to the agent as a
   // message. The card's id.
-  question(turn: Turn, q: { words: string; detail?: string; options: string[] }): string
+  // help is what the card's ⓘ says (ui-rules R10): what answering it lets happen.
+  question(
+    turn: Turn,
+    q: { words: string; detail?: string; help?: string; options: string[] },
+  ): string
   // What the person answered on a card its agent raised, once they have: none while it waits.
   answer(card: string): string | null
   // The files a connector kept (a folder lent in the Bridge): names, kinds and dates, never what

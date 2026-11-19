@@ -17,6 +17,7 @@ export interface CardInput {
   kind: CardKind
   words: string
   detail?: string | null // what the card shows in full: the message to be sent
+  help?: string | null // what its ⓘ says (ui-rules R10): what answering it does
   restsOn?: string[]
   cannotUndo?: string | null
   options?: string[]
@@ -37,6 +38,7 @@ export interface Card {
   user: string | null
   words: string
   detail: string | null
+  help: string | null
   restsOn: string[]
   cannotUndo: string | null
   options: string[]
@@ -61,6 +63,7 @@ interface CardRow {
   user_id: string | null
   words: string
   detail: string | null
+  help: string | null
   rests_on: string
   cannot_undo: string | null
   options: string
@@ -86,6 +89,7 @@ function toCard(r: CardRow): Card {
     user: r.user_id,
     words: r.words,
     detail: r.detail,
+    help: r.help ?? null,
     restsOn: parse(r.rests_on, []),
     cannotUndo: r.cannot_undo,
     options: parse(r.options, []),
@@ -145,14 +149,15 @@ export class Cards {
       const id = newId('c')
       run(
         this.db,
-        `INSERT INTO cards (id, kind, state, user_id, words, detail, rests_on, cannot_undo, options,
-           gate, call_key, call, module_id, run_id, turn_id, agent_id, created_at)
-         VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO cards (id, kind, state, user_id, words, detail, help, rests_on, cannot_undo,
+           options, gate, call_key, call, module_id, run_id, turn_id, agent_id, created_at)
+         VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
         input.kind,
         input.user ?? null,
         input.words,
         input.detail ?? null,
+        input.help ?? null,
         json(input.restsOn ?? []),
         input.cannotUndo ?? null,
         json(input.options ?? (input.kind === 'permission' ? ['Yes', 'No'] : [])),

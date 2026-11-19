@@ -65,4 +65,12 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     ).map((c) => c.name)
     if (!cols.includes('plugin')) db.exec('ALTER TABLE kits ADD COLUMN plugin TEXT')
   },
+  // 6, 19 Nov 2026: a card's help, what its ⓘ says (ui-rules R10); a world made from schema.sql
+  // has it already
+  (db) => {
+    const cols = (
+      db.prepare("SELECT name FROM pragma_table_info('cards')").all() as { name: string }[]
+    ).map((c) => c.name)
+    if (!cols.includes('help')) db.exec('ALTER TABLE cards ADD COLUMN help TEXT')
+  },
 ]

@@ -483,6 +483,7 @@ export class Plugins {
           kind: 'question',
           words: q.words.trim(),
           detail: q.detail?.trim() || null,
+          help: q.help?.trim() || null,
           options: q.options,
           actor: { kind: 'alpha', id: turn.agent },
           user: who.id,

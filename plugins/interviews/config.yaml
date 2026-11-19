@@ -1,3 +1,18 @@
 # The Interviewer's defaults (the onboarding plan, call 19): what is read, never walls.
 # How far back a source is read, in days.
 lookback_days: 90
+# What the Interviewer is told when the person presses Start, Start again or Finish now on Home or
+# on its page; {name} is the person's name. The person sees only the line it opens with.
+briefs:
+  start: >
+    {name} pressed Start: begin their interview as your instructions say, from the top. When How
+    to work › For everyone here is empty and they are the owner, start with who their work is for;
+    then the sources, one card at a time.
+  carry_on: >
+    {name} pressed Start again: carry on their interview where it stopped. Look at Your work and
+    at their sources (your source tool says what each one holds and which they answered), and go
+    on from the next blank. Ask nothing that was answered.
+  finish: >
+    {name} pressed Finish now: ask nothing more. Put what you have into the report with your
+    propose tool, closing what you can, and tell them in a few lines what is in Your work and what
+    was left open.

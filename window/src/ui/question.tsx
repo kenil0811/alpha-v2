@@ -7,11 +7,13 @@ import { answerWords } from '../vocabulary.ts'
 import { Button } from './button.tsx'
 import { Actions, Card } from './card.tsx'
 import { Field } from './field.tsx'
+import { Info } from './info.tsx'
 import { Words } from './words.tsx'
 
 export function Question({
   words,
   detail,
+  help,
   options = [],
   label = 'A question',
   waits = 'Waits for you',
@@ -22,6 +24,7 @@ export function Question({
 }: {
   words: string
   detail?: string | null | undefined // in Markdown
+  help?: string | null | undefined // its ⓘ beside the question (R10): what answering it does
   options?: string[] // none: an answer in their own words
   label?: string
   waits?: string
@@ -32,7 +35,10 @@ export function Question({
 }) {
   return (
     <Card label={label} waits={waits}>
-      <div className="font-medium text-ink text-lg">{words}</div>
+      <div className="flex items-start gap-2 font-medium text-ink text-lg">
+        <span className="min-w-0">{words}</span>
+        {help && <Info help={help} />}
+      </div>
       {detail && (
         <div className="rounded-md border border-hair bg-canvas px-3 py-2.5 text-ink text-md">
           <Words text={detail} />

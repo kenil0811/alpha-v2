@@ -38,7 +38,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 |---|---|---|---|
 | O1 | Home is the date, the greeting, one line to ask Alpha, what needs the person only while something waits (each card answered there, and a sign-in; when the cards come from two or more agents, All and each agent with its count pick whose show, a sign-in and a card no agent raised under All only), today's tasks, and the three most recently completed tasks with Clear; in its bar, a Next chip says what comes next today (a meeting under way until it ends, else the soonest meeting or timed task ahead, else a task due any time today; none when nothing is left), the person's own meetings only, and opens the day beside. Nothing else | 20 Oct, 26 Oct, 9 Nov, 10 Nov, 17 Nov | — |
 | O2 | No modules on Home (they are in the rail); the conversation is the assistant beside it, never in Home's own space | 26 Oct | — |
-| O3 | A plugin's row on Home and its page (#/p/<name>) show only while the core says the plugin is on here (`/api/me`, rules P1); where it is off, its page says Nothing is here | 19 Nov | test |
+| O3 | A plugin's row on Home, its page (#/p/<name>) and its part on the page of an agent its kit carries show only while the core says the plugin is on here (`/api/me`, rules P1); where it is off, its page says Nothing is here | 19 Nov | test |
 
 ## Module page
 

@@ -399,6 +399,12 @@ importers:
       '@alpha/plugin-sdk':
         specifier: workspace:*
         version: link:../../plugin-sdk
+      '@alpha/window':
+        specifier: workspace:*
+        version: link:../../window
+      react:
+        specifier: 'catalog:'
+        version: 19.1.10
       yaml:
         specifier: 'catalog:'
         version: 2.9.1
@@ -409,6 +415,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.5
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
 
   window:
     dependencies:
