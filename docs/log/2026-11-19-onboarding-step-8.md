@@ -15,3 +15,8 @@ Built from the plan's calls 6 to 9, 24 and 27, no detail doc (call 46).
 
 What the code showed the list missed: rule W2 forbids "Not now", so the button says Decline; an
 agent's page had no place for a plugin, so the plugin seam gained one.
+
+Later the same day, on Kenil's word that he tests only once sources can be read: a source whose
+connectors are none of them connected (the catalogue says so; nothing is read) puts its card with
+Allow that also opens Connections, and its ⓘ says so (calls 11 and 12). Home's state is kept by the
+last press, not its time, so two presses in one millisecond stay in order.

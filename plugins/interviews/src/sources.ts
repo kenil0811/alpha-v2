@@ -14,8 +14,16 @@ export interface Source {
   name: string // the card's first words
   asks: string // the rest of the card's question
   reads: string // what it reads, in the card's ⓘ
+  // the connectors that fill it: none connected, its card's Allow also opens Connections (calls 11
+  // and 12); none at all for what is Alpha's own
+  connectors: string[]
   read(host: PluginHost, person: string, days: number): Found
 }
+
+// Whether something that fills it is connected here, by the catalogue alone: nothing is read.
+export const connected = (host: PluginHost, s: Source): boolean =>
+  !s.connectors.length ||
+  host.catalogue().connectors.some((c) => c.connected && s.connectors.includes(c.name))
 
 const DAY = 86_400_000
 const within = (at: unknown, days: number) =>
@@ -66,12 +74,14 @@ function rowsSource(
   where: { module: string; table: string; at?: string },
   say: (rows: Row[], days: number) => string,
   none: string,
+  connectors: string[],
 ): Source {
   return {
     key,
     name,
     asks,
     reads,
+    connectors,
     read: (host, _person, days) => {
       const all = host.rows(where.module, where.table)
       const rows = where.at ? all.filter((r) => within(r.values[where.at as string], days)) : all
@@ -95,6 +105,7 @@ export const SOURCES: Source[] = [
         `Subjects that come back: ${top(rows, (r) => gist(r.values.Subject)).join('; ')}.`,
       ].join('\n'),
     'No mail is here yet: connect Gmail or Outlook in Connections, then ask again.',
+    ['gmail', 'outlook'],
   ),
   rowsSource(
     'calendar',
@@ -108,6 +119,7 @@ export const SOURCES: Source[] = [
         `Ones that come back: ${top(rows, (r) => gist(r.values.Title)).join('; ')}.`,
       ].join('\n'),
     'No calendar is here yet: connect one, then ask again.',
+    ['calendar', 'outlook', 'google'],
   ),
   rowsSource(
     'contacts',
@@ -121,6 +133,7 @@ export const SOURCES: Source[] = [
         `Companies most of them are at: ${top(rows, (r) => String(r.values.Company ?? '')).join('; ')}.`,
       ].join('\n'),
     'No contacts are here yet: connect them, then ask again.',
+    ['contacts', 'outlook', 'google'],
   ),
   {
     key: 'folder',
@@ -128,6 +141,7 @@ export const SOURCES: Source[] = [
     asks: 'may I read the names of the files in the folder you lent?',
     reads:
       'The names, kinds and dates of the files in the folder you lent in Alpha Bridge; never what is inside them.',
+    connectors: ['folder'],
     read: (host, _person, days) => {
       const files = host.files('folder').filter((f) => within(f.at, days))
       if (!files.length)
@@ -161,6 +175,7 @@ export const SOURCES: Source[] = [
     (rows) =>
       `${rows.length} sites. Most used: ${top(rows, (r) => String(r.values.Site ?? '')).join('; ')}.`,
     'Nothing has come from your computer’s browsing yet.',
+    ['browsing'],
   ),
   rowsSource(
     'apps',
@@ -170,6 +185,7 @@ export const SOURCES: Source[] = [
     { module: 'Your work', table: 'Apps' },
     (rows) => `${rows.length} apps. ${top(rows, (r) => String(r.values.App ?? '')).join('; ')}.`,
     'Nothing has come from your computer’s apps yet.',
+    ['apps'],
   ),
   rowsSource(
     'ai',
@@ -179,6 +195,7 @@ export const SOURCES: Source[] = [
     { module: 'Your work', table: 'AI requests' },
     (rows) => `${rows.length} requests. ${top(rows, (r) => gist(r.values.Request)).join('; ')}.`,
     'No AI work has come from your computer yet.',
+    ['ai-work'],
   ),
   {
     key: 'alpha',
@@ -186,6 +203,7 @@ export const SOURCES: Source[] = [
     asks: 'may I read what you have set up and done here?',
     reads:
       'The modules, agents and schedules here, and what you did in Alpha in the last few months, as Activity keeps it.',
+    connectors: [],
     read: (host, person, days) => {
       const c = host.catalogue()
       const lines = host.activity(person, days)

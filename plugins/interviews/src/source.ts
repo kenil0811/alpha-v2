@@ -4,8 +4,11 @@
 import { type PluginHost, Refusal, tool } from '@alpha/plugin-sdk'
 import { z } from 'zod'
 import { config } from './config.ts'
-import { SOURCES, sourceOf } from './sources.ts'
+import { connected, SOURCES, sourceOf } from './sources.ts'
 import { ofPerson, sync } from './state.ts'
+
+const NOT_CONNECTED =
+  'Nothing that fills it is connected yet: Allow takes you to Connections to connect it, then come back and press Carry on.'
 
 export const sourceTool = (host: PluginHost) =>
   tool({
@@ -33,10 +36,13 @@ export const sourceTool = (host: PluginHost) =>
           throw new Refusal(
             `They allowed ${unread.values.Source}: read it and say what you found before the next source.`,
           )
+        // nothing connected that fills it: Allow also opens Connections to connect it (calls 11, 12)
+        const ready = connected(host, s)
         const card = host.question(turn, {
           words: `${s.name}: ${s.asks}`,
-          help: s.reads,
+          help: ready ? s.reads : `${s.reads} ${NOT_CONNECTED}`,
           options: ['Allow', 'Skip'],
+          ...(ready ? {} : { connect: '' }),
         })
         host.own.add('Interview sources', [
           {

@@ -485,6 +485,10 @@ export class Plugins {
           detail: q.detail?.trim() || null,
           help: q.help?.trim() || null,
           options: q.options,
+          ...(q.connect !== undefined
+            ? // its question in the call too, so two cards never count as one asked twice
+              { call: { tool: 'connect', input: { connector: q.connect, words: q.words.trim() } } }
+            : {}),
           actor: { kind: 'alpha', id: turn.agent },
           user: who.id,
           turn: turn.turn,

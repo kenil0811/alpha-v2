@@ -125,6 +125,8 @@ function CardBody({
         return
       }
       await api.post(`/api/cards/${id}`, andAlways ? { answer: a, always: true } : { answer: a })
+      if (card.connects != null && a === card.options[0])
+        window.location.hash = `#/intelligence/connections${card.connects ? `?connect=${card.connects}` : ''}`
       if (card.gate === 'sign_in' && a === card.options[0])
         window.location.hash = `#/intelligence/connections${card.connector ? `?connect=${card.connector}` : ''}`
     } catch (err) {

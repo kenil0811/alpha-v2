@@ -12,6 +12,7 @@ export interface CardView {
   help?: string | null // what its ⓘ says (ui-rules R10)
   gate: string | null
   connector: string | null // for a connection's sign-in: which form to open
+  connects?: string | null // a question whose yes opens Connections, at this connector ('' the list)
   site: string | null // for a site's sign-in: the site, opened in a window of Alpha's browser
   options: string[]
   cannotUndo: string | null

@@ -488,6 +488,11 @@ export function cardView(c: Card): CardView {
       c.gate === 'sign_in' && c.call?.tool === 'site_sign_in' && typeof input.host === 'string'
         ? input.host
         : null,
+    // a question whose yes opens Connections, to connect what it asks about first
+    connects:
+      c.kind === 'question' && c.call?.tool === 'connect' && typeof input.connector === 'string'
+        ? input.connector
+        : null,
     options: c.options,
     cannotUndo: c.cannotUndo,
     answer: c.answer,
