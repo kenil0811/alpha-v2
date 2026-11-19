@@ -11,6 +11,7 @@ import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
 import { Modules, when } from './Modules.tsx'
+import { modelHelp } from './model-help.ts'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
@@ -30,6 +31,7 @@ import { Button } from './ui/button.tsx'
 import { cn } from './ui/cn.ts'
 import { Confirm } from './ui/dialog.tsx'
 import { Field } from './ui/field.tsx'
+import { Info } from './ui/info.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
 import { Pill } from './ui/pill.tsx'
 import { Section } from './ui/section.tsx'
@@ -333,7 +335,12 @@ function ModelSection() {
         setModel(await api.post<ModelView>('/api/model', { route, ...(key ? { key } : {}) })),
       route,
     )
-  const kept = model?.hasKey ? "Key saved in this Mac's Keychain" : 'No key yet'
+  const onServer = model?.token !== null && model?.token !== undefined
+  const kept = model?.hasKey
+    ? onServer
+      ? 'Key saved on this server'
+      : "Key saved in this Mac's Keychain"
+    : 'No key yet'
   return (
     <Section
       title="Model"
@@ -367,6 +374,7 @@ function ModelSection() {
                 title={
                   <span className="flex items-center gap-2">
                     {p.title}
+                    <Info help={modelHelp(p.route, onServer)} />
                     {p.chosen && <Pill tone="accent">In use</Pill>}
                   </span>
                 }

@@ -89,6 +89,21 @@ export class ModelRoute {
     })
   }
 
+  // The token taken off the server: its sealed copy deleted, so Alpha has no subscription here
+  // until another is given.
+  async clearToken(by: string): Promise<void> {
+    if (!this.token) throw new Refused('No token is saved here.')
+    await this.secrets.delete(TOKEN_REF)
+    this.token = null
+    this.world.line({
+      actor: { kind: 'person', id: by },
+      kind: 'shaped',
+      words: 'Alpha no longer reaches Claude with a subscription token: it was removed.',
+      data: { route: 'subscription' },
+      user: by,
+    })
+  }
+
   // The key read from the Keychain once at start, so a session's start never waits on it.
   async load(): Promise<void> {
     this.key = await this.secrets.get(KEY_REF).catch(() => null)

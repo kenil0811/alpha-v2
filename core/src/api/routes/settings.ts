@@ -208,6 +208,14 @@ export function registerSettings(ctx: Ctx): void {
     live()
     return modelView()
   })
+  app.delete('/api/model/token', async (): Promise<ModelView> => {
+    owner()
+    if (!engine.route) throw new Refused('The route is not set up in this core.')
+    await engine.route.clearToken(user.id)
+    engine.rerouted()
+    live()
+    return modelView()
+  })
 
   // The route, the person's choice: their own subscription, or an API key kept in the Keychain.
   app.post('/api/model', async (req): Promise<ModelView> => {

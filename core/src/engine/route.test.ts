@@ -45,4 +45,25 @@ describe('the route to Claude', () => {
     await again.set('subscription', null, 'u_1')
     expect(again.env()).toEqual({ DISABLE_AUTOUPDATER: '1' })
   })
+
+  it('takes a server’s token off: deleted from the secret store, gone from sessions, journaled', async () => {
+    const secrets = new MemorySecrets()
+    const route = new ModelRoute(world, secrets, home)
+    await expect(route.clearToken('u_1')).rejects.toThrow(/No token/)
+    await route.setToken('sk-ant-oat01-abcdefghijklmnopqrstuvwxyz', 'u_1')
+    expect(route.env().CLAUDE_CODE_OAUTH_TOKEN).toBeDefined()
+    await route.clearToken('u_1')
+    expect(await secrets.get('anthropic:oauth-token')).toBeNull()
+    expect(route.hasToken).toBe(false)
+    expect(route.env()).toEqual({ DISABLE_AUTOUPDATER: '1' })
+    const again = new ModelRoute(world, secrets, home)
+    await again.load()
+    expect(again.hasToken).toBe(false)
+    const last = world.db
+      .prepare('SELECT words FROM journal ORDER BY rowid DESC LIMIT 1')
+      .get() as {
+      words: string
+    }
+    expect(last.words).toMatch(/no longer reaches Claude with a subscription token/)
+  })
 })

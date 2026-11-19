@@ -346,6 +346,7 @@ export const NOT_DOORS: Record<string, string> = {
     'the owner’s choice whether new sites ask, which the gates hold',
   'POST /api/schedules/when': 'says how a time reads, and does nothing',
   'POST /api/model/token': 'how a server reaches Claude, which is no row or module',
+  'DELETE /api/model/token': 'a server’s Claude token taken off it, which is no row or module',
   'tool nothing_to_report': 'a scheduled run saying it found nothing',
   'POST /api/tasks/clear-completed': 'a person’s own view of Home, which is no row or module',
   'POST /api/tasks/:id/run': 'runs a task’s agent again, whose writes go through the gates',
