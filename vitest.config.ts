@@ -14,6 +14,7 @@ export default defineConfig({
       'connectors/outlook',
       'connectors/quickbooks',
       'connectors/mac',
+      'connectors/computer',
       'connectors-extra/linkedin',
     ],
   },

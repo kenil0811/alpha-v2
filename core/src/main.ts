@@ -161,9 +161,11 @@ const connectors = new ConnectorService(world, {
   // one that runs on a person's computer is lent from there (the Bridge)
   known: [...standard.connectors, ...added.connectors].filter(
     (c) =>
-      platform.name !== 'linux' ||
-      (c.manifest.runs ?? 'server') !== 'server' ||
-      !['system', 'path', 'browser'].includes(c.manifest.auth),
+      // one that comes with a plugin, only where that plugin is on (rules P1)
+      (!c.manifest.plugin || install.plugins.includes(c.manifest.plugin)) &&
+      (platform.name !== 'linux' ||
+        (c.manifest.runs ?? 'server') !== 'server' ||
+        !['system', 'path', 'browser'].includes(c.manifest.auth)),
   ),
   server: platform.name === 'linux',
   // signing in as the person: the provider sends them back to this core

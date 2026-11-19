@@ -122,6 +122,12 @@ export function handsFor(
       const k = world.connections.find(name, account)
       if (k) unlend(world, pc, k, `${pc.name} no longer lends it.`)
     },
+    // the readers that come with a plugin switched on here, for the Bridge to offer (rules P1)
+    offers: () =>
+      service
+        .known()
+        .filter((c) => c.manifest.plugin && c.manifest.runs === 'computer')
+        .map((c) => c.manifest.name),
     sitesOn: (pc) =>
       (browser?.().as(pc.user).sites() ?? [])
         .filter((s) => s.computer === pc.id)

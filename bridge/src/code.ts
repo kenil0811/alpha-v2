@@ -14,15 +14,26 @@ const packed = existsSync(join(here, 'child.mjs'))
 const root = join(here, '..', '..')
 const CHILD = packed ? join(here, 'child.mjs') : join(root, 'core', 'src', 'connectors', 'child.ts')
 const MAC = packed ? join(here, 'mac.mjs') : join(root, 'connectors', 'mac', 'src', 'index.ts')
+const COMPUTER = packed
+  ? join(here, 'computer.mjs')
+  : join(root, 'connectors', 'computer', 'src', 'index.ts')
 const ENTRIES: Record<string, string> = {
   folder: packed ? join(here, 'folder.mjs') : join(root, 'connectors', 'files', 'src', 'folder.ts'),
   // the Mac's Calendar and Contacts, one connector folder for both
   calendar: MAC,
   contacts: MAC,
+  // what the computer says about its person's work, one connector folder for the three
+  browsing: COMPUTER,
+  apps: COMPUTER,
+  'ai-work': COMPUTER,
 }
 
 // What this Bridge lends besides folders: on a Mac, Calendar and Contacts, through Alpha's helper.
 export const LENDS_HERE = process.platform === 'darwin' ? ['calendar', 'contacts'] : []
+
+// The readers it carries that its Alpha offers only where a plugin is on (interviews): ticked in
+// the app only when the Alpha it is paired with says it offers them (welcome's offers).
+export const READERS = ['browsing', 'apps', 'ai-work']
 
 // Alpha's helper, carried beside the Bridge in the app (or built in the repository), run here for
 // Calendar and Contacts, so macOS asks this computer's person.

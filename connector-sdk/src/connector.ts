@@ -38,6 +38,9 @@ export interface Manifest {
   // the Bridge (computer); or either (a folder: on a Mac's own Alpha there, on a server on a
   // person's computer). On a server, one that runs on a computer is lent from that computer.
   runs?: 'server' | 'computer' | 'either'
+  // The plugin it comes with (interviews): known to an Alpha, and offered to its computers' Bridge,
+  // only where alpha.yaml switches that plugin on (rules P1)
+  plugin?: string
   // browser: where the person signs in themselves, in Google Chrome
   signIn?: string
   // system: the System Settings pane (Privacy & Security › <pane>) that turns Alpha on after a no

@@ -19,6 +19,16 @@ import type { User, World } from '../world/world.ts'
 
 const CHILD = join(import.meta.dirname, '..', 'connectors', 'child.ts')
 const MAC = join(import.meta.dirname, '..', '..', '..', 'connectors', 'mac', 'src', 'index.ts')
+const COMPUTER = join(
+  import.meta.dirname,
+  '..',
+  '..',
+  '..',
+  'connectors',
+  'computer',
+  'src',
+  'index.ts',
+)
 const FOLDER = join(
   import.meta.dirname,
   '..',
@@ -109,7 +119,14 @@ async function standIn(
     keys,
     start: async (connector) => ({
       command: process.execPath,
-      args: [CHILD, connector === 'folder' ? FOLDER : MAC],
+      args: [
+        CHILD,
+        connector === 'folder'
+          ? FOLDER
+          : ['browsing', 'apps', 'ai-work'].includes(connector)
+            ? COMPUTER
+            : MAC,
+      ],
       shell: false,
     }),
     helper: async () => HELPER_EVENTS,

@@ -109,6 +109,7 @@ rule('B2', 'what a computer lends is said on the computer', {
           signedOut: () => undefined,
           back: () => undefined,
           sitesOn: () => [],
+          offers: () => [],
         })
         const sent: Record<string, unknown>[] = []
         const door = hub.open({

@@ -3,7 +3,7 @@
 // its icon and menu from what it says; the person's folder picker and every yes stay in the app.
 //   app → Bridge: pair {link}, lend and unlend {path, or connector: calendar|contacts}, browser
 //                 {on}, pause {minutes|null}, resume, signout, state
-//   Bridge → app: state {paired, alpha, name, online, turnedAway, paused, browser, chrome, lends
+//   Bridge → app: state {paired, alpha, name, online, turnedAway, paused, browser, chrome, offers, lends
 //                 [{connector, account}]}, did
 //                 {at, words}, pick {connector}, problem {words}
 // What it did is kept on the computer too (did.json, the last 200), so its person can check what
@@ -14,7 +14,7 @@ import { createInterface } from 'node:readline'
 import { Bridge, keyAccount, pair } from './bridge.ts'
 import type { Start } from './children.ts'
 import { chromeHere, NO_CHROME } from './chrome.ts'
-import { computerName, folderOf, helper, LENDS_HERE } from './code.ts'
+import { computerName, folderOf, helper, LENDS_HERE, READERS } from './code.ts'
 import { type Config, fileOf, readConfig, writeConfig } from './config.ts'
 import type { KeyStore } from './keys.ts'
 
@@ -67,16 +67,25 @@ export function browserHere(home: string, on: boolean): string {
     : 'Browser off: Alpha no longer works on sites here.'
 }
 
+// What each thing it lends is called, as its person reads it.
+const NAMES: Record<string, string> = {
+  calendar: 'Calendar',
+  contacts: 'Contacts',
+  browsing: 'Browsing',
+  apps: 'Apps',
+  'ai-work': 'AI work',
+}
+
 // A lend or an unlend on this computer: a folder by its path, or Calendar or Contacts on a Mac (by
 // the name Alpha knows the computer by). What it says it did, in words.
 export function lendHere(home: string, what: string | undefined, on: boolean): string {
   const c = readConfig(home)
   if (!c) throw new Error('Pair this computer first.')
-  const kind = what && LENDS_HERE.includes(what) ? what : 'folder'
+  const kind = what && [...LENDS_HERE, ...READERS].includes(what) ? what : 'folder'
   const account = kind === 'folder' ? folderOf(what) : c.name
   const others = c.lends.filter((l) => !(l.connector === kind && l.account === account))
   writeConfig(home, { ...c, lends: on ? [...others, { connector: kind, account }] : others })
-  const named = kind === 'folder' ? account : kind === 'calendar' ? 'Calendar' : 'Contacts'
+  const named = kind === 'folder' ? account : (NAMES[kind] ?? kind)
   return on ? `Lent ${named}.` : `Stopped lending ${named}.`
 }
 
@@ -144,6 +153,7 @@ export async function serve(
         : null,
       lends: c?.lends ?? [],
       browser: c?.browser === true,
+      offers: bridge?.offers ?? [],
     })
   }
   const begin = () => {

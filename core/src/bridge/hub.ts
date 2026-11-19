@@ -54,6 +54,7 @@ export interface Hands {
   signedOut(pc: Computer): void
   back(pc: Computer): void // connected again: what waited for it is read now
   sitesOn(pc: Computer): string[] // the sites signed in to there for Alpha
+  offers(): string[] // the readers a computer may lend besides its own (a plugin's: browsing)
 }
 
 const NONE: Hands = {
@@ -65,6 +66,7 @@ const NONE: Hands = {
   signedOut: () => undefined,
   back: () => undefined,
   sitesOn: () => [],
+  offers: () => [],
 }
 
 export class Hub {
@@ -211,7 +213,14 @@ export class Hub {
           }
           this.connected.set(c.id, me)
           this.world?.computers.seen(c.id)
-          socket.send(JSON.stringify({ t: 'welcome', name: c.name, lent: this.lent(c.id) }))
+          socket.send(
+            JSON.stringify({
+              t: 'welcome',
+              name: c.name,
+              lent: this.lent(c.id),
+              offers: this.hands.offers(),
+            }),
+          )
           this.hands.back(c)
           this.hands.notify()
           return

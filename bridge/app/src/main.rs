@@ -41,8 +41,12 @@ struct Seen {
     paused: Option<String>, // paused: until when, in words (until 9:30 PM, until you resume)
     lends: Vec<(String, String)>, // what it lends: (connector, account)
     browser: bool, // the Browser switch: Alpha signs in to sites here and works on them
+    offers: Vec<String>, // the readers its Alpha offers (browsing, apps, ai-work), where interviews are on
     doing: Option<String>,
 }
+
+/// The computer's readers its Alpha may offer, each off until ticked.
+const READERS: [(&str, &str); 3] = [("browsing", "Browsing"), ("apps", "Apps"), ("ai-work", "AI work")];
 
 /// The app's own state: the Bridge's pipe and what it last said.
 #[derive(Default)]
@@ -150,6 +154,10 @@ fn heard(app: &AppHandle, m: Value) {
             seen.turned_away = m["turnedAway"].as_str().map(String::from);
             seen.paused = m["paused"]["words"].as_str().map(String::from);
             seen.browser = m["browser"].as_bool().unwrap_or(false);
+            seen.offers = m["offers"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .unwrap_or_default();
             seen.lends = m["lends"]
                 .as_array()
                 .map(|a| {
@@ -283,6 +291,13 @@ fn build_menu(app: &AppHandle, tray: &TrayIcon, seen: &Seen, status: &str) -> ta
                 menu.append(&CheckMenuItem::with_id(app, id, title, true, on, None::<&str>)?)?;
             }
         }
+        // what the computer says about its person's work, where its Alpha offers it; off until ticked
+        for (id, title) in READERS {
+            if seen.offers.iter().any(|o| o == id) {
+                let on = seen.lends.iter().any(|(c, _)| c == id);
+                menu.append(&CheckMenuItem::with_id(app, id, title, true, on, None::<&str>)?)?;
+            }
+        }
         // Chrome here, for the sites its person signs in to for Alpha; off until ticked
         menu.append(&CheckMenuItem::with_id(app, "browser", "Browser", true, seen.browser, None::<&str>)?)?;
         if seen.paused.is_some() {
@@ -318,7 +333,7 @@ fn on_menu(app: &AppHandle, id: &str) {
             }
         }
         "add" => pick_folder(app),
-        "calendar" | "contacts" => {
+        "calendar" | "contacts" | "browsing" | "apps" | "ai-work" => {
             let on = seen.lends.iter().any(|(c, _)| c == id);
             let t = if on { "unlend" } else { "lend" };
             tell(app, json!({ "t": t, "connector": id }));

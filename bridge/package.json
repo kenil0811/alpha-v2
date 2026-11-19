@@ -13,6 +13,7 @@
     "@anthropic-ai/sandbox-runtime": "catalog:"
   },
   "devDependencies": {
+    "@alpha/connector-computer": "workspace:*",
     "@alpha/connector-files": "workspace:*",
     "@alpha/connector-sdk": "workspace:*",
     "@types/node": "catalog:"

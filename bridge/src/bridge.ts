@@ -6,6 +6,7 @@
 // (docs/rules.md, B2). Pairing comes first, with the one-time link the person made in Alpha.
 import { createPrivateKey, sign } from 'node:crypto'
 import { hostname } from 'node:os'
+import { readsOf } from '@alpha/connector-computer/paths'
 import { Children, type Start } from './children.ts'
 import {
   chromeHere,
@@ -26,7 +27,7 @@ export const VERSION = '0.4.0'
 type FromAlpha =
   | { t: 'pick'; connector: string }
   | { t: 'challenge'; challenge: string }
-  | { t: 'welcome'; name: string; lent: Lend[] }
+  | { t: 'welcome'; name: string; lent: Lend[]; offers?: string[] }
   | { t: 'lent'; lent: Lend[] }
   | { t: 'refused'; why: string }
   | { t: 'start'; connector: string }
@@ -125,6 +126,8 @@ export class Bridge {
   private socket: WebSocket | null = null
   private children: Children
   private alphaLends: Lend[] = []
+  // the readers its Alpha offers besides its own (a plugin's: browsing, apps, AI work)
+  offers: string[] = []
   private pipes = new Map<string, Pipe>() // a site's profile driven for Alpha now, by its id
   private stopped = false
   private pause = 1000
@@ -146,14 +149,15 @@ export class Bridge {
           .config()
           .lends.filter((l) => l.connector === connector)
           .map((l) => l.account),
-      // a folder's process reads its folders; Calendar's and Contacts' reach them through the helper
+      // a folder's process reads its folders; Calendar's and Contacts' reach them through the
+      // helper; a reader of the computer, only the places it says it reads (its browsers' history)
       reads: (connector) =>
         connector === 'folder'
           ? this.options
               .config()
               .lends.filter((l) => l.connector === connector)
               .map((l) => l.account)
-          : [],
+          : readsOf(connector),
       said: (w) => this.said(w),
       ...(options.helper ? { helper: options.helper } : {}),
     })
@@ -294,6 +298,7 @@ export class Bridge {
       this.closePipes()
       this.said(`Connected to ${new URL(c.alpha).host} as ${m.name}.`)
       this.alphaLends = m.lent
+      this.offers = m.offers ?? []
       this.reconcile()
       if (this.paused) this.send({ t: 'paused', until: this.paused.until })
       this.options.moved?.()

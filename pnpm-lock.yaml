@@ -175,6 +175,9 @@ importers:
         specifier: 'catalog:'
         version: 0.0.80
     devDependencies:
+      '@alpha/connector-computer':
+        specifier: workspace:*
+        version: link:../connectors/computer
       '@alpha/connector-files':
         specifier: workspace:*
         version: link:../connectors/files
@@ -209,6 +212,19 @@ importers:
       '@alpha/connector-sdk':
         specifier: workspace:*
         version: link:../../connector-sdk
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.5
+
+  connectors/computer:
+    dependencies:
+      '@alpha/connector-sdk':
+        specifier: workspace:*
+        version: link:../../connector-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

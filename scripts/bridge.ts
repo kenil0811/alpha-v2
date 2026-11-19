@@ -58,8 +58,9 @@ async function nodeFor(name: string): Promise<string> {
   return file
 }
 
-// The Bridge, the connector child and the folder connector, each one file with what it needs; the
-// SDK without its browser (bridge/pack/sdk.ts).
+// The Bridge, the connector child and the connectors it carries (a folder, the Mac's Calendar and
+// Contacts, the computer's readers), each one file with what it needs; the SDK without its browser
+// (bridge/pack/sdk.ts).
 async function bundle(into: string): Promise<void> {
   const build = await rolldown({
     input: {
@@ -67,6 +68,7 @@ async function bundle(into: string): Promise<void> {
       child: join(ROOT, 'core', 'src', 'connectors', 'child.ts'),
       folder: join(ROOT, 'connectors', 'files', 'src', 'folder.ts'),
       mac: join(ROOT, 'connectors', 'mac', 'src', 'index.ts'),
+      computer: join(ROOT, 'connectors', 'computer', 'src', 'index.ts'),
     },
     platform: 'node',
     resolve: { alias: { '@alpha/connector-sdk': join(ROOT, 'bridge', 'pack', 'sdk.ts') } },
@@ -102,6 +104,10 @@ async function resources(platform: (typeof PLATFORMS)[number]['platform']): Prom
   copyFileSync(join(ROOT, 'connectors', 'files', 'GUIDE.md'), join(dir, 'app', 'GUIDE.md'))
   for (const g of ['GUIDE-calendar.md', 'GUIDE-contacts.md'])
     copyFileSync(join(ROOT, 'connectors', 'mac', g), join(dir, 'app', g))
+  copyFileSync(
+    join(ROOT, 'connectors', 'computer', 'GUIDE-computer.md'),
+    join(dir, 'app', 'GUIDE-computer.md'),
+  )
   const node = await nodeFor(p.node)
   const unpacked = join(OUT, 'work', `${p.platform}-node`)
   rmSync(unpacked, { recursive: true, force: true })

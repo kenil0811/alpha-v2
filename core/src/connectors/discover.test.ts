@@ -35,6 +35,9 @@ describe('connectors found in their folders', () => {
     const { connectors, failed } = await loadSet(STANDARD_DIR)
     expect(failed).toEqual([])
     expect(connectors.map((c) => c.manifest.name)).toEqual([
+      'browsing',
+      'apps',
+      'ai-work',
       'folder',
       'gmail',
       'google',
