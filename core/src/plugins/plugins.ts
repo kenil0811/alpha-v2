@@ -12,12 +12,14 @@ import { readAgents } from '@alpha/kit-sdk'
 import {
   checkPlugin,
   type Input,
+  type Made,
   type Plugin,
   type PluginHost,
   type PluginTool,
   Refusal,
   type Row,
 } from '@alpha/plugin-sdk'
+import { config } from '../config.ts'
 import { entryOf } from '../connectors/discover.ts'
 import type { ConnectorService } from '../connectors/service.ts'
 import type { Engine } from '../engine/engine.ts'
@@ -26,8 +28,9 @@ import { guardAsync, type Here, ok } from '../engine/tools/common.ts'
 import { keepKit } from '../modules/defaults.ts'
 import { readKit } from '../modules/kits/index.ts'
 import { Reviews } from '../modules/reviews.ts'
+import { shownSchedules } from '../modules/schedules.ts'
 import { run } from '../world/db.ts'
-import { Refused } from '../world/kinds.ts'
+import { type ProvenanceInput, Refused } from '../world/kinds.ts'
 import type { Table, WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
@@ -131,6 +134,17 @@ interface Given {
 
 const TOOL = /^[a-z][a-z0-9_]*$/
 
+// A value worked out in code, or estimated, as the world keeps where it came from.
+const perField = (made: Record<string, Made>): Record<string, ProvenanceInput> =>
+  Object.fromEntries(
+    Object.entries(made).map(([field, m]) => [
+      field,
+      m.kind === 'computed'
+        ? { kind: 'computed' as const, source: { formula: m.how } }
+        : { kind: 'estimated' as const, basis: m.basis },
+    ]),
+  )
+
 export class Plugins {
   readonly deps: PluginDeps
   readonly loaded: Loaded[] = []
@@ -203,6 +217,8 @@ export class Plugins {
               guardAsync(async () => {
                 const turn = {
                   person: here.current.user.id,
+                  name: here.current.user.name,
+                  owner: here.current.user.role === 'owner',
                   agent: agentId,
                   turn: here.current.turn ?? '',
                 }
@@ -243,6 +259,12 @@ export class Plugins {
       const t = m && world.shape.ownTable(m.id, table)
       if (!t) throw new Refused(`${l.plugin.title} has no table called ${table}.`)
       return t
+    }
+    // an agent its kit carries, by its id: refused for any other
+    const mine = (agentId: string): void => {
+      const m = ownModule()
+      if (!m || world.agents.get(agentId)?.source !== m.id)
+        throw new Refused(`Only an agent ${l.plugin.title}'s kit carries does that.`)
     }
     // an agent its kit carries, by its key
     const ownAgent = (key: string): string => {
@@ -286,6 +308,12 @@ export class Plugins {
           connected: world.connections
             .list()
             .some((k) => k.connector === c.manifest.name && k.state === 'connected'),
+        })),
+        agents: world.agents.list().map((a) => ({ name: a.name, title: a.title })),
+        schedules: shownSchedules(world).map((s) => ({
+          name: s.name,
+          module: s.module ? (world.shape.module(s.module)?.name ?? null) : null,
+          on: s.state === 'on',
         })),
       }),
       people: () =>
@@ -333,9 +361,27 @@ export class Plugins {
             rows.map((r) => ({
               values: r.values,
               provenance: { kind: 'assumed' as const, basis: r.basis },
+              ...(r.made ? { per_field: perField(r.made) } : {}),
             })),
             { actor },
           ),
+        change: (table, id, values, basis, made) => {
+          const t = ownTable(table)
+          if (!world.records.list(t.id).some((r) => r.id === id))
+            throw new Refused(`${t.name} has no such row.`)
+          world.records.change(
+            t.id,
+            [
+              {
+                id,
+                values,
+                provenance: { kind: 'assumed', basis },
+                ...(made ? { per_field: perField(made) } : {}),
+              },
+            ],
+            { actor },
+          )
+        },
         // the person's own word, from the plugin's screen: journaled, its source
         set: (table, id, values) => {
           const t = ownTable(table)
@@ -423,6 +469,43 @@ export class Plugins {
           { agent: turn.agent, turn: turn.turn, module: m.id, user: who.id },
         )
         return card.id
+      },
+      question: (turn, q) => {
+        mine(turn.agent)
+        const who = world.user(turn.person)
+        if (!who) throw new Refused('There is no such person here.')
+        const most = config.limits().question_characters
+        if (!q.words.trim() || q.words.trim().length > most)
+          throw new Refused(
+            `A card's question is one short line of ${most} characters at most; what it rests on goes in its detail.`,
+          )
+        return world.cards.open({
+          kind: 'question',
+          words: q.words.trim(),
+          detail: q.detail?.trim() || null,
+          options: q.options,
+          actor: { kind: 'alpha', id: turn.agent },
+          user: who.id,
+          turn: turn.turn,
+        }).id
+      },
+      answer: (id) => {
+        const c = world.cards.get(id)
+        if (!c?.agent) return null
+        mine(c.agent)
+        return c.state === 'waiting' ? null : c.answer
+      },
+      files: (connector) =>
+        world.files
+          .list()
+          .filter((f) => f.addedBy === connector)
+          .map((f) => ({ hash: f.hash, name: f.name, kind: f.mime, at: f.addedAt })),
+      activity: (person, days) => {
+        const since = new Date(Date.now() - days * 86_400_000).toISOString()
+        return world
+          .lines({ user: person })
+          .filter((x) => x.actor.kind === 'person' && x.actor.id === person && x.at >= since)
+          .map((x) => ({ id: x.id, at: x.at, kind: x.kind, words: x.words }))
       },
     }
   }

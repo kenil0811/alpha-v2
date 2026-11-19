@@ -52,6 +52,8 @@ export function registerCards(ctx: Ctx): void {
     reviews.choose(id, rows, value, asPerson)
     live()
     const c = world.cards.get(id)
+    // lines an agent put to the person in its chat: once all are decided, it carries on (rules P2)
+    if (c && c.state !== 'waiting' && c.turn && c.agent) engine.desk(user, c.agent).cardAnswered(c)
     return c ? cardOut(c) : null
   })
   // A schedule's draft: sent as it is or as the person changed it (with Always when offered), or

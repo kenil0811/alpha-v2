@@ -267,7 +267,7 @@ rule('P2', 'a plugin works through its own agent, and How to work only on the pe
         ])
         try {
           host.howToWork(
-            { person: member.id, agent: helper.id, turn: 't9' },
+            { person: member.id, name: 'Ravi', owner: false, agent: helper.id, turn: 't9' },
             {
               words: 'Keep this for everyone?',
               table: 'Notes',

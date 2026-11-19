@@ -6,11 +6,13 @@ import { type Task, whenSaid } from '../world/tasks/index.ts'
 
 // What a desk is told when a card it raised is answered, and the line that says it carries on.
 export const cardWords = (card: Card): string =>
-  card.kind !== 'permission'
-    ? `The person answered your question “${card.words}”: ${card.answer}`
-    : card.state === 'yes'
-      ? `The person said yes on the card: “${card.words}”. Go ahead with it now.`
-      : `The person said no on the card: “${card.words}”. Leave it.`
+  card.kind === 'review'
+    ? `The person decided each line on your card “${card.words}”: ${card.answer}`
+    : card.kind !== 'permission'
+      ? `The person answered your question “${card.words}”: ${card.answer}`
+      : card.state === 'yes'
+        ? `The person said yes on the card: “${card.words}”. Go ahead with it now.`
+        : `The person said no on the card: “${card.words}”. Leave it.`
 
 export const carryingOn = (card: Card): string =>
   card.kind !== 'permission'

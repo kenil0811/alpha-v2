@@ -3,7 +3,9 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { Connector } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, expect, it } from 'vitest'
+import { landIn } from '../connectors/places.ts'
 import { one } from '../world/db.ts'
 import { World } from '../world/world.ts'
 import { switchOn } from './plugins.ts'
@@ -22,6 +24,12 @@ afterEach(() => {
 
 it('loads where alpha.yaml names it, and its kit makes Your work with the Interviewer', async () => {
   const user = world.owner('Kenil')
+  // a client's module already holding a table called Sources, as Deal pilot does
+  landIn(world, {
+    manifest: { name: 'deals', title: 'Deals' },
+    module: 'Deal pilot',
+    tables: [{ name: 'Sources', fields: [{ name: 'Name', kind: 'text' }] }],
+  } as unknown as Connector)
   const { plugins, problems } = await switchOn(['interviews'], {
     world,
     user,
@@ -39,6 +47,7 @@ it('loads where alpha.yaml names it, and its kit makes Your work with the Interv
     'Steps',
     'Proposals',
     'About you',
+    'Interview sources',
   ])
   expect(one(world.db, 'SELECT plugin FROM kits WHERE module_id = ?', m?.id ?? '')).toEqual({
     plugin: 'interviews',

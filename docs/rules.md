@@ -94,6 +94,15 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 |---|---|---|---|
 | N1 | The never-use list applies as things are read: a row or a file holding one of its words never lands, from any connection. The list is the one Alpha ships (`core/config/never.yaml`), the same for every connection, changed there alone and never shown in Alpha. A connection on a person's computer leaves a match out in its own process there, before it leaves the computer, and the core leaves it out again as it lands. Each connection says how many its last read left out, never which | 18 Nov, 19 Nov | test |
 
+## Interviews
+
+| # | Rule | Date | Held by |
+|---|---|---|---|
+| I1 | Every line, workflow, step and proposal the Interviewer proposes cites what it rests on (a row read, the person's answer, a page, a file, a line of what they did in Alpha), and only that: one that cites nothing, cites what nothing read holds, names a site or file nothing read holds, or says "you said" of words not in the answers it cites is refused | 19 Nov | test |
+| I2 | The report's numbers come from code: how often from the rows that are each one time, counted over the days read; how long from the person's answer; hours a month from the two. Where one is not to hand it may be estimated, and is kept as estimated with what it rests on, as are the hours it makes | 19 Nov | test |
+| I3 | A source the person skipped is never read and never cited, and sources are put to them one card at a time | 19 Nov | test |
+| I4 | A line the person dropped, or a proposal they declined, is never proposed again in the same words | 19 Nov | test |
+
 ## Plugins
 
 | # | Rule | Date | Held by |

@@ -157,7 +157,7 @@ export const DOORS: Door[] = [
     name: 'plugin: own rows',
     by: 'plugin',
     changes: 'rows',
-    where: ['plugin own.add', 'plugin own.set'],
+    where: ['plugin own.add', 'plugin own.set', 'plugin own.change'],
     can: ['add'],
   },
   {
@@ -379,6 +379,10 @@ export const NOT_DOORS: Record<string, string> = {
   'plugin startBlock': 'words at the start of a conversation',
   'plugin journal': 'a line of what the plugin did, never beside a change',
   'plugin tools': 'tools for an agent its kit carries, whose writes are its host’s calls (P2)',
+  'plugin question': 'a question card in its own agent’s chat, which no row or module holds',
+  'plugin answer': 'reads',
+  'plugin files': 'reads',
+  'plugin activity': 'reads',
   'plugin converse': 'a turn in its own agent’s chat with the person, which writes nothing itself',
   'plugin howToWork':
     'a card of its own rows, decided by the person through the cards’ door; How to work, which is no row or module, written only on their Keep (P2)',

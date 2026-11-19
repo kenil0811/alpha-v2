@@ -21,6 +21,8 @@ export interface Catalogue {
     case: { for: string; keeps: string; decides: string } | null // its business case
   }[]
   connectors: { name: string; title: string; connected: boolean }[]
+  agents: { name: string; title: string }[]
+  schedules: { name: string; module: string | null; on: boolean }[]
 }
 
 // Someone the person deals with, by the world's own counts of meetings and messages.
@@ -56,8 +58,19 @@ export interface PluginHost {
   // Its own module (the kit in its folder): rows Alpha proposes (assumed, with why), the person's
   // own changes (stated), and what a table holds.
   own: {
-    add(table: string, rows: { values: Record<string, unknown>; basis: string }[]): string[]
+    add(
+      table: string,
+      rows: { values: Record<string, unknown>; basis: string; made?: Record<string, Made> }[],
+    ): string[]
     set(table: string, id: string, values: Record<string, unknown>): void
+    // its own change to a row, its values said as add says them
+    change(
+      table: string,
+      id: string,
+      values: Record<string, unknown>,
+      basis: string,
+      made?: Record<string, Made>,
+    ): void
     rows(table: string): Row[]
   }
   // A route of its own under /api/plugins/<name>/, answering the window as the person.
@@ -77,11 +90,28 @@ export interface PluginHost {
   // is written to How to work as theirs, For you (For everyone here only when they are the owner)
   // under the heading; nothing is written without their Keep. The card's id.
   howToWork(turn: Turn, lines: Lines): string
+  // A question put to the person on a card in its agent's chat, as the agent's ask tool puts one:
+  // its options, and always the box for their own words; their answer comes to the agent as a
+  // message. The card's id.
+  question(turn: Turn, q: { words: string; detail?: string; options: string[] }): string
+  // What the person answered on a card its agent raised, once they have: none while it waits.
+  answer(card: string): string | null
+  // The files a connector kept (a folder lent in the Bridge): names, kinds and dates, never what
+  // is inside.
+  files(connector: string): { hash: string; name: string; kind: string; at: string }[]
+  // What a person did in Alpha in the days back, as the journal says it, never what was read.
+  activity(person: string, days: number): { id: number; at: string; kind: string; words: string }[]
 }
+
+// How one value came to be, where it is not its row's basis: worked out in code (and how), or
+// estimated (and what the estimate rests on).
+export type Made = { kind: 'computed'; how: string } | { kind: 'estimated'; basis: string }
 
 // Where one of its agent's tools is called: the person whose chat it is, the agent, the turn.
 export interface Turn {
   person: string
+  name: string // the person's name, as Alpha has it
+  owner: boolean // whether they are the owner here
   agent: string
   turn: string
 }

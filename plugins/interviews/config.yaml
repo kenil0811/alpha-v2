@@ -1,0 +1,3 @@
+# The Interviewer's defaults (the onboarding plan, call 19): what is read, never walls.
+# How far back a source is read, in days.
+lookback_days: 90

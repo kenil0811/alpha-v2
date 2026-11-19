@@ -247,7 +247,7 @@ export class Desk {
 
   // A permission card answered in the window: the desk is told, and carries on.
   cardAnswered(card: Card): void {
-    if (card.kind !== 'permission' && card.kind !== 'question') return
+    if (card.kind !== 'permission' && card.kind !== 'question' && card.kind !== 'review') return
     // raised while working for a teammate: the follow-up is that work, while it is still open
     const serving = askOfTurn(card.turn)
     const ask = serving ? this.world.asks.get(serving) : undefined
