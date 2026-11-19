@@ -118,7 +118,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | I4 | Settings › Permissions lists every rule across Alpha, each opening its page (#/rule/<id>), in place of standing permissions: as its sentence in today's names, what differs from rule to rule in bold, a light line (allows, denies or noticed, made when and by whom, used how often and when last; Revoked, greyed) and a chip for where it holds; Table stays in the layout picker. Every rule waiting on its Save card shows above them under Waiting for you, Approve and Decline answering the card itself | 27 Oct, 1 Nov, 17 Nov | test |
 | I5 | Settings › Activity lists what waits for the person above every run, and is where a script's report is read; an agent's scheduled run is read on its task's page | 9 Nov, 10 Nov | — |
 | I6 | Settings › Data: the last ten backups, Go back on any, Back up now; taking data out, bringing it in and deleting it are the `alpha` command's | 9 Nov | — |
-| I7 | Where Alpha asks people to sign in, Settings has People for the owner (who may sign in, a one-time link to pass on, Delete) and the foot says who is signed in with Sign out; a member sees no Model, Data or People, and no setup on Home | 9 Nov | — |
+| I7 | Where Alpha asks people to sign in, Settings has People for the owner (who may sign in, a one-time link to pass on, Delete) and the foot says who is signed in with Sign out; a member sees no Data or People, and no setup on Home; Model is everyone's | 9 Nov, 19 Nov | — |
 
 ## Wording
 

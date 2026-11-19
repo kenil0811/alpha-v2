@@ -199,8 +199,8 @@ export function registerSettings(ctx: Ctx): void {
     return { restarting: true }
   })
   // A server's subscription: the token `claude setup-token` makes.
+  // the model is everyone's to set: the owner's or a member's change, journaled as theirs
   app.post('/api/model/token', async (req): Promise<ModelView> => {
-    owner()
     const { token } = z.object({ token: z.string().max(400) }).parse(req.body)
     if (!engine.route) throw new Refused('The route is not set up in this core.')
     await engine.route.setToken(token, user.id)
@@ -209,7 +209,6 @@ export function registerSettings(ctx: Ctx): void {
     return modelView()
   })
   app.delete('/api/model/token', async (): Promise<ModelView> => {
-    owner()
     if (!engine.route) throw new Refused('The route is not set up in this core.')
     await engine.route.clearToken(user.id)
     engine.rerouted()
@@ -219,7 +218,6 @@ export function registerSettings(ctx: Ctx): void {
 
   // The route, the person's choice: their own subscription, or an API key kept in the Keychain.
   app.post('/api/model', async (req): Promise<ModelView> => {
-    owner()
     const { route, key } = z
       .object({
         route: z.enum(['subscription', 'key']),

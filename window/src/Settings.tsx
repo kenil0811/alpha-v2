@@ -99,9 +99,9 @@ export function Settings({
   useEffect(() => {
     api.get<Me>('/api/me').then(setMe, () => undefined)
   }, [])
-  // a member does not see the owner's sections; People only where people sign in
+  // a member does not see the owner's sections (Data, People); People only where people sign in
   const member = me?.user.role === 'member'
-  const hidden = new Set(member ? ['model', 'data', 'people'] : me?.signIn ? [] : ['people'])
+  const hidden = new Set(member ? ['data', 'people'] : me?.signIn ? [] : ['people'])
   const tabs = (p.tabs as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
   const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
   if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />

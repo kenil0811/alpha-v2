@@ -1,6 +1,9 @@
 // Who is asking, on an Alpha that asks people to sign in (docs/rules.md, A6): tried through the
 // core's own routes, each case on a server whose people have real sessions.
+import { MemorySecrets } from '@alpha/connector-sdk'
 import { buildServer } from '../api/server.ts'
+import { Engine } from '../engine/engine.ts'
+import { ModelRoute } from '../engine/route.ts'
 import { writeRoutes } from './check.ts'
 import { rule } from './rule.ts'
 import type { RuleWorld } from './world.ts'
@@ -9,9 +12,9 @@ const BASE = { host: '127.0.0.1:4700' }
 const PASSWORD = 'correct horse battery'
 
 // the rule world's core, now asking people to sign in, with its owner and a member signed in
-async function people(w: RuleWorld) {
+async function people(w: RuleWorld, engine: Engine = w.engine) {
   const app = buildServer({
-    engine: w.engine,
+    engine,
     user: w.user,
     token: 'rule-token',
     ports: [4700],
@@ -152,10 +155,9 @@ rule('A6', 'every request carries a session, and a person’s own stays theirs',
         w.world.cards.get(card.id)?.state === 'waiting'
       )
     },
-    'only the owner sets the model and the data, adds people, installs a pack': async (w) => {
+    'only the owner sets the data, adds people, installs a pack': async (w) => {
       const { app, member } = await people(w)
       for (const [method, url, payload] of [
-        ['POST', '/api/model', { route: 'subscription' }],
         ['POST', '/api/accounts', { name: 'Sam', email: 'sam@example.com' }],
         ['POST', '/api/kits', { folder: '/nowhere' }],
       ] as const) {
@@ -163,6 +165,26 @@ rule('A6', 'every request carries a session, and a person’s own stays theirs',
         if (out.statusCode !== 409 || !/Only the owner/.test(out.json().problem)) return false
       }
       return (await app.inject({ url: '/api/accounts', headers: member })).statusCode === 409
+    },
+    'a member sets the model as the owner does, and the journal says it was them': async (w) => {
+      const route = new ModelRoute(w.world, new MemorySecrets(), w.home)
+      const { app, member, memberId } = await people(w, new Engine(w.world, { route }))
+      const set = await app.inject({
+        method: 'POST',
+        url: '/api/model',
+        headers: member,
+        payload: { route: 'subscription' },
+      })
+      const line = w.world.lines({ kinds: ['shaped'] }).at(-1)
+      // a token a member deletes where none is saved is refused for that, not for who they are
+      const gone = await app.inject({ method: 'DELETE', url: '/api/model/token', headers: member })
+      return (
+        set.statusCode === 200 &&
+        line?.actor.kind === 'person' &&
+        line.actor.id === memberId &&
+        gone.statusCode === 409 &&
+        !/Only the owner/.test(gone.json().problem)
+      )
     },
   },
 })

@@ -41,7 +41,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | M4 | In an open module everything is the firm's to change. A kit's update follows the ownership rule, and a maintained kit's shape change, or a change to a file it shipped, goes on its card from every door, not only the model's tool; a file the firm adds to its module (a source's own reader) is the firm's. A fix the person asked for needs no second yes: a data file the kit shipped (a reader, a list a script reads), changed in the turn the person asked in, is kept without the card and counted as a change the maintainer has not seen; the same holds for a list of choices the person asks to change (a new stage, a renamed one, a new order); a script, a schedule, a skill's words, the notes, a page and every other change of shape (a table, a field) still go on the card | 4 Nov, 5 Nov, 15 Nov | test |
 | M5 | Kit code finds tables and fields by their lasting key, never by a name a person can change, so a rename never breaks a schedule or a reader | 4 Nov | test |
 | M6 | Who may build is one firm setting: everyone, admins or nobody. Building is a new module, table, field, schedule or page, and installing or packing a kit | 4 Nov | with Dell's contract |
-| M7 | The developer switch (`developer: true` in alpha.yaml, out of the window since 7 Nov), installing packs, restoring, bringing in or removing data, and the model's route are for admins only (the owner, until there are users) | 4 Nov, 7 Nov | with Dell's contract |
+| M7 | The developer switch (`developer: true` in alpha.yaml, out of the window since 7 Nov), installing packs, restoring, bringing in or removing data are for admins only (the owner, until there are users); the model's route is everyone's to set | 4 Nov, 7 Nov, 19 Nov | with Dell's contract |
 | M8 | A managed kit's update may rename, retype and remove, by a scripted migration signed with it; an open kit's update only adds | 4 Nov | with Dell's contract |
 
 ## Who owns the data: Alpha's own
@@ -119,7 +119,7 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 | A3 | The chain's newest hash is written outside the world every day, in a manifest beside the daily backup, so a rewritten tail cannot verify | 4 Nov, 10 Nov | test |
 | A4 | A line that adds, changes or lands rows carries a digest of the values it wrote, so `pnpm journal verify` finds a value changed in the file | 4 Nov | test |
 | A5 | In a firm with users, reading a managed module's records is a journal line, folded after its days like the model's reads | 4 Nov | with Dell's contract |
-| A6 | Where Alpha asks people to sign in, every request but the sign-in pages and the Bridge's pairing, door and updates (proved by the link's one-time code, the computer's own key, and the signatures on what it fetches) carries a live session and acts as that person: their conversation and the cards raised in it are theirs alone, and only the owner sets the model, the data, who may sign in, and installs a pack | 9 Nov | test |
+| A6 | Where Alpha asks people to sign in, every request but the sign-in pages and the Bridge's pairing, door and updates (proved by the link's one-time code, the computer's own key, and the signatures on what it fetches) carries a live session and acts as that person: their conversation and the cards raised in it are theirs alone, and only the owner sets the data, who may sign in, and installs a pack; a member sets the model as the owner does, journaled as theirs | 9 Nov, 19 Nov | test |
 
 ## Reliability
 
