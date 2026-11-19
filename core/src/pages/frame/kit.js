@@ -20,7 +20,8 @@
 //   {pairs: {title?, note?, items: [{label, value, unit?, note?, tone?, change?, open?}]}}
 //   {bars: {title?, note?, items: [{label, value, unit?, note?, change?, open?}]}}
 //   {callout: {title?, text, note?}}              text may be a list of paragraphs
-//   (pairs, bars and callout are in doc.js)
+//   {flow: {title?, note?, steps: [{label, note?, tone?, open?}]}}   steps in order
+//   (pairs, bars, callout and flow are in doc.js)
 //
 // <meta name="alpha-look" content="document"> draws the page as a document, in the window's width
 // and theme: small section labels, soft tiles and bare tables; printed on white.

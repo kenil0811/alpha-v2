@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Report</title>
+<meta name="alpha-front" content="yes">
+<meta name="alpha-look" content="document">
+</head>
+<body>
+<script>
+// The report of a person's work (the onboarding plan, call 29): each workflow by hours a month,
+// what the data shows and what it means, its steps as a flow with where it stalls, and what Alpha
+// would build for it with the person's answer, or why it is not worth building. A number the
+// Interviewer estimated says so; its row says what the estimate rests on. It prints to PDF. The
+// page only reads.
+const ref = (v) => (Array.isArray(v) ? v[0] : v)
+const num = (v) => (typeof v === 'number' ? v : null)
+const ANSWERS = {
+  Waiting: 'Played back; waiting on your answer.',
+  Yes: 'You said yes, that is it.',
+  'Yes and also': 'You said yes, and also more.',
+  'Not this': 'You said not this; the Interviewer asks again.',
+}
+
+alpha.page(async () => {
+  const [flows, steps, proposals] = await Promise.all([
+    alpha.rows('Workflows'),
+    alpha.rows('Steps'),
+    alpha.rows('Proposals'),
+  ])
+  const people = [...new Set(flows.map((f) => String(f.values.Person ?? '')).filter(Boolean))].sort()
+  if (!people.length)
+    return [
+      { heading: 'Your work', level: 1 },
+      'Nothing here yet. The Interviewer writes this report as it gets to know each person here: the work they repeat, where it stalls, and what Alpha could build for it.',
+    ]
+  const person = people.length > 1 ? alpha.input('Person', { options: people }) : people[0]
+  const mine = flows
+    .filter((f) => f.values.Person === person)
+    .sort((a, b) => (num(a.values.Rank) ?? 1e9) - (num(b.values.Rank) ?? 1e9))
+  const estimated = (row, field) => row.kinds?.[field] === 'estimated'
+  const hours = mine.reduce((n, f) => n + (num(f.values['Hours a month']) ?? 0), 0)
+  const closed = mine.filter((f) => ['Agreed', 'Not worth building'].includes(f.values.Status))
+  const out = [
+    { heading: `${person}’s work`, level: 1, note: 'Each piece of work by the hours it takes a month, the most first.' },
+    {
+      stats: [
+        { label: 'Workflows', value: mine.length },
+        {
+          label: 'Hours a month',
+          value: Math.round(hours * 10) / 10,
+          note: mine.some((f) => estimated(f, 'Hours a month')) ? 'some estimated' : undefined,
+        },
+        { label: 'Closed', value: closed.length, of: mine.length },
+      ],
+    },
+  ]
+  for (const f of mine) {
+    const v = f.values
+    const h = num(v['Hours a month'])
+    const at = (field) => ({ table: 'Workflows', row: f.id, field })
+    out.push({
+      heading: String(v.Name ?? ''),
+      aside: h == null ? 'How long it takes is not known yet' : `${h} hours a month${estimated(f, 'Hours a month') ? ', estimated' : ''}`,
+      asideNote: String(v.Status ?? ''),
+    })
+    out.push({
+      pairs: {
+        items: [
+          { label: 'Times a month', value: v['Times a month'] ?? null, note: estimated(f, 'Times a month') ? 'estimated' : 'counted', open: at('Times a month') },
+          { label: 'Minutes each', value: v['Minutes each'] ?? null, note: estimated(f, 'Minutes each') ? 'estimated' : 'your answer', open: at('Minutes each') },
+        ],
+      },
+    })
+    if (v['What the data shows']) out.push({ callout: { title: 'What the data shows', text: String(v['What the data shows']) } })
+    if (v['What it means']) out.push({ text: String(v['What it means']) })
+    const its = steps
+      .filter((s) => ref(s.values.Workflow) === f.id)
+      .sort((a, b) => (num(a.values.Order) ?? 0) - (num(b.values.Order) ?? 0))
+    if (its.length)
+      out.push({
+        flow: {
+          title: 'Its steps',
+          steps: its.map((s) => ({
+            label: String(s.values['What happens'] ?? ''),
+            note: [s.values.Where, s.values.Tool, s.values.Who, s.values['How often'], s.values['Stalls here'] === 'Yes' ? 'stalls here' : null]
+              .filter(Boolean)
+              .join(' · '),
+            tone: s.values['Stalls here'] === 'Yes' ? 'bad' : undefined,
+            open: { table: 'Steps', row: s.id },
+          })),
+        },
+      })
+    const p = proposals
+      .filter((x) => ref(x.values.Workflow) === f.id)
+      .sort((a, b) => String(b.at).localeCompare(String(a.at)))[0]
+    if (!p) out.push({ text: 'Nothing proposed for it yet.' })
+    else if (p.values.Kind === 'Not worth building')
+      out.push({ callout: { title: 'Not worth building', text: String(p.values['What it does'] ?? '') } })
+    else
+      out.push({
+        callout: {
+          title: `What Alpha would build: ${String(p.values.Kind ?? '').toLowerCase()}`,
+          text: String(p.values['What it does'] ?? '').split('\n'),
+          note: [p.values.Target ? `Target: ${p.values.Target}.` : null, ANSWERS[p.values.Answer] ?? null].filter(Boolean).join(' '),
+        },
+      })
+  }
+  return out
+})
+</script>
+</body>
+</html>

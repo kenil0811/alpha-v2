@@ -2,7 +2,7 @@
 # person's work the Interviewer keeps, and the lines about them they kept. It carries the
 # Interviewer. Its rows stay when interviews are switched off, as an ordinary module's do.
 name: Your work
-version: 0.2.1
+version: 0.3.0
 api: 3
 business_case:
   for: Each person here, about their own work
@@ -22,6 +22,11 @@ tables:
       - { name: Rank, kind: number, about: "Its place in the report: by hours a month until the person moves it." }
       - { name: Status, kind: choice, choices: [Drafting, Asking, Played back, Agreed, Not worth building], tones: { Drafting: warn, Asking: warn, Played back: accent, Agreed: good, Not worth building: bad }, about: "Where it is: drafted from what was read, being asked about, played back to the person, agreed, or not worth building." }
       - { name: Rests on, kind: text, about: "What it rests on, one to a line: row, answer, page, file or line, then its id." }
+    views:
+      - name: By rank
+        default: true
+        about: "Which work takes the most hours, and where is each one?"
+        sorts: [{ field: Rank, dir: asc }]
   - name: Steps
     about: "One step of a workflow: what happens, where, with what, by whom and how often."
     fields:

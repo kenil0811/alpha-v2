@@ -5,6 +5,8 @@
 //   {pairs: {title?, note?, items: [{label, value, unit?, note?, tone?, change?, open?}]}}
 //   {bars: {title?, note?, items: [{label, value, unit?, note?, change?, open?}]}}
 //   {callout: {title?, text, note?}}              text may be a list of paragraphs
+//   {flow: {title?, note?, steps: [{label, note?, tone?, open?}]}}
+//                                                 steps in order, each joined to the next
 ;(() => {
   const kit = window.alphaKit
   if (!kit) return
@@ -54,6 +56,23 @@
       }),
     )
     return titled(b.title, b.note, body, ' ak-bare')
+  }
+
+  // the steps of a piece of work in order, each a tile, the next marked as following it
+  kit.blocks.flow = (f) => {
+    const steps = f.steps ?? []
+    const body = el(
+      'ol',
+      { class: 'ak-flow' },
+      steps.map((s, i) =>
+        el('li', { ...opener(s.open), class: `ak-step${s.open ? ' ak-open' : ''}` }, [
+          el('span', { class: 'ak-step__n', text: String(i + 1) }),
+          el('span', { class: `ak-step__label${tone(s.tone)}`, text: String(s.label ?? '') }),
+          s.note ? el('span', { class: 'ak-step__note', text: String(s.note) }) : null,
+        ]),
+      ),
+    )
+    return titled(f.title, f.note, body, ' ak-bare')
   }
 
   // a paragraph or a few, set apart with a rule at their left
