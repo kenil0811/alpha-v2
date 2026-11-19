@@ -57,4 +57,12 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     ).map((c) => c.name)
     if (!cols.includes('left_out')) db.exec('ALTER TABLE connections ADD COLUMN left_out INTEGER')
   },
+  // 5, 19 Nov 2026: the plugin whose kit a module is (rules P1); a world made from schema.sql has it
+  // already
+  (db) => {
+    const cols = (
+      db.prepare("SELECT name FROM pragma_table_info('kits')").all() as { name: string }[]
+    ).map((c) => c.name)
+    if (!cols.includes('plugin')) db.exec('ALTER TABLE kits ADD COLUMN plugin TEXT')
+  },
 ]

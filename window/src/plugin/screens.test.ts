@@ -2,7 +2,7 @@
 // each at its own place, with a row on Home.
 import { describe, expect, it } from 'vitest'
 import { placeOf } from '../place.ts'
-import { SCREENS, screenOf } from './screens.ts'
+import { SCREENS, screenOf, shownScreens, switchedOn } from './screens.ts'
 
 describe('a plugin’s screens', () => {
   it('are found in the plugins’ folders, each at #/p/<name>; the base has none', () => {
@@ -10,5 +10,12 @@ describe('a plugin’s screens', () => {
     expect(placeOf('#/p/onboarding')).toEqual({ at: 'plugin', name: 'onboarding' })
     expect(placeOf('#/p/Not-a-name')).not.toMatchObject({ at: 'plugin' })
     expect(screenOf('nowhere')).toBeNull()
+  })
+
+  it('show only while the core says their plugin is on here (rules P1)', () => {
+    switchedOn([])
+    expect(shownScreens()).toEqual([])
+    switchedOn(['interviews'])
+    expect(shownScreens().every((s) => s.name === 'interviews')).toBe(true)
   })
 })

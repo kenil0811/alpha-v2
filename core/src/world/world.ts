@@ -90,6 +90,10 @@ export class World {
   readonly tasks: Tasks
   readonly accounts: Accounts
   readonly db: Db
+  // The plugins this Alpha has switched on (alpha.yaml's plugins line, rules P1); none said: every
+  // plugin counts as on. What a plugin switched off brought stays, but its agents and schedules
+  // are hidden and stop.
+  pluginsOn: string[] | null = null
   readonly paths: TenantPaths
   readonly tenant: string
   private pageRows: number
@@ -109,7 +113,7 @@ export class World {
     this.computers = new Computers(db)
     this.rules = new Rules(db, this.shape)
     this.spend = new Spend(db)
-    this.agents = new Agents(db, paths.agents)
+    this.agents = new Agents(db, paths.agents, () => this.offModules())
     this.memories = new Memories(db, () => config.limits().memory_characters)
     this.asks = new AgentAsks(db)
     this.people = new People(db, this.shape, this.cards)
@@ -175,6 +179,20 @@ export class World {
   // A secret the person signed in with: never in a line from now on.
   keepOut(secret: string): void {
     keepOut(secret)
+  }
+
+  // The modules a plugin's kit made, where that plugin is not on now.
+  offModules(): Set<string> {
+    const on = this.pluginsOn
+    if (!on) return new Set()
+    return new Set(
+      all<{ module_id: string; plugin: string }>(
+        this.db,
+        'SELECT module_id, plugin FROM kits WHERE plugin IS NOT NULL',
+      )
+        .filter((k) => !on.includes(k.plugin))
+        .map((k) => k.module_id),
+    )
   }
 
   lines(where: Parameters<typeof lines>[1]): Line[] {

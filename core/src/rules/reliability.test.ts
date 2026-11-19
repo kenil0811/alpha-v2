@@ -233,6 +233,9 @@ rule('R3', 'each rule says how it is held, and every door is listed', {
   },
 })
 
+// Where a file loads plugins, the definition aside.
+const loads = (text: string) => [...text.matchAll(/(?<!function )\bloadPlugins\(([^)]*)\)/g)]
+
 // Every file under core/src that loads plugins, but the tests and the rule world.
 function loaders(dir = SRC): { file: string; text: string }[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -240,9 +243,7 @@ function loaders(dir = SRC): { file: string; text: string }[] {
     if (e.isDirectory()) return p === import.meta.dirname ? [] : loaders(p)
     if (!e.name.endsWith('.ts') || e.name.endsWith('.test.ts')) return []
     const text = readFileSync(p, 'utf8')
-    return /\bloadPlugins\(/.test(text) && !/function loadPlugins\(/.test(text)
-      ? [{ file: p, text }]
-      : []
+    return loads(text).length ? [{ file: p, text }] : []
   })
 }
 
@@ -251,7 +252,7 @@ rule('R5', 'plugins are first-party code in this repository', {
     'the core loads plugins only from this repository’s plugins folder': async () => {
       const all = loaders()
       const astray = all.filter(({ text }) =>
-        [...text.matchAll(/\bloadPlugins\(([^)]*)\)/g)].some((m) => m[1]?.trim() !== 'PLUGINS_DIR'),
+        loads(text).some((m) => m[1]?.trim() !== 'PLUGINS_DIR'),
       )
       if (astray.length)
         console.error(`Loads plugins from elsewhere: ${astray.map((a) => a.file).join(', ')}`)

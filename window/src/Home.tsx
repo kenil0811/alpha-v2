@@ -6,7 +6,7 @@ import { ArrowUp, KeyRound, LoaderCircle } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api, Problem } from './api.ts'
 import { CardBox } from './CardBox.tsx'
-import { SCREENS } from './plugin/screens.ts'
+import { shownScreens } from './plugin/screens.ts'
 import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
@@ -111,7 +111,7 @@ export function Home({
         )}
 
         {/* a plugin's row, while something of its waits for the person */}
-        {SCREENS.map((s) => s.Waiting && <s.Waiting key={s.name} />)}
+        {shownScreens().map((s) => s.Waiting && <s.Waiting key={s.name} />)}
 
         {/* only while something waits */}
         {waiting > 0 && (

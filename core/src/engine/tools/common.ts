@@ -1,4 +1,3 @@
-import { join } from 'node:path'
 import { type BrowserEngine, type Effect, Problem } from '@alpha/connector-sdk'
 import { guide, Summary, TONES } from '@alpha/kit-sdk'
 import { z } from 'zod'
@@ -52,6 +51,8 @@ export interface Hands {
   browsers?: string // where the core's own browser is kept, to look at a module's page
   intake?: Intake // files that come by mail, proposed for filing
   drafts?: Drafts // schedules' drafts, sent from the person's mail on their yes
+  // the tools a plugin gives an agent its kit carries, in that agent's desks alone (rules P2)
+  plugins?: (agent: string, here: Here) => ToolEntry[]
 }
 
 export const SERVER = 'alpha'
@@ -226,7 +227,4 @@ export interface Tooling {
   ctx: () => { actor: Actor; user: string; turn: string | null; said: Said | null }
 }
 
-// Where the person's standing instructions are kept: theirs, or everyone's.
-export function instructionsFile(world: World, user: string | null): string {
-  return join(world.paths.instructions, user ? `${user}.md` : 'everyone.md')
-}
+export { instructionsFile } from '../../world/how-to-work.ts'

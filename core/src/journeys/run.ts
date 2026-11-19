@@ -32,6 +32,7 @@ import { DRAFT, Drafts } from '../modules/drafts.ts'
 import { REVIEW } from '../modules/reviews.ts'
 import { ScheduleRunner } from '../modules/runs/index.ts'
 import { agentSchedules, schedules } from '../modules/schedules.ts'
+import { switchOn } from '../plugins/plugins.ts'
 import { CHIEF } from '../world/agents/index.ts'
 import { verify } from '../world/audit.ts'
 import { Refused } from '../world/kinds.ts'
@@ -45,7 +46,7 @@ import { idleOf } from './idle.ts'
 import { interviewCheck } from './interview-checks.ts'
 import { Journey } from './journey.ts'
 import { kitStep } from './kit-step.ts'
-import { interview, press, switchOn, turnEnds } from './plugin-steps.ts'
+import { interview, press, turnEnds } from './plugin-steps.ts'
 import { type Site, serve } from './site.ts'
 import { spentIn } from './spent.ts'
 import { webCheck } from './web-checks.ts'
@@ -137,10 +138,17 @@ export async function runOne(
   const engine = new Engine(world, {
     prompt,
     connectors,
-    hands: { browser: () => browser, runner, browsers: join(ROOT, '.data', 'browsers'), drafts },
+    hands: {
+      browser: () => browser,
+      runner,
+      browsers: join(ROOT, '.data', 'browsers'),
+      drafts,
+      plugins: (agent, here) => on.plugins.toolsFor(agent, here),
+    },
     starts: () => on.plugins.startBlocks(),
     ...routed,
   })
+  on.plugins.engine = engine
   if (!on.problems.length) await on.plugins.keepKits({ actor: { kind: 'system' }, user: user.id })
   let site: Site | null = null
   const computer: Parameters<typeof bridgeStep>[1] = { standIn: null }
@@ -166,6 +174,7 @@ export async function runOne(
       token: 'journey',
       ports: [4700],
       plugins: on.plugins.routes,
+      pluginsOn: on.plugins.on(),
     })
     return served.app
   }

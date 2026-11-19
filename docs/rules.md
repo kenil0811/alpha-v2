@@ -94,6 +94,13 @@ list and `docs/design.md` disagree, the design wins and this list is corrected t
 |---|---|---|---|
 | N1 | The never-use list applies as things are read: a row or a file holding one of its words never lands, from any connection. The list is the one Alpha ships (`core/config/never.yaml`), the same for every connection, changed there alone and never shown in Alpha. A connection on a person's computer leaves a match out in its own process there, before it leaves the computer, and the core leaves it out again as it lands. Each connection says how many its last read left out, never which | 18 Nov, 19 Nov | test |
 
+## Plugins
+
+| # | Rule | Date | Held by |
+|---|---|---|---|
+| P1 | A plugin loads only where the Alpha's alpha.yaml names it (`plugins: [interviews]`), set per Alpha shipped and never in the window: one not named adds no agent, tool, route, schedule, row or screen. One switched off after use keeps what it made (its module and rows, the lines kept in How to work) while its agents and schedules are hidden and do not run; switched on again, it carries on where it was | 19 Nov | test |
+| P2 | A plugin works through an agent its kit carries: the tools it gives are that agent's alone, a conversation it starts is in that agent's chat for the person who asked, and lines it proposes for How to work are put to the person on a card, written there as theirs only on their Keep (For everyone here only by the owner) | 19 Nov | test |
+
 ## Audit
 
 | # | Rule | Date | Held by |

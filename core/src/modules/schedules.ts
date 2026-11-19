@@ -327,6 +327,21 @@ export function schedules(world: World, moduleId?: string): Schedule[] {
   }))
 }
 
+// The schedules a person sees and the scheduler starts: none that came with a plugin switched off
+// here, nor any waking an agent it brought (rules P1).
+export function shownSchedules(world: World, moduleId?: string): Schedule[] {
+  const off = world.offModules()
+  const all = schedules(world, moduleId)
+  if (!off.size) return all
+  const hidden = new Set(
+    world.agents
+      .list(true)
+      .filter((a) => a.source && off.has(a.source))
+      .map((a) => a.id),
+  )
+  return all.filter((a) => !(a.module && off.has(a.module)) && !(a.agent && hidden.has(a.agent)))
+}
+
 export const agentName = (world: World, agent: string): string =>
   agent === CHIEF ? CHIEF_CARD.name : (world.agents.get(agent)?.name ?? 'An agent')
 

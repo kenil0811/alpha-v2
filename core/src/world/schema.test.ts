@@ -38,8 +38,8 @@ const columns = (t: string) =>
 
 describe('the world’s shape', () => {
   it('is schema.sql and its migrations, and a fresh world is exactly schema.sql', () => {
-    expect(MIGRATIONS).toHaveLength(4)
-    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 4 })
+    expect(MIGRATIONS).toHaveLength(5)
+    expect(world.db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 5 })
     expect(made('table')).toEqual(named('TABLE'))
     expect(made('index')).toEqual(named('INDEX'))
     expect(made('trigger')).toEqual(named('TRIGGER'))
@@ -61,7 +61,7 @@ describe('the world’s shape', () => {
       ),
     ).not.toContain('place')
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(4)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(5)
     expect(again.prepare("SELECT account, place FROM connections WHERE id = 'c1'").get()).toEqual({
       account: 'a@b.example',
       place: null,
@@ -85,7 +85,7 @@ describe('the world’s shape', () => {
     old.close()
     const again = new DatabaseSync(file)
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(4)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(5)
     expect(again.prepare("SELECT computer FROM connections WHERE id = 'c1'").get()).toEqual({
       computer: null,
     })
@@ -105,10 +105,26 @@ describe('the world’s shape', () => {
     old.close()
     const again = new DatabaseSync(file)
     const { migrate } = await import('./schema.ts')
-    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(4)
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(5)
     expect(again.prepare("SELECT left_out FROM connections WHERE id = 'c1'").get()).toEqual({
       left_out: null,
     })
+    again.close()
+  })
+
+  it('gives a world made before migration 5 the plugin a kit is of', async () => {
+    const file = join(home, 'kits.sqlite')
+    const old = new DatabaseSync(file)
+    old.exec(SCHEMA.replace(/,\n\s*plugin TEXT[^\n]*/, ''))
+    old.exec('PRAGMA user_version = 4')
+    old.close()
+    const again = new DatabaseSync(file)
+    const { migrate } = await import('./schema.ts')
+    expect(await migrate(again as never, file, join(home, 'backups'))).toBe(5)
+    const cols = again.prepare("SELECT name FROM pragma_table_info('kits')").all() as {
+      name: string
+    }[]
+    expect(cols.map((c) => c.name)).toContain('plugin')
     again.close()
   })
 

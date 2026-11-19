@@ -30,7 +30,7 @@ import { ScheduleRunner } from './modules/runs/index.ts'
 import { schedules } from './modules/schedules.ts'
 import { keepAlphaAgents } from './modules/shipped.ts'
 import { platformHere } from './platform/index.ts'
-import { loadPlugins, PLUGINS_DIR, Plugins } from './plugins/plugins.ts'
+import { switchOn } from './plugins/plugins.ts'
 import { backupJob } from './scheduler/jobs.ts'
 import { Scheduler } from './scheduler/scheduler.ts'
 import { Setup } from './setup.ts'
@@ -264,8 +264,9 @@ runner.connections = {
       .map((k) => ({ id: k.id, account: k.account, state: k.state, lastReadAt: k.lastSyncAt })),
   read: (id, read, input, asker) => connectors.readThrough(id, read, input, asker),
 }
-// Alpha's plugins: each with its host; one that does not load is said and left out
-const plugins = new Plugins({
+// Alpha's plugins: only those alpha.yaml's plugins line names, each with its host (rules P1); one
+// that does not load is said and left out
+const { plugins, problems: pluginProblems } = await switchOn(install.plugins, {
   world,
   user,
   home,
@@ -273,20 +274,24 @@ const plugins = new Plugins({
   ask: (system, prompt, schema) => claudeCode.ask(system, prompt, schema),
   connectors,
 })
-const pluginsFailed = await (async () => {
-  const found = await loadPlugins(PLUGINS_DIR)
-  return [...found.failed, ...(await plugins.register(found.plugins))]
-})()
-for (const f of pluginsFailed) console.error(`The plugin in ${f.folder} did not load: ${f.why}`)
+for (const p of pluginProblems) console.error(p)
 const engine = new Engine(world, {
   connectors,
   route,
   provider: claudeCode,
   providers,
   starts: () => plugins.startBlocks(),
-  hands: { browser: browserEngine, runner, browsers: join(home, 'browsers'), intake, drafts },
+  hands: {
+    browser: browserEngine,
+    runner,
+    browsers: join(home, 'browsers'),
+    intake,
+    drafts,
+    plugins: (agent, here) => plugins.toolsFor(agent, here),
+  },
 })
 started = engine
+plugins.engine = engine
 // when Alpha's Mac app last asked for notices
 const shell = { seen: 0 }
 const scheduler = new Scheduler(
@@ -391,6 +396,7 @@ const app = buildServer({
   },
   failedConnectors: [...standard.failed, ...added.failed],
   plugins: plugins.routes,
+  pluginsOn: plugins.on(),
   bridgeDir: join(home, 'bridge'),
   ...(served ? { windowDir } : {}),
 })

@@ -75,6 +75,7 @@ describe('a plugin', () => {
       'GET /api/plugins/test/mail',
       'POST /api/plugins/test/connect',
       'POST /api/plugins/test/ask',
+      'POST /api/plugins/test/start',
     ])
   })
 

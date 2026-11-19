@@ -9,6 +9,7 @@ export interface Me {
   theme: 'mac' | 'light' | 'dark' // Appearance: Match Mac, or one look
   textSize: 'small' | 'medium' | 'large' // Appearance: Medium is the window's own sizes
   layout: Layout
+  plugins: string[] // the plugins on here (rules P1): the window shows a plugin's screens only then
 }
 
 // How the person left the window: all of it here, none in the browser.

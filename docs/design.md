@@ -51,7 +51,7 @@ interface in `core/src/platform/`, and `pnpm check` refuses a Mac call anywhere 
 | `kit-sdk/` | The kit contract, from which `docs/kit-api.md` is generated |
 | `connector-sdk/`, `connectors/`, `connectors-extra/` | What connectors are built on, the set that ships, and those added by hand |
 | `bridge/` | The Bridge, run on a person's own computer to lend Alpha what they turn on there |
-| `plugin-sdk/`, `plugins/` | The seam for first-party plugins, empty today |
+| `plugin-sdk/`, `plugins/` | The seam for first-party plugins, each on only where an Alpha's `alpha.yaml` names it; none ships yet |
 | `mac/`, `release/`, `scripts/` | The Mac app, the installer and `alpha` command, the release and the walls |
 | `journeys/` | Journeys as YAML, their reports in `docs/journeys/` |
 
@@ -316,6 +316,17 @@ try a kit before it installs, and tests record the model's answers rather than c
 
 Pages are HTML files drawn in a sandboxed frame with no network. They read the module's rows
 through the window, use the kit's blocks for their look, and print to PDF.
+
+A **plugin** (`plugins/<name>`, first-party code in this repository) loads only where the Alpha's
+`alpha.yaml` names it, `plugins: [interviews]`, set per Alpha shipped and never in the window
+(rules P1). It is given a host (`plugin-sdk`) that is all it may do: read rows, call a connector's
+tool, ask the model once, keep rows in its own kit's module, answer routes under
+`/api/plugins/<name>/` as whoever asks, add to the start of a conversation, give tools to an agent
+its kit carries (that agent's alone), start a conversation with that agent for a person, and put
+lines for How to work to the person on a card, written as theirs only on their Keep (rules P2).
+Its screens (`plugins/<name>/window/`) show only while the core says it is on (`/api/me`). Switched
+off after use, what it made stays, and its agents and schedules are hidden and stop until it is on
+again (`kits.plugin`, migration 5).
 
 ## The window
 

@@ -1,5 +1,6 @@
 // A made-up plugin for the plugin seam's tests: it uses every part of its host.
-import { type Plugin, Refusal } from '@alpha/plugin-sdk'
+import { type Plugin, Refusal, tool } from '@alpha/plugin-sdk'
+import { z } from 'zod'
 
 export const plugin: Plugin = {
   name: 'test',
@@ -25,6 +26,37 @@ export const plugin: Plugin = {
     host.route('POST', '/ask', async () => ({
       answer: await host.ask('Answer in the schema.', 'Say yes.', { type: 'object' }),
     }))
+    // its agent's own tool: lines it proposes, put to the person for How to work
+    host.tools('helper', [
+      tool({
+        name: 'propose_lines',
+        description: 'Put lines to the person for How to work, For you.',
+        input: { lines: z.array(z.string()).min(1) },
+        run: async ({ lines }, turn) => {
+          const rows = host.own.add(
+            'Notes',
+            lines.map((l) => ({ values: { Line: l, State: 'Proposed' }, basis: 'the test' })),
+          )
+          const card = host.howToWork(turn, {
+            words: 'Keep these in How to work?',
+            table: 'Notes',
+            rows,
+            line: 'Line',
+            choice: 'State',
+            keep: 'Kept',
+            drop: 'Dropped',
+            for: 'me',
+            heading: 'About you',
+          })
+          return `Put ${rows.length} line(s) to the person on card ${card}.`
+        },
+      }),
+    ])
+    // Start on its screen: a conversation with its agent, for whoever pressed it
+    host.route('POST', '/start', async ({ person }) => {
+      host.converse(person.id, 'helper', 'Started from the test plugin', 'Look at the notes.')
+      return { ok: true }
+    })
     host.startBlock(() => {
       const kept = host.own.rows('Notes').filter((r) => r.values.State === 'Kept')
       return kept.length

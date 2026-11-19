@@ -31,7 +31,8 @@ import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
 import { type Place, placeOf } from './place.ts'
-import { screenOf } from './plugin/screens.ts'
+import { PluginPage } from './plugin/page.tsx'
+import { screenOf, switchedOn } from './plugin/screens.ts'
 import { RowPage, type RowPlace } from './RowPage.tsx'
 import { besideWidth, roomBeside, useWindowWidth } from './room.ts'
 import { Settings } from './Settings.tsx'
@@ -261,6 +262,7 @@ export function App() {
   useEffect(() => {
     api.get<Me>('/api/me').then(
       (me) => {
+        switchedOn(me.plugins) // a plugin's screens show only where the core says it is on
         setName(me.user.name)
         // the look Alpha keeps for this person wins over this browser's copy
         applyTheme(me.theme)
@@ -591,9 +593,3 @@ export function App() {
 // a key pressed in a field belongs to the field
 const typing = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
-
-// A plugin's own page, or plain words where no plugin of that name is in this window.
-function PluginPage({ name }: { name: string }) {
-  const Page = screenOf(name)?.Page
-  return Page ? <Page /> : <p className="p-8 text-ink-2 text-md">Nothing is here.</p>
-}

@@ -13,7 +13,13 @@ import {
 } from '../../modules/kits/index.ts'
 import { makeKit } from '../../modules/makekit.ts'
 import { installPack } from '../../modules/packs.ts'
-import { agentName, schedules, setScheduleState, whenWords } from '../../modules/schedules.ts'
+import {
+  agentName,
+  schedules,
+  setScheduleState,
+  shownSchedules,
+  whenWords,
+} from '../../modules/schedules.ts'
 import { FOLDERS } from '../../signing.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Ctx } from '../ctx.ts'
@@ -113,7 +119,7 @@ export function registerKits(ctx: Ctx): void {
               changes: k.maintainer ? unseenChanges(world, m.id) : 0,
             }
           : null,
-        schedules: schedules(world, m.id).map((a) => ({
+        schedules: shownSchedules(world, m.id).map((a) => ({
           id: a.id,
           name: a.name,
           state: a.state,

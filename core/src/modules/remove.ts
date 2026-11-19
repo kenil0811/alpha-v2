@@ -90,7 +90,7 @@ export async function deleteModule(
     }
   })
   // the agents its kit brought: kept, as made here, or deleted with it
-  const brought = world.agents.list().filter((a) => a.source && ids.includes(a.source))
+  const brought = world.agents.list(true).filter((a) => a.source && ids.includes(a.source))
   for (const a of brought)
     if (keepAgents) world.agents.madeHere(a.id)
     else removeAgent(world, a.id, ctx)

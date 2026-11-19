@@ -2,7 +2,6 @@
 // connect, look (a page, a module, a row), keep (a file in a module) and run (a schedule or a
 // script, for a try).
 
-import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { config } from '../../config.ts'
 import { FILING, type Filing } from '../../files/intake.ts'
@@ -12,22 +11,12 @@ import { keep } from '../../modules/keep.ts'
 import type { ScheduleRunner } from '../../modules/runs/index.ts'
 import { schedules } from '../../modules/schedules.ts'
 import { pagesOf, printPage } from '../../pages/pages.ts'
+import { keepLine } from '../../world/how-to-work.ts'
 import { Refused } from '../../world/kinds.ts'
 import { DOES, type RuleSpec, SAVE_ANSWERS, SAVE_RULE } from '../../world/rules.ts'
 import type { ToolEntry } from '../registry.ts'
 import type { Tooling } from './common.ts'
-import {
-  guard,
-  guardAsync,
-  instructionsFile,
-  ok,
-  PAGE,
-  SCRIPT,
-  TASKS,
-  tableOf,
-  tool,
-  VIEWS,
-} from './common.ts'
+import { guard, guardAsync, ok, PAGE, SCRIPT, TASKS, tableOf, tool, VIEWS } from './common.ts'
 import { within } from './waiting.ts'
 
 export function deskTools(t: Tooling): ToolEntry[] {
@@ -112,11 +101,7 @@ export function deskTools(t: Tooling): ToolEntry[] {
       { instruction: z.string(), for: z.enum(['me', 'everyone']) },
       async (a) =>
         guard(() => {
-          const file = instructionsFile(world, a.for === 'me' ? here.current.user.id : null)
-          appendFileSync(
-            file,
-            `${existsSync(file) && readFileSync(file, 'utf8').length ? '' : '# Standing instructions\n\n'}- ${a.instruction.trim()}\n`,
-          )
+          keepLine(world, a.for === 'me' ? here.current.user.id : null, a.instruction)
           world.line({
             actor: t.ctx().actor,
             kind: 'remembered',

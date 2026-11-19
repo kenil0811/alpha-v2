@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { installedKits, unseenChanges } from '../../modules/kits/index.ts'
 import { deleteModule } from '../../modules/remove.ts'
 import { moduleNetwork } from '../../modules/runs/index.ts'
-import { agentName, schedules, whenWords } from '../../modules/schedules.ts'
+import { agentName, shownSchedules, whenWords } from '../../modules/schedules.ts'
 import { pageAnswer, pageDocument, pagesOf, printPage } from '../../pages/pages.ts'
 import { Refused } from '../../world/kinds.ts'
 import { businessCase, setBusinessCase } from '../../world/shape/manifest.ts'
@@ -102,7 +102,7 @@ export function registerModules(ctx: Ctx): void {
     )
     const notes = join(m.dir, 'NOTES.md')
     const everyModule = world.shape.modules()
-    const everySchedule = schedules(world)
+    const everySchedule = shownSchedules(world)
     const waiting = world.cards.waiting(user.id)
     const openTasks = world.tasks.list({ open: true })
     return {
@@ -118,7 +118,7 @@ export function registerModules(ctx: Ctx): void {
             changes: k.maintainer ? unseenChanges(world, m.id) : 0,
           }
         : null,
-      schedules: schedules(world, m.id).map((a) => ({
+      schedules: shownSchedules(world, m.id).map((a) => ({
         id: a.id,
         name: a.name,
         state: a.state,

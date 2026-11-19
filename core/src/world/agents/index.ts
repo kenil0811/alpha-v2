@@ -62,6 +62,7 @@ export const CHIEF_CARD = {
 export class Agents {
   private db: Db
   private dir: string
+  private off: () => Set<string> // the modules whose agents are hidden: their plugin is off
 
   // The model someone chose for an agent; none is the desk's. The Chief of staff has no row, so
   // its choice is kept in meta.
@@ -81,13 +82,19 @@ export class Agents {
     )
   }
 
-  constructor(db: Db, dir: string) {
+  constructor(db: Db, dir: string, off: () => Set<string> = () => new Set()) {
     this.db = db
     this.dir = dir
+    this.off = off
   }
 
-  list(): Agent[] {
-    return all<AgentRow>(this.db, 'SELECT * FROM agents ORDER BY name COLLATE NOCASE').map(toAgent)
+  // Every agent there is to see: none a plugin switched off brought (rules P1), unless every one
+  // is asked for, as a removal does.
+  list(every = false): Agent[] {
+    const off = every ? new Set<string>() : this.off()
+    return all<AgentRow>(this.db, 'SELECT * FROM agents ORDER BY name COLLATE NOCASE')
+      .map(toAgent)
+      .filter((a) => !a.source || !off.has(a.source))
   }
 
   get(id: string): Agent | undefined {

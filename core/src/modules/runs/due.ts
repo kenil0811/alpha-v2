@@ -3,7 +3,7 @@ import { type Trigger, triggersOf } from '@alpha/kit-sdk'
 import { Cron } from 'croner'
 import { config } from '../../config.ts'
 import { all, run as exec, one } from '../../world/db.ts'
-import { gapOf, latestAt, type Schedule, schedules } from '../schedules.ts'
+import { gapOf, latestAt, type Schedule, shownSchedules } from '../schedules.ts'
 import type { ScheduleRunner } from './runner.ts'
 import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome, type RunRowDb } from './types.ts'
 
@@ -12,7 +12,7 @@ import { CHANGE_KINDS, type Filed, RUN_AGAIN, type RunOutcome, type RunRowDb } f
 // the others still run.
 export async function runDue(runner: ScheduleRunner, nowMs = Date.now()): Promise<void> {
   resumeRuns(runner)
-  for (const a of schedules(runner.world)) {
+  for (const a of shownSchedules(runner.world)) {
     let judged: Judged | null
     try {
       judged = judge(runner, a, nowMs)
@@ -155,7 +155,7 @@ function failed(
 // the desk's own turn opened is the desk's to carry on; a draft's yes sends the draft itself and
 // starts nothing.
 export function resumeRuns(runner: ScheduleRunner): void {
-  for (const a of schedules(runner.world)) {
+  for (const a of shownSchedules(runner.world)) {
     if (runner.held.has(a.id)) continue
     const last = one<RunRowDb>(
       runner.world.db,

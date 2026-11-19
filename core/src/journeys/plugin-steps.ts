@@ -1,14 +1,12 @@
-// A journey's plugins and the person's steps on them: the plugins its Alpha has switched on, as
-// alpha.yaml's plugins line names them (rules P1); a button on a plugin's screen pressed, or the
+// A journey's steps on its plugins (switched on as alpha.yaml's plugins line names them, rules P1,
+// by switchOn in plugins.ts): a button on a plugin's screen pressed, or the
 // screen read, through the plugin's own routes as the window calls them; and an interview answered
 // card by card as the person answers it, by the first of the journey's answers that fits each card.
-import { basename } from 'node:path'
 import { z } from 'zod'
 import type { CardView } from '../api/card-types.ts'
 import type { buildServer } from '../api/server.ts'
 import type { Engine } from '../engine/engine.ts'
 import { cardAgent } from '../modules/agent-marks.ts'
-import { loadPlugins, PLUGINS_DIR, type PluginDeps, Plugins } from '../plugins/plugins.ts'
 import type { User, World } from '../world/world.ts'
 
 export const PluginPress = z.object({
@@ -38,28 +36,6 @@ export const Interview = z.object({
   // rather than running on (the runner's own bound, never the person's)
   at_most: z.number().default(60),
 })
-
-export interface Switched {
-  plugins: Plugins
-  problems: string[] // what kept a named plugin from loading, in words
-}
-
-// The plugins named, loaded and given their hosts; one not named does not load at all.
-export async function switchOn(names: string[], deps: PluginDeps): Promise<Switched> {
-  const plugins = new Plugins(deps)
-  if (!names.length) return { plugins, problems: [] }
-  const found = await loadPlugins(PLUGINS_DIR)
-  const named = found.plugins.filter((l) => names.includes(l.plugin.name))
-  const problems = found.failed
-    .filter((f) => names.includes(basename(f.folder)))
-    .map((f) => `The plugin in ${f.folder} did not load: ${f.why}`)
-  for (const n of names)
-    if (!named.some((l) => l.plugin.name === n) && !problems.some((p) => p.includes(`/${n}`)))
-      problems.push(`There is no plugin called ${n} in plugins/ to switch on.`)
-  for (const f of await plugins.register(named))
-    problems.push(`The plugin in ${f.folder} did not register: ${f.why}`)
-  return { plugins, problems }
-}
 
 const HEADERS = { host: '127.0.0.1:4700', 'x-alpha-token': 'journey' }
 type App = ReturnType<typeof buildServer>

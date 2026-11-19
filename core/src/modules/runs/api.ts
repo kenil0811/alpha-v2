@@ -5,7 +5,7 @@ import { all } from '../../world/db.ts'
 import { Refused } from '../../world/kinds.ts'
 import { type Field, findField, type Table } from '../../world/shape/index.ts'
 import { type JudgeSpec, judge } from '../judging.ts'
-import { nextRun, schedules } from '../schedules.ts'
+import { nextRun, schedules, shownSchedules } from '../schedules.ts'
 import type { ScheduleRunner } from './runner.ts'
 import type { RunFor, RunPlace } from './types.ts'
 import { connectorsOf, type Walls } from './walls.ts'
@@ -489,7 +489,7 @@ export function api(
           at: r.endedAt ?? r.startedAt,
         }))
       // the runs to come, the asking schedule's own left out
-      const coming = schedules(w)
+      const coming = shownSchedules(w)
         .filter((a) => a.state === 'on' && a.id !== scheduleId)
         .flatMap((a) => {
           const next = nextRun(a.trigger, a.lastRunAt, now)

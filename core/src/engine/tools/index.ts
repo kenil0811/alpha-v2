@@ -58,6 +58,8 @@ export function worldTools(
     ...scheduleTools(t),
     ...rest,
     ...browseTools(t),
+    // a plugin's, for the agent this desk is
+    ...(here.current.agent ? (hands?.plugins?.(here.current.agent, here) ?? []) : []),
   ].filter((x): x is ToolEntry => !!x)
 }
 

@@ -1,3 +1,5 @@
+import type { z } from 'zod'
+
 // A row of a table, its values by field name.
 export interface Row {
   id: string
@@ -64,12 +66,58 @@ export interface PluginHost {
   startBlock(words: () => string | null): void
   // A line in the journal: counts and what was done, never what was read.
   journal(words: string, data?: Record<string, unknown>): void
+  // Tools for an agent its kit carries (by its key, its folder in the kit's agents/), in that
+  // agent's chats alone: no other agent has them. What a tool writes, it writes through these calls.
+  tools(agent: string, tools: PluginTool[]): void
+  // A conversation started with an agent its kit carries, in that agent's chat for the person:
+  // words is the line they see there ("Started from Home"), brief what the agent is told to do.
+  converse(person: string, agent: string, words: string, brief: string): void
+  // Lines for the person's How to work, put to them on a card in its agent's chat: rows of a table
+  // of its own, the line in one field and Keep or Drop in a choice field. A line the person keeps
+  // is written to How to work as theirs, For you (For everyone here only when they are the owner)
+  // under the heading; nothing is written without their Keep. The card's id.
+  howToWork(turn: Turn, lines: Lines): string
+}
+
+// Where one of its agent's tools is called: the person whose chat it is, the agent, the turn.
+export interface Turn {
+  person: string
+  agent: string
+  turn: string
+}
+
+// A tool its own agent alone is given: what the model reads, its input, and what it does, its
+// words going back to the agent. A Refusal is said to the agent as the core's refusals are.
+export interface PluginTool<S extends z.ZodRawShape = z.ZodRawShape> {
+  name: string // letters, digits and underscores
+  description: string
+  input: S
+  run(input: z.infer<z.ZodObject<S>>, turn: Turn): Promise<string>
+}
+
+// One tool, typed by its input where it is written.
+export function tool<S extends z.ZodRawShape>(t: PluginTool<S>): PluginTool {
+  return t as unknown as PluginTool
+}
+
+// Lines put to the person for How to work (host.howToWork).
+export interface Lines {
+  words: string // the card's question
+  table: string // a table of its own module
+  rows: string[] // its rows, one line each
+  line: string // the field holding the line
+  choice: string // the choice field the person decides
+  keep: string // its choice that keeps the line
+  drop: string // its choice that drops it
+  for: 'me' | 'everyone'
+  heading: string // where the kept lines go in How to work ("About you")
 }
 
 export interface Input {
   params: Record<string, string>
   query: Record<string, string>
   body: unknown
+  person: { id: string; name: string; owner: boolean } // who asked, as the window is signed in
 }
 
 export interface Plugin {
@@ -93,6 +141,7 @@ export function checkPlugin(x: unknown, taken: string[] = []): string[] {
   const out: string[] = []
   if (typeof p.name !== 'string' || !NAME.test(p.name))
     out.push('name: letters, digits and dashes, starting with a letter.')
+  else if (p.name === 'alpha') out.push('name: alpha is Alpha’s own.')
   else if (taken.includes(p.name)) out.push(`A plugin called ${p.name} is loaded already.`)
   if (typeof p.title !== 'string' || !p.title.trim()) out.push('title: what the person reads.')
   if (p.kit !== undefined && typeof p.kit !== 'string') out.push('kit: a folder in the package.')

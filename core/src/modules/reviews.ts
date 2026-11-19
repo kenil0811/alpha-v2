@@ -2,8 +2,10 @@
 // rows it is about, each with the few choices it offers (In or Left out; Draft a note or Not now)
 // and one button for all. A choice is the person's word on that row's field, journaled as when
 // they set it in the window, so a later run never writes over it; the card is answered when every
-// row has one of its choices.
+// row has one of its choices. A plugin's agent puts lines for How to work the same way (rules P2):
+// a row the person keeps is written there as theirs, and nothing is written without their Keep.
 import type { Card } from '../world/cards.ts'
+import { keepLine } from '../world/how-to-work.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table, WriteCtx } from '../world/shape/index.ts'
 import type { World } from '../world/world.ts'
@@ -17,7 +19,15 @@ export interface ReviewInput {
   choices: string[] // two or three of its choices, the first the usual yes
   rows: string[]
   note: string | null // a field shown under each row: why the schedule put it there
+  // rows that are lines for How to work: the field holding the line, whose How to work, and the
+  // heading they go under; the first choice keeps a line
+  howToWork?: { line: string; for: 'me' | 'everyone'; heading: string }
 }
+
+// Who puts the rows to the person: a schedule's run, or a plugin's agent in its chat with them.
+export type ReviewBy =
+  | { schedule: string; module: string; run: string }
+  | { agent: string; turn: string; module: string; user: string }
 
 export interface ReviewView {
   table: string
@@ -38,10 +48,7 @@ export class Reviews {
 
   // A card for these rows, checked against the table: the field is a choice and the choices are
   // its own.
-  open(
-    input: Omit<ReviewInput, 'table'> & { table: Table },
-    by: { schedule: string; module: string; run: string },
-  ): Card {
+  open(input: Omit<ReviewInput, 'table'> & { table: Table }, by: ReviewBy): Card {
     const t = input.table
     const f = t.fields.find((x) => x.name === input.field)
     if (f?.kind !== 'choice') throw new Refused(`${t.name} has no choice field ${input.field}.`)
@@ -52,6 +59,9 @@ export class Reviews {
       )
     if (input.note && !t.fields.some((x) => x.name === input.note))
       throw new Refused(`${t.name} has no field ${input.note}.`)
+    const h = input.howToWork
+    if (h && !t.fields.some((x) => x.name === h.line))
+      throw new Refused(`${t.name} has no field ${h.line}.`)
     const known = new Set(this.world.records.list(t.id).map((r) => r.id))
     const rows = [...new Set(input.rows)].filter((r) => known.has(r))
     if (!rows.length) throw new Refused('There are no rows of that table to put to the person.')
@@ -63,10 +73,10 @@ export class Reviews {
         tool: REVIEW,
         input: { ...input, table: t.id, rows, choices: input.choices } satisfies ReviewInput,
       },
-      actor: { kind: 'schedule', id: by.schedule },
+      ...('schedule' in by
+        ? { actor: { kind: 'schedule', id: by.schedule }, run: by.run, user: this.owner }
+        : { actor: { kind: 'alpha', id: by.agent }, turn: by.turn, user: by.user }),
       module: by.module,
-      run: by.run,
-      user: this.owner,
     })
   }
 
@@ -132,6 +142,7 @@ export class Reviews {
         ],
         { ...ctx, byHand: { words: `Set ${r.field} to ${value} on ${row.name}`, card: cardId } },
       )
+      if (r.howToWork && value === r.choices[0]) this.keep(t, id, r.howToWork, card, ctx)
     }
     const after = this.view(this.world.cards.get(cardId) as Card) as ReviewView
     if (!after.open) {
@@ -142,5 +153,32 @@ export class Reviews {
       this.world.cards.answer(cardId, counts.join(', '), ctx.actor)
     }
     return after
+  }
+
+  // A line the person kept, written to How to work as theirs (rules P2): For everyone here only
+  // when they are the owner.
+  private keep(
+    t: Table,
+    id: string,
+    h: NonNullable<ReviewInput['howToWork']>,
+    card: Card,
+    ctx: WriteCtx,
+  ): void {
+    const person = ctx.actor.kind === 'person' ? this.world.user(ctx.actor.id ?? '') : undefined
+    if (!person || (card.user && person.id !== card.user))
+      throw new Refused('Only the person the lines were put to keeps them.')
+    if (h.for === 'everyone' && person.role !== 'owner')
+      throw new Refused('Only the owner keeps a line for everyone here.')
+    const slug = t.fields.find((f) => f.name === h.line)?.slug ?? ''
+    const words = String(this.world.records.get(id)?.record.values[slug] ?? '').trim()
+    if (!words) return
+    keepLine(this.world, h.for === 'me' ? person.id : null, words, h.heading)
+    this.world.line({
+      actor: ctx.actor,
+      kind: 'remembered',
+      words: `Will remember: ${words}`,
+      data: { for: h.for, card: card.id },
+      user: person.id,
+    })
   }
 }

@@ -421,7 +421,8 @@ CREATE TABLE kits (
   updated_at TEXT NOT NULL,
   api INTEGER NOT NULL DEFAULT 1,
   maintainer TEXT,
-  managed TEXT
+  managed TEXT,
+  plugin TEXT -- the plugin whose kit it is (rules P1): its agents and schedules hide while it is off
 );
 
 -- A kit's file as it was installed, by hash.

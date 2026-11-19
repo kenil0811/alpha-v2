@@ -82,6 +82,7 @@ export interface ServerOptions {
   }
   failedConnectors?: { folder: string; why: string }[] // folders that did not load at start
   plugins?: PluginRoute[] // what plugins answer, under /api/plugins/<name>/
+  pluginsOn?: string[] // the plugins on here, by name (rules P1)
   bridgeDir?: string // where the Bridge's downloads are, signed (pnpm server bridge)
   bridgeKey?: string // the key they are checked against: Kenil's when not given (a test gives its own)
 }
@@ -234,6 +235,8 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
           params: req.params as Record<string, string>,
           query: req.query as Record<string, string>,
           body: req.body,
+          // whoever is asking, as every route is about them
+          person: { id: user.id, name: user.name, owner: user.role === 'owner' },
         }),
     })
 

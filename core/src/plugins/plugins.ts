@@ -1,23 +1,32 @@
-// Alpha's plugins: packages in plugins/ loaded at start, each
-// given a host (plugin-sdk) that is all it may do in Alpha: read rows, call a connector's tool,
-// ask the model once, keep rows in its own module, answer its own routes, add a block to the start
-// of a conversation, write a journal line. The core names no plugin; with none, Alpha runs as it
-// did. A plugin that does not load is said and left out, as a connector is.
+// Alpha's plugins: packages in plugins/, each loaded at start only where alpha.yaml's plugins line
+// names it (rules P1), and given a host (plugin-sdk) that is all it may do in Alpha: read rows, call
+// a connector's tool, ask the model once, keep rows in its own module, answer its own routes, add a
+// block to the start of a conversation, write a journal line, give tools to an agent its kit
+// carries, start a conversation with that agent, and put lines for How to work to the person
+// (rules P2). The core names no plugin; with none, Alpha runs as it did. A plugin that does not load
+// is said and left out, as a connector is.
 import { mkdirSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { readAgents } from '@alpha/kit-sdk'
 import {
   checkPlugin,
   type Input,
   type Plugin,
   type PluginHost,
+  type PluginTool,
   Refusal,
   type Row,
 } from '@alpha/plugin-sdk'
 import { entryOf } from '../connectors/discover.ts'
 import type { ConnectorService } from '../connectors/service.ts'
+import type { Engine } from '../engine/engine.ts'
+import type { ToolEntry } from '../engine/registry.ts'
+import { guardAsync, type Here, ok } from '../engine/tools/common.ts'
 import { keepKit } from '../modules/defaults.ts'
 import { readKit } from '../modules/kits/index.ts'
+import { Reviews } from '../modules/reviews.ts'
+import { run } from '../world/db.ts'
 import { Refused } from '../world/kinds.ts'
 import type { Table, WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
@@ -63,6 +72,36 @@ export async function loadPlugins(
   return { plugins, failed }
 }
 
+// Of the plugins found, those alpha.yaml's plugins line names; what kept a named one from loading.
+export function named(
+  names: string[],
+  found: Awaited<ReturnType<typeof loadPlugins>>,
+): { plugins: Loaded[]; problems: string[] } {
+  const plugins = found.plugins.filter((l) => names.includes(l.plugin.name))
+  const problems = found.failed
+    .filter((f) => names.includes(basename(f.folder)))
+    .map((f) => `The plugin in ${f.folder} did not load: ${f.why}`)
+  for (const n of names)
+    if (!plugins.some((l) => l.plugin.name === n) && !problems.some((p) => p.includes(`/${n}`)))
+      problems.push(`There is no plugin called ${n} in plugins/ to switch on.`)
+  return { plugins, problems }
+}
+
+// The plugins alpha.yaml's plugins line names, loaded and given their hosts; one not named does not
+// load at all (rules P1). What kept a named one from loading, in words.
+export async function switchOn(
+  names: string[],
+  deps: PluginDeps,
+): Promise<{ plugins: Plugins; problems: string[] }> {
+  deps.world.pluginsOn = names
+  const plugins = new Plugins(deps)
+  if (!names.length) return { plugins, problems: [] }
+  const chosen = named(names, await loadPlugins(PLUGINS_DIR))
+  for (const f of await plugins.register(chosen.plugins))
+    chosen.problems.push(`The plugin in ${f.folder} did not register: ${f.why}`)
+  return { plugins, problems: chosen.problems }
+}
+
 export interface PluginDeps {
   world: World
   user: User
@@ -82,11 +121,24 @@ export interface PluginRoute {
   answer: (input: Input) => Promise<unknown>
 }
 
+// Tools a plugin gave one agent its kit carries.
+interface Given {
+  plugin: string
+  kit: string // its kit's name, whose module the agent came with
+  agent: string // the agent's key
+  tools: PluginTool[]
+}
+
+const TOOL = /^[a-z][a-z0-9_]*$/
+
 export class Plugins {
   readonly deps: PluginDeps
   readonly loaded: Loaded[] = []
   readonly routes: PluginRoute[] = []
   private starts: (() => string | null)[] = []
+  private given: Given[] = []
+  // the engine, once it is made (after the plugins, which add to its conversations)
+  engine: Engine | null = null
 
   constructor(deps: PluginDeps) {
     this.deps = deps
@@ -111,12 +163,59 @@ export class Plugins {
     const said: string[] = []
     for (const l of this.loaded)
       if (l.plugin.kit) {
-        const out = await keepKit(this.deps.world, join(l.dir, l.plugin.kit), ctx, {
-          managed: true,
-        })
+        const folder = join(l.dir, l.plugin.kit)
+        const out = await keepKit(this.deps.world, folder, ctx, { managed: true })
         if (out) said.push(out)
+        // whose kit it is, so its agents and schedules hide while the plugin is off (rules P1)
+        const m = this.deps.world.shape.ownModule(readKit(folder).manifest.name)
+        if (m)
+          run(
+            this.deps.world.db,
+            'UPDATE kits SET plugin = ? WHERE module_id = ?',
+            l.plugin.name,
+            m.id,
+          )
       }
     return said
+  }
+
+  // The plugins on here, by name.
+  on(): string[] {
+    return this.loaded.map((l) => l.plugin.name)
+  }
+
+  // The tools plugins gave this agent, for its desks (rules P2): none for any other agent.
+  toolsFor(agentId: string, here: Here): ToolEntry[] {
+    const { world } = this.deps
+    const a = world.agents.get(agentId)
+    if (!a?.source || !a.key) return []
+    return this.given
+      .filter((g) => g.agent === a.key && world.shape.ownModule(g.kit)?.id === a.source)
+      .flatMap((g) =>
+        g.tools.map(
+          (t): ToolEntry => ({
+            server: g.plugin,
+            name: t.name,
+            description: t.description,
+            input: t.input,
+            alwaysLoad: true,
+            handler: (input) =>
+              guardAsync(async () => {
+                const turn = {
+                  person: here.current.user.id,
+                  agent: agentId,
+                  turn: here.current.turn ?? '',
+                }
+                try {
+                  return ok(await t.run(input as never, turn))
+                } catch (err) {
+                  if (err instanceof Refusal) throw new Refused(err.message)
+                  throw err
+                }
+              }),
+          }),
+        ),
+      )
   }
 
   // What the plugins add to the start of a conversation.
@@ -144,6 +243,13 @@ export class Plugins {
       const t = m && world.shape.ownTable(m.id, table)
       if (!t) throw new Refused(`${l.plugin.title} has no table called ${table}.`)
       return t
+    }
+    // an agent its kit carries, by its key
+    const ownAgent = (key: string): string => {
+      const m = ownModule()
+      const a = m && world.agents.shipped(m.id, key)
+      if (!a) throw new Refused(`${l.plugin.title} has no agent keyed ${key} here.`)
+      return a.id
     }
     const byName = (t: Table, values: Record<string, unknown>) =>
       Object.fromEntries(
@@ -270,6 +376,53 @@ export class Plugins {
           user: user.id,
           module: ownModule()?.id ?? null,
         })
+      },
+      tools: (agent, tools) => {
+        if (!l.plugin.kit || !kitName)
+          throw new Refused(`${l.plugin.title} carries no agent: it has no kit.`)
+        const keys = readAgents(join(l.dir, l.plugin.kit, 'agents')).flatMap((x) =>
+          typeof x === 'string' ? [] : [x.key],
+        )
+        if (!keys.includes(agent))
+          throw new Refused(`${l.plugin.title}'s kit carries no agent keyed ${agent}.`)
+        const taken = this.given.filter((g) => g.plugin === name).flatMap((g) => g.tools)
+        for (const t of tools) {
+          if (!TOOL.test(t.name))
+            throw new Refused(`${t.name}: a tool's name is letters, digits and underscores.`)
+          if ([...taken, ...tools].filter((x) => x.name === t.name).length > 1)
+            throw new Refused(`${l.plugin.title} has two tools called ${t.name}.`)
+        }
+        this.given.push({ plugin: name, kit: kitName, agent, tools })
+      },
+      converse: (person, agent, words, brief) => {
+        if (!this.engine) throw new Refused('Conversations are not set up in this core.')
+        const who = world.user(person)
+        if (!who) throw new Refused('There is no such person here.')
+        this.engine.desk(who, ownAgent(agent)).takeWork(words, brief)
+      },
+      howToWork: (turn, lines) => {
+        const t = ownTable(lines.table)
+        const m = ownModule()
+        const a = world.agents.get(turn.agent)
+        if (!m || a?.source !== m.id)
+          throw new Refused(`Only an agent ${l.plugin.title}'s kit carries puts lines to a person.`)
+        const who = world.user(turn.person)
+        if (!who) throw new Refused('There is no such person here.')
+        if (lines.for === 'everyone' && who.role !== 'owner')
+          throw new Refused('Only the owner keeps a line for everyone here.')
+        const card = new Reviews(world, null).open(
+          {
+            words: lines.words,
+            table: t,
+            field: lines.choice,
+            choices: [lines.keep, lines.drop],
+            rows: lines.rows,
+            note: null,
+            howToWork: { line: lines.line, for: lines.for, heading: lines.heading },
+          },
+          { agent: turn.agent, turn: turn.turn, module: m.id, user: who.id },
+        )
+        return card.id
       },
     }
   }

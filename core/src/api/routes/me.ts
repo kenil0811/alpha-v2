@@ -38,6 +38,7 @@ export function registerMe(ctx: Ctx): void {
       theme: theme === 'light' || theme === 'dark' ? theme : 'mac',
       textSize: size === 'small' || size === 'large' ? size : 'medium',
       layout: layoutOf(),
+      plugins: options.pluginsOn ?? [],
     }
   })
 
