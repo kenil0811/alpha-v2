@@ -30,7 +30,6 @@ export type {
   RowFileView,
 } from './file-types.ts'
 export type { Layout, Me } from './me-types.ts'
-export type { NeverKindView, NeverView } from './never-types.ts'
 export type { FieldView, Pick, RowAround, RowPageView } from './row-types.ts'
 
 // What Find (⌘K) found beyond screens and tables: rows, by their words.

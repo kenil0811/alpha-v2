@@ -76,11 +76,7 @@ export function useConnection(
       {(details || k.refused.length > 0 || k.leftOut > 0) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-3 text-sm">
           {details && <span>Set up by {k.owner}</span>}
-          {k.leftOut > 0 && (
-            <a className="underline underline-offset-3" href="#/settings/permissions">
-              Its last read left out {k.leftOut} on the never-use list
-            </a>
-          )}
+          {k.leftOut > 0 && <span>Its last read left out {k.leftOut} on the never-use list</span>}
           {details &&
             k.tables.map((t) => (
               <span key={t.id}>

@@ -1,10 +1,9 @@
 # The never-use list Alpha ships (onboarding plan, 18 Nov, call 39; rules N1): what a connection
-# or a computer reads but Alpha never keeps. Each kind is one line in Settings › Permissions, with
-# its words for the person to read. A word matches a whole word of what is read ("loan" never
+# or a computer reads but Alpha never keeps. It is changed here alone, and never shown in Alpha
+# (Kenil, 19 Nov). A word matches a whole word of what is read ("loan" never
 # matches "loaned"), a phrase its words in a row, and a stem the inside of a word ("bank" matches
 # "bankofamerica"). Words that are also everyday work words (chase, hinge, court, statement) are
-# left off: a match leaves the whole mail, event or file out. The firm and each person add their
-# own in Settings; the owner may turn a kind off for everyone where it is the firm's own work.
+# left off: a match leaves the whole mail, event or file out.
 
 kinds:
   - key: banking

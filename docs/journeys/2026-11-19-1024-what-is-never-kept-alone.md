@@ -1,4 +1,4 @@
-# Journey what-is-never-kept: 2026-11-18 18:39
+# Journey what-is-never-kept: 2026-11-19 10:24
 
 A mail on the never-use list is left out as it is read, and its connection says how many
 
@@ -11,7 +11,7 @@ Fresh tenant, model claude-opus-5-5, on Claude Code, Alpha's prompt alone.
 Took 0.0 s.
 
 - pass: rows in Mail: 3 (saw 3)
-- pass: the gmail connection is connected, left out 2 on the never-use list (saw connected |  | person:u_gpk4bgzpy3 | left out 2)
+- pass: the gmail connection is connected, left out 2 on the never-use list (saw connected |  | person:u_v3tzj9ws8h | left out 2)
 - pass: errors: 0 (saw 0)
 
 The journal verifies, rows included: 9 lines.

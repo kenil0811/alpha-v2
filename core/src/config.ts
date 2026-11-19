@@ -86,7 +86,6 @@ const Never = z.object({
     )
     .min(1),
 })
-export type NeverKinds = z.infer<typeof Never>['kinds']
 
 const cache = new Map<string, { mtime: number; value: unknown }>()
 

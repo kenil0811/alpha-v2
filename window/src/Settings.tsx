@@ -11,7 +11,6 @@ import { Connections } from './Connections.tsx'
 import { HowToWork } from './HowToWork.tsx'
 import { KeptFiles } from './KeptFiles.tsx'
 import { Modules, when } from './Modules.tsx'
-import { NeverUse } from './NeverUse.tsx'
 import { AskSites, Standing } from './Rules.tsx'
 import { Schedules } from './Schedules.tsx'
 import { SetupList, useSetup, useSignIn } from './SetupPanel.tsx'
@@ -174,8 +173,7 @@ export function Settings({
 }
 
 // Permissions: what Alpha has on this Mac (Claude's sign-in, the readers' downloads, Contacts and
-// Calendar, Chrome), then what it does without asking because the person said Always, then what
-// it never keeps (the never-use list).
+// Calendar, Chrome), then what it does without asking because the person said Always.
 function Permissions({ version, owner }: { version: number; owner: boolean }) {
   const [view, reload] = useSetup()
   return (
@@ -197,7 +195,6 @@ function Permissions({ version, owner }: { version: number; owner: boolean }) {
         <WaitingRules version={version} />
         <Standing version={version} />
       </Section>
-      <NeverUse version={version} />
     </>
   )
 }

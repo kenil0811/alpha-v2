@@ -11,7 +11,6 @@ import {
   type Connector,
   checkConnector,
   type Effect,
-  FIRM,
   type Fixtures,
   type Host,
   judgeHealth,
@@ -28,6 +27,7 @@ import { type Connection, ownerOf } from '../world/connections.ts'
 import { Refused } from '../world/kinds.ts'
 import type { World } from '../world/world.ts'
 import { waits } from './computers.ts'
+import { neverList } from './never.ts'
 import { landIn, tableOf } from './places.ts'
 import { type CallSays, isRemote, undoSaid } from './process.ts'
 import { readThrough } from './reads.ts'
@@ -230,8 +230,8 @@ export class ConnectorService {
       judgements: this.judgements(),
       ...(fixtures ? { fixtures } : {}),
       ...(effect !== 'read' ? { once: true } : {}),
-      // what this connection never keeps, left out as it reads, wherever it runs (rules N1)
-      never: this.world.never.listFor(ownerOf(conn) === FIRM ? null : ownerOf(conn)),
+      // what Alpha never keeps, left out as it reads, wherever it runs (rules N1)
+      never: neverList(),
     }
     // a connector in its own process paces and retries there, by the same options
     // the computer it runs on, when a person's computer runs it (the Bridge)

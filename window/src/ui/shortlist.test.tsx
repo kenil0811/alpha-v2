@@ -47,27 +47,4 @@ describe('a short list', () => {
     const blank = editStep(same, { type: 'type', words: '  ' }).edit
     expect(editStep(blank, { type: 'keep' })).toEqual({ edit: null })
   })
-  it('says whose a list is when the person may only read it, with no Add and no ✕', () => {
-    const read = renderToString(
-      <ShortList
-        title="Words for everyone here"
-        items={['merger']}
-        keyOf={(w) => w}
-        wordsOf={(w) => w}
-        addLabel="Add a word for everyone"
-        onAdd={{ typed: async () => {}, placeholder: 'A word' }}
-        readOnly="The owner keeps this list"
-        remove={{
-          title: 'Take it off?',
-          yes: 'Take it off',
-          what: () => 'it',
-          run: async () => {},
-        }}
-        empty="None yet."
-      />,
-    )
-    expect(read).toContain('The owner keeps this list')
-    expect(read).not.toContain('aria-label="Add a word for everyone"')
-    expect(read).not.toContain('aria-label="Delete “merger”"')
-  })
 })

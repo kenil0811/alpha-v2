@@ -225,16 +225,13 @@ of its own; and what an agent puts into a site waits for the person's yes (rules
 person can watch the page an agent works on as a live picture, take it over and hand it back; an
 agent that meets what only the person can do asks them onto the page on a card.
 
-What a connection reads passes the **never-use list** first (rules N1, 18 Nov): the kinds Alpha
-ships (`core/config/never.yaml`: banking, health and medical, passwords and credentials, legal
-matters, dating, personal money), each on unless the owner turns it off for everyone where it is
-the firm's own work, the firm's own words and the connection's own person's. Settings ›
-Permissions names the kinds, with the owner's switch, and keeps the firm's and each person's
-words; a kind's words are changed in the config alone and never shown. The list travels with every call; the connector's host leaves a matching row or file
-out before it lands, in the connector's own process, so on a person's computer it never leaves
-it, and the core leaves it out again as it lands. Each connection says how many its last read left
-out, never which. A connector that lands nothing (QuickBooks, read by a module's own scripts) is
-outside it.
+What a connection reads passes the **never-use list** first (rules N1, 18 Nov): the list Alpha
+ships in `core/config/never.yaml` (banking, health and medical, passwords and credentials, legal
+matters, dating, personal money), changed there alone and never shown in Alpha. The list travels
+with every call; the connector's host leaves a matching row or file out before it lands, in the
+connector's own process, so on a person's computer it never leaves it, and the core leaves it out
+again as it lands. Each connection says how many its last read left out, never which. A connector
+that lands nothing (QuickBooks, read by a module's own scripts) is outside it.
 
 A connection is connected, needs sign-in, not working, paused, or waiting for the customer. Signing
 in is as the person, so Alpha reaches only what they can. Each action says whether it can be

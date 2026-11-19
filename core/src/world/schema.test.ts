@@ -94,21 +94,13 @@ describe('the world’s shape', () => {
     again.close()
   })
 
-  it('gives a world made before migration 4 the never-use list and what a read left out', async () => {
+  it('gives a world made before migration 4 what a read left out on the never-use list', async () => {
     const file = join(home, 'oldest.sqlite')
     const old = new DatabaseSync(file)
-    old.exec(
-      SCHEMA.replace(/\n\s*left_out INTEGER,[^\n]*/, '').replace(
-        /\n-- The never-use list's own words[\s\S]*?\n\);\n/,
-        '\n',
-      ),
-    )
+    old.exec(SCHEMA.replace(/\n\s*left_out INTEGER,[^\n]*/, ''))
     old.exec('PRAGMA user_version = 3')
     old.exec(
       "INSERT INTO connections (id, connector, account, state, made_by, created_at) VALUES ('c1', 'gmail', 'a@b.example', 'connected', 'system', 'now')",
-    )
-    expect(old.prepare("SELECT name FROM sqlite_master WHERE name = 'never_use'").get()).toBe(
-      undefined,
     )
     old.close()
     const again = new DatabaseSync(file)
@@ -117,7 +109,6 @@ describe('the world’s shape', () => {
     expect(again.prepare("SELECT left_out FROM connections WHERE id = 'c1'").get()).toEqual({
       left_out: null,
     })
-    expect(again.prepare('SELECT count(*) AS n FROM never_use').get()).toEqual({ n: 0 })
     again.close()
   })
 
