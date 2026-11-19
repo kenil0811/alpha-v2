@@ -9,6 +9,7 @@ import { type Call, type Connector, Problem, type TableSpec } from '@alpha/conne
 import { visitsIn } from './history.ts'
 import { appDirs, browserRoots, claudeDir, codexDir, historyFiles } from './paths.ts'
 import {
+  type App,
   claudeRequests,
   codexRequests,
   macApps,
@@ -102,7 +103,13 @@ export const apps: Connector = {
   tables: [APPS],
   tools: {},
   sync: async (c: Call) => {
-    const all = process.platform === 'win32' ? windowsApps() : macApps(appDirs())
+    // a Mac's Spotlight answers the Bridge itself, outside the reader's sandbox (its helper channel)
+    const all =
+      process.platform === 'win32'
+        ? windowsApps()
+        : c.host.helper
+          ? ((await c.host.helper(['apps'])) as App[])
+          : macApps(appDirs())
     const landed = await c.host.land(
       'Apps',
       all.map((a) => ({

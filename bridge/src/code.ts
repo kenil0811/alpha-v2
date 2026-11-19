@@ -5,6 +5,8 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, realpathSync, statSync } from 'node:fs'
 import { homedir, hostname, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { appDirs } from '@alpha/connector-computer/paths'
+import { macApps } from '@alpha/connector-computer/read'
 import { type HelperOptions, runHelper } from '@alpha/connector-sdk'
 import type { Start } from './children.ts'
 
@@ -43,6 +45,10 @@ const HELPER =
     ? join(root, 'Alpha Helper.app')
     : join(root, 'connector-sdk', 'helper', 'build', 'Alpha Helper.app'))
 export const helper = (args: string[], options: Record<string, unknown>): Promise<unknown> => {
+  // the apps here, with Spotlight's last use: asked of the Bridge itself, which Spotlight answers
+  // (a reader's sandbox reaches no system service)
+  if (args[0] === 'apps' && process.platform === 'darwin')
+    return Promise.resolve(macApps(appDirs()))
   if (process.platform !== 'darwin' || !existsSync(HELPER))
     return Promise.reject(new Error("Alpha's helper is not on this computer."))
   // the helper lives inside Alpha Bridge, so macOS names Alpha Bridge as asking

@@ -1,10 +1,9 @@
-// The browsers' history on the computer, read from a copy of each profile's file (a running
-// browser keeps its own open): which sites were opened on which days, and their pages' titles.
-// Counted here; only what the readers make of it leaves the computer.
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+// The browsers' history on the computer, read where it is, as a file that does not change while it
+// is read (a running browser keeps it open; nothing is copied or written): which sites were opened
+// on which days, and their pages' titles. Counted here; only what the readers make of it leaves the
+// computer.
 import { DatabaseSync } from 'node:sqlite'
+import { pathToFileURL } from 'node:url'
 
 export interface Visit {
   url: string
@@ -26,11 +25,10 @@ export function visitsIn(
   const since = BigInt(Math.floor(now - days * DAY + FROM_1601)) * 1000n
   const out: Visit[] = []
   for (const { browser, file } of files) {
-    const dir = mkdtempSync(join(tmpdir(), 'alpha-history-'))
     try {
-      const copy = join(dir, 'History')
-      copyFileSync(file, copy)
-      const db = new DatabaseSync(copy, { readOnly: true })
+      const at = pathToFileURL(file)
+      at.search = 'immutable=1'
+      const db = new DatabaseSync(at, { readOnly: true })
       try {
         const query = db.prepare(
           `SELECT u.url AS url, u.title AS title, v.visit_time AS t
@@ -50,9 +48,7 @@ export function visitsIn(
         db.close()
       }
     } catch {
-      // a profile that cannot be read now (locked, or not a history) is left out
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
+      // a profile that cannot be read now (not a history, or not there any more) is left out
     }
   }
   return out

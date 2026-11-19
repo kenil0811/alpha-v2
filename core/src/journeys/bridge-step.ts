@@ -129,7 +129,8 @@ async function standIn(
       ],
       shell: false,
     }),
-    helper: async () => HELPER_EVENTS,
+    // the Mac's helper, replayed: the recorded events; no apps (their reader asks it too)
+    helper: async (args) => (args[0] === 'apps' ? [] : HELPER_EVENTS),
   })
   return {
     bridge,
