@@ -1,11 +1,10 @@
 // The never-use list as Settings › Permissions shows it (rules N1).
 
-// One kind Alpha ships: its words and phrases, then its stems as "bank…", and whether the firm has
-// it on.
+// One kind Alpha ships: its name and whether the firm has it on. Its words stay in
+// core/config/never.yaml and are never shown.
 export interface NeverKindView {
   key: string
   title: string
-  words: string[]
   on: boolean
 }
 

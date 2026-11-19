@@ -12,11 +12,11 @@ import { actorName, type WriteCtx } from './shape/index.ts'
 
 export const EVERYONE = 'everyone'
 
-// One shipped kind as Settings shows it: its words, and whether the firm has it on.
+// One shipped kind as Settings shows it: its name and whether the firm has it on. Its words stay in
+// core/config/never.yaml, never shown.
 export interface NeverKind {
   key: string
   title: string
-  words: string[] // its words and phrases, then its stems as "bank…"
   on: boolean
 }
 
@@ -51,7 +51,6 @@ export class NeverUse {
     return config.never().map((k) => ({
       key: k.key,
       title: k.title,
-      words: [...k.words, ...k.stems.map((s) => `${s}…`)],
       on: !off.has(k.key),
     }))
   }

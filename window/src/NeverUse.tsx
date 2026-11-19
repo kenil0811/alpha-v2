@@ -1,6 +1,7 @@
 // Settings › Permissions, Never use (rules N1): what Alpha reads but never keeps. The kinds Alpha
-// ships, each with its words, on for everyone unless the owner turns one off where it is the
-// firm's own work; then the firm's own words, the owner's to change; then the person's own.
+// ships, by name only (their words stay in core/config/never.yaml), on for everyone unless the
+// owner turns one off where it is the firm's own work; then the firm's own words, the owner's to
+// change; then the person's own.
 import type { NeverView } from '@alpha/core/api'
 import { Ban } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -59,7 +60,7 @@ export function NeverUse({ version }: { version: number }) {
     <>
       <Section
         title="Never use"
-        about="What Alpha reads but never keeps. A mail, an event, a contact, a site, a file or an AI request holding one of these words is left out as it is read, here or on your computer, and each connection says how many it left out. Turn a kind off where it is your own work, as a dental practice's patients are."
+        about="What Alpha reads but never keeps. A mail, an event, a contact, a site, a file or an AI request about one of these is left out as it is read, here or on your computer, and each connection says how many it left out. Turn a kind off where it is your own work, as a dental practice's patients are."
       >
         <List>
           {view.kinds.map((k) => (
@@ -68,12 +69,11 @@ export function NeverUse({ version }: { version: number }) {
               wrap
               title={k.title}
               sub={
-                <>
-                  {on === k.key && <Refusal words={problem} />}
-                  <span>
-                    {k.on ? k.words.join(', ') : 'Off for everyone here: kept as it is read'}
-                  </span>
-                </>
+                on === k.key && problem ? (
+                  <Refusal words={problem} />
+                ) : k.on ? undefined : (
+                  'Off for everyone here: kept as it is read'
+                )
               }
               actions={
                 <span {...(view.owner ? {} : { 'data-tip': 'The owner turns a kind on or off' })}>

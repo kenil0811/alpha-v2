@@ -16,8 +16,9 @@ Step 2 of the onboarding plan (calls 38 to 40, 44), built straight from the list
   person's computer, before it leaves it), and again in the core as rows come back over the
   pipe. Each connection keeps how many its last read left out (`connections.left_out`), and its
   line in Connections says so, linking to Settings › Permissions.
-- Settings › Permissions has Never use under the rules: each kind with its words and a switch,
-  then Words for everyone here and Your own words. The short list gained a typed Add and a
+- Settings › Permissions has Never use under the rules: each kind by name with a switch (its
+  words are not shown, on Kenil's word of 19 Nov: they confuse people, and change in
+  `core/config/never.yaml`), then Words for everyone here and Your own words. The short list gained a typed Add and a
   read-only form (ui-rules R8, I4, L11).
 - Rule N1 with its test (five cases, one through the connector process as the Bridge runs it), and
   a journey, `what-is-never-kept`, which passes on recorded mail at no cost.
