@@ -20,6 +20,9 @@
       "path": "plugin-sdk"
     },
     {
+      "path": "plugins/interviews"
+    },
+    {
       "path": "connectors/mac"
     },
     {

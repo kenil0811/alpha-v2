@@ -1,0 +1,53 @@
+# Interviews' own module (the onboarding plan of 18 Nov, calls 27 and 29): the report of each
+# person's work the Interviewer keeps, and the lines about them they kept. It carries the
+# Interviewer. Its rows stay when interviews are switched off, as an ordinary module's do.
+name: Your work
+version: 0.1.0
+api: 3
+business_case:
+  for: Each person here, about their own work
+  keeps: "What the Interviewer learned of each person's work: the work they repeat, its steps, where it stalls, and what Alpha could build for it, every line saying what it rests on"
+  decides: What to build next for each person, and what is not worth building
+tables:
+  - name: Workflows
+    about: "One piece of work a person repeats, as the Interviewer found it in what it read and what they answered."
+    fields:
+      - { name: Name, kind: text, about: "The work, in a few words of the person's own." }
+      - { name: Person, kind: text, about: "Whose work it is: their name in Alpha." }
+      - { name: What the data shows, kind: text, about: "What the rows read show of it, with their counts." }
+      - { name: What it means, kind: text, about: "What it means for the person: the time it takes, where it stalls." }
+      - { name: Times a month, kind: number, about: "How often it happens: counted in code from the rows it rests on, or estimated with what the estimate rests on." }
+      - { name: Minutes each, kind: number, about: "How long it takes each time: the person's answer, or estimated with what the estimate rests on." }
+      - { name: Hours a month, kind: number, about: "Times a month by minutes each, worked out in code; estimated when either is." }
+      - { name: Rank, kind: number, about: "Its place in the report: by hours a month until the person moves it." }
+      - { name: Status, kind: choice, choices: [Drafting, Asking, Played back, Agreed, Not worth building], tones: { Drafting: warn, Asking: warn, Played back: accent, Agreed: good, Not worth building: bad }, about: "Where it is: drafted from what was read, being asked about, played back to the person, agreed, or not worth building." }
+      - { name: Rests on, kind: text, about: "What it rests on, one to a line: row, answer, page, file or line, then its id." }
+  - name: Steps
+    about: "One step of a workflow: what happens, where, with what, by whom and how often."
+    fields:
+      - { name: Workflow, kind: relation, relates_to: Workflows, part_of: true, about: "The workflow it is a step of." }
+      - { name: Order, kind: number, about: "Its place in the workflow." }
+      - { name: What happens, kind: text, about: "The step, in a sentence." }
+      - { name: Where, kind: text, about: "Where it happens: a system, a site, a place." }
+      - { name: Tool, kind: text, about: "What it is done with." }
+      - { name: Who, kind: text, about: "Who does it." }
+      - { name: How often, kind: text, about: "How often it happens, in words." }
+      - { name: Stalls here, kind: choice, choices: [Yes, No], tones: { Yes: bad }, about: "Whether the work waits or goes wrong at this step." }
+      - { name: Rests on, kind: text, about: "What it rests on, one to a line: row, answer, page, file or line, then its id." }
+  - name: Proposals
+    about: "What Alpha could build for a workflow, played back to the person for their answer, or why it is not worth building."
+    fields:
+      - { name: Workflow, kind: relation, relates_to: Workflows, part_of: true, about: "The workflow it is for." }
+      - { name: Kind, kind: choice, choices: [Module, Agent, Schedule, Not worth building], about: "What it would be." }
+      - { name: What it does, kind: text, about: "What it would do, in three to five lines; or why it is not worth building." }
+      - { name: Target, kind: text, about: "What it should change, in the person's terms: hours saved, a step that no longer stalls." }
+      - { name: Answer, kind: choice, choices: [Waiting, Yes, Yes and also, Not this], tones: { Waiting: warn, Yes: good, Yes and also: good, Not this: bad }, about: "The person's answer to the playback." }
+      - { name: Rests on, kind: text, about: "What it rests on, one to a line: row, answer, page, file or line, then its id." }
+  - name: About you
+    about: "One thing the Interviewer learned about a person, proposed until they keep or drop it; a kept one is in their How to work."
+    fields:
+      - { name: Line, kind: text, about: "What it learned, in a sentence." }
+      - { name: Person, kind: text, about: "Who it is about: their name in Alpha." }
+      - { name: For, kind: choice, choices: [You, Everyone here], about: "Where a kept line goes in How to work: For you, or For everyone here (the owner's alone)." }
+      - { name: State, kind: choice, choices: [Proposed, Kept, Dropped], tones: { Proposed: warn, Kept: good, Dropped: bad }, about: "Proposed until the person keeps or drops it; a dropped line is never proposed again." }
+      - { name: Rests on, kind: text, about: "What it rests on, one to a line: row, answer, page, file or line, then its id." }

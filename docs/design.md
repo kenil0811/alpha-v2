@@ -51,7 +51,7 @@ interface in `core/src/platform/`, and `pnpm check` refuses a Mac call anywhere 
 | `kit-sdk/` | The kit contract, from which `docs/kit-api.md` is generated |
 | `connector-sdk/`, `connectors/`, `connectors-extra/` | What connectors are built on, the set that ships, and those added by hand |
 | `bridge/` | The Bridge, run on a person's own computer to lend Alpha what they turn on there |
-| `plugin-sdk/`, `plugins/` | The seam for first-party plugins, each on only where an Alpha's `alpha.yaml` names it; none ships yet |
+| `plugin-sdk/`, `plugins/` | The seam for first-party plugins, each on only where an Alpha's `alpha.yaml` names it: `interviews` today |
 | `mac/`, `release/`, `scripts/` | The Mac app, the installer and `alpha` command, the release and the walls |
 | `journeys/` | Journeys as YAML, their reports in `docs/journeys/` |
 
@@ -326,7 +326,13 @@ its kit carries (that agent's alone), start a conversation with that agent for a
 lines for How to work to the person on a card, written as theirs only on their Keep (rules P2).
 Its screens (`plugins/<name>/window/`) show only while the core says it is on (`/api/me`). Switched
 off after use, what it made stays, and its agents and schedules are hidden and stop until it is on
-again (`kits.plugin`, migration 5).
+again (`kits.plugin`, migration 5). On a server, `pnpm server plugins <address> interviews` (the
+server's `alpha plugins`) writes the line and restarts that Alpha.
+
+**Interviews** (`plugins/interviews`, the onboarding plan of 18 Nov) is the one plugin so far. Its
+kit is Your work, a managed module holding each person's report (Workflows, their Steps and
+Proposals) and the About you lines put to them, and it carries the Interviewer, an agent titled
+"Learns how you work and what would help".
 
 ## The window
 

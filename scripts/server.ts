@@ -9,6 +9,8 @@
 //                                                      domain points at the machine's fixed IP first
 //   bridge <address>                                   put Alpha Bridge's signed files (pnpm bridge mac,
 //                                                      windows) where the Alpha hands them out and updates from
+//   plugins <address> [<plugin> …]                     the plugins that Alpha loads (alpha.yaml's plugins
+//                                                      line, rules P1); none named switches them all off
 // Each takes as <name> for a named Alpha beside the first one (as avilo): its own system user,
 // data, sealed secrets, service, port, release and address. On Tailscale a named Alpha is private,
 // at the machine's address and its own port, or with public, open to the internet on 8443.
@@ -17,6 +19,7 @@ import { execFileSync, spawn } from 'node:child_process'
 import { createPrivateKey, sign } from 'node:crypto'
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -194,6 +197,12 @@ else if (what === 'setup' && host && rest[0]) {
     `sudo install -d -o ${user} -g ${user} ${there} && sudo install -o ${user} -g ${user} -m 644 ${names} ${there}/ && rm -f ${names}`,
   )
   console.log(`The Bridge is in ${there}.`)
+} else if (what === 'plugins' && host) {
+  // first-party plugins by name, in this repository's plugins/ (rules P1, R5)
+  for (const p of rest)
+    if (!/^[a-z][a-z0-9-]*$/.test(p) || !existsSync(join(ROOT, 'plugins', p)))
+      throw new Error(`There is no plugin called ${p} in plugins/.`)
+  remote(host, `sudo alpha${as} plugins ${rest.join(' ')}`)
 } else if (what === 'link' && host) {
   const link = execFileSync('ssh', [...SSH, host, `sudo alpha${as} link`], {
     encoding: 'utf8',
@@ -234,7 +243,7 @@ else if (what === 'setup' && host && rest[0]) {
   remote(host, `sudo alpha address https://${status.Self.DNSName.replace(/\.$/, '')}`)
 } else {
   console.error(
-    'Say: pnpm server setup|package|update|bridge|link|address. The top of scripts/server.ts says how.',
+    'Say: pnpm server setup|package|update|bridge|plugins|link|address. The top of scripts/server.ts says how.',
   )
   process.exit(1)
 }

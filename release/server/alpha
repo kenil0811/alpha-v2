@@ -1,12 +1,12 @@
 #!/bin/sh
 # The alpha command on a server, for the machine's first Alpha or a named one (alpha avilo …):
 #   alpha [<name>] status | logs | backup | export | link | address <https address>
-#                 | update <file> <signature> | rollback
+#                 | plugins [<plugin> …] | update <file> <signature> | rollback
 # Each Alpha is its own system user, data, sealed secrets, service, port and release; they share
 # the machine, Node and the releases' code, and nothing else.
 set -eu
 export PATH=/opt/alpha/node/bin:/usr/local/bin:/usr/bin:/bin
-COMMANDS='status logs backup export link address update rollback'
+COMMANDS='status logs backup export link address plugins update rollback'
 NAME=
 case " $COMMANDS " in
   *" ${1:-status} "*) ;;
@@ -72,6 +72,17 @@ case "${1:-status}" in
     systemctl restart "$UNIT"
     healthy && say "Alpha is at $2."
     ;;
+  plugins)
+    # the plugins this Alpha loads (rules P1): alpha.yaml's plugins line, none when none is named
+    shift
+    for p in "$@"; do
+      case $p in [a-z]*[!a-z0-9-]* | [!a-z]* | '') echo "A plugin's name is small letters, digits and dashes." >&2; exit 1 ;; esac
+    done
+    sed -i '/^plugins:/d' "$HOME_DIR/alpha.yaml"
+    [ $# -gt 0 ] && printf 'plugins: [%s]\n' "$(echo "$*" | sed 's/ /, /g')" >>"$HOME_DIR/alpha.yaml"
+    systemctl restart "$UNIT"
+    healthy && say "Plugins on: ${*:-none}."
+    ;;
   update)
     file=$2
     sig=$3
@@ -116,5 +127,5 @@ case "${1:-status}" in
     systemctl restart "$UNIT"
     healthy && say "Back on $previous."
     ;;
-  *) say "Say: alpha [<name>] status | logs | backup | export | link | address <https address> | update <file> <signature> | rollback"; exit 1 ;;
+  *) say "Say: alpha [<name>] status | logs | backup | export | link | address <https address> | plugins [<plugin> …] | update <file> <signature> | rollback"; exit 1 ;;
 esac
