@@ -9,6 +9,7 @@ import { TableTab } from '../TableTab.tsx'
 import { useBarSlot } from './bar-slot.tsx'
 import { cn } from './cn.ts'
 import { PillSwitch } from './pill-switch.tsx'
+import type { TabKeeping } from './tab-order.ts'
 
 export type Tab = {
   key: string
@@ -20,9 +21,17 @@ export type Tab = {
   table?: TableSummary | undefined // a table's tab: right-click and double-click rename and arrange it
 }
 
-export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
+export function Tabs({
+  label,
+  tabs,
+  keeping,
+}: {
+  label: string
+  tabs: Tab[]
+  keeping?: TabKeeping | undefined // a module's own: tabs dragged, hidden, shown again
+}) {
   const bar = useBarSlot()
-  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} />, bar)
+  if (bar) return createPortal(<PillSwitch label={label} tabs={tabs} keeping={keeping} />, bar)
   return (
     <div
       role="tablist"
@@ -56,10 +65,20 @@ export function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
 }
 
 // A tab that is a table takes its menu and rename; any other is its link as it was.
-export function Maybe({ tab, children }: { tab: Tab; children: (on: object) => ReactNode }) {
+export function Maybe({
+  tab,
+  extra,
+  children,
+}: {
+  tab: Tab
+  extra?: ((close: () => void) => ReactNode) | undefined
+  children: (on: object) => ReactNode
+}) {
   // a fixed tab (People, Setup, a page, Settings' parts) has no menu; the browser's is not offered
   return tab.table ? (
-    <TableTab table={tab.table}>{children}</TableTab>
+    <TableTab table={tab.table} extra={extra}>
+      {children}
+    </TableTab>
   ) : (
     <>{children({ onContextMenu: (e: MouseEvent) => e.preventDefault() })}</>
   )

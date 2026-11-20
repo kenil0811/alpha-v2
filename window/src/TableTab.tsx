@@ -22,9 +22,11 @@ type On = {
 
 export function TableTab({
   table: t,
+  extra,
   children,
 }: {
   table: TableSummary
+  extra?: ((close: () => void) => ReactNode) | undefined // more lines for the header's own tabs
   children: (on: On) => ReactNode
 }) {
   const menu = useContextMenu()
@@ -68,6 +70,7 @@ export function TableTab({
               )}
               {shown ? 'Hide from header' : 'Pin to header'}
             </MenuItem>
+            {extra?.(menu.close)}
           </Popover>
         </>
       )}

@@ -18,6 +18,7 @@ export interface Layout {
   folded: string[] // the modules folded in the rail
   hidden: string[] // the modules hidden from the rail, with the ones inside them
   pinned: string[] // the modules pinned to the top of the rail, in the order pinned
+  tabOrder: Record<string, string[]> // per module, its tables' tabs in the order the person dragged them
   barHidden: string[] // the tables the person hid from their module's header tabs
   railWidth: number | null // the rail dragged wider or narrower; none is 216px
   panel: number | null // the assistant's width; none is 320px

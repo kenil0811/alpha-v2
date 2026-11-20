@@ -9,6 +9,7 @@ export function registerMe(ctx: Ctx): void {
     const folded = world.preference(user.id, 'rail_folded_modules')
     const hidden = world.preference(user.id, 'rail_hidden_modules')
     const pinned = world.preference(user.id, 'rail_pinned_modules')
+    const tabOrder = world.preference(user.id, 'tab_order')
     const barHidden = world.preference(user.id, 'bar_hidden_tables')
     const panel = Number(world.preference(user.id, 'panel_width'))
     const n = (key: string) => {
@@ -20,6 +21,7 @@ export function registerMe(ctx: Ctx): void {
       folded: folded ? (JSON.parse(folded) as string[]) : [],
       hidden: hidden ? (JSON.parse(hidden) as string[]) : [],
       pinned: pinned ? (JSON.parse(pinned) as string[]) : [],
+      tabOrder: tabOrder ? (JSON.parse(tabOrder) as Record<string, string[]>) : {},
       barHidden: barHidden ? (JSON.parse(barHidden) as string[]) : [],
       railWidth: n('rail_width'),
       panel: Number.isFinite(panel) && panel > 0 ? panel : null,
@@ -52,6 +54,7 @@ export function registerMe(ctx: Ctx): void {
         folded: z.array(z.string()).optional(),
         hidden: z.array(z.string()).optional(),
         pinned: z.array(z.string()).optional(),
+        tabOrder: z.record(z.string(), z.array(z.string())).optional(),
         barHidden: z.array(z.string()).optional(),
         panel: z.number().int().positive().nullable().optional(),
         railWidth: z.number().int().positive().nullable().optional(),
@@ -87,6 +90,16 @@ export function registerMe(ctx: Ctx): void {
         'rail_pinned_modules',
         given.pinned.length ? JSON.stringify(given.pinned) : null,
       )
+    if (given.tabOrder !== undefined) {
+      const kept = Object.fromEntries(
+        Object.entries(given.tabOrder).filter(([, ids]) => ids.length),
+      )
+      world.setPreference(
+        user.id,
+        'tab_order',
+        Object.keys(kept).length ? JSON.stringify(kept) : null,
+      )
+    }
     if (given.barHidden !== undefined)
       world.setPreference(
         user.id,
