@@ -314,13 +314,17 @@ export function Grid({
       onKeyDown={keys}
       className="scroll-shown mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface"
     >
-      <table className="table-fixed border-separate border-spacing-0 text-md" style={{ width }}>
+      {/* at least the frame's width, the + column taking what is over, so + sits at its right edge */}
+      <table
+        className="table-fixed border-separate border-spacing-0 text-md"
+        style={{ width: `max(${width}px, 100%)` }}
+      >
         <colgroup>
           <col style={{ width: TICK }} />
           {shown.map((f, i) => (
             <col key={f.id} style={{ width: widths[i] }} />
           ))}
-          <col style={{ width: trail }} />
+          <col />
         </colgroup>
         <thead>
           <tr>
@@ -349,12 +353,8 @@ export function Grid({
                 onConfig={onConfig}
               />
             ))}
-            <th
-              className={cn(
-                'sticky top-0 z-2 h-9 border-line border-b bg-surface p-0',
-                rowAction && 'right-0 z-3',
-              )}
-            >
+            {/* + held at the frame's right edge, whatever the width or scroll; cells pass under it */}
+            <th className="sticky top-0 right-0 z-3 h-9 border-line border-b bg-surface p-0">
               <AddField tableId={tableId} />
             </th>
           </tr>
@@ -484,7 +484,7 @@ export function Grid({
                         const b = e.currentTarget.getBoundingClientRect()
                         setMenu({ row: r, field: null, x: b.left, y: b.bottom })
                       }}
-                      className="mx-auto grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
+                      className="grid size-6.5 place-items-center rounded-sm text-ink-3 opacity-0 hover:bg-hover hover:text-ink focus:opacity-100 group-hover/row:opacity-100"
                     >
                       <EllipsisVertical className="size-3.5" />
                     </button>
@@ -1061,7 +1061,7 @@ function AddField({ tableId }: { tableId: string }) {
         data-tip={fixed ?? 'Add a field'}
         disabled={!!fixed}
         onClick={() => setOpen((o) => !o)}
-        className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
+        className="ml-auto grid h-9 w-11 place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
       >
         <Plus className="size-3.75" />
       </button>
