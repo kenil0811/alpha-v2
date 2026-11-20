@@ -208,7 +208,8 @@ export function shapeTables(
 }
 
 // A kit's views: made when the table has none by that name; on update, replaced while nobody has
-// changed the kit's version (its hash is still there), else left as theirs.
+// changed the kit's version (its hash is still there), else left as theirs. A view the kit made and
+// no longer names goes on update while nobody has changed it; one a person changed stays theirs.
 export function shapeViews(
   world: World,
   module: Module,
@@ -246,6 +247,10 @@ export function shapeViews(
       else if (was.kitHash && (was.kitHash !== hash || (about && was.about !== about)))
         world.views.save({ table: t.id, id: was.id, name, config, kitHash: hash, ...said }, ctx)
     }
+    const named = new Set(spec.views.map((v) => v.name.toLowerCase()))
+    for (const v of world.views.list(t.id))
+      if (v.madeBy === 'kit' && v.kitHash && !named.has(v.name.toLowerCase()))
+        world.views.remove(v.id, ctx)
   }
 }
 

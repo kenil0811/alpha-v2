@@ -1,7 +1,7 @@
 # Alpha's own Calendar: every calendar Alpha reads lands in its Events (a Mac's own through Alpha
 # Bridge, Outlook, Google), found by its lasting keys, so nothing is copied or kept twice.
 name: Calendar
-version: 0.1.0
+version: 0.2.0
 api: 3
 core: true
 description: >

@@ -234,6 +234,43 @@ describe('updating a kit', () => {
     expect(world.shape.table('Deliveries')?.startView).toBeNull()
   })
 
+  it('drops on update a list the kit no longer names, unless a person changed it', async () => {
+    const withViews = (dir: string, version: string, views: string) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace(
+            'network:',
+            `  - name: Rounds\n    fields:\n      - { name: Day, kind: date }\n${views}network:`,
+          ),
+      )
+    const first = join(home, 'kit-drop-1')
+    cpSync(KIT, first, { recursive: true })
+    withViews(
+      first,
+      '0.1.0',
+      '    views:\n      - { name: Soonest, sorts: [{ field: Day, dir: asc }] }\n      - { name: Latest, sorts: [{ field: Day, dir: desc }] }\n',
+    )
+    await install(world, first, ctx)
+    const t = world.shape.table('Rounds')?.id as string
+    const latest = world.views.list(t).find((v) => v.name === 'Latest')
+    world.views.save(
+      {
+        table: t,
+        id: latest?.id as string,
+        name: 'Latest',
+        config: { ...(latest?.config as object), search: 'x' },
+      },
+      ctx,
+    )
+    const next = join(home, 'kit-drop-2')
+    cpSync(KIT, next, { recursive: true })
+    withViews(next, '0.2.0', '')
+    await update(world, 'Bakery', next, ctx)
+    expect(world.views.list(t).map((v) => v.name)).toEqual(['Latest']) // the changed one stays
+  })
+
   it('names the documents a table’s rows take, and a newer version adds kinds', async () => {
     const withDocs = (dir: string, version: string, kinds: string) =>
       writeFileSync(
