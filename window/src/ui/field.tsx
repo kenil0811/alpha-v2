@@ -113,7 +113,8 @@ export function AddNew({ adds, onDone }: { adds: Adds; onDone: () => void }) {
 }
 
 // One dropdown everywhere: a button that opens a short list, with a search
-// line past six. Written as a <select> is, <option>s and onChange alike.
+// line past six. A field's choices each wear their colour, on the button too (T17). Written as a
+// <select> is, <option>s and onChange alike.
 export function Select({
   className,
   value,
@@ -184,8 +185,12 @@ export function Select({
           className,
         )}
       >
-        <span className="min-w-0 flex-1 truncate">
-          {(options.find((o) => o.value === now) ?? options[0])?.label ?? ''}
+        <span className="flex min-w-0 flex-1 truncate">
+          {of && now ? (
+            <Choice of={of} value={now} />
+          ) : (
+            ((options.find((o) => o.value === now) ?? options[0])?.label ?? '')
+          )}
         </span>
         <ChevronDown className="size-3.5 shrink-0 text-ink-3" />
       </button>
