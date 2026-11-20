@@ -102,9 +102,7 @@ export function Notes({
               {value}
             </Markdown>
           </div>
-        ) : (
-          <p className="text-ink-3 text-md">No notes yet.</p>
-        )}
+        ) : null}
         {onSave && (
           <Button size="sm" variant="ghost" className="w-fit" onClick={() => setWriting(true)}>
             <Pencil className="size-3.25" />

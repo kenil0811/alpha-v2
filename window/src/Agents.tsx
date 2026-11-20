@@ -474,7 +474,6 @@ function Memories({
         />
       )}
       {problem && <p className="text-bad text-sm">{problem}</p>}
-      {memories.length === 0 && !adding && <p className="text-ink-2 text-md">Nothing yet.</p>}
       <ul className="flex flex-col">
         {memories.map((m) => (
           <li

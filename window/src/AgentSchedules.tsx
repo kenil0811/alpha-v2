@@ -194,26 +194,22 @@ export function AgentSchedules({
           }}
         />
       )}
-      {schedules.length === 0 && !adding ? (
-        <p className="text-ink-3 text-sm">No schedules yet.</p>
-      ) : (
-        schedules.length > 0 && (
-          <List>
-            {schedules.map((s) => (
-              <Row
-                key={s.id}
-                lead={<CalendarClock className="size-4 text-ink-3" />}
-                title={
-                  <a href={`#/schedule/${s.id}`} className="hover:underline">
-                    {s.name}
-                  </a>
-                }
-                sub={lineUnder(s)}
-                actions={<Controls s={s} onChange={onChange} />}
-              />
-            ))}
-          </List>
-        )
+      {schedules.length > 0 && (
+        <List>
+          {schedules.map((s) => (
+            <Row
+              key={s.id}
+              lead={<CalendarClock className="size-4 text-ink-3" />}
+              title={
+                <a href={`#/schedule/${s.id}`} className="hover:underline">
+                  {s.name}
+                </a>
+              }
+              sub={lineUnder(s)}
+              actions={<Controls s={s} onChange={onChange} />}
+            />
+          ))}
+        </List>
       )}
     </section>
   )

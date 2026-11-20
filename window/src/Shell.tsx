@@ -195,11 +195,6 @@ export function Rail({
               empty.on.onContextMenu(e)
           }}
         >
-          {modules.length === 0 && online && (
-            <div className="px-2 py-1 text-rail-ink-3 text-sm">
-              Modules appear here as you ask for them.
-            </div>
-          )}
           <Popover point={empty.point} open={empty.open} onClose={empty.close}>
             <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
           </Popover>

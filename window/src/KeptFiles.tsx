@@ -119,11 +119,7 @@ export function KeptFiles({ version, module }: { version: number; module: string
         </List>
       ) : (
         <p className="text-ink-3 text-md">
-          {!files.length
-            ? 'No files yet.'
-            : words
-              ? 'No file has that in its name.'
-              : 'No files here.'}
+          {!files.length ? null : words ? 'No file has that in its name.' : 'No files here.'}
         </p>
       )}
     </Section>

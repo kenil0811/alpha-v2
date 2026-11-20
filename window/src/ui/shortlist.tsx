@@ -9,7 +9,7 @@ import { IconButton } from './button.tsx'
 import { Confirm } from './dialog.tsx'
 import { Field } from './field.tsx'
 import { List, Row } from './list.tsx'
-import { Empty, Section } from './section.tsx'
+import { Section } from './section.tsx'
 
 export type Edit = { key: string; words: string; was: string } | null
 type Step =
@@ -44,7 +44,6 @@ export function ShortList<T>({
   onAdd,
   onEdit,
   remove,
-  empty,
 }: {
   title: string
   about?: string
@@ -62,7 +61,6 @@ export function ShortList<T>({
     what: (item: T) => ReactNode
     run: (item: T) => Promise<unknown>
   }
-  empty: ReactNode
 }) {
   const [edit, setEdit] = useState<Edit>(null)
   const [asking, setAsking] = useState<string | null>(null)
@@ -84,7 +82,6 @@ export function ShortList<T>({
         </IconButton>
       }
     >
-      {items?.length === 0 && <Empty>{empty}</Empty>}
       {items && items.length > 0 && (
         <List>
           {items.map((item) => {

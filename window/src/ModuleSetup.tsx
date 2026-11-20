@@ -89,7 +89,7 @@ export function ModuleDetails({ m, onChange }: { m: ModuleView; onChange: () => 
           about={`What Alpha reads about ${m.name} before it works on it; ask Alpha to change them.`}
         >
           <div className="text-md">
-            <Words text={m.notes.replace(/^# .*\n+/, '') || 'No notes yet.'} />
+            <Words text={m.notes.replace(/^# .*\n+/, '')} />
           </div>
         </Part>
         {m.kit && <Yours moduleId={m.id} onChange={onChange} />}
@@ -133,9 +133,7 @@ function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
             <AllSchedules moduleId={m.id} schedules={m.schedules} onChange={onChange} />
           </div>
         )}
-        {m.schedules.length === 0 ? (
-          <p className="text-ink-2 text-md">No schedules yet.</p>
-        ) : (
+        {m.schedules.length > 0 && (
           <List>
             {m.schedules.map((a) => (
               <OneSchedule key={a.id} a={a} agents={agents} onChange={onChange} />
