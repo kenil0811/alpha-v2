@@ -203,7 +203,9 @@ describe('a plugin', () => {
       expect((await read('here')).json()).toEqual({ not: null })
       expect(world.connections.get(here.id)?.lastSyncAt).not.toBeNull()
       // its computer is not connected now: not read, and said
-      expect((await read('desk')).json().not).toMatch(/Kenil’s Mac could not be read now/)
+      expect((await read('desk')).json().not).toBe(
+        'desk for Kenil’s Mac was not read now: Waiting for Kenil’s Mac. Is it on, with Alpha Bridge running?',
+      )
       expect(world.connections.get(desk.id)?.lastSyncAt).toBeNull()
     } finally {
       await a.close()

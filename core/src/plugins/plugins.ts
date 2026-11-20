@@ -515,12 +515,18 @@ export class Plugins {
         const unread: string[] = []
         for (const c of mine) {
           await service.sync(c.id)
-          if (world.connections.get(c.id)?.lastSyncAt === c.lastSyncAt) unread.push(c.account)
+          const after = world.connections.get(c.id)
+          if (after?.lastSyncAt !== c.lastSyncAt) continue
+          const title = service.find(c.connector)?.manifest.title ?? c.connector
+          // its computer away (waiting, or paused there), or the read's own failure, as its tile says
+          const why = after?.health ?? 'Connections says why'
+          unread.push(
+            /^(Waiting for|Paused on) /.test(why)
+              ? `${title} for ${c.account} was not read now: ${why}. Is it on, with Alpha Bridge running?`
+              : `${title} for ${c.account} could not be read now: ${why}`,
+          )
         }
-        if (!unread.length) return null
-        return mine.some((c) => c.computer)
-          ? `${unread.join(', ')} could not be read now: is the computer on, with Alpha Bridge running?`
-          : `${unread.join(', ')} could not be read now: Connections says why.`
+        return unread.length ? unread.join('\n') : null
       },
       activity: (person, days) => {
         const since = new Date(Date.now() - days * 86_400_000).toISOString()

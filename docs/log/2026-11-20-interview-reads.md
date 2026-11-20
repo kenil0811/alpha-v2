@@ -8,3 +8,10 @@ journal writes it. Browsing, Apps and AI work read at the interview and never on
 `read(connector)`, which reads a connector's connections there and then, saying why not when the
 computer is away, and the source tool calls it for those three on the person's Allow before it
 looks. Plugin tests hold both.
+
+Then his second try still read nothing, and the Interviewer blamed his Mac. The Bridge was
+online; Browsing and AI work had failed with "Your work is managed by Alpha, so it cannot make
+the table Sites": the readers land in the plugin's own module, which Alpha manages (M2), and only
+the kit's install was let in. A connector that comes with a plugin now makes its mirror tables
+there as the core (M2 says so, 20 Nov), and `host.read` says the connection's own reason
+(waiting for the computer, or the read's failure) instead of guessing the computer is off.

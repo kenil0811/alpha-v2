@@ -96,3 +96,27 @@ it('asks on Home to get to know them, starts and carries on in the Interviewerâ€
   expect((await route('POST', '/finish')).state).toBe('done')
   expect(told.at(-1)?.words).toBe('Finished from Home')
 })
+
+it('lets the readers that come with it make their tables in Your work, which Alpha manages', async () => {
+  const user = world.owner('Kenil')
+  const { plugins } = await switchOn(['interviews'], {
+    world,
+    user,
+    home,
+    region: () => null,
+    ask: async () => ({ answer: null }),
+    connectors: null,
+  })
+  await plugins.keepKits({ actor: { kind: 'system' }, user: user.id })
+  const reader = (plugin?: string) =>
+    ({
+      manifest: { name: 'browsing', title: 'Browsing', ...(plugin ? { plugin } : {}) },
+      module: 'Your work',
+      tables: [{ name: 'Sites', fields: [{ name: 'Site', kind: 'text' }] }],
+    }) as unknown as Connector
+  // a connector of anyone else's is turned away as every door is (rules M2)
+  expect(() => landIn(world, reader())).toThrow(/managed by Alpha/)
+  const [sites] = landIn(world, reader('interviews'))
+  const m = world.shape.ownModule('Your work')
+  expect([sites?.name, sites?.module.id, sites?.mirror]).toEqual(['Sites', m?.id, 'Browsing'])
+})

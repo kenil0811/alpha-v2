@@ -8,7 +8,11 @@ import { markMirror } from '../world/shape/keys.ts'
 import type { World } from '../world/world.ts'
 
 export function landIn(world: World, c: Connector): Table[] {
-  const actor = { kind: 'connector' as const, id: c.manifest.name }
+  // a connector that comes with a plugin lands in the plugin's own module, which Alpha manages: its
+  // tables come with Alpha as the module does, so the core makes them as itself (rules M2)
+  const actor = c.manifest.plugin
+    ? { kind: 'system' as const }
+    : { kind: 'connector' as const, id: c.manifest.name }
   if (!c.tables.length) return []
   // each table in its own module when it names one (a shared Events), else the connector's
   const modules = new Map<string, ReturnType<typeof world.shape.makeModule>>()
