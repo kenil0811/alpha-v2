@@ -5,6 +5,7 @@ import type { FieldView, FilterRule, RowView, ViewConfig } from '@alpha/core/api
 import { ArrowDown, ArrowUp, Columns3, ListFilter, RotateCcw, Rows3, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { cn } from '../ui/cn.ts'
+import { SEARCH_PAST, SearchLine } from '../ui/field.tsx'
 import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
 import { RuleEditor } from './ColumnMenu.tsx'
 import { hide, move, removeRule, setGroup, setRule } from './edits.ts'
@@ -179,10 +180,12 @@ export function AddFilter({
 }) {
   const [open, setOpen] = useState(false)
   const [field, setField] = useState<FieldView | null>(null)
+  const [words, setWords] = useState('')
   const anchor = useRef<HTMLButtonElement>(null)
   const close = () => {
     setOpen(false)
     setField(null)
+    setWords('')
   }
   return (
     <>
@@ -208,17 +211,22 @@ export function AddFilter({
             }}
           />
         ) : (
-          <div className="flex max-h-80 flex-col overflow-y-auto">
-            {fields.map((f) => (
-              <MenuItem
-                key={f.id}
-                checked={config.filters.rules.some((r) => r.field === f.id)}
-                onClick={() => setField(f)}
-              >
-                <KindIcon field={f} />
-                {f.name}
-              </MenuItem>
-            ))}
+          <div className="flex max-h-80 flex-col">
+            {fields.length > SEARCH_PAST && <SearchLine words={words} onWords={setWords} />}
+            <div className="flex flex-col overflow-y-auto">
+              {fields
+                .filter((f) => f.name.toLowerCase().includes(words.trim().toLowerCase()))
+                .map((f) => (
+                  <MenuItem
+                    key={f.id}
+                    checked={config.filters.rules.some((r) => r.field === f.id)}
+                    onClick={() => setField(f)}
+                  >
+                    <KindIcon field={f} />
+                    {f.name}
+                  </MenuItem>
+                ))}
+            </div>
           </div>
         )}
       </Popover>
