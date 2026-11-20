@@ -27,6 +27,7 @@ const PILL_GAP = 4 // the pills' gap-1
 const LINE_GAP = 8 // the line's gap-2
 
 export function ViewTabs({
+  picker,
   tools,
   right,
   views,
@@ -44,7 +45,8 @@ export function ViewTabs({
   onReset,
   links,
 }: {
-  tools: ReactNode // the view, search and filter, after the saved lists
+  picker: ReactNode // how the rows are drawn, an icon before the lists
+  tools: ReactNode // search and filter, at the right before the table's actions
   right: ReactNode // the table's own actions, ⋮ and the chevron, at the right end
   views: SavedView[]
   fields: FieldView[] // to say what each list holds
@@ -78,6 +80,7 @@ export function ViewTabs({
   const picked = useRef<HTMLButtonElement>(null)
   const moreAt = useRef<HTMLButtonElement>(null)
   const saveAt = useRef<HTMLSpanElement>(null)
+  const plusAt = useRef<HTMLButtonElement>(null)
   const onList = useContextMenu()
   const view = views.find((v) => v.id === current)
   const close = () => {
@@ -231,6 +234,7 @@ export function ViewTabs({
       >
         {ordered.map((v) => pill(v, true))}
       </div>
+      {picker}
       <fieldset
         ref={pills}
         className={cn(
@@ -275,6 +279,18 @@ export function ViewTabs({
           <ChevronDown className="size-3.5" />
         </button>
       )}
+      {keeps && !links && (
+        <button
+          ref={plusAt}
+          type="button"
+          aria-label="New list"
+          data-tip="New list, from what shows now"
+          onClick={() => setNaming({ kind: 'new', at: plusAt })}
+          className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-hover hover:text-ink"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      )}
       {dirty && (
         <>
           <Button size="sm" variant="ghost" onClick={onReset} data-tip="Go back to what was saved">
@@ -317,9 +333,11 @@ export function ViewTabs({
           )}
         </>
       )}
-      {tools}
       {problem && <span className="min-w-0 truncate text-bad text-sm">{problem}</span>}
-      <span className="ml-auto flex shrink-0 items-center gap-1">{right}</span>
+      <span className="ml-auto flex shrink-0 items-center gap-1">
+        {tools}
+        {right}
+      </span>
       <Popover anchor={moreAt} open={more} onClose={() => setMore(false)}>
         {rest.length > 0 && (
           <>

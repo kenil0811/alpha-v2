@@ -189,11 +189,12 @@ export function AddFilter({
       <button
         ref={anchor}
         type="button"
+        aria-label="Filter"
+        data-tip="Filter"
         onClick={() => (open ? close() : setOpen(true))}
-        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line border-dashed px-2.5 text-ink-2 text-md hover:border-accent-line hover:text-ink"
+        className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
       >
-        <ListFilter className="size-3.25" />
-        Filter
+        <ListFilter className="size-4" />
       </button>
       <Popover anchor={anchor} open={open} onClose={close}>
         {field ? (
