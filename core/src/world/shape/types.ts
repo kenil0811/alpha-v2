@@ -26,6 +26,7 @@ export interface Field {
   kind: FieldKind
   choices: string[]
   tones: Record<string, Tone> // a choice's colour where it means a state (Fits, Does not fit)
+  default: string | null // the choice a new row takes when it gives none, for everyone (★)
   relatesTo: string | null
   many: boolean // a relation holding a list of rows: a junction table, not a column
   tags: boolean // a choice holding several: a JSON list in its column

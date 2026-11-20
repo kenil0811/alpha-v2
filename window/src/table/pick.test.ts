@@ -12,6 +12,7 @@ const field = (kind: string, more: Partial<FieldView> = {}): FieldView => ({
   kind,
   choices: [],
   tones: {},
+  default: null,
   many: false,
   relatesTo: kind === 'relation' ? 't_suppliers' : null,
   summary: null,

@@ -107,7 +107,15 @@ export function setChoices(
       one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
       {},
     )
-    run(shape.db, 'UPDATE fields SET options = ? WHERE id = ?', json({ ...o, choices }), f.id)
+    // a default no longer offered goes with its choice
+    const { default: def, ...rest } = o
+    const kept = typeof def === 'string' && choices.includes(def) ? { default: def } : {}
+    run(
+      shape.db,
+      'UPDATE fields SET options = ? WHERE id = ?',
+      json({ ...rest, choices, ...kept }),
+      f.id,
+    )
     append(shape.db, {
       actor: ctx.actor,
       kind: 'shaped',
@@ -120,6 +128,50 @@ export function setChoices(
     })
     writeManifest(shape, table.module)
     return shape.table(table.id) as Table
+  })
+}
+
+// The choice a new row of a table takes when it gives none, for everyone (★ in a dropdown); null
+// clears it. One of the field's own choices, on a field holding one (tags have none). Like a saved
+// list's default, it is the person's under any kit's mark and asks nothing (asks.ts).
+export function setDefault(
+  shape: Shape,
+  tableId: string,
+  field: string,
+  value: string | null,
+  ctx: WriteCtx,
+): void {
+  const table = shape.table(tableId)
+  if (!table) throw new Refused('That table is not there.')
+  const f = findField(table, field)
+  if (f.kind !== 'choice' || f.tags) throw new Refused(`${f.name} takes no default.`)
+  if (value !== null && !f.choices.includes(value))
+    throw new Refused(`${value} is not one of ${f.name}'s choices.`)
+  if (f.default === value) return
+  tx(shape.db, () => {
+    const { default: _was, ...o } = parse<Record<string, unknown>>(
+      one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+      {},
+    )
+    run(
+      shape.db,
+      'UPDATE fields SET options = ? WHERE id = ?',
+      json({ ...o, ...(value === null ? {} : { default: value }) }),
+      f.id,
+    )
+    append(shape.db, {
+      actor: ctx.actor,
+      kind: 'shaped',
+      words:
+        value === null
+          ? `New rows in ${table.name} no longer start with a ${f.name}.`
+          : `New rows in ${table.name} now start with ${f.name} ${value}.`,
+      data: { table: table.id, field: f.id, default: value },
+      user: ctx.user ?? null,
+      turn: ctx.turn ?? null,
+      module: table.module.id,
+      run: ctx.run ?? null,
+    })
   })
 }
 
@@ -153,10 +205,15 @@ export function setTones(
     JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort())
   if (same(f.tones, tones)) return
   tx(shape.db, () => {
+    // the rest of its options stay: whether it holds several, an index, its default
+    const { tones: _was, ...o } = parse<Record<string, unknown>>(
+      one<{ options: string }>(shape.db, 'SELECT options FROM fields WHERE id = ?', f.id)?.options,
+      {},
+    )
     run(
       shape.db,
       'UPDATE fields SET options = ? WHERE id = ?',
-      json({ choices: f.choices, ...(Object.keys(tones).length ? { tones } : {}) }),
+      json({ ...o, ...(Object.keys(tones).length ? { tones } : {}) }),
       f.id,
     )
     append(shape.db, {

@@ -233,7 +233,7 @@ export function TableView({
   const paged = rows.slice(at * size, (at + 1) * size)
 
   return (
-    <TableName.Provider value={data.name}>
+    <TableName.Provider value={{ name: data.name, id: own ? null : data.id }}>
       <ShapeFixed.Provider value={managedWhy(data.managed)}>
         <div className="flex h-full min-h-0">
           <div className="flex min-w-0 flex-1 flex-col">
