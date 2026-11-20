@@ -231,7 +231,13 @@ export function ViewTabs({
       >
         {ordered.map((v) => pill(v, true))}
       </div>
-      <fieldset ref={pills} className="m-0 flex min-w-0 gap-1 border-0 p-0">
+      <fieldset
+        ref={pills}
+        className={cn(
+          'm-0 flex min-w-0 gap-1 border-0 p-0',
+          links && 'scroll-quiet overflow-x-auto',
+        )}
+      >
         <legend className="sr-only">Saved lists</legend>
         {links
           ? links.map((l) => (
