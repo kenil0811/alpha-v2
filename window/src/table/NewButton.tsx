@@ -11,7 +11,7 @@ export function NewButton({
   const why = typeof onNew === 'string' ? onNew : undefined
   return (
     <span data-tip={why}>
-      <Button size="sm" disabled={!!why} onClick={typeof onNew === 'string' ? undefined : onNew}>
+      <Button disabled={!!why} onClick={typeof onNew === 'string' ? undefined : onNew}>
         <Plus className="size-3.5" />
         New
       </Button>

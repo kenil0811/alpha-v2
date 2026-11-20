@@ -277,13 +277,12 @@ export function ViewTabs({
       )}
       {dirty && (
         <>
-          <Button size="sm" variant="ghost" onClick={onReset} data-tip="Go back to what was saved">
+          <Button onClick={onReset} data-tip="Go back to what was saved">
             Cancel
           </Button>
           {!keeps ? null : view ? (
             <span ref={saveAt} className="flex shrink-0">
               <Button
-                size="sm"
                 variant="primary"
                 className="rounded-r-none"
                 onClick={onSave}
@@ -292,7 +291,6 @@ export function ViewTabs({
                 Save
               </Button>
               <Button
-                size="sm"
                 variant="primary"
                 className="rounded-l-none border-l-accent-ink/30 px-1.25"
                 aria-haspopup="menu"
@@ -306,11 +304,7 @@ export function ViewTabs({
             </span>
           ) : (
             <span ref={saveAt} className="flex shrink-0">
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => setNaming({ kind: 'new', at: saveAt })}
-              >
+              <Button variant="primary" onClick={() => setNaming({ kind: 'new', at: saveAt })}>
                 Save as list
               </Button>
             </span>

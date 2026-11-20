@@ -18,6 +18,7 @@ import {
   Table2,
 } from 'lucide-react'
 import { type ReactNode, useRef, useState } from 'react'
+import { Button } from '../ui/button.tsx'
 import { Select } from '../ui/field.tsx'
 import { MenuItem, Popover } from '../ui/popover.tsx'
 
@@ -117,16 +118,11 @@ export function KindPicker({
   )
   return (
     <span className="flex items-center gap-2">
-      <button
-        ref={anchor}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink text-md hover:bg-hover"
-      >
+      <Button ref={anchor} onClick={() => setOpen((o) => !o)}>
         {current?.icon}
         {current?.words}
         <ChevronDown className="size-3.5 text-ink-3" />
-      </button>
+      </Button>
       {config.kind === 'board' &&
         pick(
           'The board’s columns',
