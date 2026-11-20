@@ -11,7 +11,7 @@ import { isPast } from './day.ts'
 import { moduleTabs, peopleTabs } from './Module.tsx'
 import { Record } from './Record.tsx'
 import { TableView } from './TableView.tsx'
-import { FieldsAt } from './table/Mirror.tsx'
+import { FieldsAdded, FieldsAt } from './table/Mirror.tsx'
 import { FieldList } from './table/RowPanel.tsx'
 import { Avatar } from './ui/avatar.tsx'
 import { Button } from './ui/button.tsx'
@@ -100,19 +100,21 @@ function PeopleList({
       )}
       <div className="min-h-0 flex-1">
         {data ? (
-          <FieldsAt.Provider
-            value={`/api/kept/${kind === 'company' ? 'organizations' : 'people'}/fields`}
-          >
-            <TableView
-              key={kind}
-              data={data}
-              kept={{
-                open: (id) => {
-                  window.location.hash = `#/people/${id}`
-                },
-              }}
-            />
-          </FieldsAt.Provider>
+          <FieldsAdded.Provider value={load}>
+            <FieldsAt.Provider
+              value={`/api/kept/${kind === 'company' ? 'organizations' : 'people'}/fields`}
+            >
+              <TableView
+                key={kind}
+                data={data}
+                kept={{
+                  open: (id) => {
+                    window.location.hash = `#/people/${id}`
+                  },
+                }}
+              />
+            </FieldsAt.Provider>
+          </FieldsAdded.Provider>
         ) : (
           <p className="p-7 text-ink-3">Loading…</p>
         )}

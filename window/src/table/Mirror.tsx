@@ -11,6 +11,8 @@ export const useShapeFixed = () => useContext(ShapeFixed)
 // People's and Organizations' lists have theirs (rules T16).
 export const FieldsAt = createContext<string | undefined>(undefined)
 export const useFieldsAt = () => useContext(FieldsAt)
+// what a kept list does once a property is added there: reads itself again, as a table does live
+export const FieldsAdded = createContext<(() => void) | undefined>(undefined)
 export const managedWhy = (managed: string | null) =>
   managed ? `Comes with ${managed}: its columns change only with it` : undefined
 

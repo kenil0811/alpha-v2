@@ -1,0 +1,134 @@
+// The form that adds a property: its name and kind, choices for a choice, the table a relation
+// points at. On a table it posts to the table; on People and Organizations to their own route, and
+// the list reads itself again. Out of Grid.tsx (the window file wall).
+import { type FormEvent, useContext, useEffect, useState } from 'react'
+import { api, Problem } from '../api.ts'
+import { Button } from '../ui/button.tsx'
+import { Field, Select } from '../ui/field.tsx'
+import { FieldsAdded, useFieldsAt } from './Mirror.tsx'
+
+const KINDS: [string, string][] = [
+  ['text', 'Words'],
+  ['number', 'A number'],
+  ['money', 'Money'],
+  ['date', 'A date'],
+  ['choice', 'A choice'],
+  ['tags', 'Tags (several choices)'],
+  ['link', 'A link'],
+  ['email', 'An email address'],
+  ['phone', 'A phone number'],
+  ['relation', 'A row of another table'],
+  ['person', 'A person'],
+  ['file', 'A file'],
+]
+
+// A new column: its name and kind, choices for a choice, the table a relation points at.
+export function AddFieldForm({
+  tableId,
+  title,
+  onAdded,
+}: {
+  tableId: string
+  title: string
+  onAdded: (name: string) => void
+}) {
+  const at = useFieldsAt() ?? `/api/tables/${tableId}/fields`
+  const reread = useContext(FieldsAdded)
+  const [name, setName] = useState('')
+  const [kind, setKind] = useState('text')
+  const [choices, setChoices] = useState('')
+  const [relatesTo, setRelatesTo] = useState('')
+  const [tables, setTables] = useState<{ id: string; name: string }[]>([])
+  const [problem, setProblem] = useState<string | null>(null)
+  useEffect(() => {
+    if (kind === 'relation' && !tables.length)
+      api.get<{ tables: { id: string; name: string }[] }[]>('/api/modules').then(
+        (ms) => setTables(ms.flatMap((m) => m.tables)),
+        () => undefined,
+      )
+  }, [kind, tables.length])
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setProblem(null)
+    try {
+      // tags are a choice that holds several
+      const tags = kind === 'tags'
+      await api.post(at, {
+        name,
+        kind: tags ? 'choice' : kind,
+        ...(tags ? { many: true } : {}),
+        ...(kind === 'choice' || tags
+          ? {
+              choices: choices
+                .split(',')
+                .map((c) => c.trim())
+                .filter(Boolean),
+            }
+          : {}),
+        ...(kind === 'relation' ? { relatesTo } : {}),
+      })
+      onAdded(name)
+      reread?.()
+      setName('')
+      setChoices('')
+    } catch (err) {
+      setProblem(err instanceof Problem ? err.message : 'That field was not added.')
+    }
+  }
+  return (
+    <form onSubmit={save} className="flex w-68 flex-col gap-2 p-1.5">
+      <div className="font-medium text-ink">{title}</div>
+      <Field
+        autoFocus
+        value={name}
+        placeholder="Its name"
+        aria-label="The field’s name"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Its kind">
+        {KINDS.map(([k, w]) => (
+          <option key={k} value={k}>
+            {w}
+          </option>
+        ))}
+      </Select>
+      {(kind === 'choice' || kind === 'tags') && (
+        <Field
+          value={choices}
+          placeholder="Its choices, with commas: New, Looking, Passed"
+          aria-label="Its choices"
+          onChange={(e) => setChoices(e.target.value)}
+        />
+      )}
+      {kind === 'relation' && (
+        <Select
+          value={relatesTo}
+          onChange={(e) => setRelatesTo(e.target.value)}
+          aria-label="The table it points at"
+        >
+          <option value="">Which table?</option>
+          {tables.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      )}
+      {problem && <div className="text-bad text-sm">{problem}</div>}
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          size="sm"
+          variant="primary"
+          disabled={
+            !name.trim() ||
+            ((kind === 'choice' || kind === 'tags') && !choices.trim()) ||
+            (kind === 'relation' && !relatesTo)
+          }
+        >
+          Add it
+        </Button>
+      </div>
+    </form>
+  )
+}
