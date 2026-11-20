@@ -24,6 +24,7 @@ import { EditCell } from './EditCell.tsx'
 import { ReadLine } from './Mirror.tsx'
 import { Notes } from './Notes.tsx'
 import { RowMenu } from './RowMenu.tsx'
+import { useSources } from './sources.ts'
 import { TagChips } from './Tags.tsx'
 import { canEdit, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.ts'
 
@@ -33,9 +34,10 @@ export function RowPanel({
   onClose,
   ...rest
 }: Parameters<typeof RowBody>[0] & { title: string; onClose: () => void }) {
+  const row = useSources(rest.row) // a table's read carries only what its cells draw
   return (
-    <SidePanel title={title || 'A row'} onClose={onClose} full={`#/row/${rest.row.id}`}>
-      <RowBody {...rest} />
+    <SidePanel title={title || 'A row'} onClose={onClose} full={`#/row/${row.id}`}>
+      <RowBody {...rest} row={row} />
     </SidePanel>
   )
 }

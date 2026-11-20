@@ -35,8 +35,6 @@ export function TickedBar({
   const [removing, setRemoving] = useState(false)
   const goes = useGoes(tableId, removing ? rows.map((r) => r.id) : null)
   const setAnchor = useRef<HTMLButtonElement>(null)
-  // rows holding a value the person typed: removing them is removing their own word
-  const theirs = rows.filter((r) => Object.values(r.sources).some((s) => s?.kind === 'stated'))
   const n = rows.length
   // Escape lets go of the ticked rows, unless it is closing a menu or a dialog, or leaving a box
   useEffect(() => {
@@ -87,8 +85,6 @@ export function TickedBar({
         }}
         onClose={() => setRemoving(false)}
       >
-        {theirs.length > 0 &&
-          `${theirs.length === n ? (n === 1 ? 'It holds' : 'They hold') : `${theirs.length} of them hold`} values you typed. `}
         {goes}
       </Confirm>
     </div>
