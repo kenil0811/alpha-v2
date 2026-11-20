@@ -32,7 +32,15 @@ import { Words } from './ui/words.tsx'
 
 // A part of Setup: its title in serif, an ⓘ saying what it is where that needs saying, its
 // content; no card around it.
-function Part({ title, about, children }: { title: string; about?: string; children: ReactNode }) {
+export function Part({
+  title,
+  about,
+  children,
+}: {
+  title: string
+  about?: string
+  children: ReactNode
+}) {
   return (
     <section className="flex flex-col">
       <div className="mb-2.5 flex items-center gap-1.5">
@@ -147,7 +155,7 @@ function Schedules({ m, onChange }: { m: ModuleView; onChange: () => void }) {
   )
 }
 
-function OneSchedule({
+export function OneSchedule({
   a,
   agents,
   onChange,

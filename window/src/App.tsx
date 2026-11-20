@@ -381,7 +381,7 @@ export function App() {
       case 'work':
         return itemName || ''
       case 'tasks':
-        return place.id ? taskName || '' : 'Tasks'
+        return place.id ? taskName || '' : place.setup ? 'Setup' : 'Tasks'
       case 'people':
         if (place.id) return personName || ''
         return place.kind === 'company' ? 'Organizations' : 'People'
@@ -498,7 +498,13 @@ export function App() {
                     onName={setItemName}
                   />
                 ) : place.at === 'tasks' ? (
-                  <Tasks list={place.list} id={place.id} version={version} onName={setTaskName} />
+                  <Tasks
+                    list={place.list}
+                    id={place.id}
+                    setup={place.setup}
+                    version={version}
+                    onName={setTaskName}
+                  />
                 ) : place.at === 'people' ? (
                   <People
                     kind={place.kind}
