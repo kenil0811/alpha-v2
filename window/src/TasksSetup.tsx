@@ -1,6 +1,6 @@
 // Tasks' Setup, as a module's: the schedules that make tasks, the agents holding them and the
 // properties a task has, each a part in the module Setup's own look.
-import type { FieldView, ScheduleView, WorkingModuleView } from '@alpha/core/api'
+import type { FieldView, ScheduleView, TasksView, WorkingModuleView } from '@alpha/core/api'
 import { useCallback, useEffect, useState } from 'react'
 import { useAgents } from './Agents.tsx'
 import { api } from './api.ts'
@@ -16,9 +16,19 @@ export function TasksSetup({ version, fields }: { version: number; fields: Field
     if (version >= 0) load()
   }, [load, version])
   const agents = useAgents(version)
+  // the open tasks, to count what each agent holds now
+  const [open, setOpen] = useState<TasksView['lines']>([])
+  useEffect(() => {
+    if (version >= 0)
+      api.get<TasksView>('/api/tasks?list=open').then(
+        (v) => setOpen(v.lines),
+        () => undefined,
+      )
+  }, [version])
+  const holding = (id: string) => open.filter((t) => t.ownerId === id).length
   // a schedule that wakes an agent hands it a task each time it runs
   const making: ScheduleView[] = modules.flatMap((m) => m.schedules).filter((s) => s.wakes)
-  const held = agents.filter((a) => making.some((s) => s.wakes?.id === a.id))
+  const held = agents.filter((a) => holding(a.id) > 0)
   return (
     <div className="h-full overflow-y-auto">
       <div className="flex max-w-page flex-col gap-7 px-7 py-6">
@@ -33,11 +43,11 @@ export function TasksSetup({ version, fields }: { version: number; fields: Field
             <p className="text-ink-2 text-md">No schedule makes tasks yet.</p>
           )}
         </Part>
-        <Part title="Agents" about="The agents a schedule gives tasks to.">
+        <Part title="Agents" about="The agents that hold open tasks now.">
           {held.length ? (
             <List>
               {held.map((a) => {
-                const n = making.filter((s) => s.wakes?.id === a.id).length
+                const n = holding(a.id)
                 return (
                   <Row
                     key={a.id}
@@ -47,7 +57,7 @@ export function TasksSetup({ version, fields }: { version: number; fields: Field
                         {a.name}
                       </a>
                     }
-                    sub={`${a.title} · ${n} schedule${n === 1 ? '' : 's'}`}
+                    sub={`${a.title} · ${n} open task${n === 1 ? '' : 's'}`}
                   />
                 )
               })}
