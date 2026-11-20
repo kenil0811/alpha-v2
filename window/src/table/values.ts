@@ -212,3 +212,9 @@ export function summary(
   ]
   return picked.slice(0, max)
 }
+
+// how many rows, said once: "1,017 rows", or "3 of 1,017" while some are filtered out
+export const rowCount = (shown: number, all: number) =>
+  shown === all
+    ? `${all.toLocaleString()} row${all === 1 ? '' : 's'}`
+    : `${shown.toLocaleString()} of ${all.toLocaleString()}`

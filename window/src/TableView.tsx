@@ -34,7 +34,7 @@ import { Showing } from './table/Showing.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
 import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
-import { canType, show } from './table/values.ts'
+import { canType, rowCount, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
 import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
@@ -231,6 +231,12 @@ export function TableView({
   const pages = Math.max(1, Math.ceil(rows.length / size))
   const at = Math.min(page, pages - 1)
   const paged = rows.slice(at * size, (at + 1) * size)
+  // the grid's totals row counts the rows; a view without one counts them over the rows
+  const grid =
+    config.kind === 'table' ||
+    (config.kind === 'board' && !boardBy) ||
+    (!dateBy && ['calendar', 'timeline'].includes(config.kind))
+  const count = loading || grid ? null : rowCount(rows.length, data.rows.length)
 
   return (
     <TableName.Provider value={data.name}>
@@ -440,13 +446,7 @@ export function TableView({
                   onConfig={setConfig}
                 />
               )}
-              <span className="text-ink-3 text-sm">
-                {loading
-                  ? ''
-                  : rows.length === data.rows.length
-                    ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-                    : `${rows.length} of ${data.rows.length}`}
-              </span>
+              {count && <span className="text-ink-3 text-sm">{count}</span>}
               {!loading && (
                 <MirrorGone data={data} showingGone={showingGone} onGone={setShowingGone} />
               )}
