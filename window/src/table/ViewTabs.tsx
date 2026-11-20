@@ -1,12 +1,12 @@
 // A table's toolbar, one row that never wraps: the view as an icon, then every saved list as a pill
 // in one row that scrolls sideways (the one the table opens on first, then All and each list,
-// shared by everyone; the picked one filled), + for a new list, and on the right search and filter (`tools`) and the table's actions (`right`). A list behaves like a
+// shared by everyone; the picked one filled), and on the right search and filter (`tools`) and the table's actions (`right`). A list behaves like a
 // tab: a right-click gives Rename, Duplicate, Move to the front and Delete, and a double-click
 // renames it in place. Resting on a pill says what the list holds. A list Alpha keeps itself
 // (people, tasks) holds no saved lists, so it shows neither Save nor its menu, and Cancel alone.
 import type { FieldView, SavedView } from '@alpha/core/api'
-import { ArrowLeftToLine, CopyPlus, PencilLine, Plus, Trash2 } from 'lucide-react'
-import { type FormEvent, type ReactNode, type RefObject, useRef, useState } from 'react'
+import { ArrowLeftToLine, CopyPlus, PencilLine, Trash2 } from 'lucide-react'
+import { type FormEvent, type ReactNode, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { Confirm } from '../ui/dialog.tsx'
@@ -53,8 +53,6 @@ export function ViewTabs({
 }) {
   const [removing, setRemoving] = useState(false) // Delete the list asks first, in the pop-up
   const [renaming, setRenaming] = useState(false) // the picked pill is a box to type its name in
-  const [naming, setNaming] = useState<{ at: RefObject<HTMLElement | null> } | null>(null)
-  const plusAt = useRef<HTMLButtonElement>(null)
   const onList = useContextMenu()
   const view = views.find((v) => v.id === current)
   const close = () => onList.close()
@@ -196,18 +194,6 @@ export function ViewTabs({
             ))
           : ordered.map((v) => pill(v))}
       </fieldset>
-      {keeps && !links && (
-        <button
-          ref={plusAt}
-          type="button"
-          aria-label="New list"
-          data-tip="New list, from what shows now"
-          onClick={() => setNaming({ at: plusAt })}
-          className="grid size-7 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-hover hover:text-ink"
-        >
-          <Plus className="size-3.5" />
-        </button>
-      )}
       {problem && <span className="min-w-0 truncate text-bad text-sm">{problem}</span>}
       <span className="ml-auto flex shrink-0 items-center gap-1">
         {tools}
@@ -215,16 +201,6 @@ export function ViewTabs({
       </span>
       <Popover point={onList.point} open={onList.open} onClose={onList.close}>
         {actions}
-      </Popover>
-      <Popover anchor={naming?.at ?? plusAt} open={naming !== null} onClose={() => setNaming(null)}>
-        <NameForm
-          start=""
-          label="Save"
-          onSave={(name) => {
-            setNaming(null)
-            onSaveAs(name)
-          }}
-        />
       </Popover>
       <Confirm
         open={removing && !!view}
