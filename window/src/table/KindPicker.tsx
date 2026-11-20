@@ -1,14 +1,13 @@
 // How the rows are shown, and what that view goes by (a board's choice, a calendar's date, a
 // chart's bars and what they add up, a map's place and colour). The standard views are Table,
-// Card, Timeline and Calendar, with Board, Map and Form; each is offered when the table has what it
-// needs.
-// List and Chart are no longer offered, but a view saved as one still opens as it was.
+// Card and Calendar, with Board, Map and Form; each is offered when the table has what it needs.
+// List and Chart are no longer offered, but a view saved as one still opens as it was; one saved as
+// a timeline, dropped 20 Nov, opens as a table.
 import type { FieldView, RowView, ViewConfig, ViewKind } from '@alpha/core/api'
 import { type Place, placesOf } from '@alpha/core/places'
 import {
   CalendarDays,
   ChartBarBig,
-  ChartGantt,
   ChevronDown,
   ClipboardList,
   Kanban,
@@ -25,7 +24,6 @@ import { MenuItem, Popover } from '../ui/popover.tsx'
 const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
   { kind: 'table', words: 'Table', icon: <Table2 className="size-3.5" /> },
   { kind: 'gallery', words: 'Gallery', icon: <LayoutGrid className="size-3.5" /> },
-  { kind: 'timeline', words: 'Timeline', icon: <ChartGantt className="size-3.5" /> },
   { kind: 'calendar', words: 'Calendar', icon: <CalendarDays className="size-3.5" /> },
   { kind: 'board', words: 'Board', icon: <Kanban className="size-3.5" /> },
   { kind: 'map', words: 'Map', icon: <MapPinned className="size-3.5" /> },
@@ -35,7 +33,7 @@ const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
 ]
 
 // what the picker offers: all but the last two, kept only to name a view saved as one
-const OFFERED = KINDS.slice(0, 7)
+const OFFERED = KINDS.slice(0, 6)
 
 export function KindPicker({
   fields,
@@ -63,7 +61,7 @@ export function KindPicker({
       ? places.length > 0
       : k === 'board'
         ? choices.length > 0
-        : k === 'calendar' || k === 'timeline'
+        : k === 'calendar'
           ? dates.length > 0
           : k === 'chart'
             ? choices.length > 0 || dates.length > 0
@@ -81,11 +79,11 @@ export function KindPicker({
             : `A ${k} needs a date column. Ask Alpha to add one.`
   const current = KINDS.find((k) => k.kind === config.kind) ?? KINDS[0]
   // switching to a view that needs a field gives it one, as the core would
-  // a calendar or timeline starts on the date most rows have; a board's columns and a chart's bars
+  // a calendar starts on the date most rows have; a board's columns and a chart's bars
   // are left to the person (the table shows Stage, or the first choice, until they choose)
   const switchTo = (kind: ViewKind) => {
     const next = { ...config, kind }
-    if ((kind === 'calendar' || kind === 'timeline') && !dates.some((f) => f.id === next.by)) {
+    if (kind === 'calendar' && !dates.some((f) => f.id === next.by)) {
       const filled = (f: FieldView) => rows.filter((r) => r.values[f.slug]).length
       next.by = [...dates].sort((a, b) => filled(b) - filled(a))[0]?.id ?? null
     }
@@ -130,7 +128,7 @@ export function KindPicker({
           choices,
           (id) => onConfig({ ...config, group: id }),
         )}
-      {(config.kind === 'calendar' || config.kind === 'timeline') &&
+      {config.kind === 'calendar' &&
         pick('The date it is laid on', config.by ?? '', dates, (id) =>
           onConfig({ ...config, by: id }),
         )}

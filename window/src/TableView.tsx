@@ -40,7 +40,6 @@ import { GalleryView, ListView } from './table/views/Cards.tsx'
 import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { MapView } from './table/views/MapView.tsx'
-import { TimelineView } from './table/views/TimelineView.tsx'
 import { blankFor, useWorkingList } from './table/working.ts'
 import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
@@ -478,8 +477,6 @@ export function TableView({
               <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
             ) : config.kind === 'calendar' && dateBy ? (
               <CalendarView rows={rows} data={data} view={config} onOpen={openRowPanel} />
-            ) : config.kind === 'timeline' && dateBy ? (
-              <TimelineView rows={rows} fields={fields} by={dateBy} onOpen={openRowPanel} />
             ) : config.kind === 'map' ? (
               <MapView rows={rows} fields={fields} view={config} onOpen={openRowPanel} />
             ) : config.kind === 'chart' ? (
