@@ -218,6 +218,11 @@ export function shapeViews(
   for (const spec of manifest.tables) {
     const t = world.shape.ownTable(module.id, spec.name)
     if (!t) continue
+    // how the table first opens, as the kit's version says it now
+    if (spec.view) {
+      const { kind, by, until, group, measure } = resolveConfig(t, spec.view)
+      world.shape.setStartView(t.id, { kind, by, until, group, measure })
+    } else world.shape.setStartView(t.id, null)
     for (const { name, default: isDefault, about, ...given } of spec.views) {
       const config = resolveConfig(t, given)
       const hash = hashOf(config)

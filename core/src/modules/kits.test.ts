@@ -203,6 +203,37 @@ describe('updating a kit', () => {
     )
   })
 
+  it('says how a table first opens, and a newer version can change or drop it', async () => {
+    const withView = (dir: string, version: string, view: string) =>
+      writeFileSync(
+        join(dir, 'module.yaml'),
+        readFileSync(join(KIT, 'module.yaml'), 'utf8')
+          .replace('version: 0.1.0', `version: ${version}`)
+          .replace(
+            'network:',
+            `  - name: Deliveries\n    fields:\n      - { name: Day, kind: date }\n      - { name: Ends, kind: date }\n${view}network:`,
+          ),
+      )
+    const first = join(home, 'kit-view-1')
+    cpSync(KIT, first, { recursive: true })
+    withView(first, '0.1.0', '    view: { kind: calendar, by: Day, until: Ends }\n')
+    await install(world, first, ctx)
+    const t = world.shape.table('Deliveries')
+    expect(t?.startView).toEqual({
+      kind: 'calendar',
+      by: t?.fields.find((f) => f.name === 'Day')?.id,
+      until: t?.fields.find((f) => f.name === 'Ends')?.id,
+      group: null,
+      measure: null,
+    })
+    expect(world.views.list(t?.id as string)).toEqual([]) // a start view is no saved list
+    const next = join(home, 'kit-view-2')
+    cpSync(KIT, next, { recursive: true })
+    withView(next, '0.2.0', '')
+    await update(world, 'Bakery', next, ctx)
+    expect(world.shape.table('Deliveries')?.startView).toBeNull()
+  })
+
   it('names the documents a table’s rows take, and a newer version adds kinds', async () => {
     const withDocs = (dir: string, version: string, kinds: string) =>
       writeFileSync(

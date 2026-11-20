@@ -46,6 +46,7 @@ import type {
   ModuleRow,
   PeopleMap,
   PlacedBy,
+  StartView,
   SummarySpec,
   Table,
   Tone,
@@ -215,6 +216,7 @@ export class Shape {
       setup: number
       tab: number
       added_on: string | null
+      start_view: string | null
       documents: string | null
       people: string | null
       about: string | null
@@ -222,7 +224,7 @@ export class Shape {
       mirror: string | null
     }>(
       this.db,
-      'SELECT id, module_id, name, slug, key, hidden, setup, tab, added_on, documents, people, about, about_by, mirror FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
+      'SELECT id, module_id, name, slug, key, hidden, setup, tab, added_on, start_view, documents, people, about, about_by, mirror FROM tables WHERE id = ? OR slug = ? OR lower(name) = lower(?)',
       idOrName,
       slugify(idOrName),
       idOrName,
@@ -286,6 +288,7 @@ export class Shape {
       setup: t.setup === 1,
       tab: t.tab === 1,
       addedOn: t.added_on,
+      startView: t.start_view ? parse<StartView | null>(t.start_view, null) : null,
       fields,
       documents: t.documents ? parse<string[]>(t.documents, []) : null,
       people: t.people ? parse<PeopleMap | null>(t.people, null) : null,
@@ -502,6 +505,16 @@ export class Shape {
   // The word its kit says lets Alpha add a row (added_on), or none: the kit's, on every install.
   setAddedOn(tableId: string, word: string | null): void {
     run(this.db, 'UPDATE tables SET added_on = ? WHERE id = ?', word, tableId)
+  }
+
+  // How its kit says the table first opens, or none: the kit's, on every install.
+  setStartView(tableId: string, view: StartView | null): void {
+    run(
+      this.db,
+      'UPDATE tables SET start_view = ? WHERE id = ?',
+      view && JSON.stringify(view),
+      tableId,
+    )
   }
 
   setTab(tableId: string, tab: boolean, ctx: WriteCtx): Table {

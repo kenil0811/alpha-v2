@@ -29,6 +29,9 @@ export type {
   ModuleFileView,
   RowFileView,
 } from './file-types.ts'
+
+import type { ViewOf } from './me-types.ts'
+
 export type { Layout, Me, ViewOf } from './me-types.ts'
 export type { FieldView, Pick, RowAround, RowPageView } from './row-types.ts'
 
@@ -308,6 +311,7 @@ export interface TableView {
   rows: RowView[]
   names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
+  startView: ViewOf | null // how its kit says it first opens, until the person picks a view
   readBy: ReadByView[] // the connections that fill it, read again from its ⋮
 }
 

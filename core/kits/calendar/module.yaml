@@ -32,13 +32,4 @@ tables:
       by: Organizer
       you: Your address
       about: Title
-    views:
-      - name: Calendar
-        default: true
-        kind: calendar
-        by: Starts
-        until: Ends
-        about: "What is on, day by day?"
-      - name: All events
-        sorts: [{ field: Starts, dir: desc }]
-        about: "Every event, the newest first"
+    view: { kind: calendar, by: Starts, until: Ends }

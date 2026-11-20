@@ -111,7 +111,8 @@ CREATE TABLE tables (
   tab INTEGER NOT NULL DEFAULT 0,
   added_on TEXT,
   key TEXT COLLATE NOCASE,
-  mirror TEXT
+  mirror TEXT,
+  start_view TEXT -- how its kit says the table first opens: {kind, by, until, group, measure}, by field id
 );
 CREATE UNIQUE INDEX tables_key ON tables (module_id, key) WHERE key IS NOT NULL;
 

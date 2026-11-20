@@ -19,5 +19,6 @@ export const frameOf = (
   rows: [],
   names: {},
   views: [],
+  startView: null,
   readBy: [],
 })
