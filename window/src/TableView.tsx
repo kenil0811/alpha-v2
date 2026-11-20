@@ -54,6 +54,7 @@ export function TableView({
   quiet = false,
   loading = false,
   kept = null,
+  lists,
 }: {
   data: TableData
   row?: string | null
@@ -70,6 +71,7 @@ export function TableView({
     onNew?: () => void
     rowAction?: (row: RowView) => ReactNode // its own button on each row (Run now)
   } | null
+  lists?: Parameters<typeof ViewTabs>[0]['links'] // a kept list's own lists, in the one row of pills
 }) {
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
@@ -333,6 +335,7 @@ export function TableView({
                   />
                 </>
               }
+              links={lists}
               views={views}
               fields={fields}
               saving={!kept}
