@@ -242,14 +242,12 @@ function AllSchedules({
   )
 }
 
-// Every table of the module, its own tabs first: its number (shape/numbers.ts), a name that opens
+// Every table of the module in the order of its number (shape/numbers.ts), a name that opens
 // it, how it opens for everyone, and how many rows it has. Whether a setup table or a part is kept
 // as a tab is on that table's own ⋮ menu.
 function Tables({ m }: { m: ModuleView }) {
-  const all = [
-    ...m.tables.filter((t) => t.place === 'main'),
-    ...m.tables.filter((t) => t.place !== 'main'),
-  ]
+  const at = (t: { number: string | null }) => Number(t.number?.split('.').pop() ?? 0)
+  const all = [...m.tables].sort((a, b) => at(a) - at(b))
   if (!all.length) return null
   const head = 'pb-1.5 text-left font-normal text-ink-3 text-sm'
   return (

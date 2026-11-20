@@ -299,6 +299,7 @@ export interface RowView {
   sources: Record<string, SourceView>
   read?: { from: string; at: string } // a mirror's row: when its system was last read (D12)
   gone?: string // when its source deleted it; kept, out of the default list (D8)
+  number?: number // its place in its table: row 4 of table 1.3 is 1.3.4
 }
 
 export interface TableView {
@@ -315,6 +316,7 @@ export interface TableView {
   names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
   startView: ViewOf | null // how its kit says it first opens, until the person picks a view
+  number?: string | null // its address, 1.3 (shape/numbers.ts)
   readBy: ReadByView[] // the connections that fill it, read again from its ⋮
 }
 

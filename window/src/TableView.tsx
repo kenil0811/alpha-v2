@@ -611,6 +611,9 @@ export function TableView({
               names={data.names}
               onEdit={kept ? undefined : (f, v) => edit(openedRow, f, v)}
               title={first ? show(first, openedRow.values[first.slug], data.names) : ''}
+              number={
+                data.number && openedRow.number ? `${data.number}.${openedRow.number}` : undefined
+              }
               onField={(slug) => {
                 setPicked({ row: openedRow.id, field: slug })
                 setOpened(null)

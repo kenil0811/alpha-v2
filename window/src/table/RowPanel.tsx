@@ -30,11 +30,21 @@ import { canEdit, EMPTY_WORDS, isTags, KIND_WORDS, MARK, show } from './values.t
 // The side panel's way in: the row's view, with Open full to its own page.
 export function RowPanel({
   title,
+  number,
   onClose,
   ...rest
-}: Parameters<typeof RowBody>[0] & { title: string; onClose: () => void }) {
+}: Parameters<typeof RowBody>[0] & { title: string; number?: string | undefined; onClose: () => void }) {
   return (
-    <SidePanel title={title || 'A row'} onClose={onClose} full={`#/row/${rest.row.id}`}>
+    <SidePanel
+      title={
+        <>
+          {title || 'A row'}
+          {number && <span className="ml-2 font-normal text-ink-3 tabular-nums">{number}</span>}
+        </>
+      }
+      onClose={onClose}
+      full={`#/row/${rest.row.id}`}
+    >
       <RowBody {...rest} />
     </SidePanel>
   )

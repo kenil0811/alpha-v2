@@ -425,6 +425,7 @@ export function makeViews(ctx: BaseCtx) {
       ),
       ...(t.mirror && r.readAt ? { read: { from: readFrom(t.mirror, r), at: r.readAt } } : {}),
       ...(r.goneAt ? { gone: r.goneAt } : {}),
+      ...(r.number ? { number: r.number } : {}),
     }
   }
 
