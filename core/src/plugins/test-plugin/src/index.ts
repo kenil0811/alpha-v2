@@ -22,6 +22,10 @@ export const plugin: Plugin = {
       return { notes: host.own.rows('Notes').map((r) => r.values) }
     })
     host.route('GET', '/mail', async () => ({ rows: host.rows('Mail', 'Mail').length }))
+    host.route('GET', '/files', async () => ({ names: host.files('folder').map((f) => f.name) }))
+    host.route('POST', '/read/:connector', async ({ params }) => ({
+      not: await host.read(String(params.connector)),
+    }))
     host.route('POST', '/connect', async () => host.connect('browsing'))
     host.route('POST', '/ask', async () => ({
       answer: await host.ask('Answer in the schema.', 'Say yes.', { type: 'object' }),

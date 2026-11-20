@@ -31,7 +31,7 @@ import { Reviews } from '../modules/reviews.ts'
 import { shownSchedules } from '../modules/schedules.ts'
 import { run } from '../world/db.ts'
 import { type ProvenanceInput, Refused } from '../world/kinds.ts'
-import type { Table, WriteCtx } from '../world/shape/index.ts'
+import { actorName, type Table, type WriteCtx } from '../world/shape/index.ts'
 import { businessCase } from '../world/shape/manifest.ts'
 import type { Use } from '../world/spend.ts'
 import type { User, World } from '../world/world.ts'
@@ -500,11 +500,28 @@ export class Plugins {
         mine(c.agent)
         return c.state === 'waiting' ? null : c.answer
       },
+      // a connector's files are kept as added by it (connector:<name>)
       files: (connector) =>
         world.files
           .list()
-          .filter((f) => f.addedBy === connector)
+          .filter((f) => f.addedBy === actorName({ kind: 'connector', id: connector }))
           .map((f) => ({ hash: f.hash, name: f.name, kind: f.mime, at: f.addedAt })),
+      read: async (connector) => {
+        const service = this.deps.connectors
+        if (!service) return 'Connectors are not set up in this core.'
+        const mine = world.connections
+          .list()
+          .filter((c) => c.connector === connector && c.state !== 'paused')
+        const unread: string[] = []
+        for (const c of mine) {
+          await service.sync(c.id)
+          if (world.connections.get(c.id)?.lastSyncAt === c.lastSyncAt) unread.push(c.account)
+        }
+        if (!unread.length) return null
+        return mine.some((c) => c.computer)
+          ? `${unread.join(', ')} could not be read now: is the computer on, with Alpha Bridge running?`
+          : `${unread.join(', ')} could not be read now: Connections says why.`
+      },
       activity: (person, days) => {
         const since = new Date(Date.now() - days * 86_400_000).toISOString()
         return world

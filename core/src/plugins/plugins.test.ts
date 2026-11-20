@@ -5,8 +5,11 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { newKey } from '@alpha/bridge/keys'
+import { type Connector, MemorySecrets } from '@alpha/connector-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildServer } from '../api/server.ts'
+import { ConnectorService } from '../connectors/service.ts'
 import { startLayer } from '../engine/context.ts'
 import { Engine } from '../engine/engine.ts'
 import { monthOf } from '../world/day.ts'
@@ -28,7 +31,25 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true })
 })
 
-async function started() {
+// A made-up reader with one read, on this core or on a person's computer.
+const reader = (name: string, runs: 'either' | 'computer') =>
+  ({
+    manifest: {
+      name,
+      title: name,
+      auth: 'path',
+      account: { label: 'Here' },
+      pace: { perMinute: 60 },
+      runs,
+    },
+    guide: 'A made-up reader.',
+    module: 'Read',
+    tables: [],
+    tools: {},
+    sync: async () => ({ rows: 1, sawNew: true }),
+  }) as unknown as Connector
+
+async function started(connectors: ConnectorService | null = null) {
   const asked: string[] = []
   const plugins = new Plugins({
     world,
@@ -52,7 +73,7 @@ async function started() {
         ],
       }
     },
-    connectors: null,
+    connectors,
   })
   // the made-up plugin from where it is, beside this test (it imports the plugin SDK)
   const found = await loadPlugins(import.meta.dirname)
@@ -73,6 +94,8 @@ describe('a plugin', () => {
       'POST /api/plugins/test/note',
       'POST /api/plugins/test/keep/:id',
       'GET /api/plugins/test/mail',
+      'GET /api/plugins/test/files',
+      'POST /api/plugins/test/read/:connector',
       'POST /api/plugins/test/connect',
       'POST /api/plugins/test/ask',
       'POST /api/plugins/test/start',
@@ -113,6 +136,16 @@ describe('a plugin', () => {
       })
       expect(kept.json()).toEqual({ notes: [{ Line: 'Likes car washes', State: 'Kept' }] })
       expect(world.records.get(id)?.record.provenance.state?.kind).toBe('stated')
+      // the files a connector kept, by its name: a lent folder's, not a person's own
+      world.files.take(new TextEncoder().encode('a,b'), 'quotes.csv', 'text/csv', {
+        actor: { kind: 'connector', id: 'folder' },
+      })
+      world.files.take(new TextEncoder().encode('mine'), 'mine.txt', 'text/plain', {
+        actor: { kind: 'person', id: world.owner('Kenil').id },
+      })
+      expect((await a.inject({ url: '/api/plugins/test/files', headers: ok })).json()).toEqual({
+        names: ['quotes.csv'],
+      })
       // a table a connector keeps, by its key; none here yet
       expect((await a.inject({ url: '/api/plugins/test/mail', headers: ok })).json()).toEqual({
         rows: 0,
@@ -139,6 +172,39 @@ describe('a plugin', () => {
       expect(
         startLayer(world, world.owner('Kenil').id, home, null, plugins.startBlocks()),
       ).toContain('## What the test plugin keeps\n- Likes car washes')
+    } finally {
+      await a.close()
+      engine.close()
+    }
+  })
+
+  it('reads a connector now on asking, and says why not where its computer is away', async () => {
+    const service = new ConnectorService(world, {
+      secrets: new MemorySecrets(),
+      known: [reader('here', 'either'), reader('desk', 'computer')],
+      server: true,
+    })
+    const owner = world.owner('Kenil')
+    const ctx = { actor: { kind: 'person' as const, id: owner.id }, user: owner.id }
+    const here = world.connections.add('here', 'This core', null, 'here', ctx)
+    const desk = world.connections.add('desk', 'Kenil’s Mac', null, 'desk', ctx)
+    const pc = world.computers.pair(world.computers.link(owner.id).code, {
+      publicKey: newKey().publicPem,
+      name: 'Kenil’s Mac',
+      platform: 'darwin',
+    })
+    world.connections.runOn(desk.id, pc.id)
+    const { plugins } = await started(service)
+    const engine = new Engine(world)
+    const a = buildServer({ engine, user: owner, token, ports: [4700], plugins: plugins.routes })
+    try {
+      const read = (c: string) =>
+        a.inject({ method: 'POST', url: `/api/plugins/test/read/${c}`, headers: ok })
+      expect((await read('here')).json()).toEqual({ not: null })
+      expect(world.connections.get(here.id)?.lastSyncAt).not.toBeNull()
+      // its computer is not connected now: not read, and said
+      expect((await read('desk')).json().not).toMatch(/Kenil’s Mac could not be read now/)
+      expect(world.connections.get(desk.id)?.lastSyncAt).toBeNull()
     } finally {
       await a.close()
       engine.close()

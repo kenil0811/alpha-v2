@@ -54,8 +54,16 @@ export const sourceTool = (host: PluginHost) =>
       }
       if (row.values.State === 'Asked') return 'Their answer on its card has not come yet.'
       if (row.values.State === 'Skipped') return `They skipped ${s.name}: it is never read.`
+      // a reader that reads at the interview, never on a clock, reads now (call 20)
+      const why: string[] = []
+      if (s.atInterview)
+        for (const c of s.connectors) {
+          const not = await host.read(c)
+          if (not) why.push(not)
+        }
       const found = s.read(host, turn.person, config.lookback_days)
-      host.own.change('Interview sources', row.id, { Found: found.words }, `read on their Allow`)
-      return found.words
+      const words = [...why, found.words].join('\n')
+      host.own.change('Interview sources', row.id, { Found: words }, `read on their Allow`)
+      return words
     },
   })

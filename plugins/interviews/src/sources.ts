@@ -17,6 +17,8 @@ export interface Source {
   // the connectors that fill it: none connected, its card's Allow also opens Connections (calls 11
   // and 12); none at all for what is Alpha's own
   connectors: string[]
+  // read there and then on the person's Allow, never on a clock (call 20): the computer's readers
+  atInterview?: boolean
   read(host: PluginHost, person: string, days: number): Found
 }
 
@@ -75,6 +77,7 @@ function rowsSource(
   say: (rows: Row[], days: number) => string,
   none: string,
   connectors: string[],
+  atInterview = false,
 ): Source {
   return {
     key,
@@ -82,6 +85,7 @@ function rowsSource(
     asks,
     reads,
     connectors,
+    ...(atInterview ? { atInterview } : {}),
     read: (host, _person, days) => {
       const all = host.rows(where.module, where.table)
       const rows = where.at ? all.filter((r) => within(r.values[where.at as string], days)) : all
@@ -176,6 +180,7 @@ export const SOURCES: Source[] = [
       `${rows.length} sites. Most used: ${top(rows, (r) => String(r.values.Site ?? '')).join('; ')}.`,
     'Nothing has come from your computer’s browsing yet.',
     ['browsing'],
+    true,
   ),
   rowsSource(
     'apps',
@@ -186,6 +191,7 @@ export const SOURCES: Source[] = [
     (rows) => `${rows.length} apps. ${top(rows, (r) => String(r.values.App ?? '')).join('; ')}.`,
     'Nothing has come from your computer’s apps yet.',
     ['apps'],
+    true,
   ),
   rowsSource(
     'ai',
@@ -196,6 +202,7 @@ export const SOURCES: Source[] = [
     (rows) => `${rows.length} requests. ${top(rows, (r) => gist(r.values.Request)).join('; ')}.`,
     'No AI work has come from your computer yet.',
     ['ai-work'],
+    true,
   ),
   {
     key: 'alpha',

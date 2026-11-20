@@ -383,6 +383,8 @@ export const NOT_DOORS: Record<string, string> = {
   'plugin question': 'a question card in its own agent’s chat, which no row or module holds',
   'plugin answer': 'reads',
   'plugin files': 'reads',
+  'plugin read':
+    'a connector’s read now, as Read now does it, which writes through the connector’s own sync',
   'plugin activity': 'reads',
   'plugin converse': 'a turn in its own agent’s chat with the person, which writes nothing itself',
   'plugin howToWork':

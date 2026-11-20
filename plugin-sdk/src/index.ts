@@ -105,6 +105,10 @@ export interface PluginHost {
   // The files a connector kept (a folder lent in the Bridge): names, kinds and dates, never what
   // is inside.
   files(connector: string): { hash: string; name: string; kind: string; at: string }[]
+  // A connector's connections read now, through the core, for a reader that reads at the
+  // interview and never on a clock (the onboarding plan, call 20). None when each was read; else
+  // the words why not (its computer is off, or Alpha Bridge is not running there).
+  read(connector: string): Promise<string | null>
   // What a person did in Alpha in the days back, as the journal says it, never what was read.
   activity(person: string, days: number): { id: number; at: string; kind: string; words: string }[]
 }
