@@ -38,6 +38,7 @@ import { Field, Select } from '../ui/field.tsx'
 import { Choice } from '../ui/pill.tsx'
 import { Popover, useContextMenu } from '../ui/popover.tsx'
 import { tipNow } from '../ui/tooltip.tsx'
+import { useRoomBelow } from './below.tsx'
 import { CellHistory } from './CellHistory.tsx'
 import { ColumnMenu, TotalItems } from './ColumnMenu.tsx'
 import { EditCell } from './EditCell.tsx'
@@ -218,6 +219,7 @@ export function Grid({
   const top = vitems[0]?.start ?? 0
   const bottom = virtual.getTotalSize() - (vitems.at(-1)?.end ?? 0)
   const span = shown.length + 2
+  const [tableAt, underRows] = useRoomBelow(box, items.length, span)
   const reach = range ? drawn.findIndex((r) => r.id === range.row) : -1
   const inRange = (row: string, field: string) => {
     if (!range?.n || field !== range.field) return false
@@ -313,7 +315,11 @@ export function Grid({
       onKeyDown={keys}
       className="scroll-shown min-h-0 flex-1 overflow-auto bg-surface"
     >
-      <table className="table-fixed border-separate border-spacing-0 text-md" style={{ width }}>
+      <table
+        ref={tableAt}
+        className="table-fixed border-separate border-spacing-0 text-md"
+        style={{ width }}
+      >
         <colgroup>
           <col style={{ width: TICK }} />
           {shown.map((f, i) => (
@@ -497,13 +503,7 @@ export function Grid({
               <td colSpan={span} style={{ height: bottom }} />
             </tr>
           )}
-          {/* an empty table keeps its frame: blank rows and the footer; no sentence */}
-          {items.length === 0 &&
-            [0, 1, 2].map((n) => (
-              <tr key={`blank${n}`} aria-hidden>
-                <td colSpan={span} className="h-9.5 border-hair border-b p-0" />
-              </tr>
-            ))}
+          {underRows}
         </tbody>
         <tfoot>
           <tr>
