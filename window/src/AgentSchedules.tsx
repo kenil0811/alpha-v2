@@ -279,9 +279,7 @@ export function AgentSchedulePage({
       </section>
       <section className="flex flex-col gap-1.5">
         <h2 className="font-medium font-serif text-ink text-xl">Runs</h2>
-        {s.runs.length === 0 ? (
-          <p className="text-ink-3 text-sm">It has not run yet.</p>
-        ) : (
+        {s.runs.length > 0 && (
           <List>
             {s.runs.map((r) => (
               <Row

@@ -148,11 +148,7 @@ export function DayBeside({
             ),
           )}
         </ol>
-      ) : (
-        allDay.length + anyTime.length === 0 && (
-          <p className="px-2 text-ink-3 text-md">Nothing on today.</p>
-        )
-      )}
+      ) : null}
       {anyTime.length > 0 && (
         <section className="flex flex-col gap-0.5">
           <h3 className="px-2 font-semibold text-ink-3 text-sm">Any time today</h3>
