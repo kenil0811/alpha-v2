@@ -42,6 +42,7 @@ import { FormView } from './table/views/FormView.tsx'
 import { MapView } from './table/views/MapView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
 import { blankFor, useWorkingList } from './table/working.ts'
+import { Button } from './ui/button.tsx'
 import { Select } from './ui/field.tsx'
 
 export function TableView({
@@ -268,14 +269,10 @@ export function TableView({
                       />
                     </label>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setSearching(true)}
-                      className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
-                    >
+                    <Button onClick={() => setSearching(true)}>
                       <Search className="size-3.25 shrink-0" />
                       Search
-                    </button>
+                    </Button>
                   )}
                   <AddFilter
                     fields={fields}
@@ -583,15 +580,15 @@ export function TableView({
                           ['Last', pages - 1, at >= pages - 1],
                         ] as const
                       ).map(([label, to, off]) => (
-                        <button
+                        <Button
                           key={label}
-                          type="button"
+                          size="sm"
+                          variant="ghost"
                           disabled={off}
                           onClick={() => setPage(to)}
-                          className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
                         >
                           {label}
-                        </button>
+                        </Button>
                       ))}
                     </>
                   )}

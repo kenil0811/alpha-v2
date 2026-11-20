@@ -4,6 +4,7 @@
 import type { FieldView, FilterRule, RowView, ViewConfig } from '@alpha/core/api'
 import { ArrowDown, ArrowUp, Columns3, ListFilter, RotateCcw, Rows3, X } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
 import { MenuItem, MenuLine, Popover } from '../ui/popover.tsx'
 import { RuleEditor } from './ColumnMenu.tsx'
@@ -186,15 +187,10 @@ export function AddFilter({
   }
   return (
     <>
-      <button
-        ref={anchor}
-        type="button"
-        onClick={() => (open ? close() : setOpen(true))}
-        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line border-dashed px-2.5 text-ink-2 text-md hover:border-accent-line hover:text-ink"
-      >
+      <Button ref={anchor} onClick={() => (open ? close() : setOpen(true))}>
         <ListFilter className="size-3.25" />
         Filter
-      </button>
+      </Button>
       <Popover anchor={anchor} open={open} onClose={close}>
         {field ? (
           <RuleEditor
@@ -242,18 +238,14 @@ export function ColumnsButton({
   const ordered = [...shown, ...fields.filter((f) => config.hidden.includes(f.id))]
   return (
     <>
-      <button
+      <Button
         ref={anchor}
-        type="button"
+        variant={config.hidden.length > 0 ? 'soft' : 'default'}
         onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'flex h-7.5 items-center gap-1.5 rounded-md px-2.5 text-ink-2 text-md hover:bg-hover hover:text-ink',
-          config.hidden.length > 0 && 'text-accent',
-        )}
       >
         <Columns3 className="size-3.5" />
         Columns{config.hidden.length > 0 ? ` (${config.hidden.length} hidden)` : ''}
-      </button>
+      </Button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
         <div className="flex max-h-96 w-64 flex-col overflow-y-auto">
           <div className="flex h-7.5 items-center justify-between px-1.5 text-sm">
