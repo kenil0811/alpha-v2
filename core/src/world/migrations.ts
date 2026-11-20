@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Db } from './db.ts'
+import { numbers } from './shape/numbers.ts'
 
 export const SCHEMA = readFileSync(join(import.meta.dirname, 'schema.sql'), 'utf8')
 
@@ -73,4 +74,6 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
     ).map((c) => c.name)
     if (!cols.includes('start_view')) db.exec('ALTER TABLE tables ADD COLUMN start_view TEXT')
   },
+  // 7, 20 Nov 2026: every module, table and row numbered (1.3.4), the rows there are counted in
+  numbers,
 ]

@@ -90,7 +90,8 @@ CREATE TABLE modules (
   created_at TEXT NOT NULL,
   parent_id TEXT REFERENCES modules (id),
   placed_by TEXT CHECK (placed_by IN ('kit', 'person', 'alpha')),
-  key TEXT COLLATE NOCASE
+  key TEXT COLLATE NOCASE,
+  number INTEGER -- its place among its parent's modules and tables, or the top level's (1.3.4)
 );
 CREATE UNIQUE INDEX modules_key ON modules (key) WHERE key IS NOT NULL;
 
@@ -112,7 +113,8 @@ CREATE TABLE tables (
   added_on TEXT,
   key TEXT COLLATE NOCASE,
   mirror TEXT,
-  start_view TEXT -- how its kit says the table first opens: {kind, by, until, group, measure}, by field id
+  start_view TEXT, -- how its kit says the table first opens: {kind, by, until, group, measure}, by field id
+  number INTEGER -- its place among its module's modules and tables (1.3.4)
 );
 CREATE UNIQUE INDEX tables_key ON tables (module_id, key) WHERE key IS NOT NULL;
 
@@ -166,10 +168,28 @@ CREATE TABLE records (
   created_at TEXT NOT NULL,
   seq INTEGER,
   read_at TEXT,
-  gone_at TEXT
+  gone_at TEXT,
+  number INTEGER -- its place in its table, never given again (1.3.4)
 );
 CREATE INDEX records_table ON records (table_id, created_at);
 CREATE UNIQUE INDEX records_seq ON records (seq);
+
+-- Numbers (shape/numbers.ts): each module, table and row given the next one as it is made, and a
+-- module moved into another the next one there; never given again.
+CREATE TRIGGER modules_number AFTER INSERT ON modules WHEN NEW.number IS NULL BEGIN
+  UPDATE modules SET number = coalesce((SELECT max(n) FROM (SELECT number AS n FROM modules WHERE parent_id IS NEW.parent_id AND id != NEW.id UNION ALL SELECT number FROM tables WHERE module_id IS NEW.parent_id AND id != NEW.id)), 0) + 1 WHERE id = NEW.id;
+END;
+CREATE TRIGGER modules_moved AFTER UPDATE OF parent_id ON modules
+WHEN NEW.parent_id IS NOT OLD.parent_id BEGIN
+  UPDATE modules SET number = coalesce((SELECT max(n) FROM (SELECT number AS n FROM modules WHERE parent_id IS NEW.parent_id AND id != NEW.id UNION ALL SELECT number FROM tables WHERE module_id IS NEW.parent_id AND id != NEW.id)), 0) + 1 WHERE id = NEW.id;
+END;
+CREATE TRIGGER tables_number AFTER INSERT ON tables WHEN NEW.number IS NULL BEGIN
+  UPDATE tables SET number = coalesce((SELECT max(n) FROM (SELECT number AS n FROM modules WHERE parent_id IS NEW.module_id AND id != NEW.id UNION ALL SELECT number FROM tables WHERE module_id IS NEW.module_id AND id != NEW.id)), 0) + 1 WHERE id = NEW.id;
+END;
+CREATE TRIGGER records_number AFTER INSERT ON records WHEN NEW.number IS NULL BEGIN
+  UPDATE records SET number = coalesce((SELECT max(number) FROM records WHERE table_id = NEW.table_id), 0) + 1 WHERE id = NEW.id;
+END;
+CREATE INDEX records_numbered ON records (table_id, number);
 
 -- A row's earlier values, each with the journal line that replaced it.
 CREATE TABLE versions (

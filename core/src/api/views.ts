@@ -16,6 +16,7 @@ import type { Provenance } from '../world/kinds.ts'
 import { besideFrom, type RecordOut, resetWords } from '../world/records/index.ts'
 import type { Module, Table } from '../world/shape/index.ts'
 import { manifestSays } from '../world/shape/manifest.ts'
+import { moduleNumber, tableNumber } from '../world/shape/numbers.ts'
 import { placeOf } from '../world/shape/parts.ts'
 import type { Task } from '../world/tasks/index.ts'
 import { taskOfTurn } from '../world/tasks/index.ts'
@@ -44,6 +45,8 @@ export function tableSummary(world: BaseCtx['world'], t: Table): TableSummary {
     place: placeOf(t),
     of: part ? (world.shape.table(part.relatesTo ?? '')?.name ?? null) : null,
     tab: t.tab,
+    number: tableNumber(world.db, t.id),
+    view: (t.startView?.kind ?? 'table') as TableSummary['view'],
   }
 }
 
@@ -245,6 +248,7 @@ export function makeViews(ctx: BaseCtx) {
       id: m.id,
       name: m.name,
       parent: m.parent,
+      number: moduleNumber(world.db, m.id),
       people: livesPeople(m),
       pages: pagesOf(m),
       tables: world.shape

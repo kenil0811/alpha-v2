@@ -244,12 +244,15 @@ export interface TableSummary {
   place: 'main' | 'part' | 'setup' | 'people' // a tab, on its row (`of`), setup, People's columns
   of: string | null
   tab: boolean // a part or setup table kept as a tab too
+  number: string | null // its address: 1.3 is the first module's third (shape/numbers.ts)
+  view: ViewKind // how it opens for everyone, until a person picks another
 }
 
 export interface ModuleSummary {
   id: string
   name: string
   parent: string | null // the module it sits inside
+  number: string | null // its address, 1 or 1.2 inside module 1
   people: boolean // People and Organizations are its tabs (module.yaml people: true)
   pages: PageSummary[]
   tables: TableSummary[]

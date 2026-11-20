@@ -21,7 +21,7 @@ import { type ReactNode, useRef, useState } from 'react'
 import { Select } from '../ui/field.tsx'
 import { MenuItem, Popover } from '../ui/popover.tsx'
 
-const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
+export const KINDS: { kind: ViewKind; words: string; icon: ReactNode }[] = [
   { kind: 'table', words: 'Table', icon: <Table2 className="size-3.5" /> },
   { kind: 'gallery', words: 'Gallery', icon: <LayoutGrid className="size-3.5" /> },
   { kind: 'timeline', words: 'Timeline', icon: <ChartGantt className="size-3.5" /> },

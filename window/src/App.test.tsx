@@ -27,22 +27,46 @@ describe('delete', () => {
 })
 
 const modules = [
-  { id: 'm_1', name: 'Shops', parent: null, people: false, pages: [], tables: [] },
+  { id: 'm_1', name: 'Shops', parent: null, number: null, people: false, pages: [], tables: [] },
   {
     id: 'm_2',
     name: 'Bakery',
     parent: 'm_1',
+    number: null,
     people: false,
     pages: [],
-    tables: [{ id: 't_1', name: 'Orders', rows: 1, place: 'main' as const, of: null, tab: false }],
+    tables: [
+      {
+        id: 't_1',
+        name: 'Orders',
+        rows: 1,
+        place: 'main' as const,
+        of: null,
+        tab: false,
+        number: null,
+        view: 'table' as const,
+      },
+    ],
   },
   {
     id: 'm_3',
     name: 'Food',
     parent: null,
+    number: null,
     people: false,
     pages: [],
-    tables: [{ id: 't_2', name: 'Meals', rows: 1, place: 'main' as const, of: null, tab: false }],
+    tables: [
+      {
+        id: 't_2',
+        name: 'Meals',
+        rows: 1,
+        place: 'main' as const,
+        of: null,
+        tab: false,
+        number: null,
+        view: 'table' as const,
+      },
+    ],
   },
 ]
 const open = NO_LAYOUT
