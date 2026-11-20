@@ -27,12 +27,12 @@ export function list(records: Records, tableId: string): RecordOut[] {
   })
 }
 
-// When a read last met each row, and when its source said it was gone (rules D8, D12).
+// Each row's number, when a read last met it, and when its source said it was gone (D8, D12).
 function readOf(records: Records, tableId: string, id?: string) {
   const at = new Map(
-    all<{ id: string; read_at: string | null; gone_at: string | null }>(
+    all<{ id: string; read_at: string | null; gone_at: string | null; number: number | null }>(
       records.db,
-      `SELECT id, read_at, gone_at FROM records WHERE table_id = ? ${id ? 'AND id = ?' : ''} AND (read_at IS NOT NULL OR gone_at IS NOT NULL)`,
+      `SELECT id, read_at, gone_at, number FROM records WHERE table_id = ? ${id ? 'AND id = ?' : ''}`,
       ...(id ? [tableId, id] : [tableId]),
     ).map((x) => [x.id, x]),
   )
@@ -41,6 +41,7 @@ function readOf(records: Records, tableId: string, id?: string) {
     return {
       ...(x?.read_at ? { readAt: x.read_at } : {}),
       ...(x?.gone_at ? { goneAt: x.gone_at } : {}),
+      ...(x?.number ? { number: x.number } : {}),
     }
   }
 }

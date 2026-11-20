@@ -244,12 +244,15 @@ export interface TableSummary {
   place: 'main' | 'part' | 'setup' | 'people' // a tab, on its row (`of`), setup, People's columns
   of: string | null
   tab: boolean // a part or setup table kept as a tab too
+  number: string | null // its address: 1.3 is the first module's third (shape/numbers.ts)
+  view: ViewKind // how it opens for everyone, until a person picks another
 }
 
 export interface ModuleSummary {
   id: string
   name: string
   parent: string | null // the module it sits inside
+  number: string | null // its address, 1 or 1.2 inside module 1
   people: boolean // People and Organizations are its tabs (module.yaml people: true)
   pages: PageSummary[]
   tables: TableSummary[]
@@ -296,6 +299,7 @@ export interface RowView {
   sources: Record<string, SourceView>
   read?: { from: string; at: string } // a mirror's row: when its system was last read (D12)
   gone?: string // when its source deleted it; kept, out of the default list (D8)
+  number?: number // its place in its table: row 4 of table 1.3 is 1.3.4
 }
 
 export interface TableView {
@@ -312,6 +316,7 @@ export interface TableView {
   names: Record<string, string> // the rows its relations point at and the people it holds, by name
   views: SavedView[]
   startView: ViewOf | null // how its kit says it first opens, until the person picks a view
+  number?: string | null // its address, 1.3 (shape/numbers.ts)
   readBy: ReadByView[] // the connections that fill it, read again from its ⋮
 }
 

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { atNumber } from '../../world/shape/numbers.ts'
 import { VIEW_KINDS } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FoundRow, Layout, Me, ViewOf } from '../types.ts'
@@ -132,9 +133,30 @@ export function registerMe(ctx: Ctx): void {
     return { ok: true }
   })
 
-  // Find (⌘K): rows by their words, each opening where it is.
+  // what a number (1.3.4) names, first in Find: a module, a table or a row
+  const numbered = (words: string): FoundRow[] => {
+    const at = /^\d+(\.\d+)*$/.test(words) ? atNumber(world.db, words) : null
+    if (at?.kind === 'module') {
+      const m = world.shape.module(at.id)
+      return m ? [{ label: m.name, hint: `Module ${words}`, href: `#/module/${m.id}` }] : []
+    }
+    if (at?.kind === 'table') {
+      const t = world.shape.table(at.id)
+      return t ? [{ label: t.name, hint: `Table ${words}`, href: `#/table/${t.id}` }] : []
+    }
+    const rec = at ? world.records.get(at.id) : undefined
+    if (!rec) return []
+    const label = world.rowName(rec.table, rec.record.values) || 'A row'
+    return [
+      { label, hint: `${rec.table.name} ${words}`, href: `#/table/${rec.table.id}/${at?.id}` },
+    ]
+  }
+
+  // Find (⌘K): rows by their words, each opening where it is; a number, what it names.
   app.get('/api/find', async (req): Promise<FoundRow[]> => {
     const { words } = z.object({ words: z.string().trim().min(1) }).parse(req.query)
+    const found = numbered(words)
+    if (found.length) return found
     const people: FoundRow[] = [
       ...world.people.list('person', words).slice(0, 5),
       ...world.people.list('company', words).slice(0, 3),

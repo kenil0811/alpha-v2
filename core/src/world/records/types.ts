@@ -23,6 +23,7 @@ export interface RecordOut {
   updatedAt: string
   readAt?: string // when a read last met it (rules D12)
   goneAt?: string // when its source said it was gone; kept, out of the default lists (D8)
+  number?: number // its place in its table (shape/numbers.ts)
 }
 
 export interface LandInput {

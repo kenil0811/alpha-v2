@@ -33,6 +33,7 @@ export interface RowPageView {
   row: RowView
   names: Record<string, string>
   title: string
+  number: string | null // its address: 1.3.4 is the fourth row of the first module's third
 }
 
 // What is around a row: its parts, the rows that link to it, the notes that mention it.

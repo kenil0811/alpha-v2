@@ -8,6 +8,7 @@ import { all } from '../../world/db.ts'
 import { junctionName, quote } from '../../world/ddl.ts'
 import { Refused } from '../../world/kinds.ts'
 import type { Field, Shape, Table } from '../../world/shape/index.ts'
+import { rowNumber } from '../../world/shape/numbers.ts'
 import { summaryShows, summaryWords } from '../../world/shape/summary.ts'
 import type { Ctx } from '../ctx.ts'
 import type { FieldView, RowAround, RowPageView } from '../types.ts'
@@ -83,6 +84,7 @@ export function registerRows(ctx: Ctx): void {
       row: rowOut(t, r),
       names: { ...Object.fromEntries(related), ...world.people.names(people) },
       title: world.rowName(t, r.values) || 'A row',
+      number: rowNumber(world.db, row),
     }
   })
 
