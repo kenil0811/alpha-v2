@@ -4,7 +4,7 @@
 // never pills.
 import type { ReactNode } from 'react'
 import { cn } from './cn.ts'
-import type { Tab } from './tabs.tsx'
+import { Maybe, type Tab } from './tabs.tsx'
 
 export function PillSwitch({ label, tabs }: { label: string; tabs: Tab[] }) {
   return (
@@ -21,21 +21,26 @@ export function PillSwitch({ label, tabs }: { label: string; tabs: Tab[] }) {
 
 function SwitchPill({ tab: t }: { tab: Tab }): ReactNode {
   return (
-    <a
-      href={t.href}
-      aria-current={t.sel ? 'page' : undefined}
-      className={cn(
-        'flex h-6.5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
-        t.sel && 'bg-surface font-medium text-ink shadow-btn',
+    <Maybe tab={t}>
+      {(on) => (
+        <a
+          {...on}
+          href={t.href}
+          aria-current={t.sel ? 'page' : undefined}
+          className={cn(
+            'flex h-6.5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-ink-2 text-md hover:text-ink',
+            t.sel && 'bg-surface font-medium text-ink shadow-btn',
+          )}
+        >
+          {t.icon && <span className="text-ink-3">{t.icon}</span>}
+          {t.label}
+          {t.count !== undefined && (
+            <span className="font-normal text-ink-3 text-sm tabular-nums">
+              {t.count.toLocaleString()}
+            </span>
+          )}
+        </a>
       )}
-    >
-      {t.icon && <span className="text-ink-3">{t.icon}</span>}
-      {t.label}
-      {t.count !== undefined && (
-        <span className="font-normal text-ink-3 text-sm tabular-nums">
-          {t.count.toLocaleString()}
-        </span>
-      )}
-    </a>
+    </Maybe>
   )
 }

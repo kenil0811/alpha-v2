@@ -15,6 +15,7 @@ import type {
 import { Briefcase, LayoutDashboard } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { useLayout } from './layout.ts'
 import { ModuleDetails, ModuleSetup } from './ModuleSetup.tsx'
 import { PageView } from './PageView.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
@@ -47,6 +48,7 @@ export function ModuleScreen({
   renderTable: (t: TableData, summary: TableSummary | null) => ReactNode
 }) {
   const [m, setM] = useState<ModuleView | null>(null)
+  const { barHidden } = useLayout().layout
   const load = useCallback(() => {
     api.get<ModuleView>(`/api/modules/${moduleId}`).then(setM, () => setM(null))
   }, [moduleId])
@@ -95,7 +97,7 @@ export function ModuleScreen({
               },
             ]
           : []),
-        ...moduleTabs(facts, current),
+        ...moduleTabs(facts, current, barHidden),
       ]
     : []
 
@@ -133,6 +135,7 @@ export function ModuleScreen({
 export const moduleTabs = (
   m: Pick<ModuleView, 'id' | 'pages' | 'tables'>,
   current: ModuleTab | null,
+  hidden: string[] = [], // the tables the person took out of the bar
 ): Tab[] => [
   ...[...m.pages]
     .sort((a, b) => Number(!!b.front) - Number(!!a.front))
@@ -144,9 +147,10 @@ export const moduleTabs = (
       sel: current?.kind === 'page' && current.name === p.name,
     })),
   ...[
-    ...m.tables.filter((t) => t.place === 'main'),
+    ...m.tables.filter((t) => t.place === 'main' && !hidden.includes(t.id)),
     ...m.tables.filter((t) => t.place !== 'main' && t.tab),
   ].map((t) => ({
+    table: t,
     key: `t:${t.id}`,
     href: `#/table/${t.id}`,
     label: t.name,

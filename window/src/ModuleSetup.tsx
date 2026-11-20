@@ -17,6 +17,7 @@ import { useAgents } from './Agents.tsx'
 import { api, Problem } from './api.ts'
 import { ModuleCase } from './ModuleCase.tsx'
 import { originWords, when } from './Modules.tsx'
+import { TableTab } from './TableTab.tsx'
 import { Refusal, useAct } from './ui/act.tsx'
 import { Button } from './ui/button.tsx'
 import { Confirm } from './ui/dialog.tsx'
@@ -241,7 +242,7 @@ function AllSchedules({
 }
 
 // Every table of the module, its own tabs first: a name that opens it and how many rows it has.
-// Whether a setup table or a part is kept as a tab is on that table's own ⋮ menu.
+// Right-click a table for Rename and Pin to or Hide from the header; a double-click renames it.
 function Tables({ m }: { m: ModuleView }) {
   const all = [
     ...m.tables.filter((t) => t.place === 'main'),
@@ -256,16 +257,22 @@ function Tables({ m }: { m: ModuleView }) {
             key={t.id}
             className="flex items-center gap-3 border-hair border-t py-1.5 text-md first:border-t-0"
           >
-            <Table2 className="size-4 shrink-0 text-ink-3" />
-            <a
-              href={`#/table/${t.id}`}
-              className="min-w-0 flex-1 truncate text-ink hover:underline"
-            >
-              {t.name}
-            </a>
-            <span className="w-14 text-right text-ink-3 tabular-nums">
-              {t.rows.toLocaleString()}
-            </span>
+            <TableTab table={t}>
+              {(on) => (
+                <div {...on} className="flex min-w-0 flex-1 items-center gap-3">
+                  <Table2 className="size-4 shrink-0 text-ink-3" />
+                  <a
+                    href={`#/table/${t.id}`}
+                    className="min-w-0 flex-1 truncate text-ink hover:underline"
+                  >
+                    {t.name}
+                  </a>
+                  <span className="w-14 text-right text-ink-3 tabular-nums">
+                    {t.rows.toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </TableTab>
           </li>
         ))}
       </ul>
