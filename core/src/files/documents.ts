@@ -98,6 +98,38 @@ function toValue(words: string, kind: string): unknown {
   return words
 }
 
+type SheetCell = { words: string; cell: string }
+
+// A sheet file's cells by row then column letter, the chosen sheet (or the first), and every
+// sheet's name.
+function readSheet(world: World, hash: string, sheet: string | null) {
+  const doc = world.files.document(hash)
+  if (doc?.kind !== 'sheet') throw new Refused('Only a sheet can be imported into a table.')
+  const all = world.files.chunks(doc.id).filter((c) => c.position.sheet)
+  const chunks = all.filter((c) => !sheet || c.position.sheet === sheet)
+  if (!chunks.length)
+    throw new Refused(sheet ? `There is no sheet called ${sheet}.` : 'The sheet is empty.')
+  const sheetName = sheet ?? (chunks[0]?.position.sheet as string)
+  const rows = new Map<number, Map<string, SheetCell>>()
+  for (const c of chunks) {
+    if (c.position.sheet !== sheetName) continue
+    const col = (c.position.cell as string).replace(/\d+$/, '')
+    const row = c.position.row as number
+    if (!rows.has(row)) rows.set(row, new Map())
+    rows.get(row)?.set(col, { words: c.words, cell: c.position.cell as string })
+  }
+  const order = [...rows.keys()].sort((a, b) => a - b)
+  const headerRow = rows.get(order[0] as number) as Map<string, SheetCell>
+  const sheets = [...new Set(all.map((c) => c.position.sheet as string))]
+  return { doc, sheetName, rows, order, headerRow, sheets }
+}
+
+// What a person maps before importing: the chosen sheet's headers and the sheets there are.
+export function sheetHeaders(world: World, hash: string, sheet: string | null) {
+  const { headerRow, sheets } = readSheet(world, hash, sheet)
+  return { headers: [...headerRow.values()].map((h) => h.words), sheets }
+}
+
 // A sheet's rows into a table: the first row with values is the headers; every value keeps its
 // cell as its source.
 export function importRows(
@@ -107,25 +139,8 @@ export function importRows(
   columns: Record<string, string>,
   sheet: string | null,
   ctx: RecordCtx,
-): string {
-  const doc = world.files.document(hash)
-  if (doc?.kind !== 'sheet') throw new Refused('Only a sheet can be imported into a table.')
-  const chunks = world.files
-    .chunks(doc.id)
-    .filter((c) => c.position.sheet && (!sheet || c.position.sheet === sheet))
-  if (!chunks.length)
-    throw new Refused(sheet ? `There is no sheet called ${sheet}.` : 'The sheet is empty.')
-  const sheetName = sheet ?? (chunks[0]?.position.sheet as string)
-  const rows = new Map<number, Map<string, { words: string; cell: string }>>()
-  for (const c of chunks) {
-    if (c.position.sheet !== sheetName) continue
-    const col = (c.position.cell as string).replace(/\d+$/, '')
-    const row = c.position.row as number
-    if (!rows.has(row)) rows.set(row, new Map())
-    rows.get(row)?.set(col, { words: c.words, cell: c.position.cell as string })
-  }
-  const order = [...rows.keys()].sort((a, b) => a - b)
-  const headerRow = rows.get(order[0] as number) as Map<string, { words: string }>
+): { added: number; words: string } {
+  const { doc, sheetName, rows, order, headerRow } = readSheet(world, hash, sheet)
   const colOf = new Map<string, string>()
   for (const [col, h] of headerRow) colOf.set(h.words.toLowerCase(), col)
   const missing = Object.keys(columns).filter((h) => !colOf.has(h.toLowerCase()))
@@ -140,7 +155,7 @@ export function importRows(
   }[] = []
   const skipped: string[] = []
   for (const r of order.slice(1)) {
-    const cells = rows.get(r) as Map<string, { words: string; cell: string }>
+    const cells = rows.get(r) as Map<string, SheetCell>
     const values: Record<string, unknown> = {}
     const perField: Record<string, ProvenanceInput> = {}
     let bad: string | null = null
@@ -171,7 +186,10 @@ export function importRows(
       })
   }
   const ids = out.length ? world.records.add(table.id, out, ctx) : []
-  return `Imported ${ids.length} row${ids.length === 1 ? '' : 's'} into ${table.name} from ${doc.title}${
-    skipped.length ? `; skipped ${skipped.length}: ${skipped.slice(0, 5).join('; ')}` : ''
-  }.`
+  return {
+    added: ids.length,
+    words: `Imported ${ids.length} row${ids.length === 1 ? '' : 's'} into ${table.name} from ${doc.title}${
+      skipped.length ? `; skipped ${skipped.length}: ${skipped.slice(0, 5).join('; ')}` : ''
+    }.`,
+  }
 }
