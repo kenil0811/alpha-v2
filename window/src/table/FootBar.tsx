@@ -2,9 +2,10 @@
 // differs from what was saved, Cancel and Save ▾ (Save; Save as new list) at the right, before
 // the pages. A list Alpha keeps itself saves nothing: Cancel alone.
 import type { SavedView } from '@alpha/core/api'
-import { ChevronDown, CopyPlus } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, CopyPlus } from 'lucide-react'
 import { type ReactNode, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
+import { cn } from '../ui/cn.ts'
 import { MenuItem, Popover } from '../ui/popover.tsx'
 import { NewButton } from './NewButton.tsx'
 import { NameForm } from './ViewTabs.tsx'
@@ -105,4 +106,76 @@ export function FootBar({
       </Popover>
     </div>
   )
+}
+
+// The pages as numbers, ‹ 1 2 … 21 ›: the first, the last, and the ones either side of this one.
+export function Pages({
+  at,
+  pages,
+  onPage,
+}: {
+  at: number // from 0
+  pages: number
+  onPage: (n: number) => void
+}) {
+  const shown = pageNumbers(at, pages)
+  const step = 'grid h-6 min-w-6 place-items-center rounded-md px-1.5 tabular-nums'
+  return (
+    <nav aria-label="Pages" className="flex items-center gap-0.5">
+      <button
+        type="button"
+        aria-label="Previous page"
+        disabled={at === 0}
+        onClick={() => onPage(at - 1)}
+        className={cn(step, 'hover:bg-hover hover:text-ink disabled:opacity-40')}
+      >
+        <ChevronLeft className="size-3.5" />
+      </button>
+      {shown.map((n, i) =>
+        n === null ? (
+          <span key={`gap${i}`} className={step}>
+            …
+          </span>
+        ) : (
+          <button
+            key={n}
+            type="button"
+            aria-current={n === at ? 'page' : undefined}
+            onClick={() => onPage(n)}
+            className={cn(
+              step,
+              n === at ? 'bg-accent-soft font-medium text-ink' : 'hover:bg-hover hover:text-ink',
+            )}
+          >
+            {n + 1}
+          </button>
+        ),
+      )}
+      <button
+        type="button"
+        aria-label="Next page"
+        disabled={at >= pages - 1}
+        onClick={() => onPage(at + 1)}
+        className={cn(step, 'hover:bg-hover hover:text-ink disabled:opacity-40')}
+      >
+        <ChevronRight className="size-3.5" />
+      </button>
+    </nav>
+  )
+}
+
+// Which page numbers show, from 0, with null for a gap: 0 1 … 20, or 0 … 7 8 9 … 20.
+export function pageNumbers(at: number, pages: number): (number | null)[] {
+  const keep = new Set([0, pages - 1, at - 1, at, at + 1].filter((n) => n >= 0 && n < pages))
+  if (at <= 1) keep.add(2)
+  if (at >= pages - 2) keep.add(pages - 3)
+  const sorted = [...keep].filter((n) => n >= 0 && n < pages).sort((a, b) => a - b)
+  const out: (number | null)[] = []
+  for (const n of sorted) {
+    const last = out[out.length - 1]
+    if (typeof last === 'number' && n - last === 2) out.push(n - 1)
+    else if (typeof last === 'number' && n - last > 2) out.push(null)
+    out.push(n)
+  }
+  return out
 }

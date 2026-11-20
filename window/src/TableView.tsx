@@ -21,7 +21,7 @@ import { Board } from './table/Board.tsx'
 import { TableName } from './table/context.ts'
 import { setRule } from './table/edits.ts'
 import { applyFilters, applySearch, columns, complete, differs, sortRows } from './table/engine.ts'
-import { FootBar } from './table/FootBar.tsx'
+import { FootBar, Pages } from './table/FootBar.tsx'
 import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
@@ -213,10 +213,8 @@ export function TableView({
       setViewId(v.id)
       setConfig(complete(v.config))
     })
-  // the table view draws a page of rows at a time; the others draw them all
-  const grid = !['board', 'form', 'list', 'gallery', 'calendar', 'map', 'chart'].includes(
-    config.kind,
-  )
+  // the table, list and gallery draw a page of rows at a time; the others draw them all
+  const grid = !['board', 'form', 'calendar', 'map', 'chart'].includes(config.kind)
   const openRowPanel = (id: string) => {
     if (kept) return kept.open(id)
     setOpened(id)
@@ -459,7 +457,7 @@ export function TableView({
               />
             ) : config.kind === 'list' ? (
               <ListView
-                rows={rows}
+                rows={paged}
                 lines={own?.lines}
                 fields={shown}
                 group={fields.find((f) => f.id === config.group)}
@@ -467,7 +465,7 @@ export function TableView({
                 onOpen={openRowPanel}
               />
             ) : config.kind === 'gallery' ? (
-              <GalleryView rows={rows} fields={shown} names={data.names} onOpen={openRowPanel} />
+              <GalleryView rows={paged} fields={shown} names={data.names} onOpen={openRowPanel} />
             ) : config.kind === 'calendar' && dateBy ? (
               <CalendarView rows={rows} data={data} view={config} onOpen={openRowPanel} />
             ) : config.kind === 'timeline' && dateBy ? (
@@ -561,14 +559,11 @@ export function TableView({
               {readByWords(data.readBy) && <span className="mr-3">{readByWords(data.readBy)}</span>}
               {rows.length > Math.min(size, ...SIZES) && grid && (
                 <>
-                  <span className="mr-2 tabular-nums">
-                    Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
-                  </span>
                   <Select
                     aria-label="Rows to a page"
                     value={String(size)}
                     onChange={(e) => resize(Number(e.target.value))}
-                    className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+                    className="h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
                   >
                     {SIZES.map((n) => (
                       <option key={n} value={n}>
@@ -576,24 +571,7 @@ export function TableView({
                       </option>
                     ))}
                   </Select>
-                  {(
-                    [
-                      ['First', 0, at === 0],
-                      ['Previous', at - 1, at === 0],
-                      ['Next', at + 1, at >= pages - 1],
-                      ['Last', pages - 1, at >= pages - 1],
-                    ] as const
-                  ).map(([label, to, off]) => (
-                    <button
-                      key={label}
-                      type="button"
-                      disabled={off}
-                      onClick={() => setPage(to)}
-                      className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  <Pages at={at} pages={pages} onPage={setPage} />
                 </>
               )}
             </FootBar>
