@@ -19,9 +19,7 @@ export type Place = 'main' | 'part' | 'setup' | 'people'
 export function placeOf(t: Table): Place {
   if (t.setup) return 'setup'
   if (t.fields.some((f) => f.partOf)) return 'part'
-  return t.fields.some((f) => f.per === 'person') && manifestSays(t.module, 'people')
-    ? 'people'
-    : 'main'
+  return t.fields.some((f) => f.per) && manifestSays(t.module, 'people') ? 'people' : 'main'
 }
 
 // The tables whose rows are part of this one's, each with the relation that says so.

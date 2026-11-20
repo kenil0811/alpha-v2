@@ -89,7 +89,7 @@ export class Records {
   shape: Shape
   watch: RowWatch | null = null
   // A person field holds one of the person's people: their id, an address or a name only one has.
-  personOf: ((said: string) => string) | null = null
+  personOf: ((said: string, company?: boolean) => string) | null = null
   // One person through merges: the one they are now, their name; and a question
   // put to the person, where a fold finds two values of theirs
   peopleRoot: ((id: string) => string) | null = null

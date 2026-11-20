@@ -26,7 +26,14 @@ import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
-import { MirrorGone, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
+import {
+  MirrorGone,
+  managedWhy,
+  mirrorKeeps,
+  mirrorRows,
+  ShapeFixed,
+  useFieldsAt,
+} from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
@@ -76,6 +83,7 @@ export function TableView({
   const own = (data as Partial<KeptTable>).kept ?? null // what of a kept list changes, and why not
   const why = own?.why ?? ''
   // where a row's change goes: the module table's own rows, or the kept list's
+  const fieldsAt = useFieldsAt() // People and Organizations add a property in place
   const rowsAt = own ? `/api/kept/${own.name}/rows` : `/api/tables/${data.id}/rows`
   const key = `alpha.table.${data.id}`
   const [views, setViews] = useState<SavedView[]>(data.views)
@@ -310,7 +318,7 @@ export function TableView({
                     shown={shown}
                     config={config}
                     layout={layout}
-                    adding={!kept}
+                    adding={!kept || !!fieldsAt}
                     onConfig={setConfig}
                     tab={
                       summary && (summary.place === 'part' || summary.place === 'setup')

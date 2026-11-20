@@ -344,8 +344,8 @@ export class People {
   get(id: string): PersonOut | undefined {
     return get(this, id)
   }
-  ref(said: string): string {
-    return ref(this, said)
+  ref(said: string, company = false): string {
+    return ref(this, said, company)
   }
   rowsNaming(id: string): { table: string; record: string; field: string }[] {
     return rowsNaming(this, id)

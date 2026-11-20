@@ -253,7 +253,7 @@ export class Shape {
         indexed?: boolean
         sensitive?: boolean
         summary?: SummarySpec
-        per?: 'person'
+        per?: 'person' | 'company'
       }>(f.options, {})
       return {
         id: f.id,
@@ -266,7 +266,7 @@ export class Shape {
         many: f.kind === 'relation' && !!o.many,
         tags: f.kind === 'choice' && !!o.many,
         summary: f.kind === 'summary' ? (o.summary ?? null) : null,
-        per: f.kind === 'person' && o.per === 'person' ? ('person' as const) : null,
+        per: f.kind === 'person' && (o.per === 'person' || o.per === 'company') ? o.per : null,
         partOf: f.kind === 'relation' && !o.many && !!o.partOf,
         indexed: !!o.indexed,
         sensitive: !!o.sensitive,
@@ -416,7 +416,7 @@ export class Shape {
       ...(f.indexed && f.kind !== 'relation' && !summary ? { indexed: true } : {}),
       ...(f.sensitive ? { sensitive: true } : {}),
       ...(summary ? { summary } : {}),
-      ...(f.per ? { per: 'person' } : {}),
+      ...(f.per ? { per: f.per } : {}),
     }
     const id = newId('f')
     run(

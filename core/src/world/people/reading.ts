@@ -117,9 +117,15 @@ export function get(people: People, id: string): PersonOut | undefined {
 // Who a person field's value names: one of the person's people by their id, an address they
 // hold, or a name only one of them has. Anyone else is refused in words (a wall: a person field
 // never holds a stranger's name as text).
-export function ref(people: People, said: string): string {
+export function ref(people: People, said: string, company = false): string {
   const v = said.trim()
   if (!v) throw new Refused('A person field needs someone.')
+  // a field one row per organization names an organization, by its id
+  if (company) {
+    const c = people.row(v)
+    if (c?.kind === 'company') return people.root(c.id)
+    throw new Refused(`${v} is not one of the person's organizations (view companies).`)
+  }
   const p = people.row(v)
   if (p) {
     if (p.kind !== 'person') throw new Refused(`${p.name} is a company, not a person.`)
