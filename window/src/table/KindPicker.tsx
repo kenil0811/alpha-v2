@@ -120,12 +120,13 @@ export function KindPicker({
       <button
         ref={anchor}
         type="button"
+        aria-label={`View: ${current?.words}`}
+        data-tip={`View: ${current?.words}`}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink text-md hover:bg-hover"
+        className="flex h-7.5 shrink-0 items-center gap-0.5 rounded-md px-1.5 text-ink-2 hover:bg-hover hover:text-ink"
       >
         {current?.icon}
-        {current?.words}
-        <ChevronDown className="size-3.5 text-ink-3" />
+        <ChevronDown className="size-3 text-ink-3" />
       </button>
       {config.kind === 'board' &&
         pick(

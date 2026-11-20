@@ -238,16 +238,13 @@ export function TableView({
         <div className="flex h-full min-h-0">
           <div className="flex min-w-0 flex-1 flex-col">
             <ViewTabs
+              picker={
+                <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
+              }
               tools={
                 <>
-                  <KindPicker
-                    fields={fields}
-                    rows={data.rows}
-                    config={config}
-                    onConfig={setConfig}
-                  />
                   {searching || config.search ? (
-                    <label className="flex h-7.5 w-44 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
+                    <label className="flex h-7.5 w-56 min-w-24 shrink items-center gap-1.75 rounded-md border border-line bg-surface px-2.5 text-ink-3 focus-within:border-accent-line">
                       <Search className="size-3.25 shrink-0" />
                       <input
                         // biome-ignore lint/a11y/noAutofocus: opened by a click on Search, to type in
@@ -270,11 +267,12 @@ export function TableView({
                   ) : (
                     <button
                       type="button"
+                      aria-label="Search"
+                      data-tip="Search"
                       onClick={() => setSearching(true)}
-                      className="flex h-7.5 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-ink-3 text-md hover:border-accent-line hover:text-ink"
+                      className="grid size-7.5 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-hover hover:text-ink"
                     >
-                      <Search className="size-3.25 shrink-0" />
-                      Search
+                      <Search className="size-4" />
                     </button>
                   )}
                   <AddFilter
