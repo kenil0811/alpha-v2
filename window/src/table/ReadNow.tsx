@@ -1,7 +1,7 @@
 // Read now on a table a connection fills: in its ⋮ menu, one press reads every connection that
 // fills it and can be read now (Mail: Gmail and Outlook); one waiting on a sign-in or the customer
 // stays greyed with its reason (W3). Under the table, a line says what reads into it and when it
-// last did. Each connection's own Read now stays in Intelligence › Connections.
+// last did. Each connection's own Read now stays in Settings › Connections.
 import type { ReadByView } from '@alpha/core/api'
 import { RefreshCw } from 'lucide-react'
 import { api } from '../api.ts'

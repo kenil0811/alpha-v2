@@ -54,4 +54,4 @@ export async function openModule(name: string): Promise<boolean> {
 
 // A connection's own page, where it is connected.
 export const openConnection = (connector: string) =>
-  go(`#/intelligence/connections?connect=${connector}`)
+  go(`#/settings/connections?connect=${connector}`)

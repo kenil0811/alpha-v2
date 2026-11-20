@@ -126,7 +126,7 @@ function CardBody({
       }
       await api.post(`/api/cards/${id}`, andAlways ? { answer: a, always: true } : { answer: a })
       if (card.gate === 'sign_in' && a === card.options[0])
-        window.location.hash = `#/intelligence/connections${card.connector ? `?connect=${card.connector}` : ''}`
+        window.location.hash = `#/settings/connections${card.connector ? `?connect=${card.connector}` : ''}`
     } catch (err) {
       setProblem(err instanceof Problem ? err.message : 'That answer did not go in.')
       setBusy(false)

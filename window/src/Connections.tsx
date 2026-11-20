@@ -1,4 +1,4 @@
-// Intelligence's Connections: a tile per connector with its accounts, the sign-in apps, and the
+// Settings' Connections: a tile per connector with its accounts, the sign-in apps, and the
 // folders. Connecting is the person's own act here: what they type goes to the Keychain, never to
 // the model.
 import type { ConnectionView, ConnectorsView, ConnectorView } from '@alpha/core/api'

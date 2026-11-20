@@ -274,7 +274,7 @@ function Tables({ m }: { m: ModuleView }) {
 }
 
 // The files on the module's rows, the newest first, each with its row and when it came there; the
-// rest in Intelligence › Files on this module. No part for a module with none.
+// rest in Settings › Files on this module. No part for a module with none.
 const FEW = 12
 
 function Files({ m }: { m: ModuleView }) {
@@ -312,7 +312,7 @@ function Files({ m }: { m: ModuleView }) {
       </ul>
       {got.count > got.files.length && (
         <a
-          href={`#/intelligence/files?module=${m.id}`}
+          href={`#/settings/files?module=${m.id}`}
           className="mt-2 flex items-center gap-1 self-start text-accent text-md hover:underline"
         >
           See all in Files

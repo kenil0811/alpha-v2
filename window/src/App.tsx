@@ -30,7 +30,7 @@ import { OpenedPanel, useOpenBeside } from './OpenedPanel.tsx'
 import { splitBeside } from './opened.ts'
 import { Parts } from './Parts.tsx'
 import { People } from './People.tsx'
-import { type Place, placeOf } from './place.ts'
+import { forward, type Place, placeOf } from './place.ts'
 import { PluginPage } from './plugin/page.tsx'
 import { screenOf, switchedOn } from './plugin/screens.ts'
 import { RowPage, type RowPlace } from './RowPage.tsx'
@@ -254,7 +254,13 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    const onHash = () => setPlace(placeOf(window.location.hash))
+    // an old Intelligence address (a bookmark) becomes Settings' in the bar too
+    const onHash = () => {
+      const h = forward(window.location.hash)
+      if (h !== window.location.hash) window.history.replaceState(null, '', h)
+      setPlace(placeOf(h))
+    }
+    onHash()
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -340,21 +346,21 @@ export function App() {
         return aboveModule(place.id)
       case 'item':
         return place.kind === 'schedule'
-          ? { label: 'Schedules', href: '#/intelligence/schedules' }
+          ? { label: 'Schedules', href: '#/settings/schedules' }
           : place.kind === 'run'
             ? { label: 'Activity', href: '#/settings/activity' }
             : { label: 'Permissions', href: '#/settings/permissions' }
-      // an agent's page is one of Intelligence › Agents
+      // an agent's page is one of Settings › Agents
       case 'agent':
-        return { label: 'Agents', href: '#/intelligence/agents' }
+        return { label: 'Agents', href: '#/settings/agents' }
       // a computer's page is one of Connections › Your computers
       case 'computer':
-        return { label: 'Connections', href: '#/intelligence/connections' }
+        return { label: 'Connections', href: '#/settings/connections' }
       case 'card':
         return { label: 'Home', href: '#/' }
-      // a kept file is one of Intelligence › Files
+      // a kept file is one of Settings › Files
       case 'file':
-        return { label: 'Files', href: '#/intelligence/files' }
+        return { label: 'Files', href: '#/settings/files' }
       case 'people':
         if (!place.id) return HOME
         return place.kind === 'company'
@@ -389,8 +395,6 @@ export function App() {
         return 'Agents'
       case 'settings':
         return 'Settings'
-      case 'intelligence':
-        return 'Intelligence'
       case 'parts':
         return 'Parts'
       case 'plugin':
@@ -507,9 +511,8 @@ export function App() {
                     net={network(modules)}
                     onName={setPersonName}
                   />
-                ) : place.at === 'settings' || place.at === 'intelligence' ? (
+                ) : place.at === 'settings' ? (
                   <Settings
-                    page={place.at}
                     tab={place.section}
                     open={place.open}
                     version={version}

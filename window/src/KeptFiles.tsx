@@ -1,4 +1,4 @@
-// Intelligence › Files: every file Alpha has kept, from a folder, mail or a drop, the newest
+// Settings › Files: every file Alpha has kept, from a folder, mail or a drop, the newest
 // first: what brought it, when, and whether it was read. A file opens as it does from a value's
 // source.
 import type { KeptFileView } from '@alpha/core/api'
