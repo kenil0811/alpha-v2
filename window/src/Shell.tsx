@@ -12,7 +12,7 @@ import {
   ListChecks,
   MessageSquare,
   PanelLeft,
-  Pin,
+  PinOff,
   Plus,
   SlidersHorizontal,
   Sparkles,
@@ -29,7 +29,7 @@ import { BarMiddle, InBar } from './ui/bar-slot.tsx'
 import { cn } from './ui/cn.ts'
 import { Dot, type Signal, strongest } from './ui/dot.tsx'
 import { Edge, Opening, SIDE_MIN, STRIP, stripItem } from './ui/edge.tsx'
-import { Popover, useContextMenu } from './ui/popover.tsx'
+import { MenuItem, Popover, useContextMenu } from './ui/popover.tsx'
 import { Renamable } from './ui/rename.tsx'
 import { SlideWidth } from './ui/slide.tsx'
 
@@ -103,6 +103,9 @@ export function Rail({
     pinned: layout.pinned,
     pin: (ids) => onLayout({ pinned: ids }),
   }
+  const pinnedTops = shownTops(modules, hiding.hidden, hiding.pinned).filter((m) =>
+    hiding.pinned.includes(m.id),
+  )
   const empty = useContextMenu()
   const keepWidth = (w: number) => onLayout({ railWidth: w })
   // open and folded alike sit in one slide, so a fold or an open eases
@@ -186,6 +189,19 @@ export function Rail({
           current={place.at === 'tasks'}
           extra={tasksDue > 0 && <Badge n={tasksDue} />}
         />
+        {pinnedTops.length > 0 && (
+          <div className="flex flex-wrap gap-1 py-1.5">
+            {pinnedTops.map((m) => (
+              <PinnedTile
+                key={m.id}
+                m={m}
+                here={here}
+                href={landingOf(modules, m)}
+                hiding={hiding}
+              />
+            ))}
+          </div>
+        )}
         {/* every row 30px, the modules straight after Tasks */}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: a right-click on empty space brings hidden modules back; the ⋮ menus do too, by keyboard */}
         <div
@@ -204,17 +220,19 @@ export function Rail({
             <HiddenMenu modules={modules} hiding={hiding} onDone={empty.close} />
           </Popover>
           <Signals.Provider value={signals}>
-            {shownTops(modules, hiding.hidden, hiding.pinned).map((m) => (
-              <ModuleItem
-                key={m.id}
-                m={m}
-                modules={modules}
-                here={here}
-                folded={layout.folded}
-                onFold={fold}
-                hiding={hiding}
-              />
-            ))}
+            {shownTops(modules, hiding.hidden, hiding.pinned)
+              .filter((m) => !hiding.pinned.includes(m.id))
+              .map((m) => (
+                <ModuleItem
+                  key={m.id}
+                  m={m}
+                  modules={modules}
+                  here={here}
+                  folded={layout.folded}
+                  onFold={fold}
+                  hiding={hiding}
+                />
+              ))}
           </Signals.Provider>
           <button
             type="button"
@@ -258,6 +276,46 @@ function Workspace({ name, tileOnly }: { name: string; tileOnly?: boolean }) {
         {label}
       </span>
     </div>
+  )
+}
+
+// A pinned module: a small square tile, its icon only, its name in the hover; right-click Unpin.
+function PinnedTile({
+  m,
+  here,
+  href,
+  hiding,
+}: {
+  m: ModuleSummary
+  here: string | null
+  href: string
+  hiding: Hiding
+}) {
+  const menu = useContextMenu()
+  return (
+    <>
+      <a
+        href={href}
+        {...menu.on}
+        aria-label={m.name}
+        data-tip={m.name}
+        aria-current={here === m.id ? 'page' : undefined}
+        className="grid size-8 place-items-center rounded-md bg-rail-hover/60 text-rail-ink-2 transition-colors hover:bg-rail-hover hover:text-rail-ink aria-[current=page]:bg-rail-sel aria-[current=page]:text-rail-ink"
+      >
+        <ModuleIcon name={m.name} className="size-4" />
+      </a>
+      <Popover point={menu.point} open={menu.open} onClose={menu.close}>
+        <MenuItem
+          onClick={() => {
+            hiding.pin(hiding.pinned.filter((x) => x !== m.id))
+            menu.close()
+          }}
+        >
+          <PinOff className="size-3.5 text-ink-3" />
+          Unpin
+        </MenuItem>
+      </Popover>
+    </>
   )
 }
 
@@ -311,9 +369,6 @@ function ModuleItem({
                 current={here === m.id}
                 extra={
                   <>
-                    {!m.parent && hiding.pinned.includes(m.id) && (
-                      <Pin aria-label="Pinned" className="size-3 shrink-0 text-rail-ink-3" />
-                    )}
                     {signal && <Dot s={signal} />}
                     <span className="w-11 shrink-0" />
                   </>
