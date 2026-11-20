@@ -996,7 +996,7 @@ function Foot({
         ref={anchor}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        data-tip={op ? undefined : 'Choose a total'}
+        data-tip={op ? undefined : 'A count, sum or average of this column'}
         className={cn(
           'group/foot flex h-8.5 w-full items-center gap-1.5 px-2.5 tabular-nums hover:bg-hover',
           numeric && 'justify-end',
@@ -1010,7 +1010,7 @@ function Foot({
         ) : count ? (
           <span className="text-ink-3">{loading ? '' : count}</span>
         ) : (
-          <span className="invisible text-ink-3 group-hover/foot:visible">Total</span>
+          <span className="invisible text-ink-3 group-hover/foot:visible">Summarize</span>
         )}
       </button>
       <Popover
