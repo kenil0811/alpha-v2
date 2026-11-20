@@ -147,7 +147,7 @@ export function Home({
                         : `${a.title} needs you to sign in again`
                 }
                 {...(a.waiting
-                  ? { href: '#/intelligence/connections' }
+                  ? { href: '#/settings/connections' }
                   : a.inBrowser
                     ? {
                         onClick: () => {
@@ -160,7 +160,7 @@ export function Home({
                             void signInWith(a.connection)
                           },
                         }
-                      : { href: `#/intelligence/connections?connect=${a.connector}` })}
+                      : { href: `#/settings/connections?connect=${a.connector}` })}
               />
             ))}
           </Group>

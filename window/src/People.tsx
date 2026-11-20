@@ -94,7 +94,7 @@ function PeopleList({
       {none && (
         <p className="flex items-center gap-1.5 border-line border-b bg-accent-soft px-7 py-2 text-ink-2 text-md">
           No one yet.
-          <Info help="People come from your contacts, the people you write to and your small meetings, once Contacts, Calendar or Gmail is connected in Intelligence › Connections." />
+          <Info help="People come from your contacts, the people you write to and your small meetings, once Contacts, Calendar or Gmail is connected in Settings › Connections." />
         </p>
       )}
       <div className="min-h-0 flex-1">

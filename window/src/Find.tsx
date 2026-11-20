@@ -24,7 +24,6 @@ export function Find({ modules, onClose }: { modules: ModuleSummary[]; onClose: 
           { label: 'Organizations', hint: m.name, href: '#/people?companies' },
         ]),
       { label: 'Activity', hint: 'Settings', href: '#/settings/activity' },
-      { label: 'Intelligence', hint: '', href: '#/intelligence' },
       { label: 'Settings', hint: '', href: '#/settings' },
       ...modules.map((m) => ({
         label: m.name,

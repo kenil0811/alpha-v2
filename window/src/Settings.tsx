@@ -1,5 +1,4 @@
-// Intelligence and Settings, each a page of tabs or sections. Connections and Schedules are in
-// their own files.
+// Settings, a page of sections. Connections and Schedules are in their own files.
 import type { CardView, ConnectorsView, DataPageView, Me, ModelView } from '@alpha/core/api'
 import { Check, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
@@ -38,48 +37,34 @@ import { Section } from './ui/section.tsx'
 import { Segmented } from './ui/segmented.tsx'
 import { SideItem, SideList } from './ui/side-list.tsx'
 import { Switch } from './ui/switch.tsx'
-import { Tabs } from './ui/tabs.tsx'
 import { Waiting } from './ui/waiting.tsx'
 import { WaitingRules } from './WaitingRules.tsx'
 
-// Two pages share this file. Intelligence: what Alpha knows and does, as
-// tabs. Settings: how Alpha runs, a list of sections on the left and one section at a time.
-const PAGES = {
-  intelligence: {
-    icon: <Sparkles className="size-4" />,
-    title: 'Intelligence',
-    tabs: [
-      ['agents', 'Agents'],
-      ['modules', 'Modules'],
-      ['schedules', 'Schedules'],
-      ['connections', 'Connections'],
-      ['files', 'Files'],
-      ['work', 'How to work'],
-    ],
-  },
-  settings: {
-    icon: <SlidersHorizontal className="size-4" />,
-    title: 'Settings',
-    tabs: [
-      ['model', 'Model'],
-      ['usage', 'Usage'],
-      ['data', 'Data'],
-      ['appearance', 'Appearance'],
-      ['permissions', 'Permissions'],
-      ['activity', 'Activity'],
-      ['people', 'People'],
-    ],
-  },
-} as const
+// Settings: how Alpha runs, a list of sections on the left and one section at a time. The tabs
+// from Agents to How to work were Intelligence's; they sit here until their own homes (Governance,
+// the agents) take them.
+const TABS = [
+  ['model', 'Model'],
+  ['usage', 'Usage'],
+  ['data', 'Data'],
+  ['appearance', 'Appearance'],
+  ['permissions', 'Permissions'],
+  ['activity', 'Activity'],
+  ['people', 'People'],
+  ['connections', 'Connections'],
+  ['files', 'Files'],
+  ['agents', 'Agents'],
+  ['modules', 'Modules'],
+  ['schedules', 'Schedules'],
+  ['work', 'How to work'],
+] as const
 
 export function Settings({
-  page,
   tab,
   open,
   version,
   cards,
 }: {
-  page: keyof typeof PAGES
   tab: string | null
   open: string | null
   version: number
@@ -94,7 +79,6 @@ export function Settings({
     if (version >= 0) load()
   }, [load, version])
 
-  const p = PAGES[page]
   const [me, setMe] = useState<Me | null>(null)
   useEffect(() => {
     api.get<Me>('/api/me').then(setMe, () => undefined)
@@ -102,8 +86,8 @@ export function Settings({
   // a member does not see the owner's sections; People only where people sign in
   const member = me?.user.role === 'member'
   const hidden = new Set(member ? ['model', 'data', 'people'] : me?.signIn ? [] : ['people'])
-  const tabs = (p.tabs as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
-  const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? p.tabs[0][0]
+  const tabs = (TABS as readonly (readonly [string, string])[]).filter(([id]) => !hidden.has(id))
+  const at = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]?.[0] ?? TABS[0][0]
   if (!view) return problem ? <p className="p-6 text-ink-3">{problem}</p> : <Waiting />
   const body: Record<string, ReactNode> = {
     work: <HowToWork version={version} />,
@@ -120,46 +104,26 @@ export function Settings({
     data: <DataSection />,
     appearance: <Appearance view={view} onChange={load} />,
   }
-  // the bar holds Settings' icon tile and title; Intelligence has its tabs under the bar
+  // the bar holds Settings' icon tile and title
   const head = (
     <InBar>
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
-          {p.icon}
+          <SlidersHorizontal className="size-4" />
         </span>
-        <h1 className="font-serif text-ink text-xl">{p.title}</h1>
+        <h1 className="font-serif text-ink text-xl">Settings</h1>
       </div>
     </InBar>
   )
   const go = (id: string) => {
-    window.location.hash = `#/${page}/${id}`
+    window.location.hash = `#/settings/${id}`
   }
-  if (page === 'intelligence')
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <Tabs
-          label="Intelligence"
-          tabs={PAGES.intelligence.tabs.map(([id, label]) => ({
-            key: id,
-            href: `#/intelligence/${id}`,
-            label,
-            sel: id === at,
-          }))}
-        />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex max-w-page flex-col gap-8 px-7 pt-6 pb-12">{body[at]}</div>
-        </div>
-      </div>
-    )
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-page flex-col gap-6 px-8 pt-7 pb-12">
         {head}
         <div className="grid grid-cols-[170px_1fr] gap-7 max-md:grid-cols-1">
-          <SideList
-            label={page === 'settings' ? 'Settings' : 'Intelligence'}
-            className="max-md:flex-row max-md:flex-wrap"
-          >
+          <SideList label="Settings" className="max-md:flex-row max-md:flex-wrap">
             {tabs.map(([id, name]) => (
               <SideItem key={id} on={id === at} onClick={() => go(id)}>
                 {name}
