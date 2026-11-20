@@ -23,6 +23,15 @@ function stored(key: string): Working | null {
   }
 }
 
+// Where a table opens: the first of the person's own order ('all' is All), else the core's default
+// list, else All.
+export function openOn(given: SavedView[], order: string[]): string | null {
+  const first = order[0]
+  if (first === 'all') return null
+  const named = given.find((v) => v.id === first)
+  return (named ?? given.find((v) => v.isDefault))?.id ?? null
+}
+
 // `given` is the table's lists as they arrived, `views` the lists as they stand here (renamed,
 // saved, removed). A table reached from the rail is first drawn as its frame, its name with no
 // lists yet (`loading`): the list it opens on is picked when the table itself arrives, unless the
@@ -33,12 +42,13 @@ export function useWorkingList(
   given: SavedView[],
   views: SavedView[],
   loading: boolean,
+  order: string[],
   blank: ViewConfig = BLANK,
 ) {
   const [viewId, setViewId] = useState<string | null>(() => {
     const was = stored(key)
     if (was && (was.view === null || given.some((v) => v.id === was.view))) return was.view
-    return given.find((v) => v.isDefault)?.id ?? null
+    return openOn(given, order)
   })
   const [config, setConfig] = useState<ViewConfig>(() => {
     const was = stored(key)
@@ -50,11 +60,11 @@ export function useWorkingList(
   useEffect(() => {
     if (settled.current || loading) return
     settled.current = true
-    const front = given.find((v) => v.isDefault)
+    const front = given.find((v) => v.id === openOn(given, order))
     if (!front) return
     setViewId(front.id)
     setConfig(complete(front.config))
-  }, [loading, given])
+  }, [loading, given, order])
   useEffect(() => {
     if (!settled.current) return
     try {

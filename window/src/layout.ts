@@ -13,6 +13,7 @@ export const NO_LAYOUT: Layout = {
   assistant: 'open',
   pageSize: null,
   agent: null,
+  listOrder: {},
 }
 
 export const LayoutContext = createContext<{
