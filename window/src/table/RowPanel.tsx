@@ -16,6 +16,7 @@ import { cn } from '../ui/cn.ts'
 import { cutTip } from '../ui/cut-tip.ts'
 import { DropZone, dropped } from '../ui/drop-zone.tsx'
 import { Select } from '../ui/field.tsx'
+import { Choice } from '../ui/pill.tsx'
 import { Popover } from '../ui/popover.tsx'
 import { SidePanel } from '../ui/side-panel.tsx'
 import { AddRow } from './AddRow.tsx'
@@ -482,6 +483,8 @@ export function FieldList({
                     ))
                   ) : isTags(f) && text ? (
                     <TagChips field={f} value={row.values[f.slug]} />
+                  ) : f.kind === 'choice' && text ? (
+                    <Choice of={f} value={text} />
                   ) : (
                     text || EMPTY_WORDS
                   )}
