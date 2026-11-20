@@ -10,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { livesPeople } from '../api/views.ts'
 import { keepDefaults } from '../modules/defaults.ts'
 import { MIGRATIONS } from '../world/migrations.ts'
+import type { Table } from '../world/shape/index.ts'
+import { placeOf } from '../world/shape/parts.ts'
 import { World } from '../world/world.ts'
 import { landIn } from './places.ts'
 
@@ -47,6 +49,10 @@ describe('Calendar and People, Alpha’s own', () => {
     expect(world.shape.tables(people?.id ?? '').map((t) => t.name)).toEqual(['Address book'])
     expect(world.shape.ownTable(cal?.id ?? '', 'Events')?.id).toBe(events?.id)
     expect(world.shape.ownModule('Contacts')).toBeUndefined()
+    // People's storage, not a place: no tab, and it cannot be made one
+    const book = world.shape.ownTable(people?.id ?? '', 'Address book') as Table
+    expect(placeOf(book)).toBe('people')
+    expect(() => world.shape.setTab(book.id, true, system)).toThrow(/not as a tab/)
   })
 
   it('adopt the Events a calendar made before them, rows and all', async () => {
@@ -121,6 +127,7 @@ describe('Contacts, before People kept its own Address book', () => {
     expect(world.views.list(t?.id ?? '').map((v) => v.name)).toEqual(['Everyone'])
     expect(world.records.count(t?.id ?? '')).toBe(2)
     expect(people()).toEqual(before)
+    expect(placeOf(world.shape.table(t?.id ?? '') as Table)).toBe('people')
 
     // the connector finds the moved table by its key: the same cards update, none repeats
     const [again] = landIn(world, contactsConnector)

@@ -12,14 +12,17 @@ import type { Shape } from './shape.ts'
 import type { Table, WriteCtx } from './types.ts'
 import { findField } from './types.ts'
 
-// people: a one-row-per-person table of the module People lives in: its rows are People's columns
-// and a person's page, so it is no tab of its own either
+// people: a one-row-per-person table of the module People lives in, or its Address book: its rows are
+// People's columns and a person's page, so it is no tab of its own either
 export type Place = 'main' | 'part' | 'setup' | 'people'
 
 export function placeOf(t: Table): Place {
   if (t.setup) return 'setup'
   if (t.fields.some((f) => f.partOf)) return 'part'
-  return t.fields.some((f) => f.per === 'person') && manifestSays(t.module, 'people')
+  // the Address book, where every address book lands and its rows each are a person, is People's own
+  // storage: those rows are the people, so it is no tab, in the rail or anywhere to browse
+  const book = (t.key ?? t.name) === 'Address book' && t.people?.each === 'person'
+  return (t.fields.some((f) => f.per === 'person') || book) && manifestSays(t.module, 'people')
     ? 'people'
     : 'main'
 }
