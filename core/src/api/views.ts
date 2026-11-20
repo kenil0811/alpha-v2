@@ -35,6 +35,11 @@ import type {
 } from './types.ts'
 
 // A table as a module lists it: its rows, and where it sits.
+// The tables a module lists: none hidden, and never People's Address book, which is People's
+// storage and no place (its rows are the people).
+export const listed = (t: Table): boolean =>
+  !t.hidden && !((t.key ?? t.name) === 'Address book' && placeOf(t) === 'people')
+
 export function tableSummary(world: BaseCtx['world'], t: Table): TableSummary {
   const part = t.fields.find((f) => f.partOf)
   return {
@@ -249,12 +254,12 @@ export function makeViews(ctx: BaseCtx) {
       pages: pagesOf(m),
       tables: world.shape
         .tables(m.id)
-        .filter((t) => !t.hidden)
+        .filter(listed)
         .map((t) => tableSummary(world, t)),
     }))
     const shown = new Set<string>()
     for (const m of all) {
-      if (!m.tables.length && !m.pages.length) continue
+      if (!m.tables.length && !m.pages.length && !m.people) continue
       for (let p: ModuleSummary | undefined = m; p && !shown.has(p.id); ) {
         shown.add(p.id)
         p = all.find((x) => x.id === p?.parent)
