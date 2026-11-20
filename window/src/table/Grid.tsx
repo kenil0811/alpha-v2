@@ -1058,8 +1058,8 @@ function AddField({ tableId }: { tableId: string }) {
       <button
         ref={anchor}
         type="button"
-        aria-label="Add a field"
-        data-tip={fixed ?? 'Add a field'}
+        aria-label="Add a property"
+        data-tip={fixed ?? 'Add a property'}
         disabled={!!fixed}
         onClick={() => setOpen((o) => !o)}
         className="grid h-9 w-full place-items-center text-ink-3 hover:bg-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
@@ -1067,7 +1067,7 @@ function AddField({ tableId }: { tableId: string }) {
         <Plus className="size-3.75" />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} align="end">
-        <AddFieldForm tableId={tableId} title="Add a field" onAdded={() => setOpen(false)} />
+        <AddFieldForm tableId={tableId} title="Add a property" onAdded={() => setOpen(false)} />
       </Popover>
     </>
   )

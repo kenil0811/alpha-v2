@@ -32,7 +32,7 @@ import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { Showing } from './table/Showing.tsx'
 import { SourcePanel } from './table/SourcePanel.tsx'
-import { AddFilter, Chips, ColumnsButton } from './table/Toolbar.tsx'
+import { AddFilter, Chips } from './table/Toolbar.tsx'
 import { ViewTabs } from './table/ViewTabs.tsx'
 import { canType, show } from './table/values.ts'
 import { CalendarView } from './table/views/CalendarView.tsx'
@@ -286,9 +286,6 @@ export function TableView({
               }
               right={
                 <>
-                  {config.kind !== 'board' && (
-                    <ColumnsButton fields={fields} config={config} onConfig={setConfig} />
-                  )}
                   {config.kind !== 'form' && <NewButton onNew={onNew} />}
                   <More
                     tableId={data.id}
