@@ -5,8 +5,8 @@ import type { FieldView } from '@alpha/core/api'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { askForNew } from '../ask.ts'
 import { cn } from '../ui/cn.ts'
-import { Select } from '../ui/field.tsx'
 import { Popover } from '../ui/popover.tsx'
+import { ChoiceSelect } from './ChoiceSelect.tsx'
 import { useTableName } from './context.ts'
 import { PickCell } from './Pick.tsx'
 import { TagChips, TagPicker } from './Tags.tsx'
@@ -78,7 +78,7 @@ export function EditCell({
   // a choice: the shared dropdown, open at once, saved on a pick; Escape or a click away leaves it
   if (field.kind === 'choice')
     return (
-      <Select
+      <ChoiceSelect
         of={field}
         startOpen
         value={typed}
@@ -107,7 +107,7 @@ export function EditCell({
         {field.choices.map((c) => (
           <option key={c}>{c}</option>
         ))}
-      </Select>
+      </ChoiceSelect>
     )
   return (
     <input

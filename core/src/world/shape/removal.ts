@@ -193,6 +193,7 @@ export function hiddenFields(shape: Shape, tableId: string): (Field & { rows: nu
       sensitive: false,
       choices: [],
       tones: {},
+      default: null,
       about: null,
       aboutBy: null,
       relatesTo: o.relatesTo ?? null,

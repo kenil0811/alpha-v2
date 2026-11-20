@@ -13,6 +13,7 @@ import {
   describe,
   rename,
   setChoices,
+  setDefault,
   setDocuments,
   setHidden,
   setKey,
@@ -247,6 +248,7 @@ export class Shape {
       const o = parse<{
         choices?: string[]
         tones?: Record<string, Tone>
+        default?: string
         relatesTo?: string
         many?: boolean
         partOf?: boolean
@@ -262,6 +264,7 @@ export class Shape {
         kind: f.kind,
         choices: o.choices ?? [],
         tones: o.tones ?? {},
+        default: f.kind === 'choice' && !o.many ? (o.default ?? null) : null,
         relatesTo: o.relatesTo ?? null,
         many: f.kind === 'relation' && !!o.many,
         tags: f.kind === 'choice' && !!o.many,
@@ -469,6 +472,9 @@ export class Shape {
   }
   setChoices(tableId: string, field: string, choices: string[], ctx: WriteCtx): Table {
     return setChoices(this, tableId, field, choices, ctx)
+  }
+  setDefault(tableId: string, field: string, value: string | null, ctx: WriteCtx): void {
+    setDefault(this, tableId, field, value, ctx)
   }
   setTones(tableId: string, field: string, tones: Record<string, Tone>, ctx: WriteCtx): void {
     setTones(this, tableId, field, tones, ctx)
