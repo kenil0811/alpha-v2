@@ -162,9 +162,7 @@ function SchedulePage({
         ]}
       />
       <h2 className="font-medium font-serif text-ink text-xl">Recent runs</h2>
-      {runs.length === 0 ? (
-        <p className="text-ink-2 text-md">No runs yet.</p>
-      ) : (
+      {runs.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-line bg-surface">
           {runs.map((r) => (
             <RunRow

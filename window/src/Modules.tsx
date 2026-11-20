@@ -7,7 +7,7 @@ import { api, Problem, wordsOf } from './api.ts'
 import { Button } from './ui/button.tsx'
 import { Field } from './ui/field.tsx'
 import { List, Row, Tile } from './ui/list.tsx'
-import { Empty, Section } from './ui/section.tsx'
+import { Section } from './ui/section.tsx'
 
 export function when(at: string | null): string {
   if (!at) return 'not yet'
@@ -40,7 +40,6 @@ export function Modules({
   return (
     <Section title="Modules" about="Every module, where it comes from, and its Setup.">
       {problem && <div className="text-bad text-md">{problem}</div>}
-      {modules?.length === 0 && <Empty>No modules yet.</Empty>}
       {!!modules?.length && (
         <List>
           {modules.map((m) => (

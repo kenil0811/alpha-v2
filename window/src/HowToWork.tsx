@@ -44,7 +44,6 @@ export function HowToWork({ version }: { version: number }) {
           `Alpha stops doing it from now on: “${l.words}”. Saying it again brings it back.`,
         run: (l) => after(api.post('/api/instructions/remove', { for: l.for, words: l.words })),
       }}
-      empty="Nothing yet."
     />
   )
 }

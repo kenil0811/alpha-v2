@@ -10,7 +10,7 @@ import { shownScreens } from './plugin/screens.ts'
 import { signInWith } from './SignInApps.tsx'
 import { TaskList } from './Tasks.tsx'
 import { Button } from './ui/button.tsx'
-import { Group, Line, Quiet } from './ui/groups.tsx'
+import { Group, Line } from './ui/groups.tsx'
 import { Segmented } from './ui/segmented.tsx'
 
 // A part of Home whose load failed: said in its place, with the way to try again.
@@ -195,7 +195,6 @@ export function Home({
           }
         >
           {failed && <NotLoaded onTry={load} />}
-          {tasks && !failed && tasks.lines.length === 0 && <Quiet>Nothing due today.</Quiet>}
           {tasks && tasks.lines.length > 0 && <TaskList lines={tasks.lines} onChange={load} />}
         </Group>
       </div>

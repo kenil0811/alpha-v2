@@ -194,26 +194,22 @@ export function AgentSchedules({
           }}
         />
       )}
-      {schedules.length === 0 && !adding ? (
-        <p className="text-ink-3 text-sm">No schedules yet.</p>
-      ) : (
-        schedules.length > 0 && (
-          <List>
-            {schedules.map((s) => (
-              <Row
-                key={s.id}
-                lead={<CalendarClock className="size-4 text-ink-3" />}
-                title={
-                  <a href={`#/schedule/${s.id}`} className="hover:underline">
-                    {s.name}
-                  </a>
-                }
-                sub={lineUnder(s)}
-                actions={<Controls s={s} onChange={onChange} />}
-              />
-            ))}
-          </List>
-        )
+      {schedules.length > 0 && (
+        <List>
+          {schedules.map((s) => (
+            <Row
+              key={s.id}
+              lead={<CalendarClock className="size-4 text-ink-3" />}
+              title={
+                <a href={`#/schedule/${s.id}`} className="hover:underline">
+                  {s.name}
+                </a>
+              }
+              sub={lineUnder(s)}
+              actions={<Controls s={s} onChange={onChange} />}
+            />
+          ))}
+        </List>
       )}
     </section>
   )
@@ -283,9 +279,7 @@ export function AgentSchedulePage({
       </section>
       <section className="flex flex-col gap-1.5">
         <h2 className="font-medium font-serif text-ink text-xl">Runs</h2>
-        {s.runs.length === 0 ? (
-          <p className="text-ink-3 text-sm">It has not run yet.</p>
-        ) : (
+        {s.runs.length > 0 && (
           <List>
             {s.runs.map((r) => (
               <Row
