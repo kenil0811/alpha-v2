@@ -6,6 +6,7 @@
 import type { TableView as TableData } from '@alpha/core/api'
 import { useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { FileView } from './FileView.tsx'
 import { ItemPage } from './Items.tsx'
 import { linkBeside, type Opened, pageOf, splitBeside, withBeside } from './opened.ts'
 import { People } from './People.tsx'
@@ -64,6 +65,11 @@ export function OpenedPanel({
       <Tasks list="open" id={opened.id} version={version} onName={setName} />
     ) : opened.kind === 'run' || opened.kind === 'schedule' || opened.kind === 'rule' ? (
       <ItemPage kind={opened.kind} id={opened.id} version={version} onName={setName} />
+    ) : opened.kind === 'file' ? (
+      <FileView
+        place={{ hash: opened.id, sheet: null, cell: null, page: null, box: null, line: null }}
+        onName={setName}
+      />
     ) : opened.kind === 'rows' ? (
       <RowsBeside id={opened.id} version={version} onName={setName} />
     ) : opened.kind === 'day' ? (
