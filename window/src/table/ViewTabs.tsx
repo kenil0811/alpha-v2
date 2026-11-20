@@ -1,13 +1,11 @@
 // A table's toolbar, one row that never wraps: the view as an icon, then every saved list as a pill
 // in one row that scrolls sideways (the one the table opens on first, then All and each list,
-// shared by everyone; the picked one filled), + for a new list, Cancel and Save while the list on
-// screen differs from what was saved (Save ▾ Save as new list keeps a shared list as it was), and
-// on the right search and filter (`tools`) and the table's actions (`right`). A list behaves like a
+// shared by everyone; the picked one filled), + for a new list, and on the right search and filter (`tools`) and the table's actions (`right`). A list behaves like a
 // tab: a right-click gives Rename, Duplicate, Move to the front and Delete, and a double-click
 // renames it in place. Resting on a pill says what the list holds. A list Alpha keeps itself
 // (people, tasks) holds no saved lists, so it shows neither Save nor its menu, and Cancel alone.
 import type { FieldView, SavedView } from '@alpha/core/api'
-import { ArrowLeftToLine, ChevronDown, CopyPlus, PencilLine, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeftToLine, CopyPlus, PencilLine, Plus, Trash2 } from 'lucide-react'
 import { type FormEvent, type ReactNode, type RefObject, useRef, useState } from 'react'
 import { Button } from '../ui/button.tsx'
 import { cn } from '../ui/cn.ts'
@@ -27,12 +25,10 @@ export function ViewTabs({
   dirty,
   problem,
   onPick,
-  onSave,
   onSaveAs,
   onRename,
   onDefault,
   onRemove,
-  onReset,
   links,
 }: {
   picker: ReactNode // how the rows are drawn, an icon before the lists
@@ -45,23 +41,19 @@ export function ViewTabs({
   dirty: boolean
   problem: string | null
   onPick: (id: string | null) => void
-  onSave: () => void
   onSaveAs: (name: string) => void
   onRename: (name: string) => void
   onDefault: (id: string, on: boolean) => void // the core keeps the list the table opens on
   onRemove: () => void
-  onReset: () => void
   // a list Alpha keeps itself may hold its own lists (Tasks: Today, This week…): pills that go to
   // them, in place of All, in the same one row
   links?:
     | { key: string; label: string; count?: number | undefined; href: string; sel: boolean }[]
     | undefined
 }) {
-  const [saving, setSaving] = useState(false) // Save ▾
   const [removing, setRemoving] = useState(false) // Delete the list asks first, in the pop-up
   const [renaming, setRenaming] = useState(false) // the picked pill is a box to type its name in
   const [naming, setNaming] = useState<{ at: RefObject<HTMLElement | null> } | null>(null)
-  const saveAt = useRef<HTMLSpanElement>(null)
   const plusAt = useRef<HTMLButtonElement>(null)
   const onList = useContextMenu()
   const view = views.find((v) => v.id === current)
@@ -216,60 +208,11 @@ export function ViewTabs({
           <Plus className="size-3.5" />
         </button>
       )}
-      {dirty && (
-        <>
-          <Button size="sm" variant="ghost" onClick={onReset} data-tip="Go back to what was saved">
-            Cancel
-          </Button>
-          {!keeps ? null : view ? (
-            <span ref={saveAt} className="flex shrink-0">
-              <Button
-                size="sm"
-                variant="primary"
-                className="rounded-r-none"
-                onClick={onSave}
-                data-tip="Everyone sees the change"
-              >
-                Save
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                className="rounded-l-none border-l-accent-ink/30 px-1.25"
-                aria-haspopup="menu"
-                aria-expanded={saving}
-                aria-label="More ways to save"
-                data-tip="More ways to save"
-                onClick={() => setSaving((o) => !o)}
-              >
-                <ChevronDown className="size-3.5" />
-              </Button>
-            </span>
-          ) : (
-            <span ref={saveAt} className="flex shrink-0">
-              <Button size="sm" variant="primary" onClick={() => setNaming({ at: saveAt })}>
-                Save as list
-              </Button>
-            </span>
-          )}
-        </>
-      )}
       {problem && <span className="min-w-0 truncate text-bad text-sm">{problem}</span>}
       <span className="ml-auto flex shrink-0 items-center gap-1">
         {tools}
         {right}
       </span>
-      <Popover anchor={saveAt} open={saving} onClose={() => setSaving(false)} align="end">
-        <MenuItem
-          onClick={() => {
-            setSaving(false)
-            setNaming({ at: saveAt })
-          }}
-        >
-          <CopyPlus className="size-3.5 text-ink-3" />
-          Save as new list
-        </MenuItem>
-      </Popover>
       <Popover point={onList.point} open={onList.open} onClose={onList.close}>
         {actions}
       </Popover>

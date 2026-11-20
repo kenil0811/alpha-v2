@@ -21,13 +21,13 @@ import { Board } from './table/Board.tsx'
 import { TableName } from './table/context.ts'
 import { setRule } from './table/edits.ts'
 import { applyFilters, applySearch, columns, complete, differs, sortRows } from './table/engine.ts'
+import { FootBar } from './table/FootBar.tsx'
 import { Grid, type PastePlan } from './table/Grid.tsx'
 import { KindPicker } from './table/KindPicker.tsx'
 import { layoutOf } from './table/layout.ts'
 import { PasteBar, TickedBar } from './table/Many.tsx'
 import { MirrorGone, managedWhy, mirrorKeeps, mirrorRows, ShapeFixed } from './table/Mirror.tsx'
 import { More } from './table/More.tsx'
-import { NewButton } from './table/NewButton.tsx'
 import { readByWords } from './table/ReadNow.tsx'
 import { RowPanel } from './table/RowPanel.tsx'
 import { Showing } from './table/Showing.tsx'
@@ -206,6 +206,17 @@ export function TableView({
     write(() => api.post(`${rowsAt}/${row.id}`, { field: field.name, value }))
   const tickedRows = data.rows.filter((r) => ticked.has(r.id))
   const dateBy = fields.find((f) => f.id === config.by && f.kind === 'date')
+  const saveAs = (name: string) =>
+    act(async () => {
+      const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, { name, config })
+      setViews((vs) => [...vs, v])
+      setViewId(v.id)
+      setConfig(complete(v.config))
+    })
+  // the table view draws a page of rows at a time; the others draw them all
+  const grid = !['board', 'form', 'list', 'gallery', 'calendar', 'map', 'chart'].includes(
+    config.kind,
+  )
   const openRowPanel = (id: string) => {
     if (kept) return kept.open(id)
     setOpened(id)
@@ -286,7 +297,6 @@ export function TableView({
               }
               right={
                 <>
-                  {config.kind !== 'form' && <NewButton onNew={onNew} />}
                   <More
                     tableId={data.id}
                     fields={fields}
@@ -338,23 +348,7 @@ export function TableView({
               dirty={dirty}
               problem={problem}
               onPick={pick}
-              onReset={() => setConfig(saved)}
-              onSave={() =>
-                act(async () => {
-                  if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
-                })
-              }
-              onSaveAs={(name) =>
-                act(async () => {
-                  const v = await api.post<SavedView>(`/api/tables/${data.id}/views`, {
-                    name,
-                    config,
-                  })
-                  setViews((vs) => [...vs, v])
-                  setViewId(v.id)
-                  setConfig(complete(v.config))
-                })
-              }
+              onSaveAs={saveAs}
               onRename={(name) =>
                 act(async () => {
                   if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
@@ -549,50 +543,60 @@ export function TableView({
                   layout={layout}
                   onPaste={setPasting}
                 />
-                <div className="-mt-4 flex items-center justify-end gap-1 px-7 pb-3 text-ink-3 text-sm">
-                  {readByWords(data.readBy) && (
-                    <span className="mr-3">{readByWords(data.readBy)}</span>
-                  )}
-                  {rows.length > Math.min(size, ...SIZES) && (
-                    <>
-                      <span className="mr-2 tabular-nums">
-                        Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
-                      </span>
-                      <Select
-                        aria-label="Rows to a page"
-                        value={String(size)}
-                        onChange={(e) => resize(Number(e.target.value))}
-                        className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
-                      >
-                        {SIZES.map((n) => (
-                          <option key={n} value={n}>
-                            {n} a page
-                          </option>
-                        ))}
-                      </Select>
-                      {(
-                        [
-                          ['First', 0, at === 0],
-                          ['Previous', at - 1, at === 0],
-                          ['Next', at + 1, at >= pages - 1],
-                          ['Last', pages - 1, at >= pages - 1],
-                        ] as const
-                      ).map(([label, to, off]) => (
-                        <button
-                          key={label}
-                          type="button"
-                          disabled={off}
-                          onClick={() => setPage(to)}
-                          className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </div>
               </>
             )}
+            <FootBar
+              onNew={config.kind === 'form' ? null : onNew}
+              dirty={dirty}
+              keeps={!kept}
+              view={views.find((v) => v.id === viewId)}
+              onReset={() => setConfig(saved)}
+              onSave={() =>
+                act(async () => {
+                  if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { config }))
+                })
+              }
+              onSaveAs={saveAs}
+            >
+              {readByWords(data.readBy) && <span className="mr-3">{readByWords(data.readBy)}</span>}
+              {rows.length > Math.min(size, ...SIZES) && grid && (
+                <>
+                  <span className="mr-2 tabular-nums">
+                    Showing {at * size + 1} to {at * size + paged.length} of {rows.length}
+                  </span>
+                  <Select
+                    aria-label="Rows to a page"
+                    value={String(size)}
+                    onChange={(e) => resize(Number(e.target.value))}
+                    className="mr-2 h-6 shrink-0 border-transparent bg-transparent px-2 pr-1.5 text-ink-3 text-sm hover:bg-hover hover:text-ink"
+                  >
+                    {SIZES.map((n) => (
+                      <option key={n} value={n}>
+                        {n} a page
+                      </option>
+                    ))}
+                  </Select>
+                  {(
+                    [
+                      ['First', 0, at === 0],
+                      ['Previous', at - 1, at === 0],
+                      ['Next', at + 1, at >= pages - 1],
+                      ['Last', pages - 1, at >= pages - 1],
+                    ] as const
+                  ).map(([label, to, off]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={off}
+                      onClick={() => setPage(to)}
+                      className="rounded-md px-2 py-1 hover:bg-hover hover:text-ink disabled:opacity-50"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </>
+              )}
+            </FootBar>
           </div>
           {adding && (
             <AddRow
