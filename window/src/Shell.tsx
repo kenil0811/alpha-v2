@@ -91,7 +91,7 @@ export function Rail({
   online: boolean
   layout: Layout
   onLayout: (change: Partial<Layout>) => void
-  onNew: () => void // New module: a conversation with the Module builder
+  onNew: () => void // New module: its page
 }) {
   // the rail's width, dragged by its edge, kept by Alpha per person
   const width = layout.railWidth ?? 216
