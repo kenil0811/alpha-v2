@@ -11,6 +11,7 @@ import type {
   SavedView,
   TableView as TableData,
   TableSummary,
+  ViewConfig,
 } from '@alpha/core/api'
 import { Search } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
@@ -41,7 +42,7 @@ import { ChartView } from './table/views/ChartView.tsx'
 import { FormView } from './table/views/FormView.tsx'
 import { MapView } from './table/views/MapView.tsx'
 import { TimelineView } from './table/views/TimelineView.tsx'
-import { blankFor, useWorkingList } from './table/working.ts'
+import { blankFor, drawnAs, useWorkingList, viewOf } from './table/working.ts'
 import { Select } from './ui/field.tsx'
 
 const NONE: string[] = [] // no order of the person's own yet; one array, so effects stay still
@@ -85,10 +86,26 @@ export function TableView({
   const blank = blankFor(own?.layout) // All, as the list opens: a kept list may say how
   const { layout: left, change } = useLayout()
   const order = left.listOrder[data.id] ?? NONE
-  const working = useWorkingList(key, data.views, views, loading, order, blank)
+  const working = useWorkingList(
+    key,
+    data.views,
+    views,
+    loading,
+    order,
+    left.viewOf[data.id],
+    blank,
+  )
   const { viewId, setViewId, config, setConfig } = working
-  const saved = complete(views.find((v) => v.id === viewId)?.config ?? blank)
+  // the list as saved, drawn as the table is drawn now: how it is drawn is the person's, not the list's
+  const saved = complete(
+    drawnAs(views.find((v) => v.id === viewId)?.config ?? blank, viewOf(config)),
+  )
   const dirty = differs(config, saved)
+  // the view is picked here and kept per person; the lists only pick rows
+  const setView = (c: ViewConfig) => {
+    setConfig(c)
+    change({ viewOf: { ...left.viewOf, [data.id]: viewOf(c) } })
+  }
   const [problem, setProblem] = useState<string | null>(null)
   // a link that names a value opens where it came from; one that names a row opens the row
   const namedField = openField
@@ -181,7 +198,7 @@ export function TableView({
   }
   const pick = (id: string | null) => {
     setViewId(id)
-    setConfig(complete(views.find((v) => v.id === id)?.config ?? blank))
+    setConfig(complete(drawnAs(views.find((v) => v.id === id)?.config ?? blank, viewOf(config))))
     setProblem(null)
   }
   const replace = (v: SavedView) =>
@@ -251,7 +268,7 @@ export function TableView({
           <div className="flex min-w-0 flex-1 flex-col">
             <ViewTabs
               picker={
-                <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
+                <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setView} />
               }
               tools={
                 <>
@@ -363,7 +380,7 @@ export function TableView({
                   await api.delete(`/api/views/${viewId}`)
                   setViews((vs) => vs.filter((v) => v.id !== viewId))
                   setViewId(null)
-                  setConfig(blank)
+                  setConfig(drawnAs(blank, viewOf(config)))
                 })
               }
             />

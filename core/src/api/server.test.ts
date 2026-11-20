@@ -338,6 +338,7 @@ describe('the api over a world', () => {
       pageSize: null,
       agent: null,
       listOrder: {},
+      viewOf: {},
     })
     // all of how the person left the window is kept here, none of it in the browser
     await a.inject({
@@ -354,6 +355,7 @@ describe('the api over a world', () => {
         assistant: 'folded',
         pageSize: 100,
         listOrder: { t1: ['v2', 'all', 'v1'] },
+        viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
       },
     })
     expect((await a.inject({ url: '/api/me', headers: ok })).json().layout).toEqual({
@@ -367,6 +369,7 @@ describe('the api over a world', () => {
       pageSize: 100,
       agent: null,
       listOrder: { t1: ['v2', 'all', 'v1'] },
+      viewOf: { t1: { kind: 'board', by: null, until: null, group: 'f1', measure: null } },
     })
     expect(
       (
@@ -375,6 +378,16 @@ describe('the api over a world', () => {
           url: '/api/layout',
           headers: ok,
           payload: { listOrder: 3 },
+        })
+      ).statusCode,
+    ).toBe(400)
+    expect(
+      (
+        await a.inject({
+          method: 'POST',
+          url: '/api/layout',
+          headers: ok,
+          payload: { viewOf: { t1: { kind: 'sphere' } } },
         })
       ).statusCode,
     ).toBe(400)

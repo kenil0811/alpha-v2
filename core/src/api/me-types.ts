@@ -13,6 +13,17 @@ export interface Me {
 }
 
 // How the person left the window: all of it here, none in the browser.
+// How a table is drawn, the person's: the layout kind and what only that layout reads (a board's
+// or chart's group, a calendar's, timeline's or map's dates, a chart's measure). A list decides
+// which rows show, never how they are drawn.
+export interface ViewOf {
+  kind: 'table' | 'board' | 'list' | 'gallery' | 'calendar' | 'timeline' | 'chart' | 'form' | 'map'
+  by: string | null
+  until: string | null
+  group: string | null
+  measure: string | null
+}
+
 export interface Layout {
   railFolded: boolean
   folded: string[] // the modules folded in the rail
@@ -24,4 +35,5 @@ export interface Layout {
   pageSize: number | null // a table's rows to a page; none is 50
   agent: string | null // the agent the assistant shows; none is the Chief of staff
   listOrder: Record<string, string[]> // a table's lists in the person's order: table id → list ids ('all' is All); the first is where the table opens
+  viewOf: Record<string, ViewOf> // a table's view for this person: table id → how it is drawn; none opens on the first list's own layout
 }

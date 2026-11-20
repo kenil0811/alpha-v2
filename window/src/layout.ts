@@ -14,6 +14,7 @@ export const NO_LAYOUT: Layout = {
   pageSize: null,
   agent: null,
   listOrder: {},
+  viewOf: {},
 }
 
 export const LayoutContext = createContext<{

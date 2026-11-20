@@ -1,6 +1,7 @@
 import { z } from 'zod'
+import { VIEW_KINDS } from '../../world/views.ts'
 import type { Ctx } from '../ctx.ts'
-import type { FoundRow, Layout, Me } from '../types.ts'
+import type { FoundRow, Layout, Me, ViewOf } from '../types.ts'
 
 export function registerMe(ctx: Ctx): void {
   const { app, world, user, options } = ctx
@@ -15,6 +16,7 @@ export function registerMe(ctx: Ctx): void {
       return Number.isFinite(v) && v > 0 ? v : null
     }
     const order = world.preference(user.id, 'list_order')
+    const drawn = world.preference(user.id, 'view_of')
     return {
       railFolded: world.preference(user.id, 'rail_folded') === 'yes',
       folded: folded ? (JSON.parse(folded) as string[]) : [],
@@ -26,6 +28,7 @@ export function registerMe(ctx: Ctx): void {
       pageSize: n('page_size'),
       agent: world.preference(user.id, 'agent_chosen'),
       listOrder: order ? (JSON.parse(order) as Record<string, string[]>) : {},
+      viewOf: drawn ? (JSON.parse(drawn) as Record<string, ViewOf>) : {},
     }
   }
 
@@ -58,6 +61,18 @@ export function registerMe(ctx: Ctx): void {
         pageSize: z.number().int().positive().nullable().optional(),
         agent: z.string().nullable().optional(),
         listOrder: z.record(z.string(), z.array(z.string())).optional(),
+        viewOf: z
+          .record(
+            z.string(),
+            z.object({
+              kind: z.enum(VIEW_KINDS),
+              by: z.string().nullable(),
+              until: z.string().nullable(),
+              group: z.string().nullable(),
+              measure: z.string().nullable(),
+            }),
+          )
+          .optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -92,6 +107,12 @@ export function registerMe(ctx: Ctx): void {
         user.id,
         'list_order',
         Object.keys(given.listOrder).length ? JSON.stringify(given.listOrder) : null,
+      )
+    if (given.viewOf !== undefined)
+      world.setPreference(
+        user.id,
+        'view_of',
+        Object.keys(given.viewOf).length ? JSON.stringify(given.viewOf) : null,
       )
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))
