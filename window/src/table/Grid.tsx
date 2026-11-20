@@ -311,7 +311,7 @@ export function Grid({
       ref={box}
       onPaste={paste}
       onKeyDown={keys}
-      className="scroll-shown mx-7 mb-6 min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-surface"
+      className="scroll-shown min-h-0 flex-1 overflow-auto bg-surface"
     >
       <table className="table-fixed border-separate border-spacing-0 text-md" style={{ width }}>
         <colgroup>

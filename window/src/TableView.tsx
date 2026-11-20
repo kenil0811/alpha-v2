@@ -215,6 +215,15 @@ export function TableView({
     })
   // the table, list and gallery draw a page of rows at a time; the others draw them all
   const grid = !['board', 'form', 'calendar', 'map', 'chart'].includes(config.kind)
+  // the chips' line shows only while it holds something
+  const band =
+    !!pasting ||
+    ticked.size > 0 ||
+    !!data.mirror ||
+    !!config.search ||
+    config.filters.rules.length > 0 ||
+    config.sorts.length > 0 ||
+    !!config.group
   const openRowPanel = (id: string) => {
     if (kept) return kept.open(id)
     setOpened(id)
@@ -245,7 +254,7 @@ export function TableView({
     <TableName.Provider value={data.name}>
       <ShapeFixed.Provider value={managedWhy(data.managed)}>
         <div className="flex h-full min-h-0">
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="mx-4 mt-3 mb-4 flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
             <ViewTabs
               picker={
                 <KindPicker fields={fields} rows={data.rows} config={config} onConfig={setConfig} />
@@ -373,71 +382,66 @@ export function TableView({
               came={only ? 'page' : of ? 'row' : null}
               allHref={`#/table/${data.id}`}
             />
-            {/* one line at one height whatever shows in it (a paste waiting, ticked rows, filters),
-                so the rows never move when something is picked */}
-            <div className="flex min-h-11.5 flex-wrap items-center gap-2 px-7 py-2">
-              {pasting ? (
-                <PasteBar
-                  plan={pasting}
-                  onNo={() => setPasting(null)}
-                  onYes={async () => {
-                    const plan = pasting
-                    setPasting(null)
-                    await write(() =>
-                      api.post(`/api/tables/${data.id}/rows/many`, {
-                        set: plan.set,
-                        add: plan.add,
-                      }),
-                    )
-                  }}
-                />
-              ) : tickedRows.length > 0 ? (
-                <TickedBar
-                  tableId={data.id}
-                  rows={tickedRows}
-                  fields={fields}
-                  onClear={() => setTicked(new Set())}
-                  fixed={mirrorKeeps(data)}
-                  onSet={(field, value) =>
-                    write(() =>
-                      api.post(`/api/tables/${data.id}/rows/many`, {
-                        set: tickedRows.map((r) => ({
-                          row: r.id,
-                          values: { [field.name]: value },
-                        })),
-                      }),
-                    )
-                  }
-                  onRemove={async () => {
-                    const ok = await write(() =>
-                      api.post(`/api/tables/${data.id}/rows/remove`, {
-                        rows: tickedRows.map((r) => r.id),
-                      }),
-                    )
-                    if (ok) setTicked(new Set())
-                    return ok
-                  }}
-                />
-              ) : (
-                <Chips
-                  fields={fields}
-                  config={config}
-                  rows={data.rows}
-                  names={data.names}
-                  onConfig={setConfig}
-                />
-              )}
-              <span className="text-ink-3 text-sm">
-                {loading
-                  ? ''
-                  : rows.length === data.rows.length
-                    ? `${data.rows.length} row${data.rows.length === 1 ? '' : 's'}`
-                    : `${rows.length} of ${data.rows.length}`}
-              </span>
-              {!loading && (
-                <MirrorGone data={data} showingGone={showingGone} onGone={setShowingGone} />
-              )}
-            </div>
+            {/* the line under the lists holds a paste waiting, ticked rows or the list's chips, at one
+                height while it shows; with none of them there is no line */}
+            {band && (
+              <div className="flex min-h-11.5 flex-wrap items-center gap-2 border-hair border-b px-4 py-2">
+                {pasting ? (
+                  <PasteBar
+                    plan={pasting}
+                    onNo={() => setPasting(null)}
+                    onYes={async () => {
+                      const plan = pasting
+                      setPasting(null)
+                      await write(() =>
+                        api.post(`/api/tables/${data.id}/rows/many`, {
+                          set: plan.set,
+                          add: plan.add,
+                        }),
+                      )
+                    }}
+                  />
+                ) : tickedRows.length > 0 ? (
+                  <TickedBar
+                    tableId={data.id}
+                    rows={tickedRows}
+                    fields={fields}
+                    onClear={() => setTicked(new Set())}
+                    fixed={mirrorKeeps(data)}
+                    onSet={(field, value) =>
+                      write(() =>
+                        api.post(`/api/tables/${data.id}/rows/many`, {
+                          set: tickedRows.map((r) => ({
+                            row: r.id,
+                            values: { [field.name]: value },
+                          })),
+                        }),
+                      )
+                    }
+                    onRemove={async () => {
+                      const ok = await write(() =>
+                        api.post(`/api/tables/${data.id}/rows/remove`, {
+                          rows: tickedRows.map((r) => r.id),
+                        }),
+                      )
+                      if (ok) setTicked(new Set())
+                      return ok
+                    }}
+                  />
+                ) : (
+                  <Chips
+                    fields={fields}
+                    config={config}
+                    rows={data.rows}
+                    names={data.names}
+                    onConfig={setConfig}
+                  />
+                )}
+                {!loading && (
+                  <MirrorGone data={data} showingGone={showingGone} onGone={setShowingGone} />
+                )}
+              </div>
+            )}
             {config.kind === 'board' && boardBy ? (
               <Board data={{ ...data, rows }} by={boardBy} rowsAt={rowsAt} onOpen={openRowPanel} />
             ) : config.kind === 'form' ? (
@@ -557,6 +561,13 @@ export function TableView({
               onSaveAs={saveAs}
             >
               {readByWords(data.readBy) && <span className="mr-3">{readByWords(data.readBy)}</span>}
+              {!grid && !loading && (
+                <span className="tabular-nums">
+                  {rows.length === data.rows.length
+                    ? `${data.rows.length.toLocaleString()} row${data.rows.length === 1 ? '' : 's'}`
+                    : `${rows.length.toLocaleString()} of ${data.rows.length.toLocaleString()}`}
+                </span>
+              )}
               {rows.length > Math.min(size, ...SIZES) && grid && (
                 <>
                   <Select

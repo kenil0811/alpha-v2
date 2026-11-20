@@ -33,7 +33,7 @@ export function FootBar({
   const [naming, setNaming] = useState(false)
   const saveAt = useRef<HTMLSpanElement>(null)
   return (
-    <div className="flex min-h-11 shrink-0 items-center gap-2 px-7 pb-2 text-ink-3 text-sm">
+    <div className="flex min-h-11 shrink-0 items-center gap-2 border-hair border-t px-3 text-ink-3 text-sm">
       {onNew !== null && <NewButton onNew={onNew} />}
       <span className="ml-auto flex items-center gap-2">
         {dirty && (

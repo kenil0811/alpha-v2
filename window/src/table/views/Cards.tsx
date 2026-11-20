@@ -73,7 +73,7 @@ export function ListView({
 }) {
   const groups: Group[] = group ? groupRows(rows, group, names) : [{ key: '', label: '', rows }]
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4">
       {groups.map((g) => (
         <section key={g.key || 'all'} className="mb-4">
           {group && (
@@ -129,7 +129,7 @@ export function GalleryView({
   onOpen: (id: string) => void
 }) {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4">
       <div className="grid grid-cols-[repeat(auto-fill,minmax(248px,1fr))] gap-3">
         {rows.map((r) => (
           <button

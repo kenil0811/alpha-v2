@@ -76,6 +76,7 @@ held by review. Dates are 2026. A rule taken out leaves its number unused (M3, L
 | T22 | A column of related rows or people filters by the names it shows: is any of and is none of, ticked from the names in that column with their counts, contains and doesn't contain, empty or not; it groups by those names, several together when a row names several | 15 Nov | test |
 | T23 | A board's card is dragged onto any column, its stage set at once; held near the board's left or right edge it scrolls the board, faster the nearer the edge, so a column out of sight takes it too; its picker moves it by keyboard | 15 Nov | — |
 | T24 | Map is a view of a table that holds places: a latitude and a longitude (number columns named so, values in range) or a column of points ("35.2, -80.8" in most filled rows), found by `@alpha/core/places` in the core and the window alike; never an address until something turns it into a point. A point per row, coloured by a choice (T17) with its key, gathered into counts where they crowd, the row's name on pointing and the row beside on a click; the rows with no place are counted under it. MapLibre loads only when a map opens, on OpenFreeMap's tiles, which learn the area in view and nothing of the rows; it opens fitted to its rows | 17 Nov | — |
+| T26 | A table is one rounded frame holding its toolbar, the chips' line, the view and the foot, with no gaps between; the chips' line shows only while it holds a paste, ticked rows or the list's filters, sorts or group | 20 Nov | — |
 
 ## Pages, records and deleting
 

@@ -171,7 +171,7 @@ export function ViewTabs({
     )
   }
   return (
-    <div className="relative flex min-h-11 items-center gap-2 border-hair border-b px-7">
+    <div className="relative flex min-h-11 items-center gap-2 border-hair border-b px-3">
       {picker}
       <fieldset className="scroll-quiet m-0 flex min-w-0 gap-1 overflow-x-auto border-0 p-0">
         <legend className="sr-only">Saved lists</legend>
