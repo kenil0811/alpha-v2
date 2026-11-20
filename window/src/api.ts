@@ -4,17 +4,22 @@ import type { LiveEvent } from '@alpha/core/api'
 const KEY = 'alpha-token'
 
 export function token(): string {
-  const fromUrl = new URLSearchParams(window.location.search).get('t')
+  const url = new URL(window.location.href)
+  const fromUrl = url.searchParams.get('t')
   if (fromUrl) {
     try {
-      sessionStorage.setItem(KEY, fromUrl)
+      // kept in the browser, not the address: a link's status bubble, a copied page address and a
+      // new tab (localStorage is shared across tabs) never show or need the token in the URL
+      localStorage.setItem(KEY, fromUrl)
+      url.searchParams.delete('t')
+      window.history.replaceState(null, '', url)
     } catch {
       // a private window: the token stays in the address
     }
     return fromUrl
   }
   try {
-    return sessionStorage.getItem(KEY) ?? ''
+    return localStorage.getItem(KEY) ?? ''
   } catch {
     return ''
   }
