@@ -14,6 +14,7 @@ export function registerMe(ctx: Ctx): void {
       const v = Number(world.preference(user.id, key))
       return Number.isFinite(v) && v > 0 ? v : null
     }
+    const order = world.preference(user.id, 'list_order')
     return {
       railFolded: world.preference(user.id, 'rail_folded') === 'yes',
       folded: folded ? (JSON.parse(folded) as string[]) : [],
@@ -24,6 +25,7 @@ export function registerMe(ctx: Ctx): void {
       assistant: world.preference(user.id, 'assistant_folded') === 'yes' ? 'folded' : 'open',
       pageSize: n('page_size'),
       agent: world.preference(user.id, 'agent_chosen'),
+      listOrder: order ? (JSON.parse(order) as Record<string, string[]>) : {},
     }
   }
 
@@ -55,6 +57,7 @@ export function registerMe(ctx: Ctx): void {
         assistant: z.enum(['open', 'folded']).optional(),
         pageSize: z.number().int().positive().nullable().optional(),
         agent: z.string().nullable().optional(),
+        listOrder: z.record(z.string(), z.array(z.string())).optional(),
       })
       .parse(req.body)
     const num = (v: number | null | undefined) => (v === null ? null : String(v))
@@ -83,6 +86,12 @@ export function registerMe(ctx: Ctx): void {
         user.id,
         'rail_pinned_modules',
         given.pinned.length ? JSON.stringify(given.pinned) : null,
+      )
+    if (given.listOrder !== undefined)
+      world.setPreference(
+        user.id,
+        'list_order',
+        Object.keys(given.listOrder).length ? JSON.stringify(given.listOrder) : null,
       )
     if (given.panel !== undefined)
       world.setPreference(user.id, 'panel_width', given.panel === null ? null : String(given.panel))

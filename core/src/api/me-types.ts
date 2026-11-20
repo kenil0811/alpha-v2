@@ -23,4 +23,5 @@ export interface Layout {
   assistant: 'open' | 'folded'
   pageSize: number | null // a table's rows to a page; none is 50
   agent: string | null // the agent the assistant shows; none is the Chief of staff
+  listOrder: Record<string, string[]> // a table's lists in the person's order: table id → list ids ('all' is All); the first is where the table opens
 }

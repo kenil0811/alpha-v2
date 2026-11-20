@@ -44,6 +44,8 @@ import { TimelineView } from './table/views/TimelineView.tsx'
 import { blankFor, useWorkingList } from './table/working.ts'
 import { Select } from './ui/field.tsx'
 
+const NONE: string[] = [] // no order of the person's own yet; one array, so effects stay still
+
 export function TableView({
   data,
   row: openRow,
@@ -81,7 +83,9 @@ export function TableView({
   const [views, setViews] = useState<SavedView[]>(data.views)
   useEffect(() => setViews(data.views), [data.views])
   const blank = blankFor(own?.layout) // All, as the list opens: a kept list may say how
-  const working = useWorkingList(key, data.views, views, loading, blank)
+  const { layout: left, change } = useLayout()
+  const order = left.listOrder[data.id] ?? NONE
+  const working = useWorkingList(key, data.views, views, loading, order, blank)
   const { viewId, setViewId, config, setConfig } = working
   const saved = complete(views.find((v) => v.id === viewId)?.config ?? blank)
   const dirty = differs(config, saved)
@@ -98,7 +102,6 @@ export function TableView({
   const [searching, setSearching] = useState(false)
   const layout = layoutOf(config, setConfig) // frozen and wrapped columns, kept with the list
   // rows to a page, the person's choice, kept by Alpha per person
-  const { layout: left, change } = useLayout()
   const size = left.pageSize ?? PAGE
   const resize = (n: number) => {
     change({ pageSize: n })
@@ -352,11 +355,8 @@ export function TableView({
                   if (viewId) replace(await api.put<SavedView>(`/api/views/${viewId}`, { name }))
                 })
               }
-              onDefault={(id, on) =>
-                act(async () => {
-                  replace(await api.put<SavedView>(`/api/views/${id}`, { isDefault: on }))
-                })
-              }
+              order={order}
+              onOrder={(ids) => change({ listOrder: { ...left.listOrder, [data.id]: ids } })}
               onRemove={() =>
                 act(async () => {
                   if (!viewId) return
